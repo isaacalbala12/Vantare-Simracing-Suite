@@ -69,6 +69,30 @@ pub fn paint_frame(window: &mut Window, width: f32, height: f32) {
     ));
 }
 
+/// Marco del panel CSS: lados al 12 % y borde superior al 24 %.
+pub fn paint_highlighted_frame(window: &mut Window, width: f32, height: f32) {
+    paint_frame(window, width, height);
+    // Source-over: base + refuerzo * (1 - base) = opacidad del CSS.
+    // Aplicar otro 24 % encima del 12 % produciría un borde al 33,12 %.
+    let overlay_alpha = (0.24 - 0.12) / (1.0 - 0.12);
+    window.paint_quad(quad(
+        rect(0.0, 0.0, width, tokens::RADIUS),
+        Corners {
+            top_left: px(tokens::RADIUS),
+            top_right: px(tokens::RADIUS),
+            bottom_left: px(0.0),
+            bottom_right: px(0.0),
+        },
+        col(0x000000, 0.0),
+        Edges {
+            top: px(1.0),
+            ..Edges::all(px(0.0))
+        },
+        col(0xffffff, overlay_alpha),
+        BorderStyle::default(),
+    ));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

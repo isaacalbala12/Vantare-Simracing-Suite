@@ -173,23 +173,7 @@ fn paint(vm: &ViewModel, cards: &[Card], prefs: Preferences, window: &mut Window
             }
         },
     );
-    efficiency::paint_frame(window, width, height);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
-        Corners {
-            top_left: px(6.0),
-            top_right: px(6.0),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(1.0),
-            ..Edges::all(px(0.0))
-        },
-        col(0xffffff, 0.24),
-        BorderStyle::default(),
-    ));
+    efficiency::paint_highlighted_frame(window, width, height);
 }
 
 fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window, cx: &mut App) {

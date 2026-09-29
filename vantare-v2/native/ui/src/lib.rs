@@ -32,4 +32,4 @@ pub mod standings;
 mod stats;
 mod text;
 
-pub use app::{Grouping, run};
+pub use app::run;

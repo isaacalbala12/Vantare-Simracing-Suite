@@ -131,12 +131,3 @@ pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, (&raw const no_border).cast(), 4);
     }
 }
-
-/// Cambia el tamaño (px físicos) de una ventana ya pasada por [`apply`].
-pub fn resize(hwnd: Hwnd, width: i32, height: i32) {
-    const SWP_KEEP_POSITION: u32 = 0x2 | 0x4 | 0x10; // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
-    // SAFETY: `hwnd` es un HWND vivo de este proceso; la llamada no toma punteros.
-    unsafe {
-        ffi::SetWindowPos(hwnd, 0, 0, 0, width, height, SWP_KEEP_POSITION);
-    }
-}

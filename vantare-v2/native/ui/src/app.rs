@@ -62,7 +62,7 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    pub(crate) fn new(kind: Kind, prefs: Preferences) -> Self {
+    pub fn new(kind: Kind, prefs: Preferences) -> Self {
         let widget = Widget::new(kind, prefs);
         Self {
             widget,
@@ -90,7 +90,7 @@ impl Overlay {
         .detach();
     }
 
-    pub(crate) fn wanted_size(&self) -> (f32, f32) {
+    pub fn wanted_size(&self) -> (f32, f32) {
         self.widget.size()
     }
 

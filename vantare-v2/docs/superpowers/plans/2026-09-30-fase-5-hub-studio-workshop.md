@@ -147,3 +147,32 @@ La revisión visual, DPI, teclado y liberación real de memoria quedan para Opus
 
 No se han actualizado Notion ni GitHub de forma remota. Este documento se
 actualiza en cada hito; revisión final reservada a Opus.
+
+### Corte 2 — Workshop local compartido
+
+Implementado: catálogo vigente sin duplicación, selección de snapshots y
+JSONL, validación de orden/época/timestamps, play/pausa/step/inicio/loop,
+unidades/idioma, fondo de escenario, comparación fijada, recarga a 150 ms y
+última foto válida ante error. Persistencia independiente y atómica de
+selección con conflicto por bytes/lock, rechazo de archivos `.env*`, lectura
+acotada a 16 MiB/512 fotos. La reproducción usa tiempos de recepción de los
+DTO, no inventa señales. Los tests de lógica manipulan timestamps declarados;
+no se presentan como un corpus temporal físico.
+
+`ui` solo cambia el reexport de `Overlay` y visibilidad de `new`/`wanted_size`.
+No cambia widgets ni Eficiencia. `hub/dev.ps1` recompila con dos jobs y usa
+una copia del exe de su propia sesión para evitar el bloqueo del binario.
+Compila antes de cerrar; un error de compilación conserva la ventana anterior.
+Cierre y guardado por EOF, sin iniciar núcleo ni juego.
+
+Gates: fmt PASS; clippy workspace/all-targets PASS; tests workspace PASS,
+incluidos nueve tests Hub (cuatro de archivos/escenas, uno CLI, cuatro de
+integración/arquitectura). Cuatro pruebas físicas heredadas omitidas. Parser
+PowerShell del script PASS; watch/reapertura y paridad visual aún no ejecutados
+con interacción física. Compilación de tests observada 34,59 s, sin comparación
+de rendimiento (otros workers activos).
+
+**Workshop completo: bloqueado parcialmente** por configuración de contenido
+de los widgets, cuatro tipos pendientes de fase 2 y edición de escenas/captura
+con aceptación visual. Captura/paridad siguen disponibles en `ui`; no se crea
+otro pipeline. Continuar con la edición local independiente de Studio.

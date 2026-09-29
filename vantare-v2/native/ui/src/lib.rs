@@ -32,4 +32,5 @@ pub mod workshop;
 
 include!("registry.rs");
 
-pub use app::{layout_row, run, run_placed};
+// Hub incrusta el mismo renderer productivo; no expone el despacho interno de widgets.
+pub use app::{Overlay, layout_row, run, run_placed};

@@ -49,3 +49,17 @@ fn invalid_cli_arguments_fail_before_opening_a_window() {
     assert_eq!(output.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&output.stderr).contains("uso:"));
 }
+
+#[test]
+fn a_missing_scene_fails_without_creating_or_overwriting_user_data() {
+    let path = std::env::temp_dir().join(format!("vantare-hub-preflight-{}", std::process::id()));
+    assert!(!path.exists());
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-hub"))
+        .args(["--workshop", "--data-dir"])
+        .arg(&path)
+        .args(["--scene", "missing.snapshot.json"])
+        .output()
+        .expect("arrancar Hub");
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!path.exists());
+}

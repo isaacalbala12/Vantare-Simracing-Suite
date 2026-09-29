@@ -1,7 +1,10 @@
 //! Proceso Hub de ADR 0099: edición local, sin dependencia del runtime.
 #![forbid(unsafe_code)]
 
+pub mod files;
+pub mod scene;
 pub mod shell;
+pub mod workshop;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Section {

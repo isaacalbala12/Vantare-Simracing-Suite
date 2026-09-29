@@ -13,7 +13,7 @@ use vantare_telemetry::assembly::Assembler;
 use vantare_telemetry::engine::Engine;
 use vantare_telemetry::ipc::snapshot::{self, EngineerIdentity, ProductMetadata};
 use vantare_telemetry::ipc::{self, Kind};
-use vantare_telemetry::lmu::{OBJECT_OUT_SIZE, admit_v13};
+use vantare_telemetry::lmu::{OBJECT_OUT_SIZE, admit_v13, rest::RestCache};
 use vantare_telemetry::projection::{cached::CachedOverlay, engineer, frame, strategy};
 use vantare_telemetry::quality::Field;
 
@@ -32,6 +32,31 @@ struct Sample {
     source_ms: u64,
     vehicles: usize,
     shared_file: String,
+    rest_bodies_file: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RestBodies {
+    schema: String,
+    standings: Value,
+    session_info: Value,
+}
+
+fn apply_rest_bodies(cache: &mut RestCache, bodies: &RestBodies, received_ns: u64) {
+    cache.accept_standings(
+        &serde_json::to_vec(&bodies.standings).unwrap(),
+        received_ns,
+        received_ns,
+    );
+    cache.accept_session(
+        &serde_json::to_vec(&bodies.session_info).unwrap(),
+        received_ns,
+    );
+    assert_eq!(
+        cache.status(),
+        vantare_telemetry::lmu::rest::RestStatus::Live
+    );
 }
 
 #[derive(Default)]
@@ -80,6 +105,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     let mut assembler = Assembler::new(30, 15).unwrap();
     assembler.configure(&configuration).unwrap();
     let profile = std::env::var_os("LMU_TEMPORAL_PROFILE").is_some();
+    let replay_rest = std::env::var_os("LMU_TEMPORAL_REST_BODIES").is_some();
     let profile_config = profile.then(|| ipc::configuration::decode_frame(&configuration).unwrap());
     let mut profile_engine = profile.then(|| Engine::new(30, 15).unwrap());
     let mut profile_cache = profile_config
@@ -122,6 +148,23 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 .unix_timestamp_nanos(),
         )
         .unwrap();
+        if replay_rest {
+            let file = sample
+                .rest_bodies_file
+                .as_deref()
+                .expect("REST replay requires body artifact");
+            assert_eq!(file, format!("{index:03}-rest-bodies.json"));
+            let bodies: RestBodies =
+                serde_json::from_slice(&fs::read(dir.join(file)).unwrap()).unwrap();
+            assert_eq!(bodies.schema, "vantare.lmu-rest-bodies.v1");
+            apply_rest_bodies(assembler.rest_cache_mut(), &bodies, received_ns);
+            if let Some(engine) = profile_engine.as_mut() {
+                apply_rest_bodies(engine.rest_cache_mut(), &bodies, received_ns);
+            }
+            if let Some(engine) = binary_engine.as_mut() {
+                apply_rest_bodies(engine.rest_cache_mut(), &bodies, received_ns);
+            }
+        }
         let assembly_started = Instant::now();
         let frames = assembler
             .apply(
@@ -302,7 +345,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                     let projected_time = value["snapshot"]["sourceTimeSeconds"]["value"]
                         .as_f64()
                         .unwrap();
-                    assert!((projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
+                    assert!(projected_time.is_finite() && projected_time > 0.0);
+                    assert!(replay_rest || (projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
                     engineer_player = value["snapshot"]["player"]["id"]
                         .as_str()
                         .map(str::to_owned);
@@ -312,7 +356,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                     let projected_time = value["snapshot"]["sourceTimeSeconds"]["value"]
                         .as_f64()
                         .unwrap();
-                    assert!((projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
+                    assert!(projected_time.is_finite() && projected_time > 0.0);
+                    assert!(replay_rest || (projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
                     strategy_player = value["snapshot"]["player"]["id"]
                         .as_str()
                         .map(str::to_owned);

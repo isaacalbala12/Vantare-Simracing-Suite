@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — REST temporal real y paridad completa (2026-09-29)
+
+La práctica LMU 1.4.2.0 produjo 80 nuevos pares SHM/REST con 47 coches
+durante 60,4 s de reloj de origen. El capturador conserva solo los campos
+REST consumidos, remapea slots a los mismos alias SHM y reemplaza texto
+libre; los 80 artefactos tienen 3760 filas allowlisted. Manifest SHA-256
+`c5b1f197a399288951a7237577e817696c22cbd0e9430268d30b062f69cc52b4`.
+Go auditó hashes, 47 filas, IDs y ambos endpoints; los replays Go y Rust
+alimentaron REST antes de SHM en cada muestra. El comparador estricto detectó
+una discrepancia wire: Go serializaba temperatura 31 como entero y Rust como
+31.0. Rust usa ahora `wire_float` en los campos meteorológicos numéricos.
+La comparación final dio cero diferencias en los 80 Overlay, Engineer,
+Strategy y facts. `go test ./...`, 160 tests Rust release, Clippy, formato,
+build y compilación cruzada del test Go Linux pasaron. Es paridad del corpus
+real sanitizado, no el gate G0/G1/R de CPU/p99/RSS ni los estados REST de
+fallo o cambio de sesión. PR #1415 draft; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — REST físico LMU47 en el batch Rust (2026-09-29)
 
 LMU 1.4.2.0 seguía abierto en práctica con 47 vehículos. Dos tests opt-in

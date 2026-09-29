@@ -1,14 +1,18 @@
 package lmu
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,9 +27,30 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
+const sanitizedRESTBodiesSchema = "vantare.lmu-rest-bodies.v1"
+
+type corpusRESTDoer struct {
+	standings []byte
+	session   []byte
+}
+
+func (doer corpusRESTDoer) Do(req *http.Request) (*http.Response, error) {
+	var body []byte
+	switch req.URL.Path {
+	case standingsEndpoint:
+		body = doer.standings
+	case sessionInfoEndpoint:
+		body = doer.session
+	default:
+		return nil, fmt.Errorf("unexpected REST replay endpoint %q", req.URL.Path)
+	}
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(body)), Request: req}, nil
+}
+
 // TestRustPortTemporalCorpusAuditOptIn audits an external, real LMU capture.
-// It is deliberately opt-in: this short corpus is diagnostic even when it
-// reaches the accepted 46-car minimum, never the complete migration gate.
+// LMU_TEMPORAL_REST_BODIES=1 replays audited endpoint inputs before each SHM
+// sample through the production Go REST decoder and fusion path. It remains
+// diagnostic, not the complete migration performance gate.
 func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	dir := os.Getenv("LMU_TEMPORAL_CORPUS")
 	if dir == "" {
@@ -37,14 +62,16 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		t.Fatalf("set LMU_TEMPORAL_EXPECTED_VEHICLES to 46..104, got %q", wantText)
 	}
 	type sample struct {
-		Index      int    `json:"index"`
-		AtUTC      string `json:"atUtc"`
-		SourceMS   int64  `json:"sourceMs"`
-		Vehicles   int    `json:"vehicles"`
-		SharedFile string `json:"sharedFile"`
-		SharedSHA  string `json:"sharedSha256"`
-		RESTFile   string `json:"restFile"`
-		RESTSHA    string `json:"restSha256"`
+		Index          int    `json:"index"`
+		AtUTC          string `json:"atUtc"`
+		SourceMS       int64  `json:"sourceMs"`
+		Vehicles       int    `json:"vehicles"`
+		SharedFile     string `json:"sharedFile"`
+		SharedSHA      string `json:"sharedSha256"`
+		RESTFile       string `json:"restFile"`
+		RESTSHA        string `json:"restSha256"`
+		RESTBodiesFile string `json:"restBodiesFile"`
+		RESTBodiesSHA  string `json:"restBodiesSha256"`
 	}
 	var manifest struct {
 		Build   string   `json:"build"`
@@ -77,6 +104,8 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		Facts    json.RawMessage `json:"facts"`
 	}
 	fusion := new(Fusion)
+	restReplayCache := new(restCache)
+	replayREST := os.Getenv("LMU_TEMPORAL_REST_BODIES") == "1"
 	mapper := NewBatchMapper()
 	var factNow time.Time
 	engine := telemetryengine.New(telemetrycore.NewReducer(), telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: func() time.Time { return factNow }}), derive.NewPipeline(derive.Config{}))
@@ -119,6 +148,30 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		previousSource = source
 		if i == 0 {
 			firstSource = source
+		}
+		if replayREST {
+			if entry.RESTBodiesFile != fmt.Sprintf("%03d-rest-bodies.json", i) || entry.RESTBodiesSHA == "" {
+				t.Fatalf("sample %d lacks audited REST body artifact", i)
+			}
+			body := readHashedCorpusFile(t, dir, entry.RESTBodiesFile, entry.RESTBodiesSHA)
+			var endpoint struct {
+				Schema      string          `json:"schema"`
+				Standings   json.RawMessage `json:"standings"`
+				SessionInfo json.RawMessage `json:"sessionInfo"`
+			}
+			if err := json.Unmarshal(body, &endpoint); err != nil || endpoint.Schema != sanitizedRESTBodiesSchema {
+				t.Fatalf("sample %d invalid REST replay body: %v", i, err)
+			}
+			cfg := normalizeRESTConfig(&restConfig{
+				client:  corpusRESTDoer{standings: endpoint.Standings, session: endpoint.SessionInfo},
+				now:     func() time.Time { return at },
+				elapsed: func() time.Duration { return source - firstSource },
+			}, time.Now, nil)
+			restObservation, complete := pollREST(t.Context(), cfg, restReplayCache)
+			if !complete {
+				t.Fatalf("sample %d REST replay did not decode both endpoints", i)
+			}
+			fusion.Merge(at, source-firstSource, restObservation)
 		}
 		fused := fusion.Merge(at, source-firstSource, observation)
 		var final envelope.Snapshot[derive.FinalState]
@@ -217,6 +270,42 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		}
 		if err := json.Unmarshal(rest, &overlap); err != nil || overlap.Schema != "vantare.lmu-rest-overlap.v1" || overlap.Status != "live" || overlap.Session.VehicleCount.Value != want || !overlap.Player.Present.Value {
 			t.Fatalf("sample %d REST overlap disagrees with live grid", i)
+		}
+		if entry.RESTBodiesFile != "" {
+			if entry.RESTBodiesFile != fmt.Sprintf("%03d-rest-bodies.json", i) || entry.RESTBodiesSHA == "" {
+				t.Fatalf("sample %d has noncanonical REST body artifact", i)
+			}
+			body := readHashedCorpusFile(t, dir, entry.RESTBodiesFile, entry.RESTBodiesSHA)
+			var endpoint struct {
+				Schema      string          `json:"schema"`
+				Standings   json.RawMessage `json:"standings"`
+				SessionInfo json.RawMessage `json:"sessionInfo"`
+			}
+			if err := json.Unmarshal(body, &endpoint); err != nil || endpoint.Schema != sanitizedRESTBodiesSchema {
+				t.Fatalf("sample %d invalid sanitized REST body envelope: %v", i, err)
+			}
+			rows, err := decodeStandings(endpoint.Standings)
+			if err != nil || len(rows) != want {
+				t.Fatalf("sample %d REST standings rows=%d error=%v", i, len(rows), err)
+			}
+			info, err := decodeSessionInfo(endpoint.SessionInfo)
+			if err != nil || int(info.NumberOfVehicles) != want || info.TrackName == nil || *info.TrackName != "Track-01" {
+				t.Fatalf("sample %d REST sessionInfo disagrees with grid: %v", i, err)
+			}
+			ids := make(map[int32]struct{}, len(observation.Vehicles))
+			for _, vehicle := range observation.Vehicles {
+				ids[int32(vehicle.SourceID)] = struct{}{}
+			}
+			for _, row := range rows {
+				if row.SlotID == nil {
+					continue
+				}
+				if _, ok := ids[*row.SlotID]; !ok || !strings.HasPrefix(row.VehicleName, "Vehicle-") {
+					t.Fatalf("sample %d REST slot has no sanitized SHM identity", i)
+				}
+			}
+		} else if entry.RESTBodiesSHA != "" {
+			t.Fatalf("sample %d REST body hash without file", i)
 		}
 	}
 	if parityOut != "" {

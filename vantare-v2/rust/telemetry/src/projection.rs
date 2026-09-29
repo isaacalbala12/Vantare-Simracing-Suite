@@ -521,10 +521,10 @@ mod tests {
                 "steering": wire_value(&player.steering),
             },
             "weather": {
-                "ambientC": wire_value(&weather.ambient_c), "trackC": wire_value(&weather.track_c),
-                "rainPercent": wire_value(&weather.rain_percent), "wetnessPct": wire_value(&weather.wetness_pct),
-                "windKph": wire_value(&weather.wind_kph), "windDir": wire_value(&weather.wind_dir),
-                "pressureHpa": wire_value(&weather.pressure_hpa),
+                "ambientC": wire_float(&weather.ambient_c), "trackC": wire_float(&weather.track_c),
+                "rainPercent": wire_float(&weather.rain_percent), "wetnessPct": wire_float(&weather.wetness_pct),
+                "windKph": wire_float(&weather.wind_kph), "windDir": wire_value(&weather.wind_dir),
+                "pressureHpa": wire_float(&weather.pressure_hpa),
             },
             "controls": {
                 "history": {

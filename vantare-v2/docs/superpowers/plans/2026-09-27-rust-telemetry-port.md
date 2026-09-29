@@ -2455,3 +2455,27 @@ Rust release de 160 tests, Clippy estricto, formato, build release y replay
 temporal SHM LMU47 x80 pasaron. Esto prueba adquisición/fusión física puntual,
 no paridad temporal REST: el corpus actual conserva solo solapamiento
 sanitizado, sin cuerpos completos de ambos endpoints ni cambios de estado.
+
+## 134. Corpus temporal de entradas REST y paridad Go/Rust (2026-09-29)
+
+El capturador diagnóstico opt-in conserva ahora, junto a cada SHM, las
+entradas de ambos endpoints REST que consumen los decodificadores. Solo
+escribe claves permitidas y remapea slot/vehicleName con el mismo alias SHM;
+trackName y session se normalizan sin persistir texto libre. Un valor textual
+real de `yellowFlagState` se reemplaza por el literal fijo `invalid`: Go y
+Rust lo interpretan como falta de señal global. Los 80 pares reales de LMU
+1.4.2.0 contienen 47 coches y abarcan 60,4 s de reloj de origen; manifest
+SHA-256 `c5b1f197a399288951a7237577e817696c22cbd0e9430268d30b062f69cc52b4`.
+Go auditó 80 hashes REST nuevos, 47 filas por muestra, IDs sanitizados y
+ambos decoders. Una auditoría independiente confirmó solo claves permitidas
+y alias en 3760 filas. Los replays Go y Rust ingirieron REST antes del mismo
+SHM por muestra. El comparador estricto falló primero en las 80 temperaturas
+ambientales enteras (`31` Go, `31.0` Rust); al usar la codificación integral
+existente `wire_float` para números meteorológicos Rust, dio **cero
+diferencias** en Overlay, Engineer, Strategy y facts de las 80 muestras.
+
+`go test ./...`, 160 tests Rust release, Clippy, formato, build release y
+compilación cruzada del test Go Linux pasaron. La evidencia es reproducible
+con los artefactos externos sanitizados, pero no prueba estados REST de error,
+cambio de sesión, Wails/OBS, empaquetado ni el gate total G0/G1/R de
+CPU/p99/RSS. Go permanece productivo y PR #1415 sigue draft.

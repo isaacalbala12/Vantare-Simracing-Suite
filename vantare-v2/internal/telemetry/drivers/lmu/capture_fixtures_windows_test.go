@@ -4,6 +4,7 @@ package lmu
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,6 +17,8 @@ import (
 
 // TestCaptureLMUTemporalOptIn collects a bounded, correlated SHM/REST sequence.
 // The sanitizer is shared by all frames so aliases remain stable across time.
+// LMU_CAPTURE_REST_BODIES=1 also saves only the two endpoints' admitted inputs,
+// with source text removed and slot aliases shared with the SHM capture.
 // Output is diagnostic until parity and performance pass on a real >=46-car corpus.
 func TestCaptureLMUTemporalOptIn(t *testing.T) {
 	if os.Getenv("LMU_CAPTURE_TEMPORAL") != "1" {
@@ -26,6 +29,7 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 		t.Fatal("set LMU_CAPTURE_OUT to a new directory")
 	}
 	samples := 8
+	captureBodies := os.Getenv("LMU_CAPTURE_REST_BODIES") == "1"
 	if requested := strings.TrimSpace(os.Getenv("LMU_CAPTURE_SAMPLES")); requested != "" {
 		count, err := strconv.Atoi(requested)
 		if err != nil || count < 8 || count > 240 {
@@ -62,20 +66,25 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 	defer clear(input)
 	defer clear(scratch)
 	type sample struct {
-		Index      int    `json:"index"`
-		AtUTC      string `json:"atUtc"`
-		SourceMS   int64  `json:"sourceMs"`
-		Vehicles   int    `json:"vehicles"`
-		SharedFile string `json:"sharedFile"`
-		SharedSHA  string `json:"sharedSha256"`
-		RESTFile   string `json:"restFile"`
-		RESTSHA    string `json:"restSha256"`
+		Index          int    `json:"index"`
+		AtUTC          string `json:"atUtc"`
+		SourceMS       int64  `json:"sourceMs"`
+		Vehicles       int    `json:"vehicles"`
+		SharedFile     string `json:"sharedFile"`
+		SharedSHA      string `json:"sharedSha256"`
+		RESTFile       string `json:"restFile"`
+		RESTSHA        string `json:"restSha256"`
+		RESTBodiesFile string `json:"restBodiesFile,omitempty"`
+		RESTBodiesSHA  string `json:"restBodiesSha256,omitempty"`
 	}
 	manifest := struct {
 		Build   string   `json:"build"`
 		Samples []sample `json:"samples"`
 	}{Build: evidence.FileVersion}
-	type pair struct{ shared, rest DiagnosticCaptureArtifact }
+	type pair struct {
+		shared, rest DiagnosticCaptureArtifact
+		bodies       []byte
+	}
 	pairs := make([]pair, 0, samples)
 	var previous time.Duration
 	var vehicleCount int
@@ -115,13 +124,25 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 		if err != nil {
 			t.Fatalf("correlated REST frame %d: %v", index, err)
 		}
-		pairs = append(pairs, pair{shared, rest})
-		manifest.Samples = append(manifest.Samples, sample{
+		var bodies []byte
+		if captureBodies {
+			bodies, err = captureSanitizedRESTBodies(ctx, sanitizer)
+			if err != nil {
+				t.Fatalf("sanitize REST endpoint bodies %d: %v", index, err)
+			}
+		}
+		pairs = append(pairs, pair{shared: shared, rest: rest, bodies: bodies})
+		entry := sample{
 			Index: index, AtUTC: shared.CapturedAtUTC().Format(time.RFC3339Nano),
 			SourceMS: current.Milliseconds(), Vehicles: int(vehicles),
 			SharedFile: fmt.Sprintf("%03d-shm.bin", index), SharedSHA: shared.SHA256(),
 			RESTFile: fmt.Sprintf("%03d-rest.json", index), RESTSHA: rest.SHA256(),
-		})
+		}
+		if captureBodies {
+			entry.RESTBodiesFile = fmt.Sprintf("%03d-rest-bodies.json", index)
+			entry.RESTBodiesSHA = fmt.Sprintf("%x", sha256.Sum256(bodies))
+		}
+		manifest.Samples = append(manifest.Samples, entry)
 	}
 	if err := os.Mkdir(out, 0o700); err != nil {
 		t.Fatalf("create new output directory: %v", err)
@@ -131,8 +152,14 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 		if err := WriteSanitizedCapturePair(filepath.Join(out, entry.SharedFile), item.shared, filepath.Join(out, entry.RESTFile), item.rest); err != nil {
 			t.Fatalf("write sanitized pair %d: %v", index, err)
 		}
+		if entry.RESTBodiesFile != "" {
+			if err := os.WriteFile(filepath.Join(out, entry.RESTBodiesFile), item.bodies, 0o600); err != nil {
+				t.Fatalf("write sanitized REST bodies %d: %v", index, err)
+			}
+		}
 		clear(item.shared.payload)
 		clear(item.rest.payload)
+		clear(item.bodies)
 	}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {

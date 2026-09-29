@@ -59,4 +59,5 @@ widgets! {
     Standings => standings: "standings",
     Radar => radar: "radar",
     Pedals => pedals: "pedals",
+    FuelStrategy => fuel_strategy: "fuel-strategy",
 }

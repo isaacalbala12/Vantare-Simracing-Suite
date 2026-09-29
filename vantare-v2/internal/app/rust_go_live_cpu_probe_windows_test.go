@@ -104,6 +104,8 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 	overlays := publisher.Metrics().SnapshotPublications
 	strategies := runtime.StrategyHub().Metrics().SnapshotPublications
 	latencyBase := probe.latencyCount()
+	sequenceBase := probe.sequence.Load()
+	gapBase := probe.sequenceGaps.Load()
 	timer := time.NewTimer(15 * time.Second)
 	defer timer.Stop()
 	usageTicker := time.NewTicker(250 * time.Millisecond)
@@ -146,10 +148,11 @@ measurement:
 	if probe.invalidCapture.Load() != 0 {
 		t.Fatalf("%s invalid Engineer capture timestamps: %d", arm, probe.invalidCapture.Load())
 	}
-	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s peakRSS=%d engineerP99=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d", arm,
+	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s peakRSS=%d engineerP99=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d sequenceSpan=%d sequenceGaps=%d", arm,
 		finalCPU-initialCPU, finalChildCPU-initialChildCPU, finalCPU-initialCPU+finalChildCPU-initialChildCPU,
 		peakRSS, p99,
-		overlays, engineers, strategies, probe.vehicles.Load(), probe.facts.Load())
+		overlays, engineers, strategies, probe.vehicles.Load(), probe.facts.Load(),
+		probe.sequence.Load()-sequenceBase, probe.sequenceGaps.Load()-gapBase)
 }
 
 type cpuProbeEngineer struct {
@@ -157,12 +160,18 @@ type cpuProbeEngineer struct {
 	vehicles       atomic.Int64
 	facts          atomic.Uint64
 	invalidCapture atomic.Uint64
+	sequence       atomic.Uint64
+	sequenceGaps   atomic.Uint64
 	latencyMu      sync.Mutex
 	latencies      []time.Duration
 }
 
 func (*cpuProbeEngineer) ConsumeSourceStatus(engineerprojection.SourceStatusV1) error { return nil }
 func (probe *cpuProbeEngineer) ConsumeObservation(value engineerprojection.ObservationSnapshotV1) error {
+	previous := probe.sequence.Swap(uint64(value.Sequence))
+	if previous != 0 && uint64(value.Sequence) > previous+1 {
+		probe.sequenceGaps.Add(uint64(value.Sequence) - previous - 1)
+	}
 	captured, err := time.Parse(time.RFC3339Nano, value.CapturedAt)
 	if err != nil {
 		probe.invalidCapture.Add(1)

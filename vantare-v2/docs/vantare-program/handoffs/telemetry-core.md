@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — continuidad de cursores LMU47 (2026-09-29)
+
+El probe opt-in registra ahora el avance y los huecos de secuencia Engineer.
+En ventanas live separadas de 15 s, Rust+Go VTE1 entregó 908 eventos y avanzó
+908 secuencias sin huecos; Go entregó 958 y avanzó 958 sin huecos. Esto
+descarta pérdidas **después del commit canónico** en esas ventanas, pero no
+separa cuántos eventos proceden de SHM o REST ni explica la diferencia de
+cadencia. Rust+Go consumió 5,515625 s CPU y Go 2,9375 s en estas corridas;
+son diagnósticos, no G0/G1/R. `go test ./...` pasó. El siguiente banco debe
+contabilizar SHM y REST antes del commit y medir ambos brazos con la misma
+secuencia temporal real de al menos 46 coches. No se cambió el runtime de
+producción; Go sigue por defecto y PR #1415 permanece draft.
+
 ## VAN-778 / ISA-1403 — perfil receptor con LMU47 (2026-09-29)
 
 En dos ventanas consecutivas de 15 s con LMU 1.4.2.0 y 47 coches, el probe

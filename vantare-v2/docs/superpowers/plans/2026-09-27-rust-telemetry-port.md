@@ -2590,3 +2590,15 @@ Perfilado, ventanas live y cadencias desiguales impiden usar esos números como
 G0/G1/R o comparar RSS. R21 debe reducir primero el coste demostrado del
 codec Overlay sin perder validación, registrar emisión frente a entrega y
 repetir en un corpus temporal equivalente.
+
+## 141. Continuidad de los eventos entregados (2026-09-29)
+
+El probe Windows opt-in registra ahora `sequenceSpan` y `sequenceGaps` del
+producto Engineer. En ventanas físicas LMU47 de 15 s, Rust+Go VTE1 entregó
+908 eventos, avanzó 908 secuencias y tuvo cero huecos; Go entregó 958,
+avanzó 958 y también tuvo cero huecos. Los costes CPU fueron 5,515625 s y
+2,9375 s respectivamente. Las secuencias continuas descartan que el receptor
+perdiera eventos **ya confirmados por el Core** en esas ventanas, pero no
+identifican cuántos ticks SHM o polls REST ocurrieron antes del commit. R21
+debe contabilizar cada fuente y ensayar el mismo calendario real ≥46 coches
+en G0/G1/R; los resultados live no certifican el gate.

@@ -2,6 +2,7 @@ package license
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -14,6 +15,181 @@ func grantProUntil(until time.Time) VerifiedGrant {
 
 func grantLaunchPerpetual() VerifiedGrant {
 	return VerifiedGrant{Key: CapabilityLaunchV1, Perpetual: true}
+}
+
+func TestWidgetMatrixDistinguishesVerifiedPlans(t *testing.T) {
+	source := []byte(`{"version":1,"widgets":[
+		{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"delta","free":false,"pro":false,"proPlus":true,"launch":false},
+		{"id":"relative","free":false,"pro":true,"proPlus":true,"launch":false},
+		{"id":"radar","free":false,"pro":false,"proPlus":false,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		eff  widgetEffective
+		want string
+	}{
+		{"free", widgetEffective{}, "pedals,standings"},
+		{"pro", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro}}, "pedals,relative,standings"},
+		{"pro plus", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro, CapabilityNightly}}, "delta,pedals,relative,standings"},
+		{"launch", widgetEffective{state: StateActive, caps: []Capability{CapabilityLaunchV1}}, "pedals,radar,standings"},
+		{"pro and launch", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro, CapabilityLaunchV1}}, "pedals,radar,relative,standings"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := matrix.allowedIDs(tc.eff); got != tc.want {
+				t.Fatalf("allowed = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	launchStored := &Result{State: StateActive, Capabilities: []Capability{CapabilityLaunchV1}}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(launchStored, widgetPolicyNow)); got != "pedals,radar,standings" {
+		t.Fatalf("Launch capability projected to suite = %q, want only Launch rights", got)
+	}
+}
+
+func TestWidgetMatrixTesterVisibilityIndependentOfLicense(t *testing.T) {
+	source := []byte(`{"version":2,"widgets":[
+		{"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"radar","visibility":"testers","free":false,"pro":true,"proPlus":true,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paid := widgetEffective{caps: []Capability{CapabilityPro}}
+	if got := matrix.allowedIDs(paid); got != "pedals,standings" {
+		t.Fatalf("paid allowed = %q", got)
+	}
+	if got := matrix.visibleIDs(paid); got != "pedals,standings" {
+		t.Fatalf("paid visible = %q", got)
+	}
+	tester := widgetEffective{roles: []OperationalRole{OperationalRoleTester}}
+	if got := matrix.allowedIDs(tester); got != "pedals,radar,standings" {
+		t.Fatalf("tester allowed = %q", got)
+	}
+	if got := matrix.visibleIDs(tester); got != "pedals,radar,standings" {
+		t.Fatalf("tester visible = %q", got)
+	}
+	stored := &Result{
+		State:            StateActive,
+		OperationalRoles: []OperationalRole{OperationalRoleTester},
+		VerifiedGrants:   []VerifiedGrant{{Key: CapabilityOperationalTester, ExpiresAt: widgetPolicyNow.Add(time.Hour)}},
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "pedals,radar,standings" {
+		t.Fatalf("verified tester visible = %q", got)
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("expired tester visible = %q", got)
+	}
+	for _, invalid := range []string{"", "private", "Testers"} {
+		bad := strings.Replace(string(source), `"visibility":"testers"`, `"visibility":"`+invalid+`"`, 1)
+		if _, err := parseWidgetMatrix([]byte(bad)); err == nil {
+			t.Fatalf("accepted visibility %q", invalid)
+		}
+	}
+	badFree := strings.Replace(string(source), `"id":"standings","visibility":"public"`, `"id":"standings","visibility":"testers"`, 1)
+	if _, err := parseWidgetMatrix([]byte(badFree)); err == nil {
+		t.Fatal("accepted hidden Standings")
+	}
+}
+
+func TestWidgetMatrixNightlyTesterVisibility(t *testing.T) {
+	source := []byte(`{"version":2,"widgets":[
+		{"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"radar","visibility":"testers","pro":true,"proPlus":true,"launch":true},
+		{"id":"delta","visibility":"nightly_testers","pro":true,"proPlus":true,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		eff  widgetEffective
+		want string
+	}{
+		{"public free", widgetEffective{}, "pedals,standings"},
+		{"pro plus with testers channel", widgetEffective{caps: []Capability{CapabilityPro, CapabilityNightly, CapabilityTesters}}, "pedals,standings"},
+		{"tester", widgetEffective{roles: []OperationalRole{OperationalRoleTester}}, "pedals,radar,standings"},
+		{"nightly tester", widgetEffective{roles: []OperationalRole{OperationalRoleNightlyTester}}, "delta,pedals,radar,standings"},
+		{"owner", widgetEffective{roles: []OperationalRole{OperationalRoleOwner}}, "delta,pedals,radar,standings"},
+		{"unknown role", widgetEffective{roles: []OperationalRole{"unknown"}}, "pedals,standings"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := matrix.visibleIDs(tc.eff); got != tc.want {
+				t.Fatalf("visible = %q, want %q", got, tc.want)
+			}
+			if got := matrix.allowedIDs(tc.eff); got != tc.want {
+				t.Fatalf("allowed = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	stored := &Result{
+		State:            StateActive,
+		OperationalRoles: []OperationalRole{OperationalRoleNightlyTester},
+		VerifiedGrants:   []VerifiedGrant{{Key: CapabilityOperationalNightlyTester, ExpiresAt: widgetPolicyNow.Add(time.Hour)}},
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "delta,pedals,radar,standings" {
+		t.Fatalf("verified nightly tester visible = %q", got)
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("expired nightly tester allowed = %q", got)
+	}
+}
+
+func TestWidgetPolicyWireCarriesVisibilityDecision(t *testing.T) {
+	policy := WidgetPolicy{AllowedWidgetTypes: "pedals,standings", VisibleWidgetTypes: "pedals,standings"}
+	wire := policy.ToWire()
+	if len(wire.VisibleWidgets) != 2 || wire.VisibleWidgets[0] != "pedals" {
+		t.Fatalf("visible widgets = %v", wire.VisibleWidgets)
+	}
+	if sameAccessAndBrand(policy, WidgetPolicy{AllowedWidgetTypes: policy.AllowedWidgetTypes, VisibleWidgetTypes: "pedals"}) {
+		t.Fatal("visibility change did not advance the effective policy")
+	}
+}
+
+func TestWidgetMatrixProPlusRightsExpireWithNightlyGrant(t *testing.T) {
+	matrix := widgetMatrix{Version: 1, Widgets: []widgetMatrixRow{
+		{ID: "standings", Free: true, Pro: true, ProPlus: true, Launch: true},
+		{ID: "pedals", Free: true, Pro: true, ProPlus: true, Launch: true},
+		{ID: "delta", ProPlus: true},
+	}}
+	stored := &Result{
+		State:        StateActive,
+		Capabilities: []Capability{CapabilityPro, CapabilityNightly},
+		VerifiedGrants: []VerifiedGrant{
+			{Key: CapabilityPro, ExpiresAt: widgetPolicyNow.Add(2 * time.Hour)},
+			{Key: CapabilityNightly, ExpiresAt: widgetPolicyNow.Add(time.Hour)},
+		},
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "delta,pedals,standings" {
+		t.Fatalf("before Nightly deadline = %q", got)
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("after Nightly deadline = %q", got)
+	}
+}
+
+func TestWidgetMatrixRejectsBrokenCommercialContract(t *testing.T) {
+	cases := []string{
+		`{"version":1,"widgets":[{"id":"standings","free":false}]}`,
+		`{"version":1,"widgets":[{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"delta","pro":true}]}`,
+		`{"version":1,"widgets":[{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals"}]}`,
+	}
+	for _, source := range cases {
+		if _, err := parseWidgetMatrix([]byte(source)); err == nil {
+			t.Fatalf("accepted invalid matrix: %s", source)
+		}
+	}
 }
 
 func TestWidgetPolicyCapabilitiesWithoutEntitlementsGrantSuite(t *testing.T) {

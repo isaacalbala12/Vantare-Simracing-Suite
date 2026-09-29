@@ -2,6 +2,7 @@ package license
 
 import (
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -49,14 +50,16 @@ const WidgetPolicyChangedEvent = "widget-policy:changed"
 // that changes the decision (zero when none is known); readers never expire
 // locally on their own and a lost transport never extends rights.
 type WidgetPolicy struct {
-	Revision         uint64
-	OverlaysBasic    bool
-	OverlaysAdvanced bool
-	EngineerAI       bool
-	BrandCrystal     BrandRule
-	BrandEfficiency  BrandRule
-	BrandOriginal    BrandRule
-	ValidUntil       time.Time
+	Revision           uint64
+	OverlaysBasic      bool
+	OverlaysAdvanced   bool
+	EngineerAI         bool
+	AllowedWidgetTypes string
+	VisibleWidgetTypes string
+	BrandCrystal       BrandRule
+	BrandEfficiency    BrandRule
+	BrandOriginal      BrandRule
+	ValidUntil         time.Time
 }
 
 // WidgetPolicyWire is the sanitized DTO shared with Studio/Desktop (Wails
@@ -66,6 +69,8 @@ type WidgetPolicyWire struct {
 	OverlaysBasic    bool      `json:"overlaysBasic"`
 	OverlaysAdvanced bool      `json:"overlaysAdvanced"`
 	EngineerAI       bool      `json:"engineerAI"`
+	AllowedWidgets   []string  `json:"allowedWidgets"`
+	VisibleWidgets   []string  `json:"visibleWidgets"`
 	BrandCrystal     BrandRule `json:"brandCrystal"`
 	BrandEfficiency  BrandRule `json:"brandEfficiency"`
 	BrandOriginal    BrandRule `json:"brandOriginal"`
@@ -76,11 +81,21 @@ type WidgetPolicyWire struct {
 // time.Time) so WebView2 receives a parseable value; it is omitted when no
 // verified transition is known.
 func (p WidgetPolicy) ToWire() WidgetPolicyWire {
+	allowed := []string{}
+	if p.AllowedWidgetTypes != "" {
+		allowed = strings.Split(p.AllowedWidgetTypes, ",")
+	}
+	visible := []string{}
+	if p.VisibleWidgetTypes != "" {
+		visible = strings.Split(p.VisibleWidgetTypes, ",")
+	}
 	wire := WidgetPolicyWire{
 		Revision:         p.Revision,
 		OverlaysBasic:    p.OverlaysBasic,
 		OverlaysAdvanced: p.OverlaysAdvanced,
 		EngineerAI:       p.EngineerAI,
+		AllowedWidgets:   allowed,
+		VisibleWidgets:   visible,
 		BrandCrystal:     p.BrandCrystal,
 		BrandEfficiency:  p.BrandEfficiency,
 		BrandOriginal:    p.BrandOriginal,
@@ -101,6 +116,8 @@ func sameAccessAndBrand(p, q WidgetPolicy) bool {
 	return p.OverlaysBasic == q.OverlaysBasic &&
 		p.OverlaysAdvanced == q.OverlaysAdvanced &&
 		p.EngineerAI == q.EngineerAI &&
+		p.AllowedWidgetTypes == q.AllowedWidgetTypes &&
+		p.VisibleWidgetTypes == q.VisibleWidgetTypes &&
 		p.BrandCrystal == q.BrandCrystal &&
 		p.BrandEfficiency == q.BrandEfficiency &&
 		p.BrandOriginal == q.BrandOriginal
@@ -108,10 +125,12 @@ func sameAccessAndBrand(p, q WidgetPolicy) bool {
 
 func freeWidgetPolicy() WidgetPolicy {
 	return WidgetPolicy{
-		OverlaysBasic:   true,
-		BrandCrystal:    BrandRequired,
-		BrandEfficiency: BrandRequired,
-		BrandOriginal:   BrandNone,
+		OverlaysBasic:      true,
+		AllowedWidgetTypes: productWidgetMatrix.allowedIDs(widgetEffective{}),
+		VisibleWidgetTypes: productWidgetMatrix.visibleIDs(widgetEffective{}),
+		BrandCrystal:       BrandRequired,
+		BrandEfficiency:    BrandRequired,
+		BrandOriginal:      BrandNone,
 	}
 }
 
@@ -289,10 +308,12 @@ func decideWidgetPolicy(eff widgetEffective) WidgetPolicy {
 	if eff.state != StateActive && eff.state != StateGrace {
 		return policy
 	}
+	policy.AllowedWidgetTypes = productWidgetMatrix.allowedIDs(eff)
+	policy.VisibleWidgetTypes = productWidgetMatrix.visibleIDs(eff)
 	label := ClassifyPlan(eff.entitlements)
 	hasSuiteCap := hasWidgetCapability(eff.caps, CapabilityPro) ||
 		hasWidgetCapability(eff.caps, CapabilityLaunchV1)
-	hasOperational := len(eff.roles) > 0
+	hasOperational := widgetAudienceLevel(eff.roles) > 0
 	if label == PlanPaidOverlays || label == PlanSuite || hasSuiteCap || hasOperational {
 		policy.OverlaysAdvanced = true
 	}

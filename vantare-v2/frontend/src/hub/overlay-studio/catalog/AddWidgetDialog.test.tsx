@@ -72,6 +72,34 @@ describe("AddWidgetDialog", () => {
     expect(screen.queryByTestId("studio-catalog-add-relative")).toBeNull();
   });
 
+  it("uses the widget matrix even when broad advanced access is true", () => {
+    render(
+      <AddWidgetDialog
+        open
+        policy={{ ...paidPolicy, allowedWidgets: ["standings", "pedals", "relative"] }}
+        onAdd={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("studio-catalog-add-relative")).toBeTruthy();
+    expect(screen.getByTestId("studio-catalog-lock-delta").textContent)
+      .toContain("licencia que incluya este widget");
+  });
+
+  it("hides tester-only widgets from public users while retaining paid locks", () => {
+    const publicPolicy = {
+      ...paidPolicy,
+      allowedWidgets: ["standings", "pedals", "relative"],
+      visibleWidgets: ["standings", "pedals", "relative"],
+    } as StudioPolicy;
+    const view = render(<AddWidgetDialog open policy={publicPolicy} onAdd={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByTestId("studio-catalog-entry-delta")).toBeNull();
+    expect(screen.getByTestId("studio-catalog-entry-relative")).toBeTruthy();
+    view.unmount();
+    render(<AddWidgetDialog open policy={paidPolicy} onAdd={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
+  });
+
   it("does not offer another delta when the active layout already has one", () => {
     render(
       <AddWidgetDialog

@@ -61,6 +61,12 @@ func TestValidateProfileDocumentV3(t *testing.T) {
 		}
 	})
 
+	t.Run("radar from Studio catalog can be saved", func(t *testing.T) {
+		if err := ValidateProfileDocumentV3(validProfileV3(validWidget("radar-main", WidgetTypeRadar))); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("valid arbitrary layout viewport", func(t *testing.T) {
 		doc := validProfileV3()
 		doc.LayoutViewport = &LayoutViewportV3{Width: 5120, Height: 1440}

@@ -179,7 +179,7 @@ func isSupportedWidgetTypeV3(widgetType WidgetTypeV3) bool {
 		WidgetTypeRaceSchedule, WidgetTypeHeadToHead, WidgetTypeDeltaAdvanced,
 		WidgetTypeInputTelemetry, WidgetTypeMulticlassRelative, WidgetTypeTrackWeather,
 		WidgetTypeCarDamageVisual, WidgetTypeCarDamageNumbers, WidgetTypeEngineerRadio,
-		WidgetTypeTrackMap:
+		WidgetTypeTrackMap, WidgetTypeRadar:
 		return true
 	default:
 		return false

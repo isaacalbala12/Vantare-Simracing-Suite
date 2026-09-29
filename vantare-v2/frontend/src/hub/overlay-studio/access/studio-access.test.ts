@@ -226,6 +226,15 @@ describe("getStudioMutationGate", () => {
   it("always allows save at the gate level", () => {
     expect(getStudioMutationGate({ policy: freePolicy, mutation: "save" }).allowed).toBe(true);
   });
+
+  it("allows an individually enabled widget even when its old module gate is advanced", () => {
+    const policy: WidgetPolicyWire = {
+      ...freePolicy,
+      allowedWidgets: ["standings", "pedals", "relative"],
+    };
+    expect(getStudioMutationGate({ policy, mutation: "add", widget: relative }).allowed).toBe(true);
+    expect(getStudioMutationGate({ policy, mutation: "add", widget: delta }).allowed).toBe(false);
+  });
 });
 
 describe("validateDraftAccess", () => {

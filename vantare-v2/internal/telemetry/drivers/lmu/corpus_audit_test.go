@@ -14,6 +14,7 @@ import (
 
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
@@ -72,11 +73,12 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		Overlay  json.RawMessage `json:"overlay"`
 		Engineer json.RawMessage `json:"engineer"`
 		Strategy json.RawMessage `json:"strategy"`
+		Facts    json.RawMessage `json:"facts"`
 	}
 	fusion := new(Fusion)
 	mapper := NewBatchMapper()
-	reducer := telemetrycore.NewReducer()
-	pipeline := derive.NewPipeline(derive.Config{})
+	var factNow time.Time
+	engine := telemetryengine.New(telemetrycore.NewReducer(), telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: func() time.Time { return factNow }}), derive.NewPipeline(derive.Config{}))
 	overlayProjector := overlayv2.NewCachedProjector(overlayv2.DefaultSectionCadence())
 	rafCap := 40
 	overlaySource := overlayv2.SourceContextV2{
@@ -98,6 +100,7 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 			t.Fatalf("sample %d has invalid or nonincreasing capture time", i)
 		}
 		previousUTC = at
+		factNow = at
 		shared := readHashedCorpusFile(t, dir, entry.SharedFile, entry.SharedSHA)
 		if len(shared) != ObjectOutSize {
 			t.Fatalf("sample %d SHM size=%d, want %d", i, len(shared), ObjectOutSize)
@@ -118,15 +121,23 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		}
 		fused := fusion.Merge(at, source-firstSource, observation)
 		var final envelope.Snapshot[derive.FinalState]
+		facts := make([]engineer.FactEnvelopeV1, 0)
 		var committed int
 		sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
-			observed, err := reducer.Apply(batch)
+			result, err := engine.Apply(context.Background(), batch)
 			if err != nil {
 				return err
 			}
-			final, err = pipeline.Apply(context.Background(), observed)
+			final = result.State
+			for _, fact := range result.Facts {
+				projected, projectErr := engineer.ProjectFactV1(fact)
+				if projectErr != nil {
+					return projectErr
+				}
+				facts = append(facts, projected)
+			}
 			committed++
-			return err
+			return nil
 		})
 		if err := mapper.WriteObservation(context.Background(), fused, sink); err != nil || committed != 1 {
 			t.Fatalf("sample %d Go temporal commit=%d error=%v", i, committed, err)
@@ -170,11 +181,16 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			factsJSON, err := json.Marshal(facts)
+			if err != nil {
+				t.Fatal(err)
+			}
 			parity = append(parity, struct {
 				Overlay  json.RawMessage `json:"overlay"`
 				Engineer json.RawMessage `json:"engineer"`
 				Strategy json.RawMessage `json:"strategy"`
-			}{overlayJSON, engineerJSON, strategyJSON})
+				Facts    json.RawMessage `json:"facts"`
+			}{overlayJSON, engineerJSON, strategyJSON, factsJSON})
 		}
 		rest := readHashedCorpusFile(t, dir, entry.RESTFile, entry.RESTSHA)
 		var overlap struct {

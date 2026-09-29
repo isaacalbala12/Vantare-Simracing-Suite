@@ -101,6 +101,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         let mut engineer_payload = None;
         let mut strategy_payload = None;
         let mut overlay_payload = None;
+        let mut facts_payload = Vec::new();
         for frame in &frames {
             let decoded = ipc::decode(frame).unwrap();
             if decoded.kind == Kind::Snapshot {
@@ -149,6 +150,10 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 }
                 products.push(product.to_owned());
             }
+            if decoded.kind == Kind::Fact {
+                let value: Value = serde_json::from_slice(decoded.payload).unwrap();
+                facts_payload.push(value["fact"].clone());
+            }
         }
         assert_eq!(products, ["overlay-v2", "engineer-v1", "strategy-v1"]);
         assert_eq!(engineer_player, strategy_player);
@@ -158,6 +163,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 "overlay": overlay_payload.unwrap(),
                 "engineer": engineer_payload.unwrap(),
                 "strategy": strategy_payload.unwrap(),
+                "facts": facts_payload,
             }));
         }
         assert_eq!(

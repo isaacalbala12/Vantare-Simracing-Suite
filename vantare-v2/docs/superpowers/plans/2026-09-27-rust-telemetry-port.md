@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 114. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 115. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2134,3 +2134,22 @@ dos corridas locales no intercaladas. Esta comparación orienta el trabajo,
 pero no prueba una mejora causal del 50% ni el gate de CPU total. Rust aún
 construye todas las secciones antes de regularlas; el siguiente paso es
 evitar ese trabajo y medir G0/G1/R con 47 coches, cinco bloques y p99/RSS.
+
+## 115. Facts temporales y replay IPC real (2026-09-29)
+
+La auditoría Go ejecuta ahora `TelemetryEngine` con coordinador de sesión,
+derivación y proyecciones sobre las 80 muestras SHM reales. El reloj de los
+facts usa la hora observada de cada captura en ambos runners. Los ocho facts
+emitidos coinciden exactamente en secuencia, tipo, identidad, tiempo y
+metadata con Rust; el comparador también conserva cero diferencias en
+Overlay, Engineer y Strategy. Los 160 hashes SHM+REST se verifican antes del
+replay. REST sigue siendo una prueba de correlación, no entrada al motor en
+este banco temporal.
+
+Un nuevo modo del binario de replay de pruebas envía las 80 muestras por el
+pipe Windows real. El receptor Go validó las 80 salidas de cada producto,
+adaptó Engineer, publicó Overlay, retuvo y confirmó los ocho facts en orden y
+cerró el hijo limpiamente, cinco repeticiones. `go test ./...`, 155 tests Rust,
+replay Rust, Clippy con `replay-harness`, formato y build release pasaron. Es
+evidencia de la ruta IPC candidata; aún faltan REST productivo reproducible,
+Wails/OBS, replay tras crash, packaging y el banco CPU/p99/RSS.

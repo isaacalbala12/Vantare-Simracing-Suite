@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — ocho facts exactos y 80 muestras por pipe (2026-09-29)
+
+El oráculo Go usa ahora `TelemetryEngine` completo y el reloj de captura:
+los ocho facts del corpus LMU47 x80 son idénticos a Rust en metadata y valor,
+además de los tres payloads. Un replay externo por pipe Windows, receptor Go,
+Publisher y adaptador Engineer aceptó 80 snapshots de cada producto y ocho
+facts con ACK y Stop limpio en cinco corridas. Los 160 hashes SHM+REST se
+validan antes; REST todavía no alimenta el motor del replay. Suite Go global,
+155 tests Rust, replay, Clippy, formato y build release pasaron. Pendientes:
+REST temporal, fallo/reinicio, Wails/OBS, packaging y G0/G1/R.
+Plan §115; Go productivo, PR #1415 draft sin merge.
+
 ## VAN-778 / ISA-1403 — cache Rust con menos copias (2026-09-29)
 
 Overlay conserva huellas por sección y mueve al cache candidato el frame ya

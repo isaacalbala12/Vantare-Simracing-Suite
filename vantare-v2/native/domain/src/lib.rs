@@ -10,6 +10,7 @@
 mod adapter;
 mod capability;
 pub mod delta;
+pub mod car_damage_visual;
 mod flag;
 pub mod format;
 mod model;

@@ -3,7 +3,7 @@
 use crate::core;
 use crate::core::facts::FactCursor;
 use crate::core::facts::FactError;
-use crate::lmu::freshness::FreshnessGate;
+use crate::lmu::freshness::{FreshnessGate, STALL_LIMIT_NS};
 use crate::lmu::fusion::{self, SessionFloor};
 use crate::lmu::mapper::ClockChange;
 use crate::lmu::pipeline::{LmuVehicleState, Pipeline, PipelineCandidate, PipelineError};
@@ -136,6 +136,30 @@ impl Engine {
             self.freshness_gate.source_age_ns(now_ns)?,
             self.freshness_gate.is_stale_at(now_ns),
         ))
+    }
+
+    /// Go stops publishing the frozen on-track frame after leaving a session
+    /// when REST is no longer live. Check the new frame's source clock before
+    /// suppressing it so the first advancing sample can resume normally.
+    pub fn frozen_remnant(
+        &self,
+        shared_bytes: &[u8],
+        verified_build: &str,
+        now_ns: u64,
+        rest_unavailable: bool,
+    ) -> Result<bool, EngineError> {
+        if !rest_unavailable
+            || self.pipeline.current().is_none()
+            || self
+                .freshness_gate
+                .source_age_ns(now_ns)
+                .is_none_or(|age| age < 2 * STALL_LIMIT_NS)
+        {
+            return Ok(false);
+        }
+        let grid = lmu::admit_v13(shared_bytes, verified_build).map_err(EngineError::Admission)?;
+        Ok(grid.player_index.is_some()
+            && matches!(grid.session.source_time_ns, Field::Present { value, .. } if value == self.freshness_gate.previous_source_ns()))
     }
 }
 

@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — remanente congelado tras salir de pista (2026-09-29)
+
+Una prueba física encontró LMU 1.4.2.0 aún abierto con 47 coches en el último
+frame SHM y REST en `timeout`. El candidato Rust publicaba 907 entregas por
+producto en 15 s aunque el reloj de origen no avanzaba; Go publicaba 65 en una
+ventana posterior. El driver Go suprime SHM tras 1 s de reloj congelado cuando
+hay jugador remanente y REST no está live/partial. Rust ahora comprueba el
+frame leído y aplica esa regla antes del commit; no suprime la primera muestra
+cuyo reloj vuelve a avanzar. Una regresión cubre los bordes de 999 ms/1 s,
+REST disponible y reanudación. En otra ventana física Rust bajó a 46 entregas
+por producto, 0,609375 s CPU total/15 s, sin huecos; Go contiguo dio 65 y
+0,171875 s. **Estas ventanas no son comparables para el gate:** el estado REST
+y el número de entregas siguen distintos, y no hubo G0/G1/R pareado. El estado
+de REST, el p99 y la salida exacta de menú/boxes aún requieren reconciliación.
+165 tests Rust release, Clippy y formato pasaron. Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — reproducción LMU47 a cadencia observada (2026-09-29)
 
 El helper de pipe puede esperar los tiempos originales del corpus real de 47

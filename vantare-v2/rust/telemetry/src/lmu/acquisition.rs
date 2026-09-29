@@ -6,8 +6,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use super::cadence::TickCadence;
 use super::process::RunningSource;
-use super::rest::RestStatus;
 use super::rest::poller::{Poller, PollerError};
+use super::rest::{EndpointStatus, RestStatus};
 use super::{OBJECT_OUT_SIZE, admit_v13};
 use crate::assembly::{Assembler, AssemblyError, FactReplay};
 use crate::ipc::queue::{QueueError, WriterQueue};
@@ -93,11 +93,13 @@ impl Acquisition {
             .exact_supported_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
         let source = &self.source;
+        let rest_unavailable = rest_unavailable(&mut self.assembler);
         let (frames, received_ns) = acquire_tick(
             &mut self.assembler,
             &mut self.frame,
             &mut self.scratch,
             build,
+            rest_unavailable,
             |frame, scratch| source.read_stable(frame, scratch),
             || elapsed_ns(self.started),
             utc_ns,
@@ -130,6 +132,20 @@ impl Acquisition {
             .exact_supported_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
         if idle_menu_frame(&self.frame, build) {
+            return Ok(Some(Vec::new()));
+        }
+        let rest_unavailable = rest_unavailable(&mut self.assembler);
+        if self
+            .assembler
+            .engine()
+            .frozen_remnant(
+                &self.frame,
+                build,
+                elapsed_ns(self.started),
+                rest_unavailable,
+            )
+            .map_err(|error| AcquisitionError::Assembly(AssemblyError::Engine(error)))?
+        {
             return Ok(Some(Vec::new()));
         }
         apply_rest_event(
@@ -216,11 +232,14 @@ fn handle_control_frame(
     }
 }
 
+// The injected reader and clocks keep physical I/O and timing testable.
+#[allow(clippy::too_many_arguments)]
 fn acquire_tick(
     assembler: &mut Assembler,
     frame: &mut [u8],
     scratch: &mut [u8],
     build: &str,
+    rest_unavailable: bool,
     read: impl FnOnce(&mut [u8], &mut [u8]) -> io::Result<()>,
     elapsed_ns: impl Fn() -> u64,
     occurred_utc_ns: impl Fn() -> Result<i64, AcquisitionError>,
@@ -234,6 +253,13 @@ fn acquire_tick(
     }
     let shared_received_ns = elapsed_ns();
     let now_ns = elapsed_ns();
+    if assembler
+        .engine()
+        .frozen_remnant(frame, build, now_ns, rest_unavailable)
+        .map_err(|error| AcquisitionError::Assembly(AssemblyError::Engine(error)))?
+    {
+        return Ok((Vec::new(), None));
+    }
     let frames = assembler
         .apply(frame, build, shared_received_ns, now_ns, occurred_utc_ns()?)
         .map_err(AcquisitionError::Assembly)?;
@@ -251,6 +277,13 @@ fn apply_rest_event(
     assembler
         .apply(frame, build, shared_received_ns, now_ns, occurred_utc_ns)
         .map_err(AcquisitionError::Assembly)
+}
+
+fn rest_unavailable(assembler: &mut Assembler) -> bool {
+    let cache = assembler.rest_cache_mut();
+    !matches!(cache.status(), RestStatus::Live | RestStatus::Partial)
+        || (cache.standings_status == EndpointStatus::Unknown
+            && cache.session_status == EndpointStatus::Unknown)
 }
 
 fn idle_menu_frame(frame: &[u8], build: &str) -> bool {
@@ -298,6 +331,7 @@ mod tests {
             &mut frame,
             &mut scratch,
             "1.3.0.0",
+            false,
             |_, _| {
                 Err(io::Error::new(
                     io::ErrorKind::WouldBlock,
@@ -316,6 +350,7 @@ mod tests {
             &mut frame,
             &mut scratch,
             "1.3.0.0",
+            false,
             |destination, _| {
                 destination.copy_from_slice(REAL_44);
                 Ok(())
@@ -337,6 +372,61 @@ mod tests {
         assert_eq!(
             assembler.engine().source_health(500_000_200),
             Some((500_000_000, true))
+        );
+    }
+
+    #[test]
+    fn frozen_on_track_remnant_stops_after_one_second_without_rest_and_resumes_on_progress() {
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        assembler.configure(CONFIG).unwrap();
+        assert!(rest_unavailable(&mut assembler));
+        assembler.rest_cache_mut().standings_status = EndpointStatus::Fresh;
+        assert!(!rest_unavailable(&mut assembler));
+        assembler.rest_cache_mut().standings_status = EndpointStatus::Timeout;
+        assembler.rest_cache_mut().session_status = EndpointStatus::Timeout;
+        assert!(rest_unavailable(&mut assembler));
+        let mut frame = vec![0; OBJECT_OUT_SIZE];
+        let mut scratch = vec![0; OBJECT_OUT_SIZE];
+        {
+            let mut tick = |input: &[u8], now_ns: u64, rest_unavailable: bool| {
+                acquire_tick(
+                    &mut assembler,
+                    &mut frame,
+                    &mut scratch,
+                    "1.3.0.0",
+                    rest_unavailable,
+                    |destination, _| {
+                        destination.copy_from_slice(input);
+                        Ok(())
+                    },
+                    || now_ns,
+                    || Ok(1_000_000_000 + now_ns as i64),
+                )
+                .unwrap()
+                .0
+            };
+            assert!(!tick(REAL_44, 0, true).is_empty());
+            assert!(!tick(REAL_44, 999_000_000, true).is_empty());
+            assert!(tick(REAL_44, 1_000_000_000, true).is_empty());
+            assert!(!tick(REAL_44, 1_100_000_000, false).is_empty());
+            assert!(tick(REAL_44, 1_200_000_000, true).is_empty());
+
+            let mut advancing = REAL_44.to_vec();
+            let source_seconds = f64::from_le_bytes(advancing[1_700..1_708].try_into().unwrap());
+            advancing[1_700..1_708].copy_from_slice(&(source_seconds + 1.0).to_le_bytes());
+            assert!(!tick(&advancing, 1_300_000_000, true).is_empty());
+        }
+        assert!(
+            assembler
+                .engine()
+                .frozen_remnant(
+                    &REAL_44[..REAL_44.len() - 1],
+                    "1.3.0.0",
+                    2_300_000_000,
+                    true
+                )
+                .is_err(),
+            "malformed remnant must not be silently suppressed"
         );
     }
 
@@ -513,6 +603,7 @@ mod tests {
             &mut frame,
             &mut scratch,
             "1.4.2.0",
+            false,
             |destination, _| {
                 destination.copy_from_slice(REAL_1420_MENU);
                 Ok(())

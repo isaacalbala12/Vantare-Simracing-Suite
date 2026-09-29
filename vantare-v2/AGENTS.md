@@ -120,6 +120,24 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No leas, imprimas, copies ni versionees secretos o archivos `.env*`. Trabaja
   solo con nombres de variables y procedimientos sanitizados.
 
+## Orquestación y roles de modelos
+
+Cada modelo tiene un rol. Detalle, criterios de elección, modo ahorro y
+plantilla de encargo en la skill
+[`.claude/skills/orquestacion/SKILL.md`](.claude/skills/orquestacion/SKILL.md);
+léela antes de planificar o delegar.
+
+- **Advisors: Fable 5.1 (razonamiento medio) y GPT 6 Astra (max).** Solo si es
+  estrictamente necesario o para fijar la dirección al inicio de un plan.
+- **Orquestador y optimizador: Opus 5.5 (medio).** Planifica, reparte, optimiza,
+  hace el diseño visual nuevo y revisa todo lo que entregan los workers.
+- **Ejecutor principal: Sonnet 5.5 (high).** Código a gran escala y réplicas o
+  paridad de diseños existentes; no diseño visual nuevo.
+- **Worker barato: DeepSeek V4.1 Flash** (DeepSeek Harness / opencode-go) **y
+  Muse Spark 1.3** (free y, al agotarse, contributor), **ambos en max.** Tareas
+  repetitivas o sencillas, y más carga cuando quede menos del 50 % de la cuota
+  de uso del plan.
+
 ## Preautorización inerte de la rama automática (ISA-318)
 
 - La corrección automática del Testing Center usa exclusivamente

@@ -5,9 +5,9 @@ Plan: [arquitectura Rust nativa por fases](../superpowers/plans/2026-09-29-arqui
 
 ## Estado
 
-Consenso entre Opus 5.5 (orquestador) y GPT-6 Astra (advisor) tras dos rondas
-de debate; pendiente de aceptación de Isaac. Ningún código se escribe bajo esta
-ADR hasta que Isaac la acepte y autorice la fase correspondiente.
+**Aceptada por Isaac el 2026-09-29**, tras consenso entre Opus 5.5
+(orquestador) y GPT-6 Astra (advisor) en tres rondas de debate. Cada fase se
+ejecuta en su propia issue con autorización de Isaac.
 
 ## Contexto
 

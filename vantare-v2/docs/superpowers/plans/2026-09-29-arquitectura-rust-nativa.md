@@ -2,7 +2,7 @@
 
 Issue: [#1419](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1419).
 Decisión: [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md).
-Estado: consenso Opus 5.5 ↔ GPT-6 Astra; pendiente de aceptación de Isaac.
+Estado: **aceptado por Isaac el 2026-09-29** (consenso Opus 5.5 ↔ GPT-6 Astra).
 
 ## Estrategia: destino fijo, crecimiento desde un esqueleto andante
 

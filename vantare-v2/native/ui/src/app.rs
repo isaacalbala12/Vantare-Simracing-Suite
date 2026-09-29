@@ -248,12 +248,20 @@ impl Render for Overlay {
     }
 }
 
-/// Quita el marco de sistema y hace la ventana overlay la primera vez.
-fn attach(hwnd: &mut Option<Hwnd>, window: &Window) {
+/// Convierte la ventana en overlay la primera vez, con su esquina en `origin`
+/// (px lógicos de pantalla).
+fn attach(hwnd: &mut Option<Hwnd>, window: &Window, origin: (f32, f32)) {
     if hwnd.is_none() {
         *hwnd = overlay::hwnd_of(window);
         if let Some(hwnd) = *hwnd {
-            overlay::apply(hwnd);
+            let scale = window.scale_factor();
+            overlay::apply(
+                hwnd,
+                (
+                    (origin.0 * scale).round() as i32,
+                    (origin.1 * scale).round() as i32,
+                ),
+            );
         }
     }
 }
@@ -263,6 +271,7 @@ fn attach(hwnd: &mut Option<Hwnd>, window: &Window) {
 /// Win32: `Window::resize` de GPUI volvería a sumar el marco de sistema.
 pub(crate) struct Single {
     widget: Entity<Overlay>,
+    origin: (f32, f32),
     hwnd: Option<Hwnd>,
     size: (f32, f32),
 }
@@ -278,7 +287,7 @@ impl Render for Single {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame();
-        attach(&mut self.hwnd, window);
+        attach(&mut self.hwnd, window, self.origin);
         let wanted = self.widget.read(cx).wanted_size();
         if self.size != wanted {
             self.size = wanted;
@@ -301,6 +310,7 @@ impl Render for Single {
 /// (ver README, «Repintado en la ventana grande»).
 struct Screen {
     widgets: Vec<(Entity<Overlay>, (f32, f32))>,
+    origin: (f32, f32),
     hwnd: Option<Hwnd>,
 }
 
@@ -308,7 +318,7 @@ impl Render for Screen {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame();
-        attach(&mut self.hwnd, window);
+        attach(&mut self.hwnd, window, self.origin);
         div()
             .size_full()
             .children(self.widgets.iter().map(|(widget, (x, y))| {
@@ -356,6 +366,7 @@ pub(crate) fn open_window(
     let handle = cx.open_window(popup(bounds), move |_, cx| {
         cx.new(|_| Single {
             widget: root,
+            origin,
             hwnd: None,
             size: (w, h),
         })
@@ -393,6 +404,7 @@ fn open_screens(
         let opened = cx.open_window(options, move |_, cx| {
             cx.new(|_| Screen {
                 widgets,
+                origin: (f32::from(bounds.origin.x), f32::from(bounds.origin.y)),
                 hwnd: None,
             })
         });

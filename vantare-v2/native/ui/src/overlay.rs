@@ -20,6 +20,7 @@ pub(crate) mod ffi {
         pub right: i32,
         pub bottom: i32,
     }
+    #[cfg(feature = "parity-capture")]
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
     pub struct Point {
@@ -42,6 +43,7 @@ pub(crate) mod ffi {
             flags: u32,
         ) -> i32;
         pub fn GetClientRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
+        #[cfg(feature = "parity-capture")]
         pub fn ClientToScreen(hwnd: Hwnd, point: *mut Point) -> i32;
     }
     #[link(name = "dwmapi")]
@@ -65,9 +67,11 @@ pub fn hwnd_of(window: &Window) -> Option<Hwnd> {
 }
 
 /// Transparente, click-through, sin foco, siempre encima, sin marco ni
-/// esquinas de sistema. Los fallos de las llamadas Win32 no se propagan: el
-/// overlay sigue siendo usable (solo perdería una de las propiedades).
-pub fn apply(hwnd: Hwnd) {
+/// esquinas de sistema, con la esquina en `origin` (px físicos de pantalla): GPUI
+/// deja el área cliente 4 px por encima de lo pedido, así que se fija aquí. Los
+/// fallos de las llamadas Win32 no se propagan: el overlay sigue siendo usable
+/// (solo perdería una de las propiedades).
+pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
     const GWL_STYLE: i32 = -16;
     const GWL_EXSTYLE: i32 = -20;
     const WS_EX_TOPMOST: u32 = 0x8;
@@ -83,11 +87,11 @@ pub fn apply(hwnd: Hwnd) {
     const DWMWA_WINDOW_CORNER_PREFERENCE: u32 = 33;
     const DWMWA_BORDER_COLOR: u32 = 34;
     use ffi::{
-        ClientToScreen, DwmSetWindowAttribute, GetClientRect, GetWindowLongPtrW, Point, Rect,
-        SetLayeredWindowAttributes, SetWindowLongPtrW, SetWindowPos,
+        DwmSetWindowAttribute, GetClientRect, GetWindowLongPtrW, Rect, SetLayeredWindowAttributes,
+        SetWindowLongPtrW, SetWindowPos,
     };
 
-    let (mut client, mut origin) = (Rect::default(), Point::default());
+    let mut client = Rect::default();
     let do_not_round: u32 = 1; // DWMWCP_DONOTROUND
     let no_border: u32 = 0xFFFF_FFFE; // DWMWA_COLOR_NONE
     // SAFETY: `hwnd` es el HWND vivo de una ventana de este proceso, obtenido de
@@ -107,13 +111,12 @@ pub fn apply(hwnd: Hwnd) {
         // GPUI crea la ventana con WS_CAPTION..., que deja un marco invisible de
         // 8 px. WS_POPUP no tiene área no cliente: el exterior pasa a ser el cliente.
         GetClientRect(hwnd, &raw mut client);
-        ClientToScreen(hwnd, &raw mut origin);
         SetWindowLongPtrW(hwnd, GWL_STYLE, WS_POPUP_VISIBLE as isize);
         SetWindowPos(
             hwnd,
             HWND_TOPMOST,
-            origin.x,
-            origin.y,
+            origin.0,
+            origin.1,
             client.right - client.left,
             client.bottom - client.top,
             SWP_FRAMECHANGED | SWP_NOACTIVATE,

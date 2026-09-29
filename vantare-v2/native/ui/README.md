@@ -147,3 +147,18 @@ Lectura:
   `estres`), pero exige conocer el refresco (GPUI no lo expone; habría que leerlo
   de DWM) o un temporizador propio que en monitores de 60 Hz desincroniza con el
   vsync. No está implementado: ¿lo queréis?
+
+### Posición exacta de las ventanas
+
+GPUI deja el área cliente de una ventana 4 px por encima de lo pedido (en Y); las
+ventanas de `por-widget` salían en y=16 en vez de 20 y la de `una` en y=−4 (sus
+4 px inferiores sin cubrir). `overlay::apply` ya no lee la posición que dejó GPUI:
+recibe la esquina pedida (px físicos) y la fija con `SetWindowPos`.
+`check-windows.ps1` lo comprueba con `EnumWindows`/`GetWindowRect` en los dos modos
+(4 widgets, 100 % de DPI, monitor principal): cada ventana debe coincidir con su
+posición y tamaño exactos.
+
+```powershell
+cd vantare-v2/native; cargo build -p vantare-ui
+.\ui\check-windows.ps1     # exit 0 = todo en su sitio
+```

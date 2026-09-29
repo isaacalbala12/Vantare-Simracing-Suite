@@ -53,24 +53,27 @@ func (row *StandingRowV2) UnmarshalJSON(data []byte) error {
 		BestLap json.RawMessage `json:"bestLap"`
 		LastLap json.RawMessage `json:"lastLap"`
 	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	for legacy, compact := range map[string]string{"quality": "q", "classGap": "cg", "classGapLaps": "cl", "classRef": "cr", "interval": "i", "intervalLaps": "il"} {
-		if value, ok := fields[legacy]; ok {
-			if _, duplicate := fields[compact]; duplicate {
-				return fmt.Errorf("duplicate standing field %s", legacy)
-			}
-			fields[compact] = value
-			delete(fields, legacy)
+	if standingNeedsLegacyNormalization(data) {
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return err
 		}
+		for legacy, compact := range map[string]string{"quality": "q", "classGap": "cg", "classGapLaps": "cl", "classRef": "cr", "interval": "i", "intervalLaps": "il"} {
+			if value, ok := fields[legacy]; ok {
+				if _, duplicate := fields[compact]; duplicate {
+					return fmt.Errorf("duplicate standing field %s", legacy)
+				}
+				fields[compact] = value
+				delete(fields, legacy)
+			}
+		}
+		normalized, err := json.Marshal(fields)
+		if err != nil {
+			return err
+		}
+		data = normalized
 	}
-	normalized, err := json.Marshal(fields)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(normalized, &decoded); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
 	result := StandingRowV2(decoded.standingRowJSON)
@@ -93,6 +96,23 @@ func (row *StandingRowV2) UnmarshalJSON(data []byte) error {
 	result.Quality.Gap, result.Quality.BestLap, result.Quality.LastLap = "", "", ""
 	*row = result
 	return nil
+}
+
+func standingNeedsLegacyNormalization(data []byte) bool {
+	// Escaped property names must still pass through JSON's key decoder before
+	// alias detection. Ordinary Rust frames have unescaped compact keys.
+	if bytes.IndexByte(data, '\\') >= 0 {
+		return true
+	}
+	for _, name := range [...][]byte{
+		[]byte(`"quality"`), []byte(`"classGap"`), []byte(`"classGapLaps"`),
+		[]byte(`"classRef"`), []byte(`"interval"`), []byte(`"intervalLaps"`),
+	} {
+		if bytes.Contains(data, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func decodeStandingTiming(raw json.RawMessage, override, base Quality) (QValue[float64], error) {

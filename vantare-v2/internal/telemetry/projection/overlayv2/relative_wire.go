@@ -1,6 +1,7 @@
 package overlayv2
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -35,12 +36,17 @@ func (row *RelativeRowV2) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if decoded.Authority == "" {
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(data, &fields); err != nil {
-			return err
-		}
-		if _, explicit := fields["authority"]; explicit {
-			return fmt.Errorf("invalid relative authority")
+		// Compact frames omit the derived default. Only an explicit empty or
+		// null key needs the slower key-presence check. Escaped keys still go
+		// through JSON's decoder so they cannot bypass that validation.
+		if bytes.Contains(data, []byte(`"authority"`)) || bytes.IndexByte(data, '\\') >= 0 {
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(data, &fields); err != nil {
+				return err
+			}
+			if _, explicit := fields["authority"]; explicit {
+				return fmt.Errorf("invalid relative authority")
+			}
 		}
 		decoded.Authority = AuthorityDerived
 	}

@@ -2307,3 +2307,28 @@ sin hijo residual y con estado `stopped`; `go test ./...`, vet focal y
 `git diff --check` pasaron. Esto cubre la concurrencia de Stop y la
 cancelación en conexión, no el peer colgado ni suspensión/reanudación.
 Go continúa por defecto y R21/R25 siguen sin acreditar.
+
+## 125. Demanda equivalente y coste del codec Overlay (2026-09-29)
+
+Un probe Windows opt-in usa LMU 1.4.2.0 en pista con 47 vehículos, el mismo
+perfil y Overlay, Engineer y Strategy activos en ambos runtimes. Mide CPU del
+proceso Go y, para R, también del hijo Rust; rechaza productos ausentes o
+restarts. En ventanas diagnósticas de 15 s sin pprof, Go entregó 958
+snapshots por producto y consumió 3,19 y 2,66 s de CPU. Antes de este corte,
+R entregó ~900 por producto y consumió 10,88 y 10,97 s. Tras las mejoras de
+decode, R entregó 900 y consumió 10,06 s en una ventana. Las cadencias difieren
+y las ventanas no forman un banco intercalado; **no son G0/G1/R ni acreditan
+CPU, p99 o RSS**. El perfil de R atribuyó ~5,29 de 7,76 s muestreados del
+host a `encoding/json.Decoder.Decode`, sobre todo Overlay y Engineer.
+
+El decoder de filas Overlay evita el mapa y la recodificación para el formato
+compacto, manteniendo la normalización de claves legacy, incluidas escapadas.
+El decoder del sobre Overlay hace una sola pasada estricta; una regresión
+conserva el rechazo de campos anidados desconocidos. En cinco repeticiones
+del fixture Rust, la mediana de decode bajó de ~2,05 a ~0,96 ms/frame;
+asignaciones 7458→2331 y bytes/op ~681 kB→317 kB. Esto es solo el codec
+del fixture, no CPU total. El replay LMU47 de 80 muestras por producto y ocho
+facts pasó tres veces; `go test ./...`, vet focal y diff check pasaron.
+Staticcheck focal conserva avisos heredados fuera de los archivos modificados.
+R21 exige formato más eficiente y banco equivalente antes del gate del 50 %;
+Go sigue productivo por defecto, sin merge.

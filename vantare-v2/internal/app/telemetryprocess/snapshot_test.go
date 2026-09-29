@@ -1,6 +1,7 @@
 package telemetryprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -55,10 +56,15 @@ func TestDecodeOverlaySnapshotRealStatic44Oracle(t *testing.T) {
 	if !reflect.DeepEqual(rustUpdate, want) {
 		t.Fatal("Rust snapshot bytes differ from Go full update")
 	}
+	nestedUnknown := bytes.Replace(payload, []byte(`"source":{`), []byte(`"source":{"unexpected":1,`), 1)
+	if bytes.Equal(nestedUnknown, payload) {
+		t.Fatal("oracle did not contain a source object")
+	}
 	for _, malformed := range []Frame{
 		{Kind: KindStatus, Payload: payload},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"unknown","update":{}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"overlay-v2","update":{},"unexpected":1}`)},
+		{Kind: KindSnapshot, Payload: nestedUnknown},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"overlay-v2","update":{"source":{"state":"unknown"},"frame":{"contract":2,"algorithm":2}}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"overlay-v2","update":{}} trailing`)},
 	} {

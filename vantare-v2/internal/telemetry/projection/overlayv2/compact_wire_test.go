@@ -85,6 +85,7 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 	for _, raw := range []string{
 		`{"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
 		`{"quality":{"q":"fresh"},"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
+		`{"qual\u0069ty":{"q":"fresh"},"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
 		`{"q":{"q":"f","g":"s","b":"m","l":"i"},"gap":1.23,"bestLap":0,"lastLap":98.25}`,
 	} {
 		var row StandingRowV2
@@ -114,6 +115,7 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 		`{"gap":0,"bestLap":0,"lastLap":0}`,
 		`{"q":{"q":"f","g":"s"},"gap":{"q":"fresh"},"bestLap":0,"lastLap":0}`,
 		`{"q":{"q":"f"},"quality":{"q":"fresh"},"gap":0,"bestLap":0,"lastLap":0}`,
+		`{"q":{"q":"f"},"qual\u0069ty":{"q":"fresh"},"gap":0,"bestLap":0,"lastLap":0}`,
 	} {
 		var row StandingRowV2
 		if err := json.Unmarshal([]byte(raw), &row); err == nil {
@@ -123,7 +125,7 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 }
 
 func TestRelativeWireRejectsUnknownAuthority(t *testing.T) {
-	for _, raw := range []string{`{"authority":"unknown"}`, `{"authority":""}`, `{"authority":null}`} {
+	for _, raw := range []string{`{"authority":"unknown"}`, `{"authority":""}`, `{"authority":null}`, `{"auth\u006frity":null}`} {
 		var row RelativeRowV2
 		if err := json.Unmarshal([]byte(raw), &row); err == nil {
 			t.Fatalf("accepted malformed authority %s", raw)

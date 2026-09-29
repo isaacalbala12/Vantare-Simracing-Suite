@@ -21,8 +21,8 @@ func DecodeOverlaySnapshot(frame Frame) (overlayv2.UpdateV2, error) {
 		return overlayv2.UpdateV2{}, ErrInvalidOverlaySnapshot
 	}
 	var payload struct {
-		Product string          `json:"product"`
-		Update  json.RawMessage `json:"update"`
+		Product string              `json:"product"`
+		Update  *overlayv2.UpdateV2 `json:"update"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(frame.Payload))
 	decoder.DisallowUnknownFields()
@@ -33,18 +33,10 @@ func DecodeOverlaySnapshot(frame Frame) (overlayv2.UpdateV2, error) {
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return overlayv2.UpdateV2{}, ErrInvalidOverlaySnapshot
 	}
-	if payload.Product != ProductOverlayV2 || len(payload.Update) == 0 {
+	if payload.Product != ProductOverlayV2 || payload.Update == nil {
 		return overlayv2.UpdateV2{}, ErrInvalidOverlaySnapshot
 	}
-	var update overlayv2.UpdateV2
-	decoder = json.NewDecoder(bytes.NewReader(payload.Update))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&update); err != nil {
-		return overlayv2.UpdateV2{}, fmt.Errorf("%w: update: %v", ErrInvalidOverlaySnapshot, err)
-	}
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return overlayv2.UpdateV2{}, ErrInvalidOverlaySnapshot
-	}
+	update := *payload.Update
 	if update.Frame == nil || update.Frame.ContractVersion != overlayv2.ContractVersionV2 ||
 		update.Frame.AlgorithmVersion != overlayv2.AlgorithmVersionV2 ||
 		update.Frame.SectionBuildMask&^overlayv2.AllSectionsMask() != 0 ||

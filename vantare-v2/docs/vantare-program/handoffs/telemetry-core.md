@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — demanda igual y decoder Overlay (2026-09-29)
+
+Un probe físico con LMU 1.4.2.0 y 47 coches activó Overlay, Engineer y Strategy
+en ambos runtimes. Go consumió 2,66–3,19 s CPU/15 s con 958 entregas/producto;
+Rust+host consumió 10,88–10,97 s con ~900. El perfil localizó JSON en el
+receptor Go. El decoder Overlay compacto evita recodificar filas legacy en el
+caso normal y lee el sobre en una pasada; el fixture bajó de ~2,05 a ~0,96 ms
+por frame, con paridad y rechazo estricto conservados. Una ventana física
+posterior dio 10,06 s CPU/15 s para Rust+host. Son diagnósticos no intercalados
+con cadencias distintas, no el gate G0/G1/R. Replay LMU47 x80 por producto y
+ocho facts pasó x3; suite Go y vet focal pasaron. Staticcheck solo reporta
+avisos heredados fuera del diff. R21 necesita codec y banco formal; R20/REST,
+packaging y Wails/OBS siguen abiertos. Go continúa por defecto y PR #1415
+sigue draft sin merge. Plan §125.
+
 ## VAN-778 / ISA-1403 — Stop concurrente durante conexión (2026-09-29)
 
 Un test con el hijo Rust real reprodujo un error de cierre cuando ocho llamadas

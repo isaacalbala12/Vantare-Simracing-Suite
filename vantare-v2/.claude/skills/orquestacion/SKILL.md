@@ -58,12 +58,24 @@ Cuando quede **menos del 50 % de la cuota de uso del plan** de Claude:
 
 ## 3. Cómo invocar cada modelo
 
-| Modelo | Vía |
+**Vía preferente: T3 Code** (MCP `t3code` o CLI `t3cli`). Permite muchos
+workers en paralelo, cada uno con su modelo, esfuerzo y worktree:
+`t3cli start --stdin --provider <p> --model <m> --option <k>=<v> --worktree <ruta> --title "..."`,
+y `t3cli show|wait|transcript --thread <id>` para seguirlos.
+
+| Modelo | Proveedor T3 Code y opciones |
 |---|---|
-| Opus 5.5, Sonnet 5.5, Fable 5.1 | Subagente de Claude Code (`Agent`, parámetro `model`: `opus`, `sonnet`, `fable`). |
-| GPT 6 Astra | MCP `codex`: herramienta `codex` (`model` de Astra, `reasoningEffort: xhigh`, que es el máximo del puente; `workingDirectory` del worktree), `review` para revisiones y `ping` para comprobarlo. También hilo Codex vía T3 Code. |
-| DeepSeek V4.1 Flash | MCP `deepseek-harness`: `task_inbox` (tarea, `cwd` absoluto y verificaciones) y `task_result` para recoger el resultado; `harness_status` para comprobarlo. Un worker a la vez; solo trabaja bajo `C:/tmp` o su playground, así que usa worktrees en `C:\tmp`. |
-| Muse Spark 1.3 | opencode con provider `opencode-go` (free o contributor). |
+| Sonnet 5.5 (ejecutor) | `--provider claudeAgent --model claude-sonnet-5-5 --option effort=high` |
+| Opus 5.5 | `--provider claudeAgent --model claude-opus-5-5 --option effort=medium` |
+| Fable 5.1 (advisor) | `--provider claudeAgent --model claude-fable-5-1 --option effort=medium` |
+| GPT 6 Astra (advisor) | `--provider codex --model gpt-6-astra --reasoning-effort max` |
+| DeepSeek V4.1 Flash (barato) | `--provider opencode --model opencode-go/deepseek-v4.1-flash --option variant=max --option agent=build` |
+| Muse Spark 1.3 (barato) | `--provider opencode` con su modelo de `opencode-go` (free o contributor), `variant=max` |
+
+Alternativas: subagentes de Claude Code (`Agent`, `model: sonnet|opus|fable`;
+no permiten fijar el esfuerzo) y MCP `deepseek-harness` (`task_inbox` /
+`task_result`; **un solo worker a la vez**, solo bajo `C:/tmp`). El MCP
+`codex` falla en Windows (sandbox y prompts multilínea truncados): no usarlo.
 
 Si el MCP necesario no está disponible en la sesión, dilo y pide que se
 habilite; no sustituyas en silencio por otro modelo de otro rol.

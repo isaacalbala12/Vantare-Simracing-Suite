@@ -14,13 +14,14 @@ use gpui::{
 use vantare_domain::format::Preferences;
 use vantare_domain::{Snapshot, pedals, radar, standings};
 
+use crate::efficiency::text;
 use crate::overlay::{self, Hwnd};
 use crate::standings::model::{self, Config, Metric, Plan, Status, Vm};
 use crate::standings::{
     motion::{Motion, Wake},
     view,
 };
-use crate::{pedals as pedals_view, radar as radar_view, text};
+use crate::{pedals as pedals_view, radar as radar_view};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {

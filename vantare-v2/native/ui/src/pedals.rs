@@ -6,8 +6,8 @@
 use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
 use vantare_domain::pedals::ViewModel;
 
-use crate::standings::view::{col, rect};
-use crate::text::{self, Ink};
+use crate::efficiency::text::{self, ink};
+use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
 pub const SIZE: (f32, f32) = (120.0, 160.0);
 const PAD_X: f32 = 10.0;
@@ -20,46 +20,21 @@ const VALUE_H: f32 = 10.0;
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
-    let panel = rect(0.0, 0.0, width, height);
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(6.0)),
-        col(0x101113, 0.90),
-        Edges::all(px(0.0)),
-        col(0x000000, 0.0),
-        BorderStyle::default(),
-    ));
-    // Marco interior de 1 px; la bandera de sesión no está en el ViewModel de pedales.
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(6.0)),
-        col(0x000000, 0.0),
-        Edges::all(px(1.0)),
-        col(0xffffff, 0.12),
-        BorderStyle::default(),
-    ));
+    paint_panel(window, width, height, 0.90);
+    // La bandera de sesión no está en el ViewModel de pedales.
+    paint_frame(window, width, height);
 
     let columns = [
         ("C", vm.clutch, &vm.clutch_text, 0xc9a15c),
-        ("B", vm.brake, &vm.brake_text, 0xd95360),
+        ("B", vm.brake, &vm.brake_text, tokens::LOSS),
         ("T", vm.throttle, &vm.throttle_text, 0x6fae7d),
     ];
     let column_w = (width - 2.0 * PAD_X - GAP * 2.0) / 3.0;
     let track_top = PAD_TOP;
     // Columna: pista (flexible) + 4 + rótulo + 4 + valor.
     let track_h = height - PAD_TOP - PAD_BOTTOM - (4.0 + LABEL_H + 4.0 + VALUE_H);
-    let label_ink = Ink {
-        size: 6.0,
-        weight: 600.0,
-        tracking: 0.18 * 6.0,
-        color: col(0xb9b9bd, 0.78),
-    };
-    let value_ink = Ink {
-        size: 10.0,
-        weight: 700.0,
-        tracking: 0.0,
-        color: col(0xf5f5f5, 1.0),
-    };
+    let label_ink = ink(6.0, 600.0, 0.18, col(tokens::MUTED, 0.78));
+    let value_ink = ink(10.0, 700.0, 0.0, col(tokens::INK, 1.0));
     for (index, (label, value, text_value, color)) in columns.into_iter().enumerate() {
         let left = PAD_X + index as f32 * (column_w + GAP);
         let mid = left + column_w / 2.0;
@@ -67,9 +42,9 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         window.paint_quad(quad(
             rect(track_x, track_top, TRACK_W, track_h),
             Corners::all(px(4.0)),
-            col(0xf5f5f5, 0.065),
+            col(tokens::INK, 0.065),
             Edges::all(px(1.0)),
-            col(0xf5f5f5, 0.08),
+            col(tokens::INK, 0.08),
             BorderStyle::default(),
         ));
         if let Some(value) = value {

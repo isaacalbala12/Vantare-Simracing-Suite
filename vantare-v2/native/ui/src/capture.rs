@@ -17,9 +17,9 @@ use gpui::{App, AsyncApp, Entity};
 use vantare_domain::format::Preferences;
 
 use crate::app::{self, Kind, Overlay};
+use crate::efficiency::col;
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
-use crate::standings::view::col;
 
 mod gdi {
     use std::ffi::c_void;

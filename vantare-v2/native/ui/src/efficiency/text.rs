@@ -1,4 +1,4 @@
-//! Texto de la paridad: Inter estatica, cifras tabulares y `letter-spacing`.
+//! Texto común Eficiencia: Inter estática, cifras tabulares y `letter-spacing`.
 //!
 //! GPUI no tiene `letter-spacing`. Se emula partiendo la linea ya modelada en
 //! caracteres con `ShapedLineCursor` (conserva el kerning de la linea entera) y
@@ -18,12 +18,12 @@ use std::{
 
 /// Instancias estaticas generadas por `assets/make-fonts.py`.
 const FONTS: [&[u8]; 6] = [
-    include_bytes!("../assets/fonts/Inter-400.ttf"),
-    include_bytes!("../assets/fonts/Inter-500.ttf"),
-    include_bytes!("../assets/fonts/Inter-600.ttf"),
-    include_bytes!("../assets/fonts/Inter-650.ttf"),
-    include_bytes!("../assets/fonts/Inter-700.ttf"),
-    include_bytes!("../assets/fonts/Inter-800.ttf"),
+    include_bytes!("../../assets/fonts/Inter-400.ttf"),
+    include_bytes!("../../assets/fonts/Inter-500.ttf"),
+    include_bytes!("../../assets/fonts/Inter-600.ttf"),
+    include_bytes!("../../assets/fonts/Inter-650.ttf"),
+    include_bytes!("../../assets/fonts/Inter-700.ttf"),
+    include_bytes!("../../assets/fonts/Inter-800.ttf"),
 ];
 
 pub fn register_fonts(cx: &App) -> Result<(), String> {
@@ -58,6 +58,16 @@ pub struct Ink {
     /// `letter-spacing` en px.
     pub tracking: f32,
     pub color: Hsla,
+}
+
+/// Tipografía con tracking en em, como `letter-spacing` en el CSS del producto.
+pub fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
+    Ink {
+        size,
+        weight,
+        tracking: tracking_em * size,
+        color,
+    }
 }
 
 /// (texto, tamano, peso, color) -> linea modelada.

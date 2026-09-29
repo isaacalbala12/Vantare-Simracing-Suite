@@ -91,6 +91,50 @@ func liveEngineerManifest(t *testing.T) engineer.Manifest {
 	return manifest
 }
 
+func TestCandidateAcknowledgesFactOnlyAfterConsumerAccepts(t *testing.T) {
+	failure := errors.New("consumer rejected fact")
+	for _, test := range []struct {
+		name     string
+		delivery error
+		wantACK  bool
+	}{
+		{name: "rejected", delivery: failure},
+		{name: "accepted", wantACK: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			receiver := NewReceiver()
+			if _, err := receiver.Configure(liveCandidateConfiguration(t)); err != nil {
+				t.Fatal(err)
+			}
+			ack := Frame{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":1,"factStream":15,"factSequence":11}`)}
+			if _, err := receiver.Accept(ack); err != nil {
+				t.Fatal(err)
+			}
+			event, err := receiver.Accept(receiverFixture(t, "engineer-fact-frame-rust-v1.bin"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var delivered, acknowledged bool
+			err = deliverCandidateEvent(receiver, event, func(got ReceivedV1) error {
+				if acknowledged || len(got.Facts) != 1 || got.Facts[0].Fact.Sequence != 12 {
+					t.Fatalf("fact reached consumer after ACK or with wrong payload: %+v", got.Facts)
+				}
+				delivered = true
+				return test.delivery
+			}, func(frame Frame) error {
+				if !delivered || frame.Kind != KindFactAck {
+					t.Fatalf("ACK before consumer delivery: %+v", frame)
+				}
+				acknowledged = true
+				return nil
+			})
+			if !errors.Is(err, test.delivery) || !delivered || acknowledged != test.wantACK {
+				t.Fatalf("delivery=%v delivered=%v ACK=%v", err, delivered, acknowledged)
+			}
+		})
+	}
+}
+
 // The real Publisher is the next product boundary after the IPC receiver.
 // A decoded Rust snapshot must fit its existing Overlay V2 payload contract.
 func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {

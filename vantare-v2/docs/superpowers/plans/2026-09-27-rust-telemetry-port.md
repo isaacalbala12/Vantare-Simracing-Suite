@@ -2021,3 +2021,14 @@ y un fact, y el servicio terminó conectado a `telemetry-core` sin error.
 `go test ./...` pasó. La prueba llama al servicio desde el callback del
 candidato; todavía no representa la selección/lifecycle de Wails ni el
 puerto asíncrono productivo, y no demuestra las condiciones de CPU/p99/RSS.
+
+## 108. ACK de Fact después del consumidor (2026-09-29)
+
+El supervisor entrega primero los facts retenidos al callback de producto y
+envía `FactACK` al hijo únicamente si el callback devuelve éxito. Una prueba
+con el frame de fact Rust cubre rechazo y aceptación: el rechazo no confirma;
+la aceptación confirma después de observar el fact. `go test ./...` pasa.
+No había LMU activo para repetir la prueba física en este corte. Este orden
+cierra la pérdida por ACK prematuro dentro de la misma instancia, pero no
+proporciona aún replay durable entre reinicios del hijo o del host; Rust
+permanece sin selección productiva.

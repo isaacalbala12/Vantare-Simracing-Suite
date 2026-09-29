@@ -165,21 +165,34 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 		if event.Status != nil {
 			lastHeartbeat = time.Now()
 		}
-		if event.FactACK != nil {
+		if err := deliverCandidateEvent(receiver, event, deliver, func(ack Frame) error {
 			if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
 				return err
 			}
-			if err := WriteFrame(file, *event.FactACK); err != nil {
-				return fmt.Errorf("acknowledge Rust candidate Fact: %w", err)
-			}
-			if event.FactAdded {
-				event.Facts = receiver.DrainFacts()
-			}
-		}
-		if err := deliver(event); err != nil {
-			return fmt.Errorf("deliver Rust candidate event: %w", err)
+			return WriteFrame(file, ack)
+		}); err != nil {
+			return err
 		}
 	}
+}
+
+// A FactACK confirms that the product callback accepted every fact in this
+// event. It must never precede delivery, even though a child restart still
+// needs a separate replay boundary for unacknowledged facts.
+func deliverCandidateEvent(receiver *Receiver, event ReceivedV1,
+	deliver func(ReceivedV1) error, acknowledge func(Frame) error) error {
+	if event.FactACK != nil && event.FactAdded {
+		event.Facts = receiver.DrainFacts()
+	}
+	if err := deliver(event); err != nil {
+		return fmt.Errorf("deliver Rust candidate event: %w", err)
+	}
+	if event.FactACK != nil {
+		if err := acknowledge(*event.FactACK); err != nil {
+			return fmt.Errorf("acknowledge Rust candidate Fact: %w", err)
+		}
+	}
+	return nil
 }
 
 // receiveCandidateUpdates drains a burst before a new policy is sent, so a

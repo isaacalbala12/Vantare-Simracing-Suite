@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — ACK de facts tras entrega (2026-09-29)
+
+El supervisor confirma al hijo Rust un fact solo después de que el callback
+de producto lo acepte. La regresión cubre el rechazo sin ACK y la aceptación
+con ACK posterior al fact; `go test ./...` pasó. LMU no estaba activo para
+repetir el ensayo físico de este corte. Sigue faltando replay durable tras
+reinicio, paridad completa y gates de rendimiento; Go conserva el runtime
+productivo. Plan §108; PR #1415 sigue draft y sin merge.
+
 ## VAN-778 / ISA-1403 — EngineerService físico (2026-09-29)
 
 El candidato Rust entregó status live, observaciones adaptadas y facts al

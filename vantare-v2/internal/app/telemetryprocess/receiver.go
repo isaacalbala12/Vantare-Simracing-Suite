@@ -22,7 +22,7 @@ func (cursor receiverCursor) after(previous receiverCursor) bool {
 }
 
 // ReceivedV1 holds one validated child message. FactACK must be written to
-// the child after Retain succeeds; facts stay in Receiver until DrainFacts.
+// the child after Retain and successful delivery; facts stay in Receiver until DrainFacts.
 type ReceivedV1 struct {
 	Configuration    *ConfigurationAckV1
 	Overlay          *overlayv2.UpdateV2

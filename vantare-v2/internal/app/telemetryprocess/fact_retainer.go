@@ -25,7 +25,7 @@ type retainedFact struct {
 
 // FactRetainer is scoped to one verified child and one fact stream. Retain
 // returns an ACK only after the fact is held in the bounded in-memory queue.
-// The caller sends the ACK and separately drains facts to the consumer.
+// The caller drains facts to the consumer and sends the ACK after delivery.
 type FactRetainer struct {
 	capacity int
 	stream   uint64

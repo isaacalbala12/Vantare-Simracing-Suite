@@ -3,6 +3,7 @@
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,12 +20,54 @@ fn main() {
         nonce_text,
         corpus_flag,
         corpus_path,
+        paced_flag,
+    ] = args.as_slice()
+        && pipe_flag == "--pipe"
+        && nonce_flag == "--nonce"
+        && corpus_flag == "--high-rate-corpus"
+        && paced_flag == "--paced"
+    {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, false, true) {
+            eprintln!("telemetry paced high-rate replay failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+    if let [
+        pipe_flag,
+        pipe_name,
+        nonce_flag,
+        nonce_text,
+        corpus_flag,
+        corpus_path,
+        codec_flag,
+        paced_flag,
+    ] = args.as_slice()
+        && pipe_flag == "--pipe"
+        && nonce_flag == "--nonce"
+        && corpus_flag == "--high-rate-corpus"
+        && codec_flag == "--engineer-binary"
+        && paced_flag == "--paced"
+    {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, true, true) {
+            eprintln!("telemetry paced high-rate binary replay failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+    if let [
+        pipe_flag,
+        pipe_name,
+        nonce_flag,
+        nonce_text,
+        corpus_flag,
+        corpus_path,
     ] = args.as_slice()
         && pipe_flag == "--pipe"
         && nonce_flag == "--nonce"
         && corpus_flag == "--high-rate-corpus"
     {
-        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, false) {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, false, false) {
             eprintln!("telemetry high-rate pipe replay failed: {error}");
             std::process::exit(2);
         }
@@ -44,7 +87,7 @@ fn main() {
         && corpus_flag == "--high-rate-corpus"
         && codec_flag == "--engineer-binary"
     {
-        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, true) {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, true, false) {
             eprintln!("telemetry high-rate binary pipe replay failed: {error}");
             std::process::exit(2);
         }
@@ -298,12 +341,14 @@ fn high_rate_elapsed_ns(first: i128, value: &str) -> io::Result<u64> {
 }
 
 // A test-only proof of the full Rust encode -> Windows pipe -> Go receive path.
-// It intentionally runs as fast as the receiver allows; it is not a CPU gate.
+// Optional wall-clock pacing diagnoses the receiver at the captured cadence.
+// Neither mode includes the production acquisition adapters or proves the CPU gate.
 fn run_high_rate_corpus(
     pipe_name: &str,
     nonce_text: &str,
     corpus_path: &str,
     engineer_binary: bool,
+    paced: bool,
 ) -> io::Result<()> {
     let nonce = ipc::parse_nonce_hex(nonce_text)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid nonce"))?;
@@ -354,6 +399,7 @@ fn run_high_rate_corpus(
     let mut last_ns = 0;
     let mut shm = 0;
     let mut rest = 0;
+    let started = Instant::now();
     for event in &manifest.events {
         let now_ns = high_rate_elapsed_ns(first, &event.at_utc)?;
         if now_ns < last_ns {
@@ -363,6 +409,12 @@ fn run_high_rate_corpus(
             ));
         }
         last_ns = now_ns;
+        if paced {
+            let due = Duration::from_nanos(now_ns - 1_000_000_000);
+            if let Some(remaining) = due.checked_sub(started.elapsed()) {
+                std::thread::sleep(remaining);
+            }
+        }
         let occurred_ns = i64::try_from(high_rate_utc_ns(&event.at_utc)?)
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "event time overflow"))?;
         match event.kind.as_str() {

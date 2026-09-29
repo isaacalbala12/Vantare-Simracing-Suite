@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — reproducción LMU47 a cadencia observada (2026-09-29)
+
+El helper de pipe puede esperar los tiempos originales del corpus real de 47
+coches. En dos corridas consecutivas de ~59,99 s entregó 3839 Overlay,
+Engineer y Strategy por consumidor, un fact y 130.552.531 bytes Overlay,
+con Engineer adaptado idéntico por SHA-256 entre JSON y binario. El modo JSON
+midió 26,484375 s de CPU Go y 8,828125 s Rust; el binario, 9,171875 s Go y
+6,65625 s Rust. La medición cuenta ambos procesos y el hash completo de cada
+observación Engineer en la prueba, pero **no** incluye los adaptadores de
+adquisición LMU/REST productivos, un G0/G1 pareado, p99 ni RSS. Por tanto es
+diagnóstico de codec y entrega, no el gate del 50%. Se activa solo en la prueba
+opt-in con `VANTARE_TELEMETRY_PACED_REPLAY=1`; CI conserva el replay rápido.
+El gate Windows de `fe877fde` terminó SUCCESS; el quality ratchet permanece
+en revisión manual por el workflow. Go sigue productivo y PR #1415 draft.
+
 ## VAN-778 / ISA-1403 — corpus LMU47 por pipe y receptor real (2026-09-29)
 
 El helper Rust de pruebas reproduce los 3839 eventos SHM/REST auditados y

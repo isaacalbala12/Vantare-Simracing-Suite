@@ -19,7 +19,8 @@ import (
 
 // TestRustHighRateCorpusPipeOptIn proves that all products from the audited
 // LMU47 sequence cross the actual child process and Windows pipe. It replays
-// without wall-clock pacing, so its duration is not a performance comparison.
+// without wall-clock pacing by default. An opt-in paced run is diagnostic;
+// neither mode includes the production acquisition adapters or proves the CPU gate.
 func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
 	if os.Getenv("VANTARE_TELEMETRY_REPLAY_TEST_HELPER") == "" || os.Getenv("LMU_HIGH_RATE_CORPUS") == "" {
 		t.Skip("set the release replay helper and audited LMU47 corpus")
@@ -63,6 +64,10 @@ func runRustHighRateCorpusPipe(t *testing.T, engineerBinary bool) [sha256.Size]b
 	args := []string{"--pipe", pipe.name, "--nonce", hex.EncodeToString(pipe.nonce[:]), "--high-rate-corpus", dir}
 	if engineerBinary {
 		args = append(args, "--engineer-binary")
+	}
+	paced := os.Getenv("VANTARE_TELEMETRY_PACED_REPLAY") == "1"
+	if paced {
+		args = append(args, "--paced")
 	}
 	child, err := startInJob(executable, args...)
 	if err != nil {
@@ -115,6 +120,9 @@ func runRustHighRateCorpusPipe(t *testing.T, engineerBinary bool) [sha256.Size]b
 	defer release()
 	engineerManifest := liveEngineerManifest(t)
 	engineerDigest := sha256.New()
+	started := time.Now()
+	hostCPUStart := replayProcessCPU(t, windows.CurrentProcess())
+	childCPUStart := replayProcessCPU(t, child.process)
 	var acks, overlays, engineers, strategies, facts int
 	for frameCount := 0; frameCount < 1+3*len(manifest.Events)+10; frameCount++ {
 		frame, err := ReadFrame(file)
@@ -191,8 +199,19 @@ func runRustHighRateCorpusPipe(t *testing.T, engineerBinary bool) [sha256.Size]b
 	if err != nil || result != windows.WAIT_OBJECT_0 {
 		t.Fatalf("high-rate child did not exit: %d %v", result, err)
 	}
-	t.Logf("LMU47 high-rate pipe PASS: %d products per consumer, %d fact, %d published bytes", overlays, facts, publisher.Metrics().SnapshotBytes)
+	hostCPU := replayProcessCPU(t, windows.CurrentProcess()) - hostCPUStart
+	childCPU := replayProcessCPU(t, child.process) - childCPUStart
+	t.Logf("LMU47 high-rate pipe PASS: paced=%t, %d products per consumer, %d fact, %d published bytes, wall=%s, hostCPU=%s, childCPU=%s", paced, overlays, facts, publisher.Metrics().SnapshotBytes, time.Since(started), hostCPU, childCPU)
 	var digest [sha256.Size]byte
 	copy(digest[:], engineerDigest.Sum(nil))
 	return digest
+}
+
+func replayProcessCPU(t *testing.T, handle windows.Handle) time.Duration {
+	t.Helper()
+	var created, exited, kernel, user windows.Filetime
+	if err := windows.GetProcessTimes(handle, &created, &exited, &kernel, &user); err != nil {
+		t.Fatalf("read process CPU: %v", err)
+	}
+	return time.Duration(kernel.Nanoseconds() + user.Nanoseconds())
 }

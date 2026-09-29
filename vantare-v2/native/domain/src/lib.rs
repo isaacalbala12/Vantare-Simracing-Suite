@@ -17,6 +17,7 @@ pub mod car_damage_numbers;
 mod flag;
 pub mod format;
 pub mod input_telemetry;
+pub mod head_to_head;
 mod model;
 pub mod multiclass_relative;
 pub mod pedals;

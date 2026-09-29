@@ -1,5 +1,1901 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — epoch de producto Rust y entrega Windows, aún incompleta (2026-09-29)
+
+Rama `vantareapp/isa-1403-rust-telemetry`, PR #1415 draft, base
+`origin/nightly@c4c7a5ce`. El usuario acotó el objetivo a la telemetría live
+desde LMU que usa Overlay Studio y su entrega; los demás servicios Go siguen.
+El Windows productivo de esta rama selecciona el helper Rust empaquetado y
+falla si falta. Rust mantiene sesión, ACK/replay/latest-wins y secciones de
+Overlay; Go Wails/OBS retransmite respuestas. El helper espera LMU cerrado
+en estado detecting y no agota el supervisor. Studio HTTP se probó con el
+proceso Rust real y LMU cerrado; el SSE OBS se probó con fuente controlada.
+El cliente crea nueva sesión ante 503 o caída del socket.
+El siguiente corte movió la traducción de epoch entre reinicios al ensamblador
+Rust: Go conserva solo el último epoch para sembrar el proceso siguiente.
+Rust emite ya ese epoch en el ACK de configuración, Overlay, Engineer,
+Strategy y facts. El replay por named pipe con binario Rust real y epoch
+sembrado pasó, además de un test Rust que rechaza overflow y cambios de
+semilla dentro del mismo proceso. Go no vuelve a modificar los productos.
+El siguiente corte retiró el `PublisherRegistry` y su publicación de status y
+snapshot del runtime Rust; la demanda Overlay procede solo de sesiones de
+pull Rust. Studio HTTP y pull directo con el helper Rust real pasaron sin LMU.
+La prueba optativa de pista ahora usa pull Rust en vez del publisher Go, pero
+no se ejecutó porque LMU no estaba abierto.
+El receptor Go dejó de conservar una segunda cola de facts de producto.
+`factAcceptance` solo verifica stream, secuencia y duplicados exactos en una
+ventana de 64 ACK; cada fact va directamente al callback de Engineer y el ACK
+se escribe tras aceptación. Rust sigue siendo dueño de la retención y replay.
+Pasaron la prueba de rechazo del consumidor, la de duplicados/gaps y el
+replay real por named pipe con binario Rust. El corpus temporal LMU47 no se
+repitió en este corte porque sus variables de ruta no estaban configuradas.
+
+El build prepara `runtime/telemetry/rust-live-v1/vantare-telemetry.exe`.
+Instalador NSIS y ZIP portable se construyeron/verificaron localmente, junto a
+las pruebas del modelo transaccional. `go test ./...`, Rust biblioteca/binario,
+Clippy, formato, frontend test (485 archivos, 4114 casos aprobados, 2 omitidos),
+build, typecheck y lint pasaron. El `cargo test --all-targets` se interrumpió
+porque ejecutaba bancos largos no necesarios para este cambio; sus unitarios
+habían pasado y se ejecutaron después Clippy y el test del binario. No se
+instaló ni publicó el paquete.
+
+Faltan: retirar Go del receptor/estado de Engineer y Strategy y el ledger de
+ACK del protocolo (si puede simplificarse sin perder deduplicación); retirar
+el motor live histórico con consumidores cero; validar LMU pista, Wails y OBS
+físicos, CI del SHA final y banco pareado CPU/p99/RSS. La presencia del helper
+Rust en el instalador no demuestra todavía paridad ni ganancia total. No hay
+merge, promoción a nightly ni release. El quality ratchet del PR tenía el
+bloqueo previo `policy_changed: True` por el workflow Rust añadido; debe
+revisarse su estado tras el próximo push.
+
+## ISA-1403 — dirección nueva: telemetría live y entrega Rust (2026-09-29)
+
+Isaac confirmó que esta issue debe sustituir **todo el camino live de
+telemetría Go, incluida la entrega a Overlay, Engineer y Strategy**, y
+optimizar Rust en rondas medidas. Wails y los demás servicios de producto Go
+permanecen; no se porta toda la aplicación. [ADR 0098](../../adr/0098-rust-end-to-end-live-telemetry.md)
+y el [plan vigente](../../superpowers/plans/2026-09-29-rust-live-telemetry-end-to-end.md)
+sustituyen la frontera de entrega Go y el gate fijo de CPU de ADR 0097/R01–R28.
+El anterior 50% no acredita ni bloquea por sí solo esta nueva arquitectura.
+Ninguna mejora de rendimiento total está aún demostrada. El
+[microbanco del pull Overlay](../../telemetry-core/overlay-pull-microbench-2026-09-29.md)
+aisló dos costes JSON: la mediana local con el golden de 44 coches bajó de
+427,2 a 42,9 µs/operación sin secciones y de 1495,4 a 89,0 µs/operación con
+secciones después de dos rondas. Es tiempo de pared de un módulo aislado, no
+CPU total ni comparación Go/Rust. Se usó la feature `raw_value` de
+`serde_json`, ya presente como dependencia; no se añadió una librería.
+El `staticcheck NEW=1` de CI se reprodujo en
+`telemetryprocess/bench_source_windows_test.go` (`t.Log(fmt.Sprintf(...))`) y
+se corrigió a `t.Logf`. `staticcheck ./internal/app/telemetryprocess/...` y
+`go test ./...` pasaron tras el cambio. El workflow protegido añadido antes
+para las puertas Rust/LMU47 sigue causando `policy_changed: True` en el
+quality ratchet; no se ha retirado esa cobertura.
+
+El primer corte de entrega añadido en `rust/telemetry/src/delivery.rs` porta
+solo el estado de pull Overlay: sesión por ventana, ACK/replay, última versión,
+parches por secciones y cierre. Los tests usan los golden de 1/20/44/104 coches
+y comprueban también consumidor lento, cambio de sesión y epoch. Pasaron
+`cargo test --release --locked` (174 tests unitarios Rust y las integraciones
+del paquete), `cargo clippy --all-targets --locked -- -D warnings` y
+`go test ./...`. Este módulo aún no tiene caller en el helper: el producto sigue
+usando el pull y PublisherRegistry Go. No existe todavía banco pareado del
+camino final ni rondas de optimización atribuibles a la ruta Rust completa.
+
+El corte `4a2120f1` cerró el productor LMU47 comprimido y añadió una prueba
+opt-in Go de la misma fuente aislada. En esta sesión pasó con 3902 lotes y
+productos por consumidor, 3 facts y 7,15625 s CPU Go en ~61 s. El brazo
+Rust+Go con `bench-harness` pasó con 3872 productos por consumidor, 242
+estados y 7,875 + 8,46875 s CPU; otra corrida perfilada dio 3890 productos y
+7,75 + 8,046875 s. Las cuentas y fronteras difieren: son diagnósticos, no un
+ratio pareado ni prueba de ahorro. La primera tentativa Rust sin
+`bench-harness` falló por argumento de banco no disponible; se recompiló y
+repitió con éxito. `go test ./...`, tests focales y `git diff --check`
+pasaron para el corte de código.
+
+`docs/roadmap/plan.md` se ha restaurado como registro manual por instrucción
+de Isaac. La app aún usa la publicación Supabase de #1380; falta una decisión
+de integración del roadmap antes de afirmar que esta entrada es pública.
+El PR #1415 sigue draft. El CI de `f8de46ab` pasó promoción de rama y
+GitGuardian, pero `quality-check (ratchet)` falló: informó `staticcheck NEW=1`
+y `policy_changed: True` por el cambio de
+`.github/workflows/branch-channel-gates.yml` presente en la PR antes de este
+corte. El SHA `e60a6b1e` de la segunda ronda Rust ya está subido y su CI
+está pendiente al escribir este handoff. E1 tiene un inventario inicial y E2 un
+módulo Rust aislado;
+faltan el cableado de entrega, Engineer/Strategy/OBS, recuperación, banco
+final y prueba física LMU/Wails/OBS. Go sigue siendo la ruta productiva, sin
+merge, promoción ni release.
+
+## VAN-778 / ISA-1403 — ruta Go sobre la misma fuente aislada (2026-09-29)
+
+El productor ahora comprime cada SHM después de verificar el hash original y
+lo descomprime antes de la copia al mapping. Esto evitó agotar la memoria
+virtual de Windows al precargar ~1,17 GB crudos; durante la prueba se observaron
+~78 MiB residentes en el productor. La prueba opt-in Go abrió el mismo mapping
+privado con el lector productivo, consultó los endpoints REST locales y recorrió
+driver, fusión, mapper, reducer, derivaciones y las tres proyecciones: 3903 lotes,
+3903 Overlay/Engineer/Strategy y 3 facts en ~61 s, 5,25 s CPU del proceso Go.
+El brazo R con este productor comprimido repitió PASS: 3890 entregas por
+producto, 242 estados, 61,21 s y 7,59375 s CPU Go + 6,296875 s Rust.
+
+**No comparar estos CPU como G0/R:** la prueba Go aún no incluye las mismas
+fronteras de serialización, recepción y entrega que R, y sus cuentas difieren.
+Faltan el banco pareado G0/G1/R, p99, RSS, A/A y cinco bloques. Go continúa
+productivo, PR #1415 draft y sin promoción.
+
+## VAN-778 / ISA-1403 — adquisición Rust sobre fuente LMU47 aislada (2026-09-29)
+
+Un productor de prueba carga y verifica los 3839 archivos del corpus físico de
+47 coches antes de crear un mapping Windows privado y dos endpoints REST locales.
+Reproduce 3600 SHM y 239 actualizaciones REST con sus tiempos observados en
+59,983 s. La feature Rust `bench-harness` admite solo ese mapping privado y
+puerto de loopback; la entrada productiva sigue exigiendo el proceso LMU y
+`LMU_Data`. El mismo bucle candidato y la misma adquisición, parser, REST,
+assembler e IPC atendieron la fuente aislada; Go recibió los productos.
+
+El diagnóstico opt-in pasó tras mantener viva la fuente REST hasta el cierre:
+3890 Overlay, Engineer y Strategy, 242 estados, 61,05 s de recepción,
+7,609375 s CPU del host Go y 7,171875 s del hijo Rust. El productor auditó y
+precargó el corpus en 1,25 s fuera de la ventana medida y exigió start/stop
+explícitos. Una corrida intermedia alcanzó el límite global de 90 s y falló
+al cerrar el productor; el límite se amplió a 150 s y la repetición pasó.
+Las entregas superan los 3839 eventos porque la adquisición muestrea
+SHM a 60 Hz y REST a 4 Hz de forma independiente del productor; esta corrida
+no es una comparación exacta de salidas ni el gate de rendimiento. Faltan G0/G1
+pareados, p99, RSS, A/A, cinco bloques y la validación física Wails/OBS. La
+suite Go completa pasó. Rust pasó 165 unitarios y los tests de integración,
+incluido el mapping privado. Una primera ejecución paralela de suites agotó
+el archivo de paginación; la repetición Rust aislada pasó. Go sigue productivo,
+PR #1415 draft y no hubo promoción.
+
+## VAN-778 / ISA-1403 — remanente congelado tras salir de pista (2026-09-29)
+
+Una prueba física encontró LMU 1.4.2.0 aún abierto con 47 coches en el último
+frame SHM y REST en `timeout`. El candidato Rust publicaba 907 entregas por
+producto en 15 s aunque el reloj de origen no avanzaba; Go publicaba 65 en una
+ventana posterior. El driver Go suprime SHM tras 1 s de reloj congelado cuando
+hay jugador remanente y REST no está live/partial. Rust ahora comprueba el
+frame leído y aplica esa regla antes del commit; no suprime la primera muestra
+cuyo reloj vuelve a avanzar. Una regresión cubre los bordes de 999 ms/1 s,
+REST disponible y reanudación. En otra ventana física Rust bajó a 46 entregas
+por producto, 0,609375 s CPU total/15 s, sin huecos; Go contiguo dio 65 y
+0,171875 s. **Estas ventanas no son comparables para el gate:** el estado REST
+y el número de entregas siguen distintos, y no hubo G0/G1/R pareado. El estado
+de REST, el p99 y la salida exacta de menú/boxes aún requieren reconciliación.
+165 tests Rust release, Clippy y formato pasaron. Go sigue productivo.
+
+## VAN-778 / ISA-1403 — reproducción LMU47 a cadencia observada (2026-09-29)
+
+El helper de pipe puede esperar los tiempos originales del corpus real de 47
+coches. En dos corridas consecutivas de ~59,99 s entregó 3839 Overlay,
+Engineer y Strategy por consumidor, un fact y 130.552.531 bytes Overlay,
+con Engineer adaptado idéntico por SHA-256 entre JSON y binario. El modo JSON
+midió 26,484375 s de CPU Go y 8,828125 s Rust; el binario, 9,171875 s Go y
+6,65625 s Rust. La medición cuenta ambos procesos y el hash completo de cada
+observación Engineer en la prueba, pero **no** incluye los adaptadores de
+adquisición LMU/REST productivos, un G0/G1 pareado, p99 ni RSS. Por tanto es
+diagnóstico de codec y entrega, no el gate del 50%. Se activa solo en la prueba
+opt-in con `VANTARE_TELEMETRY_PACED_REPLAY=1`; CI conserva el replay rápido.
+El gate Windows de `fe877fde` terminó SUCCESS; el quality ratchet permanece
+en revisión manual por el workflow. Go sigue productivo y PR #1415 draft.
+
+## VAN-778 / ISA-1403 — corpus LMU47 por pipe y receptor real (2026-09-29)
+
+El helper Rust de pruebas reproduce los 3839 eventos SHM/REST auditados y
+escribe los frames VTE1 en un pipe Windows real. El receptor Go validó 3839
+Overlay, Engineer y Strategy con secuencias continuas, entregó Overlay al
+Publisher y confirmó el único fact tras recibirlo. JSON y binario Engineer
+produjeron el mismo SHA-256 de las 3839 observaciones adaptadas en Go. Ambos
+subtests pasaron localmente en 19,78 s y 7,86 s respectivamente, incluyendo
+hash, lectura del corpus y entrega; son tiempos diagnósticos, no CPU comparable.
+El Publisher registró 130.552.531 bytes Overlay en cada brazo. Se añadió al
+gate Windows del PR junto a la paridad estructural completa. El helper ejecuta
+la secuencia tan rápido como permite el receptor; **no** reproduce 60 s de
+cadencia ni incluye adquisición productiva. Por ello no acredita CPU/p99/RSS
+de G0/G1/R. Go sigue productivo y PR #1415 draft, sin merge/promoción.
+
+## VAN-778 / ISA-1403 — paridad temporal completa LMU47 (2026-09-29)
+
+El umbral de aceptación acordado es una sesión real con **al menos 46 coches**;
+no se exigen sesiones separadas de 44 y 104. El corpus físico LMU47 supera ese
+umbral. Los replays Go y Rust recorren en orden sus 3600 SHM y 239 REST con los
+tiempos registrados. El comparador estructural pasó en los 3839 eventos:
+Overlay, Engineer, Strategy y facts completos coinciden campo por campo. Los
+tests cuentan 3839 productos de cada tipo y un fact. Las salidas JSONL ocupan
+cerca de 1,5 GB y se comparan en streaming sin imprimir valores. Se añadió
+un gate Windows en CI para repetir auditoría, ambos replays y comparación.
+El gate de producto completo pasó para `e38b06c9`; el quality ratchet sigue
+en revisión manual por el cambio del workflow.
+
+Esto acredita paridad funcional para **esa sesión estable en pista**, no la
+paridad de menú/boxes/reconnect/fallos ni el rendimiento de la ruta productiva.
+El banco G0/G1/R de adquisición, IPC, entrega, CPU/p99/RSS sigue pendiente;
+las ventanas físicas previas todavía no cumplen el objetivo de 50% menos CPU.
+Go permanece productivo y PR #1415 es draft, sin merge/promoción.
+
+## VAN-778 / ISA-1403 — corpus temporal real LMU47 60 Hz/4 Hz (2026-09-29)
+
+El capturador opt-in independiente escribió en disco solo frames SHM
+reconstruidos por el sanitizador y cuerpos REST admitidos; registró para REST
+inicio/fin de ambos endpoints. Una prueba física LMU 1.4.2.0 con 47 coches
+capturó 3600 SHM y 239 REST durante 59,983 s de pared, con avance de 60 s del
+reloj de origen. La auditoría externa de orden, tiempos, 3839 hashes y parser
+Go pasó. Archivo versionado de 23.477.704 B:
+`testdata/rust-port/lmu47-high-rate-60s.tar.gz`, SHA-256
+`c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`;
+manifest interno SHA-256
+`9d86e6c3b865f7b736023dd0eb5c2715d0b6dce6e39c64d9b0544c1549cb6a60`.
+Un test Windows obligatorio verifica el archivo y cada evento sin extraer
+1,17 GB en CI. [Procedimiento y límites](../../../testdata/rust-port/README.md).
+
+R02 ya dispone de entrada real temporal con el tamaño y las frecuencias
+necesarios para iniciar G0/G1/R. La sesión cubre pista estable: menú, boxes,
+reconnect y fallos requieren pruebas físicas adicionales. El banco aún debe
+reproducir los tiempos registrados en ambas implementaciones y medir CPU
+total, p99 y RSS; esta captura por sí sola no acredita paridad ni el 50%.
+Go sigue productivo y PR #1415 draft, sin merge/promoción.
+
+## VAN-778 / ISA-1403 — coste de claves Standings y codec Engineer (2026-09-29)
+
+El detector de alias legacy de `StandingRowV2` inspeccionaba todo el JSON de
+la fila. Una clave `classGap` o `interval` del objeto de calidad anidado, o un
+escape en un valor, activaba innecesariamente el mapa y la reserialización.
+Ahora inspecciona solo claves del objeto exterior y sigue enviando las claves
+escapadas por el decodificador JSON antes de decidir alias. Hay regresiones de
+compacto anidado, escape de valor y alias literal/escapado; `go test ./...`
+pasó. En el fixture Rust estático, cinco pasadas previas dieron 899–912 µs y
+cinco posteriores 862–885 µs por frame, con 2023 asignaciones sin cambio.
+El fixture carece de alias anidados y no demuestra por sí solo la ganancia live.
+
+En LMU 1.4.2.0/47 coches, el perfil del receptor JSON candidate dio 959
+entregas Engineer/Strategy, 958 Overlay y cero huecos: CPU host 6,34375 s,
+hijo 2,296875 s en 15 s. Dentro del perfil, Engineer JSON acumuló 2,79 s,
+Overlay 1,15 s y `StandingRowV2.UnmarshalJSON` 0,37 s. Una ventana Go cercana
+dio 2,578125 s CPU/15 s. El brazo diagnóstico con Engineer binario dio
+2,8125 s host + 2,296875 s hijo = 5,109375 s/15 s, con 958–959 entregas,
+cero huecos y REST live. Es una señal fuerte para extender la decisión de
+formato de R21 al coste total de productos, pero son ventanas live separadas,
+no un banco pareado G0/G1/R; no acreditan CPU, p99 ni RSS finales. El siguiente
+corte es comparar Overlay y Engineer con codecs completos en el mismo corpus
+temporal real, manteniendo paridad exacta. Go sigue productivo, PR #1415 draft.
+
+## VAN-778 / ISA-1403 — REST del hijo restaurado (2026-09-29)
+
+El supervisor lanzaba el hijo con entorno totalmente vacío. En esa condición,
+el cliente HTTP Rust veía LMU loopback como `offline`: en 15 s emitía solo
+8 reportes REST y 908 productos por consumidor, aunque SHM siguiera cerca
+de 60 Hz. Un ensayo del mismo cliente con entorno vacío produjo 3 reportes
+en 5 s; con solo `SystemRoot`, 19 en 5 s. La ruta productiva obtiene el
+directorio del sistema mediante Windows y pasa **únicamente `SystemRoot`**
+al hijo; el test de Job Object confirma que no hereda otras variables.
+
+El heartbeat IPC informa contadores acumulados SHM/REST y estado REST cerrado,
+con validación y monotonicidad en el receptor. Tras la corrección, una ventana
+física LMU 1.4.2.0 de 47 coches entregó 958 Overlay, Engineer y Strategy,
+958 secuencias sin huecos, 59 reportes REST recibidos y 59 HTTP completos
+en 15 s; estado REST `live`. Una ventana Go consecutiva entregó también 958
+de cada producto. Rust+Go VTE1 consumió 5,875 s CPU y p99 5,9782 ms frente
+a Go 2,546875 s y p99 2,2391 ms: cadencia alineada en estas ventanas, pero
+no son el banco G0/G1/R ni acreditan el objetivo de CPU. Pasaron 164 tests
+Rust release, formato, Clippy, build, `go test ./...`, vet focal y prueba
+física. Sigue pendiente el codec Overlay, el corpus de benchmark equivalente,
+recuperación, packaging y Wails/OBS. Go sigue productivo; PR #1415 draft.
+
+## VAN-778 / ISA-1403 — continuidad de cursores LMU47 (2026-09-29)
+
+El probe opt-in registra ahora el avance y los huecos de secuencia Engineer.
+En ventanas live separadas de 15 s, Rust+Go VTE1 entregó 908 eventos y avanzó
+908 secuencias sin huecos; Go entregó 958 y avanzó 958 sin huecos. Esto
+descarta pérdidas **después del commit canónico** en esas ventanas, pero no
+separa cuántos eventos proceden de SHM o REST ni explica la diferencia de
+cadencia. Rust+Go consumió 5,515625 s CPU y Go 2,9375 s en estas corridas;
+son diagnósticos, no G0/G1/R. `go test ./...` pasó. El siguiente banco debe
+contabilizar SHM y REST antes del commit y medir ambos brazos con la misma
+secuencia temporal real de al menos 46 coches. No se cambió el runtime de
+producción; Go sigue por defecto y PR #1415 permanece draft.
+
+## VAN-778 / ISA-1403 — perfil receptor con LMU47 (2026-09-29)
+
+En dos ventanas consecutivas de 15 s con LMU 1.4.2.0 y 47 coches, el probe
+perfilado entregó 908 actualizaciones por producto para Rust+Go VTE1 y 958
+para Go. Rust+Go consumió 4,9375 s CPU total (3,4375 host + 1,5 hijo),
+frente a 1,921875 s Go; p99 Engineer 5,4153 frente a 2,2138 ms. El perfil
+de CPU del host Rust acumuló 3,35 s de muestras: 1,67 s en
+`DecodeOverlaySnapshot`, 1,09 s dentro de `StandingRowV2.UnmarshalJSON` y
+0,29 s en `PublishSnapshot`. Perfiles externos:
+`C:/tmp/isa-1403-rust-host-1a6b4f9e.pprof` (SHA-256
+`85528441e24879f933bb26b2dc9a6c2b79d8aa991639d7d74200faf1e756454e`)
+y `C:/tmp/isa-1403-go-host-1a6b4f9e.pprof` (SHA-256
+`bb6b58f7b855a10e41b3db2486e3fadaee7d6ab35fc8e2b07ae95721ad7b8dae`).
+
+El perfilador cambia el coste y la memoria observados; las cadencias siguen
+sin ser equivalentes y no hay replay inmutable G0/G1/R. Esta evidencia
+localiza el codec Overlay como primer coste del host, sin acreditar el gate
+de rendimiento. El siguiente corte debe reducir ese coste conservando
+validación y paridad, y medir por separado los eventos emitidos y entregados.
+Un único escenario temporal real de al menos 46 coches sigue siendo suficiente;
+los 47 de LMU cumplen el tamaño, pero faltan los demás gates. Go continúa por
+defecto y PR #1415 sigue draft, sin promoción.
+
+## VAN-778 / ISA-1403 — decoder numérico y pareja física (2026-09-29)
+
+El decoder Go de tiempos compactos Standings usa el parser numérico directo
+después de que `encoding/json` haya validado el objeto: conserva calidad,
+precisión, legacy y rechazo de valores inválidos. En cinco pasadas del
+fixture Rust estático, las asignaciones bajaron de 2155 a 2023 por frame y
+los bytes de ~287,7 a ~268,7 kB; la mediana pasó de ~933 a ~903 µs, con
+variación que impide atribuir una ganancia física. Preasignar el mapa de
+calidades empeoró bytes y tiempo; se retiró. `go test ./...` pasó.
+
+En una pareja consecutiva LMU47 de 15 s y tres productos, Go dio
+2,015625 s CPU, RSS pico 31.764.480 B, p99 Engineer 2,5232 ms y 958
+entregas/producto. Rust+Go VTE1 dio 5,4375 s CPU (3,546875 host +
+1,890625 hijo), RSS 37.924.864 B, p99 5,7002 ms y 908 entregas/producto.
+Son ventanas live sin corpus inmutable, A/A ni trabajo equivalente; **no**
+son G0/G1/R. El 50 % de CPU no está acreditado y la ruta actual necesita
+reducir decodificación/serialización y el trabajo por evento antes de medir
+de nuevo. El PR #1415 continúa draft, con Go productivo.
+
+## VAN-778 / ISA-1403 — REST como evento propio y paridad LMU47 (2026-09-29)
+
+La ruta candidata Rust ya procesa cada poll REST completado como una
+observación canónica propia tras el último SHM válido. El hijo entrega su
+lote antes del siguiente tick SHM; la cola previa conserva hasta 16 polls y
+el desbordamiento termina la instancia explícitamente. Los harnesses Go y
+Rust ejecutaron SHM(i) → REST(i) sobre 80 pares reales sanitizados de 47
+coches. El comparador estricto dio **cero diferencias** en los 80 eventos
+SHM y en los 80 eventos REST, para Overlay, Engineer, Strategy y facts.
+El corpus coloca REST a +1 ns de cada SHM porque no conserva el timestamp
+individual del request; la paridad no demuestra todavía intercalado live.
+
+En LMU 1.4.2.0 con 47 coches, el poller Rust completó 20/20 respuestas
+fresh en 5 s y la adquisición directa produjo 299 eventos SHM y 20 REST
+independientes en 5 s. El supervisor live con tres productos y VTE1 entregó
+908 de cada uno en 15 s, sin reinicio: 5,4375 s CPU total, RSS pico
+38.322.176 B y p99 Engineer 5,8664 ms. Go había entregado 958/15 s en
+ventanas anteriores; el ritmo final aún difiere y esta medición no es
+G0/G1/R. La ruta de menú valida un frame de cero coches pero no lo puede
+confirmar en el Core actual (`InvalidSession`); por eso el candidato
+suprime esos REST mientras está en menú. Falta paridad de menú/salida de
+sesión y captura de tiempos REST reales antes del gate final.
+
+Pasaron `go test ./...`, 164 tests Rust release, Clippy estricto, formato,
+build release y ambos comparadores temporales LMU47. El PR #1415 sigue
+draft; Go continúa por defecto y no hubo promoción.
+
+## VAN-778 / ISA-1403 — cola REST acotada (2026-09-29)
+
+Isaac confirmó que un solo escenario temporal real de al menos 46 coches
+es suficiente; los 47 ya capturados satisfacen ese umbral de tamaño. El
+poller Rust conserva ahora hasta 16 polls REST completos en orden FIFO.
+Al desbordarse, la adquisición falla explícitamente y el supervisor debe
+reiniciar/resincronizar la instancia; no se sobrescribe el resultado más
+antiguo en silencio. Una prueba cubre orden y saturación; 161 tests Rust
+release, formato, Clippy estricto y diff check pasaron.
+
+Esto todavía no publica cada REST como observación canónica independiente,
+no iguala las cadencias Go/Rust y no acredita el gate de CPU/p99/RSS. El
+siguiente corte debe procesar cada reporte en su propio evento con reloj y
+orden conservados y comparar la salida temporal completa. Go sigue por
+defecto; PR #1415 draft y sin promoción.
+
+## VAN-778 / ISA-1403 — p99 y RSS físicos diagnósticos (2026-09-29)
+
+Computer Use observó LMU 1.4.2.0 en práctica en Circuit de la Sarthe;
+OBS estaba abierto, sin validar todavía un widget Vantare. El probe de
+tres productos mide ahora pico de RSS simultáneo de host+hijo y p99 desde
+`CapturedAt` hasta el consumidor Engineer. En dos pares sobre 47 coches,
+Go dio 2,40625/2,859375 s CPU/15 s, 32.264.192/31.870.976 B de RSS
+pico y p99 Engineer 2,5707/2,6274 ms con 958 entregas/producto.
+Rust+Go con VTE1 dio 6,15625/6,6875 s CPU/15 s,
+38.486.016/38.281.216 B y p99 6,7414/6,9757 ms con 900 entregas/producto. Son ventanas
+físicas consecutivas con cadencias distintas y el probe añade medición;
+**no** son el banco G0/G1/R ni acreditan los ratios de aceptación. La
+prueba confirma que CPU y latencia siguen por encima de Go y que aún falta
+optimización sustancial. `go test ./...` pasó.
+
+La lectura del runtime explica una causa concreta de la diferencia de
+entregas: el driver Go envía cada poll REST completado como observación
+canónica independiente, mientras el poller Rust conserva solo el último
+resultado y lo fusiona en el siguiente tick SHM. Un poll REST nominal cada
+250 ms podría explicar ~60 entregas extra en 15 s; falta medir el desglose
+real por fuente. R20/R21 deben conservar los eventos REST y verificar su
+orden, sus cadencias y su paridad antes de comparar CPU. El corpus externo
+actual no tiene timestamps individuales de los requests REST.
+
+Se probó reutilizar `standings` cacheado cuando la cadencia no podía
+publicarlo. La paridad estricta LMU47 x80 siguió pasando, pero la mediana
+de construcción de secciones en cinco repeticiones subió de ~38,7 a
+~49,8 ms/80 muestras y el ensamblado de ~141,5 a ~150,3 ms. Se retiró
+el experimento; la rama conserva el proyector anterior.
+
+## VAN-778 / ISA-1403 — perfil físico del receptor Rust (2026-09-29)
+
+LMU 1.4.2.0 seguía en pista con 47 coches. El probe de tres productos midió
+Go en 2,703125 s CPU/15 s con 958 entregas por producto y el candidato
+Rust con Engineer VTE1 en 6,390625 s CPU total/15 s (4,21875 host +
+2,171875 hijo) con 900 entregas por producto. La diferencia de cadencia
+impide usar esta comparación como G0/G1/R. Un perfil independiente del host
+Rust (`C:/tmp/isa-1403-rust-host-3221c01c.pprof`, SHA-256
+`ada0941b7ad6f3a2aef102160ca284beeb6ce49c74cd5e5346efc2f5f9b6fa87`)
+midió 3,72 s de muestras: 1,94 s acumulados en
+`DecodeOverlaySnapshot`, de los que 1,07 s pasan por el parser de filas
+`StandingRowV2`; `Publisher.PublishSnapshot` suma 0,33 s. La corrida con
+perfil consumió 5,671875 s CPU total y entregó 900/900/899 productos.
+Esto identifica el codec Overlay y la proyección Rust como frentes de
+optimización medibles; no acredita el gate del 50 %, p99 ni RSS. Go sigue
+productivo y PR #1415 permanece draft.
+
+## VAN-778 / ISA-1403 — REST temporal real y paridad completa (2026-09-29)
+
+La práctica LMU 1.4.2.0 produjo 80 nuevos pares SHM/REST con 47 coches
+durante 60,4 s de reloj de origen. El capturador conserva solo los campos
+REST consumidos, remapea slots a los mismos alias SHM y reemplaza texto
+libre; los 80 artefactos tienen 3760 filas allowlisted. Manifest SHA-256
+`c5b1f197a399288951a7237577e817696c22cbd0e9430268d30b062f69cc52b4`.
+Go auditó hashes, 47 filas, IDs y ambos endpoints; los replays Go y Rust
+respetaron el orden capturado SHM(i) → REST(i) → SHM(i+1). El comparador estricto detectó
+una discrepancia wire: Go serializaba temperatura 31 como entero y Rust como
+31.0. Rust usa ahora `wire_float` en los campos meteorológicos numéricos.
+La comparación final dio cero diferencias en los 80 Overlay, Engineer,
+Strategy y facts; la temperatura REST es fresh en 79 frames y missing en el
+primero, como corresponde al arranque sin poll previo. `go test ./...`,
+160 tests Rust release, Clippy, formato,
+build y compilación cruzada del test Go Linux pasaron. Es paridad del corpus
+real sanitizado, sin timestamps individuales de cada request REST; no es el
+gate G0/G1/R de CPU/p99/RSS ni cubre fallo REST o cambio de sesión.
+PR #1415 draft; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — REST físico LMU47 en el batch Rust (2026-09-29)
+
+LMU 1.4.2.0 seguía abierto en práctica con 47 vehículos. Dos tests opt-in
+Rust comprobaron que `/rest/watch/standings` devuelve 47 filas, el endpoint
+`sessionInfo` declara 47 vehículos, ambos cuerpos se decodifican y la
+temperatura ambiental de REST llega al batch canónico de una lectura SHM
+real de al menos 46 coches y al frame Overlay V2 emitido con el mismo valor.
+No se guardaron nombres ni cuerpos REST. Suite
+Rust release: 160 tests PASS; Clippy, formato, build release y replay SHM
+temporal LMU47 x80 PASS. El corpus temporal continúa con REST solapado
+sanitizado, no cuerpos completos de endpoint; falta su replay/paridad,
+G0/G1/R, packaging y Wails/OBS. PR #1415 draft y Go productivo.
+
+## VAN-778 / ISA-1403 — coste del decoder Overlay (2026-09-29)
+
+En el fixture Rust estático, el decoder Go original midió 0,972–0,999 ms/frame,
+316,9 kB y 2331 asignaciones. `GOEXPERIMENT=jsonv2` dio 0,714–0,718 ms,
+263,8 kB y 1020 asignaciones, con el test del oráculo verde; es experimental
+y no se activó en producción. El perfil CPU atribuyó 1,62 s acumulados a
+`StandingRowV2.UnmarshalJSON` sobre 4,21 s muestreados. Se eliminó la tabla
+de punteros recreada por cada `StandingQualityV2`: 0,924–0,951 ms/frame,
+287,7 kB y 2155 asignaciones. `go test ./...` pasó. Es una mejora local
+para el brazo G1, no el gate de CPU total; Rust sigue candidato y Go default.
+
+## VAN-778 / ISA-1403 — stub no Windows compilable (2026-09-29)
+
+`main.rs` corregido: el stub no Windows recibe el tercer argumento del
+selector binario y el import IPC solo se compila en Windows. Check y
+Clippy estricto `x86_64-unknown-linux-gnu` pasan localmente; no supone
+runtime LMU Linux. Plan §131. PR #1415 draft, Go productivo.
+
+## VAN-778 / ISA-1403 — peer colgado tras Configuración (2026-09-29)
+
+El `replay-harness` de tests valida Handshake/nonce, recibe Configuration y
+deja de responder. Cinco tests Windows del supervisor dieron timeout en
+~1,02–1,09 s y el job cerró sin helper residual. No depende de LMU ni
+añade el modo al binario productivo. R20 conserva cola llena por ruta
+completa, suspensión/reanudación y replay durable tras crash. Plan §130;
+PR #1415 draft, Go continúa productivo.
+
+## VAN-778 / ISA-1403 — perfil LMU47 por etapas y watchdog (2026-09-29)
+
+El test temporal Rust tiene un perfil opt-in de `release` que reproduce
+exactamente los 80 frames Overlay publicados. Cinco repeticiones: mediana
+ensamblador ~144 ms/80, secciones Overlay ~37,7 ms, cache ~15,9 ms,
+preparación ~11,1 ms, commit ~14,4 ms; Engineer JSON ~25,8 ms frente a
+VTE1 ~1,67 ms. Son tiempos de pared de replay, no CPU final ni G0/G1/R.
+El próximo experimento debe evitar construir secciones Overlay que después
+se sirven desde cache, sin alterar paridad o cadencia. Watchdog físico con
+LMU 1.4.2.0: consumidor lento >1 s, timeout esperado, sin hijo huérfano.
+CI de `cd67ce74`: ratchet REVIEW_REQUIRED por workflow Rust; cero hallazgos
+nuevos, PR aún draft. Plan §129. Go productivo; gates finales abiertos.
+
+## VAN-778 / ISA-1403 — VTE1 LMU47 por pipe y físicamente (2026-09-29)
+
+Go auditó 160 hashes del corpus físico LMU47 x80; VTE1 y JSON Rust dieron
+los mismos 80 snapshots Engineer completos e identidades. El replay por
+pipe Windows con VTE1 pasó x3: 80 frames por cada producto, ocho facts/ACK,
+Receiver, Engineer, Overlay Publisher y Strategy; JSON por defecto también
+pasó. LMU físico con tres productos activos dio Rust binario+host 6,77 y
+5,95 s CPU/15 s; Go comparable 2,89 s, con 900 vs 958 entregas/producto.
+Es diagnóstico, no G0/G1/R: cadencia distinta, sin G1, p99 ni RSS.
+El perfil nuevo apunta a decode Overlay Go (~1,92 s de 3,50 muestreados)
+y publicación Overlay (~0,41 s); Rust hijo ~2,1 s CPU/15 s. VTE1 se
+selecciona solo explícitamente en diagnóstico; JSON sigue por defecto y Go
+productivo. R21 debe resolver Overlay y medir el gate completo; R20, REST,
+packaging, Wails/OBS y retirada Go pendientes. Plan §128; PR #1415 draft.
+
+## VAN-778 / ISA-1403 — candidato binario Engineer VTE1 (2026-09-29)
+
+Rust codifica el `EngineerView` completo en un body binario versionado y Go
+lo decodifica al `SnapshotV1` productivo con identidad. El fixture real
+estático de 44 coches conserva igualdad profunda frente al frame Rust JSON,
+y el decoder rechaza truncamiento, trailing, magic/versión y bits no
+declarados. Sin dependencia nueva. Frame 17 193 B frente a JSON 150 575 B;
+microbanco Rust proyección+body ~17–18 µs frente a ~184–191 µs JSON;
+decode Go ~64–66 µs frente a ~2,68–2,74 ms JSON. Estos resultados no
+acreditan CPU total, p99 ni RSS; el ensamblador/receptor live todavía usan
+JSON. Pendiente probar VTE1 con el corpus LMU47 x80, pipe real y banco
+G0/G1/R antes de la decisión R21. `cargo test` 158, Clippy, formato,
+`go test ./...` y diff check pasaron. Go sigue por defecto; PR #1415 draft,
+sin merge. Plan §127 y contrato IPC VTE1.
+
+## VAN-778 / ISA-1403 — coste de los tres decoders IPC (2026-09-29)
+
+El banco de frames Rust estáticos con 44 vehículos mide el decoder estricto
+del receptor Go: Engineer 2,73–2,75 ms/frame, ~777 kB y 3125 asignaciones;
+Overlay 0,962–0,975 ms/frame, ~317 kB y 2331 asignaciones; Strategy
+28,1–28,4 µs/frame, ~4,1 kB y 58 asignaciones (tres repeticiones de 2 s).
+Engineer concentra el coste y guía la comparación JSON/binario de R21. Es un
+microbanco diagnóstico, no el gate CPU G0/G1/R; Rust aún no cumple el 50 %.
+Go sigue por defecto y PR #1415 permanece draft. Plan §126.
+
+## VAN-778 / ISA-1403 — demanda igual y decoder Overlay (2026-09-29)
+
+Un probe físico con LMU 1.4.2.0 y 47 coches activó Overlay, Engineer y Strategy
+en ambos runtimes. Go consumió 2,66–3,19 s CPU/15 s con 958 entregas/producto;
+Rust+host consumió 10,88–10,97 s con ~900. El perfil localizó JSON en el
+receptor Go. El decoder Overlay compacto evita recodificar filas legacy en el
+caso normal y lee el sobre en una pasada; el fixture bajó de ~2,05 a ~0,96 ms
+por frame, con paridad y rechazo estricto conservados. Una ventana física
+posterior dio 10,06 s CPU/15 s para Rust+host. Son diagnósticos no intercalados
+con cadencias distintas, no el gate G0/G1/R. Replay LMU47 x80 por producto y
+ocho facts pasó x3; suite Go y vet focal pasaron. Staticcheck solo reporta
+avisos heredados fuera del diff. R21 necesita codec y banco formal; R20/REST,
+packaging y Wails/OBS siguen abiertos. Go continúa por defecto y PR #1415
+sigue draft sin merge. Plan §125.
+
+## VAN-778 / ISA-1403 — Stop concurrente durante conexión (2026-09-29)
+
+Un test con el hijo Rust real reprodujo un error de cierre cuando ocho llamadas
+Stop coincidían con la conexión del pipe. El supervisor ya normaliza la
+cancelación de ese contexto; el test pasó 20 veces, confirmó estado stopped y
+ausencia de hijo residual. Suite Go completa, vet focal y diff check pasan.
+R20 aún requiere peer colgado, cola llena, suspensión y replay durable; R21/R25
+mantienen el gate de CPU sin acreditar. Go sigue por defecto, PR #1415 draft,
+sin merge. Plan §124.
+
+## VAN-778 / ISA-1403 — crash físico después de un fact (2026-09-29)
+
+LMU 1.4.2.0 con 47 vehículos: el test acepta un fact Engineer y un snapshot
+Strategy, mata solo al hijo Rust de ruta y padre verificados, y exige límite
+de facts, reconexión, nuevo Strategy y nuevo fact en época posterior. Pasó
+cinco veces y Stop no dejó otro lector. La pérdida potencial del proceso
+terminado queda explícita; no se ha demostrado replay durable. R20 conserva
+peer colgado, cola llena, suspensión y Stop concurrente; R21/R25 aún deben
+resolver codec, CPU/p99/RSS. Go productivo por defecto, PR #1415 draft sin
+merge. Plan §123.
+
+## VAN-778 / ISA-1403 — coste IPC y baseline de facts corregido (2026-09-29)
+
+El perfil físico de 15 s atribuyó la mayor parte del CPU del receptor Rust a
+JSON Engineer en Go. Decode en una pasada y selección acotada de producto
+redujeron el diagnóstico host+hijo de ~6,91 a ~4,13 s/15 s en ventanas no
+intercaladas; Go app dio ~0,73 s/15 s. Es orientación, no G1 ni gate del 50%.
+La UI Wails visible abrió login y llegó a telemetría live; Studio/OBS quedan
+sin verificación autenticada. Al abrir Overlay tarde, el receptor rechazaba
+incorrectamente ACK con facts suprimidos y reiniciaba el hijo. Una regresión
+falló antes del arreglo; LMU47 pasa ahora demanda y política x3 con cero
+reinicios, además de Engineer/Strategy y reinicio inducido. `go test ./...`,
+vet y Staticcheck focal pasan. Faltan codec/G1, p99/RSS, recuperación completa,
+packaging y sesión visual autenticada. Go sigue por defecto; PR #1415 draft,
+sin merge. Plan §122.
+
+## VAN-778 / ISA-1403 — fallo físico de fact y reconexión (2026-09-29)
+
+Un test opt-in con LMU 1.4.2.0 y 47 vehículos rechaza un fact en Engineer:
+el supervisor reinicia el hijo Rust y Strategy vuelve a publicar con intento
+de reconexión visible. Pasó tres veces. El test no afirma replay de un fact
+ya aceptado ni prueba aún un crash arbitrario del proceso. R20 sigue parcial;
+faltan retención/resync, colas, suspensión, Stop concurrente y observabilidad.
+Go continúa por defecto; PR #1415 draft, sin merge. Plan §121.
+
+## VAN-778 / ISA-1403 — épocas al reiniciar el hijo, R20 parcial (2026-09-29)
+
+El IPC conserva el cursor Rust para validación y ACK; el adaptador productivo
+traduce a una época creciente cuando el supervisor arranca otro hijo. Los
+cuatro productos usan la misma traducción y Engineer recibe un límite de
+facts si el hijo anterior ya había entregado alguno. Regresiones cubren
+Strategy tras reinicio, cursores conjuntos y límite de facts; focal Go pasó.
+Queda ensayo físico de crash/replay, colas, suspensión y Stop concurrente.
+Cuatro avisos Staticcheck nuevos detectados por la CI de `901b4df1` se
+corrigieron aquí; falta verificar el nuevo SHA remoto. Go continúa por defecto,
+PR #1415 draft y sin promoción. Plan §120.
+
+## VAN-778 / ISA-1403 — candidato integrado parcial R19 (2026-09-29)
+
+`-telemetry-rust-candidate` selecciona el hijo Rust con ruta absoluta antes de
+construir el lector Go. El candidato publica Overlay, Engineer, Strategy y
+estado, y actualiza demanda y política de rendimiento. LMU 1.4.2.0 en pista
+entregó 47 vehículos en tres repeticiones físicas de Overlay tardío y
+Engineer/Strategy; la app integrada arrancó con un solo hijo y cero rechazos
+Engineer al inicio. `go test ./...` y `git diff --check` pasaron. La app se
+ejecutó oculta: Wails visible y OBS siguen sin prueba. También faltan crash y
+replay de facts, empaquetado y el gate CPU/p99/RSS de R20–R27. Go sigue por
+defecto; PR #1415 draft, sin merge ni promoción. Plan §119.
+
+## VAN-778 / ISA-1403 — frontera de composición R19 (2026-09-29)
+
+Wails referencia una interfaz local de lifecycle, status, rendimiento y
+transports Overlay/Strategy; el runtime Go la satisface. El replay de status
+solo requiere StrategyHub. Todavía no hay selección de Rust ni segunda lectura
+LMU. La siguiente entrega debe conectar el supervisor Rust, la demanda y los
+consumidores por esa frontera y probar un único owner. Plan §118; PR #1415
+draft, sin merge ni gate CPU acreditado.
+
+## VAN-778 / ISA-1403 — modos dinámicos propiedad de Rust (2026-09-29)
+
+El hijo puede resolver Spatial, Delta, Standings y Gaps desde sus observaciones
+y la declaración del driver mediante `resolveModesFromEvidence`, sin pedir a Go
+un modo ya resuelto. El oráculo Go opt-in usa su resolvedor productivo. En el
+corpus real LMU47 x80 hubo cero diferencias en Overlay, Engineer, Strategy y
+ocho facts. La discrepancia inicial de `gaps` procedía del fixture fijo antiguo,
+no de un resultado live: el banco nuevo usa `official`, valor declarado por
+LMU. No hay todavía transiciones físicas de modo ni selección Wails/OBS.
+`go test ./...`, 156 tests Rust, Clippy, formato y release pasaron. Continúan
+REST temporal, recovery, packaging y banco G0/G1/R. Plan §117; PR #1415
+draft, Go productivo, sin merge.
+
+## VAN-778 / ISA-1403 — copia Relative eliminada en cache Rust (2026-09-29)
+
+El camino cacheado no duplica `relative` para inicializar `relativeSettled`;
+el wrapper de referencia conserva su salida. 155 tests Rust, Clippy, formato
+y paridad estricta de 80 muestras reales LMU47 para Overlay, Engineer,
+Strategy y ocho facts pasaron. El coste aislado de esa copia era ~14–16 µs;
+la variación entre microbenchmarks impide atribuir una mejora global. El
+umbral de aceptación del corpus es ≥46 coches y las 47 filas observadas lo
+cumplen. Pendientes: Rust productivo en Wails/OBS, REST temporal, crash/facts,
+packaging y CPU total G0/G1/R con p99/RSS. Plan §116; Go productivo, PR #1415
+draft sin merge.
+
+## VAN-778 / ISA-1403 — ocho facts exactos y 80 muestras por pipe (2026-09-29)
+
+El oráculo Go usa ahora `TelemetryEngine` completo y el reloj de captura:
+los ocho facts del corpus LMU47 x80 son idénticos a Rust en metadata y valor,
+además de los tres payloads. Un replay externo por pipe Windows, receptor Go,
+Publisher y adaptador Engineer aceptó 80 snapshots de cada producto y ocho
+facts con ACK y Stop limpio en cinco corridas. Los 160 hashes SHM+REST se
+validan antes; REST todavía no alimenta el motor del replay. Suite Go global,
+155 tests Rust, replay, Clippy, formato y build release pasaron. Pendientes:
+REST temporal, fallo/reinicio, Wails/OBS, packaging y G0/G1/R.
+Plan §115; Go productivo, PR #1415 draft sin merge.
+
+## VAN-778 / ISA-1403 — cache Rust con menos copias (2026-09-29)
+
+Overlay conserva huellas por sección y mueve al cache candidato el frame ya
+codificado, sin clonar el grid completo en cada tick. El corpus real LMU47
+x80 volvió a dar paridad exacta de los tres productos; 155 tests Rust,
+Clippy, formato y release build pasaron. La mediana diagnóstica estática
+`overlay-only` bajó de 2007,6 a 1111,2 µs/op en corridas locales no
+intercaladas: no acredita el 50% de CPU total. Queda evitar construir
+secciones saltadas, banco G0/G1/R, REST/facts, Wails/OBS y packaging.
+Plan §114; Go sigue productivo, PR #1415 draft y sin merge.
+
+## VAN-778 / ISA-1403 — tres payloads temporales idénticos LMU47 x80 (2026-09-29)
+
+Rust y Go usan el mismo reloj de captura y política de Overlay sobre el corpus
+real SHM de 80 muestras/47 coches. El nuevo cache Rust conserva secciones y
+la ventana `relativeSettled`; el comparador estricto dio cero diferencias en
+Overlay, Engineer y Strategy, incluido `sectionMask`. Una regresión cubre el
+rechazo sin avance del cache; 155 tests Rust y replay temporal pasaron. El
+cache aún construye secciones que podría omitir, por lo que no hay evidencia
+del objetivo CPU ≤0,50. REST solo está auditado por hash/correlación; faltan
+facts temporales, replay durable, Wails/OBS, packaging y G0/G1/R. Plan §113;
+Go sigue productivo y PR #1415 draft sin merge.
+
+## VAN-778 / ISA-1403 — Engineer y Strategy idénticos en LMU47 x80 (2026-09-29)
+
+Los tests temporales exportaron fuera del repositorio los payloads Engineer y
+Strategy de las 80 muestras reales de 47 coches. El nuevo comparador JSON
+estricto obtuvo cero diferencias de tipo o valor; solo se excluyó metadata
+IPC con relojes de recepción inyectados distintos. Manifest SHA-256
+`061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`.
+Faltan Overlay, metadata, REST y facts para paridad global, además de
+CPU/p99/RSS y Wails/OBS. Plan §112; Go sigue productivo, PR draft.
+
+## VAN-778 / ISA-1403 — minuto real LMU47 (2026-09-29)
+
+Una única instancia LMU 1.4.2.0 llegó a práctica ELMS 2026 con 46 rivales
+y 47 vehículos incluyendo al jugador. EngineerService, Overlay Publisher y
+cambio a Strategy pasaron cinco veces sobre el candidato Rust. El capturador
+sanitizado produjo 80 pares SHM+REST en 60 segundos, manifest SHA-256
+`061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`;
+Go auditó los 160 hashes y ambos runtimes recorrieron los tres productos en
+las 80 muestras. El corpus permanece externo. La paridad de todos los campos,
+REST productivo, CPU/p99/RSS y Wails/OBS siguen pendientes. El ratchet del
+SHA `bcece5e3` dio `NEW=0`, pero `REVIEW_REQUIRED` por el cambio de workflow;
+requiere revisión externa de política. El gate de producto Windows, canal y
+GitGuardian del mismo SHA pasaron. Plan §111; Go productivo, PR draft.
+
+## VAN-778 / ISA-1403 — gate Rust en CI Windows (2026-09-29)
+
+El workflow bloqueante Windows ahora instala Rust `1.95.0` y ejecuta formato,
+154 tests de biblioteca, Clippy estricto y build release. La secuencia pasó
+localmente; falta el resultado remoto del SHA nuevo. El corpus temporal real
+sigue externo a CI y el binario aún no está empaquetado en Wails. Plan §110;
+Go sigue productivo, PR #1415 draft y sin merge.
+
+## VAN-778 / ISA-1403 — tres productos en secuencia real (2026-09-29)
+
+La auditoría Go del corpus real de ocho SHM+REST con 47 coches atraviesa
+fusión SHM, mapper, Core, derivación y Overlay/Engineer/Strategy por muestra;
+Rust comprueba reloj e identidad compartida Engineer/Strategy en esas ocho
+muestras. Auditoría, replay Rust, 154 tests Rust, suite Go completa, Clippy y
+formato pasaron. REST sigue auditado pero aún no alimenta la comparación
+temporal completa; tampoco hay CPU/p99/RSS ni Wails/OBS. Plan §109; Go sigue
+productivo y PR #1415 draft sin merge.
+
+## VAN-778 / ISA-1403 — ACK de facts tras entrega (2026-09-29)
+
+El supervisor confirma al hijo Rust un fact solo después de que el callback
+de producto lo acepte. La regresión cubre el rechazo sin ACK y la aceptación
+con ACK posterior al fact; `go test ./...` pasó. LMU no estaba activo para
+repetir el ensayo físico de este corte. Sigue faltando replay durable tras
+reinicio, paridad completa y gates de rendimiento; Go conserva el runtime
+productivo. Plan §108; PR #1415 sigue draft y sin merge.
+
+## VAN-778 / ISA-1403 — EngineerService físico (2026-09-29)
+
+El candidato Rust entregó status live, observaciones adaptadas y facts al
+`EngineerService` real en cinco ejecuciones con LMU 1.4.2.0 y 47 coches.
+Cada corrida aceptó al menos dos observaciones y un fact, con servicio
+conectado y sin error. `go test ./...` pasó. Es una ruta opt-in de prueba;
+faltan el puerto/lifecycle Wails, replay de facts y gates de paridad y
+rendimiento. Plan §107; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — primera revisión CI (2026-09-29)
+
+La PR draft #1415 detectó 11 hallazgos nuevos de Staticcheck en el primer
+ratchet; promoción de rama y GitGuardian pasaron. Se corrigieron los textos
+de error Windows y se anotaron dos usos intencionados de `ProjectV2` en el
+oráculo de paridad, sin cambiar su comprobación. La rama se rebasó sin
+conflictos sobre `origin/nightly@c4c7a5ce`; `go test ./...`, 154 tests Rust,
+replay temporal y Clippy pasan. Staticcheck `2026.2.1` local no señala los
+archivos tocados en Windows ni Linux. Falta nuevo CI del SHA resultante; no
+hay merge ni gate final. Plan §106; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — identidad temporal de 47 coches (2026-09-29)
+
+El replay Rust del corpus externo comprobó identidad Engineer y jugador
+coincidentes en sus ocho muestras reales de 47 coches, con evento/sesión
+estables y conductor presente. La auditoría Go de 16 hashes SHM+REST y el
+test temporal Rust pasaron. Es una secuencia breve, todavía insuficiente
+para paridad completa o gate CPU/p99/RSS. Ambos tests opt-in rechazan ahora
+un conteo esperado menor de 46. Plan §105; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — PR draft del candidato (2026-09-29)
+
+[PR draft #1415](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1415)
+apunta a `nightly` desde `vantareapp/isa-1403-rust-telemetry@282128e9`.
+Se abrió para ejecutar CI sobre el candidato parcial. Go sigue productivo;
+no hay merge ni promoción y faltan los gates del plan. La base remota de
+`nightly` al abrirla era `c4c7a5ce`; comprobar HEAD/CI de cada push antes
+de interpretar el resultado del PR.
+
+## VAN-778 / ISA-1403 — contrato Engineer desde snapshot Rust (2026-09-29)
+
+El receptor Go puede convertir el snapshot Engineer Rust con identidad
+completa a `ObservationSnapshotV1` mediante el adaptador de producto existente;
+los replay antiguos sin identidad no cruzan esa frontera. La comparación con
+la observación Go y cinco pruebas físicas LMU 1.4.2.0 / 47 coches pasaron.
+`go test ./...` pasó, incluido el control de llamadores productivos. Falta
+conectar el servicio en Wails con status y facts recuperables, y después medir
+paridad y rendimiento. Plan §104; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — identidad Engineer Rust por IPC (2026-09-29)
+
+El candidato Rust adjunta identidad de evento, sesión, jugador, equipo y
+conductor a Engineer; Go comprueba identidad completa y jugador coincidente.
+La prueba física LMU 1.4.2.0 de 47 coches pasó cinco veces con Overlay V2,
+Engineer y `session.started`. `go test ./...`, 154 tests Rust, build release,
+Clippy y formato pasaron. Los fixtures anteriores sin identidad son solo
+replay; falta adaptar y entregar al servicio Engineer productivo, asegurar
+recuperación de facts/status y completar Wails/OBS y gates de rendimiento.
+Plan §103; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — facts Rust llegan al callback Go (2026-09-29)
+
+El supervisor entrega al callback los facts nuevos retenidos tras el ACK.
+Contra LMU 1.4.2.0 con 47 coches, cinco corridas recibieron una sola vez
+`session.started` (secuencia 1) y publicaron dos Overlay V2 por corrida;
+`go test ./...` pasó. Falta identidad completa en Engineer, conectar el
+servicio productivo y resolver replay/resync ante fallo o reinicio antes de
+seleccionar Rust en Wails. Plan §102; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — Overlay Rust en el Publisher real (2026-09-29)
+
+Prueba opt-in física con LMU 1.4.2.0 y 47 coches: el hijo Rust pasó por el
+Receiver Go y publicó dos Overlay V2 en el `PublisherRegistry` de producto;
+cinco repeticiones pasaron y cada par ocupó 62.689–62.798 bytes frente al
+tope de 72 KiB. Engineer emitió dos snapshots por corrida. `go test ./...`
+pasó. El test no selecciona Rust en Wails/OBS. Para conectar Engineer al
+servicio falta transportar la identidad completa de sesión y drenar facts
+del receptor después del ACK. Go conserva el runtime productivo. Plan §101.
+
+## VAN-778 / ISA-1403 — alcance de corpus revisado (2026-09-29)
+
+Isaac acepta un escenario temporal **real de al menos 46 coches** para la
+paridad y el gate de rendimiento; ya no exige los dos escenarios separados
+de 44 y 104. LMU ELMS 2026 mostró 46 en la configuración y publicó 47
+vehículos con el jugador en SHM y REST. La secuencia ELMS 2025 de ocho pares
+reales con 47 coches y 16 hashes auditados pasa el umbral de tamaño, pero
+todavía no prueba duración suficiente, paridad completa ni CPU ≤ 0,50,
+p99 y RSS. El parser y el IPC conservan el límite técnico de 104; las notas
+históricas posteriores a este bloque describen el criterio antiguo en la
+fecha en que se escribieron. Plan v1.4 §4 y ADR 0097; Go sigue productivo.
+
+## VAN-778 / ISA-1403 — auditoría temporal y replay de 47 coches (2026-09-29)
+
+La auditoría Go opt-in del corpus externo ELMS 2025 comprobó los 16 hashes,
+ocho relojes crecientes, 47 coches y jugador en SHM, y REST live correlacionado.
+Un test Rust opt-in recorrió los mismos ocho SHM reales y obtuvo ocho commits
+con Overlay, Engineer y Strategy; ambos tests rechazaron el corpus al pedir
+44 coches. `go test ./...`, 154 tests Rust + replay, Clippy y formato pasan.
+Rust no audita los hashes en su test: primero se ejecuta la auditoría Go.
+Tampoco se ha comparado todavía todo el contenido de los productos ni se ha
+reproducido el REST temporal en Rust. El corte es diagnóstico de 47 coches,
+no el gate de 44/104 o CPU. Go sigue productivo. Plan §99.
+
+## VAN-778 / ISA-1403 — 47 coches reales y ráfagas de demanda (2026-09-29)
+
+La práctica ELMS 2025 real en LMU 1.4.2.0 entregó ocho pares temporales
+SHM+REST sanitizados con 47 coches estables; los 16 hashes concuerdan con
+el manifiesto externo SHA-256 `2a736015aaed721264fa4407cd9158f8dc3c0802bd9b5c485ff9fbe59a959f93`.
+El candidato Rust produjo ACK, Status live, Overlay/Engineer de 47 filas,
+Strategy tras nueva configuración y Stop limpio; cinco repeticiones físicas
+pasaron. El supervisor agrupa revisiones en espera para no publicar una
+configuración ya superada y tolera `ERROR_IO_INCOMPLETE` transitorio en el
+connect overlapped, siempre con plazo. Una prueba física x5 exige ACK solo
+de la política inicial y final. `go test ./...` pasa tras el ajuste.
+Plan §98. Go sigue productivo; faltan corpus 44/104 reales,
+paridad temporal, gate de CPU, Wails/OBS y retirada.
+
+## VAN-778 / ISA-1403 — reconfiguración Strategy física (2026-09-28)
+
+Con LMU 1.4.2.0 en práctica real de 43 coches, el mismo hijo Rust pasó de
+demanda Overlay+Engineer a Strategy-only por el pipe. Go recibió ACK de la
+revisión siguiente, Strategy con identidad de jugador y pista, y ningún
+producto retirado tras el ACK; Stop/salida siguieron limpios. El supervisor
+Go aislado `RunCandidateWithUpdates` aplica revisiones posteriores solo al
+confirmarse la anterior, conserva la demanda más reciente entre reinicios y
+pasó la misma reconfiguración física. Falta conectar y probar el lifecycle
+de consumidores Wails. Plan §97.
+
+## VAN-778 / ISA-1403 — fallos de consumidor y watchdog físico (2026-09-28)
+
+La prueba opt-in con LMU 1.4.2.0 real de 43 coches rechaza el primer Overlay
+en cada instancia: el supervisor avisa de desconexión antes del siguiente
+arranque, usa tres Fact streams distintos y devuelve el error de presupuesto
+tras el tercer fallo. Otra prueba retiene el callback real más de un segundo
+y comprueba `ErrCandidateHeartbeatTimeout`. El error final conserva también
+la causa original. No acredita aún crash externo, suspensión, backpressure
+del pipe ni consumidores Wails. Plan §96; Go sigue owner productivo.
+
+## VAN-778 / ISA-1403 — supervisor Go del candidato aislado (2026-09-28)
+
+`RunCandidate` abre un pipe y un Job Object nuevos por instancia, valida
+Handshake y Configuration, recibe Status/snapshots/facts con `Receiver`,
+ACKea facts y exige latido dentro de un segundo incluso si siguen llegando
+snapshots. Ante fallo llama `disconnected` antes de cualquier reinicio,
+limita a tres fallos en 60 s con esperas de 250/500 ms y devuelve un error
+estable al agotar el presupuesto. Cancelación envía Stop y espera salida
+limpia. Test físico con LMU 1.4.2.0 y pista de 43 coches confirmó dos Status,
+ACK y ~30 lotes de cada producto antes de Stop; tres arranques fallidos
+agotan el presupuesto en test. No está conectado a Wails ni consumidores;
+Go continúa como owner productivo. Plan §95.
+
+## VAN-778 / ISA-1403 — LMU 1.4.2.0 exacto y candidato físico (2026-09-28)
+
+Go y Rust admiten ahora exactamente 1.4.2.0 a partir de cuatro capturas
+reales sanitizadas y hashes fijados: menú fresco y práctica WEC 2024 de
+**43** coches, cada una con SHM y REST. El menú sin sesión ya no tumba el
+candidato Rust: publica Status connecting sin ACK ni snapshot; una sesión
+previa queda intacta y envejece. En pista, el test opt-in Windows confirmó
+Handshake, Configuration ACK, Status live, Overlay y Engineer con 43 filas
+y Stop/salida limpios (29 batches de cada producto en ~0,55 s). Rust release
+154/154, Go completo, Clippy y formato pasan. La ruta sigue aislada: Go
+continúa como owner productivo y no hay selector Wails, watchdog/reinicio,
+prueba OBS ni corpus temporal real de 44/104, paridad y CPU total ≤ 0,50.
+Plan §94.
+
+## VAN-778 / ISA-1403 — Status del reloj SHM Rust (2026-09-28)
+
+El candidato emite heartbeat secuencial cada 250 ms: Connecting sin
+observación confirmada, Live con edad de progresión SHM y Stale tras
+500 ms o durante recuperación. La edad usa el reloj monotónico del hijo,
+no la frecuencia de lecturas. Tests de límites y fixture real estática 44,
+Rust release 151/151 y Clippy pasan. Falta probar Status en pipe live,
+watchdog/reinicio Go, degradación REST y build LMU admitida en ejecución;
+Go permanece owner productivo. Plan §93.
+
+## VAN-778 / ISA-1403 — loop candidato Rust aislado (2026-09-28)
+
+`--candidate-pipe` usa handshake, configuración validada, `Acquisition`,
+agenda 60 Hz, cola y writer con plazo; lee controles por `PeekNamedPipe` y
+cierra REST antes de devolver Stop. No existe selector Wails/Go ni
+supervisor productivo para esa ruta. Tests Windows confirman rechazo de
+cabecera Configuration sobredimensionada sin payload y rechazo físico de
+LMU 1.4.2.0, además de Handshake/Stop y timeout del harness. Rust
+release 150/150 y Clippy pasan. Falta validar un loop live con build
+admitida y añadir Status/watchdog, reinicios, corpus 44/104 y CPU. Plan §92.
+
+## VAN-778 / ISA-1403 — I/O overlapped con plazo en el cliente Rust (2026-09-28)
+
+El harness principal Rust abre el named pipe Windows con
+`FILE_FLAG_OVERLAPPED`, usa evento por operación y cancela/recoge la
+lectura pendiente antes de soltar memoria al vencer dos segundos. Pruebas
+de pipe Go↔Rust confirman Handshake/Stop y salida autónoma sin Stop;
+Rust release 150/150, Clippy, formato y build pasan. `windows-sys 0.61.2`
+es dependencia solo Windows para llamadas Win32 tipadas, licencia MIT/Apache-2.0.
+El binario principal sigue inerte fuera del harness; faltan loop live,
+reader/writer de producción y supervisión. Plan §91.
+
+## VAN-778 / ISA-1403 — control del host en adquisición Rust (2026-09-28)
+
+`Acquisition::handle_control_frame` admite exclusivamente Configuration,
+FactAck y FactReplayRequest ya encuadrados. El replay entra en la cola
+acotada; después del ACK, pedir el cursor podado devuelve ResyncRequired.
+Test con fact producido desde la fixture real estática de 44, Rust release
+150/150, Clippy y formato pasan. Aún falta el reader real de pipe que llame
+esta ruta, writer con deadline, loop y supervisor; Go sigue owner. Plan §90.
+
+## VAN-778 / ISA-1403 — captura temporal LMU 1.4.2.0 (2026-09-28)
+
+Práctica offline real en Circuit de la Sarthe con parrilla WEC 2024:
+SHM y REST confirmaron **43** vehículos, incluido el jugador. El lector
+opt-in `TestCaptureLMUTemporalOptIn` conserva un sanitizador entre muestras,
+exige reloj SHM creciente y correlación REST y guarda ocho pares y un
+manifiesto con hashes en `C:\tmp\isa-1403-lmu-1420-43-temporal`.
+Ocho relojes distintos, 16 hashes correctos y ninguna coincidencia del
+nombre real del usuario en los REST; `go test ./...` pasa. También se
+capturó pista de 18 vehículos en 1.4.2.0. Tras abandonar la sesión,
+el capture de menú rechazó correctamente el remanente SHM congelado.
+Estos diagnósticos no son el corpus requerido de **44 y 104** ni habilitan
+la build 1.4.2.0 productivamente. Go sigue owner; Rust live y el gate de
+CPU siguen pendientes. Plan §89.
+
+## VAN-778 / ISA-1403 — cola Rust acotada (2026-09-28)
+
+`WriterQueue` conserva ACK/facts en orden (ocho lotes, 64 facts),
+reemplaza el estado pendiente y limita el total a 16 MiB; saturación
+rechaza el lote completo. La adquisición puede depositar sus ticks en
+ella; prueba con frame real estático de 44 y límites, Rust release
+149/149, Clippy y formato pasan. Falta el writer de pipe, plazos,
+supervisor y corpus temporal 44/104; Go sigue owner. Plan §88,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — agenda SHM monotónica (2026-09-28)
+
+Rust tiene una cadencia de 60 Hz con reloj monotónico que omite slots
+perdidos sin acumular lecturas; `Acquisition::tick_if_due` la aplica antes
+de SHM. Test con tiempo controlado, Rust release 144/144 y Clippy pasan.
+El proceso hijo todavía no ejecuta el loop ni entrega IPC; Go sigue owner.
+Siguiente: loop, writer/reader y supervisor acotados. Plan §87,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — límites IPC antes de reservar (2026-09-28)
+
+Go y Rust aplican máximos por tipo de mensaje de control en la cabecera
+y al escribir, incluido Stop vacío. Snapshot conserva 8 MiB provisional
+hasta capturar 104 coches reales. Rust release 143/143, Clippy, formato,
+build, Go completo y ambos pipes Windows pasan. Falta completar R04/R05
+con plazos, colas, heartbeat y reinicio; el runtime productivo sigue Go.
+Plan §86, [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — receptor Go del contrato Rust (2026-09-28)
+
+`telemetryprocess.Receiver` valida ACK/revisión/cursor, demanda y orden
+de cada producto, retención de facts, Status, resync y Stop terminal.
+El replay del hijo Rust por pipe Windows ya pasa por este receptor;
+goldens y pruebas adversariales, más `go test ./...`, pasan. No está
+conectado a Wails ni sustituye al owner Go. Siguiente: límites IPC,
+loop y writer/reader productivos, después supervisor y consumidores;
+capturar 44/104 temporal y medir CPU total antes del cambio de owner.
+Plan §85, [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — tick de adquisición LMU/REST (2026-09-28)
+
+Rust une el proceso/mapping retenidos, buffers SHM, último REST, relojes
+y `Assembler` en un paso de adquisición. Build desconocido se rechaza
+antes de arrancar REST; lectura fallida no confirma cursor. Test con
+frame real estático de 44 y prueba opt-in de LMU en menú 1.4.2.0
+pasan. Rust release 142/142, Clippy, formato, build y pipe Windows
+pasan. Falta el loop 60 Hz, entrega IPC productiva, supresión de
+remanente y corpus temporal 44/104; Go sigue owner. Plan §84,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — polling REST desacoplado de SHM (2026-09-28)
+
+Rust tiene un worker REST loopback con slot de último resultado,
+backoff 250 ms–2 s, TTL de 2 s y cierre acotado por los deadlines
+HTTP. El consumidor puede incorporar el resultado a la cache de
+`Assembler` sin esperar a la red. Tests con servidor REST local y
+frame SHM real estático de 44 llegan al batch, y un endpoint colgado
+se cancela en el primer deadline. Rust release 140/140, Clippy/formato,
+build y replay Windows pasan. No hay loop live ni receptor Go;
+Go conserva propiedad productiva. Plan §83,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — reloj SHM clasificado dentro del motor (2026-09-28)
+
+`Engine` clasifica automáticamente continuidad, reset y wrap desde el
+último reloj confirmado; `Assembler::apply` ya no depende de una etiqueta
+del llamador. Un candidato descartado no altera esa historia. Tests de
+bordes y frame real 44, Rust release 138/138, Clippy/formato/build y
+replay de pipe Windows pasan. Aún faltan loop live, REST productivo,
+remanente congelado y corpus temporal 44/104; Go sigue owner. Plan §82,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — Status y Stop IPC v1 cerrados (2026-09-28)
+
+Rust codifica y valida el heartbeat/estado de fuente sin payload de simulador;
+Go decodifica el mismo wire y ambos exigen Stop vacío. Rust release 136/136,
+Clippy, formato, build, Go completo y los dos pipes Windows pasan. Contrato y
+límites documentados en `docs/telemetry-core/rust-ipc-v1.md`. Este corte no conecta
+heartbeat, watchdog ni cierre productivo; Go sigue owner. Plan §81,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — stale transaccional del frame (2026-09-28)
+
+Rust aplica el gate de frescura a todos los campos SHM presentes antes
+del commit, conserva Missing/Invalid y solo avanza el gate tras confirmar
+el candidato. Tests sobre el frame real 44, Rust release 135/135,
+Clippy/formato, replay de pipe Windows y `go test ./...` pasan. Aún
+faltan loop, supresión del remanente post-sesión con REST, corpus temporal
+44/104 y gates globales. Go sigue owner. Plan sección 80,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — frescura del origen Rust (2026-09-28)
+
+Rust porta la histéresis Go del reloj LMU (stale a 500 ms detenido;
+fresh tras 2 s sostenidos) y la protege con secuencias de borde y la
+cadencia irregular de 54 coches IA. Rust release 132/132, Clippy,
+formato y build pasan. Aún falta aplicarla a todos los campos antes del
+commit live; no hay publicación Rust ni gate CPU final. Plan sección 79,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — copia Overlay retirada (2026-09-28)
+
+`wrap_full` mueve el árbol de secciones y source al sobre final sin
+clonar el frame completo. En el banco real estático de 44 coches,
+Overlay solo bajó de aproximadamente 1,34–1,50 a 0,91–0,96 ms/lote;
+129/129 pruebas Rust, Clippy/formato y replay Windows Go↔Rust pasan.
+No equivale al gate de CPU ≥50%: faltan runtime, corpus temporal real
+44/104 y medición de CPU/p99/RSS. Plan sección 78 y tarea
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — ciclo de vida LMU_Data (2026-09-28)
+
+Rust retiene el handle del proceso LMU junto a una única vista de
+`LMU_Data` y comprueba salida antes y después de cada lectura estable.
+Prueba Windows de proceso vivo→cerrado y lectura opt-in del LMU activo
+1.4.2.0 pasan; Rust release 129/129, formato y Clippy pasan. No se ha
+admitido 1.4.2.0 ni probado que el mapping global pertenezca al PID;
+faltan REST/build, loop y consumidores productivos y corpus temporal
+44/104. Go sigue owner. Plan sección 77, tarea [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
+## VAN-778 / ISA-1403 — versión del proceso LMU real (2026-09-28)
+
+La tarea operativa [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748)
+reconcilia GitHub #1403 bajo el proyecto Telemetry Core. Rust resuelve
+PID y ruta desde el proceso LMU en ejecución, lee su versión y rechaza
+procesos duplicados o ruta inaccesible. Prueba física opt-in: LMU activo
+1.4.2.0, aún sin admisión. Rust release 127/127, formato y Clippy pasan.
+Quedan pendientes enlace persistente PID/LMU_Data, REST por build,
+runtime y consumidores; Go sigue owner. Plan sección 76.
+
+## ISA-1403 — versión LMU Windows leída por Rust (2026-09-28)
+
+Rust consulta FileVersion/ProductVersion del recurso fijo del ejecutable
+y usa el mismo allowlist exacto que su parser. Prueba opt-in sobre LMU
+instalado confirmó 1.4.2.0 en ambos campos y rechazo de admisión;
+Rust release 125/125, Clippy y Go completo pasan. Falta enlazar la
+ruta al proceso dueño de `LMU_Data` y a evidencia REST antes del runtime.
+Plan sección 75; Go sigue owner.
+
+## ISA-1403 — replay validado por Assembler (2026-09-28)
+
+El ensamblador Rust acepta `FactReplayRequest` como frame completo,
+valida la petición y devuelve frames exactos o resync; el helper de
+pipe utiliza la misma ruta. Rust release 123/123, Clippy y replay
+Windows Go/Rust pasan. Pendiente conexión al loop productivo y
+bootstrap/reconexión. Plan sección 74; Go sigue owner.
+
+## ISA-1403 — resync por pipe tras cursor viejo (2026-09-28)
+
+El helper Rust recibió otra solicitud Go tras quitar demanda Engineer;
+respondió `ResyncRequired (stream=15,first=2,next=2)` en pipe Windows
+real y Go validó el límite antes de Stop. Test cruzado pasa. Falta
+bootstrap de consumidor y reconexión productiva; Go sigue owner.
+Plan sección 73.
+
+## ISA-1403 — solicitud explícita de replay Fact (2026-09-28)
+
+Go codifica `KindFactReplayRequest=10` desde el baseline del ACK y Rust
+valida stream/cursor/esquema antes de consultar los frames retenidos.
+El helper release y pipe Windows respondieron al request con el Fact
+exacto; Go lo deduplicó y devolvió FactAck. Prueba cruzada pasa. Faltan
+dispatcher productivo, reconexión, resync en pipe y bootstrap.
+Plan sección 72; Go sigue owner.
+
+## ISA-1403 — ACK con línea base Fact real (2026-09-28)
+
+El ACK Rust lleva `factStream` y `factSequence` del high-water anterior
+al lote; Go los valida y crea el retentor desde el primer ACK. Replay
+Windows cruzado confirma `(15,0)` y después `(15,1)`, FactAck y demanda
+revisada. Oráculo wire 79 bytes, SHA-256
+`ee637a9d799f77548edb31ef77d399a72ef9e68888247b3791b9b69ec39f5d71`.
+Faltan reconfiguración con pendientes, reconexión/resync y conexión
+productiva. Plan sección 71; Go sigue owner.
+
+## ISA-1403 — banco 44 y copia eliminada de Overlay (2026-09-28)
+
+Banco release de ensamblado Rust sobre la captura real estática de 44,
+separado por demanda. `wrap_full` consume secciones y el encoder Overlay
+serializa el update prestado sin clonarlo. Prueba pareada de la etapa de
+codificación: 46–57 µs frente a 327–375 µs con bytes idénticos; el
+ensamblado Overlay completo dio 1,2–1,5 ms/lote en dos ejecuciones.
+No acredita ≥50% de CPU frente a Go: faltan corpus temporal 44/104,
+runtime y gate CPU/p99/RSS comparable. Plan sección 70; Go sigue owner.
+
+## ISA-1403 — ResyncRequired Rust→Go cerrado (2026-09-28)
+
+Rust convierte una pérdida de ventana Fact en `KindResyncRequired`
+con stream/first/next; Go valida el frame cruzado de 41 bytes y
+rechaza rangos/esquema inválidos. Al retirar Engineer, un cursor viejo
+recibe resync explícito. Falta replay solicitado, bootstrap y conexión
+productiva. Plan sección 69; Go owner.
+
+## ISA-1403 — retentor Go de facts con límite (2026-09-28)
+
+Go retiene hasta 64 facts pendientes y 64 payloads wire recientes,
+deduplica bytes idénticos y solo confirma lo almacenado. Stream ajeno,
+hueco, conflicto, overflow y duplicado fuera de ventana fallan sin
+ACK. Exige cursor inicial; bootstrap productivo debe proporcionarlo.
+Rust/Go limitan Fact a 4 KiB. Replay Windows usa el retentor y
+pasa. Falta conexión al consumidor Engineer productivo, resync wire y
+supervisor live. Plan sección 68; Go owner.
+
+## ISA-1403 — replay exacto y ventana de 64 facts (2026-09-28)
+
+Rust retiene frames Fact exactos hasta 64, valida lote antes de commit,
+poda tras ACK y declara resync cuando un cursor queda fuera de ventana.
+En pipe Windows reenvió el mismo fact y Go verificó bytes idénticos,
+retuvo una copia y confirmó. Falta retentor Go productivo, solicitud
+de replay, mensaje ResyncRequired y writer. Plan sección 67; Go owner.
+
+## ISA-1403 — FactAck cruzado y poda de retención (2026-09-28)
+
+Cada fact Rust identifica stream; Go lo retiene en el replay y devuelve
+FactAck por el pipe. Rust rechaza cursor ajeno/futuro y poda solo el
+prefijo confirmado. Frames Go/Rust fijados por oráculos; faltan cola,
+resync y retención productiva Go. Plan sección 66. Go sigue owner.
+
+## ISA-1403 — lote Rust completo con pistas 1.4 pinneadas (2026-09-28)
+
+Rust preparó/confirmó lotes de pista 1.4.0.0 (38 vehículos) y
+1.4.1.3 (18) y emitió ACK, Overlay y Engineer completos desde la
+configuración Go auditada. Es replay estático sanitizado, no REST live
+ni salida productiva. Plan sección 65; Go sigue owner.
+
+## ISA-1403 — demanda revisada por pipe Go/Rust (2026-09-28)
+
+El replay Windows con hijo Rust real aplica dos configuraciones en el
+mismo pipe: revisión 7 entrega Overlay+Engineer+fact, revisión 8
+entrega solo Strategy y ACK del cursor siguiente. Go decodifica ambas
+fases y Stop cierra el hijo; test focal pasa. Es fixture estática de 44,
+no LMU live ni consumidor productivo. Plan sección 64; Go sigue owner.
+
+## ISA-1403 — diagnóstico LMU 1.4.2.0 en menú (2026-09-28)
+
+LMU local reporta 1.4.2.0. Go lo admite solo como candidato exacto de
+diagnóstico, nunca como build productiva. Se capturaron Shared Memory
+sanitizada (menú vacío, SHA-256 `0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0`)
+y REST vacío concordante (SHA-256 `d135d375a4bd23f9b2f891177e5542551aa27cbbce9ff5d296ed61469524e4bc`)
+en `C:\tmp\vantare-lmu-1420-diagnostic`, fuera del repo. Rust leyó
+`LMU_Data` real estable y rechazó 1.4.2.0; falta pista y corpus
+temporal. Computer Use no expone el juego como app nativa en este host.
+Go sigue owner. Plan sección 63.
+
+## ISA-1403 — admisión estructural LMU 1.4 (2026-09-28)
+
+Rust admite las builds exactas 1.4.0.0 y 1.4.1.3 a partir de las
+capturas sanitizadas de menú/pista ya pinneadas en Go. Rechaza versiones
+vecinas y 1.4.2.0. Rust release 114/114, Clippy, formato y `go test
+./...` pasan. Go pinnea también REST para 1.4; el runtime Rust aún no
+verifica un manifiesto equivalente. 1.4.2.0 requiere evidencia de pista.
+Go sigue como único owner. Plan sección 62.
+
+## ISA-1403 — replay Rust→Go por pipe Windows (2026-09-28)
+
+El helper `replay-harness` lanzó Rust bajo Job Object/pipe seguro; Go
+comprobó handshake/PID/nonce y decodificó configuración ACK, Overlay,
+Engineer y fact del lote auditado estático de 44. Stop y salida limpia
+verificados; handshake del binario release de producto pasó aparte.
+Rust release 112/112, Clippy all-targets/all-features, formato, build
+release y `go test ./...` pasan. El helper es solo de test, sin acceso
+live a LMU. Faltan temporal 44/104, consumidores, colas/FactAck/resync,
+runtime productivo, LMU físico y gate CPU. Plan sección 61.
+
+## ISA-1403 — ensamblador transaccional Rust (2026-09-28)
+
+`assembly.rs` aplica configuración Go revisionada en frontera de commit:
+codifica Overlay/Engineer/Strategy/facts según demanda, instala el lote y
+solo entonces devuelve ACK. La prueba con captura estática real de 44
+demuestra retry tras rechazo, cambio de demanda a solo Strategy y ACK
+único. Rust release 112/112, Clippy, formato, build y `go test ./...`
+pasan. Falta unir lector LMU/REST, pipe, colas, FactAck/resync y receptores
+productivos; Go sigue como único owner. Plan sección 60.
+
+## ISA-1403 — primer Fact IPC Engineer Rust→Go (2026-09-28)
+
+Rust emite un `KindFact` Engineer V1 con metadata/cursor propios y fecha
+UTC RFC3339; Go lo decodifica y el caso de vuelta completada coincide con
+su proyector. Frame 254 bytes SHA-256
+`51dd2476d3d1d4f32bca6c4ad52274d156b769d70314632e87f0e302270e22bc`.
+`time 0.3.55` y cinco transitivas quedan fijadas para el formato, todas
+MIT/Apache-2.0. Rust release 111/111, Clippy, formato y build; Go focal
+pasó. Falta ACK/retención/resync y ruta runtime; Go sigue productivo.
+Plan sección 59, contrato IPC actualizado.
+
+## ISA-1403 — medición Engineer y ruta tipada (2026-09-28)
+
+La proyección Engineer basada en JSON dinámico tardaba 2.97–3.51 ms por
+captura estática real de 44; la versión tipada tarda 10.7–31.4 µs y
+182.1–186.6 µs junto con JSON. Go comparable: 79.6–84.1 µs para
+proyección y 475.5–545.2 µs con JSON, cinco repeticiones en Ryzen 7
+3700X. El frame Rust tipado completo conserva paridad Go: 150 575 bytes,
+SHA-256 `06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`.
+Es diagnóstico estático, no el gate ≥50% de CPU completo. Rust release
+110/110, Clippy, formato, build y Go cross-frame focal pasan. Go sigue
+productivo; faltan temporal 44/104, runtime/consumidores y LMU físico.
+Plan sección 58.
+
+## ISA-1403 — Snapshot IPC Engineer/Strategy Rust→Go (2026-09-28)
+
+Go decodifica los sobres y payloads completos enviados por Rust con
+metadata v1, cursor y fecha; rechaza producto/esquema/cursor inválido.
+Frames estáticos reales de 44: Engineer 150 575 bytes SHA-256
+`06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`,
+Strategy 1 525 bytes SHA-256
+`f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`.
+Rust release 110/110, Clippy, formato, build release y `go test ./...`
+pasan. Prototipo aún inerte: falta ruta runtime, facts/status, demanda,
+backpressure y benchmark codec para Engineer. Go sigue productivo; faltan
+corpus temporal real 44/104, sesión física y gate CPU. Plan sección 57.
+
+## ISA-1403 — Engineer V1 full grid Go/Rust (2026-09-28)
+
+La observación Rust de Engineer preserva calidad, orden y 44 vehículos;
+incluye sesión, controles, standings, pit, combustible, gaps y geometría.
+Paridad Go/Rust sobre captura real estática de 44, SHA-256 JSON completo
+`6eb534d00df3f2c86e9be7671e47c4ddee7ccee63c0d5a0ebc062b53f4a9fb87`.
+Rust release 109/109, Clippy, formato, build release y `go test ./...`
+pasan. R16 sigue parcial: metadata/facts/status/receptor/IPC/backpressure;
+R17 metadata/IPC/demanda. Go sigue productivo; faltan supervisor, corpus
+real temporal 44/104, sesión física y gate CPU del 50%. Plan sección 56.
+
+## ISA-1403 — Strategy V1 payload Go/Rust (2026-09-28)
+
+La proyección Rust de sesión/progreso/pit/combustible preserva calidad y
+coincide con Go sobre la captura estática real de 44; oráculo JSON completo
+SHA-256 `f0aada0af73369906f7e5d361b9253efb901bb5e292d81d6b5e7e07c929afbd6`.
+Rust release 107/107, Clippy, formato, build release y `go test ./...`
+pasan. R17 parcial: falta metadata/IPC, gating de demanda y temporalidad.
+Engineer, supervisor, corpus real temporal 44/104, sesión física y gate
+CPU del 50% pendientes. Go sigue productivo. Plan sección 55.
+
+## ISA-1403 — Configuration/ACK IPC cruzados (2026-09-28)
+
+Go produce configuración cerrada de 660 bytes decodificada por Rust; Rust
+produce ACK de 46 bytes decodificado por Go. SHA-256 respectivamente
+`b5278d342721972e751ba6ce32099f5c96edf9573843d2742c0817819b76bd32`
+y `4f18830ddc9ccfd0be5d56406ee49efb824e335777edc0c413253ddeefefeff2`.
+Rust release 105/105, Clippy, formato, build release y `go test ./...`
+pasan. Se añadió `serde 1.0.229` directa/derive, ya transitiva; licencia
+MIT/Apache-2.0 y tamaño release actual 150 528 bytes. **Todavía no hay
+aplicación en frontera de batch ni emisión runtime del ACK**. Go sigue
+productivo; faltan supervisor, facts, Engineer/Strategy, corpus temporal
+real 44/104, sesión física y gate CPU. Plan sección 54 y contrato IPC.
+
+## ISA-1403 — primer Snapshot IPC Overlay Rust→Go (2026-09-28)
+
+El frame binario `KindSnapshot` Overlay V2 de 24 353 bytes se genera en
+Rust y Go lo decodifica al mismo `UpdateV2` del oráculo estático real de 44
+(SHA-256 `15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`).
+Rust release 103/103, Clippy, formato, build release y `go test ./...`
+pasan. Es un payload inicial de R06: falta conectar pipe/supervisor al
+runtime, configuración/ACK/facts, codec final, Engineer/Strategy, corpus
+temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 53; contrato `docs/telemetry-core/rust-ipc-v1.md` actualizado.
+
+## ISA-1403 — builder Rust de secciones Overlay reutilizable (2026-09-28)
+
+`projection/frame.rs::build_sections` proyecta todas las secciones del
+candidato Rust con source/preferencias explícitas; `wrap_full` produce el
+update V2. Paridad Go/Rust de dos updates completos, uno por defecto y otro
+km/h/galones/previous-lap, sobre captura real estática de 44 (SHA-256 JSON
+`7f520f9a465aad91771352874489c65d286eedea9faa2a1b7d032cb78b2bed7d`).
+Rust release 101/101, Clippy, formato, build release y `go test ./...`
+pasan. Falta memoización, IPC, salida productiva, Engineer/Strategy, corpus
+temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 52.
+
+## ISA-1403 — update Overlay V2 completo en el oráculo (2026-09-28)
+
+`projection/frame.rs` envuelve los slices Rust y metadatos en UpdateV2 y
+coincide con `ProjectV2` Go sobre el snapshot real estático de 44 (SHA-256
+JSON `984892c24c24af57a66e4179c77844534d16006e640809bb440df39a7d324f2a`).
+Rechaza fuente/mascara inválida y secciones ausentes. Rust release 101/101,
+Clippy, formato, build release y `go test ./...` pasan. Es aún un ensamblado
+de test; el bootstrap RelativeSettled se sustituirá por la ruta con historia.
+Go sigue productivo. Faltan secciones productivas/IPC, Engineer/Strategy,
+corpus temporal real 44/104, sesión física y gate CPU. Plan sección 51.
+
+## ISA-1403 — objeto completo de capacidades Overlay Rust (2026-09-28)
+
+R15a/R15f amplía el mapa de disponibilidad a `CapabilitiesV2` completo:
+descriptores deduplicados, modos de fuente y política normalizada. El
+oráculo Go/Rust estático real de 44 coincide (SHA-256 JSON
+`a7b87727504d09043b4882f6b1d7d360d366951243f854040a3696300c4c9af0`).
+Un test cubre REST solo, deduplicación y `sourceHz` inválido. Rust release
+100/100, Clippy, formato, build release y `go test ./...` pasan. El host aún
+no proporciona source/preferencias a Rust por IPC; Go sigue productivo.
+Faltan frame/IPC completos, Engineer/Strategy, corpus temporal real 44/104,
+sesión física y gate CPU. Plan sección 50.
+
+## ISA-1403 — scheduler de secciones Overlay Rust (2026-09-28)
+
+R15g parcial porta la decisión determinista de once secciones, tiers,
+overrides, dirty ceiling, seguridad, política hot y reloj regresivo. El
+oráculo Go de 240 ticks coincide con Rust (SHA-256
+`3f6ba5cb96fe8072a16d851c60eb8800d5c4ca20a6fa098e6ad6bf913996862f`).
+Rust release 99/99, Clippy, formato, build release y `go test ./...` pasan.
+Faltan dirty signals/memoización/frame/IPC, productos Engineer/Strategy,
+corpus temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 49.
+
+## ISA-1403 — disponibilidad de capacidades Overlay Rust (2026-09-28)
+
+R15a/R15f parcial calcula en Rust la calidad observada de las diez
+capacidades LMU. Coincide con el mapa `available` Go sobre el snapshot real
+estático de 44 (SHA-256 JSON
+`b3f533192600b288fd4e83ed1c6be74d2b724745add8402adb2fede218c85369`).
+Rust release 96/96, Clippy, formato, build release y `go test ./...` pasan.
+El contrato completo de capabilities necesita descriptor, modes y política
+de rendimiento de la composición Go por IPC. Go sigue productivo; faltan
+corpus temporal real 44/104, productos restantes, sesión física y gate CPU
+del 50%. Plan sección 48.
+
+## ISA-1403 — Spotter y Radar espacial Overlay Rust (2026-09-28)
+
+R15e parcial incorpora Spotter y Radar con geometría X/Z compartida y
+calidad/ausencia explícitas. El oráculo Go/Rust estático real de 44 coincide
+(SHA-256 JSON `11c209efc4823994df587d06f878497de1543606b88fd98a3f5d26276265834e`).
+La captura carece de rivales cercanos; una prueba sobre copia del lote real
+cubre solapamiento, dirección, cruce de meta frente a vuelta completa y pose
+ausente. Rust release 95/95, Clippy, formato, build release y `go test ./...`
+pasan. Go sigue productivo. Faltan corpus temporal real 44/104, IPC,
+proyecciones restantes, sesión física y gate CPU del 50%. Plan sección 47.
+
+## ISA-1403 — ventana relativa Overlay Rust (2026-09-28)
+
+R15e parcial incluye Relative y RelativeSameClass con vecinos por distancia
+física, máximo 8/8 y clase filtrada antes del límite. El oráculo Go/Rust
+estático real de 44 coincide (SHA-256 JSON
+`99705484494795a817a749bee22ed6e1d58bf82325ffda5db728524846e6392c`).
+Regresiones separadas cubren media vuelta, clase, ausencia de longitud y
+piloto, y gap temporal con signo incoherente. Rust release 94/94, Clippy,
+formato, build release y `go test ./...` pasan. Go sigue productivo. Faltan
+104 y paridad temporal reales, IPC, proyecciones restantes, sesión física y
+gate CPU del 50%. Plan sección 46.
+
+## ISA-1403 — clasificación Overlay Rust de 44 coches (2026-09-28)
+
+R15e parcial proyecta las 44 filas reales con orden estable, posiciones y
+líder por clase, intervalo/gap y calidad compacta por campo. El oráculo
+Go/Rust estático completo de Standings coincide (SHA-256 JSON
+`a4592203d56b7432705d79292e4e727e00cf756f07e3ed71d6a2154341aa130c`).
+Una regresión cubre cruce de meta, vuelta completa y progreso ausente.
+Rust release 92/92, Clippy, formato, build y `go test ./...` pasan. Aún
+faltan Relative, 104 real, paridad temporal, IPC, demás productos y 50% CPU.
+Plan sección 45. Go sigue productivo.
+
+## ISA-1403 — referencias Delta Overlay Rust (2026-09-28)
+
+R15d proyecta las tres referencias independientes y el fallback priorizado,
+autoridad native/derived, calidad, petición efectiva e historial absoluto.
+El oráculo Go/Rust estático de 44 incluyó Delta y después Standings;
+esa muestra no trae referencia usable, por lo que una prueba de contrato
+cubre referencias presentes y ausencia. Rust release 91/91, Clippy, formato,
+build y `go test ./...` pasan. Faltan resto de Overlay, Engineer/Strategy,
+IPC, paridad temporal real 44/104, sesión física y 50% CPU. Plan sección 44.
+
+## ISA-1403 — combustible Overlay Rust y precisión decimal (2026-09-28)
+
+La proyección Fuel Rust usa el consumo canónico por vuelta, prioridad
+depósito/sesión, requiredFuel e historial alineado en litros o galones US.
+El oráculo Go/Rust real estático 44 incluyó Fuel y después Delta.
+`serde_json` existente activa `float_roundtrip`: evita perder un ULP al
+parsear el decimal observado 99.58657327772369; medir su coste en el gate
+CPU final. Rust release 90/90, Clippy, formato, build y `go test ./...`
+pasan. Falta consumo temporal real, secciones restantes, IPC y 50% CPU.
+Plan sección 43. Go sigue productivo.
+
+## ISA-1403 — daño Overlay Rust y oráculo ampliado (2026-09-28)
+
+Rust proyecta daño y desgaste del piloto con calidad independiente, ausencia
+explícita y los ocho dents del contrato. El oráculo Go/Rust real estático de
+44 incluyó Damage y después se amplió con Fuel.
+Go completo, Rust release 88/88, Clippy, formato y build pasan. Faltan fuel,
+delta, standings, espacial, Engineer/Strategy, IPC y gates físicos/CPU.
+Plan sección 42. Go sigue productivo.
+
+## ISA-1403 — clima y controles Overlay Rust con oráculo Go (2026-09-28)
+
+El oráculo estático real de 44 cubrió Session, Player, Weather y
+Controls; después se amplió con Damage en el corte siguiente.
+Rust proyecta clima sin inventar viento/presión y controles con pedales
+por mil, tiempos absolutos y calidad independiente por movimiento. Rust
+release 88/88, Clippy, formato, build y `go test ./...` pasan. R15b/R15c
+siguen parciales: faltan salidas IPC y paridad temporal real 44/104, entre
+otros. Plan sección 41. Go sigue productivo.
+
+## ISA-1403 — oráculo Go de sesión/piloto Overlay (2026-09-28)
+
+La proyección Rust inicial coincide campo a campo con el builder Go sobre
+el fixture LMU 1.3 real estático de 44. El test Go fija el JSON del oráculo,
+ampliado posteriormente con clima y controles; el test Rust compara calidad,
+presencia, cero, valores e ID. `go test ./...`
+pasa; Rust release 87/87, Clippy, formato y build pasan. No cubre secuencia
+temporal SHM+REST, 104, IPC ni sesión física. Plan sección 40.
+
+## ISA-1403 — primeras proyecciones Overlay V2 Rust (2026-09-28)
+
+R15a parcial proyecta sesión y piloto desde el candidato Rust: calidad y
+presencia por campo, fase canónica, bandera sólo positiva, unidades de
+velocidad y ausencia de steering no disponible. Fixture real estática de 44
+y casos invalid/missing probados. Rust debug/release 86/86, Clippy, formato y
+build release pasan. Todavía faltan capabilities, wire JSON/IPC, receptor Go,
+resto de secciones, paridad temporal 44/104, prueba física y 50% CPU. Plan
+sección 39; Go sigue productivo.
+
+## ISA-1403 — motor LMU Rust con candidato integrado (2026-09-28)
+
+R14 reúne admisión SHM, unión conservadora de números de coche REST,
+fusión de sesión/clima/jugador, identidades, hechos y derivaciones en un
+candidato que solo se publica tras commit. El fixture real estático de 44
+demuestra rechazo de build, reintento sin avance, fallback REST del jugador
+sin crear rivales y rechazo de candidato antiguo. Rust debug/release 84/84,
+formato, Clippy y build release pasan. Go sigue como ruta productiva: faltan
+fuente temporal SHM+REST real 44/104, proyecciones/IPC, sesión física y gate
+CPU 50%. Plan sección 38.
+
+## ISA-1403 — delta Rust con oráculo temporal Go (2026-09-28)
+
+R13d prepara/commitea delta nativo y de vuelta en Rust. La traza real LMU 1.4
+de 1.846 muestras coincide muestra a muestra con el tracker Go mediante un
+oráculo fijado y verificado por test Go. Rust debug/release 81/81, formato,
+Clippy, build y `go test ./...` pasan. Plan sección 37: faltan replay temporal
+SHM+REST 44/104, proyecciones/IPC, prueba física y 50% CPU.
+
+## ISA-1403 — consumo de combustible Rust candidato (2026-09-28)
+
+R13e calcula consumo medido por vuelta con media acotada e historial separado;
+se confirma con el lote LMU. Tests Rust release 75/75, formato, Clippy y build
+pasan. Plan sección 36; faltan delta, paridad temporal, proyecciones y gate CPU.
+
+## ISA-1403 — gaps relativos Rust candidatos (2026-09-28)
+
+R13c calcula gaps de tiempo/vueltas neutrales en el candidato LMU y los
+publica con el lote. Casos de cruce de meta Go, calidad independiente y fixture
+44 verificados; Rust debug/release 71/71, Clippy y build pasan. Plan sección
+35; faltan oráculo temporal, proyecciones y CPU causal.
+
+## ISA-1403 — DriverID/TeamID canónicos Rust (2026-09-28)
+
+El lote LMU conserva DriverID usable y TeamID vacío equivalente a Go; el
+coordinador usa ambos para hechos y stint. Rust debug 68/68, formato y Clippy
+pasan. Plan sección 34; paridad temporal y producto siguen pendientes.
+
+## ISA-1403 — stint en lote canónico Rust (2026-09-28)
+
+El pipeline anota el stint del coordinador en cada vehículo antes de preparar
+el reducer. Fixture 44 y cambio de piloto verificados; Rust debug/release
+68/68 y Clippy pasan. Plan sección 33 registra TeamID/DriverID, paridad
+temporal y CPU aún pendientes.
+
+## ISA-1403 — historial de controles Rust candidato (2026-09-28)
+
+R13b ahora genera una ventana owned de hasta 120 muestras del jugador con
+cursor, UTC y calidad separada para movimiento; se confirma junto al lote.
+Rust debug 67/67 y Clippy pasan. La sección 32 del plan registra pruebas y
+límites: aún faltan proyección Overlay, parity temporal, CPU y ruta productiva.
+
+## ISA-1403 — facts de sesión Rust conectados al pipeline (2026-09-28)
+
+R12 ahora prepara/commitea sesión, stint y hechos de vueltas/boxes/piloto,
+conexión y cierre; la secuencia ordenada se retiene hasta 256 hechos por
+stream con resync explícito. El pipeline LMU rechaza overflow y candidatos
+obsoletos antes del commit del reducer y mapper. Rust debug/release 65/65,
+formato, Clippy y build pasan; Go core/engine/LMU de referencia pasan. Plan
+sección 31 detalla límites: faltan paridad temporal real, stint en snapshot,
+ACK/IPC productivo, derivaciones y proyecciones. Go sigue productivo; 50% CPU
+sin acreditar.
+
+## ISA-1403 — estado observado Rust ampliado (2026-09-28)
+
+El batch neutral ahora posee campos de sesión/clima y un vehículo con todos
+los campos observados de Go, incluido el payload rápido del jugador. LMU
+mueve las filas al estado; rivales conservan los campos rápidos ausentes y
+el flag solo afirma amarillo con evidencia positiva. Rust debug/release
+55/55, formato, Clippy y build pasan. Faltan identidades completas,
+paridad temporal de valores, facts, derivaciones restantes, proyecciones e
+IPC productivo; 50% CPU sin acreditar. Plan sección 30. Go sigue productivo.
+
+## ISA-1403 — tiempo restante en candidato LMU (2026-09-28)
+
+El pipeline calcula `session.remaining` desde reloj fusionado y fin SHM,
+pero solo lo publica al aceptar el commit del batch/mapper. Un candidato
+obsoleto no cambia el valor derivado; prueba con fixture SHM real estática
+de 44. Rust release 53/53, formato y Clippy pasan. Faltan ObservedState
+completo, engine, IPC, productos y gates de paridad/CPU. Plan sección 29.
+
+## ISA-1403 — session.remaining Rust aislado (2026-09-28)
+
+R13a inicia con derivación pura de tiempo restante que conserva unidades,
+calidad, ausencia, invalidez y cero del test Go. Rust release 52/52, formato
+y Clippy pasan; test Go específico pasa. La función no está conectada al
+estado canónico ni a productos/IPC; paridad completa y CPU siguen pendientes.
+Plan sección 28.
+
+## ISA-1403 — retención ordenada de facts Rust inicial (2026-09-28)
+
+R12 añade un historial neutral de hasta 256 facts por stream, con secuencia
+independiente y resync explícito cuando se perdió el tramo solicitado. Rechaza
+lotes excesivos, cursores futuros y streams ajenos sin avanzar estado. Rust
+release 50/50, formato y Clippy pasan. Falta generar hechos de sesión,
+identidad/stint, integración con reducer/IPC y paridad Go. Plan sección 27.
+
+## ISA-1403 — núcleo neutral y pipeline LMU candidato (2026-09-28)
+
+R11 separa `core::Batch<T>` y `Reducer<T>` del simulador. El pipeline LMU
+prepara identidad y batch owned, valida los source IDs alineados y publica
+ambos estados solo tras commit aceptado. Una preparación antigua no puede
+sobrescribir una secuencia posterior. Pruebas sobre fixture SHM real estática
+de 44 verifican commit, rechazo/retry y candidato ajeno. Rust release 48/48,
+formato, Clippy y build pasan. Sigue faltando `ObservedState` canónico,
+adquisición continua, productos, IPC y paridad de replay/CPU; Go sigue
+productivo. Plan sección 26.
+
+## ISA-1403 — frontera reducer Rust inicial (2026-09-28)
+
+R11 incorpora reducer puro con validación de cursor, identidad de sesión,
+recuento y IDs antes de candidate/commit. Rechazo no adelanta estado; un
+candidato de otro reducer no puede publicarse. Tests cubren esas fronteras.
+El batch aún contiene el grid LMU parcial, no el `ObservedState` completo ni
+productos/IPC. Go sigue productivo; sección 25 del plan registra el límite.
+Rust release 45/45, formato, Clippy y build pasan.
+
+## ISA-1403 — identidad/cursor Rust iniciales (2026-09-28)
+
+R10 añade tracker de slots con gracia/generation y mapper de identidad que
+prepara estado candidato y solo avanza tras commit. Valida sesión, recuento y
+jugador; diferencia reset de reloj de wrap. Tests cubren ausencia/reapertura,
+retry tras rechazo y fronteras de sesión/epoch con fixture SHM real estática.
+Faltan `core.Batch`, sink/reducer, piloto/team/stint y replay temporal real;
+Go sigue productivo. Plan sección 24 detalla límites.
+Rust release 42/42, formato, Clippy y build pasan.
+
+## ISA-1403 — benchmark diagnóstico SHM estático (2026-09-28)
+
+Se añadió benchmark Rust reproducible del parser con fixture real estática de
+44 coches. Medianas locales: Rust 15 255,1 ns/op; Go existente 32 451 ns/op.
+No se presenta como gate CPU 50%: Rust aún no emite `Observation` completa y
+faltan REST, fusión/core/IPC, productos, CPU/RSS y corpus temporal 44/104.
+El plan sección 23 conserva comandos y límites de la comparación.
+
+## ISA-1403 — clima REST acotado por sesión (2026-09-28)
+
+La fusión Rust conserva lluvia SHM y proyecta temperatura ambiente/pista,
+humedad y amarillo REST con calidad independiente. El floor de sesión elimina
+señales REST anteriores a la frontera, incluso dentro de TTL. La prueba usa
+SHM real estático y REST de prueba; no sustituye replay ni captura live.
+Faltan loop del driver, congelación de reloj, productos y salida canónica.
+Rust release 38/38, formato, Clippy y build pasan.
+
+## ISA-1403 — arbitraje escalar Rust inicial (2026-09-28)
+
+La fusión parcial prioriza fresh/stale/inválido y SHM sobre REST a igual
+calidad, con fuente/fallback/conflicto. Solo clona el valor elegido; el reloj
+de sesión compara tiempos proyectados con 500 ms de tolerancia. Sesión y
+jugador tienen proyecciones iniciales; REST no puede crear un jugador cuando
+SHM está en menú. Pruebas con SHM real estático y REST de prueba pasan.
+Rust release 37/37, formato, Clippy y build pasan.
+Faltan observación canónica completa, clima, filas envejecidas, replay real,
+productos e IPC; Go sigue productivo.
+
+## ISA-1403 — join REST/SHM de número de coche (2026-09-28)
+
+R09 añade unión conservadora de número de coche a una fila SHM existente:
+slot único, etiqueta coincidente, TTL y floor de sesión recibido. No crea
+filas y borra un número anterior cuando deja de cumplir. Un estado aislado
+eleva el floor por cambio fresco de pista/tipo o reset, pendiente de conexión
+al driver. Tres tests usan la fixture SHM real de 44 con REST de prueba; no
+acreditan corpus temporal REST. Faltan arbitraje escalar, replay y salida canónica. Go
+continúa productivo.
+
+## ISA-1403 — poll REST y cache transaccional Rust (2026-09-28)
+
+R09 conecta transporte y decoder en un poll secuencial aislado. Un endpoint
+malformado cambia salud sin reemplazar sus campos; valores anteriores caducan
+por reloj monotónico, y car numbers se descartan según inicio de solicitud.
+La cancelación evita iniciar el segundo endpoint, con hasta 750 ms aún
+posibles para una llamada en curso. Rust release 30/30, formato y Clippy
+pasan. Faltan loop de cadencia/backoff, cancelación inmediata de socket,
+fusión/core/IPC y pruebas con corpus temporal real 44/104. Go sigue productivo.
+
+## ISA-1403 — transporte REST loopback inicial (2026-09-28)
+
+R09 añade cliente HTTP Rust con host/rutas fijos, sin proxy ni redirects,
+deadline total de 750 ms y límite 4 MiB. Tests con servidor local verifican
+la ruta, respuesta válida, 404, redirect, exceso de cuerpo y deadline ante
+servidor bloqueado. Rust release pasa 27/27, formato y Clippy. Se añade `ureq`
+sin TLS ni features por defecto, con elección y licencias registradas en la
+sección 18 del plan bajo Q4=C. Este cliente todavía no tiene loop cancelable,
+cache conectada, fusión ni publicación al host Go; Go sigue productivo.
+
+## ISA-1403 — decodificación REST Rust inicial (2026-09-28)
+
+R09 comienza con un decoder JSON limitado a 4 MiB para `standings` y
+`sessionInfo`, conservando tipos, calidad por campo, números de coche con
+ceros iniciales y exclusión de slots duplicados. Usa `serde_json` bloqueado
+en `Cargo.lock`; la necesidad, alternativa, dependencias y licencias están
+en la sección 17 del plan, conforme a Q4=C. Cinco pruebas Rust nuevas pasan
+(23/23 en release), pero sus cuerpos JSON no son captura live. Se prueba
+caducidad monotónica de campos e identidades, aún sin poller HTTP que la use.
+Faltan adquisición HTTP, fusión y salida canónica; R09 sigue parcial.
+El backend Go continúa productivo, sin gate CPU 50% acreditado.
+
+## ISA-1403 — campos rápidos y espaciales LMU 1.3 en Rust (2026-09-28)
+
+R08 correlaciona por ID la telemetría del jugador con su fila scoring y
+extrae vuelta, marcha, RPM, velocidad, pedales, combustible, delta, desgaste
+de neumáticos y daño. Valida geometría y orientación de cada coche; para el
+jugador prefiere telemetría fresca y retrocede a scoring ante valor inválido.
+Las fixtures estáticas reales de 44 coches y menú y casos adversariales pasan
+en Rust release (18/18), formato y Clippy. R08 sigue parcial: faltan paridad
+automatizada campo por campo, corpus temporal SHM+REST de 44/104, REST/fusión,
+salida canónica e integración en productos. Go continúa productivo exclusivo;
+el umbral CPU 50% no está medido.
+
+## ISA-1403 — filas scoring LMU 1.3 en Rust (2026-09-28)
+
+R08 añadió extracción de filas scoring con calidad de campo: nombres,
+identidad de slot, posición, vueltas, sector, distancia/progreso, tiempos de
+vuelta, box, penalizaciones y gaps. Conserva cero observado frente a
+sentinels ausentes y la normalización Go del tiempo de progreso no fiable.
+La fixture real estática de 44 coches y casos adversariales pasan en Rust
+release (16/16) junto a Clippy. Quedan fast telemetry del jugador, geometría,
+damage, REST y el camino canónico/productos; no se conecta al runtime live.
+
+## ISA-1403 — calidad y sesión Rust, evidencia de build local (2026-09-28)
+
+R07/R08 incorpora tipos de calidad Rust que distinguen ausente de cero,
+`false` e inválido, y el primer conjunto de campos de sesión LMU 1.3: pista,
+longitud, tipo, reloj de origen, fin, vueltas máximas y lluvia. Las fixtures
+reales estáticas de 44 coches y menú sin coches pasan, igual que transitorios
+de escalares y límites de duración. `cargo test --release --locked` 16/16,
+formato y Clippy pasan. No hay aún campos canónicos completos, REST, loop del
+driver ni producto Rust. LMU instalado localmente informa FileVersion y
+ProductVersion `1.4.2.0`; no había proceso activo y esta build no figura en la
+allowlist de layouts. No se ha atribuido una captura a ella. Go permanece
+como único backend productivo; faltan corpus real 44/104 y gate CPU 50%.
+
+## ISA-1403 — lector LMU Rust en mapping privado (2026-09-28)
+
+R08 avanza con un lector Win32 de `LMU_Data` que solicita vista completa
+`324820` bytes de solo lectura y obtiene un snapshot estable tras hasta tres
+comparaciones. La vista y el handle tienen un único owner y se liberan al
+cerrarlo. Tests Rust release sobre mapping privado pasan para lectura estable,
+recuperación de copia incoherente, rechazo de cambios continuos y mapping
+corto. Todavía no se ha conectado al proceso hijo ni se ha abierto el mapping
+real de LMU; no constituye captura o paridad live. El plan registra el detalle
+y las fuentes de las APIs Windows. Rust test release 11/11, Clippy, formato y
+build Windows release pasan. Go productivo y los gates pendientes se mantienen.
+
+## ISA-1403 — primer parser Rust y oráculo Go (2026-09-28)
+
+Rust añadió admisión estructural del layout LMU 1.3 sin acceso live: tamaño,
+build admitida explícitamente, recuento 0–104, string de sesión, IDs scoring y
+telemetry biyectivos, valores de scoring necesarios para admitir una fila y
+jugador único. La fixture real estática de 44 coches pasa; alteraciones de
+tamaño, recuento, ID, string y jugador se rechazan. Un test Go fija el SHA de
+la observación completa del parser actual
+`2c61c6948e4dd1ecea4f4ae93bbc5eee1d40a4ad4bc4260ec88535cf379393c2`
+con reloj fijo, y verifica los mismos casos adversariales. R03/R08 son
+parciales: Rust aún no produce campos canónicos ni consume SHM/REST. No hay
+corpus temporal real 44/104, benchmark de ruta completa ni mejora del 50%
+acreditada. Go continúa como único backend productivo.
+
+La suite Go serial completa sin caché pasó; `cargo test --release --locked`
+8/8, formato, Clippy, build Windows release y el test conjunto Go/Rust del
+pipe pasaron. No se modificó frontend. La limitación de
+`go test -race` por toolchain C descrita abajo sigue vigente. Siguiente corte:
+captura/validación temporal real y expansión de parser/oráculo hasta la salida
+canónica, sin activar el backend antes de los gates.
+
+## ISA-1403 — harness Windows Go/Rust conectado (2026-09-28)
+
+Tras la petición de continuar el port, se implementó un corte R05 en
+`internal/app/telemetryprocess/` y `rust/telemetry/`. Go crea un named pipe
+restringido al SID de la sesión, rechaza remotos y segunda instancia, compara
+el PID real del cliente y usa un Job Object para poseer al hijo. Lanza el
+ejecutable suspendido, lo asigna al job y solo entonces lo reanuda, con entorno
+vacío. Rust tiene un modo de harness que hace Handshake con nonce/versión y
+espera Stop; no accede a LMU ni publica telemetría. La prueba conjunta con
+el binario Rust release pasó y verificó salida 0 mediante la sesión de harness
+Go. Tests Windows probaron deadline de conexión, PID equivocado, DACL efectiva,
+fallo de asignación, versión errónea y cierre del hijo sin proceso residual.
+La suite Go completa sin caché pasó con el binario Rust del test; Rust release,
+Clippy y formato también pasaron. Una repetición 20x detectó una carrera del
+propio test al leer el archivo marcador antes de terminar su escritura; se
+corrigió y la repetición 20x pasó. `go test -race` no llegó a compilar por
+toolchain C local: `gcc` no acepta `-Qunused-arguments` y `clang` no encuentra
+las cabeceras Windows/C de MinGW. No se presenta race como PASS.
+
+R04/R05 siguen parciales: sin integración Wails, payloads de producto,
+cola/facts, deadlines de lecturas/escrituras, reinicios ni límites por tipo.
+Los corpus SHM+REST temporales 44/104 y el gate CPU siguen pendientes. LMU
+está instalado localmente pero no había sesión activa; la superficie de
+computer use disponible no expuso apps nativas y el harness actual aún no
+permite validar una sesión LMU. Mantener Go productivo exclusivo.
+
+## ISA-1403 — framing Go/Rust conforme en harness (2026-09-27)
+
+Se añadió `internal/app/telemetryprocess/framing.go` como receptor wire Go
+versionado y acotado; sus tests y Rust comparan los mismos bytes fijos de los
+nueve tipos. Ambos lados rechazan versiones/tipos desconocidos, longitud mayor
+de 8 MiB, truncado y framing de buffer con bytes sobrantes. Go soporta
+lecturas/escrituras parciales y prueba el borde exacto. El paquete aún no
+lanza un proceso ni abre named pipes; Go sigue siendo el único runtime live.
+
+Verificación del corte: `go test -p 1 -count=1 ./...` PASS sin caché,
+`cargo test --locked --release` 5/5 PASS, `cargo fmt --all -- --check` PASS,
+`cargo clippy --locked --all-targets -- -D warnings` PASS y `git diff --check`
+PASS. No se repitió frontend porque no se modificó. R04 sigue parcial hasta
+los límites de lifecycle/payload y R02 sigue sin corpus temporal real de
+44/104. Sin LMU activo, paridad de producto, validación física o gate del 50%.
+La discrepancia del roadmap continúa bloqueando el PR según la instrucción
+explícita del chat. No se promocionó ni publicó nada.
+
+## ISA-1403 — auditoría completa de pruebas disponibles (2026-09-27)
+
+La rama aislada permaneció en `76c561adeef3a9ffc1a220d6734acbf17a4b8b26`.
+Se preparó el frontend con `pnpm --dir frontend install --frozen-lockfile`
+y su build pasó. `go test ./...` falló una vez en
+`TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` con
+`recording commit exceeded budget` bajo carga paralela; el test focal pasó
+3/3 y `go test -p 1 -count=1 ./...` pasó sin caché. El fallo inicial no se
+oculta ni se interpreta como una regresión Rust: SQLite recording está fuera
+del port y no fue modificado.
+
+`pnpm --dir frontend test`: 485 archivos/4109 tests unitarios PASS, 2 omitidos,
+más 4/4 del presupuesto Overlay. Uno de los omitidos, condicionado a
+`Australia/Lord_Howe`, pasó en una corrida focal con `TZ` correspondiente
+(15/15 en el archivo). El otro exige `CALENDAR_REAL_AUDIT_PATH` con 4596
+ocurrencias reales de Go; ese artefacto opt-in no existe en este worktree y no
+se inventó. Build, typecheck y lint frontend pasaron. Los cinco PNG generados
+por el test visual se restauraron al estado limpio anterior; no forman parte
+del port.
+
+`cargo test --locked --release` pasó 5/5; `cargo fmt --check` y
+`cargo clippy --locked --all-targets -- -D warnings` pasaron. Estos tests
+solo prueban el framing del esqueleto: no hay pipeline Rust productivo.
+No había proceso LMU activo ni corpus temporal SHM+REST real de 44/104 en
+el árbol inspeccionado. Por tanto siguen sin ejecutar paridad integral,
+sesión física LMU/Wails/OBS y gates CPU/p99/RSS. El port no está al 100%.
+La discrepancia del roadmap sigue pendiente antes del PR; sin PR/CI de PR,
+merge, promoción o release.
+
+## ISA-1403 — inicio de ejecución R01/R04 (2026-09-27)
+
+Isaac autorizó iniciar el port. En el worktree aislado
+`vantareapp/isa-1403-rust-telemetry`, base `origin/nightly@355e9cfee`, se añadió
+[inventario inicial](../../telemetry-core/rust-port-inventory.md) del recorrido
+live y un esqueleto Rust bajo `rust/telemetry/`, con
+[framing IPC v1](../../telemetry-core/rust-ipc-v1.md). El ejecutable es inerte:
+solo informa su versión y sale con error si se intenta iniciar el runtime.
+Go continúa como única ruta productiva; no hay acceso Rust a LMU, named pipe,
+supervisor ni selección candidata.
+
+`cargo test --locked`: 5 pruebas PASS de framing, versiones, límite de 8 MiB y
+lectura/escritura parcial. El primer intento de formato falló porque faltaba
+`rustfmt` para la toolchain fijada; se instaló ese componente y `cargo fmt`
+pasó. También pasó Clippy con warnings como error tras instalar su componente,
+y `cargo run --locked -- --version` mostró `0.1.0`. No se han medido CPU/p99/RSS
+ni ejecutado LMU/Wails/OBS. R01 sigue
+parcial hasta resolver el destino de roadmap antes del PR; R04 sigue parcial
+hasta fijar límites numéricos restantes y conformidad Go. R02/104 temporal real
+continúa sin acreditarse. No se añadió ninguna crate externa.
+
+El corte inicial quedó en `3d410fc7150f6876e8aa6f5064b02a68d52f2fa0`, publicado
+en `origin/vantareapp/isa-1403-rust-telemetry` con árbol limpio. La issue #1403
+enlaza ese SHA. Sin PR ni CI de PR; ningún merge, promoción o release.
+
+Siguiente corte: contrastar el inventario con consumidores/tests y acreditar
+corpus real temporal 44/104; completar límites de IPC y supervisor Windows
+antes de conectar el hijo. Mantener la issue #1403 sincronizada y no publicar
+una mejora de rendimiento sin el banco G0/G1/R.
+
+## ISA-1403 — diseño Rust confirmado y plan documental (2026-09-27)
+
+Isaac confirmó migrar el camino live completo a un proceso hijo Rust Windows
+amd64 y pidió a Astra max convertir el diseño en plan. La
+[issue #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403)
+coordina este trabajo por instrucción explícita del chat. Se preparan el
+[plan R01–R28](../../superpowers/plans/2026-09-27-rust-telemetry-port.md) y la
+[ADR 0097](../../adr/0097-rust-telemetry-child-process.md), con revisión documental
+del orquestador completada. No se ha iniciado el port.
+
+Rust será único owner de LMU SHM/REST, fusión, estado, derivaciones y proyecciones.
+Go conserva Wails, servicios de producto y entrega. Replay Rust solo como harness
+de paridad; Analysis histórico y SQLite recording no conectado quedan fuera.
+No portar SimX; conservar neutralidad del Core con un pequeño driver solo de
+pruebas Rust. Named pipes locales restringidos y versionados, elección JSON vs
+binario medida, snapshots latest-wins, facts ordenados/resync, reinicios acotados
+y Go como rollback exclusivo temporal.
+
+Correcciones de la primera revisión incorporadas: Q4=C ya autoriza crates sin
+límite numérico cuando faciliten el port, sin pedir aprobación individual.
+Documentar necesidad, alternativa, licencia, seguridad, tamaño y versión; una
+dependencia que amplíe el alcance conserva su gate de alcance. Rxx y subcortes
+son el mapa técnico: cada issue ejecutable puede agrupar cortes coherentes con
+diff revisable, archivos previstos, tests y evidencia. Se elimina el límite
+rígido de archivos y la obligación de una issue por cada paso.
+
+Gate pendiente: capturas temporales LMU reales sanitizadas de 44 y 104 coches,
+Go actual/control Go equivalente/Rust+IPC+recepción Go, al menos 50% menos CPU
+en cada escenario frente al control equivalente, p99 no peor y RSS agregado
+≤110%. El fixture estático de 44 tiene SHA `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`;
+no acredita una secuencia completa. La captura real de 104 sigue sin acreditarse;
+`BenchmarkEngineApply104` construye datos y no la sustituye. La sesión física
+LMU/Wails/OBS validará funcionalidad y permanece pendiente.
+
+Base/HEAD inicial `355e9cfee2fec3c27341fa96ec4e6a9297fab730`, rama
+`vantareapp/isa-1403-rust-telemetry`, worktree aislado
+`C:/Users/isaac/.codex/worktrees/isa-1403-rust-telemetry/Vantare-Overlays`, limpio
+al comenzar. Entrega documental: plan, ADR y esta entrada. No hay código, build,
+tests ni workflows modificados; no se han ejecutado tests de producto ni banco
+de CPU porque todavía no existe candidato. Sin commit/push/PR/CI nuevo,
+integración, promoción o release.
+
+Discrepancia trazada: las instrucciones de Isaac en el chat fijan GitHub y
+`docs/roadmap/plan.md`; esta base contiene AGENTS Notion y roadmap Supabase.
+`plan.md`, `roadmap.json` y el generador histórico no existen tras #1380
+(`1e4c26d5`). No se reconstruye el roadmap ni se publica Supabase: el roadmap
+público no está actualizado por este trabajo. R01 reconcilia el destino
+documental antes del PR de implementación. La nota Notion inferior es contexto
+del expediente; para ISA-1403 prevalece la instrucción explícita de esta sesión.
+
+Checks documentales: diff sin errores de whitespace, 51 enlaces locales y
+fences/codificación comprobados. #1403 continúa abierta y refleja las correcciones
+de la revisión documental completada por el orquestador. Su enlace
+de rama al plan está marcado como previsto hasta disponer de commit/push.
+
+Siguiente acción: agrupar R01–R03 en entregas coherentes y acreditar el corpus.
+El diseño confirmado
+no demuestra el gate ni autoriza una promoción a Nightly.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

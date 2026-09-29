@@ -68,6 +68,13 @@ $runtimePath = if ($RuntimeDirectory) {
     [System.IO.Path]::GetFullPath((Join-Path (Join-Path $RepoRoot $BinDir) 'runtime\telemetry\duckdb-v1'))
 }
 & (Join-Path $RepoRoot 'build\windows\telemetry-reader\verify-runtime.ps1') -RuntimeDirectory $runtimePath -RepoRoot $RepoRoot | Out-Null
+$rustRuntimePath = Join-Path (Join-Path $RepoRoot $BinDir) 'runtime\telemetry\rust-live-v1'
+$rustHelper = Join-Path $rustRuntimePath 'vantare-telemetry.exe'
+if (-not (Test-Path -LiteralPath $rustHelper)) { throw "Rust telemetry helper missing: $rustHelper" }
+$rustVersion = (& $rustHelper --version)
+if ($LASTEXITCODE -ne 0 -or $rustVersion -ne 'vantare-telemetry 0.1.0') {
+    throw "Rust telemetry helper version mismatch: $rustVersion"
+}
 
 # Generate the WebView2 bootstrapper only after every packaged input passed validation.
 Write-Step "generating webview2bootstrapper"
@@ -81,6 +88,7 @@ $requestLevel = if ($InstallScope -eq 'user') { 'user' } else { 'admin' }
 $makensisArgs = @(
     "-D${defineName}=`"$exePath`""
     "-DVANTARE_TELEMETRY_RUNTIME=`"$runtimePath`""
+    "-DVANTARE_RUST_TELEMETRY_RUNTIME=`"$rustRuntimePath`""
     "-DWAILS_INSTALL_SCOPE=$InstallScope"
     "-DREQUEST_EXECUTION_LEVEL=$requestLevel"
     "project.nsi"

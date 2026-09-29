@@ -20,7 +20,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 )
 
-// Reversible E9 adapter. ACK, replay and state still belong to OverlayPullTransport.
+// One authenticated socket per live Wails window. Pull state belongs to the
+// selected telemetry runtime.
 // One authenticated socket per live Wails window; nothing is exposed on the LAN.
 type overlaySocket struct {
 	mu      sync.Mutex
@@ -83,7 +84,7 @@ func overlaySectionVersion() uint8 {
 	return 0
 }
 
-func (local *overlaySocket) serve(w http.ResponseWriter, r *http.Request, transport *telemetrytransport.OverlayPullTransport) {
+func (local *overlaySocket) serve(w http.ResponseWriter, r *http.Request, transport overlayPullTransport) {
 	// Exact origin AND host checks precede the WebSocket upgrade. The ephemeral
 	// credential travels as a subprotocol, never in URLs, logs or persisted data.
 	if r.Method != http.MethodGet || r.URL.Path != "/" || r.URL.RawQuery != "" || r.Header.Get("Origin") != "http://wails.localhost" || "ws://"+r.Host != local.url {

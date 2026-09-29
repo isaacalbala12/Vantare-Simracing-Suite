@@ -1,4 +1,5 @@
 import {createOverlaySectionDecoder, OverlayFrameV2ContractError, parseOverlayPullJSON} from "./overlay-frame-v2-store";
+import {OverlayTransportUnavailableError} from "./overlay-transport-error";
 
 /** E9: socket envelope only. The existing pull client still owns ACK and cadence. */
 export function createSocketPullPost(): (route: string, data: unknown) => Promise<unknown> {
@@ -25,7 +26,7 @@ export function createSocketPullPost(): (route: string, data: unknown) => Promis
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify(data), cache: "no-store", signal: call.controller.signal,
     });
-    if (!response.ok) throw new Error("overlay socket bootstrap rejected");
+    if (!response.ok) throw new OverlayTransportUnavailableError("overlay socket endpoint unavailable");
     const endpoint: unknown = await response.json();
     if (pending !== call) throw new Error("overlay socket stopped");
     if (endpoint === null || typeof endpoint !== "object" ||
@@ -54,7 +55,7 @@ export function createSocketPullPost(): (route: string, data: unknown) => Promis
     const disconnected = () => {
       if (socket !== opened) return;
       const current = pending;
-      if (current) fail(current, new Error("overlay socket disconnected"));
+      if (current) fail(current, new OverlayTransportUnavailableError("overlay socket disconnected"));
       else { socket = null; opened.close(); }
     };
     opened.addEventListener("error", disconnected);
@@ -88,7 +89,7 @@ export function createSocketPullPost(): (route: string, data: unknown) => Promis
     return new Promise((resolve, reject) => {
       const call: Pending = {
         request: data, resolve, reject, controller: new AbortController(),
-        timer: setTimeout(() => fail(call, new Error("overlay socket timeout")), 5_000),
+        timer: setTimeout(() => fail(call, new OverlayTransportUnavailableError("overlay socket timeout")), 5_000),
       };
       pending = call;
       void connect(call, data).then(opened => {

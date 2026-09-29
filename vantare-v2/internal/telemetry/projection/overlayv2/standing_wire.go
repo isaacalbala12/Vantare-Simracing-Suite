@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // encoding/json invokes these methods through its standard interfaces.
@@ -53,24 +54,27 @@ func (row *StandingRowV2) UnmarshalJSON(data []byte) error {
 		BestLap json.RawMessage `json:"bestLap"`
 		LastLap json.RawMessage `json:"lastLap"`
 	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	for legacy, compact := range map[string]string{"quality": "q", "classGap": "cg", "classGapLaps": "cl", "classRef": "cr", "interval": "i", "intervalLaps": "il"} {
-		if value, ok := fields[legacy]; ok {
-			if _, duplicate := fields[compact]; duplicate {
-				return fmt.Errorf("duplicate standing field %s", legacy)
-			}
-			fields[compact] = value
-			delete(fields, legacy)
+	if standingNeedsLegacyNormalization(data) {
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return err
 		}
+		for legacy, compact := range map[string]string{"quality": "q", "classGap": "cg", "classGapLaps": "cl", "classRef": "cr", "interval": "i", "intervalLaps": "il"} {
+			if value, ok := fields[legacy]; ok {
+				if _, duplicate := fields[compact]; duplicate {
+					return fmt.Errorf("duplicate standing field %s", legacy)
+				}
+				fields[compact] = value
+				delete(fields, legacy)
+			}
+		}
+		normalized, err := json.Marshal(fields)
+		if err != nil {
+			return err
+		}
+		data = normalized
 	}
-	normalized, err := json.Marshal(fields)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(normalized, &decoded); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
 	result := StandingRowV2(decoded.standingRowJSON)
@@ -93,6 +97,51 @@ func (row *StandingRowV2) UnmarshalJSON(data []byte) error {
 	result.Quality.Gap, result.Quality.BestLap, result.Quality.LastLap = "", "", ""
 	*row = result
 	return nil
+}
+
+func standingNeedsLegacyNormalization(data []byte) bool {
+	// Only top-level aliases belong to StandingRowV2. Quality's nested object
+	// legitimately contains keys such as classGap and interval on compact wire.
+	depth := 0
+	for i := 0; i < len(data); i++ {
+		switch data[i] {
+		case '{', '[':
+			depth++
+		case '}', ']':
+			depth--
+		case '"':
+			start := i + 1
+			escaped := false
+			for i++; i < len(data); i++ {
+				if data[i] == '\\' {
+					escaped = true
+					i++
+					continue
+				}
+				if data[i] == '"' {
+					break
+				}
+			}
+			if depth != 1 || i >= len(data) {
+				continue
+			}
+			j := i + 1
+			for j < len(data) && (data[j] == ' ' || data[j] == '\n' || data[j] == '\r' || data[j] == '\t') {
+				j++
+			}
+			if j >= len(data) || data[j] != ':' {
+				continue
+			}
+			if escaped {
+				return true // JSON must decode an escaped property name before alias detection.
+			}
+			switch string(data[start:i]) {
+			case "quality", "classGap", "classGapLaps", "classRef", "interval", "intervalLaps":
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func decodeStandingTiming(raw json.RawMessage, override, base Quality) (QValue[float64], error) {
@@ -127,9 +176,11 @@ func decodeStandingTiming(raw json.RawMessage, override, base Quality) (QValue[f
 	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
 		return value, fmt.Errorf("missing numeric timing")
 	}
-	if err := json.Unmarshal(raw, &value.V); err != nil {
+	parsed, err := strconv.ParseFloat(string(raw), 64)
+	if err != nil {
 		return value, err
 	}
+	value.V = parsed
 	value.Q = quality
 	if quality == QualityMissing && value.V != 0 {
 		return value, fmt.Errorf("missing timing has a value")
@@ -196,13 +247,37 @@ func (quality *StandingQualityV2) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var value StandingQualityV2
-	targets := map[string]*Quality{"q": &value.Q, "gap": &value.Gap, "bestLap": &value.BestLap, "lastLap": &value.LastLap, "position": &value.Position, "classPosition": &value.ClassPosition, "pit": &value.Pit, "laps": &value.Laps, "gapLaps": &value.GapLaps, "classGap": &value.ClassGap, "classGapLaps": &value.ClassGapLaps, "interval": &value.Interval, "intervalLaps": &value.IntervalLaps}
 	for key, raw := range fields {
-		if alias := map[string]string{"g": "gap", "b": "bestLap", "l": "lastLap"}[key]; alias != "" {
-			key = alias
+		var target *Quality
+		switch key {
+		case "q":
+			target = &value.Q
+		case "g", "gap":
+			target = &value.Gap
+		case "b", "bestLap":
+			target = &value.BestLap
+		case "l", "lastLap":
+			target = &value.LastLap
+		case "position":
+			target = &value.Position
+		case "classPosition":
+			target = &value.ClassPosition
+		case "pit":
+			target = &value.Pit
+		case "laps":
+			target = &value.Laps
+		case "gapLaps":
+			target = &value.GapLaps
+		case "classGap":
+			target = &value.ClassGap
+		case "classGapLaps":
+			target = &value.ClassGapLaps
+		case "interval":
+			target = &value.Interval
+		case "intervalLaps":
+			target = &value.IntervalLaps
 		}
-		target, ok := targets[key]
-		if !ok || *target != "" {
+		if target == nil || *target != "" {
 			return fmt.Errorf("unknown or duplicate standing quality %s", key)
 		}
 		switch raw {

@@ -84,8 +84,14 @@ fase termina con algo que funciona y se puede medir.
   escena) sobre el renderer productivo.
 
 **Medición.**
-1. Caracterizar la referencia: producto Wails actual con los mismos widgets y
-   el mismo replay, y el ruido A/A.
+1. Referencia del producto Wails: la línea base ya medida en
+   `docs/analysis/huella-minima-baseline-2026-08-29.md` (protocolo
+   `huella-minima-protocolo.md`, banco `scripts/bench/huella.ps1`): con overlay
+   activo, 555 MiB privados y ≈1,14 núcleos. Su frame time quedó no
+   concluyente, así que el frame time del juego se mide con el protocolo
+   mejorado (A0/A1 intercalados en la misma escena). Como aquel perfil usaba el
+   diseño Endurance, se repite el mismo banco con el perfil equivalente en
+   Eficiencia antes de fijar presupuestos. Ruido A/A de cada brazo.
 2. Fijar presupuestos relativos y absolutos antes de comparar.
 3. Campaña intercalada B (por defecto) frente a A (overlays dentro del núcleo)
    con 1, 4 y 22 ventanas: CPU total atribuible (núcleo, overlays, driver,
@@ -108,8 +114,8 @@ semántica de Overlay V2 (revisión única y creciente).
 
 **Pruebas de frontera antes de multiplicar consumidores:**
 - Un evento persistido y recuperado, y un bloque temporal reproducible.
-- Un corte vertical de un **segundo adaptador real**. Si no hay capturas de un
-  segundo simulador, un suplente de otra fuente real sirve como validación
+- Un corte vertical de un **segundo adaptador real: Assetto Corsa** (shared
+  memory), con capturas reales. Si no es posible, un suplente de otra fuente real sirve como validación
   **parcial**: debe aportar semánticas distintas (identidad, tiempo, unidades,
   capacidades ausentes o estructura de sesión); convertir una captura LMU a
   otro formato no vale, y un fichero histórico no demuestra ciclo de vida ni
@@ -122,12 +128,15 @@ simulador.
 
 ## Fase 2 — Todos los widgets
 
-**Puerta previa.** Dos widgets × dos sistemas de diseño sobre el kit común,
-para medir el coste incremental real de cada diseño. Con esa evidencia Isaac
-decide si se conservan, simplifican o retiran sistemas de diseño; hasta
-entonces los cinco siguen en alcance.
+**Alcance visual.** Solo el sistema de diseño **Eficiencia**
+(`vantare-functional`). Crystal, Endurance, iRacing y Original no se portan;
+siguen en el producto Wails hasta el corte. Desde el inicio de esta fase el
+producto Wails queda congelado en funcionalidades (solo correcciones); las
+correcciones semánticas se trazan para incorporarlas también al nativo.
 
-**Incluye.** Los 22 tipos de widget y los sistemas de diseño decididos,
+**Puerta previa.** Dos widgets sobre el kit común antes del porte masivo.
+
+**Incluye.** Los 22 tipos de widget en Eficiencia,
 portados por familia en paralelo (Sonnet, un worktree por familia) sobre el
 kit común (tipografía, filas, cabeceras, animaciones, sombras). ViewModels,
 formato, estado y primitivas compartidos; composiciones distintas solo cuando
@@ -171,7 +180,7 @@ licencias, calendario, notificaciones y planes de Strategy.
 comprobación; el Hub se cierra por completo y libera su memoria al entrar al
 juego.
 
-## Fase 6 — Segundo simulador completo
+## Fase 6 — Segundo simulador completo: Assetto Corsa
 
 **Aceptación.** Ningún cambio en núcleo, proyecciones ni widgets salvo
 extensiones del modelo común justificadas; si hace falta un `if simulador`
@@ -213,12 +222,10 @@ actualización de configuración, facts sin garantía, proyecciones acopladas a
 LMU, tests que pasan sin corpus) se tratan como requisitos de diseño de la
 arquitectura nueva, no como parches sobre la anterior.
 
-## Preguntas para Isaac
+## Decisiones de Isaac (2026-09-29)
 
-1. **Congelar funcionalidades del producto Wails** al empezar el porte masivo
-   de widgets (fase 2), dejando solo correcciones. Las correcciones semánticas
-   se trazan para incorporarlas también al producto nativo.
-2. **Segundo simulador** de las fases 1 y 6 y si hay capturas reales
-   disponibles.
-3. **Sistemas de diseño:** decisión tras la puerta 2×2 de la fase 2.
-4. Si la salida remota para análisis live entra antes del corte o después.
+1. El producto Wails se congela en funcionalidades al empezar la fase 2.
+2. Segundo simulador: **Assetto Corsa**, si es posible.
+3. Solo se porta el sistema de diseño **Eficiencia**.
+4. La salida remota para análisis live queda **fuera de este plan**, mucho
+   después del corte.

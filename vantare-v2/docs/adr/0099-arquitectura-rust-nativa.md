@@ -59,7 +59,9 @@ ADR hasta que Isaac la acepte y autorice la fase correspondiente.
    original; sectores sin límite conceptual de tres; clases y multiclase de
    primer nivel.
 5. **Proyecciones por familia de widget** según necesidad semántica y
-   cadencia. Los cinco sistemas de diseño consumen los mismos ViewModels.
+   cadencia. La app nativa porta un único sistema de diseño, **Eficiencia**
+   (`vantare-functional`); los demás (Crystal, Endurance, iRacing, Original)
+   no se portan. Un diseño futuro consumiría los mismos ViewModels.
 6. **Presentación compartida:** unidades, redondeo, idioma y formato son
    preferencias del usuario que entran como parámetros a un formateador puro,
    nunca se resuelven dentro de un widget.
@@ -110,7 +112,8 @@ Topología por defecto (**B**):
 - **Proceso Hub** (Hub, Overlay Studio, Workshop): se cierra por completo al
   entrar al juego.
 - **Bajo demanda**: Engineer/voz, almacenamiento y grabación, análisis, render
-  3D y una salida remota opcional autenticada y cifrada.
+  3D. Una salida remota (autenticada y cifrada) para análisis live queda para
+  mucho después del corte; la arquitectura solo no la impide.
 - **Temporal**: actualizador.
 
 La alternativa **A** (overlays dentro del núcleo) se mide una vez en una
@@ -169,7 +172,8 @@ Overlay V2 se documenta y se prueba; no se hereda en silencio.
 | Grabación y almacén (DuckDB con un único propietario) | Worker de almacenamiento |
 | Análisis live e histórico, solver Strategy pesado | Worker bajo demanda, fuera de la escritura crítica |
 | Testing Center | Trabajos fuera del núcleo |
-| Render 3D, salida remota | Extensiones opcionales, fuera de la sustitución |
+| Render 3D | Extensión opcional, fuera de la sustitución |
+| Salida remota para análisis live | Fuera de este plan; mucho después del corte |
 | Actualizador/instalador | Proceso temporal, fuera de carrera, con rollback compatible con datos persistidos |
 
 ### 8. Reutilización de ISA-1403

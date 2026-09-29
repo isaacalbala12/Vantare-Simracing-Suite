@@ -1,0 +1,314 @@
+//! Mensajes del cable y su marco: longitud `u32` little-endian + JSON. El
+//! límite se comprueba antes de reservar memoria, de modo que un par no puede
+//! hacernos reservar lo que quiera.
+
+use std::io::{Read, Write};
+
+use serde::{Deserialize, Serialize};
+use vantare_domain::Snapshot;
+
+use crate::Error;
+use crate::dto::{self, SnapshotDto};
+
+pub(crate) const MAX_MESSAGE: usize = 1 << 20;
+/// Versiones de DTO que este extremo sabe hablar.
+const MIN_VERSION: u32 = 1;
+const MAX_VERSION: u32 = dto::VERSION;
+
+/// Posición de una foto en la línea de tiempo de un productor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Revision {
+    pub epoch: u64,
+    pub sequence: u64,
+}
+
+impl Revision {
+    pub fn of(snapshot: &Snapshot) -> Self {
+        Self {
+            epoch: snapshot.epoch,
+            sequence: snapshot.sequence,
+        }
+    }
+
+    /// Orden estricto del productor: la época no retrocede y, dentro de ella,
+    /// la secuencia crece.
+    pub fn follows(self, last: Self) -> bool {
+        (self.epoch, self.sequence) > (last.epoch, last.sequence)
+    }
+
+    /// ¿Aporta algo a quien ya tiene `cursor`? Solo se compara dentro de una
+    /// época; otra época es otro productor (reinicio) y siempre aporta.
+    pub fn is_newer(self, cursor: Option<Self>) -> bool {
+        cursor.is_none_or(|c| c.epoch != self.epoch || self.sequence > c.sequence)
+    }
+}
+
+// La foto pesa más que el resto, pero el mensaje vive solo lo que tarda en (de)serializarse.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Message {
+    /// Suscriptor → productor. El esquema del saludo no cambia entre versiones.
+    Hello {
+        min_version: u32,
+        max_version: u32,
+        cursor: Option<Revision>,
+    },
+    /// Productor → suscriptor: versión elegida.
+    Welcome {
+        version: u32,
+    },
+    Reject {
+        reason: String,
+    },
+    /// Latido del productor para detectar pares muertos y silencios.
+    Ping,
+    Snapshot(SnapshotDto),
+}
+
+/// Mayor versión común, si la hay.
+pub(crate) fn negotiate(min: u32, max: u32) -> Option<u32> {
+    let version = max.min(MAX_VERSION);
+    (version >= min.max(MIN_VERSION)).then_some(version)
+}
+
+pub(crate) fn hello(cursor: Option<Revision>) -> Message {
+    Message::Hello {
+        min_version: MIN_VERSION,
+        max_version: MAX_VERSION,
+        cursor,
+    }
+}
+
+pub(crate) fn supports(version: u32) -> bool {
+    (MIN_VERSION..=MAX_VERSION).contains(&version)
+}
+
+pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {
+    let mut frame = vec![0; 4];
+    serde_json::to_writer(&mut frame, message)?;
+    let len = frame.len() - 4;
+    let header = match u32::try_from(len) {
+        Ok(header) if len <= MAX_MESSAGE => header,
+        _ => return Err(Error::TooLarge { len }),
+    };
+    frame[..4].copy_from_slice(&header.to_le_bytes());
+    w.write_all(&frame)?; // un solo write: un solo `WriteFile` en el pipe
+    Ok(())
+}
+
+pub(crate) fn read_message(r: &mut impl Read) -> Result<Message, Error> {
+    let mut header = [0; 4];
+    r.read_exact(&mut header)?;
+    let len = u32::from_le_bytes(header) as usize;
+    if len > MAX_MESSAGE {
+        return Err(Error::TooLarge { len });
+    }
+    let mut body = vec![0; len];
+    r.read_exact(&mut body)?;
+    Ok(serde_json::from_slice(&body)?)
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use std::io::Cursor;
+    use std::time::Duration;
+
+    use vantare_domain::{
+        Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
+        FlagScope, Gap, Origin, Player, Pose, Quality, Session, SessionId, SessionKind,
+        SessionState, Source, SourceKind, State, Telemetry,
+    };
+
+    use super::*;
+
+    /// Foto que ejercita todas las variantes del modelo.
+    pub(crate) fn rich_snapshot(epoch: u64, sequence: u64) -> Snapshot {
+        let car = |id: u32| Car {
+            id: CarId(id),
+            number: format!("{id}"),
+            driver: Driver {
+                id: DriverId(id + 100),
+                name: "Ñandú \"Rápido\"".into(),
+            },
+            class: (id.is_multiple_of(2)).then(|| Class {
+                id: ClassId(1),
+                name: "Hyper".into(),
+            }),
+            position: Quality::Reliable(id),
+            class_position: Quality::Estimated(id),
+            laps: Quality::Stale(3),
+            last_lap_s: Quality::Reliable(92.123_456_789),
+            best_lap_s: Quality::Unavailable,
+            last_sectors_s: vec![Quality::Reliable(30.5), Quality::Unavailable],
+            gap_leader: Quality::Estimated(Gap::Time { seconds: 1.25 }),
+            gap_ahead: Quality::Reliable(Gap::Laps { count: 2 }),
+            in_pits: Quality::Reliable(true),
+            pose: Quality::Reliable(Pose {
+                x_m: -1.5,
+                y_m: 1e-9,
+                yaw_rad: 3.25,
+            }),
+        };
+        Snapshot {
+            epoch,
+            sequence,
+            origin: Origin {
+                source: Source {
+                    simulator: "lmu",
+                    kind: SourceKind::Replay,
+                },
+                source_time: Some(Duration::new(12, 345)),
+                received_at: Duration::from_millis(1500),
+            },
+            state: State {
+                capabilities: Capabilities {
+                    session_clock: Capability::Fresh,
+                    positions: Capability::WithData,
+                    gaps: Capability::Supported,
+                    ..Capabilities::default()
+                },
+                session: Session {
+                    id: SessionId(u64::MAX),
+                    kind: Quality::Reliable(SessionKind::Other("drift".into())),
+                    state: Quality::Estimated(SessionState::Interrupted),
+                    elapsed_s: Quality::Reliable(10.5),
+                    remaining_s: Quality::Stale(20.0),
+                    track_name: Quality::Reliable("Le Mans".into()),
+                    laps_remaining: Quality::Unavailable,
+                },
+                flags: Quality::Reliable(vec![
+                    Flag {
+                        kind: FlagKind::Other("ámbar".into()),
+                        scope: FlagScope::Sector(2),
+                    },
+                    Flag {
+                        kind: FlagKind::Yellow,
+                        scope: FlagScope::Car(CarId(7)),
+                    },
+                ]),
+                cars: vec![car(1), car(2)],
+                player: Some(Player {
+                    car: CarId(2),
+                    telemetry: Telemetry {
+                        throttle: Quality::Reliable(0.75),
+                        gear: Quality::Reliable(-1),
+                        ..Telemetry::default()
+                    },
+                }),
+            },
+        }
+    }
+
+    fn frame(message: &Message) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        write_message(&mut bytes, message).unwrap();
+        bytes
+    }
+
+    fn round_trip(original: &Snapshot) -> Snapshot {
+        let bytes = frame(&Message::Snapshot(SnapshotDto::from(original)));
+        let Message::Snapshot(dto) = read_message(&mut Cursor::new(bytes)).unwrap() else {
+            panic!("no es una foto");
+        };
+        Snapshot::try_from(dto).unwrap()
+    }
+
+    #[test]
+    fn snapshot_round_trips_through_the_wire() {
+        let original = rich_snapshot(3, 42);
+        assert_eq!(round_trip(&original), original);
+        assert_eq!(round_trip(&Snapshot::default()), Snapshot::default());
+    }
+
+    #[test]
+    fn a_simulator_name_outside_the_table_decodes_as_unknown() {
+        let mut json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
+        assert_eq!(json["origin"]["simulator"], "lmu");
+        json["origin"]["simulator"] = "no-existe-".repeat(1000).into();
+        let dto: SnapshotDto = serde_json::from_value(json).unwrap();
+        let snapshot = Snapshot::try_from(dto).unwrap();
+        assert_eq!(
+            snapshot.origin.source.simulator,
+            vantare_domain::UNKNOWN_SIMULATOR
+        );
+    }
+
+    #[test]
+    fn incompatible_dto_version_is_refused() {
+        let mut dto = SnapshotDto::from(&Snapshot::default());
+        dto.version = dto::VERSION + 1;
+        assert!(matches!(
+            Snapshot::try_from(dto),
+            Err(Error::Version { got }) if got == dto::VERSION + 1
+        ));
+    }
+
+    #[test]
+    fn negotiation_picks_the_highest_common_version() {
+        assert_eq!(negotiate(1, 1), Some(1));
+        assert_eq!(negotiate(1, 9), Some(dto::VERSION));
+        assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
+        assert_eq!(negotiate(0, 0), None);
+    }
+
+    #[test]
+    fn oversized_frame_is_refused_before_reading_the_body() {
+        // Solo la cabecera: si intentara leer el cuerpo fallaría con `Io`, no con `TooLarge`.
+        let header = u32::try_from(MAX_MESSAGE + 1).unwrap().to_le_bytes();
+        let got = read_message(&mut Cursor::new(header));
+        assert!(matches!(got, Err(Error::TooLarge { len }) if len == MAX_MESSAGE + 1));
+    }
+
+    #[test]
+    fn oversized_message_is_refused_when_sending() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.session.track_name = Quality::Reliable("x".repeat(MAX_MESSAGE));
+        let mut sink = Vec::new();
+        let got = write_message(&mut sink, &Message::Snapshot(SnapshotDto::from(&snapshot)));
+        assert!(matches!(got, Err(Error::TooLarge { .. })));
+        assert!(sink.is_empty(), "no debe escribirse nada");
+    }
+
+    #[test]
+    fn malformed_and_truncated_frames_are_errors() {
+        let mut bytes = 5_u32.to_le_bytes().to_vec();
+        bytes.extend_from_slice(b"{no}!");
+        assert!(matches!(
+            read_message(&mut Cursor::new(bytes)),
+            Err(Error::Json(_))
+        ));
+
+        let mut truncated = frame(&Message::Ping);
+        truncated.pop();
+        assert!(matches!(
+            read_message(&mut Cursor::new(truncated)),
+            Err(Error::Io(_))
+        ));
+    }
+
+    #[test]
+    fn unknown_fields_are_ignored_but_missing_ones_are_not() {
+        let mut json = serde_json::to_value(SnapshotDto::from(&Snapshot::default())).unwrap();
+        json["campo_futuro"] = 1.into();
+        assert!(serde_json::from_value::<SnapshotDto>(json.clone()).is_ok());
+        json.as_object_mut().unwrap().remove("state");
+        assert!(serde_json::from_value::<SnapshotDto>(json).is_err());
+    }
+
+    #[test]
+    fn revision_order() {
+        let r = |epoch, sequence| Revision { epoch, sequence };
+        assert!(r(1, 2).follows(r(1, 1)));
+        assert!(r(2, 1).follows(r(1, 9)));
+        assert!(!r(1, 1).follows(r(1, 1)));
+        assert!(!r(1, 9).follows(r(2, 1)));
+
+        assert!(r(1, 2).is_newer(None));
+        assert!(r(1, 2).is_newer(Some(r(1, 1))));
+        assert!(!r(1, 1).is_newer(Some(r(1, 1))));
+        assert!(!r(1, 1).is_newer(Some(r(1, 5))));
+        // Época distinta = productor reiniciado: aporta aunque la secuencia sea menor.
+        assert!(r(2, 1).is_newer(Some(r(1, 5))));
+    }
+}

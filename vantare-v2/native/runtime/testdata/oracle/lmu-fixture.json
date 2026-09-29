@@ -1,0 +1,1911 @@
+{
+  "go_rejection": "",
+  "session": {
+    "kind": {
+      "v": "practice",
+      "q": "fresh"
+    },
+    "remaining_ms": {
+      "v": 3492400,
+      "q": "fresh"
+    },
+    "track": {
+      "v": "Circuit de Barcelona",
+      "q": "fresh"
+    }
+  },
+  "cars": [
+    {
+      "id": "lmu-slot-12-generation-1",
+      "ordinal": 12,
+      "number": "",
+      "driver": "driver-012",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-7-generation-1",
+      "ordinal": 7,
+      "number": "",
+      "driver": "driver-007",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 2,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 2,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 6573.974609375
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 6573.974609375
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-19-generation-1",
+      "ordinal": 19,
+      "number": "",
+      "driver": "driver-019",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 3,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 3,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 6926.948547363281
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 352.97393798828125
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-13-generation-1",
+      "ordinal": 13,
+      "number": "",
+      "driver": "driver-013",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 13168.853759765625
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 6241.905212402344
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-23-generation-1",
+      "ordinal": 23,
+      "number": "",
+      "driver": "driver-023",
+      "class": "GT3",
+      "position": {
+        "v": 5,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 13741.775512695312
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 572.9217529296875
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-35-generation-1",
+      "ordinal": 35,
+      "number": "",
+      "driver": "driver-035",
+      "class": "LMP3",
+      "position": {
+        "v": 6,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 31627.864837646484
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 17886.089324951172
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-16-generation-1",
+      "ordinal": 16,
+      "number": "",
+      "driver": "driver-016",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 7,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 5,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 48907.07778930664
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 17279.212951660156
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-25-generation-1",
+      "ordinal": 25,
+      "number": "",
+      "driver": "driver-025",
+      "class": "GT3",
+      "position": {
+        "v": 8,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 2,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 49519.859313964844
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 612.7815246582031
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-0-generation-1",
+      "ordinal": 44,
+      "number": "",
+      "driver": "player",
+      "class": "LMP3",
+      "position": {
+        "v": 9,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 2,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 66635.20812988281
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 17115.3507232666
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-30-generation-1",
+      "ordinal": 30,
+      "number": "",
+      "driver": "driver-030",
+      "class": "GT3",
+      "position": {
+        "v": 10,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 3,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 72069.3588256836
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 5434.146881103516
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-31-generation-1",
+      "ordinal": 31,
+      "number": "",
+      "driver": "driver-031",
+      "class": "GT3",
+      "position": {
+        "v": 11,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81240.64636230469
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 9171.29135131836
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-37-generation-1",
+      "ordinal": 37,
+      "number": "",
+      "driver": "driver-037",
+      "class": "LMP3",
+      "position": {
+        "v": 12,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 3,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81251.55639648438
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 10.909557342529297
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-39-generation-1",
+      "ordinal": 39,
+      "number": "",
+      "driver": "driver-039",
+      "class": "LMP3",
+      "position": {
+        "v": 13,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81418.03741455078
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 166.48006439208984
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-3-generation-1",
+      "ordinal": 3,
+      "number": "",
+      "driver": "driver-003",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 14,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 6,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81508.43048095703
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 90.39306640625
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-43-generation-1",
+      "ordinal": 43,
+      "number": "",
+      "driver": "driver-043",
+      "class": "LMP3",
+      "position": {
+        "v": 15,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 5,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81593.96362304688
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 85.53075790405273
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-33-generation-1",
+      "ordinal": 33,
+      "number": "",
+      "driver": "driver-033",
+      "class": "GT3",
+      "position": {
+        "v": 16,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 5,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81685.4019165039
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 91.43781661987305
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-38-generation-1",
+      "ordinal": 38,
+      "number": "",
+      "driver": "driver-038",
+      "class": "LMP3",
+      "position": {
+        "v": 17,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 6,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81771.3623046875
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 85.96682548522949
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-9-generation-1",
+      "ordinal": 9,
+      "number": "",
+      "driver": "driver-009",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 18,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 7,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81858.23822021484
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 86.87210083007812
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-5-generation-1",
+      "ordinal": 5,
+      "number": "",
+      "driver": "driver-005",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 19,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 8,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 81947.72338867188
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 89.48493003845215
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-18-generation-1",
+      "ordinal": 18,
+      "number": "",
+      "driver": "driver-018",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 20,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 9,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82216.5756225586
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 268.8562870025635
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-36-generation-1",
+      "ordinal": 36,
+      "number": "",
+      "driver": "driver-036",
+      "class": "LMP3",
+      "position": {
+        "v": 21,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 7,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82391.90673828125
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 175.32873153686523
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-29-generation-1",
+      "ordinal": 29,
+      "number": "",
+      "driver": "driver-029",
+      "class": "GT3",
+      "position": {
+        "v": 22,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 6,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82485.89324951172
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 93.98770332336426
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1-generation-1",
+      "ordinal": 1,
+      "number": "",
+      "driver": "driver-001",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 23,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 10,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82575.3402709961
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 89.44272994995117
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-34-generation-1",
+      "ordinal": 34,
+      "number": "",
+      "driver": "driver-034",
+      "class": "LMP3",
+      "position": {
+        "v": 24,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 8,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82663.2308959961
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 87.89467811584473
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-15-generation-1",
+      "ordinal": 15,
+      "number": "",
+      "driver": "driver-015",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 25,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 11,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82753.8833618164
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 90.64984321594238
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-17-generation-1",
+      "ordinal": 17,
+      "number": "",
+      "driver": "driver-017",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 26,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 12,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82842.6513671875
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 88.77015113830566
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-40-generation-1",
+      "ordinal": 40,
+      "number": "",
+      "driver": "driver-040",
+      "class": "LMP3",
+      "position": {
+        "v": 27,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 9,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 82936.46240234375
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 93.8112735748291
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-28-generation-1",
+      "ordinal": 28,
+      "number": "",
+      "driver": "driver-028",
+      "class": "GT3",
+      "position": {
+        "v": 28,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 7,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83027.64129638672
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 91.17460250854492
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-2-generation-1",
+      "ordinal": 2,
+      "number": "",
+      "driver": "driver-002",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 29,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 13,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83122.97058105469
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 95.32999992370605
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-32-generation-1",
+      "ordinal": 32,
+      "number": "",
+      "driver": "driver-032",
+      "class": "GT3",
+      "position": {
+        "v": 30,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 8,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83208.7631225586
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 85.79373359680176
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-27-generation-1",
+      "ordinal": 27,
+      "number": "",
+      "driver": "driver-027",
+      "class": "GT3",
+      "position": {
+        "v": 31,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 9,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83393.9208984375
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 185.15920639038086
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-20-generation-1",
+      "ordinal": 20,
+      "number": "",
+      "driver": "driver-020",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 32,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 14,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83407.28759765625
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 13.363361358642578
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-42-generation-1",
+      "ordinal": 42,
+      "number": "",
+      "driver": "driver-042",
+      "class": "LMP3",
+      "position": {
+        "v": 33,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 10,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83668.29681396484
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 261.0139846801758
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-14-generation-1",
+      "ordinal": 14,
+      "number": "",
+      "driver": "driver-014",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 34,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 15,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83758.8882446289
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 90.58654308319092
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-41-generation-1",
+      "ordinal": 41,
+      "number": "",
+      "driver": "driver-041",
+      "class": "LMP3",
+      "position": {
+        "v": 35,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 11,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83850.57830810547
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 91.69161319732666
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-26-generation-1",
+      "ordinal": 26,
+      "number": "",
+      "driver": "driver-026",
+      "class": "GT3",
+      "position": {
+        "v": 36,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 10,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 83948.66943359375
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 98.08874130249023
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-4-generation-1",
+      "ordinal": 4,
+      "number": "",
+      "driver": "driver-004",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 37,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 16,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84040.48919677734
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 91.8266773223877
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-11-generation-1",
+      "ordinal": 11,
+      "number": "",
+      "driver": "driver-011",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 38,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 17,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84138.22174072266
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 97.72706031799316
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-24-generation-1",
+      "ordinal": 24,
+      "number": "",
+      "driver": "driver-024",
+      "class": "GT3",
+      "position": {
+        "v": 39,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 11,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84415.41290283203
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 277.19199657440186
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-22-generation-1",
+      "ordinal": 22,
+      "number": "",
+      "driver": "driver-022",
+      "class": "GT3",
+      "position": {
+        "v": 40,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 12,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84514.14489746094
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 98.73020648956299
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-6-generation-1",
+      "ordinal": 6,
+      "number": "",
+      "driver": "driver-006",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 41,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 18,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84797.98889160156
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 283.844530582428
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-21-generation-1",
+      "ordinal": 21,
+      "number": "",
+      "driver": "driver-021",
+      "class": "GT3",
+      "position": {
+        "v": 42,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 13,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84892.76885986328
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 94.78116035461426
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-8-generation-1",
+      "ordinal": 8,
+      "number": "",
+      "driver": "driver-008",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 43,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 19,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 84989.7689819336
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 97.00244665145874
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-10-generation-1",
+      "ordinal": 10,
+      "number": "",
+      "driver": "driver-010",
+      "class": "LMP2_ELMS",
+      "position": {
+        "v": 44,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 20,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 85085.70098876953
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 95.93063592910767
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    }
+  ]
+}

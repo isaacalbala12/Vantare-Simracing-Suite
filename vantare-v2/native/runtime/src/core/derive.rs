@@ -10,11 +10,69 @@ use std::collections::HashSet;
 use vantare_domain::{Car, Gap, Quality, Session, State};
 
 pub(super) fn derive(state: &mut State) {
+    relative(state);
     let State { session, cars, .. } = state;
     class_positions(cars);
     gaps(cars);
     class_gaps(cars);
     laps_remaining(session, cars);
+}
+
+/// Tráfico respecto al jugador, sin memoria. Go usa `EstimatedLapTime`;
+/// best/last del jugador son aquí una aproximación, siempre `Estimated`.
+fn relative(state: &mut State) {
+    let Some(player) = state.player_car() else {
+        for car in &mut state.cars {
+            car.relative_s = Quality::Unavailable;
+            car.relative_laps = Quality::Unavailable;
+        }
+        return;
+    };
+    let laps = player.laps.current().copied();
+    let distance = player.lap_distance_m.current().copied();
+    let elapsed = player.lap_elapsed_s.current().copied();
+    let period = [player.best_lap_s, player.last_lap_s]
+        .into_iter()
+        .find_map(|q| q.current().copied().filter(|v| v.is_finite() && *v > 0.0));
+    let length = state.session.track_length_m.current().copied();
+    for car in &mut state.cars {
+        car.relative_laps = relative_laps(laps, distance, car, length)
+            .map_or(Quality::Unavailable, Quality::Estimated);
+        car.relative_s = if car.in_pits == Quality::Reliable(true) {
+            Quality::Unavailable
+        } else {
+            relative_seconds(elapsed, car.lap_elapsed_s.current().copied(), period)
+                .map_or(Quality::Unavailable, Quality::Estimated)
+        };
+    }
+}
+
+// Truncado explícito del contrato Go; se comprueba el rango antes del cast.
+#[allow(clippy::cast_possible_truncation)]
+fn relative_laps(
+    player_laps: Option<u32>,
+    player_distance: Option<f64>,
+    car: &Car,
+    length: Option<f64>,
+) -> Option<i32> {
+    let length = length.filter(|v| v.is_finite() && *v > 0.0)?;
+    let player_distance = player_distance.filter(|v| (0.0..length).contains(v))?;
+    let distance = car
+        .lap_distance_m
+        .current()
+        .copied()
+        .filter(|v| (0.0..length).contains(v))?;
+    let laps = f64::from(*car.laps.current()?) - f64::from(player_laps?);
+    let progress = laps + (distance - player_distance) / length;
+    (progress >= f64::from(i32::MIN) && progress <= f64::from(i32::MAX))
+        .then_some(progress.trunc() as i32)
+}
+
+fn relative_seconds(player: Option<f64>, rival: Option<f64>, period: Option<f64>) -> Option<f64> {
+    let period = period?;
+    let difference = rival? - player?;
+    let seconds = difference - (difference / period).round() * period;
+    seconds.is_finite().then_some(seconds)
 }
 
 /// Posición dentro de la clase = orden por posición global entre los coches de
@@ -215,6 +273,81 @@ mod tests {
     use vantare_domain::{Class, ClassId};
 
     use super::*;
+
+    #[test]
+    fn relative_progress_wraps_at_the_line_without_false_lapped_cars() {
+        // laps/dist jugador, laps/dist rival, segundos jugador/rival, vueltas/gap.
+        for (pl, pd, rl, rd, pt, rt, expected_laps, expected_s) in [
+            (5, 900.0, 6, 100.0, 90.0, 10.0, 0, 20.0),
+            (6, 100.0, 5, 900.0, 10.0, 90.0, 0, -20.0),
+            (5, 100.0, 6, 200.0, 10.0, 20.0, 1, 10.0),
+            (6, 200.0, 5, 100.0, 20.0, 10.0, -1, -10.0),
+            (5, 100.0, 5, 100.0, 10.0, 10.0, 0, 0.0),
+        ] {
+            let mut state = State {
+                session: Session {
+                    track_length_m: Quality::Reliable(1000.0),
+                    ..Session::default()
+                },
+                player: Some(vantare_domain::Player {
+                    car: vantare_domain::CarId(1),
+                    ..vantare_domain::Player::default()
+                }),
+                cars: vec![
+                    Car {
+                        id: vantare_domain::CarId(1),
+                        laps: Quality::Reliable(pl),
+                        lap_distance_m: Quality::Reliable(pd),
+                        lap_elapsed_s: Quality::Reliable(pt),
+                        best_lap_s: Quality::Reliable(100.0),
+                        ..Car::default()
+                    },
+                    Car {
+                        id: vantare_domain::CarId(2),
+                        laps: Quality::Reliable(rl),
+                        lap_distance_m: Quality::Reliable(rd),
+                        lap_elapsed_s: Quality::Reliable(rt),
+                        ..Car::default()
+                    },
+                ],
+                ..State::default()
+            };
+            derive(&mut state);
+            assert_eq!(
+                state.cars[1].relative_laps,
+                Quality::Estimated(expected_laps)
+            );
+            assert_eq!(state.cars[1].relative_s, Quality::Estimated(expected_s));
+            state.cars[1].in_pits = Quality::Reliable(true);
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+            assert_eq!(
+                state.cars[1].relative_laps,
+                Quality::Estimated(expected_laps)
+            );
+            state.session.track_length_m = Quality::Unavailable;
+            state.cars[1].in_pits = Quality::Reliable(false);
+            state.cars[0].best_lap_s = Quality::Unavailable;
+            state.cars[0].last_lap_s = Quality::Reliable(100.0);
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_laps, Quality::Unavailable);
+            assert_eq!(state.cars[1].relative_s, Quality::Estimated(expected_s));
+            state.cars[0].last_lap_s = Quality::Unavailable;
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+            state.player = None;
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+            assert_eq!(state.cars[1].relative_laps, Quality::Unavailable);
+            state.player = Some(vantare_domain::Player {
+                car: vantare_domain::CarId(999),
+                ..vantare_domain::Player::default()
+            });
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+            assert_eq!(state.cars[1].relative_laps, Quality::Unavailable);
+        }
+    }
 
     fn car(id: u32, position: u32, class: u32) -> Car {
         Car {

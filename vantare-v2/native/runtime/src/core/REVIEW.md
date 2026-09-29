@@ -131,3 +131,112 @@ cuatro derivaciones (`laps_remaining`, gaps de clase, `per_lap_l`/`laps_left` y
 `delta_best_s`). En `mod.rs` y `merge.rs` se prueba que la memoria sobrevive
 entre fotos dentro del mismo `Core` y se descarta al cambiar de sesión o de
 coche.
+
+
+## Fase 2 — señales comunes / DTO v4 (#1427, 2026-09-30)
+
+Esta sección actualiza las decisiones de fase 1 anteriores; no cambia widgets.
+
+- `Car.relative_s` y `relative_laps`: derivación sin memoria. Vueltas = truncado
+  hacia cero del progreso relativo; las distancias deben estar en [0, longitud).
+  Segundos = diferencia de cronómetros, envuelta con `round` al periodo del
+  jugador (mejor vuelta actual válida, o última); positivo = rival delante.
+  Go (`internal/telemetry/derive/gaps.go`) usa `EstimatedLapTime`: best/last es
+  aquí una aproximación, siempre `Estimated`. Boxes Reliable true anula solo
+  los segundos. Sin jugador no se conserva ninguna señal relativa anterior.
+- Combustible: esperar al primer incremento consecutivo del contador antes
+  de abrir una medida. Diez medidas históricas `(vuelta completada, litros)`,
+  de antigua a reciente; media de las tres últimas. Boxes/repostaje/huecos
+  conservan la historia pero invalidan la medida abierta. El dominio usa
+  `[Option<(u32, f64)>; 10]` para conservar `Player: Copy` sin modificar las
+  proyecciones de otros workers; el DTO es una lista compacta (`[]` al empezar),
+  y rechaza más de diez medidas. La degradación conserva las medidas históricas.
+- Volante: LMU `mUnfilteredSteering` en +404 de la fila telem (no +436 filtrado);
+  ACC `physics.steerAngle` f32 en +24. Ambos -1 izquierda/+1 derecha; fuera de
+  rango o no finito = `Unavailable`, sin clamp. Vectores explícitos prueban
+  extremos, centro, signo, offset y valores inválidos; no prueban conducción
+  física. Capacidad `driver_inputs`, sin señal ni renderer propios por simulador.
+- Delta: solo una candidata abierta tras cruce observado puede ser referencia,
+  y debe cerrar con otro cruce y muestras dentro del 2 % inicial/final de la
+  longitud de pista. Un inicio parcial, salto del contador sin cobertura o
+  buffer de 18 000 muestras truncado no gana. Sin longitud actual no se deriva
+  delta de respaldo. Cobertura no certifica validez deportiva ni continuidad de
+  la trazada; el tiempo final sigue siendo el último punto medido (aproximación).
+- `State.source_state`: núcleo Waiting (antes de observar), Live y Stale
+  (silencio/reloj congelado/desconexión). `Lost` solo lo marca overlays: una
+  copia degradada tras cinco segundos sin mensajes válidos del pipe, conservando
+  origen, época y secuencia. Los latidos cuentan como actividad: un núcleo
+  vivo sin fotos nuevas no se confunde con un pipe perdido. La siguiente foto
+  real rearma el watchdog. `degrade` vive en dominio, sin alterar su semántica;
+  `degrade` y `sanitize` desestructuran las señales sin `..`.
+- Cola de overlays: cuatro fotos, desaloja las antiguas sin bloquear al lector;
+  su receptor de desalojo no impide terminar al cerrarse la última ventana.
+  El subscriber reintenta una versión incompatible y registra el motivo una
+  sola vez por instancia; tres handshakes con v3 verifican un único diagnóstico.
+- DTO v4, veinte escenas migradas: valores anteriores conservados, nuevas
+  señales ausentes y vínculo Live. `domain/src/lib.rs` solo añade las
+  reexportaciones necesarias de `SourceState` y `degrade` definidos en model.
+  No hay dependencias nuevas, cambios de widgets, capture ni Workshop.
+
+### Bloqueo de integración fuera de las rutas del worker
+
+Los gates workspace necesitan migrar cuatro literales exhaustivos **solo de
+tests**, en módulos de widgets excluidos del encargo. Se dejan intactos:
+
+| Archivo de domain/src | Línea en la base | Añadir al literal |
+| --- | ---: | --- |
+| `fuel_strategy.rs` | 113 | `history: [None; 10]` en Fuel |
+| `pedals.rs` | 68 | `steering: Quality::Unavailable` en Telemetry |
+| `pedals_telemetry.rs` | 135 | `steering: Quality::Unavailable` en Telemetry |
+| `standings.rs` | 189 | `source_state: crate::SourceState::Live` en State |
+
+No se debilitan ni se excluyen estos tests del gate: `cargo clippy --workspace
+--all-targets -j 2 -- -D warnings` y `cargo test --workspace -j 2` quedan
+bloqueados por E0063 hasta la migración del orquestador. Los checks acotados no
+sustituyen esos gates. Notion no se ha leído/escrito, por la excepción expresa
+de Isaac en el encargo; GitHub #1427 se leyó, sin cambiar su estado. Sin push,
+PR, merge, promoción ni release.
+
+### Verificación del worker
+
+- `cargo fmt --check`: pasa.
+- `cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+  `cargo test --workspace -j 2`: exit 101, los cuatro E0063 anteriores.
+- `cargo clippy --workspace --exclude vantare-domain --all-targets -j 2 --
+  -D warnings` y `cargo clippy -p vantare-domain --lib -j 2 -- -D warnings`:
+  pasan. Son checks acotados, no un workspace verde.
+- `cargo test -p vantare-runtime -p vantare-ipc -p vantare-ui -j 2`: pasa;
+  runtime 153 unitarios, IPC 28 unitarios/8 pipe, UI 82 unitarios. Además pasan
+  los binarios e integraciones, incluido `lmu_oracle` (5 tests), ACC (2) y LMU
+  (9) de conformidad. Cuatro pruebas preexistentes requieren simulador o
+  ejecución manual y siguen ignoradas; no se afirma runtime físico.
+- `cargo test -p vantare-domain --test architecture -j 2`: pasa (1 test).
+- `go test -p 2 ./tools/native-oracle` y `go vet -p 2 ./tools/native-oracle`,
+  con `GOMAXPROCS=2`: pasan. El oráculo congelado no exporta relative, volante
+  ni historia de combustible; no se cambian sus campos, corpus ni goldens.
+- Las regresiones de combustible iniciado a mitad de vuelta y delta parcial
+  se reprodujeron antes de corregirlas (fallaban); ahora pasan.
+- Las veinte escenas mantienen todos sus valores anteriores al eliminar los
+  nuevos campos y restaurar `version` para la comparación estructural.
+
+`compare.ps1` se ejecutó antes/después sobre ventanas productivas, interceptando
+solo el argumento Cargo `-j 4` del script para limitarlo a `-j 2`, sin editarlo.
+Umbral por canal 8, máximo 4 %; no se modificaron referencias:
+
+| Escena | Diferencia con referencia antes | Después | Cambio RGBA antes/después |
+| --- | ---: | ---: | ---: |
+| radar | 1057/48400 (2,1839 %) | 1057/48400 (2,1839 %) | 0 píxeles |
+| delta | 1005/26880 (3,7388 %) | 1005/26880 (3,7388 %) | 0 píxeles |
+| standings-44 (legacy) | 6341/172536 (3,6752 %) | 6341/172536 (3,6752 %) | 0 píxeles |
+
+Para standings legacy se usaron `ui/fixtures/standings-44.snapshot.json` y la
+referencia Wails congelada existente en
+`C:/tmp/vantare-parity-wails/vantare-v2/tools/native-ui/parity/reference/standings-44.png`.
+La pareja `standings.snapshot.json`/`ui/reference/standings.png` de fase 2 tiene
+otra geometría y no sirve como referencia del renderer legacy de esta base.
+Los logs y capturas locales quedan en `C:/tmp/vw2-senales-evidence/`.
+
+Pendiente del orquestador: migrar esos cuatro literales en sus rutas y volver
+a ejecutar los gates completos antes de integrar. Validar físicamente el signo
+del volante con LMU/ACC y el watchdog cerrando el núcleo; los vectores de SDK,
+las pruebas de pipe y las capturas fijas no sustituyen esa validación.

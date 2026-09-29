@@ -1,4 +1,4 @@
-<#
+﻿<#
 Comprueba con EnumWindows/GetWindowRect que vantare-overlays abre una sola
 ventana (4 widgets, un solo monitor) del tamaño del monitor y en su esquina.
 Falla (exit 1) ante cualquier diferencia, p. ej. el desfase de 4 px que GPUI

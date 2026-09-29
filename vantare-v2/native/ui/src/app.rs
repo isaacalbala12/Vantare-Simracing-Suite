@@ -23,10 +23,43 @@ use crate::standings::{
 use crate::{pedals as pedals_view, radar as radar_view, text};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Kind {
+pub enum Kind {
     Standings,
     Radar,
     Pedals,
+}
+
+impl std::str::FromStr for Kind {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, ()> {
+        match text {
+            "standings" => Ok(Self::Standings),
+            "radar" => Ok(Self::Radar),
+            "pedals" => Ok(Self::Pedals),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Kind {
+    /// Tamaño del widget (px) con su contenido inicial.
+    fn size(self) -> (f32, f32) {
+        Overlay::new(self, Preferences::default()).wanted_size()
+    }
+}
+
+/// Coloca los widgets en una fila que empieza en `origin`, separados 20 px.
+pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))> {
+    let mut x = origin.0;
+    kinds
+        .iter()
+        .map(|&kind| {
+            let at = (x, origin.1);
+            x += kind.size().0 + 20.0;
+            (kind, at)
+        })
+        .collect()
 }
 
 struct Standings {
@@ -415,13 +448,22 @@ fn origin_of(index: usize) -> (f32, f32) {
 /// Abre `windows` widgets, una ventana por monitor con widgets, y reenvía cada
 /// `Snapshot` del canal a todos. Vuelve cuando se cierra la última ventana.
 pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
+    let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
+    run_placed(placed, snapshots, prefs);
+}
+
+/// Como [`run`], con los widgets y sus posiciones (px globales de pantalla) dados.
+pub fn run_placed(
+    placed: Vec<(Kind, (f32, f32))>,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+) {
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
-        let placed: Vec<_> = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
         let widgets = open_screens(cx, &placed, prefs);
         let views: Vec<_> = widgets.iter().map(Entity::downgrade).collect();
         cx.on_window_closed(|cx, _| {

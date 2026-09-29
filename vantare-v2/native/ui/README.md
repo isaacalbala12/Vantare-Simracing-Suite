@@ -165,3 +165,62 @@ vantare-overlays 22 --fuente local          # esperado: 2 ventanas, una por moni
 Comprobar con `EnumWindows` (o a ojo) que hay una ventana transparente por monitor
 con widgets. No he podido probarlo con dos monitores físicos (esta máquina solo
 tiene uno); el reparto está cubierto por un test unitario.
+
+## Workshop (desarrollo)
+
+`vantare-workshop` abre la misma ventana por monitor con uno o varios widgets
+alimentados por **una escena fija**, sin núcleo. `workshop.ps1` la mantiene al
+día mientras editas: al guardar un fichero de `ui/src` (o `ui/fixtures`) recompila
+en incremental y reabre el binario con los mismos argumentos, es decir, la misma
+escena, los mismos widgets y la misma posición.
+
+```powershell
+cd vantare-v2/native
+.\ui\workshop.ps1                                     # standings + radar + pedales, escena LMU por defecto
+.\ui\workshop.ps1 -WorkshopArgs '--widgets','standings','--pos','100,80'
+.\ui\workshop.ps1 -WorkshopArgs '--escena','C:\otra.json'
+cargo run -p vantare-ui --bin vantare-workshop -- --widgets radar   # sin script, una vez
+```
+
+Argumentos: `--widgets standings,radar,pedals` (en una fila), `--pos x,y` (esquina
+de la fila, px de pantalla, por defecto 20,20) y `--escena <archivo>`.
+
+**Escena.** Por defecto, `fixtures/lmu47.snapshot.json`: una foto **real** de LMU
+(47 coches, posiciones, radar y pedales frescos) sacada del corpus
+`testdata/rust-port/lmu47-high-rate-60s.tar.gz` a través del adaptador de replay
+del núcleo. Va embebida en el binario (`include_str!`); `--escena` lee otra del
+disco. Para regenerarla o crear otra:
+
+```powershell
+# 1. el núcleo reproduce el corpus (o una captura tuya) por un pipe
+cargo run -p vantare-runtime --bin vantare-core -- --replay ../testdata/rust-port/lmu47-high-rate-60s.tar.gz --pipe fixture
+# 2. se guarda la primera foto con todo fresco que llegue por ese pipe
+cargo run -p vantare-ui --bin vantare-workshop -- --guardar ui/fixtures/lmu47.snapshot.json --pipe fixture
+```
+
+El formato es el DTO del cable (`ipc::snapshot_to_json` / `snapshot_from_json`,
+JSON versionado); `ui` no depende de `runtime`, así que el replay corre en el
+proceso del núcleo.
+
+**Script.** `workshop.ps1` compila una copia del `.exe` (Windows no deja
+sobrescribir un binario en marcha): la versión nueva se ve antes de cerrar la vieja,
+sin parpadeo. Si no compila, imprime los errores y deja abierta la última versión
+buena. Sin dependencias nuevas (sondeo de `LastWriteTime` cada 150 ms con
+debounce). Por defecto fija `CARGO_PROFILE_DEV_DEBUG=0` (enlaza más rápido; es un
+perfil aparte, así que la primera vez recompila las dependencias, unos minutos).
+No vigila `ui/assets` (fuentes, logo).
+
+**Tiempo de ciclo guardar → ver** (esta máquina, incremental, `-j 4`; se guarda un
+cambio de una constante de color en `pedals.rs`, `radar.rs` y `standings/view.rs`;
+«visible» = la ventana nueva existe y tiene tamaño; tres o cuatro ciclos por fila):
+
+| Configuración | guardar → compilado | guardar → ventana visible |
+| --- | ---: | ---: |
+| perfil dev con depuración (cargo por defecto) | 5,4–6,4 s | 6,0–7,1 s |
+| **`workshop.ps1` (sin depuración)** | 4,0–4,3 s | 4,6–4,9 s |
+| además `rust-lld` (`RUSTFLAGS=-Clinker-flavor=lld-link -Clinker=rust-lld`) | 3,7–4,1 s | 4,2–4,7 s |
+
+`rust-lld` se probó y no se incluye: gana ~0,5 s pero cambia los `RUSTFLAGS` de
+todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
+(3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
+(el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).

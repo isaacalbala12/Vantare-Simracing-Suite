@@ -1,4 +1,4 @@
-<#
+﻿<#
 Mide vantare-overlays (build release con --features paint-stats) para cada
 combinación de widgets y fuente sintética (VANTARE_FUENTE, con --fuente local):
 CPU del proceso, GPU 3D del proceso, RAM y contadores por segundo de fotogramas /

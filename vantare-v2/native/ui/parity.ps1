@@ -1,4 +1,4 @@
-<#
+﻿<#
 Paridad visual de Standings frente a la referencia de Wails (ISA-1410).
 
 Compila con la feature `parity-capture`, captura la escena fija `standings-44`

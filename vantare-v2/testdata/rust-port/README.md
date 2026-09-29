@@ -37,11 +37,17 @@ $env:LMU_HIGH_RATE_PARITY_OUT='C:\tmp\isa-1403-high-rate-parity'
 go test ./internal/telemetry/drivers/lmu -run '^TestReplayLMUHighRateGoOptIn$' -count=1
 cargo +1.95.0 test --manifest-path rust/telemetry/Cargo.toml --release --locked --test high_rate_temporal
 python tools/telemetry-port-parity/compare_high_rate.py "$env:LMU_HIGH_RATE_PARITY_OUT/go-products.jsonl" "$env:LMU_HIGH_RATE_PARITY_OUT/rust-products.jsonl" --expected-events 3839
+cargo +1.95.0 build --manifest-path rust/telemetry/Cargo.toml --release --locked --features replay-harness --bin vantare-telemetry-replay
+$env:VANTARE_TELEMETRY_REPLAY_TEST_HELPER=(Resolve-Path rust/telemetry/target/release/vantare-telemetry-replay.exe).Path
+go test ./internal/app/telemetryprocess -run '^TestRustHighRateCorpusPipeOptIn$' -count=1 -v -timeout 6m
 ```
 
 Use un directorio de salida nuevo para cada ejecución: las pruebas no sobrescriben
 resultados anteriores. Los archivos JSONL ocupan cerca de 1,5 GB en total; el
 comparador solo informa la ruta del primer campo distinto, sin imprimir valores.
-La comparación completa pasó localmente. Este replay funcional no mide el coste
-de adquisición, IPC ni entrega a Go, y solo cubre pista estable. Siguen abiertos
+La comparación completa pasó localmente. Otro replay pasó los 3839 productos
+de cada consumidor y el fact por el pipe Windows, el receptor y el Publisher Go.
+Se ejecuta a la velocidad que permite el receptor, no a la cadencia de captura;
+ninguno de estos tests mide el coste equivalente de adquisición, IPC ni entrega
+en una ventana temporal controlada. Solo cubren pista estable. Siguen abiertos
 G0/G1/R, CPU ≤50%, p99, RSS, recuperación y la prueba física Wails/OBS.

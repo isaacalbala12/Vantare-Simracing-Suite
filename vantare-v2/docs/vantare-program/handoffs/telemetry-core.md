@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — corpus LMU47 por pipe y receptor real (2026-09-29)
+
+El helper Rust de pruebas reproduce los 3839 eventos SHM/REST auditados y
+escribe los frames VTE1 en un pipe Windows real. El receptor Go validó 3839
+Overlay, Engineer y Strategy con secuencias continuas, entregó Overlay al
+Publisher y confirmó el único fact tras recibirlo. La prueba opt-in local pasó
+en 22,63 s y registró 130.552.531 bytes publicados de Overlay. Se añadió al
+gate Windows del PR junto a la paridad estructural completa. El helper ejecuta
+la secuencia tan rápido como permite el receptor; **no** reproduce 60 s de
+cadencia ni incluye adquisición productiva. Por ello no acredita CPU/p99/RSS
+de G0/G1/R. Go sigue productivo y PR #1415 draft, sin merge/promoción.
+
 ## VAN-778 / ISA-1403 — paridad temporal completa LMU47 (2026-09-29)
 
 El umbral de aceptación acordado es una sesión real con **al menos 46 coches**;
@@ -10,6 +22,8 @@ Overlay, Engineer, Strategy y facts completos coinciden campo por campo. Los
 tests cuentan 3839 productos de cada tipo y un fact. Las salidas JSONL ocupan
 cerca de 1,5 GB y se comparan en streaming sin imprimir valores. Se añadió
 un gate Windows en CI para repetir auditoría, ambos replays y comparación.
+El gate de producto completo pasó para `e38b06c9`; el quality ratchet sigue
+en revisión manual por el cambio del workflow.
 
 Esto acredita paridad funcional para **esa sesión estable en pista**, no la
 paridad de menú/boxes/reconnect/fallos ni el rendimiento de la ruta productiva.

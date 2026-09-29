@@ -169,6 +169,22 @@ jobs:
           go test ./...
           if ($LASTEXITCODE -ne 0) { throw "Go tests failed" }
 
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --component clippy --component rustfmt
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
+
+      - name: Rust telemetry gate
+        run: |
+          cargo +1.95.0 fmt --manifest-path rust/telemetry/Cargo.toml --check
+          if ($LASTEXITCODE -ne 0) { throw "Rust telemetry formatting failed" }
+          cargo +1.95.0 test --manifest-path rust/telemetry/Cargo.toml --lib --locked
+          if ($LASTEXITCODE -ne 0) { throw "Rust telemetry tests failed" }
+          cargo +1.95.0 clippy --manifest-path rust/telemetry/Cargo.toml --all-targets --locked -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw "Rust telemetry Clippy failed" }
+          cargo +1.95.0 build --manifest-path rust/telemetry/Cargo.toml --release --locked
+          if ($LASTEXITCODE -ne 0) { throw "Rust telemetry release build failed" }
+
       - name: Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm test

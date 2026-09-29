@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — gate Rust en CI Windows (2026-09-29)
+
+El workflow bloqueante Windows ahora instala Rust `1.95.0` y ejecuta formato,
+154 tests de biblioteca, Clippy estricto y build release. La secuencia pasó
+localmente; falta el resultado remoto del SHA nuevo. El corpus temporal real
+sigue externo a CI y el binario aún no está empaquetado en Wails. Plan §110;
+Go sigue productivo, PR #1415 draft y sin merge.
+
 ## VAN-778 / ISA-1403 — tres productos en secuencia real (2026-09-29)
 
 La auditoría Go del corpus real de ocho SHM+REST con 47 coches atraviesa

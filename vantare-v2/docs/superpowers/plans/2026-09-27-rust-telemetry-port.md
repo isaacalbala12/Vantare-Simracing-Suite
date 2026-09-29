@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 109. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 110. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2046,3 +2046,13 @@ comparaciones usan el tiempo observado y no convierten `141599` ms en
 Clippy y formato pasan. Este corte aún no compara todos los campos Go/Rust
 ni procesa los cuerpos REST completos en la ruta de producto temporal; no
 constituye el gate de paridad o rendimiento.
+
+## 110. Rust entra en el gate Windows de CI (2026-09-29)
+
+El workflow bloqueante `Validate Vantare blocking gates` instala Rust
+`1.95.0` con Clippy y rustfmt en Windows y ejecuta formato, 154 tests de
+biblioteca, Clippy con warnings denegados y build release con `Cargo.lock`.
+La misma secuencia pasó localmente con esa toolchain. El CI remoto del SHA
+que introduce el cambio debe terminar antes de considerar acreditado el gate.
+El corpus temporal externo no está en CI, y este corte no empaqueta aún el
+ejecutable Rust junto a Wails.

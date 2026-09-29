@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — perfil físico del receptor Rust (2026-09-29)
+
+LMU 1.4.2.0 seguía en pista con 47 coches. El probe de tres productos midió
+Go en 2,703125 s CPU/15 s con 958 entregas por producto y el candidato
+Rust con Engineer VTE1 en 6,390625 s CPU total/15 s (4,21875 host +
+2,171875 hijo) con 900 entregas por producto. La diferencia de cadencia
+impide usar esta comparación como G0/G1/R. Un perfil independiente del host
+Rust (`C:/tmp/isa-1403-rust-host-3221c01c.pprof`, SHA-256
+`ada0941b7ad6f3a2aef102160ca284beeb6ce49c74cd5e5346efc2f5f9b6fa87`)
+midió 3,72 s de muestras: 1,94 s acumulados en
+`DecodeOverlaySnapshot`, de los que 1,07 s pasan por el parser de filas
+`StandingRowV2`; `Publisher.PublishSnapshot` suma 0,33 s. La corrida con
+perfil consumió 5,671875 s CPU total y entregó 900/900/899 productos.
+Esto identifica el codec Overlay y la proyección Rust como frentes de
+optimización medibles; no acredita el gate del 50 %, p99 ni RSS. Go sigue
+productivo y PR #1415 permanece draft.
+
 ## VAN-778 / ISA-1403 — REST temporal real y paridad completa (2026-09-29)
 
 La práctica LMU 1.4.2.0 produjo 80 nuevos pares SHM/REST con 47 coches

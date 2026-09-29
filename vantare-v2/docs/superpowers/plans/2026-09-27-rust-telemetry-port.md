@@ -2477,9 +2477,24 @@ existente `wire_float` para números meteorológicos Rust, dio **cero
 diferencias** en Overlay, Engineer, Strategy y facts de las 80 muestras.
 La temperatura REST se publicó fresh en 79 frames; el primero quedó missing
 al no tener todavía un poll anterior.
-
 `go test ./...`, 160 tests Rust release, Clippy, formato, build release y
 compilación cruzada del test Go Linux pasaron. La evidencia es reproducible
 con los artefactos externos sanitizados, pero no prueba estados REST de error,
 cambio de sesión, Wails/OBS, empaquetado ni el gate total G0/G1/R de
 CPU/p99/RSS. Go permanece productivo y PR #1415 sigue draft.
+
+## 135. Perfil físico del receptor Rust con LMU47 (2026-09-29)
+
+Con LMU 1.4.2.0 en pista y los tres productos activos, el probe físico dio
+2,703125 s CPU/15 s para Go (958 entregas/producto) y 6,390625 s para
+Rust+Go con Engineer VTE1 (900 entregas/producto). Es diagnóstico con
+cadencias distintas, no el banco G0/G1/R. Un perfil posterior del host
+Rust conservado fuera del repo en
+`C:/tmp/isa-1403-rust-host-3221c01c.pprof` (SHA-256
+`ada0941b7ad6f3a2aef102160ca284beeb6ce49c74cd5e5346efc2f5f9b6fa87`)
+acumuló 3,72 s de muestras durante 15,43 s: 1,94 s en decode Overlay,
+1,07 s de ellos en filas Standings y 0,33 s en Publisher. La corrida
+perfilada consumió 5,671875 s CPU total y entregó 900/900/899 productos.
+R21 debe atacar el coste demostrado del codec Overlay y de las secciones
+Rust, fijar cadencias equivalentes y construir G1 antes de evaluar el
+umbral de CPU, p99 y RSS. Ninguno de esos gates está acreditado.

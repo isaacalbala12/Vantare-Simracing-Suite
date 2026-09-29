@@ -356,8 +356,9 @@ completa e integración.
 reproduce el corpus LMU47 verificado en un mapping Windows privado y REST de
 loopback. El candidato Rust con `bench-harness` usa su ruta normal de
 adquisición, ensamblado y pipe; el receptor Go comprueba la entrega en una
-prueba opt-in de 60 s. Una corrida produjo 3876 entregas por consumidor y
-7,484375 s CPU Go + 7,84375 s CPU Rust. Es solo el brazo R diagnóstico: el
+prueba opt-in de 60 s. Tras mantener viva la fuente REST hasta el cierre, una
+corrida produjo 3890 entregas por consumidor y 7,609375 s CPU Go +
+7,171875 s CPU Rust en 61,05 s de recepción. Es solo el brazo R diagnóstico: el
 muestreo autónomo no da exactamente un producto por evento del archivo, y aún
 faltan G0/G1, p99/RSS, A/A y los cinco bloques intercalados de §4.
 

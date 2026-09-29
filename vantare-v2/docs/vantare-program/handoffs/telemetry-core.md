@@ -10,9 +10,13 @@ puerto de loopback; la entrada productiva sigue exigiendo el proceso LMU y
 `LMU_Data`. El mismo bucle candidato y la misma adquisición, parser, REST,
 assembler e IPC atendieron la fuente aislada; Go recibió los productos.
 
-El diagnóstico opt-in pasó en 67,06 s: 3876 Overlay, Engineer y Strategy,
-242 estados, 61,56 s de recepción, 7,484375 s CPU del host Go y 7,84375 s del
-hijo Rust. Las entregas superan los 3839 eventos porque la adquisición muestrea
+El diagnóstico opt-in pasó tras mantener viva la fuente REST hasta el cierre:
+3890 Overlay, Engineer y Strategy, 242 estados, 61,05 s de recepción,
+7,609375 s CPU del host Go y 7,171875 s del hijo Rust. El productor auditó y
+precargó el corpus en 1,25 s fuera de la ventana medida y exigió start/stop
+explícitos. Una corrida intermedia alcanzó el límite global de 90 s y falló
+al cerrar el productor; el límite se amplió a 150 s y la repetición pasó.
+Las entregas superan los 3839 eventos porque la adquisición muestrea
 SHM a 60 Hz y REST a 4 Hz de forma independiente del productor; esta corrida
 no es una comparación exacta de salidas ni el gate de rendimiento. Faltan G0/G1
 pareados, p99, RSS, A/A, cinco bloques y la validación física Wails/OBS. La

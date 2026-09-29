@@ -29,7 +29,9 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 	if rustBinary == "" || producerBinary == "" || corpus == "" {
 		t.Skip("requires benchmark Rust child, isolated source producer and audited LMU47 corpus")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	preloadStarted := time.Now()
+	// Corpus preload verifies more than 1 GiB outside the measured window.
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
 	defer cancel()
 	producer := exec.CommandContext(ctx, producerBinary, "-corpus", corpus)
 	stdin, err := producer.StdinPipe()
@@ -47,7 +49,9 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 	}
 	defer func() {
 		cancel()
-		_ = producer.Wait()
+		if producer.ProcessState == nil {
+			_ = producer.Wait()
+		}
 	}()
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadBytes('\n')
@@ -62,6 +66,7 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 	if err := json.Unmarshal(line, &ready); err != nil || ready.Events != 3839 || ready.Port < 1 || ready.Port > 65535 {
 		t.Fatalf("invalid benchmark source readiness: %s: %v", line, err)
 	}
+	t.Logf("LMU47 source preload and audit=%s", time.Since(preloadStarted))
 	pipe, err := newLocalPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -102,9 +107,6 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := io.WriteString(stdin, "start\n"); err != nil {
-		t.Fatal(err)
-	}
-	if err := stdin.Close(); err != nil {
 		t.Fatal(err)
 	}
 	started := time.Now()
@@ -171,6 +173,15 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 	}
 	if err := json.Unmarshal(completed, &counts); err != nil || counts.SHM != 3600 || counts.REST != 239 || counts.Wall < 59000 {
 		t.Fatalf("incomplete benchmark source: %s: %v", completed, err)
+	}
+	if _, err := io.WriteString(stdin, "stop\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := stdin.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := producer.Wait(); err != nil {
+		t.Fatalf("benchmark source exit: %v: %s", err, stderr.String())
 	}
 	if result, err := windows.WaitForSingleObject(child.process, uint32(childShutdownTimeout.Milliseconds())); err != nil || result != windows.WAIT_OBJECT_0 {
 		t.Fatalf("benchmark child exit: %d: %v", result, err)

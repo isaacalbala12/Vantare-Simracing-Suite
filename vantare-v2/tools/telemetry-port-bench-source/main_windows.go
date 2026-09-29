@@ -251,7 +251,8 @@ func run(dir string) (runErr error) {
 	if err := json.NewEncoder(os.Stdout).Encode(ready); err != nil {
 		return err
 	}
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	control := bufio.NewReader(os.Stdin)
+	line, err := control.ReadString('\n')
 	if err != nil || strings.TrimSpace(line) != "start" {
 		return errors.New("benchmark start handshake missing")
 	}
@@ -269,6 +270,17 @@ func run(dir string) (runErr error) {
 			rest++
 		}
 	}
+	if err := json.NewEncoder(os.Stdout).Encode(struct {
+		SHM  int   `json:"shm"`
+		REST int   `json:"rest"`
+		Wall int64 `json:"wallMs"`
+	}{shm, rest, time.Since(started).Milliseconds()}); err != nil {
+		return err
+	}
+	line, err = control.ReadString('\n')
+	if err != nil || strings.TrimSpace(line) != "stop" {
+		return errors.New("benchmark stop handshake missing")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
@@ -277,11 +289,7 @@ func run(dir string) (runErr error) {
 	if err := <-serverDone; err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
-	return json.NewEncoder(os.Stdout).Encode(struct {
-		SHM  int   `json:"shm"`
-		REST int   `json:"rest"`
-		Wall int64 `json:"wallMs"`
-	}{shm, rest, time.Since(started).Milliseconds()})
+	return nil
 }
 
 func main() {

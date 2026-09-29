@@ -71,4 +71,5 @@ widgets! {
     HeadToHead => head_to_head: "head-to-head",
     FuelStrategy => fuel_strategy: "fuel-strategy",
     PedalsTelemetry => pedals_telemetry: "pedals-telemetry",
+    Relative => relative: "relative",
 }

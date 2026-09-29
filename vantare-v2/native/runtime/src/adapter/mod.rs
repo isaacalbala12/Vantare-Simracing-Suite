@@ -4,7 +4,12 @@
 // El único `unsafe` (Win32 de LMU) vive en `lmu::shm`, que lo permite expresamente.
 #![deny(unsafe_code)]
 
+mod acc;
 mod lmu;
+
+#[cfg(windows)]
+pub use acc::Acc;
+pub use acc::{AccReplay, open_acc_replay};
 
 #[cfg(windows)]
 pub use lmu::Lmu;

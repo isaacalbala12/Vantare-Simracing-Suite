@@ -8,7 +8,7 @@
 //! `vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión>] [--velocidad 1.0] | --live) [--pipe <nombre>]`
 
 const USAGE: &str = "uso: vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
-                     [--velocidad 1.0] | --live) [--pipe <nombre>]";
+                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]";
 
 #[derive(Debug, PartialEq)]
 enum Input {
@@ -24,11 +24,13 @@ enum Input {
 struct Args {
     input: Input,
     pipe: Option<String>,
+    simulator: String,
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
     let (mut replay, mut live) = (None, false);
     let (mut build, mut speed, mut pipe) = (None, None, None);
+    let mut simulator = "lmu".to_owned();
     let mut args = args.iter();
     while let Some(flag) = args.next() {
         let mut value = || {
@@ -50,8 +52,15 @@ fn parse(args: &[String]) -> Result<Args, String> {
                 );
             }
             "--pipe" => pipe = Some(value()?),
+            "--simulator" => simulator = value()?,
             other => return Err(format!("argumento desconocido: {other}")),
         }
+    }
+    if !matches!(simulator.as_str(), "lmu" | "acc") {
+        return Err("--simulator debe ser lmu o acc".into());
+    }
+    if simulator == "acc" && build.is_some() {
+        return Err("ACC obtiene la versión de la captura; --build es solo de LMU".into());
     }
     let input = match (replay, live) {
         (Some(path), false) => Input::Replay {
@@ -63,7 +72,11 @@ fn parse(args: &[String]) -> Result<Args, String> {
         (None, true) => return Err("--build y --velocidad son de --replay".into()),
         _ => return Err("indica exactamente uno de --replay o --live".into()),
     };
-    Ok(Args { input, pipe })
+    Ok(Args {
+        input,
+        pipe,
+        simulator,
+    })
 }
 
 #[cfg(windows)]
@@ -91,7 +104,8 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     use std::path::Path;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use vantare_runtime::adapter::{Lmu, open_replay};
+    use vantare_domain::Adapter;
+    use vantare_runtime::adapter::{Acc, Lmu, open_acc_replay, open_replay};
     use vantare_runtime::{service, shutdown};
 
     let stop = shutdown::install()?;
@@ -108,13 +122,25 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     // Época nueva en cada arranque: los milisegundos de reloj de pared crecen
     // entre arranques, y los overlays reconstruyen su estado al verla cambiar.
     let epoch = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
-    match args.input {
-        Input::Live => service::run(&mut Lmu::new(), &pipe, epoch, 1.0, stop)?,
-        Input::Replay { path, build, speed } => {
-            let mut replay = open_replay(Path::new(&path), build.as_deref())?;
-            service::run(&mut replay, &pipe, epoch, speed, stop)?;
+    let (mut adapter, speed): (Box<dyn Adapter>, f64) = match args.input {
+        Input::Live => {
+            let live: Box<dyn Adapter> = if args.simulator == "acc" {
+                Box::new(Acc::new())
+            } else {
+                Box::new(Lmu::new())
+            };
+            (live, 1.0)
         }
-    }
+        Input::Replay { path, build, speed } => {
+            let replay: Box<dyn Adapter> = if args.simulator == "acc" {
+                Box::new(open_acc_replay(Path::new(&path))?)
+            } else {
+                Box::new(open_replay(Path::new(&path), build.as_deref())?)
+            };
+            (replay, speed)
+        }
+    };
+    service::run(adapter.as_mut(), &pipe, epoch, speed, stop)?;
     Ok(())
 }
 
@@ -178,5 +204,27 @@ mod tests {
         ] {
             assert!(parsed(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn simulator_selection_preserves_lmu_default_and_acc_reads_its_own_version() {
+        assert_eq!(parsed(&["--live"]).expect("LMU").simulator, "lmu");
+        for mode in [&["--live"][..], &["--replay", "acc.tar.gz"]] {
+            let mut args = vec!["--simulator", "acc"];
+            args.extend(mode);
+            assert_eq!(parsed(&args).expect("ACC").simulator, "acc");
+        }
+        assert!(parsed(&["--live", "--simulator", "unknown"]).is_err());
+        assert!(
+            parsed(&[
+                "--replay",
+                "acc.tar.gz",
+                "--simulator",
+                "acc",
+                "--build",
+                "1.7"
+            ])
+            .is_err()
+        );
     }
 }

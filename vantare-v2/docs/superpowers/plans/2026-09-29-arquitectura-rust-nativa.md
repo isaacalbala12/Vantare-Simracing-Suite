@@ -126,6 +126,12 @@ congelado por hash; menú, boxes, cambio de sesión, REST caído y cierre del
 juego probados con capturas propias del revisor; sin fuga de tipos de
 simulador.
 
+**Capturas físicas aplazadas (decisión de Isaac, 2026-09-29):** las capturas
+propias de LMU (menú, boxes, cambio de sesión, REST caído, cierre, bandera) y
+de ACC conduciendo se hacen justo antes de la fase 8; las grabadoras
+`vantare-grabar-lmu` y `vantare-grabar-acc` ya existen. Hasta entonces la
+fase 1 se da por cerrada con fixtures, corpus reales y oráculo.
+
 ## Fase 2 — Todos los widgets
 
 **Alcance visual.** Solo el sistema de diseño **Eficiencia**

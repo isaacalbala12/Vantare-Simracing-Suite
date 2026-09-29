@@ -44,9 +44,12 @@ func RunCandidateWithUpdates(ctx context.Context, executable string, configurati
 		err := runCandidateOnceWithUpdates(ctx, executable, &configuration, &updates, deliver)
 		if ctx.Err() != nil {
 			// An explicit host Stop may cancel while the child is still
-			// connecting. Its canceled accept is a clean shutdown, just like
-			// cancellation after the handshake.
-			return nil
+			// connecting. Only that cancellation is a clean shutdown;
+			// preserve a genuine child shutdown failure.
+			if err == nil || errors.Is(err, ctx.Err()) {
+				return nil
+			}
+			return err
 		}
 		if err == nil {
 			return nil

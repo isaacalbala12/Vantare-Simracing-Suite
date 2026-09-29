@@ -1,1 +1,3 @@
 //! Adaptadores de simulador, núcleo, flujos y ciclo de vida.
+
+pub mod core;

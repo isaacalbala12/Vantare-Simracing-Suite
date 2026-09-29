@@ -8,6 +8,7 @@ publish.workspace = true
 [dependencies]
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
+arc-swap = "1"
 
 [lints]
 workspace = true

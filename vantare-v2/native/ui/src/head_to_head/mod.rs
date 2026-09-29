@@ -2,6 +2,8 @@
 //! animaciones ni avisos temporales: `Wake::Idle`, sin un reloj adicional.
 //! La configuración del host aún no transporta content.target; se conserva
 //! el valor por defecto `Ahead`. La proyección pura también admite `Behind`.
+//! Referencia Workshop congelada: líder mirando delante, SIN RIVAL; 20 coches
+//! presentes. `compare.ps1`: 635/46080 px (1,3780 %), umbral RGBA 8, sin máscaras.
 
 use gpui::{
     App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
@@ -189,6 +191,31 @@ impl Widget {
 mod tests {
     use super::*;
     use vantare_domain::{Car, CarId, Player, Quality::Reliable};
+
+    #[test]
+    fn frozen_workshop_scene_contains_the_rival_without_changing_the_player() {
+        // El golden tiene al líder mirando delante: SIN RIVAL. Detrás sí está
+        // Ben Hanley; no ocultar coches para conseguir la captura vacía.
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/head-to-head.snapshot.json"
+        ))
+        .expect("escena Workshop DTO v3 válida");
+        let prefs = Preferences::default();
+        assert_eq!(snapshot.state.cars.len(), 20);
+        assert_eq!(
+            snapshot.state.player_car().expect("jugador").driver.name,
+            "André Lotterer"
+        );
+        assert!(
+            head_to_head::project(&snapshot, prefs, Target::Ahead)
+                .rows
+                .is_empty()
+        );
+        let behind = head_to_head::project(&snapshot, prefs, Target::Behind);
+        assert_eq!(behind.rows[1].name, "Ben Hanley");
+        assert!(behind.rows[1].selected);
+        assert!(behind.rows[1].gap.is_empty());
+    }
 
     #[test]
     fn only_visible_changes_repaint_and_frames_finish() {

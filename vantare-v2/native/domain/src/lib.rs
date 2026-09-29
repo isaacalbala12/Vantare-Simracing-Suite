@@ -9,6 +9,7 @@
 
 mod adapter;
 mod capability;
+pub mod delta_trace;
 mod flag;
 pub mod format;
 mod model;

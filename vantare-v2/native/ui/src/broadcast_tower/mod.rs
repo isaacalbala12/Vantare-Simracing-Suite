@@ -460,4 +460,52 @@ mod tests {
                 .all(|card| card.cue.abs() < 0.001)
         );
     }
+
+    #[test]
+    fn frozen_scene_decodes_and_preserves_the_product_texts_without_inventing_lap_or_gap() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/broadcast-tower.snapshot.json"
+        ))
+        .expect("escena Broadcast Tower DTO v3");
+        let prefs = Preferences::default();
+        let vm = broadcast_tower::project(&snapshot, prefs);
+        assert_eq!(vm.status, Status::Ready);
+        assert_eq!(vm.session, "CARRERA");
+        assert_eq!(vm.lap, "—");
+        assert_eq!(vm.total_laps, None);
+        assert_eq!(vm.weather, "28°");
+        assert_eq!(vm.flag, Some(FlagKind::Green));
+        assert_eq!(
+            snapshot.state.cars[0].gap_leader,
+            vantare_domain::Quality::Unavailable
+        );
+        let texts: Vec<_> = vm
+            .rows
+            .iter()
+            .map(|row| {
+                (
+                    row.name.as_str(),
+                    row.class.as_str(),
+                    row.gap.as_str(),
+                    row.is_player,
+                )
+            })
+            .collect();
+        assert_eq!(
+            texts,
+            vec![
+                ("A. LOTTERER", "HYP", "LÍDER", true),
+                ("B. HANLEY", "LMP", "+1.234", false),
+                ("K. ESTRE", "GTE", "+2.468", false),
+                ("A. GIOVINAZZI", "HYP", "+3.702", false),
+                ("F. ALBUQUERQUE", "LMP", "+4.936", false),
+            ]
+        );
+        let mut widget = Widget::new(prefs);
+        widget.ingest(&snapshot, prefs);
+        assert_eq!(widget.size(), (1920.0, 71.0));
+        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        #[cfg(feature = "parity-capture")]
+        assert!(!widget.animating());
+    }
 }

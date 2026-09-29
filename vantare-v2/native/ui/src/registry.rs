@@ -59,4 +59,5 @@ widgets! {
     Standings => standings: "standings",
     Radar => radar: "radar",
     Pedals => pedals: "pedals",
+    DeltaTrace => delta_trace: "delta-trace",
 }

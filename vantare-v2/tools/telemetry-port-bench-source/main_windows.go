@@ -6,6 +6,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/flate"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -14,6 +16,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -122,6 +125,20 @@ func loadCorpus(dir string) (manifest, error) {
 		if item.Kind == "shm" && len(item.Bytes) != lmu.ObjectOutSize {
 			return manifest{}, fmt.Errorf("event %d SHM size invalid", index)
 		}
+		if item.Kind == "shm" {
+			var packed bytes.Buffer
+			encoder, err := flate.NewWriter(&packed, flate.BestSpeed)
+			if err != nil {
+				return manifest{}, fmt.Errorf("event %d compressor: %w", index, err)
+			}
+			if _, err := encoder.Write(item.Bytes); err != nil {
+				return manifest{}, fmt.Errorf("event %d compression: %w", index, err)
+			}
+			if err := encoder.Close(); err != nil {
+				return manifest{}, fmt.Errorf("event %d compressor close: %w", index, err)
+			}
+			item.Bytes = packed.Bytes()
+		}
 		if item.Kind == "rest" {
 			var bodies restBodies
 			if err := json.Unmarshal(item.Bytes, &bodies); err != nil || bodies.Schema != restSchema ||
@@ -179,6 +196,22 @@ func newMappingName() (string, error) {
 	return mappingPrefix + hex.EncodeToString(token[:]), nil
 }
 
+func unpackFrame(packed []byte, frame []byte) (unpackErr error) {
+	decoder := flate.NewReader(bytes.NewReader(packed))
+	defer func() { unpackErr = errors.Join(unpackErr, decoder.Close()) }()
+	if _, err := io.ReadFull(decoder, frame); err != nil {
+		return fmt.Errorf("decode SHM frame: %w", err)
+	}
+	extra, err := io.Copy(io.Discard, decoder)
+	if err != nil {
+		return fmt.Errorf("decode SHM frame tail: %w", err)
+	}
+	if extra != 0 {
+		return fmt.Errorf("invalid SHM frame tail: %d extra bytes", extra)
+	}
+	return nil
+}
+
 type restServer struct {
 	mu        sync.RWMutex
 	standings []byte
@@ -229,7 +262,11 @@ func run(dir string) (runErr error) {
 		return err
 	}
 	defer func() { runErr = errors.Join(runErr, m.close()) }()
-	copy(m.bytes, capture.Events[0].Bytes)
+	frame := make([]byte, lmu.ObjectOutSize)
+	if err := unpackFrame(capture.Events[0].Bytes, frame); err != nil {
+		return err
+	}
+	copy(m.bytes, frame)
 	server := new(restServer)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -263,7 +300,10 @@ func run(dir string) (runErr error) {
 			time.Sleep(wait)
 		}
 		if item.Kind == "shm" {
-			copy(m.bytes, item.Bytes)
+			if err := unpackFrame(item.Bytes, frame); err != nil {
+				return err
+			}
+			copy(m.bytes, frame)
 			shm++
 		} else {
 			server.update(item.Standings, item.Session)

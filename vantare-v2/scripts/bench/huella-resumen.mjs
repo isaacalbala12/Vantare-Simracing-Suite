@@ -118,7 +118,7 @@ export function summarizeRun(rows) {
   return run;
 }
 
-export function aggregateRuns(runs) {
+export function aggregateRuns(runs, stat = "mean") {
   const rejected = runs.flatMap((run, index) => run.__metadata?.publishable === false ? [index + 1] : []);
   if (rejected.length) {
     throw new Error(`Corridas no publicables por higiene forzada: ${rejected.join(", ")}`);
@@ -133,7 +133,7 @@ export function aggregateRuns(runs) {
   }
   const roles = new Set(runs.flatMap((run) => Object.keys(run)));
   return [...roles].flatMap((role) => METRICS.flatMap((metric) => {
-    const values = runs.map((run) => run[role]?.[metric]?.mean).filter(Number.isFinite);
+    const values = runs.map((run) => run[role]?.[metric]?.[stat]).filter(Number.isFinite);
     if (!values.length) return [];
     const average = mean(values);
     const deviation = standardDeviation(values);
@@ -243,6 +243,59 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
   ].join("\n");
 }
 
+// Compara dos condiciones con bloques intercalados (A0/A1) o dos apps (wails/nativo).
+// Ruido A/A = dispersión entre bloques de la misma condición; el efecto solo cuenta
+// si supera 2 errores estándar de la diferencia (aproximación con pocos bloques).
+export function compareRuns(blocks, [base, other], { sameBuild = false } = {}) {
+  const group = (label) => blocks.filter((block) => block.condition === label).map((block) => block.run);
+  const [baseRuns, otherRuns] = [group(base), group(other)];
+  if (!baseRuns.length || !otherRuns.length) throw new Error(`Faltan corridas de ${base} o de ${other}`);
+  if (sameBuild && new Set(blocks.map(({ run }) => `${run.__metadata?.buildSha256}/${run.__metadata?.distSha256}`)).size !== 1) {
+    throw new Error(`${base} y ${other} usan builds distintos; la comparación no es válida`);
+  }
+  return ["mean", "p50", "p95", "p99"].flatMap((stat) => {
+    const left = aggregateRuns(baseRuns, stat);
+    return aggregateRuns(otherRuns, stat).flatMap((right) => {
+      const first = left.find((entry) => entry.role === right.role && entry.metric === right.metric);
+      if (!first || (stat !== "mean" && right.metric !== "frameTimeMs")) return [];
+      const delta = right.mean - first.mean;
+      const se = Math.hypot(first.deviation / Math.sqrt(first.runs), right.deviation / Math.sqrt(right.runs));
+      const status = Math.min(first.runs, right.runs) < MIN_PUBLISHABLE_RUNS
+        ? "INSUFICIENTE"
+        : Math.abs(delta) > 2 * se ? "DISTINGUIBLE" : "DENTRO DEL RUIDO";
+      return [{ role: right.role, metric: right.metric, stat, base: first, other: right, delta, se, status }];
+    });
+  });
+}
+
+export function renderComparison([base, other], entries, blocks) {
+  const side = (metric, entry) => `${entry.runs} · ${displayValue(metric, entry.mean)} ± ${displayValue(metric, entry.deviation)} (${Number.isFinite(entry.noisePct) ? entry.noisePct.toFixed(2) : "∞"} %)`;
+  const rows = entries.map((entry) =>
+    `| ${entry.role} | ${entry.metric} | ${entry.stat} | ${side(entry.metric, entry.base)} | ${side(entry.metric, entry.other)} | ${displayValue(entry.metric, entry.delta)} | ${displayValue(entry.metric, 2 * entry.se)} | ${entry.status} |`);
+  const blockRows = blocks.map(({ condition, file, run }, index) => {
+    const frame = run.game?.frameTimeMs;
+    return `| ${index + 1} | ${condition} | \`${path.basename(file)}\` | ${displayValue("frameTimeMs", frame?.p50)} | ${displayValue("frameTimeMs", frame?.p95)} | ${displayValue("frameTimeMs", frame?.p99)} | ${displayValue("dropped", run.game?.dropped?.mean)} |`;
+  });
+  return [
+    `# Huella mínima · ${base} vs ${other}`,
+    "",
+    `Δ = ${other} − ${base} sobre la media de las medias por bloque. Cada lado muestra N · media ± desviación entre bloques (ruido A/A = desv/media). \`DISTINGUIBLE\` exige |Δ| > 2·EE (EE = error estándar de la diferencia, columna ±2·EE) y al menos ${MIN_PUBLISHABLE_RUNS} bloques por lado.`,
+    "",
+    "## Bloques",
+    "",
+    "| Bloque | Condición | Archivo | p50 | p95 | p99 | Perdidos |",
+    "|---:|---|---|---:|---:|---:|---:|",
+    ...blockRows,
+    "",
+    "## Comparación",
+    "",
+    `| Rol | Métrica | Estadístico | ${base} (N · media ± desv) | ${other} (N · media ± desv) | Δ | ±2·EE | Veredicto |`,
+    "|---|---|---|---|---|---:|---:|---|",
+    ...rows,
+    "",
+  ].join("\n");
+}
+
 async function main() {
   const argument = (name, fallback = "") => {
     const index = process.argv.indexOf(`--${name}`);
@@ -252,10 +305,20 @@ async function main() {
   const output = argument("output");
   const files = process.argv.slice(2).filter((value, index, values) => value.endsWith(".csv") && values[index - 1] !== "--output");
   const runSummary = process.argv.includes("--run-summary");
-  if (!condition || !output || !files.length) {
-    throw new Error("usage: node huella-resumen.mjs --condition A1 --output resumen.md run-1.csv [run-2.csv ...]");
+  const compare = argument("compare").split(",").filter(Boolean);
+  if ((!condition && compare.length !== 2) || !output || !files.length) {
+    throw new Error("usage: node huella-resumen.mjs (--condition A1 | --compare A0,A1 [--same-build]) --output resumen.md run-1.csv [run-2.csv ...]");
   }
-  const runs = await Promise.all(files.map(async (file) => summarizeRun(parseCsv(await readFile(file, "utf8")))));
+  const tables = await Promise.all(files.map(async (file) => parseCsv(await readFile(file, "utf8"))));
+  const runs = tables.map(summarizeRun);
+  if (compare.length === 2) {
+    // La condición de cada bloque viene de su CSV; el orden de los archivos es el orden de los bloques.
+    const blocks = files.map((file, index) => ({ file, run: runs[index], condition: tables[index][0]?.condition ?? "" }));
+    const entries = compareRuns(blocks, compare, { sameBuild: process.argv.includes("--same-build") });
+    await writeFile(output, renderComparison(compare, entries, blocks), { encoding: "utf8", flag: "wx" });
+    process.stdout.write(`${JSON.stringify({ compare, files, entries })}\n`);
+    return;
+  }
   let aggregate;
   if (runSummary && runs.some((run) => run.__metadata?.publishable === false)) {
     aggregate = [];

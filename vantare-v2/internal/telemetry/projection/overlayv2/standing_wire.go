@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // encoding/json invokes these methods through its standard interfaces.
@@ -147,9 +148,11 @@ func decodeStandingTiming(raw json.RawMessage, override, base Quality) (QValue[f
 	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
 		return value, fmt.Errorf("missing numeric timing")
 	}
-	if err := json.Unmarshal(raw, &value.V); err != nil {
+	parsed, err := strconv.ParseFloat(string(raw), 64)
+	if err != nil {
 		return value, err
 	}
+	value.V = parsed
 	value.Q = quality
 	if quality == QualityMissing && value.V != 0 {
 		return value, fmt.Errorf("missing timing has a value")

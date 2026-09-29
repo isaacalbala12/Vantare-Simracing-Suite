@@ -2559,3 +2559,16 @@ menú aún se suprimen: el frame de cero coches no pasa el Core (`InvalidSession
 R09/R20/R21 deben resolver esa transición y medir timestamps reales antes
 de evaluar el 50 %. Pasaron suite Go, 164 tests Rust release, Clippy,
 formato, build y dos comparaciones estrictas del corpus real.
+
+## 139. Decoder numérico y coste físico restante (2026-09-29)
+
+El decoder Go de tiempos compactos Standings parsea los escalares validados
+directamente. Cinco pasadas del fixture Rust bajaron de 2155 a 2023
+asignaciones y de ~287,7 a ~268,7 kB por frame; la mediana fue ~933→903 µs,
+con dispersión. Preasignar el mapa de calidad resultó peor y se retiró.
+`go test ./...` pasó. Una pareja live LMU47 con tres consumidores dio Go
+2,015625 s CPU/15 s, RSS 31.764.480 B, p99 2,5232 ms y 958 entregas;
+Rust+Go VTE1 dio 5,4375 s, RSS 37.924.864 B, p99 5,7002 ms y 908.
+No es el banco G0/G1/R ni demuestra mejora física del decoder: las
+cadencias y las ventanas siguen distintas. R21 debe reducir trabajo de
+producto/IPC y conservar equivalencia estricta antes del gate final.

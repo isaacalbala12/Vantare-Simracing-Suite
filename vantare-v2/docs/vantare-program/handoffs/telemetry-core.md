@@ -1,5 +1,24 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — decoder numérico y pareja física (2026-09-29)
+
+El decoder Go de tiempos compactos Standings usa el parser numérico directo
+después de que `encoding/json` haya validado el objeto: conserva calidad,
+precisión, legacy y rechazo de valores inválidos. En cinco pasadas del
+fixture Rust estático, las asignaciones bajaron de 2155 a 2023 por frame y
+los bytes de ~287,7 a ~268,7 kB; la mediana pasó de ~933 a ~903 µs, con
+variación que impide atribuir una ganancia física. Preasignar el mapa de
+calidades empeoró bytes y tiempo; se retiró. `go test ./...` pasó.
+
+En una pareja consecutiva LMU47 de 15 s y tres productos, Go dio
+2,015625 s CPU, RSS pico 31.764.480 B, p99 Engineer 2,5232 ms y 958
+entregas/producto. Rust+Go VTE1 dio 5,4375 s CPU (3,546875 host +
+1,890625 hijo), RSS 37.924.864 B, p99 5,7002 ms y 908 entregas/producto.
+Son ventanas live sin corpus inmutable, A/A ni trabajo equivalente; **no**
+son G0/G1/R. El 50 % de CPU no está acreditado y la ruta actual necesita
+reducir decodificación/serialización y el trabajo por evento antes de medir
+de nuevo. El PR #1415 continúa draft, con Go productivo.
+
 ## VAN-778 / ISA-1403 — REST como evento propio y paridad LMU47 (2026-09-29)
 
 La ruta candidata Rust ya procesa cada poll REST completado como una

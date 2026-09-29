@@ -61,8 +61,8 @@ Cuando quede **menos del 50 % de la cuota de uso del plan** de Claude:
 | Modelo | Vía |
 |---|---|
 | Opus 5.5, Sonnet 5.5, Fable 5.1 | Subagente de Claude Code (`Agent`, parámetro `model`: `opus`, `sonnet`, `fable`). |
-| GPT 6 Astra | MCP de Codex (o hilo Codex vía T3 Code). |
-| DeepSeek V4.1 Flash | MCP de DeepSeek Harness, o provider `opencode-go` en opencode. |
+| GPT 6 Astra | MCP `codex`: herramienta `codex` (`model` de Astra, `reasoningEffort: xhigh`, que es el máximo del puente; `workingDirectory` del worktree), `review` para revisiones y `ping` para comprobarlo. También hilo Codex vía T3 Code. |
+| DeepSeek V4.1 Flash | MCP `deepseek-harness`: `task_inbox` (tarea, `cwd` absoluto y verificaciones) y `task_result` para recoger el resultado; `harness_status` para comprobarlo. Un worker a la vez; solo trabaja bajo `C:/tmp` o su playground, así que usa worktrees en `C:\tmp`. |
 | Muse Spark 1.3 | opencode con provider `opencode-go` (free o contributor). |
 
 Si el MCP necesario no está disponible en la sesión, dilo y pide que se

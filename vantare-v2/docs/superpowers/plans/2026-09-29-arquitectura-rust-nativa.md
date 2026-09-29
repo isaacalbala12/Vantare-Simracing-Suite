@@ -2,31 +2,29 @@
 
 Issue: [#1419](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1419).
 Decisión: [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md).
-Estado: propuesta en debate Opus 5.5 ↔ GPT-6 Astra; pendiente de aceptación de Isaac.
+Estado: consenso Opus 5.5 ↔ GPT-6 Astra; pendiente de aceptación de Isaac.
 
 ## Estrategia: destino fijo, crecimiento desde un esqueleto andante
 
-Las fronteras de la ADR 0099 se fijan desde el inicio y no se mueven entre
-fases: adaptador, núcleo neutral, tres flujos, proyecciones, widgets y
-procesos. Dentro de ellas se construye primero un **esqueleto andante**: el
-camino completo más pequeño posible, de un replay real a un widget en
-pantalla. Cada fase lo amplía sin cambiar el esqueleto y termina con algo que
-funciona y se puede medir.
+Las **fronteras** de la ADR 0099 se fijan desde el inicio: responsabilidades y
+dirección de dependencias (adaptador → núcleo → flujos → proyecciones →
+widgets; procesos). Los tipos y la semántica evolucionan con evidencia, sobre
+todo la del segundo simulador. Dentro de esas fronteras se construye primero
+un **esqueleto andante**, el camino completo más pequeño posible de un replay
+real a un widget en pantalla, y cada fase lo amplía sin cambiar su forma. Cada
+fase termina con algo que funciona y se puede medir.
 
 ## Prioridades
 
-1. **Rendimiento** en carrera: CPU, memoria y frame time del juego.
-2. **Mantenibilidad a largo plazo, por encima de todo lo demás:** el mínimo
-   código posible, módulos pequeños con una responsabilidad, fronteras
-   explícitas, sin abstracciones especulativas ni dependencias sin
-   justificar. Ante dos soluciones con rendimiento equivalente gana la más
-   simple de mantener.
+1. **Dentro de presupuestos de producto aceptados, manda la mantenibilidad a
+   largo plazo;** una mejora marginal no justifica complejidad adicional.
+2. **Rendimiento en carrera:** CPU total, memoria y frame time del juego,
+   siempre dentro de presupuesto.
 
 ## Reglas comunes a todas las fases
 
-- **Coexistencia.** La aplicación nativa vive en un workspace Rust propio
-  dentro del repositorio (ubicación exacta en la fase 1). El producto Wails
-  sigue siendo el distribuido y no se toca salvo correcciones, hasta la fase 8.
+- **Coexistencia.** La aplicación nativa vive en `native/` dentro del
+  repositorio. El producto Wails sigue siendo el distribuido hasta el corte.
 - **Issue y rama por fase** (`vantareapp/isa-N-slug`), worktree aislado y
   delegación según la skill de orquestación: Sonnet ejecuta, Opus revisa y
   diseña lo visual nuevo, DeepSeek/Muse para inventarios y trabajo mecánico,
@@ -34,156 +32,189 @@ funciona y se puede medir.
 - **Código mínimo y Rust idiomático.** Todo worker que escriba Rust aplica
   `ponytail` (la solución más simple que funciona; nunca recorta validación en
   fronteras de confianza, manejo de errores que evite pérdida de datos,
-  seguridad ni accesibilidad) y las guías de Rust instaladas: `rust-skills`,
-  `rust-pragmatic-guidelines` y las `rust-m*`/`rust-unsafe-checker`. `clippy`
-  con avisos como error y `rustfmt` en cada commit.
-- **Presupuestos antes de medir.** Cada medición fija presupuesto, método,
-  hashes de binarios y corpus antes de ejecutar. Los crudos se versionan. Una
+  seguridad ni accesibilidad) y las guías instaladas: `rust-skills`,
+  `rust-pragmatic-guidelines`, `rust-m*` y `rust-unsafe-checker`. `clippy` con
+  avisos como error y `rustfmt` en cada commit.
+- **Tests de arquitectura en CI desde la fase 0:** `domain` y `ui` no dependen
+  (ni transitivamente) de adaptadores; fronteras públicas comprobadas; ningún
+  widget contiene lógica por simulador.
+- **Indicadores de mantenibilidad como tendencia, no como objetivo:** cada
+  fase reporta líneas añadidas y eliminadas separando producción, tests y
+  generado; dependencias nuevas con justificación; tiempo de compilación
+  incremental de `ui` medido en el mismo equipo, perfil, caché y cambio; y
+  acoplamiento: cuántos módulos hay que tocar para añadir una señal o una
+  variante visual.
+- **Presupuestos antes de comparar.** Tras caracterizar la referencia se
+  acuerdan presupuestos **relativos y absolutos**, con método, hashes de
+  binarios y corpus fijados antes de ejecutar. Los crudos se versionan. Una
   regresión no se oculta ajustando corpus o consumidores.
-- **Mediciones las hace el orquestador,** en serie y en las mismas condiciones.
-- **Paridad visual** por capturas contra una referencia congelada, con el
+- **Latencia honesta.** Se mide por tramos (muestra del simulador → commit del
+  núcleo → presentación). El tramo del simulador solo cuenta si su timestamp
+  es observable y correlacionable; si no, la medida empieza en la lectura y la
+  edad previa se declara desconocida.
+- **Las mediciones las hace el orquestador,** en serie y en las mismas
+  condiciones.
+- **Paridad visual** por capturas contra referencias congeladas, con el
   comparador de píxeles de `isa-1410`.
 - **Nada se da por bueno por el informe del autor:** revisión de diff,
   evidencia y reproducción de las cifras clave.
 - **Tests que no pueden pasar en vacío:** un test que depende de un corpus
-  falla si el corpus no está, en vez de retornar.
+  falla si el corpus no está.
+- **Controles de regresión** de rendimiento y paridad activos durante todas las
+  fases, no solo al final.
 
-## Fase 0 — Arnés A/B de procesos
+## Fase 0 — Esqueleto andante y decisión de topología
 
-**Objetivo.** Decidir si los overlays viven dentro del núcleo (A) o en un
-proceso propio (B).
+**Objetivo.** Recorrer todo el camino con lo mínimo y decidir la topología.
 
-**Qué se construye.** Un arnés con núcleo mínimo alimentado por el replay real
-LMU (corpus de ISA-1403 con su hash) y los widgets de paridad GPUI existentes
-(Standings; radar y pedales en versión mínima), ejecutable en modo A y B, con
-1, 4 y 22 ventanas.
+**Incluye.**
+- Workspace `native/` con `domain`, `runtime`, `ipc` y `ui`.
+- Modelo común inicial (sesión, coches, posiciones, tiempos, banderas,
+  calidad) y formateador puro.
+- Adaptador LMU sobre replay del corpus real, reutilizando tras revisión
+  independiente el parser/admisión, las reglas de calidad y el reducer de
+  ISA-1403; batería de conformidad con corpus obligatorio.
+- Núcleo mínimo con el flujo de foto, proceso de overlays GPUI con Standings,
+  radar y pedales mínimos, IPC con DTO serde en JSON.
+- Ciclo de vida: propietario de arranque y cierre, instancia única,
+  cancelación con plazos, configuración sin bloquear la adquisición,
+  reconexión con época nueva.
+- Launcher mínimo y Workshop mínimo (recompilar y reabrir conservando la
+  escena) sobre el renderer productivo.
 
-**Qué se mide.** CPU total del sistema atribuible (núcleo, overlays, driver,
-DWM), memoria privada y VRAM, latencia dato→pantalla, y con LMU en pista el
-frame time del juego (p99 y p99,9) con PresentMon; además, con OBS capturando.
+**Medición.**
+1. Caracterizar la referencia: producto Wails actual con los mismos widgets y
+   el mismo replay, y el ruido A/A.
+2. Fijar presupuestos relativos y absolutos antes de comparar.
+3. Campaña intercalada B (por defecto) frente a A (overlays dentro del núcleo)
+   con 1, 4 y 22 ventanas: CPU total atribuible (núcleo, overlays, driver,
+   DWM), memoria privada y VRAM, latencia por tramos y, con LMU en pista, frame
+   time del juego (p99 y p99,9) con PresentMon, también con OBS capturando.
+4. Pruebas de caída, bloqueo y reconexión de la UI y del núcleo.
+5. DPI mixto, multimonitor, OBS por captura de ventana, sin foco, ventanas
+   ocultas.
 
-**Aceptación.** Presupuestos y criterio escritos antes de ejecutar; A/A previo
-para conocer el ruido; al menos cinco bloques intercalados A/B. Resultado
-documentado y decisión de procesos cerrada en la ADR.
+**Aceptación.** B cumple presupuestos y contiene fallos, o se documenta por
+qué A; el modo A se retira del código. Standings con paridad visual dentro del
+umbral de `isa-1410`. Tests de arquitectura verdes.
 
-**Presupuestos iniciales a validar** (tomados de lo medido con Standings 44
-coches): overlays con 4 widgets típicos ≤ 120 MiB privados y ≤ 4 % de un núcleo
-en carrera; núcleo ≤ 60 MiB privados; latencia dato→pantalla p99 ≤ 1 frame a
-60 Hz; frame time del juego sin regresión medible frente a sin overlays más
-allá del ruido del A/A.
-
-## Fase 1 — Esqueleto andante
-
-**Objetivo.** Recorrer todo el camino con lo mínimo: replay LMU → adaptador →
-núcleo mínimo → foto → proyección Standings → widget GPUI.
-
-**Incluye.** Workspace Rust nativo; modelo común inicial (sesión, coches,
-posiciones, tiempos, banderas, calidad); adaptador LMU reutilizando, tras
-revisión independiente, el parser/admisión, las reglas de calidad y el reducer
-de ISA-1403; formateador común de unidades; capa fina sobre GPUI; batería de
-conformidad del adaptador con el corpus real.
-
-**Aceptación.** Standings nativo con paridad visual dentro del umbral de la
-prueba `isa-1410`; batería de conformidad verde con corpus obligatorio;
-ningún tipo de LMU fuera del adaptador (test de arquitectura); medición de
-recursos dentro de presupuesto.
-
-## Fase 2 — LMU en vivo y núcleo completo para overlays
+## Fase 1 — LMU en vivo, núcleo para overlays y pruebas de frontera
 
 **Incluye.** Shared Memory y REST en vivo; identidad, fusión y derivaciones
 (gaps, deltas, combustible, stints); capacidades en tres niveles; banderas
 combinables con ámbito; multiclase; estados de fuente y frescura con la
-semántica de Overlay V2.
+semántica de Overlay V2 (revisión única y creciente).
+
+**Pruebas de frontera antes de multiplicar consumidores:**
+- Un evento persistido y recuperado, y un bloque temporal reproducible.
+- Un corte vertical de un **segundo adaptador real**. Si no hay capturas de un
+  segundo simulador, un suplente de otra fuente real sirve como validación
+  **parcial**: debe aportar semánticas distintas (identidad, tiempo, unidades,
+  capacidades ausentes o estructura de sesión); convertir una captura LMU a
+  otro formato no vale, y un fichero histórico no demuestra ciclo de vida ni
+  frescura live. Las limitaciones se registran.
 
 **Aceptación.** Paridad de valores contra el corpus real con oráculo
-congelado por hash; estados de menú, boxes, cambio de sesión, REST caído y
-cierre del juego probados con capturas propias del revisor; sin fuga de tipos
-de simulador.
+congelado por hash; menú, boxes, cambio de sesión, REST caído y cierre del
+juego probados con capturas propias del revisor; sin fuga de tipos de
+simulador.
 
-## Fase 3 — Todos los widgets
+## Fase 2 — Todos los widgets
 
-**Incluye.** Los 22 tipos de widget y los 5 sistemas de diseño, portados por
-familia en paralelo (Sonnet, un worktree por familia) sobre un kit común
-(tipografía, filas, cabeceras, animaciones, sombras). Overlays transparentes,
-click-through, sin foco, DPI mixto y multimonitor. OBS por captura de ventana.
+**Puerta previa.** Dos widgets × dos sistemas de diseño sobre el kit común,
+para medir el coste incremental real de cada diseño. Con esa evidencia Isaac
+decide si se conservan, simplifican o retiran sistemas de diseño; hasta
+entonces los cinco siguen en alcance.
+
+**Incluye.** Los 22 tipos de widget y los sistemas de diseño decididos,
+portados por familia en paralelo (Sonnet, un worktree por familia) sobre el
+kit común (tipografía, filas, cabeceras, animaciones, sombras). ViewModels,
+formato, estado y primitivas compartidos; composiciones distintas solo cuando
+cambie la geometría.
 
 **Aceptación.** Paridad por capturas de cada widget y diseño contra
 referencias congeladas; revisión visual de Opus; recursos dentro de
-presupuesto con el conjunto típico de widgets; widgets sin ramas por simulador.
+presupuesto con el conjunto típico de widgets.
 
-## Fase 4 — Eventos y Engineer
+## Fase 3 — Eventos y Engineer
 
-**Incluye.** Flujo de eventos con journal, cursor, ACK y deduplicación;
-Engineer/Spotter y voz como worker que consume foto y eventos.
+**Incluye.** Flujo de eventos con la semántica de la ADR (memoria con recording
+desactivado, durable tras persistencia con recording activado); Engineer/Spotter
+y voz como worker que consume foto y eventos.
 
-**Aceptación.** Pruebas de fallo antes y después de confirmar en el journal,
-reinicio del worker, consumidor lento y huecos explícitos; locuciones
-caducadas descartadas sin perder hechos.
+**Aceptación.** Reinicio de Engineer recuperando desde su cursor; reinicio del
+núcleo y retención agotada con hueco declarado y reconstrucción desde snapshot,
+sin deducir hechos a través del hueco; activación y desactivación de recording;
+disco lleno con degradación explícita; consumidor lento.
 
-## Fase 5 — Series, grabación y análisis
+## Fase 4 — Series, grabación y análisis
 
 **Incluye.** Series por vuelta en bloques; worker de almacenamiento con DuckDB
 de propietario único; análisis histórico y después análisis en directo sobre
-el mismo esquema; salida remota opcional si se decide.
+el mismo esquema.
 
 **Aceptación.** Grabación sin afectar a adquisición ni frame time; análisis
-live y reproducción de la misma sesión dan los mismos resultados.
+live y reproducción de la misma sesión dan los mismos resultados. Presupuestos
+ratificados de nuevo con journal y series activos.
 
-## Fase 6 — Hub, Overlay Studio y Workshop nuevo
+## Fase 5 — Hub, Overlay Studio y Workshop completo
 
 **Incluye.** Proceso Hub en GPUI; Studio (layout, contenido, comportamiento,
-apariencia) sobre los mismos renderizadores de widgets; Workshop nuevo para
-diseñar en Rust con recarga rápida; cuenta, licencias, calendario,
-notificaciones, planes de Strategy.
+apariencia) sobre los mismos renderizadores; Workshop completo; cuenta,
+licencias, calendario, notificaciones y planes de Strategy.
 
 **Aceptación.** Paridad funcional con el Hub actual por lista de
 comprobación; el Hub se cierra por completo y libera su memoria al entrar al
 juego.
 
-## Fase 7 — Segundo simulador
-
-**Objetivo.** Validar la neutralidad con un adaptador real distinto de LMU.
+## Fase 6 — Segundo simulador completo
 
 **Aceptación.** Ningún cambio en núcleo, proyecciones ni widgets salvo
 extensiones del modelo común justificadas; si hace falta un `if simulador`
-fuera del adaptador, se revisa el modelo antes de seguir.
+fuera del adaptador, se revisa el modelo antes de seguir. Es la validación
+completa de neutralidad antes del corte.
 
-## Fase 8 — Corte
+## Fase 7 — Candidato empaquetado y reversible
 
 **Incluye.** Empaquetado, instalador, portable, actualizador con rollback,
-migración de datos y perfiles del usuario, retirada del producto Go/Wails y de
-las reglas de `AGENTS.md` ligadas a él, soak y sesión física LMU + OBS.
+migración reversible de datos y perfiles, **matriz de paridad de servicios**
+(incluido Testing Center), actualización interrumpida, sesión prolongada y
+prueba en otra GPU. Red remota y 3D quedan como extensiones explícitas, no
+como requisitos de la sustitución.
 
-**Aceptación.** Banco final frente al producto actual con el mismo trabajo;
-mejora reproducible o decisión explícita de Isaac; instalación limpia,
-actualización interrumpida y rollback probados.
-
-## Fase 9 — Tandas de optimización del pipeline completo
-
-**Objetivo.** Con toda la arquitectura en su sitio, optimizar de punta a punta:
-adaptador, núcleo, derivaciones, flujos, proyecciones, render y procesos.
+## Fase 8 — Tandas de optimización del pipeline completo
 
 **Método.** Rondas cortas y medidas: perfilar, elegir una causa, cambiarla con
 test de paridad, repetir el banco con los mismos binarios de referencia y
-conservar también los resultados que empeoran. Cada ronda debe mantener o
-mejorar la mantenibilidad; una optimización que complique el código sin una
-ganancia medible y relevante se descarta.
+conservar también los resultados que empeoran. Cada ronda mantiene o mejora la
+mantenibilidad; una optimización que complique el código sin ganancia medible
+y relevante se descarta. El cambio de codec IPC, si procede, se decide aquí o
+antes cuando un perfil representativo lo justifique.
 
 **Aceptación.** Mejora reproducible frente a la ronda anterior o cierre
 explícito de la tanda.
+
+## Fase 9 — Corte
+
+**Incluye.** Retirada del producto Go/Wails y de las reglas de `AGENTS.md`
+ligadas a él, soak y sesión física LMU + OBS sobre el SHA final, banco final
+frente al producto actual y promoción de canal con autorización de Isaac.
 
 ## Tratamiento de ISA-1403
 
 Pausada en `3ced668f` (PR draft #1415). No se revisa de forma exhaustiva lo
 que se abandona. Las piezas reutilizables se revisan al portarlas en las fases
-1 y 2; los defectos ya confirmados (contadores de revisión, bloqueo en la
+0 y 1; los defectos ya confirmados (contadores de revisión, bloqueo en la
 actualización de configuración, facts sin garantía, proyecciones acopladas a
 LMU, tests que pasan sin corpus) se tratan como requisitos de diseño de la
 arquitectura nueva, no como parches sobre la anterior.
 
-## Preguntas abiertas
+## Preguntas para Isaac
 
-1. Ubicación y nombre del workspace Rust nativo.
-2. Commit de Zed fijado para GPUI y política de actualización.
-3. Segundo simulador de la fase 7 (iRacing, ACC u otro).
-4. Si la salida remota para análisis live entra en la fase 5 o después.
+1. **Congelar funcionalidades del producto Wails** al empezar el porte masivo
+   de widgets (fase 2), dejando solo correcciones. Las correcciones semánticas
+   se trazan para incorporarlas también al producto nativo.
+2. **Segundo simulador** de las fases 1 y 6 y si hay capturas reales
+   disponibles.
+3. **Sistemas de diseño:** decisión tras la puerta 2×2 de la fase 2.
+4. Si la salida remota para análisis live entra antes del corte o después.

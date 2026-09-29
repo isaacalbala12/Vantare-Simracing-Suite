@@ -40,6 +40,8 @@ python tools/telemetry-port-parity/compare_high_rate.py "$env:LMU_HIGH_RATE_PARI
 cargo +1.95.0 build --manifest-path rust/telemetry/Cargo.toml --release --locked --features replay-harness --bin vantare-telemetry-replay
 $env:VANTARE_TELEMETRY_REPLAY_TEST_HELPER=(Resolve-Path rust/telemetry/target/release/vantare-telemetry-replay.exe).Path
 go test ./internal/app/telemetryprocess -run '^TestRustHighRateCorpusPipeOptIn$' -count=1 -v -timeout 6m
+$env:VANTARE_TELEMETRY_PACED_REPLAY='1'
+go test ./internal/app/telemetryprocess -run '^TestRustHighRateCorpusPipeOptIn$' -count=1 -v -timeout 6m
 ```
 
 Use un directorio de salida nuevo para cada ejecución: las pruebas no sobrescriben
@@ -49,7 +51,9 @@ La comparación completa pasó localmente. Otro replay pasó los 3839 productos
 de cada consumidor y el fact por el pipe Windows, el receptor y el Publisher Go,
 tanto con Engineer JSON como binario. El hash de las 3839 observaciones Engineer
 adaptadas en Go fue idéntico con ambos codecs.
-Se ejecuta a la velocidad que permite el receptor, no a la cadencia de captura;
-ninguno de estos tests mide el coste equivalente de adquisición, IPC ni entrega
-en una ventana temporal controlada. Solo cubren pista estable. Siguen abiertos
+El primer replay por pipe se ejecuta a la velocidad que permite el receptor;
+con `VANTARE_TELEMETRY_PACED_REPLAY=1` espera los tiempos observados de la
+captura y registra CPU de ambos procesos. Ambos atraviesan IPC y entrega, pero
+omiten los adaptadores de adquisición productivos y G0/G1 equivalentes; no son
+el gate de rendimiento. Solo cubren pista estable. Siguen abiertos
 G0/G1/R, CPU ≤50%, p99, RSS, recuperación y la prueba física Wails/OBS.

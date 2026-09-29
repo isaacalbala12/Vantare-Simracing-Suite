@@ -522,7 +522,13 @@ mod tests {
         let sid = current_user_sid().unwrap();
         assert!(default_pipe_name().unwrap().ends_with(&sid));
         assert!(sddl.starts_with("D:P("), "DACL protegida: {sddl}");
-        assert!(sddl.contains(&sid), "{sddl} debe nombrar a {sid}");
+        // Windows abrevia al escribir SDDL el SID del Administrador integrado
+        // (RID 500) como `LA`; así corre el usuario del runner de CI.
+        let trustee = sddl.rsplit(';').next().unwrap().trim_end_matches(')');
+        assert!(
+            trustee == sid || (trustee == "LA" && sid.ends_with("-500")),
+            "{sddl} debe nombrar a {sid}"
+        );
         assert_eq!(sddl.matches('(').count(), 1, "un único permiso: {sddl}");
     }
 

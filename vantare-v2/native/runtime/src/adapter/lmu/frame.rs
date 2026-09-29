@@ -20,6 +20,12 @@ const TELEMETRY_STRIDE: usize = 1_888;
 /// fila en el test de conformidad.
 const SUPPORTED_BUILDS: &[&str] = &["1.3.0.0", "1.4.0.0", "1.4.1.3", "1.4.2.0"];
 
+/// Cota de `mMaximumLaps`: 0 es una sesión por tiempo e `i32::MAX` el marcador
+/// de «sin límite»; por encima de esto no hay carrera real.
+const MAX_SESSION_LAPS: u32 = 10_000;
+/// Cotas del delta nativo: fuera de ±10 000 s el valor es un marcador, no un delta.
+const DELTA_LIMIT_S: f64 = 10_000.0;
+
 pub(super) fn supports_build(build: &str) -> bool {
     SUPPORTED_BUILDS.contains(&build)
 }
@@ -61,6 +67,10 @@ pub(super) struct Frame {
     pub source_time: Option<Duration>,
     /// `mEndET`, en segundos de reloj de sesión.
     pub end_time_s: Option<f64>,
+    /// `mMaximumLaps`; `None` en sesiones por tiempo o sin límite.
+    pub maximum_laps: Option<u32>,
+    /// Longitud del circuito en metros; `None` si el simulador no la da.
+    pub track_length_m: Option<f64>,
     pub vehicles: Vec<Vehicle>,
     pub player: Option<usize>,
 }
@@ -75,6 +85,13 @@ pub(super) struct Vehicle {
     pub position: u32,
     pub laps: u32,
     pub in_pit: bool,
+    /// Metros recorridos en la vuelta en curso; el simulador usa negativos
+    /// para posiciones anteriores a la línea de meta.
+    pub lap_distance_m: Option<f64>,
+    /// Segundos desde el inicio de la vuelta en curso.
+    pub lap_progress_s: Option<f64>,
+    /// Sector en curso, desde 0.
+    pub sector: Option<u8>,
     pub best_lap_s: Option<f64>,
     pub last_lap_s: Option<f64>,
     pub time_behind_next_s: Option<f64>,
@@ -94,6 +111,9 @@ pub(super) struct Inputs {
     pub throttle: Option<f64>,
     pub brake: Option<f64>,
     pub clutch: Option<f64>,
+    pub fuel_level_l: Option<f64>,
+    pub fuel_capacity_l: Option<f64>,
+    pub delta_best_s: Option<f64>,
 }
 
 pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Rejection> {
@@ -110,6 +130,8 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
     let track = c_string(&buffer[1_632..1_696]).ok_or(Rejection::InvalidSessionString)?;
     let source_seconds = read_f64(buffer, 1_700);
     let end_seconds = read_f64(buffer, 1_708);
+    let maximum_laps = read_i32(buffer, 1_716);
+    let track_length = read_f64(buffer, 1_720);
 
     let mut telemetry = Vec::with_capacity(count);
     for index in 0..count {
@@ -135,6 +157,8 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
         }
         vehicles.push(vehicle);
     }
+    normalize_lap_progress(&mut vehicles);
+    align_scoring_poses(buffer, &mut vehicles, player, &telemetry);
     Ok(Frame {
         track: track.trim().to_owned(),
         kind: match read_i32(buffer, 1_696) {
@@ -148,6 +172,10 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
         end_time_s: (end_seconds.is_finite()
             && (!source_seconds.is_finite() || end_seconds >= source_seconds))
             .then_some(end_seconds),
+        maximum_laps: u32::try_from(maximum_laps)
+            .ok()
+            .filter(|laps| (1..=MAX_SESSION_LAPS).contains(laps)),
+        track_length_m: (track_length.is_finite() && track_length > 0.0).then_some(track_length),
         vehicles,
         player,
     })
@@ -175,13 +203,20 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
     let laps = u32::try_from(read_i16(buffer, base + 100));
     let laps_next = u32::try_from(read_i32(buffer, base + 240));
     let laps_leader = u32::try_from(read_i32(buffer, base + 252));
-    // Sector (base+102), distancia de vuelta (base+104), vueltas de boxes y
-    // sanciones (base+192/194) y `estimated` (base+472) no viajan en el modelo
-    // de la fase 0, pero un valor imposible sigue invalidando la fila.
-    let sector_ok = buffer[base + 102] <= 2;
+    // `mSector`: 0 = último sector, 1 = S1, 2 = S2; el modelo lo cuenta desde 0.
+    let sector = match buffer[base + 102] {
+        0 => Some(2),
+        1 => Some(0),
+        2 => Some(1),
+        _ => None,
+    };
+    let lap_distance = read_f64(buffer, base + 104);
+    let lap_progress = read_f64(buffer, base + 464);
+    // Vueltas de boxes y sanciones (base+192/194) y `estimated` (base+472) no
+    // viajan en el modelo, pero un valor imposible sigue invalidando la fila.
     let counters_ok = read_i16(buffer, base + 192) >= 0 && read_i16(buffer, base + 194) >= 0;
     let finite_ok = [
-        read_f64(buffer, base + 104),
+        lap_distance,
         time_next,
         time_leader,
         best,
@@ -198,7 +233,7 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         || is_player > 1
         || in_pit > 1
         || !(1..=MAX_VEHICLES).contains(&usize::from(position))
-        || !sector_ok
+        || sector.is_none()
         || !counters_ok
         || !finite_ok
     {
@@ -222,6 +257,9 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         position: u32::from(position),
         laps,
         in_pit: in_pit == 1,
+        lap_distance_m: (lap_distance >= 0.0).then_some(lap_distance),
+        lap_progress_s: lap_progress.is_finite().then_some(lap_progress),
+        sector,
         best_lap_s: (best > 0.0).then_some(best),
         last_lap_s: (last > 0.0).then_some(last),
         time_behind_next_s: (time_next >= 0.0).then_some(time_next),
@@ -236,6 +274,15 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
 fn inputs(buffer: &[u8], base: usize) -> Inputs {
     let velocity = vector(buffer, base + 184);
     let rpm = read_f64(buffer, base + 356);
+    let fuel_level = read_f64(buffer, base + 524);
+    let fuel_capacity = read_f64(buffer, base + 608);
+    let fuel = (fuel_level.is_finite()
+        && fuel_capacity.is_finite()
+        && fuel_capacity > 0.0
+        && fuel_level >= 0.0
+        && fuel_level <= fuel_capacity)
+        .then_some((fuel_level, fuel_capacity));
+    let delta = read_f64(buffer, base + 696);
     Inputs {
         gear: i8::try_from(read_i32(buffer, base + 352))
             .ok()
@@ -247,11 +294,116 @@ fn inputs(buffer: &[u8], base: usize) -> Inputs {
         throttle: ratio(read_f64(buffer, base + 420)),
         brake: ratio(read_f64(buffer, base + 428)),
         clutch: ratio(read_f64(buffer, base + 444)),
+        fuel_level_l: fuel.map(|(level, _)| level),
+        fuel_capacity_l: fuel.map(|(_, capacity)| capacity),
+        delta_best_s: (delta.is_finite() && delta.abs() < DELTA_LIMIT_S).then_some(delta),
     }
 }
 
 fn ratio(value: f64) -> Option<f64> {
     (value.is_finite() && (0.0..=1.0).contains(&value)).then_some(value)
+}
+
+/// Lleva las poses de `scoring` al instante de la telemetría del jugador.
+///
+/// Las poses de los rivales solo existen en `scoring`, cuyo reloj va unos
+/// 0,2 s por detrás de la telemetría; sin corregirlo, el radar mezcla relojes.
+/// El desfase se estima con el jugador, que está en ambos flujos:
+/// `Δt = dot(pos_tel − pos_scoring, v) / |v|²`, con `v` su velocidad en el
+/// mundo. Cada rival avanza después `v_rival · Δt`; el jugador ya publica su
+/// pose de telemetría.
+fn align_scoring_poses(
+    buffer: &[u8],
+    vehicles: &mut [Vehicle],
+    player: Option<usize>,
+    telemetry: &[(i32, usize)],
+) {
+    let Some(index) = player else {
+        return;
+    };
+    let scoring_base = SCORING_BASE + index * SCORING_STRIDE;
+    let Some((_, telemetry_base)) = telemetry
+        .iter()
+        .find(|(slot, _)| *slot == read_i32(buffer, scoring_base))
+    else {
+        return;
+    };
+    let (Some(scoring), Some(telemetry_pose)) = (
+        pose(buffer, scoring_base + 264, scoring_base + 336),
+        pose(buffer, telemetry_base + 160, telemetry_base + 232),
+    ) else {
+        return;
+    };
+    let lag_s = scoring_lag_s(
+        scoring,
+        telemetry_pose,
+        world_velocity(buffer, telemetry_base + 184, telemetry_base + 232),
+    );
+    if lag_s == 0.0 {
+        return;
+    }
+    for (position, vehicle) in vehicles.iter_mut().enumerate() {
+        if position == index {
+            continue;
+        }
+        let base = SCORING_BASE + position * SCORING_STRIDE;
+        let Some(velocity) = world_velocity(buffer, base + 288, base + 336) else {
+            continue;
+        };
+        if let Some(current) = &mut vehicle.pose {
+            current.x_m += velocity[0] * lag_s;
+            current.y_m += velocity[1] * lag_s;
+        }
+    }
+}
+
+/// `Δt` entre el reloj de `scoring` y el de la telemetría, por proyección del
+/// desplazamiento del jugador sobre su velocidad. Parado (< 1 m/s) no hay
+/// desfase observable.
+fn scoring_lag_s(scoring: Pose, telemetry: Pose, velocity: Option<[f64; 2]>) -> f64 {
+    let Some([x, y]) = velocity else {
+        return 0.0;
+    };
+    let squared = x * x + y * y;
+    if squared < 1.0 {
+        return 0.0;
+    }
+    let dx = telemetry.x_m - scoring.x_m;
+    let dy = telemetry.y_m - scoring.y_m;
+    (dx * x + dy * y) / squared
+}
+
+/// Velocidad en el mundo, en el plano del suelo (`x`, `y = z`): las columnas
+/// de `mOri` llevan los ejes locales al mundo.
+fn world_velocity(buffer: &[u8], velocity_at: usize, orientation_at: usize) -> Option<[f64; 2]> {
+    let local = vector(buffer, velocity_at)?;
+    let ori = orientation(buffer, orientation_at)?;
+    let world = |row: usize| (0..3).map(|column| ori[row][column] * local[column]).sum();
+    Some([world(0), world(2)])
+}
+
+/// Un cronómetro de vuelta en 0 para todos los coches no es un cronómetro
+/// parado: es que el simulador no publica `mProgressTime` (las distancias de
+/// vuelta sí difieren). Se descarta para no informar 0,00 s a mitad de vuelta.
+// La comparación exacta es el dato: el marcador del simulador es 0,0 literal.
+#[allow(clippy::float_cmp)]
+fn normalize_lap_progress(vehicles: &mut [Vehicle]) {
+    if vehicles.len() < 2
+        || vehicles
+            .iter()
+            .any(|vehicle| vehicle.lap_progress_s != Some(0.0))
+    {
+        return;
+    }
+    let mut distances = vehicles.iter().filter_map(|vehicle| vehicle.lap_distance_m);
+    let differs = distances
+        .next()
+        .is_some_and(|first| distances.any(|distance| distance != first));
+    if differs {
+        for vehicle in vehicles {
+            vehicle.lap_progress_s = None;
+        }
+    }
 }
 
 fn vector(buffer: &[u8], base: usize) -> Option<[f64; 3]> {
@@ -444,6 +596,118 @@ mod tests {
         );
         assert!(inputs.brake.is_some() && inputs.speed_mps.is_some());
         assert!(grid.vehicles[0].inputs.is_none());
+    }
+
+    /// El jugador está en los dos flujos con relojes distintos: en el fixture,
+    /// `scoring` va 0,18 s (2,4 m a 15,6 m/s) por detrás de la telemetría. La
+    /// proyección del desplazamiento sobre su velocidad estima el desfase y el
+    /// rival extrapolado queda pegado al reloj de la telemetría.
+    #[test]
+    fn the_scoring_clock_lag_is_estimated_with_the_player_and_applied_to_rivals() {
+        let frame = admit(REAL_44, "1.3.0.0").unwrap();
+        let scoring_base = SCORING_BASE + 43 * SCORING_STRIDE;
+        let telemetry_base = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        let scoring = pose(REAL_44, scoring_base + 264, scoring_base + 336).unwrap();
+        let telemetry = pose(REAL_44, telemetry_base + 160, telemetry_base + 232).unwrap();
+        let velocity = world_velocity(REAL_44, telemetry_base + 184, telemetry_base + 232).unwrap();
+        let lag = scoring_lag_s(scoring, telemetry, Some(velocity));
+        assert!((lag - 0.181_292_787).abs() < 1e-6, "Δt {lag}");
+        let error = ((scoring.x_m + velocity[0] * lag - telemetry.x_m).powi(2)
+            + (scoring.y_m + velocity[1] * lag - telemetry.y_m).powi(2))
+        .sqrt();
+        assert!(
+            error < 0.5,
+            "el jugador queda a {error} m de su pose rápido"
+        );
+
+        // El rival 0 se publica extrapolado con su propia velocidad y conserva
+        // su orientación.
+        let rival = pose(REAL_44, SCORING_BASE + 264, SCORING_BASE + 336).unwrap();
+        let rival_velocity =
+            world_velocity(REAL_44, SCORING_BASE + 288, SCORING_BASE + 336).unwrap();
+        let published = frame.vehicles[0].pose.unwrap();
+        assert!((published.x_m - (rival.x_m + rival_velocity[0] * lag)).abs() < 1e-9);
+        assert!((published.y_m - (rival.y_m + rival_velocity[1] * lag)).abs() < 1e-9);
+        assert!((published.yaw_rad - rival.yaw_rad).abs() < f64::EPSILON);
+        // El jugador no se extrapola: ya publica su pose de telemetría.
+        assert_eq!(frame.vehicles[43].pose.unwrap(), telemetry);
+    }
+
+    #[test]
+    fn a_standing_player_has_no_observable_clock_lag() {
+        let still = Pose {
+            x_m: 0.0,
+            y_m: 0.0,
+            yaw_rad: 0.0,
+        };
+        let moved = Pose {
+            x_m: 3.0,
+            y_m: 0.0,
+            yaw_rad: 0.0,
+        };
+        assert!(scoring_lag_s(still, moved, Some([0.5, -0.5])).abs() < f64::EPSILON);
+        assert!(scoring_lag_s(still, moved, None).abs() < f64::EPSILON);
+        assert!((scoring_lag_s(still, moved, Some([2.0, 0.0])) - 1.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn sector_distance_progress_and_session_limits_carry_their_native_evidence() {
+        let frame = admit(REAL_44, "1.3.0.0").unwrap();
+        // `mSector` 1 = S1 → índice 0; el cronómetro de vuelta todo a cero es un
+        // marcador sin dato (las distancias sí difieren) y `mMaximumLaps` 0 es
+        // una sesión por tiempo.
+        assert!(
+            frame
+                .vehicles
+                .iter()
+                .all(|vehicle| vehicle.sector.is_some())
+        );
+        assert_eq!(frame.vehicles[43].sector, Some(0));
+        assert!(
+            frame
+                .vehicles
+                .iter()
+                .all(|vehicle| vehicle.lap_distance_m.is_some())
+        );
+        assert!(
+            frame
+                .vehicles
+                .iter()
+                .all(|vehicle| vehicle.lap_progress_s.is_none())
+        );
+        assert_eq!(frame.maximum_laps, None);
+        assert!((frame.track_length_m.unwrap() - 4_655.109_863_281_25).abs() < 1e-9);
+
+        let mutate = |edit: &dyn Fn(&mut Vec<u8>)| {
+            let mut frame = REAL_44.to_vec();
+            edit(&mut frame);
+            admit(&frame, "1.3.0.0").unwrap()
+        };
+        // 0 = último sector, 2 = S2.
+        assert_eq!(
+            mutate(&|f| f[SCORING_BASE + 102] = 0).vehicles[0].sector,
+            Some(2)
+        );
+        assert_eq!(
+            mutate(&|f| f[SCORING_BASE + 102] = 2).vehicles[0].sector,
+            Some(1)
+        );
+        // Un cronómetro real sí viaja; una distancia negativa no es distancia.
+        let edited = mutate(&|f| {
+            f[SCORING_BASE + 104..SCORING_BASE + 112].copy_from_slice(&(-1.0_f64).to_le_bytes());
+            f[SCORING_BASE + 464..SCORING_BASE + 472].copy_from_slice(&12.5_f64.to_le_bytes());
+        });
+        assert_eq!(edited.vehicles[0].lap_distance_m, None);
+        assert_eq!(edited.vehicles[0].lap_progress_s, Some(12.5));
+        // 0 = por tiempo, negativo = inválido, `i32::MAX` = sin límite.
+        for (laps, expected) in [(0_i32, None), (-1, None), (i32::MAX, None), (30, Some(30))] {
+            let edited = mutate(&|f| f[1_716..1_720].copy_from_slice(&laps.to_le_bytes()));
+            assert_eq!(edited.maximum_laps, expected, "mMaximumLaps {laps}");
+        }
+        for (length, expected) in [(0.0_f64, None), (-1.0, None), (f64::NAN, None)] {
+            let edited = mutate(&|f| f[1_720..1_728].copy_from_slice(&length.to_le_bytes()));
+            assert_eq!(edited.track_length_m, expected, "mTrackLength {length}");
+        }
     }
 
     #[test]

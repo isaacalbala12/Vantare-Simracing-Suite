@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-    FlagScope, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind, Source,
-    SourceKind, State, Telemetry,
+    FlagScope, Fuel, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind,
+    Source, SourceKind, State, Telemetry,
 };
 
 use super::frame::{self, Frame, Kind, Rejection, Vehicle};
@@ -239,7 +239,12 @@ impl Translator {
             laps: quality(Some(vehicle.laps), stale),
             last_lap_s: quality(vehicle.last_lap_s, stale),
             best_lap_s: quality(vehicle.best_lap_s, stale),
+            // LMU solo publica el sector en curso; los tiempos de sector no
+            // están en el layout admitido.
             last_sectors_s: Vec::new(),
+            lap_distance_m: quality(vehicle.lap_distance_m, stale),
+            lap_elapsed_s: quality(vehicle.lap_progress_s, stale),
+            current_sector: quality(vehicle.sector, stale),
             gap_leader: quality(
                 gap(vehicle.time_behind_leader_s, vehicle.laps_behind_leader),
                 stale,
@@ -300,26 +305,30 @@ impl Translator {
             }),
             // Lo estima el núcleo con el ritmo de la clase.
             laps_remaining: Quality::Unavailable,
-            ..Session::default()
+            laps_total: quality(frame.maximum_laps, stale),
+            track_length_m: quality(frame.track_length_m, stale),
         }
     }
 }
 
 fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
+    let inputs = vehicle.inputs.as_ref();
     Player {
         car,
-        telemetry: vehicle
-            .inputs
-            .as_ref()
-            .map_or_else(Telemetry::default, |inputs| Telemetry {
-                throttle: quality(inputs.throttle, stale),
-                brake: quality(inputs.brake, stale),
-                clutch: quality(inputs.clutch, stale),
-                gear: quality(inputs.gear, stale),
-                speed_mps: quality(inputs.speed_mps, stale),
-                engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
-            }),
-        ..Player::default()
+        telemetry: inputs.map_or_else(Telemetry::default, |inputs| Telemetry {
+            throttle: quality(inputs.throttle, stale),
+            brake: quality(inputs.brake, stale),
+            clutch: quality(inputs.clutch, stale),
+            gear: quality(inputs.gear, stale),
+            speed_mps: quality(inputs.speed_mps, stale),
+            engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
+        }),
+        fuel: inputs.map_or_else(Fuel::default, |inputs| Fuel {
+            level_l: quality(inputs.fuel_level_l, stale),
+            capacity_l: quality(inputs.fuel_capacity_l, stale),
+            ..Fuel::default()
+        }),
+        delta_best_s: quality(inputs.and_then(|inputs| inputs.delta_best_s), stale),
     }
 }
 
@@ -371,7 +380,20 @@ fn capabilities(
                 .is_some_and(|t| has(&t.gear) || has(&t.speed_mps) || has(&t.engine_speed_rad_s)),
             stale,
         ),
-        ..Capabilities::default()
+        fuel: capability(
+            player.is_some_and(|player| has(&player.fuel.level_l) || has(&player.fuel.capacity_l)),
+            stale,
+        ),
+        delta: capability(
+            player.is_some_and(|player| has(&player.delta_best_s)),
+            stale,
+        ),
+        sectors: capability(cars.iter().any(|car| has(&car.current_sector)), stale),
+        lap_progress: capability(
+            cars.iter()
+                .any(|car| has(&car.lap_distance_m) || has(&car.lap_elapsed_s)),
+            stale,
+        ),
     }
 }
 
@@ -403,6 +425,8 @@ mod tests {
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const BUILD: &str = "1.3.0.0";
     const SCORING_BASE: usize = 2_192;
+    /// Fila de telemetría del jugador en `lmu-fixture.bin` (43).
+    const PLAYER_TELEMETRY: usize = 128_468 + 43 * 1_888;
 
     const fn ms(value: u64) -> Duration {
         Duration::from_millis(value)
@@ -430,6 +454,13 @@ mod tests {
 
     fn ids(observation: &Observation) -> Vec<CarId> {
         observation.state.cars.iter().map(|car| car.id).collect()
+    }
+
+    fn reliable<T: Copy>(quality: Quality<T>) -> T {
+        match quality {
+            Quality::Reliable(value) => value,
+            _ => panic!("se esperaba un valor fiable"),
+        }
     }
 
     #[test]
@@ -605,6 +636,92 @@ mod tests {
     }
 
     #[test]
+    fn fuel_and_delta_carry_the_native_validity_rules() {
+        let observation = observe(&mut translator(), REAL_44, ms(0));
+        let player = observation.state.player.expect("jugador");
+        assert!((reliable(player.fuel.level_l) - 99.586_573_277_723_69).abs() < 1e-9);
+        assert!((reliable(player.fuel.capacity_l) - 100.0).abs() < 1e-9);
+        // `per_lap_l` y `laps_left` los deriva el núcleo.
+        assert!(matches!(player.fuel.per_lap_l, Quality::Unavailable));
+        assert!(matches!(player.fuel.laps_left, Quality::Unavailable));
+        assert!(
+            matches!(player.delta_best_s, Quality::Reliable(delta) if delta.abs() < f64::EPSILON)
+        );
+        let caps = observation.state.capabilities;
+        assert_eq!(
+            (caps.fuel, caps.delta),
+            (Capability::Fresh, Capability::Fresh)
+        );
+
+        // Nivel por encima de la capacidad: el par entero es inválido.
+        let mut frame = REAL_44.to_vec();
+        frame[PLAYER_TELEMETRY + 524..PLAYER_TELEMETRY + 532]
+            .copy_from_slice(&150.0_f64.to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        let player = observation.state.player.unwrap();
+        assert!(matches!(
+            (player.fuel.level_l, player.fuel.capacity_l),
+            (Quality::Unavailable, Quality::Unavailable)
+        ));
+        assert_eq!(observation.state.capabilities.fuel, Capability::Supported);
+
+        // Delta fuera de ±10 000 s o no finito: sin dato.
+        for delta in [10_000.0_f64, -10_000.0, f64::NAN, f64::INFINITY] {
+            let mut frame = REAL_44.to_vec();
+            frame[PLAYER_TELEMETRY + 696..PLAYER_TELEMETRY + 704]
+                .copy_from_slice(&delta.to_le_bytes());
+            let observation = observe(&mut translator(), &frame, ms(0));
+            let player = observation.state.player.unwrap();
+            assert!(
+                matches!(player.delta_best_s, Quality::Unavailable),
+                "{delta}"
+            );
+            assert_eq!(observation.state.capabilities.delta, Capability::Supported);
+        }
+        // Un delta real (negativo = más rápido) sí viaja.
+        let mut frame = REAL_44.to_vec();
+        frame[PLAYER_TELEMETRY + 696..PLAYER_TELEMETRY + 704]
+            .copy_from_slice(&(-3.5_f64).to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        assert!(
+            matches!(observation.state.player.unwrap().delta_best_s, Quality::Reliable(delta) if (delta + 3.5).abs() < f64::EPSILON)
+        );
+    }
+
+    #[test]
+    fn cars_and_session_publish_sector_distance_progress_and_limits() {
+        let observation = observe(&mut translator(), REAL_44, ms(0));
+        let car = observation.state.player_car().expect("coche del jugador");
+        assert_eq!(reliable(car.current_sector), 0);
+        assert!((reliable(car.lap_distance_m) - 1_068.229_614_257_812_5).abs() < 1e-9);
+        // Cronómetro todo a cero con distancias distintas: sin dato.
+        assert!(matches!(car.lap_elapsed_s, Quality::Unavailable));
+        // `mMaximumLaps` 0 = sesión por tiempo.
+        assert!(matches!(
+            observation.state.session.laps_total,
+            Quality::Unavailable
+        ));
+        assert!(
+            (reliable(observation.state.session.track_length_m) - 4_655.109_863_281_25).abs()
+                < 1e-9
+        );
+        let caps = observation.state.capabilities;
+        assert_eq!(
+            (caps.sectors, caps.lap_progress),
+            (Capability::Fresh, Capability::Fresh)
+        );
+
+        // Carrera por vueltas: `mMaximumLaps` llega tal cual.
+        let mut frame = REAL_44.to_vec();
+        frame[1_716..1_720].copy_from_slice(&30_i32.to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        assert!(matches!(
+            observation.state.session.laps_total,
+            Quality::Reliable(30)
+        ));
+    }
+
+    #[test]
     fn a_stalled_session_clock_marks_everything_stale_and_declares_data_without_freshness() {
         let mut t = translator();
         let fresh = observe(&mut t, REAL_44, ms(0));
@@ -623,6 +740,10 @@ mod tests {
             caps.spatial,
             caps.driver_inputs,
             caps.powertrain,
+            caps.fuel,
+            caps.delta,
+            caps.sectors,
+            caps.lap_progress,
         ] {
             assert_eq!(declared, Capability::WithData);
         }
@@ -654,13 +775,16 @@ mod tests {
         let menu = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
         let observation = observe(&mut translator(), menu, ms(0));
         assert!(observation.state.cars.is_empty() && observation.state.player.is_none());
-        assert_eq!(
-            observation.state.capabilities.positions,
-            Capability::Supported
-        );
-        assert_eq!(
-            observation.state.capabilities.session_clock,
-            Capability::Fresh
-        );
+        let caps = observation.state.capabilities;
+        for dataless in [
+            caps.positions,
+            caps.fuel,
+            caps.delta,
+            caps.sectors,
+            caps.lap_progress,
+        ] {
+            assert_eq!(dataless, Capability::Supported);
+        }
+        assert_eq!(caps.session_clock, Capability::Fresh);
     }
 }

@@ -126,6 +126,29 @@ mod tests {
     }
 
     #[test]
+    fn workshop_scene_decodes_with_unavailable_weather_and_damage() {
+        let scene = snapshot_from_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
+            .expect("escena migrada al DTO vigente");
+        assert_eq!(scene.state.cars.len(), 47);
+        assert_eq!(
+            scene.state.session.weather,
+            vantare_domain::Weather::default()
+        );
+        assert_eq!(
+            scene.state.player.expect("jugador").damage,
+            vantare_domain::Damage::default()
+        );
+        assert_eq!(
+            scene.state.capabilities.weather,
+            vantare_domain::Capability::Unsupported
+        );
+        assert_eq!(
+            scene.state.capabilities.damage,
+            vantare_domain::Capability::Unsupported
+        );
+    }
+
+    #[test]
     fn text_that_is_not_a_snapshot_or_is_from_the_future_is_rejected() {
         assert!(matches!(snapshot_from_json("{}"), Err(Error::Json(_))));
         let future = snapshot_to_json(&rich_snapshot(1, 1))

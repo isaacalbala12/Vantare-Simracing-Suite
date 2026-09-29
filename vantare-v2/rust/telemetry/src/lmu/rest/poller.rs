@@ -116,13 +116,14 @@ impl Poller {
 
     /// Move the oldest completed REST poll into the canonical cache, then age
     /// it. A backlog overflow is fatal to this instance, never silent loss.
-    pub fn take_into(&self, cache: &mut RestCache) -> Result<bool, PollerError> {
+    pub fn take_into(&self, cache: &mut RestCache) -> Result<Option<u64>, PollerError> {
         let report = self
             .pending
             .lock()
             .expect("REST result queue poisoned")
             .pop()?;
         let updated = if let Some(report) = report {
+            let received_ns = report.session_received_ns;
             if report.standings.status == EndpointStatus::Fresh {
                 cache.accept_standings(
                     &report.standings.body,
@@ -137,9 +138,9 @@ impl Poller {
             } else {
                 cache.session_status = report.session.status;
             }
-            true
+            Some(received_ns)
         } else {
-            false
+            None
         };
         cache.age(elapsed_ns(self.start), DEFAULT_REST_TTL_NS);
         Ok(updated)
@@ -215,7 +216,12 @@ mod tests {
                 "../../../testdata/configuration-frame-go-v1.bin"
             ))
             .unwrap();
-        while !poller.take_into(assembler.rest_cache_mut()).unwrap() && Instant::now() < deadline {
+        while poller
+            .take_into(assembler.rest_cache_mut())
+            .unwrap()
+            .is_none()
+            && Instant::now() < deadline
+        {
             thread::yield_now();
         }
         assert_eq!(
@@ -226,7 +232,12 @@ mod tests {
             assembler.rest_cache_mut().session_status,
             EndpointStatus::Fresh
         );
-        assert!(!poller.take_into(assembler.rest_cache_mut()).unwrap());
+        assert!(
+            poller
+                .take_into(assembler.rest_cache_mut())
+                .unwrap()
+                .is_none()
+        );
         let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
         let frames = assembler
             .apply(frame, "1.3.0.0", 0, 600_000_000, 1_000_000_000)
@@ -299,5 +310,32 @@ mod tests {
         }
         assert_eq!(pending.pop().err(), Some(PollerError::BacklogOverflow));
         assert_eq!(pending.reports.len(), MAX_PENDING_REPORTS);
+    }
+
+    #[test]
+    fn live_lmu_poller_cadence_diagnostic_opt_in() {
+        if std::env::var_os("VANTARE_LMU_LIVE_REST_CADENCE_TEST").is_none() {
+            return;
+        }
+        let mut poller = Poller::start(Instant::now());
+        let mut cache = RestCache::default();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut total = 0;
+        let mut live = 0;
+        let mut last = None;
+        while Instant::now() < deadline {
+            if poller.take_into(&mut cache).unwrap().is_some() {
+                total += 1;
+                if cache.status() == super::super::RestStatus::Live {
+                    live += 1;
+                }
+                last = Some((cache.standings_status, cache.session_status));
+            }
+            // The physical REST worker polls independently of this test.
+            thread::sleep(Duration::from_millis(5));
+        }
+        poller.shutdown().unwrap();
+        eprintln!("LMU REST poller diagnostic: total={total} live={live} last={last:?}");
+        assert!(total > 0, "no LMU REST report completed");
     }
 }

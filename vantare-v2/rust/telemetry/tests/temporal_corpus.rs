@@ -106,6 +106,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     assembler.configure(&configuration).unwrap();
     let profile = std::env::var_os("LMU_TEMPORAL_PROFILE").is_some();
     let replay_rest = std::env::var_os("LMU_TEMPORAL_REST_BODIES").is_some();
+    let replay_rest_events = std::env::var_os("LMU_TEMPORAL_REST_EVENTS").is_some();
+    assert!(!replay_rest_events || replay_rest);
     let profile_config = profile.then(|| ipc::configuration::decode_frame(&configuration).unwrap());
     let mut profile_engine = profile.then(|| Engine::new(30, 15).unwrap());
     let mut profile_cache = profile_config
@@ -120,6 +122,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         fs::create_dir_all(out).unwrap();
     }
     let mut parity = Vec::new();
+    let mut rest_parity = Vec::new();
     for (index, sample) in manifest.samples.iter().enumerate() {
         assert_eq!(sample.index, index);
         assert_eq!(sample.vehicles, expected);
@@ -416,7 +419,12 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         }
         assert_eq!(
             assembler.engine().current().unwrap().cursor.sequence,
-            u64::try_from(index + 1).unwrap()
+            u64::try_from(if replay_rest_events {
+                2 * index + 1
+            } else {
+                index + 1
+            })
+            .unwrap()
         );
         if replay_rest {
             // The endpoint reads followed this SHM capture and preceded the
@@ -436,6 +444,48 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
             }
             if let Some(engine) = binary_engine.as_mut() {
                 apply_rest_bodies(engine.rest_cache_mut(), &bodies, rest_received_ns);
+            }
+            if replay_rest_events {
+                let rest_frames = assembler
+                    .apply(
+                        &bytes,
+                        &manifest.build,
+                        received_ns,
+                        rest_received_ns,
+                        occurred_ns.checked_add(1).unwrap(),
+                    )
+                    .unwrap();
+                let mut overlay = None;
+                let mut engineer = None;
+                let mut strategy = None;
+                let mut facts = Vec::new();
+                for raw in &rest_frames {
+                    let decoded = ipc::decode(raw).unwrap();
+                    let value: Value = serde_json::from_slice(decoded.payload).unwrap();
+                    match decoded.kind {
+                        Kind::Snapshot if value["product"] == "overlay-v2" => {
+                            overlay = Some(value["update"]["frame"].clone());
+                        }
+                        Kind::Snapshot if value["product"] == "engineer-v1" => {
+                            engineer = Some(temporal_payload(&value["snapshot"]));
+                        }
+                        Kind::Snapshot if value["product"] == "strategy-v1" => {
+                            strategy = Some(temporal_payload(&value["snapshot"]));
+                        }
+                        Kind::Fact => facts.push(value["fact"].clone()),
+                        _ => panic!("unexpected standalone REST frame"),
+                    }
+                }
+                rest_parity.push(json!({
+                    "overlay": overlay.expect("REST Overlay"),
+                    "engineer": engineer.expect("REST Engineer"),
+                    "strategy": strategy.expect("REST Strategy"),
+                    "facts": facts,
+                }));
+                assert_eq!(
+                    assembler.engine().current().unwrap().cursor.sequence,
+                    u64::try_from(2 * index + 2).unwrap()
+                );
             }
         }
     }
@@ -462,6 +512,13 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
             serde_json::to_vec(&parity).unwrap(),
         )
         .unwrap();
+        if replay_rest_events {
+            fs::write(
+                Path::new(&out).join("rust-rest-events.json"),
+                serde_json::to_vec(&rest_parity).unwrap(),
+            )
+            .unwrap();
+        }
     }
 }
 

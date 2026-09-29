@@ -157,6 +157,24 @@ fn run_candidate_loop(
                 .handle_control_frame(&frame, &mut queue)
                 .map_err(|error| io::Error::other(format!("host control: {error:?}")))?;
         }
+        // Preserve each completed REST poll as its own canonical delivery.
+        // Drain and write each batch before the SHM tick can replace state.
+        for _ in 0..16 {
+            let Some(frames) = acquisition
+                .poll_rest_event()
+                .map_err(|error| io::Error::other(format!("LMU REST: {error:?}")))?
+            else {
+                break;
+            };
+            queue
+                .push_batch(frames)
+                .map_err(|error| io::Error::other(format!("queue REST: {error:?}")))?;
+            while let Some(batch) = queue.pop_batch() {
+                for frame in batch {
+                    pipe.write_all_until(&frame, Instant::now() + Duration::from_secs(2))?;
+                }
+            }
+        }
         acquisition
             .tick_into_queue_if_due(&mut cadence, Instant::now(), &mut queue)
             .map_err(|error| io::Error::other(format!("LMU tick: {error:?}")))?;

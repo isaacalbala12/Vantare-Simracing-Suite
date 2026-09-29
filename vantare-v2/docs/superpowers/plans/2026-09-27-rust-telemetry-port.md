@@ -2538,3 +2538,24 @@ descarta un reporte en silencio. Una prueba comprueba orden y desbordamiento;
 corte solo conserva los polls pendientes: todavía faltan su publicación como
 eventos canónicos separados, paridad de cadencia con Go, timestamps reales
 por request y el banco G0/G1/R sobre el escenario real ≥46 (captura de 47).
+
+## 138. Evento REST canónico y replay doble (2026-09-29)
+
+Rust consume cada poll retenido y confirma un lote canónico propio usando el
+último SHM válido y su sello de recepción original; el loop escribe ese lote
+antes del próximo tick SHM. Los harnesses Go y Rust reprodujeron 80 pares
+LMU47 como SHM(i) → REST(i): 80 salidas SHM y 80 REST coincidieron sin
+normalización ni tolerancia en Overlay, Engineer, Strategy y facts. El corpus
+no conserva timestamps de requests y usa +1 ns para situar REST entre dos
+capturas; todavía falta demostrar el intercalado real de 60/4 Hz.
+
+El poller físico devolvió 20 respuestas fresh en 5 s; la adquisición Rust
+directa produjo 299 SHM y 20 REST independientes en 5 s con 47 coches. En
+el supervisor live, tres productos tuvieron 908 entregas cada uno en 15 s,
+5,4375 s CPU total, 38.322.176 B RSS pico y p99 Engineer 5,8664 ms.
+La entrega final sigue por debajo de las 958/15 s Go observadas antes; no
+se afirma equivalencia de cadencia ni el gate G0/G1/R. Los polls REST en
+menú aún se suprimen: el frame de cero coches no pasa el Core (`InvalidSession`).
+R09/R20/R21 deben resolver esa transición y medir timestamps reales antes
+de evaluar el 50 %. Pasaron suite Go, 164 tests Rust release, Clippy,
+formato, build y dos comparaciones estrictas del corpus real.

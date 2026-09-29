@@ -103,9 +103,19 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		Strategy json.RawMessage `json:"strategy"`
 		Facts    json.RawMessage `json:"facts"`
 	}
+	var restParity []struct {
+		Overlay  json.RawMessage `json:"overlay"`
+		Engineer json.RawMessage `json:"engineer"`
+		Strategy json.RawMessage `json:"strategy"`
+		Facts    json.RawMessage `json:"facts"`
+	}
 	fusion := new(Fusion)
 	restReplayCache := new(restCache)
 	replayREST := os.Getenv("LMU_TEMPORAL_REST_BODIES") == "1"
+	replayRESTEvents := os.Getenv("LMU_TEMPORAL_REST_EVENTS") == "1"
+	if replayRESTEvents && !replayREST {
+		t.Fatal("REST event replay requires LMU_TEMPORAL_REST_BODIES=1")
+	}
 	mapper := NewBatchMapper()
 	var factNow time.Time
 	engine := telemetryengine.New(telemetrycore.NewReducer(), telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: func() time.Time { return factNow }}), derive.NewPipeline(derive.Config{}))
@@ -196,9 +206,13 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		if overlayUpdate.Frame != nil {
 			overlayRows = len(overlayUpdate.Frame.Standings)
 		}
-		if engineerSnapshot.Sequence != schema.Sequence(i+1) || len(engineerSnapshot.Vehicles) != want || engineerSnapshot.Player.ID == "" ||
+		wantSequence := i + 1
+		if replayRESTEvents {
+			wantSequence = 2*i + 1
+		}
+		if engineerSnapshot.Sequence != schema.Sequence(wantSequence) || len(engineerSnapshot.Vehicles) != want || engineerSnapshot.Player.ID == "" ||
 			!engineerSnapshot.SourceTime.Present || engineerSnapshot.SourceTime.Value != seconds ||
-			strategySnapshot.Sequence != schema.Sequence(i+1) || strategySnapshot.Player.ID != engineerSnapshot.Player.ID ||
+			strategySnapshot.Sequence != schema.Sequence(wantSequence) || strategySnapshot.Player.ID != engineerSnapshot.Player.ID ||
 			!strategySnapshot.SourceTime.Present || strategySnapshot.SourceTime.Value != seconds ||
 			overlayUpdate.Frame == nil || overlayRows != want {
 			t.Fatalf("sample %d Go temporal products: Engineer sequence=%d vehicles=%d player=%q clock=%+v; Strategy sequence=%d player=%q clock=%+v; Overlay rows=%d", i,
@@ -294,7 +308,53 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 				if !complete {
 					t.Fatalf("sample %d REST replay did not decode both endpoints", i)
 				}
-				fusion.Merge(restAt, restElapsed, restObservation)
+				canonicalREST := fusion.Merge(restAt, restElapsed, restObservation)
+				if replayRESTEvents {
+					factNow = restAt
+					committed = 0
+					facts = facts[:0]
+					if err := mapper.WriteObservation(context.Background(), canonicalREST, sink); err != nil || committed != 1 {
+						t.Fatalf("sample %d standalone REST commit=%d error=%v", i, committed, err)
+					}
+					if parityOut != "" {
+						if os.Getenv("LMU_TEMPORAL_RESOLVE_MODES") == "1" {
+							value, ok := final.Value()
+							if !ok {
+								t.Fatalf("sample %d REST final state missing", i)
+							}
+							overlaySource.Modes = corpusCapabilityModes(value)
+						}
+						restOverlay, err := overlayProjector.Project(final, overlaySource, overlayPreferences, 1, restAt)
+						if err != nil || restOverlay.Frame == nil {
+							t.Fatalf("sample %d REST Overlay: %v", i, err)
+						}
+						restEngineer, err := engineer.ProjectV1(final)
+						if err != nil {
+							t.Fatalf("sample %d REST Engineer: %v", i, err)
+						}
+						restStrategy, err := strategy.ProjectV1(final)
+						if err != nil {
+							t.Fatalf("sample %d REST Strategy: %v", i, err)
+						}
+						marshal := func(value any) json.RawMessage {
+							encoded, encodeErr := json.Marshal(value)
+							if encodeErr != nil {
+								t.Fatalf("sample %d REST parity encode: %v", i, encodeErr)
+							}
+							return encoded
+						}
+						overlayJSON := marshal(restOverlay.Frame)
+						engineerJSON := marshal(restEngineer.PayloadV1)
+						strategyJSON := marshal(restStrategy.PayloadV1)
+						factsJSON := marshal(facts)
+						restParity = append(restParity, struct {
+							Overlay  json.RawMessage `json:"overlay"`
+							Engineer json.RawMessage `json:"engineer"`
+							Strategy json.RawMessage `json:"strategy"`
+							Facts    json.RawMessage `json:"facts"`
+						}{overlayJSON, engineerJSON, strategyJSON, factsJSON})
+					}
+				}
 			}
 		} else if entry.RESTBodiesSHA != "" {
 			t.Fatalf("sample %d REST body hash without file", i)
@@ -312,6 +372,15 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		}
 		if err := os.WriteFile(filepath.Join(parityOut, "go-products.json"), encoded, 0o600); err != nil {
 			t.Fatal(err)
+		}
+		if replayRESTEvents {
+			encoded, err := json.Marshal(restParity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(parityOut, "go-rest-events.json"), encoded, 0o600); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	t.Logf("audited real temporal SHM+REST corpus: build=%s, samples=%d, vehicles=%d, source=%d..%dms", manifest.Build, len(manifest.Samples), want, manifest.Samples[0].SourceMS, manifest.Samples[len(manifest.Samples)-1].SourceMS)

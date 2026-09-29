@@ -1,5 +1,32 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — REST como evento propio y paridad LMU47 (2026-09-29)
+
+La ruta candidata Rust ya procesa cada poll REST completado como una
+observación canónica propia tras el último SHM válido. El hijo entrega su
+lote antes del siguiente tick SHM; la cola previa conserva hasta 16 polls y
+el desbordamiento termina la instancia explícitamente. Los harnesses Go y
+Rust ejecutaron SHM(i) → REST(i) sobre 80 pares reales sanitizados de 47
+coches. El comparador estricto dio **cero diferencias** en los 80 eventos
+SHM y en los 80 eventos REST, para Overlay, Engineer, Strategy y facts.
+El corpus coloca REST a +1 ns de cada SHM porque no conserva el timestamp
+individual del request; la paridad no demuestra todavía intercalado live.
+
+En LMU 1.4.2.0 con 47 coches, el poller Rust completó 20/20 respuestas
+fresh en 5 s y la adquisición directa produjo 299 eventos SHM y 20 REST
+independientes en 5 s. El supervisor live con tres productos y VTE1 entregó
+908 de cada uno en 15 s, sin reinicio: 5,4375 s CPU total, RSS pico
+38.322.176 B y p99 Engineer 5,8664 ms. Go había entregado 958/15 s en
+ventanas anteriores; el ritmo final aún difiere y esta medición no es
+G0/G1/R. La ruta de menú valida un frame de cero coches pero no lo puede
+confirmar en el Core actual (`InvalidSession`); por eso el candidato
+suprime esos REST mientras está en menú. Falta paridad de menú/salida de
+sesión y captura de tiempos REST reales antes del gate final.
+
+Pasaron `go test ./...`, 164 tests Rust release, Clippy estricto, formato,
+build release y ambos comparadores temporales LMU47. El PR #1415 sigue
+draft; Go continúa por defecto y no hubo promoción.
+
 ## VAN-778 / ISA-1403 — cola REST acotada (2026-09-29)
 
 Isaac confirmó que un solo escenario temporal real de al menos 46 coches

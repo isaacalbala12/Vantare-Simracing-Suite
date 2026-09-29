@@ -30,6 +30,7 @@ pub struct Acquisition {
     frame: Vec<u8>,
     scratch: Vec<u8>,
     started: Instant,
+    last_shared_received_ns: Option<u64>,
 }
 
 impl Acquisition {
@@ -50,6 +51,7 @@ impl Acquisition {
             frame: vec![0; OBJECT_OUT_SIZE],
             scratch: vec![0; OBJECT_OUT_SIZE],
             started,
+            last_shared_received_ns: None,
         })
     }
 
@@ -79,8 +81,7 @@ impl Acquisition {
             .source_health(elapsed_ns(self.started))
     }
 
-    /// One SHM tick. REST is consumed only from the last completed poll; a
-    /// slow endpoint cannot delay this read. The caller owns bounded delivery.
+    /// One SHM tick. The caller owns bounded delivery.
     pub fn tick(&mut self) -> Result<Vec<Vec<u8>>, AcquisitionError> {
         let build = self
             .source
@@ -88,11 +89,8 @@ impl Acquisition {
             .evidence
             .exact_supported_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
-        self.rest
-            .take_into(self.assembler.rest_cache_mut())
-            .map_err(AcquisitionError::Rest)?;
         let source = &self.source;
-        acquire_tick(
+        let (frames, received_ns) = acquire_tick(
             &mut self.assembler,
             &mut self.frame,
             &mut self.scratch,
@@ -100,7 +98,45 @@ impl Acquisition {
             |frame, scratch| source.read_stable(frame, scratch),
             || elapsed_ns(self.started),
             utc_ns,
+        )?;
+        if let Some(received_ns) = received_ns {
+            self.last_shared_received_ns = Some(received_ns);
+        }
+        Ok(frames)
+    }
+
+    /// A completed REST poll is a separate canonical observation when a valid
+    /// SHM grid exists. Menu/startup polls still update REST health, but the
+    /// current Core cannot map a zero-vehicle session.
+    pub fn poll_rest_event(&mut self) -> Result<Option<Vec<Vec<u8>>>, AcquisitionError> {
+        let Some(_rest_received_ns) = self
+            .rest
+            .take_into(self.assembler.rest_cache_mut())
+            .map_err(AcquisitionError::Rest)?
+        else {
+            return Ok(None);
+        };
+        let Some(shared_received_ns) = self.last_shared_received_ns else {
+            return Ok(Some(Vec::new()));
+        };
+        let build = self
+            .source
+            .build
+            .evidence
+            .exact_supported_build()
+            .ok_or(AcquisitionError::UnsupportedBuild)?;
+        if idle_menu_frame(&self.frame, build) {
+            return Ok(Some(Vec::new()));
+        }
+        apply_rest_event(
+            &mut self.assembler,
+            &self.frame,
+            build,
+            shared_received_ns,
+            elapsed_ns(self.started),
+            utc_ns()?,
         )
+        .map(Some)
     }
 
     /// At most one SHM read per due slot. A delayed pipe consumer cannot
@@ -176,18 +212,32 @@ fn acquire_tick(
     read: impl FnOnce(&mut [u8], &mut [u8]) -> io::Result<()>,
     elapsed_ns: impl Fn() -> u64,
     occurred_utc_ns: impl Fn() -> Result<i64, AcquisitionError>,
-) -> Result<Vec<Vec<u8>>, AcquisitionError> {
+) -> Result<(Vec<Vec<u8>>, Option<u64>), AcquisitionError> {
     read(frame, scratch).map_err(AcquisitionError::Io)?;
     // A real LMU menu has no session to map. Keep the last committed state
     // untouched so the source-age gate can mark it stale after leaving track.
     // Validate this narrow shape before suppressing it; malformed frames fail.
     if idle_menu_frame(frame, build) {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), None));
     }
     let shared_received_ns = elapsed_ns();
     let now_ns = elapsed_ns();
-    assembler
+    let frames = assembler
         .apply(frame, build, shared_received_ns, now_ns, occurred_utc_ns()?)
+        .map_err(AcquisitionError::Assembly)?;
+    Ok((frames, Some(shared_received_ns)))
+}
+
+fn apply_rest_event(
+    assembler: &mut Assembler,
+    frame: &[u8],
+    build: &str,
+    shared_received_ns: u64,
+    now_ns: u64,
+    occurred_utc_ns: i64,
+) -> Result<Vec<Vec<u8>>, AcquisitionError> {
+    assembler
+        .apply(frame, build, shared_received_ns, now_ns, occurred_utc_ns)
         .map_err(AcquisitionError::Assembly)
 }
 
@@ -249,7 +299,7 @@ mod tests {
         assert!(matches!(error, AcquisitionError::Io(_)));
         assert!(assembler.engine().current().is_none());
 
-        let frames = acquire_tick(
+        let (frames, received_ns) = acquire_tick(
             &mut assembler,
             &mut frame,
             &mut scratch,
@@ -262,6 +312,7 @@ mod tests {
             || Ok(1_000_000_000),
         )
         .unwrap();
+        assert_eq!(received_ns, Some(200));
         assert_eq!(
             ipc::decode(&frames[0]).unwrap().kind,
             Kind::ConfigurationAck
@@ -274,6 +325,38 @@ mod tests {
         assert_eq!(
             assembler.engine().source_health(500_000_200),
             Some((500_000_000, true))
+        );
+    }
+
+    #[test]
+    fn rest_poll_advances_one_canonical_cursor_without_a_new_shm_read() {
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        assembler.configure(CONFIG).unwrap();
+        let first = assembler
+            .apply(REAL_44, "1.3.0.0", 100, 100, 1_000_000_000)
+            .unwrap();
+        assert!(
+            first
+                .iter()
+                .any(|frame| ipc::decode(frame).unwrap().kind == Kind::Fact)
+        );
+        assembler.rest_cache_mut().accept_session(
+            br#"{"numberOfVehicles":44,"session":"RACE","currentEventTime":112.6}"#,
+            150,
+        );
+        let second =
+            apply_rest_event(&mut assembler, REAL_44, "1.3.0.0", 100, 200, 1_000_000_100).unwrap();
+        assert_eq!(assembler.engine().current().unwrap().cursor.sequence, 2);
+        assert_eq!(assembler.engine().source_health(200), Some((100, false)));
+        assert!(
+            second
+                .iter()
+                .any(|frame| ipc::decode(frame).unwrap().kind == Kind::Snapshot)
+        );
+        assert!(
+            !second
+                .iter()
+                .any(|frame| ipc::decode(frame).unwrap().kind == Kind::Fact)
         );
     }
 
@@ -325,7 +408,12 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(3);
         let mut fused = false;
         while Instant::now() < deadline {
-            let frames = acquisition.tick().unwrap();
+            let frames = acquisition.poll_rest_event().unwrap().unwrap_or_default();
+            let frames = if frames.is_empty() {
+                acquisition.tick().unwrap()
+            } else {
+                frames
+            };
             if !frames.is_empty()
                 && acquisition.assembler.rest_cache_mut().status() == RestStatus::Live
                 && let Some(batch) = acquisition.assembler.engine().current()
@@ -363,12 +451,52 @@ mod tests {
     }
 
     #[test]
+    fn live_lmu_rest_events_have_independent_cadence_opt_in() {
+        if std::env::var_os("VANTARE_LMU_LIVE_REST_EVENTS_TEST").is_none() {
+            return;
+        }
+        let mut acquisition = Acquisition::open(30, 15).unwrap();
+        acquisition.configure(CONFIG).unwrap();
+        let mut cadence = TickCadence::new(Instant::now());
+        let deadline = Instant::now() + std::time::Duration::from_secs(5);
+        let mut shared_events = 0;
+        let mut rest_events = 0;
+        while Instant::now() < deadline {
+            if let Some(frames) = acquisition.poll_rest_event().unwrap() {
+                rest_events += usize::from(!frames.is_empty());
+            }
+            if let Some(frames) = acquisition
+                .tick_if_due(&mut cadence, Instant::now())
+                .unwrap()
+            {
+                shared_events += usize::from(!frames.is_empty());
+            }
+            // This opt-in physical probe follows wall-clock LMU cadence.
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        acquisition.shutdown().unwrap();
+        eprintln!("LMU acquisition diagnostic: shared={shared_events} rest={rest_events}");
+        assert!(shared_events > 0 && rest_events > 0);
+        assert!(
+            acquisition
+                .assembler
+                .engine()
+                .current()
+                .unwrap()
+                .state
+                .vehicles
+                .len()
+                >= 46
+        );
+    }
+
+    #[test]
     fn genuine_menu_is_idle_without_committing_or_masking_invalid_frames() {
         let mut assembler = Assembler::new(30, 15).unwrap();
         assembler.configure(CONFIG).unwrap();
         let mut frame = vec![0; OBJECT_OUT_SIZE];
         let mut scratch = vec![0; OBJECT_OUT_SIZE];
-        let frames = acquire_tick(
+        let (frames, received_ns) = acquire_tick(
             &mut assembler,
             &mut frame,
             &mut scratch,
@@ -382,6 +510,7 @@ mod tests {
         )
         .unwrap();
         assert!(frames.is_empty());
+        assert_eq!(received_ns, None);
         assert!(assembler.engine().current().is_none());
         frame[1_632..1_696].fill(0xff);
         assert!(!idle_menu_frame(&frame, "1.4.2.0"));

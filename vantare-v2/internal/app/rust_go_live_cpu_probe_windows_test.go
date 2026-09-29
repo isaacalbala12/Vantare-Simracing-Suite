@@ -20,7 +20,7 @@ import (
 )
 
 // This is a live diagnostic with equal product demand, not the G0/G1/R gate:
-// it does not replay the immutable corpus or measure latency and RSS.
+// it does not replay the immutable corpus or hold cadence equal across arms.
 func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 	arm := os.Getenv("VANTARE_TELEMETRY_CPU_PROBE_ARM")
 	if arm != "go" && arm != "rust" && arm != "rust-binary" {

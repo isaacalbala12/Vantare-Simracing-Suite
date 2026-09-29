@@ -15,6 +15,7 @@ mod flag;
 pub mod format;
 pub mod input_telemetry;
 mod model;
+pub mod multiclass_relative;
 pub mod pedals;
 mod quality;
 pub mod radar;

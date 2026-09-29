@@ -131,11 +131,39 @@ pub enum SourceKind {
 
 /// Qué simulador produce los datos. Solo identifica (diagnóstico, cabecera de
 /// grabación): nada del núcleo, las proyecciones ni los widgets ramifica por él.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Source {
-    /// Nombre corto y estable: "lmu", "ac"...
+    /// Nombre corto y estable, uno de [`SIMULATORS`] al cruzar un cable.
     pub simulator: &'static str,
     pub kind: SourceKind,
+}
+
+/// Simuladores conocidos. Añadir uno es añadir su nombre aquí y su adaptador.
+pub const SIMULATORS: &[&str] = &["lmu", UNKNOWN_SIMULATOR];
+
+/// Nombre de cualquier simulador que no esté en [`SIMULATORS`].
+pub const UNKNOWN_SIMULATOR: &str = "unknown";
+
+impl Default for Source {
+    fn default() -> Self {
+        Self {
+            simulator: UNKNOWN_SIMULATOR,
+            kind: SourceKind::default(),
+        }
+    }
+}
+
+impl Source {
+    /// El nombre de [`SIMULATORS`] que corresponde a `name`, o `"unknown"`. Es
+    /// lo que hace un decodificador con un nombre recibido de fuera: la memoria
+    /// no depende de lo que diga el par.
+    pub fn known_simulator(name: &str) -> &'static str {
+        SIMULATORS
+            .iter()
+            .find(|known| **known == name)
+            .copied()
+            .unwrap_or(UNKNOWN_SIMULATOR)
+    }
 }
 
 /// De dónde y cuándo viene un instante.
@@ -179,4 +207,17 @@ pub struct Snapshot {
     pub sequence: u64,
     pub origin: Origin,
     pub state: State,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_simulator_name_from_outside_maps_into_the_fixed_table() {
+        assert_eq!(Source::known_simulator("lmu"), "lmu");
+        assert_eq!(Source::known_simulator("ac"), UNKNOWN_SIMULATOR);
+        assert_eq!(Source::known_simulator(""), UNKNOWN_SIMULATOR);
+        assert!(SIMULATORS.contains(&UNKNOWN_SIMULATOR));
+    }
 }

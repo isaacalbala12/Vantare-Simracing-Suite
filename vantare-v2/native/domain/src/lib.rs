@@ -20,7 +20,8 @@ pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
-    Car, CarId, Class, ClassId, Driver, DriverId, Gap, Origin, Player, Pose, Session, SessionId,
-    SessionKind, SessionState, Snapshot, Source, SourceKind, State, Telemetry,
+    Car, CarId, Class, ClassId, Driver, DriverId, Gap, Origin, Player, Pose, SIMULATORS, Session,
+    SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, State, Telemetry,
+    UNKNOWN_SIMULATOR,
 };
 pub use quality::Quality;

@@ -22,8 +22,9 @@ runtime → domain, ipc      ipc → domain      ui → domain, ipc
 `Adapter::poll(now) -> Result<Option<Observation>, AdapterError>` (sin bloquear,
 reloj inyectado). Una `Observation` es `Origin` (simulador, reloj de origen y de
 recepción) más `State`, con las capacidades que declara el adaptador. El núcleo
-implementa `merge(previous: Option<&Snapshot>, Observation, epoch: u64) -> Snapshot`
-(fusión, derivaciones, numeración); ver `domain/src/adapter.rs`. Los widgets solo
+implementa `merge(previous: Option<&Snapshot>, Observation, epoch: u64) ->
+Result<Snapshot, Reject>` (validación, derivaciones, numeración; la frescura la
+vigila `Core`); ver `domain/src/adapter.rs`. Los widgets solo
 ven `standings::project(&Snapshot, Preferences)`, `radar::project(&Snapshot)` y
 `pedals::project(&Snapshot, Preferences)`.
 

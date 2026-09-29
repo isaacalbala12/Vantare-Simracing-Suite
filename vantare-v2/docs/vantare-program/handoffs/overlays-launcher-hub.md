@@ -1,5 +1,11 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-29 · VAN-779 / GitHub #1414 · Primer corte Rust + egui
+
+Isaac confirma Rust + egui/eframe/wgpu para la futura UI y overlays, Windows primero, con el núcleo Go conservado durante la transición. [ADR 0098](../../adr/0098-rust-egui-frontend-transition.md) fija la decisión y los límites. La rama aislada `vantareapp/isa-1414-rust-egui-hub-foundation` parte de `origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e`; la app Wails actual no se modificó. La tarea principal es [VAN-779](https://app.notion.com/p/3e9e51695c6581fabd90d1e7efc3ad13) y [#1414](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1414) es su puente técnico.
+
+Primeras dos pruebas interpretadas como Standings Efficiency conectado al proyector Go aislado de #1411 e Inicio/Orbit nativo. La ventana Standings mostró diez filas de una captura LMU sanitizada y el reloj transmitido por Go; se comprobó en Windows transparencia, paso de clics y no activación con una ventana inferior controlada. OBS, DPI adicional, LMU vivo y consumo comparable están pendientes. La referencia actual de Inicio se congeló desde el harness del frontend productivo; la primera captura Rust aún **no tiene fidelidad aceptable**. Faltan iconos, mini-lienzo, efectos, acciones y comportamiento, detallados en [`native-egui/evidence/hub-fidelity.md`](../../../native-egui/evidence/hub-fidelity.md). El siguiente paso es corregir esas diferencias y verificar visualmente a 1920 × 1080 y 1920 × 900 antes de ampliar pantallas. No hay cutover, integración de canal ni release.
+
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 
 El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con

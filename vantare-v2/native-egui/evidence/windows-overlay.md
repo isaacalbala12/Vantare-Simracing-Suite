@@ -1,0 +1,7 @@
+# Prueba física inicial de ventana overlay (Windows, 29/09/2026)
+
+Se ejecutó el Standings Rust en una ventana transparente, siempre visible y de paso de clics, con el host Go de la PR #1411 sirviendo una proyección del archivo LMU real sanitizado de 44 coches. La pantalla mostró diez pilotos y el reloj `58:12` recibido del contrato Overlay V2. Tras tres segundos sin nuevos mensajes mostró `DATOS OBSOLETOS`, que es lo esperado para esta fuente estática. La captura [`standings-go-printwindow.png`](standings-go-printwindow.png) procede de `PrintWindow`; **no demuestra captura en OBS ni datos de una sesión LMU viva**.
+
+Para probar la ventana se colocó debajo una ventana temporal uniforme. Su fondo azul produjo el píxel RGB `(59, 94, 179)` en una esquina transparente del overlay; al cambiarla a verde, el mismo punto pasó a `(62, 170, 114)`. Un punto dentro de la tabla opaca permaneció en `(25, 25, 27)` en ambas comprobaciones. Con el overlay encima de la ventana verde, un clic en el margen transparente incrementó el contador de eventos de la ventana inferior de 0 a 1. El estilo extendido leído de la ventana fue `0x080c0138`, con `WS_EX_LAYERED`, `WS_EX_TRANSPARENT` y `WS_EX_NOACTIVATE`; el overlay no era la ventana activa.
+
+Esto valida transparencia, paso de clics y no activación en esta máquina y escala. Faltan captura real desde OBS, distintas escalas DPI, cambios de monitor y comportamiento con LMU en marcha. La ventana temporal de prueba y el host Go se detuvieron después de la comprobación.

@@ -21,3 +21,4 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 - [ADR 0093 — Guardado automático e historial productivo de Overlay Studio](0093-overlay-studio-autosave-history.md).
 - [ADR 0094 — Pull V2 desktop persistente y publicación por cambio](0094-desktop-overlay-persistent-pull.md).
 - [ADR 0095 — experimento de transporte incremental Overlay V2](0095-overlay-incremental-sections.md).
+- [ADR 0098 — transición del frontend y overlays a Rust + egui](0098-rust-egui-frontend-transition.md).

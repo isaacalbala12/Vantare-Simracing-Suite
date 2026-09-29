@@ -10,6 +10,16 @@ use vantare_telemetry::ipc::{self, Kind};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if let [pipe_flag, pipe_name, nonce_flag, nonce_text] = args.as_slice()
+        && pipe_flag == "--candidate-pipe"
+        && nonce_flag == "--candidate-nonce"
+    {
+        if let Err(error) = run_hung_candidate(pipe_name, nonce_text) {
+            eprintln!("telemetry hung peer harness failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
     if let [
         pipe_flag,
         pipe_name,
@@ -66,6 +76,34 @@ fn main() {
     if let Err(error) = run(pipe_name, nonce_text, fixture_path) {
         eprintln!("telemetry replay helper failed: {error}");
         std::process::exit(2);
+    }
+}
+
+// Test-only peer: handshake and accept Configuration, then stop responding.
+// The supervisor must time out and close its kill-on-close job.
+fn run_hung_candidate(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
+    let nonce = ipc::parse_nonce_hex(nonce_text)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid nonce"))?;
+    let suffix = pipe_name.strip_prefix(r"\\.\pipe\vantare-telemetry-");
+    if suffix.and_then(ipc::parse_nonce_hex) != Some(nonce) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid pipe name",
+        ));
+    }
+    let mut pipe = OpenOptions::new().read(true).write(true).open(pipe_name)?;
+    ipc::write_frame(&mut pipe, Kind::Handshake, &ipc::handshake_payload(&nonce))
+        .map_err(|error| io::Error::other(format!("handshake: {error:?}")))?;
+    let (kind, _) = ipc::read_frame(&mut pipe)
+        .map_err(|error| io::Error::other(format!("configuration: {error:?}")))?;
+    if kind != Kind::Configuration {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "expected Configuration",
+        ));
+    }
+    loop {
+        std::thread::park();
     }
 }
 

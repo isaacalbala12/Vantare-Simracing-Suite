@@ -2408,3 +2408,14 @@ acredita ese caso del watchdog, no peer colgado, suspensión ni cola llena.
 El CI del PR en `cd67ce74` terminó el ratchet en `REVIEW_REQUIRED`: NEW=0
 en los controles y política modificada en el workflow Rust. No se debilitó
 el gate ni se ha fusionado el PR.
+
+## 130. Peer Rust colgado después de Configuración (2026-09-29)
+
+El ejecutable `replay-harness`, excluido del binario productivo, tiene un
+modo adversarial que valida pipe y nonce, envía Handshake, recibe
+Configuration y deja de responder. Cinco ejecuciones Windows de
+`TestCandidateWatchdogClosesHungPeerOptIn` pasaron: el supervisor devuelve
+`ErrCandidateHeartbeatTimeout` en ~1,02–1,09 s, cierra su job de proceso y
+no queda el helper en la lista de procesos. Este caso completa la prueba del
+peer colgado tras configuración; faltan todavía cola llena en el recorrido
+completo, suspensión/reanudación y replay durable de facts tras crash.

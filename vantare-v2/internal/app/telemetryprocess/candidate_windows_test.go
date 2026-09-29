@@ -337,6 +337,25 @@ func TestCandidateWatchdogRejectsSlowConsumerOptIn(t *testing.T) {
 	}
 }
 
+func TestCandidateWatchdogClosesHungPeerOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_REPLAY_TEST_HELPER")
+	if executable == "" {
+		t.Skip("build the replay-harness executable and set VANTARE_TELEMETRY_REPLAY_TEST_HELPER")
+	}
+	started := time.Now()
+	err := runCandidateOnce(context.Background(), executable, liveCandidateConfiguration(t),
+		func(ReceivedV1) error {
+			t.Fatal("hung peer must not publish")
+			return nil
+		})
+	if !errors.Is(err, ErrCandidateHeartbeatTimeout) {
+		t.Fatalf("hung peer watchdog = %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > 3*time.Second {
+		t.Fatalf("hung peer cleanup took %s", elapsed)
+	}
+}
+
 func TestCandidateSupervisorAppliesStrategyUpdateOptIn(t *testing.T) {
 	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
 	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {

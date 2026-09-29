@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — peer colgado tras Configuración (2026-09-29)
+
+El `replay-harness` de tests valida Handshake/nonce, recibe Configuration y
+deja de responder. Cinco tests Windows del supervisor dieron timeout en
+~1,02–1,09 s y el job cerró sin helper residual. No depende de LMU ni
+añade el modo al binario productivo. R20 conserva cola llena por ruta
+completa, suspensión/reanudación y replay durable tras crash. Plan §130;
+PR #1415 draft, Go continúa productivo.
+
 ## VAN-778 / ISA-1403 — perfil LMU47 por etapas y watchdog (2026-09-29)
 
 El test temporal Rust tiene un perfil opt-in de `release` que reproduce

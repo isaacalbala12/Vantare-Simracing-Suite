@@ -67,6 +67,11 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	var previousSource time.Duration
 	var previousUTC time.Time
 	var firstSource time.Duration
+	parityOut := os.Getenv("LMU_TEMPORAL_PARITY_OUT")
+	var parity []struct {
+		Engineer json.RawMessage `json:"engineer"`
+		Strategy json.RawMessage `json:"strategy"`
+	}
 	fusion := new(Fusion)
 	mapper := NewBatchMapper()
 	reducer := telemetrycore.NewReducer()
@@ -143,6 +148,20 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 				engineerSnapshot.Sequence, len(engineerSnapshot.Vehicles), engineerSnapshot.Player.ID, engineerSnapshot.SourceTime,
 				strategySnapshot.Sequence, strategySnapshot.Player.ID, strategySnapshot.SourceTime, overlayRows)
 		}
+		if parityOut != "" {
+			engineerJSON, err := json.Marshal(engineerSnapshot.PayloadV1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			strategyJSON, err := json.Marshal(strategySnapshot.PayloadV1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			parity = append(parity, struct {
+				Engineer json.RawMessage `json:"engineer"`
+				Strategy json.RawMessage `json:"strategy"`
+			}{engineerJSON, strategyJSON})
+		}
 		rest := readHashedCorpusFile(t, dir, entry.RESTFile, entry.RESTSHA)
 		var overlap struct {
 			Schema  string `json:"schema"`
@@ -160,6 +179,18 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		}
 		if err := json.Unmarshal(rest, &overlap); err != nil || overlap.Schema != "vantare.lmu-rest-overlap.v1" || overlap.Status != "live" || overlap.Session.VehicleCount.Value != want || !overlap.Player.Present.Value {
 			t.Fatalf("sample %d REST overlap disagrees with live grid", i)
+		}
+	}
+	if parityOut != "" {
+		if err := os.MkdirAll(parityOut, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := json.Marshal(parity)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(parityOut, "go-products.json"), encoded, 0o600); err != nil {
+			t.Fatal(err)
 		}
 	}
 	t.Logf("audited real temporal SHM+REST corpus: build=%s, samples=%d, vehicles=%d, source=%d..%dms", manifest.Build, len(manifest.Samples), want, manifest.Samples[0].SourceMS, manifest.Samples[len(manifest.Samples)-1].SourceMS)

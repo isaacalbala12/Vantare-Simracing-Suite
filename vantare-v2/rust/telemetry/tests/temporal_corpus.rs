@@ -54,6 +54,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     let mut assembler = Assembler::new(30, 15).unwrap();
     assembler.configure(&configuration).unwrap();
     let mut previous_source_ns = 0;
+    let parity_out = std::env::var_os("LMU_TEMPORAL_PARITY_OUT");
+    let mut parity = Vec::new();
     for (index, sample) in manifest.samples.iter().enumerate() {
         assert_eq!(sample.index, index);
         assert_eq!(sample.vehicles, expected);
@@ -88,6 +90,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         let mut products = Vec::new();
         let mut engineer_player = None;
         let mut strategy_player = None;
+        let mut engineer_payload = None;
+        let mut strategy_payload = None;
         for frame in &frames {
             let decoded = ipc::decode(frame).unwrap();
             if decoded.kind == Kind::Snapshot {
@@ -121,6 +125,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                     engineer_player = value["snapshot"]["player"]["id"]
                         .as_str()
                         .map(str::to_owned);
+                    engineer_payload = Some(temporal_payload(&value["snapshot"]));
                 }
                 if product == "strategy-v1" {
                     let projected_time = value["snapshot"]["sourceTimeSeconds"]["value"]
@@ -130,6 +135,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                     strategy_player = value["snapshot"]["player"]["id"]
                         .as_str()
                         .map(str::to_owned);
+                    strategy_payload = Some(temporal_payload(&value["snapshot"]));
                 }
                 products.push(product.to_owned());
             }
@@ -137,9 +143,38 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         assert_eq!(products, ["overlay-v2", "engineer-v1", "strategy-v1"]);
         assert_eq!(engineer_player, strategy_player);
         assert!(engineer_player.is_some());
+        if parity_out.is_some() {
+            parity.push(json!({
+                "engineer": engineer_payload.unwrap(),
+                "strategy": strategy_payload.unwrap(),
+            }));
+        }
         assert_eq!(
             assembler.engine().current().unwrap().cursor.sequence,
             u64::try_from(index + 1).unwrap()
         );
     }
+    if let Some(out) = parity_out {
+        fs::create_dir_all(&out).unwrap();
+        fs::write(
+            Path::new(&out).join("rust-products.json"),
+            serde_json::to_vec(&parity).unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+fn temporal_payload(snapshot: &Value) -> Value {
+    let mut payload = snapshot.clone();
+    let fields = payload.as_object_mut().unwrap();
+    for metadata in [
+        "canonicalVersion",
+        "projectionVersion",
+        "epoch",
+        "sequence",
+        "capturedAt",
+    ] {
+        assert!(fields.remove(metadata).is_some());
+    }
+    payload
 }

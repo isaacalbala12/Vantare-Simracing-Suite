@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 111. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 112. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2081,3 +2081,19 @@ bloqueante. Es una revisión externa de política pendiente, no un hallazgo de
 código nuevo. El gate de producto Windows del mismo SHA terminó `SUCCESS`,
 incluidos los pasos Rust nuevos, al igual que la validación de canal y
 GitGuardian. La revisión de política sigue pendiente.
+
+## 112. Paridad completa de payload Engineer y Strategy en 80 muestras (2026-09-29)
+
+Los tests temporales pueden exportar opcionalmente los payloads Engineer y
+Strategy de cada muestra a un directorio externo. El comparador
+`scripts/telemetry-core/compare_temporal_products.py` confronta los JSON
+estructuralmente, con tipos estrictos y sin tolerancias numéricas. Solo se
+excluye la metadata del sobre IPC (`capturedAt`, epoch, secuencia y versiones),
+porque los dos runners diagnósticos inyectan relojes de recepción distintos;
+los payloads conservan todos sus valores, calidades, presencias y vehículos.
+Con el corpus real de 80 muestras/47 coches y manifest SHA-256
+`061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`,
+el resultado fue **cero diferencias** en Engineer y Strategy. Los JSON
+derivados de comparación permanecen fuera del repositorio. Faltan Overlay,
+metadata temporal común, REST en el replay y facts completos para cerrar la
+paridad general; CPU/p99/RSS y Wails/OBS siguen pendientes.

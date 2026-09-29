@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — Engineer y Strategy idénticos en LMU47 x80 (2026-09-29)
+
+Los tests temporales exportaron fuera del repositorio los payloads Engineer y
+Strategy de las 80 muestras reales de 47 coches. El nuevo comparador JSON
+estricto obtuvo cero diferencias de tipo o valor; solo se excluyó metadata
+IPC con relojes de recepción inyectados distintos. Manifest SHA-256
+`061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`.
+Faltan Overlay, metadata, REST y facts para paridad global, además de
+CPU/p99/RSS y Wails/OBS. Plan §112; Go sigue productivo, PR draft.
+
 ## VAN-778 / ISA-1403 — minuto real LMU47 (2026-09-29)
 
 Una única instancia LMU 1.4.2.0 llegó a práctica ELMS 2026 con 46 rivales

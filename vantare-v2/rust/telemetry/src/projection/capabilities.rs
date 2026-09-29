@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use super::{Quality, SpeedUnit, player, session};
+use super::{Quality, SpeedUnit, delta as delta_projection, player, session};
 use crate::core;
 use crate::derive::{
     delta::{DeltaFreshness, SelfDelta},
@@ -126,8 +126,97 @@ pub struct Performance {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Source {
     pub descriptor_capabilities: Vec<String>,
+    /// A declaration when resolution is enabled; otherwise a legacy resolved view.
     pub modes: Modes,
     pub performance: Performance,
+    #[serde(default)]
+    pub resolve_modes_from_evidence: bool,
+}
+
+fn resolved_modes(
+    batch: &core::Batch<SessionType, LmuVehicleState>,
+    gaps: &GapSet,
+    delta: &SelfDelta,
+    declared: &Modes,
+    supported: &[&str],
+) -> Modes {
+    let supports = |id| supported.contains(&id);
+    let world = best(
+        batch
+            .state
+            .vehicles
+            .iter()
+            .map(|row| field_quality(&row.value.world_position)),
+    );
+    let distance = best(
+        batch
+            .state
+            .vehicles
+            .iter()
+            .map(|row| field_quality(&row.value.lap_distance)),
+    );
+    let declared_spatial = declared
+        .spatial
+        .first()
+        .map(String::as_str)
+        .unwrap_or("none");
+    let spatial = if supports("spatial.longitudinal") || supports("spatial.lateral") {
+        match declared_spatial {
+            "xyz" | "xy" if world == Quality::Fresh => vec![declared_spatial.to_owned()],
+            "xyz" | "xy" | "lap-distance"
+                if matches!(distance, Quality::Fresh | Quality::Stale) =>
+            {
+                vec!["lap-distance".to_owned()]
+            }
+            _ => Vec::new(),
+        }
+    } else {
+        Vec::new()
+    };
+    let available_delta = delta_projection::available_references(delta);
+    let delta = if supports("delta") {
+        declared
+            .delta
+            .iter()
+            .filter(|name| available_delta.contains(&name.as_str()))
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let standings = if supports("standings")
+        && matches!(declared.standings.as_str(), "official" | "reconstructed")
+        && matches!(
+            best(
+                batch
+                    .state
+                    .vehicles
+                    .iter()
+                    .map(|row| field_quality(&row.value.position))
+            ),
+            Quality::Fresh | Quality::Stale
+        ) {
+        declared.standings.clone()
+    } else {
+        "none".to_owned()
+    };
+    let gaps = if supports("gaps")
+        && matches!(
+            declared.gaps.as_str(),
+            "official" | "reconstructed" | "estimated"
+        )
+        && matches!(gaps.freshness, GapFreshness::Fresh | GapFreshness::Stale)
+    {
+        declared.gaps.clone()
+    } else {
+        "none".to_owned()
+    };
+    Modes {
+        spatial,
+        delta,
+        standings,
+        gaps,
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -168,6 +257,11 @@ pub fn build(
     }
     supported.sort_unstable();
     supported.dedup();
+    let modes = if source.resolve_modes_from_evidence {
+        resolved_modes(batch, gaps, delta, &source.modes, &supported)
+    } else {
+        source.modes.clone()
+    };
     let observed = availability(batch, remaining, gaps, delta);
     let mut available = Map::new();
     for id in &supported {
@@ -211,10 +305,10 @@ pub fn build(
     Ok(json!({
         "supported": supported, "available": available,
         "modes": {
-            "spatial": source.modes.spatial,
-            "delta": source.modes.delta,
-            "standings": if source.modes.standings.is_empty() { "none" } else { &source.modes.standings },
-            "gaps": if source.modes.gaps.is_empty() { "none" } else { &source.modes.gaps },
+            "spatial": modes.spatial,
+            "delta": modes.delta,
+            "standings": if modes.standings.is_empty() { "none" } else { &modes.standings },
+            "gaps": if modes.gaps.is_empty() { "none" } else { &modes.gaps },
         },
         "performance": policy,
     }))
@@ -266,6 +360,80 @@ mod tests {
                 &source
             ),
             Err(CapabilityError::InvalidSourceHz)
+        );
+    }
+
+    #[test]
+    fn declared_modes_degrade_with_owned_session_evidence() {
+        let engine = Engine::new(30, 27).unwrap();
+        let candidate = engine
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
+            .unwrap();
+        let mut batch = candidate.batch().clone();
+        for row in &mut batch.state.vehicles {
+            row.value.world_position = Field::Missing;
+            row.value.lap_distance = Field::observed(5.0);
+            row.value.lap_distance.mark_stale();
+            row.value.position = Field::Missing;
+        }
+        let declared = Modes {
+            spatial: vec!["xyz".into()],
+            delta: vec!["personal-best".into(), "session-best".into()],
+            standings: "official".into(),
+            gaps: "reconstructed".into(),
+        };
+        let missing_gaps = GapSet {
+            freshness: GapFreshness::Missing,
+            vehicles: Vec::new(),
+        };
+        let supported = [
+            "spatial.longitudinal",
+            "spatial.lateral",
+            "delta",
+            "standings",
+            "gaps",
+        ];
+        let degraded = resolved_modes(
+            &batch,
+            &missing_gaps,
+            candidate.delta(),
+            &declared,
+            &supported,
+        );
+        assert_eq!(degraded.spatial, ["lap-distance"]);
+        assert_eq!(degraded.standings, "none");
+        assert_eq!(degraded.gaps, "none");
+        let source = Source {
+            descriptor_capabilities: vec!["shared-memory".into()],
+            modes: declared.clone(),
+            performance: Performance::default(),
+            resolve_modes_from_evidence: true,
+        };
+        let published = build(
+            &batch,
+            candidate.session_remaining(),
+            &missing_gaps,
+            candidate.delta(),
+            &source,
+        )
+        .unwrap();
+        assert_eq!(published["modes"]["spatial"], json!(["lap-distance"]));
+        assert_eq!(published["modes"]["standings"], "none");
+        for row in &mut batch.state.vehicles {
+            row.value.lap_distance = Field::Missing;
+        }
+        let absent = resolved_modes(
+            &batch,
+            &missing_gaps,
+            candidate.delta(),
+            &declared,
+            &supported,
+        );
+        assert!(absent.spatial.is_empty());
+        assert!(
+            resolved_modes(&batch, &missing_gaps, candidate.delta(), &declared, &[])
+                .delta
+                .is_empty()
         );
     }
 }

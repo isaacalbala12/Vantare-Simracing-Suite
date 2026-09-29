@@ -74,10 +74,7 @@ pub fn build(delta: &SelfDelta, requested: &str) -> DeltaView {
         .into_iter()
         .find(|name| *name == requested)
         .unwrap_or(PRIORITY[0]);
-    let available: Vec<&'static str> = PRIORITY
-        .into_iter()
-        .filter(|name| usable(field(delta, name)))
-        .collect();
+    let available = available_references(delta);
     let references: Vec<_> = PRIORITY
         .into_iter()
         .map(|name| resolve(delta, name, &available))
@@ -112,6 +109,13 @@ pub fn build(delta: &SelfDelta, requested: &str) -> DeltaView {
         history_captured_at_ms,
         history_seconds,
     }
+}
+
+pub fn available_references(delta: &SelfDelta) -> Vec<&'static str> {
+    PRIORITY
+        .into_iter()
+        .filter(|name| usable(field(delta, name)))
+        .collect()
 }
 
 #[cfg(test)]

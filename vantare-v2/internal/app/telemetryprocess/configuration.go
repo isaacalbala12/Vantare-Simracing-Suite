@@ -41,9 +41,12 @@ type PreferencesV1 struct {
 }
 
 type CapabilitySourceV1 struct {
-	DescriptorCapabilities []string                    `json:"descriptorCapabilities"`
-	Modes                  overlayv2.CapabilityModesV2 `json:"modes"`
-	Performance            overlayv2.PerformanceV2     `json:"performance"`
+	DescriptorCapabilities []string `json:"descriptorCapabilities"`
+	// Modes is the driver's declaration when ResolveModesFromEvidence is set.
+	// Older configurations carry already resolved modes for replay compatibility.
+	Modes                    overlayv2.CapabilityModesV2 `json:"modes"`
+	Performance              overlayv2.PerformanceV2     `json:"performance"`
+	ResolveModesFromEvidence bool                        `json:"resolveModesFromEvidence,omitempty"`
 }
 
 type ConfigurationV1 struct {

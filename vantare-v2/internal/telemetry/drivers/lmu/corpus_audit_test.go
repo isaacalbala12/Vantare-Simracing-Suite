@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/capability"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
@@ -150,6 +151,13 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		if err != nil {
 			t.Fatalf("sample %d Go Strategy projection: %v", i, err)
 		}
+		if os.Getenv("LMU_TEMPORAL_RESOLVE_MODES") == "1" {
+			value, ok := final.Value()
+			if !ok {
+				t.Fatalf("sample %d missing final state", i)
+			}
+			overlaySource.Modes = corpusCapabilityModes(value)
+		}
 		overlayUpdate, err := overlayProjector.Project(final, overlaySource, overlayPreferences, 1, at)
 		if err != nil {
 			t.Fatalf("sample %d Go Overlay projection: %v", i, err)
@@ -224,6 +232,51 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		}
 	}
 	t.Logf("audited real temporal SHM+REST corpus: build=%s, samples=%d, vehicles=%d, source=%d..%dms", manifest.Build, len(manifest.Samples), want, manifest.Samples[0].SourceMS, manifest.Samples[len(manifest.Samples)-1].SourceMS)
+}
+
+// Compare against the production capability resolver with evidence extracted
+// from the same committed Go state. The regular oracle keeps its fixed policy.
+func corpusCapabilityModes(final derive.FinalState) overlayv2.CapabilityModesV2 {
+	quality := func(value schema.Freshness) capability.Quality {
+		switch value {
+		case schema.FreshnessFresh:
+			return capability.QualityFresh
+		case schema.FreshnessStale:
+			return capability.QualityStale
+		case schema.FreshnessInvalid:
+			return capability.QualityInvalid
+		default:
+			return capability.QualityMissing
+		}
+	}
+	best := func(read func(telemetrycore.VehicleState) schema.Freshness) capability.Quality {
+		result := capability.QualityMissing
+		for _, vehicle := range final.Observed.Vehicles {
+			current := quality(read(vehicle))
+			if current == capability.QualityFresh {
+				return current
+			}
+			if current == capability.QualityStale || current == capability.QualityInvalid && result == capability.QualityMissing {
+				result = current
+			}
+		}
+		return result
+	}
+	modes := capability.ResolveModes(Capabilities(), capability.SessionEvidence{
+		WorldPosition:   best(func(value telemetrycore.VehicleState) schema.Freshness { return value.WorldPosition.Freshness() }),
+		LapDistance:     best(func(value telemetrycore.VehicleState) schema.Freshness { return value.LapDistance.Freshness() }),
+		DeltaReferences: overlayv2.AvailableDeltaReferences(final),
+		Standings:       best(func(value telemetrycore.VehicleState) schema.Freshness { return value.Position.Freshness() }),
+		Gaps:            quality(final.Derived.Gaps.Freshness),
+	})
+	spatial := []string{}
+	if modes.Spatial != capability.SpatialNone {
+		spatial = append(spatial, string(modes.Spatial))
+	}
+	return overlayv2.CapabilityModesV2{
+		Spatial: spatial, Delta: modes.DeltaReferences,
+		Standings: overlayv2.Mode(modes.Standings), Gaps: overlayv2.Mode(modes.Gaps),
+	}
 }
 
 func readHashedCorpusFile(t *testing.T, dir, name, expected string) []byte {

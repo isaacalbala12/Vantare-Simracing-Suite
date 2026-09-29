@@ -481,6 +481,7 @@ mod tests {
         widget_hz.insert("pedals".into(), json!(40));
         let capability_source = capabilities::Source {
             descriptor_capabilities: vec!["shared-memory".into(), "rest".into()],
+            resolve_modes_from_evidence: false,
             modes: capabilities::Modes {
                 spatial: vec!["xyz".into()],
                 delta: vec!["personal-best".into()],

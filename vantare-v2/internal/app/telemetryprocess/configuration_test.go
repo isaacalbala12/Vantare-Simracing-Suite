@@ -46,6 +46,15 @@ func TestConfigurationGoFrameOracle(t *testing.T) {
 	if !bytes.Equal(writer.Bytes(), golden) {
 		t.Fatal("Go configuration frame differs from pinned Rust oracle")
 	}
+	configuration.Source.ResolveModesFromEvidence = true
+	dynamic, err := EncodeConfiguration(configuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(dynamic.Payload, []byte(`"resolveModesFromEvidence":true`)) {
+		t.Fatal("dynamic capability resolution missing from configuration wire payload")
+	}
+	configuration.Source.ResolveModesFromEvidence = false
 	if _, err := EncodeConfiguration(ConfigurationV1{}); !errors.Is(err, ErrInvalidConfiguration) {
 		t.Fatalf("zero configuration error = %v", err)
 	}

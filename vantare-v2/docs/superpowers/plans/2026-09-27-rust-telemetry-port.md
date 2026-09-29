@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 116. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 117. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2170,3 +2170,24 @@ ensamblado `overlay-only` de esta corrida tuvo mediana 1025,2 µs frente a
 diagnóstico, no una atribución causal ni el gate del 50% de CPU total. Quedan
 integración productiva, REST temporal, recuperación, packaging y banco G0/G1/R
 con el corpus real aceptado de al menos 46 coches.
+
+## 117. Modos de capacidades resueltos en Rust (2026-09-29)
+
+La política IPC puede indicar `resolveModesFromEvidence`. En ese modo,
+Rust cruza la declaración del driver con calidad de geometría, distancia,
+posiciones, gaps y referencias delta del batch comprometido; degrada modos
+cuando desaparece evidencia, sin pedir a Go que inspeccione el estado.
+La opción ausente conserva los frames v1 anteriores. Una prueba Rust cubre
+geometría ausente, alternativa de distancia obsoleta, orden ausente y gaps
+ausentes. La auditoría Go del corpus ahora tiene un modo opt-in que llama al
+resolvedor de capacidades productivo con la evidencia del mismo estado final.
+
+En las 80 muestras reales/47 coches, ese modo dinámico produjo cero diferencias
+en los tres productos y ocho facts. La primera comparación detectó que el
+oráculo fijo anterior declaraba `gaps=reconstructed`, mientras la declaración
+LMU productiva es `official`; se corrigió **solo la configuración del nuevo
+banco dinámico** para usar la declaración real. En esta secuencia no variaron
+los modos, por lo que faltan transiciones físicas y corpus con degradación.
+Pasaron `go test ./...`, 156 tests Rust, Clippy estricto, formato y build
+release. Esto prepara la composición productiva; Rust aún no está seleccionado
+desde Wails, y no hay gate CPU/p99/RSS.

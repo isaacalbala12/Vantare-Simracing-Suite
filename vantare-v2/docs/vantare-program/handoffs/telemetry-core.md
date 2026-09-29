@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — modos dinámicos propiedad de Rust (2026-09-29)
+
+El hijo puede resolver Spatial, Delta, Standings y Gaps desde sus observaciones
+y la declaración del driver mediante `resolveModesFromEvidence`, sin pedir a Go
+un modo ya resuelto. El oráculo Go opt-in usa su resolvedor productivo. En el
+corpus real LMU47 x80 hubo cero diferencias en Overlay, Engineer, Strategy y
+ocho facts. La discrepancia inicial de `gaps` procedía del fixture fijo antiguo,
+no de un resultado live: el banco nuevo usa `official`, valor declarado por
+LMU. No hay todavía transiciones físicas de modo ni selección Wails/OBS.
+`go test ./...`, 156 tests Rust, Clippy, formato y release pasaron. Continúan
+REST temporal, recovery, packaging y banco G0/G1/R. Plan §117; PR #1415
+draft, Go productivo, sin merge.
+
 ## VAN-778 / ISA-1403 — copia Relative eliminada en cache Rust (2026-09-29)
 
 El camino cacheado no duplica `relative` para inicializar `relativeSettled`;

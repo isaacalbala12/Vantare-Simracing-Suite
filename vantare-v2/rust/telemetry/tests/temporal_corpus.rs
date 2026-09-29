@@ -51,6 +51,12 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     )
     .unwrap();
     config["consumers"]["strategy"] = json!(true);
+    if std::env::var_os("LMU_TEMPORAL_RESOLVE_MODES").is_some() {
+        config["source"]["resolveModesFromEvidence"] = json!(true);
+        config["source"]["modes"]["delta"] =
+            json!(["personal-best", "session-best", "previous-lap"]);
+        config["source"]["modes"]["gaps"] = json!("official");
+    }
     let configuration =
         ipc::encode(Kind::Configuration, &serde_json::to_vec(&config).unwrap()).unwrap();
     let mut assembler = Assembler::new(30, 15).unwrap();

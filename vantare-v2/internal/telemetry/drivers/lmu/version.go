@@ -11,6 +11,7 @@ const (
 	supportedLMUVersion   = "1.3.0.0"
 	diagnosticLMUVersion  = "1.4.0.0"
 	diagnosticLMUVersion1 = "1.4.1.3"
+	diagnosticLMUVersion2 = "1.4.2.0"
 )
 
 // diagnosticLMUVersions is the closed set of builds admitted for capture-time
@@ -20,6 +21,7 @@ const (
 var diagnosticLMUVersions = map[string]struct{}{
 	diagnosticLMUVersion:  {},
 	diagnosticLMUVersion1: {},
+	diagnosticLMUVersion2: {},
 }
 
 var ErrBuildUnavailable = errors.New("LMU build evidence unavailable")

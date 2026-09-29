@@ -209,7 +209,8 @@ async fn settled(cx: &mut AsyncApp, view: &Entity<Overlay>) -> Result<Hwnd, Stri
 }
 
 /// Pinta el estado sobre `level` (0 negro, 255 blanco) y captura cuando DWM ya
-/// lo compuso: la marca a la derecha del widget debe mostrar el fondo puro.
+/// lo compuso: la marca bajo el widget debe mostrar el fondo puro (abajo y no a
+/// la derecha para que quepan widgets tan anchos como el monitor).
 async fn pass(
     cx: &mut AsyncApp,
     view: &Entity<Overlay>,
@@ -225,10 +226,11 @@ async fn pass(
     let mut last = None;
     for _ in 0..60 {
         sleep(cx, 120).await;
-        if let Some((w, h, pixels)) = capture_client(hwnd, size.0 + 2, size.1) {
-            let at = (w as usize - 1) * 4;
+        if let Some((w, h, mut pixels)) = capture_client(hwnd, size.0, size.1 + 2) {
+            let at = (h as usize - 1) * w as usize * 4;
             if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
-                return Ok((size.0 as u32, h, crop_margin(&pixels, w as usize)));
+                pixels.truncate(at - w as usize * 4);
+                return Ok((w, h - 2, pixels));
             }
             last = Some(pixels[at..at + 4].to_vec());
         }
@@ -236,14 +238,6 @@ async fn pass(
     Err(format!(
         "la pasada de nivel {level} no se asentó (píxel de margen BGRA: {last:?})"
     ))
-}
-
-/// Elimina los dos píxeles de comprobación de cada fila del PNG.
-fn crop_margin(pixels: &[u8], width: usize) -> Vec<u8> {
-    pixels
-        .chunks_exact(width * 4)
-        .flat_map(|row| row[..(width - 2) * 4].iter().copied())
-        .collect()
 }
 
 async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
@@ -257,8 +251,8 @@ async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Resu
         || !h.is_finite()
         || w <= 0.0
         || h <= 0.0
-        || w.ceil() + 2.0 > (client.right - client.left) as f32
-        || h.ceil() > (client.bottom - client.top) as f32
+        || w.ceil() > (client.right - client.left) as f32
+        || h.ceil() + 2.0 > (client.bottom - client.top) as f32
     {
         return Err(format!(
             "el widget ({w}x{h}) no cabe en el área cliente con su marca de captura"
@@ -323,16 +317,7 @@ pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::{crop_margin, solve_alpha};
-
-    #[test]
-    fn capture_marker_is_removed_from_each_row() {
-        let pixels: Vec<u8> = (0..32).collect();
-        assert_eq!(
-            crop_margin(&pixels, 4),
-            [pixels[..8].to_vec(), pixels[16..24].to_vec()].concat()
-        );
-    }
+    use super::solve_alpha;
 
     #[test]
     fn alpha_is_recovered_from_black_and_white_composites() {

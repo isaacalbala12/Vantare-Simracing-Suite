@@ -141,8 +141,8 @@ impl Render for Overlay {
                             window,
                             0.0,
                             0.0,
-                            size.0.ceil() + 2.0,
-                            size.1.ceil(),
+                            size.0.ceil(),
+                            size.1.ceil() + 2.0,
                             color,
                         );
                     }

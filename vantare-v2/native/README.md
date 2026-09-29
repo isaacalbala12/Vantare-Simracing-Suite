@@ -108,36 +108,11 @@ pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la
 época nueva), overlays muerto o colgado (el núcleo sigue publicando), segunda
 instancia, orden de cierre, presupuesto agotado y muerte conjunta.
 
-## Campaña de medición: topología A frente a B
+## Topología
 
-Solo para la fase 0 (ADR 0099 §3); tras decidir se retira la variante no
-elegida. **B** (por defecto) son dos procesos, `vantare-core` y
-`vantare-overlays`, unidos por el pipe (DTO JSON). **A** es `vantare-inproc`
-(paquete `inproc/`): el mismo núcleo y los mismos overlays en un proceso, y la
-foto pasa del `Reader` del núcleo (`ArcSwap`) a la ventana, sin pipe ni serde.
-Es igual en lo demás: el bucle es el mismo (`service::drive`, que también usa B),
-la fuente y los widgets son los mismos y hay una ventana por monitor. Lo que
-mide la comparación es el transporte y el aislamiento, no otra cosa.
-
-Lanzamiento equivalente, con los binarios de `target\release` (`--release`),
-`C` la captura y `N` = 1, 4 o 22 widgets:
-
-```powershell
-# B: dos procesos (o `vantare -- --replay C -- N`, que los lanza y supervisa)
-vantare-core.exe --replay C [--velocidad V]        # o --live
-vantare-overlays.exe N
-
-# A: un proceso, mismas opciones
-vantare-inproc.exe --replay C [--velocidad V] N    # o --live N
-```
-
-A y B abren lo mismo: una ventana por monitor con los N widgets. En B, arrancar el núcleo antes de los overlays
-para que la medición no incluya la espera de conexión. `--live` y `--replay`
-alimentan igual a A y a B; `--velocidad` solo cambia el reloj del núcleo.
-
-`inproc/` es un paquete aparte porque `runtime` no puede depender de `ui`
-(`domain/tests/architecture.rs`). Para retirar A: borrar `inproc/` y su línea
-en `members` de `Cargo.toml`.
+Núcleo y overlays en procesos separados unidos por el pipe (topología B de la
+ADR 0099). La variante con todo en un proceso (A) se midió en la fase 0 y se
+retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 ## Compilar y probar
 

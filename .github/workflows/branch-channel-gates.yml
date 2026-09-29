@@ -185,6 +185,21 @@ jobs:
           cargo +1.95.0 build --manifest-path rust/telemetry/Cargo.toml --release --locked
           if ($LASTEXITCODE -ne 0) { throw "Rust telemetry release build failed" }
 
+      - name: Real LMU47 high-rate Go/Rust parity
+        run: |
+          $corpusRoot = Join-Path $env:RUNNER_TEMP "isa-1403-corpus"
+          $env:LMU_HIGH_RATE_PARITY_OUT = Join-Path $env:RUNNER_TEMP "isa-1403-parity"
+          New-Item -ItemType Directory -Path $corpusRoot -Force | Out-Null
+          tar -xzf testdata/rust-port/lmu47-high-rate-60s.tar.gz -C $corpusRoot
+          if ($LASTEXITCODE -ne 0) { throw "LMU47 corpus extraction failed" }
+          $env:LMU_HIGH_RATE_CORPUS = Join-Path $corpusRoot "isa-1403-lmu-high-rate-final-20260929"
+          go test ./internal/telemetry/drivers/lmu -run '^(TestAuditLMUHighRateTemporalOptIn|TestReplayLMUHighRateGoOptIn)$' -count=1
+          if ($LASTEXITCODE -ne 0) { throw "Go LMU47 replay failed" }
+          cargo +1.95.0 test --manifest-path rust/telemetry/Cargo.toml --release --locked --test high_rate_temporal
+          if ($LASTEXITCODE -ne 0) { throw "Rust LMU47 replay failed" }
+          python tools/telemetry-port-parity/compare_high_rate.py (Join-Path $env:LMU_HIGH_RATE_PARITY_OUT "go-products.jsonl") (Join-Path $env:LMU_HIGH_RATE_PARITY_OUT "rust-products.jsonl") --expected-events 3839
+          if ($LASTEXITCODE -ne 0) { throw "Go/Rust LMU47 product parity failed" }
+
       - name: Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm test

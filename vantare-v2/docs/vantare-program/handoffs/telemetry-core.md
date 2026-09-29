@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — paridad temporal completa LMU47 (2026-09-29)
+
+El umbral de aceptación acordado es una sesión real con **al menos 46 coches**;
+no se exigen sesiones separadas de 44 y 104. El corpus físico LMU47 supera ese
+umbral. Los replays Go y Rust recorren en orden sus 3600 SHM y 239 REST con los
+tiempos registrados. El comparador estructural pasó en los 3839 eventos:
+Overlay, Engineer, Strategy y facts completos coinciden campo por campo. Los
+tests cuentan 3839 productos de cada tipo y un fact. Las salidas JSONL ocupan
+cerca de 1,5 GB y se comparan en streaming sin imprimir valores. Se añadió
+un gate Windows en CI para repetir auditoría, ambos replays y comparación.
+
+Esto acredita paridad funcional para **esa sesión estable en pista**, no la
+paridad de menú/boxes/reconnect/fallos ni el rendimiento de la ruta productiva.
+El banco G0/G1/R de adquisición, IPC, entrega, CPU/p99/RSS sigue pendiente;
+las ventanas físicas previas todavía no cumplen el objetivo de 50% menos CPU.
+Go permanece productivo y PR #1415 es draft, sin merge/promoción.
+
 ## VAN-778 / ISA-1403 — corpus temporal real LMU47 60 Hz/4 Hz (2026-09-29)
 
 El capturador opt-in independiente escribió en disco solo frames SHM

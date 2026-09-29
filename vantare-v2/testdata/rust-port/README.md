@@ -28,7 +28,20 @@ $env:LMU_HIGH_RATE_CORPUS='C:\tmp\isa-1403-lmu-high-rate-final-20260929'
 go test ./internal/telemetry/drivers/lmu -run '^TestAuditLMUHighRateTemporalOptIn$' -count=1 -v
 ```
 
-Este corpus cubre el umbral de tamaño y la cadencia de entrada de R02. Aún no
-acredita paridad completa G0/G1/R, CPU ≤50%, p99, RSS, recuperación ni la
-prueba física de Wails/OBS. El benchmark debe reproducir sus eventos con los
-intervalos medidos y contar todo el trabajo de adquisición, IPC y entrega.
+El replay Go/Rust compara estructuralmente cada producto Overlay, Engineer,
+Strategy y fact en los 3839 eventos, con los tiempos originales de cada evento
+y de las respuestas REST. Para repetirlo después de extraer el archivo:
+
+```powershell
+$env:LMU_HIGH_RATE_PARITY_OUT='C:\tmp\isa-1403-high-rate-parity'
+go test ./internal/telemetry/drivers/lmu -run '^TestReplayLMUHighRateGoOptIn$' -count=1
+cargo +1.95.0 test --manifest-path rust/telemetry/Cargo.toml --release --locked --test high_rate_temporal
+python tools/telemetry-port-parity/compare_high_rate.py "$env:LMU_HIGH_RATE_PARITY_OUT/go-products.jsonl" "$env:LMU_HIGH_RATE_PARITY_OUT/rust-products.jsonl" --expected-events 3839
+```
+
+Use un directorio de salida nuevo para cada ejecución: las pruebas no sobrescriben
+resultados anteriores. Los archivos JSONL ocupan cerca de 1,5 GB en total; el
+comparador solo informa la ruta del primer campo distinto, sin imprimir valores.
+La comparación completa pasó localmente. Este replay funcional no mide el coste
+de adquisición, IPC ni entrega a Go, y solo cubre pista estable. Siguen abiertos
+G0/G1/R, CPU ≤50%, p99, RSS, recuperación y la prueba física Wails/OBS.

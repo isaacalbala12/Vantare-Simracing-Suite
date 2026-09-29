@@ -224,6 +224,11 @@ arquitectura nueva, no como parches sobre la anterior.
 
 ## Decisiones de Isaac (2026-09-29)
 
+0. **Agrupación de ventanas:** una sola ventana transparente por monitor con
+   todos los widgets (se retira el modo de una ventana por widget). Medido en
+   fase 0: con datos quietos, 22 ventanas cuestan el doble de CPU que una sola
+   porque cada ventana recibe un aviso de pintado por refresco.
+
 1. El producto Wails se congela en funcionalidades al empezar la fase 2.
 2. Segundo simulador: **Assetto Corsa**, si es posible.
 3. Solo se porta el sistema de diseño **Eficiencia**.

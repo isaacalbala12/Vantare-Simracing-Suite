@@ -2201,3 +2201,23 @@ un único runtime Rust explícito en R19; todavía no hay selección ni nuevo ow
 El replay de status acepta solo el método StrategyHub. La suite Go completa
 protege la composición actual. La siguiente entrega conecta el proceso hijo y
 sus productos por esta interfaz, con pruebas de exclusión de dos lectores.
+
+## 119. Candidato Rust conectado a la aplicación (2026-09-29)
+
+La raíz de Vantare selecciona por argumento un único runtime de telemetría:
+Go sigue siendo el valor por defecto y `-telemetry-rust-candidate` exige una
+ruta absoluta al hijo Rust. La selección ocurre antes de construir el lector
+Go y falla explícitamente si falta el binario solicitado. El runtime Rust
+alimenta los publishers de Overlay, Engineer y Strategy, el estado de fuente,
+la política de rendimiento y la demanda que cambia al abrir consumidores.
+No hay un segundo lector LMU en la ruta seleccionada.
+
+Con LMU 1.4.2.0 en pista y 47 vehículos, tres repeticiones de los tests físicos
+de Overlay tardío, Engineer y Strategy pasaron. También arrancó la aplicación
+integrada con el hijo Rust, y el arranque Engineer pasó de detectando a live sin
+rechazos de observaciones. `go test ./...` y `git diff --check` pasaron. La
+app de prueba estaba oculta; esto no demuestra aún interacción visual Wails u
+OBS. R19 continúa parcial hasta probar apertura/cierre de las tres superficies
+en una app visible. R20 debe demostrar reinicio, secuencias y recuperación de
+facts; R23 empaquetado; R25 CPU total ≤50% de Go con p99/RSS. No se habilita
+Rust por defecto ni se retira Go con este corte.

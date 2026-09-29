@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — candidato integrado parcial R19 (2026-09-29)
+
+`-telemetry-rust-candidate` selecciona el hijo Rust con ruta absoluta antes de
+construir el lector Go. El candidato publica Overlay, Engineer, Strategy y
+estado, y actualiza demanda y política de rendimiento. LMU 1.4.2.0 en pista
+entregó 47 vehículos en tres repeticiones físicas de Overlay tardío y
+Engineer/Strategy; la app integrada arrancó con un solo hijo y cero rechazos
+Engineer al inicio. `go test ./...` y `git diff --check` pasaron. La app se
+ejecutó oculta: Wails visible y OBS siguen sin prueba. También faltan crash y
+replay de facts, empaquetado y el gate CPU/p99/RSS de R20–R27. Go sigue por
+defecto; PR #1415 draft, sin merge ni promoción. Plan §119.
+
 ## VAN-778 / ISA-1403 — frontera de composición R19 (2026-09-29)
 
 Wails referencia una interfaz local de lifecycle, status, rendimiento y

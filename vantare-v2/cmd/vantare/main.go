@@ -1496,6 +1496,7 @@ func main() {
 	}
 
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
+	rustTelemetryCandidate := flag.String("telemetry-rust-candidate", "", "absolute path to the isolated Rust telemetry candidate")
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
 	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
 	legacyEngineerFamilies := flag.Bool("engineer-legacy-families", false, "rollback to the five legacy Engineer family monitors instead of radio.v1")
@@ -2343,7 +2344,7 @@ func main() {
 	engBridge.Start()
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
-	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+	telemetryCoreRuntime, err = selectTelemetryRuntime(*rustTelemetryCandidate, app.TelemetryCoreRuntimeConfig{
 		OverlaySections:         os.Getenv("VANTARE_OVERLAY_SECTIONS") == "1",
 		Enabled:                 *live,
 		Emitter:                 emitter,
@@ -2354,6 +2355,10 @@ func main() {
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
+		if *rustTelemetryCandidate != "" {
+			cleanupApp()
+			return
+		}
 	}
 	if telemetryCoreRuntime != nil && performanceSensorEnabled() {
 		performanceRuntime = app.NewPerformanceRuntime(

@@ -27,6 +27,8 @@ type rustCandidateEngineerProbe struct {
 	observations chan engineerprojection.ObservationSnapshotV1
 	facts        chan engineerprojection.FactEnvelopeV1
 	boundaries   chan engineerprojection.FactResyncRequiredError
+	rejectFact   atomic.Bool
+	rejected     chan struct{}
 	available    atomic.Bool
 	rejections   atomic.Int64
 }
@@ -50,6 +52,12 @@ func (probe *rustCandidateEngineerProbe) ConsumeFact(value engineerprojection.Fa
 	if !probe.available.Load() {
 		probe.rejections.Add(1)
 		return errors.New("Engineer source unavailable before fact")
+	}
+	if probe.rejectFact.Swap(false) {
+		if probe.rejected != nil {
+			close(probe.rejected)
+		}
+		return errors.New("test Engineer rejected one fact")
 	}
 	select {
 	case probe.facts <- value:
@@ -320,5 +328,65 @@ func TestRustCandidateEngineerAndStrategyLiveLMUOptIn(t *testing.T) {
 	}
 	if got := probe.rejections.Load(); got != 0 {
 		t.Fatalf("Rust Engineer rejected %d observations/facts before source became available", got)
+	}
+}
+
+func TestRustCandidateRecoversAfterFactRejectionLiveLMUOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and LMU on track")
+	}
+	probe := &rustCandidateEngineerProbe{
+		observations: make(chan engineerprojection.ObservationSnapshotV1, 1),
+		facts:        make(chan engineerprojection.FactEnvelopeV1, 1),
+		rejected:     make(chan struct{}),
+	}
+	probe.rejectFact.Store(true)
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{
+		Enabled: true, Executable: executable, Engineer: probe, StrategyPublicTransport: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	subscription, err := runtime.StrategyHub().Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer subscription.Close()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer stopCancel()
+		if err := runtime.Stop(stopCtx); err != nil {
+			t.Errorf("Rust candidate Stop: %v", err)
+		}
+	}()
+	select {
+	case <-probe.rejected:
+	case <-ctx.Done():
+		t.Fatalf("first Engineer fact was not rejected: %v", ctx.Err())
+	}
+	for {
+		event, err := subscription.Next(ctx)
+		if err != nil {
+			t.Fatalf("Strategy after forced fact rejection: %v; source=%+v", err, runtime.SourceStatus())
+		}
+		if event.Kind != telemetrytransport.EventSnapshot {
+			continue
+		}
+		var snapshot telemetrytransport.Envelope
+		if err := json.Unmarshal(event.Data, &snapshot); err != nil {
+			t.Fatal(err)
+		}
+		if snapshot.Epoch > 0 && runtime.SourceStatus().ReconnectAttempt > 0 {
+			break
+		}
+	}
+	if runtime.SourceStatus().ReconnectAttempt == 0 {
+		t.Fatal("Rust child restarted without an observable reconnect attempt")
 	}
 }

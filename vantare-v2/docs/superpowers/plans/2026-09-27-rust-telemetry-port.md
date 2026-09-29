@@ -2238,3 +2238,15 @@ avisos Staticcheck nuevos de capitalización; este corte los corrige y debe
 repetir el ratchet remoto. R20 sigue parcial: faltan crash real durante facts,
 replay/resync de nueva instancia, colas, suspensión, Stop concurrente y
 observabilidad acotada. No atribuir a esta prueba un recovery físico completo.
+
+## 121. Reinicio físico por rechazo de fact (2026-09-29)
+
+Un test opt-in de la fachada real provoca que Engineer rechace el primer fact
+que llega desde LMU con 47 vehículos. El supervisor no confirma ese fact,
+descarta el hijo, marca un intento de reconexión y vuelve a entregar Strategy
+desde una nueva instancia. Tres repeticiones pasaron en pista. El primer
+intento del test esperaba observar dos snapshots Strategy, pero el fact puede
+llegar antes del primero; se ajustó a comprobar rechazo, reconexión y una
+publicación Strategy posterior, que son los hechos garantizados por el orden
+del proceso. Falta provocar crash después de un fact ya aceptado, demostrar
+resync/retención y cubrir el resto de R20. No hay gate de rendimiento final.

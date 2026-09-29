@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — fallo físico de fact y reconexión (2026-09-29)
+
+Un test opt-in con LMU 1.4.2.0 y 47 vehículos rechaza un fact en Engineer:
+el supervisor reinicia el hijo Rust y Strategy vuelve a publicar con intento
+de reconexión visible. Pasó tres veces. El test no afirma replay de un fact
+ya aceptado ni prueba aún un crash arbitrario del proceso. R20 sigue parcial;
+faltan retención/resync, colas, suspensión, Stop concurrente y observabilidad.
+Go continúa por defecto; PR #1415 draft, sin merge. Plan §121.
+
 ## VAN-778 / ISA-1403 — épocas al reiniciar el hijo, R20 parcial (2026-09-29)
 
 El IPC conserva el cursor Rust para validación y ACK; el adaptador productivo

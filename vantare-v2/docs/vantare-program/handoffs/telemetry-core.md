@@ -6,7 +6,8 @@ LMU 1.4.2.0 seguía abierto en práctica con 47 vehículos. Dos tests opt-in
 Rust comprobaron que `/rest/watch/standings` devuelve 47 filas, el endpoint
 `sessionInfo` declara 47 vehículos, ambos cuerpos se decodifican y la
 temperatura ambiental de REST llega al batch canónico de una lectura SHM
-real de al menos 46 coches. No se guardaron nombres ni cuerpos REST. Suite
+real de al menos 46 coches y al frame Overlay V2 emitido con el mismo valor.
+No se guardaron nombres ni cuerpos REST. Suite
 Rust release: 160 tests PASS; Clippy, formato, build release y replay SHM
 temporal LMU47 x80 PASS. El corpus temporal continúa con REST solapado
 sanitizado, no cuerpos completos de endpoint; falta su replay/paridad,

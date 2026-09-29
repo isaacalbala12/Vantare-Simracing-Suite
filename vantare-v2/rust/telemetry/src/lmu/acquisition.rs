@@ -327,7 +327,23 @@ mod tests {
                 && acquisition.assembler.rest_cache_mut().status() == RestStatus::Live
                 && let Some(batch) = acquisition.assembler.engine().current()
                 && batch.state.vehicles.len() >= 46
-                && matches!(batch.state.ambient_temp_c, Field::Present { value, .. } if value.is_finite())
+                && let Field::Present { value: ambient, .. } = batch.state.ambient_temp_c
+                && ambient.is_finite()
+                && frames.iter().any(|raw| {
+                    let Ok(frame) = ipc::decode(raw) else {
+                        return false;
+                    };
+                    if frame.kind != Kind::Snapshot {
+                        return false;
+                    }
+                    let Ok(payload) = serde_json::from_slice::<serde_json::Value>(frame.payload)
+                    else {
+                        return false;
+                    };
+                    payload["product"] == "overlay-v2"
+                        && payload["update"]["frame"]["weather"]["ambientC"]["v"].as_f64()
+                            == Some(ambient)
+                })
             {
                 fused = true;
                 break;

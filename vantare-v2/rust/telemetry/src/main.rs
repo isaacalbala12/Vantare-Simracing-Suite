@@ -45,6 +45,41 @@ fn main() {
         return;
     }
 
+    #[cfg(all(windows, feature = "bench-harness"))]
+    if let [
+        pipe_flag,
+        pipe_name,
+        nonce_flag,
+        nonce_text,
+        mapping_flag,
+        mapping_name,
+        port_flag,
+        port_text,
+        rest @ ..,
+    ] = arguments.as_slice()
+        && pipe_flag == "--bench-pipe"
+        && nonce_flag == "--bench-nonce"
+        && mapping_flag == "--bench-mapping"
+        && port_flag == "--bench-rest-port"
+        && (rest.is_empty() || rest == ["--candidate-engineer-binary"])
+    {
+        let result = port_text
+            .parse::<u16>()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid benchmark port"))
+            .and_then(|port| {
+                run_candidate_with_source(pipe_name, nonce_text, !rest.is_empty(), |stream| {
+                    Acquisition::open_bench(mapping_name, port, 30, stream).map_err(|error| {
+                        io::Error::other(format!("open benchmark source: {error:?}"))
+                    })
+                })
+            });
+        if let Err(error) = result {
+            eprintln!("vantare-telemetry: benchmark IPC failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+
     if let [pipe_flag, pipe_name, nonce_flag, nonce_text] = arguments.as_slice()
         && pipe_flag == "--harness-pipe"
         && nonce_flag == "--harness-nonce"
@@ -101,6 +136,19 @@ fn wait_for_frame(pipe: &mut DeadlinePipe, deadline: Instant) -> io::Result<Vec<
 
 #[cfg(windows)]
 fn run_candidate_pipe(pipe_name: &str, nonce_text: &str, engineer_binary: bool) -> io::Result<()> {
+    run_candidate_with_source(pipe_name, nonce_text, engineer_binary, |stream| {
+        Acquisition::open(30, stream)
+            .map_err(|error| io::Error::other(format!("open LMU: {error:?}")))
+    })
+}
+
+#[cfg(windows)]
+fn run_candidate_with_source(
+    pipe_name: &str,
+    nonce_text: &str,
+    engineer_binary: bool,
+    open: impl FnOnce(u64) -> io::Result<Acquisition>,
+) -> io::Result<()> {
     let mut pipe = connect_pipe(pipe_name, nonce_text)?;
     let first = wait_for_frame(&mut pipe, Instant::now() + Duration::from_secs(2))?;
     if ipc::decode(&first)
@@ -117,8 +165,7 @@ fn run_candidate_pipe(pipe_name: &str, nonce_text: &str, engineer_binary: bool) 
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid Configuration"))?;
     let nonce = ipc::parse_nonce_hex(nonce_text).expect("validated pipe nonce");
     let stream = u64::from_le_bytes(nonce[..8].try_into().expect("fixed nonce")).max(1);
-    let mut acquisition = Acquisition::open(30, stream)
-        .map_err(|error| io::Error::other(format!("open LMU: {error:?}")))?;
+    let mut acquisition = open(stream)?;
     acquisition.set_engineer_binary_candidate(engineer_binary);
     let result = run_candidate_loop(&mut pipe, &mut acquisition, first);
     let shutdown = acquisition

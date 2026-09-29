@@ -62,6 +62,11 @@ impl Poller {
         Self::start_with(Client::default(), start, POLL_INTERVAL, MAX_BACKOFF)
     }
 
+    #[cfg(feature = "bench-harness")]
+    pub fn start_bench(port: u16, start: Instant) -> Self {
+        Self::start_with(Client::new(port), start, POLL_INTERVAL, MAX_BACKOFF)
+    }
+
     fn start_with(
         client: Client,
         start: Instant,

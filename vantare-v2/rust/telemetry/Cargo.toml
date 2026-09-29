@@ -19,6 +19,7 @@ required-features = ["replay-harness"]
 
 [features]
 replay-harness = []
+bench-harness = []
 
 [[bench]]
 name = "parse_lmu"

@@ -1,5 +1,26 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — adquisición Rust sobre fuente LMU47 aislada (2026-09-29)
+
+Un productor de prueba carga y verifica los 3839 archivos del corpus físico de
+47 coches antes de crear un mapping Windows privado y dos endpoints REST locales.
+Reproduce 3600 SHM y 239 actualizaciones REST con sus tiempos observados en
+59,983 s. La feature Rust `bench-harness` admite solo ese mapping privado y
+puerto de loopback; la entrada productiva sigue exigiendo el proceso LMU y
+`LMU_Data`. El mismo bucle candidato y la misma adquisición, parser, REST,
+assembler e IPC atendieron la fuente aislada; Go recibió los productos.
+
+El diagnóstico opt-in pasó en 67,06 s: 3876 Overlay, Engineer y Strategy,
+242 estados, 61,56 s de recepción, 7,484375 s CPU del host Go y 7,84375 s del
+hijo Rust. Las entregas superan los 3839 eventos porque la adquisición muestrea
+SHM a 60 Hz y REST a 4 Hz de forma independiente del productor; esta corrida
+no es una comparación exacta de salidas ni el gate de rendimiento. Faltan G0/G1
+pareados, p99, RSS, A/A, cinco bloques y la validación física Wails/OBS. La
+suite Go completa pasó. Rust pasó 165 unitarios y los tests de integración,
+incluido el mapping privado. Una primera ejecución paralela de suites agotó
+el archivo de paginación; la repetición Rust aislada pasó. Go sigue productivo,
+PR #1415 draft y no hubo promoción.
+
 ## VAN-778 / ISA-1403 — remanente congelado tras salir de pista (2026-09-29)
 
 Una prueba física encontró LMU 1.4.2.0 aún abierto con 47 coches en el último

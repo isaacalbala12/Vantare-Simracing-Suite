@@ -352,6 +352,15 @@ diferencias. El corpus real de 47 coches habilita paridad diagnóstica; los
 gates de selección final y cierre permanecen pendientes por duración, paridad
 completa e integración.
 
+**Avance del banco aislado (2026-09-29):** `tools/telemetry-port-bench-source`
+reproduce el corpus LMU47 verificado en un mapping Windows privado y REST de
+loopback. El candidato Rust con `bench-harness` usa su ruta normal de
+adquisición, ensamblado y pipe; el receptor Go comprueba la entrega en una
+prueba opt-in de 60 s. Una corrida produjo 3876 entregas por consumidor y
+7,484375 s CPU Go + 7,84375 s CPU Rust. Es solo el brazo R diagnóstico: el
+muestreo autónomo no da exactamente un producto por evento del archivo, y aún
+faltan G0/G1, p99/RSS, A/A y los cinco bloques intercalados de §4.
+
 ### F1 — Ejecutable mínimo y frontera Windows
 
 | Corte | Dependencia | Entrega, archivos previstos y aceptación | Verificación de salida |

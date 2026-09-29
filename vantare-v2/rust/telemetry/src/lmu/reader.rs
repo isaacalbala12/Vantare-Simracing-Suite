@@ -34,7 +34,7 @@ impl Mapping {
         Self::open_named("LMU_Data")
     }
 
-    fn open_named(name: &str) -> io::Result<Self> {
+    pub(crate) fn open_named(name: &str) -> io::Result<Self> {
         if name.is_empty() || name.encode_utf16().any(|unit| unit == 0) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,

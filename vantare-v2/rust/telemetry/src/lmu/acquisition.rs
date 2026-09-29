@@ -6,6 +6,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use super::cadence::TickCadence;
 use super::process::RunningSource;
+#[cfg(feature = "bench-harness")]
+use super::reader::{MAX_STABLE_COMPARISONS, Mapping};
 use super::rest::poller::{Poller, PollerError};
 use super::rest::{EndpointStatus, RestStatus};
 use super::{OBJECT_OUT_SIZE, admit_v13};
@@ -24,8 +26,32 @@ pub enum AcquisitionError {
     InvalidControl,
 }
 
+enum Source {
+    Live(RunningSource),
+    #[cfg(feature = "bench-harness")]
+    Bench(Mapping),
+}
+
+impl Source {
+    fn exact_build(&self) -> Option<&str> {
+        match self {
+            Self::Live(source) => source.build.evidence.exact_supported_build(),
+            #[cfg(feature = "bench-harness")]
+            Self::Bench(_) => Some("1.4.2.0"),
+        }
+    }
+
+    fn read_stable(&self, frame: &mut [u8], scratch: &mut [u8]) -> io::Result<()> {
+        match self {
+            Self::Live(source) => source.read_stable(frame, scratch),
+            #[cfg(feature = "bench-harness")]
+            Self::Bench(mapping) => mapping.read_stable(frame, scratch, MAX_STABLE_COMPARISONS),
+        }
+    }
+}
+
 pub struct Acquisition {
-    source: RunningSource,
+    source: Source,
     assembler: Assembler,
     rest: Poller,
     frame: Vec<u8>,
@@ -39,8 +65,39 @@ impl Acquisition {
     /// The process, exact build and mapping are retained for this entire run.
     /// Unknown builds never reach the parser or the REST worker.
     pub fn open(slot_grace_frames: u64, fact_stream_id: u64) -> Result<Self, AcquisitionError> {
-        let source = RunningSource::open().map_err(AcquisitionError::Io)?;
-        if source.build.evidence.exact_supported_build().is_none() {
+        let source = Source::Live(RunningSource::open().map_err(AcquisitionError::Io)?);
+        Self::with_source(source, slot_grace_frames, fact_stream_id, Poller::start)
+    }
+
+    /// Test-only source for the audited real corpus. The production constructor
+    /// still requires the actual LMU process and its fixed LMU_Data mapping.
+    #[cfg(feature = "bench-harness")]
+    pub fn open_bench(
+        mapping_name: &str,
+        rest_port: u16,
+        slot_grace_frames: u64,
+        fact_stream_id: u64,
+    ) -> Result<Self, AcquisitionError> {
+        if !mapping_name.starts_with("vantare-telemetry-bench-") || rest_port == 0 {
+            return Err(AcquisitionError::Io(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid isolated benchmark source",
+            )));
+        }
+        let source =
+            Source::Bench(Mapping::open_named(mapping_name).map_err(AcquisitionError::Io)?);
+        Self::with_source(source, slot_grace_frames, fact_stream_id, |started| {
+            Poller::start_bench(rest_port, started)
+        })
+    }
+
+    fn with_source(
+        source: Source,
+        slot_grace_frames: u64,
+        fact_stream_id: u64,
+        start_rest: impl FnOnce(Instant) -> Poller,
+    ) -> Result<Self, AcquisitionError> {
+        if source.exact_build().is_none() {
             return Err(AcquisitionError::UnsupportedBuild);
         }
         let assembler = Assembler::new(slot_grace_frames, fact_stream_id)
@@ -49,7 +106,7 @@ impl Acquisition {
         Ok(Self {
             source,
             assembler,
-            rest: Poller::start(started),
+            rest: start_rest(started),
             frame: vec![0; OBJECT_OUT_SIZE],
             scratch: vec![0; OBJECT_OUT_SIZE],
             started,
@@ -88,9 +145,7 @@ impl Acquisition {
     pub fn tick(&mut self) -> Result<Vec<Vec<u8>>, AcquisitionError> {
         let build = self
             .source
-            .build
-            .evidence
-            .exact_supported_build()
+            .exact_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
         let source = &self.source;
         let rest_unavailable = rest_unavailable(&mut self.assembler);
@@ -127,9 +182,7 @@ impl Acquisition {
         };
         let build = self
             .source
-            .build
-            .evidence
-            .exact_supported_build()
+            .exact_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
         if idle_menu_frame(&self.frame, build) {
             return Ok(Some(Vec::new()));

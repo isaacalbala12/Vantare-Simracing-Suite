@@ -18,6 +18,7 @@ mod flag;
 pub mod format;
 pub mod head_to_head;
 pub mod input_telemetry;
+pub mod fuel_strategy;
 mod model;
 pub mod multiclass_relative;
 pub mod pedals;

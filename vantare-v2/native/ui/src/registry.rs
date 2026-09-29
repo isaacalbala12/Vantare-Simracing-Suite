@@ -69,4 +69,5 @@ widgets! {
     TrackWeather => track_weather: "track-weather",
     CarDamageNumbers => car_damage_numbers: "car-damage-numbers",
     HeadToHead => head_to_head: "head-to-head",
+    FuelStrategy => fuel_strategy: "fuel-strategy",
 }

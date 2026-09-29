@@ -222,6 +222,19 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn a_simulator_name_outside_the_table_decodes_as_unknown() {
+        let mut json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
+        assert_eq!(json["origin"]["simulator"], "lmu");
+        json["origin"]["simulator"] = "no-existe-".repeat(1000).into();
+        let dto: SnapshotDto = serde_json::from_value(json).unwrap();
+        let snapshot = Snapshot::try_from(dto).unwrap();
+        assert_eq!(
+            snapshot.origin.source.simulator,
+            vantare_domain::UNKNOWN_SIMULATOR
+        );
+    }
+
+    #[test]
     fn incompatible_dto_version_is_refused() {
         let mut dto = SnapshotDto::from(&Snapshot::default());
         dto.version = dto::VERSION + 1;

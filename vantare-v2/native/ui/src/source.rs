@@ -1,6 +1,6 @@
-//! Fuente local de prueba de `Snapshot`s. Mientras el IPC no esté integrado, el
-//! binario se alimenta de aquí; después bastará con pasar a [`crate::run`] el
-//! receptor del `Subscriber` de `ipc` en lugar de [`local_feed`].
+//! Fuentes de `Snapshot`s para [`crate::run`]: el núcleo por su named pipe
+//! ([`pipe_feed`]) o una carrera sintética local ([`local_feed`]), para probar
+//! los widgets sin núcleo.
 
 use std::sync::Arc;
 use std::thread;
@@ -11,6 +11,31 @@ use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Driver, Flag, FlagKind, FlagScope, Gap,
     Player, Pose, Session, SessionKind, Snapshot, State, Telemetry,
 };
+
+/// Snapshots que publica el núcleo en el pipe `<name>`. El `Subscriber` se
+/// conecta y reconecta solo (el núcleo puede arrancar después o reiniciarse con
+/// otra época); esto solo reenvía lo más reciente a `run`.
+///
+/// # Errors
+/// Si el sistema no puede crear la conexión o el hilo.
+pub fn pipe_feed(name: &str) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
+    // El pipe es solo del usuario actual (ACL del núcleo): se acepta al servidor.
+    let mut subscriber = vantare_ipc::Subscriber::connect(name, |_| true)?;
+    let (tx, rx) = flume::unbounded();
+    thread::Builder::new()
+        .name("pipe-feed".into())
+        .spawn(move || {
+            // `run` suelta el receptor al cerrarse la última ventana.
+            while !tx.is_disconnected() {
+                if let Some(snapshot) = subscriber.next(Duration::from_millis(250))
+                    && tx.send(snapshot).is_err()
+                {
+                    break;
+                }
+            }
+        })?;
+    Ok(rx)
+}
 
 /// Instantáneas por segundo de la secuencia sintética.
 const RATE_HZ: u64 = 30;

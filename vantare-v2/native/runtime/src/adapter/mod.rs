@@ -8,4 +8,4 @@ mod lmu;
 
 #[cfg(windows)]
 pub use lmu::Lmu;
-pub use lmu::{Replay, ReplayEvent};
+pub use lmu::{Replay, ReplayEvent, open_replay};

@@ -25,7 +25,7 @@ mod publisher;
 mod subscriber;
 
 #[cfg(windows)]
-pub use pipe::Peer;
+pub use pipe::{Peer, default_pipe_name};
 #[cfg(windows)]
 pub use publisher::Publisher;
 #[cfg(windows)]

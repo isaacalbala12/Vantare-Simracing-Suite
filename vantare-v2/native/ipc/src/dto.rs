@@ -2,7 +2,6 @@
 //! `domain` (que no son ABI). Añadir una señal al modelo exige añadirla aquí a
 //! propósito; un campo que sobra en el cable se ignora, uno que falta es error.
 
-use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -12,10 +11,6 @@ use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
 pub(crate) const VERSION: u32 = 1;
-
-/// Nombres de simulador distintos que un par puede introducir; ver [`simulator`].
-const MAX_SIMULATORS: usize = 16;
-const MAX_SIMULATOR_LEN: usize = 32;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -442,25 +437,6 @@ fn uplayer(p: PlayerDto) -> d::Player {
     }
 }
 
-/// `Source::simulator` es `&'static str` en `domain`; un nombre recibido del
-/// cable se internaliza (fugando cada nombre distinto una sola vez). El par está
-/// autenticado, pero el tope evita que uno defectuoso haga crecer la memoria.
-fn simulator(name: String) -> Result<&'static str, Error> {
-    static KNOWN: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
-    let mut known = KNOWN
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if let Some(found) = known.iter().find(|k| **k == name) {
-        return Ok(found);
-    }
-    if name.len() > MAX_SIMULATOR_LEN || known.len() >= MAX_SIMULATORS {
-        return Err(Error::Protocol("nombre de simulador no admitido"));
-    }
-    let leaked: &'static str = Box::leak(name.into_boxed_str());
-    known.push(leaked);
-    Ok(leaked)
-}
-
 impl TryFrom<SnapshotDto> for d::Snapshot {
     type Error = Error;
 
@@ -475,7 +451,7 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
             sequence: dto.sequence,
             origin: d::Origin {
                 source: d::Source {
-                    simulator: simulator(o.simulator)?,
+                    simulator: d::Source::known_simulator(&o.simulator),
                     kind: match o.kind {
                         SourceKindDto::Live => d::SourceKind::Live,
                         SourceKindDto::Replay => d::SourceKind::Replay,

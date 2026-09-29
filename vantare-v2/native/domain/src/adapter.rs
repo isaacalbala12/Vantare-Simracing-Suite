@@ -4,13 +4,18 @@
 //! El núcleo (en `runtime`) implementa el otro lado, que no vive aquí:
 //!
 //! ```text
-//! fn merge(previous: Option<&Snapshot>, observation: Observation, epoch: u64) -> Snapshot
+//! fn merge(previous: Option<&Snapshot>, observation: Observation, epoch: u64)
+//!     -> Result<Snapshot, Reject>
 //! ```
 //!
-//! `merge` funde la observación con el estado previo, calcula las derivaciones
-//! (gaps, deltas, combustible, stints) y numera el resultado: `sequence` crece
-//! de uno en uno dentro de una `epoch`, y `origin` se conserva tal cual. Una
-//! `epoch` nueva la fija el núcleo al (re)inicializarse; un cambio de
+//! `merge` valida la observación (`Reject::DuplicateCar` si dos coches repiten
+//! id: entonces no se publica nada y la revisión no avanza), sanea los
+//! números no finitos, calcula las derivaciones que hoy necesitan los
+//! ViewModels (posición de clase y gaps) y numera el resultado: `sequence`
+//! crece de uno en uno dentro de una `epoch`, y `origin` se conserva tal cual.
+//! La frescura (silencio de la fuente, desconexión) no es de `merge`: la vigila
+//! `Core`, que publica una revisión más con lo actual degradado a obsoleto.
+//! Una `epoch` nueva la fija el núcleo al (re)inicializarse; un cambio de
 //! `session.id` sin cambio de época es una sesión nueva del mismo productor.
 
 use std::time::Duration;

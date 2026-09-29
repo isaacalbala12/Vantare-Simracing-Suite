@@ -318,6 +318,13 @@ impl Drop for Acl {
     }
 }
 
+/// Nombre de pipe por defecto del núcleo de este usuario: lleva el SID, así que
+/// dos usuarios de la misma máquina no comparten nombre. Núcleo y overlays lo
+/// calculan igual.
+pub fn default_pipe_name() -> io::Result<String> {
+    Ok(format!("vantare-core-{}", current_user_sid()?))
+}
+
 /// SID del usuario del proceso en texto (`S-1-5-21-...`).
 fn current_user_sid() -> io::Result<String> {
     let mut token = null_mut();
@@ -513,6 +520,7 @@ mod tests {
             LocalFree(descriptor);
         }
         let sid = current_user_sid().unwrap();
+        assert!(default_pipe_name().unwrap().ends_with(&sid));
         assert!(sddl.starts_with("D:P("), "DACL protegida: {sddl}");
         assert!(sddl.contains(&sid), "{sddl} debe nombrar a {sid}");
         assert_eq!(sddl.matches('(').count(), 1, "un único permiso: {sddl}");

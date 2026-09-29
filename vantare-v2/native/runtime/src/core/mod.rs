@@ -75,6 +75,11 @@ impl Core {
         }
     }
 
+    /// Último snapshot publicado (el del propio escritor; los consumidores usan un [`Reader`]).
+    pub fn snapshot(&self) -> Arc<Snapshot> {
+        Arc::clone(&self.current)
+    }
+
     pub fn subscribe(&mut self) -> Reader {
         self.publisher.subscribe()
     }

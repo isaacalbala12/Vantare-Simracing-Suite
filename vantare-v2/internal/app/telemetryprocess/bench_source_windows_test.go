@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -188,5 +187,5 @@ func TestRustBenchSourceOptIn(t *testing.T) {
 	}
 	hostCPU := replayProcessCPU(t, windows.CurrentProcess()) - hostCPUStart
 	childCPU := replayProcessCPU(t, child.process) - childCPUStart
-	t.Log(fmt.Sprintf("LMU47 isolated R diagnostic: %d/%d/%d deliveries, %d statuses, wall=%s, hostCPU=%s, childCPU=%s", overlays, engineers, strategies, statuses, time.Since(started), hostCPU, childCPU))
+	t.Logf("LMU47 isolated R diagnostic: %d/%d/%d deliveries, %d statuses, wall=%s, hostCPU=%s, childCPU=%s", overlays, engineers, strategies, statuses, time.Since(started), hostCPU, childCPU)
 }

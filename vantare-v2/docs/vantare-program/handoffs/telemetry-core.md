@@ -16,6 +16,12 @@ aisló dos costes JSON: la mediana local con el golden de 44 coches bajó de
 secciones después de dos rondas. Es tiempo de pared de un módulo aislado, no
 CPU total ni comparación Go/Rust. Se usó la feature `raw_value` de
 `serde_json`, ya presente como dependencia; no se añadió una librería.
+El `staticcheck NEW=1` de CI se reprodujo en
+`telemetryprocess/bench_source_windows_test.go` (`t.Log(fmt.Sprintf(...))`) y
+se corrigió a `t.Logf`. `staticcheck ./internal/app/telemetryprocess/...` y
+`go test ./...` pasaron tras el cambio. El workflow protegido añadido antes
+para las puertas Rust/LMU47 sigue causando `policy_changed: True` en el
+quality ratchet; no se ha retirado esa cobertura.
 
 El primer corte de entrega añadido en `rust/telemetry/src/delivery.rs` porta
 solo el estado de pull Overlay: sesión por ventana, ACK/replay, última versión,

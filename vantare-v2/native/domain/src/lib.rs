@@ -11,6 +11,7 @@ mod adapter;
 mod capability;
 mod flag;
 pub mod format;
+pub mod fuel_strategy;
 mod model;
 pub mod pedals;
 mod quality;

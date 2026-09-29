@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 110. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 111. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2056,3 +2056,28 @@ La misma secuencia pasó localmente con esa toolchain. El CI remoto del SHA
 que introduce el cambio debe terminar antes de considerar acreditado el gate.
 El corpus temporal externo no está en CI, y este corte no empaqueta aún el
 ejecutable Rust junto a Wails.
+
+## 111. Corpus temporal físico de 60 segundos (2026-09-29)
+
+Tras iniciar una única instancia de LMU 1.4.2.0 mediante Computer Use, la
+práctica ELMS 2026 mostró 46 rivales configurados y 47 vehículos con el
+jugador. Cinco repeticiones físicas del hijo Rust → supervisor →
+`EngineerService` pasaron con status live, 14 observaciones y un fact por
+corrida; Overlay y el cambio a Strategy pasaron otras cinco veces.
+
+El capturador sanitizado admite ahora entre 8 y 240 muestras sin escribir
+capturas crudas. Produjo 80 pares SHM+REST de 47 vehículos, con reloj de
+origen `131599..191599` ms, en un directorio externo no versionado. SHA-256
+del manifest: `061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`.
+La auditoría Go verificó los 160 hashes y recorrió Core y los tres productos;
+el replay Rust recorrió las 80 muestras y los tres productos. Ambos pasaron.
+Esta secuencia ya cubre un minuto y el tamaño mínimo, pero aún faltan la
+comparación de todos los campos y REST productivo, cinco bloques G0/G1/R,
+CPU/p99/RSS y Wails/OBS. La PR sigue draft.
+
+El ratchet de calidad del SHA `bcece5e3` mostró `NEW=0` en todos sus
+analizadores, pero marcó `REVIEW_REQUIRED` porque este PR modifica el workflow
+bloqueante. Es una revisión externa de política pendiente, no un hallazgo de
+código nuevo. El gate de producto Windows del mismo SHA terminó `SUCCESS`,
+incluidos los pasos Rust nuevos, al igual que la validación de canal y
+GitGuardian. La revisión de política sigue pendiente.

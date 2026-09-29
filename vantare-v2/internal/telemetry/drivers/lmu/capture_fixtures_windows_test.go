@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 // TestCaptureLMUTemporalOptIn collects a bounded, correlated SHM/REST sequence.
 // The sanitizer is shared by all frames so aliases remain stable across time.
-// Output is diagnostic until the required 44/104-car scenarios are observed.
+// Output is diagnostic until parity and performance pass on a real >=46-car corpus.
 func TestCaptureLMUTemporalOptIn(t *testing.T) {
 	if os.Getenv("LMU_CAPTURE_TEMPORAL") != "1" {
 		t.Skip("set LMU_CAPTURE_TEMPORAL=1 with LMU on track")
@@ -23,6 +24,14 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 	out := strings.TrimSpace(os.Getenv("LMU_CAPTURE_OUT"))
 	if out == "" {
 		t.Fatal("set LMU_CAPTURE_OUT to a new directory")
+	}
+	samples := 8
+	if requested := strings.TrimSpace(os.Getenv("LMU_CAPTURE_SAMPLES")); requested != "" {
+		count, err := strconv.Atoi(requested)
+		if err != nil || count < 8 || count > 240 {
+			t.Fatalf("LMU_CAPTURE_SAMPLES must be 8..240, got %q", requested)
+		}
+		samples = count
 	}
 	evidence, err := readLMUBuildEvidence()
 	if err != nil {
@@ -32,7 +41,7 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diagnostic build: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(samples)*2*time.Second+10*time.Second)
 	defer cancel()
 	live, err := CaptureSanitizedSharedMemory(ctx)
 	if err != nil {
@@ -67,10 +76,10 @@ func TestCaptureLMUTemporalOptIn(t *testing.T) {
 		Samples []sample `json:"samples"`
 	}{Build: evidence.FileVersion}
 	type pair struct{ shared, rest DiagnosticCaptureArtifact }
-	pairs := make([]pair, 0, 8)
+	pairs := make([]pair, 0, samples)
 	var previous time.Duration
 	var vehicleCount int
-	for index := range 8 {
+	for index := range samples {
 		if index > 0 {
 			timer := time.NewTimer(750 * time.Millisecond)
 			select {

@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — minuto real LMU47 (2026-09-29)
+
+Una única instancia LMU 1.4.2.0 llegó a práctica ELMS 2026 con 46 rivales
+y 47 vehículos incluyendo al jugador. EngineerService, Overlay Publisher y
+cambio a Strategy pasaron cinco veces sobre el candidato Rust. El capturador
+sanitizado produjo 80 pares SHM+REST en 60 segundos, manifest SHA-256
+`061f8cc8c690dc2c529258b67a1e96efc9e3ef68e4dd9fa2e1a3d22a05869e15`;
+Go auditó los 160 hashes y ambos runtimes recorrieron los tres productos en
+las 80 muestras. El corpus permanece externo. La paridad de todos los campos,
+REST productivo, CPU/p99/RSS y Wails/OBS siguen pendientes. El ratchet del
+SHA `bcece5e3` dio `NEW=0`, pero `REVIEW_REQUIRED` por el cambio de workflow;
+requiere revisión externa de política. El gate de producto Windows, canal y
+GitGuardian del mismo SHA pasaron. Plan §111; Go productivo, PR draft.
+
 ## VAN-778 / ISA-1403 — gate Rust en CI Windows (2026-09-29)
 
 El workflow bloqueante Windows ahora instala Rust `1.95.0` y ejecuta formato,

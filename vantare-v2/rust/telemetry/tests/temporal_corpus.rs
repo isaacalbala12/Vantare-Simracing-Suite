@@ -41,7 +41,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     let dir = Path::new(&dir);
     let manifest: Manifest =
         serde_json::from_slice(&fs::read(dir.join("manifest.json")).unwrap()).unwrap();
-    assert_eq!(manifest.samples.len(), 8);
+    assert!((8..=240).contains(&manifest.samples.len()));
     let mut config: Value = serde_json::from_slice(
         ipc::decode(include_bytes!("../testdata/configuration-frame-go-v1.bin"))
             .unwrap()

@@ -55,8 +55,8 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatalf("decode manifest: %v", err)
 	}
-	if len(manifest.Samples) != 8 {
-		t.Fatalf("samples=%d, want 8", len(manifest.Samples))
+	if len(manifest.Samples) < 8 || len(manifest.Samples) > 240 {
+		t.Fatalf("samples=%d, want 8..240", len(manifest.Samples))
 	}
 	if manifest.Build != supportedLMUVersion {
 		if _, ok := diagnosticLMUVersions[manifest.Build]; !ok {
@@ -162,7 +162,7 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 			t.Fatalf("sample %d REST overlap disagrees with live grid", i)
 		}
 	}
-	t.Logf("audited real temporal SHM+REST corpus: build=%s, samples=%d, vehicles=%d, source=%d..%dms", manifest.Build, len(manifest.Samples), want, manifest.Samples[0].SourceMS, manifest.Samples[7].SourceMS)
+	t.Logf("audited real temporal SHM+REST corpus: build=%s, samples=%d, vehicles=%d, source=%d..%dms", manifest.Build, len(manifest.Samples), want, manifest.Samples[0].SourceMS, manifest.Samples[len(manifest.Samples)-1].SourceMS)
 }
 
 func readHashedCorpusFile(t *testing.T, dir, name, expected string) []byte {

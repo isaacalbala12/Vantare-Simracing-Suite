@@ -7,14 +7,18 @@ use std::f64::consts::TAU;
 use std::time::Duration;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
+    Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag, FlagKind,
     FlagScope, Fuel, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind,
-    Source, SourceKind, State, Telemetry,
+    Source, SourceKind, State, Telemetry, Weather,
 };
 
-use super::frame::{self, Frame, Kind, Rejection, Vehicle};
+use super::frame::{self, Frame, Inputs, Kind, Rejection, Vehicle};
 use super::gate::Gate;
 use super::rest;
+
+#[cfg(test)]
+#[path = "signals_tests.rs"]
+mod signals_tests;
 
 /// Un hueco que reaparece con el mismo piloto y clase dentro de este número de
 /// frames es el mismo coche (parpadeo de la parrilla); pasado, es otro.
@@ -34,6 +38,9 @@ struct Slot {
 pub(super) struct Translator {
     kind: SourceKind,
     gate: Gate,
+    telemetry_gate: Gate,
+    last_inputs: Option<Inputs>,
+    emitted_telemetry_stale: bool,
     pub(super) rest: rest::Cache,
     /// Última `Observation` publicada con datos caducados.
     emitted_stale: bool,
@@ -54,6 +61,9 @@ impl Translator {
         Self {
             kind,
             gate: Gate::default(),
+            telemetry_gate: Gate::default(),
+            last_inputs: None,
+            emitted_telemetry_stale: false,
             rest: rest::Cache::default(),
             emitted_stale: false,
             session: 0,
@@ -72,6 +82,8 @@ impl Translator {
     /// frame no cambie (el reloj del simulador se ha parado o ha vuelto).
     pub(super) fn needs_refresh(&self, now: Duration) -> bool {
         self.gate.is_stale_at(now) != self.emitted_stale
+            || (self.last_inputs.is_some()
+                && self.telemetry_gate.is_stale_at(now) != self.emitted_telemetry_stale)
     }
 
     pub(super) fn observe(
@@ -84,6 +96,7 @@ impl Translator {
         let stale = self.gate.observe(now, frame.source_time);
         self.emitted_stale = stale;
         self.track_session(&frame, now, stale);
+        let telemetry_stale = self.telemetry_stale(&frame, now);
         self.frame_count += 1;
         let car_ids: Vec<CarId> = frame
             .vehicles
@@ -97,9 +110,14 @@ impl Translator {
             .zip(car_ids.iter().zip(numbers))
             .map(|(vehicle, (id, number))| self.car(vehicle, *id, number, stale))
             .collect();
-        let player = frame
-            .player
-            .map(|index| player(&frame.vehicles[index], car_ids[index], stale));
+        let player = frame.player.map(|index| {
+            player(
+                &frame.vehicles[index],
+                car_ids[index],
+                stale,
+                telemetry_stale,
+            )
+        });
         let rest_session = self.rest.session(now, self.floor);
         let flags = flags(rest_session);
         Ok(Observation {
@@ -112,13 +130,43 @@ impl Translator {
                 received_at: now,
             },
             state: State {
-                capabilities: capabilities(&frame, &cars, player.as_ref(), &flags, stale),
+                capabilities: capabilities(
+                    &frame,
+                    &cars,
+                    player.as_ref(),
+                    &flags,
+                    stale,
+                    telemetry_stale,
+                ),
                 session: self.session(&frame, rest_session, stale),
                 flags,
                 cars,
                 player,
             },
         })
+    }
+
+    fn telemetry_stale(&mut self, frame: &Frame, now: Duration) -> bool {
+        let inputs = frame
+            .player
+            .and_then(|index| frame.vehicles[index].inputs.as_ref());
+        let Some(inputs) = inputs else {
+            self.last_inputs = None;
+            self.telemetry_gate = Gate::default();
+            self.emitted_telemetry_stale = false;
+            return false;
+        };
+        // El scoring puede avanzar con la telemetría congelada. Usar su reloj
+        // propio; sin él (fixtures sanitizados), vigilar el contenido admitido.
+        let stale = if inputs.source_time.is_some() {
+            self.telemetry_gate.observe(now, inputs.source_time)
+        } else {
+            self.telemetry_gate
+                .observe_change(now, self.last_inputs.as_ref() != Some(inputs))
+        };
+        self.last_inputs = Some(inputs.clone());
+        self.emitted_telemetry_stale = stale;
+        stale
     }
 
     /// Número de carrera de cada coche, casado por hueco y por etiqueta: si la
@@ -308,12 +356,12 @@ impl Translator {
             laps_remaining: Quality::Unavailable,
             laps_total: quality(frame.maximum_laps, stale),
             track_length_m: quality(frame.track_length_m, stale),
-            ..Session::default()
+            weather: weather(frame.weather, stale),
         }
     }
 }
 
-fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
+fn player(vehicle: &Vehicle, car: CarId, stale: bool, damage_stale: bool) -> Player {
     let inputs = vehicle.inputs.as_ref();
     Player {
         car,
@@ -330,6 +378,13 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
             capacity_l: quality(inputs.fuel_capacity_l, stale),
             ..Fuel::default()
         }),
+        damage: inputs.map_or_else(Damage::default, |inputs| Damage {
+            tyre_wear: inputs
+                .damage
+                .tyre_wear
+                .map(|value| stale_quality(value, damage_stale)),
+            ..Damage::default()
+        }),
         // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
         // delta, y un 0 fiable taparía el delta que deriva el núcleo.
         delta_best_s: quality(
@@ -338,7 +393,24 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
             stale,
         ),
-        ..Player::default()
+    }
+}
+
+fn stale_quality<T>(value: Quality<T>, stale: bool) -> Quality<T> {
+    match value {
+        Quality::Reliable(value) if stale => Quality::Stale(value),
+        other => other,
+    }
+}
+
+fn weather(value: Weather, stale: bool) -> Weather {
+    Weather {
+        air_temperature_k: stale_quality(value.air_temperature_k, stale),
+        track_temperature_k: stale_quality(value.track_temperature_k, stale),
+        wind_speed_mps: stale_quality(value.wind_speed_mps, stale),
+        rain: stale_quality(value.rain, stale),
+        track_wetness: stale_quality(value.track_wetness, stale),
+        ..value
     }
 }
 
@@ -367,6 +439,7 @@ fn capabilities(
     player: Option<&Player>,
     flags: &Quality<Vec<Flag>>,
     stale: bool,
+    damage_stale: bool,
 ) -> Capabilities {
     let has_cars = !cars.is_empty();
     let telemetry = player.map(|player| &player.telemetry);
@@ -404,7 +477,22 @@ fn capabilities(
                 .any(|car| has(&car.lap_distance_m) || has(&car.lap_elapsed_s)),
             stale,
         ),
-        ..Capabilities::default()
+        weather: capability(
+            [
+                frame.weather.air_temperature_k,
+                frame.weather.track_temperature_k,
+                frame.weather.wind_speed_mps,
+                frame.weather.rain,
+                frame.weather.track_wetness,
+            ]
+            .iter()
+            .any(has),
+            stale,
+        ),
+        damage: capability(
+            player.is_some_and(|p| p.damage.tyre_wear.iter().any(has)),
+            damage_stale,
+        ),
     }
 }
 

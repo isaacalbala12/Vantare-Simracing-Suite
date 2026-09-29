@@ -9,7 +9,7 @@ fichero contra el layout, los fixtures y el corpus reales, no solo se copió.
 
 | # | Hallazgo en el original | Qué se hizo |
 | --- | --- | --- |
-| 1 | `derive/fuel.rs:40` implementa `FuelValue` para `lmu::Fuel`: `derive` depende de LMU. | No se porta `derive`. El adaptador ya lee combustible y delta nativo, y el núcleo deriva `per_lap_l`/`laps_left` (ISA-1425). Desgaste y daño siguen sin modelo en `domain` (offsets en `lmu.rs:487-534` del original); cuando lleguen serán tipos neutros del dominio, no de LMU. |
+| 1 | `derive/fuel.rs:40` implementa `FuelValue` para `lmu::Fuel`: `derive` depende de LMU. | No se porta `derive`. El adaptador ya lee combustible y delta nativo, y el núcleo deriva `per_lap_l`/`laps_left` (ISA-1425). ISA-1427 incorpora clima y goma restante al modelo neutral ya existente; las integridades sin equivalencia fiable permanecen ausentes (ver entrega de fase 2 abajo). |
 | 2 | Builds admitidas fijadas en un `matches!` (`lmu.rs:190`), repetido en `version.rs`. | Una tabla `SUPPORTED_BUILDS` en `frame.rs`; `shm.rs` la reutiliza y un test recorre cada build contra su fixture real. No se hace configurable: sin captura que pruebe el layout de una build nueva, aceptarla sería adivinar. |
 | 3 | Las pruebas físicas y el corpus hacían `return` silencioso si faltaba la variable de entorno (`temporal_corpus.rs`, `high_rate_temporal.rs`, `reader.rs`, `process.rs`, `version.rs`, `http.rs`). | El corpus vive en el repo, se verifica su SHA-256 y falta = fallo. Las pruebas con LMU real son `#[ignore = "…"]` (visibles, no silenciosas). |
 | 4 | `Poller`: cola de 16 rondas; si el núcleo tarda ~4 s el desbordamiento es fatal (`BacklogOverflow`) y un mutex envenenado hace `expect`/pánico. | Un hueco «última ronda» que se sustituye (la caché solo guarda la última por endpoint, así que nada se pierde) y `PoisonError::into_inner`. Un núcleo lento ya no mata el adaptador. |
@@ -147,6 +147,116 @@ fallidas/REST caducado y cambio de sesión para verificar TTL y descarte de
 datos previos. Solo entonces admitir los campos demostrados y decidir el
 mapeo neutral de parada frente a sesión terminada. No hay pregunta que bloquee
 el cambio local; queda esta validación para el siguiente hito.
+
+## ISA-1427 — clima y daños, fase 2 (2026-09-30)
+
+Worker Codex, rama `vantareapp/isa-1427-w-adapt-lmu`, base
+`6973c81f29574a573d76f3fae48e128d6964960a`. Encargo acotado de Isaac al
+adaptador LMU; revisión del diff e integración a cargo de Claude Opus 5.5.
+Referencia: [#1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
+ADR 0099 y plan de arquitectura Rust nativa. Notion no está disponible y el
+encargo autoriza explícitamente trabajar solo con GitHub. No se declara
+actualización de Notion, cierre de la fase 2 ni integración de canal.
+
+### Contrato implementado y diferencias respecto a Go
+
+| Señal | Fuente, unidad y calidad |
+| --- | --- |
+| Temperaturas | `ScoringInfoV01.mAmbientTemp/mTrackTemp` @1860/@1868, Celsius + 273,15 = Kelvin. Cotas de Go REST: aire -30..60 C, pista -20..80 C. El par literal 0/0 de los fixtures sanitizados queda ausente; un cero aislado con otra temperatura válida es admisible. |
+| Lluvia | `mRaining` @1852, fracción 0..1 incluida la lluvia cero. Coincide con `layout.go`/`native_rain_test.go` de Go y su sanitizador actual. No se deduce de nubes ni humedad. |
+| Viento | `mWind` @1876, módulo del vector 3D en m/s. Componentes finitos y módulo finito positivo; cero es ambiguo en estas capturas. Dirección ausente: el SDK no fija norte geográfico ni procedencia meteorológica. |
+| Humedad de pista | `mAvgPathWetness` @1964, fracción media 0..1 positiva. No es humedad relativa del aire (no hay ese campo en el modelo), ni se promedia `mMin/MaxPathWetness`. Cero es ambiguo por sanitización y queda ausente. |
+| Presión atmosférica | Ausente: el SDK no la ofrece. La presión por rueda es presión del neumático, no una fuente atmosférica. |
+| Goma restante | `mWheel[4]` +848, stride 260, `mWear` +152: +1000/+1260/+1520/+1780, FL/FR/RL/RR, fracción 0..1 sin invertir. Cada rueda valida por separado. Con `mElapsedTime` +12 positivo se admite cero; sin ese reloj, cero puede ser borrado por el sanitizador y se omite. |
+| Aero/carrocería/suspensión | Ausentes: `mDentSeverity[8]` +544 son niveles ordinales (SDK: 0=ninguno, 1=algo, 2=más) en ocho ubicaciones, sin una escala de integridad ni correspondencia de componentes. No se divide por 2/255 ni se inventa integridad 1 a partir de ceros. `mDetached`, ruedas desprendidas, sobrecalentamiento y deflexión de suspensión tampoco dan esas fracciones. |
+
+Go productivo (`internal/telemetry/drivers/lmu/format.go:472-489,582-624`)
+mantiene dents/desprendimientos como señales crudas, sin integridades. Su
+desgaste admite ceros y rechaza las cuatro ruedas si falla una; este modelo
+común permite calidad individual y conserva las otras tres. El monitor
+legacy `internal/engineer/damage/monitor.go:8-14` aproxima dents a componentes;
+esa aproximación no demuestra una medición de integridad y no se porta.
+
+Go excluye temperaturas SHM de su allowlist (`layout_test.go:234-235,281-282`)
+y las obtiene por REST en Celsius (`rest.go:562-565,577-579,624-635`); también
+obtiene la humedad media por REST. Aquí se leen sus offsets documentados en
+SHM, con ausencia conservadora para capturas borradas; no se añadió fusión
+REST de clima. Go no publica viento en el modelo canónico observado.
+
+### Frescura y límites deliberados
+
+Clima envejece con el reloj de scoring existente. Daño tiene un `Gate` propio
+con `mElapsedTime` de telemetría: scoring avanzando no rejuvenece un bloque
+telemetría congelado, ni telemetría avanzando rejuvenece clima congelado.
+Sin reloj (los fixtures lo borran), se vigilan cambios en los inputs admitidos.
+El umbral heredado es 500 ms y recuperación sostenida de 2 s. Esta vigilancia
+sin reloj puede marcar obsoletas señales de un coche perfectamente estático;
+es un límite de evidencia, no una prueba de que LMU esté colgado. La calidad
+de las señales anteriores de pedales, combustible y delta no se cambia.
+`needs_refresh` incluye esta caducidad aunque no cambie el buffer.
+
+Capacidades: `Fresh` con alguna señal fiable de su familia, `WithData` con
+datos caducados, `Supported` sin datos, también en menú. `damage: Fresh`
+puede significar únicamente goma restante; no certifica aero/suspensión.
+No se usa `Estimated` para fabricar integridad de componentes.
+
+No hay un bitmap de presencia del SDK: el par de temperaturas 0/0, calma,
+humedad cero y goma cero sin reloj quedan conservadoramente ausentes incluso
+si pudieran ser mediciones reales. Para certificarlas hace falta procedencia
+del bloque completo conservada por la grabadora/replay; no se codifican hashes
+de fixtures ni excepciones por build en el adaptador. Lluvia cero sí tiene el
+contrato de admisión existente de Go; los ceros legacy por sí solos no prueban
+el clima físico de aquella captura.
+
+### Evidencia de pruebas
+
+`signals_tests.rs` recorre los doce `.bin` existentes sin alterar sus bytes:
+aire 16 C = 289,15 K, pista 23,299214394865544 C = 296,44921439486554 K
+(sidecar legacy), goma FL 0,9996036887168884 (no invertida) y cuatro ruedas
+1,0 en la captura 1.4.2.0. Los ceros de las restantes ruedas legacy y todos
+los slots de temperatura/viento/humedad borrados permanecen sin dato.
+La prueba falla si falta un fixture; no se genera ni se cambia ningún `.bin`.
+
+Las mutaciones explícitas de test verifican límites NaN/Inf/fuera de rango,
+independencia por rueda, Kelvin a 0 C, vector (3,0,4) = 5 m/s, lluvia 0,25,
+humedad media 0,4, goma agotada con reloj, congelación independiente y
+recuperación. Son pruebas de contrato, no capturas físicas de lluvia, viento,
+desgaste completo o daños. Las pruebas físicas siguen pendientes según el
+plan; no se arrancó ni se cerró el juego ni el producto Wails. Los tests E2E
+y de ciclo de vida sí ejecutaron procesos nativos de prueba, sin sesión live.
+
+### Gates locales antes del commit
+
+Ejecutados desde `native/` con `CARGO_BUILD_JOBS=2`,
+`CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0` y
+`RUST_TEST_THREADS=2` (sin modificar la configuración versionada):
+
+| Comando | Resultado final |
+| --- | --- |
+| `cargo fmt --check` | Exit 0, sin diferencias. |
+| `cargo clippy -j 2 --workspace --all-targets -- -D warnings` | Exit 0, `Finished dev profile [unoptimized]`, sin warnings. |
+| `cargo test -j 2 --workspace` | Exit 0, sin fallos. Runtime: 137 passed / 2 live ignored, incluidas las 8 regresiones nuevas. Conformidad LMU: 9 passed; oráculo Go: 5; E2E: 4; ciclo de vida: 7. Cuatro entradas live ignoradas en todo el workspace (REST LMU, SHM LMU en dos ejecutables y ACC). |
+| `git diff --check` | Exit 0. |
+
+Regresión sobre la base anterior: las 8 pruebas nuevas compilaron y fallaron
+por señales/capacidades ausentes y caducidad sin implementar (log
+`lmu-regression-before.log`). Con el cambio, las 8 pasan en la suite completa.
+Las primeras pasadas de Clippy señalaron una actualización redundante de
+`Player` y dos literales de test con precisión excesiva; se corrigieron sin
+suprimir lints ni relajar tolerancias. La ejecución anterior al reinicio
+falló en `regex` con `STATUS_DLL_INIT_FAILED` durante la falta de memoria
+comunicada por Isaac: no se contabiliza como gate pasado. Se conservaron esos
+logs y se repitieron los gates completos con depuración desactivada.
+
+No se ejecutaron Go/frontend ni pruebas físicas (sin cambios en esas rutas y
+capturas físicas aplazadas por el plan). Sin widget modificado ni capturas
+visuales: `compare.ps1` no aplica a este diff. Para reproducir solo esta
+entrega: configurar las mismas variables y ejecutar
+`cargo test -j 2 -p vantare-runtime signals_tests --lib` desde `native/`.
+
+No hay dependencias nuevas, cambios fuera del adaptador, push, PR, CI remoto,
+merge, release ni promoción de canal. Gates y SHA del commit en la entrega
+del worker; logs locales en `native/target/lmu-*.log`.
 
 ## Riesgos aceptados
 

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{Capabilities, Flag, Quality};
 
 /// Identidad de coche estable durante la sesión; la asigna el adaptador.
@@ -120,6 +122,33 @@ pub struct Player {
     pub telemetry: Telemetry,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SourceKind {
+    #[default]
+    Live,
+    Replay,
+}
+
+/// Qué simulador produce los datos. Solo identifica (diagnóstico, cabecera de
+/// grabación): nada del núcleo, las proyecciones ni los widgets ramifica por él.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Source {
+    /// Nombre corto y estable: "lmu", "ac"...
+    pub simulator: &'static str,
+    pub kind: SourceKind,
+}
+
+/// De dónde y cuándo viene un instante.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Origin {
+    pub source: Source,
+    /// Instante de la muestra en el reloj del simulador, si lo expone. Solo
+    /// sirve para restar entre muestras: no es comparable con `received_at`.
+    pub source_time: Option<Duration>,
+    /// Instante de recepción en el reloj monotónico del núcleo.
+    pub received_at: Duration,
+}
+
 /// Contenido neutral de un instante. Lo produce el adaptador (en una
 /// `Observation`) y lo publica el núcleo tras fusionarlo y derivar (en un
 /// `Snapshot`); añadir una señal es añadir un campo aquí y en ningún otro sitio.
@@ -148,5 +177,6 @@ impl State {
 pub struct Snapshot {
     pub epoch: u64,
     pub sequence: u64,
+    pub origin: Origin,
     pub state: State,
 }

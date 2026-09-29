@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod adapter;
 mod capability;
 mod flag;
 pub mod format;
@@ -15,10 +16,11 @@ mod quality;
 pub mod radar;
 pub mod standings;
 
+pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
-    Car, CarId, Class, ClassId, Driver, DriverId, Gap, Player, Pose, Session, SessionId,
-    SessionKind, SessionState, Snapshot, State, Telemetry,
+    Car, CarId, Class, ClassId, Driver, DriverId, Gap, Origin, Player, Pose, Session, SessionId,
+    SessionKind, SessionState, Snapshot, Source, SourceKind, State, Telemetry,
 };
 pub use quality::Quality;

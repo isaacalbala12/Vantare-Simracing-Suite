@@ -187,7 +187,13 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 		if !receiver.active.Consumers.Engineer {
 			return ReceivedV1{}, fmt.Errorf("%w: Engineer snapshot without demand", ErrReceiverProtocol)
 		}
-		snapshot, identity, err := DecodeEngineerSnapshotWithIdentity(frame)
+		var snapshot engineer.SnapshotV1
+		var identity *engineer.Identity
+		if bytes.HasPrefix(frame.Payload, []byte("VTE1")) {
+			snapshot, identity, err = DecodeEngineerBinarySnapshot(frame)
+		} else {
+			snapshot, identity, err = DecodeEngineerSnapshotWithIdentity(frame)
+		}
 		if err != nil {
 			return ReceivedV1{}, err
 		}
@@ -222,6 +228,9 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 // decoder still validates the complete JSON, including the product value.
 // Older or reordered fixtures use the general JSON fallback.
 func snapshotProduct(payload []byte) (string, error) {
+	if bytes.HasPrefix(payload, []byte("VTE1")) {
+		return ProductEngineerV1, nil
+	}
 	prefix := payload
 	if len(prefix) > 512 {
 		prefix = prefix[:512]

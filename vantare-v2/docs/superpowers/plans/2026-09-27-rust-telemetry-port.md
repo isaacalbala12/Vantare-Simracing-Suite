@@ -2360,7 +2360,28 @@ Cinco muestras del microbanco Rust dieron ~17–18 µs para proyección+body
 binario frente a ~184–191 µs para proyección+JSON; tres muestras Go dieron
 ~64–66 µs para decode binario frente a ~2,68–2,74 ms para el JSON estricto.
 No incluye la ruta completa, ni p99/RSS, ni demuestra 50 % menos CPU.
-El ensamblador y receptor live aún seleccionan JSON; R21 debe probar VTE1
+El ensamblador live usa JSON por defecto; R21 debe probar VTE1
 en LMU47 x80, por pipe y en G0/G1/R antes de decidir el codec en ADR 0097.
 `cargo test --locked` (158 tests), Clippy y formato pasaron; suite Go global
 y diff check pasaron. Go continúa por defecto y PR #1415 sigue draft.
+
+## 128. VTE1 sobre corpus LMU47, pipe y candidato físico (2026-09-29)
+
+El banco Rust emite pares JSON/VTE1 para las 80 muestras reales de 47 coches;
+Go auditó antes los 160 hashes SHM+REST y comparó por igualdad profunda
+los 80 snapshots Engineer y sus identidades, sin diferencias. El replay
+Windows del mismo corpus pasó tres veces con VTE1 por pipe, Receiver,
+adaptador Engineer, Publisher Overlay, Strategy y ocho facts con ACK; JSON
+por defecto también pasó después. El receptor admite VTE1 con validación
+estricta; el helper live solo lo emite con selección diagnóstica explícita.
+
+LMU 1.4.2.0 en pista con 47 coches y tres productos demandados dio dos
+ventanas R binario de 6,77 y 5,95 s CPU total/15 s (900 entregas por
+producto). Go comparable dio 2,89 s/15 s (958 entregas por producto).
+Estas ventanas no son intercaladas, difieren en cadencia y carecen de G1,
+p99 y RSS. El perfil de R binario ubica ~1,92 de 3,50 s muestreados en
+`DecodeOverlaySnapshot` Go y ~0,41 s en publicación Overlay; el hijo Rust
+gastó ~2,1 s CPU/15 s. VTE1 mejora el diagnóstico frente al JSON anterior
+pero **no acredita** CPU ≤50 % de Go ni selección final. R21 debe atacar
+Overlay y completar G0/G1/R; R20, REST completo, packaging, Wails/OBS y
+retirada Go siguen pendientes.

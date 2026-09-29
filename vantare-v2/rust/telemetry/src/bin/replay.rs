@@ -17,12 +17,32 @@ fn main() {
         nonce_text,
         corpus_flag,
         corpus_path,
+        codec_flag,
+    ] = args.as_slice()
+        && pipe_flag == "--pipe"
+        && nonce_flag == "--nonce"
+        && corpus_flag == "--corpus"
+        && codec_flag == "--engineer-binary"
+    {
+        if let Err(error) = run_corpus(pipe_name, nonce_text, corpus_path, true) {
+            eprintln!("telemetry binary corpus replay failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+    if let [
+        pipe_flag,
+        pipe_name,
+        nonce_flag,
+        nonce_text,
+        corpus_flag,
+        corpus_path,
     ] = args.as_slice()
         && pipe_flag == "--pipe"
         && nonce_flag == "--nonce"
         && corpus_flag == "--corpus"
     {
-        if let Err(error) = run_corpus(pipe_name, nonce_text, corpus_path) {
+        if let Err(error) = run_corpus(pipe_name, nonce_text, corpus_path, false) {
             eprintln!("telemetry corpus replay failed: {error}");
             std::process::exit(2);
         }
@@ -65,7 +85,12 @@ struct CorpusSample {
     shared_file: String,
 }
 
-fn run_corpus(pipe_name: &str, nonce_text: &str, corpus_path: &str) -> io::Result<()> {
+fn run_corpus(
+    pipe_name: &str,
+    nonce_text: &str,
+    corpus_path: &str,
+    engineer_binary: bool,
+) -> io::Result<()> {
     let nonce = ipc::parse_nonce_hex(nonce_text)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid nonce"))?;
     let suffix = pipe_name.strip_prefix(r"\\.\pipe\vantare-telemetry-");
@@ -89,6 +114,7 @@ fn run_corpus(pipe_name: &str, nonce_text: &str, corpus_path: &str) -> io::Resul
         .map_err(|error| io::Error::other(format!("handshake: {error:?}")))?;
     let mut assembly =
         Assembler::new(30, 15).map_err(|error| io::Error::other(format!("assembly: {error:?}")))?;
+    assembly.set_engineer_binary_candidate(engineer_binary);
     let (kind, configuration) = ipc::read_frame(&mut pipe)
         .map_err(|error| io::Error::other(format!("configuration: {error:?}")))?;
     if kind != Kind::Configuration {

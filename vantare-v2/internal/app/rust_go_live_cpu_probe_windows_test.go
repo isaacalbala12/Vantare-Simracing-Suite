@@ -20,11 +20,11 @@ import (
 // it does not replay the immutable corpus or measure latency and RSS.
 func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 	arm := os.Getenv("VANTARE_TELEMETRY_CPU_PROBE_ARM")
-	if arm != "go" && arm != "rust" {
-		t.Skip("set VANTARE_TELEMETRY_CPU_PROBE_ARM to go or rust with LMU on track")
+	if arm != "go" && arm != "rust" && arm != "rust-binary" {
+		t.Skip("set VANTARE_TELEMETRY_CPU_PROBE_ARM to go, rust or rust-binary with LMU on track")
 	}
 	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
-	if arm == "rust" && executable == "" {
+	if arm != "go" && executable == "" {
 		t.Fatal("set VANTARE_TELEMETRY_RUST_TEST_HELPER")
 	}
 	probe := new(cpuProbeEngineer)
@@ -44,6 +44,7 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 	} else {
 		runtime, err = NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{
 			Enabled: true, Executable: executable, Engineer: probe, StrategyPublicTransport: true, PerformancePolicy: policy,
+			EngineerBinaryDiagnostic: arm == "rust-binary",
 		})
 	}
 	if err != nil {
@@ -76,7 +77,7 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 		}
 	}
 	childPID := uint32(0)
-	if arm == "rust" {
+	if arm != "go" {
 		childPID, err = ownedRustChildPID(executable)
 		if err != nil {
 			t.Fatal(err)

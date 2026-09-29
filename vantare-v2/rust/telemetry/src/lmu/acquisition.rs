@@ -58,6 +58,10 @@ impl Acquisition {
             .map_err(AcquisitionError::Assembly)
     }
 
+    pub fn set_engineer_binary_candidate(&mut self, enabled: bool) {
+        self.assembler.set_engineer_binary_candidate(enabled);
+    }
+
     /// Applies only host-to-child control frames. Replay is queued as one
     /// ordered event; saturation is fatal to this instance, not a lost Fact.
     pub fn handle_control_frame(

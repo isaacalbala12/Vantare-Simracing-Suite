@@ -3,6 +3,7 @@
 package telemetryprocess
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -66,7 +67,14 @@ func TestRustTemporalCorpusPipeOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	child, err := startInJob(executable, "--pipe", pipe.name, "--nonce", hex.EncodeToString(pipe.nonce[:]), "--corpus", dir)
+	args := []string{"--pipe", pipe.name, "--nonce", hex.EncodeToString(pipe.nonce[:]), "--corpus", dir}
+	codec := os.Getenv("VANTARE_TELEMETRY_REPLAY_CODEC")
+	if codec == "binary" {
+		args = append(args, "--engineer-binary")
+	} else if codec != "" {
+		t.Fatalf("unknown replay codec %q", codec)
+	}
+	child, err := startInJob(executable, args...)
 	if err != nil {
 		_ = pipe.close()
 		t.Fatal(err)
@@ -135,6 +143,9 @@ func TestRustTemporalCorpusPipeOptIn(t *testing.T) {
 			}
 		}
 		if event.Engineer != nil {
+			if bytes.HasPrefix(frame.Payload, []byte("VTE1")) != (codec == "binary") {
+				t.Fatalf("Engineer codec mismatch at sample %d", engineers+1)
+			}
 			engineers++
 			observation, err := event.EngineerObservation(engineerManifest)
 			if err != nil || len(observation.Vehicles) != want || uint64(event.Engineer.Sequence) != uint64(engineers) {

@@ -14,13 +14,14 @@ import (
 var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate requires Windows")
 
 type RustTelemetryCandidateConfig struct {
-	Executable              string
-	Enabled                 bool
-	OverlaySections         bool
-	StrategyPublicTransport bool
-	PerformancePolicy       performancepolicy.Policy
-	Emitter                 telemetrytransport.EventEmitter
-	Engineer                EngineerProjectionConsumer
+	Executable               string
+	Enabled                  bool
+	OverlaySections          bool
+	StrategyPublicTransport  bool
+	PerformancePolicy        performancepolicy.Policy
+	Emitter                  telemetrytransport.EventEmitter
+	Engineer                 EngineerProjectionConsumer
+	EngineerBinaryDiagnostic bool
 }
 
 type RustTelemetryCandidateRuntime struct{}

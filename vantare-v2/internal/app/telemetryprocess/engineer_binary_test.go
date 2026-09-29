@@ -2,7 +2,9 @@ package telemetryprocess
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -62,9 +64,52 @@ func TestEngineerBinaryCandidateMatchesRustJSONFixture(t *testing.T) {
 	}
 }
 
-func engineerFixture(t *testing.T, file string) Frame {
+func TestEngineerBinaryCandidateRealTemporalParityOptIn(t *testing.T) {
+	out := os.Getenv("LMU_TEMPORAL_BINARY_OUT")
+	corpus := os.Getenv("LMU_TEMPORAL_CORPUS")
+	if out == "" && corpus == "" {
+		t.Skip("set LMU_TEMPORAL_BINARY_OUT and LMU_TEMPORAL_CORPUS to audited real files")
+	}
+	if out == "" || corpus == "" {
+		t.Fatal("both LMU_TEMPORAL_BINARY_OUT and LMU_TEMPORAL_CORPUS are required")
+	}
+	manifestBytes, err := os.ReadFile(filepath.Join(corpus, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Samples []struct {
+			Index    int `json:"index"`
+			Vehicles int `json:"vehicles"`
+		} `json:"samples"`
+	}
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil || len(manifest.Samples) < 8 || len(manifest.Samples) > 240 {
+		t.Fatalf("invalid audited manifest: samples=%d error=%v", len(manifest.Samples), err)
+	}
+	for index, sample := range manifest.Samples {
+		if sample.Index != index || sample.Vehicles < 46 {
+			t.Fatalf("sample %d index=%d vehicles=%d", index, sample.Index, sample.Vehicles)
+		}
+		binaryFrame := engineerFixturePath(t, filepath.Join(out, fmt.Sprintf("%03d-engineer-binary.bin", index)))
+		jsonFrame := engineerFixturePath(t, filepath.Join(out, fmt.Sprintf("%03d-engineer-json.bin", index)))
+		got, gotIdentity, err := DecodeEngineerBinarySnapshot(binaryFrame)
+		if err != nil {
+			t.Fatalf("sample %d binary: %v", index, err)
+		}
+		want, wantIdentity, err := DecodeEngineerSnapshotWithIdentity(jsonFrame)
+		if err != nil {
+			t.Fatalf("sample %d JSON: %v", index, err)
+		}
+		if len(got.Vehicles) != sample.Vehicles || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(gotIdentity, wantIdentity) {
+			t.Fatalf("sample %d Engineer binary differs from Rust JSON", index)
+		}
+	}
+	t.Logf("binary Engineer matched complete Rust JSON snapshot and identity for %d real samples", len(manifest.Samples))
+}
+
+func engineerFixturePath(t *testing.T, path string) Frame {
 	t.Helper()
-	wire, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", file))
+	wire, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,4 +118,9 @@ func engineerFixture(t *testing.T, file string) Frame {
 		t.Fatal(err)
 	}
 	return frame
+}
+
+func engineerFixture(t *testing.T, file string) Frame {
+	t.Helper()
+	return engineerFixturePath(t, filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", file))
 }

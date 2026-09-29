@@ -47,6 +47,7 @@ pub struct Assembler {
     delivery_revision: u64,
     fact_delivery: FactDeliveryLog,
     overlay_cache: Option<CachedOverlay>,
+    engineer_binary_candidate: bool,
 }
 
 impl Assembler {
@@ -59,6 +60,7 @@ impl Assembler {
             delivery_revision: 0,
             fact_delivery: FactDeliveryLog::new(fact_stream_id).map_err(AssemblyError::FactLog)?,
             overlay_cache: None,
+            engineer_binary_candidate: false,
         })
     }
 
@@ -82,6 +84,12 @@ impl Assembler {
 
     pub fn engine(&self) -> &Engine {
         &self.engine
+    }
+
+    /// R21 comparison mode. JSON remains the default until the complete
+    /// migration gate selects one codec for production.
+    pub fn set_engineer_binary_candidate(&mut self, enabled: bool) {
+        self.engineer_binary_candidate = enabled;
     }
 
     pub fn rest_cache_mut(&mut self) -> &mut RestCache {
@@ -222,8 +230,12 @@ impl Assembler {
                     })
             });
             prepared.push(
-                snapshot::encode_engineer_typed(&view, metadata, identity)
-                    .map_err(AssemblyError::Snapshot)?,
+                if self.engineer_binary_candidate {
+                    snapshot::encode_engineer_binary(&view, metadata, identity)
+                } else {
+                    snapshot::encode_engineer_typed(&view, metadata, identity)
+                }
+                .map_err(AssemblyError::Snapshot)?,
             );
             for fact in candidate.facts() {
                 let stream = self.engine.pipeline().fact_high_water().stream;

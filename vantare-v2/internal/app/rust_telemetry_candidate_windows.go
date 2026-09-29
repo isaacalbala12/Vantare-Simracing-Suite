@@ -31,13 +31,14 @@ var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate lifecycle i
 // RustTelemetryCandidateConfig selects the isolated Windows candidate. No Go
 // simulator is constructed or started on this path.
 type RustTelemetryCandidateConfig struct {
-	Executable              string
-	Enabled                 bool
-	OverlaySections         bool
-	StrategyPublicTransport bool
-	PerformancePolicy       performancepolicy.Policy
-	Emitter                 telemetrytransport.EventEmitter
-	Engineer                EngineerProjectionConsumer
+	Executable               string
+	Enabled                  bool
+	OverlaySections          bool
+	StrategyPublicTransport  bool
+	PerformancePolicy        performancepolicy.Policy
+	Emitter                  telemetrytransport.EventEmitter
+	Engineer                 EngineerProjectionConsumer
+	EngineerBinaryDiagnostic bool
 }
 
 type RustTelemetryCandidateRuntime struct {
@@ -246,7 +247,11 @@ func (runtime *RustTelemetryCandidateRuntime) run(ctx context.Context, initial t
 			}
 		}
 	}()
-	err := telemetryprocess.RunCandidateWithUpdates(ctx, runtime.config.Executable, initial, runtime.updates, runtime.deliver, runtime.handleDisconnected)
+	run := telemetryprocess.RunCandidateWithUpdates
+	if runtime.config.EngineerBinaryDiagnostic {
+		run = telemetryprocess.RunCandidateWithBinaryEngineer
+	}
+	err := run(ctx, runtime.config.Executable, initial, runtime.updates, runtime.deliver, runtime.handleDisconnected)
 	terminal := ctx.Err() == nil && err != nil
 	runtime.cancel()
 	<-refreshDone

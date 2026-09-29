@@ -247,7 +247,8 @@ Rust usa `serde`, `serde_json`, `time`, `ureq` y `windows-sys` solo para Windows
 ## Candidato binario Engineer VTE1 para R21 (2026-09-29)
 
 `VTE1` es un candidato de **payload** `KindSnapshot`, no un cambio de framing
-ni el codec productivo. El ensamblador sigue emitiendo JSON. Rust codifica y
+ni el codec productivo. El ensamblador emite JSON por defecto y solo emite
+VTE1 cuando se selecciona explícitamente el modo diagnóstico. Rust codifica y
 Go decodifica el frame fijado `engineer-snapshot-frame-rust-binary-v1.bin`
 (17 193 bytes; SHA-256 `d832bb77ddfedf36e3f8eea879cfef29f907d371441bdefe67fc55856de16473`).
 El snapshot y la identidad decodificados son idénticos al fixture JSON Rust.
@@ -282,6 +283,11 @@ En el microbanco estático de 44 vehículos, el cuerpo Engineer JSON mide
 bytes y ~17–18 µs. El frame completo VTE1 mide 17 193 bytes. Go decodifica
 VTE1 en ~64–66 µs, ~77,7 kB/op y 191 asignaciones frente a JSON en
 ~2,68–2,74 ms, ~777 kB/op y 3125 asignaciones (tres ventanas de 2 s cada
-una, Ryzen 7 3700X/Windows). **No son CPU de proceso ni paridad temporal**.
-Antes de activar VTE1 faltan el corpus LMU47 x80, receptor por pipe, G1,
-CPU total, p99, RSS, fallos y decisión en ADR 0097.
+una, Ryzen 7 3700X/Windows). **No son CPU de proceso**. El corpus temporal
+LMU47 x80 ya pasó la comparación profunda de Engineer JSON/VTE1 y el replay
+por pipe Windows pasó tres veces con los tres productos y ocho facts/ACK.
+Una prueba física de 47 coches con VTE1 diagnóstico midió 5,95–6,77 s de
+CPU total/15 s frente a 2,89 s de Go en ventanas con cadencia distinta.
+VTE1 no cumple todavía el objetivo de CPU. Antes de seleccionarlo como
+codec productivo faltan G1, ventanas equivalentes, p99, RSS, fallos,
+decisión en ADR 0097 y el gate final con al menos 46 coches.

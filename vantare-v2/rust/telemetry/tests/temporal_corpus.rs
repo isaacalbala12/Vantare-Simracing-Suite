@@ -9,8 +9,11 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use vantare_telemetry::assembly::Assembler;
+use vantare_telemetry::engine::Engine;
+use vantare_telemetry::ipc::snapshot::{self, EngineerIdentity, ProductMetadata};
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::{OBJECT_OUT_SIZE, admit_v13};
+use vantare_telemetry::projection::engineer;
 use vantare_telemetry::quality::Field;
 
 #[derive(Deserialize)]
@@ -63,6 +66,11 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
     assembler.configure(&configuration).unwrap();
     let mut previous_source_ns = 0;
     let parity_out = std::env::var_os("LMU_TEMPORAL_PARITY_OUT");
+    let binary_out = std::env::var_os("LMU_TEMPORAL_BINARY_OUT");
+    let mut binary_engine = binary_out.as_ref().map(|_| Engine::new(30, 15).unwrap());
+    if let Some(out) = &binary_out {
+        fs::create_dir_all(out).unwrap();
+    }
     let mut parity = Vec::new();
     for (index, sample) in manifest.samples.iter().enumerate() {
         assert_eq!(sample.index, index);
@@ -108,6 +116,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         let mut strategy_payload = None;
         let mut overlay_payload = None;
         let mut facts_payload = Vec::new();
+        let mut engineer_json_frame = None;
+        let mut engineer_captured_at = None;
         for frame in &frames {
             let decoded = ipc::decode(frame).unwrap();
             if decoded.kind == Kind::Snapshot {
@@ -124,6 +134,9 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                     overlay_payload = Some(value["update"]["frame"].clone());
                 }
                 if product == "engineer-v1" {
+                    engineer_json_frame = Some(frame.clone());
+                    engineer_captured_at =
+                        value["snapshot"]["capturedAt"].as_str().map(str::to_owned);
                     assert_eq!(
                         value["snapshot"]["vehicles"].as_array().unwrap().len(),
                         expected
@@ -164,6 +177,56 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         assert_eq!(products, ["overlay-v2", "engineer-v1", "strategy-v1"]);
         assert_eq!(engineer_player, strategy_player);
         assert!(engineer_player.is_some());
+        if let (Some(out), Some(binary_engine)) = (&binary_out, binary_engine.as_mut()) {
+            let candidate = binary_engine
+                .prepare(
+                    &bytes,
+                    &manifest.build,
+                    received_ns,
+                    received_ns,
+                    occurred_ns,
+                )
+                .unwrap();
+            let batch = candidate.batch();
+            let view =
+                engineer::build_typed(batch, candidate.session_remaining(), candidate.gaps());
+            let player_id = batch.player_id.as_deref().unwrap();
+            let player = batch
+                .state
+                .vehicles
+                .iter()
+                .find(|vehicle| vehicle.id == player_id)
+                .unwrap();
+            let captured_at = engineer_captured_at.as_deref().unwrap();
+            let binary_frame = snapshot::encode_engineer_binary(
+                &view,
+                ProductMetadata {
+                    epoch: batch.cursor.epoch,
+                    sequence: batch.cursor.sequence,
+                    captured_at,
+                },
+                Some(EngineerIdentity {
+                    event: &batch.event_id,
+                    session: &batch.session_id,
+                    vehicle: player_id,
+                    team: &player.team_id,
+                    driver: &player.driver_id,
+                }),
+            )
+            .unwrap();
+            let out = Path::new(out);
+            fs::write(
+                out.join(format!("{index:03}-engineer-binary.bin")),
+                binary_frame,
+            )
+            .unwrap();
+            fs::write(
+                out.join(format!("{index:03}-engineer-json.bin")),
+                engineer_json_frame.unwrap(),
+            )
+            .unwrap();
+            binary_engine.commit(candidate).unwrap();
+        }
         if parity_out.is_some() {
             parity.push(json!({
                 "overlay": overlay_payload.unwrap(),

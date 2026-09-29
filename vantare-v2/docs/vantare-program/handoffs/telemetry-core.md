@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — VTE1 LMU47 por pipe y físicamente (2026-09-29)
+
+Go auditó 160 hashes del corpus físico LMU47 x80; VTE1 y JSON Rust dieron
+los mismos 80 snapshots Engineer completos e identidades. El replay por
+pipe Windows con VTE1 pasó x3: 80 frames por cada producto, ocho facts/ACK,
+Receiver, Engineer, Overlay Publisher y Strategy; JSON por defecto también
+pasó. LMU físico con tres productos activos dio Rust binario+host 6,77 y
+5,95 s CPU/15 s; Go comparable 2,89 s, con 900 vs 958 entregas/producto.
+Es diagnóstico, no G0/G1/R: cadencia distinta, sin G1, p99 ni RSS.
+El perfil nuevo apunta a decode Overlay Go (~1,92 s de 3,50 muestreados)
+y publicación Overlay (~0,41 s); Rust hijo ~2,1 s CPU/15 s. VTE1 se
+selecciona solo explícitamente en diagnóstico; JSON sigue por defecto y Go
+productivo. R21 debe resolver Overlay y medir el gate completo; R20, REST,
+packaging, Wails/OBS y retirada Go pendientes. Plan §128; PR #1415 draft.
+
 ## VAN-778 / ISA-1403 — candidato binario Engineer VTE1 (2026-09-29)
 
 Rust codifica el `EngineerView` completo en un body binario versionado y Go

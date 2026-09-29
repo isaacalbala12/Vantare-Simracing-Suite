@@ -23,8 +23,20 @@ fn main() {
         && pipe_flag == "--candidate-pipe"
         && nonce_flag == "--candidate-nonce"
     {
-        if let Err(error) = run_candidate_pipe(pipe_name, nonce_text) {
+        if let Err(error) = run_candidate_pipe(pipe_name, nonce_text, false) {
             eprintln!("vantare-telemetry: candidate IPC failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+
+    if let [pipe_flag, pipe_name, nonce_flag, nonce_text, codec_flag] = arguments.as_slice()
+        && pipe_flag == "--candidate-pipe"
+        && nonce_flag == "--candidate-nonce"
+        && codec_flag == "--candidate-engineer-binary"
+    {
+        if let Err(error) = run_candidate_pipe(pipe_name, nonce_text, true) {
+            eprintln!("vantare-telemetry: binary candidate IPC failed: {error}");
             std::process::exit(2);
         }
         return;
@@ -85,7 +97,7 @@ fn wait_for_frame(pipe: &mut DeadlinePipe, deadline: Instant) -> io::Result<Vec<
 }
 
 #[cfg(windows)]
-fn run_candidate_pipe(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
+fn run_candidate_pipe(pipe_name: &str, nonce_text: &str, engineer_binary: bool) -> io::Result<()> {
     let mut pipe = connect_pipe(pipe_name, nonce_text)?;
     let first = wait_for_frame(&mut pipe, Instant::now() + Duration::from_secs(2))?;
     if ipc::decode(&first)
@@ -104,6 +116,7 @@ fn run_candidate_pipe(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
     let stream = u64::from_le_bytes(nonce[..8].try_into().expect("fixed nonce")).max(1);
     let mut acquisition = Acquisition::open(30, stream)
         .map_err(|error| io::Error::other(format!("open LMU: {error:?}")))?;
+    acquisition.set_engineer_binary_candidate(engineer_binary);
     let result = run_candidate_loop(&mut pipe, &mut acquisition, first);
     let shutdown = acquisition
         .shutdown()

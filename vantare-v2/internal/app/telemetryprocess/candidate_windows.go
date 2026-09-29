@@ -33,6 +33,18 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 // revision and a fresh Receiver; product selection is still gated elsewhere.
 func RunCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, false, deliver, disconnected)
+}
+
+// RunCandidateWithBinaryEngineer is an explicit R21 measurement mode. It does
+// not alter the default candidate or production codec selection.
+func RunCandidateWithBinaryEngineer(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, true, deliver, disconnected)
+}
+
+func runCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, engineerBinary bool, deliver func(ReceivedV1) error, disconnected func(error)) error {
 	if ctx == nil || deliver == nil || disconnected == nil {
 		return errors.New("telemetry Rust candidate requires context and callbacks")
 	}
@@ -41,7 +53,7 @@ func RunCandidateWithUpdates(ctx context.Context, executable string, configurati
 		if err := ctx.Err(); err != nil {
 			return nil
 		}
-		err := runCandidateOnceWithUpdates(ctx, executable, &configuration, &updates, deliver)
+		err := runCandidateOnceWithCodec(ctx, executable, &configuration, &updates, engineerBinary, deliver)
 		if ctx.Err() != nil {
 			// An explicit host Stop may cancel while the child is still
 			// connecting. Only that cancellation is a clean shutdown;
@@ -84,12 +96,20 @@ func runCandidateOnce(ctx context.Context, executable string, configuration Conf
 
 func runCandidateOnceWithUpdates(ctx context.Context, executable string, configuration *ConfigurationV1,
 	updates *<-chan ConfigurationV1, deliver func(ReceivedV1) error) error {
+	return runCandidateOnceWithCodec(ctx, executable, configuration, updates, false, deliver)
+}
+
+func runCandidateOnceWithCodec(ctx context.Context, executable string, configuration *ConfigurationV1,
+	updates *<-chan ConfigurationV1, engineerBinary bool, deliver func(ReceivedV1) error) error {
 	pipe, err := newLocalPipe()
 	if err != nil {
 		return err
 	}
-	child, err := startInJob(executable, "--candidate-pipe", pipe.name,
-		"--candidate-nonce", hex.EncodeToString(pipe.nonce[:]))
+	args := []string{"--candidate-pipe", pipe.name, "--candidate-nonce", hex.EncodeToString(pipe.nonce[:])}
+	if engineerBinary {
+		args = append(args, "--candidate-engineer-binary")
+	}
+	child, err := startInJob(executable, args...)
 	if err != nil {
 		_ = pipe.close()
 		return err

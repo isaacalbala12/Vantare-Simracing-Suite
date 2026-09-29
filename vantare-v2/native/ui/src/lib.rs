@@ -21,6 +21,8 @@
 )]
 
 mod app;
+#[cfg(feature = "parity-capture")]
+pub mod capture;
 mod overlay;
 mod pedals;
 mod radar;

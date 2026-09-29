@@ -56,10 +56,12 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		Performance:            overlayv2.PerformanceV2{Level: 9, Mode: "unknown", Effects: "unknown", RafCap: &rafCap, WidgetHz: map[string]json.RawMessage{"pedals": []byte("40")}, Reason: "unknown", SourceHz: 60},
 	}
 	capabilities := overlayv2.BuildCapabilities(state, source)
+	//lint:ignore SA1019 This parity oracle deliberately compares Rust with the retained Go reference implementation.
 	full, err := overlayv2.ProjectV2(final, source, overlayv2.DefaultPreferencesV2(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
+	//lint:ignore SA1019 This second reference output covers alternate user units and delta mode.
 	fullAlternate, err := overlayv2.ProjectV2(final, source, overlayv2.PreferencesV2{
 		Speed: overlayv2.SpeedUnitKPH, Temperature: overlayv2.TemperatureUnitFahrenheit,
 		Pressure: overlayv2.PressureUnitPSI, Fuel: overlayv2.FuelUnitGallonsUS,

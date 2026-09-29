@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — primera revisión CI (2026-09-29)
+
+La PR draft #1415 detectó 11 hallazgos nuevos de Staticcheck en el primer
+ratchet; promoción de rama y GitGuardian pasaron. Se corrigieron los textos
+de error Windows y se anotaron dos usos intencionados de `ProjectV2` en el
+oráculo de paridad, sin cambiar su comprobación. La rama se rebasó sin
+conflictos sobre `origin/nightly@c4c7a5ce`; `go test ./...`, 154 tests Rust,
+replay temporal y Clippy pasan. Staticcheck `2026.2.1` local no señala los
+archivos tocados en Windows ni Linux. Falta nuevo CI del SHA resultante; no
+hay merge ni gate final. Plan §106; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — identidad temporal de 47 coches (2026-09-29)
 
 El replay Rust del corpus externo comprobó identidad Engineer y jugador

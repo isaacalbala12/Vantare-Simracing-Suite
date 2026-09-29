@@ -17,8 +17,8 @@ const candidateHeartbeatTimeout = time.Second
 const candidateRestartLimit = 3
 const candidateRestartWindow = time.Minute
 
-var ErrCandidateHeartbeatTimeout = errors.New("Rust telemetry heartbeat timed out")
-var ErrCandidateRestartLimit = errors.New("Rust telemetry restart budget exhausted")
+var ErrCandidateHeartbeatTimeout = errors.New("telemetry Rust heartbeat timed out")
+var ErrCandidateRestartLimit = errors.New("telemetry Rust restart budget exhausted")
 
 // RunCandidate supervises an explicit Rust candidate. Callers must clear any
 // published state in disconnected before a new child is started. It is not
@@ -34,7 +34,7 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 func RunCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
 	if ctx == nil || deliver == nil || disconnected == nil {
-		return errors.New("Rust telemetry candidate requires context and callbacks")
+		return errors.New("telemetry Rust candidate requires context and callbacks")
 	}
 	var failures []time.Time
 	for {
@@ -160,7 +160,7 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 			return fmt.Errorf("validate Rust candidate frame: %w", err)
 		}
 		if event.Stopped {
-			return errors.New("Rust candidate stopped without host request")
+			return errors.New("telemetry Rust candidate stopped without host request")
 		}
 		if event.Status != nil {
 			lastHeartbeat = time.Now()
@@ -231,15 +231,15 @@ func stopCandidate(file *os.File, child *childProcess) error {
 	}
 	remaining := time.Until(deadline)
 	if remaining <= 0 {
-		return errors.New("Rust candidate shutdown deadline expired")
+		return errors.New("telemetry Rust candidate shutdown deadline expired")
 	}
 	result, err := windows.WaitForSingleObject(child.process, uint32(remaining.Milliseconds()))
 	if err != nil || result != windows.WAIT_OBJECT_0 {
-		return fmt.Errorf("Rust candidate did not exit: wait=%d error=%v", result, err)
+		return fmt.Errorf("telemetry Rust candidate did not exit: wait=%d error=%v", result, err)
 	}
 	var exitCode uint32
 	if err := windows.GetExitCodeProcess(child.process, &exitCode); err != nil || exitCode != 0 {
-		return fmt.Errorf("Rust candidate exit code=%d: %v", exitCode, err)
+		return fmt.Errorf("telemetry Rust candidate exit code=%d: %v", exitCode, err)
 	}
 	return nil
 }

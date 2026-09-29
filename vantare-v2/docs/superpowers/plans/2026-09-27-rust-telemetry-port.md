@@ -7,6 +7,7 @@ implementación parcial hasta el corte 104. Alcance de corpus revisado el 2026-0
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
 - Rama documental: `vantareapp/isa-1403-rust-telemetry`.
 - Base verificada del worktree: `origin/nightly@355e9cfee2fec3c27341fa96ec4e6a9297fab730`.
+- Base actual tras rebase del 2026-09-29: `origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e`; la línea anterior conserva la base original histórica.
 - Worktree: `C:/Users/isaac/.codex/worktrees/isa-1403-rust-telemetry/Vantare-Overlays`.
 - Decisión arquitectónica: [ADR 0097](../../adr/0097-rust-telemetry-child-process.md).
 - Continuidad única: [handoff Telemetry Core](../../vantare-program/handoffs/telemetry-core.md).
@@ -1998,3 +1999,15 @@ pasaron con el corpus real externo. La secuencia sigue siendo corta y no
 equivale a paridad completa ni al banco final de CPU/p99/RSS.
 Ambos tests opt-in exigen ahora que el conteo esperado esté entre 46 y 104;
 una captura menor no puede usarse como evidencia de este alcance.
+
+## 106. Primera revisión CI y ratchet Staticcheck (2026-09-29)
+
+La PR draft #1415 ejecutó promoción de rama correctamente, pero su primer
+`quality-check (ratchet)` falló con 11 hallazgos nuevos de Staticcheck. Se
+corrigieron los errores de texto del supervisor Windows y se documentaron dos
+usos deliberados de la proyección Go de referencia en el test de paridad,
+sin cambiar el oráculo. La rama se rebasó limpiamente sobre el Nightly actual
+`c4c7a5ce`; `go test ./...`, 154 tests Rust más replay temporal y Clippy
+pasaron tras el rebase. Staticcheck local fijado a `2026.2.1` ya no señala
+esos archivos en Windows ni Linux. El CI de la nueva punta debe repetirse
+antes de afirmar el gate verde; la PR sigue draft y el port incompleto.

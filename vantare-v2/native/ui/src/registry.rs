@@ -65,4 +65,5 @@ widgets! {
     MulticlassRelative => multiclass_relative: "multiclass-relative",
     BroadcastTower => broadcast_tower: "broadcast-tower",
     DeltaTrace => delta_trace: "delta-trace",
+    TrackMap => track_map: "track-map",
 }

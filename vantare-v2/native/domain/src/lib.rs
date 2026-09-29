@@ -22,6 +22,7 @@ pub mod pedals;
 mod quality;
 pub mod radar;
 pub mod standings;
+pub mod track_map;
 
 pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};

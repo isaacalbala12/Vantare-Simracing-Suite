@@ -2419,3 +2419,13 @@ Configuration y deja de responder. Cinco ejecuciones Windows de
 no queda el helper en la lista de procesos. Este caso completa la prueba del
 peer colgado tras configuración; faltan todavía cola llena en el recorrido
 completo, suspensión/reanudación y replay durable de facts tras crash.
+
+## 131. Compilación cruzada del stub no Windows (2026-09-29)
+
+La revisión de `main.rs` detectó que el stub no Windows conservaba dos
+argumentos tras añadir el selector binario al candidato, que llama con tres.
+Se corrigió la firma y se limitó el import IPC a Windows. Tras instalar
+el target estándar `x86_64-unknown-linux-gnu` localmente, `cargo check
+--locked --target x86_64-unknown-linux-gnu --all-targets` y Clippy para el
+mismo target con `-D warnings` pasan. Es una comprobación de compilación,
+no ejecución Linux ni soporte de adquisición LMU fuera de Windows.

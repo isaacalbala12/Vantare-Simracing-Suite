@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — stub no Windows compilable (2026-09-29)
+
+`main.rs` corregido: el stub no Windows recibe el tercer argumento del
+selector binario y el import IPC solo se compila en Windows. Check y
+Clippy estricto `x86_64-unknown-linux-gnu` pasan localmente; no supone
+runtime LMU Linux. Plan §131. PR #1415 draft, Go productivo.
+
 ## VAN-778 / ISA-1403 — peer colgado tras Configuración (2026-09-29)
 
 El `replay-harness` de tests valida Handshake/nonce, recibe Configuration y

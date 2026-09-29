@@ -8,6 +8,7 @@ use vantare_telemetry::ipc::pipe_windows::DeadlinePipe;
 use vantare_telemetry::ipc::queue::WriterQueue;
 #[cfg(windows)]
 use vantare_telemetry::ipc::status::{self, State, Status};
+#[cfg(windows)]
 use vantare_telemetry::ipc::{self, Kind};
 #[cfg(windows)]
 use vantare_telemetry::lmu::{acquisition::Acquisition, cadence::TickCadence};
@@ -200,7 +201,7 @@ fn run_pipe_harness(_: &str, _: &str) -> io::Result<()> {
 }
 
 #[cfg(not(windows))]
-fn run_candidate_pipe(_: &str, _: &str) -> io::Result<()> {
+fn run_candidate_pipe(_: &str, _: &str, _: bool) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
         "Windows required",

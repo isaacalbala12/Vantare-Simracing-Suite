@@ -59,4 +59,5 @@ widgets! {
     Standings => standings: "standings",
     Radar => radar: "radar",
     Pedals => pedals: "pedals",
+    CarDamageVisual => car_damage_visual: "car-damage-visual",
 }

@@ -8,6 +8,16 @@ publish.workspace = true
 [dependencies]
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
+# Cuerpos REST de LMU (`/rest/watch/*`), decodificados con límites.
+serde_json = "1"
+# Cliente HTTP síncrono para el REST local de LMU (sin TLS ni gzip: solo 127.0.0.1).
+ureq = { version = "3.4", default-features = false }
+
+[dev-dependencies]
+# Solo el corpus temporal de 47 coches: verificar el SHA-256 del .tar.gz y
+# leerlo en streaming (1,17 GB descomprimido, no se extrae a disco).
+flate2 = "1"
+sha2 = "0.10"
 
 [lints]
 workspace = true

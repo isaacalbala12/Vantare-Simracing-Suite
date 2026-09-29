@@ -1,0 +1,45 @@
+{
+  "schema": "vantare.lmu-rest-overlap.v1",
+  "captured_at_utc": "2026-09-28T20:04:37.4388322Z",
+  "status": "empty",
+  "endpoints": {
+    "standings": {
+      "status": "empty",
+      "last_attempt_utc": "2026-09-28T20:04:37.4361859Z",
+      "last_success_utc": "0001-01-01T00:00:00Z"
+    },
+    "session_info": {
+      "status": "empty",
+      "last_attempt_utc": "2026-09-28T20:04:37.438299Z",
+      "last_success_utc": "0001-01-01T00:00:00Z"
+    }
+  },
+  "session": {
+    "track": {
+      "freshness": "missing"
+    },
+    "source_time_seconds": {
+      "freshness": "missing"
+    },
+    "type": {
+      "freshness": "missing"
+    },
+    "vehicle_count": {
+      "freshness": "missing"
+    }
+  },
+  "player": {
+    "present": {
+      "freshness": "missing"
+    },
+    "position": {
+      "freshness": "missing"
+    },
+    "completed_laps": {
+      "freshness": "missing"
+    },
+    "pit_stop_count": {
+      "freshness": "missing"
+    }
+  }
+}

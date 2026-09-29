@@ -6,6 +6,7 @@ mod frame;
 mod gate;
 #[cfg(windows)]
 mod live;
+mod open;
 mod replay;
 mod rest;
 #[cfg(windows)]
@@ -15,4 +16,5 @@ mod translate;
 
 #[cfg(windows)]
 pub use live::Lmu;
+pub use open::open_replay;
 pub use replay::{Replay, ReplayEvent};

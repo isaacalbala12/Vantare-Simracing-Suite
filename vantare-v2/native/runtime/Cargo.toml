@@ -15,10 +15,12 @@ ureq = { version = "3.4", default-features = false }
 # Foto latest-wins: los lectores nunca bloquean al escritor (ver core/publish.rs).
 arc-swap = "1"
 
-[dev-dependencies]
-# Solo el corpus temporal de 47 coches: verificar el SHA-256 del .tar.gz y
-# leerlo en streaming (1,17 GB descomprimido, no se extrae a disco).
+# Lee el corpus temporal `.tar.gz` de 47 coches en streaming (1,17 GB
+# descomprimido, no se extrae a disco) para `--replay`.
 flate2 = "1"
+
+[dev-dependencies]
+# El test de conformidad verifica el SHA-256 del corpus.
 sha2 = "0.10"
 
 [lints]

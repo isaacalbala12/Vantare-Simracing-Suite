@@ -730,5 +730,7 @@ fn capabilities(s: &State) -> Capabilities {
                 .iter()
                 .flat_map(|c| [c.lap_distance_m, c.lap_elapsed_s]),
         ),
+        // Clima y daños: pendientes de traducir desde ACC.
+        ..Capabilities::default()
     }
 }

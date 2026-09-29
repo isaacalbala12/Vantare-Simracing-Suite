@@ -1987,3 +1987,14 @@ snapshots Rust atraviesan esta frontera con 47 vehículos y contexto completo.
 `go test ./...` pasó después de satisfacer el control arquitectónico de
 llamadores productivos. El servicio Engineer aún no consume estos eventos en
 Wails; faltan status, facts recuperables y selección exclusiva del hijo Rust.
+
+## 105. Identidad estable en las ocho muestras reales (2026-09-29)
+
+El replay Rust del corpus externo de 47 coches comprueba en cada una de las
+ocho muestras que Engineer conserva el evento/sesión esperados, que el
+vehículo de la identidad coincide con `snapshot.player.id` y que el conductor
+no está vacío. El audit Go de los 16 hashes SHM+REST y el test temporal Rust
+pasaron con el corpus real externo. La secuencia sigue siendo corta y no
+equivale a paridad completa ni al banco final de CPU/p99/RSS.
+Ambos tests opt-in exigen ahora que el conteo esperado esté entre 46 y 104;
+una captura menor no puede usarse como evidencia de este alcance.

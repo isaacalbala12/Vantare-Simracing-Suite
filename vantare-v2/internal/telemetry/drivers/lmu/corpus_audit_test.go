@@ -13,8 +13,8 @@ import (
 )
 
 // TestRustPortTemporalCorpusAuditOptIn audits an external, real LMU capture.
-// It is deliberately opt-in: a missing 44/104 corpus must never be reported
-// as a passing migration gate by an ordinary go test ./... run.
+// It is deliberately opt-in: this short corpus is diagnostic even when it
+// reaches the accepted 46-car minimum, never the complete migration gate.
 func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	dir := os.Getenv("LMU_TEMPORAL_CORPUS")
 	if dir == "" {
@@ -22,8 +22,8 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	}
 	wantText := os.Getenv("LMU_TEMPORAL_EXPECTED_VEHICLES")
 	want, err := strconv.Atoi(wantText)
-	if err != nil || want < 1 || want > 104 {
-		t.Fatalf("set LMU_TEMPORAL_EXPECTED_VEHICLES to 1..104, got %q", wantText)
+	if err != nil || want < 46 || want > 104 {
+		t.Fatalf("set LMU_TEMPORAL_EXPECTED_VEHICLES to 46..104, got %q", wantText)
 	}
 	type sample struct {
 		Index      int    `json:"index"`

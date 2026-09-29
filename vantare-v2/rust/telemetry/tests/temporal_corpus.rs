@@ -37,7 +37,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         .expect("set expected real vehicle count")
         .parse()
         .expect("expected vehicle count must be an integer");
-    assert!((1..=104).contains(&expected));
+    assert!((46..=104).contains(&expected));
     let dir = Path::new(&dir);
     let manifest: Manifest =
         serde_json::from_slice(&fs::read(dir.join("manifest.json")).unwrap()).unwrap();
@@ -105,6 +105,13 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                         value["snapshot"]["vehicles"].as_array().unwrap().len(),
                         expected
                     );
+                    assert_eq!(value["identity"]["event"], "lmu-event-1");
+                    assert_eq!(value["identity"]["session"], "lmu-session-1");
+                    assert_eq!(
+                        value["identity"]["vehicle"],
+                        value["snapshot"]["player"]["id"]
+                    );
+                    assert!(!value["identity"]["driver"].as_str().unwrap().is_empty());
                 }
                 products.push(product.to_owned());
             }

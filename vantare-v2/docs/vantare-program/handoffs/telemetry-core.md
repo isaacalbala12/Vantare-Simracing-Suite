@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — identidad temporal de 47 coches (2026-09-29)
+
+El replay Rust del corpus externo comprobó identidad Engineer y jugador
+coincidentes en sus ocho muestras reales de 47 coches, con evento/sesión
+estables y conductor presente. La auditoría Go de 16 hashes SHM+REST y el
+test temporal Rust pasaron. Es una secuencia breve, todavía insuficiente
+para paridad completa o gate CPU/p99/RSS. Ambos tests opt-in rechazan ahora
+un conteo esperado menor de 46. Plan §105; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — PR draft del candidato (2026-09-29)
 
 [PR draft #1415](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1415)

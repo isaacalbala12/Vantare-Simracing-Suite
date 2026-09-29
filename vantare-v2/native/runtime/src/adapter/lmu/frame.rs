@@ -6,7 +6,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use vantare_domain::Pose;
+use vantare_domain::{Damage, Pose, Quality, Weather};
 
 pub(super) const OBJECT_OUT_SIZE: usize = 324_820;
 const MAX_VEHICLES: usize = 104;
@@ -71,6 +71,7 @@ pub(super) struct Frame {
     pub maximum_laps: Option<u32>,
     /// Longitud del circuito en metros; `None` si el simulador no la da.
     pub track_length_m: Option<f64>,
+    pub weather: Weather,
     pub vehicles: Vec<Vehicle>,
     pub player: Option<usize>,
 }
@@ -103,8 +104,10 @@ pub(super) struct Vehicle {
     pub inputs: Option<Inputs>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Inputs {
+    pub source_time: Option<Duration>,
+    pub damage: Damage,
     pub gear: Option<i8>,
     pub engine_rpm: Option<f64>,
     pub speed_mps: Option<f64>,
@@ -176,6 +179,11 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
             .ok()
             .filter(|laps| (1..=MAX_SESSION_LAPS).contains(laps)),
         track_length_m: (track_length.is_finite() && track_length > 0.0).then_some(track_length),
+        weather: if count == 0 {
+            Weather::default()
+        } else {
+            weather(buffer)
+        },
         vehicles,
         player,
     })
@@ -272,6 +280,11 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
 }
 
 fn inputs(buffer: &[u8], base: usize) -> Inputs {
+    // mElapsedTime (+12), segundos. El sanitizador lo borra: cero no prueba
+    // presencia del bloque completo, ni permite certificar mWear == 0.
+    let source_time = Duration::try_from_secs_f64(read_f64(buffer, base + 12))
+        .ok()
+        .filter(|time| !time.is_zero());
     let velocity = vector(buffer, base + 184);
     let rpm = read_f64(buffer, base + 356);
     let fuel_level = read_f64(buffer, base + 524);
@@ -284,6 +297,26 @@ fn inputs(buffer: &[u8], base: usize) -> Inputs {
         .then_some((fuel_level, fuel_capacity));
     let delta = read_f64(buffer, base + 696);
     Inputs {
+        source_time,
+        damage: Damage {
+            // mDentSeverity[8] (+544) es ordinal (0=ninguno,1=algo,2=más),
+            // NO fracción de integridad ni componentes. No dividimos por 2/255.
+            // mDetached (+542) no distingue aero/carrocería; mOverheating
+            // (+541) y mWheel[].mDetached no miden integridad de suspensión.
+            // La deflexión de suspensión es desplazamiento, no daño. Las tres
+            // integridades quedan Unavailable, incluso con los dents en cero.
+            tyre_wear: [1_000, 1_260, 1_520, 1_780].map(|at| {
+                // TelemWheelV01: +848, stride 260, mWear +152, FL/FR/RL/RR.
+                // Es goma RESTANTE 0..1: no invertir ni convertir a porcentaje.
+                // Sin reloj telem, cero es ambiguo: capturas legacy borraron
+                // tres ruedas. Solo se admite cero con el bloque temporizado.
+                measured(
+                    ratio(read_f64(buffer, base + at))
+                        .filter(|v| *v > 0.0 || source_time.is_some()),
+                )
+            }),
+            ..Damage::default()
+        },
         gear: i8::try_from(read_i32(buffer, base + 352))
             .ok()
             .filter(|gear| (-1..=15).contains(gear)),
@@ -297,6 +330,49 @@ fn inputs(buffer: &[u8], base: usize) -> Inputs {
         fuel_level_l: fuel.map(|(level, _)| level),
         fuel_capacity_l: fuel.map(|(_, capacity)| capacity),
         delta_best_s: (delta.is_finite() && delta.abs() < DELTA_LIMIT_S).then_some(delta),
+    }
+}
+
+fn measured(value: Option<f64>) -> Quality<f64> {
+    value.map_or(Quality::Unavailable, Quality::Reliable)
+}
+
+fn weather(buffer: &[u8]) -> Weather {
+    let air_c = read_f64(buffer, 1_860);
+    let track_c = read_f64(buffer, 1_868);
+    // ScoringInfoV01: mAmbientTemp/mTrackTemp son Celsius; SI = C + 273,15.
+    // El par 0/0 se borró en los fixtures 1.4.x: no afirmar 273,15 K.
+    // Un 0 C aislado sí es válido. Cotas físicas iguales al decoder REST Go.
+    let temperatures_present = (air_c != 0.0 && (-30.0..=60.0).contains(&air_c))
+        || (track_c != 0.0 && (-20.0..=80.0).contains(&track_c));
+    let temperature = |c: f64, range: std::ops::RangeInclusive<f64>| {
+        measured(
+            (temperatures_present && c.is_finite() && range.contains(&c)).then_some(c + 273.15),
+        )
+    };
+    // mWind @1876 es un vector de velocidad en m/s: módulo 3D, no mph/km/h.
+    // El vector cero es ambiguo en el corpus sanitizado: no afirmar calma.
+    let wind = vector(buffer, 1_876)
+        .map(|[x, y, z]| x.hypot(y).hypot(z))
+        .filter(|speed| speed.is_finite() && *speed > 0.0);
+    Weather {
+        air_temperature_k: temperature(air_c, -30.0..=60.0),
+        track_temperature_k: temperature(track_c, -20.0..=80.0),
+        wind_speed_mps: measured(wind),
+        // mWind usa ejes del circuito; el SDK no fija norte geográfico ni
+        // dirección meteorológica de procedencia. No inventar un atan2.
+        wind_direction_rad: Quality::Unavailable,
+        // mRaining @1852: fracción 0..1, señal admitida por Go y conservada
+        // por FrameSanitizer actual. Cero válido; no deducirla de la humedad.
+        // mDarkCloud @1844 es oscuridad de nubes: no equivale a lluvia.
+        rain: measured(ratio(read_f64(buffer, 1_852))),
+        // mAvgPathWetness @1964: fracción 0..1, NO humedad relativa del aire.
+        // Cero también fue borrado por el sanitizador: no certificar seco.
+        // mMin/MaxPathWetness @1900/1908 son extremos, no sustitutos de la media.
+        track_wetness: measured(ratio(read_f64(buffer, 1_964)).filter(|v| *v > 0.0)),
+        // No hay presión atmosférica en ScoringInfoV01. mWheel[].mPressure
+        // son kPa del neumático, y no sirven para este campo.
+        pressure_pa: Quality::Unavailable,
     }
 }
 

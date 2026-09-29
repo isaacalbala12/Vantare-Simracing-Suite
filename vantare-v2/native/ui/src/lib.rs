@@ -20,8 +20,12 @@
     clippy::unreadable_literal // colores hex de CSS
 )]
 
-pub mod overlay;
-pub mod pedals;
-pub mod radar;
+mod app;
+mod overlay;
+mod pedals;
+mod radar;
+pub mod source;
 pub mod standings;
-pub mod text;
+mod text;
+
+pub use app::run;

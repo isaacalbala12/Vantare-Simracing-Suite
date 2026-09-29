@@ -722,6 +722,23 @@ struct ConfigBroadcasting {
     password_comandos: String,
 }
 
+/// Texto UTF-16LE (BOM `FF FE`, o segundo byte nulo como en `{` + `\0`) pasado a
+/// UTF-8; cualquier otra cosa se devuelve tal cual.
+fn utf8(bytes: &[u8]) -> Vec<u8> {
+    let utf16 = bytes.starts_with(&[0xFF, 0xFE]) || bytes.get(1) == Some(&0);
+    if !utf16 {
+        return bytes.to_vec();
+    }
+    let unidades: Vec<u16> = bytes
+        .chunks_exact(2)
+        .map(|par| u16::from_le_bytes([par[0], par[1]]))
+        .collect();
+    String::from_utf16_lossy(&unidades)
+        .trim_start_matches('\u{feff}')
+        .as_bytes()
+        .to_vec()
+}
+
 /// Lee `broadcasting.json`. ACC ha usado las dos grafías del puerto
 /// (`udpListenerPort` en las builds nuevas y la errata `updListenerPort`), así
 /// que se aceptan ambas. `Ok(None)` si el fichero no existe.
@@ -731,8 +748,9 @@ fn config_broadcasting(ruta: &Path) -> io::Result<Option<ConfigBroadcasting>> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error),
     };
-    // ACC escribe el fichero con BOM UTF-8, y lo deja vacío mientras el
-    // broadcasting no está configurado.
+    // ACC lo escribe en UTF-16LE (con o sin BOM) y a veces en UTF-8 con BOM;
+    // lo deja vacío mientras el broadcasting no está configurado.
+    let contenido = utf8(&contenido);
     let contenido = contenido
         .strip_prefix([0xEF, 0xBB, 0xBF].as_slice())
         .unwrap_or(&contenido);
@@ -861,7 +879,12 @@ impl FuenteUdp {
             }
         }
         let ahora = Instant::now();
-        if self.conexion.is_some() && self.ultima_senal.elapsed() >= REINTENTO_REGISTRO {
+        if self.conexion.is_some() {
+            // Registrado y con tráfico: nada que hacer. Solo un silencio
+            // (ACC reiniciado) obliga a registrarse de nuevo.
+            if self.ultima_senal.elapsed() < REINTENTO_REGISTRO {
+                return Ok(());
+            }
             self.proximo_registro = ahora;
         }
         if ahora >= self.proximo_registro {
@@ -1721,6 +1744,22 @@ mod tests {
         assert_eq!(manifiesto["eventos"]["udp"], 21);
         assert_eq!(manifiesto["sha256"]["shm.bin"], "aa");
         assert_eq!(manifiesto["duracion_s"], 61.5);
+    }
+
+    #[test]
+    fn la_configuracion_en_utf16_como_la_escribe_acc_se_lee() {
+        let base = carpeta_de_prueba("config-utf16");
+        let ruta = base.join("broadcasting.json");
+        let texto = "{\n  \"updListenerPort\": 9000,\n  \"connectionPassword\": \"uno\",\n  \"commandPassword\": \"\"\n}";
+        let bytes: Vec<u8> = texto.encode_utf16().flat_map(u16::to_le_bytes).collect();
+        fs::write(&ruta, bytes).expect("escribir config");
+        let config = config_broadcasting(&ruta)
+            .expect("JSON válido")
+            .expect("config");
+        assert_eq!(
+            (config.puerto, config.password_conexion.as_str()),
+            (9000, "uno")
+        );
     }
 
     #[test]

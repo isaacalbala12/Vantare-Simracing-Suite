@@ -111,7 +111,14 @@ pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
         corners,
         col(0, 0.0),
         Edges::all(px(1.0)),
-        col(colors[3], 0.62 + pulse * 0.38),
+        col(
+            colors[3],
+            if vm.flag == Some(FlagKind::Yellow) {
+                0.48 + pulse * 0.52
+            } else {
+                0.62
+            },
+        ),
         BorderStyle::default(),
     ));
     let has_sectors = !vm.sectors.is_empty();
@@ -256,6 +263,21 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
 mod tests {
     use super::*;
     use vantare_domain::{Flag, FlagScope, Quality};
+
+    #[test]
+    fn default_scene_projects_the_frozen_green_banner() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/racing-flags.snapshot.json"
+        ))
+        .expect("escena Workshop DTO v3 válida");
+        let vm = racing_flags::project(&snapshot, Preferences::default());
+        assert_eq!(vm.flag, Some(FlagKind::Green));
+        assert_eq!((vm.heading, vm.message), ("BANDERA", "VERDE"));
+        assert!(vm.sectors.is_empty());
+        assert!(!vm.hidden);
+        assert!(snapshot.state.cars.is_empty());
+        assert!(snapshot.state.player.is_none());
+    }
 
     #[test]
     fn yellow_pulse_ends_and_identical_snapshots_do_not_restart_it() {

@@ -10,6 +10,10 @@ use super::shm::{Page, config_path};
 use super::translate::{PAGE_SIZES, Translator};
 use super::udp;
 
+#[cfg(test)]
+#[path = "../../../tests/acc/live.rs"]
+mod tests;
+
 pub struct Acc {
     translator: Translator,
     pages: [Option<Page>; 3],
@@ -19,6 +23,9 @@ pub struct Acc {
     next_read: Duration,
     next_register: Duration,
     next_entries: Duration,
+    next_track: Duration,
+    registration: Vec<u8>,
+    buffer: Vec<u8>,
     last_udp: Option<Duration>,
     latest: Option<Observation>,
 }
@@ -34,6 +41,9 @@ impl Acc {
             next_read: Duration::ZERO,
             next_register: Duration::ZERO,
             next_entries: Duration::ZERO,
+            next_track: Duration::ZERO,
+            registration: Vec::new(),
+            buffer: vec![0; 65_507],
             last_udp: None,
             latest: None,
         }
@@ -75,7 +85,8 @@ impl Acc {
                     let socket = UdpSocket::bind("127.0.0.1:0")?;
                     socket.connect((std::net::Ipv4Addr::LOCALHOST, c.port))?;
                     socket.set_nonblocking(true)?;
-                    socket.send(&udp::registration(&c)?)?;
+                    self.registration = udp::registration(&c)?;
+                    socket.send(&self.registration)?;
                     self.next_register = now + Duration::from_secs(2);
                     self.socket = Some(socket);
                 }
@@ -92,15 +103,27 @@ impl Acc {
             return Ok(false);
         };
         let mut changed = false;
-        let mut buf = vec![0; 65_507];
         for _ in 0..256 {
-            match socket.recv(&mut buf) {
+            match socket.recv(&mut self.buffer) {
                 Ok(n) => {
                     self.last_udp = Some(now);
-                    changed |= self.translator.udp(&buf[..n], now)?;
+                    changed |= self.translator.udp(&self.buffer[..n], now)?;
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => return Err(e),
+            }
+        }
+        if now >= self.next_register {
+            if self.translator.connection.is_none() {
+                // La respuesta puede llegar tarde: conservar el puerto hasta el ACK.
+                socket.send(&self.registration)?;
+                self.next_register = now + Duration::from_secs(2);
+            } else if self
+                .last_udp
+                .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(2))
+            {
+                self.disconnect();
+                return Ok(changed);
             }
         }
         if let Some(id) = self.translator.connection {
@@ -109,22 +132,22 @@ impl Acc {
                 self.next_entries = now + Duration::from_secs(1);
                 self.translator.request_entries = false;
             }
-            if self.translator.request_track {
+            if self.translator.request_track && now >= self.next_track {
                 socket.send(&udp::request(11, id))?;
-                self.translator.request_track = false;
+                self.next_track = now + Duration::from_secs(1);
             }
         }
-        if now >= self.next_register
-            && (self.translator.connection.is_none()
-                || self
-                    .last_udp
-                    .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(2)))
-        {
-            // Soltar socket obliga a leer la configuración vigente y registrarse de nuevo.
-            self.socket = None;
-            self.translator.connection = None;
-        }
         Ok(changed)
+    }
+
+    fn disconnect(&mut self) {
+        if let Some(socket) = self.socket.take() {
+            // SDK v4: UNREGISTER sin payload. Mejor esfuerzo en cierre/reconexión.
+            if let Err(e) = socket.send(&[9]) {
+                eprintln!("cierre broadcasting ACC: {e}");
+            }
+        }
+        self.translator.connection = None;
     }
 }
 
@@ -165,9 +188,9 @@ impl Adapter for Acc {
                 }
             }
         }
-        if self.receive(now).is_err() {
-            self.socket = None; // SHM sigue operativa y UDP envejece por señal.
-            self.translator.connection = None;
+        if let Err(error) = self.receive(now) {
+            eprintln!("broadcasting ACC: {error}; reconectando");
+            self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
         }
         let Some(observation) = self.translator.observe(now) else {
             return Err(AdapterError::Disconnected);
@@ -188,11 +211,6 @@ impl Adapter for Acc {
 
 impl Drop for Acc {
     fn drop(&mut self) {
-        if let Some(socket) = &self.socket {
-            // SDK v4: UNREGISTER no tiene payload. Mejor esfuerzo en cierre.
-            if let Err(e) = socket.send(&[9]) {
-                eprintln!("cierre broadcasting ACC: {e}");
-            }
-        }
+        self.disconnect();
     }
 }

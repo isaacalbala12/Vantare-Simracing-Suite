@@ -57,7 +57,9 @@ fn member(name: &str) -> io::Take<GzDecoder<File>> {
 
 fn last_udp_cars() -> HashMap<CarId, Vec<u8>> {
     let mut r = member("udp.bin");
-    let mut cars = HashMap::new();
+    let mut cars: HashMap<CarId, Vec<u8>> = HashMap::new();
+    let mut heading_error = 0.0;
+    let mut heading_samples = 0_u32;
     while r.limit() > 0 {
         let mut h = [0; 12];
         r.read_exact(&mut h).expect("registro UDP");
@@ -66,29 +68,33 @@ fn last_udp_cars() -> HashMap<CarId, Vec<u8>> {
         r.read_exact(&mut b).expect("datagrama");
         if b[0] == 3 {
             let index = u16::from_le_bytes([b[1], b[2]]);
-            cars.insert(CarId(u32::from(index)), b);
+            let id = CarId(u32::from(index));
+            if let Some(old) = cars.get(&id) {
+                let dx = number(&b, 7) - number(old, 7);
+                let dy = number(&b, 11) - number(old, 11);
+                let speed = u16::from_le_bytes([b[20], b[21]]);
+                if speed > 60 && dx.hypot(dy) > 0.2 {
+                    let error = dy.atan2(dx) - number(&b, 15) - std::f64::consts::FRAC_PI_2;
+                    heading_error += error.sin().atan2(error.cos()).abs();
+                    heading_samples += 1;
+                }
+            }
+            cars.insert(id, b);
         }
     }
+    assert!(heading_samples > 10_000, "orientación con movimiento real");
+    let mean = heading_error / f64::from(heading_samples);
+    assert!(
+        mean < 0.03,
+        "yaw debe seguir el movimiento: error {mean} rad"
+    );
+    eprintln!("Yaw ACC: {heading_samples} muestras en movimiento, error medio {mean:.6} rad");
     cars
 }
 
 #[test]
 fn real_corpus_conformance_and_neutral_projections() {
-    let mut file = File::open(path()).expect("corpus real obligatorio");
-    let mut hash = Sha256::new();
-    let mut buf = vec![0; 64 * 1024];
-    loop {
-        let n = file.read(&mut buf).expect("leer paquete");
-        if n == 0 {
-            break;
-        }
-        hash.update(&buf[..n]);
-    }
-    assert_eq!(
-        format!("{:x}", hash.finalize()),
-        HASH,
-        "hash congelado del oráculo"
-    );
+    verify_frozen_package();
 
     let mut replay = open_acc_replay(&path()).expect("hashes internos y formato");
     let mut last = None;
@@ -158,7 +164,10 @@ fn real_corpus_conformance_and_neutral_projections() {
             last = Some(o);
         }
     }
-    assert!(count > 180_000, "corpus completo, {count} observaciones");
+    assert_eq!(
+        count, 190_308,
+        "corpus completo con muestras rasgadas descartadas"
+    );
     assert!(
         projected > 50 && radar_seen,
         "proyecciones con parrilla identificada y rivales cercanos"
@@ -166,6 +175,11 @@ fn real_corpus_conformance_and_neutral_projections() {
     assert_eq!(max_cars, 32);
     assert_eq!(names.len(), 32);
     assert_eq!(replay.poll(Duration::from_secs(121)).expect("EOF"), None);
+    assert_eq!(
+        replay.discarded_frames(),
+        3,
+        "tres physics rasgados en el corpus intacto"
+    );
     check_final(&last.expect("observaciones"));
     eprintln!(
         "ACC real: {count} observaciones, {max_cars} coches, {} identidades, {projected} muestras neutrales, radar cercano={radar_seen}",
@@ -181,18 +195,55 @@ fn replay_clock_is_deterministic_and_no_event_arrives_early() {
         paced.poll(Duration::ZERO).expect("antes del primer evento"),
         None
     );
-    let mut due = Duration::ZERO;
-    for _ in 0..2000 {
-        let a: Option<Observation> = fast.poll(Duration::from_secs(121)).expect("fast");
-        // Primeras physics/graphics preceden a static: no observación hasta versión.
-        if let Some(o) = &a {
-            due = o.origin.received_at;
-        } else {
-            due = due.max(Duration::from_millis(11));
+    let mut previous = Duration::ZERO;
+    for due in captured_times().into_iter().take(80_000) {
+        if due > previous {
+            assert_eq!(
+                paced
+                    .poll(due.saturating_sub(Duration::from_nanos(1)))
+                    .expect("aún no llega"),
+                None
+            );
         }
+        let a: Option<Observation> = fast.poll(Duration::from_secs(121)).expect("fast");
         let b = paced.poll(due).expect("paced");
+        if let Some(o) = &b {
+            assert_eq!(o.origin.received_at, due);
+        }
         assert_eq!(a, b, "mismo evento y tiempo grabado con dos ritmos de poll");
+        previous = due;
     }
+}
+
+/// Solo en el oráculo: instantes de cabecera, sin cargar blobs ni datagramas.
+fn captured_times() -> Vec<Duration> {
+    let mut times = Vec::new();
+    for (name, shm) in [("shm.bin", true), ("udp.bin", false)] {
+        let mut r = member(name);
+        while r.limit() > 0 {
+            let (at, size) = if shm {
+                let mut h = [0; 13];
+                r.read_exact(&mut h).expect("header SHM");
+                let at = u64::from_le_bytes(h[5..13].try_into().expect("timestamp"));
+                (at, [800, 1588, 820][usize::from(h[0])])
+            } else {
+                let mut h = [0; 12];
+                r.read_exact(&mut h).expect("header UDP");
+                (
+                    u64::from_le_bytes(h[4..12].try_into().expect("timestamp")),
+                    u32::from_le_bytes(h[..4].try_into().expect("size")),
+                )
+            };
+            let n =
+                io::copy(&mut (&mut r).take(u64::from(size)), &mut io::sink()).expect("contenido");
+            assert_eq!(n, u64::from(size));
+            times.push(Duration::from_nanos(at));
+        }
+    }
+    // Orden estable; SHM se añadió primero y gana empates, como el contrato.
+    times.sort();
+    assert_eq!(times.len(), 190_470);
+    times
 }
 
 fn check_player(o: &Observation) {
@@ -247,6 +298,19 @@ fn check_final(o: &Observation) {
         .collect();
     positions.sort_unstable();
     assert_eq!(positions, (1..=32).collect::<Vec<_>>());
+    let mut cups: HashMap<_, Vec<u32>> = HashMap::new();
+    for c in &o.state.cars {
+        cups.entry(c.class.as_ref().expect("cupCategory real").id)
+            .or_default()
+            .push(*c.class_position.current().expect("cupPosition real"));
+    }
+    for positions in cups.values_mut() {
+        positions.sort_unstable();
+        assert_eq!(
+            *positions,
+            (1..=u32::try_from(positions.len()).expect("clase acotada")).collect::<Vec<_>>()
+        );
+    }
     let ricci = o
         .state
         .cars
@@ -276,4 +340,36 @@ fn check_final(o: &Observation) {
         assert!((p.yaw_rad - number(b, 15) - std::f64::consts::FRAC_PI_2).abs() < 1e-12);
         assert_eq!(c.lap_distance_m, Quality::Estimated(number(b, 28) * 5793.0));
     }
+    let mut core = Core::new(42);
+    core.observe(o.clone()).expect("núcleo común");
+    let snapshot = core.snapshot();
+    let json = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO común");
+    let decoded = vantare_ipc::snapshot_from_json(&json).expect("ACC reconocido en el cable");
+    assert_eq!(decoded.origin.source.simulator, "acc");
+    assert_eq!(
+        standings::project(&decoded, Preferences::default()),
+        standings::project(&snapshot, Preferences::default())
+    );
+    assert_eq!(
+        pedals::project(&decoded, Preferences::default()),
+        pedals::project(&snapshot, Preferences::default())
+    );
+}
+
+fn verify_frozen_package() {
+    let mut file = File::open(path()).expect("corpus real obligatorio");
+    let mut hash = Sha256::new();
+    let mut buf = vec![0; 64 * 1024];
+    loop {
+        let n = file.read(&mut buf).expect("leer paquete");
+        if n == 0 {
+            break;
+        }
+        hash.update(&buf[..n]);
+    }
+    assert_eq!(
+        format!("{:x}", hash.finalize()),
+        HASH,
+        "hash congelado del oráculo"
+    );
 }

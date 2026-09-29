@@ -15,6 +15,10 @@ use super::bytes::{f32_at, i32_at, invalid, wide_at};
 use super::protocol::{self, CarUpdate, Entry, Lap, Message, SessionUpdate};
 
 const SHM_TTL: Duration = Duration::from_millis(500);
+
+#[cfg(test)]
+#[path = "../../../tests/acc/translation.rs"]
+mod tests;
 const UDP_TTL: Duration = Duration::from_secs(1);
 pub(super) const PAGE_SIZES: [usize; 3] = [800, 1588, 820];
 
@@ -154,18 +158,7 @@ impl Translator {
     pub(super) fn udp(&mut self, bytes: &[u8], at: Duration) -> io::Result<bool> {
         match protocol::parse(bytes)? {
             Message::Registration { id, success } => {
-                self.connection = success.then_some(id);
-                if success && !self.registered.contains(&id) {
-                    if self.registered.len() == 8 {
-                        self.registered.remove(0);
-                    }
-                    self.registered.push(id);
-                }
-                self.request_entries = success;
-                self.request_track = success;
-                if !success {
-                    return Err(invalid("registro UDP ACC rechazado"));
-                }
+                self.register(id, success)?;
                 return Ok(false);
             }
             Message::Session(update) => {
@@ -248,10 +241,27 @@ impl Translator {
                     self.reset_session(at);
                 }
                 self.track = Some((id, name, f64::from(meters)));
+                self.request_track = false;
             }
             Message::Event => return Ok(false),
         }
         Ok(true)
+    }
+
+    fn register(&mut self, id: i32, success: bool) -> io::Result<()> {
+        self.connection = success.then_some(id);
+        if success && !self.registered.contains(&id) {
+            if self.registered.len() == 8 {
+                self.registered.remove(0);
+            }
+            self.registered.push(id);
+        }
+        self.request_entries = success;
+        self.request_track = success;
+        if !success {
+            return Err(invalid("registro UDP ACC rechazado"));
+        }
+        Ok(())
     }
 
     fn page(&self, index: usize, now: Duration) -> Option<(&[u8], bool)> {
@@ -466,6 +476,13 @@ impl Translator {
     }
 
     fn session_model(&self, s: &[u8], g: &[u8], gs: bool, now: Duration) -> Session {
+        if !g.is_empty() && i32_at(g, 4) == 0 {
+            return Session {
+                id: SessionId(self.epoch),
+                track_name: quality(Some(wide_at(s, 134, 66)), false),
+                ..Session::default()
+            };
+        }
         let udp = self.session.as_ref();
         let us = udp.is_none_or(|u| now.saturating_sub(u.at) >= UDP_TTL);
         let kind = if g.is_empty() {
@@ -490,7 +507,7 @@ impl Translator {
             } else {
                 None
             };
-            if inferred == Some(SessionState::Interrupted) || state.current().is_none() {
+            if (inferred == Some(SessionState::Interrupted) && !gs) || state.current().is_none() {
                 state = estimated(inferred, gs);
             }
         }

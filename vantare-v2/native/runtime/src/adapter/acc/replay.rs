@@ -15,10 +15,15 @@ use super::translate::{PAGE_SIZES, Translator};
 
 type Archive = GzDecoder<BufReader<File>>;
 
+#[cfg(test)]
+#[path = "../../../tests/acc/replay.rs"]
+mod tests;
+
 struct Event {
     at: Duration,
     kind: Option<u8>,
     bytes: Vec<u8>,
+    stable: bool,
 }
 
 struct Records {
@@ -53,10 +58,14 @@ impl Records {
             self.next = None;
             return Ok(());
         }
+        let mut expected_packet = None;
         let (at, kind, size) = if self.shm {
             let mut h = [0_u8; 13];
             self.reader.read_exact(&mut h)?;
             let kind = h[0];
+            if kind != 2 {
+                expected_packet = Some([h[1], h[2], h[3], h[4]]);
+            }
             let size = PAGE_SIZES
                 .get(usize::from(kind))
                 .copied()
@@ -81,7 +90,13 @@ impl Records {
         self.previous = at;
         let mut bytes = vec![0; size];
         self.reader.read_exact(&mut bytes)?;
-        self.next = Some(Event { at, kind, bytes });
+        let stable = expected_packet.is_none_or(|packet| bytes[..4] == packet);
+        self.next = Some(Event {
+            at,
+            kind,
+            bytes,
+            stable,
+        });
         Ok(())
     }
 }
@@ -91,6 +106,7 @@ pub struct AccReplay {
     udp: Records,
     translator: Translator,
     failed: bool,
+    discarded_frames: u64,
 }
 
 /// Verifica los SHA-256 de ambos miembros contra `manifest.json` antes de
@@ -102,6 +118,7 @@ pub fn open_acc_replay(path: &Path) -> io::Result<AccReplay> {
         udp: Records::open(path, "udp.bin", false)?,
         translator: Translator::new(SourceKind::Replay),
         failed: false,
+        discarded_frames: 0,
     })
 }
 
@@ -121,6 +138,12 @@ impl Adapter for AccReplay {
 }
 
 impl AccReplay {
+    /// Muestras con packetId de cabecera/blob distintos, descartadas sin
+    /// publicar ni refrescar señales. Diagnóstico explícito de la grabación.
+    pub fn discarded_frames(&self) -> u64 {
+        self.discarded_frames
+    }
+
     fn next(&mut self, now: Duration) -> io::Result<Option<Observation>> {
         let shm = match (&self.shm.next, &self.udp.next) {
             (None, None) => return Ok(None),
@@ -137,6 +160,10 @@ impl AccReplay {
             .take()
             .ok_or_else(|| invalid("evento ACC ausente"))?;
         records.advance()?;
+        if !event.stable {
+            self.discarded_frames += 1;
+            return Ok(None);
+        }
         let changed = match event.kind {
             Some(kind) => self.translator.shm(kind, event.bytes, event.at)?,
             None => self.translator.udp(&event.bytes, event.at)?,

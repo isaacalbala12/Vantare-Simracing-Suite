@@ -1,7 +1,7 @@
 //! Adaptadores de simulador. Cada uno traduce su fuente al modelo común de
 //! `vantare-domain` y no deja escapar ningún tipo propio.
 
-// El único `unsafe` (Win32 de LMU) vive en `lmu::shm`, que lo permite expresamente.
+// El unsafe Win32 queda confinado a los módulos `shm` de cada adaptador.
 #![deny(unsafe_code)]
 
 mod acc;

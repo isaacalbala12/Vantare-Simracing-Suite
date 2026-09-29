@@ -4,6 +4,10 @@ use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 use std::path::PathBuf;
 use std::ptr::NonNull;
 
+#[cfg(test)]
+#[path = "../../../tests/acc/shm.rs"]
+mod tests;
+
 use windows_sys::Win32::System::Memory::{
     FILE_MAP_READ, MEMORY_MAPPED_VIEW_ADDRESS, MapViewOfFile, OpenFileMappingW, UnmapViewOfFile,
 };

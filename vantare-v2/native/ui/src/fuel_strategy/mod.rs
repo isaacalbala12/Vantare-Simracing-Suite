@@ -205,6 +205,29 @@ mod tests {
     use vantare_domain::{Capabilities, Capability, Fuel, Player, Quality, State};
 
     #[test]
+    fn reference_scene_preserves_fuel_and_does_not_turn_session_laps_into_range() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/fuel-strategy.snapshot.json"
+        ))
+        .expect("escena Workshop de combustible en DTO v3");
+        let player = snapshot.state.player.expect("jugador de la escena");
+        assert_eq!(snapshot.state.capabilities.fuel, Capability::Fresh);
+        assert_eq!(player.fuel.level_l, Quality::Reliable(42.0));
+        assert_eq!(player.fuel.capacity_l, Quality::Reliable(100.0));
+        assert_eq!(player.fuel.per_lap_l, Quality::Reliable(2.14));
+        assert_eq!(player.fuel.laps_left, Quality::Unavailable);
+        assert_eq!(snapshot.state.session.laps_remaining, Quality::Reliable(79));
+        let vm = fuel_strategy::project(&snapshot, Preferences::default());
+        assert_eq!(vm.status, None);
+        assert_eq!(
+            (vm.fuel.as_str(), vm.average.as_str()),
+            ("42.0 L", "2.14 L")
+        );
+        assert_eq!(vm.laps, vantare_domain::format::PLACEHOLDER);
+        assert_eq!(vm.required, vantare_domain::format::PLACEHOLDER);
+    }
+
+    #[test]
     fn only_visual_changes_repaint_and_frames_are_idle() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(prefs);

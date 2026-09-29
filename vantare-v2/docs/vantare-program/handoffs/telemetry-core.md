@@ -45,8 +45,8 @@ El PR #1415 sigue draft. El CI de `f8de46ab` pasó promoción de rama y
 GitGuardian, pero `quality-check (ratchet)` falló: informó `staticcheck NEW=1`
 y `policy_changed: True` por el cambio de
 `.github/workflows/branch-channel-gates.yml` presente en la PR antes de este
-corte. El gate agregado sigue pendiente al escribir este handoff; el SHA de la
-segunda ronda Rust aún no está subido. E1 tiene un inventario inicial y E2 un
+corte. El SHA `e60a6b1e` de la segunda ronda Rust ya está subido y su CI
+está pendiente al escribir este handoff. E1 tiene un inventario inicial y E2 un
 módulo Rust aislado;
 faltan el cableado de entrega, Engineer/Strategy/OBS, recuperación, banco
 final y prueba física LMU/Wails/OBS. Go sigue siendo la ruta productiva, sin

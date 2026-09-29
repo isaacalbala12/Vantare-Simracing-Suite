@@ -69,7 +69,11 @@ fn gaps(cars: &mut [Car]) {
         if let Some((previous_position, Some(previous_leader_s))) = previous
             && previous_position.checked_add(1) == Some(position)
         {
-            if let (None, Some(ahead_s)) = (leader_s, seconds(car.gap_ahead)) {
+            // Solo si no hay ningún gap actual: uno en vueltas no se sustituye por
+            // segundos derivados (lo detectó el oráculo Go en P9–P12 del corpus).
+            if let (None, Some(ahead_s)) = (leader_s, seconds(car.gap_ahead))
+                && car.gap_leader.current().is_none()
+            {
                 let derived = previous_leader_s + ahead_s;
                 leader_s = Some(derived);
                 car.gap_leader = Quality::Estimated(Gap::Time { seconds: derived });
@@ -287,6 +291,16 @@ mod tests {
             Quality::Unavailable,
             "el líder no tiene delante"
         );
+    }
+
+    #[test]
+    fn a_native_gap_in_laps_is_never_replaced_by_derived_seconds() {
+        let mut cars = vec![car(1, 1, 0), car(2, 2, 0)];
+        let lapped = Quality::Reliable(Gap::Laps { count: 1 });
+        cars[1].gap_leader = lapped;
+        cars[1].gap_ahead = time(1.5);
+        gaps(&mut cars);
+        assert_eq!(cars[1].gap_leader, lapped);
     }
 
     #[test]

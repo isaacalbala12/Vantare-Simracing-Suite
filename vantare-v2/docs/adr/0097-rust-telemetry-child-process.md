@@ -82,8 +82,12 @@ acotados, I/O cancelable y mensajes parciales comprobados. [Seguridad de pipes](
 [CreateNamedPipe](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea).
 
 El hijo se ejecuta sin consola visible desde ruta absoluta verificada y se
-asocia a un Job Object que asegura su terminación si muere el host. No hereda
-secretos o handles innecesarios. La build/installer/portable/updater conservan
+asocia a un Job Object que asegura su terminación si muere el host. Su entorno
+explícito contiene solo `SystemRoot`, obtenido de Windows: el cliente HTTP
+loopback de LMU lo necesita para funcionar dentro del Job Object. No hereda
+secretos ni otros valores del entorno del host, ni handles innecesarios. El
+heartbeat IPC puede incluir contadores acumulados de ticks SHM y reportes REST
+para detectar trabajo perdido sin exponer payloads. La build/installer/portable/updater conservan
 la pareja de binarios y sus hashes/versiones. [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
 
 Fijar Rust y target `x86_64-pc-windows-msvc`, junto con herramientas Windows

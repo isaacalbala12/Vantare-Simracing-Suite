@@ -116,7 +116,7 @@ impl Poller {
 
     /// Move the oldest completed REST poll into the canonical cache, then age
     /// it. A backlog overflow is fatal to this instance, never silent loss.
-    pub fn take_into(&self, cache: &mut RestCache) -> Result<Option<u64>, PollerError> {
+    pub fn take_into(&self, cache: &mut RestCache) -> Result<Option<(u64, bool)>, PollerError> {
         let report = self
             .pending
             .lock()
@@ -124,6 +124,8 @@ impl Poller {
             .pop()?;
         let updated = if let Some(report) = report {
             let received_ns = report.session_received_ns;
+            let complete = report.standings.status == EndpointStatus::Fresh
+                && report.session.status == EndpointStatus::Fresh;
             if report.standings.status == EndpointStatus::Fresh {
                 cache.accept_standings(
                     &report.standings.body,
@@ -138,7 +140,7 @@ impl Poller {
             } else {
                 cache.session_status = report.session.status;
             }
-            Some(received_ns)
+            Some((received_ns, complete))
         } else {
             None
         };

@@ -69,9 +69,18 @@ func startInJobWithAssign(executable string, assign func(windows.Handle, windows
 	if err != nil {
 		return nil, fmt.Errorf("encode telemetry child directory: %w", err)
 	}
-	// An explicit empty environment prevents credentials from the Wails host
-	// reaching the telemetry process. It needs only local pipe and LMU access.
-	environment := [2]uint16{}
+	// Keep credentials out of the child. Windows network initialization needs
+	// SystemRoot even for LMU's numeric loopback address; no other host variable
+	// is inherited. Resolve the system directory through Windows, not os.Getenv.
+	systemDirectory, err := windows.GetSystemWindowsDirectory()
+	if err != nil {
+		return nil, fmt.Errorf("locate Windows system directory: %w", err)
+	}
+	environment, err := windows.UTF16FromString("SystemRoot=" + systemDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("encode telemetry child environment: %w", err)
+	}
+	environment = append(environment, 0)
 	startup := windows.StartupInfo{Cb: uint32(unsafe.Sizeof(windows.StartupInfo{}))}
 	var created windows.ProcessInformation
 	if err := windows.CreateProcess(path, &commandLine[0], nil, nil, false,

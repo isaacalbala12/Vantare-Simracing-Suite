@@ -79,6 +79,35 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 			t.Fatalf("%s did not deliver all three products: %v; source=%+v", arm, ctx.Err(), runtime.SourceStatus())
 		}
 	}
+	var candidate *RustTelemetryCandidateRuntime
+	if arm != "go" {
+		candidate = runtime.(*RustTelemetryCandidateRuntime)
+		for {
+			candidate.mu.Lock()
+			ready := candidate.lastIPCStatus.SHMTicks != nil
+			candidate.mu.Unlock()
+			if ready {
+				break
+			}
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				t.Fatalf("%s did not report source counters: %v", arm, ctx.Err())
+			}
+		}
+	}
+	readSourceCounts := func() (uint64, uint64, uint64, uint64, string) {
+		if candidate == nil {
+			return 0, 0, 0, 0, ""
+		}
+		candidate.mu.Lock()
+		defer candidate.mu.Unlock()
+		status := candidate.lastIPCStatus
+		if status.SHMTicks == nil {
+			return 0, 0, 0, 0, ""
+		}
+		return *status.SHMTicks, *status.RESTReports, *status.RESTBatches, *status.RESTHTTPFresh, status.RESTState
+	}
 	childPID := uint32(0)
 	if arm != "go" {
 		childPID, err = ownedRustChildPID(executable)
@@ -106,6 +135,7 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 	latencyBase := probe.latencyCount()
 	sequenceBase := probe.sequence.Load()
 	gapBase := probe.sequenceGaps.Load()
+	shmBase, restBase, restBatchBase, restFreshBase, _ := readSourceCounts()
 	timer := time.NewTimer(15 * time.Second)
 	defer timer.Stop()
 	usageTicker := time.NewTicker(250 * time.Millisecond)
@@ -140,6 +170,7 @@ measurement:
 	}
 	overlays = publisher.Metrics().SnapshotPublications - overlays
 	strategies = runtime.StrategyHub().Metrics().SnapshotPublications - strategies
+	shmFinal, restFinal, restBatchFinal, restFreshFinal, restState := readSourceCounts()
 	p99, latencyCount := probe.p99Since(latencyBase)
 	engineers := uint64(latencyCount)
 	if overlays == 0 || engineers == 0 || strategies == 0 || probe.vehicles.Load() < 46 || runtime.SourceStatus().ReconnectAttempt != 0 {
@@ -148,11 +179,12 @@ measurement:
 	if probe.invalidCapture.Load() != 0 {
 		t.Fatalf("%s invalid Engineer capture timestamps: %d", arm, probe.invalidCapture.Load())
 	}
-	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s peakRSS=%d engineerP99=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d sequenceSpan=%d sequenceGaps=%d", arm,
+	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s peakRSS=%d engineerP99=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d sequenceSpan=%d sequenceGaps=%d shmTicks=%d restReports=%d restBatches=%d restHttpFresh=%d restState=%s", arm,
 		finalCPU-initialCPU, finalChildCPU-initialChildCPU, finalCPU-initialCPU+finalChildCPU-initialChildCPU,
 		peakRSS, p99,
 		overlays, engineers, strategies, probe.vehicles.Load(), probe.facts.Load(),
-		probe.sequence.Load()-sequenceBase, probe.sequenceGaps.Load()-gapBase)
+		probe.sequence.Load()-sequenceBase, probe.sequenceGaps.Load()-gapBase,
+		shmFinal-shmBase, restFinal-restBase, restBatchFinal-restBatchBase, restFreshFinal-restFreshBase, restState)
 }
 
 type cpuProbeEngineer struct {

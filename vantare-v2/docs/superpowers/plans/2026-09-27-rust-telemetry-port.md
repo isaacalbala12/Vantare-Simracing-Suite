@@ -2602,3 +2602,27 @@ perdiera eventos **ya confirmados por el Core** en esas ventanas, pero no
 identifican cuántos ticks SHM o polls REST ocurrieron antes del commit. R21
 debe contabilizar cada fuente y ensayar el mismo calendario real ≥46 coches
 en G0/G1/R; los resultados live no certifican el gate.
+
+## 142. Entorno mínimo del hijo y REST físico restablecido (2026-09-29)
+
+El heartbeat IPC acotado admite contadores acumulados `shmTicks`,
+`restReports`, `restBatches`, `restHttpFresh` y estado REST cerrado; Go valida
+campos completos, límites y cursores monotónicos. En LMU 1.4.2.0 con 47
+coches, el hijo supervisado mostró 889 ticks SHM pero solo 8 reportes REST
+en 15 s, todos no fresh, estado `offline`. La adquisición directa Rust
+seguía produciendo 299 SHM y 19 REST en 5 s. Reproducción aislada: el mismo
+test REST con entorno vacío obtuvo 3 reportes/5 s; añadiendo solo
+`SystemRoot` obtuvo 19/5 s. El supervisor pasa ahora exclusivamente la ruta
+`SystemRoot` devuelta por Windows y el test de Job Object comprueba ausencia
+de otras variables heredadas.
+
+Tras el cambio, Rust+Go VTE1 y Go entregaron ambos 958 eventos de cada uno
+de los tres productos en ventanas consecutivas de 15 s, sin huecos de cursor;
+el hijo Rust registró 59 reportes REST y los 59 HTTP completos, estado `live`.
+Los contadores del heartbeat pueden diferir unos ticks del intervalo de
+producto por su muestreo cada 250 ms. Rust+Go consumió 5,875 s CPU y p99
+Engineer 5,9782 ms; Go 2,546875 s y 2,2391 ms. Esto elimina la diferencia
+de cadencia observada, pero no constituye G0/G1/R ni satisface el gate.
+Pasaron 164 tests Rust release, formato, Clippy, build, `go test ./...`,
+vet focal y el probe físico. R21 debe reducir coste del codec Overlay y
+medir el trabajo equivalente con el corpus real ≥46.

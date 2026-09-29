@@ -42,29 +42,30 @@ type RustTelemetryCandidateConfig struct {
 }
 
 type RustTelemetryCandidateRuntime struct {
-	mu           sync.Mutex
-	config       RustTelemetryCandidateConfig
-	policy       performancepolicy.Policy
-	policyChange uint64
-	registry     *telemetrytransport.PublisherRegistry
-	strategy     *telemetrytransport.Hub
-	manifest     engineerprojection.Manifest
-	status       driver.State
-	attempt      int
-	statusRev    uint64
-	deliveryRev  uint64
-	lastAgeMS    int64
-	started      bool
-	stopped      bool
-	cancel       context.CancelFunc
-	done         chan struct{}
-	wailsDone    chan struct{}
-	runErr       error
-	updates      chan telemetryprocess.ConfigurationV1
-	epochOffset  uint64
-	lastEpoch    uint64
-	newChild     bool
-	lastFact     telemetrycore.FactSequence
+	mu            sync.Mutex
+	config        RustTelemetryCandidateConfig
+	policy        performancepolicy.Policy
+	policyChange  uint64
+	registry      *telemetrytransport.PublisherRegistry
+	strategy      *telemetrytransport.Hub
+	manifest      engineerprojection.Manifest
+	status        driver.State
+	attempt       int
+	statusRev     uint64
+	deliveryRev   uint64
+	lastAgeMS     int64
+	started       bool
+	stopped       bool
+	cancel        context.CancelFunc
+	done          chan struct{}
+	wailsDone     chan struct{}
+	runErr        error
+	updates       chan telemetryprocess.ConfigurationV1
+	epochOffset   uint64
+	lastEpoch     uint64
+	newChild      bool
+	lastFact      telemetrycore.FactSequence
+	lastIPCStatus telemetryprocess.StatusV1
 }
 
 func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*RustTelemetryCandidateRuntime, error) {
@@ -269,6 +270,7 @@ func (runtime *RustTelemetryCandidateRuntime) handleDisconnected(cause error) {
 	runtime.mu.Lock()
 	attempt := runtime.attempt + 1
 	runtime.newChild = true
+	runtime.lastIPCStatus = telemetryprocess.StatusV1{}
 	lastFact := runtime.lastFact
 	runtime.mu.Unlock()
 	if lastFact != 0 && runtime.config.Engineer != nil {
@@ -345,6 +347,9 @@ func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.Rec
 		if err := runtime.setStatus(state, runtime.SourceStatus().ReconnectAttempt, age); err != nil {
 			return err
 		}
+		runtime.mu.Lock()
+		runtime.lastIPCStatus = *event.Status
+		runtime.mu.Unlock()
 	}
 	if event.Overlay != nil {
 		// The first product frame can precede the next process heartbeat. Its

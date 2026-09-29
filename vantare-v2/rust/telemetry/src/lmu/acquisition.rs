@@ -6,6 +6,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use super::cadence::TickCadence;
 use super::process::RunningSource;
+use super::rest::RestStatus;
 use super::rest::poller::{Poller, PollerError};
 use super::{OBJECT_OUT_SIZE, admit_v13};
 use crate::assembly::{Assembler, AssemblyError, FactReplay};
@@ -31,6 +32,7 @@ pub struct Acquisition {
     scratch: Vec<u8>,
     started: Instant,
     last_shared_received_ns: Option<u64>,
+    last_rest_http_fresh: bool,
 }
 
 impl Acquisition {
@@ -52,6 +54,7 @@ impl Acquisition {
             scratch: vec![0; OBJECT_OUT_SIZE],
             started,
             last_shared_received_ns: None,
+            last_rest_http_fresh: false,
         })
     }
 
@@ -109,13 +112,14 @@ impl Acquisition {
     /// SHM grid exists. Menu/startup polls still update REST health, but the
     /// current Core cannot map a zero-vehicle session.
     pub fn poll_rest_event(&mut self) -> Result<Option<Vec<Vec<u8>>>, AcquisitionError> {
-        let Some(_rest_received_ns) = self
+        let Some((_rest_received_ns, http_fresh)) = self
             .rest
             .take_into(self.assembler.rest_cache_mut())
             .map_err(AcquisitionError::Rest)?
         else {
             return Ok(None);
         };
+        self.last_rest_http_fresh = http_fresh;
         let Some(shared_received_ns) = self.last_shared_received_ns else {
             return Ok(Some(Vec::new()));
         };
@@ -137,6 +141,14 @@ impl Acquisition {
             utc_ns()?,
         )
         .map(Some)
+    }
+
+    pub fn last_rest_http_fresh(&self) -> bool {
+        self.last_rest_http_fresh
+    }
+
+    pub fn rest_status(&mut self) -> RestStatus {
+        self.assembler.rest_cache_mut().status()
     }
 
     /// At most one SHM read per due slot. A delayed pipe consumer cannot

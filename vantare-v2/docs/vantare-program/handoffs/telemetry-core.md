@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — REST del hijo restaurado (2026-09-29)
+
+El supervisor lanzaba el hijo con entorno totalmente vacío. En esa condición,
+el cliente HTTP Rust veía LMU loopback como `offline`: en 15 s emitía solo
+8 reportes REST y 908 productos por consumidor, aunque SHM siguiera cerca
+de 60 Hz. Un ensayo del mismo cliente con entorno vacío produjo 3 reportes
+en 5 s; con solo `SystemRoot`, 19 en 5 s. La ruta productiva obtiene el
+directorio del sistema mediante Windows y pasa **únicamente `SystemRoot`**
+al hijo; el test de Job Object confirma que no hereda otras variables.
+
+El heartbeat IPC informa contadores acumulados SHM/REST y estado REST cerrado,
+con validación y monotonicidad en el receptor. Tras la corrección, una ventana
+física LMU 1.4.2.0 de 47 coches entregó 958 Overlay, Engineer y Strategy,
+958 secuencias sin huecos, 59 reportes REST recibidos y 59 HTTP completos
+en 15 s; estado REST `live`. Una ventana Go consecutiva entregó también 958
+de cada producto. Rust+Go VTE1 consumió 5,875 s CPU y p99 5,9782 ms frente
+a Go 2,546875 s y p99 2,2391 ms: cadencia alineada en estas ventanas, pero
+no son el banco G0/G1/R ni acreditan el objetivo de CPU. Pasaron 164 tests
+Rust release, formato, Clippy, build, `go test ./...`, vet focal y prueba
+física. Sigue pendiente el codec Overlay, el corpus de benchmark equivalente,
+recuperación, packaging y Wails/OBS. Go sigue productivo; PR #1415 draft.
+
 ## VAN-778 / ISA-1403 — continuidad de cursores LMU47 (2026-09-29)
 
 El probe opt-in registra ahora el avance y los huecos de secuencia Engineer.

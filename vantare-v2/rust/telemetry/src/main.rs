@@ -7,9 +7,11 @@ use vantare_telemetry::ipc::pipe_windows::DeadlinePipe;
 #[cfg(windows)]
 use vantare_telemetry::ipc::queue::WriterQueue;
 #[cfg(windows)]
-use vantare_telemetry::ipc::status::{self, State, Status};
+use vantare_telemetry::ipc::status::{self, RestState, State, Status};
 #[cfg(windows)]
 use vantare_telemetry::ipc::{self, Kind};
+#[cfg(windows)]
+use vantare_telemetry::lmu::rest::RestStatus;
 #[cfg(windows)]
 use vantare_telemetry::lmu::{acquisition::Acquisition, cadence::TickCadence};
 
@@ -141,6 +143,10 @@ fn run_candidate_loop(
     let mut cadence = TickCadence::new(Instant::now());
     let mut next_status = Instant::now() + Duration::from_millis(250);
     let mut heartbeat = 0_u64;
+    let mut shm_ticks = 0_u64;
+    let mut rest_reports = 0_u64;
+    let mut rest_batches = 0_u64;
+    let mut rest_http_fresh = 0_u64;
     loop {
         for _ in 0..8 {
             let Some(frame) =
@@ -166,6 +172,19 @@ fn run_candidate_loop(
             else {
                 break;
             };
+            rest_reports = rest_reports
+                .checked_add(1)
+                .ok_or_else(|| io::Error::other("REST report counter exhausted"))?;
+            if acquisition.last_rest_http_fresh() {
+                rest_http_fresh = rest_http_fresh
+                    .checked_add(1)
+                    .ok_or_else(|| io::Error::other("fresh REST counter exhausted"))?;
+            }
+            if !frames.is_empty() {
+                rest_batches = rest_batches
+                    .checked_add(1)
+                    .ok_or_else(|| io::Error::other("REST batch counter exhausted"))?;
+            }
             queue
                 .push_batch(frames)
                 .map_err(|error| io::Error::other(format!("queue REST: {error:?}")))?;
@@ -175,9 +194,14 @@ fn run_candidate_loop(
                 }
             }
         }
-        acquisition
+        if acquisition
             .tick_into_queue_if_due(&mut cadence, Instant::now(), &mut queue)
-            .map_err(|error| io::Error::other(format!("LMU tick: {error:?}")))?;
+            .map_err(|error| io::Error::other(format!("LMU tick: {error:?}")))?
+        {
+            shm_ticks = shm_ticks
+                .checked_add(1)
+                .ok_or_else(|| io::Error::other("SHM tick counter exhausted"))?;
+        }
         if Instant::now() >= next_status {
             heartbeat = heartbeat
                 .checked_add(1)
@@ -191,6 +215,18 @@ fn run_candidate_loop(
                 heartbeat,
                 state,
                 source_age_ns,
+                shm_ticks: Some(shm_ticks),
+                rest_reports: Some(rest_reports),
+                rest_batches: Some(rest_batches),
+                rest_http_fresh: Some(rest_http_fresh),
+                rest_state: Some(match acquisition.rest_status() {
+                    RestStatus::Live => RestState::Live,
+                    RestStatus::Partial => RestState::Partial,
+                    RestStatus::Unsupported => RestState::Unsupported,
+                    RestStatus::Offline => RestState::Offline,
+                    RestStatus::Timeout => RestState::Timeout,
+                    RestStatus::Stale => RestState::Stale,
+                }),
             })
             .map_err(|error| io::Error::other(format!("encode Status: {error:?}")))?;
             queue

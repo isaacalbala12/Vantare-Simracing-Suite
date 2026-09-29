@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,8 +19,9 @@ func TestChildProcessHelper(t *testing.T) {
 		return
 	}
 	marker := os.Args[len(os.Args)-1]
-	state := "ready-empty-environment"
-	if len(os.Environ()) != 0 {
+	state := "ready-minimal-environment"
+	systemDirectory, err := windows.GetSystemWindowsDirectory()
+	if err != nil || len(os.Environ()) != 1 || !strings.EqualFold(os.Getenv("SystemRoot"), systemDirectory) {
 		state = "unexpected-inherited-environment"
 	}
 	if err := os.WriteFile(marker, []byte(state), 0o600); err != nil {
@@ -57,7 +59,7 @@ func TestJobClosesChildAndIsIdempotent(t *testing.T) {
 	defer ticker.Stop()
 	for {
 		if content, err := os.ReadFile(marker); err == nil && len(content) > 0 {
-			if string(content) != "ready-empty-environment" {
+			if string(content) != "ready-minimal-environment" {
 				_ = child.close()
 				t.Fatalf("child environment is not isolated: %s", content)
 			}

@@ -1,0 +1,12 @@
+[package]
+name = "vantare-ipc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+vantare-domain.workspace = true
+
+[lints]
+workspace = true

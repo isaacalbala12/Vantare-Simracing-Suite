@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — frontera de composición R19 (2026-09-29)
+
+Wails referencia una interfaz local de lifecycle, status, rendimiento y
+transports Overlay/Strategy; el runtime Go la satisface. El replay de status
+solo requiere StrategyHub. Todavía no hay selección de Rust ni segunda lectura
+LMU. La siguiente entrega debe conectar el supervisor Rust, la demanda y los
+consumidores por esa frontera y probar un único owner. Plan §118; PR #1415
+draft, sin merge ni gate CPU acreditado.
+
 ## VAN-778 / ISA-1403 — modos dinámicos propiedad de Rust (2026-09-29)
 
 El hijo puede resolver Spatial, Delta, Standings y Gaps desde sus observaciones

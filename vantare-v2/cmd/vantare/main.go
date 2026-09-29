@@ -28,6 +28,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	performancesensor "github.com/vantare/overlays/v2/internal/app/performance/sensor"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/applog"
@@ -84,6 +85,19 @@ const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
+
+// liveTelemetryRuntime is the product boundary shared by the Go runtime and
+// the explicit Rust candidate. The composition root selects exactly one owner.
+type liveTelemetryRuntime interface {
+	Start(context.Context) error
+	Stop(context.Context) error
+	SourceStatus() driver.SourceStatus
+	SetPerformancePolicy(performancepolicy.Policy)
+	PerformancePolicy() performancepolicy.Policy
+	EmitPerformanceLevel()
+	StrategyHub() *telemetrytransport.Hub
+	OverlayV2Publishers() *telemetrytransport.PublisherRegistry
+}
 
 // Public Supabase configuration and license verification keys are injected by
 // the generated supabase_build.go source so values never become Task cache file
@@ -730,7 +744,9 @@ func (service *overlayPullHTTPService) shutdown() {
 func registerTelemetryStatusReplayHandlers(
 	events telemetryStatusReplayEvents,
 	emitter telemetrytransport.EventEmitter,
-	telemetryRuntime *app.TelemetryCoreRuntime,
+	telemetryRuntime interface {
+		StrategyHub() *telemetrytransport.Hub
+	},
 ) func() {
 	if events == nil || emitter == nil || telemetryRuntime == nil {
 		return func() {}
@@ -1585,7 +1601,7 @@ func main() {
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
-	var telemetryCoreRuntime *app.TelemetryCoreRuntime
+	var telemetryCoreRuntime liveTelemetryRuntime
 	var performanceRuntime *app.PerformanceRuntime
 	telemetryStatusReplayCleanup := func() {}
 	overlayPullCleanup := func() {}

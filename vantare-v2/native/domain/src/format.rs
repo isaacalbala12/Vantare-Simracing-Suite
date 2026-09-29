@@ -1,0 +1,1 @@
+//! Formateador puro.

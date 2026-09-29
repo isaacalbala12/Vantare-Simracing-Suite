@@ -124,6 +124,32 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 	}
 }
 
+func TestStandingLegacyNormalizationOnlyExaminesOuterKeys(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{"compact with nested quality names", `{"q":{"q":"f","classGap":"s","interval":"m"},"gap":0,"bestLap":0,"lastLap":0}`, false},
+		{"escaped string value", `{"vehicleId":"a\\\"b","q":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, false},
+		{"literal outer legacy name", `{"quality":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, true},
+		{"escaped outer legacy name", `{"qual\u0069ty":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := standingNeedsLegacyNormalization([]byte(test.raw)); got != test.want {
+				t.Fatalf("normalization=%t, want %t", got, test.want)
+			}
+			var row StandingRowV2
+			if err := json.Unmarshal([]byte(test.raw), &row); err != nil {
+				t.Fatal(err)
+			}
+			if row.Quality.Q != QualityFresh {
+				t.Fatalf("quality=%q", row.Quality.Q)
+			}
+		})
+	}
+}
+
 func TestRelativeWireRejectsUnknownAuthority(t *testing.T) {
 	for _, raw := range []string{`{"authority":"unknown"}`, `{"authority":""}`, `{"authority":null}`, `{"auth\u006frity":null}`} {
 		var row RelativeRowV2

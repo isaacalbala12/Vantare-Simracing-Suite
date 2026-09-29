@@ -1,5 +1,29 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — coste de claves Standings y codec Engineer (2026-09-29)
+
+El detector de alias legacy de `StandingRowV2` inspeccionaba todo el JSON de
+la fila. Una clave `classGap` o `interval` del objeto de calidad anidado, o un
+escape en un valor, activaba innecesariamente el mapa y la reserialización.
+Ahora inspecciona solo claves del objeto exterior y sigue enviando las claves
+escapadas por el decodificador JSON antes de decidir alias. Hay regresiones de
+compacto anidado, escape de valor y alias literal/escapado; `go test ./...`
+pasó. En el fixture Rust estático, cinco pasadas previas dieron 899–912 µs y
+cinco posteriores 862–885 µs por frame, con 2023 asignaciones sin cambio.
+El fixture carece de alias anidados y no demuestra por sí solo la ganancia live.
+
+En LMU 1.4.2.0/47 coches, el perfil del receptor JSON candidate dio 959
+entregas Engineer/Strategy, 958 Overlay y cero huecos: CPU host 6,34375 s,
+hijo 2,296875 s en 15 s. Dentro del perfil, Engineer JSON acumuló 2,79 s,
+Overlay 1,15 s y `StandingRowV2.UnmarshalJSON` 0,37 s. Una ventana Go cercana
+dio 2,578125 s CPU/15 s. El brazo diagnóstico con Engineer binario dio
+2,8125 s host + 2,296875 s hijo = 5,109375 s/15 s, con 958–959 entregas,
+cero huecos y REST live. Es una señal fuerte para extender la decisión de
+formato de R21 al coste total de productos, pero son ventanas live separadas,
+no un banco pareado G0/G1/R; no acreditan CPU, p99 ni RSS finales. El siguiente
+corte es comparar Overlay y Engineer con codecs completos en el mismo corpus
+temporal real, manteniendo paridad exacta. Go sigue productivo, PR #1415 draft.
+
 ## VAN-778 / ISA-1403 — REST del hijo restaurado (2026-09-29)
 
 El supervisor lanzaba el hijo con entorno totalmente vacío. En esa condición,

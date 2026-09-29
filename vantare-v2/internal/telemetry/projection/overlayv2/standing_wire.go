@@ -100,17 +100,45 @@ func (row *StandingRowV2) UnmarshalJSON(data []byte) error {
 }
 
 func standingNeedsLegacyNormalization(data []byte) bool {
-	// Escaped property names must still pass through JSON's key decoder before
-	// alias detection. Ordinary Rust frames have unescaped compact keys.
-	if bytes.IndexByte(data, '\\') >= 0 {
-		return true
-	}
-	for _, name := range [...][]byte{
-		[]byte(`"quality"`), []byte(`"classGap"`), []byte(`"classGapLaps"`),
-		[]byte(`"classRef"`), []byte(`"interval"`), []byte(`"intervalLaps"`),
-	} {
-		if bytes.Contains(data, name) {
-			return true
+	// Only top-level aliases belong to StandingRowV2. Quality's nested object
+	// legitimately contains keys such as classGap and interval on compact wire.
+	depth := 0
+	for i := 0; i < len(data); i++ {
+		switch data[i] {
+		case '{', '[':
+			depth++
+		case '}', ']':
+			depth--
+		case '"':
+			start := i + 1
+			escaped := false
+			for i++; i < len(data); i++ {
+				if data[i] == '\\' {
+					escaped = true
+					i++
+					continue
+				}
+				if data[i] == '"' {
+					break
+				}
+			}
+			if depth != 1 || i >= len(data) {
+				continue
+			}
+			j := i + 1
+			for j < len(data) && (data[j] == ' ' || data[j] == '\n' || data[j] == '\r' || data[j] == '\t') {
+				j++
+			}
+			if j >= len(data) || data[j] != ':' {
+				continue
+			}
+			if escaped {
+				return true // JSON must decode an escaped property name before alias detection.
+			}
+			switch string(data[start:i]) {
+			case "quality", "classGap", "classGapLaps", "classRef", "interval", "intervalLaps":
+				return true
+			}
 		}
 	}
 	return false

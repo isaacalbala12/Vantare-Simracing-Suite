@@ -4,10 +4,10 @@
 //! Un único escritor (`&mut Core`, sin cerrojos ni I/O) funde, deriva y numera;
 //! los consumidores leen con [`Reader`] sin bloquearlo.
 //!
-//! Eventos ordenados y series por vuelta (flujos 2 y 3 de la ADR) no están en
-//! esta fase. Cuando lleguen, se alimentarán aquí mismo: `Core::observe`
-//! compara el snapshot previo con el nuevo (ya tiene ambos) y encola en su
-//! propio módulo hermano, con la misma `epoch`/`sequence` como punto de corte.
+//! El journal hermano compara aquí la foto previa con la nueva, con la misma
+//! `epoch`/`sequence`. Observar no escribe en disco; el propietario persiste
+//! explícitamente fuera del hilo de adquisición si activa recording.
+//! Series consume la misma foto publicada, también su degradación a obsoleto.
 
 mod delta;
 mod derive;
@@ -17,12 +17,14 @@ mod publish;
 
 use std::sync::Arc;
 use std::time::Duration;
+use std::{io, path::Path};
 
 use vantare_domain::{Adapter, AdapterError, Observation, Snapshot};
 
 pub use merge::Reject;
 pub use publish::Reader;
 
+use crate::flows::{Journal, Series};
 use merge::{Trackers, degrade, merge, stale};
 use publish::Publisher;
 
@@ -59,6 +61,8 @@ pub struct Core {
     /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
     /// `domain`, porque no es una señal publicada.
     trackers: Trackers,
+    events: Journal,
+    series: Series,
 }
 
 impl Core {
@@ -78,7 +82,32 @@ impl Core {
             last_source_time: None,
             stale: false,
             trackers: Trackers::default(),
+            events: Journal::volatile(epoch),
+            series: Series::default(),
         }
+    }
+
+    /// Configuración de la prueba de frontera. Recording desactivado con `None`.
+    /// Abrir y recuperar el fichero ocurre antes del bucle de adquisición.
+    pub fn with_flows(epoch: u64, retention: usize, recording: Option<&Path>) -> io::Result<Self> {
+        let events = Journal::open(epoch, retention, recording)?;
+        Ok(Self {
+            events,
+            ..Self::new(epoch)
+        })
+    }
+
+    pub fn events(&self) -> &Journal {
+        &self.events
+    }
+
+    pub fn series(&self) -> &Series {
+        &self.series
+    }
+
+    /// `persist` puede hacer I/O: llamarlo fuera de adquisición.
+    pub fn events_mut(&mut self) -> &mut Journal {
+        &mut self.events
     }
 
     /// Último snapshot publicado (el del propio escritor; los consumidores usan un [`Reader`]).
@@ -134,6 +163,7 @@ impl Core {
         if self.stale {
             degrade(&mut snapshot.state);
         }
+        self.events.observe(&self.current, &snapshot);
         self.publish(snapshot);
         Ok(())
     }
@@ -159,6 +189,7 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
+        self.series.observe(&snapshot);
         self.current = Arc::new(snapshot);
         self.publisher.publish(Arc::clone(&self.current));
     }

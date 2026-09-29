@@ -4,6 +4,7 @@
 
 pub mod adapter;
 pub mod core;
+pub mod flows;
 #[cfg(windows)]
 pub mod service;
 #[cfg(windows)]

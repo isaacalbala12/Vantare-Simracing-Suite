@@ -15,6 +15,15 @@ físicas consecutivas con cadencias distintas y el probe añade medición;
 prueba confirma que CPU y latencia siguen por encima de Go y que aún falta
 optimización sustancial. `go test ./...` pasó.
 
+La lectura del runtime explica una causa concreta de la diferencia de
+entregas: el driver Go envía cada poll REST completado como observación
+canónica independiente, mientras el poller Rust conserva solo el último
+resultado y lo fusiona en el siguiente tick SHM. Un poll REST nominal cada
+250 ms podría explicar ~60 entregas extra en 15 s; falta medir el desglose
+real por fuente. R20/R21 deben conservar los eventos REST y verificar su
+orden, sus cadencias y su paridad antes de comparar CPU. El corpus externo
+actual no tiene timestamps individuales de los requests REST.
+
 Se probó reutilizar `standings` cacheado cuando la cadencia no podía
 publicarlo. La paridad estricta LMU47 x80 siguió pasando, pero la mediana
 de construcción de secciones en cinco repeticiones subió de ~38,7 a

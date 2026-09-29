@@ -2513,6 +2513,15 @@ En dos pares de ventanas consecutivas LMU47 de 15 s, Go consumió
 no coinciden y no usa el corpus inmutable: **no** es G0/G1/R ni un ratio de
 aceptación. `go test ./...` pasó.
 
+La inspección del driver muestra una diferencia de trabajo: Go entrega al
+Core cada observación REST tras `pollREST`, además de los ticks SHM; Rust
+mantiene un slot REST latest-only y solo lo incorpora al siguiente SHM. El
+poll nominal de 250 ms podría explicar aproximadamente 60 entregas más en
+15 s, pero el probe no separa todavía las fuentes. No ajustar artificialmente
+el contador: portar los eventos REST con orden y backpressure explícitos,
+extender el corpus con timestamps de requests y repetir la paridad y el
+banco equivalente.
+
 Un experimento para evitar construir Standings antes de su cadencia pasó
 la paridad estricta LMU47 x80, pero copiar el `Value` cacheado fue más caro:
 medianas de cinco repeticiones, secciones ~38,7→49,8 ms/80 muestras y

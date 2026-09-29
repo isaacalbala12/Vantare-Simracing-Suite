@@ -2295,3 +2295,15 @@ Cinco repeticiones físicas pasaron; el test cierra el runtime y no deja un
 segundo lector LMU. Es una prueba del camino de crash y resync explícito,
 **no de replay durable de los facts del proceso terminado**. Siguen pendientes
 peer colgado, cola llena, suspensión, Stop concurrente y banco R21/R25.
+
+## 124. Stop concurrente durante conexión del hijo (2026-09-29)
+
+Un test Windows con el ejecutable Rust real espera a ver el proceso hijo
+propiedad del test y llama a Stop desde ocho goroutines. Antes del arreglo,
+la cancelación durante `acceptChild` llegaba como error de cierre; el test
+falló. El supervisor ahora trata la cancelación del contexto como cierre
+normal también antes del handshake. Veinte repeticiones pasaron sin error,
+sin hijo residual y con estado `stopped`; `go test ./...`, vet focal y
+`git diff --check` pasaron. Esto cubre la concurrencia de Stop y la
+cancelación en conexión, no el peer colgado ni suspensión/reanudación.
+Go continúa por defecto y R21/R25 siguen sin acreditar.

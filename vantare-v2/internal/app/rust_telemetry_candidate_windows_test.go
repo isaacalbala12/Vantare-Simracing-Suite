@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -35,6 +36,8 @@ type rustCandidateEngineerProbe struct {
 	available    atomic.Bool
 	rejections   atomic.Int64
 }
+
+var errOwnedRustChildNotFound = errors.New("test-owned Rust child not found")
 
 func (probe *rustCandidateEngineerProbe) ConsumeSourceStatus(status engineerprojection.SourceStatusV1) error {
 	probe.available.Store(status.State.Available())
@@ -91,6 +94,62 @@ func TestRustCandidateDisabledLifecycleIsTerminal(t *testing.T) {
 	}
 	if err := runtime.Start(t.Context()); !errors.Is(err, ErrRustCandidateLifecycle) {
 		t.Fatalf("restart after Stop = %v", err)
+	}
+}
+
+func TestRustCandidateConcurrentStopReapsChildOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" {
+		t.Skip("requires release Rust child")
+	}
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{Executable: executable, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = runtime.Stop(ctx) }()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		_, err := ownedRustChildPID(executable)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, errOwnedRustChildNotFound) {
+			t.Fatalf("inspect Rust child: %v", err)
+		}
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			t.Fatalf("Rust child did not start: %v", ctx.Err())
+		}
+	}
+	const callers = 8
+	var group sync.WaitGroup
+	results := make(chan error, callers)
+	for range callers {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			results <- runtime.Stop(ctx)
+		}()
+	}
+	group.Wait()
+	close(results)
+	for err := range results {
+		if err != nil {
+			t.Fatalf("concurrent Stop: %v", err)
+		}
+	}
+	if _, err := ownedRustChildPID(executable); !errors.Is(err, errOwnedRustChildNotFound) {
+		t.Fatalf("Rust child after concurrent Stop: %v", err)
+	}
+	if got := runtime.SourceStatus().State; got != driver.StateStopped.String() {
+		t.Fatalf("source state after Stop = %q", got)
 	}
 }
 
@@ -501,34 +560,47 @@ func nextRustCandidateStrategyEpoch(t *testing.T, ctx context.Context, subscript
 }
 
 func terminateOwnedRustChild(executable string) error {
-	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	pid, err := ownedRustChildPID(executable)
 	if err != nil {
 		return err
+	}
+	process, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, pid)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(process)
+	return windows.TerminateProcess(process, 111)
+}
+
+func ownedRustChildPID(executable string) (uint32, error) {
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return 0, err
 	}
 	defer windows.CloseHandle(snapshot)
 	entry := windows.ProcessEntry32{Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{}))}
 	if err := windows.Process32First(snapshot, &entry); err != nil {
-		return err
+		return 0, err
 	}
 	for {
 		if entry.ParentProcessID == uint32(os.Getpid()) && strings.EqualFold(windows.UTF16ToString(entry.ExeFile[:]), "vantare-telemetry.exe") {
-			process, err := windows.OpenProcess(windows.PROCESS_TERMINATE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, entry.ProcessID)
+			process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, entry.ProcessID)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			defer windows.CloseHandle(process)
 			path := make([]uint16, windows.MAX_LONG_PATH)
 			length := uint32(len(path))
 			if err := windows.QueryFullProcessImageName(process, 0, &path[0], &length); err != nil {
-				return err
+				return 0, err
 			}
 			if !strings.EqualFold(windows.UTF16ToString(path[:length]), executable) {
-				return errors.New("test child path did not match requested Rust binary")
+				return 0, errors.New("test child path did not match requested Rust binary")
 			}
-			return windows.TerminateProcess(process, 111)
+			return entry.ProcessID, nil
 		}
 		if err := windows.Process32Next(snapshot, &entry); err != nil {
-			return errors.New("test-owned Rust child not found")
+			return 0, errOwnedRustChildNotFound
 		}
 	}
 }

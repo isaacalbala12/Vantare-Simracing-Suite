@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — Stop concurrente durante conexión (2026-09-29)
+
+Un test con el hijo Rust real reprodujo un error de cierre cuando ocho llamadas
+Stop coincidían con la conexión del pipe. El supervisor ya normaliza la
+cancelación de ese contexto; el test pasó 20 veces, confirmó estado stopped y
+ausencia de hijo residual. Suite Go completa, vet focal y diff check pasan.
+R20 aún requiere peer colgado, cola llena, suspensión y replay durable; R21/R25
+mantienen el gate de CPU sin acreditar. Go sigue por defecto, PR #1415 draft,
+sin merge. Plan §124.
+
 ## VAN-778 / ISA-1403 — crash físico después de un fact (2026-09-29)
 
 LMU 1.4.2.0 con 47 vehículos: el test acepta un fact Engineer y un snapshot

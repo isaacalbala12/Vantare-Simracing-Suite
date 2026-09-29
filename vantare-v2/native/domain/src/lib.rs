@@ -10,7 +10,10 @@ mod capability;
 mod flag;
 pub mod format;
 mod model;
+pub mod pedals;
 mod quality;
+pub mod radar;
+pub mod standings;
 
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};

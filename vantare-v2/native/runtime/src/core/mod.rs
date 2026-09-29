@@ -9,7 +9,9 @@
 //! compara el snapshot previo con el nuevo (ya tiene ambos) y encola en su
 //! propio módulo hermano, con la misma `epoch`/`sequence` como punto de corte.
 
+mod delta;
 mod derive;
+mod fuel;
 mod merge;
 mod publish;
 
@@ -21,7 +23,7 @@ use vantare_domain::{Adapter, AdapterError, Observation, Snapshot};
 pub use merge::Reject;
 pub use publish::Reader;
 
-use merge::{degrade, merge, stale};
+use merge::{Trackers, degrade, merge, stale};
 use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
@@ -54,6 +56,9 @@ pub struct Core {
     last_advance: Duration,
     last_source_time: Option<Duration>,
     stale: bool,
+    /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
+    /// `domain`, porque no es una señal publicada.
+    trackers: Trackers,
 }
 
 impl Core {
@@ -72,6 +77,7 @@ impl Core {
             last_advance: Duration::ZERO,
             last_source_time: None,
             stale: false,
+            trackers: Trackers::default(),
         }
     }
 
@@ -112,7 +118,12 @@ impl Core {
     /// [`Reject`] si no se admite; entonces no se publica nada ni cambia la revisión.
     pub fn observe(&mut self, observation: Observation) -> Result<(), Reject> {
         let origin = observation.origin;
-        let mut snapshot = merge(Some(&self.current), observation, self.epoch)?;
+        let mut snapshot = merge(
+            Some(&self.current),
+            observation,
+            self.epoch,
+            &mut self.trackers,
+        )?;
         if origin.source_time.is_none() || origin.source_time != self.last_source_time {
             self.last_advance = origin.received_at;
         }
@@ -184,6 +195,7 @@ mod tests {
             id: CarId(id),
             number: id.to_string(),
             position: Quality::Reliable(position),
+            in_pits: Quality::Reliable(false),
             pose: Quality::Reliable(Pose {
                 x_m,
                 y_m: 0.0,
@@ -261,6 +273,78 @@ mod tests {
 
         let pedals = pedals::project(&snapshot, Preferences::default());
         assert_eq!(pedals.throttle, Some(0.75));
+    }
+
+    /// La foto base con la vuelta del jugador: combustible, distancia y tiempo.
+    fn lap_photo(
+        at: Duration,
+        lap: u32,
+        level_l: f64,
+        distance_m: f64,
+        elapsed_s: f64,
+    ) -> Observation {
+        let mut obs = observation(at, at, 0.5);
+        let car = &mut obs.state.cars[1];
+        car.laps = Quality::Reliable(lap);
+        car.lap_distance_m = Quality::Reliable(distance_m);
+        car.lap_elapsed_s = Quality::Reliable(elapsed_s);
+        obs.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(level_l);
+        obs
+    }
+
+    #[test]
+    fn fuel_consumption_is_measured_across_photos_in_the_core() {
+        let mut core = Core::new(1);
+        let reader = core.subscribe();
+        let mut adapter = Script::default();
+        adapter
+            .0
+            .push_back(Ok(Some(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))));
+        adapter
+            .0
+            .push_back(Ok(Some(lap_photo(ms(100), 2, 96.0, 10.0, 0.1))));
+        core.step(&mut adapter, ms(0)).unwrap();
+        core.step(&mut adapter, ms(100)).unwrap();
+        let snapshot = reader.latest();
+        let player = snapshot.state.player.as_ref().unwrap();
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(4.0));
+        assert_eq!(player.fuel.laps_left, Quality::Estimated(24.0));
+    }
+
+    #[test]
+    fn delta_backup_is_built_across_photos_in_the_core() {
+        let mut core = Core::new(1);
+        let reader = core.subscribe();
+        let mut adapter = Script::default();
+        // Vuelta 1: 0,5 s en 100 m; la 2 llega a 50 m en 0,15 s.
+        for (at, lap, distance_m, elapsed_s) in [
+            (0, 1, 0.0, 0.0),
+            (100, 1, 100.0, 0.5),
+            (200, 2, 0.0, 0.0),
+            (300, 2, 50.0, 0.15),
+        ] {
+            adapter.0.push_back(Ok(Some(lap_photo(
+                ms(at),
+                lap,
+                100.0,
+                distance_m,
+                elapsed_s,
+            ))));
+        }
+        for at in [0, 100, 200, 300] {
+            core.step(&mut adapter, ms(at)).unwrap();
+        }
+        let snapshot = reader.latest();
+        let delta = snapshot
+            .state
+            .player
+            .as_ref()
+            .unwrap()
+            .delta_best_s
+            .current()
+            .copied()
+            .unwrap();
+        assert!((delta + 0.1).abs() < 1e-9, "delta = {delta}");
     }
 
     #[test]

@@ -13,6 +13,7 @@ mod flag;
 pub mod format;
 mod model;
 pub mod pedals;
+pub mod pedals_telemetry;
 mod quality;
 pub mod radar;
 pub mod standings;

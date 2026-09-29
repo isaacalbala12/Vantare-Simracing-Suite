@@ -7,7 +7,6 @@ use crate::efficiency::{
     tokens,
 };
 use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
-use std::{borrow::Cow, cell::Cell};
 use vantare_domain::{
     Snapshot,
     car_damage_numbers::{self, ViewModel},
@@ -15,11 +14,6 @@ use vantare_domain::{
 };
 
 pub const SIZE: (f32, f32) = (140.0, 149.0);
-// Peso productivo ausente del kit. Instancia Latin de Inter-Variable.woff2,
-// generada con ui/assets/make-fonts.py (solo peso 750, destino este módulo).
-// Misma licencia OFL que ui/assets/fonts/OFL-Inter.txt. Candidato a subir al kit.
-const FONT: &[u8] = include_bytes!("Inter-750.ttf");
-thread_local! { static FONT_READY: Cell<bool> = const { Cell::new(false) }; }
 
 fn status_lines(vm: &ViewModel) -> Vec<&'static str> {
     match vm.status_text {
@@ -43,15 +37,6 @@ fn height(vm: &ViewModel) -> f32 {
 }
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    if !FONT_READY.get() {
-        match cx.text_system().add_fonts(vec![Cow::Borrowed(FONT)]) {
-            Ok(()) => FONT_READY.set(true),
-            Err(error) => {
-                eprintln!("Inter 750: {error}");
-                return;
-            }
-        }
-    }
     let mut top = 8.0;
     let lines = status_lines(vm);
     if !lines.is_empty() {

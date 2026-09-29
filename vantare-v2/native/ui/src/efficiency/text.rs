@@ -17,12 +17,13 @@ use std::{
 };
 
 /// Instancias estaticas generadas por `assets/make-fonts.py`.
-const FONTS: [&[u8]; 6] = [
+const FONTS: [&[u8]; 7] = [
     include_bytes!("../../assets/fonts/Inter-400.ttf"),
     include_bytes!("../../assets/fonts/Inter-500.ttf"),
     include_bytes!("../../assets/fonts/Inter-600.ttf"),
     include_bytes!("../../assets/fonts/Inter-650.ttf"),
     include_bytes!("../../assets/fonts/Inter-700.ttf"),
+    include_bytes!("../../assets/fonts/Inter-750.ttf"),
     include_bytes!("../../assets/fonts/Inter-800.ttf"),
 ];
 

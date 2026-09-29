@@ -19,7 +19,7 @@ UNICODES = list(range(0x20, 0x17F)) + [
     0x2248, 0x00B0, 0x00B7, 0x2190, 0x2191, 0x2192, 0x2193, 0x25B2, 0x25BC,
 ]
 import os
-WEIGHTS = tuple(int(w) for w in os.environ.get('INTER_WEIGHTS', '400,500,600,650,700,800').split(','))
+WEIGHTS = tuple(int(w) for w in os.environ.get('INTER_WEIGHTS', '400,500,600,650,700,750,800').split(','))
 for weight in WEIGHTS:
     font = TTFont(SRC)
     font = instantiateVariableFont(font, {"wght": weight}, inplace=False)

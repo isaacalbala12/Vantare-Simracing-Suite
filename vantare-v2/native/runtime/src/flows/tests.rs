@@ -11,7 +11,7 @@ use vantare_domain::{Car, CarId, Observation, Player, Quality, SessionId, State}
 use super::*;
 use crate::core::Core;
 
-fn photo(sequence: u64, in_pits: bool) -> Observation {
+pub(super) fn photo(sequence: u64, in_pits: bool) -> Observation {
     let mut observation = Observation {
         state: State {
             cars: vec![Car {

@@ -7,6 +7,7 @@
 //! El journal hermano compara aquí la foto previa con la nueva, con la misma
 //! `epoch`/`sequence`. Observar no escribe en disco; el propietario persiste
 //! explícitamente fuera del hilo de adquisición si activa recording.
+//! Series consume la misma foto publicada, también su degradación a obsoleto.
 
 mod delta;
 mod derive;
@@ -23,7 +24,7 @@ use vantare_domain::{Adapter, AdapterError, Observation, Snapshot};
 pub use merge::Reject;
 pub use publish::Reader;
 
-use crate::flows::Journal;
+use crate::flows::{Journal, Series};
 use merge::{Trackers, degrade, merge, stale};
 use publish::Publisher;
 
@@ -61,6 +62,7 @@ pub struct Core {
     /// `domain`, porque no es una señal publicada.
     trackers: Trackers,
     events: Journal,
+    series: Series,
 }
 
 impl Core {
@@ -81,6 +83,7 @@ impl Core {
             stale: false,
             trackers: Trackers::default(),
             events: Journal::volatile(epoch),
+            series: Series::default(),
         }
     }
 
@@ -96,6 +99,10 @@ impl Core {
 
     pub fn events(&self) -> &Journal {
         &self.events
+    }
+
+    pub fn series(&self) -> &Series {
+        &self.series
     }
 
     /// `persist` puede hacer I/O: llamarlo fuera de adquisición.
@@ -182,6 +189,7 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
+        self.series.observe(&snapshot);
         self.current = Arc::new(snapshot);
         self.publisher.publish(Arc::clone(&self.current));
     }

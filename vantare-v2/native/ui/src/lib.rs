@@ -21,5 +21,7 @@
 )]
 
 pub mod overlay;
+pub mod pedals;
+pub mod radar;
 pub mod standings;
 pub mod text;

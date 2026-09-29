@@ -32,3 +32,5 @@ La ventana Standings consume exclusivamente `127.0.0.1` o `::1`. Rechaza otra ru
 - El objetivo siguiente es medir diferencias contra la referencia de este directorio y corregirlas antes de ampliar pantallas.
 
 La comparación visual inicial está en [`evidence/hub-fidelity.md`](evidence/hub-fidelity.md). La captura nativa actual es una línea de base deliberadamente no aceptada: el objetivo de esta tarea sigue siendo copiar exactamente el Inicio productivo congelado arriba.
+
+Validación local del primer corte: `cargo fmt --check`, `cargo test` (2/2), `cargo clippy --all-targets -- -D warnings` y `cargo build --release` aprobados en Windows. La compilación optimizada en frío tardó 10 min 49 s en esta máquina; esto es tiempo de build y no una medida de consumo en ejecución.

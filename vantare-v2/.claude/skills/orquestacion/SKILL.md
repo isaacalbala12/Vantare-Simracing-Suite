@@ -25,7 +25,7 @@ Esta skill fija **qué modelo hace qué** y **cómo se delega**. Complementa
 | Fable 5.1 | medio |
 | GPT 6 Astra | max |
 | Opus 5.5 | medio |
-| Sonnet 5.5 | high |
+| Sonnet 5.5 | medio |
 | DeepSeek V4.1 Flash | max |
 | Muse Spark 1.3 | max |
 
@@ -65,7 +65,7 @@ y `t3cli show|wait|transcript --thread <id>` para seguirlos.
 
 | Modelo | Proveedor T3 Code y opciones |
 |---|---|
-| Sonnet 5.5 (ejecutor) | `--provider claudeAgent --model claude-sonnet-5-5 --option effort=high` |
+| Sonnet 5.5 (ejecutor) | `--provider claudeAgent --model claude-sonnet-5-5 --option effort=medium` |
 | Opus 5.5 | `--provider claudeAgent --model claude-opus-5-5 --option effort=medium` |
 | Fable 5.1 (advisor) | `--provider claudeAgent --model claude-fable-5-1 --option effort=medium` |
 | GPT 6 Astra (advisor) | `--provider codex --model gpt-6-astra --reasoning-effort max` |

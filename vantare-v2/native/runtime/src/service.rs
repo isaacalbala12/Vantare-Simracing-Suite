@@ -1,10 +1,11 @@
 //! Bucle del núcleo: `Adapter::poll` → [`Core`] → `ipc::Publisher`.
 
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use vantare_domain::Adapter;
+use vantare_domain::{Adapter, Snapshot};
 use vantare_ipc::{Error, Publisher};
 
 use crate::core::Core;
@@ -30,7 +31,24 @@ pub fn run(
     stop: &AtomicBool,
 ) -> Result<(), Error> {
     let mut publisher = Publisher::new(pipe, |_| true)?;
-    let mut core = Core::new(epoch);
+    drive(&mut Core::new(epoch), adapter, speed, stop, |snapshot| {
+        publisher.publish(snapshot)
+    })
+}
+
+/// El bucle sin transporte: hasta que `stop` se levante, hace avanzar `core`
+/// con `adapter` y entrega a `publish` cada foto nueva. Quien no necesite
+/// `publish` lee del [`Core::subscribe`] que haya sacado antes.
+///
+/// # Errors
+/// El primer error de `publish`.
+pub fn drive<E>(
+    core: &mut Core,
+    adapter: &mut dyn Adapter,
+    speed: f64,
+    stop: &AtomicBool,
+    mut publish: impl FnMut(Arc<Snapshot>) -> Result<(), E>,
+) -> Result<(), E> {
     let start = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
     while !stop.load(Ordering::Relaxed) {
@@ -47,7 +65,7 @@ pub fn run(
         let snapshot = core.snapshot();
         if snapshot.sequence > sent {
             sent = snapshot.sequence;
-            publisher.publish(snapshot)?;
+            publish(snapshot)?;
         } else {
             thread::sleep(IDLE);
         }

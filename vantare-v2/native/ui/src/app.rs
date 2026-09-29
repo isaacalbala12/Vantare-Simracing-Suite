@@ -399,7 +399,7 @@ mod tests {
                 .expect("escena radar");
         let radar = vantare_domain::radar::project(&radar);
         assert_eq!(radar.cars.len(), 3);
-        assert_eq!((radar.cars[0].right_m, radar.cars[0].ahead_m), (4.0, 0.0));
+        assert_eq!((radar.cars[0].right_m, radar.cars[0].ahead_m), (-4.0, 0.0));
         let pedals =
             vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
                 .expect("escena pedales");

@@ -1,6 +1,6 @@
 //! Radar en diseño Eficiencia (`RadarFunctional.tsx`): lienzo de 220 x 220 con
 //! el jugador en el centro y 3 px por metro. Geometría y colores del CSS de
-//! producción; sin paridad de píxel en esta fase.
+//! producción; escena de paridad congelada en `ui/reference/radar.geometry.json`.
 
 use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
 use vantare_domain::{Capability, radar::ViewModel};
@@ -16,15 +16,26 @@ const CAR: (f32, f32) = (16.0, 32.0);
 const CAR_RADIUS: f32 = 5.0;
 const STROKE: u32 = 0x0c0e11;
 
-/// Coche de 16 x 32 con contorno de 2 px hacia fuera, como el trazo SVG.
-fn paint_car(window: &mut Window, cx: f32, cy: f32, fill: u32) {
+/// Coche de 16 x 32 con trazo SVG centrado: 2 px, o 3 si es doblado cercano.
+fn paint_car(window: &mut Window, cx: f32, cy: f32, fill: u32, highlighted: bool) {
     let (w, h) = CAR;
+    let stroke_width = if highlighted { 3.0 } else { 2.0 };
+    let outset = stroke_width / 2.0;
     window.paint_quad(quad(
-        rect(cx - w / 2.0 - 1.0, cy - h / 2.0 - 1.0, w + 2.0, h + 2.0),
-        Corners::all(px(CAR_RADIUS + 1.0)),
+        rect(
+            cx - w / 2.0 - outset,
+            cy - h / 2.0 - outset,
+            w + stroke_width,
+            h + stroke_width,
+        ),
+        Corners::all(px(CAR_RADIUS + outset)),
         col(fill, 1.0),
-        Edges::all(px(2.0)),
-        col(STROKE, 0.9),
+        Edges::all(px(stroke_width)),
+        if highlighted {
+            col(0xf1c16c, 1.0)
+        } else {
+            col(STROKE, 0.9)
+        },
         BorderStyle::default(),
     ));
 }
@@ -48,11 +59,11 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let cross = col(0xffffff, 0.09);
     paint_rect(window, CENTER - 0.5, 10.0, 1.0, 200.0, cross);
     paint_rect(window, 10.0, CENTER - 0.5, 200.0, 1.0, cross);
-    // Avisos de coche al lado: trazos de 5 px de x = 92 / 128, de y = 94 a 126.
+    // Trazos de 5 px de y = 94 a 126; los extremos redondos sobresalen 2,5 px.
     for (active, x) in [(vm.overlap_left, 92.0), (vm.overlap_right, 128.0)] {
         if active {
             window.paint_quad(quad(
-                rect(x - 2.5, 94.0, 5.0, 32.0),
+                rect(x - 2.5, 91.5, 5.0, 37.0),
                 Corners::all(px(2.5)),
                 col(0xf09a52, 1.0),
                 Edges::all(px(0.0)),
@@ -61,15 +72,25 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             ));
         }
     }
-    paint_car(window, CENTER, CENTER, tokens::INK);
+    paint_car(window, CENTER, CENTER, tokens::INK, false);
     for car in &vm.cars {
-        let fill = if car.overlap { 0xf09a52 } else { 0x76b7da };
+        // Precedencia CSS: solape > doblado > cercano > normal.
+        let fill = if car.overlap {
+            0xf09a52
+        } else if car.lapped {
+            0x35688f
+        } else if car.near {
+            0xf1c16c
+        } else {
+            0x76b7da
+        };
         // `right_m` crece a la derecha y `ahead_m` hacia delante (arriba en pantalla).
         paint_car(
             window,
             CENTER + car.right_m as f32 * SCALE,
             CENTER - car.ahead_m as f32 * SCALE,
             fill,
+            car.lapped && car.near && !car.overlap,
         );
     }
 }
@@ -117,6 +138,34 @@ impl Widget {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn parity_scene_keeps_the_reference_sides() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/radar.snapshot.json"))
+                .expect("escena Radar DTO v3 válida");
+        let vm = vantare_domain::radar::project(&snapshot);
+        let positions: Vec<_> = vm
+            .cars
+            .iter()
+            .map(|car| (car.ahead_m, car.right_m))
+            .collect();
+        assert_eq!(positions, [(0.0, -4.0), (-12.0, 8.0), (20.0, -2.0)]);
+        assert!(vm.overlap_left && !vm.overlap_right);
+        let flags: Vec<_> = vm
+            .cars
+            .iter()
+            .map(|car| (car.overlap, car.near, car.lapped))
+            .collect();
+        assert_eq!(
+            flags,
+            [
+                (true, true, false),
+                (false, false, false),
+                (false, false, true)
+            ]
+        );
+    }
 
     #[test]
     fn repaint_only_on_a_new_view_model() {

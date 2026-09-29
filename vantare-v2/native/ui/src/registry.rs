@@ -63,4 +63,5 @@ widgets! {
     CarDamageVisual => car_damage_visual: "car-damage-visual",
     InputTelemetry => input_telemetry: "input-telemetry",
     MulticlassRelative => multiclass_relative: "multiclass-relative",
+    BroadcastTower => broadcast_tower: "broadcast-tower",
 }

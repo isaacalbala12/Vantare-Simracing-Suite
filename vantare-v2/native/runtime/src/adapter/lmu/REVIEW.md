@@ -9,7 +9,7 @@ fichero contra el layout, los fixtures y el corpus reales, no solo se copió.
 
 | # | Hallazgo en el original | Qué se hizo |
 | --- | --- | --- |
-| 1 | `derive/fuel.rs:40` implementa `FuelValue` para `lmu::Fuel`: `derive` depende de LMU. | No se porta `derive`. Combustible, delta, desgaste y daño tampoco se leen mientras `domain` no los modele (offsets en `lmu.rs:462-534` del original); cuando lleguen serán tipos neutros del dominio, no de LMU. |
+| 1 | `derive/fuel.rs:40` implementa `FuelValue` para `lmu::Fuel`: `derive` depende de LMU. | No se porta `derive`. El adaptador ya lee combustible y delta nativo, y el núcleo deriva `per_lap_l`/`laps_left` (ISA-1425). Desgaste y daño siguen sin modelo en `domain` (offsets en `lmu.rs:487-534` del original); cuando lleguen serán tipos neutros del dominio, no de LMU. |
 | 2 | Builds admitidas fijadas en un `matches!` (`lmu.rs:190`), repetido en `version.rs`. | Una tabla `SUPPORTED_BUILDS` en `frame.rs`; `shm.rs` la reutiliza y un test recorre cada build contra su fixture real. No se hace configurable: sin captura que pruebe el layout de una build nueva, aceptarla sería adivinar. |
 | 3 | Las pruebas físicas y el corpus hacían `return` silencioso si faltaba la variable de entorno (`temporal_corpus.rs`, `high_rate_temporal.rs`, `reader.rs`, `process.rs`, `version.rs`, `http.rs`). | El corpus vive en el repo, se verifica su SHA-256 y falta = fallo. Las pruebas con LMU real son `#[ignore = "…"]` (visibles, no silenciosas). |
 | 4 | `Poller`: cola de 16 rondas; si el núcleo tarda ~4 s el desbordamiento es fatal (`BacklogOverflow`) y un mutex envenenado hace `expect`/pánico. | Un hueco «última ronda» que se sustituye (la caché solo guarda la última por endpoint, así que nada se pierde) y `PoisonError::into_inner`. Un núcleo lento ya no mata el adaptador. |
@@ -35,10 +35,44 @@ fichero contra el layout, los fixtures y el corpus reales, no solo se copió.
   No es fiable: `session.state` queda `Unavailable`. Se implementó y se retiró.
 - **`mEndET` < `mCurrentET`** en el corpus (21 605 s frente a 27 172 s): sin tiempo
   restante (`remaining_s` no disponible), regla del original.
-- **Pose del jugador y de los rivales** vienen de relojes distintos (telemetría y
+- **Pose del jugador y de los rivales** venían de relojes distintos (telemetría y
   `scoring`): en `lmu-fixture.bin`, el mismo coche está 2,4 m más atrás en `scoring`
-  (a 15,6 m/s). Los offsets del radar mezclan ambos. Sin resolver: exige decisión
-  del núcleo (extrapolar por velocidad) o del dominio.
+  (a 15,6 m/s). Resuelto dentro del adaptador (ISA-1425): con el jugador, presente
+  en ambos flujos, se estima `Δt = dot(pos_tel − pos_scoring, v_mundo) / |v_mundo|²`
+  (0 si va a menos de 1 m/s) y cada rival se extrapola `pos += v_rival_mundo · Δt`.
+  En el fixture Δt = 0,1813 s y el jugador queda a 0,00014 m de su pose rápida.
+
+## Señales de la fase 1 (ISA-1425)
+
+Pendientes de fase 0 que quedan cerrados: la lectura de combustible, delta,
+sector, distancia de vuelta, tiempo de vuelta, vueltas totales y longitud del
+circuito (antes descartadas), y la alineación de relojes entre `scoring` y
+telemetría. Criterios de validez, medidos contra los fixtures reales:
+
+- **Combustible del jugador** (telemetría +524/+608): litros y capacidad; el par
+  vale solo si ambos son finitos, la capacidad > 0 y 0 ≤ nivel ≤ capacidad. Un
+  par inválido deja ambas señales `Unavailable`.
+- **Delta nativo** (+696): vale si es finito y |delta| < 10 000 s; un delta
+  negativo (más rápido) es válido.
+- **Sector en curso** (`scoring` +102): `mSector` 0 = último sector, 1 = S1,
+  2 = S2, y se publica como índice desde 0 (1 → 0, 2 → 1, 0 → 2). El sidecar del
+  fixture etiqueta el byte como `SECTOR{byte+1}`, que no es la convención del SDK.
+- **Distancia de vuelta** (`scoring` +104): una distancia negativa (posición
+  anterior a la línea de meta) queda `Unavailable`; el resto viaja en metros.
+- **Tiempo de la vuelta en curso** (`scoring` +464): vale si es finito; si todos
+  los coches lo traen exactamente a 0 y las distancias de vuelta difieren, es un
+  marcador del simulador y se descarta (si no, se publicaría 0,00 s a mitad de
+  vuelta). `last_sectors_s` sigue vacío: el layout no trae tiempos de sector.
+- **Vueltas totales** (`mMaximumLaps` @1716): 0 (sesión por tiempo) y `i32::MAX`
+  (sin límite) quedan `Unavailable`, igual que un negativo; cota de cordura 10 000.
+- **Longitud del circuito** (@1720): > 0 y finita; los fixtures 1.4.x sin
+  longitud (`0.0`) la dejan `Unavailable`.
+
+Capacidades `fuel`, `delta`, `sectors` y `lap_progress` con el criterio habitual
+(`Fresh` con dato fresco, `WithData` con dato caducado, `Supported` sin dato; en
+los menús, `Supported`). Valores reales: el corpus de 47 coches trae 50/75 L,
+delta 0,0, S1, 269,02 m, 4,236 s y 13 623,97 m de circuito; `lmu-fixture.bin`
+99,59/100 L, delta 0,0, S1, 1068,23 m y 4655,11 m con el cronómetro sin dato.
 
 ## Riesgos aceptados
 

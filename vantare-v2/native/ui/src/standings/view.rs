@@ -68,6 +68,8 @@ fn snap(value: f32) -> f32 {
 }
 
 pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
+    let (ox, oy) = text::origin();
+    let (x, y) = (x + ox, y + oy);
     let (left, top) = (snap(x), snap(y));
     let (right, bottom) = (snap(x + w).max(left), snap(y + h).max(top));
     Bounds::new(
@@ -77,7 +79,8 @@ pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
 }
 
 fn pt(x: f32, y: f32) -> Point<Pixels> {
-    point(px(x), px(y))
+    let (ox, oy) = text::origin();
+    point(px(x + ox), px(y + oy))
 }
 
 fn flag_rgb(flag: Option<&FlagKind>) -> u32 {

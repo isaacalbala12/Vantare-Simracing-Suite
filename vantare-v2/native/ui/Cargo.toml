@@ -8,6 +8,8 @@ publish.workspace = true
 [features]
 # Captura con alfa de la ventana (dos pasadas GDI) para la prueba de paridad.
 parity-capture = []
+# Imprime cada segundo cuántos fotogramas, `render` y pintados hace cada widget.
+paint-stats = []
 
 [dependencies]
 vantare-domain.workspace = true

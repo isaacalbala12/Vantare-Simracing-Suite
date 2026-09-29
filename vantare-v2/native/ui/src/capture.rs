@@ -16,7 +16,7 @@ use std::time::Duration;
 use gpui::{App, AsyncApp, Entity};
 use vantare_domain::format::Preferences;
 
-use crate::app::{self, Kind, Overlay};
+use crate::app::{self, Kind, Overlay, Single};
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
 use crate::standings::view::col;
@@ -189,11 +189,16 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
 }
 
 /// Espera a que la ventana exista y el movimiento termine; devuelve su HWND.
-async fn settled(cx: &mut AsyncApp, view: &Entity<Overlay>) -> Result<Hwnd, String> {
+async fn settled(
+    cx: &mut AsyncApp,
+    root: &Entity<Single>,
+    view: &Entity<Overlay>,
+) -> Result<Hwnd, String> {
     for _ in 0..200 {
         sleep(cx, 50).await;
-        let state = view.read_with(cx, |v, _| (v.hwnd(), v.animating()));
-        if let (Some(hwnd), false) = state {
+        let hwnd = root.read_with(cx, |v, _| v.hwnd());
+        let animating = view.read_with(cx, |v, _| v.animating());
+        if let (Some(hwnd), false) = (hwnd, animating) {
             return Ok(hwnd);
         }
     }
@@ -230,8 +235,13 @@ async fn pass(
     ))
 }
 
-async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
-    let hwnd = settled(&mut cx, &view).await?;
+async fn capture(
+    mut cx: AsyncApp,
+    root: Entity<Single>,
+    view: Entity<Overlay>,
+    path: PathBuf,
+) -> Result<(), String> {
+    let hwnd = settled(&mut cx, &root, &view).await?;
     // La referencia son píxeles físicos a 100 % de DPI (SPEC §7).
     // SAFETY: `hwnd` es el HWND vivo de la ventana; la llamada no toma punteros.
     let dpi = unsafe { gdi::GetDpiForWindow(hwnd) };
@@ -257,19 +267,19 @@ pub fn run(path: PathBuf) -> ExitCode {
             flag.set(true);
             return;
         }
-        let view = match app::open_window(cx, Kind::Standings, Preferences::default(), (20.0, 20.0))
-        {
-            Ok(view) => view,
-            Err(error) => {
-                eprintln!("no se pudo abrir la ventana: {error}");
-                flag.set(true);
-                cx.quit();
-                return;
-            }
-        };
+        let (view, root) =
+            match app::open_window(cx, Kind::Standings, Preferences::default(), (20.0, 20.0)) {
+                Ok(opened) => opened,
+                Err(error) => {
+                    eprintln!("no se pudo abrir la ventana: {error}");
+                    flag.set(true);
+                    cx.quit();
+                    return;
+                }
+            };
         view.update(cx, |v, cx| v.ingest(&source::fixed(), cx));
         cx.spawn(async move |cx| {
-            let result = capture(cx.clone(), view, path).await;
+            let result = capture(cx.clone(), root, view, path).await;
             if let Err(error) = &result {
                 eprintln!("{error}");
                 flag.set(true);

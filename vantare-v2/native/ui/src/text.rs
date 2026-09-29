@@ -9,7 +9,12 @@ use gpui::{
     App, Font, FontFeatures, FontStyle, FontWeight, Hsla, Pixels, Point, ShapedLine, SharedString,
     TextAlign, TextRun, Window, point, px,
 };
-use std::{borrow::Cow, cell::RefCell, collections::HashMap, sync::Arc};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    sync::Arc,
+};
 
 /// Instancias estaticas generadas por `assets/make-fonts.py`.
 const FONTS: [&[u8]; 6] = [
@@ -59,6 +64,9 @@ pub struct Ink {
 type Key = (String, u32, u32, [u32; 4]);
 
 thread_local! {
+    /// Esquina del widget en la ventana: los widgets pintan en coordenadas propias
+    /// (0, 0) y quien los aloja en una ventana compartida fija aquí su posición.
+    static ORIGIN: Cell<(f32, f32)> = const { Cell::new((0.0, 0.0)) };
     static CACHE: RefCell<HashMap<Key, ShapedLine>> = RefCell::new(HashMap::new());
 }
 
@@ -137,11 +145,25 @@ pub fn fit(window: &Window, text: &str, ink: &Ink, max: f32) -> String {
     "…".to_string()
 }
 
+pub fn origin() -> (f32, f32) {
+    ORIGIN.with(Cell::get)
+}
+
+/// Ejecuta `f` con el origen de pintado en `origin` (px de ventana).
+pub fn with_origin<R>(origin: (f32, f32), f: impl FnOnce() -> R) -> R {
+    let previous = ORIGIN.with(|o| o.replace(origin));
+    let result = f();
+    ORIGIN.with(|o| o.set(previous));
+    result
+}
+
 /// Pinta el texto con la linea de base en `base_y` y su borde izquierdo en `x`.
 pub fn draw(window: &mut Window, cx: &mut App, text: &str, x: f32, base_y: f32, ink: &Ink) {
     if text.is_empty() {
         return;
     }
+    let (ox, oy) = origin();
+    let (x, base_y) = (x + ox, base_y + oy);
     let line = shape(window, text, ink);
     let ascent = f32::from(line.ascent);
     let descent = f32::from(line.descent);

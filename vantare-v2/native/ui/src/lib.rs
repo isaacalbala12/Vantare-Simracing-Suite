@@ -28,6 +28,8 @@ mod pedals;
 mod radar;
 pub mod source;
 pub mod standings;
+#[cfg(feature = "paint-stats")]
+mod stats;
 mod text;
 
-pub use app::run;
+pub use app::{Grouping, run};

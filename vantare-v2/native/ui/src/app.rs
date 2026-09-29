@@ -1,13 +1,15 @@
-//! Proceso de overlays: una ventana GPUI por widget, alimentadas por un canal de
-//! `Snapshot`s. Cada ventana proyecta la instantánea con el `ViewModel` de
-//! `domain` que le corresponde y solo repinta cuando ese ViewModel cambia.
+//! Proceso de overlays: widgets GPUI (una ventana por widget o una por monitor)
+//! alimentados por un canal de `Snapshot`s. Cada widget proyecta la instantánea
+//! con el `ViewModel` de `domain` que le corresponde y solo repinta cuando ese
+//! ViewModel cambia.
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use gpui::{
-    App, Bounds, Context, Entity, IntoElement, Render, Window, WindowBackgroundAppearance,
-    WindowBounds, WindowKind, WindowOptions, canvas, point, prelude::*, px, size,
+    App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, canvas, div, point,
+    prelude::*, px, size,
 };
 use vantare_domain::format::Preferences;
 use vantare_domain::{Snapshot, pedals, radar, standings};
@@ -31,18 +33,20 @@ struct Standings {
     motion: Motion,
 }
 
+/// Cómo se pinta un widget en el lienzo que GPUI le da.
+type Paint = Box<dyn Fn(&mut Window, &mut App)>;
+
 enum Widget {
     Standings(Box<Standings>),
     Radar(radar::ViewModel),
     Pedals(pedals::ViewModel),
 }
 
+/// Widget de una ventana: proyecta la instantánea y se pinta en un lienzo de su
+/// tamaño. No sabe si la ventana es suya o compartida con otros widgets.
 pub struct Overlay {
     widget: Widget,
     prefs: Preferences,
-    hwnd: Option<Hwnd>,
-    /// Tamaño de lienzo aplicado a la ventana.
-    window_size: (f32, f32),
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -55,16 +59,21 @@ impl Overlay {
             Kind::Radar => Widget::Radar(radar::project(&Snapshot::default())),
             Kind::Pedals => Widget::Pedals(pedals::project(&Snapshot::default(), prefs)),
         };
-        let mut overlay = Self {
+        Self {
             widget,
             prefs,
-            hwnd: None,
-            window_size: (0.0, 0.0),
             #[cfg(feature = "parity-capture")]
             backdrop: None,
-        };
-        overlay.window_size = overlay.wanted_size();
-        overlay
+        }
+    }
+
+    #[cfg(feature = "paint-stats")]
+    fn kind(&self) -> Kind {
+        match &self.widget {
+            Widget::Standings(_) => Kind::Standings,
+            Widget::Radar(_) => Kind::Radar,
+            Widget::Pedals(_) => Kind::Pedals,
+        }
     }
 
     fn wanted_size(&self) -> (f32, f32) {
@@ -97,11 +106,6 @@ impl Overlay {
             Widget::Standings(s) => s.motion.animating(Instant::now()),
             _ => false,
         }
-    }
-
-    #[cfg(feature = "parity-capture")]
-    pub(crate) fn hwnd(&self) -> Option<Hwnd> {
-        self.hwnd
     }
 }
 
@@ -158,26 +162,28 @@ impl Standings {
 
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        if self.hwnd.is_none() {
-            self.hwnd = overlay::hwnd_of(window);
-            if let Some(hwnd) = self.hwnd {
-                overlay::apply(hwnd);
-            }
-        }
-        // El alto de Standings sigue a las filas visibles (SPEC §7). Se redimensiona
-        // por Win32: `Window::resize` de GPUI volvería a sumar el marco de sistema.
-        let wanted = self.wanted_size();
-        if self.window_size != wanted {
-            self.window_size = wanted;
-            if let Some(hwnd) = self.hwnd {
-                let scale = window.scale_factor();
-                overlay::resize(
-                    hwnd,
-                    (wanted.0 * scale).round() as i32,
-                    (wanted.1 * scale).round() as i32,
-                );
-            }
-        }
+        #[cfg(feature = "paint-stats")]
+        let kind = self.kind();
+        #[cfg(feature = "paint-stats")]
+        crate::stats::render(kind);
+        let size = self.wanted_size();
+        // Cada widget pinta en coordenadas propias; `with_origin` lo coloca donde
+        // GPUI haya puesto el lienzo (esquina de la ventana o posición en la
+        // ventana compartida).
+        let lienzo = |paint: Paint| {
+            canvas(
+                |_, _, _| (),
+                move |bounds, (), window, cx| {
+                    #[cfg(feature = "paint-stats")]
+                    crate::stats::paint(kind);
+                    let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
+                    text::with_origin(origin, || paint(window, cx));
+                },
+            )
+            .w(px(size.0))
+            .h(px(size.1))
+            .into_any_element()
+        };
         match &mut self.widget {
             Widget::Standings(s) => {
                 let now = Instant::now();
@@ -195,49 +201,104 @@ impl Render for Overlay {
                     backdrop: self.backdrop,
                     height: s.config.height,
                 };
-                canvas(
-                    |_, _, _| (),
-                    move |_, (), window, cx| view::paint(&scene, window, cx),
-                )
-                .size_full()
-                .into_any_element()
+                lienzo(Box::new(move |window, cx| view::paint(&scene, window, cx)))
             }
             Widget::Radar(vm) => {
                 let vm = vm.clone();
-                canvas(
-                    |_, _, _| (),
-                    move |_, (), window, cx| radar_view::paint(&vm, window, cx),
-                )
-                .size_full()
-                .into_any_element()
+                lienzo(Box::new(move |window, cx| {
+                    radar_view::paint(&vm, window, cx);
+                }))
             }
             Widget::Pedals(vm) => {
                 let vm = vm.clone();
-                canvas(
-                    |_, _, _| (),
-                    move |_, (), window, cx| pedals_view::paint(&vm, window, cx),
-                )
-                .size_full()
-                .into_any_element()
+                lienzo(Box::new(move |window, cx| {
+                    pedals_view::paint(&vm, window, cx);
+                }))
             }
         }
     }
 }
 
-/// Abre una ventana overlay en `origin` (px de pantalla) para el widget `kind`.
-pub(crate) fn open_window(
-    cx: &mut App,
-    kind: Kind,
-    prefs: Preferences,
-    origin: (f32, f32),
-) -> gpui::Result<Entity<Overlay>> {
-    let overlay = Overlay::new(kind, prefs);
-    let canvas_size = overlay.window_size;
-    let bounds = Bounds::new(
-        point(px(origin.0), px(origin.1)),
-        size(px(canvas_size.0), px(canvas_size.1)),
-    );
-    let options = WindowOptions {
+/// Quita el marco de sistema y hace la ventana overlay la primera vez.
+fn attach(hwnd: &mut Option<Hwnd>, window: &Window) {
+    if hwnd.is_none() {
+        *hwnd = overlay::hwnd_of(window);
+        if let Some(hwnd) = *hwnd {
+            overlay::apply(hwnd);
+        }
+    }
+}
+
+/// Modo por-widget: la ventana es del widget y sigue su tamaño (el alto de
+/// Standings depende de las filas visibles, SPEC §7). Se redimensiona por
+/// Win32: `Window::resize` de GPUI volvería a sumar el marco de sistema.
+pub(crate) struct Single {
+    widget: Entity<Overlay>,
+    hwnd: Option<Hwnd>,
+    size: (f32, f32),
+}
+
+impl Single {
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn hwnd(&self) -> Option<Hwnd> {
+        self.hwnd
+    }
+}
+
+impl Render for Single {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(feature = "paint-stats")]
+        crate::stats::frame();
+        attach(&mut self.hwnd, window);
+        let wanted = self.widget.read(cx).wanted_size();
+        if self.size != wanted {
+            self.size = wanted;
+            if let Some(hwnd) = self.hwnd {
+                let scale = window.scale_factor();
+                overlay::resize(
+                    hwnd,
+                    (wanted.0 * scale).round() as i32,
+                    (wanted.1 * scale).round() as i32,
+                );
+            }
+        }
+        div().size_full().child(self.widget.clone())
+    }
+}
+
+/// Modo una-ventana: una ventana del tamaño del monitor con todos sus widgets
+/// dentro, en su posición. Los widgets van en vistas cacheadas: cuando uno
+/// cambia, GPUI vuelve a pintar solo ese y reutiliza las primitivas de los demás
+/// (ver README, «Repintado en la ventana grande»).
+struct Screen {
+    widgets: Vec<(Entity<Overlay>, (f32, f32))>,
+    hwnd: Option<Hwnd>,
+}
+
+impl Render for Screen {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(feature = "paint-stats")]
+        crate::stats::frame();
+        attach(&mut self.hwnd, window);
+        div()
+            .size_full()
+            .children(self.widgets.iter().map(|(widget, (x, y))| {
+                // Una vista cacheada se coloca y dimensiona por estilo, no por contenido.
+                let (w, h) = widget.read(cx).wanted_size();
+                widget.clone().cached(
+                    StyleRefinement::default()
+                        .absolute()
+                        .left(px(*x))
+                        .top(px(*y))
+                        .w(px(w))
+                        .h(px(h)),
+                )
+            }))
+    }
+}
+
+fn popup(bounds: Bounds<Pixels>) -> WindowOptions {
+    WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: None,
         focus: false,
@@ -249,9 +310,68 @@ pub(crate) fn open_window(
         inactive_frame_interval: None,
         window_background: WindowBackgroundAppearance::Transparent,
         ..Default::default()
-    };
-    let handle = cx.open_window(options, |_, cx| cx.new(|_| overlay))?;
-    handle.entity(cx)
+    }
+}
+
+/// Abre una ventana overlay en `origin` (px de pantalla) para el widget `kind`.
+pub(crate) fn open_window(
+    cx: &mut App,
+    kind: Kind,
+    prefs: Preferences,
+    origin: (f32, f32),
+) -> gpui::Result<(Entity<Overlay>, Entity<Single>)> {
+    let widget = cx.new(|_| Overlay::new(kind, prefs));
+    let (w, h) = widget.read(cx).wanted_size();
+    let bounds = Bounds::new(point(px(origin.0), px(origin.1)), size(px(w), px(h)));
+    let root = widget.clone();
+    let handle = cx.open_window(popup(bounds), move |_, cx| {
+        cx.new(|_| Single {
+            widget: root,
+            hwnd: None,
+            size: (w, h),
+        })
+    })?;
+    Ok((widget, handle.entity(cx)?))
+}
+
+/// Abre una ventana por monitor que tenga widgets (los de `placed` cuya esquina
+/// cae en él) y devuelve los widgets creados.
+fn open_screens(
+    cx: &mut App,
+    placed: &[(Kind, (f32, f32))],
+    prefs: Preferences,
+) -> Vec<Entity<Overlay>> {
+    let mut all = Vec::new();
+    for display in cx.displays() {
+        let bounds = display.bounds();
+        let widgets: Vec<_> = placed
+            .iter()
+            .filter(|(_, (x, y))| bounds.contains(&point(px(*x), px(*y))))
+            .map(|(kind, (x, y))| {
+                let at = (
+                    x - f32::from(bounds.origin.x),
+                    y - f32::from(bounds.origin.y),
+                );
+                (cx.new(|_| Overlay::new(*kind, prefs)), at)
+            })
+            .collect();
+        if widgets.is_empty() {
+            continue;
+        }
+        all.extend(widgets.iter().map(|(widget, _)| widget.clone()));
+        let mut options = popup(bounds);
+        options.display_id = Some(display.id());
+        let opened = cx.open_window(options, move |_, cx| {
+            cx.new(|_| Screen {
+                widgets,
+                hwnd: None,
+            })
+        });
+        if let Err(error) = opened {
+            eprintln!("no se pudo abrir la ventana del monitor: {error}");
+        }
+    }
+    all
 }
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
@@ -266,9 +386,31 @@ pub(crate) fn init(cx: &mut App) -> bool {
     }
 }
 
-/// Reparte los widgets entre las ventanas (Standings, Radar, Pedals, ... en ese
-/// orden) y las escalona en pantalla. Solo para la campaña de medición: el
-/// colocado real vendrá de la configuración de layout.
+/// Cómo se agrupan los widgets en ventanas del sistema. Los widgets y sus
+/// posiciones son los mismos en ambos modos.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Grouping {
+    /// Una ventana por widget.
+    PerWidget,
+    /// Una ventana por monitor, del tamaño del monitor.
+    OneWindow,
+}
+
+impl std::str::FromStr for Grouping {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, ()> {
+        match text {
+            "por-widget" => Ok(Self::PerWidget),
+            "una" => Ok(Self::OneWindow),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Reparte los widgets (Standings, Radar, Pedals, ... en ese orden) y los
+/// escalona en pantalla. Solo para la campaña de medición: el colocado real
+/// vendrá de la configuración de layout.
 fn kind_of(index: usize) -> Kind {
     [Kind::Standings, Kind::Radar, Kind::Pedals][index % 3]
 }
@@ -280,20 +422,37 @@ fn origin_of(index: usize) -> (f32, f32) {
     )
 }
 
-/// Abre `windows` ventanas y reenvía cada `Snapshot` del canal a todas. Vuelve
-/// cuando se cierra la última ventana.
-pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
+/// Abre `windows` widgets agrupados según `grouping` y reenvía cada `Snapshot`
+/// del canal a todos. Vuelve cuando se cierra la última ventana.
+pub fn run(
+    windows: usize,
+    grouping: Grouping,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+) {
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
-        let mut views = Vec::with_capacity(windows);
-        for index in 0..windows {
-            match open_window(cx, kind_of(index), prefs, origin_of(index)) {
-                Ok(view) => views.push(view.downgrade()),
-                Err(error) => eprintln!("no se pudo abrir la ventana {index}: {error}"),
-            }
-        }
+        #[cfg(feature = "paint-stats")]
+        crate::stats::report();
+        let placed: Vec<_> = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
+        let widgets: Vec<Entity<Overlay>> = match grouping {
+            Grouping::PerWidget => placed
+                .iter()
+                .filter_map(
+                    |&(kind, origin)| match open_window(cx, kind, prefs, origin) {
+                        Ok((widget, _)) => Some(widget),
+                        Err(error) => {
+                            eprintln!("no se pudo abrir la ventana de {kind:?}: {error}");
+                            None
+                        }
+                    },
+                )
+                .collect(),
+            Grouping::OneWindow => open_screens(cx, &placed, prefs),
+        };
+        let views: Vec<_> = widgets.iter().map(Entity::downgrade).collect();
         cx.on_window_closed(|cx, _| {
             if cx.windows().is_empty() {
                 cx.quit();
@@ -356,5 +515,12 @@ mod tests {
             &mut vm,
             radar::project(&source::synthetic(300))
         ));
+    }
+
+    #[test]
+    fn grouping_names_are_the_cli_ones() {
+        assert_eq!("por-widget".parse(), Ok(Grouping::PerWidget));
+        assert_eq!("una".parse(), Ok(Grouping::OneWindow));
+        assert_eq!("dos".parse::<Grouping>(), Err(()));
     }
 }

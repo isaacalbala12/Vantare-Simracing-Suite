@@ -31,13 +31,18 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         throttle,
         brake,
         clutch,
-        throttle_text: format::percent(throttle),
-        brake_text: format::percent(brake),
-        clutch_text: format::percent(clutch),
+        throttle_text: percent(throttle),
+        brake_text: percent(brake),
+        clutch_text: percent(clutch),
         gear: format::gear(telemetry.gear.current().copied()),
         speed: format::speed(telemetry.speed_mps.current().copied(), prefs),
         rpm: format::rpm(telemetry.engine_speed_rad_s.current().copied()),
     }
+}
+
+fn percent(value: Option<f64>) -> String {
+    // Math.round del producto redondea los empates hacia arriba (entradas 0–1).
+    format::percent(value.map(|value| (value * 100.0).round() / 100.0))
 }
 
 fn fraction(value: &Quality<f64>) -> Option<f64> {
@@ -87,6 +92,34 @@ mod tests {
         assert_eq!(vm.clutch_text, format::PLACEHOLDER);
         assert_eq!((vm.throttle_text.as_str(), vm.gear.as_str()), ("73%", "3"));
         assert_eq!((vm.speed.as_str(), vm.rpm.as_str()), ("112 mph", "7500"));
+    }
+
+    #[test]
+    fn pedal_percent_rounds_half_up_like_the_product_renderer() {
+        let snapshot = Snapshot {
+            state: State {
+                player: Some(Player {
+                    telemetry: Telemetry {
+                        throttle: Reliable(0.985),
+                        brake: Reliable(0.125),
+                        clutch: Reliable(0.065),
+                        ..Telemetry::default()
+                    },
+                    ..Player::default()
+                }),
+                ..State::default()
+            },
+            ..Snapshot::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(
+            (
+                vm.throttle_text.as_str(),
+                vm.brake_text.as_str(),
+                vm.clutch_text.as_str()
+            ),
+            ("99%", "13%", "7%")
+        );
     }
 
     #[test]

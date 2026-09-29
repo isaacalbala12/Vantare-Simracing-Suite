@@ -1,9 +1,10 @@
 //! Pedales en diseño Eficiencia (`PedalsFunctional.tsx`): tres barras
 //! (embrague, freno, acelerador) con su rótulo y su valor. Geometría y colores
-//! del CSS de producción para el tamaño por defecto (120 x 160); sin paridad de
-//! píxel en esta fase.
+//! del CSS de producción para el tamaño por defecto (120 x 160).
 
-use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
+use gpui::{
+    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
+};
 use vantare_domain::pedals::ViewModel;
 
 use crate::efficiency::text::{self, ink};
@@ -21,8 +22,18 @@ const VALUE_H: f32 = 10.0;
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
     paint_panel(window, width, height, 0.90);
-    // La bandera de sesión no está en el ViewModel de pedales.
-    paint_frame(window, width, height);
+    window.paint_quad(quad(
+        rect(0.0, 0.0, width, height),
+        Corners::all(px(tokens::RADIUS)),
+        linear_gradient(
+            180.0,
+            linear_color_stop(col(0xffffff, 0.04), 0.0),
+            linear_color_stop(col(0xffffff, 0.0), 0.32),
+        ),
+        Edges::all(px(0.0)),
+        col(0x000000, 0.0),
+        BorderStyle::default(),
+    ));
 
     let columns = [
         ("C", vm.clutch, &vm.clutch_text, 0xc9a15c),
@@ -42,7 +53,11 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         window.paint_quad(quad(
             rect(track_x, track_top, TRACK_W, track_h),
             Corners::all(px(4.0)),
-            col(tokens::INK, 0.065),
+            linear_gradient(
+                180.0,
+                linear_color_stop(col(tokens::INK, 0.08), 0.0),
+                linear_color_stop(col(tokens::INK, 0.05), 1.0),
+            ),
             Edges::all(px(1.0)),
             col(tokens::INK, 0.08),
             BorderStyle::default(),
@@ -50,7 +65,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         if let Some(value) = value {
             // Relleno dentro del borde de 1 px, anclado abajo.
             let inner_h = track_h - 2.0;
-            let fill_h = (value as f32 * inner_h).round();
+            let fill_h = fill_height(value, inner_h);
             window.paint_quad(quad(
                 rect(
                     track_x + 1.0,
@@ -91,6 +106,30 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             &value_ink,
         );
     }
+    // El marco (::after) se compone al final; 12 % en los lados y 24 % arriba.
+    // La bandera no está en este ViewModel: se conserva el borde neutro.
+    paint_frame(window, width, height);
+    window.paint_quad(quad(
+        rect(0.0, 0.0, width, tokens::RADIUS),
+        Corners {
+            top_left: px(tokens::RADIUS),
+            top_right: px(tokens::RADIUS),
+            bottom_right: px(0.0),
+            bottom_left: px(0.0),
+        },
+        col(0x000000, 0.0),
+        Edges {
+            top: px(1.0),
+            ..Edges::all(px(0.0))
+        },
+        col(0xffffff, 0.136),
+        BorderStyle::default(),
+    ));
+}
+
+fn fill_height(value: f64, inner_h: f32) -> f32 {
+    // PedalsFunctional redondea primero el porcentaje, no la altura en píxeles.
+    (value * 100.0).round() as f32 / 100.0 * inner_h
 }
 
 use crate::app::{Paint, Wake, replace_if_changed};
@@ -139,6 +178,13 @@ impl Widget {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn fill_rounds_percent_before_resolving_the_track_height() {
+        assert!((fill_height(0.125, 116.0) - 15.08).abs() < 0.001);
+        assert!(fill_height(0.0, 116.0).abs() < f32::EPSILON);
+        assert!((fill_height(1.0, 116.0) - 116.0).abs() < f32::EPSILON);
+    }
 
     #[test]
     fn repaint_only_on_a_new_view_model() {

@@ -14,6 +14,7 @@ pub mod format;
 mod model;
 pub mod pedals;
 mod quality;
+pub mod racing_flags;
 pub mod radar;
 pub mod standings;
 

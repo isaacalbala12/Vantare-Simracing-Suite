@@ -298,7 +298,7 @@ fn paint_content(
 fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
     // SVG productivo: GPUI conserva curvas, uniones y extremos redondos.
     if let Err(error) = window.paint_svg(
-        rect(0.0, 0.0, SIZE.0, SIZE.1),
+        rect(21.0, 29.83, 38.0, 44.33),
         "fastest-lap/stopwatch.svg".into(),
         Some(include_bytes!("stopwatch.svg")),
         gpui::TransformationMatrix::default(),
@@ -312,6 +312,56 @@ fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn reference_scene() -> Snapshot {
+        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/fastest-lap.snapshot.json"))
+            .expect("escena DTO v3 válida")
+    }
+
+    #[test]
+    fn reference_scene_projects_the_frozen_class_record_and_labels() {
+        use vantare_domain::format::Language;
+        let snapshot = reference_scene();
+        assert_eq!((snapshot.epoch, snapshot.sequence), (3, 2));
+        assert_eq!(snapshot.state.cars.len(), 20);
+        for (language, class_label, personal_label) in [
+            (Language::Es, "VUELTA RÁPIDA", "MEJOR PERSONAL"),
+            (Language::En, "FASTEST LAP", "PERSONAL BEST"),
+        ] {
+            let vm = fastest_lap::project(
+                &snapshot,
+                Preferences {
+                    language,
+                    ..Preferences::default()
+                },
+            );
+            assert!(vm.ready);
+            let candidate = vm.candidate.expect("récord de clase");
+            assert_eq!(candidate.driver, "Antonio Giovinazzi");
+            assert_eq!(candidate.text(), "1:30.904");
+            assert_eq!(vm.active_class.as_deref(), Some("HYPERCAR"));
+            assert_eq!(vm.class_label, class_label);
+            assert_eq!(vm.personal_label, personal_label);
+            assert_eq!(vm.personal.expect("jugador").text(), "1:30.964");
+        }
+    }
+
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn preview_is_settled_and_clears_when_the_scene_is_unavailable() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(prefs);
+        let mut snapshot = reference_scene();
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(!widget.animating());
+        snapshot.sequence += 1;
+        assert!(!widget.ingest(&snapshot, prefs));
+        assert!(widget.ingest(&Snapshot::default(), prefs));
+        assert!(!widget.vm.ready);
+        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(!widget.animating());
+    }
 
     #[cfg(not(feature = "parity-capture"))]
     #[test]

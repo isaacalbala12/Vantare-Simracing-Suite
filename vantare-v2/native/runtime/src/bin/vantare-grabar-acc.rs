@@ -597,6 +597,8 @@ impl Drop for PeriodoFino {
     }
 }
 
+// winmm: resolución del temporizador del sistema; las dos llamadas van con su
+// comentario `SAFETY` en `PeriodoFino`.
 #[cfg(windows)]
 #[link(name = "winmm")]
 unsafe extern "system" {

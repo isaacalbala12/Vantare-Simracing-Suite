@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — cola REST acotada (2026-09-29)
+
+Isaac confirmó que un solo escenario temporal real de al menos 46 coches
+es suficiente; los 47 ya capturados satisfacen ese umbral de tamaño. El
+poller Rust conserva ahora hasta 16 polls REST completos en orden FIFO.
+Al desbordarse, la adquisición falla explícitamente y el supervisor debe
+reiniciar/resincronizar la instancia; no se sobrescribe el resultado más
+antiguo en silencio. Una prueba cubre orden y saturación; 161 tests Rust
+release, formato, Clippy estricto y diff check pasaron.
+
+Esto todavía no publica cada REST como observación canónica independiente,
+no iguala las cadencias Go/Rust y no acredita el gate de CPU/p99/RSS. El
+siguiente corte debe procesar cada reporte en su propio evento con reloj y
+orden conservados y comparar la salida temporal completa. Go sigue por
+defecto; PR #1415 draft y sin promoción.
+
 ## VAN-778 / ISA-1403 — p99 y RSS físicos diagnósticos (2026-09-29)
 
 Computer Use observó LMU 1.4.2.0 en práctica en Circuit de la Sarthe;

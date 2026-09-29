@@ -1,5 +1,6 @@
-//! One loopback REST worker, with a latest-only result slot for the SHM loop.
+//! One loopback REST worker with bounded, ordered completed reports.
 
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -11,6 +12,35 @@ use crate::lmu::fusion::DEFAULT_REST_TTL_NS;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(250);
 const MAX_BACKOFF: Duration = Duration::from_secs(2);
+const MAX_PENDING_REPORTS: usize = 16;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum PollerError {
+    BacklogOverflow,
+}
+
+#[derive(Default)]
+struct PendingReports {
+    reports: VecDeque<Report>,
+    overflowed: bool,
+}
+
+impl PendingReports {
+    fn push(&mut self, report: Report) {
+        if self.reports.len() == MAX_PENDING_REPORTS {
+            self.overflowed = true;
+        } else {
+            self.reports.push_back(report);
+        }
+    }
+
+    fn pop(&mut self) -> Result<Option<Report>, PollerError> {
+        if self.overflowed {
+            return Err(PollerError::BacklogOverflow);
+        }
+        Ok(self.reports.pop_front())
+    }
+}
 
 struct Report {
     standings: Response,
@@ -21,7 +51,7 @@ struct Report {
 }
 
 pub struct Poller {
-    latest: Arc<Mutex<Option<Report>>>,
+    pending: Arc<Mutex<PendingReports>>,
     cancelled: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
     start: Instant,
@@ -38,9 +68,9 @@ impl Poller {
         interval: Duration,
         max_backoff: Duration,
     ) -> Self {
-        let latest = Arc::new(Mutex::new(None));
+        let pending = Arc::new(Mutex::new(PendingReports::default()));
         let cancelled = Arc::new(AtomicBool::new(false));
-        let slot = Arc::clone(&latest);
+        let reports = Arc::clone(&pending);
         let stop = Arc::clone(&cancelled);
         let worker = thread::spawn(move || {
             let mut backoff = interval;
@@ -58,13 +88,16 @@ impl Poller {
                 }
                 let complete = standings.status == EndpointStatus::Fresh
                     && session.status == EndpointStatus::Fresh;
-                *slot.lock().expect("REST result slot poisoned") = Some(Report {
-                    standings,
-                    standings_started_ns,
-                    standings_received_ns,
-                    session,
-                    session_received_ns,
-                });
+                reports
+                    .lock()
+                    .expect("REST result queue poisoned")
+                    .push(Report {
+                        standings,
+                        standings_started_ns,
+                        standings_received_ns,
+                        session,
+                        session_received_ns,
+                    });
                 backoff = if complete {
                     interval
                 } else {
@@ -74,22 +107,21 @@ impl Poller {
             }
         });
         Self {
-            latest,
+            pending,
             cancelled,
             worker: Some(worker),
             start,
         }
     }
 
-    /// Move the latest completed REST poll into the canonical cache, then age
-    /// the cache even when the endpoint is unavailable. The SHM loop never
-    /// waits for HTTP or an unbounded queue.
-    pub fn take_into(&self, cache: &mut RestCache) -> bool {
+    /// Move the oldest completed REST poll into the canonical cache, then age
+    /// it. A backlog overflow is fatal to this instance, never silent loss.
+    pub fn take_into(&self, cache: &mut RestCache) -> Result<bool, PollerError> {
         let report = self
-            .latest
+            .pending
             .lock()
-            .expect("REST result slot poisoned")
-            .take();
+            .expect("REST result queue poisoned")
+            .pop()?;
         let updated = if let Some(report) = report {
             if report.standings.status == EndpointStatus::Fresh {
                 cache.accept_standings(
@@ -110,7 +142,7 @@ impl Poller {
             false
         };
         cache.age(elapsed_ns(self.start), DEFAULT_REST_TTL_NS);
-        updated
+        Ok(updated)
     }
 
     pub fn shutdown(&mut self) -> thread::Result<()> {
@@ -183,7 +215,7 @@ mod tests {
                 "../../../testdata/configuration-frame-go-v1.bin"
             ))
             .unwrap();
-        while !poller.take_into(assembler.rest_cache_mut()) && Instant::now() < deadline {
+        while !poller.take_into(assembler.rest_cache_mut()).unwrap() && Instant::now() < deadline {
             thread::yield_now();
         }
         assert_eq!(
@@ -194,7 +226,7 @@ mod tests {
             assembler.rest_cache_mut().session_status,
             EndpointStatus::Fresh
         );
-        assert!(!poller.take_into(assembler.rest_cache_mut()));
+        assert!(!poller.take_into(assembler.rest_cache_mut()).unwrap());
         let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
         let frames = assembler
             .apply(frame, "1.3.0.0", 0, 600_000_000, 1_000_000_000)
@@ -235,5 +267,37 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(2));
         release_tx.send(()).unwrap();
         server.join().unwrap();
+    }
+
+    #[test]
+    fn completed_reports_remain_ordered_and_overflow_fails_closed() {
+        fn report(received_ns: u64) -> Report {
+            Report {
+                standings: Response {
+                    status: EndpointStatus::Offline,
+                    body: Vec::new(),
+                },
+                standings_started_ns: received_ns,
+                standings_received_ns: received_ns,
+                session: Response {
+                    status: EndpointStatus::Offline,
+                    body: Vec::new(),
+                },
+                session_received_ns: received_ns,
+            }
+        }
+
+        let mut pending = PendingReports::default();
+        pending.push(report(1));
+        pending.push(report(2));
+        assert_eq!(pending.pop().unwrap().unwrap().session_received_ns, 1);
+        assert_eq!(pending.pop().unwrap().unwrap().session_received_ns, 2);
+        assert!(pending.pop().unwrap().is_none());
+
+        for index in 0..=MAX_PENDING_REPORTS {
+            pending.push(report(index as u64));
+        }
+        assert_eq!(pending.pop().err(), Some(PollerError::BacklogOverflow));
+        assert_eq!(pending.reports.len(), MAX_PENDING_REPORTS);
     }
 }

@@ -2527,3 +2527,14 @@ la paridad estricta LMU47 x80, pero copiar el `Value` cacheado fue más caro:
 medianas de cinco repeticiones, secciones ~38,7→49,8 ms/80 muestras y
 ensamblado ~141,5→150,3 ms. El cambio se retiró. R21 necesita eliminar
 trabajo sin trasladarlo a clones equivalentes y medir el camino completo.
+
+## 137. Polls REST retenidos y saturación explícita (2026-09-29)
+
+El poller Rust dejó de sobrescribir el último poll REST: conserva hasta 16
+reportes completos en orden FIFO. El exceso fija un error de adquisición que
+el supervisor debe tratar como fallo de instancia y resincronizar; no se
+descarta un reporte en silencio. Una prueba comprueba orden y desbordamiento;
+161 tests Rust release, formato, Clippy estricto y diff check pasaron. Este
+corte solo conserva los polls pendientes: todavía faltan su publicación como
+eventos canónicos separados, paridad de cadencia con Go, timestamps reales
+por request y el banco G0/G1/R sobre el escenario real ≥46 (captura de 47).

@@ -6,7 +6,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use super::cadence::TickCadence;
 use super::process::RunningSource;
-use super::rest::poller::Poller;
+use super::rest::poller::{Poller, PollerError};
 use super::{OBJECT_OUT_SIZE, admit_v13};
 use crate::assembly::{Assembler, AssemblyError, FactReplay};
 use crate::ipc::queue::{QueueError, WriterQueue};
@@ -19,6 +19,7 @@ pub enum AcquisitionError {
     Clock,
     Assembly(AssemblyError),
     Queue(QueueError),
+    Rest(PollerError),
     InvalidControl,
 }
 
@@ -87,7 +88,9 @@ impl Acquisition {
             .evidence
             .exact_supported_build()
             .ok_or(AcquisitionError::UnsupportedBuild)?;
-        self.rest.take_into(self.assembler.rest_cache_mut());
+        self.rest
+            .take_into(self.assembler.rest_cache_mut())
+            .map_err(AcquisitionError::Rest)?;
         let source = &self.source;
         acquire_tick(
             &mut self.assembler,

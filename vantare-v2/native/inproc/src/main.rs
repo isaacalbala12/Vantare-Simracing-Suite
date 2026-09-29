@@ -24,7 +24,6 @@ use vantare_domain::{Adapter, Snapshot};
 use vantare_runtime::adapter::{Lmu, open_replay};
 use vantare_runtime::core::Core;
 use vantare_runtime::{service, shutdown};
-use vantare_ui::Grouping;
 
 const USAGE: &str = "uso: vantare-inproc (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
                      [--velocidad 1.0] | --live) [1|4|22]";
@@ -153,12 +152,7 @@ fn run(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     });
     // Al cerrarse la última ventana el proceso termina y se lleva los hilos.
-    vantare_ui::run(
-        args.windows,
-        Grouping::OneWindow,
-        snapshots,
-        Preferences::default(),
-    );
+    vantare_ui::run(args.windows, snapshots, Preferences::default());
     Ok(())
 }
 

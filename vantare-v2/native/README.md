@@ -125,14 +125,13 @@ Lanzamiento equivalente, con los binarios de `target\release` (`--release`),
 ```powershell
 # B: dos procesos (o `vantare -- --replay C -- N`, que los lanza y supervisa)
 vantare-core.exe --replay C [--velocidad V]        # o --live
-vantare-overlays.exe N [--ventanas una]
+vantare-overlays.exe N
 
 # A: un proceso, mismas opciones
 vantare-inproc.exe --replay C [--velocidad V] N    # o --live N
 ```
 
-Con `--ventanas una` en B, A y B abren lo mismo (mientras exista el modo
-`por-widget`, A no lo tiene). En B, arrancar el núcleo antes de los overlays
+A y B abren lo mismo: una ventana por monitor con los N widgets. En B, arrancar el núcleo antes de los overlays
 para que la medición no incluya la espera de conexión. `--live` y `--replay`
 alimentan igual a A y a B; `--velocidad` solo cambia el reloj del núcleo.
 

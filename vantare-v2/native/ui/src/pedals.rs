@@ -92,3 +92,59 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         );
     }
 }
+
+use crate::app::{Paint, Wake, replace_if_changed};
+use vantare_domain::{Snapshot, format::Preferences};
+
+pub(crate) struct Widget {
+    vm: ViewModel,
+}
+
+impl Widget {
+    pub(crate) fn new(prefs: Preferences) -> Self {
+        Self {
+            vm: vantare_domain::pedals::project(&Snapshot::default(), prefs),
+        }
+    }
+
+    // Firma común del registro: este widget tiene tamaño fijo.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn size(&self) -> (f32, f32) {
+        SIZE
+    }
+
+    pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        replace_if_changed(
+            &mut self.vm,
+            vantare_domain::pedals::project(snapshot, prefs),
+        )
+    }
+
+    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+        let vm = self.vm.clone();
+        (
+            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Wake::Idle,
+        )
+    }
+
+    #[cfg(feature = "parity-capture")]
+    #[allow(clippy::unused_self)] // Firma común; este widget no anima.
+    pub(crate) fn animating(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::source;
+
+    #[test]
+    fn repaint_only_on_a_new_view_model() {
+        let mut widget = Widget::new(Preferences::default());
+        assert!(widget.ingest(&source::synthetic(0), Preferences::default()));
+        assert!(!widget.ingest(&source::synthetic(0), Preferences::default()));
+        assert!(widget.ingest(&source::synthetic(300), Preferences::default()));
+    }
+}

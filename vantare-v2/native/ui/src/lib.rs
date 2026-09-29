@@ -25,11 +25,10 @@ mod app;
 pub mod capture;
 pub mod efficiency;
 mod overlay;
-mod pedals;
-mod radar;
 pub mod source;
-pub mod standings;
 #[cfg(feature = "paint-stats")]
 mod stats;
 
-pub use app::{Kind, layout_row, run, run_placed};
+include!("registry.rs");
+
+pub use app::{layout_row, run, run_placed};

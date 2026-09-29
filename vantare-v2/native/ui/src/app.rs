@@ -1,46 +1,32 @@
-//! Proceso de overlays: widgets GPUI (una ventana por widget o una por monitor)
+//! Proceso de overlays: widgets GPUI (una ventana por monitor)
 //! alimentados por un canal de `Snapshot`s. Cada widget proyecta la instantánea
 //! con el `ViewModel` de `domain` que le corresponde y solo repinta cuando ese
 //! ViewModel cambia.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use gpui::{
     App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, canvas, div, point,
     prelude::*, px,
 };
+use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
-use vantare_domain::{Snapshot, pedals, radar, standings};
 
 use crate::efficiency::text;
 use crate::overlay::{self, Hwnd};
-use crate::standings::model::{self, Config, Metric, Plan, Status, Vm};
-use crate::standings::{
-    motion::{Motion, Wake},
-    view,
-};
-use crate::{pedals as pedals_view, radar as radar_view};
+use crate::{Kind, Widget};
 
+/// Cómo se pinta un widget en el lienzo que GPUI le da.
+pub(crate) type Paint = Box<dyn Fn(&mut Window, &mut App)>;
+
+/// Lo que un widget pide al host tras pintar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Kind {
-    Standings,
-    Radar,
-    Pedals,
-}
-
-impl std::str::FromStr for Kind {
-    type Err = ();
-
-    fn from_str(text: &str) -> Result<Self, ()> {
-        match text {
-            "standings" => Ok(Self::Standings),
-            "radar" => Ok(Self::Radar),
-            "pedals" => Ok(Self::Pedals),
-            _ => Err(()),
-        }
-    }
+pub enum Wake {
+    Frame,
+    At(Duration),
+    Idle,
 }
 
 impl Kind {
@@ -63,22 +49,6 @@ pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))>
         .collect()
 }
 
-struct Standings {
-    config: Config,
-    vm: Vm,
-    plan: Plan,
-    motion: Motion,
-}
-
-/// Cómo se pinta un widget en el lienzo que GPUI le da.
-type Paint = Box<dyn Fn(&mut Window, &mut App)>;
-
-enum Widget {
-    Standings(Box<Standings>),
-    Radar(radar::ViewModel),
-    Pedals(pedals::ViewModel),
-}
-
 /// Widget de una ventana: proyecta la instantánea y se pinta en un lienzo de su
 /// tamaño. No sabe si la ventana es suya o compartida con otros widgets.
 pub struct Overlay {
@@ -93,11 +63,7 @@ pub struct Overlay {
 
 impl Overlay {
     fn new(kind: Kind, prefs: Preferences) -> Self {
-        let widget = match kind {
-            Kind::Standings => Widget::Standings(Box::new(Standings::new())),
-            Kind::Radar => Widget::Radar(radar::project(&Snapshot::default())),
-            Kind::Pedals => Widget::Pedals(pedals::project(&Snapshot::default(), prefs)),
-        };
+        let widget = Widget::new(kind, prefs);
         Self {
             widget,
             prefs,
@@ -124,49 +90,25 @@ impl Overlay {
         .detach();
     }
 
-    #[cfg(feature = "paint-stats")]
-    fn kind(&self) -> Kind {
-        match &self.widget {
-            Widget::Standings(_) => Kind::Standings,
-            Widget::Radar(_) => Kind::Radar,
-            Widget::Pedals(_) => Kind::Pedals,
-        }
-    }
-
     pub(crate) fn wanted_size(&self) -> (f32, f32) {
-        match &self.widget {
-            Widget::Standings(s) => (s.config.width + model::PIT_RAIL_WIDTH, s.config.height),
-            Widget::Radar(_) => radar_view::SIZE,
-            Widget::Pedals(_) => pedals_view::SIZE,
-        }
+        self.widget.size()
     }
 
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
-        let prefs = self.prefs;
-        let changed = match &mut self.widget {
-            Widget::Standings(s) => s.ingest(snapshot, prefs),
-            Widget::Radar(current) => replace_if_changed(current, radar::project(snapshot)),
-            Widget::Pedals(current) => {
-                replace_if_changed(current, pedals::project(snapshot, prefs))
-            }
-        };
-        if changed {
+        if self.widget.ingest(snapshot, self.prefs) {
             cx.notify();
         }
     }
 
-    /// `true` mientras el movimiento de Standings sigue en curso.
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        match &self.widget {
-            Widget::Standings(s) => s.motion.animating(Instant::now()),
-            _ => false,
-        }
+        self.widget.animating()
     }
 }
 
-fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool {
+/// Actualiza el ViewModel sin repintados por datos idénticos.
+pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool {
     let changed = *current != next;
     if changed {
         *current = next;
@@ -174,104 +116,42 @@ fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool {
     changed
 }
 
-impl Standings {
-    fn new() -> Self {
-        let mut config = Config::reference();
-        // Tamaño inicial de una lista llena; solo cambia si hay menos coches.
-        config.fit(config.row_count);
-        let vm = Vm::unavailable(Status::Disconnected);
-        let plan = model::plan(&config, &vm);
-        Self {
-            config,
-            vm,
-            plan,
-            motion: Motion::new(),
-        }
-    }
-
-    fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let domain = standings::project(snapshot, prefs);
-        let identity = format!("{}:{}", snapshot.state.session.id.0, snapshot.epoch);
-        let mut next = Vm::from_domain(
-            &domain,
-            prefs,
-            self.config.row_count,
-            identity,
-            snapshot.sequence,
-        );
-        // Alto del widget = cabecera + filas visibles + pie (SPEC §1).
-        self.config.fit(next.rows.len());
-        let plan = model::plan(&self.config, &next);
-        // El número de secuencia cambia siempre y no se ve: no cuenta.
-        let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
-        let changed = next != self.vm || plan.visible_rows != self.plan.visible_rows;
-        next.sequence = sequence;
-        if changed {
-            let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
-            self.motion
-                .update(&next, plan.visible_rows, lap_visible, Instant::now());
-            self.vm = next;
-            self.plan = plan;
-        }
-        changed
-    }
-}
-
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
-        let kind = self.kind();
+        let kind = self.widget.kind();
         #[cfg(feature = "paint-stats")]
         crate::stats::render(kind);
         let size = self.wanted_size();
-        // Cada widget pinta en coordenadas propias; `with_origin` lo coloca donde
-        // GPUI haya puesto el lienzo (esquina de la ventana o posición en la
-        // ventana compartida).
-        let lienzo = |paint: Paint| {
-            canvas(
-                |_, _, _| (),
-                move |bounds, (), window, cx| {
-                    #[cfg(feature = "paint-stats")]
-                    crate::stats::paint(kind);
-                    let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
-                    text::with_origin(origin, || paint(window, cx));
-                },
-            )
-            .w(px(size.0))
-            .h(px(size.1))
-            .into_any_element()
-        };
-        let mut wake = Wake::Idle;
-        let element = match &mut self.widget {
-            Widget::Standings(s) => {
-                let now = Instant::now();
-                let frame = s.motion.frame(&s.vm, s.plan.visible_rows, now);
-                wake = s.motion.wake(now);
-                let scene = view::Scene {
-                    config: s.config.clone(),
-                    vm: s.vm.clone(),
-                    plan: s.plan.clone(),
-                    frame,
-                    language: self.prefs.language,
+        let (paint, wake) = self.widget.frame(self.prefs);
+        #[cfg(feature = "parity-capture")]
+        let backdrop = self.backdrop;
+        let element = canvas(
+            |_, _, _| (),
+            move |bounds, (), window, cx| {
+                #[cfg(feature = "paint-stats")]
+                crate::stats::paint(kind);
+                let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
+                text::with_origin(origin, || {
                     #[cfg(feature = "parity-capture")]
-                    backdrop: self.backdrop,
-                    height: s.config.height,
-                };
-                lienzo(Box::new(move |window, cx| view::paint(&scene, window, cx)))
-            }
-            Widget::Radar(vm) => {
-                let vm = vm.clone();
-                lienzo(Box::new(move |window, cx| {
-                    radar_view::paint(&vm, window, cx);
-                }))
-            }
-            Widget::Pedals(vm) => {
-                let vm = vm.clone();
-                lienzo(Box::new(move |window, cx| {
-                    pedals_view::paint(&vm, window, cx);
-                }))
-            }
-        };
+                    if let Some(color) = backdrop {
+                        // La marca fuera del recorte confirma la pasada sin asumir
+                        // que el widget tenga un margen transparente.
+                        crate::efficiency::paint_rect(
+                            window,
+                            0.0,
+                            0.0,
+                            size.0.ceil() + 2.0,
+                            size.1.ceil(),
+                            color,
+                        );
+                    }
+                    paint(window, cx);
+                });
+            },
+        )
+        .w(px(size.0))
+        .h(px(size.1));
         // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
         match wake {
             Wake::Frame => window.request_animation_frame(),
@@ -488,73 +368,45 @@ pub fn run_placed(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source;
     use gpui::size;
 
     #[test]
-    fn standings_repaint_only_when_what_is_drawn_changes() {
-        let prefs = Preferences::default();
-        let mut standings = Standings::new();
-        let first = source::fixed();
-        assert!(standings.ingest(&first, prefs), "el primer estado se pinta");
-
-        let mut same = first.clone();
-        same.sequence += 1;
-        assert!(
-            !standings.ingest(&same, prefs),
-            "otra secuencia, mismo dibujo"
-        );
-
-        let mut hidden = first.clone();
-        hidden.sequence += 2;
-        hidden.state.cars[30].driver.name = "OTRO".into();
-        assert!(
-            !standings.ingest(&hidden, prefs),
-            "un coche fuera de las filas visibles"
-        );
-
-        let mut clock = first;
-        clock.sequence += 3;
-        clock.state.session.remaining_s = vantare_domain::Quality::Reliable(3491.0);
-        assert!(standings.ingest(&clock, prefs), "el reloj cambió");
+    fn registry_names_roundtrip_and_each_widget_accepts_a_snapshot() {
+        for (index, &kind) in Kind::ALL.iter().enumerate() {
+            assert_eq!(kind.name().parse(), Ok(kind));
+            assert!(!Kind::ALL[..index].iter().any(|k| k.name() == kind.name()));
+            let mut widget = Widget::new(kind, Preferences::default());
+            widget.ingest(&crate::source::fixed(), Preferences::default());
+            let (w, h) = widget.size();
+            assert!(w > 0.0 && h > 0.0 && w.is_finite() && h.is_finite());
+        }
+        assert!("unknown".parse::<Kind>().is_err());
     }
 
     #[test]
-    fn radar_and_pedals_repaint_only_on_a_new_view_model() {
-        let mut vm = radar::project(&source::synthetic(0));
-        assert!(!replace_if_changed(
-            &mut vm,
-            radar::project(&source::synthetic(0))
-        ));
-        assert!(replace_if_changed(
-            &mut vm,
-            radar::project(&source::synthetic(300))
-        ));
-    }
-
-    /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
-    fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
-        let mut standings = Standings::new();
-        (0..30 * 60)
-            .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
-            .count()
-    }
-
-    #[test]
-    fn realistic_feed_repaints_standings_rarely() {
-        let realistic = standings_repaints(source::realistic);
-        assert!(
-            (30..=240).contains(&realistic),
-            "reloj cada segundo y algún gap o adelantamiento: {realistic}"
-        );
+    fn parity_scenes_use_the_existing_snapshot_wire_format() {
+        let standings =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings-44.snapshot.json"))
+                .expect("escena de referencia");
+        assert_eq!(standings, crate::source::fixed());
+        let reference_scene =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings.snapshot.json"))
+                .expect("escena Standings fase 2");
+        assert_eq!(reference_scene.state.cars.len(), 20);
+        assert_eq!(reference_scene.state.cars[0].driver.name, "André Lotterer");
+        let radar =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/radar.snapshot.json"))
+                .expect("escena radar");
+        let radar = vantare_domain::radar::project(&radar);
+        assert_eq!(radar.cars.len(), 3);
+        assert_eq!((radar.cars[0].right_m, radar.cars[0].ahead_m), (4.0, 0.0));
+        let pedals =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("escena pedales");
+        let pedals = vantare_domain::pedals::project(&pedals, Preferences::default());
         assert_eq!(
-            standings_repaints(source::quiet),
-            1,
-            "solo el primer estado"
-        );
-        assert!(
-            standings_repaints(source::synthetic) > 900,
-            "el de estrés lo cambia casi todo"
+            (pedals.throttle, pedals.brake, pedals.clutch),
+            (Some(0.75), Some(0.125), Some(0.06))
         );
     }
 

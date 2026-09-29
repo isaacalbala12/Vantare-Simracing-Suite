@@ -1,4 +1,4 @@
-//! Captura con alfa de Standings para la prueba de paridad (feature
+//! Captura con alfa de un widget para la prueba de paridad (feature
 //! `parity-capture`, no entra en el binario de producto).
 //!
 //! GPUI en Windows no lee la textura de la ventana. Se pinta el mismo estado
@@ -14,9 +14,11 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use gpui::{App, AsyncApp, Entity};
+use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
-use crate::app::{self, Kind, Overlay};
+use crate::Kind;
+use crate::app::{self, Overlay};
 use crate::efficiency::col;
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
@@ -203,12 +205,11 @@ async fn settled(cx: &mut AsyncApp, view: &Entity<Overlay>) -> Result<Hwnd, Stri
             return Ok(hwnd);
         }
     }
-    Err("no se obtuvo el HWND de la ventana".into())
+    Err("la ventana no apareció o las animaciones no terminaron en 10 s".into())
 }
 
 /// Pinta el estado sobre `level` (0 negro, 255 blanco) y captura cuando DWM ya
-/// lo compuso: el hueco derecho (x = w-4, y = 3) es siempre transparente y debe
-/// mostrar el fondo puro.
+/// lo compuso: la marca a la derecha del widget debe mostrar el fondo puro.
 async fn pass(
     cx: &mut AsyncApp,
     view: &Entity<Overlay>,
@@ -224,10 +225,10 @@ async fn pass(
     let mut last = None;
     for _ in 0..60 {
         sleep(cx, 120).await;
-        if let Some((w, h, pixels)) = capture_client(hwnd, size.0, size.1) {
-            let at = (3 * w as usize + w as usize - 4) * 4;
+        if let Some((w, h, pixels)) = capture_client(hwnd, size.0 + 2, size.1) {
+            let at = (w as usize - 1) * 4;
             if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
-                return Ok((w, h, pixels));
+                return Ok((size.0 as u32, h, crop_margin(&pixels, w as usize)));
             }
             last = Some(pixels[at..at + 4].to_vec());
         }
@@ -237,10 +238,33 @@ async fn pass(
     ))
 }
 
+/// Elimina los dos píxeles de comprobación de cada fila del PNG.
+fn crop_margin(pixels: &[u8], width: usize) -> Vec<u8> {
+    pixels
+        .chunks_exact(width * 4)
+        .flat_map(|row| row[..(width - 2) * 4].iter().copied())
+        .collect()
+}
+
 async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
     let hwnd = settled(&mut cx, &view).await?;
     let (w, h) = view.read_with(&cx, |v, _| v.wanted_size());
-    let size = (w as i32, h as i32);
+    let mut client = ffi::Rect::default();
+    // SAFETY: HWND vivo y puntero a un Rect local válido durante la llamada.
+    let valid = unsafe { ffi::GetClientRect(hwnd, &raw mut client) };
+    if valid == 0
+        || !w.is_finite()
+        || !h.is_finite()
+        || w <= 0.0
+        || h <= 0.0
+        || w.ceil() + 2.0 > (client.right - client.left) as f32
+        || h.ceil() > (client.bottom - client.top) as f32
+    {
+        return Err(format!(
+            "el widget ({w}x{h}) no cabe en el área cliente con su marca de captura"
+        ));
+    }
+    let size = (w.ceil() as i32, h.ceil() as i32);
     // La referencia son píxeles físicos a 100 % de DPI (SPEC §7).
     // SAFETY: `hwnd` es el HWND vivo de la ventana; la llamada no toma punteros.
     let dpi = unsafe { gdi::GetDpiForWindow(hwnd) };
@@ -259,6 +283,11 @@ async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Resu
 
 /// Abre Standings con la escena fija de `source::fixed`, captura y sale.
 pub fn run(path: PathBuf) -> ExitCode {
+    run_widget(Kind::Standings, source::fixed(), path)
+}
+
+/// Captura el renderer productivo con una sola foto, sin núcleo ni feed live.
+pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
     let failure = Rc::new(Cell::new(false));
     let flag = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
@@ -267,14 +296,14 @@ pub fn run(path: PathBuf) -> ExitCode {
             return;
         }
         // El widget en la esquina del monitor principal: se captura solo su rectángulo.
-        let placed = [(Kind::Standings, (0.0, 0.0))];
+        let placed = [(kind, (0.0, 0.0))];
         let Some(view) = app::open_screens(cx, &placed, Preferences::default()).pop() else {
             eprintln!("no se pudo abrir la ventana");
             flag.set(true);
             cx.quit();
             return;
         };
-        view.update(cx, |v, cx| v.ingest(&source::fixed(), cx));
+        view.update(cx, |v, cx| v.ingest(&snapshot, cx));
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;
             if let Err(error) = &result {
@@ -294,7 +323,16 @@ pub fn run(path: PathBuf) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::solve_alpha;
+    use super::{crop_margin, solve_alpha};
+
+    #[test]
+    fn capture_marker_is_removed_from_each_row() {
+        let pixels: Vec<u8> = (0..32).collect();
+        assert_eq!(
+            crop_margin(&pixels, 4),
+            [pixels[..8].to_vec(), pixels[16..24].to_vec()].concat()
+        );
+    }
 
     #[test]
     fn alpha_is_recovered_from_black_and_white_composites() {

@@ -26,9 +26,6 @@ pub struct Scene {
     pub plan: Plan,
     pub frame: Frame,
     pub language: Language,
-    /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
-    #[cfg(feature = "parity-capture")]
-    pub backdrop: Option<Hsla>,
     pub height: f32,
 }
 
@@ -216,17 +213,6 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     let labels = model::labels(scene.language);
     let width = config.width;
     let height = scene.height;
-    #[cfg(feature = "parity-capture")]
-    if let Some(backdrop) = scene.backdrop {
-        let canvas_w = width
-            + if plan.pit_enabled {
-                model::PIT_RAIL_WIDTH
-            } else {
-                0.0
-            };
-        paint_rect(window, 0.0, 0.0, canvas_w, height, backdrop);
-    }
-
     // Sombra exterior (`0 14px 25px -12px rgb(0 0 0/48%)`): solo se ve en el hueco
     // derecho del rail. El culling de GPUI descarta las sombras con mascara fuera
     // de su rectangulo y bajo el panel translucido sumaria alfa, asi que se pinta

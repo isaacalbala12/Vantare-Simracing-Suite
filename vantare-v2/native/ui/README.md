@@ -51,10 +51,94 @@ haya animación pide fotogramas).
 con la feature `parity-capture` (dos pasadas GDI negro/blanco) y la compara con
 `reference/standings-44.png` con `diff.py`. Resultado en esta fase: 3,68 %
 (6341 / 172536 px, umbral 8), igual que el prototipo; la diferencia es la
-rasterización del texto de DirectWrite frente a Chrome. La referencia y
-`diff.py` viven en la rama del ensayo ISA-1410, no en esta.
+rasterización del texto de DirectWrite frente a Chrome. La referencia histórica
+vive en la rama del ensayo ISA-1410; `ui/diff.py` conserva una copia de su
+comparador (Pillow y numpy ya instalados, sin instalar dependencias).
 El refactor del kit ISA-1427 reproduce 6341 / 172536 px (3,6752 %) y su captura
 es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
+
+## Portar un widget
+
+1. Crear el ViewModel y la proyección pura en `native/domain/src/<widget>.rs`
+   (nombre Rust, p. ej. `fuel_strategy`) y exportarlos desde `domain/src/lib.rs`.
+   El widget recibe `Snapshot` y preferencias; no contiene reglas por simulador.
+2. Crear `native/ui/src/<widget>/mod.rs`, reutilizando `efficiency` y el renderer
+   productivo. Copiar el contrato concreto de `radar.rs` o `pedals.rs`: struct
+   `pub(crate) Widget` con estos métodos `pub(crate)` (sin trait):
+
+   | Método | Devuelve / responsabilidad |
+   | --- | --- |
+   | `new(prefs: Preferences)` | `Self`, estado inicial sin datos |
+   | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
+   | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
+   | `frame(&mut self, prefs: Preferences)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
+   | `animating(&self)` con `#[cfg(feature = "parity-capture")]` | `bool`, hasta terminar movimientos **y** avisos temporales |
+
+   `Paint` es `Box<dyn Fn(&mut gpui::Window, &mut gpui::App)>`; para un widget
+   quieto devolver `Wake::Idle` y `animating = false`. Con animaciones usar
+   `Wake::Frame` / `Wake::At(Duration)` y acotar su final. El host coloca el
+   origen, registra Inter, programa repintados y pinta el fondo de captura.
+3. Añadir **una línea** al bloque `widgets!` al final de `ui/src/registry.rs`:
+   `FuelStrategy => fuel_strategy: "fuel-strategy",`. No editar `app.rs`,
+   `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
+   `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
+4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
+   `ipc::snapshot_from_json` (ahora `version: 2`); partir de una de las escenas
+   versionadas. Reproducir **los datos de ese widget** de
+   `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
+   `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
+   layout, configuración y texto congelados. Traducir identidad, unidades SI,
+   calidad y capacidades a `Snapshot`: `fresh` con valor → `{"reliable": valor}`;
+   sin valor → `"unavailable"`, nunca cero inventado. Anotar cualquier señal
+   sin representación y coordinar su extensión con el propietario de domain/IPC.
+   Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
+5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
+   al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):
+
+   ```powershell
+   cargo run -p vantare-ui --features parity-capture --bin vantare-workshop -j 4 -- --widget fuel-strategy --escena ui/fixtures/fuel-strategy.snapshot.json --captura C:\tmp\fuel-strategy.png
+   .\ui\compare.ps1 -Widget fuel-strategy -MaxPercent 4
+   ```
+
+   `compare.ps1` usa por defecto la escena y `ui/reference/<nombre>.png`, imprime
+   porcentaje (umbral por canal 8, RGBA premultiplicado, sin máscaras) y guarda
+   candidato/diff en `%TEMP%\vantare-parity\<nombre>`. Falla si falta un fichero,
+   cambia el tamaño o supera el límite. Acepta `-Scene`, `-Reference`, `-Diff`,
+   `-Out`, `-Threshold` y `-MaxPercent`; no genera ni modifica referencias.
+   La captura solo está compilada con `parity-capture`; no conecta al núcleo.
+6. Formatear el módulo con `rustfmt --edition 2024 ui/src/<widget>/mod.rs`
+   (rustfmt no descubre los módulos declarados dentro de una macro). Antes del
+   commit: `cargo fmt --check`,
+   `cargo clippy --workspace --all-targets -j 4 -- -D warnings` y
+   `cargo test --workspace -j 4`; además verificar captura y comparación de su
+   widget. Informar el porcentaje real y cualquier límite al orquestador.
+
+**Regresión histórica de Standings (474 × 364).** No confundir con la referencia
+de fase 2 (`reference/standings.png`, 440 × 664, 20 filas y otros datos). Para
+reproducir 3,6752 % con el Workshop genérico:
+
+```powershell
+.\ui\compare.ps1 -Widget standings -Scene ui/fixtures/standings-44.snapshot.json -Reference C:\tmp\vantare-parity-wails\vantare-v2\tools\native-ui\parity\reference\standings-44.png
+```
+
+También sigue funcionando `vantare-overlays --parity-capture <png>`. Las escenas
+`standings`, `radar` y `pedals` reconstruyen los canales que domain representa
+del runtime congelado. El radar aún deriva el solapamiento (a 4 m exactos difiere
+del booleano del demo) y no representa `lapped`; estos límites del porte visual
+existente no se resuelven en esta infraestructura. La configuración/altura de
+Standings de fase 2 tampoco se porta aquí.
+
+Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
+base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
+el encargo de Isaac del 2026-09-29; queda pendiente su reconciliación por el
+orquestador. Este worker solo entrega commits locales, sin push/PR/promoción.
+
+Validación de infraestructura (2026-09-29): Workshop `standings-44` =
+6341/172536 px (3,6752 %) contra Wails y 0 px contra la captura de la ruta antigua
+con umbral 0. Capturas de fase 2: radar 220 × 220, 8,2665 %; pedales 120 × 160,
+8,5104 % (ambos superan el límite de 4 % y el script sale con 1). Standings de
+fase 2 detecta tamaño distinto (474 × 364 frente a 440 × 664, salida 2).
+Son límites pendientes de los portes, no gates de paridad aprobados.
 
 ## Una ventana por monitor
 

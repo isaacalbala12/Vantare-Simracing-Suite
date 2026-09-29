@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 112. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 113. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2097,3 +2097,23 @@ el resultado fue **cero diferencias** en Engineer y Strategy. Los JSON
 derivados de comparación permanecen fuera del repositorio. Faltan Overlay,
 metadata temporal común, REST en el replay y facts completos para cerrar la
 paridad general; CPU/p99/RSS y Wails/OBS siguen pendientes.
+
+## 113. Paridad temporal completa de los tres payloads de producto (2026-09-29)
+
+El replay real LMU 1.4.2.0 de 80 muestras y 47 coches usa ahora la misma
+política de capacidades, unidades, cadencia y reloj de captura en Go y Rust.
+El ensamblador Rust conserva por sección el último frame publicado y replica
+la ventana estable `relativeSettled` durante siete segundos; una candidatura
+rechazada no avanza ese estado. El comparador JSON estricto encuentra **cero
+diferencias** en los payloads completos de Overlay V2, Engineer V1 y Strategy
+V1, incluidos `sectionMask`, cursores, calidades, orden y los campos temporales
+de Overlay. La prueba unitaria del cache cubre primera emisión completa,
+reutilización de secciones lentas y rechazo sin avance; el replay externo y
+las 155 pruebas Rust pasaron.
+
+Esta paridad se limita al mismo corpus SHM real y a la configuración de prueba.
+El cache Rust aún construye todas las secciones antes de decidir cuáles
+publicar: su rendimiento debe medirse y optimizarse antes del gate del 50%.
+REST se audita por hash y correlación, pero todavía no alimenta los dos
+runtimes en el replay; faltan facts temporales, durabilidad, integración
+productiva Wails/OBS y medición G0/G1/R de CPU total, p99 y RSS.

@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — tres payloads temporales idénticos LMU47 x80 (2026-09-29)
+
+Rust y Go usan el mismo reloj de captura y política de Overlay sobre el corpus
+real SHM de 80 muestras/47 coches. El nuevo cache Rust conserva secciones y
+la ventana `relativeSettled`; el comparador estricto dio cero diferencias en
+Overlay, Engineer y Strategy, incluido `sectionMask`. Una regresión cubre el
+rechazo sin avance del cache; 155 tests Rust y replay temporal pasaron. El
+cache aún construye secciones que podría omitir, por lo que no hay evidencia
+del objetivo CPU ≤0,50. REST solo está auditado por hash/correlación; faltan
+facts temporales, replay durable, Wails/OBS, packaging y G0/G1/R. Plan §113;
+Go sigue productivo y PR #1415 draft sin merge.
+
 ## VAN-778 / ISA-1403 — Engineer y Strategy idénticos en LMU47 x80 (2026-09-29)
 
 Los tests temporales exportaron fuera del repositorio los payloads Engineer y

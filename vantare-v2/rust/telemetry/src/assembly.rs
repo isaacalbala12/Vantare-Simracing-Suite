@@ -16,7 +16,7 @@ use crate::ipc::{
     snapshot::{self, EngineerIdentity, ProductMetadata, SnapshotError},
 };
 use crate::lmu::rest::RestCache;
-use crate::projection::{engineer, frame, strategy};
+use crate::projection::{cached::CachedOverlay, engineer, frame, strategy};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AssemblyError {
@@ -46,6 +46,7 @@ pub struct Assembler {
     pending: Option<Configuration>,
     delivery_revision: u64,
     fact_delivery: FactDeliveryLog,
+    overlay_cache: Option<CachedOverlay>,
 }
 
 impl Assembler {
@@ -57,6 +58,7 @@ impl Assembler {
             pending: None,
             delivery_revision: 0,
             fact_delivery: FactDeliveryLog::new(fact_stream_id).map_err(AssemblyError::FactLog)?,
+            overlay_cache: None,
         })
     }
 
@@ -160,6 +162,7 @@ impl Assembler {
         };
         let mut prepared = Vec::new();
         let mut retained_facts = Vec::new();
+        let mut overlay_cache = self.overlay_cache.clone();
         if config.consumers.overlay_v2 {
             let preferences = config
                 .preferences
@@ -167,8 +170,14 @@ impl Assembler {
                 .map_err(AssemblyError::Configuration)?;
             let sections = frame::build_sections(&candidate, &config.source, preferences)
                 .map_err(AssemblyError::Overlay)?;
+            let mut cache = overlay_cache
+                .take()
+                .unwrap_or_else(|| CachedOverlay::new(config.cadence));
+            if self.pending.is_some() && self.overlay_cache.is_some() {
+                cache.set_cadence(config.cadence);
+            }
             let update = frame::wrap_full(
-                sections,
+                sections.clone(),
                 frame::Metadata {
                     revision: next_revision,
                     state: "live",
@@ -187,6 +196,8 @@ impl Assembler {
                 },
             )
             .map_err(AssemblyError::Overlay)?;
+            let update = cache.project(update, sections, batch, candidate.gaps(), occurred_utc_ns);
+            overlay_cache = Some(cache);
             prepared.push(snapshot::encode_overlay(&update).map_err(AssemblyError::Snapshot)?);
         }
         if config.consumers.engineer {
@@ -246,6 +257,7 @@ impl Assembler {
         self.engine
             .commit(candidate)
             .map_err(AssemblyError::Engine)?;
+        self.overlay_cache = overlay_cache;
         if config.consumers.engineer {
             self.fact_delivery.commit(retained_facts);
         } else {
@@ -274,6 +286,39 @@ mod tests {
         include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
     const CONFIG: &[u8] = include_bytes!("../testdata/configuration-frame-go-v1.bin");
     const FACT_ACK: &[u8] = include_bytes!("../testdata/fact-ack-frame-go-v1.bin");
+
+    #[test]
+    fn overlay_cache_reuses_slow_sections_and_rejected_candidate_keeps_cursor() {
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        assembler.configure(CONFIG).unwrap();
+        let first = assembler
+            .apply(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
+            .unwrap();
+        let first: Value = serde_json::from_slice(ipc::decode(&first[1]).unwrap().payload).unwrap();
+        assert_eq!(first["update"]["frame"]["sectionMask"], 2047);
+        assert!(matches!(
+            assembler.apply(&REAL_44[..100], "1.3.0.0", 101, 101, 100_100_000_000),
+            Err(AssemblyError::Engine(_))
+        ));
+        assert_eq!(assembler.engine().current().unwrap().cursor.sequence, 1);
+        let second = assembler
+            .apply(REAL_44, "1.3.0.0", 102, 102, 100_100_000_000)
+            .unwrap();
+        let second = second
+            .iter()
+            .find_map(|wire| {
+                let decoded = ipc::decode(wire).ok()?;
+                let value: Value = serde_json::from_slice(decoded.payload).ok()?;
+                (value["product"] == "overlay-v2").then_some(value)
+            })
+            .unwrap();
+        assert_eq!(assembler.engine().current().unwrap().cursor.sequence, 2);
+        assert_ne!(second["update"]["frame"]["sectionMask"], 2047);
+        assert_eq!(
+            second["update"]["frame"]["standings"],
+            first["update"]["frame"]["standings"]
+        );
+    }
 
     #[test]
     fn pinned_14_tracks_reach_demanded_overlay_and_engineer_snapshots() {

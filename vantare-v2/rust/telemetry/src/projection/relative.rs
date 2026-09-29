@@ -244,6 +244,96 @@ pub fn build(
     result
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct Settler {
+    session: String,
+    epoch: u64,
+    player: String,
+    accepted: Vec<Value>,
+    pending: Vec<String>,
+    pending_since_ns: i64,
+}
+
+impl Settler {
+    pub fn project(
+        &mut self,
+        batch: &core::Batch<SessionType, LmuVehicleState>,
+        gaps: &GapSet,
+        candidate: Vec<Value>,
+        now_ns: i64,
+    ) -> Vec<Value> {
+        let Some(player) = batch.player_id.as_deref() else {
+            *self = Self::default();
+            return Vec::new();
+        };
+        if self.session != batch.session_id
+            || self.epoch != batch.cursor.epoch
+            || self.player != player
+            || self.accepted.is_empty()
+        {
+            self.session.clone_from(&batch.session_id);
+            self.epoch = batch.cursor.epoch;
+            self.player = player.to_owned();
+            self.accepted = candidate.clone();
+            self.pending.clear();
+            return candidate;
+        }
+        let Some(accepted) = self.rehydrate(batch, gaps) else {
+            self.accepted = candidate.clone();
+            self.pending.clear();
+            return candidate;
+        };
+        let ids = row_ids(&candidate);
+        if row_ids(&self.accepted) == ids {
+            self.pending.clear();
+            self.accepted = accepted.clone();
+            return accepted;
+        }
+        if self.pending != ids {
+            if self.pending.is_empty() {
+                self.pending = ids;
+                self.pending_since_ns = now_ns;
+                self.accepted = accepted.clone();
+                return accepted;
+            }
+            self.pending = ids;
+        }
+        self.accepted = accepted.clone();
+        if now_ns.saturating_sub(self.pending_since_ns) < 7_000_000_000 {
+            return accepted;
+        }
+        self.accepted = candidate.clone();
+        self.pending.clear();
+        candidate
+    }
+
+    fn rehydrate(
+        &self,
+        batch: &core::Batch<SessionType, LmuVehicleState>,
+        gaps: &GapSet,
+    ) -> Option<Vec<Value>> {
+        self.accepted
+            .iter()
+            .map(|previous| {
+                let id = previous.get("id")?.as_str()?;
+                let side = previous.get("side")?.as_str()?;
+                let current = batch
+                    .state
+                    .vehicles
+                    .iter()
+                    .find(|vehicle| vehicle.id == id)?;
+                Some(row(current, gap_for(gaps, id), side))
+            })
+            .collect()
+    }
+}
+
+fn row_ids(rows: &[Value]) -> Vec<String> {
+    rows.iter()
+        .filter_map(|row| row.get("id").and_then(Value::as_str).map(str::to_owned))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

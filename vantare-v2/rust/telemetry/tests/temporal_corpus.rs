@@ -7,6 +7,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::{Value, json};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use vantare_telemetry::assembly::Assembler;
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::{OBJECT_OUT_SIZE, admit_v13};
@@ -23,6 +24,7 @@ struct Manifest {
 #[serde(rename_all = "camelCase")]
 struct Sample {
     index: usize,
+    at_utc: String,
     source_ms: u64,
     vehicles: usize,
     shared_file: String,
@@ -78,13 +80,19 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         assert!(source_ns > previous_source_ns);
         previous_source_ns = source_ns;
         let received_ns = u64::try_from(source_ns).unwrap();
+        let occurred_ns = i64::try_from(
+            OffsetDateTime::parse(&sample.at_utc, &Rfc3339)
+                .unwrap()
+                .unix_timestamp_nanos(),
+        )
+        .unwrap();
         let frames = assembler
             .apply(
                 &bytes,
                 &manifest.build,
                 received_ns,
                 received_ns,
-                100_000_000_000 + i64::try_from(index).unwrap() * 1_000_000_000,
+                occurred_ns,
             )
             .unwrap();
         let mut products = Vec::new();
@@ -92,6 +100,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         let mut strategy_player = None;
         let mut engineer_payload = None;
         let mut strategy_payload = None;
+        let mut overlay_payload = None;
         for frame in &frames {
             let decoded = ipc::decode(frame).unwrap();
             if decoded.kind == Kind::Snapshot {
@@ -105,6 +114,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                             .len(),
                         expected
                     );
+                    overlay_payload = Some(value["update"]["frame"].clone());
                 }
                 if product == "engineer-v1" {
                     assert_eq!(
@@ -145,6 +155,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         assert!(engineer_player.is_some());
         if parity_out.is_some() {
             parity.push(json!({
+                "overlay": overlay_payload.unwrap(),
                 "engineer": engineer_payload.unwrap(),
                 "strategy": strategy_payload.unwrap(),
             }));

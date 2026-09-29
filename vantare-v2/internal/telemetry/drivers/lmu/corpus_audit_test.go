@@ -69,6 +69,7 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	var firstSource time.Duration
 	parityOut := os.Getenv("LMU_TEMPORAL_PARITY_OUT")
 	var parity []struct {
+		Overlay  json.RawMessage `json:"overlay"`
 		Engineer json.RawMessage `json:"engineer"`
 		Strategy json.RawMessage `json:"strategy"`
 	}
@@ -76,7 +77,15 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	mapper := NewBatchMapper()
 	reducer := telemetrycore.NewReducer()
 	pipeline := derive.NewPipeline(derive.Config{})
-	overlayProjector := overlayv2.NewCachedProjector(overlayv2.SectionCadence{})
+	overlayProjector := overlayv2.NewCachedProjector(overlayv2.DefaultSectionCadence())
+	rafCap := 40
+	overlaySource := overlayv2.SourceContextV2{
+		State: "live", DescriptorCapabilities: []string{"shared-memory", "rest"},
+		Modes:       overlayv2.CapabilityModesV2{Spatial: []string{"xyz"}, Delta: []string{"personal-best"}, Standings: overlayv2.ModeOfficial, Gaps: overlayv2.ModeReconstructed},
+		Performance: overlayv2.PerformanceV2{Level: 3, Mode: overlayv2.PerformanceModeManual, Effects: overlayv2.PerformanceEffectsNoBlur, RafCap: &rafCap, WidgetHz: map[string]json.RawMessage{"pedals": []byte("40")}, SourceHz: 60},
+	}
+	overlayPreferences := overlayv2.DefaultPreferencesV2()
+	overlayPreferences.Speed = overlayv2.SpeedUnitKPH
 	for i, entry := range manifest.Samples {
 		if entry.Index != i || entry.SharedFile != fmt.Sprintf("%03d-shm.bin", i) || entry.RESTFile != fmt.Sprintf("%03d-rest.json", i) {
 			t.Fatalf("sample %d has noncanonical index or filename", i)
@@ -130,7 +139,7 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		if err != nil {
 			t.Fatalf("sample %d Go Strategy projection: %v", i, err)
 		}
-		overlayUpdate, err := overlayProjector.Project(final, overlayv2.SourceContextV2{State: "live"}, overlayv2.DefaultPreferencesV2(), 1, at)
+		overlayUpdate, err := overlayProjector.Project(final, overlaySource, overlayPreferences, 1, at)
 		if err != nil {
 			t.Fatalf("sample %d Go Overlay projection: %v", i, err)
 		}
@@ -149,6 +158,10 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 				strategySnapshot.Sequence, strategySnapshot.Player.ID, strategySnapshot.SourceTime, overlayRows)
 		}
 		if parityOut != "" {
+			overlayJSON, err := json.Marshal(overlayUpdate.Frame)
+			if err != nil {
+				t.Fatal(err)
+			}
 			engineerJSON, err := json.Marshal(engineerSnapshot.PayloadV1)
 			if err != nil {
 				t.Fatal(err)
@@ -158,9 +171,10 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 				t.Fatal(err)
 			}
 			parity = append(parity, struct {
+				Overlay  json.RawMessage `json:"overlay"`
 				Engineer json.RawMessage `json:"engineer"`
 				Strategy json.RawMessage `json:"strategy"`
-			}{engineerJSON, strategyJSON})
+			}{overlayJSON, engineerJSON, strategyJSON})
 		}
 		rest := readHashedCorpusFile(t, dir, entry.RESTFile, entry.RESTSHA)
 		var overlap struct {

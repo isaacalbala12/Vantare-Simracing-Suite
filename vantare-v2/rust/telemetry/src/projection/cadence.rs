@@ -127,7 +127,7 @@ impl Dirty {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scheduler {
     cadence: Cadence,
     pending: Option<Cadence>,

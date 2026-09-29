@@ -60,7 +60,7 @@ def main():
         for item in found:
             print(item)
         return 1
-    print(f"PASS: {len(go)} real samples; Engineer and Strategy payloads match exactly")
+    print(f"PASS: {len(go)} real samples; Overlay, Engineer and Strategy payloads match exactly")
     return 0
 
 

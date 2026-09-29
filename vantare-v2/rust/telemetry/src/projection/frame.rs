@@ -71,8 +71,12 @@ fn wire_float_array(field: &QValue<Vec<f64>>) -> Value {
     let mut value = wire_value(field);
     if let Some(values) = value.get_mut("v").and_then(Value::as_array_mut) {
         for element in values {
-            if element.as_f64() == Some(0.0) {
-                *element = json!(0);
+            if let Some(number) = element.as_f64()
+                && number.fract() == 0.0
+                && number >= i64::MIN as f64
+                && number < i64::MAX as f64
+            {
+                *element = json!(number as i64);
             }
         }
     }
@@ -130,15 +134,15 @@ pub fn build_sections(
     let mut result = json!({
         "session": {
             "track": wire_value(&session.track), "phase": wire_value(&session.phase),
-            "flag": wire_value(&session.flag), "remaining": wire_value(&session.remaining_seconds),
+            "flag": wire_value(&session.flag), "remaining": wire_float(&session.remaining_seconds),
             "maxLaps": wire_value(&session.maximum_laps),
         },
         "player": {
             "lapNumber": wire_value(&player.lap_number), "id": player.vehicle_id,
-            "speed": wire_value(&player.speed), "rpm": wire_value(&player.rpm),
-            "gear": wire_value(&player.gear), "throttle": wire_value(&player.throttle),
-            "brake": wire_value(&player.brake), "clutch": wire_value(&player.clutch),
-            "steering": wire_value(&player.steering),
+            "speed": wire_float(&player.speed), "rpm": wire_float(&player.rpm),
+            "gear": wire_value(&player.gear), "throttle": wire_float(&player.throttle),
+            "brake": wire_float(&player.brake), "clutch": wire_float(&player.clutch),
+            "steering": wire_float(&player.steering),
         },
         "weather": {
             "ambientC": wire_value(&weather.ambient_c), "trackC": wire_value(&weather.track_c),

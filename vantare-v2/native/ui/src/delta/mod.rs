@@ -66,6 +66,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn frozen_workshop_scene_decodes_into_the_production_projection() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/delta.snapshot.json"))
+                .expect("escena Delta DTO v3 válida");
+        let prefs = Preferences::default();
+        let vm = delta::project(&snapshot, prefs);
+        assert_eq!(
+            (
+                vm.delta_text.as_str(),
+                vm.last_lap_text.as_str(),
+                vm.best_lap_text.as_str()
+            ),
+            ("+0.214", "1:31.234", "1:30.964")
+        );
+        assert_eq!(vm.status, delta::Status::Ready);
+        assert_eq!(vm.completed_lap, Some(127));
+        let mut widget = Widget::new(prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(!widget.ingest(&snapshot, prefs));
+        assert!(matches!(widget.motion.wake(Instant::now()), Wake::Idle));
+    }
+
+    #[test]
     fn repaint_only_for_display_changes() {
         use vantare_domain::{Player, Quality};
         let prefs = Preferences::default();

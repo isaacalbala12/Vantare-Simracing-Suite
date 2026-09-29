@@ -5664,6 +5664,19 @@ name = "vantare-domain"
 version = "0.0.0"
 
 [[package]]
+name = "vantare-hub"
+version = "0.0.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "serde",
+ "serde_json",
+ "vantare-domain",
+ "vantare-ipc",
+ "vantare-ui",
+]
+
+[[package]]
 name = "vantare-ipc"
 version = "0.0.0"
 dependencies = [

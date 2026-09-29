@@ -130,5 +130,20 @@ ocultarlos. Builds concurrentes no sirven de benchmark incremental.
 
 ## Evidencia por corte
 
-Pendiente de implementación. Este documento se actualiza en cada hito con
-checks, omisiones y límites comprobados; revisión final reservada a Opus.
+### Corte 1 — shell independiente
+
+Implementado: crate Hub, 14 entradas de navegación (las diez vistas más
+Workshop, cuenta, licencias y notificaciones), estados pendientes explícitos,
+fuentes/tokens Eficiencia, cierre de ventana y EOF opcional. Sin llamadas de
+producto ni dependencia de runtime. GPUI/serde reutilizan exclusivamente el
+lock existente; la única entrada nueva de Cargo.lock es `vantare-hub`.
+
+Gates: fmt PASS; clippy workspace/all-targets `-j 2 -D warnings` PASS;
+test workspace `-j 2` PASS, incluidos tres tests de Hub (grafo, navegación,
+CLI inválida en proceso real). Cuatro tests físicos heredados se omiten por
+requerir LMU/ACC; no se han habilitado ni se afirma prueba física.
+La compilación fría de tests observó 5m26s; no es un benchmark incremental.
+La revisión visual, DPI, teclado y liberación real de memoria quedan para Opus.
+
+No se han actualizado Notion ni GitHub de forma remota. Este documento se
+actualiza en cada hito; revisión final reservada a Opus.

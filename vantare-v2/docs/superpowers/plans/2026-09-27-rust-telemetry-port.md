@@ -2385,3 +2385,26 @@ gastó ~2,1 s CPU/15 s. VTE1 mejora el diagnóstico frente al JSON anterior
 pero **no acredita** CPU ≤50 % de Go ni selección final. R21 debe atacar
 Overlay y completar G0/G1/R; R20, REST completo, packaging, Wails/OBS y
 retirada Go siguen pendientes.
+
+## 129. Perfil por etapas sobre LMU47 y watchdog físico (2026-09-29)
+
+Un perfil opt-in del test Rust recorre los 80 SHM reales de 47 coches con
+`release` y la misma configuración de Overlay, Engineer y Strategy. El
+camino desglosado reproduce exactamente el frame Overlay del ensamblador en
+cada muestra. Cinco repeticiones dieron medianas de ~144 ms para el
+ensamblador completo; preparación ~11,1 ms, construcción de secciones
+Overlay ~37,7 ms, cache/proyección ~15,9 ms, codificación Overlay ~5,9 ms,
+construcción Engineer ~2,1 ms, codificación Engineer JSON ~25,8 ms o VTE1
+~1,67 ms, Strategy ~4,69 ms y commit ~14,4 ms. Son tiempos acumulados de
+80 muestras, no CPU del proceso ni una descomposición aditiva exacta del
+ensamblador. La ruta principal del test sigue usando JSON por defecto.
+El perfil indica que construir todas las secciones Overlay antes de aplicar
+la cadencia y reconstruir el cache merece el siguiente experimento medible.
+
+Con LMU 1.4.2.0 todavía activo, el test físico de consumidor lento mantuvo
+una entrega más de 1 s; el supervisor devolvió
+`ErrCandidateHeartbeatTimeout` y no quedó un proceso Rust huérfano. Esto
+acredita ese caso del watchdog, no peer colgado, suspensión ni cola llena.
+El CI del PR en `cd67ce74` terminó el ratchet en `REVIEW_REQUIRED`: NEW=0
+en los controles y política modificada en el workflow Rust. No se debilitó
+el gate ni se ha fusionado el PR.

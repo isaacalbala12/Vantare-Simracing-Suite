@@ -4,6 +4,7 @@
 
 use std::fs;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -13,7 +14,7 @@ use vantare_telemetry::engine::Engine;
 use vantare_telemetry::ipc::snapshot::{self, EngineerIdentity, ProductMetadata};
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::{OBJECT_OUT_SIZE, admit_v13};
-use vantare_telemetry::projection::engineer;
+use vantare_telemetry::projection::{cached::CachedOverlay, engineer, frame, strategy};
 use vantare_telemetry::quality::Field;
 
 #[derive(Deserialize)]
@@ -31,6 +32,20 @@ struct Sample {
     source_ms: u64,
     vehicles: usize,
     shared_file: String,
+}
+
+#[derive(Default)]
+struct ProfileTotals {
+    prepare: Duration,
+    sections: Duration,
+    cache: Duration,
+    encode: Duration,
+    engineer_build: Duration,
+    engineer_json: Duration,
+    engineer_binary: Duration,
+    strategy: Duration,
+    commit: Duration,
+    assembly: Duration,
 }
 
 #[test]
@@ -64,6 +79,13 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         ipc::encode(Kind::Configuration, &serde_json::to_vec(&config).unwrap()).unwrap();
     let mut assembler = Assembler::new(30, 15).unwrap();
     assembler.configure(&configuration).unwrap();
+    let profile = std::env::var_os("LMU_TEMPORAL_PROFILE").is_some();
+    let profile_config = profile.then(|| ipc::configuration::decode_frame(&configuration).unwrap());
+    let mut profile_engine = profile.then(|| Engine::new(30, 15).unwrap());
+    let mut profile_cache = profile_config
+        .as_ref()
+        .map(|config| CachedOverlay::new(config.cadence));
+    let mut profile_totals = ProfileTotals::default();
     let mut previous_source_ns = 0;
     let parity_out = std::env::var_os("LMU_TEMPORAL_PARITY_OUT");
     let binary_out = std::env::var_os("LMU_TEMPORAL_BINARY_OUT");
@@ -100,6 +122,7 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 .unix_timestamp_nanos(),
         )
         .unwrap();
+        let assembly_started = Instant::now();
         let frames = assembler
             .apply(
                 &bytes,
@@ -109,6 +132,134 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 occurred_ns,
             )
             .unwrap();
+        if profile {
+            profile_totals.assembly += assembly_started.elapsed();
+        }
+        if let (Some(engine), Some(cache), Some(config)) = (
+            profile_engine.as_mut(),
+            profile_cache.as_mut(),
+            profile_config.as_ref(),
+        ) {
+            let started = Instant::now();
+            let candidate = engine
+                .prepare(
+                    &bytes,
+                    &manifest.build,
+                    received_ns,
+                    received_ns,
+                    occurred_ns,
+                )
+                .unwrap();
+            profile_totals.prepare += started.elapsed();
+
+            let started = Instant::now();
+            let sections = frame::build_sections(
+                &candidate,
+                &config.source,
+                config.preferences.projection().unwrap(),
+            )
+            .unwrap();
+            profile_totals.sections += started.elapsed();
+
+            let batch = candidate.batch();
+            let started = Instant::now();
+            let mut update = cache
+                .project(
+                    sections,
+                    frame::Metadata {
+                        revision: u64::try_from(index + 1).unwrap(),
+                        state: "live",
+                        retry: 0,
+                        age_ms: 0,
+                        degraded_reason: "",
+                        epoch: batch.cursor.epoch,
+                        sequence: batch.cursor.sequence,
+                        section_mask: frame::ALL_SECTIONS_MASK,
+                        session_id: &batch.session_id,
+                        generated_at: &sample.at_utc,
+                        speed_unit: &config.preferences.speed,
+                        temperature_unit: &config.preferences.temperature,
+                        pressure_unit: &config.preferences.pressure,
+                        fuel_unit: &config.preferences.fuel,
+                    },
+                    batch,
+                    candidate.gaps(),
+                    occurred_ns,
+                )
+                .unwrap();
+            profile_totals.cache += started.elapsed();
+
+            let started = Instant::now();
+            let encoded = snapshot::encode_overlay(&update).unwrap();
+            assert!(!encoded.is_empty());
+            profile_totals.encode += started.elapsed();
+            let diagnostic: Value =
+                serde_json::from_slice(ipc::decode(&encoded).unwrap().payload).unwrap();
+            let published = frames
+                .iter()
+                .filter_map(|wire| ipc::decode(wire).ok())
+                .filter(|frame| frame.kind == Kind::Snapshot)
+                .filter_map(|frame| serde_json::from_slice::<Value>(frame.payload).ok())
+                .find(|value| value["product"] == "overlay-v2")
+                .unwrap();
+            assert_eq!(diagnostic, published);
+
+            let started = Instant::now();
+            let engineer_view =
+                engineer::build_typed(batch, candidate.session_remaining(), candidate.gaps());
+            profile_totals.engineer_build += started.elapsed();
+            let player_id = batch.player_id.as_deref().unwrap();
+            let player = batch
+                .state
+                .vehicles
+                .iter()
+                .find(|vehicle| vehicle.id == player_id)
+                .unwrap();
+            let metadata = ProductMetadata {
+                epoch: batch.cursor.epoch,
+                sequence: batch.cursor.sequence,
+                captured_at: &sample.at_utc,
+            };
+            let identity = Some(EngineerIdentity {
+                event: &batch.event_id,
+                session: &batch.session_id,
+                vehicle: player_id,
+                team: &player.team_id,
+                driver: &player.driver_id,
+            });
+            let started = Instant::now();
+            assert!(
+                !snapshot::encode_engineer_typed(&engineer_view, metadata, identity)
+                    .unwrap()
+                    .is_empty()
+            );
+            profile_totals.engineer_json += started.elapsed();
+            let started = Instant::now();
+            assert!(
+                !snapshot::encode_engineer_binary(&engineer_view, metadata, identity)
+                    .unwrap()
+                    .is_empty()
+            );
+            profile_totals.engineer_binary += started.elapsed();
+
+            let started = Instant::now();
+            let strategy_view = strategy::build(batch, candidate.session_remaining());
+            assert!(
+                !snapshot::encode_observation(
+                    snapshot::PRODUCT_STRATEGY_V1,
+                    &strategy_view,
+                    metadata,
+                )
+                .unwrap()
+                .is_empty()
+            );
+            profile_totals.strategy += started.elapsed();
+
+            let started = Instant::now();
+            cache.remember(&mut update);
+            engine.commit(candidate).unwrap();
+            profile_totals.commit += started.elapsed();
+        }
         let mut products = Vec::new();
         let mut engineer_player = None;
         let mut strategy_player = None;
@@ -238,6 +389,22 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
         assert_eq!(
             assembler.engine().current().unwrap().cursor.sequence,
             u64::try_from(index + 1).unwrap()
+        );
+    }
+    if profile {
+        eprintln!(
+            "LMU47_DIAGNOSTIC samples={} assembly={:?} prepare={:?} sections={:?} cache={:?} overlay_encode={:?} engineer_build={:?} engineer_json={:?} engineer_binary={:?} strategy={:?} commit={:?}",
+            manifest.samples.len(),
+            profile_totals.assembly,
+            profile_totals.prepare,
+            profile_totals.sections,
+            profile_totals.cache,
+            profile_totals.encode,
+            profile_totals.engineer_build,
+            profile_totals.engineer_json,
+            profile_totals.engineer_binary,
+            profile_totals.strategy,
+            profile_totals.commit,
         );
     }
     if let Some(out) = parity_out {

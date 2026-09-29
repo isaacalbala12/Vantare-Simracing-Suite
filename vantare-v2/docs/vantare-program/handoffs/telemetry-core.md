@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — perfil LMU47 por etapas y watchdog (2026-09-29)
+
+El test temporal Rust tiene un perfil opt-in de `release` que reproduce
+exactamente los 80 frames Overlay publicados. Cinco repeticiones: mediana
+ensamblador ~144 ms/80, secciones Overlay ~37,7 ms, cache ~15,9 ms,
+preparación ~11,1 ms, commit ~14,4 ms; Engineer JSON ~25,8 ms frente a
+VTE1 ~1,67 ms. Son tiempos de pared de replay, no CPU final ni G0/G1/R.
+El próximo experimento debe evitar construir secciones Overlay que después
+se sirven desde cache, sin alterar paridad o cadencia. Watchdog físico con
+LMU 1.4.2.0: consumidor lento >1 s, timeout esperado, sin hijo huérfano.
+CI de `cd67ce74`: ratchet REVIEW_REQUIRED por workflow Rust; cero hallazgos
+nuevos, PR aún draft. Plan §129. Go productivo; gates finales abiertos.
+
 ## VAN-778 / ISA-1403 — VTE1 LMU47 por pipe y físicamente (2026-09-29)
 
 Go auditó 160 hashes del corpus físico LMU47 x80; VTE1 y JSON Rust dieron

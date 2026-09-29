@@ -11,10 +11,7 @@ use crate::{
 use gpui::{
     App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
 };
-use std::{
-    borrow::Cow,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use vantare_domain::{
     Snapshot,
     fastest_lap::{self, Kind, Records, Timing, Update, ViewModel},
@@ -26,8 +23,6 @@ const LIFETIME: Duration = Duration::from_secs(6);
 const TRANSITION: Duration = Duration::from_millis(220);
 
 // Marca inmutable del recurso en esta App: no registrar la fuente en cada frame.
-struct Inter750;
-impl gpui::Global for Inter750 {}
 
 struct Notice {
     kind: Kind,
@@ -191,16 +186,6 @@ fn paint(
     window: &mut Window,
     cx: &mut App,
 ) {
-    if !cx.has_global::<Inter750>() {
-        if let Err(error) = cx
-            .text_system()
-            .add_fonts(vec![Cow::Borrowed(include_bytes!("Inter-750.ttf"))])
-        {
-            eprintln!("fuente Inter 750: {error}");
-            return;
-        }
-        cx.set_global(Inter750);
-    }
     let (ox, oy) = text::origin();
     text::with_origin((ox, oy + offset), || {
         window.paint_quad(quad(

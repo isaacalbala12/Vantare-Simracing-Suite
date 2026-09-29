@@ -1,0 +1,417 @@
+//! Launcher `vantare`: arranca `vantare-core` y `vantare-overlays`, los
+//! supervisa y los cierra en orden (ADR 0099 §3, ciclo de vida).
+//!
+//! ```text
+//! vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N]
+//!         [--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]
+//! vantare --parar [--instancia S]
+//! ```
+//!
+//! - **Muerte conjunta:** el launcher se mete en un Job Object que mata a
+//!   quien contiene al cerrarse; los hijos nacen dentro.
+//! - **Instancia única** por usuario (mutex con nombre): la segunda sale sin
+//!   arrancar nada.
+//! - **Supervisión:** un hijo que cae (código distinto de 0, o muerto) se
+//!   reinicia con espera creciente y un presupuesto de reinicios; agotado, el
+//!   launcher registra el motivo, cierra todo y sale con error. Un hijo que
+//!   sale con código 0 ha terminado a propósito (overlays cerrado por el
+//!   usuario, replay acabado): el launcher cierra todo y sale con 0.
+//! - **Cierre** (Ctrl+C, cierre de consola o `vantare --parar`): primero
+//!   overlays y después el núcleo; a cada uno se le pide que termine y, pasado
+//!   el plazo, se le mata.
+
+mod win;
+
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, ExitCode, Stdio};
+use std::time::{Duration, Instant};
+use std::{env, io};
+
+use win::{Instance, Stop};
+
+const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
+[--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]\n     vantare --parar [--instancia S]";
+const DEFAULT_GRACE: Duration = Duration::from_secs(3);
+const DEFAULT_RESTARTS: u32 = 5;
+/// Espera antes del primer reinicio; se duplica en cada caída seguida.
+const BACKOFF: Duration = Duration::from_millis(250);
+const BACKOFF_CAP: Duration = Duration::from_secs(8);
+/// Un hijo que aguanta tanto en marcha recupera todo el presupuesto.
+const STABLE: Duration = Duration::from_secs(30);
+
+fn log(message: impl std::fmt::Display) {
+    eprintln!("vantare: {message}");
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Program {
+    path: PathBuf,
+    args: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Config {
+    core: Program,
+    overlays: Program,
+    grace: Duration,
+    restarts: u32,
+    /// Sufijo de los nombres de los objetos del sistema, para aislar instancias (pruebas).
+    instance: String,
+    stop_only: bool,
+}
+
+fn value<'a>(
+    args: &mut impl Iterator<Item = &'a String>,
+    name: &str,
+) -> Result<&'a String, String> {
+    args.next().ok_or_else(|| format!("{name} pide un valor"))
+}
+
+fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
+    let mut config = Config {
+        core: Program {
+            path: bin_dir.join("vantare-core.exe"),
+            args: Vec::new(),
+        },
+        overlays: Program {
+            path: bin_dir.join("vantare-overlays.exe"),
+            args: Vec::new(),
+        },
+        grace: DEFAULT_GRACE,
+        restarts: DEFAULT_RESTARTS,
+        instance: String::new(),
+        stop_only: false,
+    };
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--core-bin" => config.core.path = value(&mut args, arg)?.into(),
+            "--overlays-bin" => config.overlays.path = value(&mut args, arg)?.into(),
+            "--plazo" => {
+                let ms = value(&mut args, arg)?
+                    .parse()
+                    .map_err(|_| "--plazo: milisegundos")?;
+                config.grace = Duration::from_millis(ms);
+            }
+            "--reinicios" => {
+                config.restarts = value(&mut args, arg)?
+                    .parse()
+                    .map_err(|_| "--reinicios: un entero")?;
+            }
+            "--instancia" => config.instance.clone_from(value(&mut args, arg)?),
+            "--parar" => config.stop_only = true,
+            "--" => {
+                // El resto son argumentos de los hijos: núcleo hasta el siguiente `--`.
+                let rest: Vec<String> = args.by_ref().cloned().collect();
+                let mut groups = rest.splitn(2, |a| a == "--");
+                config.core.args = groups.next().unwrap_or_default().to_vec();
+                config.overlays.args = groups.next().unwrap_or_default().to_vec();
+            }
+            other => return Err(format!("argumento desconocido: {other}")),
+        }
+    }
+    Ok(config)
+}
+
+/// Nombres de los objetos del sistema, por usuario (y por `--instancia`).
+fn object_name(kind: &str, instance: &str) -> String {
+    let user = env::var("USERNAME").unwrap_or_else(|_| "usuario".into());
+    let suffix = if instance.is_empty() {
+        String::new()
+    } else {
+        format!("-{instance}")
+    };
+    format!(r"Global\vantare-{kind}-{user}{suffix}")
+}
+
+/// Presupuesto de reinicios de un hijo con espera creciente.
+struct Restarts {
+    budget: u32,
+    attempts: u32,
+}
+
+impl Restarts {
+    /// Anota una caída tras `ran` en marcha. Devuelve cuánto esperar antes de
+    /// reiniciar, o `None` si el presupuesto se agotó.
+    fn crashed(&mut self, ran: Duration) -> Option<Duration> {
+        if ran >= STABLE {
+            self.attempts = 0;
+        }
+        self.attempts += 1;
+        let factor = 2_u32.saturating_pow(self.attempts - 1);
+        (self.attempts <= self.budget).then(|| BACKOFF.saturating_mul(factor).min(BACKOFF_CAP))
+    }
+}
+
+struct Service {
+    name: &'static str,
+    program: Program,
+    child: Option<Child>,
+    started: Instant,
+    restarts: Restarts,
+    /// Cuándo (re)arrancar; `None` mientras corre.
+    start_at: Option<Instant>,
+}
+
+impl Service {
+    fn new(name: &'static str, program: Program, budget: u32) -> Self {
+        Self {
+            name,
+            program,
+            child: None,
+            started: Instant::now(),
+            restarts: Restarts {
+                budget,
+                attempts: 0,
+            },
+            start_at: Some(Instant::now()),
+        }
+    }
+
+    fn spawn(&mut self) -> io::Result<()> {
+        let child = Command::new(&self.program.path)
+            .args(&self.program.args)
+            .stdin(Stdio::piped()) // su cierre es la petición de fin de los hijos sin ventana
+            .spawn()?;
+        log(format_args!("{} en marcha (pid {})", self.name, child.id()));
+        self.started = Instant::now();
+        self.start_at = None;
+        self.child = Some(child);
+        Ok(())
+    }
+
+    /// Registra una caída y programa el reinicio; `false` si no quedan reinicios.
+    fn failed(&mut self) -> bool {
+        self.child = None;
+        match self.restarts.crashed(self.started.elapsed()) {
+            Some(delay) => {
+                log(format_args!("{}: reinicio en {delay:?}", self.name));
+                self.start_at = Some(Instant::now() + delay);
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+enum Outcome {
+    Stopped,
+    /// Un hijo terminó a propósito.
+    Finished(&'static str),
+    Exhausted(&'static str),
+}
+
+fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
+    use std::os::windows::io::AsRawHandle;
+    loop {
+        let now = Instant::now();
+        for service in services.iter_mut() {
+            if service.child.is_none()
+                && service.start_at.is_some_and(|at| at <= now)
+                && let Err(error) = service.spawn()
+            {
+                log(format_args!("{}: no arranca: {error}", service.name));
+                service.started = now;
+                if !service.failed() {
+                    return Ok(Outcome::Exhausted(service.name));
+                }
+            }
+        }
+        let mut handles = vec![stop.raw()];
+        let mut owners = vec![None];
+        for (index, service) in services.iter().enumerate() {
+            if let Some(child) = &service.child {
+                handles.push(child.as_raw_handle());
+                owners.push(Some(index));
+            }
+        }
+        let timeout = services
+            .iter()
+            .filter_map(|s| s.start_at)
+            .min()
+            .map(|at| at.saturating_duration_since(Instant::now()));
+        let Some(signaled) = win::wait_any(&handles, timeout)? else {
+            continue; // toca reiniciar a alguien
+        };
+        let Some(index) = owners[signaled] else {
+            return Ok(Outcome::Stopped);
+        };
+        let service = &mut services[index];
+        let status = service.child.as_mut().map(Child::wait).transpose()?;
+        if status.is_some_and(|s| s.success()) {
+            return Ok(Outcome::Finished(service.name));
+        }
+        log(format_args!(
+            "{} cayó: {}",
+            service.name,
+            status.map_or_else(String::new, |s| s.to_string())
+        ));
+        if !service.failed() {
+            return Ok(Outcome::Exhausted(service.name));
+        }
+    }
+}
+
+/// Overlays primero, después el núcleo. A cada uno se le pide que termine y se
+/// le mata si pasa el plazo.
+fn shutdown(services: &mut [Service; 2], grace: Duration) {
+    for service in services.iter_mut().rev() {
+        let Some(child) = service.child.as_mut() else {
+            continue;
+        };
+        win::request_close(child);
+        if !win::wait_child(child, grace) {
+            log(format_args!(
+                "{} no terminó en {grace:?}: se le mata",
+                service.name
+            ));
+            let _ = child.kill();
+        }
+        let _ = child.wait();
+        log(format_args!("{} cerrado", service.name));
+    }
+}
+
+fn run(config: Config) -> io::Result<ExitCode> {
+    let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+        log("ya hay una instancia en marcha");
+        return Ok(ExitCode::SUCCESS);
+    };
+    let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
+    win::adopt_self_in_job()?;
+    let mut services = [
+        Service::new("núcleo", config.core, config.restarts),
+        Service::new("overlays", config.overlays, config.restarts),
+    ];
+    let outcome = supervise(&mut services, &stop);
+    shutdown(&mut services, config.grace);
+    Ok(match outcome? {
+        Outcome::Stopped => ExitCode::SUCCESS,
+        Outcome::Finished(name) => {
+            log(format_args!("{name} terminó: se cierra todo"));
+            ExitCode::SUCCESS
+        }
+        Outcome::Exhausted(name) => {
+            log(format_args!(
+                "{name}: presupuesto de reinicios agotado, se para"
+            ));
+            ExitCode::FAILURE
+        }
+    })
+}
+
+fn main() -> ExitCode {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let bin_dir = env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
+        .unwrap_or_default();
+    let config = match parse(&args, &bin_dir) {
+        Ok(config) => config,
+        Err(message) => {
+            eprintln!("vantare: {message}\n{USAGE}");
+            return ExitCode::from(2);
+        }
+    };
+    let result = if config.stop_only {
+        Stop::signal(&object_name("launcher-stop", &config.instance)).map(|()| ExitCode::SUCCESS)
+    } else {
+        run(config)
+    };
+    result.unwrap_or_else(|error| {
+        log(error);
+        ExitCode::FAILURE
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).into()).collect()
+    }
+
+    fn parsed(list: &[&str]) -> Result<Config, String> {
+        parse(&args(list), Path::new("bin"))
+    }
+
+    #[test]
+    fn arguments_after_the_separators_go_to_each_child() {
+        let config = parsed(&[
+            "--plazo", "500", "--", "--replay", "x.jsonl", "--pipe", "p", "--", "4", "--fuente",
+            "pipe:p",
+        ])
+        .unwrap();
+        assert_eq!(config.grace, Duration::from_millis(500));
+        assert_eq!(config.core.path, Path::new("bin").join("vantare-core.exe"));
+        assert_eq!(
+            config.core.args,
+            args(&["--replay", "x.jsonl", "--pipe", "p"])
+        );
+        assert_eq!(config.overlays.args, args(&["4", "--fuente", "pipe:p"]));
+    }
+
+    #[test]
+    fn options_and_defaults() {
+        let config = parsed(&[
+            "--core-bin",
+            "a.exe",
+            "--reinicios",
+            "2",
+            "--instancia",
+            "t",
+        ])
+        .unwrap();
+        assert_eq!(config.core.path, Path::new("a.exe"));
+        assert_eq!((config.restarts, config.instance.as_str()), (2, "t"));
+        assert!(config.core.args.is_empty() && config.overlays.args.is_empty());
+        assert!(parsed(&["--parar"]).unwrap().stop_only);
+        assert_eq!(parsed(&[]).unwrap().grace, DEFAULT_GRACE);
+    }
+
+    #[test]
+    fn bad_arguments_are_refused() {
+        for bad in [
+            &["--plazo"][..],
+            &["--plazo", "x"],
+            &["--reinicios", "-1"],
+            &["--nada"],
+        ] {
+            assert!(parsed(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn restarts_back_off_and_run_out() {
+        let mut restarts = Restarts {
+            budget: 4,
+            attempts: 0,
+        };
+        let quick = Duration::from_millis(10);
+        let delays: Vec<_> = (0..5).map(|_| restarts.crashed(quick)).collect();
+        assert_eq!(
+            delays,
+            [
+                Some(Duration::from_millis(250)),
+                Some(Duration::from_millis(500)),
+                Some(Duration::from_secs(1)),
+                Some(Duration::from_secs(2)),
+                None
+            ]
+        );
+    }
+
+    #[test]
+    fn a_stable_run_restores_the_budget_and_the_wait_is_capped() {
+        let mut restarts = Restarts {
+            budget: 20,
+            attempts: 0,
+        };
+        let last = (0..12)
+            .filter_map(|_| restarts.crashed(Duration::ZERO))
+            .last();
+        assert_eq!(last, Some(BACKOFF_CAP));
+        assert_eq!(restarts.crashed(STABLE), Some(BACKOFF));
+    }
+}

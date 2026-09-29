@@ -367,3 +367,10 @@ test("el runner intercalado alterna A0/A1 en orden ABBA con los mismos bloques p
   `], { encoding: "utf8" }).trim();
   assert.equal(out, "A0,A1,A1,A0,A0,A1,A1,A0");
 });
+
+test("huella-medir en DryRun resuelve procesos por PID sin lanzar nada", { skip: process.platform !== "win32" }, () => {
+  const plan = JSON.parse(execFileSync("pwsh", ["-NoProfile", "-File", fileURLToPath(new URL("./huella-medir.ps1", import.meta.url)),
+    "-DryRun", "-SinJuego", "-Procesos", String(process.pid), "-Etiqueta", "nativo"], { encoding: "utf8" }));
+  assert.equal(plan.label, "nativo");
+  assert.deepEqual(plan.matchedProcesses, [{ pid: process.pid, role: "app" }]);
+});

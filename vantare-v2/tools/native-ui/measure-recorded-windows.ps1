@@ -1,0 +1,107 @@
+param(
+    [int] $Rounds = 3,
+    [int] $Samples = 8,
+    [int] $PortBase = 54710,
+    [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence',
+    [ValidateSet('baseline', 'gpui-qt')] [string] $Comparison = 'baseline',
+    [ValidateSet('editor', 'efficiency')] [string] $Mode = 'editor',
+    [switch] $ForceWidgetRefresh,
+    [switch] $RefreshSweep
+)
+
+$ErrorActionPreference = 'Stop'
+if ($Rounds -lt 1 -or $Samples -lt 2) { throw 'Rounds and Samples must be positive; Samples must be at least 2' }
+if ($Mode -eq 'efficiency' -and $Comparison -ne 'gpui-qt') { throw 'Efficiency mode compares GPUI and Qt only' }
+if ($ForceWidgetRefresh -and $Mode -ne 'efficiency') { throw 'Forced widget refresh requires efficiency mode' }
+if ($RefreshSweep -and ($Mode -ne 'efficiency' -or $Comparison -ne 'gpui-qt' -or $ForceWidgetRefresh)) { throw 'Refresh sweep requires GPUI/Qt efficiency without ForceWidgetRefresh' }
+
+$hostExe = Join-Path $PSScriptRoot 'out/host-recorded.exe'
+$fixtureRoot = Join-Path $PSScriptRoot '../../testdata'
+$measure = Join-Path $PSScriptRoot 'measure-windows.ps1'
+$allClients = @(
+    [pscustomobject]@{ Name = 'Wails'; Exe = (Join-Path $PSScriptRoot 'out/wails/vantare-native-go-wails.exe'); Flag = '-endpoint'; ModeFlag = '-mode' }
+    [pscustomobject]@{ Name = 'Qt'; Exe = (Join-Path $PSScriptRoot 'out/package-qt-trimmed/vantare-native-go-qt.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
+    [pscustomobject]@{ Name = 'Slint'; Exe = (Join-Path $PSScriptRoot 'slint/target/release/vantare-native-go-slint.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
+    [pscustomobject]@{ Name = 'GPUI'; Exe = (Join-Path $PSScriptRoot 'gpui/target/release/vantare-native-go-gpui.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
+)
+$clients = if ($Comparison -eq 'gpui-qt') { @($allClients | Where-Object Name -In @('Qt', 'GPUI')) } else { @($allClients | Where-Object Name -In @('Wails', 'Qt', 'Slint')) }
+if ($RefreshSweep) {
+    $clients = @($clients | ForEach-Object {
+        $candidate = $_
+        foreach ($forced in @($false, $true)) {
+            [pscustomobject]@{ Name = $candidate.Name; Exe = $candidate.Exe; Flag = $candidate.Flag; ModeFlag = $candidate.ModeFlag; Force = $forced }
+        }
+    })
+}
+if ($PortBase -lt 1 -or $PortBase + $Rounds * $clients.Count - 1 -gt 65535) { throw 'Port range is invalid' }
+foreach ($path in @($hostExe, $measure) + @($clients | ForEach-Object Exe)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing trial file: $path" }
+}
+
+$results = @()
+for ($round = 0; $round -lt $Rounds; $round++) {
+    for ($position = 0; $position -lt $clients.Count; $position++) {
+        $candidate = $clients[($round + $position) % $clients.Count]
+        $port = $PortBase + $round * $clients.Count + $position
+        if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
+            throw "Port $port is already in use"
+        }
+        $info = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path -LiteralPath $hostExe).Path)
+        $info.UseShellExecute = $false
+        $info.CreateNoWindow = $true
+        $info.RedirectStandardOutput = $true
+        $info.RedirectStandardError = $true
+        foreach ($argument in @('-recorded', '-recorded-scene', $Scene, '-fixture-root', $fixtureRoot, '-port', "$port", '-recorded-cycles', '1000', '-recorded-interval', '100ms')) {
+            [void] $info.ArgumentList.Add($argument)
+        }
+        $hostProcess = [System.Diagnostics.Process]::Start($info)
+        if ($null -eq $hostProcess) { throw 'Could not start recorded Go host' }
+        try {
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 100; $attempt++) {
+                if ($hostProcess.HasExited) { throw "Recorded Go host exited: $($hostProcess.StandardError.ReadToEnd())" }
+                if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
+                    $ready = $true
+                    break
+                }
+                Start-Sleep -Milliseconds 100
+            }
+            if (-not $ready) { throw "Recorded Go host did not listen on port $port" }
+            $endpoint = "http://127.0.0.1:$port/telemetry/overlay-v2/projection"
+            $arguments = @($candidate.Flag, $endpoint, $candidate.ModeFlag, $Mode)
+            if ($ForceWidgetRefresh -or $candidate.Force) { $arguments += '--force-widget-refresh' }
+            $sample = & $measure -Executable $candidate.Exe -Arguments $arguments -Label $Mode -ExtraProcessIds @($hostProcess.Id) -WarmupSeconds 3 -Samples $Samples | ConvertFrom-Json
+            if ($null -eq $sample -or $hostProcess.HasExited) { throw "Trial ended early: $($candidate.Name), round $($round + 1)" }
+        } finally {
+            if (-not $hostProcess.HasExited) {
+                $hostProcess.Kill($true)
+                $hostProcess.WaitForExit()
+            }
+            $hostLog = $hostProcess.StandardOutput.ReadToEnd()
+            $hostError = $hostProcess.StandardError.ReadToEnd()
+            $hostProcess.Dispose()
+        }
+        if ($hostError) { throw "Recorded Go host error: $hostError" }
+        if ($hostLog -notmatch 'snapshot 100/') { throw "Fewer than 100 recorded snapshots published: $($candidate.Name), round $($round + 1)" }
+        $results += [pscustomobject]@{
+            Round = $round + 1
+            Position = $position + 1
+            Scene = $Scene
+            Mode = $Mode
+            ForceWidgetRefresh = [bool] ($ForceWidgetRefresh -or $candidate.Force)
+            Candidate = $candidate.Name
+            RecordedFramesAtLeast = 100
+            MedianWorkingSetMiB = $sample.MedianWorkingSetMiB
+            MedianPrivateMiB = $sample.MedianPrivateMiB
+            MeanCpuOneCorePercent = $sample.MeanCpuOneCorePercent
+            MeanClientCpuOneCorePercent = $sample.MeanClientCpuOneCorePercent
+            MedianClientWorkingSetMiB = $sample.MedianClientWorkingSetMiB
+            MedianClientPrivateMiB = $sample.MedianClientPrivateMiB
+            MeanCpuMachinePercent = $sample.MeanCpuMachinePercent
+            MedianGpuLocalMiB = $sample.MedianGpuLocalMiB
+            ProcessCount = $sample.ProcessCount
+            Samples = $sample.Samples
+        }
+    }
+}
+$results | ConvertTo-Json -Compress

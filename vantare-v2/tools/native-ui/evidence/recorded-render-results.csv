@@ -1,0 +1,7 @@
+Candidate,Phase,RenderedMotor,Gear,Method
+Qt,pit,0 rpm · 0,0,Windows UI Automation
+Qt,outlap,0 rpm · 1,1,Windows UI Automation
+Slint,pit,0 rpm · 0,0,Windows UI Automation
+Slint,outlap,0 rpm · 1,1,Windows UI Automation
+Wails,pit,0 rpm · 0,0,Windows UI Automation
+Wails,outlap,0 rpm · 1,1,Windows UI Automation

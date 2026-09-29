@@ -1,5 +1,282 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-29 · VAN-776 / GitHub #1410 · Host Go nativo aislado
+
+Isaac amplió el corte final: se rehizo en GPUI y Qt Quick la vista aislada
+del Standings Eficiencia/Signature, con las mismas diez filas, geometría,
+paleta translúcida y fuente Go. Las ventanas se inspeccionaron sobre LMU aún
+en pista. GPUI suprime repintados sin cambios y Qt evita notificaciones de
+lista idéntica; el instrumento separa UI de UI+Go. En tres rondas intercaladas
+de 44 coches fijos, CPU UI mediana Qt/GPUI 1,86/2,20 % de un núcleo; working
+set 90,5/58,5 MiB y privada 72,1/44,5 MiB. Qt consumió menos CPU visual en
+las tres rondas; GPUI menos RAM. Al forzar repintado en cada snapshot, GPUI
+subió de 2,20 a 3,52 % de CPU UI mediana; en Qt, 1,86 sin forzar frente a
+1,82 % forzado con rondas de signo opuesto, por lo que su ahorro no queda
+demostrado. Con pista/boxes/salida de una fila, CPU UI Qt/GPUI 2,01/2,56 %,
+working set 89,4/57,4 MiB y privada 72,9/43,4 MiB. Método, doce registros
+fijos y seis cambiantes,
+con carencias de paridad en `tools/native-ui/README.md`. Las capturas se descartaron porque
+incluían texto ajeno al widget; el smoke sin captura recibió 44 filas y diez
+snapshots en ambos clientes. Este corte sustituye el veredicto del editor
+genérico como comparación de widget; no selecciona stack ni acredita el
+ahorro del 20 % global. Sigue faltando una parrilla cambiante de 44 coches,
+OBS/GPUI, DPI y producto completo. Sin merge ni promoción.
+
+Última prueba solicitada por Isaac: GPUI oficial fijado en `72d28c32`
+abrió ventana Windows y recibió 44 filas y diez snapshots del mismo host Go.
+El editor visual se acercó a las áreas principales de Qt; su inspector
+todavía no es interactivo y no hay overlay GPUI validado. En tres rondas
+alternadas de editor + host Go con 44 coches fijos, medianas GPUI/Qt de CPU
+por núcleo 9,13/4,36 %, working set 94,5/138,2 MiB y memoria privada
+120,9/154,2 MiB. GPUI ahorra RAM, Qt usa menos de la mitad de CPU y tiene
+editor/overlay físicamente comprobados. Captura, seis mediciones y límites
+en `tools/native-ui/README.md`. Esta comparación no certifica Vantare
+completa ni selecciona todavía una arquitectura de migración. Sin otras
+variantes abiertas.
+
+El ensayo Slint dejó de reconstruir tres modelos enteros en cada snapshot:
+ahora mantiene sus modelos y actualiza solo filas distintas. Compilación,
+test, clippy y 18 smokes Windows de control/editor/overlay pasaron; la
+inspección física de la secuencia de boxes volvió a mostrar marchas 0 y 1.
+En tres rondas rotadas de 44 coches repetidos, medianas de CPU por núcleo
+Wails/Qt/Slint 6,53/5,23/3,41 % y working set 450,9/137,3/144,4 MiB.
+Con la secuencia cambiante de una fila fueron 6,82/4,85/4,25 % y
+438,3/131,4/159,6 MiB. Los cuatro JSON nuevos, método y límites están en
+`tools/native-ui/README.md`. La antigua penalización CPU de Slint provenía
+en buena parte del cliente de ensayo; la escena de 44 coches sigue fija y
+la memoria privada Slint continúa cercana a Wails. Sin elección de stack,
+prueba de Vantare completa ni promoción.
+
+La segunda carga repetida usa una captura LMU 1.3.0 real de 44 coches,
+sin alterar sus filas. Control/editor/overlay de Qt, Slint y Wails
+recibieron diez snapshots (9/9). Tres rondas rotadas de editor más host Go
+dieron medianas de CPU por núcleo Wails/Qt/Slint 6,80/4,55/11,49 % y
+working set 454,7/138,5/166,3 MiB. Qt quedó por debajo de Wails en las
+tres rondas; Slint por encima. Slint sustituye tres modelos en cada evento:
+su coste requiere perfilado antes de atribuirlo al toolkit. La captura es
+fija, no telemetría viva. Método y límites en `tools/native-ui/README.md`;
+resultados en `tools/native-ui/evidence/recorded-burst-44-results.json` y
+`recorded-load-44-results.json`. Esto tampoco acredita el 20 % en Vantare.
+
+La carga sostenida del ensayo repite, sin alterar, tres capturas reales LMU
+1.4.0.0 de una fila a intervalos artificiales de 100 ms. Nueve ventanas
+(control/editor/overlay × Qt/Slint/Wails) recibieron al menos diez
+snapshots. En tres rondas rotadas del editor más host Go, las medianas de
+CPU por núcleo fueron Wails 7,43 %, Qt 4,63 % y Slint 5,58 %; working set
+438,1/131,2/159,6 MiB. La segunda ronda invirtió Qt/Wails en CPU, y la
+carga no representa LMU vivo ni Vantare completa. Método y nueve filas en
+`tools/native-ui/measure-recorded-windows.ps1` y
+`tools/native-ui/evidence/recorded-load-results.json`; el smoke está en
+`tools/native-ui/evidence/recorded-burst-results.json`. Falta la prueba viva
+compatible para evaluar el objetivo del 20 % en el producto.
+
+El paquete Qt reducido local se cotejó contra el `windeployqt --dry-run` de
+la misma instalación 6.10.2. De 1.325 destinos mapeados, 1.324 coinciden
+byte a byte con Qt; `tls/qopensslbackend.dll` es la única omisión declarada,
+permitida por Qt para Windows cuando basta Schannel. El ejecutable es el
+único archivo adicional. El paquete actual suma 1.325 archivos, 81 DLL y
+73,86 MiB; control, editor y overlay recibieron de nuevo tres snapshots por
+candidato. Evidencia y límites en
+`tools/native-ui/evidence/qt-trimmed-provenance-results.csv`. Esto no prueba
+HTTPS del producto, no cierra licencias ni avisos, ni acredita Windows limpio.
+
+La referencia Wails del ensayo fallaba al arrancar antes del host Go: el
+proxy devolvía 502 y el `EventSource` quedaba cerrado con cero filas. Se
+reprodujo en la ventana Windows antes de corregirlo. El cliente ahora reabre
+solo las conexiones cerradas; en tres rondas posteriores mostró
+`RECONNECTING` sin host, 44 filas al arrancarlo, `RECONNECTING` tras pararlo
+y 44 filas después del reinicio. El script y los tiempos están en
+`tools/native-ui/inspect-wails-late-host-windows.ps1` y
+`tools/native-ui/evidence/wails-reconnect-results.csv`. El smoke de tres
+snapshots siguió pasando en control, editor y overlay de los tres candidatos.
+La captura fija es LMU 1.3.0 sanitizada; no acredita LMU 1.4.2.0 en vivo.
+
+En la revisión visual del replay se halló un fallo común a los tres clientes
+de ensayo: el contrato Overlay V2 omite `v` para un cero válido y conserva
+`q=fresh`, pero las ventanas mostraban `—` para marcha 0 y rpm 0. Qt Quick,
+Slint y la referencia Wails ya muestran el cero. El test Go verifica la
+secuencia real de marchas `1 → 0 → 1`; el ensayo Windows
+`tools/native-ui/inspect-recorded-render-windows.ps1` lee el texto accesible
+de pit y salida. El intervalo predeterminado del replay es ahora 6 s y puede
+ampliarse con `-recorded-interval` para dar tiempo de arranque a las ventanas.
+Esto no mide CPU, no valida el producto completo ni admite LMU 1.4.2.0.
+Isaac prefiere mantener LMU en pista; sigue pendiente la captura de menú.
+
+Isaac dejó LMU abierto para continuar la comparación. Se verificó el proceso
+LMU 1.4.2.0, REST con tiempo de sesión creciente y el mapping `LMU_Data`.
+El capturador sanitizado existente obtuvo cuatro pares de muestras en pista,
+con jugador presente, 18 coches y reloj de origen 215,0 → 246,4 → 249,0 →
+251,8 s. La entrada diagnóstica exacta para 1.4.2.0 vive en la tarea separada
+[VAN-777](https://app.notion.com/p/3e9e51695c65813ba4e8c2c8aa013dd1?pvs=204)
+([PR borrador #1413](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1413)),
+no en esta PR. La entrada no admite la build en producción:
+el test opt-in del driver aún devuelve
+`evidence=unsupported;build=1.4.2.0`. La evidencia está en
+`tools/native-ui/evidence/lmu-1420-live-diagnostic.md`. Falta la muestra de
+menú, los fixtures pinneados y su validación antes de conectar esta sesión al
+host Overlay V2 y medir UI/CPU con datos cambiantes. Isaac prefiere mantener
+la sesión actual en pista; no se interrumpirá para obtener el menú. La PR
+sigue en borrador.
+
+El host aislado ahora tiene modo `-live`, conectado al driver Go, BatchMapper,
+Reducer, Pipeline, CachedProjector y SSE existentes. Una prueba con la captura
+1.3.0 pinneada confirmó 44 filas por esta ruta. Al abrirlo contra LMU 1.4.2.0
+real salió con error explícito `evidence=unsupported` antes de publicar datos;
+no reutilizó el frame fijo ni simuló ticks. La prueba de actualizaciones en
+Qt/Slint/Wails espera que VAN-777 admita la build con evidencia completa.
+
+El candidato `0f26b35a` pasó los gates remotos bloqueantes, calidad, seguridad
+y ruta de promoción; permanece en PR borrador y sin integrar. Se examinó la
+persistencia existente de Studio: `StudioProfileService` conserva revisión,
+archivo de sesión y escritura V4. Un ensayo local con un perfil de ejemplo
+confirmó guardado, conflicto 409 y lectura tras reiniciar el host Go. La
+conexión experimental a los tres editores compiló, pero la revisión automática
+rechazó la inspección física de esos controles (`blocked by policy`). Por su
+coste frente al alcance reducido y la falta de prueba de interacción, se
+retiró todo ese código no publicado; `0f26b35a` sigue siendo la implementación
+de la PR y el editor sigue sin persistencia. También se rechazó iniciar una
+grabación OBS; la captura de ventana descrita abajo sí se completó. No se
+modificaron perfiles reales. La tarea VAN-776 conserva los gates pendientes.
+
+Nueva prueba Windows de overlay con el mismo host Go: `inspect-overlay-windows.ps1`
+sitúa una ventana inferior real, la activa y alterna magenta/verde para
+comprobar composición; además verifica clic, hit test y foco. Qt Quick,
+Slint y Wails pasaron los cuatro criterios en tres rondas consecutivas. El
+primer instrumento produjo falsos negativos Qt cuando la ventana inferior no
+tenía foco; ahora exige esa precondición. La prueba descubrió un fallo real
+Slint: los estilos se aplicaban a una ventana auxiliar de 16×16, no al overlay
+de 520×500. Se corrigió la selección y se añadió `WS_EX_LAYERED` para el paso
+de clics. OBS 32.1.2 portátil capturó por título las tres ventanas de overlay
+con las filas Go; las capturas revisadas conservan alfa parcial. Hay PNG y
+metadatos acotados en `tools/native-ui/evidence/`. Aún faltan grabación y
+medición con OBS, DPI múltiple y telemetría cambiante.
+Tres rondas adicionales del editor fijo incluyeron el árbol de cada UI, el
+host Go calentado y memoria GPU local por PID, con orden rotado. Medianas de
+working set Wails/Qt/Slint: 457,3/160,3/175,5 MiB; memoria privada:
+290,7/141,7/291,1 MiB; contador GPU local: 44,6/35,1/102,3 MiB. Qt reduce
+working set y memoria privada en esta escena, pero Slint no reduce la segunda
+y el contador GPU le favorece menos. CPU de reposo 0–0,044 % de máquina no
+permite conclusión. Microsoft advierte posibles errores de este contador;
+falta verificación GPU independiente, carga cambiante y producto completo.
+Método y nueve filas en `tools/native-ui/README.md` y
+`tools/native-ui/evidence/full-tree-static-results.csv`.
+Ensayo de empaquetado Windows: `windeployqt 6.10.2` por defecto produjo
+1.359 archivos/121,1 MiB para Qt Quick; el editor abrió fuera del `PATH` de
+Qt y cerró con código 0. Slint y Wails tienen ejecutables de 14,0 y 17,2 MiB,
+respectivamente, y el host Go separado mide 18,5 MiB; Wails depende además
+del runtime WebView2 instalado. Son tamaños de ensayo sin instalador ni
+auditoría de módulos/licencias final.
+El inventario del paquete en `tools/native-ui/evidence/qt-package-license-inventory.md`
+identifica 77 de 83 DLL mediante SBOM de Qt 6.10.2 y SHA-256: esas 77
+declaran una opción LGPLv3. Los 383 QML copiados son idénticos a los de Qt
+y conservan cabecera SPDX con opción LGPLv3. Las seis DLL adicionales,
+imágenes, traducciones, avisos de terceros y obligaciones de redistribución
+quedaron pendientes en ese primer cotejo; no se certifica el coste de
+licencia de un instalador productivo.
+Un cotejo posterior identificó las 804 PNG del paquete en el SBOM de origen
+de Qt por SHA-1; todas incluyen la opción LGPLv3, aunque el propio SBOM deja
+`LicenseConcluded: NOASSERTION`. Las seis DLL restantes ya tienen procedencia
+local verificada por SHA-256: cinco del `bin` de Qt y `dxcompiler.dll` del SDK
+Vulkan instalado. Qt atribuye `opengl32sw.dll` a Mesa llvmpipe. Quedan la
+licencia y avisos completos de los runtimes, el compilador DXC y las
+traducciones, más la prueba de un paquete final en Windows sin SDK.
+Un paquete aislado con `--no-translations --no-system-dxc-compiler
+--no-opengl-sw` bajó de 121,1 a 73,9 MiB y de 1.359 a 1.325 archivos;
+control, editor y overlay pasaron el smoke de 44 filas con Qt/Vulkan fuera
+del `PATH`. Sigue pendiente el ensayo en un Windows realmente limpio y la
+auditoría del conjunto final de licencias y avisos.
+
+Se revisaron capturas propias del editor y overlay de ese paquete reducido;
+el overlay mantiene alfa 0 en la esquina. Están en `tools/native-ui/evidence/`
+y no equivalen a una nueva prueba OBS de ese paquete.
+
+El HEAD `1e6662ac`, reconciliado con `origin/nightly@c4c7a5ce`, pasó tests Go,
+4.109 pruebas frontend, presupuesto 4/4, build, lint y CI remota. La calidad
+falló una primera vez por un hallazgo `go-mod-tidy` no reproducible y pasó
+al repetir el mismo SHA sin cambios. Una auditoría posterior de solo lectura
+del paquete Qt reducido cotejó por SHA-256 sus cuatro DLL externas con Qt y
+MinGW, encontró los textos GCC/winpthreads en la instalación del compilador
+y confirmó que el paquete de prueba no incluye avisos. Conserva 792 PNG del
+estilo FluentWinUI3; no se ha demostrado que sea seguro retirarlo. La
+revisión automática rechazó preparar una copia con estilos retirados, así que
+el paquete no se modificó ni se hizo un nuevo smoke. Detalle en
+`tools/native-ui/evidence/qt-package-license-inventory.md`.
+
+Con el mismo host Go y la escena fija se hicieron otras tres rondas, esta
+vez midiendo también el aumento de memoria dedicada total de los adaptadores
+GPU antes/durante/después. Medianas Wails/Qt/Slint: 50,8/37,7/102,3 MiB;
+working set de las ventanas: 395,8/95,5/110,5 MiB. El orden rotó y los
+valores están en `tools/native-ui/evidence/gpu-adapter-static-results.csv`;
+el método en `tools/native-ui/README.md`. El contador total incluye otras
+aplicaciones y sigue dependiendo de Windows/WDDM; confirma el orden de esta
+escena, pero no mide de forma independiente la VRAM física. No demuestra
+ahorro del 20 % de CPU ni paridad de la aplicación completa. Se corrigió el
+instrumento para rechazar el PID 0 después de descartar una prueba inválida.
+El HEAD de solo documentación `09473af6` pasó calidad y seguridad, pero el
+gate bloqueante remoto falló en dos tests de `voiceinput` sin archivos Go
+modificados; esos tests pasaron localmente de forma dirigida. Se comprobará
+de nuevo el nuevo HEAD, sin dar la CI por verde de antemano.
+El siguiente HEAD `dc8279c1` pasó todos los gates remotos: bloqueo, calidad,
+seguridad y ruta de ramas. Con el mismo host aislado se añadió un replay
+acotado de tres capturas LMU 1.4.0.0 reales, sanitizadas y fijadas por SHA:
+pre-pit, pit y salida. Un test Go confirmó la secuencia de proyección
+`track → pit → track` y el rechazo de un frame alterado. Control, editor y
+overlay Qt/Slint/Wails recibieron tres snapshots en Windows: nueve salidas
+con código 0, registradas en `tools/native-ui/evidence/recorded-update-results.csv`.
+El intervalo de cuatro segundos es del ensayo, no del simulador; las ventanas
+no prueban cada cambio visual ni el coste bajo telemetría viva. La CI del
+próximo HEAD todavía no está verificada. LMU 1.4.2.0 no se admitió ni se
+interrumpió la sesión para obtener el menú.
+
+Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
+`vantareapp/isa-1410-native-go-product-trial` parte de
+`origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la
+captura LMU real sanitizada y el pipeline Go (parser, fusión, reductor,
+derivación, proyector y SSE) para publicar Overlay V2 sin Wails/WebView2.
+Las ventanas Qt Quick y Rust/Slint de control y overlay recibieron las 44 filas
+del mismo contrato SSE; las variantes Rust control/overlay salieron con código
+0 en el smoke y con código 6 ante un endpoint desconectado. Capturas Qt
+locales revisadas en `tools/native-ui/evidence/`. `go test ./...` y build
+frontend pasaron. El overlay conserva alpha cero en una esquina de su captura
+propia. Esa captura por sí sola no equivale a prueba OBS, DPI físico ni una
+sesión LMU activa; la captura OBS aislada se documenta arriba.
+Con puerto loopback fijo, ambas variantes arrancaron antes que el host y
+recibieron después la proyección. Con `--expect-snapshots 2`, permanecieron
+abiertas tras detener el host ya conectado y salieron con código 0 después de
+reiniciarlo y recibir un segundo snapshot. Sigue pendiente telemetría viva.
+La documentación del corte identifica las opciones sin pago de Qt LGPLv3 y
+Slint Community con atribución; ambas requieren auditoría de licencia y
+empaquetado antes de distribuir Vantare, sin dar por elegida ninguna.
+Qt Quick y Rust/Slint ahora incluyen modo editor local con inspector de título,
+filas, opacidad, acento y Relative sobre la misma captura Go. La captura Qt de
+editor está revisada en `tools/native-ui/evidence/qt-go-editor.png`; Rust pasó
+compilación y smoke de 44 filas. Este borrador no
+persiste ni controla un overlay de producto.
+La referencia Wails/React de control, editor y overlay recibió igualmente las
+44 filas y falla con código 6 cuando el host no está disponible. Para entregar
+SSE al WebView usa un servidor de assets temporal en loopback: el servidor de
+assets embebido retuvo el primer evento de la conexión abierta en el ensayo.
+Con la escena de editor fija, una pasada Windows de 5 muestras tras 2 s de
+calentamiento midió working set mediano de 397,2 MiB (Wails y WebView2),
+91,8 MiB (Qt Quick) y 109,2 MiB (Slint), sin sumar el host Go común de 20,6
+MiB. El script reproducible y la memoria privada están en `tools/native-ui/`.
+Esto no prueba ahorro de CPU ni el objetivo de 20 % para Vantare completa:
+faltan carga dinámica, repetición, interacción, GPU y paridad de producto.
+`go test ./...` pasó localmente después de añadir la referencia.
+Una inspección CDP opcional del editor Wails confirmó los seis controles
+locales y produjo una captura de la página revisada. En Qt y Slint, Windows
+UI Automation verificó el rótulo de 44 coches, la escritura por teclado y el
+restablecimiento con un clic real; hay capturas propias revisadas. Se descubrió
+y corrigió un fallo Slint: la vista previa se restablecía, pero el campo de
+título conservaba el texto anterior; ahora tiene vinculación bidireccional.
+Las pruebas del editor no sustituyen OBS ni persistencia de producto.
+El cierre del host con un cliente SSE persistente agotaba el plazo y salía con
+error. Un test reprodujo el fallo y ahora el host fuerza el cierre de esa
+conexión solo después de intentar el apagado con gracia. `go test ./...` pasó.
+La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
+conserva el alcance y pendientes: interacción y persistencia de editor,
+actualización de datos, grabación/medición OBS y baseline del producto completo. No se eligió
+stack, cambió el runtime productivo ni promovió ningún canal.
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 
 El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
@@ -14,6 +291,9 @@ de Ajustes. Frontend:
 Falta verificar la sensación de navegación y el tiempo de datos en Wails real
 con sesión; el harness usa runtime simulado. [PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
 hacia `nightly`; sin integración ni promoción.
+
+Esta sección refleja el estado previo del PR #1407. `origin/nightly@c4c7a5ce`
+ya contiene su integración; la validación física de Wails sigue pendiente.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 

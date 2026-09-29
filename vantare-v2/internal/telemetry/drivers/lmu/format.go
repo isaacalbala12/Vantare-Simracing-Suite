@@ -162,6 +162,13 @@ func Parse(buf []byte, received time.Time) (Observation, error) {
 	return parseWithBuild(buf, received, BuildEvidence{})
 }
 
+// ParseWithBuild parses an offline frame using build evidence supplied by the
+// caller. A replay caller must verify that evidence against its capture before
+// invoking this function; an unknown or unsupported build stays unparsed.
+func ParseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observation, error) {
+	return parseWithBuild(buf, received, build)
+}
+
 func parseWithBuild(buf []byte, received time.Time, build BuildEvidence) (Observation, error) {
 	return parseWithProfile(buf, received, profileFromBuild(build))
 }

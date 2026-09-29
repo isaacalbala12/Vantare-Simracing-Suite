@@ -42,30 +42,34 @@ type RustTelemetryCandidateConfig struct {
 }
 
 type RustTelemetryCandidateRuntime struct {
-	mu            sync.Mutex
-	config        RustTelemetryCandidateConfig
-	policy        performancepolicy.Policy
-	policyChange  uint64
-	registry      *telemetrytransport.PublisherRegistry
-	strategy      *telemetrytransport.Hub
-	manifest      engineerprojection.Manifest
-	status        driver.State
-	attempt       int
-	statusRev     uint64
-	deliveryRev   uint64
-	lastAgeMS     int64
-	started       bool
-	stopped       bool
-	cancel        context.CancelFunc
-	done          chan struct{}
-	wailsDone     chan struct{}
-	runErr        error
-	updates       chan telemetryprocess.ConfigurationV1
-	epochOffset   uint64
-	lastEpoch     uint64
-	newChild      bool
-	lastFact      telemetrycore.FactSequence
-	lastIPCStatus telemetryprocess.StatusV1
+	mu               sync.Mutex
+	config           RustTelemetryCandidateConfig
+	policy           performancepolicy.Policy
+	policyChange     uint64
+	registry         *telemetrytransport.PublisherRegistry
+	strategy         *telemetrytransport.Hub
+	manifest         engineerprojection.Manifest
+	status           driver.State
+	attempt          int
+	statusRev        uint64
+	deliveryRev      uint64
+	lastAgeMS        int64
+	started          bool
+	stopped          bool
+	cancel           context.CancelFunc
+	done             chan struct{}
+	wailsDone        chan struct{}
+	runErr           error
+	updates          chan telemetryprocess.ConfigurationV1
+	overlayRequests  chan telemetryprocess.OverlayRPC
+	overlaySessions  map[string]string
+	overlayRequestID uint64
+	overlayContext   context.Context
+	epochOffset      uint64
+	lastEpoch        uint64
+	newChild         bool
+	lastFact         telemetrycore.FactSequence
+	lastIPCStatus    telemetryprocess.StatusV1
 }
 
 func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*RustTelemetryCandidateRuntime, error) {
@@ -84,7 +88,7 @@ func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*Rus
 	if err != nil {
 		return nil, fmt.Errorf("rust Overlay publisher: %w", err)
 	}
-	set, err := capability.Resolve(DefaultTelemetrySimulator().Capabilities, nil)
+	set, err := capability.Resolve(lmu.Capabilities(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +175,9 @@ func (runtime *RustTelemetryCandidateRuntime) Start(parent context.Context) erro
 	runtime.cancel = cancel
 	runtime.done = make(chan struct{})
 	runtime.updates = make(chan telemetryprocess.ConfigurationV1, 1)
+	runtime.overlayRequests = make(chan telemetryprocess.OverlayRPC)
+	runtime.overlaySessions = make(map[string]string)
+	runtime.overlayContext = ctx
 	if runtime.strategy != nil && runtime.config.Emitter != nil {
 		runtime.wailsDone = make(chan struct{})
 	}
@@ -248,11 +255,11 @@ func (runtime *RustTelemetryCandidateRuntime) run(ctx context.Context, initial t
 			}
 		}
 	}()
-	run := telemetryprocess.RunCandidateWithUpdates
+	run := telemetryprocess.RunCandidateWithOverlay
 	if runtime.config.EngineerBinaryDiagnostic {
-		run = telemetryprocess.RunCandidateWithBinaryEngineer
+		run = telemetryprocess.RunCandidateWithOverlayBinaryEngineer
 	}
-	err := run(ctx, runtime.config.Executable, initial, runtime.updates, runtime.deliver, runtime.handleDisconnected)
+	err := run(ctx, runtime.config.Executable, initial, runtime.updates, runtime.overlayRequests, runtime.deliver, runtime.handleDisconnected)
 	terminal := ctx.Err() == nil && err != nil
 	runtime.cancel()
 	<-refreshDone
@@ -271,6 +278,7 @@ func (runtime *RustTelemetryCandidateRuntime) handleDisconnected(cause error) {
 	attempt := runtime.attempt + 1
 	runtime.newChild = true
 	runtime.lastIPCStatus = telemetryprocess.StatusV1{}
+	clear(runtime.overlaySessions)
 	lastFact := runtime.lastFact
 	runtime.mu.Unlock()
 	if lastFact != 0 && runtime.config.Engineer != nil {
@@ -323,7 +331,8 @@ func (runtime *RustTelemetryCandidateRuntime) Stop(ctx context.Context) error {
 }
 
 func (runtime *RustTelemetryCandidateRuntime) consumersLocked() telemetryprocess.ConsumersV1 {
-	_, overlay := runtime.registry.Lookup(telemetrytransport.ProductOverlayV2)
+	_, legacyOverlay := runtime.registry.Lookup(telemetrytransport.ProductOverlayV2)
+	overlay := legacyOverlay || len(runtime.overlaySessions) > 0
 	return telemetryprocess.ConsumersV1{OverlayV2: overlay, Engineer: runtime.config.Engineer != nil, Strategy: runtime.strategy != nil}
 }
 

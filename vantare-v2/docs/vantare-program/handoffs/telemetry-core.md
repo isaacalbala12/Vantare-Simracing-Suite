@@ -1,5 +1,34 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — integración Windows Rust/Overlay, aún incompleta (2026-09-29)
+
+Rama `vantareapp/isa-1403-rust-telemetry`, PR #1415 draft, base
+`origin/nightly@c4c7a5ce`. El usuario acotó el objetivo a la telemetría live
+desde LMU que usa Overlay Studio y su entrega; los demás servicios Go siguen.
+El Windows productivo de esta rama selecciona el helper Rust empaquetado y
+falla si falta. Rust mantiene sesión, ACK/replay/latest-wins y secciones de
+Overlay; Go Wails/OBS retransmite respuestas. El helper espera LMU cerrado
+en estado detecting y no agota el supervisor. Studio HTTP se probó con el
+proceso Rust real y LMU cerrado; el SSE OBS se probó con fuente controlada.
+El cliente crea nueva sesión ante 503 o caída del socket.
+
+El build prepara `runtime/telemetry/rust-live-v1/vantare-telemetry.exe`.
+Instalador NSIS y ZIP portable se construyeron/verificaron localmente, junto a
+las pruebas del modelo transaccional. `go test ./...`, Rust biblioteca/binario,
+Clippy, formato, frontend test (485 archivos, 4114 casos aprobados, 2 omitidos),
+build, typecheck y lint pasaron. El `cargo test --all-targets` se interrumpió
+porque ejecutaba bancos largos no necesarios para este cambio; sus unitarios
+habían pasado y se ejecutaron después Clippy y el test del binario. No se
+instaló ni publicó el paquete.
+
+Faltan: retirar Go del receptor/estado de Engineer y Strategy, epoch/facts y
+el motor live histórico con consumidores cero; validar LMU pista, Wails y OBS
+físicos, CI del SHA final y banco pareado CPU/p99/RSS. La presencia del helper
+Rust en el instalador no demuestra todavía paridad ni ganancia total. No hay
+merge, promoción a nightly ni release. El quality ratchet del PR tenía el
+bloqueo previo `policy_changed: True` por el workflow Rust añadido; debe
+revisarse su estado tras el próximo push.
+
 ## ISA-1403 — dirección nueva: telemetría live y entrega Rust (2026-09-29)
 
 Isaac confirmó que esta issue debe sustituir **todo el camino live de

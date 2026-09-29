@@ -124,6 +124,46 @@ func TestServerExposesOverlayV2PublisherSSE(t *testing.T) {
 	}
 }
 
+type rustOverlaySSEProbe struct {
+	pulls  int
+	closed bool
+}
+
+func (probe *rustOverlaySSEProbe) Pull(_ string, request telemetrytransport.OverlayPullRequest) (telemetrytransport.OverlayPullResponse, bool, error) {
+	probe.pulls++
+	if probe.pulls > 1 {
+		return telemetrytransport.OverlayPullResponse{}, false, nil
+	}
+	return telemetrytransport.OverlayPullResponse{
+		SessionID: request.SessionID, Delivery: 1,
+		Events: []telemetrytransport.OverlayPullEvent{{Name: "telemetry:overlay-v2:snapshot", Data: json.RawMessage(`{"revision":3,"frame":{"contract":2}}`)}},
+	}, true, nil
+}
+
+func (probe *rustOverlaySSEProbe) Close(_, _ string) { probe.closed = true }
+
+func TestServerRelaysRustOverlayPullToOBSAndClosesSession(t *testing.T) {
+	probe := &rustOverlaySSEProbe{}
+	srv := server.New(server.ServerConfig{OverlayPull: probe})
+	route := telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2)
+	foreign := httptest.NewRequest(http.MethodGet, route, nil)
+	foreign.RemoteAddr = "203.0.113.10:45678"
+	denied := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(denied, foreign)
+	if denied.Code != http.StatusForbidden || probe.pulls != 0 {
+		t.Fatalf("foreign OBS request status=%d pulls=%d", denied.Code, probe.pulls)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	request := httptest.NewRequest(http.MethodGet, route, nil).WithContext(ctx)
+	request.RemoteAddr = "127.0.0.1:45678"
+	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 1}
+	srv.Handler().ServeHTTP(writer, request)
+	if !strings.Contains(writer.body.String(), "event: telemetry:overlay-v2:snapshot") ||
+		!strings.Contains(writer.body.String(), `"contract":2`) || !probe.closed || probe.pulls != 1 {
+		t.Fatalf("Rust OBS relay body=%q closed=%v pulls=%d", writer.body.String(), probe.closed, probe.pulls)
+	}
+}
+
 func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 	// R7a: ProductOverlay esta retirado; el aislamiento cruzado se prueba
 	// con el Hub vivo de Engineer y la ruta historica del overlay.

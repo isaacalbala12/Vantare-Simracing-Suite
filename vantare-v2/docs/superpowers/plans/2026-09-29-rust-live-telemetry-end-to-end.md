@@ -99,3 +99,25 @@ Eso no mide la ruta final. `cargo test --release --locked`, Clippy y
 `go test ./...` pasaron tras ese corte. Faltan
 los demás destinos, la retirada Go, el banco final, CI del nuevo SHA y la
 verificación física de la arquitectura final.
+
+## Corte de integración posterior (2026-09-29)
+
+Windows selecciona el helper Rust empaquetado por defecto y falla si no está;
+el flag de candidato queda para diagnóstico. Rust mantiene el pull Overlay por
+ventana y devuelve respuestas por IPC. El HTTP interno de Wails y el SSE de
+OBS retransmiten esa respuesta; el helper retiene su propio snapshot y lo
+excluye del receptor Go mientras haya una sesión Rust. Si LMU está cerrado, el
+helper espera y sigue respondiendo estado y heartbeat sin agotar el supervisor.
+Una pérdida del proceso hace que el cliente abra una sesión nueva.
+
+El build Windows prepara `rust-live-v1/vantare-telemetry.exe`; el instalador
+transacciona `runtime/telemetry` como unidad con DuckDB y el ZIP portable
+verifica ambos. Pasaron `go test ./...`, tests Rust de biblioteca y binario,
+Clippy, formato, `pnpm test`, build/typecheck/lint frontend, prueba del HTTP
+Studio con pipe Rust real sin LMU, pruebas de empaquetado y creación/verificación
+local de NSIS/ZIP. No se instaló ni publicó ese paquete.
+
+**Todavía no se alcanza E5/E6:** Go conserva el receptor de Engineer/Strategy,
+traducción de epoch, status/facts y código live histórico; falta probar la
+cadena completa de pista, reconexión, OBS físico, paridad final y banco
+CPU/p99/RSS. Esta integración parcial no declara ganancia ni retirada total.

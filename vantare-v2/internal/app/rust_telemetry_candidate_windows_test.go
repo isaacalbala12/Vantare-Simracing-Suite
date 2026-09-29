@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -260,6 +261,53 @@ func TestRustCandidateStrategyResumesAfterChildEpochReset(t *testing.T) {
 
 // A late Overlay consumer must reconfigure the already running Rust child;
 // Wails opens Studio/Desktop/OBS after the source owner has started.
+func TestRustCandidateOverlayPullOwnsSessionWithoutLMU(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" {
+		t.Skip("requires built Rust helper")
+	}
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{Enabled: true, Executable: executable})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer stopCancel()
+		if err := runtime.Stop(stopCtx); err != nil {
+			t.Errorf("stop Rust helper: %v", err)
+		}
+	}()
+	request := telemetrytransport.OverlayPullRequest{SessionID: "studio-generation", Ack: 0}
+	response, deliver, err := runtime.Pull("studio", request)
+	if err != nil || !deliver || response.SessionID != request.SessionID || response.Delivery != 1 || len(response.Events) != 1 || response.Events[0].Name != "telemetry:overlay-v2:status" {
+		t.Fatalf("first Rust pull = %+v, deliver=%v, err=%v", response, deliver, err)
+	}
+	var initial struct {
+		Source struct {
+			State string `json:"state"`
+		} `json:"source"`
+	}
+	if err := json.Unmarshal(response.Events[0].Data, &initial); err != nil || initial.Source.State != "detecting" {
+		t.Fatalf("Rust pull without LMU state=%q err=%v", initial.Source.State, err)
+	}
+	replayed, deliver, err := runtime.Pull("studio", request)
+	if err != nil || !deliver || !reflect.DeepEqual(replayed, response) {
+		t.Fatalf("Rust ACK replay = %+v, deliver=%v, err=%v", replayed, deliver, err)
+	}
+	runtime.Close("studio", request.SessionID)
+	runtime.mu.Lock()
+	active := len(runtime.overlaySessions)
+	runtime.mu.Unlock()
+	if active != 0 {
+		t.Fatalf("Rust pull left %d active Go demand hints", active)
+	}
+}
+
 func TestRustCandidateLateOverlayConsumerLiveLMUOptIn(t *testing.T) {
 	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
 	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {

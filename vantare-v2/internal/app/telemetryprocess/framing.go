@@ -28,6 +28,8 @@ const (
 	KindStatus
 	KindStop
 	KindFactReplayRequest
+	KindOverlayCommand
+	KindOverlayReply
 )
 
 var (
@@ -45,7 +47,7 @@ type Frame struct {
 }
 
 func validKind(kind FrameKind) bool {
-	return kind >= KindHandshake && kind <= KindFactReplayRequest
+	return kind >= KindHandshake && kind <= KindOverlayReply
 }
 
 func maxKindPayload(kind FrameKind) int {
@@ -62,6 +64,10 @@ func maxKindPayload(kind FrameKind) int {
 		return MaxEngineerFactPayload
 	case KindFactAck, KindResyncRequired, KindFactReplayRequest:
 		return 128
+	case KindOverlayCommand:
+		return 1024
+	case KindOverlayReply:
+		return 160 * 1024
 	case KindStop:
 		return 0
 	default:

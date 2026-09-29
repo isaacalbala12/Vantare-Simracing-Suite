@@ -13,9 +13,10 @@ Esta entrada **no está publicada** por el mero hecho de aparecer en la PR.
 
 - id: telemetry-rust-live
 - estado: in-progress
-- progreso: 0
+- progreso: 30
 - objetivo: Sustituir la ruta live de telemetría y su entrega a Overlay, Engineer y Strategy.
-- item: Contrato de pull Overlay portado a Rust como módulo aislado y probado con golden; integración productiva pendiente.
+- item: Windows selecciona el helper Rust por defecto; Studio y OBS reciben Overlay mediante sesiones, ACK, replay y selección Rust. El host aún adapta Engineer/Strategy y conserva código Go live por retirar.
+- item: Instalador NSIS y ZIP portable construidos y verificados localmente con el helper Rust; falta prueba física LMU/Wails/OBS y CI del SHA final.
 - item: Comparación de rendimiento del camino final y rondas de optimización pendientes.
 
 ## Hitos

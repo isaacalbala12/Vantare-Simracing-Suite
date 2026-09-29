@@ -21,7 +21,7 @@ func (reader shortReader) Read(data []byte) (int, error) {
 }
 
 func TestWireFrameConformsToRustV1(t *testing.T) {
-	for kind := KindHandshake; kind <= KindFactReplayRequest; kind++ {
+	for kind := KindHandshake; kind <= KindOverlayReply; kind++ {
 		frame := Frame{Kind: kind, Payload: []byte{0, 1, 255}}
 		if kind == KindStop {
 			frame.Payload = nil
@@ -61,6 +61,8 @@ func TestFrameRejectsOversizedControlBeforePayloadRead(t *testing.T) {
 		{KindStatus, 256},
 		{KindStop, 0},
 		{KindFactReplayRequest, 128},
+		{KindOverlayCommand, 1024},
+		{KindOverlayReply, 160 * 1024},
 	} {
 		header := make([]byte, FrameHeaderSize)
 		binary.LittleEndian.PutUint32(header[:4], uint32(test.max+1))

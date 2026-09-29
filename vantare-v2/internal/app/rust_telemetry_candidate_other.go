@@ -44,3 +44,9 @@ func (*RustTelemetryCandidateRuntime) StrategyHub() *telemetrytransport.Hub { re
 func (*RustTelemetryCandidateRuntime) OverlayV2Publishers() *telemetrytransport.PublisherRegistry {
 	return nil
 }
+func (*RustTelemetryCandidateRuntime) Pull(string, telemetrytransport.OverlayPullRequest) (telemetrytransport.OverlayPullResponse, bool, error) {
+	return telemetrytransport.OverlayPullResponse{}, false, ErrRustCandidateLifecycle
+}
+func (*RustTelemetryCandidateRuntime) Close(string, string) {}
+func (*RustTelemetryCandidateRuntime) CloseSender(string)   {}
+func (*RustTelemetryCandidateRuntime) CloseAll()            {}

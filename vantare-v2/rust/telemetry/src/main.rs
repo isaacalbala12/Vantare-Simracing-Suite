@@ -3,6 +3,8 @@ use std::io;
 use std::time::{Duration, Instant};
 
 #[cfg(windows)]
+use vantare_telemetry::delivery::OverlayPull;
+#[cfg(windows)]
 use vantare_telemetry::ipc::pipe_windows::DeadlinePipe;
 #[cfg(windows)]
 use vantare_telemetry::ipc::queue::WriterQueue;
@@ -13,7 +15,10 @@ use vantare_telemetry::ipc::{self, Kind};
 #[cfg(windows)]
 use vantare_telemetry::lmu::rest::RestStatus;
 #[cfg(windows)]
-use vantare_telemetry::lmu::{acquisition::Acquisition, cadence::TickCadence};
+use vantare_telemetry::lmu::{
+    acquisition::{Acquisition, AcquisitionError},
+    cadence::TickCadence,
+};
 
 fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -137,8 +142,10 @@ fn wait_for_frame(pipe: &mut DeadlinePipe, deadline: Instant) -> io::Result<Vec<
 #[cfg(windows)]
 fn run_candidate_pipe(pipe_name: &str, nonce_text: &str, engineer_binary: bool) -> io::Result<()> {
     run_candidate_with_source(pipe_name, nonce_text, engineer_binary, |stream| {
-        Acquisition::open(30, stream)
-            .map_err(|error| io::Error::other(format!("open LMU: {error:?}")))
+        Acquisition::open(30, stream).map_err(|error| match error {
+            AcquisitionError::Io(error) => error,
+            other => io::Error::other(format!("open LMU: {other:?}")),
+        })
     })
 }
 
@@ -147,7 +154,7 @@ fn run_candidate_with_source(
     pipe_name: &str,
     nonce_text: &str,
     engineer_binary: bool,
-    open: impl FnOnce(u64) -> io::Result<Acquisition>,
+    mut open: impl FnMut(u64) -> io::Result<Acquisition>,
 ) -> io::Result<()> {
     let mut pipe = connect_pipe(pipe_name, nonce_text)?;
     let first = wait_for_frame(&mut pipe, Instant::now() + Duration::from_secs(2))?;
@@ -165,9 +172,75 @@ fn run_candidate_with_source(
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid Configuration"))?;
     let nonce = ipc::parse_nonce_hex(nonce_text).expect("validated pipe nonce");
     let stream = u64::from_le_bytes(nonce[..8].try_into().expect("fixed nonce")).max(1);
-    let mut acquisition = open(stream)?;
+    let mut overlay = OverlayPull::new();
+    overlay
+        .publish_status(
+            1,
+            br#"{"revision":1,"source":{"state":"detecting"},"frame":null}"#,
+        )
+        .map_err(|error| io::Error::other(format!("initial Overlay status: {error:?}")))?;
+    let mut heartbeat = 0_u64;
+    let mut next_open = Instant::now();
+    let mut next_status = Instant::now();
+    let mut acquisition = loop {
+        if Instant::now() >= next_open {
+            match open(stream) {
+                Ok(acquisition) => break Some(acquisition),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    next_open = Instant::now() + Duration::from_millis(250);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        if Instant::now() >= next_status {
+            heartbeat = heartbeat
+                .checked_add(1)
+                .ok_or_else(|| io::Error::other("heartbeat exhausted"))?;
+            let frame = status::encode(Status {
+                heartbeat,
+                state: State::Detecting,
+                source_age_ns: None,
+                shm_ticks: None,
+                rest_reports: None,
+                rest_batches: None,
+                rest_http_fresh: None,
+                rest_state: None,
+            })
+            .map_err(|error| io::Error::other(format!("encode detecting Status: {error:?}")))?;
+            pipe.write_all_until(&frame, Instant::now() + Duration::from_secs(2))?;
+            next_status = Instant::now() + Duration::from_millis(250);
+        }
+        if let Some(frame) =
+            pipe.read_frame_if_available(Instant::now() + Duration::from_secs(2))?
+        {
+            let decoded = ipc::decode(&frame).map_err(|_| io::ErrorKind::InvalidData)?;
+            match decoded.kind {
+                Kind::Stop => {
+                    ipc::status::decode_stop(decoded).map_err(|_| io::ErrorKind::InvalidData)?;
+                    break None;
+                }
+                Kind::OverlayCommand => {
+                    let reply = ipc::overlay::handle_frame(&mut overlay, &frame)
+                        .map_err(|error| io::Error::other(format!("Overlay command: {error:?}")))?;
+                    pipe.write_all_until(&reply, Instant::now() + Duration::from_secs(2))?;
+                }
+                _ => return Err(io::ErrorKind::InvalidData.into()),
+            }
+        }
+        std::thread::sleep(Duration::from_millis(2));
+    };
+    let Some(ref mut acquisition) = acquisition else {
+        let reply = ipc::encode(Kind::Stop, &[]).expect("fixed Stop frame");
+        return pipe.write_all_until(&reply, Instant::now() + Duration::from_secs(2));
+    };
+    overlay
+        .publish_status(
+            2,
+            br#"{"revision":2,"source":{"state":"connecting"},"frame":null}"#,
+        )
+        .map_err(|error| io::Error::other(format!("connected Overlay status: {error:?}")))?;
     acquisition.set_engineer_binary_candidate(engineer_binary);
-    let result = run_candidate_loop(&mut pipe, &mut acquisition, first);
+    let result = run_candidate_loop(&mut pipe, acquisition, &mut overlay, heartbeat, first);
     let shutdown = acquisition
         .shutdown()
         .map_err(|error| io::Error::other(format!("close LMU: {error:?}")));
@@ -181,15 +254,19 @@ fn run_candidate_with_source(
 fn run_candidate_loop(
     pipe: &mut DeadlinePipe,
     acquisition: &mut Acquisition,
+    overlay: &mut OverlayPull,
+    initial_heartbeat: u64,
     first: Vec<u8>,
 ) -> io::Result<()> {
     let mut queue = WriterQueue::new();
+    let mut overlay_status_revision = 2_u64;
+    let mut last_overlay_state = State::Connecting;
     acquisition
         .handle_control_frame(&first, &mut queue)
         .map_err(|error| io::Error::other(format!("configure LMU: {error:?}")))?;
     let mut cadence = TickCadence::new(Instant::now());
     let mut next_status = Instant::now() + Duration::from_millis(250);
-    let mut heartbeat = 0_u64;
+    let mut heartbeat = initial_heartbeat;
     let mut shm_ticks = 0_u64;
     let mut rest_reports = 0_u64;
     let mut rest_batches = 0_u64;
@@ -205,6 +282,12 @@ fn run_candidate_loop(
             if decoded.kind == Kind::Stop {
                 ipc::status::decode_stop(decoded).map_err(|_| io::ErrorKind::InvalidData)?;
                 return Ok(());
+            }
+            if decoded.kind == Kind::OverlayCommand {
+                let reply = ipc::overlay::handle_frame(overlay, &frame)
+                    .map_err(|error| io::Error::other(format!("Overlay command: {error:?}")))?;
+                pipe.write_all_until(&reply, Instant::now() + Duration::from_secs(2))?;
+                continue;
             }
             acquisition
                 .handle_control_frame(&frame, &mut queue)
@@ -232,6 +315,7 @@ fn run_candidate_loop(
                     .checked_add(1)
                     .ok_or_else(|| io::Error::other("REST batch counter exhausted"))?;
             }
+            let frames = route_overlay_frames(overlay, frames)?;
             queue
                 .push_batch(frames)
                 .map_err(|error| io::Error::other(format!("queue REST: {error:?}")))?;
@@ -241,13 +325,17 @@ fn run_candidate_loop(
                 }
             }
         }
-        if acquisition
-            .tick_into_queue_if_due(&mut cadence, Instant::now(), &mut queue)
+        if let Some(frames) = acquisition
+            .tick_if_due(&mut cadence, Instant::now())
             .map_err(|error| io::Error::other(format!("LMU tick: {error:?}")))?
         {
             shm_ticks = shm_ticks
                 .checked_add(1)
                 .ok_or_else(|| io::Error::other("SHM tick counter exhausted"))?;
+            let frames = route_overlay_frames(overlay, frames)?;
+            queue
+                .push_batch(frames)
+                .map_err(|error| io::Error::other(format!("queue LMU tick: {error:?}")))?;
         }
         if Instant::now() >= next_status {
             heartbeat = heartbeat
@@ -258,6 +346,24 @@ fn run_candidate_loop(
                 Some((age, true)) => (State::Stale, Some(age)),
                 Some((age, false)) => (State::Live, Some(age)),
             };
+            if state != last_overlay_state {
+                overlay_status_revision = overlay_status_revision
+                    .checked_add(1)
+                    .ok_or_else(|| io::Error::other("Overlay status revision exhausted"))?;
+                let update = serde_json::json!({
+                    "revision": overlay_status_revision,
+                    "source": {"state": state, "ageMs": source_age_ns.unwrap_or(0) / 1_000_000},
+                    "frame": null,
+                });
+                let json = serde_json::to_vec(&update)
+                    .map_err(|error| io::Error::other(format!("encode Overlay status: {error}")))?;
+                overlay
+                    .publish_status(overlay_status_revision, &json)
+                    .map_err(|error| {
+                        io::Error::other(format!("publish Overlay status: {error:?}"))
+                    })?;
+                last_overlay_state = state;
+            }
             let frame = status::encode(Status {
                 heartbeat,
                 state,
@@ -290,6 +396,68 @@ fn run_candidate_loop(
         if !wait.is_zero() {
             std::thread::sleep(wait.min(Duration::from_millis(2)));
         }
+    }
+}
+
+#[cfg(windows)]
+fn route_overlay_frames(
+    overlay: &mut OverlayPull,
+    frames: Vec<Vec<u8>>,
+) -> io::Result<Vec<Vec<u8>>> {
+    if !overlay.has_consumers() {
+        return Ok(frames);
+    }
+    let mut host_frames = Vec::with_capacity(frames.len());
+    for frame in frames {
+        let retained = ipc::overlay::retain_snapshot_frame(overlay, &frame)
+            .map_err(|error| io::Error::other(format!("retain Overlay snapshot: {error:?}")))?;
+        if !retained {
+            host_frames.push(frame);
+        }
+    }
+    Ok(host_frames)
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    use vantare_telemetry::delivery::PullRequest;
+
+    #[test]
+    fn rust_pull_keeps_overlay_snapshot_out_of_go_receiver() {
+        let snapshot = include_bytes!("../testdata/overlay-snapshot-frame-rust-v1.bin").to_vec();
+        let status = ipc::encode(Kind::Status, b"host-status").unwrap();
+        let mut overlay = OverlayPull::new();
+        assert_eq!(
+            route_overlay_frames(&mut overlay, vec![snapshot.clone(), status.clone()]).unwrap(),
+            vec![snapshot.clone(), status.clone()]
+        );
+        overlay
+            .pull(
+                "studio",
+                PullRequest {
+                    session_id: "session",
+                    ack: 0,
+                    sections: 0,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            route_overlay_frames(&mut overlay, vec![snapshot, status.clone()]).unwrap(),
+            vec![status]
+        );
+        let response = overlay
+            .pull(
+                "studio",
+                PullRequest {
+                    session_id: "session",
+                    ack: 0,
+                    sections: 0,
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(response.events[0].name, "telemetry:overlay-v2:snapshot");
     }
 }
 

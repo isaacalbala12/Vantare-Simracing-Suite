@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {OverlayFrameV2ContractError} from "./overlay-frame-v2-store";
+import {OverlayTransportUnavailableError} from "./overlay-transport-error";
 import {
   createBrowserOverlayWailsPullClient,
   createOverlayWailsPullClient,
@@ -22,6 +23,28 @@ it("starts a fresh ACK-zero generation after an incremental base mismatch", asyn
  scheduled.shift()?.();await Promise.resolve();await Promise.resolve();
  expect(requests).toEqual([{sessionId:"s1",ack:0},{sessionId:"s2",ack:0}]);
  client.stop();
+});
+
+it("starts a new Rust session after the child transport restarts", async () => {
+  const scheduled: Array<() => void> = [];
+  const requests: unknown[] = [];
+  let generation = 0;
+  const client = createOverlayWailsPullClient({
+    post(route, data) {
+      if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+      requests.push(data);
+      return Promise.reject(new OverlayTransportUnavailableError());
+    },
+    createSessionID: () => `rust-${++generation}`,
+    schedule(callback) { scheduled.push(callback); return callback; },
+    cancel: () => undefined,
+  });
+  client.start();
+  await Promise.resolve();
+  scheduled.shift()?.();
+  await Promise.resolve();
+  expect(requests).toEqual([{sessionId: "rust-1", ack: 0}, {sessionId: "rust-2", ack: 0}]);
+  client.stop();
 });
 
 type PendingPull = {

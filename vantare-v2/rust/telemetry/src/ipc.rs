@@ -5,6 +5,7 @@ pub mod fact;
 pub mod fact_ack;
 pub mod fact_delivery;
 pub mod fact_replay;
+pub mod overlay;
 #[cfg(windows)]
 pub mod pipe_windows;
 pub mod queue;
@@ -33,6 +34,8 @@ pub enum Kind {
     Status = 8,
     Stop = 9,
     FactReplayRequest = 10,
+    OverlayCommand = 11,
+    OverlayReply = 12,
 }
 
 impl TryFrom<u16> for Kind {
@@ -50,6 +53,8 @@ impl TryFrom<u16> for Kind {
             8 => Ok(Self::Status),
             9 => Ok(Self::Stop),
             10 => Ok(Self::FactReplayRequest),
+            11 => Ok(Self::OverlayCommand),
+            12 => Ok(Self::OverlayReply),
             _ => Err(FrameError::UnknownKind),
         }
     }
@@ -68,6 +73,8 @@ impl Kind {
             Self::Status => status::MAX_STATUS_PAYLOAD,
             Self::Stop => 0,
             Self::FactReplayRequest => fact_replay::MAX_REPLAY_REQUEST_PAYLOAD,
+            Self::OverlayCommand => overlay::MAX_COMMAND_PAYLOAD,
+            Self::OverlayReply => overlay::MAX_REPLY_PAYLOAD,
         }
     }
 }
@@ -223,7 +230,7 @@ mod tests {
 
     #[test]
     fn round_trip_each_message_kind() {
-        for raw_kind in 1..=10 {
+        for raw_kind in 1..=12 {
             let kind = Kind::try_from(raw_kind).unwrap();
             let payload: &[u8] = if kind == Kind::Stop {
                 &[]
@@ -265,7 +272,7 @@ mod tests {
         let mut unknown_kind = valid;
         unknown_kind[6..8].copy_from_slice(&0_u16.to_le_bytes());
         assert_eq!(decode(&unknown_kind), Err(FrameError::UnknownKind));
-        assert_eq!(Kind::try_from(11), Err(FrameError::UnknownKind));
+        assert_eq!(Kind::try_from(13), Err(FrameError::UnknownKind));
     }
 
     #[test]
@@ -319,6 +326,8 @@ mod tests {
             Kind::Status,
             Kind::Stop,
             Kind::FactReplayRequest,
+            Kind::OverlayCommand,
+            Kind::OverlayReply,
         ] {
             let mut header = [0_u8; HEADER_LEN];
             header[..4].copy_from_slice(&((kind.max_payload() + 1) as u32).to_le_bytes());

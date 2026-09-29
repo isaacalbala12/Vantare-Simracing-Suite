@@ -5,6 +5,12 @@ Fecha: 2026-09-29. Base comprobada: `origin/nightly@c4c7a5ce`, rama
 callers presentes, no certifica que el producto ya use Rust. [ADR 0098](../adr/0098-rust-end-to-end-live-telemetry.md)
 define el dueño futuro.
 
+Actualización de la rama: Rust ya posee el pull por ventana y entrega el
+Overlay a Studio y OBS a través de proxies Go. Windows selecciona el helper
+Rust por defecto y lo empaqueta. Las filas siguientes describen la frontera
+inicial inventariada; el receptor/estado Go de Engineer y Strategy, epoch,
+fact ACK y los paquetes live antiguos siguen pendientes de retirada.
+
 | Frontera actual | Dueño hoy y evidencia de código | Dueño final y prueba que permite retirar Go |
 | --- | --- | --- |
 | LMU SHM/REST → Core | `internal/telemetry/drivers/lmu`, `core`, `derive`, `engine` y `internal/app/telemetry_core_runtime.go` en Go; `rust/telemetry/src/lmu`, `core`, `derive`, `engine` solo candidato | Rust único. Oráculo LMU47, tests de estados/facts, single reader y callers productivos cero antes de borrar la ruta Go. |

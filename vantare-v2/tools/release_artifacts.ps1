@@ -48,6 +48,16 @@ function Assert-TrustedRuntime {
     & $verifier -RuntimeDirectory $RuntimeDirectory -RepoRoot $RepoRoot | Out-Null
 }
 
+function Assert-RustTelemetryHelper {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { throw "Rust telemetry helper missing: $Path" }
+    $reported = (& $Path --version)
+    if ($LASTEXITCODE -ne 0 -or $reported -ne 'vantare-telemetry 0.1.0') {
+        throw "Rust telemetry helper version mismatch: $reported"
+    }
+}
+
 function Remove-ExactPortableTempDirectory {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -181,12 +191,15 @@ function New-PortableZip {
         throw "Tester build instructions doc not found: $readmeSrc"
     }
     Assert-TrustedRuntime -RepoRoot $RepoRoot -RuntimeDirectory $RuntimeDirectory
+    $rustSource = Join-Path (Join-Path $RepoRoot $BinDir) 'runtime\telemetry\rust-live-v1\vantare-telemetry.exe'
+    Assert-RustTelemetryHelper -Path $rustSource
 
     $stage = Join-Path $env:TEMP "vantare-portable-$Version-$([System.Guid]::NewGuid().ToString('N'))"
     $stageExe = Join-Path $stage 'vantare.exe'
     $stageConfigs = Join-Path $stage 'configs'
     $stageDocs = Join-Path $stage 'docs'
     $stageRuntime = Join-Path $stage 'runtime\telemetry\duckdb-v1'
+    $stageRust = Join-Path $stage 'runtime\telemetry\rust-live-v1'
     try {
         New-Item -ItemType Directory -Path $stage -Force | Out-Null
         Copy-Item -LiteralPath $exePath -Destination $stageExe -Force
@@ -202,6 +215,9 @@ function New-PortableZip {
             Copy-Item -LiteralPath $_.FullName -Destination $stageRuntime
         }
         Assert-TrustedRuntime -RepoRoot $RepoRoot -RuntimeDirectory $stageRuntime
+        New-Item -ItemType Directory -Path $stageRust -Force | Out-Null
+        Copy-Item -LiteralPath $rustSource -Destination (Join-Path $stageRust 'vantare-telemetry.exe') -Force
+        Assert-RustTelemetryHelper -Path (Join-Path $stageRust 'vantare-telemetry.exe')
 
         $outZip = Join-Path (Join-Path $RepoRoot $BinDir) "vantare-portable-amd64.zip"
         if (Test-Path -LiteralPath $outZip) {
@@ -258,6 +274,22 @@ function Assert-PortableRuntime {
             }
         }
         Assert-TrustedRuntime -RepoRoot $RepoRoot -RuntimeDirectory $extractRuntime
+        $rustEntry = 'runtime/telemetry/rust-live-v1/vantare-telemetry.exe'
+        $rustEntries = @($archive.Entries | Where-Object { $_.FullName.Replace('\', '/') -ceq $rustEntry })
+        if ($rustEntries.Count -ne 1) { throw "Portable zip is missing or duplicates $rustEntry" }
+        $extractRust = Join-Path $extractRoot 'runtime\telemetry\rust-live-v1'
+        New-Item -ItemType Directory -Path $extractRust -Force | Out-Null
+        $rustPath = Join-Path $extractRust 'vantare-telemetry.exe'
+        $input = $rustEntries[0].Open()
+        $output = $null
+        try {
+            $output = [System.IO.File]::Create($rustPath)
+            $input.CopyTo($output)
+        } finally {
+            if ($null -ne $output) { $output.Dispose() }
+            $input.Dispose()
+        }
+        Assert-RustTelemetryHelper -Path $rustPath
     } finally {
         if ($null -ne $archive) { $archive.Dispose() }
         if (Test-Path -LiteralPath $extractRoot) { Remove-ExactPortableTempDirectory -Path $extractRoot }

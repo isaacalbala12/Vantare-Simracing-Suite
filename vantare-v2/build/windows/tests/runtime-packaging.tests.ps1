@@ -5,6 +5,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $releaseScript = Join-Path $repoRoot "tools\release_artifacts.ps1"
 $runtimeVerifier = Join-Path $repoRoot "build\windows\telemetry-reader\verify-runtime.ps1"
+$rustHelperSource = Join-Path $repoRoot "rust\telemetry\target\release\vantare-telemetry.exe"
 $runtimeRelative = "runtime\telemetry\duckdb-v1"
 $runtimeMembers = @(
     "manifest.json",
@@ -58,6 +59,9 @@ function New-TestRepo {
     Write-Utf8 (Join-Path $root "bin\vantare.exe") "fixture-v1.2.3.4"
     Write-Utf8 (Join-Path $root "configs\fixture.json") "{}"
     Write-Utf8 (Join-Path $root "docs\tester-build-instructions.md") "fixture"
+    $rustDestination = Join-Path $root "bin\runtime\telemetry\rust-live-v1"
+    New-Item -ItemType Directory -Force -Path $rustDestination | Out-Null
+    Copy-Item -LiteralPath $rustHelperSource -Destination (Join-Path $rustDestination 'vantare-telemetry.exe')
 
     foreach ($name in $runtimeMembers | Where-Object { $_ -ne "manifest.json" }) {
         Write-Utf8 (Join-Path $runtime $name) "fixture-$name"
@@ -124,6 +128,10 @@ function Get-ZipEntryNames {
 
 try {
     New-Item -ItemType Directory -Path $tempRoot | Out-Null
+    if (-not (Test-Path -LiteralPath $rustHelperSource)) {
+        & cargo +1.95.0 build --manifest-path (Join-Path $repoRoot 'rust\telemetry\Cargo.toml') --release --locked
+        if ($LASTEXITCODE -ne 0) { throw 'Rust telemetry helper build failed before packaging tests.' }
+    }
 
     Invoke-Case "portable contains the exact trusted runtime path and unit" {
         $fixture = New-TestRepo "portable-good"
@@ -133,6 +141,8 @@ try {
         $expected = @($runtimeMembers | ForEach-Object { "$runtimeRelative\$_" } | Sort-Object)
         Assert-True ([string]::Join("`n", $actual) -ceq [string]::Join("`n", $expected)) `
             "Portable runtime inventory/path differs. Expected $($expected -join ', '); got $($actual -join ', ')."
+        Assert-True ($names -ccontains 'runtime\telemetry\rust-live-v1\vantare-telemetry.exe') `
+            'Portable artifact is missing the Rust live helper.'
     }
 
     Invoke-Case "runtime verification does not depend on Get-FileHash availability" {
@@ -191,8 +201,14 @@ try {
         foreach ($member in $runtimeMembers) {
             Assert-True ($nsi -match [regex]::Escape("`${VANTARE_TELEMETRY_RUNTIME}\$member")) "NSIS does not File the exact runtime member $member."
         }
-        Assert-True ($nsi -match '!define\s+TELEMETRY_RUNTIME_DIR\s+"\$INSTDIR\\runtime\\telemetry\\duckdb-v1"') `
-            "NSIS runtime destination is not the exact ProductionTrust path."
+        Assert-True ($nsi -match '!define\s+TELEMETRY_RUNTIME_DIR\s+"\$INSTDIR\\runtime\\telemetry"') `
+            "NSIS does not transact both telemetry runtimes as one directory."
+        Assert-True ($nsi -match 'SetOutPath\s+"\$\{TELEMETRY_RUNTIME_DIR\}\\duckdb-v1"') `
+            "NSIS DuckDB runtime destination is not the exact ProductionTrust path."
+        Assert-True ($nsi -match 'SetOutPath\s+"\$\{TELEMETRY_RUNTIME_DIR\}\\rust-live-v1"') `
+            "NSIS does not install the Rust helper beside the trusted reader."
+        Assert-True ($nsi -match [regex]::Escape('File /oname=vantare-telemetry.exe "${VANTARE_RUST_TELEMETRY_RUNTIME}\vantare-telemetry.exe"')) `
+            "NSIS does not include the Rust helper."
         Assert-True ($nsi -match 'Rename\s+"\$\{TELEMETRY_RUNTIME_DIR\}"\s+"\$\{TELEMETRY_RUNTIME_BACKUP\}"') `
             "NSIS does not back up the installed runtime as one directory."
         Assert-True ($nsi -match 'IfFileExists\s+"\$\{TELEMETRY_RUNTIME_DIR\}"\s+0\s+inventory_done') `
@@ -239,6 +255,7 @@ try {
     Invoke-Case "all runtime packaging scripts parse in Windows PowerShell" {
         $scripts = @(
             "build\windows\telemetry-reader\build-runtime.ps1",
+            "build\windows\telemetry-rust\build-runtime.ps1",
             "build\windows\telemetry-reader\prepare-runtime.ps1",
             "build\windows\telemetry-reader\verify-runtime.ps1",
             "build\windows\telemetry-reader\smoke-runtime.ps1",

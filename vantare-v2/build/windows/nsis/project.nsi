@@ -38,8 +38,11 @@ Unicode true
 !ifndef VANTARE_TELEMETRY_RUNTIME
     !error "VANTARE_TELEMETRY_RUNTIME must point to the verified duckdb-v1 runtime."
 !endif
-!define TELEMETRY_RUNTIME_DIR "$INSTDIR\runtime\telemetry\duckdb-v1"
-!define TELEMETRY_RUNTIME_BACKUP "$INSTDIR\runtime\telemetry\duckdb-v1.bak"
+!ifndef VANTARE_RUST_TELEMETRY_RUNTIME
+    !error "VANTARE_RUST_TELEMETRY_RUNTIME must point to the Rust live helper."
+!endif
+!define TELEMETRY_RUNTIME_DIR "$INSTDIR\runtime\telemetry"
+!define TELEMETRY_RUNTIME_BACKUP "$INSTDIR\runtime\telemetry.bak"
 !define INSTALL_TX_PENDING "$INSTDIR\.vantare-install.pending"
 !define INSTALL_TX_PENDING_TEMP "$INSTDIR\.vantare-install.pending.tmp"
 !define INSTALL_TX_COMMITTED "$INSTDIR\.vantare-install.committed"
@@ -371,22 +374,25 @@ Section
 	# Always start from an empty destination, including after an incomplete old install.
 	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
 	IfFileExists "${TELEMETRY_RUNTIME_DIR}" transaction_failed 0
-	SetOutPath "${TELEMETRY_RUNTIME_DIR}"
+	SetOutPath "${TELEMETRY_RUNTIME_DIR}\duckdb-v1"
 	ClearErrors
 	File /oname=manifest.json "${VANTARE_TELEMETRY_RUNTIME}\manifest.json"
 	File /oname=duckdb.dll "${VANTARE_TELEMETRY_RUNTIME}\duckdb.dll"
 	File /oname=vantare-telemetry-reader.exe "${VANTARE_TELEMETRY_RUNTIME}\vantare-telemetry-reader.exe"
 	File /oname=sbom.spdx.json "${VANTARE_TELEMETRY_RUNTIME}\sbom.spdx.json"
 	File /oname=THIRD_PARTY_NOTICES.md "${VANTARE_TELEMETRY_RUNTIME}\THIRD_PARTY_NOTICES.md"
+	SetOutPath "${TELEMETRY_RUNTIME_DIR}\rust-live-v1"
+	File /oname=vantare-telemetry.exe "${VANTARE_RUST_TELEMETRY_RUNTIME}\vantare-telemetry.exe"
 
 	IfErrors transaction_failed
 
 	# Verify the complete new runtime before staging the executable.
-	IfFileExists "${TELEMETRY_RUNTIME_DIR}\manifest.json" 0 transaction_failed
-	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb.dll" 0 transaction_failed
-	IfFileExists "${TELEMETRY_RUNTIME_DIR}\vantare-telemetry-reader.exe" 0 transaction_failed
-	IfFileExists "${TELEMETRY_RUNTIME_DIR}\sbom.spdx.json" 0 transaction_failed
-	IfFileExists "${TELEMETRY_RUNTIME_DIR}\THIRD_PARTY_NOTICES.md" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb-v1\manifest.json" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb-v1\duckdb.dll" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb-v1\vantare-telemetry-reader.exe" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb-v1\sbom.spdx.json" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb-v1\THIRD_PARTY_NOTICES.md" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\rust-live-v1\vantare-telemetry.exe" 0 transaction_failed
 
 	# wails.files contains only the architecture-selected executable. Extract it
 	# away from the product path so a crash can expose no exe, never a partial one.

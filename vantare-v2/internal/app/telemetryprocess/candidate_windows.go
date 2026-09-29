@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -33,18 +34,33 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 // revision and a fresh Receiver; product selection is still gated elsewhere.
 func RunCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, false, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, false, deliver, disconnected)
+}
+
+// RunCandidateWithOverlay carries window-scoped pull commands to the Rust
+// helper. Replies are correlated before the ordinary telemetry receiver sees
+// frames; the host never chooses a snapshot or ACK state.
+func RunCandidateWithOverlay(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC,
+	deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, false, deliver, disconnected)
+}
+
+func RunCandidateWithOverlayBinaryEngineer(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC,
+	deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, true, deliver, disconnected)
 }
 
 // RunCandidateWithBinaryEngineer is an explicit R21 measurement mode. It does
 // not alter the default candidate or production codec selection.
 func RunCandidateWithBinaryEngineer(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, true, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, true, deliver, disconnected)
 }
 
 func runCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
-	updates <-chan ConfigurationV1, engineerBinary bool, deliver func(ReceivedV1) error, disconnected func(error)) error {
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC, engineerBinary bool, deliver func(ReceivedV1) error, disconnected func(error)) error {
 	if ctx == nil || deliver == nil || disconnected == nil {
 		return errors.New("telemetry Rust candidate requires context and callbacks")
 	}
@@ -53,7 +69,7 @@ func runCandidateWithUpdates(ctx context.Context, executable string, configurati
 		if err := ctx.Err(); err != nil {
 			return nil
 		}
-		err := runCandidateOnceWithCodec(ctx, executable, &configuration, &updates, engineerBinary, deliver)
+		err := runCandidateOnceWithCodec(ctx, executable, &configuration, &updates, overlay, engineerBinary, deliver)
 		if ctx.Err() != nil {
 			// An explicit host Stop may cancel while the child is still
 			// connecting. Only that cancellation is a clean shutdown;
@@ -96,11 +112,11 @@ func runCandidateOnce(ctx context.Context, executable string, configuration Conf
 
 func runCandidateOnceWithUpdates(ctx context.Context, executable string, configuration *ConfigurationV1,
 	updates *<-chan ConfigurationV1, deliver func(ReceivedV1) error) error {
-	return runCandidateOnceWithCodec(ctx, executable, configuration, updates, false, deliver)
+	return runCandidateOnceWithCodec(ctx, executable, configuration, updates, nil, false, deliver)
 }
 
 func runCandidateOnceWithCodec(ctx context.Context, executable string, configuration *ConfigurationV1,
-	updates *<-chan ConfigurationV1, engineerBinary bool, deliver func(ReceivedV1) error) error {
+	updates *<-chan ConfigurationV1, overlay <-chan OverlayRPC, engineerBinary bool, deliver func(ReceivedV1) error) error {
 	pipe, err := newLocalPipe()
 	if err != nil {
 		return err
@@ -121,6 +137,15 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 	}
 	file := os.NewFile(uintptr(pipe.handle), "telemetry-candidate")
 	defer file.Close()
+	var writeMu sync.Mutex
+	write := func(frame Frame) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
+			return err
+		}
+		return WriteFrame(file, frame)
+	}
 	if err := file.SetReadDeadline(time.Now().Add(pipeAcceptTimeout)); err != nil {
 		return err
 	}
@@ -139,15 +164,15 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 	if err != nil {
 		return err
 	}
-	if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
-		return err
-	}
-	if err := WriteFrame(file, configured); err != nil {
+	if err := write(configured); err != nil {
 		return fmt.Errorf("send Rust candidate configuration: %w", err)
 	}
+	bridge := newOverlayBridge(ctx, overlay, write)
+	defer bridge.close()
 	lastHeartbeat := time.Now()
 	for {
 		if ctx.Err() != nil {
+			bridge.close()
 			return stopCandidate(file, child)
 		}
 		if err := receiveCandidateUpdates(configuration, updates); err != nil {
@@ -158,10 +183,7 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 			if err != nil {
 				return err
 			}
-			if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
-				return err
-			}
-			if err := WriteFrame(file, frame); err != nil {
+			if err := write(frame); err != nil {
 				return fmt.Errorf("update Rust candidate configuration: %w", err)
 			}
 		}
@@ -174,12 +196,19 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 		frame, err := ReadFrame(file)
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			if ctx.Err() != nil {
+				bridge.close()
 				return stopCandidate(file, child)
 			}
 			return ErrCandidateHeartbeatTimeout
 		}
 		if err != nil {
 			return fmt.Errorf("read Rust candidate frame: %w", err)
+		}
+		if frame.Kind == KindOverlayReply {
+			if err := bridge.accept(frame); err != nil {
+				return err
+			}
+			continue
 		}
 		event, err := receiver.Accept(frame)
 		if err != nil {
@@ -192,10 +221,7 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 			lastHeartbeat = time.Now()
 		}
 		if err := deliverCandidateEvent(receiver, event, deliver, func(ack Frame) error {
-			if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
-				return err
-			}
-			return WriteFrame(file, ack)
+			return write(ack)
 		}); err != nil {
 			return err
 		}

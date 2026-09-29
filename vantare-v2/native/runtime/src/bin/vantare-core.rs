@@ -1,6 +1,10 @@
 //! Núcleo de Vantare sin UI: lee un simulador (o reproduce una captura) y sirve
 //! la foto actual a los overlays por un named pipe.
 //!
+//! Termina ordenadamente con Ctrl+C, Ctrl+Break, cerrar la consola o al llegar
+//! su stdin a EOF (así lo pide el launcher `vantare`). Con stdin cerrado o nulo
+//! desde el principio, termina nada más arrancar.
+//!
 //! `vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión>] [--velocidad 1.0] | --live) [--pipe <nombre>]`
 
 const USAGE: &str = "uso: vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
@@ -91,6 +95,12 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     use vantare_runtime::{service, shutdown};
 
     let stop = shutdown::install()?;
+    // Contrato con el launcher: pide el cierre cerrando el stdin del núcleo, que
+    // debe terminar al llegar a EOF. Lanzado a mano en una terminal, no llega EOF.
+    std::thread::spawn(|| {
+        let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
+        shutdown::request();
+    });
     let pipe = match args.pipe {
         Some(pipe) => pipe,
         None => vantare_ipc::default_pipe_name()?,

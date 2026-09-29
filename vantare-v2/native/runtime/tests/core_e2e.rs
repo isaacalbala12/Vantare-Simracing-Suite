@@ -34,6 +34,8 @@ impl CoreProcess {
             .arg(replay)
             .args(extra)
             .args(["--pipe", pipe])
+            // Como lo lanza el launcher: cerrar este stdin pide el cierre.
+            .stdin(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
             .unwrap();
@@ -142,6 +144,36 @@ fn the_47_car_corpus_streams_growing_revisions_in_real_time() {
         elapsed > Duration::from_millis(100),
         "las marcas del corpus avanzan: {elapsed:?}"
     );
+}
+
+#[test]
+fn the_core_process_exits_in_order_when_its_stdin_reaches_eof() {
+    let pipe = pipe_name("stdin");
+    let mut subscriber = Subscriber::connect(&pipe, |_| true).unwrap();
+    let mut core = CoreProcess::spawn(&pipe, &testdata("lmu-fixture.bin"), &["--build", "1.3.0.0"]);
+    let got = collect(&mut subscriber, Duration::from_secs(10), |got| {
+        !got.is_empty()
+    });
+    assert_eq!(got[0].state.cars.len(), 44);
+    assert!(
+        core.0.try_wait().unwrap().is_none(),
+        "sigue vivo mientras stdin está abierto"
+    );
+
+    let asked = Instant::now();
+    drop(core.0.stdin.take());
+    let status = loop {
+        if let Some(status) = core.0.try_wait().unwrap() {
+            break status;
+        }
+        assert!(
+            asked.elapsed() < Duration::from_secs(3),
+            "no terminó tras el EOF"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    // Código 0: salida ordenada, no el corte por plazo (que sale con 1).
+    assert!(status.success(), "{status}");
 }
 
 #[test]

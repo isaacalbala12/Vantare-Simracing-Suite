@@ -31,6 +31,12 @@ unsafe extern "system" fn on_signal(_event: u32) -> i32 {
     std::process::exit(1)
 }
 
+/// Pide el cierre ordenado sin señal: lo mismo que Ctrl+C, sin el plazo forzoso
+/// (quien lo pide ya está en el camino de salida).
+pub fn request() {
+    STOP.store(true, Ordering::SeqCst);
+}
+
 /// Instala el manejador. La bandera pasa a `true` con la primera señal.
 ///
 /// # Errors

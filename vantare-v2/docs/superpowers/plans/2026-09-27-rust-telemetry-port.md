@@ -2011,3 +2011,13 @@ sin cambiar el oráculo. La rama se rebasó limpiamente sobre el Nightly actual
 pasaron tras el rebase. Staticcheck local fijado a `2026.2.1` ya no señala
 esos archivos en Windows ni Linux. El CI de la nueva punta debe repetirse
 antes de afirmar el gate verde; la PR sigue draft y el port incompleto.
+
+## 107. EngineerService recibe el candidato físico (2026-09-29)
+
+Una prueba opt-in conectó el hijo Rust, supervisor, status live, conversión
+de `ObservationSnapshotV1` y facts al `EngineerService` real, con LMU 1.4.2.0
+y 47 coches en pista. Cinco ejecuciones aceptaron al menos dos observaciones
+y un fact, y el servicio terminó conectado a `telemetry-core` sin error.
+`go test ./...` pasó. La prueba llama al servicio desde el callback del
+candidato; todavía no representa la selección/lifecycle de Wails ni el
+puerto asíncrono productivo, y no demuestra las condiciones de CPU/p99/RSS.

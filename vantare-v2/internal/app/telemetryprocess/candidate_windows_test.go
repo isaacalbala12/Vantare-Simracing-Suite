@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
@@ -73,6 +74,23 @@ func liveCandidateConfiguration(t *testing.T) ConfigurationV1 {
 	return configuration
 }
 
+func liveEngineerManifest(t *testing.T) engineer.Manifest {
+	t.Helper()
+	manifest, err := engineer.NewManifest([]engineer.Capability{
+		{ID: engineer.CapabilitySession, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityStandings, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityControls, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityPit, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityFuel, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityGaps, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilitySpatial, State: engineer.CapabilitySupported},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifest
+}
+
 // The real Publisher is the next product boundary after the IPC receiver.
 // A decoded Rust snapshot must fit its existing Overlay V2 payload contract.
 func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
@@ -89,18 +107,7 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	manifest, err := engineer.NewManifest([]engineer.Capability{
-		{ID: engineer.CapabilitySession, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilityStandings, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilityControls, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilityPit, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilityFuel, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilityGaps, State: engineer.CapabilitySupported},
-		{ID: engineer.CapabilitySpatial, State: engineer.CapabilitySupported},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := liveEngineerManifest(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	var overlays, engineers, facts, disconnects int
@@ -140,6 +147,57 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 		t.Fatalf("real Rust publisher delivery: error=%v disconnects=%d overlay=%d engineer=%d facts=%d", err, disconnects, overlays, engineers, facts)
 	}
 	t.Logf("published %d real Rust Overlay snapshots to the product publisher, latest bytes=%d, facts=%d", overlays, publisher.Metrics().SnapshotBytes, facts)
+}
+
+func TestCandidateEngineerReachesProductServiceLiveLMUOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and pinned LMU on track")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	service := engineerservice.NewEngineerService(nil)
+	if err := service.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer service.Stop()
+	manifest := liveEngineerManifest(t)
+	var statuses, observations, facts, disconnects int
+	err := RunCandidate(ctx, executable, liveCandidateConfiguration(t), func(event ReceivedV1) error {
+		if event.Status != nil && event.Status.State == "live" {
+			if err := service.ConsumeSourceStatus(engineer.SourceStatusV1{State: engineer.SourceLive}); err != nil {
+				return err
+			}
+			statuses++
+		}
+		if event.Engineer != nil {
+			observation, err := event.EngineerObservation(manifest)
+			if err != nil {
+				return err
+			}
+			if err := service.ConsumeObservation(observation); err != nil {
+				return err
+			}
+			observations++
+		}
+		for _, fact := range event.Facts {
+			if err := service.ConsumeFact(fact); err != nil {
+				return err
+			}
+			facts++
+		}
+		if statuses > 0 && observations >= 2 && facts > 0 {
+			cancel()
+		}
+		return nil
+	}, func(error) { disconnects++ })
+	if err != nil || disconnects != 0 || statuses == 0 || observations < 2 || facts == 0 {
+		t.Fatalf("real Rust Engineer service delivery: error=%v disconnects=%d status=%d observations=%d facts=%d", err, disconnects, statuses, observations, facts)
+	}
+	if status := service.Status(); !status.Connected || status.Source != "telemetry-core" || status.LastError != "" {
+		t.Fatalf("real Rust Engineer service status = %#v", status)
+	}
+	t.Logf("real Rust Engineer service accepted status=%d observations=%d facts=%d", statuses, observations, facts)
 }
 
 func TestCandidateSupervisorLiveLMUOptIn(t *testing.T) {

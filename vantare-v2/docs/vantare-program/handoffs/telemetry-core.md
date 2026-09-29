@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — EngineerService físico (2026-09-29)
+
+El candidato Rust entregó status live, observaciones adaptadas y facts al
+`EngineerService` real en cinco ejecuciones con LMU 1.4.2.0 y 47 coches.
+Cada corrida aceptó al menos dos observaciones y un fact, con servicio
+conectado y sin error. `go test ./...` pasó. Es una ruta opt-in de prueba;
+faltan el puerto/lifecycle Wails, replay de facts y gates de paridad y
+rendimiento. Plan §107; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — primera revisión CI (2026-09-29)
 
 La PR draft #1415 detectó 11 hallazgos nuevos de Staticcheck en el primer

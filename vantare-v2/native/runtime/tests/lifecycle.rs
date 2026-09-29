@@ -46,7 +46,16 @@ fn note(path: &str, line: &str) {
         .append(true)
         .open(path)
         .unwrap();
-    writeln!(file, "{line}").unwrap();
+    // Una sola escritura por línea: `writeln!` escribe texto y salto por separado
+    // y dos procesos anexando a la vez intercalaban sus líneas.
+    file.write_all(
+        format!(
+            "{line}
+"
+        )
+        .as_bytes(),
+    )
+    .unwrap();
 }
 
 /// Contrato de los hijos sin ventana: leer stdin hasta EOF significa "termina".

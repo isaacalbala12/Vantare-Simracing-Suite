@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — PR draft del candidato (2026-09-29)
+
+[PR draft #1415](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1415)
+apunta a `nightly` desde `vantareapp/isa-1403-rust-telemetry@282128e9`.
+Se abrió para ejecutar CI sobre el candidato parcial. Go sigue productivo;
+no hay merge ni promoción y faltan los gates del plan. La base remota de
+`nightly` al abrirla era `c4c7a5ce`; comprobar HEAD/CI de cada push antes
+de interpretar el resultado del PR.
+
 ## VAN-778 / ISA-1403 — contrato Engineer desde snapshot Rust (2026-09-29)
 
 El receptor Go puede convertir el snapshot Engineer Rust con identidad

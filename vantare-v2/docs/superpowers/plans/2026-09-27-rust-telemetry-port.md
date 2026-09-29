@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 99. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 104. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -10,6 +10,7 @@ implementación parcial hasta el corte 99. Alcance de corpus revisado el 2026-09
 - Worktree: `C:/Users/isaac/.codex/worktrees/isa-1403-rust-telemetry/Vantare-Overlays`.
 - Decisión arquitectónica: [ADR 0097](../../adr/0097-rust-telemetry-child-process.md).
 - Continuidad única: [handoff Telemetry Core](../../vantare-program/handoffs/telemetry-core.md).
+- Entrega aislada: [PR draft #1415](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1415), sin autorización de merge ni gate final acreditado.
 
 Este documento guía tareas coherentes y verificables. El ejecutable Rust
 principal solo activa LMU mediante un pipe candidato explícito; no se

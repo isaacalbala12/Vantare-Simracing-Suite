@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::mem;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Gap, Observation, Pose, Quality, Session, Snapshot,
-    State, Telemetry,
+    Capabilities, Capability, Car, CarId, Fuel, Gap, Observation, Player, Pose, Quality, Session,
+    Snapshot, State, Telemetry,
 };
 
 use super::derive::derive;
@@ -89,6 +89,10 @@ pub(super) fn degrade(state: &mut State) {
         spatial,
         driver_inputs,
         powertrain,
+        fuel,
+        delta,
+        sectors,
+        lap_progress,
     } = capabilities;
     for capability in [
         session_clock,
@@ -100,6 +104,10 @@ pub(super) fn degrade(state: &mut State) {
         spatial,
         driver_inputs,
         powertrain,
+        fuel,
+        delta,
+        sectors,
+        lap_progress,
     ] {
         if *capability == Capability::Fresh {
             *capability = Capability::WithData;
@@ -113,6 +121,8 @@ pub(super) fn degrade(state: &mut State) {
         remaining_s,
         track_name,
         laps_remaining,
+        laps_total,
+        track_length_m,
     } = session;
     make_stale(kind);
     make_stale(state);
@@ -120,51 +130,80 @@ pub(super) fn degrade(state: &mut State) {
     make_stale(remaining_s);
     make_stale(track_name);
     make_stale(laps_remaining);
+    make_stale(laps_total);
+    make_stale(track_length_m);
     make_stale(flags);
-    for car in cars {
-        let Car {
-            id: _,
-            number: _,
-            driver: _,
-            class: _,
-            position,
-            class_position,
-            laps,
-            last_lap_s,
-            best_lap_s,
-            last_sectors_s,
-            gap_leader,
-            gap_ahead,
-            in_pits,
-            pose,
-        } = car;
-        make_stale(position);
-        make_stale(class_position);
-        make_stale(laps);
-        make_stale(last_lap_s);
-        make_stale(best_lap_s);
-        last_sectors_s.iter_mut().for_each(make_stale);
-        make_stale(gap_leader);
-        make_stale(gap_ahead);
-        make_stale(in_pits);
-        make_stale(pose);
-    }
+    cars.iter_mut().for_each(degrade_car);
     if let Some(player) = player {
-        let Telemetry {
-            throttle,
-            brake,
-            clutch,
-            gear,
-            speed_mps,
-            engine_speed_rad_s,
-        } = &mut player.telemetry;
-        make_stale(throttle);
-        make_stale(brake);
-        make_stale(clutch);
-        make_stale(gear);
-        make_stale(speed_mps);
-        make_stale(engine_speed_rad_s);
+        degrade_player(player);
     }
+}
+
+fn degrade_car(car: &mut Car) {
+    let Car {
+        id: _,
+        number: _,
+        driver: _,
+        class: _,
+        position,
+        class_position,
+        laps,
+        last_lap_s,
+        best_lap_s,
+        last_sectors_s,
+        gap_leader,
+        gap_ahead,
+        gap_class_leader,
+        gap_class_ahead,
+        lap_distance_m,
+        lap_elapsed_s,
+        current_sector,
+        in_pits,
+        pose,
+    } = car;
+    make_stale(position);
+    make_stale(class_position);
+    make_stale(laps);
+    make_stale(last_lap_s);
+    make_stale(best_lap_s);
+    last_sectors_s.iter_mut().for_each(make_stale);
+    make_stale(gap_leader);
+    make_stale(gap_ahead);
+    make_stale(gap_class_leader);
+    make_stale(gap_class_ahead);
+    make_stale(lap_distance_m);
+    make_stale(lap_elapsed_s);
+    make_stale(current_sector);
+    make_stale(in_pits);
+    make_stale(pose);
+}
+
+fn degrade_player(player: &mut Player) {
+    let Telemetry {
+        throttle,
+        brake,
+        clutch,
+        gear,
+        speed_mps,
+        engine_speed_rad_s,
+    } = &mut player.telemetry;
+    make_stale(throttle);
+    make_stale(brake);
+    make_stale(clutch);
+    make_stale(gear);
+    make_stale(speed_mps);
+    make_stale(engine_speed_rad_s);
+    let Fuel {
+        level_l,
+        capacity_l,
+        per_lap_l,
+        laps_left,
+    } = &mut player.fuel;
+    make_stale(level_l);
+    make_stale(capacity_l);
+    make_stale(per_lap_l);
+    make_stale(laps_left);
+    make_stale(&mut player.delta_best_s);
 }
 
 fn make_stale<T>(quality: &mut Quality<T>) {
@@ -183,12 +222,17 @@ fn sanitize(state: &mut State) {
     let session = &mut state.session;
     finite(&mut session.elapsed_s);
     finite(&mut session.remaining_s);
+    finite(&mut session.track_length_m);
     for car in &mut state.cars {
         finite(&mut car.last_lap_s);
         finite(&mut car.best_lap_s);
         car.last_sectors_s.iter_mut().for_each(finite);
         keep_if(&mut car.gap_leader, finite_gap);
         keep_if(&mut car.gap_ahead, finite_gap);
+        keep_if(&mut car.gap_class_leader, finite_gap);
+        keep_if(&mut car.gap_class_ahead, finite_gap);
+        finite(&mut car.lap_distance_m);
+        finite(&mut car.lap_elapsed_s);
         keep_if(&mut car.pose, |pose: &Pose| {
             [pose.x_m, pose.y_m, pose.yaw_rad]
                 .iter()
@@ -202,6 +246,9 @@ fn sanitize(state: &mut State) {
         finite(&mut telemetry.clutch);
         finite(&mut telemetry.speed_mps);
         finite(&mut telemetry.engine_speed_rad_s);
+        finite(&mut player.fuel.level_l);
+        finite(&mut player.fuel.capacity_l);
+        finite(&mut player.delta_best_s);
     }
 }
 
@@ -310,6 +357,7 @@ mod tests {
                 brake: Quality::Reliable(0.5),
                 ..Telemetry::default()
             },
+            ..Player::default()
         });
         let snapshot = merge(None, obs, 1).unwrap();
         let cars = &snapshot.state.cars;
@@ -346,6 +394,7 @@ mod tests {
                 throttle: Quality::Reliable(1.0),
                 ..Telemetry::default()
             },
+            ..Player::default()
         });
         let fresh = merge(None, obs, 1).unwrap();
         let old = stale(&fresh);

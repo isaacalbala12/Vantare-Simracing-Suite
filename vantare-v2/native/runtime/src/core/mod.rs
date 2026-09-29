@@ -214,6 +214,7 @@ mod tests {
                         throttle: Quality::Reliable(throttle),
                         ..Telemetry::default()
                     },
+                    ..Player::default()
                 }),
                 ..State::default()
             },

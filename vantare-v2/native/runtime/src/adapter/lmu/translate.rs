@@ -250,6 +250,7 @@ impl Translator {
             ),
             in_pits: quality(Some(vehicle.in_pit), stale),
             pose: quality(vehicle.pose, stale),
+            ..Car::default()
         }
     }
 
@@ -299,6 +300,7 @@ impl Translator {
             }),
             // Lo estima el núcleo con el ritmo de la clase.
             laps_remaining: Quality::Unavailable,
+            ..Session::default()
         }
     }
 }
@@ -317,6 +319,7 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
                 speed_mps: quality(inputs.speed_mps, stale),
                 engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
             }),
+        ..Player::default()
     }
 }
 
@@ -368,6 +371,7 @@ fn capabilities(
                 .is_some_and(|t| has(&t.gear) || has(&t.speed_mps) || has(&t.engine_speed_rad_s)),
             stale,
         ),
+        ..Capabilities::default()
     }
 }
 

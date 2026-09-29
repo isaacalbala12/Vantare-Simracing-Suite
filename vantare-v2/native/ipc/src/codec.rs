@@ -116,7 +116,7 @@ pub(crate) mod tests {
 
     use vantare_domain::{
         Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-        FlagScope, Gap, Origin, Player, Pose, Quality, Session, SessionId, SessionKind,
+        FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session, SessionId, SessionKind,
         SessionState, Source, SourceKind, State, Telemetry,
     };
 
@@ -143,6 +143,11 @@ pub(crate) mod tests {
             last_sectors_s: vec![Quality::Reliable(30.5), Quality::Unavailable],
             gap_leader: Quality::Estimated(Gap::Time { seconds: 1.25 }),
             gap_ahead: Quality::Reliable(Gap::Laps { count: 2 }),
+            gap_class_leader: Quality::Stale(Gap::Time { seconds: 3.5 }),
+            gap_class_ahead: Quality::Unavailable,
+            lap_distance_m: Quality::Reliable(1234.5),
+            lap_elapsed_s: Quality::Estimated(41.25),
+            current_sector: Quality::Reliable(2),
             in_pits: Quality::Reliable(true),
             pose: Quality::Reliable(Pose {
                 x_m: -1.5,
@@ -166,6 +171,8 @@ pub(crate) mod tests {
                     session_clock: Capability::Fresh,
                     positions: Capability::WithData,
                     gaps: Capability::Supported,
+                    fuel: Capability::Fresh,
+                    lap_progress: Capability::WithData,
                     ..Capabilities::default()
                 },
                 session: Session {
@@ -176,6 +183,8 @@ pub(crate) mod tests {
                     remaining_s: Quality::Stale(20.0),
                     track_name: Quality::Reliable("Le Mans".into()),
                     laps_remaining: Quality::Unavailable,
+                    laps_total: Quality::Reliable(24),
+                    track_length_m: Quality::Reliable(13_626.0),
                 },
                 flags: Quality::Reliable(vec![
                     Flag {
@@ -195,6 +204,12 @@ pub(crate) mod tests {
                         gear: Quality::Reliable(-1),
                         ..Telemetry::default()
                     },
+                    fuel: Fuel {
+                        level_l: Quality::Reliable(42.5),
+                        per_lap_l: Quality::Estimated(3.1),
+                        ..Fuel::default()
+                    },
+                    delta_best_s: Quality::Reliable(-0.125),
                 }),
             },
         }

@@ -130,7 +130,11 @@ mod tests {
         assert!(matches!(snapshot_from_json("{}"), Err(Error::Json(_))));
         let future = snapshot_to_json(&rich_snapshot(1, 1))
             .expect("serializa")
-            .replacen("\"version\":1", "\"version\":999", 1);
+            .replacen(
+                &format!("\"version\":{}", crate::dto::VERSION),
+                "\"version\":999",
+                1,
+            );
         assert!(matches!(
             snapshot_from_json(&future),
             Err(Error::Version { got: 999 })

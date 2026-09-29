@@ -54,6 +54,10 @@ fn all_fresh() -> Capabilities {
         spatial: fresh,
         driver_inputs: fresh,
         powertrain: fresh,
+        fuel: fresh,
+        delta: fresh,
+        sectors: fresh,
+        lap_progress: fresh,
     }
 }
 
@@ -247,6 +251,7 @@ fn race(tick: u64, realistic: bool) -> Snapshot {
                     speed_mps: Reliable(45.0 + 25.0 * wave),
                     engine_speed_rad_s: Reliable(700.0 + 200.0 * wave),
                 },
+                ..Player::default()
             }),
         },
         ..Snapshot::default()

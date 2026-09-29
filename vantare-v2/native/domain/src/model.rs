@@ -58,6 +58,9 @@ pub struct Session {
     pub track_name: Quality<String>,
     /// Vueltas que quedan para el final. Normalmente `Estimated`.
     pub laps_remaining: Quality<u32>,
+    /// Duración de la sesión en vueltas; `Unavailable` si es por tiempo.
+    pub laps_total: Quality<u32>,
+    pub track_length_m: Quality<f64>,
 }
 
 /// Distancia a otro coche: por tiempo, o por vueltas completas si es mayor.
@@ -99,6 +102,16 @@ pub struct Car {
     pub gap_leader: Quality<Gap>,
     /// Distancia al coche de delante en la clasificación general.
     pub gap_ahead: Quality<Gap>,
+    /// Distancia al líder de su clase.
+    pub gap_class_leader: Quality<Gap>,
+    /// Distancia al coche de delante en su clase.
+    pub gap_class_ahead: Quality<Gap>,
+    /// Metros recorridos en la vuelta en curso.
+    pub lap_distance_m: Quality<f64>,
+    /// Tiempo transcurrido en la vuelta en curso.
+    pub lap_elapsed_s: Quality<f64>,
+    /// Sector en curso, desde 0.
+    pub current_sector: Quality<u8>,
     pub in_pits: Quality<bool>,
     pub pose: Quality<Pose>,
 }
@@ -116,10 +129,25 @@ pub struct Telemetry {
     pub engine_speed_rad_s: Quality<f64>,
 }
 
+/// Combustible del coche del jugador, en litros.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Fuel {
+    pub level_l: Quality<f64>,
+    pub capacity_l: Quality<f64>,
+    /// Consumo medio por vuelta. Lo deriva el núcleo.
+    pub per_lap_l: Quality<f64>,
+    /// Vueltas que da el combustible actual al consumo medio. Lo deriva el núcleo.
+    pub laps_left: Quality<f64>,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Player {
     pub car: CarId,
     pub telemetry: Telemetry,
+    pub fuel: Fuel,
+    /// Diferencia con la mejor vuelta propia en este punto de la vuelta;
+    /// negativo = más rápido. Nativo si el simulador lo da; si no, derivado.
+    pub delta_best_s: Quality<f64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

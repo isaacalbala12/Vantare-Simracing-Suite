@@ -8,7 +8,7 @@ use std::time::Duration;
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
     FlagScope, Fuel, Gap, Observation, Origin, Player, Pose, Quality, Session, SessionId,
-    SessionKind, SessionState, Source, SourceKind, State, Telemetry,
+    SessionKind, SessionState, Source, SourceKind, State, Telemetry, Weather,
 };
 
 use super::bytes::{f32_at, i32_at, invalid, wide_at};
@@ -426,6 +426,10 @@ impl Translator {
     }
 
     fn player(&self, id: CarId, g: &[u8], gs: bool, now: Duration) -> Player {
+        // SDK SHM 1.8.12: tyreWear y suspensionDamage NO se usan en ACC.
+        // carDamage describe cinco zonas, sin escala ni separación aero/body:
+        // no convertir sus ceros (ni otros valores) en integridad 0–1 inventada.
+        // Los cuatro neumáticos, aero, body y suspension quedan Unavailable.
         let mut player = Player {
             car: id,
             ..Player::default()
@@ -535,9 +539,44 @@ impl Translator {
                 false,
             ),
             track_length_m: quality(track.and_then(|t| (t.2 > 0.0).then_some(t.2)), false),
+            weather: self.weather(g, gs, now),
             // numberOfLaps ambiguo en ACC: no declarar una duración sin evidencia.
             ..Session::default()
         }
+    }
+
+    fn weather(&self, g: &[u8], gs: bool, now: Duration) -> Weather {
+        let paused = !g.is_empty() && i32_at(g, 4) == 3;
+        let mut weather = Weather::default();
+        if let Some((p, stale)) = self.page(0, now) {
+            let stale = stale || paused || self.physics_zero;
+            // physics.airTemp/roadTemp son °C; SI = °C + 273.15, sin ceros de relleno.
+            weather.air_temperature_k = quality(nonnegative(f32_at(p, 288) + 273.15), stale);
+            weather.track_temperature_k = quality(nonnegative(f32_at(p, 292) + 273.15), stale);
+        }
+        if !g.is_empty() {
+            // graphics.windSpeed ya está en m/s (SDK SHM 1.8.12).
+            weather.wind_speed_mps = quality(nonnegative(f32_at(g, 1248)), gs || paused);
+            // rainIntensity es ordinal 0..5, NO una fracción: solo NO_RAIN (0)
+            // tiene equivalencia exacta. No dividir por 5 ni usar los pronósticos.
+            if i32_at(g, 1560) == 0 {
+                weather.rain = quality(Some(0.0), gs || paused);
+            }
+        }
+        if let Some(u) = &self.session {
+            let stale = now.saturating_sub(u.at) >= UDP_TTL || paused;
+            // Fracciones nativas del SDK UDP; su reloj no refresca physics/graphics.
+            let rain = quality(fraction(u.value.rain), stale);
+            if rain.current().is_some() || weather.rain.current().is_none() {
+                weather.rain = rain;
+            }
+            weather.track_wetness = quality(fraction(u.value.wetness), stale);
+        }
+        // windDirection (@1252) está en radianes, pero el SDK no fija norte,
+        // sentido ni procedencia: no prometer la convención meteorológica común.
+        // trackGripStatus (@1556) mezcla goma/grip y humedad: no es wetness 0–1.
+        // pressure no existe; airDensity no se usa. Static no aporta clima live.
+        weather
     }
 }
 
@@ -730,7 +769,14 @@ fn capabilities(s: &State) -> Capabilities {
                 .iter()
                 .flat_map(|c| [c.lap_distance_m, c.lap_elapsed_s]),
         ),
-        // Clima y daños: pendientes de traducir desde ACC.
-        ..Capabilities::default()
+        weather: capability([
+            s.session.weather.air_temperature_k,
+            s.session.weather.track_temperature_k,
+            s.session.weather.wind_speed_mps,
+            s.session.weather.rain,
+            s.session.weather.track_wetness,
+        ]),
+        // Ninguna señal de daño tiene conversión fiable al contrato de integridad.
+        damage: Capability::Unsupported,
     }
 }

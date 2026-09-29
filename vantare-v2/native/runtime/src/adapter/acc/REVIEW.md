@@ -1,5 +1,66 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Clima y daños — fase 2 (ISA-1427)
+
+Alcance del worker: solo adaptador ACC y tests ACC; sin dependencias nuevas.
+Base del encargo `6973c81f`, rama `vantareapp/isa-1427-w-adapt-acc`.
+Notion no disponible: excepción expresa de Isaac; el orquestador mantiene el
+handoff y seguimiento al revisar. Sin push, PR, merge ni promoción.
+
+Fuentes: SDK Kunos v4 (`C:/tmp/fase1/acc-sdk.cs`, solo Broadcasting) y
+[documentación SHM Kunos 1.8.12, espejo PDF](https://github.com/rrennoir/PyAccSharedMemory/blob/main/ACCSharedMemoryDocumentationV1.8.12.pdf).
+Los offsets corresponden al layout SHM 1.9 ya admitido por el adaptador.
+
+| Campo común | Fuente / conversión | Calidad |
+|---|---|---|
+| Temperaturas aire/pista | physics `airTemp` @288 / `roadTemp` @292, °C + 273.15 = K | Reliable; Stale a 500 ms sin cambio de packet o physics cero/pausa |
+| Velocidad del viento | graphics `windSpeed` @1248, ya m/s | Reliable; Stale con graphics congelada/pausa |
+| Lluvia | SDK UDP `RainLevel`: byte / 10 | Reliable; Stale a 1 s sin actualización de sesión/pausa |
+| Lluvia sin UDP fresco | graphics `rainIntensity` @1560, solo NO_RAIN = 0 tiene equivalencia exacta | Reliable/Stale según graphics; categorías 1..5 sin fracción quedan Unavailable |
+| Humedad de pista | SDK UDP `Wetness`: byte / 10 | Reliable/Stale según UDP; no inferida del grip |
+| Dirección del viento | graphics @1252 declara radianes, sin norte/sentido/procedencia documentados | Unavailable; falta demostrar equivalencia con el contrato común |
+| Presión | No expuesta; `airDensity` no usada | Unavailable |
+| Aero / carrocería | `carDamage[5]` @224: zonas front/rear/left/right/centre, sin escala normalizada ni división aero/body | Unavailable; falta contrato de conversión, tampoco interpretar ceros como coche intacto |
+| Suspensión / goma restante | SDK marca `suspensionDamage[4]` @664 y `tyreWear[4]` @120 como no usados | Unavailable incluso si contienen valores no cero |
+
+`trackGripStatus` @1556 mezcla goma/grip y humedad; no permite una fracción
+de pista mojada. Los pronósticos de lluvia no son lluvia actual. Static no
+expone clima actual ni integridad: tasas de ayudas/desgaste no son medidas.
+No se interpola el enum de lluvia /5 ni el de grip /6. Temperaturas inferiores
+a cero absoluto, NaN/infinito, viento negativo y fracciones fuera de 0–1
+se rechazan por señal. OFF retira el clima; UDP/rivales no refrescan SHM.
+
+Capacidad `weather`: Supported / WithData / Fresh según señales disponibles.
+`damage`: Unsupported para este contrato; no se declara soporte a través de
+campos heredados sin semántica utilizable.
+
+Tests nuevos en `runtime/tests/acc/weather.rs`: unidades y exclusiones,
+fracciones UDP no cero y fuera de rango, congelación independiente, packet
+repetido, pausa/physics cero/OFF, enum de lluvia y corpus real obligatorio.
+La primera physics del corpus contiene 30.9055118560791 °C y
+39.66082000732422 °C: se esperan 304.0555118560791 K y
+312.8108200073242 K, calculados desde los bytes crudos y la conversión SI.
+La primera REALTIME_UPDATE UDP está en 11.8011902 s: la prueba recorre hasta
+12 s y exige también las fracciones reales de lluvia/humedad (ambas 0).
+El corpus sigue intacto y no prueba viento/lluvia/daño en marcha; esos límites
+se prueban con vectores explícitos, sin presentarlos como capturas físicas.
+
+Verificación manual: reproducir el corpus con el comando de la sección
+«Reproducir», comprobar clima en la foto común; después probar ACC con lluvia,
+pausa y vuelta al menú. Una captura con daños y una especificación de su
+escala son necesarias antes de habilitar integridad. No hay referencia Go ACC.
+Revisión de diff y decisión sobre estas señales pendientes del orquestador.
+
+Gates finales (2026-09-30, antes del commit local): `cargo fmt --check` PASS,
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings` PASS,
+`cargo test --workspace -j 2` PASS. Los 21 resúmenes estándar suman 284 tests
+pasados y 4 ignored físicos; el harness lifecycle ejecuta otros 7 escenarios.
+Los seis tests nuevos y los dos de conformidad ACC pasan. Sin prueba física
+de ACC/LMU ni CI remota. Logs locales: `C:/tmp/acc-phase2-fmt.log`,
+`C:/tmp/acc-phase2-clippy-final.log`, `C:/tmp/acc-phase2-test-final.log`.
+Se conserva el primer clippy con tres avisos de estilo corregidos y la primera
+suite que reprodujo la ventana insuficiente del test (1 s antes del UDP).
+
 [GitHub #1425](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1425).
 Worker Codex; revisión del diff completo pendiente de Opus 5.5.
 Base `aef0bbf7`, rama `vantareapp/isa-1425-fase1-accad`. Solo commits locales;

@@ -1,6 +1,9 @@
 //! Vectores de regresión; NO son capturas ni evidencia de ACC en marcha.
 use super::*;
 
+#[path = "weather.rs"]
+mod weather_tests;
+
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
 }

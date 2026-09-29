@@ -296,7 +296,8 @@ impl Translator {
                     stale,
                 )
             }),
-            // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha: no es fiable.
+            // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha;
+            // REST tampoco aporta una fase verificada (evidencia en REVIEW.md).
             state: Quality::Unavailable,
             elapsed_s: quality(elapsed, stale),
             remaining_s: quality(remaining, stale),

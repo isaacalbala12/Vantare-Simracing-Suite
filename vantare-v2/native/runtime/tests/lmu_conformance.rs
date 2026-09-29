@@ -240,6 +240,39 @@ fn track_fixtures_of_every_supported_build_keep_a_consistent_grid() {
     }
 }
 
+/// El mismo cero llega en menú, pista y boxes: no demuestra una fase ni
+/// ausencia de banderas. Son capturas reales, sin modificar sus bytes.
+#[test]
+fn lmu_1_4_captures_do_not_invent_session_phase_or_clear_flags() {
+    for (file, build) in [
+        ("lmu-1.4-track-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4-menu-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4-outlap-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4-pre-pit-track-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4-pit-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4-garage-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4.1.3-track-fixture.bin", "1.4.1.3"),
+        ("lmu-1.4.1.3-menu-fixture.bin", "1.4.1.3"),
+        ("lmu-1.4.2.0-track-fixture.bin", "1.4.2.0"),
+        ("lmu-1.4.2.0-menu-fixture.bin", "1.4.2.0"),
+    ] {
+        let frame = fs::read(testdata().join(file)).unwrap();
+        assert_eq!(frame[1_740], 0, "{file}: mGamePhase");
+        assert_eq!(frame[1_741], 0, "{file}: mYellowFlagState");
+        let state = observe_fixture(file, build).state;
+        assert!(
+            matches!(state.session.state, Quality::Unavailable),
+            "{file}"
+        );
+        assert!(matches!(state.flags, Quality::Unavailable), "{file}");
+        assert_eq!(state.capabilities.flags, Capability::Supported, "{file}");
+        // +504 está documentado como mFlag, pero el cero no prueba verde.
+        for index in 0..state.cars.len() {
+            assert_eq!(frame[2_192 + index * 584 + 504], 0, "{file}: coche {index}");
+        }
+    }
+}
+
 /// 1.4.2.0 en pista: es la única captura con `mProgressTime` real (no el
 /// marcador a cero) y con la longitud del circuito publicada.
 #[test]
@@ -367,6 +400,15 @@ struct Corpus {
     rest_numbers: Vec<Vec<String>>,
 }
 
+fn assert_corpus_rest_signals(body: &Value, file: &str) {
+    assert_eq!(body["schema"], "vantare.lmu-rest-bodies.v1", "{file}");
+    let session = body["sessionInfo"].as_object().unwrap();
+    assert_eq!(session["yellowFlagState"], "invalid", "{file}");
+    for absent in ["gamePhase", "sectorFlag", "sectorFlags"] {
+        assert!(!session.contains_key(absent), "{file}: {absent}");
+    }
+}
+
 impl Corpus {
     fn open() -> Self {
         let path = testdata().join("rust-port/lmu47-high-rate-60s.tar.gz");
@@ -414,7 +456,7 @@ impl Corpus {
         let mut rest_bodies = Vec::new();
         for (file, content) in &rests {
             let body: Value = serde_json::from_slice(content).unwrap();
-            assert_eq!(body["schema"], "vantare.lmu-rest-bodies.v1", "{file}");
+            assert_corpus_rest_signals(&body, file);
             rest_numbers.push(
                 body["standings"]
                     .as_array()
@@ -549,6 +591,7 @@ fn the_47_car_temporal_corpus_replays_with_stable_identity_and_exact_quality() {
         // El REST del corpus trae `yellowFlagState: "invalid"`: sin evidencia de bandera.
         assert!(matches!(state.flags, Quality::Unavailable));
         assert_eq!(state.capabilities.flags, Capability::Supported);
+        assert!(matches!(state.session.state, Quality::Unavailable));
     }
     assert_eq!((unnumbered, not_fresh), (0, 0));
 

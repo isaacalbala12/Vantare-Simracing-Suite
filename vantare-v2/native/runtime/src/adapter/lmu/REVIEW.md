@@ -17,7 +17,7 @@ fichero contra el layout, los fixtures y el corpus reales, no solo se copió.
 | 6 | Un nombre de piloto no UTF-8 rechaza la parrilla entera (`InvalidActiveGrid`), como en Go. | El piloto se lee con pérdida (solo se muestra); circuito, coche y clase siguen siendo estrictos (identidad del REST). |
 | 7 | El decodificador REST exigía tipos válidos en campos que nada usa (`position`, `lapsCompleted`, `pitstops`, `numberOfVehicles`, `currentEventTime` ≥ 0): un campo ajeno roto descartaba los números de carrera. | Solo se decodifica lo que se usa (`slotID`, `carNumber`, `vehicleName`, `session`, `trackName`, `yellowFlagState`), con la misma transaccionalidad por cuerpo. |
 | 8 | `fuse_player` (posición/vueltas/boxes de REST como respaldo) casi nunca cambia el resultado: la admisión ya rechaza filas sin posición/vueltas válidas, así que solo actuaría con el SHM caducado. `choose_scalar` calcula `conflict` y solo `fusion.rs` lo lee. | No se portan (el frame de SHM caducado se marca así, sin sustituirlo por REST). El SHM manda; el REST solo rellena circuito y tipo de sesión si faltan, y solo si está vigente. |
-| 9 | La bandera REST solo cuenta con códigos numéricos 2–5. El corpus real trae `"yellowFlagState":"invalid"`; el vocabulario REST no está verificado y `mYellowFlagState` (SHM, byte 1741) no se consulta. | Se conserva la regla conservadora: amarillo solo con evidencia positiva; si no, `flags` es `Unavailable` y la capacidad `Supported`. |
+| 9 | El corpus real trae `"yellowFlagState":"invalid"`; la equivalencia REST/SDK no está verificada y `mYellowFlagState` (SHM, byte 1741) no se consulta. El port aceptaba fracciones entre 2 y 5, a diferencia de Go. | ISA-1425 corrige el contrato candidato: solo valores numéricos exactamente 2, 3, 4 o 5 afirman amarillo global. Sin esa evidencia, `flags` es `Unavailable` y la capacidad `Supported`; sigue pendiente certificar la fuente con una captura positiva. |
 | 10 | `Field<T>` con procedencia/frescura triple. | Se colapsa en `Quality`: `Invalid` y `Missing` son `Unavailable`. Se pierde solo el matiz de diagnóstico. |
 | 11 | `EndpointStatus`/`RestStatus`/`overall_status` (8 estados) que solo el `main` original consumía, más `Unknown`/`Stale` que se ponían a mano. | `fetch` devuelve `Option<Vec<u8>>`; ninguna causa de fallo cambia lo que hace el adaptador (mismo backoff, la caché envejece sola). |
 | 12 | `windows-sys` figura en el `Cargo.toml` original pero `reader/process/version` declaran las funciones a mano. | No se añade (ni `time`, ni `serde` derive). Único `unsafe`: `shm.rs`, con `// SAFETY:` en cada bloque; el resto del módulo lo prohíbe (`deny(unsafe_code)`). |
@@ -73,6 +73,80 @@ Capacidades `fuel`, `delta`, `sectors` y `lap_progress` con el criterio habitual
 los menús, `Supported`). Valores reales: el corpus de 47 coches trae 50/75 L,
 delta 0,0, S1, 269,02 m, 4,236 s y 13 623,97 m de circuito; `lmu-fixture.bin`
 99,59/100 L, delta 0,0, S1, 1068,23 m y 4655,11 m con el cronómetro sin dato.
+
+## ISA-1425 — investigación de fase y banderas LMU 1.4 (2026-09-29)
+
+Worker Codex, rama `vantareapp/isa-1425-f1-lmu-sesion`, base
+`f0254e1f354970c06130775c92edc0a4e21cd9e6`. Referencia técnica:
+[#1425](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1425),
+ADR 0099 y plan de arquitectura Rust nativa. Notion no disponible según el
+encargo; Isaac autoriza trabajar solo con GitHub en esta entrega. No se declara
+actualización de Notion ni aceptación de la fase 1. La revisión e integración
+corresponden al orquestador; este worker no hace push, PR ni merge.
+
+**Resultado: no se encontró una fuente fiable de fase en LMU 1.4.** El bloqueo
+es de evidencia, no se resuelve convirtiendo un cero en una sesión en marcha:
+
+| Fuente comprobada | Evidencia y consecuencia |
+| --- | --- |
+| Driver Go productivo | `internal/telemetry/drivers/lmu/layout_test.go:232-238,276-285` excluye `game_phase`, `yellow_flag_state`, `sector_flags` y `vehicle_flag` de la allowlist. `rest.go:252-259,638-678` ignora `gamePhase` y `sectorFlag` en cualquier forma; solo admite el contrato candidato de amarillo global con códigos exactos 2, 3, 4, 5. |
+| Monitores Go | `internal/engineer/flags/monitor.go:63-67,261-318` consume fase 3/4 (preparación), 5 (verde), 6 (FCY) y sectores ya traducidos a strings; `sessionend/monitor.go:21-27,104-105` considera 7 y 8 fin de sesión. Son consumidores, no lectores ni evidencia de que esas señales lleguen. |
+| Entrada productiva de Engineer | `internal/engineer/projectioninput/adapter.go:74` declara la familia flags deshabilitada porque fase y banderas no están disponibles. `adaptSession` (`:351-376`) no rellena `GamePhase` ni `SectorFlags`; el modelo legacy y los tests de los monitores no certifican una fuente LMU 1.4. |
+| Diez fixtures SHM 1.4.x | Pista, menú, outlap, pre-pit, pit y garage 1.4.0.0; pista/menú 1.4.1.3 y 1.4.2.0: @1740 y @1741 son 0; +504 de cada fila activa es 0. El cero no permite distinguir formación, verde, FCY, parada o fin, ni afirmar verde/ausencia de banderas. |
+| Seis JSON `testdata/lmu-*-rest-*-fixture.json` | Son snapshots procesados `vantare.lmu-rest-overlap.v1`, no cuerpos crudos del endpoint. Solo conservan circuito, tipo, reloj y número de coches; no contienen fase ni banderas. No se deben alimentar al decoder de `sessionInfo` como si fueran respuestas REST. |
+| Corpus `testdata/rust-port/lmu47-high-rate-60s.tar.gz` | Sus 239 cuerpos crudos `sessionInfo` traen `yellowFlagState: "invalid"` y ninguno trae `gamePhase`, `sectorFlag` o `sectorFlags`; las filas de standings solo traen identidad, dorsal, posición, vueltas, jugador y paradas. No aporta una captura positiva de estas señales. SHA-256 fijado por `lmu_conformance.rs`: `c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`. |
+
+También se leyó el SDK instalado en
+`C:\Program Files (x86)\Steam\steamapps\common\Le Mans Ultimate\Support\SharedMemoryInterface\InternalsPlugin.hpp`,
+SHA-256 `9b6ee8cf610fa5049b18df580a9a9bc9ebb91346fc466584d576a6442abcf68f`:
+`:507-530` documenta las fases y el enum de amarillo; `:467` solo documenta
+`mFlag` como 0=verde o 6=azul; `:532` reconoce que el orden de `mSectorFlag[3]`
+necesita probarse. Esto documenta candidatos del protocolo, no demuestra que
+LMU 1.4 publique esos bytes ni su equivalencia con REST. Por tanto **no se
+admiten `sector_flags` ni `vehicle_flag` todavía**; tampoco `gamePhase` REST,
+ni una deducción de fase por reloj, movimiento, boxes, tiempo restante o
+estado de llegada de un coche. `session.state` permanece `Unavailable`.
+
+Corrección implementada: `rest.rs` replica la comprobación exacta de Go para
+el amarillo candidato. `2.5`, `3.001` y `4.999` ya no afirman amarillo;
+ausente/null, strings, booleanos, objetos, arrays y códigos ambiguos permanecen
+sin evidencia. El TTL de 2 s, el dato `Stale` y el descarte de consultas previas
+al cambio de sesión se conservan. Un amarillo global no se convierte en fase
+FCY, porque su equivalencia tampoco está certificada.
+
+Pruebas: la regresión `only_exact_full_course_codes_assert_yellow` falla antes
+de corregir (`2.5`) y pasa después. Los casos REST de contrato son entradas
+controladas, **no capturas físicas**. El nuevo test de conformidad recorre los
+diez `.bin` reales sin modificar bytes y exige fase/banderas `Unavailable` y
+capacidad `Supported`; el corpus exige la misma ausencia de fase en sus 3839
+observaciones y comprueba los campos ausentes en las 239 respuestas crudas.
+Una consulta de solo lectura a `127.0.0.1:6397/rest/watch/sessionInfo` en esta
+ejecución agotó su plazo de 2 s: no se obtuvo evidencia live ni se declara
+validación física de fase/banderas.
+
+Gates locales del hito, ejecutados desde `native/` antes del commit:
+
+| Comando | Salida final |
+| --- | --- |
+| `cargo fmt --check` | Exit 0, sin diferencias. |
+| `cargo clippy -j 4 --workspace --all-targets -- -D warnings` | Exit 0, `Finished dev profile`; sin warnings. La primera pasada señaló longitud excesiva en dos tests; se corrigió sin suprimir el lint y se repitió el gate. |
+| `cargo test -j 4 --workspace` | Exit 0. Conformidad LMU: `9 passed; 0 failed; 0 ignored`. Workspace sin fallos; quedan los 2 tests live heredados explícitamente ignorados (REST y SHM requieren LMU en marcha). |
+| `git diff --check` | Exit 0. |
+
+No hay dependencias nuevas, cambios Go/frontend ni validación física; tampoco
+push, PR, CI remoto, merge, release o promoción de canal.
+
+**Pendiente para la grabadora y el revisor:** capturar con build, tiempos,
+bytes SHM y cuerpos crudos de los dos endpoints existentes
+(`/rest/watch/sessionInfo` y `/rest/watch/standings`) las transiciones
+formación/countdown → verde → FCY → verde, parada y fin de sesión. Añadir
+amarillo local por cada sector (para fijar orden y códigos) y azul de un coche
+identificable (slot y etiqueta), con un tramo sin bandera antes/después;
+correlacionar cada transición con lo visto en el juego. Incluir consultas
+fallidas/REST caducado y cambio de sesión para verificar TTL y descarte de
+datos previos. Solo entonces admitir los campos demostrados y decidir el
+mapeo neutral de parada frente a sesión terminada. No hay pregunta que bloquee
+el cambio local; queda esta validación para el siguiente hito.
 
 ## Riesgos aceptados
 

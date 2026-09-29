@@ -243,3 +243,45 @@ Profundidad de control, deadline de escritura bajo carga, retención de facts y 
 ## Dependencias
 
 Rust usa `serde`, `serde_json`, `time`, `ureq` y `windows-sys` solo para Windows; `Cargo.lock` fija sus versiones. `windows-sys 0.61.2` aporta llamadas Win32 tipadas para I/O overlapped y añade `windows-link 0.2.1`; ambas licencias son MIT OR Apache-2.0. El framing Go usa la biblioteca estándar. Rust se fija en `1.95.0` para `x86_64-pc-windows-msvc`; `cargo test --locked`, Clippy y los tests Windows Go↔Rust comprueban framing, límites, handshake, timeout y rechazo de cabecera sobredimensionada. El coste de dependencias queda para R21/R22.
+
+## Candidato binario Engineer VTE1 para R21 (2026-09-29)
+
+`VTE1` es un candidato de **payload** `KindSnapshot`, no un cambio de framing
+ni el codec productivo. El ensamblador sigue emitiendo JSON. Rust codifica y
+Go decodifica el frame fijado `engineer-snapshot-frame-rust-binary-v1.bin`
+(17 193 bytes; SHA-256 `d832bb77ddfedf36e3f8eea879cfef29f907d371441bdefe67fc55856de16473`).
+El snapshot y la identidad decodificados son idénticos al fixture JSON Rust.
+
+Todas las cifras son little-endian. El payload empieza por ASCII `VTE1`,
+`canonicalVersion:u8=1`, `projectionVersion:u8=1`, `epoch:u64`,
+`sequence:u64`, `capturedAt:string`, `hasIdentity:u8` y, si vale 1,
+`event`, `session`, `vehicle`, `team`, `driver` como strings. Cada string es
+`length:u16` seguido de UTF-8; el decoder rechaza UTF-8 inválido, versiones,
+marca de identidad, límites, campos sobrantes y longitud incompleta.
+
+El cuerpo lleva `capabilities:u8` con bits 0–6 para session, standings,
+controls, pit, fuel, gaps y spatial; después los ocho campos de sesión
+(`trackName`, `sessionType`, `sourceTimeSeconds`, `endTimeSeconds`,
+`remainingSeconds`, `maximumLaps`, `vehicleCount`, `playerPresent`), un
+`PlayerV1`, `vehicleCount:u16` y esa cantidad de filas `PlayerV1`.
+Cada fila lleva `id:string` y los campos de `PlayerV1` en el orden declarado
+por `rust/telemetry/src/projection/engineer/binary.rs` y reflejado en
+`internal/app/telemetryprocess/engineer_binary.go`; la prueba Go compara el
+DTO completo por igualdad profunda, no solo una selección de campos.
+
+Cada campo empieza por un byte de calidad: bit 0 `present`, bits 1–2
+`provenance` (unknown/observed/derived/estimated) y bits 3–4 `freshness`
+(missing/fresh/stale/invalid). Los bits 5–7 se rechazan. Sigue siempre el
+valor: booleano `u8` 0/1, entero `i32` o `u8`, número finito `f64`, string,
+vector de tres `f64` u orientación de tres vectores. No se transmiten
+punteros, structs ni layout de Rust. El framing existente conserva el techo
+de 8 MiB y el decoder limita la cantidad de filas antes de reservar.
+
+En el microbanco estático de 44 vehículos, el cuerpo Engineer JSON mide
+150 428 bytes y ~184–191 µs para proyectar y serializar; VTE1 mide 17 077
+bytes y ~17–18 µs. El frame completo VTE1 mide 17 193 bytes. Go decodifica
+VTE1 en ~64–66 µs, ~77,7 kB/op y 191 asignaciones frente a JSON en
+~2,68–2,74 ms, ~777 kB/op y 3125 asignaciones (tres ventanas de 2 s cada
+una, Ryzen 7 3700X/Windows). **No son CPU de proceso ni paridad temporal**.
+Antes de activar VTE1 faltan el corpus LMU47 x80, receptor por pipe, G1,
+CPU total, p99, RSS, fallos y decisión en ADR 0097.

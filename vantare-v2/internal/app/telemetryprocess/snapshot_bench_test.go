@@ -67,3 +67,23 @@ func BenchmarkDecodeObservationSnapshotRustFixture(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkDecodeEngineerBinaryRustFixture(b *testing.B) {
+	wire, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", "engineer-snapshot-frame-rust-binary-v1.bin"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	frame, err := DecodeFrame(wire)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if _, _, err := DecodeEngineerBinarySnapshot(frame); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, _, err := DecodeEngineerBinarySnapshot(frame); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

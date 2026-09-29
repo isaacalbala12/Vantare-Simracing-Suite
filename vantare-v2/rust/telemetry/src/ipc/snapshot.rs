@@ -77,6 +77,49 @@ pub fn encode_engineer_typed(
     super::encode(Kind::Snapshot, &payload).map_err(SnapshotError::Frame)
 }
 
+/// R21 binary Engineer candidate. VTE1 identifies the exact product and
+/// payload layout; the production assembly still selects JSON until both
+/// decoders have corpus parity and whole-route measurements.
+pub fn encode_engineer_binary(
+    payload: &crate::projection::engineer::EngineerView<'_>,
+    metadata: ProductMetadata<'_>,
+    identity: Option<EngineerIdentity<'_>>,
+) -> Result<Vec<u8>, SnapshotError> {
+    if metadata.epoch == 0 || metadata.sequence == 0 || metadata.captured_at.is_empty() {
+        return Err(SnapshotError::InvalidUpdate);
+    }
+    let mut wire = Vec::with_capacity(32 * 1024);
+    wire.extend_from_slice(b"VTE1");
+    wire.extend_from_slice(&[1, 1]); // canonical and projection versions
+    wire.extend_from_slice(&metadata.epoch.to_le_bytes());
+    wire.extend_from_slice(&metadata.sequence.to_le_bytes());
+    binary_string(&mut wire, metadata.captured_at)?;
+    wire.push(u8::from(identity.is_some()));
+    if let Some(identity) = identity {
+        for value in [
+            identity.event,
+            identity.session,
+            identity.vehicle,
+            identity.team,
+            identity.driver,
+        ] {
+            binary_string(&mut wire, value)?;
+        }
+    }
+    wire.extend_from_slice(
+        &crate::projection::engineer::encode_binary_view(payload)
+            .map_err(|_| SnapshotError::InvalidUpdate)?,
+    );
+    super::encode(Kind::Snapshot, &wire).map_err(SnapshotError::Frame)
+}
+
+fn binary_string(wire: &mut Vec<u8>, value: &str) -> Result<(), SnapshotError> {
+    let length = u16::try_from(value.len()).map_err(|_| SnapshotError::InvalidUpdate)?;
+    wire.extend_from_slice(&length.to_le_bytes());
+    wire.extend_from_slice(value.as_bytes());
+    Ok(())
+}
+
 /// Wraps a complete Engineer or Strategy observation with the canonical
 /// metadata supplied by the committed batch clock. Publication remains gated
 /// by the future runtime supervisor and consumer demand.
@@ -310,5 +353,52 @@ mod tests {
             ),
             Err(SnapshotError::InvalidUpdate)
         );
+    }
+
+    #[test]
+    fn real_static_44_binary_engineer_candidate_is_pinned() {
+        const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
+        let engine = Engine::new(30, 15).unwrap();
+        let prepared = engine
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
+            .unwrap();
+        let view = engineer::build_typed(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.gaps(),
+        );
+        let batch = prepared.batch();
+        let player_id = batch.player_id.as_deref().unwrap();
+        let player = batch
+            .state
+            .vehicles
+            .iter()
+            .find(|vehicle| vehicle.id == player_id)
+            .unwrap();
+        let frame = encode_engineer_binary(
+            &view,
+            ProductMetadata {
+                epoch: 1,
+                sequence: 1,
+                captured_at: "1970-01-01T00:01:40Z",
+            },
+            Some(EngineerIdentity {
+                event: &batch.event_id,
+                session: &batch.session_id,
+                vehicle: player_id,
+                team: &player.team_id,
+                driver: &player.driver_id,
+            }),
+        )
+        .unwrap();
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/testdata/engineer-snapshot-frame-rust-binary-v1.bin"
+        );
+        if std::env::var("VANTARE_IPC_ORACLE_UPDATE").as_deref() == Ok("1") {
+            std::fs::write(path, &frame).unwrap();
+        }
+        assert_eq!(std::fs::read(path).unwrap(), frame);
+        assert!(frame.len() < 20_000);
     }
 }

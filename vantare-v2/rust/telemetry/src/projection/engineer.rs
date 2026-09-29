@@ -9,6 +9,9 @@ use crate::derive::gaps::GapSet;
 use crate::lmu::{SessionType, pipeline::LmuVehicleState};
 use crate::quality::{Field, Freshness, Provenance};
 
+mod binary;
+pub use binary::{BinaryError, encode_binary_view};
+
 #[derive(Clone, Copy, Serialize)]
 pub struct FieldView<T> {
     present: bool,

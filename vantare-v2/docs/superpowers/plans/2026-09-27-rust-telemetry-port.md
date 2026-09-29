@@ -2345,3 +2345,22 @@ Estas cifras aíslan decode, sin adquirir ni publicar; no acreditan el gate
 G0/G1/R. Engineer domina el coste del codec y es el primer producto que R21
 debe comparar en JSON/binario preservando el payload tipado completo y las
 frecuencias equivalentes. Aún no se ha elegido codec ni reducido el CPU total.
+
+## 127. Prototipo binario Engineer VTE1 cruzado Rust/Go (2026-09-29)
+
+Un candidato binario versionado y sin dependencias nuevas serializa el
+`EngineerView` completo en Rust y lo decodifica al mismo `SnapshotV1` Go.
+El frame real estático de 44 coches, con identidad de la captura, tiene
+17 193 bytes frente a 150 575 del JSON; un test compara todos los campos
+mediante igualdad profunda y rechaza truncamiento, bytes extra, magic,
+versión y capability desconocida. El corpus de aceptación sigue siendo el
+temporal real ≥46: este fixture solo prueba el contrato cruzado inicial.
+
+Cinco muestras del microbanco Rust dieron ~17–18 µs para proyección+body
+binario frente a ~184–191 µs para proyección+JSON; tres muestras Go dieron
+~64–66 µs para decode binario frente a ~2,68–2,74 ms para el JSON estricto.
+No incluye la ruta completa, ni p99/RSS, ni demuestra 50 % menos CPU.
+El ensamblador y receptor live aún seleccionan JSON; R21 debe probar VTE1
+en LMU47 x80, por pipe y en G0/G1/R antes de decidir el codec en ADR 0097.
+`cargo test --locked` (158 tests), Clippy y formato pasaron; suite Go global
+y diff check pasaron. Go continúa por defecto y PR #1415 sigue draft.

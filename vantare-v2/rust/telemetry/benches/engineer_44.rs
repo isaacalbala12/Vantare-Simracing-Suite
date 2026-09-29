@@ -49,6 +49,24 @@ fn main() {
         );
         black_box(serde_json::to_vec(&value).expect("JSON"));
     });
+    measure("project+binary-body", || {
+        let value = engineer::build_typed(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.gaps(),
+        );
+        black_box(engineer::encode_binary_view(&value).expect("binary body"));
+    });
+    let value = engineer::build_typed(
+        prepared.batch(),
+        prepared.session_remaining(),
+        prepared.gaps(),
+    );
+    println!(
+        "Rust Engineer static44 body bytes: json={} binary={}",
+        serde_json::to_vec(&value).unwrap().len(),
+        engineer::encode_binary_view(&value).unwrap().len()
+    );
     measure("project+snapshot-frame", || {
         let value = engineer::build_typed(
             prepared.batch(),

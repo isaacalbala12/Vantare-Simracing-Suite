@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — candidato binario Engineer VTE1 (2026-09-29)
+
+Rust codifica el `EngineerView` completo en un body binario versionado y Go
+lo decodifica al `SnapshotV1` productivo con identidad. El fixture real
+estático de 44 coches conserva igualdad profunda frente al frame Rust JSON,
+y el decoder rechaza truncamiento, trailing, magic/versión y bits no
+declarados. Sin dependencia nueva. Frame 17 193 B frente a JSON 150 575 B;
+microbanco Rust proyección+body ~17–18 µs frente a ~184–191 µs JSON;
+decode Go ~64–66 µs frente a ~2,68–2,74 ms JSON. Estos resultados no
+acreditan CPU total, p99 ni RSS; el ensamblador/receptor live todavía usan
+JSON. Pendiente probar VTE1 con el corpus LMU47 x80, pipe real y banco
+G0/G1/R antes de la decisión R21. `cargo test` 158, Clippy, formato,
+`go test ./...` y diff check pasaron. Go sigue por defecto; PR #1415 draft,
+sin merge. Plan §127 y contrato IPC VTE1.
+
 ## VAN-778 / ISA-1403 — coste de los tres decoders IPC (2026-09-29)
 
 El banco de frames Rust estáticos con 44 vehículos mide el decoder estricto

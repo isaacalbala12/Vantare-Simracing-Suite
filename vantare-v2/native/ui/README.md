@@ -162,3 +162,24 @@ posición y tamaño exactos.
 cd vantare-v2/native; cargo build -p vantare-ui
 .\ui\check-windows.ps1     # exit 0 = todo en su sitio
 ```
+
+### Varios monitores
+
+`--ventanas una` crea una ventana del tamaño de cada monitor **que tenga widgets**
+(los que tienen la esquina dentro; `app::partition`, con test para monitores con
+coordenadas negativas y vacíos) y ninguna para los demás. Las posiciones de la
+cuadrícula (`origin_of`) son globales y caen en el monitor principal; para probar
+varios monitores, `VANTARE_DESPLAZAMIENTO=x,y` (px) desplaza toda la cuadrícula:
+
+```powershell
+# Monitor principal de 1920 px y otro a su derecha: con este desplazamiento los
+# widgets de la 4.ª columna (x = 2030) caen en el segundo monitor; el resto, en el principal.
+$env:VANTARE_DESPLAZAMIENTO = '600,0'
+vantare-overlays 22 --ventanas una          # esperado: 2 ventanas, una por monitor
+vantare-overlays 22 --ventanas por-widget   # las mismas posiciones, 22 ventanas
+```
+
+Comprobar con `EnumWindows` (o a ojo) que hay una ventana transparente por monitor
+con widgets y que los widgets están donde en `por-widget`. No he podido probarlo con
+dos monitores físicos (esta máquina solo tiene uno); el reparto está cubierto por
+un test unitario.

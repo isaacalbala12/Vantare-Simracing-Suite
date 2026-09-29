@@ -374,37 +374,54 @@ pub(crate) fn open_window(
     Ok((widget, handle.entity(cx)?))
 }
 
-/// Abre una ventana por monitor que tenga widgets (los de `placed` cuya esquina
-/// cae en él) y devuelve los widgets creados.
+type Placed = Vec<(Kind, (f32, f32))>;
+
+/// Reparte los widgets (posición global) entre los monitores: cada uno recibe
+/// los que tienen la esquina dentro, con la posición relativa a su esquina.
+fn partition(monitors: &[Bounds<Pixels>], placed: &[(Kind, (f32, f32))]) -> Vec<Placed> {
+    monitors
+        .iter()
+        .map(|monitor| {
+            let (ox, oy) = (f32::from(monitor.origin.x), f32::from(monitor.origin.y));
+            placed
+                .iter()
+                .filter(|(_, (x, y))| monitor.contains(&point(px(*x), px(*y))))
+                .map(|&(kind, (x, y))| (kind, (x - ox, y - oy)))
+                .collect()
+        })
+        .collect()
+}
+
+/// Abre una ventana por monitor que tenga widgets y devuelve los widgets
+/// creados. Los monitores sin widgets no reciben ventana.
 fn open_screens(
     cx: &mut App,
     placed: &[(Kind, (f32, f32))],
     prefs: Preferences,
 ) -> Vec<Entity<Overlay>> {
+    let displays = cx.displays();
+    let bounds: Vec<_> = displays.iter().map(|d| d.bounds()).collect();
     let mut all = Vec::new();
-    for display in cx.displays() {
-        let bounds = display.bounds();
-        let widgets: Vec<_> = placed
-            .iter()
-            .filter(|(_, (x, y))| bounds.contains(&point(px(*x), px(*y))))
-            .map(|(kind, (x, y))| {
-                let at = (
-                    x - f32::from(bounds.origin.x),
-                    y - f32::from(bounds.origin.y),
-                );
-                (cx.new(|_| Overlay::new(*kind, prefs)), at)
-            })
-            .collect();
-        if widgets.is_empty() {
+    for ((display, bounds), mine) in displays
+        .iter()
+        .zip(bounds.iter())
+        .zip(partition(&bounds, placed))
+    {
+        if mine.is_empty() {
             continue;
         }
+        let widgets: Vec<_> = mine
+            .into_iter()
+            .map(|(kind, at)| (cx.new(|_| Overlay::new(kind, prefs)), at))
+            .collect();
         all.extend(widgets.iter().map(|(widget, _)| widget.clone()));
-        let mut options = popup(bounds);
+        let mut options = popup(*bounds);
         options.display_id = Some(display.id());
+        let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
         let opened = cx.open_window(options, move |_, cx| {
             cx.new(|_| Screen {
                 widgets,
-                origin: (f32::from(bounds.origin.x), f32::from(bounds.origin.y)),
+                origin,
                 hwnd: None,
             })
         });
@@ -456,10 +473,23 @@ fn kind_of(index: usize) -> Kind {
     [Kind::Standings, Kind::Radar, Kind::Pedals][index % 3]
 }
 
+/// Desplazamiento de toda la cuadrícula (`VANTARE_DESPLAZAMIENTO=x,y`, px): sirve
+/// para probar varios monitores empujando parte de los widgets al segundo.
+fn layout_offset() -> (f32, f32) {
+    std::env::var("VANTARE_DESPLAZAMIENTO")
+        .ok()
+        .and_then(|text| {
+            let (x, y) = text.split_once(',')?;
+            Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
+        })
+        .unwrap_or((0.0, 0.0))
+}
+
 fn origin_of(index: usize) -> (f32, f32) {
+    let (dx, dy) = layout_offset();
     (
-        20.0 + (index % 4) as f32 * 470.0,
-        20.0 + (index / 4) as f32 * 60.0,
+        dx + 20.0 + (index % 4) as f32 * 470.0,
+        dy + 20.0 + (index / 4) as f32 * 60.0,
     )
 }
 
@@ -582,6 +612,35 @@ mod tests {
             standings_repaints(source::synthetic) > 900,
             "el de estrés lo cambia casi todo"
         );
+    }
+
+    #[test]
+    fn each_monitor_gets_only_its_widgets_relative_to_its_corner() {
+        let monitor =
+            |x: f32, y: f32, w: f32, h: f32| Bounds::new(point(px(x), px(y)), size(px(w), px(h)));
+        // Principal 1920x1080 y otro a su izquierda (coordenadas negativas) y uno vacío.
+        let monitors = [
+            monitor(0.0, 0.0, 1920.0, 1080.0),
+            monitor(-1280.0, 0.0, 1280.0, 1024.0),
+            monitor(5000.0, 0.0, 800.0, 600.0),
+        ];
+        let placed = vec![
+            (Kind::Standings, (20.0, 20.0)),
+            (Kind::Radar, (-1200.0, 50.0)),
+            (Kind::Pedals, (1900.0, 1079.0)),
+        ];
+
+        let parts = partition(&monitors, &placed);
+
+        assert_eq!(
+            parts[0],
+            [
+                (Kind::Standings, (20.0, 20.0)),
+                (Kind::Pedals, (1900.0, 1079.0))
+            ]
+        );
+        assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
+        assert!(parts[2].is_empty(), "sin widgets no hay ventana");
     }
 
     #[test]

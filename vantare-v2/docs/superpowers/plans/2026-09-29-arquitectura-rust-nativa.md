@@ -207,6 +207,13 @@ antes cuando un perfil representativo lo justifique.
 **Aceptación.** Mejora reproducible frente a la ronda anterior o cierre
 explícito de la tanda.
 
+**Primera candidata (decisión de Isaac): demanda desde los widgets.** Hoy el
+núcleo deriva todo en cada tick y el IPC envía la foto completa. En esta fase:
+los widgets del layout activo declaran sus señales (columnas y huecos del pie
+incluidos), el núcleo solo deriva lo demandado, el IPC solo envía lo demandado
+con cadencia por señal, y lo no pedido se marca como no pedido (no como no
+disponible) para no confundir a un widget que se active después.
+
 ## Fase 9 — Corte
 
 **Incluye.** Retirada del producto Go/Wails y de las reglas de `AGENTS.md`

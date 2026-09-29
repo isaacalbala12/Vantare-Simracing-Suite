@@ -148,23 +148,6 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                 .unix_timestamp_nanos(),
         )
         .unwrap();
-        if replay_rest {
-            let file = sample
-                .rest_bodies_file
-                .as_deref()
-                .expect("REST replay requires body artifact");
-            assert_eq!(file, format!("{index:03}-rest-bodies.json"));
-            let bodies: RestBodies =
-                serde_json::from_slice(&fs::read(dir.join(file)).unwrap()).unwrap();
-            assert_eq!(bodies.schema, "vantare.lmu-rest-bodies.v1");
-            apply_rest_bodies(assembler.rest_cache_mut(), &bodies, received_ns);
-            if let Some(engine) = profile_engine.as_mut() {
-                apply_rest_bodies(engine.rest_cache_mut(), &bodies, received_ns);
-            }
-            if let Some(engine) = binary_engine.as_mut() {
-                apply_rest_bodies(engine.rest_cache_mut(), &bodies, received_ns);
-            }
-        }
         let assembly_started = Instant::now();
         let frames = assembler
             .apply(
@@ -435,6 +418,26 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
             assembler.engine().current().unwrap().cursor.sequence,
             u64::try_from(index + 1).unwrap()
         );
+        if replay_rest {
+            // The endpoint reads followed this SHM capture and preceded the
+            // next one. Preserve that order in every replay engine.
+            let file = sample
+                .rest_bodies_file
+                .as_deref()
+                .expect("REST replay requires body artifact");
+            assert_eq!(file, format!("{index:03}-rest-bodies.json"));
+            let bodies: RestBodies =
+                serde_json::from_slice(&fs::read(dir.join(file)).unwrap()).unwrap();
+            assert_eq!(bodies.schema, "vantare.lmu-rest-bodies.v1");
+            let rest_received_ns = received_ns.checked_add(1).unwrap();
+            apply_rest_bodies(assembler.rest_cache_mut(), &bodies, rest_received_ns);
+            if let Some(engine) = profile_engine.as_mut() {
+                apply_rest_bodies(engine.rest_cache_mut(), &bodies, rest_received_ns);
+            }
+            if let Some(engine) = binary_engine.as_mut() {
+                apply_rest_bodies(engine.rest_cache_mut(), &bodies, rest_received_ns);
+            }
+        }
     }
     if profile {
         eprintln!(

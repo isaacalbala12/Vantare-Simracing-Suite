@@ -149,30 +149,6 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 		if i == 0 {
 			firstSource = source
 		}
-		if replayREST {
-			if entry.RESTBodiesFile != fmt.Sprintf("%03d-rest-bodies.json", i) || entry.RESTBodiesSHA == "" {
-				t.Fatalf("sample %d lacks audited REST body artifact", i)
-			}
-			body := readHashedCorpusFile(t, dir, entry.RESTBodiesFile, entry.RESTBodiesSHA)
-			var endpoint struct {
-				Schema      string          `json:"schema"`
-				Standings   json.RawMessage `json:"standings"`
-				SessionInfo json.RawMessage `json:"sessionInfo"`
-			}
-			if err := json.Unmarshal(body, &endpoint); err != nil || endpoint.Schema != sanitizedRESTBodiesSchema {
-				t.Fatalf("sample %d invalid REST replay body: %v", i, err)
-			}
-			cfg := normalizeRESTConfig(&restConfig{
-				client:  corpusRESTDoer{standings: endpoint.Standings, session: endpoint.SessionInfo},
-				now:     func() time.Time { return at },
-				elapsed: func() time.Duration { return source - firstSource },
-			}, time.Now, nil)
-			restObservation, complete := pollREST(t.Context(), cfg, restReplayCache)
-			if !complete {
-				t.Fatalf("sample %d REST replay did not decode both endpoints", i)
-			}
-			fusion.Merge(at, source-firstSource, restObservation)
-		}
 		fused := fusion.Merge(at, source-firstSource, observation)
 		var final envelope.Snapshot[derive.FinalState]
 		facts := make([]engineer.FactEnvelopeV1, 0)
@@ -304,8 +280,26 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 					t.Fatalf("sample %d REST slot has no sanitized SHM identity", i)
 				}
 			}
+			if replayREST {
+				// The endpoint reads followed this SHM capture and preceded
+				// the next one. Keep that order in the Go fusion replay.
+				restAt := at.Add(time.Nanosecond)
+				restElapsed := source - firstSource + time.Nanosecond
+				cfg := normalizeRESTConfig(&restConfig{
+					client:  corpusRESTDoer{standings: endpoint.Standings, session: endpoint.SessionInfo},
+					now:     func() time.Time { return restAt },
+					elapsed: func() time.Duration { return restElapsed },
+				}, time.Now, nil)
+				restObservation, complete := pollREST(t.Context(), cfg, restReplayCache)
+				if !complete {
+					t.Fatalf("sample %d REST replay did not decode both endpoints", i)
+				}
+				fusion.Merge(restAt, restElapsed, restObservation)
+			}
 		} else if entry.RESTBodiesSHA != "" {
 			t.Fatalf("sample %d REST body hash without file", i)
+		} else if replayREST {
+			t.Fatalf("sample %d lacks REST body artifact", i)
 		}
 	}
 	if parityOut != "" {

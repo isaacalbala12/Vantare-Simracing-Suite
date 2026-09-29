@@ -2468,11 +2468,15 @@ Rust lo interpretan como falta de señal global. Los 80 pares reales de LMU
 SHA-256 `c5b1f197a399288951a7237577e817696c22cbd0e9430268d30b062f69cc52b4`.
 Go auditó 80 hashes REST nuevos, 47 filas por muestra, IDs sanitizados y
 ambos decoders. Una auditoría independiente confirmó solo claves permitidas
-y alias en 3760 filas. Los replays Go y Rust ingirieron REST antes del mismo
-SHM por muestra. El comparador estricto falló primero en las 80 temperaturas
+y alias en 3760 filas. Los replays Go y Rust respetaron el orden de captura
+SHM(i) → REST(i) → SHM(i+1), con tiempo lógico acotado entre muestras; el
+artefacto aún no conserva timestamps individuales de cada request REST.
+El comparador estricto falló primero en las 80 temperaturas
 ambientales enteras (`31` Go, `31.0` Rust); al usar la codificación integral
 existente `wire_float` para números meteorológicos Rust, dio **cero
 diferencias** en Overlay, Engineer, Strategy y facts de las 80 muestras.
+La temperatura REST se publicó fresh en 79 frames; el primero quedó missing
+al no tener todavía un poll anterior.
 
 `go test ./...`, 160 tests Rust release, Clippy, formato, build release y
 compilación cruzada del test Go Linux pasaron. La evidencia es reproducible

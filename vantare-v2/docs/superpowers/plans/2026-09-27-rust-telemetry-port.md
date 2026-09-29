@@ -2332,3 +2332,16 @@ facts pasó tres veces; `go test ./...`, vet focal y diff check pasaron.
 Staticcheck focal conserva avisos heredados fuera de los archivos modificados.
 R21 exige formato más eficiente y banco equivalente antes del gate del 50 %;
 Go sigue productivo por defecto, sin merge.
+
+## 126. Coste individual de los tres decoders IPC (2026-09-29)
+
+El banco diagnóstico `BenchmarkDecodeObservationSnapshotRustFixture` mide los
+frames Rust estáticos de 44 vehículos con el mismo decoder estricto usado por
+el receptor Go. Tres repeticiones de 2 s por caso en Ryzen 7 3700X/Windows
+amd64 dieron Engineer 2,73–2,75 ms/frame, ~777 kB/op y 3125 allocs/op;
+Strategy 28,1–28,4 µs/frame, ~4,1 kB/op y 58 allocs/op. El banco previo de
+Overlay repitió 0,962–0,975 ms/frame, ~317 kB/op y 2331 allocs/op.
+Estas cifras aíslan decode, sin adquirir ni publicar; no acreditan el gate
+G0/G1/R. Engineer domina el coste del codec y es el primer producto que R21
+debe comparar en JSON/binario preservando el payload tipado completo y las
+frecuencias equivalentes. Aún no se ha elegido codec ni reducido el CPU total.

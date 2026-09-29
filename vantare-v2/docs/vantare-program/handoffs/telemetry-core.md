@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — coste de los tres decoders IPC (2026-09-29)
+
+El banco de frames Rust estáticos con 44 vehículos mide el decoder estricto
+del receptor Go: Engineer 2,73–2,75 ms/frame, ~777 kB y 3125 asignaciones;
+Overlay 0,962–0,975 ms/frame, ~317 kB y 2331 asignaciones; Strategy
+28,1–28,4 µs/frame, ~4,1 kB y 58 asignaciones (tres repeticiones de 2 s).
+Engineer concentra el coste y guía la comparación JSON/binario de R21. Es un
+microbanco diagnóstico, no el gate CPU G0/G1/R; Rust aún no cumple el 50 %.
+Go sigue por defecto y PR #1415 permanece draft. Plan §126.
+
 ## VAN-778 / ISA-1403 — demanda igual y decoder Overlay (2026-09-29)
 
 Un probe físico con LMU 1.4.2.0 y 47 coches activó Overlay, Engineer y Strategy

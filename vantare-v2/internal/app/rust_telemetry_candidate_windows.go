@@ -23,7 +23,6 @@ import (
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate lifecycle is invalid")
@@ -65,7 +64,6 @@ type RustTelemetryCandidateRuntime struct {
 	overlaySessions  map[string]string
 	overlayRequestID uint64
 	overlayContext   context.Context
-	epochOffset      uint64
 	lastEpoch        uint64
 	newChild         bool
 	lastFact         telemetrycore.FactSequence
@@ -255,11 +253,17 @@ func (runtime *RustTelemetryCandidateRuntime) run(ctx context.Context, initial t
 			}
 		}
 	}()
-	run := telemetryprocess.RunCandidateWithOverlay
-	if runtime.config.EngineerBinaryDiagnostic {
-		run = telemetryprocess.RunCandidateWithOverlayBinaryEngineer
+	seed := func() uint64 {
+		runtime.mu.Lock()
+		defer runtime.mu.Unlock()
+		return runtime.lastEpoch
 	}
-	err := run(ctx, runtime.config.Executable, initial, runtime.updates, runtime.overlayRequests, runtime.deliver, runtime.handleDisconnected)
+	var err error
+	if runtime.config.EngineerBinaryDiagnostic {
+		err = telemetryprocess.RunCandidateWithOverlayBinaryEngineerEpoch(ctx, runtime.config.Executable, initial, runtime.updates, runtime.overlayRequests, seed, runtime.deliver, runtime.handleDisconnected)
+	} else {
+		err = telemetryprocess.RunCandidateWithOverlayEpoch(ctx, runtime.config.Executable, initial, runtime.updates, runtime.overlayRequests, seed, runtime.deliver, runtime.handleDisconnected)
+	}
 	terminal := ctx.Err() == nil && err != nil
 	runtime.cancel()
 	<-refreshDone
@@ -341,7 +345,7 @@ func (runtime *RustTelemetryCandidateRuntime) configurationLocked(revision uint6
 }
 
 func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.ReceivedV1) error {
-	if err := runtime.translateEpoch(&event); err != nil {
+	if err := runtime.observeEpoch(&event); err != nil {
 		return err
 	}
 	if event.Status != nil {
@@ -438,66 +442,51 @@ func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.Rec
 	return nil
 }
 
-// The child starts its epoch at one on each process launch. Product consumers
-// stay alive across a supervisor restart, so their cursor must keep moving
-// forward. The translation applies only after the IPC receiver validated the
-// original child stream and does not change fact ACKs sent back to Rust.
-func (runtime *RustTelemetryCandidateRuntime) translateEpoch(event *telemetryprocess.ReceivedV1) error {
+// Rust emits the final product epoch. The host remembers only the last epoch
+// to seed the next child after a process restart.
+func (runtime *RustTelemetryCandidateRuntime) observeEpoch(event *telemetryprocess.ReceivedV1) error {
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
 	if event.Configuration != nil && runtime.newChild {
-		if event.Configuration.Epoch == 0 || runtime.lastEpoch == ^uint64(0) {
+		if event.Configuration.Epoch == 0 || event.Configuration.Epoch <= runtime.lastEpoch {
 			return ErrRustCandidateLifecycle
-		}
-		if runtime.lastEpoch != 0 {
-			if event.Configuration.Epoch > runtime.lastEpoch+1 {
-				return ErrRustCandidateLifecycle
-			}
-			runtime.epochOffset = runtime.lastEpoch + 1 - event.Configuration.Epoch
 		}
 		runtime.newChild = false
 		runtime.lastFact = 0
 	}
-	mapEpoch := func(raw uint64) (uint64, error) {
-		if raw == 0 || raw > ^uint64(0)-runtime.epochOffset {
-			return 0, ErrRustCandidateLifecycle
+	observe := func(epoch uint64) error {
+		if epoch == 0 || epoch < runtime.lastEpoch {
+			return ErrRustCandidateLifecycle
 		}
-		mapped := raw + runtime.epochOffset
-		if mapped < runtime.lastEpoch {
-			return 0, ErrRustCandidateLifecycle
+		if epoch > runtime.lastEpoch {
+			runtime.lastEpoch = epoch
 		}
-		if mapped > runtime.lastEpoch {
-			runtime.lastEpoch = mapped
+		return nil
+	}
+	if event.Configuration != nil {
+		if err := observe(event.Configuration.Epoch); err != nil {
+			return err
 		}
-		return mapped, nil
 	}
 	if event.Overlay != nil && event.Overlay.Frame != nil {
-		mapped, err := mapEpoch(event.Overlay.Frame.StreamEpoch)
-		if err != nil {
+		if err := observe(event.Overlay.Frame.StreamEpoch); err != nil {
 			return err
 		}
-		event.Overlay.Frame.StreamEpoch = mapped
 	}
 	if event.Engineer != nil {
-		mapped, err := mapEpoch(uint64(event.Engineer.Metadata.Epoch))
-		if err != nil {
+		if err := observe(uint64(event.Engineer.Metadata.Epoch)); err != nil {
 			return err
 		}
-		event.Engineer.Metadata.Epoch = schema.Epoch(mapped)
 	}
 	if event.Strategy != nil {
-		mapped, err := mapEpoch(uint64(event.Strategy.Metadata.Epoch))
-		if err != nil {
+		if err := observe(uint64(event.Strategy.Metadata.Epoch)); err != nil {
 			return err
 		}
-		event.Strategy.Metadata.Epoch = schema.Epoch(mapped)
 	}
 	for index := range event.Facts {
-		mapped, err := mapEpoch(uint64(event.Facts[index].Metadata.Epoch))
-		if err != nil {
+		if err := observe(uint64(event.Facts[index].Metadata.Epoch)); err != nil {
 			return err
 		}
-		event.Facts[index].Metadata.Epoch = schema.Epoch(mapped)
 	}
 	return nil
 }

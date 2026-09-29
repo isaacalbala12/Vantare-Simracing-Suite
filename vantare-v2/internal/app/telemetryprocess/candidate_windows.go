@@ -34,7 +34,7 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 // revision and a fresh Receiver; product selection is still gated elsewhere.
 func RunCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, false, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, false, nil, deliver, disconnected)
 }
 
 // RunCandidateWithOverlay carries window-scoped pull commands to the Rust
@@ -43,24 +43,38 @@ func RunCandidateWithUpdates(ctx context.Context, executable string, configurati
 func RunCandidateWithOverlay(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC,
 	deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, false, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, false, nil, deliver, disconnected)
+}
+
+// RunCandidateWithOverlayEpoch seeds each new Rust child with the last epoch
+// already delivered to product consumers. Rust owns the epoch translation.
+func RunCandidateWithOverlayEpoch(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC, epochBase func() uint64,
+	deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, false, epochBase, deliver, disconnected)
 }
 
 func RunCandidateWithOverlayBinaryEngineer(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC,
 	deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, true, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, true, nil, deliver, disconnected)
+}
+
+func RunCandidateWithOverlayBinaryEngineerEpoch(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC, epochBase func() uint64,
+	deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, overlay, true, epochBase, deliver, disconnected)
 }
 
 // RunCandidateWithBinaryEngineer is an explicit R21 measurement mode. It does
 // not alter the default candidate or production codec selection.
 func RunCandidateWithBinaryEngineer(ctx context.Context, executable string, configuration ConfigurationV1,
 	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
-	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, true, deliver, disconnected)
+	return runCandidateWithUpdates(ctx, executable, configuration, updates, nil, true, nil, deliver, disconnected)
 }
 
 func runCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
-	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC, engineerBinary bool, deliver func(ReceivedV1) error, disconnected func(error)) error {
+	updates <-chan ConfigurationV1, overlay <-chan OverlayRPC, engineerBinary bool, epochBase func() uint64, deliver func(ReceivedV1) error, disconnected func(error)) error {
 	if ctx == nil || deliver == nil || disconnected == nil {
 		return errors.New("telemetry Rust candidate requires context and callbacks")
 	}
@@ -68,6 +82,9 @@ func runCandidateWithUpdates(ctx context.Context, executable string, configurati
 	for {
 		if err := ctx.Err(); err != nil {
 			return nil
+		}
+		if epochBase != nil {
+			configuration.EpochBase = epochBase()
 		}
 		err := runCandidateOnceWithCodec(ctx, executable, &configuration, &updates, overlay, engineerBinary, deliver)
 		if ctx.Err() != nil {
@@ -263,6 +280,7 @@ func receiveCandidateUpdates(configuration *ConfigurationV1, updates *<-chan Con
 			if requested.Revision <= configuration.Revision {
 				return ErrReceiverProtocol
 			}
+			requested.EpochBase = configuration.EpochBase
 			if _, err := EncodeConfiguration(requested); err != nil {
 				return err
 			}

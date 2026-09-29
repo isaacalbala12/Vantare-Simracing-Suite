@@ -8,7 +8,7 @@ define el dueño futuro.
 Actualización de la rama: Rust ya posee el pull por ventana y entrega el
 Overlay a Studio y OBS a través de proxies Go. Windows selecciona el helper
 Rust por defecto y lo empaqueta. Las filas siguientes describen la frontera
-inicial inventariada; el receptor/estado Go de Engineer y Strategy, epoch,
+inicial inventariada; el receptor/estado Go de Engineer y Strategy,
 fact ACK y los paquetes live antiguos siguen pendientes de retirada.
 
 | Frontera actual | Dueño hoy y evidencia de código | Dueño final y prueba que permite retirar Go |
@@ -20,7 +20,7 @@ fact ACK y los paquetes live antiguos siguen pendientes de retirada.
 | OBS | `internal/server/server.go` registra `PublisherSSEHandler` de `telemetrytransport/adapters.go` en `/telemetry/overlay-v2/projection` | Rust decide suscripción, latest-wins y estado; el servidor Go existente puede retransmitir bytes para conservar URL/autenticación. OBS físico y SSE reconectado con contrato idéntico. |
 | Engineer | `telemetryprocess.ReceivedV1.EngineerObservation` adapta en Go, `RustTelemetryCandidateRuntime.deliver` llama a `Engineer.ConsumeObservation`, `ConsumeFact` y `ConsumeFactBoundary`; `internal/app/engineer_port.go` aplica la política de entrada | Rust entrega observación/status/fact/boundary y posee orden/ACK. `EngineerService` Go conserva reglas de radio y voz. Adaptador Go de entrada solo valida el contrato de producto y ejecuta el callback; no reordena ni inventa facts. Prueba de rechazo tras fact aceptado y replay durable. |
 | Strategy live | `RustTelemetryCandidateRuntime.deliver` crea `NewStrategyFull` y llama al `StrategyHub` Go; `telemetrytransport/adapters.go` y `internal/server/server.go` publican Wails/SSE bajo flag | Rust posee proyección, demanda, entrega y cursor; un adaptador de producto Go expone el payload cuando corresponde. Prueba de Strategy OFF, late join y reinicio sin regresión de epoch. |
-| Fuente y política | `cmd/vantare/main.go` elige Go/Rust y publica `telemetry-core:source-status`; `rust_telemetry_candidate_windows.go` infiere estados al recibir productos y traduce epoch | Rust informa salud/frescura y epoch de producto; host solo presenta caída del proceso y políticas de producto. El selector dual desaparece tras la retirada. Tests de frame congelado, pausa, cierre y política dinámica. |
+| Fuente y política | Windows selecciona Rust por defecto; `rust_telemetry_candidate_windows.go` aún presenta status y conserva el último epoch. El ensamblador Rust añade la semilla del proceso anterior a ACK, Overlay, Engineer, Strategy y facts | Rust informa salud/frescura y epoch de producto; host solo presenta caída del proceso y políticas de producto. El selector dual desaparece tras la retirada. Tests de frame congelado, pausa, cierre y política dinámica. |
 | Contratos externos | `internal/telemetry/projection/contracts.go`, `tools/telemetry-contract-gen` y `frontend/src/generated/telemetry.ts` mantienen tipos Go/TS | Rust emite los mismos wire contracts. Mantener el generador Go mientras se migra el contrato; retirarlo solo con una fuente Rust única y check de generación exacta. No borrar DTO compartidos por Analysis/recording. |
 
 ## Primer corte ejecutable de E2

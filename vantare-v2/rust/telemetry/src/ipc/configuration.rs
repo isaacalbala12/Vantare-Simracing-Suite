@@ -75,6 +75,8 @@ impl WirePreferences {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Configuration {
     pub revision: u64,
+    #[serde(default)]
+    pub epoch_base: u64,
     pub consumers: Consumers,
     pub cadence: Cadence,
     pub preferences: WirePreferences,

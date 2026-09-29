@@ -156,8 +156,8 @@ func TestRustCandidateConcurrentStopReapsChildOptIn(t *testing.T) {
 
 func TestRustCandidateRestartAdvancesAllProductEpochs(t *testing.T) {
 	runtime := &RustTelemetryCandidateRuntime{lastEpoch: 4, lastFact: telemetrycore.FactSequence(9), newChild: true}
-	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
-		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 1},
+	if err := runtime.observeEpoch(&telemetryprocess.ReceivedV1{
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 5},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -165,12 +165,12 @@ func TestRustCandidateRestartAdvancesAllProductEpochs(t *testing.T) {
 		t.Fatal("old child fact cursor survived restart")
 	}
 	event := telemetryprocess.ReceivedV1{
-		Overlay:  &overlayv2.UpdateV2{Frame: &overlayv2.FrameV2{StreamEpoch: 1}},
-		Engineer: &engineerprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}},
-		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}},
-		Facts:    []engineerprojection.FactEnvelopeV1{{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}}},
+		Overlay:  &overlayv2.UpdateV2{Frame: &overlayv2.FrameV2{StreamEpoch: 5}},
+		Engineer: &engineerprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(5)}},
+		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(5)}},
+		Facts:    []engineerprojection.FactEnvelopeV1{{Metadata: projection.Metadata{Epoch: schema.Epoch(5)}}},
 	}
-	if err := runtime.translateEpoch(&event); err != nil {
+	if err := runtime.observeEpoch(&event); err != nil {
 		t.Fatal(err)
 	}
 	if event.Overlay.Frame.StreamEpoch != 5 || event.Engineer.Epoch != 5 || event.Strategy.Epoch != 5 || event.Facts[0].Epoch != 5 {
@@ -179,8 +179,8 @@ func TestRustCandidateRestartAdvancesAllProductEpochs(t *testing.T) {
 	if runtime.lastEpoch != 5 {
 		t.Fatalf("last epoch = %d", runtime.lastEpoch)
 	}
-	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
-		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(2)}},
+	if err := runtime.observeEpoch(&telemetryprocess.ReceivedV1{
+		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(6)}},
 	}); err != nil || runtime.lastEpoch != 6 {
 		t.Fatalf("session epoch after restart = %d, %v", runtime.lastEpoch, err)
 	}
@@ -188,7 +188,7 @@ func TestRustCandidateRestartAdvancesAllProductEpochs(t *testing.T) {
 
 func TestRustCandidateRestartBeforeFirstProductKeepsChildEpoch(t *testing.T) {
 	runtime := &RustTelemetryCandidateRuntime{newChild: true}
-	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
+	if err := runtime.observeEpoch(&telemetryprocess.ReceivedV1{
 		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 2},
 	}); err != nil {
 		t.Fatal(err)
@@ -196,8 +196,20 @@ func TestRustCandidateRestartBeforeFirstProductKeepsChildEpoch(t *testing.T) {
 	event := telemetryprocess.ReceivedV1{
 		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(2)}},
 	}
-	if err := runtime.translateEpoch(&event); err != nil || event.Strategy.Epoch != 2 {
+	if err := runtime.observeEpoch(&event); err != nil || event.Strategy.Epoch != 2 {
 		t.Fatalf("first product epoch = %d, %v", event.Strategy.Epoch, err)
+	}
+}
+
+func TestRustCandidateRejectsUnseededEpochAfterRestart(t *testing.T) {
+	runtime := &RustTelemetryCandidateRuntime{lastEpoch: 4, newChild: true}
+	if err := runtime.observeEpoch(&telemetryprocess.ReceivedV1{
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 1},
+	}); !errors.Is(err, ErrRustCandidateLifecycle) {
+		t.Fatalf("unseeded child epoch = %v", err)
+	}
+	if runtime.lastEpoch != 4 || !runtime.newChild {
+		t.Fatalf("rejected child changed state: epoch=%d newChild=%v", runtime.lastEpoch, runtime.newChild)
 	}
 }
 
@@ -245,10 +257,11 @@ func TestRustCandidateStrategyResumesAfterChildEpochReset(t *testing.T) {
 	}
 	runtime.handleDisconnected(errors.New("test child restart"))
 	if err := runtime.deliver(telemetryprocess.ReceivedV1{
-		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 1},
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 2},
 	}); err != nil {
 		t.Fatalf("new child configuration: %v", err)
 	}
+	metadata.Epoch = 2
 	if err := runtime.deliver(telemetryprocess.ReceivedV1{
 		Strategy: &strategyprojection.SnapshotV1{Metadata: metadata},
 	}); err != nil {

@@ -117,7 +117,11 @@ Clippy, formato, `pnpm test`, build/typecheck/lint frontend, prueba del HTTP
 Studio con pipe Rust real sin LMU, pruebas de empaquetado y creación/verificación
 local de NSIS/ZIP. No se instaló ni publicó ese paquete.
 
+Un corte posterior trasladó la continuidad de epoch al ensamblador Rust y la
+comprobó con un replay real por named pipe. Go solo retiene la semilla para
+el próximo helper y rechaza cursores regresivos; no reescribe productos.
+
 **Todavía no se alcanza E5/E6:** Go conserva el receptor de Engineer/Strategy,
-traducción de epoch, status/facts y código live histórico; falta probar la
+status/facts y código live histórico; falta probar la
 cadena completa de pista, reconexión, OBS físico, paridad final y banco
 CPU/p99/RSS. Esta integración parcial no declara ganancia ni retirada total.

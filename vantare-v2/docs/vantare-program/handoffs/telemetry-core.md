@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## ISA-1403 — integración Windows Rust/Overlay, aún incompleta (2026-09-29)
+## ISA-1403 — epoch de producto Rust y entrega Windows, aún incompleta (2026-09-29)
 
 Rama `vantareapp/isa-1403-rust-telemetry`, PR #1415 draft, base
 `origin/nightly@c4c7a5ce`. El usuario acotó el objetivo a la telemetría live
@@ -11,6 +11,12 @@ Overlay; Go Wails/OBS retransmite respuestas. El helper espera LMU cerrado
 en estado detecting y no agota el supervisor. Studio HTTP se probó con el
 proceso Rust real y LMU cerrado; el SSE OBS se probó con fuente controlada.
 El cliente crea nueva sesión ante 503 o caída del socket.
+El siguiente corte movió la traducción de epoch entre reinicios al ensamblador
+Rust: Go conserva solo el último epoch para sembrar el proceso siguiente.
+Rust emite ya ese epoch en el ACK de configuración, Overlay, Engineer,
+Strategy y facts. El replay por named pipe con binario Rust real y epoch
+sembrado pasó, además de un test Rust que rechaza overflow y cambios de
+semilla dentro del mismo proceso. Go no vuelve a modificar los productos.
 
 El build prepara `runtime/telemetry/rust-live-v1/vantare-telemetry.exe`.
 Instalador NSIS y ZIP portable se construyeron/verificaron localmente, junto a
@@ -21,7 +27,7 @@ porque ejecutaba bancos largos no necesarios para este cambio; sus unitarios
 habían pasado y se ejecutaron después Clippy y el test del binario. No se
 instaló ni publicó el paquete.
 
-Faltan: retirar Go del receptor/estado de Engineer y Strategy, epoch/facts y
+Faltan: retirar Go del receptor/estado de Engineer y Strategy, facts y
 el motor live histórico con consumidores cero; validar LMU pista, Wails y OBS
 físicos, CI del SHA final y banco pareado CPU/p99/RSS. La presencia del helper
 Rust en el instalador no demuestra todavía paridad ni ganancia total. No hay

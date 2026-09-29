@@ -25,6 +25,7 @@ pub enum AssemblyError {
     MissingConfiguration,
     StaleConfiguration,
     RevisionExhausted,
+    EpochExhausted,
     InvalidCapturedAt,
     Engine(EngineError),
     Overlay(frame::FrameError),
@@ -75,6 +76,14 @@ impl Assembler {
                 .pending
                 .as_ref()
                 .is_some_and(|pending| incoming.revision <= pending.revision)
+        {
+            return Err(AssemblyError::StaleConfiguration);
+        }
+        if self
+            .active
+            .as_ref()
+            .or(self.pending.as_ref())
+            .is_some_and(|previous| incoming.epoch_base != previous.epoch_base)
         {
             return Err(AssemblyError::StaleConfiguration);
         }
@@ -163,8 +172,13 @@ impl Assembler {
             .map_err(|_| AssemblyError::InvalidCapturedAt)?
             .format(&Rfc3339)
             .map_err(|_| AssemblyError::InvalidCapturedAt)?;
+        let epoch = batch
+            .cursor
+            .epoch
+            .checked_add(config.epoch_base)
+            .ok_or(AssemblyError::EpochExhausted)?;
         let metadata = ProductMetadata {
-            epoch: batch.cursor.epoch,
+            epoch,
             sequence: batch.cursor.sequence,
             captured_at: &captured_at,
         };
@@ -193,7 +207,7 @@ impl Assembler {
                         retry: 0,
                         age_ms: 0,
                         degraded_reason: "",
-                        epoch: batch.cursor.epoch,
+                        epoch,
                         sequence: batch.cursor.sequence,
                         section_mask: frame::ALL_SECTIONS_MASK,
                         session_id: &batch.session_id,
@@ -257,7 +271,7 @@ impl Assembler {
             Some(
                 ipc::configuration::encode_ack(Ack {
                     revision: config.revision,
-                    epoch: batch.cursor.epoch,
+                    epoch,
                     sequence: batch.cursor.sequence,
                     fact_stream: fact_baseline.stream,
                     fact_sequence: fact_baseline.sequence,
@@ -302,6 +316,63 @@ mod tests {
         include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
     const CONFIG: &[u8] = include_bytes!("../testdata/configuration-frame-go-v1.bin");
     const FACT_ACK: &[u8] = include_bytes!("../testdata/fact-ack-frame-go-v1.bin");
+
+    #[test]
+    fn restarted_child_emits_host_seeded_epoch_for_every_product() {
+        let mut config = ipc::configuration::decode_frame(CONFIG).unwrap();
+        config.epoch_base = 4;
+        let wire = ipc::encode(
+            ipc::Kind::Configuration,
+            &serde_json::to_vec(&config).unwrap(),
+        )
+        .unwrap();
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        assembler.configure(&wire).unwrap();
+        let frames = assembler
+            .apply(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
+            .unwrap();
+        let ack: Value = serde_json::from_slice(ipc::decode(&frames[0]).unwrap().payload).unwrap();
+        assert_eq!(ack["epoch"], 5);
+        for frame in &frames[1..] {
+            let decoded = ipc::decode(frame).unwrap();
+            let value: Value = serde_json::from_slice(decoded.payload).unwrap();
+            match decoded.kind {
+                ipc::Kind::Snapshot if value["product"] == "overlay-v2" => {
+                    assert_eq!(value["update"]["frame"]["epoch"], 5)
+                }
+                ipc::Kind::Snapshot => assert_eq!(value["snapshot"]["epoch"], 5),
+                ipc::Kind::Fact => assert_eq!(value["fact"]["epoch"], 5),
+                _ => {}
+            }
+        }
+        config.revision += 1;
+        config.epoch_base = 5;
+        let changed = ipc::encode(
+            ipc::Kind::Configuration,
+            &serde_json::to_vec(&config).unwrap(),
+        )
+        .unwrap();
+        assert!(matches!(
+            assembler.configure(&changed),
+            Err(AssemblyError::StaleConfiguration)
+        ));
+        let mut exhausted = Assembler::new(30, 15).unwrap();
+        config.epoch_base = u64::MAX;
+        exhausted
+            .configure(
+                &ipc::encode(
+                    ipc::Kind::Configuration,
+                    &serde_json::to_vec(&config).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(matches!(
+            exhausted.apply(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000),
+            Err(AssemblyError::EpochExhausted)
+        ));
+        assert!(exhausted.engine().current().is_none());
+    }
 
     #[test]
     fn overlay_cache_reuses_slow_sections_and_rejected_candidate_keeps_cursor() {

@@ -29,6 +29,7 @@ func TestCandidateRestartBudgetExhaustsAfterThreeFailedStarts(t *testing.T) {
 
 func TestCandidatePolicyBurstUsesLatestRevision(t *testing.T) {
 	configuration := liveCandidateConfiguration(t)
+	configuration.EpochBase = 4
 	queue := make(chan ConfigurationV1, 2)
 	var updates <-chan ConfigurationV1 = queue
 	intermediate := configuration
@@ -42,7 +43,7 @@ func TestCandidatePolicyBurstUsesLatestRevision(t *testing.T) {
 	if err := receiveCandidateUpdates(&configuration, &updates); err != nil {
 		t.Fatal(err)
 	}
-	if configuration.Revision != latest.Revision || configuration.Consumers != latest.Consumers {
+	if configuration.Revision != latest.Revision || configuration.Consumers != latest.Consumers || configuration.EpochBase != 4 {
 		t.Fatalf("queued policy = revision %d, consumers %+v; want latest %+v", configuration.Revision, configuration.Consumers, latest)
 	}
 }

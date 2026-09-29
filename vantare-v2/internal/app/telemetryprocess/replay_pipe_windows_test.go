@@ -67,6 +67,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if err := json.Unmarshal(configuration.Payload, &initial); err != nil {
 		t.Fatal(err)
 	}
+	initial.EpochBase = 4
 	receiver := NewReceiver()
 	configured, err := receiver.Configure(initial)
 	if err != nil {
@@ -100,7 +101,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		switch frame.Kind {
 		case KindConfigurationAck:
 			ack := event.Configuration
-			if ack == nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
+			if ack == nil || ack.Revision != 7 || ack.Epoch != 5 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
 				t.Fatalf("configuration ACK = %+v", ack)
 			}
 			baseline = FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence}
@@ -108,12 +109,12 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		case KindSnapshot:
 			switch {
 			case event.Overlay != nil:
-				if event.Overlay.Frame == nil || len(event.Overlay.Frame.Standings) != 44 {
+				if event.Overlay.Frame == nil || event.Overlay.Frame.StreamEpoch != 5 || len(event.Overlay.Frame.Standings) != 44 {
 					t.Fatal("Overlay snapshot invalid")
 				}
 				overlaySnapshots++
 			case event.Engineer != nil:
-				if len(event.Engineer.Vehicles) != 44 {
+				if event.Engineer.Epoch != 5 || len(event.Engineer.Vehicles) != 44 {
 					t.Fatal("Engineer snapshot invalid")
 				}
 				engineerSnapshots++
@@ -158,7 +159,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	secondEvent, err := receiver.Accept(secondAck)
-	if err != nil || secondEvent.Configuration == nil || secondEvent.Configuration.Revision != 8 || secondEvent.Configuration.Epoch != 1 || secondEvent.Configuration.Sequence != 2 || secondEvent.Configuration.FactStream != 15 || secondEvent.Configuration.FactSequence != 1 {
+	if err != nil || secondEvent.Configuration == nil || secondEvent.Configuration.Revision != 8 || secondEvent.Configuration.Epoch != 5 || secondEvent.Configuration.Sequence != 2 || secondEvent.Configuration.FactStream != 15 || secondEvent.Configuration.FactSequence != 1 {
 		t.Fatalf("second configuration ACK = %+v, %v", secondEvent.Configuration, err)
 	}
 	strategyFrame, err := ReadFrame(file)
@@ -166,7 +167,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	strategyEvent, err := receiver.Accept(strategyFrame)
-	if err != nil || strategyEvent.Strategy == nil || strategyEvent.Strategy.Metadata.Epoch != 1 || strategyEvent.Strategy.Metadata.Sequence != 2 {
+	if err != nil || strategyEvent.Strategy == nil || strategyEvent.Strategy.Metadata.Epoch != 5 || strategyEvent.Strategy.Metadata.Sequence != 2 {
 		t.Fatalf("Strategy-only second batch invalid: %v", err)
 	}
 	staleRequest, err := EncodeFactReplayRequest(baseline)

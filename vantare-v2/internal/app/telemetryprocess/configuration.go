@@ -51,6 +51,7 @@ type CapabilitySourceV1 struct {
 
 type ConfigurationV1 struct {
 	Revision    uint64             `json:"revision"`
+	EpochBase   uint64             `json:"epochBase,omitempty"`
 	Consumers   ConsumersV1        `json:"consumers"`
 	Cadence     CadenceV1          `json:"cadence"`
 	Preferences PreferencesV1      `json:"preferences"`

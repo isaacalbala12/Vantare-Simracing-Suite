@@ -24,8 +24,28 @@ fn main() {
         && nonce_flag == "--nonce"
         && corpus_flag == "--high-rate-corpus"
     {
-        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path) {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, false) {
             eprintln!("telemetry high-rate pipe replay failed: {error}");
+            std::process::exit(2);
+        }
+        return;
+    }
+    if let [
+        pipe_flag,
+        pipe_name,
+        nonce_flag,
+        nonce_text,
+        corpus_flag,
+        corpus_path,
+        codec_flag,
+    ] = args.as_slice()
+        && pipe_flag == "--pipe"
+        && nonce_flag == "--nonce"
+        && corpus_flag == "--high-rate-corpus"
+        && codec_flag == "--engineer-binary"
+    {
+        if let Err(error) = run_high_rate_corpus(pipe_name, nonce_text, corpus_path, true) {
+            eprintln!("telemetry high-rate binary pipe replay failed: {error}");
             std::process::exit(2);
         }
         return;
@@ -279,7 +299,12 @@ fn high_rate_elapsed_ns(first: i128, value: &str) -> io::Result<u64> {
 
 // A test-only proof of the full Rust encode -> Windows pipe -> Go receive path.
 // It intentionally runs as fast as the receiver allows; it is not a CPU gate.
-fn run_high_rate_corpus(pipe_name: &str, nonce_text: &str, corpus_path: &str) -> io::Result<()> {
+fn run_high_rate_corpus(
+    pipe_name: &str,
+    nonce_text: &str,
+    corpus_path: &str,
+    engineer_binary: bool,
+) -> io::Result<()> {
     let nonce = ipc::parse_nonce_hex(nonce_text)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid nonce"))?;
     let suffix = pipe_name.strip_prefix(r"\\.\pipe\vantare-telemetry-");
@@ -318,6 +343,7 @@ fn run_high_rate_corpus(pipe_name: &str, nonce_text: &str, corpus_path: &str) ->
     }
     let mut assembly =
         Assembler::new(30, 15).map_err(|error| io::Error::other(format!("assembly: {error:?}")))?;
+    assembly.set_engineer_binary_candidate(engineer_binary);
     let configuration_frame = ipc::encode(kind, &configuration)
         .map_err(|error| io::Error::other(format!("configuration frame: {error:?}")))?;
     assembly

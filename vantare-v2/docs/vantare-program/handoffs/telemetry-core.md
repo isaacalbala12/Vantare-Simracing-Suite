@@ -5,8 +5,11 @@
 El helper Rust de pruebas reproduce los 3839 eventos SHM/REST auditados y
 escribe los frames VTE1 en un pipe Windows real. El receptor Go validó 3839
 Overlay, Engineer y Strategy con secuencias continuas, entregó Overlay al
-Publisher y confirmó el único fact tras recibirlo. La prueba opt-in local pasó
-en 22,63 s y registró 130.552.531 bytes publicados de Overlay. Se añadió al
+Publisher y confirmó el único fact tras recibirlo. JSON y binario Engineer
+produjeron el mismo SHA-256 de las 3839 observaciones adaptadas en Go. Ambos
+subtests pasaron localmente en 19,78 s y 7,86 s respectivamente, incluyendo
+hash, lectura del corpus y entrega; son tiempos diagnósticos, no CPU comparable.
+El Publisher registró 130.552.531 bytes Overlay en cada brazo. Se añadió al
 gate Windows del PR junto a la paridad estructural completa. El helper ejecuta
 la secuencia tan rápido como permite el receptor; **no** reproduce 60 s de
 cadencia ni incluye adquisición productiva. Por ello no acredita CPU/p99/RSS

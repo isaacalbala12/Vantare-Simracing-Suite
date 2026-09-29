@@ -3,7 +3,9 @@
 package telemetryprocess
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -19,11 +21,25 @@ import (
 // LMU47 sequence cross the actual child process and Windows pipe. It replays
 // without wall-clock pacing, so its duration is not a performance comparison.
 func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
-	executable := os.Getenv("VANTARE_TELEMETRY_REPLAY_TEST_HELPER")
-	dir := os.Getenv("LMU_HIGH_RATE_CORPUS")
-	if executable == "" || dir == "" {
+	if os.Getenv("VANTARE_TELEMETRY_REPLAY_TEST_HELPER") == "" || os.Getenv("LMU_HIGH_RATE_CORPUS") == "" {
 		t.Skip("set the release replay helper and audited LMU47 corpus")
 	}
+	var jsonDigest, binaryDigest [sha256.Size]byte
+	t.Run("json", func(t *testing.T) {
+		jsonDigest = runRustHighRateCorpusPipe(t, false)
+	})
+	t.Run("engineer-binary", func(t *testing.T) {
+		binaryDigest = runRustHighRateCorpusPipe(t, true)
+	})
+	if jsonDigest != binaryDigest {
+		t.Fatal("Engineer observations differ between JSON and binary pipe routes")
+	}
+}
+
+func runRustHighRateCorpusPipe(t *testing.T, engineerBinary bool) [sha256.Size]byte {
+	t.Helper()
+	executable := os.Getenv("VANTARE_TELEMETRY_REPLAY_TEST_HELPER")
+	dir := os.Getenv("LMU_HIGH_RATE_CORPUS")
 	data, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +60,11 @@ func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	child, err := startInJob(executable, "--pipe", pipe.name, "--nonce", hex.EncodeToString(pipe.nonce[:]), "--high-rate-corpus", dir)
+	args := []string{"--pipe", pipe.name, "--nonce", hex.EncodeToString(pipe.nonce[:]), "--high-rate-corpus", dir}
+	if engineerBinary {
+		args = append(args, "--engineer-binary")
+	}
+	child, err := startInJob(executable, args...)
 	if err != nil {
 		_ = pipe.close()
 		t.Fatal(err)
@@ -94,6 +114,7 @@ func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
 	}
 	defer release()
 	engineerManifest := liveEngineerManifest(t)
+	engineerDigest := sha256.New()
 	var acks, overlays, engineers, strategies, facts int
 	for frameCount := 0; frameCount < 1+3*len(manifest.Events)+10; frameCount++ {
 		frame, err := ReadFrame(file)
@@ -118,9 +139,19 @@ func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
 		}
 		if event.Engineer != nil {
 			engineers++
+			if bytes.HasPrefix(frame.Payload, []byte("VTE1")) != engineerBinary {
+				t.Fatalf("Engineer codec mismatch at event %d", engineers)
+			}
 			observation, err := event.EngineerObservation(engineerManifest)
 			if err != nil || len(observation.Vehicles) != manifest.Vehicles || uint64(event.Engineer.Sequence) != uint64(engineers) {
 				t.Fatalf("invalid Engineer event %d: %v", engineers, err)
+			}
+			encoded, err := json.Marshal(observation)
+			if err != nil {
+				t.Fatalf("encode Engineer observation %d: %v", engineers, err)
+			}
+			if _, err := engineerDigest.Write(encoded); err != nil {
+				t.Fatalf("hash Engineer observation %d: %v", engineers, err)
 			}
 		}
 		if event.Strategy != nil {
@@ -161,4 +192,7 @@ func TestRustHighRateCorpusPipeOptIn(t *testing.T) {
 		t.Fatalf("high-rate child did not exit: %d %v", result, err)
 	}
 	t.Logf("LMU47 high-rate pipe PASS: %d products per consumer, %d fact, %d published bytes", overlays, facts, publisher.Metrics().SnapshotBytes)
+	var digest [sha256.Size]byte
+	copy(digest[:], engineerDigest.Sum(nil))
+	return digest
 }

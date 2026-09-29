@@ -46,7 +46,9 @@ Use un directorio de salida nuevo para cada ejecución: las pruebas no sobrescri
 resultados anteriores. Los archivos JSONL ocupan cerca de 1,5 GB en total; el
 comparador solo informa la ruta del primer campo distinto, sin imprimir valores.
 La comparación completa pasó localmente. Otro replay pasó los 3839 productos
-de cada consumidor y el fact por el pipe Windows, el receptor y el Publisher Go.
+de cada consumidor y el fact por el pipe Windows, el receptor y el Publisher Go,
+tanto con Engineer JSON como binario. El hash de las 3839 observaciones Engineer
+adaptadas en Go fue idéntico con ambos codecs.
 Se ejecuta a la velocidad que permite el receptor, no a la cadencia de captura;
 ninguno de estos tests mide el coste equivalente de adquisición, IPC ni entrega
 en una ventana temporal controlada. Solo cubren pista estable. Siguen abiertos

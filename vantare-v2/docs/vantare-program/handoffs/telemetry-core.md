@@ -17,6 +17,11 @@ Rust emite ya ese epoch en el ACK de configuración, Overlay, Engineer,
 Strategy y facts. El replay por named pipe con binario Rust real y epoch
 sembrado pasó, además de un test Rust que rechaza overflow y cambios de
 semilla dentro del mismo proceso. Go no vuelve a modificar los productos.
+El siguiente corte retiró el `PublisherRegistry` y su publicación de status y
+snapshot del runtime Rust; la demanda Overlay procede solo de sesiones de
+pull Rust. Studio HTTP y pull directo con el helper Rust real pasaron sin LMU.
+La prueba optativa de pista ahora usa pull Rust en vez del publisher Go, pero
+no se ejecutó porque LMU no estaba abierto.
 
 El build prepara `runtime/telemetry/rust-live-v1/vantare-telemetry.exe`.
 Instalador NSIS y ZIP portable se construyeron/verificaron localmente, junto a

@@ -342,54 +342,53 @@ func TestRustCandidateLateOverlayConsumerLiveLMUOptIn(t *testing.T) {
 			t.Errorf("Rust candidate Stop: %v", err)
 		}
 	}()
-	// Join after Start to exercise the product's real demand transition.
-	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
-	if err != nil {
-		t.Fatal(err)
+	// Join after Start through the same Rust-owned pull used by Studio.
+	request := telemetrytransport.OverlayPullRequest{SessionID: "studio-live"}
+	defer runtime.Close("studio", request.SessionID)
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	waitForOverlay := func(accept func(*overlayv2.FrameV2) bool) {
+		t.Helper()
+		for {
+			select {
+			case <-ctx.Done():
+				t.Fatalf("wait for Rust Overlay pull: %v; source=%+v", ctx.Err(), runtime.SourceStatus())
+			case <-ticker.C:
+			}
+			response, delivered, err := runtime.Pull("studio", request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !delivered {
+				continue
+			}
+			request.Ack = response.Delivery
+			for _, event := range response.Events {
+				if event.Name != "telemetry:overlay-v2:snapshot" {
+					continue
+				}
+				var update overlayv2.UpdateV2
+				if err := json.Unmarshal(event.Data, &update); err != nil {
+					t.Fatal(err)
+				}
+				if update.Frame != nil && accept(update.Frame) {
+					return
+				}
+			}
+		}
 	}
-	defer release()
-	subscription, err := publisher.Subscribe(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer subscription.Close()
-	for {
-		event, err := subscription.Next(ctx)
-		if err != nil {
-			t.Fatalf("wait for Rust Overlay snapshot: %v; source=%+v", err, runtime.SourceStatus())
+	waitForOverlay(func(frame *overlayv2.FrameV2) bool { return len(frame.Standings) >= 46 })
+	for !runtime.SourceStatus().Available {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("Rust source did not report live after grid: %+v", runtime.SourceStatus())
+		case <-ticker.C:
 		}
-		if event.Kind != telemetrytransport.PublisherEventSnapshot {
-			continue
-		}
-		var update overlayv2.UpdateV2
-		if err := json.Unmarshal(event.Data, &update); err != nil {
-			t.Fatal(err)
-		}
-		if update.Frame == nil || len(update.Frame.Standings) < 46 {
-			t.Fatalf("Rust Overlay grid has fewer than 46 cars: %+v", update.Frame)
-		}
-		if status := runtime.SourceStatus(); !status.Available {
-			t.Fatalf("Rust candidate published grid without available source: %+v", status)
-		}
-		break
 	}
 	runtime.SetPerformancePolicy(performancepolicy.Policy{Level: performancepolicy.LevelMaximum})
-	for {
-		event, err := subscription.Next(ctx)
-		if err != nil {
-			t.Fatalf("wait for Rust policy ACK and new Overlay frame: %v", err)
-		}
-		if event.Kind != telemetrytransport.PublisherEventSnapshot {
-			continue
-		}
-		var update overlayv2.UpdateV2
-		if err := json.Unmarshal(event.Data, &update); err != nil {
-			t.Fatal(err)
-		}
-		if update.Frame != nil && update.Frame.Capabilities.Performance != nil && update.Frame.Capabilities.Performance.Level == 1 {
-			break
-		}
-	}
+	waitForOverlay(func(frame *overlayv2.FrameV2) bool {
+		return frame.Capabilities.Performance != nil && frame.Capabilities.Performance.Level == 1
+	})
 	if attempt := runtime.SourceStatus().ReconnectAttempt; attempt != 0 {
 		t.Fatalf("Overlay demand or policy change restarted Rust child %d times", attempt)
 	}

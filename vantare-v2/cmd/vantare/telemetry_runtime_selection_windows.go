@@ -30,7 +30,6 @@ func selectTelemetryRuntime(candidateExecutable string, config app.TelemetryCore
 	}
 	return app.NewRustTelemetryCandidateRuntime(app.RustTelemetryCandidateConfig{
 		Executable: candidateExecutable, Enabled: config.Enabled,
-		OverlaySections:         config.OverlaySections,
 		StrategyPublicTransport: config.StrategyPublicTransport,
 		PerformancePolicy:       config.PerformancePolicy,
 		Emitter:                 config.Emitter, Engineer: config.Engineer,

@@ -120,6 +120,9 @@ local de NSIS/ZIP. No se instaló ni publicó ese paquete.
 Un corte posterior trasladó la continuidad de epoch al ensamblador Rust y la
 comprobó con un replay real por named pipe. Go solo retiene la semilla para
 el próximo helper y rechaza cursores regresivos; no reescribe productos.
+También se retiró `PublisherRegistry` del runtime Rust: sus sesiones de pull
+son la única demanda y selección de Overlay en esa ruta. La prueba física
+optativa se adaptó al pull real, pendiente de ejecutarse con LMU en pista.
 
 **Todavía no se alcanza E5/E6:** Go conserva el receptor de Engineer/Strategy,
 status/facts y código live histórico; falta probar la

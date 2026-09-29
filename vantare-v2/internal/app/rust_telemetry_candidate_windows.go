@@ -21,7 +21,6 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 )
 
@@ -32,7 +31,6 @@ var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate lifecycle i
 type RustTelemetryCandidateConfig struct {
 	Executable               string
 	Enabled                  bool
-	OverlaySections          bool
 	StrategyPublicTransport  bool
 	PerformancePolicy        performancepolicy.Policy
 	Emitter                  telemetrytransport.EventEmitter
@@ -45,13 +43,11 @@ type RustTelemetryCandidateRuntime struct {
 	config           RustTelemetryCandidateConfig
 	policy           performancepolicy.Policy
 	policyChange     uint64
-	registry         *telemetrytransport.PublisherRegistry
 	strategy         *telemetrytransport.Hub
 	manifest         engineerprojection.Manifest
 	status           driver.State
 	attempt          int
 	statusRev        uint64
-	deliveryRev      uint64
 	lastAgeMS        int64
 	started          bool
 	stopped          bool
@@ -80,12 +76,6 @@ func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*Rus
 			return nil, fmt.Errorf("%w: child binary unavailable: %v", ErrRustCandidateLifecycle, err)
 		}
 	}
-	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
-		Product: telemetrytransport.ProductOverlayV2, SectionEncoding: config.OverlaySections,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("rust Overlay publisher: %w", err)
-	}
 	set, err := capability.Resolve(lmu.Capabilities(), nil)
 	if err != nil {
 		return nil, err
@@ -103,7 +93,7 @@ func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*Rus
 	}
 	return &RustTelemetryCandidateRuntime{
 		config: config, policy: performancepolicy.Resolve(config.PerformancePolicy, nil),
-		registry: registry, strategy: strategy, manifest: manifest, status: driver.StateStopped,
+		strategy: strategy, manifest: manifest, status: driver.StateStopped,
 	}, nil
 }
 
@@ -111,7 +101,7 @@ func (runtime *RustTelemetryCandidateRuntime) StrategyHub() *telemetrytransport.
 	return runtime.strategy
 }
 func (runtime *RustTelemetryCandidateRuntime) OverlayV2Publishers() *telemetrytransport.PublisherRegistry {
-	return runtime.registry
+	return nil
 }
 
 func (runtime *RustTelemetryCandidateRuntime) PerformancePolicy() performancepolicy.Policy {
@@ -335,8 +325,7 @@ func (runtime *RustTelemetryCandidateRuntime) Stop(ctx context.Context) error {
 }
 
 func (runtime *RustTelemetryCandidateRuntime) consumersLocked() telemetryprocess.ConsumersV1 {
-	_, legacyOverlay := runtime.registry.Lookup(telemetrytransport.ProductOverlayV2)
-	overlay := legacyOverlay || len(runtime.overlaySessions) > 0
+	overlay := len(runtime.overlaySessions) > 0
 	return telemetryprocess.ConsumersV1{OverlayV2: overlay, Engineer: runtime.config.Engineer != nil, Strategy: runtime.strategy != nil}
 }
 
@@ -374,19 +363,6 @@ func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.Rec
 		}
 		if err := runtime.setStatus(state, int(event.Overlay.Source.ReconnectAttempt), event.Overlay.Source.LastFrameAgeMS); err != nil {
 			return err
-		}
-		if publisher, active := runtime.registry.Lookup(telemetrytransport.ProductOverlayV2); active {
-			runtime.mu.Lock()
-			runtime.deliveryRev++
-			revision := runtime.deliveryRev
-			runtime.mu.Unlock()
-			update := *event.Overlay
-			update.DeliveryRevision = revision
-			if err := publisher.PublishSnapshot(revision, update); err != nil && !errors.Is(err, telemetrytransport.ErrClosed) {
-				return err
-			}
-			// Studio/Desktop/OBS may release their publisher while a decoded
-			// frame is in flight; ErrClosed must not restart LMU.
 		}
 	}
 	if event.Engineer != nil || event.Strategy != nil {
@@ -503,8 +479,6 @@ func (runtime *RustTelemetryCandidateRuntime) setStatus(state driver.State, atte
 	runtime.lastAgeMS = ageMS
 	runtime.statusRev++
 	revision := runtime.statusRev
-	runtime.deliveryRev++
-	delivery := runtime.deliveryRev
 	runtime.mu.Unlock()
 	if runtime.strategy != nil {
 		status, err := telemetrytransport.NewStatus(telemetrytransport.ProductStrategy, revision, time.Now().UTC(), telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt})
@@ -514,12 +488,6 @@ func (runtime *RustTelemetryCandidateRuntime) setStatus(state driver.State, atte
 		if err := runtime.strategy.PublishStatus(status); err != nil {
 			return err
 		}
-	}
-	if err := runtime.registry.PublishStatus(telemetrytransport.ProductOverlayV2, delivery, overlayv2.UpdateV2{
-		DeliveryRevision: delivery,
-		Source:           overlayv2.SourceStatusV2{State: overlayv2.SourceStateV2(state.String()), ReconnectAttempt: uint32(attempt), LastFrameAgeMS: ageMS},
-	}); err != nil {
-		return err
 	}
 	if runtime.config.Engineer != nil {
 		if err := runtime.config.Engineer.ConsumeSourceStatus(engineerprojection.SourceStatusV1{State: engineerprojection.SourceState(state.String()), ReconnectAttempt: attempt}); err != nil {

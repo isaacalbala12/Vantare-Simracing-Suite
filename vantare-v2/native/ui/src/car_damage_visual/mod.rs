@@ -4,8 +4,8 @@ use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 use gpui::{
-    App, BorderStyle, Bounds, Corners, Edges, Hsla, PathBuilder, Window, linear_color_stop,
-    linear_gradient, point, px, quad, size,
+    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Window, linear_color_stop,
+    linear_gradient, point, px, quad,
 };
 use vantare_domain::{
     Snapshot,
@@ -36,6 +36,56 @@ fn polygon(window: &mut Window, points: &[(f32, f32)], y: f32, color: Hsla) {
         match builder.build() {
             Ok(path) => window.paint_path(path, color),
             Err(error) => eprintln!("car-damage-visual: polígono SVG: {error}"),
+        }
+    }
+}
+
+fn suspension(window: &mut Window, y: f32, color: Hsla) {
+    let (ox, oy) = text::origin();
+    let pt = |x, py| point(px(ox + 15.0 + x), px(oy + y + py));
+    // El quad de GPUI ajusta sus bordes a píxel; el trazo SVG de 1 px
+    // necesita conservar medio píxel a cada lado de la geometría original.
+    for (mut builder, color) in [
+        (PathBuilder::fill(), color),
+        (PathBuilder::stroke(px(1.0)), col(tokens::INK, 0.15)),
+    ] {
+        builder.move_to(pt(22.0, 45.0));
+        builder.line_to(pt(98.0, 45.0));
+        builder.arc_to(
+            point(px(2.0), px(2.0)),
+            px(0.0),
+            false,
+            true,
+            pt(100.0, 47.0),
+        );
+        builder.line_to(pt(100.0, 49.0));
+        builder.arc_to(
+            point(px(2.0), px(2.0)),
+            px(0.0),
+            false,
+            true,
+            pt(98.0, 51.0),
+        );
+        builder.line_to(pt(22.0, 51.0));
+        builder.arc_to(
+            point(px(2.0), px(2.0)),
+            px(0.0),
+            false,
+            true,
+            pt(20.0, 49.0),
+        );
+        builder.line_to(pt(20.0, 47.0));
+        builder.arc_to(
+            point(px(2.0), px(2.0)),
+            px(0.0),
+            false,
+            true,
+            pt(22.0, 45.0),
+        );
+        builder.close();
+        match builder.build() {
+            Ok(path) => window.paint_path(path, color),
+            Err(error) => eprintln!("car-damage-visual: suspensión SVG: {error}"),
         }
     }
 }
@@ -89,7 +139,8 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             ))
         });
         let wrapped = widths.iter().sum::<f32>() + 28.0 > 126.0;
-        let y = (SIZE.1 - if wrapped { 144.0 } else { 113.0 }) / 2.0;
+        // Chrome ajusta el origen del viewport SVG a píxel físico.
+        let y = ((SIZE.1 - if wrapped { 144.0 } else { 113.0 }) / 2.0).round();
         polygon(
             window,
             &[
@@ -109,19 +160,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             y,
             fill(vm.damage[0]),
         );
-        let (ox, oy) = text::origin();
-        // Trazo SVG centrado: conserva los medios píxeles de la referencia.
-        window.paint_quad(quad(
-            Bounds::new(
-                point(px(ox + 34.5), px(oy + y + 44.5)),
-                size(px(81.0), px(7.0)),
-            ),
-            Corners::all(px(2.5)),
-            fill(vm.damage[2]),
-            Edges::all(px(1.0)),
-            col(tokens::INK, 0.15),
-            BorderStyle::default(),
-        ));
+        suspension(window, y, fill(vm.damage[2]));
         let first_count = if wrapped { 2 } else { 3 };
         let first_width =
             widths[..first_count].iter().sum::<f32>() + (first_count - 1) as f32 * 14.0;
@@ -137,7 +176,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 vm.labels[i],
                 center - text::width(window, vm.labels[i], &label) / 2.0,
-                text::baseline(top, 7.0, 7.0),
+                text::baseline(top, 7.0, 7.0).round(),
                 &label,
             );
             text::draw(
@@ -145,7 +184,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 &vm.percentages[i],
                 center - text::width(window, &vm.percentages[i], &value) / 2.0,
-                text::baseline(top + 9.0, 14.0, 14.0),
+                text::baseline(top + 9.0, 14.0, 14.0).round(),
                 &value,
             );
             x += width + 14.0;
@@ -209,6 +248,22 @@ impl Widget {
 mod tests {
     use super::*;
     use vantare_domain::{Capability, Damage, Player, Quality};
+
+    #[test]
+    fn frozen_scene_decodes_and_matches_the_productive_damage_values()
+    -> Result<(), vantare_ipc::Error> {
+        // Workshop default/race/track/ready: dents [1,2,3,4,5,6,7,8]
+        // producen daño 1 en las tres partes, es decir, integridad 0.
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/car-damage-visual.snapshot.json"
+        ))?;
+        let vm = car_damage_visual::project(&snapshot, Preferences::default());
+        assert_eq!(vm.status, None);
+        assert_eq!(vm.damage, [Some(1.0); 3]);
+        assert_eq!(vm.percentages, ["100%"; 3]);
+        assert_eq!(vm.labels, ["AERO", "CARROC.", "SUSP"]);
+        Ok(())
+    }
 
     #[test]
     fn repaint_tracks_drawn_values_and_language_not_snapshot_sequence() {

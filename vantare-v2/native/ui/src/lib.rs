@@ -28,6 +28,7 @@ mod overlay;
 pub mod source;
 #[cfg(feature = "paint-stats")]
 mod stats;
+pub mod workshop;
 
 include!("registry.rs");
 

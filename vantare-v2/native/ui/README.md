@@ -278,6 +278,48 @@ tiene uno); el reparto está cubierto por un test unitario.
 
 ## Workshop (desarrollo)
 
+```powershell
+cd vantare-v2/native
+.\ui\dev.ps1 -Widget pedals -Escena ui/fixtures/pedals.snapshot.json
+# Solo JSON, sin recompilar Rust:
+cargo run -p vantare-ui --bin vantare-workshop -j 2 -- --dev --widget radar
+```
+
+`--dev` abre una ventana GPUI interactiva sobre el `Overlay` productivo: los
+botones recorren `Kind::ALL` (registro `widgets!`) y `fixtures/*.snapshot.json`;
+una escena externa indicada por CLI también entra en la lista. El estado vive
+en el DTO JSON, incluidas calidad y capacidades; no hay generador paralelo.
+Tab/Shift+Tab cambia el foco, Enter/Espacio activa el botón.
+Guardar la escena recarga cada 150 ms; un JSON inválido muestra el error y
+mantiene la última foto válida. La escena inicial debe ser válida. Sin `--escena`
+se usa la del widget si existe, o `lmu47`. `--captura` conserva su ruta y geometría;
+no admite combinarse con `--dev`.
+
+`dev.ps1` (PowerShell 7) vigila **domain/src y ui/src**, compila con `-j 2` y
+relanza una copia del binario conservando las selecciones hechas en la ventana.
+Errores de compilación o arranque mantienen la ventana anterior; Ctrl+C termina
+la sesión. Detecta guardados durante la compilación, borrados y renombrados.
+No modifica perfiles ni flags Cargo. Imprime guardar → compilado y → ventana
+visible; visibilidad de ventana no demuestra presentación de un píxel. No
+vigila assets/Cargo.toml ni descubre escenas nuevas hasta relanzar. Este flujo
+es para desarrollo; no demuestra telemetría real ni paridad de los portes.
+
+**Medición de este worker (2026-09-30, #1427):** guardar → píxel de Standings
+20,18 / 30,92 / 30,84 s (mediana 30,84 s), caché caliente, dev con depuración,
+`-j 2` y otros workers compilando. Cambio temporal Es/En de `Preferences` en
+`workshop.rs`, sin editar el widget: se observó el píxel (177,175) de su cabecera
+en el escritorio compuesto, con la ventana de prueba visible bajo el mutex de
+capturas. Es latencia observada con sondeo de 10 ms, no presupuesto reproducible.
+Evidencia local en `%TEMP%\vantare-workshop-dev-evidence`: `bench3.py`,
+`pixel-times.txt`, `dev.log`, `qa.py`, `qa.log` y PNG.
+Propuesta sin aplicar: medir `debug=0` en una tanda aislada con el mismo cambio y
+`-j 2`; el histórico inferior muestra ahorro, pero no cuantifica este equipo
+bajo la carga actual. No se cambió ningún perfil, flag ni dependencia.
+Gates finales: fmt/clippy/workspace tests PASS (`-j 2`, cuatro pruebas live
+omitidas); CLI con `parity-capture` 4/4 y pedales 755/19200 px (3,9323 %).
+
+### Harness anterior y mediciones históricas
+
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets
 alimentados por **una escena fija**, sin núcleo. `workshop.ps1` la mantiene al
 día mientras editas: al guardar un fichero de `ui/src` (o `ui/fixtures`) recompila

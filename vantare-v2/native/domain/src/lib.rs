@@ -11,6 +11,7 @@ mod adapter;
 mod capability;
 mod flag;
 pub mod format;
+pub mod head_to_head;
 mod model;
 pub mod pedals;
 mod quality;

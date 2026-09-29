@@ -42,7 +42,7 @@ impl Motion {
         let previous = self.sample(old, now);
         self.transitions.clear();
         // La primera foto fija la base; no anima reconexiones ni al jugador.
-        if old.slots.iter().all(Option::is_none) {
+        if old.slots.iter().all(Option::is_none) && self.start.is_none() {
             self.start = None;
             return;
         }
@@ -58,11 +58,18 @@ impl Motion {
             let before = previous.iter().find(|v| v.row.id == row.id);
             let target = index as f32;
             let from_y = before.map_or(target, |v| v.y);
-            let cue = before.and_then(|v| match (v.row.side, row.side) {
-                (Side::Ahead, Side::Behind) => Some(0x7fb686),
-                (Side::Behind, Side::Ahead) => Some(0xd95360),
-                _ => None,
-            });
+            // Un fantasma que vuelve conserva su posición/opacidad, pero no
+            // demuestra un cruce: la comparación semántica usa el modelo previo.
+            let cue = old
+                .slots
+                .iter()
+                .flatten()
+                .find(|r| r.id == row.id)
+                .and_then(|r| match (r.side, row.side) {
+                    (Side::Ahead, Side::Behind) => Some(0x7fb686),
+                    (Side::Behind, Side::Ahead) => Some(0xd95360),
+                    _ => None,
+                });
             if from_y == target && before.is_some_and(|v| v.opacity == 1.0) && cue.is_none() {
                 continue;
             }
@@ -246,5 +253,22 @@ mod tests {
         text.slots[2].as_mut().expect("rival").gap = "+0.3".into();
         motion.update(&old, &text, now + Duration::from_secs(1));
         assert!(!motion.animating(now + Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn a_fast_reentry_keeps_opacity_without_inventing_a_side_cross() {
+        let now = Instant::now();
+        let old = model(Side::Ahead, 2);
+        let empty = relative::project(&Snapshot::default(), Preferences::default());
+        let mut motion = Motion::default();
+        motion.update(&old, &empty, now);
+        let returning = model(Side::Behind, 4);
+        let instant = now + Duration::from_millis(60);
+        let fading = motion.sample(&empty, instant)[0].opacity;
+        motion.update(&empty, &returning, instant);
+        let visual = motion.sample(&returning, instant);
+        assert!((visual[0].opacity - fading).abs() < 0.001);
+        assert!(visual[0].cue.is_none());
+        assert!(!motion.animating(instant + Duration::from_millis(500)));
     }
 }

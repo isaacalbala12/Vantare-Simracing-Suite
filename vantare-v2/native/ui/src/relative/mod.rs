@@ -170,7 +170,7 @@ fn paint(vm: &ViewModel, rows: &[Visual], prefs: Preferences, window: &mut Windo
         radius,
         col(0, 0.0),
         Edges::all(px(SCALE)),
-        col(0xffffff, 0.12),
+        col(0xffffff, 0.085),
         BorderStyle::default(),
     ));
     window.paint_quad(quad(
@@ -188,7 +188,7 @@ fn paint(vm: &ViewModel, rows: &[Visual], prefs: Preferences, window: &mut Windo
             bottom: px(0.0),
             left: px(0.0),
         },
-        col(0xffffff, 0.136),
+        col(0xffffff, 0.085),
         BorderStyle::default(),
     ));
 }
@@ -441,5 +441,25 @@ mod tests {
         snapshot.state.player = None;
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.frame(prefs).1, Wake::Idle);
+    }
+
+    #[test]
+    fn frozen_scene_preserves_missing_relative_laps_and_si_weather() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+                .expect("escena Relative DTO v3");
+        assert_eq!(snapshot.state.cars.len(), 20);
+        assert_eq!(snapshot.epoch, 3);
+        let vm = relative::project(&snapshot, Preferences::default());
+        let player = vm.slots[relative::RANGE]
+            .as_ref()
+            .expect("jugador congelado");
+        assert_eq!(player.driver, "André Lotterer");
+        assert_eq!(player.best_lap, "—");
+        assert_eq!(vm.remaining, "01:59:58");
+        assert_eq!(vm.air, "21°");
+        assert_eq!(vm.track_temperature, "28°");
+        assert_eq!(vm.wind, "14 km/h");
+        assert_eq!(vm.slots.iter().flatten().count(), 1);
     }
 }

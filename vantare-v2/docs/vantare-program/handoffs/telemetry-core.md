@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — cache Rust con menos copias (2026-09-29)
+
+Overlay conserva huellas por sección y mueve al cache candidato el frame ya
+codificado, sin clonar el grid completo en cada tick. El corpus real LMU47
+x80 volvió a dar paridad exacta de los tres productos; 155 tests Rust,
+Clippy, formato y release build pasaron. La mediana diagnóstica estática
+`overlay-only` bajó de 2007,6 a 1111,2 µs/op en corridas locales no
+intercaladas: no acredita el 50% de CPU total. Queda evitar construir
+secciones saltadas, banco G0/G1/R, REST/facts, Wails/OBS y packaging.
+Plan §114; Go sigue productivo, PR #1415 draft y sin merge.
+
 ## VAN-778 / ISA-1403 — tres payloads temporales idénticos LMU47 x80 (2026-09-29)
 
 Rust y Go usan el mismo reloj de captura y política de Overlay sobre el corpus

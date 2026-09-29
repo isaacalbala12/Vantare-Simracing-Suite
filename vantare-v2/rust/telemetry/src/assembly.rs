@@ -176,29 +176,33 @@ impl Assembler {
             if self.pending.is_some() && self.overlay_cache.is_some() {
                 cache.set_cadence(config.cadence);
             }
-            let update = frame::wrap_full(
-                sections.clone(),
-                frame::Metadata {
-                    revision: next_revision,
-                    state: "live",
-                    retry: 0,
-                    age_ms: 0,
-                    degraded_reason: "",
-                    epoch: batch.cursor.epoch,
-                    sequence: batch.cursor.sequence,
-                    section_mask: frame::ALL_SECTIONS_MASK,
-                    session_id: &batch.session_id,
-                    generated_at: &captured_at,
-                    speed_unit: &config.preferences.speed,
-                    temperature_unit: &config.preferences.temperature,
-                    pressure_unit: &config.preferences.pressure,
-                    fuel_unit: &config.preferences.fuel,
-                },
-            )
-            .map_err(AssemblyError::Overlay)?;
-            let update = cache.project(update, sections, batch, candidate.gaps(), occurred_utc_ns);
-            overlay_cache = Some(cache);
+            let mut update = cache
+                .project(
+                    sections,
+                    frame::Metadata {
+                        revision: next_revision,
+                        state: "live",
+                        retry: 0,
+                        age_ms: 0,
+                        degraded_reason: "",
+                        epoch: batch.cursor.epoch,
+                        sequence: batch.cursor.sequence,
+                        section_mask: frame::ALL_SECTIONS_MASK,
+                        session_id: &batch.session_id,
+                        generated_at: &captured_at,
+                        speed_unit: &config.preferences.speed,
+                        temperature_unit: &config.preferences.temperature,
+                        pressure_unit: &config.preferences.pressure,
+                        fuel_unit: &config.preferences.fuel,
+                    },
+                    batch,
+                    candidate.gaps(),
+                    occurred_utc_ns,
+                )
+                .map_err(AssemblyError::Overlay)?;
             prepared.push(snapshot::encode_overlay(&update).map_err(AssemblyError::Snapshot)?);
+            cache.remember(&mut update);
+            overlay_cache = Some(cache);
         }
         if config.consumers.engineer {
             let view =

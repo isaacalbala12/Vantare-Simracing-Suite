@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 113. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 114. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2117,3 +2117,20 @@ publicar: su rendimiento debe medirse y optimizarse antes del gate del 50%.
 REST se audita por hash y correlación, pero todavía no alimenta los dos
 runtimes en el replay; faltan facts temporales, durabilidad, integración
 productiva Wails/OBS y medición G0/G1/R de CPU total, p99 y RSS.
+
+## 114. Menos copias en el cache candidato Overlay (2026-09-29)
+
+El cache Rust deja de clonar el frame completo y las secciones originales
+en cada candidatura. Compara huellas FNV por sección, mueve el frame ya
+codificado al cache candidato y conserva el frame comprometido por `Arc`
+hasta que `Engine::commit` acepta el nuevo. El estado rechazado sigue sin
+avanzar. La paridad JSON exacta de Overlay, Engineer y Strategy sobre las
+80 muestras LMU47 se repitió con **cero diferencias**; 155 pruebas Rust,
+Clippy, formato y build release pasaron.
+
+`assembly_44` es solo diagnóstico estático, sin adquisición, IPC Go ni
+consumidores: su mediana `overlay-only` cayó de 2007,6 a 1111,2 µs/op en
+dos corridas locales no intercaladas. Esta comparación orienta el trabajo,
+pero no prueba una mejora causal del 50% ni el gate de CPU total. Rust aún
+construye todas las secciones antes de regularlas; el siguiente paso es
+evitar ese trabajo y medir G0/G1/R con 47 coches, cinco bloques y p99/RSS.

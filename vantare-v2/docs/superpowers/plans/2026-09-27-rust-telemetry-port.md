@@ -2032,3 +2032,17 @@ No había LMU activo para repetir la prueba física en este corte. Este orden
 cierra la pérdida por ACK prematuro dentro de la misma instancia, pero no
 proporciona aún replay durable entre reinicios del hijo o del host; Rust
 permanece sin selección productiva.
+
+## 109. Core y tres productos Go sobre el corpus real (2026-09-29)
+
+La auditoría opt-in de los ocho pares SHM+REST reales con 47 coches ahora
+recorre en Go fusión SHM, mapper, reducer, derivaciones y los productos Overlay,
+Engineer y Strategy en secuencia. Comprueba ocho commits, cursores, grid,
+jugador y reloj proyectado. Rust comprueba en las mismas ocho muestras el
+reloj de Engineer/Strategy y que ambos productos conservan el mismo jugador.
+El reloj LMU de dos muestras cae justo antes del milisegundo entero; las
+comparaciones usan el tiempo observado y no convierten `141599` ms en
+`141.599` s exactos. Auditoría Go, replay Rust, 154 tests Rust, `go test ./...`,
+Clippy y formato pasan. Este corte aún no compara todos los campos Go/Rust
+ni procesa los cuerpos REST completos en la ruta de producto temporal; no
+constituye el gate de paridad o rendimiento.

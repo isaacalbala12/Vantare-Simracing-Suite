@@ -1,6 +1,7 @@
 package lmu
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,14 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
 // TestRustPortTemporalCorpusAuditOptIn audits an external, real LMU capture.
@@ -57,6 +66,12 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 	profile := compatibilityProfile{version: manifest.Build, supported: true}
 	var previousSource time.Duration
 	var previousUTC time.Time
+	var firstSource time.Duration
+	fusion := new(Fusion)
+	mapper := NewBatchMapper()
+	reducer := telemetrycore.NewReducer()
+	pipeline := derive.NewPipeline(derive.Config{})
+	overlayProjector := overlayv2.NewCachedProjector(overlayv2.SectionCadence{})
 	for i, entry := range manifest.Samples {
 		if entry.Index != i || entry.SharedFile != fmt.Sprintf("%03d-shm.bin", i) || entry.RESTFile != fmt.Sprintf("%03d-rest.json", i) {
 			t.Fatalf("sample %d has noncanonical index or filename", i)
@@ -84,6 +99,50 @@ func TestRustPortTemporalCorpusAuditOptIn(t *testing.T) {
 			t.Fatalf("sample %d Go parser disagrees with grid/player/source clock manifest", i)
 		}
 		previousSource = source
+		if i == 0 {
+			firstSource = source
+		}
+		fused := fusion.Merge(at, source-firstSource, observation)
+		var final envelope.Snapshot[derive.FinalState]
+		var committed int
+		sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
+			observed, err := reducer.Apply(batch)
+			if err != nil {
+				return err
+			}
+			final, err = pipeline.Apply(context.Background(), observed)
+			committed++
+			return err
+		})
+		if err := mapper.WriteObservation(context.Background(), fused, sink); err != nil || committed != 1 {
+			t.Fatalf("sample %d Go temporal commit=%d error=%v", i, committed, err)
+		}
+		engineerSnapshot, err := engineer.ProjectV1(final)
+		if err != nil {
+			t.Fatalf("sample %d Go Engineer projection: %v", i, err)
+		}
+		strategySnapshot, err := strategy.ProjectV1(final)
+		if err != nil {
+			t.Fatalf("sample %d Go Strategy projection: %v", i, err)
+		}
+		overlayUpdate, err := overlayProjector.Project(final, overlayv2.SourceContextV2{State: "live"}, overlayv2.DefaultPreferencesV2(), 1, at)
+		if err != nil {
+			t.Fatalf("sample %d Go Overlay projection: %v", i, err)
+		}
+		seconds := source.Seconds()
+		overlayRows := 0
+		if overlayUpdate.Frame != nil {
+			overlayRows = len(overlayUpdate.Frame.Standings)
+		}
+		if engineerSnapshot.Sequence != schema.Sequence(i+1) || len(engineerSnapshot.Vehicles) != want || engineerSnapshot.Player.ID == "" ||
+			!engineerSnapshot.SourceTime.Present || engineerSnapshot.SourceTime.Value != seconds ||
+			strategySnapshot.Sequence != schema.Sequence(i+1) || strategySnapshot.Player.ID != engineerSnapshot.Player.ID ||
+			!strategySnapshot.SourceTime.Present || strategySnapshot.SourceTime.Value != seconds ||
+			overlayUpdate.Frame == nil || overlayRows != want {
+			t.Fatalf("sample %d Go temporal products: Engineer sequence=%d vehicles=%d player=%q clock=%+v; Strategy sequence=%d player=%q clock=%+v; Overlay rows=%d", i,
+				engineerSnapshot.Sequence, len(engineerSnapshot.Vehicles), engineerSnapshot.Player.ID, engineerSnapshot.SourceTime,
+				strategySnapshot.Sequence, strategySnapshot.Player.ID, strategySnapshot.SourceTime, overlayRows)
+		}
 		rest := readHashedCorpusFile(t, dir, entry.RESTFile, entry.RESTSHA)
 		var overlap struct {
 			Schema  string `json:"schema"`

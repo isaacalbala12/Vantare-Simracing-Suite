@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — tres productos en secuencia real (2026-09-29)
+
+La auditoría Go del corpus real de ocho SHM+REST con 47 coches atraviesa
+fusión SHM, mapper, Core, derivación y Overlay/Engineer/Strategy por muestra;
+Rust comprueba reloj e identidad compartida Engineer/Strategy en esas ocho
+muestras. Auditoría, replay Rust, 154 tests Rust, suite Go completa, Clippy y
+formato pasaron. REST sigue auditado pero aún no alimenta la comparación
+temporal completa; tampoco hay CPU/p99/RSS ni Wails/OBS. Plan §109; Go sigue
+productivo y PR #1415 draft sin merge.
+
 ## VAN-778 / ISA-1403 — ACK de facts tras entrega (2026-09-29)
 
 El supervisor confirma al hijo Rust un fact solo después de que el callback

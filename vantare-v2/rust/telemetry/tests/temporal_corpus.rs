@@ -86,6 +86,8 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
             )
             .unwrap();
         let mut products = Vec::new();
+        let mut engineer_player = None;
+        let mut strategy_player = None;
         for frame in &frames {
             let decoded = ipc::decode(frame).unwrap();
             if decoded.kind == Kind::Snapshot {
@@ -112,11 +114,29 @@ fn external_real_temporal_shm_reaches_all_rust_products() {
                         value["snapshot"]["player"]["id"]
                     );
                     assert!(!value["identity"]["driver"].as_str().unwrap().is_empty());
+                    let projected_time = value["snapshot"]["sourceTimeSeconds"]["value"]
+                        .as_f64()
+                        .unwrap();
+                    assert!((projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
+                    engineer_player = value["snapshot"]["player"]["id"]
+                        .as_str()
+                        .map(str::to_owned);
+                }
+                if product == "strategy-v1" {
+                    let projected_time = value["snapshot"]["sourceTimeSeconds"]["value"]
+                        .as_f64()
+                        .unwrap();
+                    assert!((projected_time - source_ns as f64 / 1e9).abs() < 1e-6);
+                    strategy_player = value["snapshot"]["player"]["id"]
+                        .as_str()
+                        .map(str::to_owned);
                 }
                 products.push(product.to_owned());
             }
         }
         assert_eq!(products, ["overlay-v2", "engineer-v1", "strategy-v1"]);
+        assert_eq!(engineer_player, strategy_player);
+        assert!(engineer_player.is_some());
         assert_eq!(
             assembler.engine().current().unwrap().cursor.sequence,
             u64::try_from(index + 1).unwrap()

@@ -133,6 +133,26 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         assert!((0.0..=1.0).contains(&reliable(pedal)));
     }
 
+    // Señales de la fase 1, byte a byte del fixture: combustible, delta nativo,
+    // sector (raw 1 = S1 → índice 0), distancia de vuelta, máximo de vueltas
+    // (`0` = sesión por tiempo) y longitud del circuito. El cronómetro de vuelta
+    // llega a cero para los 44 coches: es un marcador sin dato, no 0,00 s.
+    assert!((reliable(player.fuel.level_l) - 99.586_573_277_723_69).abs() < 1e-9);
+    assert!((reliable(player.fuel.capacity_l) - 100.0).abs() < 1e-9);
+    assert!(
+        matches!(player.fuel.per_lap_l, Quality::Unavailable),
+        "el consumo por vuelta lo deriva el núcleo"
+    );
+    assert!(matches!(player.fuel.laps_left, Quality::Unavailable));
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
+    let player_car = state.player_car().expect("coche del jugador");
+    assert_eq!(reliable(player_car.current_sector), 0);
+    assert!((reliable(player_car.lap_distance_m) - 1_068.229_614_257_812_5).abs() < 1e-9);
+    assert!(matches!(player_car.lap_elapsed_s, Quality::Unavailable));
+    assert!(matches!(state.session.laps_total, Quality::Unavailable));
+    assert!((reliable(state.session.track_length_m) - 4_655.109_863_281_25).abs() < 1e-9);
+
     // Capacidades que declara el adaptador.
     let caps = state.capabilities;
     for fresh in [
@@ -144,9 +164,13 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         caps.spatial,
         caps.driver_inputs,
         caps.powertrain,
+        caps.fuel,
+        caps.sectors,
+        caps.lap_progress,
     ] {
         assert_eq!(fresh, Capability::Fresh);
     }
+    assert_eq!(caps.delta, Capability::Supported);
     assert_eq!(
         caps.flags,
         Capability::Supported,
@@ -176,6 +200,14 @@ fn menu_fixtures_are_valid_frames_without_a_grid() {
             "{file}"
         );
         assert_eq!(state.capabilities.spatial, Capability::Supported, "{file}");
+        for dataless in [
+            state.capabilities.fuel,
+            state.capabilities.delta,
+            state.capabilities.sectors,
+            state.capabilities.lap_progress,
+        ] {
+            assert_eq!(dataless, Capability::Supported, "{file}");
+        }
     }
 }
 
@@ -206,6 +238,59 @@ fn track_fixtures_of_every_supported_build_keep_a_consistent_grid() {
             "{file}"
         );
     }
+}
+
+/// 1.4.2.0 en pista: es la única captura con `mProgressTime` real (no el
+/// marcador a cero) y con la longitud del circuito publicada.
+#[test]
+fn the_1_4_2_0_track_fixture_reports_lap_progress_fuel_and_track_length() {
+    let observation = observe_fixture("lmu-1.4.2.0-track-fixture.bin", "1.4.2.0");
+    let state = &observation.state;
+    let player = state.player.expect("el fixture tiene jugador");
+    assert!((reliable(player.fuel.level_l) - 97.0).abs() < f64::EPSILON);
+    assert!((reliable(player.fuel.capacity_l) - 110.0).abs() < f64::EPSILON);
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
+    let car = state.player_car().expect("coche del jugador");
+    assert_eq!(reliable(car.current_sector), 0);
+    assert!((reliable(car.lap_distance_m) - 104.055_343_627_929_69).abs() < 1e-9);
+    assert!((reliable(car.lap_elapsed_s) - 1.721_370_100_975_036_6).abs() < 1e-9);
+    // `i32::MAX` como máximo de vueltas = sin límite.
+    assert!(matches!(state.session.laps_total, Quality::Unavailable));
+    assert!((reliable(state.session.track_length_m) - 13_623.967_773_437_5).abs() < 1e-9);
+    let caps = state.capabilities;
+    assert_eq!(
+        (caps.fuel, caps.delta, caps.sectors, caps.lap_progress),
+        (
+            Capability::Fresh,
+            Capability::Supported,
+            Capability::Fresh,
+            Capability::Fresh
+        )
+    );
+}
+
+/// 1.4.1.3 en pista: distancia de vuelta negativa (detrás de la línea), sin
+/// cronómetro y con `mTrackLength` a cero; el combustible y el sector sí llegan.
+#[test]
+fn the_1_4_1_3_track_fixture_keeps_negative_distance_and_zero_track_length_out() {
+    let observation = observe_fixture("lmu-1.4.1.3-track-fixture.bin", "1.4.1.3");
+    let state = &observation.state;
+    let player = state.player.expect("el fixture tiene jugador");
+    assert!((reliable(player.fuel.level_l) - 98.0).abs() < f64::EPSILON);
+    assert!((reliable(player.fuel.capacity_l) - 115.0).abs() < f64::EPSILON);
+    let car = state.player_car().expect("coche del jugador");
+    assert_eq!(reliable(car.current_sector), 0);
+    assert!(
+        matches!(car.lap_distance_m, Quality::Unavailable),
+        "distancia negativa"
+    );
+    assert!(matches!(car.lap_elapsed_s, Quality::Unavailable));
+    assert!(matches!(state.session.track_length_m, Quality::Unavailable));
+    // Otros coches del mismo frame sí tienen distancia y sector: la capacidad
+    // se declara por la parrilla, no solo por el jugador.
+    assert_eq!(state.capabilities.sectors, Capability::Fresh);
+    assert_eq!(state.capabilities.lap_progress, Capability::Fresh);
 }
 
 #[test]
@@ -492,11 +577,13 @@ fn the_47_car_temporal_corpus_replays_with_stable_identity_and_exact_quality() {
     let pose = reliable(car.pose);
     assert!((pose.x_m + 133.943_161).abs() < 1e-6 && (pose.y_m - 1_287.463_257).abs() < 1e-6);
     // Jugador (Vehicle-047): parado, freno a fondo, punto muerto.
-    let telemetry = last_obs.state.player.expect("jugador").telemetry;
+    let player = last_obs.state.player.expect("jugador");
+    let telemetry = player.telemetry;
     assert_eq!(reliable(telemetry.gear), 0);
     assert!((reliable(telemetry.brake) - 1.0).abs() < f64::EPSILON);
     assert!(reliable(telemetry.throttle).abs() < f64::EPSILON);
     assert!(reliable(telemetry.speed_mps) < 0.05);
+    assert_corpus_phase_one_signals(&last_obs);
     assert_eq!(rest_index, Some(238));
     assert_eq!(
         replay.poll(Duration::from_hours(1)),
@@ -510,6 +597,27 @@ fn reliable_or_stale<T: Copy>(quality: Quality<T>) -> T {
         Quality::Reliable(value) | Quality::Stale(value) | Quality::Estimated(value) => value,
         Quality::Unavailable => panic!("valor no disponible"),
     }
+}
+
+/// Señales de fase 1 del SHM 1.4.2.0 en boxes: combustible, delta, sector,
+/// distancia y cronómetro reales; longitud publicada y sin máximo de vueltas.
+fn assert_corpus_phase_one_signals(observation: &Observation) {
+    let player = observation.state.player.expect("jugador");
+    assert!((reliable(player.fuel.level_l) - 50.0).abs() < f64::EPSILON);
+    assert!((reliable(player.fuel.capacity_l) - 75.0).abs() < f64::EPSILON);
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
+    assert!(matches!(
+        observation.state.session.laps_total,
+        Quality::Unavailable
+    ));
+    assert!(
+        (reliable(observation.state.session.track_length_m) - 13_623.967_773_437_5).abs() < 1e-9
+    );
+    let car = observation.state.player_car().expect("coche del jugador");
+    assert_eq!(reliable(car.current_sector), 0);
+    assert!((reliable(car.lap_distance_m) - 269.017_852_783_203_1).abs() < 1e-9);
+    assert!((reliable(car.lap_elapsed_s) - 4.235_666_275_024_414).abs() < 1e-9);
 }
 
 /// El mismo corpus dos veces da las mismas observaciones: el reloj es el grabado.

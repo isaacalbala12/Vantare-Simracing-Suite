@@ -5,10 +5,13 @@ package app
 import (
 	"context"
 	"os"
+	"sort"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/process"
 	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
@@ -94,15 +97,33 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	peakRSS, err := totalProcessRSS(os.Getpid(), int(childPID))
+	if err != nil {
+		t.Fatal(err)
+	}
 	overlays := publisher.Metrics().SnapshotPublications
-	engineers := probe.observations.Load()
 	strategies := runtime.StrategyHub().Metrics().SnapshotPublications
+	latencyBase := probe.latencyCount()
 	timer := time.NewTimer(15 * time.Second)
 	defer timer.Stop()
-	select {
-	case <-timer.C:
-	case <-ctx.Done():
-		t.Fatalf("%s measurement interrupted: %v", arm, ctx.Err())
+	usageTicker := time.NewTicker(250 * time.Millisecond)
+	defer usageTicker.Stop()
+measurement:
+	for {
+		select {
+		case <-timer.C:
+			break measurement
+		case <-usageTicker.C:
+			rss, usageErr := totalProcessRSS(os.Getpid(), int(childPID))
+			if usageErr != nil {
+				t.Fatalf("%s RSS sample: %v", arm, usageErr)
+			}
+			if rss > peakRSS {
+				peakRSS = rss
+			}
+		case <-ctx.Done():
+			t.Fatalf("%s measurement interrupted: %v", arm, ctx.Err())
+		}
 	}
 	finalCPU, err := processCPU(os.Getpid())
 	if err != nil {
@@ -116,27 +137,82 @@ func TestRustGoLiveCPUProbeOptIn(t *testing.T) {
 		}
 	}
 	overlays = publisher.Metrics().SnapshotPublications - overlays
-	engineers = probe.observations.Load() - engineers
 	strategies = runtime.StrategyHub().Metrics().SnapshotPublications - strategies
+	p99, latencyCount := probe.p99Since(latencyBase)
+	engineers := uint64(latencyCount)
 	if overlays == 0 || engineers == 0 || strategies == 0 || probe.vehicles.Load() < 46 || runtime.SourceStatus().ReconnectAttempt != 0 {
 		t.Fatalf("%s incomplete product work: overlay=%d engineer=%d strategy=%d vehicles=%d source=%+v", arm, overlays, engineers, strategies, probe.vehicles.Load(), runtime.SourceStatus())
 	}
-	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d", arm,
+	if probe.invalidCapture.Load() != 0 {
+		t.Fatalf("%s invalid Engineer capture timestamps: %d", arm, probe.invalidCapture.Load())
+	}
+	t.Logf("DIAGNOSTIC arm=%s hostCPU=%s childCPU=%s totalCPU=%s peakRSS=%d engineerP99=%s overlay=%d engineer=%d strategy=%d vehicles=%d facts=%d", arm,
 		finalCPU-initialCPU, finalChildCPU-initialChildCPU, finalCPU-initialCPU+finalChildCPU-initialChildCPU,
+		peakRSS, p99,
 		overlays, engineers, strategies, probe.vehicles.Load(), probe.facts.Load())
 }
 
 type cpuProbeEngineer struct {
-	observations atomic.Uint64
-	vehicles     atomic.Int64
-	facts        atomic.Uint64
+	observations   atomic.Uint64
+	vehicles       atomic.Int64
+	facts          atomic.Uint64
+	invalidCapture atomic.Uint64
+	latencyMu      sync.Mutex
+	latencies      []time.Duration
 }
 
 func (*cpuProbeEngineer) ConsumeSourceStatus(engineerprojection.SourceStatusV1) error { return nil }
 func (probe *cpuProbeEngineer) ConsumeObservation(value engineerprojection.ObservationSnapshotV1) error {
+	captured, err := time.Parse(time.RFC3339Nano, value.CapturedAt)
+	if err != nil {
+		probe.invalidCapture.Add(1)
+	} else if latency := time.Since(captured); latency < 0 {
+		probe.invalidCapture.Add(1)
+	} else {
+		probe.latencyMu.Lock()
+		probe.latencies = append(probe.latencies, latency)
+		probe.latencyMu.Unlock()
+	}
 	probe.vehicles.Store(int64(len(value.Vehicles)))
 	probe.observations.Add(1)
 	return nil
+}
+
+func (probe *cpuProbeEngineer) latencyCount() int {
+	probe.latencyMu.Lock()
+	defer probe.latencyMu.Unlock()
+	return len(probe.latencies)
+}
+
+func (probe *cpuProbeEngineer) p99Since(start int) (time.Duration, int) {
+	probe.latencyMu.Lock()
+	values := append([]time.Duration(nil), probe.latencies[start:]...)
+	probe.latencyMu.Unlock()
+	if len(values) == 0 {
+		return 0, 0
+	}
+	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
+	return values[(99*len(values)+99)/100-1], len(values)
+}
+
+func totalProcessRSS(hostPID, childPID int) (uint64, error) {
+	read := func(pid int) (uint64, error) {
+		owner, err := process.NewProcess(int32(pid))
+		if err != nil {
+			return 0, err
+		}
+		memory, err := owner.MemoryInfo()
+		if err != nil {
+			return 0, err
+		}
+		return memory.RSS, nil
+	}
+	host, err := read(hostPID)
+	if err != nil || childPID == 0 {
+		return host, err
+	}
+	child, err := read(childPID)
+	return host + child, err
 }
 func (probe *cpuProbeEngineer) ConsumeFact(engineerprojection.FactEnvelopeV1) error {
 	probe.facts.Add(1)

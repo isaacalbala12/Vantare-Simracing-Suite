@@ -1,5 +1,26 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — p99 y RSS físicos diagnósticos (2026-09-29)
+
+Computer Use observó LMU 1.4.2.0 en práctica en Circuit de la Sarthe;
+OBS estaba abierto, sin validar todavía un widget Vantare. El probe de
+tres productos mide ahora pico de RSS simultáneo de host+hijo y p99 desde
+`CapturedAt` hasta el consumidor Engineer. En dos pares sobre 47 coches,
+Go dio 2,40625/2,859375 s CPU/15 s, 32.264.192/31.870.976 B de RSS
+pico y p99 Engineer 2,5707/2,6274 ms con 958 entregas/producto.
+Rust+Go con VTE1 dio 6,15625/6,6875 s CPU/15 s,
+38.486.016/38.281.216 B y p99 6,7414/6,9757 ms con 900 entregas/producto. Son ventanas
+físicas consecutivas con cadencias distintas y el probe añade medición;
+**no** son el banco G0/G1/R ni acreditan los ratios de aceptación. La
+prueba confirma que CPU y latencia siguen por encima de Go y que aún falta
+optimización sustancial. `go test ./...` pasó.
+
+Se probó reutilizar `standings` cacheado cuando la cadencia no podía
+publicarlo. La paridad estricta LMU47 x80 siguió pasando, pero la mediana
+de construcción de secciones en cinco repeticiones subió de ~38,7 a
+~49,8 ms/80 muestras y el ensamblado de ~141,5 a ~150,3 ms. Se retiró
+el experimento; la rama conserva el proyector anterior.
+
 ## VAN-778 / ISA-1403 — perfil físico del receptor Rust (2026-09-29)
 
 LMU 1.4.2.0 seguía en pista con 47 coches. El probe de tres productos midió

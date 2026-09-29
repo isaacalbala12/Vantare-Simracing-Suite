@@ -2498,3 +2498,23 @@ perfilada consumió 5,671875 s CPU total y entregó 900/900/899 productos.
 R21 debe atacar el coste demostrado del codec Overlay y de las secciones
 Rust, fijar cadencias equivalentes y construir G1 antes de evaluar el
 umbral de CPU, p99 y RSS. Ninguno de esos gates está acreditado.
+
+## 136. RSS y latencia física diagnóstica; cache de standings descartado (2026-09-29)
+
+El probe Windows de tres productos mide ahora el pico de RSS agregado y el
+p99 desde el instante capturado hasta el consumidor Engineer, además de CPU
+de ambos procesos y recuentos. Computer Use observó LMU 1.4.2.0 en práctica
+en Circuit de la Sarthe; OBS estaba abierto, sin demostrar aún el widget.
+En dos pares de ventanas consecutivas LMU47 de 15 s, Go consumió
+2,40625/2,859375 s CPU, 32.264.192/31.870.976 B RSS pico y p99 Engineer
+2,5707/2,6274 ms (958 entregas/producto); Rust+Go VTE1 consumió
+6,15625/6,6875 s CPU, 38.486.016/38.281.216 B y p99 6,7414/6,9757 ms
+(900 entregas/producto). El probe tiene sobrecoste de medición, las cadencias
+no coinciden y no usa el corpus inmutable: **no** es G0/G1/R ni un ratio de
+aceptación. `go test ./...` pasó.
+
+Un experimento para evitar construir Standings antes de su cadencia pasó
+la paridad estricta LMU47 x80, pero copiar el `Value` cacheado fue más caro:
+medianas de cinco repeticiones, secciones ~38,7→49,8 ms/80 muestras y
+ensamblado ~141,5→150,3 ms. El cambio se retiró. R21 necesita eliminar
+trabajo sin trasladarlo a clones equivalentes y medir el camino completo.

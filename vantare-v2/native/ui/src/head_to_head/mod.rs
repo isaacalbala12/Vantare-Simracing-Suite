@@ -1,0 +1,220 @@
+//! Porte de `HeadToHeadFunctional.tsx` (360 × 128). El productivo no tiene
+//! animaciones ni avisos temporales: `Wake::Idle`, sin un reloj adicional.
+//! La configuración del host aún no transporta content.target; se conserva
+//! el valor por defecto `Ahead`. La proyección pura también admite `Behind`.
+
+use gpui::{
+    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
+};
+use vantare_domain::{
+    Snapshot,
+    format::Preferences,
+    head_to_head::{self, Target, ViewModel},
+};
+
+use crate::app::{Paint, Wake, replace_if_changed};
+use crate::efficiency::text::{self, ink};
+use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
+
+pub const SIZE: (f32, f32) = (360.0, 128.0);
+
+pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
+    let (width, height) = SIZE;
+    paint_panel(window, width, height, 0.87);
+    // Igual que Standings: el segundo brillo es < 1 % y queda pendiente para
+    // el kit junto con el marco superior al 24 % (segundo consumidor real).
+    window.paint_quad(quad(
+        rect(0.0, 0.0, width, height),
+        Corners::all(px(tokens::RADIUS)),
+        linear_gradient(
+            120.0,
+            linear_color_stop(col(0xffffff, 0.03), 0.0),
+            linear_color_stop(col(0xffffff, 0.0), 0.38),
+        ),
+        Edges::all(px(0.0)),
+        col(0x000000, 0.0),
+        BorderStyle::default(),
+    ));
+
+    let list_height = if vm.rows.is_empty() {
+        38.0
+    } else {
+        vm.rows.len() as f32 * 22.0 + (vm.rows.len() - 1) as f32 * 4.0
+    };
+    let top = (height - 24.0 - list_height) / 2.0;
+    let header = ink(9.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
+    text::draw(
+        window,
+        cx,
+        &vm.header,
+        12.0,
+        text::baseline(top, 9.0, 9.0),
+        &header,
+    );
+    paint_rect(window, 12.0, top + 15.0, 336.0, 1.0, col(tokens::INK, 0.10));
+    let list_top = top + 24.0;
+    if vm.rows.is_empty() {
+        let status = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        text::draw(
+            window,
+            cx,
+            &vm.no_rival,
+            24.0,
+            text::baseline(list_top + 10.0, 18.0, 12.0),
+            &status,
+        );
+    }
+    for (index, row) in vm.rows.iter().enumerate() {
+        let y = list_top + index as f32 * 26.0;
+        if row.is_player {
+            window.paint_quad(quad(
+                rect(12.0, y, 336.0, 22.0),
+                Corners::all(px(4.0)),
+                col(0xbfc2ca, 0.23),
+                Edges::all(px(0.0)),
+                col(0x000000, 0.0),
+                BorderStyle::default(),
+            ));
+        }
+        // Grid CSS: 26 34 1fr 44 56 48, gap 5, padding 5px 8px.
+        let columns = [
+            (&row.place, 20.0, 26.0, 12.0, 650.0, tokens::INK, false),
+            (&row.number, 51.0, 34.0, 10.0, 600.0, tokens::MUTED, false),
+            (&row.name, 90.0, 87.0, 11.0, 650.0, tokens::INK, false),
+            (
+                &row.class_name,
+                182.0,
+                44.0,
+                8.0,
+                600.0,
+                tokens::MUTED,
+                false,
+            ),
+            (
+                &row.gap,
+                231.0,
+                56.0,
+                11.0,
+                650.0,
+                if row.selected {
+                    tokens::LOSS
+                } else {
+                    tokens::INK
+                },
+                true,
+            ),
+            (&row.label, 292.0, 48.0, 8.0, 600.0, tokens::MUTED, true),
+        ];
+        for (value, left, cell_width, font_size, weight, color, right) in columns {
+            let style = ink(font_size, weight, 0.0, col(color, 1.0));
+            let value = if left == 90.0 {
+                text::fit(window, value, &style, cell_width)
+            } else {
+                value.clone()
+            };
+            let x = if right {
+                left + cell_width - text::width(window, &value, &style)
+            } else {
+                left
+            };
+            text::draw(
+                window,
+                cx,
+                &value,
+                x,
+                text::baseline(y + 5.0 + (12.0 - font_size) / 2.0, font_size, font_size),
+                &style,
+            );
+        }
+    }
+    paint_frame(window, width, height);
+    // CSS ::after: blanco 24 % arriba sobre el mismo panel redondeado.
+    window.paint_quad(quad(
+        rect(0.0, 0.0, width, 6.0),
+        Corners {
+            top_left: px(tokens::RADIUS),
+            top_right: px(tokens::RADIUS),
+            bottom_left: px(0.0),
+            bottom_right: px(0.0),
+        },
+        col(0x000000, 0.0),
+        Edges {
+            top: px(1.0),
+            ..Edges::all(px(0.0))
+        },
+        col(0xffffff, 0.136),
+        BorderStyle::default(),
+    ));
+}
+
+pub(crate) struct Widget {
+    vm: ViewModel,
+}
+
+impl Widget {
+    pub(crate) fn new(prefs: Preferences) -> Self {
+        Self {
+            vm: head_to_head::project(&Snapshot::default(), prefs, Target::Ahead),
+        }
+    }
+
+    #[allow(clippy::unused_self)]
+    pub(crate) fn size(&self) -> (f32, f32) {
+        SIZE
+    }
+
+    pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        replace_if_changed(
+            &mut self.vm,
+            head_to_head::project(snapshot, prefs, Target::Ahead),
+        )
+    }
+
+    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+        let vm = self.vm.clone();
+        (
+            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Wake::Idle,
+        )
+    }
+
+    #[cfg(feature = "parity-capture")]
+    #[allow(clippy::unused_self)]
+    pub(crate) fn animating(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vantare_domain::{Car, CarId, Player, Quality::Reliable};
+
+    #[test]
+    fn only_visible_changes_repaint_and_frames_finish() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(prefs);
+        let mut snapshot = Snapshot::default();
+        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.cars = [1, 2]
+            .map(|id| Car {
+                id: CarId(id),
+                position: Reliable(id),
+                ..Car::default()
+            })
+            .into();
+        snapshot.state.player = Some(Player {
+            car: CarId(2),
+            ..Player::default()
+        });
+        assert!(widget.ingest(&snapshot, prefs));
+        snapshot.sequence += 1;
+        snapshot.state.cars[1].best_lap_s = Reliable(90.0);
+        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.cars[0].driver.name = "Rival".into();
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        #[cfg(feature = "parity-capture")]
+        assert!(!widget.animating());
+    }
+}

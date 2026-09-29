@@ -64,4 +64,5 @@ widgets! {
     InputTelemetry => input_telemetry: "input-telemetry",
     MulticlassRelative => multiclass_relative: "multiclass-relative",
     BroadcastTower => broadcast_tower: "broadcast-tower",
+    DeltaTrace => delta_trace: "delta-trace",
 }

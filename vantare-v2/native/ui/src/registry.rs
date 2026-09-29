@@ -72,4 +72,5 @@ widgets! {
     FuelStrategy => fuel_strategy: "fuel-strategy",
     PedalsTelemetry => pedals_telemetry: "pedals-telemetry",
     Relative => relative: "relative",
+    RacingFlags => racing_flags: "racing-flags",
 }

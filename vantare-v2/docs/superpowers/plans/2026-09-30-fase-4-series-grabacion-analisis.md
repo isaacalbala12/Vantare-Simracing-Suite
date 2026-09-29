@@ -36,7 +36,9 @@ Notion inaccesible, excepción explícita de Isaac; seguimiento sin completar.
    no disco, SQL, serialización ni espera al consumidor en adquisición.
    Receptor ausente/lento se refleja en estado y pérdidas; el siguiente bloque
    entregado informa pérdidas previas. Reconfigurar exige una base nueva con
-   hueco. Publicación parcial explícita permite cadencia menor a 64 muestras.
+   hueco; esta API inicial rechaza reconfiguración tras arrancar y exige un
+   nuevo productor, cuya época/base configura el propietario. Publicación
+   parcial explícita permite cadencia menor a 64 muestras.
    Tests: entrega antes del cierre, cierre sin mezclar vueltas, saturación,
    desconexión, sesión/contador y memoria acotada. Conservar goldens v1 previos.
 3. **Almacenamiento DuckDB, propietario único**: BLOQUEADO desde el inventario.
@@ -122,3 +124,13 @@ Revisar `git diff --check`, diff completo, rutas staged y commits con trailer
 Registrar resultados, producción/tests añadidos y límites al finalizar.
 La compilación incremental UI y campaña física corresponden al orquestador,
 en serie; no producir cifras comparativas de UI mientras otros compilan.
+
+## Avance local
+
+- Inventario `1030c9f5`; microplan previo a implementación `bef61696`.
+- Corte 2: implementado para revisión. Seis tests nuevos, 25 tests flows
+  focales correctos; fmt y clippy workspace correctos. Suite workspace: 390
+  tests correctos (incluye siete lifecycle sin harness), cuatro live ignorados,
+  cero fallos. LapBlock v1 y sus goldens se conservan.
+- Corte 3: bloqueado; no worker DuckDB ni persistencia nueva implementados.
+- Cortes 4–5: siguientes, independientes del backend de almacenamiento.

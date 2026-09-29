@@ -105,6 +105,12 @@ impl Core {
         &self.series
     }
 
+    /// Configurar entrega acotada antes de adquirir, o publicar un parcial.
+    /// No escribe disco ni espera a almacenamiento/análisis.
+    pub fn series_mut(&mut self) -> &mut Series {
+        &mut self.series
+    }
+
     /// `persist` puede hacer I/O: llamarlo fuera de adquisición.
     pub fn events_mut(&mut self) -> &mut Journal {
         &mut self.events

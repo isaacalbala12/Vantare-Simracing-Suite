@@ -70,8 +70,9 @@ fn signal(value: Quality<f64>) -> serde_json::Value {
 /// Prueba mínima de frontera: un bloque en curso y el último sellado, sin I/O.
 #[derive(Default)]
 pub struct Series {
-    active: Option<LapBlock>,
+    pub(super) active: Option<LapBlock>,
     sealed: Option<LapBlock>,
+    pub(super) publication: Option<super::series_feed::Publisher>,
     /// Distancia/tiempo ya se reiniciaron pero el contador aún no avanzó.
     waiting_for_lap: bool,
 }
@@ -98,18 +99,36 @@ impl Series {
             .as_ref()
             .is_some_and(|block| (block.epoch, block.session, block.car) != identity)
         {
-            *self = Self::default(); // Nunca mezclar sesión, época o jugador.
+            // Conservar el índice del feed entre identidades; la vuelta anterior
+            // queda incompleta. Nunca mezclar sesión, época o jugador.
+            self.mark_gap();
+            self.flush();
+            self.active = None;
+            self.sealed = None;
+            self.waiting_for_lap = false;
+            if let Some(publisher) = &mut self.publication {
+                publisher.reset_lap();
+            }
         }
         let Quality::Reliable(lap) = car.laps else {
             self.mark_gap();
             return;
         };
         if self.active.as_ref().is_some_and(|block| block.lap != lap) {
-            if let Some(mut block) = self.active.take()
-                && block.lap.checked_add(1) == Some(lap)
-            {
-                block.sealed_at = Some(snapshot.sequence);
-                self.sealed = Some(block);
+            if let Some(mut block) = self.active.take() {
+                let closed = block.lap.checked_add(1) == Some(lap);
+                if closed {
+                    block.sealed_at = Some(snapshot.sequence);
+                } else {
+                    block.gap = true;
+                }
+                if let Some(publisher) = &mut self.publication {
+                    publisher.publish(&block);
+                    publisher.reset_lap();
+                }
+                if closed {
+                    self.sealed = Some(block);
+                }
             }
             // Un salto/retroceso descarta la vuelta abierta, no inventa cierres.
             self.waiting_for_lap = false;
@@ -151,6 +170,11 @@ impl Series {
             throttle: player.telemetry.throttle,
             brake: player.telemetry.brake,
         });
+        if let Some(publisher) = &mut self.publication
+            && publisher.ready(block)
+        {
+            publisher.publish(block);
+        }
     }
 
     fn mark_gap(&mut self) {

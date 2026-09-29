@@ -82,8 +82,9 @@ marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
 distancia o tiempo. En un retroceso se espera al avance del contador para
 evitar meter datos de la vuelta nueva en la anterior. Las señales ausentes o
 estimadas de velocidad/pedales conservan su etiqueta y no frenan el muestreo.
-Las series no escriben disco, tampoco con recording; almacenamiento, workers,
-IPC y buffers de múltiples vueltas pertenecen a fases posteriores.
+Las series no escriben disco, tampoco con recording. La entrega incremental
+de ISA-1429 descrita abajo añade una cola volátil; almacenamiento DuckDB e IPC
+siguen pendientes y no confirman durabilidad.
 
 `LapBlock::to_bytes()` serializa fuera de adquisición. UTF-8 JSON compacto,
 sin espacios, mapas ni reloj de pared, con este array de orden fijo:
@@ -148,11 +149,42 @@ LMU/OBS físico, caída de Windows, latencia ni presupuestos de rendimiento.
 Para reproducir las pruebas de este módulo, desde `native/`:
 
 ```powershell
-cargo test -p vantare-runtime --lib flows -j 4
+cargo test -p vantare-runtime --lib flows -j 2
 ```
 
 Los gates globales son `cargo fmt --check`,
-`cargo clippy --workspace --all-targets -j 4 -- -D warnings` y
-`cargo test --workspace -j 4`. Las dos pruebas live LMU del workspace siguen
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+`cargo test --workspace -j 2`. Las pruebas live de simulador del workspace siguen
 ignoradas por defecto y requieren el juego en marcha; no las sustituye este
 módulo. El orquestador mantiene el handoff vivo y revisa el diff completo.
+
+## Entrega incremental — ISA-1429
+
+Antes de adquirir, `core.series_mut().subscribe(capacity)` devuelve un único
+`Receiver<SeriesChunk>`, con capacidad 1–256. No activa recording. Se rechaza
+otro receptor o configuración tras la primera muestra. El propietario del
+worker recibe bloques por esta API interna; no hay worker/proceso ni CLI
+productivo enganchado todavía. El accessor de seis líneas en `core/mod.rs`
+solo permite configurar este flujo y publicar parciales, sin cambiar Core.
+
+Cada 64 muestras se publica una porción inmutable de LapBlock v1; `offset`
+indica su posición en la vuelta. Cerrar publica el resto o un marcador vacío
+con `sealed_at` coherente. `flush()` publica antes un parcial y/o un hueco
+nuevo; llamarlo con la cadencia deseada y antes de parar. No duplica un parcial
+vacío sin cambio. Sesión/coche/época o salto de contador entregan el resto
+anterior con `gap = true` y sin inventar un cierre.
+
+`index` crece por intento; `lost_before` cuenta los intentos perdidos desde
+la última entrega. `try_send` no espera a un consumidor lento. El estado
+`publication_status()` expone intentos/entregados/perdidos/desconexión y
+agotamiento de índice, incluso si nunca se puede entregar otro bloque. No hay
+ACK durable ni promesa de pérdida cero. Tras desconexión no se copian nuevas
+muestras para el receptor muerto. Las señales conservan su calidad original.
+Máximo adicional en cola: `capacity × 64` muestras, además de las dos vueltas
+acotadas ya existentes. Serialización y análisis ocurren en el consumidor.
+
+Los seis tests de `series_feed_tests.rs` prueban entrega durante vuelta,
+parciales/cierre, saturación/desconexión, configuración única, hueco y cambio
+de identidad; los goldens LapBlock v1 anteriores siguen obligatorios.
+El [microplan](../../../../docs/superpowers/plans/2026-09-30-fase-4-series-grabacion-analisis.md)
+conserva el bloqueo DuckDB y los presupuestos físicos pendientes.

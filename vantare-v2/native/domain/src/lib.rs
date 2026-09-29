@@ -22,6 +22,7 @@ pub mod fuel_strategy;
 mod model;
 pub mod multiclass_relative;
 pub mod pedals;
+pub mod pedals_telemetry;
 mod quality;
 pub mod radar;
 pub mod standings;

@@ -12,7 +12,6 @@ use serde_json::{Map, Value};
 
 use super::frame::Kind;
 
-pub(super) use http::Status;
 pub(super) use poller::Poller;
 
 pub(super) const MAX_RESPONSE_BYTES: usize = 4 << 20;

@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use vantare_domain::{Adapter, AdapterError, Observation, SourceKind};
 
 use super::frame::OBJECT_OUT_SIZE;
-use super::rest::{self, Poller};
+use super::rest::Poller;
 use super::shm::RunningSource;
 use super::translate::Translator;
 
@@ -91,14 +91,16 @@ impl Lmu {
         let cache = &mut self.translator.rest;
         // Una respuesta REST rota deja la caché como estaba y envejece; REST es
         // auxiliar, así que no detiene al adaptador.
-        let standings = report.standings.status == rest::Status::Fresh
-            && cache
-                .accept_standings(&report.standings.body, started(report.standings_started))
-                .is_ok();
-        let session = report.session.status == rest::Status::Fresh
-            && cache
-                .accept_session(&report.session.body, started(report.session_started))
-                .is_ok();
+        let standings = report.standings.is_some_and(|body| {
+            cache
+                .accept_standings(&body, started(report.standings_started))
+                .is_ok()
+        });
+        let session = report.session.is_some_and(|body| {
+            cache
+                .accept_session(&body, started(report.session_started))
+                .is_ok()
+        });
         standings || session
     }
 }

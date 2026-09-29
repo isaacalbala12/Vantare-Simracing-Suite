@@ -22,8 +22,8 @@ const WAIT_OBJECT_0: u32 = 0;
 const WAIT_TIMEOUT: u32 = 258;
 const MAX_PATH_UNITS: u32 = 32_768;
 const FIXED_SIGNATURE: u32 = 0xFEEF_04BD;
-/// Lecturas sucesivas idénticas necesarias para dar un frame por estable.
-pub(super) const MAX_STABLE_COMPARISONS: usize = 3;
+/// Relecturas máximas antes de dar un frame por inestable.
+const MAX_STABLE_COMPARISONS: usize = 3;
 
 #[link(name = "kernel32")]
 unsafe extern "system" {
@@ -137,9 +137,7 @@ impl Mapping {
     }
 
     fn read_stable(&self, destination: &mut [u8], scratch: &mut [u8]) -> io::Result<()> {
-        read_stable_with(destination, scratch, MAX_STABLE_COMPARISONS, |target| {
-            self.snapshot(target)
-        })
+        read_stable_with(destination, scratch, |target| self.snapshot(target))
     }
 }
 
@@ -156,20 +154,16 @@ impl Drop for Mapping {
 fn read_stable_with(
     destination: &mut [u8],
     scratch: &mut [u8],
-    comparisons: usize,
     mut snapshot: impl FnMut(&mut [u8]) -> io::Result<()>,
 ) -> io::Result<()> {
-    if destination.len() != OBJECT_OUT_SIZE
-        || scratch.len() != OBJECT_OUT_SIZE
-        || !(1..=MAX_STABLE_COMPARISONS).contains(&comparisons)
-    {
+    if destination.len() != OBJECT_OUT_SIZE || scratch.len() != OBJECT_OUT_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "buffers o comparaciones inválidos",
+            "buffers de tamaño distinto al layout de LMU",
         ));
     }
     snapshot(destination)?;
-    for _ in 0..comparisons {
+    for _ in 0..MAX_STABLE_COMPARISONS {
         snapshot(scratch)?;
         if destination == scratch {
             return Ok(());
@@ -500,13 +494,13 @@ mod tests {
         let mut destination = vec![0; OBJECT_OUT_SIZE];
         let mut scratch = vec![0; OBJECT_OUT_SIZE];
         assert_eq!(
-            read_stable_with(&mut destination, &mut scratch, 4, |_| Ok(()))
+            read_stable_with(&mut destination, &mut [0; 4], |_| Ok(()))
                 .unwrap_err()
                 .kind(),
             io::ErrorKind::InvalidInput
         );
         let mut snapshots = [1_u8, 2, 2].into_iter();
-        read_stable_with(&mut destination, &mut scratch, 2, |target| {
+        read_stable_with(&mut destination, &mut scratch, |target| {
             target[0] = snapshots.next().expect("tres snapshots acotados");
             Ok(())
         })
@@ -514,7 +508,7 @@ mod tests {
         assert_eq!(destination[0], 2);
 
         let mut next = 0_u8;
-        let error = read_stable_with(&mut destination, &mut scratch, 2, |target| {
+        let error = read_stable_with(&mut destination, &mut scratch, |target| {
             next += 1;
             target[0] = next;
             Ok(())

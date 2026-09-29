@@ -53,19 +53,10 @@ pub(super) enum Kind {
     Warmup,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Phase {
-    Preparing,
-    Running,
-    Interrupted,
-    Finished,
-}
-
 #[derive(Debug, PartialEq)]
 pub(super) struct Frame {
     pub track: String,
     pub kind: Option<Kind>,
-    pub phase: Option<Phase>,
     /// Reloj de sesión del simulador (`mCurrentET`).
     pub source_time: Option<Duration>,
     /// `mEndET`, en segundos de reloj de sesión.
@@ -151,13 +142,6 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
             5..=8 => Some(Kind::Qualifying),
             9 => Some(Kind::Warmup),
             10..=13 => Some(Kind::Race),
-            _ => None,
-        },
-        phase: match buffer[1_740] {
-            0..=4 => Some(Phase::Preparing),
-            5 => Some(Phase::Running),
-            6 | 7 | 9 => Some(Phase::Interrupted),
-            8 => Some(Phase::Finished),
             _ => None,
         },
         source_time: Duration::try_from_secs_f64(source_seconds).ok(),
@@ -386,7 +370,6 @@ mod tests {
         let frame = admit(REAL_44, "1.3.0.0").unwrap();
         assert_eq!(frame.track, "Circuit de Barcelona");
         assert_eq!(frame.kind, Some(Kind::Practice));
-        assert_eq!(frame.phase, Some(Phase::Running));
         assert_eq!(frame.source_time, Some(Duration::from_secs_f64(112.6)));
         assert_eq!(frame.end_time_s, Some(3605.0));
         assert_eq!(frame.player, Some(43));
@@ -436,13 +419,9 @@ mod tests {
         let mut frame = REAL_44.to_vec();
         frame[1_700..1_708].copy_from_slice(&(-1.0_f64).to_le_bytes());
         frame[1_696..1_700].copy_from_slice(&99_i32.to_le_bytes());
-        frame[1_740] = 200;
         let grid = admit(&frame, "1.3.0.0").unwrap();
         assert_eq!(grid.vehicles.len(), 44);
-        assert_eq!(
-            (grid.source_time, grid.kind, grid.phase),
-            (None, None, None)
-        );
+        assert_eq!((grid.source_time, grid.kind), (None, None));
         frame[1_708..1_716].copy_from_slice(&f64::NAN.to_le_bytes());
         assert_eq!(admit(&frame, "1.3.0.0").unwrap().end_time_s, None);
         // Fin de sesión anterior al reloj actual: no es un instante válido.

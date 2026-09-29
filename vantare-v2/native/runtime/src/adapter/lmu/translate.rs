@@ -8,11 +8,11 @@ use std::time::Duration;
 
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-    FlagScope, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind,
-    SessionState, Source, SourceKind, State, Telemetry,
+    FlagScope, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind, Source,
+    SourceKind, State, Telemetry,
 };
 
-use super::frame::{self, Frame, Kind, Phase, Rejection, Vehicle};
+use super::frame::{self, Frame, Kind, Rejection, Vehicle};
 use super::gate::Gate;
 use super::rest;
 
@@ -290,15 +290,8 @@ impl Translator {
                     stale,
                 )
             }),
-            state: quality(
-                frame.phase.map(|phase| match phase {
-                    Phase::Preparing => SessionState::Preparing,
-                    Phase::Running => SessionState::Running,
-                    Phase::Interrupted => SessionState::Interrupted,
-                    Phase::Finished => SessionState::Finished,
-                }),
-                stale,
-            ),
+            // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha: no es fiable.
+            state: Quality::Unavailable,
             elapsed_s: quality(elapsed, stale),
             remaining_s: quality(remaining, stale),
             track_name: track.map_or(Quality::Unavailable, |(track, stale)| {
@@ -365,21 +358,14 @@ fn capabilities(
             !matches!(flags, Quality::Unavailable),
             matches!(flags, Quality::Stale(_)),
         ),
-        spatial: capability(cars.iter().any(|car| car.pose.current().is_some()), stale),
+        spatial: capability(cars.iter().any(|car| has(&car.pose)), stale),
         driver_inputs: capability(
-            telemetry.is_some_and(|t| {
-                [t.throttle, t.brake, t.clutch]
-                    .iter()
-                    .any(|input| input.current().is_some())
-            }),
+            telemetry.is_some_and(|t| has(&t.throttle) || has(&t.brake) || has(&t.clutch)),
             stale,
         ),
         powertrain: capability(
-            telemetry.is_some_and(|t| {
-                t.gear.current().is_some()
-                    || t.speed_mps.current().is_some()
-                    || t.engine_speed_rad_s.current().is_some()
-            }),
+            telemetry
+                .is_some_and(|t| has(&t.gear) || has(&t.speed_mps) || has(&t.engine_speed_rad_s)),
             stale,
         ),
     }
@@ -393,10 +379,284 @@ fn quality<T>(value: Option<T>, stale: bool) -> Quality<T> {
     }
 }
 
+/// Hay valor, aunque esté caducado.
+fn has<T>(quality: &Quality<T>) -> bool {
+    !matches!(quality, Quality::Unavailable)
+}
+
 fn capability(has_data: bool, stale: bool) -> Capability {
     match (has_data, stale) {
         (true, false) => Capability::Fresh,
         (true, true) => Capability::WithData,
         (false, _) => Capability::Supported,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
+    const BUILD: &str = "1.3.0.0";
+    const SCORING_BASE: usize = 2_192;
+
+    const fn ms(value: u64) -> Duration {
+        Duration::from_millis(value)
+    }
+
+    fn translator() -> Translator {
+        Translator::new(SourceKind::Replay)
+    }
+
+    fn observe(translator: &mut Translator, frame: &[u8], at: Duration) -> Observation {
+        translator.observe(frame, BUILD, at).unwrap()
+    }
+
+    fn with_time(seconds: f64) -> Vec<u8> {
+        let mut frame = REAL_44.to_vec();
+        frame[1_700..1_708].copy_from_slice(&seconds.to_le_bytes());
+        frame
+    }
+
+    fn with_cars(count: i32) -> Vec<u8> {
+        let mut frame = REAL_44.to_vec();
+        frame[1_736..1_740].copy_from_slice(&count.to_le_bytes());
+        frame
+    }
+
+    fn ids(observation: &Observation) -> Vec<CarId> {
+        observation.state.cars.iter().map(|car| car.id).collect()
+    }
+
+    #[test]
+    fn a_new_track_or_a_clock_reset_starts_a_session_but_the_24h_wrap_does_not() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        assert_eq!(first.state.session.id, SessionId(1));
+        let again = observe(&mut t, REAL_44, ms(20));
+        assert_eq!(again.state.session.id, SessionId(1));
+        assert_eq!(ids(&again), ids(&first));
+
+        let mut other_track = REAL_44.to_vec();
+        other_track[1_632..1_640].copy_from_slice(b"Otro\0\0\0\0");
+        let second = observe(&mut t, &other_track, ms(40));
+        assert_eq!(second.state.session.id, SessionId(2));
+        assert!(ids(&second).iter().all(|id| !ids(&first).contains(id)));
+
+        // Vuelve a Barcelona: otra sesión (3). Después el reloj retrocede sin
+        // cambiar de circuito: otra más (4).
+        observe(&mut t, &with_time(10_000.0), ms(60));
+        let third = observe(&mut t, &with_time(50.0), ms(80));
+        assert_eq!(third.state.session.id, SessionId(4));
+
+        // Pasado el día, el reloj vuelve a empezar: misma sesión.
+        let mut t = translator();
+        observe(&mut t, &with_time(86_400.5), ms(0));
+        let wrapped = observe(&mut t, &with_time(10.0), ms(20));
+        assert_eq!(wrapped.state.session.id, SessionId(1));
+    }
+
+    #[test]
+    fn a_slot_keeps_its_car_through_a_short_blink_and_a_driver_swap_but_not_a_long_absence() {
+        let mut t = translator();
+        let full = observe(&mut t, REAL_44, ms(0));
+        let last = full.state.cars[43].id;
+        let short = with_cars(43);
+        observe(&mut t, &short, ms(20));
+        let back = observe(&mut t, REAL_44, ms(40));
+        assert_eq!(back.state.cars[43].id, last, "parpadeo dentro de la gracia");
+
+        // Relevo de piloto sin interrupción: mismo coche.
+        let mut swap = REAL_44.to_vec();
+        swap[SCORING_BASE + 4..SCORING_BASE + 10].copy_from_slice(b"Nuevo\0");
+        let swapped = observe(&mut t, &swap, ms(60));
+        assert_eq!(swapped.state.cars[0].id, full.state.cars[0].id);
+        assert_eq!(swapped.state.cars[0].driver.name, "Nuevo");
+        assert_ne!(
+            swapped.state.cars[0].driver.id,
+            full.state.cars[0].driver.id
+        );
+
+        for step in 0..=SLOT_GRACE_FRAMES {
+            observe(&mut t, &short, ms(80 + step));
+        }
+        let long = observe(&mut t, REAL_44, ms(200));
+        assert_ne!(long.state.cars[43].id, last, "otra ocupación del hueco");
+        assert_eq!(long.state.cars[0].id, full.state.cars[0].id);
+    }
+
+    /// Cuerpo REST con un número por coche del frame.
+    fn standings(frame: &[u8], label: impl Fn(&Vehicle) -> String) -> Vec<u8> {
+        let grid = frame::admit(frame, BUILD).unwrap();
+        let rows: Vec<String> = grid
+            .vehicles
+            .iter()
+            .map(|vehicle| {
+                format!(
+                    r#"{{"slotID":{},"carNumber":"{}","vehicleName":"{}"}}"#,
+                    vehicle.slot,
+                    vehicle.slot % 1000,
+                    label(vehicle)
+                )
+            })
+            .collect();
+        format!("[{}]", rows.join(",")).into_bytes()
+    }
+
+    #[test]
+    fn car_numbers_join_by_slot_and_label_and_expire_with_the_rest_ttl() {
+        let mut t = translator();
+        let body = standings(REAL_44, |vehicle| vehicle.name.clone());
+        t.rest.accept_standings(&body, ms(100)).unwrap();
+        let joined = observe(&mut t, REAL_44, ms(200));
+        let expected: Vec<String> = frame::admit(REAL_44, BUILD)
+            .unwrap()
+            .vehicles
+            .iter()
+            .map(|vehicle| (vehicle.slot % 1000).to_string())
+            .collect();
+        let numbers: Vec<_> = joined
+            .state
+            .cars
+            .iter()
+            .map(|car| car.number.clone())
+            .collect();
+        assert_eq!(numbers, expected);
+        // 2 s después de iniciar la consulta, los números caducan y no se congelan.
+        let later = observe(&mut t, REAL_44, ms(2_101));
+        assert!(later.state.cars.iter().all(|car| car.number.is_empty()));
+
+        // Etiqueta distinta a la del frame: el hueco se reutilizó, no se asigna número.
+        let mut t = translator();
+        let body = standings(REAL_44, |_| "Otro coche".to_owned());
+        t.rest.accept_standings(&body, ms(100)).unwrap();
+        let mismatched = observe(&mut t, REAL_44, ms(200));
+        assert!(
+            mismatched
+                .state
+                .cars
+                .iter()
+                .all(|car| car.number.is_empty())
+        );
+    }
+
+    #[test]
+    fn rest_started_before_a_session_change_cannot_name_the_new_sessions_cars() {
+        let mut t = translator();
+        let body = standings(REAL_44, |vehicle| vehicle.name.clone());
+        t.rest.accept_standings(&body, ms(100)).unwrap();
+        assert!(
+            !observe(&mut t, REAL_44, ms(200)).state.cars[0]
+                .number
+                .is_empty()
+        );
+        let mut other_track = REAL_44.to_vec();
+        other_track[1_632..1_640].copy_from_slice(b"Otro\0\0\0\0");
+        let changed = observe(&mut t, &other_track, ms(300));
+        assert!(changed.state.cars.iter().all(|car| car.number.is_empty()));
+        // Una consulta iniciada tras el cambio sí vale.
+        t.rest.accept_standings(&body, ms(310)).unwrap();
+        assert!(
+            !observe(&mut t, &other_track, ms(320)).state.cars[0]
+                .number
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn rest_backs_up_only_what_the_frame_lacks_and_reports_positive_yellow_evidence() {
+        let mut t = translator();
+        let mut frame = REAL_44.to_vec();
+        frame[1_632] = 0; // circuito vacío
+        frame[1_696..1_700].copy_from_slice(&99_i32.to_le_bytes()); // tipo desconocido
+        let bare = observe(&mut t, &frame, ms(0));
+        assert!(matches!(
+            bare.state.session.track_name,
+            Quality::Unavailable
+        ));
+        assert!(matches!(bare.state.session.kind, Quality::Unavailable));
+        assert_eq!(bare.state.capabilities.flags, Capability::Supported);
+
+        t.rest
+            .accept_session(
+                br#"{"trackName":"Track-01","session":"RACE1","yellowFlagState":4}"#,
+                ms(10),
+            )
+            .unwrap();
+        let backed = observe(&mut t, &frame, ms(20));
+        assert!(
+            matches!(&backed.state.session.track_name, Quality::Reliable(name) if name == "Track-01")
+        );
+        assert!(matches!(
+            backed.state.session.kind,
+            Quality::Reliable(SessionKind::Race)
+        ));
+        assert!(matches!(&backed.state.flags, Quality::Reliable(flags) if flags.len() == 1));
+        assert_eq!(backed.state.capabilities.flags, Capability::Fresh);
+
+        // Dato REST caducado: la bandera queda como último valor conocido.
+        let old = observe(&mut t, REAL_44, ms(2_500));
+        assert!(matches!(&old.state.flags, Quality::Stale(_)));
+        assert_eq!(old.state.capabilities.flags, Capability::WithData);
+    }
+
+    #[test]
+    fn a_stalled_session_clock_marks_everything_stale_and_declares_data_without_freshness() {
+        let mut t = translator();
+        let fresh = observe(&mut t, REAL_44, ms(0));
+        assert!(!t.needs_refresh(ms(499)));
+        assert!(t.needs_refresh(ms(500)));
+        let stale = observe(&mut t, REAL_44, ms(600));
+        assert!(!t.needs_refresh(ms(700)));
+        assert!(matches!(stale.state.cars[0].position, Quality::Stale(_)));
+        assert!(matches!(stale.state.session.elapsed_s, Quality::Stale(_)));
+        let telemetry = stale.state.player.unwrap().telemetry;
+        assert!(matches!(telemetry.gear, Quality::Stale(1)));
+        let caps = stale.state.capabilities;
+        for declared in [
+            caps.session_clock,
+            caps.positions,
+            caps.spatial,
+            caps.driver_inputs,
+            caps.powertrain,
+        ] {
+            assert_eq!(declared, Capability::WithData);
+        }
+        // Los valores no cambian, solo su calidad.
+        assert_eq!(ids(&stale), ids(&fresh));
+        assert_eq!(stale.state.cars[0].pose.current(), None);
+        assert!(matches!(stale.state.cars[0].pose, Quality::Stale(_)));
+    }
+
+    #[test]
+    fn an_unusable_frame_is_rejected_without_touching_the_state() {
+        let mut t = translator();
+        let good = observe(&mut t, REAL_44, ms(0));
+        assert_eq!(
+            t.observe(&REAL_44[..100], BUILD, ms(20)).unwrap_err(),
+            Rejection::ShortBuffer
+        );
+        assert_eq!(
+            t.observe(REAL_44, "9.9.9.9", ms(20)).unwrap_err(),
+            Rejection::UnsupportedBuild
+        );
+        let after = observe(&mut t, REAL_44, ms(40));
+        assert_eq!(ids(&after), ids(&good));
+        assert_eq!(after.state.session.id, good.state.session.id);
+    }
+
+    #[test]
+    fn menu_frames_are_valid_observations_with_supported_but_dataless_signals() {
+        let menu = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
+        let observation = observe(&mut translator(), menu, ms(0));
+        assert!(observation.state.cars.is_empty() && observation.state.player.is_none());
+        assert_eq!(
+            observation.state.capabilities.positions,
+            Capability::Supported
+        );
+        assert_eq!(
+            observation.state.capabilities.session_clock,
+            Capability::Fresh
+        );
     }
 }

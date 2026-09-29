@@ -7,16 +7,17 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::http::{Client, Endpoint, Response, Status};
+use super::http::{Client, Endpoint};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(250);
 const MAX_BACKOFF: Duration = Duration::from_secs(2);
 
-/// Ronda de consultas: cada endpoint con el instante en que se inició.
+/// Ronda de consultas: cada endpoint con su cuerpo (`None`: sin respuesta
+/// utilizable) y el instante en que se inició.
 pub(in crate::adapter::lmu) struct Report {
-    pub standings: Response,
+    pub standings: Option<Vec<u8>>,
     pub standings_started: Instant,
-    pub session: Response,
+    pub session: Option<Vec<u8>>,
     pub session_started: Instant,
 }
 
@@ -46,7 +47,7 @@ impl Poller {
                 }
                 let session_started = Instant::now();
                 let session = client.fetch(Endpoint::SessionInfo);
-                let complete = standings.status == Status::Fresh && session.status == Status::Fresh;
+                let complete = standings.is_some() && session.is_some();
                 *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(Report {
                     standings,
                     standings_started,
@@ -138,8 +139,7 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(5));
         };
-        assert_eq!(report.standings.status, Status::Fresh);
-        assert_eq!(report.session.status, Status::Fresh);
+        assert!(report.standings.is_some() && report.session.is_some());
         assert!(report.standings_started <= report.session_started);
         assert!(poller.take().is_none(), "una ronda se entrega una sola vez");
         // `drop` despierta al hilo dormido: no espera los 30 s.
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unreachable_endpoint_is_reported_not_fresh() {
+    fn an_unreachable_endpoint_is_reported_without_a_body() {
         let port = {
             let listener = TcpListener::bind("127.0.0.1:0").unwrap();
             listener.local_addr().unwrap().port()
@@ -160,9 +160,6 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(5));
         };
-        // Windows tarda más que el plazo en rechazar un puerto cerrado: `Timeout`.
-        for status in [report.standings.status, report.session.status] {
-            assert!(matches!(status, Status::Offline | Status::Timeout));
-        }
+        assert!(report.standings.is_none() && report.session.is_none());
     }
 }

@@ -4,7 +4,7 @@
 //! ViewModel cambia.
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use gpui::{
     App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -16,7 +16,10 @@ use vantare_domain::{Snapshot, pedals, radar, standings};
 
 use crate::overlay::{self, Hwnd};
 use crate::standings::model::{self, Config, Metric, Plan, Status, Vm};
-use crate::standings::{motion::Motion, view};
+use crate::standings::{
+    motion::{Motion, Wake},
+    view,
+};
 use crate::{pedals as pedals_view, radar as radar_view, text};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +50,8 @@ enum Widget {
 pub struct Overlay {
     widget: Widget,
     prefs: Preferences,
+    /// Hay un despertar programado (ver `wake_after`).
+    wake_pending: bool,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -62,9 +67,27 @@ impl Overlay {
         Self {
             widget,
             prefs,
+            wake_pending: false,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
+    }
+
+    /// Repinta al cabo de `after` (un aviso quieto que caduca). Un solo despertar
+    /// pendiente a la vez: los avisos caducan en el orden en que nacieron.
+    fn wake_after(&mut self, after: Duration, cx: &mut Context<Self>) {
+        if self.wake_pending {
+            return;
+        }
+        self.wake_pending = true;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(after).await;
+            let _ = this.update(cx, |overlay, cx| {
+                overlay.wake_pending = false;
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     #[cfg(feature = "paint-stats")]
@@ -161,7 +184,7 @@ impl Standings {
 }
 
 impl Render for Overlay {
-    fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let kind = self.kind();
         #[cfg(feature = "paint-stats")]
@@ -184,13 +207,12 @@ impl Render for Overlay {
             .h(px(size.1))
             .into_any_element()
         };
-        match &mut self.widget {
+        let mut wake = Wake::Idle;
+        let element = match &mut self.widget {
             Widget::Standings(s) => {
                 let now = Instant::now();
                 let frame = s.motion.frame(&s.vm, s.plan.visible_rows, now);
-                if s.motion.animating(now) {
-                    window.request_animation_frame();
-                }
+                wake = s.motion.wake(now);
                 let scene = view::Scene {
                     config: s.config.clone(),
                     vm: s.vm.clone(),
@@ -215,16 +237,31 @@ impl Render for Overlay {
                     pedals_view::paint(&vm, window, cx);
                 }))
             }
+        };
+        // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
+        match wake {
+            Wake::Frame => window.request_animation_frame(),
+            Wake::At(after) => self.wake_after(after, cx),
+            Wake::Idle => {}
         }
+        element
     }
 }
 
-/// Quita el marco de sistema y hace la ventana overlay la primera vez.
-fn attach(hwnd: &mut Option<Hwnd>, window: &Window) {
+/// Convierte la ventana en overlay la primera vez, con su esquina en `origin`
+/// (px lógicos de pantalla).
+fn attach(hwnd: &mut Option<Hwnd>, window: &Window, origin: (f32, f32)) {
     if hwnd.is_none() {
         *hwnd = overlay::hwnd_of(window);
         if let Some(hwnd) = *hwnd {
-            overlay::apply(hwnd);
+            let scale = window.scale_factor();
+            overlay::apply(
+                hwnd,
+                (
+                    (origin.0 * scale).round() as i32,
+                    (origin.1 * scale).round() as i32,
+                ),
+            );
         }
     }
 }
@@ -234,6 +271,7 @@ fn attach(hwnd: &mut Option<Hwnd>, window: &Window) {
 /// Win32: `Window::resize` de GPUI volvería a sumar el marco de sistema.
 pub(crate) struct Single {
     widget: Entity<Overlay>,
+    origin: (f32, f32),
     hwnd: Option<Hwnd>,
     size: (f32, f32),
 }
@@ -249,7 +287,7 @@ impl Render for Single {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame();
-        attach(&mut self.hwnd, window);
+        attach(&mut self.hwnd, window, self.origin);
         let wanted = self.widget.read(cx).wanted_size();
         if self.size != wanted {
             self.size = wanted;
@@ -272,6 +310,7 @@ impl Render for Single {
 /// (ver README, «Repintado en la ventana grande»).
 struct Screen {
     widgets: Vec<(Entity<Overlay>, (f32, f32))>,
+    origin: (f32, f32),
     hwnd: Option<Hwnd>,
 }
 
@@ -279,7 +318,7 @@ impl Render for Screen {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame();
-        attach(&mut self.hwnd, window);
+        attach(&mut self.hwnd, window, self.origin);
         div()
             .size_full()
             .children(self.widgets.iter().map(|(widget, (x, y))| {
@@ -327,6 +366,7 @@ pub(crate) fn open_window(
     let handle = cx.open_window(popup(bounds), move |_, cx| {
         cx.new(|_| Single {
             widget: root,
+            origin,
             hwnd: None,
             size: (w, h),
         })
@@ -334,36 +374,54 @@ pub(crate) fn open_window(
     Ok((widget, handle.entity(cx)?))
 }
 
-/// Abre una ventana por monitor que tenga widgets (los de `placed` cuya esquina
-/// cae en él) y devuelve los widgets creados.
+type Placed = Vec<(Kind, (f32, f32))>;
+
+/// Reparte los widgets (posición global) entre los monitores: cada uno recibe
+/// los que tienen la esquina dentro, con la posición relativa a su esquina.
+fn partition(monitors: &[Bounds<Pixels>], placed: &[(Kind, (f32, f32))]) -> Vec<Placed> {
+    monitors
+        .iter()
+        .map(|monitor| {
+            let (ox, oy) = (f32::from(monitor.origin.x), f32::from(monitor.origin.y));
+            placed
+                .iter()
+                .filter(|(_, (x, y))| monitor.contains(&point(px(*x), px(*y))))
+                .map(|&(kind, (x, y))| (kind, (x - ox, y - oy)))
+                .collect()
+        })
+        .collect()
+}
+
+/// Abre una ventana por monitor que tenga widgets y devuelve los widgets
+/// creados. Los monitores sin widgets no reciben ventana.
 fn open_screens(
     cx: &mut App,
     placed: &[(Kind, (f32, f32))],
     prefs: Preferences,
 ) -> Vec<Entity<Overlay>> {
+    let displays = cx.displays();
+    let bounds: Vec<_> = displays.iter().map(|d| d.bounds()).collect();
     let mut all = Vec::new();
-    for display in cx.displays() {
-        let bounds = display.bounds();
-        let widgets: Vec<_> = placed
-            .iter()
-            .filter(|(_, (x, y))| bounds.contains(&point(px(*x), px(*y))))
-            .map(|(kind, (x, y))| {
-                let at = (
-                    x - f32::from(bounds.origin.x),
-                    y - f32::from(bounds.origin.y),
-                );
-                (cx.new(|_| Overlay::new(*kind, prefs)), at)
-            })
-            .collect();
-        if widgets.is_empty() {
+    for ((display, bounds), mine) in displays
+        .iter()
+        .zip(bounds.iter())
+        .zip(partition(&bounds, placed))
+    {
+        if mine.is_empty() {
             continue;
         }
+        let widgets: Vec<_> = mine
+            .into_iter()
+            .map(|(kind, at)| (cx.new(|_| Overlay::new(kind, prefs)), at))
+            .collect();
         all.extend(widgets.iter().map(|(widget, _)| widget.clone()));
-        let mut options = popup(bounds);
+        let mut options = popup(*bounds);
         options.display_id = Some(display.id());
+        let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
         let opened = cx.open_window(options, move |_, cx| {
             cx.new(|_| Screen {
                 widgets,
+                origin,
                 hwnd: None,
             })
         });
@@ -415,10 +473,23 @@ fn kind_of(index: usize) -> Kind {
     [Kind::Standings, Kind::Radar, Kind::Pedals][index % 3]
 }
 
+/// Desplazamiento de toda la cuadrícula (`VANTARE_DESPLAZAMIENTO=x,y`, px): sirve
+/// para probar varios monitores empujando parte de los widgets al segundo.
+fn layout_offset() -> (f32, f32) {
+    std::env::var("VANTARE_DESPLAZAMIENTO")
+        .ok()
+        .and_then(|text| {
+            let (x, y) = text.split_once(',')?;
+            Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
+        })
+        .unwrap_or((0.0, 0.0))
+}
+
 fn origin_of(index: usize) -> (f32, f32) {
+    let (dx, dy) = layout_offset();
     (
-        20.0 + (index % 4) as f32 * 470.0,
-        20.0 + (index / 4) as f32 * 60.0,
+        dx + 20.0 + (index % 4) as f32 * 470.0,
+        dy + 20.0 + (index / 4) as f32 * 60.0,
     )
 }
 
@@ -515,6 +586,61 @@ mod tests {
             &mut vm,
             radar::project(&source::synthetic(300))
         ));
+    }
+
+    /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
+    fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
+        let mut standings = Standings::new();
+        (0..30 * 60)
+            .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
+            .count()
+    }
+
+    #[test]
+    fn realistic_feed_repaints_standings_rarely() {
+        let realistic = standings_repaints(source::realistic);
+        assert!(
+            (30..=240).contains(&realistic),
+            "reloj cada segundo y algún gap o adelantamiento: {realistic}"
+        );
+        assert_eq!(
+            standings_repaints(source::quiet),
+            1,
+            "solo el primer estado"
+        );
+        assert!(
+            standings_repaints(source::synthetic) > 900,
+            "el de estrés lo cambia casi todo"
+        );
+    }
+
+    #[test]
+    fn each_monitor_gets_only_its_widgets_relative_to_its_corner() {
+        let monitor =
+            |x: f32, y: f32, w: f32, h: f32| Bounds::new(point(px(x), px(y)), size(px(w), px(h)));
+        // Principal 1920x1080 y otro a su izquierda (coordenadas negativas) y uno vacío.
+        let monitors = [
+            monitor(0.0, 0.0, 1920.0, 1080.0),
+            monitor(-1280.0, 0.0, 1280.0, 1024.0),
+            monitor(5000.0, 0.0, 800.0, 600.0),
+        ];
+        let placed = vec![
+            (Kind::Standings, (20.0, 20.0)),
+            (Kind::Radar, (-1200.0, 50.0)),
+            (Kind::Pedals, (1900.0, 1079.0)),
+        ];
+
+        let parts = partition(&monitors, &placed);
+
+        assert_eq!(
+            parts[0],
+            [
+                (Kind::Standings, (20.0, 20.0)),
+                (Kind::Pedals, (1900.0, 1079.0))
+            ]
+        );
+        assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
+        assert!(parts[2].is_empty(), "sin widgets no hay ventana");
     }
 
     #[test]

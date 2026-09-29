@@ -79,20 +79,112 @@ fotogramas de ventana, `render` de cada widget y pintados reales):
   mismos en ambos modos; lo que cambia es el número de fotogramas de ventana (ver
   abajo).
 
-- **Medido en release** (`--release --features paint-stats`, 10 s tras 6 s de
-  calentamiento, esta máquina, carrera sintética completa a 30 Hz; una sola
-  pasada, sin DWM en el GPU): la CPU es la misma, la diferencia está en los
-  fotogramas y en la GPU 3D del proceso.
+### Ritmo de pintado
 
-| Widgets | Modo | CPU (% de un núcleo) | GPU 3D del proceso | fotogramas de ventana/s | RAM |
-| ---: | --- | ---: | ---: | ---: | ---: |
-| 4 | `por-widget` | 19,5 | 2,0 % | 300 | 124 MB |
-| 4 | `una` | 20,5 | 1,3 % | 120 | 71 MB |
-| 22 | `por-widget` | 89,1 | 8,1 % | 1345 | 87 MB |
-| 22 | `una` | 89,3 | 5,4 % | 117 | 81 MB |
+Cómo pinta GPUI en Windows (rev `72d28c32`, leído en `gpui_windows`):
 
-  `render` y pintados por widget son idénticos en los dos modos (Standings domina:
-  ~120 pintados/s cada uno por sus animaciones). `por-widget` presenta cada ventana
-  pequeña por separado (1345 presentaciones/s con 22); `una` presenta una sola
-  ventana grande unas 120 veces/s. El coste de DWM al componer esas superficies no
-  entra en la GPU del proceso y hay que medirlo aparte (`dwm.exe`).
+- **Los fotogramas ya van a la frecuencia del monitor.** Aunque el renderer llama a
+  `Present(0, 0)`, ningún dibujo nace de ahí: un hilo `VSyncProvider` espera a
+  `DwmFlush` e invalida **todas** las ventanas en cada vsync, y cada ventana dibuja
+  solo si está sucia. No hay ninguna vía de dibujo fuera de vsync (Windows no
+  implementa `schedule_frame`), así que una ventana no puede presentar más veces
+  que el refresco (aquí 120 Hz). Lo que sí escala es ese tope **por ventana**: con 22
+  ventanas y todo sucio caben 22 × 120 presentaciones por segundo. Por eso no hace
+  falta ningún reloj de fotograma propio ni parchear GPUI.
+- **Sin cambios, cero fotogramas.** Una ventana sin nada sucio no dibuja ni presenta.
+  Lo único que queda es el coste de GPUI de recibir un `WM_PAINT` por ventana en
+  cada vsync (ver «quieta» abajo); no se puede quitar sin parchear GPUI.
+- **Qué depende de este crate**: (1) el repintado por datos, ya limitado a cambios de
+  ViewModel; (2) las animaciones de Standings. `Motion::wake` distingue ahora lo que
+  se mueve de verdad (un fotograma por vsync) de un aviso ya quieto que solo
+  caduca (un despertar puntual con un temporizador, sin fotogramas) y de nada (cero).
+  Antes se pedía un fotograma por vsync durante los 1200 ms de vida de cada aviso,
+  aunque tras 500 ms no cambiara nada.
+
+**Fuentes de prueba** (`VANTARE_FUENTE`, por defecto `realista`; todas a 30 Hz):
+
+| Valor | Qué cambia |
+| --- | --- |
+| `realista` | Como una carrera real: reloj cada segundo; gaps, vueltas y mejores vueltas de cada coche una vez por vuelta (escalonados); unos 4 adelantamientos por minuto entre los 10 primeros; un coche en boxes 20 s cada 5 minutos. Radar y pedales cambian siempre (telemetría del jugador). |
+| `estres` | La anterior: todo cambia en cada instantánea. Sobrestima. |
+| `quieta` | La escena `standings-44` con la secuencia avanzando: ningún ViewModel cambia. |
+
+**Medición** (`measure.ps1`, build release con `paint-stats`, 10 s tras 6 s de
+calentamiento, esta máquina a 120 Hz, una pasada; medias de las últimas 10 líneas).
+«Antes» es el ritmo previo (un fotograma por vsync durante toda la vida de un aviso);
+«después» es `Motion::wake`. Fotogramas = dibujos de ventana por segundo sumando
+todas; `render` = `render` de Standings por segundo sumando todos.
+
+| Fuente | Widgets | Modo | Fotogramas/s antes → después | `render` Standings antes → después | CPU % de un núcleo antes → después | GPU 3D del proceso antes → después |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| realista | 4 | `por-widget` | 68 → 68 | 7 → 7 | 4,8 → 4,2 | 0,2 → 0,3 |
+| realista | 4 | `una` | 36 → 32 | 19 → 7 | 6,4 → 4,9 | 0,4 → 0,4 |
+| realista | 22 | `por-widget` | 499 → 441 | 79 → 20 | 22,2 → 19,3 | 1,7 → 1,7 |
+| realista | 22 | `una` | 37 → 33 | 80 → 28 | 20,2 → 19,2 | 1,5 → 1,5 |
+| estrés | 4 | `por-widget` | 300 → 268 | 240 → 206 | 24,1 → 17,2 | 2,0 → 1,8 |
+| estrés | 4 | `una` | 120 → 101 | 240 → 202 | 21,0 → 19,0 | 1,3 → 1,2 |
+| estrés | 22 | `por-widget` | 1357 → 1187 | 934 → 767 | 86,3 → 75,2 | 8,3 → 7,5 |
+| estrés | 22 | `una` | 117 → 103 | 935 → 814 | 97,4 → 70,6 | 5,2 → 4,7 |
+| quieta | 4 | `por-widget` | 0 → 0 | 0 → 0 | 1,5 → 1,1 | 0 → 0 |
+| quieta | 4 | `una` | 0 → 0 | 0 → 0 | 0,9 → 1,0 | 0 → 0 |
+| quieta | 22 | `por-widget` | 0 → 0 | 0 → 0 | 6,7 → 5,6 | 0 → 0 |
+| quieta | 22 | `una` | 0 → 0 | 0 → 0 | 2,2 → 2,9 | 0 → 0 |
+
+Lectura:
+
+- Con datos realistas 4 widgets cuestan ~4-5 % de un núcleo y 22 widgets ~19 %
+  (antes de este cambio, 20-22 %), frente al 75-97 % de la fuente de estrés: la
+  fuente anterior sobrestimaba unas 4 veces. Radar y pedales, que cambian con la
+  telemetría, son ya casi todo el coste.
+- `render` de Standings con 22 widgets baja de 79 a 20 por segundo (`por-widget`)
+  y de 80 a 28 (`una`): son las animaciones. Ninguna ventana supera los 120
+  fotogramas por segundo del monitor (con `estres` y 4 widgets, cada Standings
+  ronda 100).
+- Sin datos ni animación: 0 fotogramas en los cuatro casos. El 1-7 % de CPU que
+  queda es la espera de `WM_PAINT` por ventana en cada vsync (más en `por-widget`:
+  22 ventanas × 120 Hz); `una` la reduce a la de una ventana.
+- `una` presenta ~13 veces menos fotogramas con 22 widgets (33 frente a 441 con
+  la fuente realista) sin más CPU; la GPU del proceso es parecida porque cada
+  ventana pequeña cuesta poco. El coste de DWM al componer cada modo no entra en
+  estas cifras.
+- Tope opcional: limitar las animaciones a 60 Hz en monitores de 120 Hz o más
+  reduciría a la mitad los fotogramas de animación (de ~100 por Standings con
+  `estres`), pero exige conocer el refresco (GPUI no lo expone; habría que leerlo
+  de DWM) o un temporizador propio que en monitores de 60 Hz desincroniza con el
+  vsync. No está implementado: ¿lo queréis?
+
+### Posición exacta de las ventanas
+
+GPUI deja el área cliente de una ventana 4 px por encima de lo pedido (en Y); las
+ventanas de `por-widget` salían en y=16 en vez de 20 y la de `una` en y=−4 (sus
+4 px inferiores sin cubrir). `overlay::apply` ya no lee la posición que dejó GPUI:
+recibe la esquina pedida (px físicos) y la fija con `SetWindowPos`.
+`check-windows.ps1` lo comprueba con `EnumWindows`/`GetWindowRect` en los dos modos
+(4 widgets, 100 % de DPI, monitor principal): cada ventana debe coincidir con su
+posición y tamaño exactos.
+
+```powershell
+cd vantare-v2/native; cargo build -p vantare-ui
+.\ui\check-windows.ps1     # exit 0 = todo en su sitio
+```
+
+### Varios monitores
+
+`--ventanas una` crea una ventana del tamaño de cada monitor **que tenga widgets**
+(los que tienen la esquina dentro; `app::partition`, con test para monitores con
+coordenadas negativas y vacíos) y ninguna para los demás. Las posiciones de la
+cuadrícula (`origin_of`) son globales y caen en el monitor principal; para probar
+varios monitores, `VANTARE_DESPLAZAMIENTO=x,y` (px) desplaza toda la cuadrícula:
+
+```powershell
+# Monitor principal de 1920 px y otro a su derecha: con este desplazamiento los
+# widgets de la 4.ª columna (x = 2030) caen en el segundo monitor; el resto, en el principal.
+$env:VANTARE_DESPLAZAMIENTO = '600,0'
+vantare-overlays 22 --ventanas una          # esperado: 2 ventanas, una por monitor
+vantare-overlays 22 --ventanas por-widget   # las mismas posiciones, 22 ventanas
+```
+
+Comprobar con `EnumWindows` (o a ojo) que hay una ventana transparente por monitor
+con widgets y que los widgets están donde en `por-widget`. No he podido probarlo con
+dos monitores físicos (esta máquina solo tiene uno); el reparto está cubierto por
+un test unitario.

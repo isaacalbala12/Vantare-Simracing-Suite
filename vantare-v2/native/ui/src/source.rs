@@ -123,13 +123,40 @@ pub fn fixed() -> Snapshot {
     }
 }
 
-/// Carrera de 22 coches determinista en función del tiempo: reordenaciones,
-/// paradas en boxes, mejoras de vuelta, coches alrededor del jugador y pedales.
+/// Carrera de 22 coches de estrés: cambia todo en cada instantánea
+/// (reordenaciones cada pocos segundos, gaps continuos, boxes frecuentes).
 pub fn synthetic(tick: u64) -> Snapshot {
+    race(tick, false)
+}
+
+/// Carrera de 22 coches con el ritmo de una real: la clasificación se reordena
+/// cada varios segundos; los gaps, vueltas y mejores vueltas de cada coche solo
+/// cambian al cruzar meta (una vez por vuelta, escalonados entre coches); el
+/// reloj avanza cada segundo. Radar y pedales sí cambian continuamente, como la
+/// telemetría del jugador.
+pub fn realistic(tick: u64) -> Snapshot {
+    race(tick, true)
+}
+
+/// Escena quieta (`fixed`) con la secuencia avanzando: ningún ViewModel cambia.
+pub fn quiet(tick: u64) -> Snapshot {
+    Snapshot {
+        sequence: tick + 1,
+        ..fixed()
+    }
+}
+
+/// Carrera determinista en función del tiempo: reordenaciones, paradas en boxes,
+/// mejoras de vuelta, coches alrededor del jugador y pedales.
+fn race(tick: u64, realistic: bool) -> Snapshot {
     let t = tick as f64 / RATE_HZ as f64;
     // Orden por una clave que oscila: los coches se adelantan de forma suave.
     let mut order: Vec<u32> = (1..=CARS).collect();
-    let key = |id: u32| f64::from(id) + 2.0 * (t * 0.3 + f64::from(id)).sin();
+    let key = |id: u32| {
+        // La realista adelanta unas 4 veces por minuto entre los 10 primeros.
+        let (speed, amplitude) = if realistic { (0.008, 2.0) } else { (0.3, 2.0) };
+        f64::from(id) + amplitude * (t * speed + f64::from(id)).sin()
+    };
     order.sort_by(|a, b| key(*a).total_cmp(&key(*b)));
 
     let mut previous_gap = 0.0;
@@ -138,19 +165,46 @@ pub fn synthetic(tick: u64) -> Snapshot {
         .enumerate()
         .map(|(index, &id)| {
             let position = index as u32 + 1;
-            let gap = 0.45 * index as f64 + 0.05 * (t * 0.7 + f64::from(id)).sin();
+            let phase = f64::from(id);
+            // Vuelta en curso de este coche: 90 s, escalonadas entre coches.
+            let lap = ((t + 4.0 * phase) / 90.0).floor();
+            let gap = 0.45 * index as f64
+                + if realistic {
+                    0.3 * (lap + phase).sin()
+                } else {
+                    0.05 * (t * 0.7 + phase).sin()
+                };
             let mut car = car(id, format!("PILOTO {id:02}"), position);
             car.number = id.to_string();
-            car.laps = Reliable(1 + (t / 90.0) as u32);
-            car.best_lap_s = Reliable(100.0 + 0.13 * f64::from(id) - (t / 20.0).floor() * 0.01);
-            car.last_lap_s = Reliable(101.0 + 0.11 * f64::from(id));
+            car.laps = Reliable(1 + lap as u32);
+            car.best_lap_s = Reliable(
+                100.0 + 0.13 * phase
+                    - if realistic {
+                        ((t + 7.0 * phase) / 120.0).floor()
+                    } else {
+                        (t / 20.0).floor()
+                    } * 0.01,
+            );
+            car.last_lap_s = Reliable(
+                101.0
+                    + 0.11 * phase
+                    + if realistic {
+                        0.05 * (lap + phase).sin()
+                    } else {
+                        0.0
+                    },
+            );
             car.gap_leader = Reliable(Gap::Time { seconds: gap });
             car.gap_ahead = Estimated(Gap::Time {
                 seconds: (gap - previous_gap).max(0.0),
             });
-            car.in_pits = Reliable((t / 6.0) as u64 % 11 == u64::from(id) % 11);
+            car.in_pits = Reliable(if realistic {
+                // Un coche distinto entra 20 s cada 5 minutos.
+                t % 300.0 < 20.0 && u64::from(id) == (t / 300.0) as u64 % u64::from(CARS) + 1
+            } else {
+                (t / 6.0) as u64 % 11 == u64::from(id) % 11
+            });
             // El jugador es el origen del radar; los demás oscilan a su alrededor.
-            let phase = f64::from(id);
             car.pose = Reliable(if id == PLAYER {
                 Pose::default()
             } else {
@@ -199,13 +253,19 @@ pub fn synthetic(tick: u64) -> Snapshot {
     }
 }
 
-/// Canal con la secuencia sintética a 30 Hz. El hilo termina cuando se suelta
-/// el receptor.
+/// Canal con la secuencia sintética a 30 Hz; `VANTARE_FUENTE` elige cuál:
+/// `realista` (por defecto), `estres` o `quieta`. El hilo termina cuando se
+/// suelta el receptor.
 pub fn local_feed() -> flume::Receiver<Arc<Snapshot>> {
+    let scene: fn(u64) -> Snapshot = match std::env::var("VANTARE_FUENTE").as_deref() {
+        Ok("estres") => synthetic,
+        Ok("quieta") => quiet,
+        _ => realistic,
+    };
     let (sender, receiver) = flume::bounded(4);
     thread::spawn(move || {
         for tick in 0.. {
-            if sender.send(Arc::new(synthetic(tick))).is_err() {
+            if sender.send(Arc::new(scene(tick))).is_err() {
                 break;
             }
             thread::sleep(Duration::from_millis(1000 / RATE_HZ));

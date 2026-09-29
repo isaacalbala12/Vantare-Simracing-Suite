@@ -13,6 +13,8 @@ use std::{
 const MAX_NOTICES: usize = 3;
 const NOTICE_MS: u64 = 1200;
 const FADE_MS: u64 = 200;
+/// Duración del barrido de mejora de vuelta (`frame`).
+const SWEEP_MS: u64 = 800;
 
 // ---------------------------------------------------------------------------
 // Curvas de tiempo
@@ -639,8 +641,8 @@ impl Motion {
                     EventKind::PersonalBest | EventKind::SessionBest => {
                         let elapsed =
                             now.saturating_duration_since(notice.start).as_secs_f32() * 1000.0;
-                        if elapsed < 800.0 {
-                            let p = EASE_OUT.at(elapsed / 800.0);
+                        if elapsed < SWEEP_MS as f32 {
+                            let p = EASE_OUT.at(elapsed / SWEEP_MS as f32);
                             // keyframes: 0 -> (0, -100 %), 0.4 -> (0.7, 0), 1 -> (0, +100 %)
                             let (opacity, x) = if p < 0.4 {
                                 let k = p / 0.4;
@@ -673,19 +675,49 @@ impl Motion {
         Frame { vis, ghosts }
     }
 
-    /// `true` mientras algo se mueve: la vista debe pedir otro fotograma.
-    pub fn animating(&self, now: Instant) -> bool {
-        self.flips.values().any(|t| t.running(now))
+    /// Qué necesita la vista para seguir al día: un fotograma por vsync mientras
+    /// algo se mueve, un despertar puntual cuando lo único pendiente es que
+    /// caduque un aviso ya quieto, o nada.
+    pub fn wake(&self, now: Instant) -> Wake {
+        let age = |n: &Notice| now.saturating_duration_since(n.start);
+        let moving = self.flips.values().any(|t| t.running(now))
             || self.fades.values().any(|t| t.running(now))
             || !self.exits.is_empty()
-            || !self.notices.is_empty()
             || self.battle_tw.values().any(|t| t.running(now))
             || self.best_tw.values().any(|t| t.running(now))
+            || self.flash_tw.values().any(|t| t.running(now))
+            || self.chip_tw.values().any(|t| t.running(now))
             || self
                 .pit_tw
                 .values()
                 .any(|(a, d)| a.running(now) || d.running(now))
+            // El barrido de mejora se anima por tiempo, sin `Tween`.
+            || self
+                .notices
+                .values()
+                .any(|n| n.kind != EventKind::Position && age(n) < Duration::from_millis(SWEEP_MS));
+        if moving {
+            return Wake::Frame;
+        }
+        self.notices
+            .values()
+            .filter_map(|n| Duration::from_millis(NOTICE_MS).checked_sub(age(n)))
+            .min()
+            .map_or(Wake::Idle, Wake::At)
     }
+
+    /// `true` mientras quede algo por animar o caducar.
+    pub fn animating(&self, now: Instant) -> bool {
+        self.wake(now) != Wake::Idle
+    }
+}
+
+/// Lo que la vista debe pedir a GPUI tras pintar (ver [`Motion::wake`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Wake {
+    Frame,
+    At(Duration),
+    Idle,
 }
 
 fn pit_tweens(active: bool, now: Instant) -> (Tween, Tween) {
@@ -857,6 +889,25 @@ mod tests {
             .frame(&next, 1, t0 + Duration::from_millis(250))
             .row("a");
         assert_eq!((end.pit_alpha, end.pit_dx), (1.0, 0.0));
+    }
+
+    #[test]
+    fn a_settled_notice_only_asks_to_wake_when_it_expires() {
+        let t0 = Instant::now();
+        let ms = Duration::from_millis;
+        let mut motion = Motion::new();
+        motion.update(&vm(vec![row("a", 1), row("b", 2)], 1), 2, true, t0);
+        assert_eq!(motion.wake(t0), Wake::Idle, "sin cambios no hay fotogramas");
+        let next = vm(vec![row("b", 1), row("a", 2)], 2);
+        motion.update(&next, 2, true, t0);
+        assert_eq!(motion.wake(t0), Wake::Frame);
+        // Pasados el FLIP (<= 460 ms) y el destello (500 ms) el chip queda quieto.
+        let settled = t0 + ms(700);
+        motion.frame(&next, 2, settled);
+        assert_eq!(motion.wake(settled), Wake::At(ms(500)));
+        let expired = t0 + ms(1300);
+        motion.frame(&next, 2, expired);
+        assert_eq!(motion.wake(expired), Wake::Idle);
     }
 
     #[test]

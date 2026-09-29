@@ -241,6 +241,16 @@ pub struct Metadata<'a> {
 /// RelativeSettled is the bootstrap view; the stateful settler replaces it
 /// when the cached projector is integrated.
 pub fn wrap_full(sections: Value, metadata: Metadata<'_>) -> Result<Value, FrameError> {
+    wrap(sections, metadata, true)
+}
+
+/// The cached projector sets RelativeSettled after cadence selection, so it
+/// does not need the reference frame's initial copy of the relative window.
+pub(crate) fn wrap_for_cache(sections: Value, metadata: Metadata<'_>) -> Result<Value, FrameError> {
+    wrap(sections, metadata, false)
+}
+
+fn wrap(sections: Value, metadata: Metadata<'_>, copy_relative: bool) -> Result<Value, FrameError> {
     if !matches!(
         metadata.state,
         "stopped"
@@ -281,7 +291,14 @@ pub fn wrap_full(sections: Value, metadata: Metadata<'_>) -> Result<Value, Frame
         };
         frame.insert(name.into(), value);
     }
-    frame.insert("relativeSettled".into(), frame["relative"].clone());
+    frame.insert(
+        "relativeSettled".into(),
+        if copy_relative {
+            frame["relative"].clone()
+        } else {
+            Value::Null
+        },
+    );
     frame.insert("contract".into(), json!(2));
     frame.insert("algorithm".into(), json!(2));
     frame.insert("epoch".into(), json!(metadata.epoch));

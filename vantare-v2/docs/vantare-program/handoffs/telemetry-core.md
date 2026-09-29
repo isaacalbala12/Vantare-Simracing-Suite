@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — copia Relative eliminada en cache Rust (2026-09-29)
+
+El camino cacheado no duplica `relative` para inicializar `relativeSettled`;
+el wrapper de referencia conserva su salida. 155 tests Rust, Clippy, formato
+y paridad estricta de 80 muestras reales LMU47 para Overlay, Engineer,
+Strategy y ocho facts pasaron. El coste aislado de esa copia era ~14–16 µs;
+la variación entre microbenchmarks impide atribuir una mejora global. El
+umbral de aceptación del corpus es ≥46 coches y las 47 filas observadas lo
+cumplen. Pendientes: Rust productivo en Wails/OBS, REST temporal, crash/facts,
+packaging y CPU total G0/G1/R con p99/RSS. Plan §116; Go productivo, PR #1415
+draft sin merge.
+
 ## VAN-778 / ISA-1403 — ocho facts exactos y 80 muestras por pipe (2026-09-29)
 
 El oráculo Go usa ahora `TelemetryEngine` completo y el reloj de captura:

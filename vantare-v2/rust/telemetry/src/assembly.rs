@@ -300,6 +300,7 @@ mod tests {
             .unwrap();
         let first: Value = serde_json::from_slice(ipc::decode(&first[1]).unwrap().payload).unwrap();
         assert_eq!(first["update"]["frame"]["sectionMask"], 2047);
+        assert!(first["update"]["frame"]["relativeSettled"].is_array());
         assert!(matches!(
             assembler.apply(&REAL_44[..100], "1.3.0.0", 101, 101, 100_100_000_000),
             Err(AssemblyError::Engine(_))
@@ -318,6 +319,7 @@ mod tests {
             .unwrap();
         assert_eq!(assembler.engine().current().unwrap().cursor.sequence, 2);
         assert_ne!(second["update"]["frame"]["sectionMask"], 2047);
+        assert!(second["update"]["frame"]["relativeSettled"].is_array());
         assert_eq!(
             second["update"]["frame"]["standings"],
             first["update"]["frame"]["standings"]

@@ -53,7 +53,7 @@ impl CachedOverlay {
         let spotter = fingerprint(&sections["spotter"]);
         let dirty = self.dirty(&fingerprints, flag, remaining, spotter);
         let mask = self.scheduler.plan(now_ns, dirty);
-        let mut update = frame::wrap_full(sections, metadata)?;
+        let mut update = frame::wrap_for_cache(sections, metadata)?;
         let published = &mut update["frame"];
         published["sectionMask"] = json!(mask);
         if let Some(memo) = &self.memo {

@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 115. Alcance de corpus revisado el 2026-09-29.
+implementación parcial hasta el corte 116. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -2153,3 +2153,20 @@ cerró el hijo limpiamente, cinco repeticiones. `go test ./...`, 155 tests Rust,
 replay Rust, Clippy con `replay-harness`, formato y build release pasaron. Es
 evidencia de la ruta IPC candidata; aún faltan REST productivo reproducible,
 Wails/OBS, replay tras crash, packaging y el banco CPU/p99/RSS.
+
+## 116. Evitar una copia transitoria de Relative (2026-09-29)
+
+El camino cacheado de Overlay deja de copiar `relative` para inicializar
+`relativeSettled`: el `Settler` siempre lo rellena tras seleccionar la cadencia.
+El wrapper de referencia conserva su comportamiento. Una regresión comprueba
+que el ensamblador publica `relativeSettled` como array tanto al arrancar como
+al reutilizar secciones. Pasaron 155 tests Rust, Clippy estricto, formato y
+la comparación estricta de 80 muestras reales/47 coches: cero diferencias
+en Overlay, Engineer, Strategy y ocho facts.
+
+El microbenchmark estático indica unos 14–16 µs para esa copia aislada; el
+ensamblado `overlay-only` de esta corrida tuvo mediana 1025,2 µs frente a
+1111,2 µs en la corrida previa, sin intercalación ni control de carga. Es
+diagnóstico, no una atribución causal ni el gate del 50% de CPU total. Quedan
+integración productiva, REST temporal, recuperación, packaging y banco G0/G1/R
+con el corpus real aceptado de al menos 46 coches.

@@ -2,6 +2,9 @@
 //! el pie producen 320 × 248, aunque el layout base declare 320 × 220.
 //! Sin geometría en `Snapshot` se muestra PISTA SIN MAPA, nunca un mapa ficticio.
 
+#[cfg(feature = "parity-capture")]
+mod scene;
+
 use gpui::{
     App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Pixels, Point, Window, linear_color_stop,
     linear_gradient, point, px, quad,
@@ -32,7 +35,14 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(&mut self.vm, track_map::project(snapshot, prefs))
+        #[cfg(not(feature = "parity-capture"))]
+        let next = track_map::project(snapshot, prefs);
+        #[cfg(feature = "parity-capture")]
+        let next = {
+            let geometry = scene::geometry(snapshot);
+            track_map::project_with_geometry(snapshot, prefs, geometry.as_ref())
+        };
+        replace_if_changed(&mut self.vm, next)
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
@@ -236,6 +246,89 @@ mod tests {
             (Some("LMGT3"), 0x2ecc71),
         ] {
             assert_eq!(class_color(class), expected);
+        }
+    }
+
+    #[cfg(not(feature = "parity-capture"))]
+    #[test]
+    fn reference_data_never_supplies_a_fake_live_outline() {
+        let snapshot = reference_snapshot();
+        let mut widget = Widget::new(Preferences::default());
+        assert!(!widget.ingest(&snapshot, Preferences::default()));
+        assert!(widget.vm.outline.is_empty());
+        assert!(widget.vm.markers.is_empty());
+        assert_eq!(widget.vm.empty_text, "PISTA SIN MAPA");
+        assert_eq!(widget.size(), (320.0, 220.0));
+    }
+
+    fn reference_snapshot() -> Snapshot {
+        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/track-map.snapshot.json"))
+            .expect("fixture DTO v3 reconstruida del frame congelado")
+    }
+
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn reference_draws_nineteen_available_positions_and_settles_immediately() {
+        let mut snapshot = reference_snapshot();
+        assert_eq!(snapshot.state.cars.len(), 20);
+        assert_eq!(
+            snapshot.state.player_car().expect("jugador").pose,
+            vantare_domain::Quality::Unavailable
+        );
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.size(), (320.0, 248.0));
+        assert_eq!(
+            widget.vm.track_label.as_deref(),
+            Some("Sebring International Raceway")
+        );
+        assert_eq!(widget.vm.outline.len(), 582);
+        assert_eq!(widget.vm.markers.len(), 19);
+        assert!(widget.vm.markers.iter().all(|marker| !marker.is_player));
+        let first = &widget.vm.markers[0];
+        assert!((first.point.x - 151.297_679_112_008_07).abs() < 1e-12);
+        assert!((first.point.y - 54.127_144_298_688_194).abs() < 1e-12);
+        assert!(
+            widget.vm.reference_text.is_none(),
+            "trazado del pack, escena de coches demo"
+        );
+        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.sequence += 1;
+        assert!(!widget.ingest(&snapshot, prefs));
+        assert!(
+            !widget.ingest(
+                &snapshot,
+                Preferences {
+                    language: Language::En,
+                    ..prefs
+                }
+            ),
+            "el idioma no cambia texto oculto"
+        );
+        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert!(!widget.animating());
+    }
+
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn capture_geometry_cannot_leak_into_another_source_epoch_or_state() {
+        let reference = reference_snapshot();
+        let mut live = reference.clone();
+        live.origin.source.kind = vantare_domain::SourceKind::Live;
+        let mut next_epoch = reference.clone();
+        next_epoch.epoch += 1;
+        let mut without_position = reference.clone();
+        without_position.state.cars[1].pose = vantare_domain::Quality::Unavailable;
+        for snapshot in [live, next_epoch, without_position] {
+            assert!(scene::geometry(&snapshot).is_none());
+            let mut widget = Widget::new(Preferences::default());
+            assert!(widget.ingest(&reference, Preferences::default()));
+            assert!(widget.ingest(&snapshot, Preferences::default()));
+            assert_eq!(widget.size(), (320.0, 220.0));
+            assert!(widget.vm.outline.is_empty());
+            assert_eq!(widget.frame(Preferences::default()).1, Wake::Idle);
+            assert!(!widget.animating());
         }
     }
 }

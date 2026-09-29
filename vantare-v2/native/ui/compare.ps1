@@ -23,8 +23,17 @@ $Out = (Resolve-Path -LiteralPath $Out).Path
 $candidate = Join-Path $Out "$Widget.png"
 Push-Location (Split-Path $PSScriptRoot)
 try {
-    cargo run -q -p vantare-ui --features parity-capture --bin vantare-workshop -j 4 -- --widget $Widget --escena $Scene --captura $candidate
-    if ($LASTEXITCODE -ne 0) { throw 'la captura falló' }
+    cargo build -q -p vantare-ui --features parity-capture --bin vantare-workshop -j 4
+    if ($LASTEXITCODE -ne 0) { throw 'la compilación falló' }
+    $exe = Join-Path (Get-Location) 'target\debugantare-workshop.exe'
+    # Captura del escritorio real: varios workers en paralelo solaparían sus
+    # ventanas, así que solo captura uno a la vez en toda la máquina.
+    $mutex = [System.Threading.Mutex]::new($false, 'Global\VantareParityCapture')
+    [void]$mutex.WaitOne()
+    try {
+        & $exe --widget $Widget --escena $Scene --captura $candidate
+        if ($LASTEXITCODE -ne 0) { throw 'la captura falló' }
+    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
 } finally { Pop-Location }
 python $Diff $candidate $Reference --threshold $Threshold --max-percent $MaxPercent --out (Join-Path $Out "$Widget.diff.png")
 exit $LASTEXITCODE

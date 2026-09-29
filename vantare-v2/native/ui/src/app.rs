@@ -4,7 +4,7 @@
 //! ViewModel cambia.
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use gpui::{
     App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -16,7 +16,10 @@ use vantare_domain::{Snapshot, pedals, radar, standings};
 
 use crate::overlay::{self, Hwnd};
 use crate::standings::model::{self, Config, Metric, Plan, Status, Vm};
-use crate::standings::{motion::Motion, view};
+use crate::standings::{
+    motion::{Motion, Wake},
+    view,
+};
 use crate::{pedals as pedals_view, radar as radar_view, text};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +50,8 @@ enum Widget {
 pub struct Overlay {
     widget: Widget,
     prefs: Preferences,
+    /// Hay un despertar programado (ver `wake_after`).
+    wake_pending: bool,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -62,9 +67,27 @@ impl Overlay {
         Self {
             widget,
             prefs,
+            wake_pending: false,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
+    }
+
+    /// Repinta al cabo de `after` (un aviso quieto que caduca). Un solo despertar
+    /// pendiente a la vez: los avisos caducan en el orden en que nacieron.
+    fn wake_after(&mut self, after: Duration, cx: &mut Context<Self>) {
+        if self.wake_pending {
+            return;
+        }
+        self.wake_pending = true;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(after).await;
+            let _ = this.update(cx, |overlay, cx| {
+                overlay.wake_pending = false;
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     #[cfg(feature = "paint-stats")]
@@ -161,7 +184,7 @@ impl Standings {
 }
 
 impl Render for Overlay {
-    fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let kind = self.kind();
         #[cfg(feature = "paint-stats")]
@@ -184,13 +207,12 @@ impl Render for Overlay {
             .h(px(size.1))
             .into_any_element()
         };
-        match &mut self.widget {
+        let mut wake = Wake::Idle;
+        let element = match &mut self.widget {
             Widget::Standings(s) => {
                 let now = Instant::now();
                 let frame = s.motion.frame(&s.vm, s.plan.visible_rows, now);
-                if s.motion.animating(now) {
-                    window.request_animation_frame();
-                }
+                wake = s.motion.wake(now);
                 let scene = view::Scene {
                     config: s.config.clone(),
                     vm: s.vm.clone(),
@@ -215,7 +237,14 @@ impl Render for Overlay {
                     pedals_view::paint(&vm, window, cx);
                 }))
             }
+        };
+        // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
+        match wake {
+            Wake::Frame => window.request_animation_frame(),
+            Wake::At(after) => self.wake_after(after, cx),
+            Wake::Idle => {}
         }
+        element
     }
 }
 
@@ -515,6 +544,32 @@ mod tests {
             &mut vm,
             radar::project(&source::synthetic(300))
         ));
+    }
+
+    /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
+    fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
+        let mut standings = Standings::new();
+        (0..30 * 60)
+            .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
+            .count()
+    }
+
+    #[test]
+    fn realistic_feed_repaints_standings_rarely() {
+        let realistic = standings_repaints(source::realistic);
+        assert!(
+            (30..=240).contains(&realistic),
+            "reloj cada segundo y algún gap o adelantamiento: {realistic}"
+        );
+        assert_eq!(
+            standings_repaints(source::quiet),
+            1,
+            "solo el primer estado"
+        );
+        assert!(
+            standings_repaints(source::synthetic) > 900,
+            "el de estrés lo cambia casi todo"
+        );
     }
 
     #[test]

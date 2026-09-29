@@ -5684,6 +5684,7 @@ dependencies = [
  "ureq",
  "vantare-domain",
  "vantare-ipc",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

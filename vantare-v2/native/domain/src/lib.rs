@@ -9,6 +9,7 @@
 
 mod adapter;
 mod capability;
+pub mod car_damage_numbers;
 mod flag;
 pub mod format;
 mod model;

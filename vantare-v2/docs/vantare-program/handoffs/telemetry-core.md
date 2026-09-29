@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — REST físico LMU47 en el batch Rust (2026-09-29)
+
+LMU 1.4.2.0 seguía abierto en práctica con 47 vehículos. Dos tests opt-in
+Rust comprobaron que `/rest/watch/standings` devuelve 47 filas, el endpoint
+`sessionInfo` declara 47 vehículos, ambos cuerpos se decodifican y la
+temperatura ambiental de REST llega al batch canónico de una lectura SHM
+real de al menos 46 coches. No se guardaron nombres ni cuerpos REST. Suite
+Rust release: 160 tests PASS; Clippy, formato, build release y replay SHM
+temporal LMU47 x80 PASS. El corpus temporal continúa con REST solapado
+sanitizado, no cuerpos completos de endpoint; falta su replay/paridad,
+G0/G1/R, packaging y Wails/OBS. PR #1415 draft y Go productivo.
+
 ## VAN-778 / ISA-1403 — coste del decoder Overlay (2026-09-29)
 
 En el fixture Rust estático, el decoder Go original midió 0,972–0,999 ms/frame,

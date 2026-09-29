@@ -289,4 +289,35 @@ mod tests {
         );
         assert!(cache.session.is_none());
     }
+
+    #[test]
+    fn live_lmu_rest_endpoints_decode_full_grid() {
+        use crate::lmu::rest::{decode_session_info, decode_standings};
+        use crate::quality::Field;
+
+        if std::env::var_os("VANTARE_LMU_LIVE_REST_TEST").is_none() {
+            return;
+        }
+        let client = Client::default();
+        let standings = client.fetch(Endpoint::Standings);
+        assert_eq!(standings.status, EndpointStatus::Fresh);
+        let standings_rows = serde_json::from_slice::<serde_json::Value>(&standings.body)
+            .expect("live standings JSON");
+        let standings_count = standings_rows.as_array().expect("standings array").len();
+        let standings = decode_standings(&standings.body).expect("live standings decode");
+        let session = client.fetch(Endpoint::SessionInfo);
+        assert_eq!(session.status, EndpointStatus::Fresh);
+        let session = decode_session_info(&session.body).expect("live sessionInfo decode");
+        let Field::Present {
+            value: vehicles, ..
+        } = session.vehicle_count
+        else {
+            panic!("live REST has no vehicle count");
+        };
+        assert!(vehicles >= 46, "live REST has {vehicles} vehicles");
+        assert_eq!(standings_count, usize::try_from(vehicles).unwrap());
+        assert_eq!(standings.player_present, Field::observed(true));
+        assert!(matches!(session.source_time_ns, Field::Present { value, .. } if value > 0));
+        eprintln!("live LMU REST: {vehicles} vehicles, both endpoints decoded");
+    }
 }

@@ -309,6 +309,41 @@ mod tests {
     }
 
     #[test]
+    fn live_lmu_rest_weather_reaches_canonical_batch() {
+        use crate::lmu::rest::RestStatus;
+        use crate::quality::Field;
+        use std::time::Duration;
+
+        if std::env::var_os("VANTARE_LMU_LIVE_REST_TEST").is_none() {
+            return;
+        }
+        let mut acquisition = Acquisition::open(30, 15).unwrap();
+        acquisition.configure(CONFIG).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut fused = false;
+        while Instant::now() < deadline {
+            let frames = acquisition.tick().unwrap();
+            if !frames.is_empty()
+                && acquisition.assembler.rest_cache_mut().status() == RestStatus::Live
+                && let Some(batch) = acquisition.assembler.engine().current()
+                && batch.state.vehicles.len() >= 46
+                && matches!(batch.state.ambient_temp_c, Field::Present { value, .. } if value.is_finite())
+            {
+                fused = true;
+                break;
+            }
+            // The real REST worker polls every 250 ms; bounded waiting avoids
+            // racing its first response while keeping this opt-in test finite.
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        acquisition.shutdown().unwrap();
+        assert!(
+            fused,
+            "live REST weather did not reach a 46+ car Rust batch"
+        );
+    }
+
+    #[test]
     fn genuine_menu_is_idle_without_committing_or_masking_invalid_frames() {
         let mut assembler = Assembler::new(30, 15).unwrap();
         assembler.configure(CONFIG).unwrap();

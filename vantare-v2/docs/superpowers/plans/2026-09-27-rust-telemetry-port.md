@@ -2441,3 +2441,16 @@ standings. Sustituir la tabla de punteros construida por calidad por un
 switch en el decodificador Go conservó las pruebas y dio 0,924–0,951
 ms/frame, ~288 kB y 2155 asignaciones. `go test ./...` pasó. El efecto es
 pequeño frente al coste del pipeline completo; no acredita R21 ni el 50 %.
+
+## 133. REST físico con 47 vehículos hasta el batch Rust (2026-09-29)
+
+Con LMU 1.4.2.0 abierto en práctica, dos tests opt-in Rust usaron el cliente
+HTTP loopback productivo. `standings` tenía 47 filas y se decodificó completo;
+`sessionInfo` declaró 47 vehículos. El segundo test abrió el proceso y el
+mapping LMU, esperó al poller REST y confirmó que la temperatura ambiental
+REST apareció en un batch canónico Rust con al menos 46 vehículos. Ambos
+pasaron. No se persistieron cuerpos REST con nombres de pilotos. La suite
+Rust release de 160 tests, Clippy estricto, formato, build release y replay
+temporal SHM LMU47 x80 pasaron. Esto prueba adquisición/fusión física puntual,
+no paridad temporal REST: el corpus actual conserva solo solapamiento
+sanitizado, sin cuerpos completos de ambos endpoints ni cambios de estado.

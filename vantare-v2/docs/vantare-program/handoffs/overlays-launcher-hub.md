@@ -1,5 +1,9 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-29 · VAN-779 / GitHub #1414 · CPU de la UI aislada
+
+La [medición preliminar](../../../native-egui/evidence/hub-ui-only-performance-2026-09-29.md) compara el Hub Rust actual con el harness React/Chromium en 1920 × 1080 y reposo, sin Go ni telemetría. En dos pasadas, egui/wgpu predeterminado ocupó 99,53 % de un núcleo y ~134 MiB USS; wgpu/OpenGL cayó por debajo de la resolución de CPU de la muestra y usó 75–94 MiB; Chromium usó ~2–3 % y ~248 MiB. Una ventana egui mínima reprodujo el bucle con DX12/Vulkan y descansó con OpenGL. La prueba Glow temporal también descansó y usó menos memoria, pero añade dependencias y no se incorporó. El código productivo conserva wgpu sin forzar backend hasta verificar otras GPU y la fidelidad del Hub. La comparación **no es Wails físico ni paridad visual**, así que no demuestra el ahorro final de Vantare. Sigue pendiente clonar Inicio y repetir en carga equivalente. PR borrador #1416, sin integración ni release.
+
 ## 2026-09-29 · VAN-779 / GitHub #1414 · Primer corte Rust + egui
 
 Isaac confirma Rust + egui/eframe/wgpu para la futura UI y overlays, Windows primero, con el núcleo Go conservado durante la transición. [ADR 0098](../../adr/0098-rust-egui-frontend-transition.md) fija la decisión y los límites. La rama aislada `vantareapp/isa-1414-rust-egui-hub-foundation` parte de `origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e`; la app Wails actual no se modificó. La tarea principal es [VAN-779](https://app.notion.com/p/3e9e51695c6581fabd90d1e7efc3ad13) y [#1414](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1414) es su puente técnico.

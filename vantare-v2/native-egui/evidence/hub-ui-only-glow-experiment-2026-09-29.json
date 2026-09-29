@@ -1,0 +1,397 @@
+{
+  "purpose": "Preliminary UI-only static-state comparison; no Wails, Go or LMU",
+  "frontend_ref": "origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e",
+  "rust_ref": "vantareapp/isa-1414-rust-egui-hub-foundation",
+  "viewport": "1920x1080 @ deviceScaleFactor 1",
+  "logical_processors": 16,
+  "versions": {
+    "python": "3.12.10",
+    "psutil": "7.2.2",
+    "playwright_python": "1.60.0"
+  },
+  "runs": [
+    {
+      "kind": "chromium-react-harness",
+      "pid": 25840,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 3.125,
+        "uss_mib_median": 251.76,
+        "rss_mib_sum_median": 619.0,
+        "private_commit_mib_median": 384.46,
+        "process_count_median": 10.0,
+        "system_cpu_percent_median": 26.6,
+        "points": [
+          {
+            "cpu_seconds": 0.0625,
+            "uss_mib": 254.7734375,
+            "rss_mib_sum": 621.8828125,
+            "private_commit_mib": 392.93359375,
+            "processes": 10,
+            "system_cpu_percent": 29.6
+          },
+          {
+            "cpu_seconds": 0.109375,
+            "uss_mib": 254.86328125,
+            "rss_mib_sum": 621.9921875,
+            "private_commit_mib": 392.953125,
+            "processes": 10,
+            "system_cpu_percent": 24.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 254.95703125,
+            "rss_mib_sum": 622.08984375,
+            "private_commit_mib": 392.984375,
+            "processes": 10,
+            "system_cpu_percent": 20.7
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 255.09765625,
+            "rss_mib_sum": 622.24609375,
+            "private_commit_mib": 393.23828125,
+            "processes": 10,
+            "system_cpu_percent": 19.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 255.18359375,
+            "rss_mib_sum": 622.33203125,
+            "private_commit_mib": 393.2578125,
+            "processes": 10,
+            "system_cpu_percent": 21.0
+          },
+          {
+            "cpu_seconds": 0.109375,
+            "uss_mib": 247.265625,
+            "rss_mib_sum": 614.55078125,
+            "private_commit_mib": 374.78515625,
+            "processes": 10,
+            "system_cpu_percent": 30.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 246.859375,
+            "rss_mib_sum": 614.171875,
+            "private_commit_mib": 374.34765625,
+            "processes": 10,
+            "system_cpu_percent": 30.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 246.9296875,
+            "rss_mib_sum": 614.2421875,
+            "private_commit_mib": 374.35546875,
+            "processes": 10,
+            "system_cpu_percent": 28.3
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 248.734375,
+            "rss_mib_sum": 616.109375,
+            "private_commit_mib": 375.98046875,
+            "processes": 10,
+            "system_cpu_percent": 23.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 248.73828125,
+            "rss_mib_sum": 616.11328125,
+            "private_commit_mib": 375.984375,
+            "processes": 10,
+            "system_cpu_percent": 34.2
+          }
+        ]
+      }
+    },
+    {
+      "kind": "egui-release-glow-experiment",
+      "pid": 17948,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 0.0,
+        "uss_mib_median": 63.97,
+        "rss_mib_sum_median": 104.34,
+        "private_commit_mib_median": 224.51,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 17.15,
+        "points": [
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 26.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 20.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 18.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 15.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 12.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 13.0
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 14.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 14.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 22.0
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 63.96875,
+            "rss_mib_sum": 104.3359375,
+            "private_commit_mib": 224.5078125,
+            "processes": 1,
+            "system_cpu_percent": 26.9
+          }
+        ]
+      },
+      "renderer": "glow"
+    },
+    {
+      "kind": "egui-release-glow-experiment",
+      "pid": 18776,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 0.0,
+        "uss_mib_median": 50.68,
+        "rss_mib_sum_median": 82.43,
+        "private_commit_mib_median": 207.1,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 23.65,
+        "points": [
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 20.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 28.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 34.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 27.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 17.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 16.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 18.9
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 23.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 27.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 50.67578125,
+            "rss_mib_sum": 82.43359375,
+            "private_commit_mib": 207.1015625,
+            "processes": 1,
+            "system_cpu_percent": 23.8
+          }
+        ]
+      },
+      "renderer": "glow"
+    },
+    {
+      "kind": "chromium-react-harness",
+      "pid": 12928,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 2.969,
+        "uss_mib_median": 259.33,
+        "rss_mib_sum_median": 628.24,
+        "private_commit_mib_median": 410.51,
+        "process_count_median": 10.0,
+        "system_cpu_percent_median": 23.55,
+        "points": [
+          {
+            "cpu_seconds": 0.15625,
+            "uss_mib": 259.33984375,
+            "rss_mib_sum": 628.21484375,
+            "private_commit_mib": 410.57421875,
+            "processes": 10,
+            "system_cpu_percent": 36.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 259.41796875,
+            "rss_mib_sum": 628.296875,
+            "private_commit_mib": 410.58203125,
+            "processes": 10,
+            "system_cpu_percent": 22.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 259.48828125,
+            "rss_mib_sum": 628.3671875,
+            "private_commit_mib": 410.5859375,
+            "processes": 10,
+            "system_cpu_percent": 23.7
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 259.5,
+            "rss_mib_sum": 628.39453125,
+            "private_commit_mib": 410.58984375,
+            "processes": 10,
+            "system_cpu_percent": 21.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 259.625,
+            "rss_mib_sum": 628.546875,
+            "private_commit_mib": 410.6484375,
+            "processes": 10,
+            "system_cpu_percent": 21.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 259.17578125,
+            "rss_mib_sum": 628.1328125,
+            "private_commit_mib": 410.44921875,
+            "processes": 10,
+            "system_cpu_percent": 23.4
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 259.1796875,
+            "rss_mib_sum": 628.13671875,
+            "private_commit_mib": 408.9140625,
+            "processes": 10,
+            "system_cpu_percent": 24.7
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 259.3125,
+            "rss_mib_sum": 628.26953125,
+            "private_commit_mib": 408.921875,
+            "processes": 10,
+            "system_cpu_percent": 25.0
+          },
+          {
+            "cpu_seconds": 0.046875,
+            "uss_mib": 251.25,
+            "rss_mib_sum": 620.3359375,
+            "private_commit_mib": 384.49609375,
+            "processes": 10,
+            "system_cpu_percent": 23.7
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 251.328125,
+            "rss_mib_sum": 620.4296875,
+            "private_commit_mib": 384.50390625,
+            "processes": 10,
+            "system_cpu_percent": 22.1
+          }
+        ]
+      }
+    }
+  ],
+  "experiment": "Temporary Cargo feature glow and NativeOptions.renderer=Glow; production tree restored to wgpu after measurement"
+}

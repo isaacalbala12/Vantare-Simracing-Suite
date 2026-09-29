@@ -28,7 +28,8 @@ La ventana Standings consume exclusivamente `127.0.0.1` o `::1`. Rechaza otra ru
 
 - La ventana Hub reproduce una parte de Inicio y abre la paleta con clic o Ctrl+K. Usa Inter y Cascadia de la app actual, pero aún contiene datos de prueba, iconos provisionales, un mini-lienzo vacío y efectos incompletos; no es una réplica exacta.
 - La ventana overlay dibuja diez filas del diseño Efficiency y recibe valores y calidades de Go. Falta paridad completa de cabecera, tipografía, columnas y comportamiento de Studio.
-- En Windows se comprobaron físicamente la transparencia, el paso de clics y la ausencia de activación del overlay con una ventana de prueba situada debajo; véase [`evidence/windows-overlay.md`](evidence/windows-overlay.md). DPI, captura OBS y consumo comparable de CPU/RAM siguen pendientes.
+- En Windows se comprobaron físicamente la transparencia, el paso de clics y la ausencia de activación del overlay con una ventana de prueba situada debajo; véase [`evidence/windows-overlay.md`](evidence/windows-overlay.md). DPI y captura OBS siguen pendientes.
+- La [medición preliminar de UI en reposo](evidence/hub-ui-only-performance-2026-09-29.md) detectó un núcleo de CPU ocupado con wgpu predeterminado en este PC; wgpu/OpenGL evitó ese consumo en el Hub actual. La comparación no tiene todavía paridad visual ni base Wails física, así que el consumo comparable de la aplicación completa sigue pendiente.
 - El objetivo siguiente es medir diferencias contra la referencia de este directorio y corregirlas antes de ampliar pantallas.
 
 La comparación visual inicial está en [`evidence/hub-fidelity.md`](evidence/hub-fidelity.md). La captura nativa actual es una línea de base deliberadamente no aceptada: el objetivo de esta tarea sigue siendo copiar exactamente el Inicio productivo congelado arriba.

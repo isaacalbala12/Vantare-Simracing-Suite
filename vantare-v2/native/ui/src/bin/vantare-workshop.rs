@@ -1,8 +1,10 @@
-//! Workshop mínimo (desarrollo): abre la ventana con uno o varios widgets
+//! `--dev`: ventana interactiva con recarga JSON y selección del registro.
+//! `dev.ps1` recompila Rust y conserva la selección. Sin `--dev`, abre uno o varios widgets
 //! alimentados por una escena fija, sin núcleo, para retocarlos con
 //! `workshop.ps1` (recompila y reabre al guardar un fichero de `ui/src`).
 //!
 //! ```text
+//! vantare-workshop --dev [--widget <nombre>] [--escena <archivo>]
 //! vantare-workshop [--widgets standings,radar,pedals] [--pos x,y] [--escena <archivo>]
 //! vantare-workshop --guardar <archivo> [--pipe <nombre>]
 //! ```
@@ -22,12 +24,16 @@ use vantare_domain::{Capability, Snapshot};
 use vantare_ui::{Kind, layout_row, run_placed, source};
 
 const DEFAULT_SCENE: &str = include_str!("../../fixtures/lmu47.snapshot.json");
-const USAGE: &str = "uso: vantare-workshop [--widgets <lista> | --widget <nombre>] [--pos x,y] [--escena <archivo>]\n     vantare-workshop --guardar <archivo> [--pipe <nombre>]\n     con feature parity-capture: --widget <nombre> --escena <foto.json> --captura <png>";
+const USAGE: &str = "uso: vantare-workshop --dev [--widget <nombre>] [--escena <archivo>]\n     vantare-workshop [--widgets <lista> | --widget <nombre>] [--pos x,y] [--escena <archivo>]\n     vantare-workshop --guardar <archivo> [--pipe <nombre>]\n     con feature parity-capture: --widget <nombre> --escena <foto.json> --captura <png>";
 /// Cuánto espera `--guardar` a una foto con todas las señales frescas.
 const SAVE_TIMEOUT: Duration = Duration::from_secs(20);
 
 #[derive(Debug, PartialEq)]
 enum Command {
+    Dev {
+        widget: Kind,
+        scene: Option<PathBuf>,
+    },
     #[cfg(feature = "parity-capture")]
     Capture {
         widget: Kind,
@@ -49,10 +55,18 @@ fn parse(args: &[String]) -> Option<Command> {
     let mut widgets = vec![Kind::Standings, Kind::Radar, Kind::Pedals];
     let (mut pos, mut scene, mut save, mut pipe) = ((20.0_f32, 20.0_f32), None, None, None);
     let (mut single, mut multiple, mut positioned) = (None, false, false);
+    let mut dev = false;
     #[cfg(feature = "parity-capture")]
     let mut capture = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
+        if arg == "--dev" {
+            if dev {
+                return None;
+            }
+            dev = true;
+            continue;
+        }
         let value = args.next()?;
         match arg.as_str() {
             "--widgets" => {
@@ -86,13 +100,22 @@ fn parse(args: &[String]) -> Option<Command> {
     }
     #[cfg(feature = "parity-capture")]
     if let Some(output) = capture {
-        if save.is_some() || pipe.is_some() || multiple || positioned {
+        if dev || save.is_some() || pipe.is_some() || multiple || positioned {
             return None;
         }
         return Some(Command::Capture {
             widget: single?,
             scene: scene?,
             output,
+        });
+    }
+    if dev {
+        if save.is_some() || pipe.is_some() || multiple || positioned {
+            return None;
+        }
+        return Some(Command::Dev {
+            widget: single.or_else(|| Kind::ALL.first().copied())?,
+            scene,
         });
     }
     if save.is_some() && (single.is_some() || multiple || positioned) {
@@ -181,6 +204,7 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let result = match command {
+        Command::Dev { widget, scene } => vantare_ui::workshop::run(widget, scene),
         #[cfg(feature = "parity-capture")]
         Command::Capture {
             widget,
@@ -217,6 +241,49 @@ mod tests {
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).into()).collect()
+    }
+
+    #[test]
+    fn dev_uses_the_registry_and_rejects_other_modes() {
+        assert!(matches!(
+            parse(&args(&["--dev"])),
+            Some(Command::Dev { .. })
+        ));
+        for &widget in Kind::ALL {
+            assert_eq!(
+                parse(&args(&[
+                    "--dev",
+                    "--widget",
+                    widget.name(),
+                    "--escena",
+                    "s.json"
+                ])),
+                Some(Command::Dev {
+                    widget,
+                    scene: Some("s.json".into())
+                })
+            );
+        }
+        for bad in [
+            vec!["--dev", "--widgets", "radar"],
+            vec!["--dev", "--guardar", "s.json"],
+            vec!["--dev", "--pipe", "p"],
+            vec!["--dev", "--pos", "0,0"],
+            vec!["--dev", "--dev"],
+            vec!["--dev", "--widget", "unknown"],
+            vec!["--dev", "--widget"],
+            vec![
+                "--dev",
+                "--widget",
+                "radar",
+                "--escena",
+                "s.json",
+                "--captura",
+                "s.png",
+            ],
+        ] {
+            assert_eq!(parse(&args(&bad)), None, "{bad:?}");
+        }
     }
 
     #[test]

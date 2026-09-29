@@ -62,7 +62,7 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    fn new(kind: Kind, prefs: Preferences) -> Self {
+    pub(crate) fn new(kind: Kind, prefs: Preferences) -> Self {
         let widget = Widget::new(kind, prefs);
         Self {
             widget,

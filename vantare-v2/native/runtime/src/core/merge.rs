@@ -1,14 +1,16 @@
-//! Fusión pura (sin I/O) de una observación con el snapshot previo.
+//! Fusión pura (sin I/O) de una observación con el snapshot previo, más las
+//! derivaciones que necesitan memoria entre fotos (combustible y delta).
 
 use std::collections::HashSet;
 use std::mem;
 
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Fuel, Gap, Observation, Player, Pose, Quality, Session,
-    Snapshot, State, Telemetry,
+    SessionId, Snapshot, State, Telemetry,
 };
 
 use super::derive::derive;
+use super::{delta, fuel};
 
 /// Observación que el núcleo no admite: no se publica y la revisión no avanza.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +40,7 @@ pub(super) fn merge(
     previous: Option<&Snapshot>,
     observation: Observation,
     epoch: u64,
+    trackers: &mut Trackers,
 ) -> Result<Snapshot, Reject> {
     let Observation { origin, mut state } = observation;
     let mut seen = HashSet::with_capacity(state.cars.len());
@@ -45,7 +48,8 @@ pub(super) fn merge(
         return Err(Reject::DuplicateCar(car.id));
     }
     sanitize(&mut state);
-    derive(&mut state.cars);
+    derive(&mut state);
+    trackers.derive(&mut state);
     let sequence = match previous {
         Some(previous) if previous.epoch == epoch => previous.sequence + 1,
         _ => 1,
@@ -56,6 +60,47 @@ pub(super) fn merge(
         origin,
         state,
     })
+}
+
+/// Derivaciones con memoria entre fotos: combustible y delta del jugador. El
+/// estado no vive en `domain` porque no es una señal publicada, sino la
+/// memoria de la derivación; lo posee el único escritor.
+#[derive(Debug, Default)]
+pub(super) struct Trackers {
+    /// Sesión y coche de los que son los datos acumulados.
+    identity: Option<(SessionId, CarId)>,
+    fuel: fuel::Tracker,
+    delta: delta::Tracker,
+}
+
+impl Trackers {
+    fn derive(&mut self, state: &mut State) {
+        let identity = state
+            .player
+            .as_ref()
+            .map(|player| (state.session.id, player.car));
+        if let Some(identity) = identity {
+            if self.identity != Some(identity) {
+                // Sesión o coche del jugador nuevos: nada es comparable.
+                self.fuel.reset();
+                self.delta.reset();
+            }
+            self.identity = Some(identity);
+        }
+        let State { cars, player, .. } = state;
+        let Some(player) = player.as_mut() else {
+            self.fuel.invalidate();
+            self.delta.invalidate();
+            return;
+        };
+        let Some(car) = cars.iter().find(|car| car.id == player.car) else {
+            self.fuel.invalidate();
+            self.delta.invalidate();
+            return;
+        };
+        self.fuel.derive(player, car);
+        self.delta.derive(player, car);
+    }
 }
 
 /// Mismo contenido, siguiente revisión, con todo lo actual degradado a
@@ -248,6 +293,8 @@ fn sanitize(state: &mut State) {
         finite(&mut telemetry.engine_speed_rad_s);
         finite(&mut player.fuel.level_l);
         finite(&mut player.fuel.capacity_l);
+        finite(&mut player.fuel.per_lap_l);
+        finite(&mut player.fuel.laps_left);
         finite(&mut player.delta_best_s);
     }
 }
@@ -280,6 +327,7 @@ mod tests {
         Car {
             id: CarId(id),
             position: Quality::Reliable(position),
+            in_pits: Quality::Reliable(false),
             ..Car::default()
         }
     }
@@ -301,44 +349,103 @@ mod tests {
 
     #[test]
     fn revision_is_one_counter_per_epoch_and_origin_is_kept() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1)]);
         obs.origin.source = Source {
             simulator: "test",
             ..Source::default()
         };
-        let first = merge(None, obs.clone(), 7).unwrap();
+        let first = merge(None, obs.clone(), 7, &mut trackers).unwrap();
         assert_eq!((first.epoch, first.sequence), (7, 1));
         assert_eq!(first.origin, obs.origin);
-        let second = merge(Some(&first), obs.clone(), 7).unwrap();
+        let second = merge(Some(&first), obs.clone(), 7, &mut trackers).unwrap();
         assert_eq!(second.sequence, 2);
         let old = stale(&second);
         assert_eq!(old.sequence, 3, "la bajada a obsoleto comparte contador");
-        assert_eq!(merge(Some(&old), obs.clone(), 7).unwrap().sequence, 4);
+        assert_eq!(
+            merge(Some(&old), obs.clone(), 7, &mut trackers)
+                .unwrap()
+                .sequence,
+            4
+        );
         // Época nueva: la secuencia vuelve a 1.
-        assert_eq!(merge(Some(&old), obs, 8).unwrap().sequence, 1);
+        assert_eq!(
+            merge(Some(&old), obs, 8, &mut trackers).unwrap().sequence,
+            1
+        );
     }
 
     #[test]
     fn duplicate_cars_are_rejected() {
         let obs = observation(vec![car(1, 1), car(2, 2), car(1, 3)]);
-        assert_eq!(merge(None, obs, 1), Err(Reject::DuplicateCar(CarId(1))));
+        assert_eq!(
+            merge(None, obs, 1, &mut Trackers::default()),
+            Err(Reject::DuplicateCar(CarId(1)))
+        );
     }
 
     #[test]
     fn session_change_carries_nothing_over() {
+        let mut trackers = Trackers::default();
         let mut first = observation(vec![car(1, 1)]);
         first.state.session.id = SessionId(1);
         first.state.cars[0].last_lap_s = Quality::Reliable(90.0);
-        let before = merge(None, first, 1).unwrap();
+        let before = merge(None, first, 1, &mut trackers).unwrap();
         let mut next = observation(vec![car(1, 1)]);
         next.state.session.id = SessionId(2);
-        let after = merge(Some(&before), next, 1).unwrap();
+        let after = merge(Some(&before), next, 1, &mut trackers).unwrap();
         assert_eq!(after.sequence, 2, "misma época, sesión nueva");
         assert_eq!(after.state.cars[0].last_lap_s, Quality::Unavailable);
     }
 
     #[test]
+    fn accumulated_trackers_reset_on_session_or_player_change() {
+        let mut trackers = Trackers::default();
+        let mut first = observation(vec![car(1, 1)]);
+        first.state.session.id = SessionId(1);
+        first.state.cars[0].laps = Quality::Reliable(1);
+        first.state.player = Some(Player {
+            car: CarId(1),
+            fuel: Fuel {
+                level_l: Quality::Reliable(100.0),
+                ..Fuel::default()
+            },
+            ..Player::default()
+        });
+        merge(None, first.clone(), 1, &mut trackers).unwrap();
+        let mut second = first.clone();
+        second.state.cars[0].laps = Quality::Reliable(2);
+        second.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(96.0);
+        let snapshot = merge(None, second, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Estimated(4.0),
+            "misma sesión: la vuelta medida se conserva"
+        );
+
+        let mut other_session = first.clone();
+        other_session.state.session.id = SessionId(2);
+        let snapshot = merge(None, other_session, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Unavailable,
+            "sesión nueva: la memoria se descarta"
+        );
+
+        let mut other_car = first;
+        other_car.state.player.as_mut().unwrap().car = CarId(2);
+        other_car.state.cars.push(car(2, 2));
+        let snapshot = merge(None, other_car, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Unavailable,
+            "coche de jugador nuevo: la memoria se descarta"
+        );
+    }
+
+    #[test]
     fn non_finite_numbers_become_unavailable() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1), car(2, 2)]);
         obs.state.cars[0].last_lap_s = Quality::Reliable(f64::NAN);
         obs.state.cars[0].best_lap_s = Quality::Reliable(91.0);
@@ -359,7 +466,7 @@ mod tests {
             },
             ..Player::default()
         });
-        let snapshot = merge(None, obs, 1).unwrap();
+        let snapshot = merge(None, obs, 1, &mut trackers).unwrap();
         let cars = &snapshot.state.cars;
         assert_eq!(cars[0].last_lap_s, Quality::Unavailable);
         assert_eq!(cars[0].best_lap_s, Quality::Reliable(91.0));
@@ -373,9 +480,10 @@ mod tests {
 
     #[test]
     fn merge_derives_before_publishing() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1), car(2, 2)]);
         obs.state.cars[1].gap_leader = Quality::Reliable(Gap::Time { seconds: 4.0 });
-        let snapshot = merge(None, obs, 1).unwrap();
+        let snapshot = merge(None, obs, 1, &mut trackers).unwrap();
         assert_eq!(
             snapshot.state.cars[1].gap_ahead,
             Quality::Estimated(Gap::Time { seconds: 4.0 })
@@ -384,6 +492,7 @@ mod tests {
 
     #[test]
     fn stale_downgrades_current_data_and_capabilities_only() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1)]);
         obs.state.cars[0].best_lap_s = Quality::Estimated(90.0);
         obs.state.cars[0].last_sectors_s = vec![Quality::Reliable(30.0), Quality::Unavailable];
@@ -396,7 +505,7 @@ mod tests {
             },
             ..Player::default()
         });
-        let fresh = merge(None, obs, 1).unwrap();
+        let fresh = merge(None, obs, 1, &mut trackers).unwrap();
         let old = stale(&fresh);
         let state = &old.state;
         assert_eq!(state.capabilities.gaps, Capability::WithData);

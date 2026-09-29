@@ -1,16 +1,20 @@
-//! Derivaciones que necesitan Standings: posición de clase y gaps al líder y
-//! al coche de delante. Un dato nativo actual siempre gana; uno obsoleto o
-//! ausente se sustituye por el derivado, marcado `Estimated`.
+//! Derivaciones por foto que necesitan Standings: posición de clase, gaps
+//! generales y de clase, y vueltas restantes. Un dato nativo actual siempre
+//! gana; uno obsoleto o ausente se sustituye por el derivado, marcado
+//! `Estimated`.
 //!
 //! Los gaps de solo tiempo: con un `Gap::Laps` de por medio no hay resta que valga.
 
 use std::collections::HashSet;
 
-use vantare_domain::{Car, Gap, Quality};
+use vantare_domain::{Car, Gap, Quality, Session, State};
 
-pub(super) fn derive(cars: &mut [Car]) {
+pub(super) fn derive(state: &mut State) {
+    let State { session, cars, .. } = state;
     class_positions(cars);
     gaps(cars);
+    class_gaps(cars);
+    laps_remaining(session, cars);
 }
 
 /// Posición dentro de la clase = orden por posición global entre los coches de
@@ -81,6 +85,118 @@ fn gaps(cars: &mut [Car]) {
         }
         previous = Some((position, leader_s));
     }
+}
+
+/// Gaps de clase: la misma resta que `gaps` pero con la clase como vecindad,
+/// sobre los gaps generales (un dato nativo de clase actual siempre gana). El
+/// líder de la clase queda a 0 s. Solo relaciona rangos consecutivos.
+fn class_gaps(cars: &mut [Car]) {
+    let mut order: Vec<(u32, u32, usize)> = cars
+        .iter()
+        .enumerate()
+        .filter_map(|(index, car)| {
+            let class = car.class.as_ref()?.id.0;
+            Some((class, *car.class_position.current()?, index))
+        })
+        .collect();
+    order.sort_unstable();
+    // Clase, rango, gap general y gap de clase al líder del último coche visto.
+    let mut previous: Option<(u32, u32, Option<f64>, Option<f64>)> = None;
+    // Gap general del líder de la clase en curso: la base de las restas.
+    let mut baseline: Option<(u32, Option<f64>)> = None;
+    for (class, rank, index) in order {
+        let car = &mut cars[index];
+        let overall = seconds(car.gap_leader);
+        if rank == 1 {
+            if car.gap_class_leader.current().is_none() {
+                car.gap_class_leader = Quality::Estimated(Gap::Time { seconds: 0.0 });
+            }
+            baseline = Some((class, overall));
+            previous = Some((class, rank, overall, Some(0.0)));
+            continue;
+        }
+        let mut leader_s = seconds(car.gap_class_leader);
+        if let Some((previous_class, previous_rank, previous_overall, Some(previous_leader_s))) =
+            previous
+            && previous_class == class
+            && previous_rank.checked_add(1) == Some(rank)
+        {
+            let leader_overall = baseline
+                .filter(|(baseline_class, _)| *baseline_class == class)
+                .and_then(|(_, gap)| gap);
+            if leader_s.is_none()
+                && let Some(derived) = class_leader_gap(
+                    overall,
+                    leader_overall,
+                    seconds(car.gap_class_ahead),
+                    previous_leader_s,
+                )
+            {
+                leader_s = Some(derived);
+                car.gap_class_leader = Quality::Estimated(Gap::Time { seconds: derived });
+            }
+            if car.gap_class_ahead.current().is_none()
+                && let Some(derived) =
+                    class_ahead_gap(overall, previous_overall, leader_s, previous_leader_s)
+            {
+                car.gap_class_ahead = Quality::Estimated(Gap::Time { seconds: derived });
+            }
+        }
+        previous = Some((class, rank, overall, leader_s));
+    }
+}
+
+/// Gap de clase al líder: la resta de gaps generales contra el líder de la
+/// clase, o el encadenado desde el coche de delante.
+fn class_leader_gap(
+    overall: Option<f64>,
+    leader_overall: Option<f64>,
+    ahead: Option<f64>,
+    previous_leader: f64,
+) -> Option<f64> {
+    if let (Some(overall), Some(leader_overall)) = (overall, leader_overall)
+        && overall >= leader_overall
+    {
+        return Some(overall - leader_overall);
+    }
+    Some(previous_leader + ahead?)
+}
+
+/// Gap de clase al de delante: la resta de gaps generales contra el coche
+/// anterior de la clase, o el encadenado desde los dos gaps al líder.
+fn class_ahead_gap(
+    overall: Option<f64>,
+    previous_overall: Option<f64>,
+    leader: Option<f64>,
+    previous_leader: f64,
+) -> Option<f64> {
+    if let (Some(overall), Some(previous_overall)) = (overall, previous_overall)
+        && overall >= previous_overall
+    {
+        return Some(overall - previous_overall);
+    }
+    let leader = leader?;
+    (leader >= previous_leader).then_some(leader - previous_leader)
+}
+
+/// Vueltas restantes = vueltas totales de la sesión − vueltas completadas por
+/// el líder (posición 1). Solo si `laps_total` es actual y el líder declara sus
+/// vueltas.
+fn laps_remaining(session: &mut Session, cars: &[Car]) {
+    if session.laps_remaining.current().is_some() {
+        return;
+    }
+    let Some(total) = session.laps_total.current().copied() else {
+        return;
+    };
+    let Some(leader_laps) = cars
+        .iter()
+        .find(|car| car.position.current().copied() == Some(1))
+        .and_then(|car| car.laps.current().copied())
+    else {
+        return;
+    };
+    session.laps_remaining = Quality::Estimated(total.saturating_sub(leader_laps));
 }
 
 fn seconds(gap: Quality<Gap>) -> Option<f64> {
@@ -198,6 +314,162 @@ mod tests {
         assert_eq!(
             native[1].gap_ahead,
             Quality::Estimated(Gap::Time { seconds: 3.0 })
+        );
+    }
+
+    #[test]
+    fn class_gaps_come_from_general_gaps_between_class_neighbours() {
+        // Clase 10: 1º, 3º y 5º globales, a 0, 2 y 3,5 s del líder general.
+        let mut cars = vec![car(1, 1, 10), car(2, 3, 10), car(3, 5, 10)];
+        class_positions(&mut cars);
+        cars[0].gap_leader = time(0.0);
+        cars[1].gap_leader = time(2.0);
+        cars[2].gap_leader = time(3.5);
+        class_gaps(&mut cars);
+        assert_eq!(
+            cars[0].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 0.0 })
+        );
+        assert_eq!(
+            cars[1].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert_eq!(
+            cars[1].gap_class_ahead,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert_eq!(
+            cars[2].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 3.5 })
+        );
+        assert_eq!(
+            cars[2].gap_class_ahead,
+            Quality::Estimated(Gap::Time { seconds: 1.5 })
+        );
+    }
+
+    #[test]
+    fn class_gaps_chain_and_native_values_win() {
+        // Clase 10: 1º y 3º globales; clase 20: 2º y 4º.
+        let mut cars = vec![car(1, 1, 10), car(2, 2, 20), car(3, 3, 10), car(4, 4, 20)];
+        class_positions(&mut cars);
+        cars[2].gap_class_ahead = time(1.5); // rank 2 de la clase 10, sin gaps generales
+        cars[3].gap_class_leader = time(6.0); // clase 20: nativo actual, manda
+        class_gaps(&mut cars);
+        assert_eq!(
+            cars[0].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 0.0 })
+        );
+        assert_eq!(
+            cars[2].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 1.5 })
+        );
+        assert_eq!(
+            cars[2].gap_class_ahead,
+            time(1.5),
+            "el nativo actual no se pisa"
+        );
+        assert_eq!(
+            cars[3].gap_class_leader,
+            time(6.0),
+            "el nativo actual permanece"
+        );
+        assert_eq!(
+            cars[3].gap_class_ahead,
+            Quality::Estimated(Gap::Time { seconds: 6.0 }),
+            "encadenado desde el líder de clase"
+        );
+        assert_eq!(
+            cars[1].gap_class_ahead,
+            Quality::Unavailable,
+            "el líder de clase no tiene a nadie delante"
+        );
+    }
+
+    #[test]
+    fn class_gaps_skip_holes_laps_and_unordered_data() {
+        let mut holed = vec![car(1, 1, 10), car(2, 2, 10), car(3, 3, 10)];
+        class_positions(&mut holed);
+        holed[1].class_position = Quality::Unavailable; // hueco de rango
+        holed[0].gap_leader = time(0.0);
+        holed[2].gap_leader = time(4.0);
+        class_gaps(&mut holed);
+        assert_eq!(
+            holed[2].gap_class_leader,
+            Quality::Unavailable,
+            "falta la posición de clase 2"
+        );
+
+        let mut lapped = vec![car(1, 1, 10), car(2, 2, 10)];
+        class_positions(&mut lapped);
+        lapped[0].gap_leader = time(30.0);
+        lapped[1].gap_leader = Quality::Reliable(Gap::Laps { count: 1 });
+        class_gaps(&mut lapped);
+        assert_eq!(
+            lapped[1].gap_class_leader,
+            Quality::Unavailable,
+            "vuelta de por medio"
+        );
+        assert_eq!(lapped[1].gap_class_ahead, Quality::Unavailable);
+    }
+
+    #[test]
+    fn laps_remaining_uses_the_leader_and_native_wins() {
+        let mut state = State {
+            session: Session {
+                laps_total: Quality::Reliable(50),
+                ..Session::default()
+            },
+            cars: vec![car(1, 1, 10), car(2, 2, 10)],
+            ..State::default()
+        };
+        state.cars[0].laps = Quality::Reliable(10);
+        state.cars[1].laps = Quality::Reliable(9);
+        derive(&mut state);
+        assert_eq!(state.session.laps_remaining, Quality::Estimated(40));
+
+        state.session.laps_remaining = Quality::Reliable(39);
+        derive(&mut state);
+        assert_eq!(
+            state.session.laps_remaining,
+            Quality::Reliable(39),
+            "un dato nativo actual gana"
+        );
+
+        state.session.laps_remaining = Quality::Stale(12);
+        derive(&mut state);
+        assert_eq!(
+            state.session.laps_remaining,
+            Quality::Estimated(40),
+            "un nativo obsoleto se sustituye"
+        );
+    }
+
+    #[test]
+    fn laps_remaining_needs_total_leader_and_laps() {
+        let mut state = State {
+            cars: vec![car(1, 1, 10)],
+            ..State::default()
+        };
+        state.cars[0].laps = Quality::Reliable(10);
+        derive(&mut state);
+        assert_eq!(state.session.laps_remaining, Quality::Unavailable);
+
+        state.session.laps_total = Quality::Reliable(50);
+        state.cars[0].laps = Quality::Stale(10);
+        derive(&mut state);
+        assert_eq!(
+            state.session.laps_remaining,
+            Quality::Unavailable,
+            "sin vueltas del líder no hay resta"
+        );
+
+        state.cars[0].laps = Quality::Reliable(60);
+        derive(&mut state);
+        assert_eq!(
+            state.session.laps_remaining,
+            Quality::Estimated(0),
+            "datos incoherentes se acotan a cero"
         );
     }
 }

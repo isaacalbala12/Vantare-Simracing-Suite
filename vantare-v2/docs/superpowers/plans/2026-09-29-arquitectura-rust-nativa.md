@@ -207,6 +207,21 @@ antes cuando un perfil representativo lo justifique.
 **Aceptación.** Mejora reproducible frente a la ronda anterior o cierre
 explícito de la tanda.
 
+**Rondas obligatorias además del rendimiento (decisión de Isaac).** Cada tanda
+alterna cuatro tipos de ronda sobre todo el código nativo, y ninguna se cierra
+sin la revisión del orquestador:
+1. **Simplificación:** quitar capas, parámetros y casos que no aportan (skills
+   `ponytail-review`/`ponytail-audit` y `simplify`).
+2. **Reducción extensa de código:** borrar código muerto, duplicado o
+   especulativo; medir líneas de producción antes y después.
+3. **Optimización:** perfilar y atacar una causa por ronda, con banco y paridad.
+4. **Revisión de mantenibilidad y anti-slop:** legibilidad, nombres, fronteras,
+   tests que prueban comportamiento y no detalles, comentarios útiles, sin
+   abstracciones de un solo uso ni código generado sin entender
+   (`code-review`, guías Rust instaladas).
+El criterio de éxito es menos código igual de correcto o más legible; una
+ronda que no reduzca ni aclare nada se registra como tal.
+
 **Primera candidata (decisión de Isaac): demanda desde los widgets.** Hoy el
 núcleo deriva todo en cada tick y el IPC envía la foto completa. En esta fase:
 los widgets del layout activo declaran sus señales (columnas y huecos del pie

@@ -73,4 +73,5 @@ widgets! {
     PedalsTelemetry => pedals_telemetry: "pedals-telemetry",
     Relative => relative: "relative",
     RacingFlags => racing_flags: "racing-flags",
+    FastestLap => fastest_lap: "fastest-lap",
 }

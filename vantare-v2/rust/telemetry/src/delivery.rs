@@ -2,8 +2,11 @@
 //! response, but ACK, replay and latest-wins selection belong to Rust.
 //! Section patches use the acknowledged frame as their base.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
+
+use serde::Deserialize;
+use serde_json::value::RawValue;
 
 pub const OVERLAY_MAX_BYTES: usize = 72 * 1024;
 const MAX_SESSION_ID_BYTES: usize = 128;
@@ -113,36 +116,66 @@ struct SnapshotSections {
     revision: u64,
     epoch: u64,
     session_id: String,
-    fields: serde_json::Map<String, serde_json::Value>,
+    prefix: Vec<u8>,
+    fields: BTreeMap<String, Box<RawValue>>,
+}
+
+#[derive(Deserialize)]
+struct RawSnapshot {
+    revision: u64,
+    source: Box<RawValue>,
+    frame: Option<BTreeMap<String, Box<RawValue>>>,
 }
 
 impl SnapshotSections {
     fn parse(json: &[u8]) -> Option<Self> {
-        let update: serde_json::Value = serde_json::from_slice(json).ok()?;
-        let revision = update.get("revision")?.as_u64()?;
-        let frame = update.get("frame")?.as_object()?;
-        let epoch = frame.get("epoch")?.as_u64()?;
-        let session_id = frame.get("sessionId")?.as_str()?.to_owned();
+        let update: RawSnapshot = serde_json::from_slice(json).ok()?;
+        let fields = update.frame?;
+        let epoch = serde_json::from_str(fields.get("epoch")?.get()).ok()?;
+        let session_id = serde_json::from_str(fields.get("sessionId")?.get()).ok()?;
+        let prefix = format!(
+            "{{\"revision\":{},\"source\":{},\"frame\":{{",
+            update.revision,
+            update.source.get()
+        )
+        .into_bytes();
         Some(Self {
-            revision,
+            revision: update.revision,
             epoch,
             session_id,
-            fields: frame.clone(),
+            prefix,
+            fields,
         })
     }
 
-    fn difference(&self, base: &Self, json: &[u8]) -> Option<Vec<u8>> {
+    fn difference(&self, base: &Self, full_len: usize) -> Option<Vec<u8>> {
         if self.epoch != base.epoch
             || self.session_id != base.session_id
             || self.revision <= base.revision
+            || !base.fields.keys().all(|key| self.fields.contains_key(key))
         {
             return None;
         }
-        let mut update: serde_json::Value = serde_json::from_slice(json).ok()?;
-        let frame = update.get_mut("frame")?.as_object_mut()?;
-        frame.retain(|key, value| base.fields.get(key) != Some(value));
-        let encoded = serde_json::to_vec(&update).ok()?;
-        (encoded.len() < json.len()).then_some(encoded)
+        let mut patch = self.prefix.clone();
+        let mut comma = false;
+        for (key, value) in &self.fields {
+            if base
+                .fields
+                .get(key)
+                .is_some_and(|old| old.get() == value.get())
+            {
+                continue;
+            }
+            if comma {
+                patch.push(b',');
+            }
+            comma = true;
+            patch.extend_from_slice(serde_json::to_string(key).ok()?.as_bytes());
+            patch.push(b':');
+            patch.extend_from_slice(value.get().as_bytes());
+        }
+        patch.extend_from_slice(b"}}");
+        (patch.len() < full_len).then_some(patch)
     }
 }
 
@@ -186,7 +219,7 @@ impl OverlayPull {
         {
             return Err(DeliveryError::InvalidRevision);
         }
-        if serde_json::from_slice::<serde_json::Value>(json).is_err() {
+        if serde_json::from_slice::<&serde_json::value::RawValue>(json).is_err() {
             return Err(DeliveryError::InvalidPayload);
         }
         *destination = Some(Publication {
@@ -275,7 +308,7 @@ impl OverlayPull {
             let patch = current.as_ref().and_then(|current| {
                 session.last_snapshot_sections.as_ref().and_then(|base| {
                     current
-                        .difference(base, &snapshot.data)
+                        .difference(base, snapshot.data.len())
                         .map(|json| (base.revision, Arc::<[u8]>::from(json)))
                 })
             });
@@ -509,6 +542,27 @@ mod tests {
             Err(DeliveryError::InvalidSections)
         );
         assert!(pull.pull("overlay", request("s", 1)).unwrap().is_none());
+    }
+
+    #[test]
+    fn removed_frame_key_forces_full_payload_instead_of_stale_patch() {
+        let mut pull = OverlayPull::new();
+        let request = |ack| PullRequest {
+            session_id: "s",
+            ack,
+            sections: 1,
+        };
+        pull.publish_snapshot(
+            1,
+            br#"{"revision":1,"source":{},"frame":{"epoch":1,"sessionId":"a","standings":[1]}}"#,
+        )
+        .unwrap();
+        pull.pull("overlay", request(0)).unwrap().unwrap();
+        let current = br#"{"revision":2,"source":{},"frame":{"epoch":1,"sessionId":"a"}}"#;
+        pull.publish_snapshot(2, current).unwrap();
+        let response = pull.pull("overlay", request(1)).unwrap().unwrap();
+        assert_eq!(response.events[0].base_revision, None);
+        assert_eq!(response.events[0].data.as_ref(), current);
     }
 
     #[test]

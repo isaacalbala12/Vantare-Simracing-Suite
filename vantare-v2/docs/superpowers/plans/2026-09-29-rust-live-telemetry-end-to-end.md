@@ -92,7 +92,10 @@ son distintas, así que esas cifras no prueban una ganancia ni la descartan para
 la ruta final. `go test ./...` pasó tras el corte de la fuente aislada.
 E1 tiene un inventario inicial. E2 contiene un módulo Rust aislado para pull
 Overlay (sesión/ACK/replay/latest-wins/secciones) probado con golden de
-1/20/44/104 coches, pero aún no conectado al helper ni a Wails. `cargo test
---release --locked`, Clippy y `go test ./...` pasaron tras ese corte. Faltan
+1/20/44/104 coches, pero aún no conectado al helper ni a Wails. Dos rondas
+diagnósticas sobre ese módulo bajaron el tiempo local del pull con 44 coches;
+los crudos y límites están en el [microbanco](../../telemetry-core/overlay-pull-microbench-2026-09-29.md).
+Eso no mide la ruta final. `cargo test --release --locked`, Clippy y
+`go test ./...` pasaron tras ese corte. Faltan
 los demás destinos, la retirada Go, el banco final, CI del nuevo SHA y la
 verificación física de la arquitectura final.

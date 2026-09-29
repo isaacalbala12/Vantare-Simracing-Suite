@@ -9,13 +9,19 @@ permanecen; no se porta toda la aplicación. [ADR 0098](../../adr/0098-rust-end-
 y el [plan vigente](../../superpowers/plans/2026-09-29-rust-live-telemetry-end-to-end.md)
 sustituyen la frontera de entrega Go y el gate fijo de CPU de ADR 0097/R01–R28.
 El anterior 50% no acredita ni bloquea por sí solo esta nueva arquitectura.
-Ninguna mejora de rendimiento total está aún demostrada.
+Ninguna mejora de rendimiento total está aún demostrada. El
+[microbanco del pull Overlay](../../telemetry-core/overlay-pull-microbench-2026-09-29.md)
+aisló dos costes JSON: la mediana local con el golden de 44 coches bajó de
+427,2 a 42,9 µs/operación sin secciones y de 1495,4 a 89,0 µs/operación con
+secciones después de dos rondas. Es tiempo de pared de un módulo aislado, no
+CPU total ni comparación Go/Rust. Se usó la feature `raw_value` de
+`serde_json`, ya presente como dependencia; no se añadió una librería.
 
 El primer corte de entrega añadido en `rust/telemetry/src/delivery.rs` porta
 solo el estado de pull Overlay: sesión por ventana, ACK/replay, última versión,
 parches por secciones y cierre. Los tests usan los golden de 1/20/44/104 coches
 y comprueban también consumidor lento, cambio de sesión y epoch. Pasaron
-`cargo test --release --locked` (173 tests unitarios Rust y las integraciones
+`cargo test --release --locked` (174 tests unitarios Rust y las integraciones
 del paquete), `cargo clippy --all-targets --locked -- -D warnings` y
 `go test ./...`. Este módulo aún no tiene caller en el helper: el producto sigue
 usando el pull y PublisherRegistry Go. No existe todavía banco pareado del
@@ -35,12 +41,16 @@ pasaron para el corte de código.
 `docs/roadmap/plan.md` se ha restaurado como registro manual por instrucción
 de Isaac. La app aún usa la publicación Supabase de #1380; falta una decisión
 de integración del roadmap antes de afirmar que esta entrada es pública.
-El PR #1415 sigue draft y el CI remoto del SHA `fce96fc0` tenía el ratchet de
-calidad en FAIL por `policy_changed: True` del workflow; no se ha verificado
-CI del nuevo SHA. E1 tiene un inventario inicial y E2 un módulo Rust aislado;
+El PR #1415 sigue draft. El CI de `f8de46ab` pasó promoción de rama y
+GitGuardian, pero `quality-check (ratchet)` falló: informó `staticcheck NEW=1`
+y `policy_changed: True` por el cambio de
+`.github/workflows/branch-channel-gates.yml` presente en la PR antes de este
+corte. El gate agregado sigue pendiente al escribir este handoff; el SHA de la
+segunda ronda Rust aún no está subido. E1 tiene un inventario inicial y E2 un
+módulo Rust aislado;
 faltan el cableado de entrega, Engineer/Strategy/OBS, recuperación, banco
-final y prueba física LMU/Wails/OBS. Go sigue siendo
-la ruta productiva, sin merge, promoción ni release.
+final y prueba física LMU/Wails/OBS. Go sigue siendo la ruta productiva, sin
+merge, promoción ni release.
 
 ## VAN-778 / ISA-1403 — ruta Go sobre la misma fuente aislada (2026-09-29)
 

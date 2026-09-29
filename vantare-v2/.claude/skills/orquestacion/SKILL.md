@@ -18,6 +18,20 @@ Esta skill fija **qué modelo hace qué** y **cómo se delega**. Complementa
 | **Ejecutor principal** | Sonnet 5.5 | Código a gran escala: features, portes, refactors acotados, tests, **réplicas y paridad visual** de diseños ya existentes. | Diseño visual nuevo, decisiones de arquitectura. |
 | **Worker barato** | DeepSeek V4.1 Flash (DeepSeek Harness / opencode-go); Muse Spark 1.3 (free, y cuando se agote, contributor) | Trabajo repetitivo, sencillo o mecánico: renombrados, fixtures, docs, búsquedas, tests triviales, migraciones en serie. | Arquitectura, seguridad, diseño, lógica delicada sin revisión. |
 
+### Nivel de razonamiento por modelo
+
+| Modelo | Razonamiento |
+|---|---|
+| Fable 5.1 | medio |
+| GPT 6 Astra | max |
+| Opus 5.5 | medio |
+| Sonnet 5.5 | high |
+| DeepSeek V4.1 Flash | max |
+| Muse Spark 1.3 | max |
+
+Fíjalo al lanzar cada worker o consulta. Si la vía de invocación no permite
+elegir el nivel, dilo en el informe en vez de asumir que se aplicó.
+
 Los advisors se consultan **solo si es estrictamente necesario**. Cada consulta
 debe llevar una pregunta concreta, el contexto mínimo y las opciones ya
 consideradas. Su respuesta orienta; la decisión la registra el orquestador.

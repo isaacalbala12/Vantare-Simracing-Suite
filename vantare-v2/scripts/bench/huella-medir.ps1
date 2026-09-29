@@ -33,8 +33,7 @@ $Procesos = @($Procesos -split ',' | ForEach-Object { $_.Trim() } | Where-Object
 . (Join-Path $PSScriptRoot 'huella-comun.ps1')
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $summaryHelper = Join-Path $PSScriptRoot 'huella-resumen.mjs'
-$baseDir = if ([IO.Path]::IsPathRooted($Salida)) { $Salida } else { Join-Path $repoRoot $Salida }
-$outputDir = [IO.Path]::GetFullPath($baseDir)
+$outputDir = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($Salida)) { $Salida } else { Join-Path $repoRoot $Salida }))
 $logicalProcessors = [Environment]::ProcessorCount
 
 # Roles por PID: `app` = coincidencias por nombre/PID (+ descendientes), `dwm` = dwm.exe.

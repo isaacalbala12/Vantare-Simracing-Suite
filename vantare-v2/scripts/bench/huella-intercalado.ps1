@@ -37,8 +37,7 @@ $benchDir = $PSScriptRoot
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $benchDir '..\..')).Path
 $pwsh = (Get-Process -Id $PID).Path
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$baseDir = if ([IO.Path]::IsPathRooted($Salida)) { $Salida } else { Join-Path $repoRoot $Salida }
-$runDir = [IO.Path]::GetFullPath((Join-Path $baseDir "intercalado-$stamp"))
+$runDir = [IO.Path]::GetFullPath((Join-Path $(if ([IO.Path]::IsPathRooted($Salida)) { $Salida } else { Join-Path $repoRoot $Salida }) "intercalado-$stamp"))
 
 # ABBA: la deriva lenta de la escena cae por igual en A0 y A1.
 $blocks = @(0..($Bloques - 1) | ForEach-Object {

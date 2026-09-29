@@ -1,0 +1,20 @@
+[package]
+name = "vantare-inproc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Topología A de la campaña de medición de la fase 0 (ADR 0099 §3): núcleo y
+# overlays en un mismo proceso. Se retira tras decidir. Vive en su propio
+# paquete porque `runtime` y `ui` no pueden depender uno del otro
+# (`domain/tests/architecture.rs`); borrarlo es quitar este directorio y su
+# línea de `members`.
+[dependencies]
+vantare-domain.workspace = true
+vantare-runtime = { path = "../runtime" }
+vantare-ui = { path = "../ui" }
+flume = "0.12"
+
+[lints]
+workspace = true

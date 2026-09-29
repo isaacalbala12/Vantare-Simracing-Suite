@@ -59,4 +59,5 @@ widgets! {
     Standings => standings: "standings",
     Radar => radar: "radar",
     Pedals => pedals: "pedals",
+    PedalsTelemetry => pedals_telemetry: "pedals-telemetry",
 }

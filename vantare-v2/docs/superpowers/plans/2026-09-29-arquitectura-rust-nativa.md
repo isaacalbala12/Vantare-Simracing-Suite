@@ -77,8 +77,9 @@ fase termina con algo que funciona y se puede medir.
 - Núcleo mínimo con el flujo de foto, proceso de overlays GPUI con Standings,
   radar y pedales mínimos, IPC con DTO serde en JSON.
 - Ciclo de vida: propietario de arranque y cierre, instancia única,
-  cancelación con plazos, configuración sin bloquear la adquisición,
-  reconexión con época nueva.
+  cancelación con plazos, configuración sin bloquear la adquisición. La
+  reconexión de un consumidor conserva época y cursor mientras sean válidos;
+  reiniciar o reinicializar el productor establece una época nueva.
 - Launcher mínimo y Workshop mínimo (recompilar y reabrir conservando la
   escena) sobre el renderer productivo.
 
@@ -95,7 +96,7 @@ fase termina con algo que funciona y se puede medir.
    ocultas.
 
 **Aceptación.** B cumple presupuestos y contiene fallos, o se documenta por
-qué A; el modo A se retira del código. Standings con paridad visual dentro del
+qué A; la variante no seleccionada se retira del código. Standings con paridad visual dentro del
 umbral de `isa-1410`. Tests de arquitectura verdes.
 
 ## Fase 1 — LMU en vivo, núcleo para overlays y pruebas de frontera
@@ -142,9 +143,11 @@ presupuesto con el conjunto típico de widgets.
 desactivado, durable tras persistencia con recording activado); Engineer/Spotter
 y voz como worker que consume foto y eventos.
 
-**Aceptación.** Reinicio de Engineer recuperando desde su cursor; reinicio del
-núcleo y retención agotada con hueco declarado y reconstrucción desde snapshot,
-sin deducir hechos a través del hueco; activación y desactivación de recording;
+**Aceptación.** Reinicio de Engineer recuperando desde su cursor. Tras reiniciar
+el núcleo, el modo volátil declara el hueco y reconstruye desde snapshot sin
+deducir hechos a través de él; con recording activo se comprueba la
+recuperación de todos los eventos cuya durabilidad se confirmó. Retención
+agotada con hueco declarado; activación y desactivación de recording;
 disco lleno con degradación explícita; consumidor lento.
 
 ## Fase 4 — Series, grabación y análisis
@@ -153,7 +156,8 @@ disco lleno con degradación explícita; consumidor lento.
 de propietario único; análisis histórico y después análisis en directo sobre
 el mismo esquema.
 
-**Aceptación.** Grabación sin afectar a adquisición ni frame time; análisis
+**Aceptación.** Grabación manteniendo adquisición, latencia y frame time dentro
+de los presupuestos aceptados; análisis
 live y reproducción de la misma sesión dan los mismos resultados. Presupuestos
 ratificados de nuevo con journal y series activos.
 

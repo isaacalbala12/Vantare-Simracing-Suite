@@ -92,7 +92,8 @@ semánticos no implican tres buses ni tres almacenes.
 3. **Series temporales por vuelta.** Bloques publicados durante la vuelta (la
    vuelta es un índice, no hace falta esperar a que termine) y sellados al
    cerrarla. Grabación, análisis histórico y análisis en directo comparten
-   esquema y bloques.
+   esquema y bloques. Con recording desactivado no se persisten series live
+   nuevas; el análisis en directo utiliza buffers acotados.
 
 Colas acotadas, escritura fuera del hilo de adquisición y **huecos explícitos**
 ante saturación o disco lleno: no se promete a la vez memoria finita, cero
@@ -113,13 +114,14 @@ Topología por defecto (**B**):
 - **Temporal**: actualizador.
 
 La alternativa **A** (overlays dentro del núcleo) se mide una vez en una
-campaña comparativa intercalada para cuantificar el precio del aislamiento y
-después se retira. Se elige A solo si B incumple un presupuesto relevante sin
+campaña comparativa intercalada para cuantificar el precio del aislamiento;
+después se retira la variante no seleccionada. Se elige A solo si B incumple un presupuesto relevante sin
 una corrección sencilla, aceptando perder la contención de fallos.
 
 **Ciclo de vida**: un propietario del arranque y cierre, instancia única,
 cancelación con plazos, cambios de configuración que no bloquean la
-adquisición y reconexión con época nueva.
+adquisición. La reconexión de un consumidor conserva época y cursor mientras
+sean válidos; reiniciar o reinicializar el productor establece una época nueva.
 
 ### 4. Transporte
 

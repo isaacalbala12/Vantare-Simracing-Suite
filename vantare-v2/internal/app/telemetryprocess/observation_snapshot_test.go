@@ -79,6 +79,7 @@ func TestDecodeObservationSnapshotsRejectWrongProductSchemaAndCursor(t *testing.
 		{Kind: KindStatus, Payload: []byte(`{}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"other","snapshot":{}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"strategy-v1","snapshot":{},"unexpected":1}`)},
+		{Kind: KindSnapshot, Payload: []byte(`{"product":"strategy-v1","snapshot":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-09-28T00:00:00Z","capabilities":[],"unexpected":1}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"strategy-v1","snapshot":{"canonicalVersion":1,"projectionVersion":1,"epoch":0,"sequence":1,"capturedAt":"2026-09-28T00:00:00Z","capabilities":[]}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"strategy-v1","snapshot":{"canonicalVersion":2,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-09-28T00:00:00Z","capabilities":[]}}`)},
 		{Kind: KindSnapshot, Payload: []byte(`{"product":"strategy-v1","snapshot":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"bad","capabilities":[]}}`)},

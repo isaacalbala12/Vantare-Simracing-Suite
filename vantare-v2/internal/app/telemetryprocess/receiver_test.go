@@ -98,3 +98,53 @@ func TestReceiverRejectsUnrequestedAndStaleProducts(t *testing.T) {
 		t.Fatalf("configuration after stop: %v", err)
 	}
 }
+
+func TestReceiverAcceptsSuppressedFactBaselineWhenEngineerDemandWasOff(t *testing.T) {
+	configuration := receiverFixture(t, "configuration-frame-go-v1.bin")
+	var policy ConfigurationV1
+	if err := json.Unmarshal(configuration.Payload, &policy); err != nil {
+		t.Fatal(err)
+	}
+	policy.Consumers = ConsumersV1{}
+	receiver := NewReceiver()
+	if _, err := receiver.Configure(policy); err != nil {
+		t.Fatal(err)
+	}
+	first := Frame{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":1,"factStream":15,"factSequence":11}`)}
+	if _, err := receiver.Accept(first); err != nil {
+		t.Fatal(err)
+	}
+	policy.Revision++
+	policy.Consumers.OverlayV2 = true
+	if _, err := receiver.Configure(policy); err != nil {
+		t.Fatal(err)
+	}
+	// The child generated and suppressed a fact while Engineer was off.
+	second := Frame{Kind: KindConfigurationAck, Payload: []byte(`{"revision":8,"epoch":1,"sequence":2,"factStream":15,"factSequence":12}`)}
+	if _, err := receiver.Accept(second); err != nil {
+		t.Fatalf("suppressed fact baseline rejected: %v", err)
+	}
+	if receiver.facts.last != 12 {
+		t.Fatalf("next Engineer fact baseline = %d, want 12", receiver.facts.last)
+	}
+}
+
+func TestSnapshotProductDispatchRetainsReorderedJSONCompatibility(t *testing.T) {
+	for _, name := range []string{"overlay-snapshot-frame-rust-v1.bin", "engineer-snapshot-frame-rust-v1.bin", "strategy-snapshot-frame-rust-v1.bin"} {
+		frame := receiverFixture(t, name)
+		var envelope struct {
+			Product string `json:"product"`
+		}
+		if err := json.Unmarshal(frame.Payload, &envelope); err != nil {
+			t.Fatal(err)
+		}
+		got, err := snapshotProduct(frame.Payload)
+		if err != nil || got != envelope.Product {
+			t.Fatalf("%s product = %q, %v; want %q", name, got, err, envelope.Product)
+		}
+	}
+	got, err := snapshotProduct([]byte(`{"snapshot":{}, "product" : "engineer-v1"}`))
+	if err != nil || got != ProductEngineerV1 {
+		t.Fatalf("reordered legacy envelope product = %q, %v", got, err)
+	}
+}

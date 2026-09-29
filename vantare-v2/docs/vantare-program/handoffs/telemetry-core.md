@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — coste IPC y baseline de facts corregido (2026-09-29)
+
+El perfil físico de 15 s atribuyó la mayor parte del CPU del receptor Rust a
+JSON Engineer en Go. Decode en una pasada y selección acotada de producto
+redujeron el diagnóstico host+hijo de ~6,91 a ~4,13 s/15 s en ventanas no
+intercaladas; Go app dio ~0,73 s/15 s. Es orientación, no G1 ni gate del 50%.
+La UI Wails visible abrió login y llegó a telemetría live; Studio/OBS quedan
+sin verificación autenticada. Al abrir Overlay tarde, el receptor rechazaba
+incorrectamente ACK con facts suprimidos y reiniciaba el hijo. Una regresión
+falló antes del arreglo; LMU47 pasa ahora demanda y política x3 con cero
+reinicios, además de Engineer/Strategy y reinicio inducido. `go test ./...`,
+vet y Staticcheck focal pasan. Faltan codec/G1, p99/RSS, recuperación completa,
+packaging y sesión visual autenticada. Go sigue por defecto; PR #1415 draft,
+sin merge. Plan §122.
+
 ## VAN-778 / ISA-1403 — fallo físico de fact y reconexión (2026-09-29)
 
 Un test opt-in con LMU 1.4.2.0 y 47 vehículos rechaza un fact en Engineer:

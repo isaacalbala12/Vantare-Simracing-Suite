@@ -267,6 +267,9 @@ func TestRustCandidateLateOverlayConsumerLiveLMUOptIn(t *testing.T) {
 			break
 		}
 	}
+	if attempt := runtime.SourceStatus().ReconnectAttempt; attempt != 0 {
+		t.Fatalf("Overlay demand or policy change restarted Rust child %d times", attempt)
+	}
 }
 
 func TestRustCandidateEngineerAndStrategyLiveLMUOptIn(t *testing.T) {

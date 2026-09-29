@@ -2250,3 +2250,35 @@ llegar antes del primero; se ajustó a comprobar rechazo, reconexión y una
 publicación Strategy posterior, que son los hechos garantizados por el orden
 del proceso. Falta provocar crash después de un fact ya aceptado, demostrar
 resync/retención y cubrir el resto de R20. No hay gate de rendimiento final.
+
+## 122. Diagnóstico del coste IPC y demanda sin reinicios (2026-09-29)
+
+La app Wails visible arrancó con Rust y llegó a estado live ante LMU, pero
+mostró la pantalla de acceso. Sin sesión autenticada no se acreditan Studio,
+Desktop ni OBS; se cerró la app de prueba y su hijo. Un perfil de CPU de
+15 segundos con LMU real atribuyó 3,77 de 6,01 segundos de CPU del receptor
+Go al decode Engineer JSON, que recorría el payload varias veces. El hijo Rust
+usó ~0,6 segundos de CPU en la misma ventana; el coste dominante estaba en
+Go. La prueba comparable con el runtime Go y un consumidor Engineer de prueba
+usó 1,70 segundos de CPU y entregó 959 observaciones en 15 segundos.
+
+El receptor ahora decodifica Engineer/Strategy en una sola pasada estricta y
+selecciona el producto por un prefijo acotado antes del payload grande; los
+mensajes de orden histórico usan el parser general. No se rebaja la validación
+final. Tres ventanas diagnósticas Rust de 15 segundos, sin intercalar ni fijar
+G1, midieron host+hijo aproximadamente 6,91 s antes, 5,55 s tras un decode y
+4,13 s tras la selección acotada. Una ventana Go app sin hijo dio 0,73 s;
+los perfiles y ventanas no son el banco de aceptación y no prueban causalidad
+ni equivalencia completa de productos. Al contrario, muestran que Rust aún
+queda lejos del objetivo de CPU ≤0,50 y debe optimizar el formato/decoding.
+
+El mismo ensayo físico de demanda Overlay reveló dos reinicios que el test
+antiguo no rechazaba: con Engineer apagado, Rust suprimía facts y avanzaba su
+contador, mientras Go exigía un contador inmóvil en la ACK de reconfiguración.
+Una regresión falló antes del arreglo. El receptor acepta el nuevo baseline
+solo si Engineer estaba apagado y no retrocede; mantiene el rechazo de saltos
+cuando Engineer estaba demandado. La prueba LMU47 de Overlay tardío y cambio
+de política pasa tres veces ahora con **cero reinicios**; Engineer/Strategy y
+la recuperación por rechazo de fact pasan también. `go test ./...`, vet focal,
+Staticcheck focal sin avisos nuevos y `git diff --check` pasaron. R21/R25
+siguen abiertos; ninguna medición se presenta como gate final.

@@ -1,6 +1,7 @@
 package telemetryprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,7 +127,7 @@ func (receiver *Receiver) Accept(frame Frame) (ReceivedV1, error) {
 
 func (receiver *Receiver) acceptConfiguration(frame Frame) (ReceivedV1, error) {
 	if receiver.pending == nil {
-		return ReceivedV1{}, ErrReceiverProtocol
+		return ReceivedV1{}, fmt.Errorf("%w: unsolicited configuration ACK", ErrReceiverProtocol)
 	}
 	ack, err := DecodeConfigurationAck(frame)
 	if err != nil {
@@ -134,15 +135,25 @@ func (receiver *Receiver) acceptConfiguration(frame Frame) (ReceivedV1, error) {
 	}
 	next := receiverCursor{epoch: ack.Epoch, sequence: ack.Sequence}
 	if ack.Revision != receiver.pending.Revision || receiver.active != nil && !next.after(receiver.ack) {
-		return ReceivedV1{}, ErrReceiverProtocol
+		return ReceivedV1{}, fmt.Errorf("%w: configuration ACK revision %d cursor %d/%d, pending revision %d previous %d/%d", ErrReceiverProtocol,
+			ack.Revision, ack.Epoch, ack.Sequence, receiver.pending.Revision, receiver.ack.epoch, receiver.ack.sequence)
 	}
 	if receiver.facts == nil {
 		receiver.facts, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
 		if err != nil {
 			return ReceivedV1{}, err
 		}
-	} else if receiver.facts.stream != ack.FactStream || receiver.facts.last != ack.FactSequence {
-		return ReceivedV1{}, ErrReceiverProtocol
+	} else if receiver.facts.stream != ack.FactStream || ack.FactSequence < receiver.facts.last {
+		return ReceivedV1{}, fmt.Errorf("%w: configuration ACK fact cursor changed within child", ErrReceiverProtocol)
+	} else if receiver.active != nil && !receiver.active.Consumers.Engineer {
+		// Facts produced while Engineer is not demanded are intentionally
+		// suppressed by Rust. The next ACK is their new explicit baseline.
+		receiver.facts, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
+		if err != nil {
+			return ReceivedV1{}, err
+		}
+	} else if receiver.facts.last != ack.FactSequence {
+		return ReceivedV1{}, fmt.Errorf("%w: configuration ACK skipped demanded Engineer facts", ErrReceiverProtocol)
 	}
 	receiver.active = receiver.pending
 	receiver.pending = nil
@@ -153,20 +164,18 @@ func (receiver *Receiver) acceptConfiguration(frame Frame) (ReceivedV1, error) {
 
 func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 	if receiver.active == nil {
-		return ReceivedV1{}, ErrReceiverProtocol
+		return ReceivedV1{}, fmt.Errorf("%w: snapshot before configuration", ErrReceiverProtocol)
 	}
-	var envelope struct {
-		Product string `json:"product"`
-	}
-	if err := json.Unmarshal(frame.Payload, &envelope); err != nil {
-		return ReceivedV1{}, fmt.Errorf("%w: snapshot envelope: %v", ErrReceiverProtocol, err)
+	product, err := snapshotProduct(frame.Payload)
+	if err != nil {
+		return ReceivedV1{}, err
 	}
 	var event ReceivedV1
 	var cursor receiverCursor
-	switch envelope.Product {
+	switch product {
 	case ProductOverlayV2:
 		if !receiver.active.Consumers.OverlayV2 {
-			return ReceivedV1{}, ErrReceiverProtocol
+			return ReceivedV1{}, fmt.Errorf("%w: Overlay snapshot without demand", ErrReceiverProtocol)
 		}
 		update, err := DecodeOverlaySnapshot(frame)
 		if err != nil {
@@ -176,7 +185,7 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 		event.Overlay = &update
 	case ProductEngineerV1:
 		if !receiver.active.Consumers.Engineer {
-			return ReceivedV1{}, ErrReceiverProtocol
+			return ReceivedV1{}, fmt.Errorf("%w: Engineer snapshot without demand", ErrReceiverProtocol)
 		}
 		snapshot, identity, err := DecodeEngineerSnapshotWithIdentity(frame)
 		if err != nil {
@@ -187,7 +196,7 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 		event.EngineerIdentity = identity
 	case ProductStrategyV1:
 		if !receiver.active.Consumers.Strategy {
-			return ReceivedV1{}, ErrReceiverProtocol
+			return ReceivedV1{}, fmt.Errorf("%w: Strategy snapshot without demand", ErrReceiverProtocol)
 		}
 		snapshot, err := DecodeStrategySnapshot(frame)
 		if err != nil {
@@ -196,14 +205,45 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 		cursor = receiverCursor{epoch: uint64(snapshot.Metadata.Epoch), sequence: uint64(snapshot.Metadata.Sequence)}
 		event.Strategy = &snapshot
 	default:
-		return ReceivedV1{}, ErrReceiverProtocol
+		return ReceivedV1{}, fmt.Errorf("%w: unknown product", ErrReceiverProtocol)
 	}
 	if cursor.epoch == 0 || cursor.sequence == 0 || cursor != receiver.ack && !cursor.after(receiver.ack) ||
-		receiver.lastProducts[envelope.Product] != (receiverCursor{}) && !cursor.after(receiver.lastProducts[envelope.Product]) {
-		return ReceivedV1{}, ErrReceiverProtocol
+		receiver.lastProducts[product] != (receiverCursor{}) && !cursor.after(receiver.lastProducts[product]) {
+		return ReceivedV1{}, fmt.Errorf("%w: %s cursor %d/%d after ack %d/%d and product %d/%d", ErrReceiverProtocol,
+			product, cursor.epoch, cursor.sequence, receiver.ack.epoch, receiver.ack.sequence,
+			receiver.lastProducts[product].epoch, receiver.lastProducts[product].sequence)
 	}
-	receiver.lastProducts[envelope.Product] = cursor
+	receiver.lastProducts[product] = cursor
 	return event, nil
+}
+
+// Rust emits product before the large snapshot/update body. This bounded
+// selector avoids parsing that body twice; the selected product's strict
+// decoder still validates the complete JSON, including the product value.
+// Older or reordered fixtures use the general JSON fallback.
+func snapshotProduct(payload []byte) (string, error) {
+	prefix := payload
+	if len(prefix) > 512 {
+		prefix = prefix[:512]
+	}
+	if body := bytes.Index(prefix, []byte(`"snapshot"`)); body >= 0 {
+		prefix = prefix[:body]
+	}
+	if body := bytes.Index(prefix, []byte(`"update"`)); body >= 0 {
+		prefix = prefix[:body]
+	}
+	for _, product := range [...]string{ProductOverlayV2, ProductEngineerV1, ProductStrategyV1} {
+		if bytes.Contains(prefix, []byte(`"product":"`+product+`"`)) {
+			return product, nil
+		}
+	}
+	var envelope struct {
+		Product string `json:"product"`
+	}
+	if err := json.Unmarshal(payload, &envelope); err != nil {
+		return "", fmt.Errorf("%w: snapshot envelope: %v", ErrReceiverProtocol, err)
+	}
+	return envelope.Product, nil
 }
 
 func (receiver *Receiver) DrainFacts() []engineer.FactEnvelopeV1 {

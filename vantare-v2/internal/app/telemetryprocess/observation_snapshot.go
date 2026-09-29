@@ -62,7 +62,7 @@ func decodeObservationSnapshot[T any](frame Frame, product string, metadataOf fu
 	var envelope struct {
 		Product  string             `json:"product"`
 		Identity *engineer.Identity `json:"identity"`
-		Snapshot json.RawMessage    `json:"snapshot"`
+		Snapshot *T                 `json:"snapshot"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(frame.Payload))
 	decoder.DisallowUnknownFields()
@@ -73,18 +73,10 @@ func decodeObservationSnapshot[T any](frame Frame, product string, metadataOf fu
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return zero, nil, ErrInvalidObservationSnapshot
 	}
-	if envelope.Product != product || len(envelope.Snapshot) == 0 {
+	if envelope.Product != product || envelope.Snapshot == nil {
 		return zero, nil, ErrInvalidObservationSnapshot
 	}
-	decoder = json.NewDecoder(bytes.NewReader(envelope.Snapshot))
-	decoder.DisallowUnknownFields()
-	var snapshot T
-	if err := decoder.Decode(&snapshot); err != nil {
-		return zero, nil, fmt.Errorf("%w: snapshot: %v", ErrInvalidObservationSnapshot, err)
-	}
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return zero, nil, ErrInvalidObservationSnapshot
-	}
+	snapshot := *envelope.Snapshot
 	metadata := metadataOf(snapshot)
 	if metadata.CanonicalVersion != 1 || metadata.ProjectionVersion != 1 ||
 		metadata.Epoch == 0 || metadata.Sequence == 0 {

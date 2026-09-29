@@ -157,7 +157,7 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 		}
 		event, err := receiver.Accept(frame)
 		if err != nil {
-			return fmt.Errorf("validate Rust candidate frame: %w", err)
+			return fmt.Errorf("validate Rust candidate frame kind %d: %w", frame.Kind, err)
 		}
 		if event.Stopped {
 			return errors.New("telemetry Rust candidate stopped without host request")

@@ -15,6 +15,7 @@ mod model;
 pub mod pedals;
 mod quality;
 pub mod radar;
+pub mod relative;
 pub mod standings;
 
 pub use adapter::{Adapter, AdapterError, Observation};

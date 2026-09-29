@@ -53,8 +53,10 @@ cargo run -p vantare-ui --release --bin vantare-overlays -- 4
 - `--pipe` cambia el nombre del pipe; el de por defecto lleva el SID del
   usuario. Cada arranque estrena época (milisegundos de reloj de pared): los
   overlays reconstruyen su estado al verla cambiar.
-- Ctrl+C, Ctrl+Break o cerrar la consola paran el bucle, cierran el pipe y
-  terminan; si no acaba en 4 s, sale por la fuerza.
+- Ctrl+C, Ctrl+Break, cerrar la consola o que su stdin llegue a EOF (así lo pide
+  el launcher) paran el bucle, cierran el pipe y terminan; si no acaba en 4 s,
+  sale por la fuerza. Con stdin cerrado o nulo desde el arranque termina al
+  instante. Al acabar un replay sigue sirviendo la última foto (obsoleta).
 
 `vantare-overlays [1|4|22] [--ventanas por-widget|una] [--fuente
 local|pipe[:<nombre>]]`: `pipe` (por defecto, con el nombre por defecto del

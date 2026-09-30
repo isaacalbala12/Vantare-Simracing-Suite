@@ -95,10 +95,10 @@ No se ejecutan Go/frontend (no modificados), CI remoto, promoción ni release.
 
 | Check | Resultado | Salida |
 | --- | --- | --- |
-| `cargo fmt --check` | PASS, exit 0, sin salida | `evidence/fmt.log` |
-| `cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings` | PASS, exit 0, sin warnings | `evidence/clippy.log` |
-| `cargo test --workspace --offline -j 2` | PASS, exit 0: 628 tests estándar y 11 del harness de lifecycle; 0 fallos, 4 ignorados | `evidence/tests.log` |
-| `cargo build --offline -j 2 -p vantare-hub` | PASS, exit 0 | `evidence/build.log` |
+| `cargo fmt --check` | PASS, exit 0, sin salida | `C:/tmp/tc-local-evidence/fmt.log` |
+| `cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings` | PASS, exit 0, sin warnings | `C:/tmp/tc-local-evidence/clippy.log` |
+| `cargo test --workspace --offline -j 2` | PASS, exit 0: 628 tests estándar y 11 del harness de lifecycle; 0 fallos, 4 ignorados | `C:/tmp/tc-local-evidence/tests.log` |
+| `cargo build --offline -j 2 -p vantare-hub` | PASS, exit 0 | `C:/tmp/tc-local-evidence/build.log` |
 | AST PowerShell de `capture.ps1`; `git diff --check` | PASS | Revisión local |
 
 Los ocho checks del módulo Testing incluyen siete nuevos tests de privacidad,
@@ -109,20 +109,20 @@ prueba. El harness lifecycle usa sus procesos de prueba existentes.
 
 Capturas reales del Hub propio de este worktree, 1600 × 1000:
 
-- [Informe guardado](evidence/testing-report.png): cuatro textos de prueba
+- [Informe guardado](C:/tmp/tc-local-evidence/testing-report.png): cuatro textos de prueba
   introducidos manualmente; no representan un fallo real del producto.
-- [Conflicto por bytes](evidence/testing-conflict.png): se añadió whitespace al
+- [Conflicto por bytes](C:/tmp/tc-local-evidence/testing-conflict.png): se añadió whitespace al
   borrador desde fuera; guardar rechaza, mantiene la edición en memoria y el
   archivo externo. Recargar recuperó los cuatro textos originales en la UI.
-- [Diagnóstico](evidence/testing-diagnostic.png): núcleo no observado, fuente
+- [Diagnóstico](C:/tmp/tc-local-evidence/testing-diagnostic.png): núcleo no observado, fuente
   ausente, inventario real; no se usa una foto del Workshop como telemetría.
-- [Exportación completada](evidence/testing-exported.png): acción local desde
-  el selector de Windows. [JSON exportado](evidence/report-export.json) es una
+- [Exportación completada](C:/tmp/tc-local-evidence/testing-exported.png): acción local desde
+  el selector de Windows. [JSON exportado](C:/tmp/tc-local-evidence/report-export.json) es una
   copia renombrada del archivo creado por la UI: `SendKeys` con el teclado
   español alteró la puntuación del nombre de destino durante la automatización.
   El contenido no se transformó.
 
-[Hashes independientes](evidence/binary-hashes.json): nueve de nueve coinciden
+[Hashes independientes](C:/tmp/tc-local-evidence/binary-hashes.json): nueve de nueve coinciden
 con `Get-FileHash -Algorithm SHA256`. El Hub usado en la captura tiene hash
 `35cbd57dfdc96393d1f41a8d3e73841c47dfacc57b39ed010fd358a4215ad3fe`.
 Solo se abrió el Hub, con rutas de prueba aisladas y pipe sin núcleo.
@@ -133,7 +133,7 @@ sí están cubiertos por tests; los bytes del borrador de prueba quedaron intact
 IME físico, recuperación visual tras reinicio, DPI mixto y runtime con juego
 siguen pendientes de verificación manual del orquestador.
 
-`evidence/run/` y `session.json` están ignorados; no se versionan borradores
+`C:/tmp/tc-local-evidence/run/` y `session.json` están ignorados; no se versionan borradores
 privados, configuraciones de prueba ni ejecutables. Toda modificación pertenece
 a `testing/` o a la conexión mínima en `shell.rs`. Sin push, PR, merge, release
 ni subagentes; revisión e integración pendientes del orquestador.

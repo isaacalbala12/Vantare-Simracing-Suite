@@ -13,13 +13,27 @@ pub struct Clock {
     invalidated_after: Option<DateTime<Utc>>,
 }
 
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SessionIdentity {
+    pub simulator: String,
+    pub track: String,
+    pub kind: String,
+    /// Marca estable procedente del simulador, nunca la época local del núcleo.
+    pub started: String,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Game {
     session: u64,
+    #[serde(default)]
+    identity: Option<SessionIdentity>,
     subject: String,
     device: String,
     eligible: Vec<String>,
+    #[serde(default)]
+    deadlines: Vec<(String, DateTime<Utc>)>,
     entered_at: DateTime<Utc>,
 }
 #[derive(Serialize, Deserialize)]
@@ -128,6 +142,18 @@ impl Authority {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<()> {
+        self.enter_game_identified(session, None, entered_at, now, tick)
+    }
+
+    /// Solo una identidad estable completa confirma una sesión tras restaurar.
+    pub fn enter_game_identified(
+        &mut self,
+        session: u64,
+        identity: Option<SessionIdentity>,
+        entered_at: DateTime<Utc>,
+        now: DateTime<Utc>,
+        tick: Duration,
+    ) -> Result<()> {
         let now = self.observe(now, tick)?;
         if entered_at > now {
             return Err(Error::Clock);
@@ -135,19 +161,39 @@ impl Authority {
         if self.invalidated {
             return Err(Error::Denied);
         }
+        if identity.as_ref().is_some_and(|id| {
+            [&id.simulator, &id.track, &id.kind, &id.started]
+                .iter()
+                .any(|value| value.trim().is_empty() || value.len() > 512)
+        }) {
+            return Err(Error::Protocol);
+        }
+        if !self.confirmed_game {
+            let same = self.game.as_ref().is_some_and(|game| {
+                game.identity
+                    .as_ref()
+                    .zip(identity.as_ref())
+                    .is_some_and(|(old, new)| old == new)
+            });
+            if !same {
+                self.leave_game();
+            }
+        }
         let verified = self.verified.as_ref().ok_or(Error::InvalidCredential)?;
-        if let Some(game) = &self.game {
-            if game.session != session
+        if let Some(game) = &mut self.game {
+            if (self.confirmed_game && (game.session != session || game.identity != identity))
                 || game.subject != verified.subject
                 || game.device != verified.device
             {
                 return Err(Error::Conflict);
             }
+            game.session = session; // El ID local puede cambiar sin alterar el plazo guardado.
             self.confirmed_game = true; // Same core-observed session; does not reset entry/expiry.
             return Ok(());
         }
         self.game = Some(Game {
             session,
+            identity,
             subject: verified.subject.clone(),
             device: verified.device.clone(),
             entered_at,
@@ -159,6 +205,17 @@ impl Authority {
                         && grant.expires_at.is_none_or(|expiry| entered_at < expiry)
                 })
                 .map(|grant| grant.key.clone())
+                .collect(),
+            deadlines: verified
+                .grants
+                .iter()
+                .filter_map(|grant| {
+                    let expiry = grant.expires_at?;
+                    (verified.issued_at <= entered_at && entered_at < expiry)
+                        .then(|| expiry.checked_add_signed(TimeDelta::hours(1)))
+                        .flatten()
+                        .map(|end| (grant.key.clone(), end))
+                })
                 .collect(),
         });
         self.confirmed_game = true;
@@ -184,7 +241,9 @@ impl Authority {
                         game.entered_at < expiry && game.eligible.contains(&grant.key)
                     })
                 {
-                    expiry.checked_add_signed(TimeDelta::hours(1))
+                    self.grace_deadline(&grant.key)
+                        .map(|end| end.max(expiry))
+                        .or(Some(expiry))
                 } else {
                     Some(expiry)
                 }
@@ -215,13 +274,19 @@ impl Authority {
                             && self.game.as_ref().is_some_and(|game| {
                                 game.entered_at < expiry && game.eligible.contains(&grant.key)
                             })
-                            && expiry
-                                .checked_add_signed(TimeDelta::hours(1))
-                                .is_some_and(|end| now < end))
+                            && self.grace_deadline(&grant.key).is_some_and(|end| now < end))
                 })
             })
             .map(|grant| grant.key.clone())
             .collect())
+    }
+
+    fn grace_deadline(&self, key: &str) -> Option<DateTime<Utc>> {
+        self.game
+            .as_ref()?
+            .deadlines
+            .iter()
+            .find_map(|(grant, end)| (grant == key).then_some(*end))
     }
 
     /// Core must persist before publishing rights/ACK; never service-owned.

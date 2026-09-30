@@ -123,11 +123,11 @@ despliegue de #909, #911/#1173 o #915/#1187; `native_oauth=None` y el hook de
 puente siguen inactivos. Sin configuración: «servicio no configurado».
 Nunca service_role, client secret ni firma privada del servidor en el desktop.
 
-**Límite de la hora:** los adaptadores reciclan SessionId al reiniciar. Un núcleo
-continuo concede la hora completa; un reinicio frío restaura binding/reloj pero
-no prueba la misma carrera y deniega la excepción de una credencial ya vencida.
-Isaac debe revisar este límite antes de aceptar runtime real; recuperar el margen
-necesita una identidad estable del simulador, no una afirmación del Hub.
+**Límite de la hora:** el corte del worker margen descrito abajo añade plazos
+absolutos e identidad a la persistencia del núcleo. La restauración con identidad
+completa está probada localmente. Los adaptadores siguen sin publicar una marca
+de inicio estable, por lo que Host aún deniega el margen frío en producción.
+Recuperarlo en juego real necesita esa señal nativa, no una afirmación del Hub.
 
 Corte 6, tras fijar la configuración pública con Isaac:
 
@@ -137,7 +137,7 @@ Corte 6, tras fijar la configuración pública con Isaac:
    y Hub contra su mismo pipe. Comprobar login/reinicio/rotación/logout/reset
    con cuenta propia de prueba, transferencia ACK y cierre del auxiliar en juego.
 3. Juego/overlays/Engineer reales con Hub cerrado: T+3599/T+3600, salida,
-   desconexión y reinicio frío; aceptar expresamente el límite de identidad.
+   desconexión y reinicio frío, tras resolver la marca estable del adaptador.
 4. Roadmap válido/vacío/desconectado/schema incompatible. Informe de prueba
    solo tras consentimiento: respuesta perdida y reintento manual con mismo ID.
 5. Medir CPU/RSS/latencia de cierre; completar MSIX firmado y CI solo cuando
@@ -170,3 +170,67 @@ primer padre. En los hitos posteriores al merge no se editaron widgets, Go,
 frontend, workflows, secretos ni cachés compartidas. ADR/plan aprobados y código de los cortes 1–5 anteriores
 permanecen versionados. El SHA final del commit de este documento se entrega
 en el chat; no se autoescribe una referencia circular.
+
+## Corte local del worker margen — ISA-1430
+
+2026-09-30. `C:/tmp/vw3-margen/vantare-v2`, rama
+`vantareapp/isa-1430-w-margen`, base asignada
+`83225e516242533d65a2f1c3436ba306b9ccd517` (integración de servicios).
+Se consultó GitHub #1430, abierta. Notion no disponible, excepción explícita
+de Isaac: no hay actualización ni estado Notion verificados. Sin subagentes,
+push, PR, merge, promoción, release ni CI remoto. El orquestador Opus revisa
+el diff; no se declara terminada la integración live.
+
+Se reutiliza el único almacén protegido y su reemplazo DPAPI durable. Game
+guarda la identidad compuesta y deadlines absolutos por derecho junto al reloj
+anti-retroceso. El binding firmado continúa verificándose al abrir. La primera
+sesión live confirma solo una identidad completa coincidente y reutiliza los
+deadlines originales, incluso con otro ID local o tras varios reinicios.
+El formato anterior sin identidad/deadlines no restaura margen. Logout, replay
+y salida live conservan la revocación de la excepción.
+
+Ficheros de este corte: `runtime/src/rights/{mod,tests}.rs`,
+`services/src/license/{authority,tests}.rs`, `services/{INTEGRATION,DELIVERY}.md`.
+Sin dependencias nuevas ni unsafe. Solo la ruta interna del núcleo acepta la
+marca; no se introduce autoridad de sesión por Hub/IPC.
+
+**Bloqueo y siguiente paso para Opus:** `Session` solo publica identidad local,
+tipo, circuito y relojes relativos. Los adaptadores LMU/ACC no publican una marca
+nativa persistente. `advance_observed_session` recibe una marca explícita solo
+en tests; Host continúa usando `advance_observed` sin marca. Por tanto este
+corte prepara la restauración segura, pero **no conserva aún el margen tras
+reiniciar el núcleo con un juego real**. Hace falta encargar al dueño de
+adaptadores/domain una señal nativa con unicidad comprobada entre carreras del
+mismo circuito/tipo y conectarla a Host, con conformidad física. No se permite
+inventarla con pared menos elapsed, una época local ni un ID del Hub.
+
+Pruebas: dos reinicios conservan el mismo deadline y deniegan exactamente en
+caducidad + 3.600 s; cambios de marca/simulador/circuito/tipo, marca ausente o
+circuito stale descartan la recuperación; replay no confirma; plazo vencido,
+retroceso de reloj y estado ausente/corrupto/legacy deniegan. La regresión de
+biblioteca detectó el uso indebido del ID reciclado antes del arreglo (1 fallo
+esperado, `reproduction-before.log`). La prueba anterior de restauración se
+actualizó para aportar identidad completa y comprobar un ID local distinto.
+Las identidades y claves son fixtures generadas; no son evidencia física LMU/ACC.
+
+Evidencia y logs largos fuera del repo, `C:/tmp/margen-evidence/`. Los tests de
+derechos admiten `VANTARE_TEST_EVIDENCE_DIR` para situar sus blobs de fixture
+en esa carpeta. Gates completos y SHA del commit local se entregan en el reporte
+final; no hay SHA circular en este documento. No se ejecutan suites Go/frontend,
+MSIX, Clerk/backend remoto ni QA físico porque no se modifican esos flujos y
+la integración live sigue bloqueada por la identidad ausente.
+
+Gates finales de este corte en `native/`, con máximo dos jobs, todos exit 0:
+
+| Comando | Evidencia externa | Resultado |
+|---|---|---|
+| `cargo fmt --check` | `fmt-pass.log` | Aprobado. |
+| `cargo clippy --workspace --all-targets -j 2 -- -D warnings` | `clippy-pass.log` | Aprobado, sin avisos. |
+| `cargo test --workspace -j 2` | `test-workspace.log` | 726 passed, 0 failed, 4 ignored; además 11 escenarios del harness de ciclo de vida aprobados. |
+
+Los cuatro ignorados heredados requieren LMU/ACC físicos. `clippy.log` y
+`clippy-final.log` conservan los intentos previos fallidos por estilo en los
+tests de este worker, corregidos sin supresiones. `gate-status.txt` y
+`test-summary.json` conservan los resultados finales; `review.diff`, el diff
+completo revisado. La pasada completa valida el workspace de esta base, pero
+no convierte el contrato condicionado a identidad en aceptación live.

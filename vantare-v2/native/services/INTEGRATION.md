@@ -48,13 +48,33 @@ Fuera de juego, entrada con credencial vencida o derechos emitidos después de
 la entrada: sin gracia. La transferencia tardía usa la entrada observada por
 el núcleo y no inventa un margen nuevo. Salir del juego elimina la excepción.
 
-**Límite pendiente:** los adaptadores reciclan `SessionId` al reiniciar el núcleo.
-El reloj/binding se restauran, pero no prueban que siga la misma carrera. Por
-seguridad, un reinicio frío no restaura la excepción de una credencial ya
-caducada. Durante un núcleo continuo sí se mantiene la hora completa. Restaurar
-ese margen tras reinicio requiere identidad estable de sesión de simulador y
-su verificación; no se sustituye por un ID del Hub. Revisar esta limitación con
-Isaac antes de aceptar runtime real.
+**Margen durable (worker margen, ISA-1430):** el estado `authority.dpapi` guarda
+en un solo reemplazo DPAPI durable el reloj protegido (`clock.last_seen`),
+entrada, sujeto/dispositivo, identidad de sesión y plazos absolutos por derecho
+(caducidad firmada + 3.600 s). La restauración empieza sin confirmar la sesión.
+`Owner::advance_observed_session` confirma únicamente la primera sesión live
+con el mismo simulador, circuito, tipo y marca de inicio estable del simulador.
+Puede cambiar el `SessionId` local; nunca cambia el plazo guardado. Otra sesión,
+identidad incompleta, estado ausente/legacy/corrupto, reloj hacia atrás o plazo
+vencido no recuperan margen. Waiting inicial espera la primera live; salir tras
+live, replay y revocación eliminan la excepción. No hay afirmación del Hub ni
+nuevo campo IPC de autoridad. El formato v1 anterior conserva reloj/binding;
+su Game sin identidad/plazos no puede recuperar margen.
+
+**Bloqueo de integración live:** en esta base, LMU/ACC no exponen en `Snapshot`
+una marca de inicio estable. `domain/src/model.rs::Session` solo contiene el
+`SessionId` local y tiempos transcurrido/restante. LMU lo genera en
+`runtime/src/adapter/lmu/translate.rs`; ACC en `adapter/acc/translate.rs` con
+`self.epoch`. `Origin.source_time`/`Session.elapsed_s` son relojes relativos,
+no identificadores; restarlos del reloj de pared inventaría una identidad que
+cambia con pausas, carga, latencia y reinicios del simulador. Por eso
+`advance_observed`/Host siguen pasando marca ausente y **el margen frío live
+todavía no se restaura en producción**. La persistencia y restauración se prueban
+con una marca explícita de fixture, sin atribuirla a un juego real. El siguiente
+worker debe aportar una marca nativa estable en el modelo y conectar Host; este
+corte tiene prohibido editar adaptadores/domain. Solo una marca nativa con
+unicidad comprobada distingue dos carreras del mismo circuito/tipo; aún no
+existe evidencia para afirmar qué campo del simulador basta.
 
 Antes de atender la primera acción del Hub, servicios transfiere el candidate
 local y obtiene ACK del núcleo. Tras renovar, vuelve a transferirlo. Al detectar
@@ -152,7 +172,7 @@ Corte 6: build con configuración pública acordada; arrancar `vantare -- --live
 y Hub contra el mismo pipe; login alojado, reinicio/rotación/logout/reset con
 cuenta de prueba; comprobar Hub/auxiliar cerrados y derechos en overlays/Engineer
 con juego real; T+3599/T+3600, desconexión, pérdida del núcleo y margen frío
-pendiente; roadmap real e informe de prueba solo con consentimiento. Medir
+pendiente de identidad estable del adaptador; roadmap real e informe de prueba solo con consentimiento. Medir
 CPU/RSS/latencia de cierre. Sync de perfiles/layouts sigue fuera de este corte,
 sin sincronización continua ni gasto. Notion no disponible: excepción explícita
 GitHub de Isaac; no se declara su seguimiento completado.

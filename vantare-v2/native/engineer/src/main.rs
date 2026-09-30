@@ -5,7 +5,7 @@ use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use vantare_engineer::{Engineer, radio::Locale, worker::RadioWorker};
+use vantare_engineer::{Engineer, control, local::Local, radio::Locale, worker::RadioWorker};
 use vantare_runtime::flows::wire;
 
 #[derive(Default)]
@@ -16,6 +16,7 @@ struct Options {
     locale: Locale,
     clips: Option<PathBuf>,
     core_image: Option<PathBuf>,
+    settings: Option<PathBuf>,
 }
 
 fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'static str> {
@@ -30,6 +31,9 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
             }
             Some("--cursor") => {
                 options.cursor = Some(arguments.next().ok_or("falta ruta de cursor")?.into());
+            }
+            Some("--settings") if options.settings.is_none() => {
+                options.settings = Some(arguments.next().ok_or("falta ruta de ajustes")?.into());
             }
             Some("--clips") => {
                 options.clips = Some(arguments.next().ok_or("falta carpeta de clips")?.into());
@@ -58,7 +62,7 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
             }
             _ => {
                 return Err(
-                    "uso: --pipe [--pipe-name N] | --stream --cursor R; [--locale es|en|it|pt-BR] [--clips CARPETA]",
+                    "uso: --pipe [--pipe-name N] | --stream --cursor R; [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]",
                 );
             }
         }
@@ -81,22 +85,51 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let options = options(std::env::args_os().skip(1))?;
-    let radio = RadioWorker::new(options.locale, options.clips.as_deref())?;
-    if options.stream {
-        run_stream(options.cursor.as_deref().ok_or("falta cursor")?, radio)
+    let mut radio = RadioWorker::new(options.locale, options.clips.as_deref())?;
+    let settings_path = match options.settings {
+        Some(path) => Some(path),
+        None if !options.stream => Some(control::default_path()?),
+        None => None, // El banco stream no toca ajustes de producto salvo opt-in.
+    };
+    let seed = control::Settings {
+        locale: options.locale.code().into(),
+        voice: options.clips.is_some(),
+        ..Default::default()
+    };
+    let mut local = settings_path.map(|path| Local::new(path, seed, options.clips));
+    let result = if options.stream {
+        run_stream(
+            options.cursor.as_deref().ok_or("falta cursor")?,
+            &mut radio,
+            local.as_mut(),
+        )
     } else {
         run_pipe(
             options.pipe,
             options.cursor.as_deref().ok_or("falta cursor")?,
             options.core_image,
-            radio,
+            &mut radio,
+            local.as_mut(),
         )
+    };
+    let stopped = radio.clear();
+    if let Some(local) = &mut local {
+        let error = result
+            .as_ref()
+            .err()
+            .map(ToString::to_string)
+            .or_else(|| stopped.as_ref().err().map(ToString::to_string));
+        local.publish(&radio, false, error.as_deref());
     }
+    result?;
+    stopped?;
+    Ok(())
 }
 
 fn run_stream(
     checkpoint: &std::path::Path,
-    mut radio: RadioWorker,
+    radio: &mut RadioWorker,
+    mut local: Option<&mut Local>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut engineer = Engineer::resume(checkpoint)?;
     let mut output = io::stdout().lock();
@@ -119,6 +152,9 @@ fn run_stream(
     let start = Instant::now();
     let mut presentation = io::stderr().lock();
     loop {
+        if let Some(local) = &mut local {
+            local.poll(radio, &mut presentation)?;
+        }
         match receiver.recv_timeout(Duration::from_millis(50)) {
             Ok(Ok(Some(frame))) => {
                 let applied = engineer.apply(&frame, checkpoint)?;
@@ -145,8 +181,10 @@ fn run_stream(
                 radio.tick(start.elapsed(), &mut presentation)?;
             }
         }
+        if let Some(local) = &mut local {
+            local.publish(radio, true, None);
+        }
     }
-    radio.clear()?;
     Ok(())
 }
 
@@ -155,7 +193,8 @@ fn run_pipe(
     name: Option<String>,
     checkpoint: &std::path::Path,
     core_image: Option<PathBuf>,
-    mut radio: RadioWorker,
+    radio: &mut RadioWorker,
+    mut local: Option<&mut Local>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::{Read as _, Write as _};
     use std::sync::atomic::Ordering;
@@ -196,6 +235,9 @@ fn run_pipe(
     )?;
     output.flush()?;
     while !stop.load(Ordering::Relaxed) {
+        if let Some(local) = &mut local {
+            local.poll(radio, &mut output)?;
+        }
         if let Some(frame) = client.next(Duration::from_millis(50))? {
             let applied = engineer.apply(&frame, checkpoint)?;
             radio.ingest(&frame.snapshot, &applied, start.elapsed(), &mut output)?;
@@ -227,8 +269,18 @@ fn run_pipe(
             }
             radio.tick(start.elapsed(), &mut output)?;
         }
+        if let Some(local) = &mut local {
+            local.publish(
+                radio,
+                true,
+                if source_lost {
+                    Some("fuente ausente/obsoleta; esperando fotos y eventos")
+                } else {
+                    None
+                },
+            );
+        }
     }
-    radio.clear()?;
     Ok(())
 }
 
@@ -237,7 +289,8 @@ fn run_pipe(
     _name: Option<String>,
     _checkpoint: &std::path::Path,
     _core_image: Option<PathBuf>,
-    _radio: RadioWorker,
+    _radio: &mut RadioWorker,
+    _local: Option<&mut Local>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     Err("named pipe de producto requiere Windows".into())
 }
@@ -263,16 +316,29 @@ mod tests {
             "pt-BR",
             "--clips",
             "clips",
+            "--settings",
+            "engineer.json",
         ])
         .unwrap();
         assert!(parsed.stream && parsed.clips.is_some());
         assert_eq!(parsed.locale, Locale::PtBr);
+        assert_eq!(parsed.settings, Some(PathBuf::from("engineer.json")));
         for args in [
             &["--stream"][..],
             &[],
             &["--locale", "zz"],
             &["--pipe", "--stream"],
             &["--clips"],
+            &["--pipe", "--cursor", "cursor.json", "--settings"],
+            &[
+                "--pipe",
+                "--cursor",
+                "cursor.json",
+                "--settings",
+                "a",
+                "--settings",
+                "b",
+            ],
         ] {
             assert!(parse(args).is_err());
         }

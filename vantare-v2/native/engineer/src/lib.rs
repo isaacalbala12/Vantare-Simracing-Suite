@@ -2,6 +2,8 @@
 #![deny(unsafe_code)]
 
 mod checkpoint;
+pub mod control;
+pub mod local;
 pub mod radio;
 pub mod spotter;
 pub mod voice;

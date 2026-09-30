@@ -37,6 +37,72 @@ fn photo() -> Snapshot {
 fn message(intent: Intent, snapshot: &Snapshot) -> Message {
     Message::new(intent, Locale::Es, snapshot, Duration::ZERO).unwrap()
 }
+
+#[test]
+fn hot_settings_filter_families_locale_and_voice_without_audio() {
+    use vantare_engineer::control::Settings;
+    let mut snapshot = photo();
+    snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
+    snapshot.state.flags = Quality::Reliable(vec![Flag {
+        kind: FlagKind::Yellow,
+        scope: FlagScope::Session,
+    }]);
+    let mut worker = RadioWorker::new(Locale::Es, None).unwrap();
+    let mut settings = Settings {
+        locale: "en".into(),
+        families: vantare_engineer::control::Families {
+            fuel: false,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    worker.configure(&settings).unwrap();
+    let mut output = Vec::new();
+    worker
+        .ingest(&snapshot, &Applied::default(), Duration::ZERO, &mut output)
+        .unwrap();
+    let delivered: Vec<_> = lines(&output)
+        .into_iter()
+        .filter(|line| line["version"] == "vantare.radio.v1")
+        .collect();
+    assert_eq!(delivered.len(), 1);
+    assert_eq!(delivered[0]["intent"], "flags.yellow");
+    assert_eq!(delivered[0]["locale"], "en");
+    assert_eq!(delivered[0]["voice"], "disabled");
+    settings.enabled = false;
+    worker.configure(&settings).unwrap();
+    output.clear();
+    snapshot.sequence += 1;
+    worker
+        .ingest(
+            &snapshot,
+            &Applied::default(),
+            Duration::from_millis(1),
+            &mut output,
+        )
+        .unwrap();
+    assert!(
+        lines(&output)
+            .iter()
+            .all(|line| line["version"] != "vantare.radio.v1")
+    );
+    settings.enabled = true;
+    settings.voice = true;
+    worker.configure(&settings).unwrap();
+    output.clear();
+    snapshot.sequence += 1;
+    worker
+        .ingest(
+            &snapshot,
+            &Applied::default(),
+            Duration::from_millis(2),
+            &mut output,
+        )
+        .unwrap();
+    assert!(lines(&output).iter().any(|line| line["voice"] == "missing"));
+    assert!(worker.voice_error().is_some());
+    assert_eq!(worker.last_message().unwrap().locale, "en");
+}
 fn lines(bytes: &[u8]) -> Vec<serde_json::Value> {
     std::str::from_utf8(bytes)
         .unwrap()

@@ -1,5 +1,5 @@
 //! Proceso Hub de ADR 0099: edición local, sin dependencia del runtime.
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)] // Única excepción: launcher/windows, frontera Win32 documentada.
 
 pub mod analysis;
 pub mod calendar;
@@ -7,6 +7,7 @@ pub mod comparison;
 pub mod document;
 pub mod files;
 mod inspector;
+pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
@@ -97,7 +98,7 @@ impl Section {
             Self::Workshop => "Pendiente: catálogo y escenas sobre vantare-ui.",
             Self::Studio => "Pendiente: edición y persistencia de layouts locales.",
             Self::Launcher => {
-                "Pendiente: integración con el propietario de procesos. No se lanza el juego desde esta shell."
+                "Launcher local del sim-rig: catálogo, perfiles y cadenas; distinto del supervisor núcleo/overlays."
             }
             Self::Calendar => {
                 "Pendiente: contrato de calendario, series, zonas horarias y recordatorios. No se consulta Discord ni servicios remotos."

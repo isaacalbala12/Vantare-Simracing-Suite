@@ -11,6 +11,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut layout = None;
     let mut pipe = None;
     let mut recordings = None;
+    let mut launcher_file = None;
     let mut section = Section::Home;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -23,6 +24,10 @@ fn parse(args: &[String]) -> Result<Options, String> {
                 recordings = Some(PathBuf::from(
                     args.next().ok_or("falta directorio de grabaciones")?,
                 ));
+            }
+            "--launcher" if section == Section::Home => section = Section::Launcher,
+            "--launcher-file" if launcher_file.is_none() => {
+                launcher_file = Some(PathBuf::from(args.next().ok_or("falta archivo Launcher")?));
             }
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
@@ -60,6 +65,10 @@ fn parse(args: &[String]) -> Result<Options, String> {
         section,
         pipe,
         recordings,
+        launcher_file: match launcher_file {
+            Some(path) => path,
+            None => vantare_hub::launcher::default_path()?,
+        },
     })
 }
 
@@ -70,7 +79,7 @@ fn main() -> ExitCode {
         Err(error) => {
             eprintln!(
                 "{error}
-uso: vantare-hub [--workshop|--studio|--analysis] [--recordings DIRECTORIO] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+uso: vantare-hub [--workshop|--studio|--analysis|--launcher] [--recordings DIRECTORIO] [--launcher-file RUTA] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -119,6 +128,9 @@ mod tests {
             vec!["--recordings"],
             vec!["--recordings", "a", "--recordings", "b"],
             vec!["--analysis", "--analysis"],
+            vec!["--launcher-file"],
+            vec!["--launcher-file", "a", "--launcher-file", "b"],
+            vec!["--launcher", "--studio"],
             vec!["--scene"],
             vec!["--layout"],
             vec!["--layout", "a", "--layout", "b"],
@@ -141,5 +153,27 @@ mod tests {
         .expect("análisis");
         assert_eq!(options.section, Section::Analysis);
         assert_eq!(options.recordings, Some(PathBuf::from("recordings")));
+    }
+
+    #[test]
+    fn launcher_selects_view_and_isolates_its_file_from_wails() {
+        let args = [
+            "--launcher",
+            "--launcher-file",
+            "local-launcher.json",
+            "--data-dir",
+            "hub-local",
+            "--layout",
+            "local-layout.json",
+        ]
+        .map(String::from);
+        let options = parse(&args).expect("opciones Launcher");
+        assert_eq!(options.section, Section::Launcher);
+        assert_eq!(options.launcher_file, PathBuf::from("local-launcher.json"));
+        assert!(
+            vantare_hub::launcher::default_path()
+                .expect("LOCALAPPDATA")
+                .ends_with("Vantare/native/launcher.json")
+        );
     }
 }

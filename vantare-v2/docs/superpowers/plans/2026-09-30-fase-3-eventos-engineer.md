@@ -150,3 +150,10 @@ Registrar resultados y tests ignorados; los tests físicos ignorados no son PASS
   4 live ignorados; compilación incremental 20,88 s). Focal: 22 flujos PASS.
   Se corrigió el nombre del getter señalado por clippy; ninguna supresión.
   Dependencias de terceros nuevas: 0. `set_recording` conserva la API existente.
+- Corte 2: PASS fmt y clippy en ambos workspaces. Padre: 390 PASS y 4 live
+  ignorados, compilación test 12,65 s, clippy 5,83 s. Engineer: 3 escenarios
+  PASS (procesos, restart, dedup atrasado, 11 confirmados, huecos, checkpoint,
+  corrupción y EOF), 0 ignorados; compilación 1,81 s, ejecución 0,28 s.
+  El crate propio se justifica por aislamiento de proceso; bibliotecas de
+  terceros nuevas: 0 (serde_json existente fijado al lock). `wire` es contrato
+  y banco heredado, no se declara integración named pipe ni fase aceptada.

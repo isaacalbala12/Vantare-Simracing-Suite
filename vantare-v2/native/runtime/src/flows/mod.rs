@@ -3,6 +3,7 @@
 mod journal;
 mod recording;
 mod series;
+pub mod wire;
 
 pub use journal::{Consumer, Cursor, Delivery, GapReason, Journal, PitEvent, RecordingStatus};
 pub use series::{LapBlock, LapSample, MAX_LAP_SAMPLES, Series};

@@ -1,7 +1,8 @@
 # Flujos de eventos — ISA-1425 / ISA-1428 / ADR 0099 §2
 
-Prueba de frontera interna del runtime; no hay transporte IPC, consumidor
-Engineer ni flag CLI. `Core::new` deja recording desactivado.
+Journal neutral con codec acotado de eventos `wire` y consumidor separado en
+`native/engineer/`. El named pipe de producto y el flag CLI del núcleo aún no
+se conectan (propiedad de otros workers). `Core::new` deja recording desactivado.
 `Core::with_flows(epoch, retention, Some(path))` es el opt-in de recording.
 La época la inyecta el propietario y debe crecer al reiniciar; no se lee reloj
 de pared.

@@ -325,7 +325,22 @@ impl Translator {
             }
         }
         let state = State {
-            source_state: vantare_domain::SourceState::Waiting,
+            source_state: if !active && (!g.is_empty() || self.session.is_none()) {
+                vantare_domain::SourceState::Waiting
+            } else if (gs || paused)
+                && self
+                    .session
+                    .as_ref()
+                    .is_none_or(|u| now.saturating_sub(u.at) >= UDP_TTL)
+                && self
+                    .cars
+                    .values()
+                    .all(|car| now.saturating_sub(car.update.at) >= UDP_TTL)
+            {
+                vantare_domain::SourceState::Stale
+            } else {
+                vantare_domain::SourceState::Live
+            },
             session,
             flags,
             cars,

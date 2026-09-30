@@ -46,7 +46,6 @@ pub(super) fn merge(
     if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
         return Err(Reject::DuplicateCar(car.id));
     }
-    state.source_state = SourceState::Live;
     sanitize(&mut state);
     derive(&mut state);
     trackers.derive(&mut state);
@@ -389,6 +388,25 @@ mod tests {
             merge(None, obs, 1, &mut Trackers::default()),
             Err(Reject::DuplicateCar(CarId(1)))
         );
+    }
+
+    #[test]
+    fn adapter_source_state_is_preserved_across_observations() {
+        let mut trackers = Trackers::default();
+        let mut previous = None;
+        for declared in [
+            SourceState::Live,
+            SourceState::Waiting,
+            SourceState::Stale,
+            SourceState::Live,
+        ] {
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.source_state = declared;
+            let snapshot = merge(previous.as_ref(), obs, 1, &mut trackers).unwrap();
+            assert_eq!(snapshot.state.source_state, declared);
+            assert_eq!(stale(&snapshot).state.source_state, SourceState::Stale);
+            previous = Some(snapshot);
+        }
     }
 
     #[test]

@@ -119,6 +119,10 @@ fn gaps(cars: &mut [Car]) {
     let mut previous: Option<(u32, Option<f64>)> = None;
     for (position, index) in order {
         let car = &mut cars[index];
+        if car.position == Quality::Reliable(1) && car.gap_leader.current().is_none() {
+            // El líder está a cero de sí mismo por definición, sin estimación.
+            car.gap_leader = Quality::Reliable(Gap::Time { seconds: 0.0 });
+        }
         let mut leader_s = if position == 1 {
             Some(0.0)
         } else {
@@ -187,6 +191,7 @@ fn class_gaps(cars: &mut [Car]) {
                 .filter(|(baseline_class, _)| *baseline_class == class)
                 .and_then(|(_, gap)| gap);
             if leader_s.is_none()
+                && car.gap_class_leader.current().is_none()
                 && let Some(derived) = class_leader_gap(
                     overall,
                     leader_overall,
@@ -434,6 +439,60 @@ mod tests {
         cars[1].gap_ahead = time(1.5);
         gaps(&mut cars);
         assert_eq!(cars[1].gap_leader, lapped);
+    }
+
+    #[test]
+    fn reliable_leader_anchors_class_gaps_without_a_native_zero() {
+        let mut state = State {
+            cars: vec![car(1, 1, 10), car(2, 2, 10)],
+            ..State::default()
+        };
+        state.cars[1].gap_ahead = time(2.5);
+        derive(&mut state);
+        assert_eq!(state.cars[0].gap_leader, time(0.0));
+        assert_eq!(state.cars[1].gap_ahead, time(2.5));
+        assert_eq!(
+            state.cars[1].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 2.5 })
+        );
+    }
+
+    #[test]
+    fn leader_zero_requires_reliable_position_and_preserves_current_gaps() {
+        for position in [
+            Quality::Estimated(1),
+            Quality::Stale(1),
+            Quality::Unavailable,
+        ] {
+            let mut cars = vec![car(1, 1, 10)];
+            cars[0].position = position;
+            gaps(&mut cars);
+            assert_eq!(cars[0].gap_leader, Quality::Unavailable);
+        }
+        for native in [
+            time(3.0),
+            Quality::Reliable(Gap::Laps { count: 1 }),
+            Quality::Estimated(Gap::Laps { count: 2 }),
+        ] {
+            let mut state = State {
+                cars: vec![car(1, 1, 10), car(2, 2, 10)],
+                ..State::default()
+            };
+            state.cars[0].gap_leader = native;
+            state.cars[1].gap_leader = time(4.0);
+            state.cars[1].gap_class_leader = native;
+            derive(&mut state);
+            assert_eq!(state.cars[0].gap_leader, native);
+            assert_eq!(state.cars[1].gap_class_leader, native);
+            // También con una base en segundos que permitiría sobrescribir las vueltas.
+            state.cars[0].gap_leader = time(0.0);
+            derive(&mut state);
+            assert_eq!(state.cars[1].gap_class_leader, native);
+        }
+        let mut cars = vec![car(1, 1, 10)];
+        cars[0].gap_leader = Quality::Stale(Gap::Time { seconds: 9.0 });
+        gaps(&mut cars);
+        assert_eq!(cars[0].gap_leader, time(0.0));
     }
 
     #[test]

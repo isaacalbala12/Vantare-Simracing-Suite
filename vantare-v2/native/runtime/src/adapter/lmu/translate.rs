@@ -130,7 +130,13 @@ impl Translator {
                 received_at: now,
             },
             state: State {
-                source_state: vantare_domain::SourceState::Waiting,
+                source_state: if frame.vehicles.is_empty() {
+                    vantare_domain::SourceState::Waiting
+                } else if stale {
+                    vantare_domain::SourceState::Stale
+                } else {
+                    vantare_domain::SourceState::Live
+                },
                 capabilities: capabilities(
                     &frame,
                     &cars,
@@ -827,9 +833,11 @@ mod tests {
     fn a_stalled_session_clock_marks_everything_stale_and_declares_data_without_freshness() {
         let mut t = translator();
         let fresh = observe(&mut t, REAL_44, ms(0));
+        assert_eq!(fresh.state.source_state, vantare_domain::SourceState::Live);
         assert!(!t.needs_refresh(ms(499)));
         assert!(t.needs_refresh(ms(500)));
         let stale = observe(&mut t, REAL_44, ms(600));
+        assert_eq!(stale.state.source_state, vantare_domain::SourceState::Stale);
         assert!(!t.needs_refresh(ms(700)));
         assert!(matches!(stale.state.cars[0].position, Quality::Stale(_)));
         assert!(matches!(stale.state.session.elapsed_s, Quality::Stale(_)));
@@ -877,6 +885,10 @@ mod tests {
     fn menu_frames_are_valid_observations_with_supported_but_dataless_signals() {
         let menu = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
         let observation = observe(&mut translator(), menu, ms(0));
+        assert_eq!(
+            observation.state.source_state,
+            vantare_domain::SourceState::Waiting
+        );
         assert!(observation.state.cars.is_empty() && observation.state.player.is_none());
         let caps = observation.state.capabilities;
         for dataless in [

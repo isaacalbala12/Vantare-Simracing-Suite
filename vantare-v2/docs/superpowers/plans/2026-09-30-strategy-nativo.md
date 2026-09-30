@@ -35,3 +35,29 @@ orquestador. La sección consume provisionalmente las mismas fuentes vía path.
 Pendientes de aceptación de #1430: envelope `strategy-repository.json`, port
 completo del solver y de la UI, conexión definitiva de manifests y prueba
 visual/interactiva GPUI. El oráculo actual no demuestra esas dimensiones.
+
+## Hito 2 — sección local del Hub (entrega parcial)
+
+Hito 1 conservado en `c2e02984910cfc146c03d02c31422af4c948867b`.
+`--strategy` y navegación existente abren la sección. Permite crear/abrir
+documentos V2 exportados, seleccionar evento/variante, editar campos esenciales
+con procedencia visible, añadir evento y confirmar inputs escalares manuales.
+El cálculo es cancelable y asíncrono; las ediciones invalidan resultados antiguos.
+Guardar usa temporal sincronizado y conflicto por los bytes observados, sin
+sobrescribir destinos no observados. Guarda/descarta antes de cambiar documento
+y comprueba también las ediciones realizadas mientras el selector estaba abierto.
+
+Tests: guardado/reinicio, conflicto con escritor externo, fallo de apertura sin
+perder el documento y números explícitos; CLI incluye selección/rechazo de flags.
+Revisión visual/interactiva pendiente. El editor de texto es básico y no promete
+IME ni selección convencional. No hay adquisición de telemetría ni forecast,
+edición completa de pilotos/inventario/clima o equivalencia completa con Orbit.
+
+Entrega exclusivamente local, sin push/PR/merge/release. Notion continúa
+inaccesible bajo la excepción explícita del encargo; #1430 no se declara cerrado.
+Los límites y la receta de revisión viven también en `native/strategy/README.md`.
+
+Gates repetidos antes del commit de Hub: `cargo fmt --all --check`,
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+`cargo test --workspace -j 2` con `RUST_TEST_THREADS=2`, todos exit 0.
+`go vet -p 2 ./tools/strategy-oracle` también exit 0.

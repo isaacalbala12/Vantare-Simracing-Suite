@@ -19,6 +19,7 @@ use crate::{
     Section,
     calendar::Calendar,
     notifications::Notifications,
+    strategy::Strategy,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
 };
@@ -39,6 +40,7 @@ struct Hub {
     studio: Entity<Studio>,
     calendar: Entity<Calendar>,
     notifications: Entity<Notifications>,
+    strategy: Entity<Strategy>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -47,6 +49,7 @@ struct Hub {
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
         // Studio guarda cada edición antes de confirmarla; aquí solo queda la selección Workshop.
+        self.strategy.update(cx, |strategy, _| strategy.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
@@ -177,6 +180,9 @@ impl Render for Hub {
             .when(self.section == Section::Calendar, |content| {
                 content.child(self.calendar.clone())
             })
+            .when(self.section == Section::Strategy, |content| {
+                content.child(self.strategy.clone())
+            })
             .when(self.section == Section::Notifications, |content| {
                 content.child(self.notifications.clone())
             })
@@ -195,6 +201,7 @@ impl Render for Hub {
                         | Section::Notifications
                         | Section::Settings
                         | Section::Testing
+                        | Section::Strategy
                 ),
                 |content| content.child(self.section.pending()),
             );
@@ -309,10 +316,22 @@ fn create_workshop(prepared: Prepared, cx: &mut App) -> Entity<Workshop> {
     })
 }
 
+fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
+    cx.observe(strategy, |this, strategy, cx| {
+        if let Some(error) = &strategy.read(cx).error {
+            let error = error.clone();
+            this.notifications
+                .update(cx, |center, cx| center.report("hub.strategy", error, cx));
+        }
+    })
+    .detach();
+}
+
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load(options.layout)?;
     let calendar = Calendar::load(&options.data_dir)?;
+    let strategy_directory = options.data_dir.clone();
     let subscriber = subscribe(options.pipe)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -342,6 +361,8 @@ pub fn run(options: Options) -> Result<(), String> {
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
                 let notifications = cx.new(|_| Notifications::default());
                 let calendar = cx.new(|_| calendar);
+                let strategy = cx.new(|cx| Strategy::new(strategy_directory, cx));
+                wire_strategy(&strategy, cx);
                 wire_sections(&calendar, &notifications, cx);
                 cx.observe(&workshop, |this, workshop, cx| {
                     let snapshot = workshop.read(cx).scene.snapshot().clone();
@@ -364,6 +385,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     studio,
                     calendar,
                     notifications,
+                    strategy,
                     status: None,
                     subscriber,
                     previous_source: None,

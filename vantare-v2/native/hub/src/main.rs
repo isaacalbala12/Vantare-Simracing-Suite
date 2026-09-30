@@ -17,6 +17,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--control-stdin" if !controlled => controlled = true,
             "--workshop" if section == Section::Home => section = Section::Workshop,
             "--studio" if section == Section::Home => section = Section::Studio,
+            "--strategy" if section == Section::Home => section = Section::Strategy,
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
             }
@@ -61,7 +62,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio|--strategy] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -105,6 +106,12 @@ mod tests {
         assert_eq!(options.pipe.as_deref(), Some("hub-test"));
         assert_eq!(options.data_dir, PathBuf::from("local"));
         assert_eq!(options.scene, Some(PathBuf::from("capture.jsonl")));
+        assert_eq!(
+            parse(&args(&["--strategy", "--data-dir", "local"]))
+                .expect("Strategy entry")
+                .section,
+            Section::Strategy
+        );
         for bad in [
             vec!["--data-dir"],
             vec!["--scene"],
@@ -114,6 +121,8 @@ mod tests {
             vec!["--pipe", ""],
             vec!["--pipe", "a", "--pipe", "b"],
             vec!["--workshop", "--workshop"],
+            vec!["--strategy", "--strategy"],
+            vec!["--strategy", "--studio"],
             vec!["--control-stdin", "--control-stdin"],
             vec!["--scene", "a", "--scene", "b"],
         ] {

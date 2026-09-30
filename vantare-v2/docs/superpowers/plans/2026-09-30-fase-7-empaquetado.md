@@ -130,3 +130,16 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   Logs `corte3-build-v3.log`, `corte3-tests-final.log`,
   `corte3-{core,overlays}-imports.log` en `native/target/phase7-evidence`.
 - Gates corte 3: fmt/clippy/test PASS offline (-j 2); 2 físicos ignored. git diff --check PASS. Sin cambios Rust ni dependencias nuevas.
+- Corte 4: 53 comprobaciones packaging PASS con los binarios reales. La versión
+  siguiente es **simulada** cambiando solo el manifiesto: no se finge una segunda
+  build del producto. Se prueban actualización por copia, rollback/retorno,
+  rechazo de otro canal/esquema, núcleo real ejecutándose sin matarlo y muerte
+  real del actualizador en staged/before-commit/after-commit. Tras matar, el
+  estado vuelve a leerse y el lock está libre; rollback posterior restaura la
+  generación previa. Log `corte4-tests-v2.log`. PowerShell 5.1 requiere
+  `NullString.Value` para pasar null real a File.Replace (sin backup/journal
+  redundante); el test ejecuta este reemplazo en NTFS.
+  Límite: interrupción de proceso, no apagón/durabilidad física del disco.
+  Bootstrap estable schema=1: evolucionarlo exige otro corte revisado, no
+  reemplazar automáticamente el script instalado ni ejecutar código del ZIP.
+- Gates corte 4: fmt/clippy/test PASS offline (-j 2; dos físicos ignored), packaging 53 PASS y git diff --check PASS. Sin nuevas dependencias ni cambios de producto.

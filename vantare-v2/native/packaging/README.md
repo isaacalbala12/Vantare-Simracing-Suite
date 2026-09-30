@@ -57,6 +57,33 @@ El wrapper conserva el lock mientras vive el launcher. Ctrl+C / cierre normal
 usan el ciclo de vida existente. El nativo actual no consume un directorio de
 perfiles persistidos: packaging todavía no demuestra migración funcional.
 
+Actualización y rollback, con todos los procesos de esta instalación cerrados:
+
+```powershell
+& native/target/phase7-install/candidate.ps1 -Operation Update -Root native/target/phase7-install `
+  -Archive 'C:/ruta/local/vantare-native-amd64-package.zip' -ExpectedSha256 '<64 hex minúsculas confiables>'
+& native/target/phase7-install/candidate.ps1 -Operation Rollback -Root native/target/phase7-install
+```
+
+Update exige el mismo canal/esquema y un paquete íntegro. Copia datos a una
+generación nueva, verifica que el origen no cambió y solo entonces reemplaza
+`state.json` atómicamente. No sobrescribe exe en uso. Un lock excluye las
+operaciones y el wrapper; handles exclusivos de los exe rechazan procesos
+abiertos directamente durante actualización/rollback. No se mata la app.
+Rollback selecciona a la vez binarios y datos anteriores. Las escrituras hechas
+en la generación nueva permanecen allí; **no se mezclan en la anterior**.
+Otro Rollback permite volver a la generación retirada. No borra ninguna.
+
+Interrupción antes del reemplazo: sigue activa la anterior. Después: la nueva
+está completa y tiene anterior para rollback. Las pruebas matan procesos reales
+en tres fronteras mediante eventos, sin sleeps. Esto cubre interrupción de
+proceso, **no** corte eléctrico, fallo físico de disco o DB con propietario
+externo. Copiar archivos requiere todos sus escritores detenidos; fases 4/5
+deben adoptar el contrato antes de usarlo con sus almacenes.
+El bootstrap `candidate.ps1` instalado no se reemplaza en Update (schema=1).
+Una evolución del instalador requiere reinstalación aislada/revisión explícita;
+no ejecutar un script nuevo automáticamente desde un ZIP.
+
 No se aceptan ZIP parciales, hashes erróneos, otro esquema, paths arbitrarios,
 enlaces ni árboles con `.env*`. Las preparaciones incompletas se conservan para
 inspección y nunca se activan. No hay borrado automático de datos/generaciones.

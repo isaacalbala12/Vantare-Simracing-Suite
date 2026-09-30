@@ -1,7 +1,7 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Install', 'Status', 'Start')][string]$Operation = 'Status',
+    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'Status', 'Start')][string]$Operation = 'Status',
     [string]$Root = $PSScriptRoot,
     [string]$Archive,
     [string]$ExpectedSha256,
@@ -179,7 +179,8 @@ function Set-NativeState([string]$Directory, $State) {
     $temp = Join-Path $Directory ('.state-' + [guid]::NewGuid().ToString('N') + '.tmp')
     Write-NativeJson $temp $State
     Invoke-NativeCheckpoint 'before-commit'
-    if (Test-Path -LiteralPath $target) { [IO.File]::Replace($temp, $target, $null) }
+    # PowerShell 5.1 convierte $null a string vacío; NullString pasa null real a .NET.
+    if (Test-Path -LiteralPath $target) { [IO.File]::Replace($temp, $target, [System.Management.Automation.Language.NullString]::Value) }
     else { [IO.File]::Move($temp, $target) }
     Invoke-NativeCheckpoint 'after-commit'
 }
@@ -213,6 +214,79 @@ function New-NativeZip([string]$Directory, [string]$Destination) {
             elseif (-not @(Get-ChildItem -LiteralPath $item.FullName -Force).Count) { $null = $zip.CreateEntry("$name/") }
         }
     } finally { $zip.Dispose() }
+}
+
+function Open-NativeBinaryGuard([string]$Directory) {
+    $handles = @{}
+    try {
+        foreach ($file in Get-ChildItem -LiteralPath (Join-Path $Directory 'generations') -Filter '*.exe' -File -Recurse) {
+            # Acceso de escritura sin escribir: Windows lo deniega a una imagen
+            # ejecutándose. FileShare.None impide abrirla mientras se prepara el cambio.
+            $handles[$file.FullName] = [IO.File]::Open($file.FullName, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        }
+        $handles
+    } catch {
+        foreach ($handle in $handles.Values) { $handle.Dispose() }
+        throw 'Cierre los procesos de esta instalación antes de actualizar/importar/restaurar; no se mata la aplicación.'
+    }
+}
+
+function Get-NativeDataIndex([string]$Directory) {
+    Assert-NativeTree $Directory
+    $items = @(Get-ChildItem -LiteralPath $Directory -Recurse -Force | Sort-Object FullName | ForEach-Object {
+        $path = $_.FullName.Substring($Directory.Length + 1)
+        if ($_.PSIsContainer) { [ordered]@{ path = $path; directory = $true } }
+        else { [ordered]@{ path = $path; size = $_.Length; sha256 = (Get-NativeHash $_.FullName) } }
+    })
+    ConvertTo-Json -InputObject $items -Depth 5 -Compress
+}
+
+function Copy-NativeData([string]$Source, [string]$Destination) {
+    $before = Get-NativeDataIndex $Source
+    [IO.Directory]::CreateDirectory($Destination) | Out-Null
+    foreach ($item in Get-ChildItem -LiteralPath $Source -Recurse -Force) {
+        $target = Join-Path $Destination $item.FullName.Substring($Source.Length + 1)
+        if ($item.PSIsContainer) { [IO.Directory]::CreateDirectory($target) | Out-Null }
+        else {
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
+            [IO.File]::Copy($item.FullName, $target)
+        }
+    }
+    if ((Get-NativeDataIndex $Source) -cne $before -or (Get-NativeDataIndex $Destination) -cne $before) { throw 'Datos cambiaron durante la copia; no se activa la generación.' }
+}
+
+function Update-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$Hash) {
+    $directory = Open-NativeRoot $Directory
+    $lock = Open-NativeLock $directory
+    try {
+        $state = Read-NativeState $directory
+        $handles = Open-NativeBinaryGuard $directory
+        try {
+            $id = [guid]::NewGuid().ToString('N')
+            $generation = Join-Path $directory "generations/$id"
+            $null = Expand-NativePackage $ZipPath $Hash $generation $state.channel
+            Copy-NativeData (Join-Path $directory "generations/$($state.active.generation)/data") (Join-Path $generation 'data')
+            Invoke-NativeCheckpoint 'staged'
+            $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = @{ generation = $id; manifest_sha256 = (Get-NativeHash (Join-Path $generation 'manifest.json')) }; previous = $state.active }
+            Set-NativeState $directory $next
+        } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+        Read-NativeState $directory
+    } finally { $lock.Dispose() }
+}
+
+function Restore-NativeCandidate([string]$Directory) {
+    $directory = Open-NativeRoot $Directory
+    $lock = Open-NativeLock $directory
+    try {
+        $state = Read-NativeState $directory
+        if ($null -eq $state.previous) { throw 'No hay generación anterior; no se cambian datos.' }
+        $handles = Open-NativeBinaryGuard $directory
+        try {
+            $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = $state.previous; previous = $state.active }
+            Set-NativeState $directory $next
+        } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+        Read-NativeState $directory
+    } finally { $lock.Dispose() }
 }
 
 function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty) {
@@ -270,6 +344,8 @@ if ($MyInvocation.InvocationName -eq '.') { return }
 switch ($Operation) {
     'Build' { Build-NativeCandidate $OutputDirectory $Version $Channel $BuildProfile ([bool]$AllowDirty) }
     'Install' { Install-NativeCandidate $Root $Archive $ExpectedSha256 $Channel | ConvertTo-Json -Depth 5 }
+    'Update' { Update-NativeCandidate $Root $Archive $ExpectedSha256 | ConvertTo-Json -Depth 5 }
+    'Rollback' { Restore-NativeCandidate $Root | ConvertTo-Json -Depth 5 }
     'Status' {
         $Root = Open-NativeRoot $Root; $lock = Open-NativeLock $Root
         try { Read-NativeState $Root | ConvertTo-Json -Depth 5 } finally { $lock.Dispose() }

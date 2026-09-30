@@ -16,6 +16,7 @@ pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
 pub mod scene;
+pub mod services;
 pub mod shell;
 pub mod strategy;
 pub mod studio;

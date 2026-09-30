@@ -176,3 +176,33 @@ de rendimiento (otros workers activos).
 de los widgets, cuatro tipos pendientes de fase 2 y edición de escenas/captura
 con aceptación visual. Captura/paridad siguen disponibles en `ui`; no se crea
 otro pipeline. Continuar con la edición local independiente de Studio.
+
+### Corte 3 — Studio local (aceptación completa bloqueada)
+
+Documento nativo independiente `native-layouts.json`, schema 1; no migra ni
+reescribe perfiles del distribuido (migración reversible pertenece a fase 7).
+Hasta 32 layouts, 128 instancias/layout, 50 cambios undo, archivo 5 MiB.
+Nuevo/duplicar/cambiar layout, selección, añadir/eliminar/ordenar instancias,
+posición con inspector y drag de preview hasta commit único al soltar,
+bloqueo espacial, visibilidad, opacidad de host, filtro de sesión con calidad y
+preferencias del formateador. Renderer `Overlay` compartido; escena del Workshop
+compartida por observación, sin leer el núcleo ni fabricar un modelo propio.
+Persistencia/reload con validación, conflicto y conservación del documento ante
+error; no existe un botón que afirme aplicar el layout a los overlays.
+
+Tests nuevos: roundtrip completo de opciones y bloqueo, mutación inválida
+transaccional, separación de layouts y selección, filtro con calidad de datos,
+preview de drag sin salto y un solo undo. Contenido específico, resize,
+comportamiento de cadencias/efectos, nombres editables en UI y entrega a overlays
+siguen pendientes. La opacidad es la del host, no un tema nuevo.
+
+No se porta a mano la API privada de widgets mientras fase 2 los modifica.
+No se sustituye resize por clipping de un widget de tamaño fijo. Se requiere
+la API de configuración de fase 2 para completar esos ejes; arrastre físico,
+paridad y presupuestos son gates del revisor. Continuar con servicios locales
+independientes y registrar los servicios remotos/trabajos que faltan.
+
+Gates de corte 3: fmt PASS; clippy workspace/all-targets `-j 2 -D warnings`
+PASS; tests workspace `-j 2` PASS. Trece tests Hub; cuatro pruebas físicas
+heredadas omitidas. Compilación de tests observada 1m04s bajo carga compartida,
+no usada como benchmark. No hay dependencia nueva ni cambios adicionales en ui.

@@ -15,6 +15,7 @@ use vantare_ui::efficiency::{text, tokens};
 
 use crate::{
     Section,
+    studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
 };
 
@@ -29,20 +30,29 @@ struct Hub {
     section: Section,
     focus: FocusHandle,
     workshop: Entity<Workshop>,
+    studio: Entity<Studio>,
     status: Option<String>,
 }
 
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
-        self.workshop.update(cx, |workshop, _| workshop.persist())
+        self.workshop.update(cx, |workshop, _| workshop.persist())?;
+        self.studio.update(cx, |studio, _| studio.persist())
     }
 
     fn close(&mut self, cx: &mut Context<Self>) {
+        if self.can_close(cx) {
+            cx.quit();
+        }
+    }
+
+    fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
         match self.save(cx) {
-            Ok(()) => cx.quit(),
+            Ok(()) => true,
             Err(error) => {
                 self.status = Some(error);
                 cx.notify();
+                false
             }
         }
     }
@@ -91,9 +101,13 @@ impl Render for Hub {
             .when(self.section == Section::Workshop, |content| {
                 content.child(self.workshop.clone())
             })
-            .when(self.section != Section::Workshop, |content| {
-                content.child(self.section.pending())
-            });
+            .when(self.section == Section::Studio, |content| {
+                content.child(self.studio.clone())
+            })
+            .when(
+                self.section != Section::Workshop && self.section != Section::Studio,
+                |content| content.child(self.section.pending()),
+            );
         div()
             .id("hub")
             .track_focus(&self.focus)
@@ -146,6 +160,7 @@ fn watch_stdin(controlled: bool) -> Result<Arc<AtomicBool>, String> {
 
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
+    let prepared_studio = PreparedStudio::load(&options.data_dir)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
@@ -183,6 +198,14 @@ pub fn run(options: Options) -> Result<(), String> {
                     .detach();
                     workshop
                 });
+                let snapshot = workshop.read(cx).scene.snapshot().clone();
+                let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
+                cx.observe(&workshop, |this, workshop, cx| {
+                    let snapshot = workshop.read(cx).scene.snapshot().clone();
+                    this.studio
+                        .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
+                })
+                .detach();
                 cx.on_app_quit(move |this, cx| {
                     if let Err(error) = this.save(cx) {
                         eprintln!("guardar antes de salir: {error}");
@@ -195,22 +218,13 @@ pub fn run(options: Options) -> Result<(), String> {
                     section: initial_section,
                     focus,
                     workshop,
+                    studio,
                     status: None,
                 }
             });
             let closing = hub.downgrade();
             window.on_window_should_close(cx, move |_, cx| {
-                closing
-                    .update(cx, |this, cx| {
-                        if let Err(error) = this.save(cx) {
-                            this.status = Some(error);
-                            cx.notify();
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .unwrap_or(true)
+                closing.update(cx, Hub::can_close).unwrap_or(true)
             });
             hub
         }) {

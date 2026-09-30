@@ -14,6 +14,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         match arg.as_str() {
             "--control-stdin" if !controlled => controlled = true,
             "--workshop" if section == Section::Home => section = Section::Workshop,
+            "--studio" if section == Section::Home => section = Section::Studio,
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
             }
@@ -43,7 +44,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--control-stdin]"
             );
             return ExitCode::from(2);
         }

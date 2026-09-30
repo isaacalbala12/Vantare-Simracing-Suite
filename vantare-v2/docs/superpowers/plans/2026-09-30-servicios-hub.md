@@ -1,10 +1,21 @@
 # Servicios remotos nativos — arquitectura para decidir (ISA-1430)
 
-**Estado: propuesta; implementación detenida por Isaac el 2026-09-30.**
-Este documento sustituye el microplan anterior. No autoriza código, dependencias,
-cambios del ADR, despliegues ni llamadas a producción. El WIP permanece en el
-stash «WIP servicios previo a rediseño» y no se recupera. La siguiente acción
-es decidir con Isaac y revisar con Claude Opus 5.5.
+**Estado: decisiones de Isaac aceptadas el 2026-09-30; cortes 1–5 autorizados.**
+El WIP anterior sigue en stash sin recuperarse. Implementación nueva por cortes,
+revisión de Opus 5.5 y commits locales. Corte 6/configuración real, deploy,
+pagos/datos reales y promoción quedan fuera. No hay push ni PR del worker.
+
+Decisiones vinculantes (prevalecen sobre las alternativas estudiadas):
+
+1. Servicios de usuario bajo demanda; ADR actualizado en este conjunto.
+2. Núcleo autoridad local. Una hora desde vencimiento únicamente si la
+   credencial estaba vigente al entrar al juego y caduca durante esa sesión.
+   Fuera de esa excepción, cero gracia offline. No reiniciar plazo por reconexión.
+3. Clerk, navegador/PKCE S256 y páginas alojadas; Supabase conserva los datos.
+4. API Vantare fina como destino; empezar con puente explícito actual.
+5. JWS Ed25519/clave por instalación como destino; v1 compatible en transición.
+6. Última publicación válida; intento durable/manual, nunca autoenvío.
+7. Primera ampliación: sync perfiles/layouts de baja carga, sin sync continua.
 
 Referencia: [GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430).
 Rama asignada: `vantareapp/isa-1430-w-servicios`; base recibida:
@@ -26,8 +37,7 @@ del ciclo de vida y named pipes con ACL, identidad, límites y DTO versionados.
 El ADR ya coloca la **validación local de licencia en el núcleo**. Su apartado 7
 coloca cuenta/renovación/calendario/Discord en el Hub.
 
-**Proponer un proceso de servicios cambia esa última propiedad:** requiere
-decisión expresa y actualización del ADR antes de implementar. No cambia la
+**Isaac aprobó cambiar esa propiedad y actualizar el ADR en este conjunto.** No cambia la
 topología de telemetría ni lleva HTTP/GPUI a su camino crítico. Se aplica
 `ponytail`: módulos concretos, sin plugins, microservicios, interfaces
 especulativas ni demonio universal.
@@ -79,7 +89,7 @@ Contratos actuales para evaluar transición, sin adoptarlos como API futura:
 | B. Proceso de servicios de usuario bajo demanda | Un propietario de tokens, reinicios aislados, UI cerrable; permite tareas futuras explícitas. | Coste de proceso/IPC, supervisor e instancia única; cambia el ADR. |
 | C. Servicio Windows/demonio permanente | Disponible sin UI para push/sync. | Privilegios/cuentas, instalación, consumo residente y cierre complejos; innecesario ahora. |
 
-**Recomendación: B**, sesión de usuario sin elevación, supervisado por propietario
+**Decisión aceptada: B**, sesión de usuario sin elevación, supervisado por propietario
 del ciclo de vida existente; instancia por producto/proyecto/canal, sin dos
 escritores de sesión. `native/services/` agruparía cliente y módulos sin GPUI.
 Ejecutable/wiring se asignan después con el orquestador, sin ampliar rutas aquí.
@@ -124,55 +134,66 @@ Servicios entrega resultados, no escribe reloj en paralelo. Hub puede mostrar
 credencial pendiente, no activarla. Si hace falta un núcleo pesado abierto solo
 para cuenta, medir/revisar D1/D3 antes de añadir otra autoridad.
 
-## 4. D2 — cuenta/sesión y almacenamiento seguro
+## 4. D2 — Clerk, cuenta/sesión y DPAPI
 
-| Autenticación | Ventajas | Costes/límites |
+Leídas issues [#909](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/909),
+[#911](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/911),
+[#915](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/915),
+PR [#1173](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1173) y
+[#1187](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1187), más
+[notion-transition](../../vantare-program/notion-transition.md). Las dos PR
+estaban abiertas al leerlas; no se presupone integración ni despliegue.
+
+| Camino | Ventaja | Límite | Decisión |
+|---|---|---|---|
+| Wails Clerk SignIn/SDK | Superficie estudiada por #915, JWT de sesión TPA. | Acoplada a WebView y sesión SDK; no portar proxy/SDK a Rust. | Solo inventario. |
+| Clerk OAuth público, navegador + PKCE S256 | Páginas alojadas, MFA/social, sin contraseña/client secret en escritorio. | Token OAuth NO es automáticamente JWT de sesión Clerk para Supabase TPA. | Camino nativo aceptado. |
+| Device flow | Sin callback loopback. | Polling/otra UX, innecesario aquí. | Alternativa descartada por este corte. |
+
+Servicios abre listener loopback antes de navegador, callback exacto registrado,
+`state` aleatorio, verifier efímero y challenge S256, deadline y un solo intento.
+Recibe código, no tokens en URL; canje solo contra token endpoint del issuer
+configurado. Rechazar state/callback/tipo de token incorrectos, no usar un ID token
+como bearer. No secreto OAuth dentro de la app. Configurar cliente público y
+PKCE obligatorio: [Clerk OAuth](https://clerk.com/docs/guides/configure/auth-strategies/oauth/how-clerk-implements-oauth).
+
+Solo servicios posee access/refresh OAuth nativos, protegidos por DPAPI; access
+corto no se entrega al Hub/núcleo ni se registra. Refresh serializado y durable,
+generación invalida respuestas tras logout/cambio de cuenta; timeout no admite
+retry ciego. La prohibición de #915 de persistir JWT de sesión Clerk sigue intacta:
+no se captura ese JWT ni se copia la sesión/cookie del navegador. La persistencia
+OAuth nativa aprobada aquí es un contrato distinto del SDK Wails. Logout local
+invalida antes de revocar remoto; no prometer logout global del navegador sin
+confirmación de Clerk. Reinicio recupera solo contexto protegido correcto.
+
+Clerk identifica por `(issuer, subject)` externo; **servidor** resuelve UUID interno
+idempotente para licencias/dispositivos. Email/metadata/client UUID no autorizan
+remapeo. La firma de licencia contiene UUID interno, no `user_...`. Nunca convertir
+sub textual a UUID ni crear una segunda fuente de usuarios.
+
+Supabase TPA actual acepta JWT de sesión Clerk con role configurado y RLS basada
+en identidad validada: [integración oficial](https://supabase.com/docs/guides/auth/third-party/clerk).
+OAuth access token de PKCE es distinto. El puente de negocio debe verificarlo
+como OAuth (issuer/audience/scopes) y resolver cuenta antes de ejecutar las mismas
+operaciones. NO reenviarlo a RPC legacy suponiendo compatibilidad, NO cambiar
+`role` localmente, NO intercambiar usando service_role/secreto cliente. El contrato
+servidor de ese puente es dependencia explícita no entregada por #915. Sin él,
+login puede funcionar pero licencia/envío fallan «puente no configurado».
+Testing Center/billing aún usan auth.uid()/FK legacy según #911: cliente listo
+no significa backend Clerk listo. Ninguna migración/deploy se hace en este corte.
+
+| Persistencia | Ventaja | Coste/límite |
 |---|---|---|
-| Contraseña en Hub | Compatibilidad inmediata. | Manejo de contraseñas, más UI/superficie para MFA/SSO/cambios del proveedor. |
-| Navegador externo, code + PKCE | App no recibe contraseña; SSO/MFA; cliente público. | Callback/redirects registrados; verificar soporte real del proyecto. |
-| Device authorization flow | Login desde otro dispositivo sin callback local. | Fricción/polling; no asumir soporte del proveedor. |
+| Credential Manager | Nativa/conocida. | Blobs/atomicidad multi-registro. |
+| DPAPI usuario + ficheros tipados atómicos | Versiones/contexto/recuperación. | ACL/disco lleno/corrupción, un escritor. |
+| Solo memoria | Sin secreto durable. | No restaura tras cierre. |
 
-**Recomendación: navegador + PKCE** si soportado; contraseña solo transición
-aprobada. Sin client secret; callback loopback efímero con `state`, PKCE y
-correlación de intento; código, no tokens en URL. Registro/recuperación/compra
-pueden abrir páginas alojadas. Agente externo y PKCE para clientes nativos:
-[RFC 8252](https://www.rfc-editor.org/info/rfc8252/).
-
-Servicios valida identidad antes de establecer cuenta; restaura contexto
-protegido correcto. Estados: no configurado, sin sesión, autenticando, sesión
-disponible, requiere reautenticación, almacenamiento fallido. Offline muestra
-cuenta conocida; no autentica una nueva ni prueba aceptación actual del servidor.
-
-Un propietario renueva/coalesce solicitudes y persiste pareja rotada atómicamente.
-Generación de cuenta descarta respuestas anteriores a logout/cambio. Sin refresh
-simultáneo ni retry HTTP genérico: Supabase tiene
-[reglas de reutilización](https://supabase.com/docs/guides/auth/sessions).
-Timeout requiere reconciliación específica; si irrecuperable, reautenticar.
-Fallo de red no equivale a revocación.
-
-Logout invalida generación/autoridad, cancela jobs y borra sesión. Núcleo
-confirma/persiste signed-out antes de mostrar éxito. Si está ausente, supervisor
-guarda un marcador propio de invalidación pendiente sin tokens y bloquea arranque
-de consumidores hasta que el núcleo lo aplica/persiste. Solo núcleo modifica
-binding/reloj; supervisor retira marcador tras confirmación. Revisar atomicidad
-y fallos de este protocolo en corte 0. No basta cerrar UI.
-Revocación remota puede quedar pendiente offline: no afirmar logout global sin
-confirmación. Conservar marca anti-rollback del emisor; reinicio no reabre caché.
-
-| Persistencia | Ventajas | Costes/límites |
-|---|---|---|
-| Credential Manager | API nativa/modelo conocido. | Límites de blobs; atomicidad multi-registro requiere diseño. |
-| DPAPI de usuario + ficheros tipados/atómicos | Versión, contexto y recuperación controlados. | ACL, corrupción, disco lleno y escritores son responsabilidad propia. |
-| Solo memoria | Sin secreto durable. | Reautenticación por cierre; no restauración/offline. |
-
-**Recomendación: DPAPI de usuario**, sin `LOCAL_MACHINE`, ACL restringida,
-versión/contexto dentro del blob, sin fallback plano. Sesión de servicios
-separada del binding/caché/reloj del núcleo; no compartir un blob de tokens.
-Reemplazo durable/atómico, última versión completa, error explícito si no se
-persiste rotación. Borrador sin consentimiento/credenciales; intento pendiente
-solo mínimo revisado. DPAPI vincula normalmente a usuario/máquina, no protege
-contra malware del mismo usuario ni garantiza recuperación tras cambios de
-cuenta del SO: [Microsoft DPAPI](https://learn.microsoft.com/en-us/windows/win32/seccrypto/example-c-program-using-cryptprotectdata).
+DPAPI de usuario aceptado, sin LOCAL_MACHINE ni fallback plano, ACL privada y
+contexto dentro del blob. Separar sesión de servicios y estado de licencia del
+núcleo. Logout persiste invalidación; núcleo único escritor de binding/reloj.
+Supervisor conserva marcador pendiente separado si núcleo ausente, impide arranque
+hasta aplicar/confirmar. DPAPI no aísla malware del mismo usuario ni evita replay
+de todo el conjunto: [Microsoft](https://learn.microsoft.com/en-us/windows/win32/seccrypto/example-c-program-using-cryptprotectdata).
 
 ## 5. D3 — licencias, derechos y consumidores
 
@@ -182,7 +203,7 @@ cuenta del SO: [Microsoft DPAPI](https://learn.microsoft.com/en-us/windows/win32
 | Núcleo verifica y publica política | Sigue ADR, disponible durante juego, reloj/deadlines con un escritor. | Consumidores necesitan canal y política vigente. |
 | Cada proceso verifica | Autonomía y firma en cada recurso. | Duplica reloj/revocación/recuperación; reglas divergentes. |
 
-**Recomendación: núcleo autoridad local**, verificador puro reutilizable sin
+**Decisión aceptada: núcleo autoridad local**, verificador puro reutilizable sin
 HTTP/GPUI, política tipada de hechos firmados. Servidor mantiene autoridad
 comercial. Hub/servicios no conceden permisos con un plan textual. Engineer
 comprueba antes de trabajo protegido; overlays aplican política. Consumidor
@@ -202,8 +223,11 @@ retira derechos anteriores.
 | Siempre comprobar servidor | Revocación actual por operación. | Offline imposible, latencia/disponibilidad en funciones locales. |
 
 **Recomendación: credencial offline + servidor para acciones remotas sensibles**.
-No revocación instantánea sin red. Isaac decide vigencia comercial/gracia/
-renovación, sin TTL universal inventado. Canales actuales: Tester 14 días,
+No revocación instantánea sin red. No hay gracia offline salvo una hora desde vencimiento dentro de juego
+ya iniciado con credencial válida. Entrar vencido no obtiene margen; salir
+del juego lo elimina. Firma inválida, logout, rechazo concluyente y rollback
+no tienen margen. El núcleo identifica juego, no una declaración del Hub.
+No reiniciar hora por reconexión/reinicio. Vigencia firmada no se extiende. Canales actuales: Tester 14 días,
 TesterNightly 72 horas y Owner 30 días en [branch-channels](../../branch-channels.md);
 confirmar aplicabilidad separada de paid-through y edición perpetua.
 
@@ -216,8 +240,8 @@ erróneo debe ser explícita.
 
 Política IPC: versión, época/revisión, permisos tipados y plazo/frescura, sin
 tokens/PII. Reconexión pide snapshot; rechazar revisión antigua. Sin autoridad
-o al vencer, suspender funciones protegidas con estado recuperable; no conservar
-booleano indefinidamente. Isaac decide funciones gratuitas/aviso durante juego.
+o al vencer fuera de juego/agotar la hora admitida, suspender funciones protegidas; no conservar
+booleano indefinidamente. Mostrar cuenta atrás; nunca suspender por vencimiento antes de esa hora en juego.
 Logout/revocación invalidan época; reconexión no prolonga permisos.
 
 | Formato firmado | Ventajas | Costes/límites |
@@ -226,8 +250,7 @@ Logout/revocación invalidan época; reconexión no prolonga permisos.
 | JWS versionado, Ed25519 y claims de licencia | Firma bytes transportados, formato estándar, aud/scope/exp explícitos. | Backend/migración de caché/claves; biblioteca/parser revisados. |
 | COSE/CBOR | Compacto y firmado. | Representación nueva y peor inspección; beneficio no medido. |
 
-**Recomendación destino: JWS**, Ed25519/algoritmo fijado, si contrato servidor v2
-aprobado. JWT de login no es licencia. Sin cambio backend, v1 puente explícito
+**Decisión destino: JWS**, Ed25519/algoritmo fijado, contrato servidor v2 posterior; transición v1 compatible. JWT de login no es licencia. Sin cambio backend, v1 puente explícito
 con vectores compatibles. Claves públicas por `kid`, rotación/retirada definidas;
 privadas solo servidor. Verificar bytes originales, no reconstruir JSON v2.
 Rechazar algoritmo desconocido, firma/claims incoherentes; capability desconocida
@@ -245,7 +268,7 @@ compatibilidad, fijar explícitamente la curva Ed25519, sin negociación arbitra
 | Clave por instalación protegida + enrollment servidor | Prueba de posesión, reset explícito, sin rutas personales como identidad. | Nuevo protocolo/política de pérdida; DPAPI no impide extracción por mismo usuario. |
 | Clave no exportable con TPM | Mayor resistencia a copia. | Hardware/recuperación/soporte complejos para primer corte. |
 
-**Recomendación destino: enrollment con clave de instalación**, si servidor
+**Decisión destino: enrollment con clave de instalación**, si servidor
 lo admite; fingerprint solo transición declarada. No inventar identidad ante
 fallo. Reset es comando servidor con intención/confirmación y nueva credencial;
 borrar caché no libera plaza. Timeout de reset no admite repetición ciega.
@@ -279,7 +302,7 @@ usuarios, pares no admitidos y errores; antitamper/DRM fuerte fuera de alcance.
 | API Vantare fina/versionada sobre Supabase | Contratos estables por dominio, autorización/idempotencia, integraciones sin secretos cliente. | Operación/mantenimiento servidor, otro alcance aprobado. |
 | Backend/auth completamente nuevos | Control máximo. | Migración/coste/operación sin necesidad demostrada. |
 
-**Recomendación destino: API Vantare fina**, sin sustituir Supabase Auth ni crear
+**Decisión destino: API Vantare fina**, con Clerk como identidad, sin crear
 malla de servicios. Auth estándar puede ir al proveedor; negocio por contratos
 propios. Adaptador temporal RPC aceptable con autorización/versiones congeladas.
 Sin URLs inventadas ni despliegue aquí. Facturación se confirma por servidor/
@@ -328,7 +351,7 @@ sin telemetría remota oculta. Medir coste con Hub cerrado y procesos activos.
 | Dominio offline | Comportamiento propuesto |
 |---|---|
 | Cuenta | Cuenta conocida visible; autenticar/rotar requiere red; logout local debe poder invalidar. |
-| Derechos | Credencial admitida/vigente y estado protegido; sin extender deadlines. Revalidar si falta confianza. |
+| Derechos | Credencial admitida/vigente y estado protegido; solo margen de una hora por vencimiento durante juego ya iniciado. Revalidar si falta confianza. |
 | Roadmap | Última publicación válida, fecha/obsolescencia; sin copia, estado vacío informativo. |
 | Testing Center | Borrador editable, pendiente/incierto visible, sin envío automático. |
 | Futura sync | Edición local/revisión/conflictos; cola/cuota cuando se implemente. |
@@ -343,7 +366,7 @@ sin telemetría remota oculta. Medir coste con Hub cerrado y procesos activos.
 | Caché de última publicación válida | Útil offline/compartible sin duplicar autoridad. | Validación/contexto/antigüedad visibles. |
 | Contenido embebido/editable local | Siempre visible. | Otra autoridad editorial/divergencias; no cumple publicación compartida. |
 
-**Recomendación: última publicación válida**, guardada tras validar schema,
+**Decisión aceptada: última publicación válida**, guardada tras validar schema,
 IDs/idiomas/límites. Leer al abrir, actualizar explícitamente y condicional con
 ETag/revisión si servidor lo ofrece. Mostrar publicado/consultado/obsoleto;
 sin inventar items. Publicación inválida no sustituye copia válida; comunicar
@@ -357,7 +380,7 @@ error. Sin editor/publisher en app.
 | Intento durable explícito + idempotencia servidor | Recupera incertidumbre y recibo sin duplicar. | Pequeña máquina de estados/limpieza local. |
 | Outbox automática al recuperar red | Comodidad offline. | Consentimiento/contexto caducan; envío inadvertido/bajo otra cuenta. |
 
-**Recomendación: intento durable explícito**, sin cola automática. Hub posee
+**Decisión aceptada: intento durable explícito**, sin cola automática. Hub posee
 borrador/preview; servicios, intento/recibo. Estados: borrador, revisado,
 enviando, confirmado/incierto. Clic final autoriza snapshot/cuenta/canal/
 adjuntos concretos. Texto libre puede contener PII: revisar. Sin logs/diagnóstico
@@ -407,8 +430,8 @@ sin bypass de derechos.
 
 ## 11. Cortes posteriores a decisión
 
-0. **Ratificar.** Isaac decide D1–D7; actualizar ADR si cambia propiedad.
-   Acordar proveedor/PKCE, API, formato/vigencia, binding/reset, funciones
+0. **Decisiones ratificadas.** ADR actualizado; concretar contrato Clerk/puente
+   y transición API/formato/vigencia/binding/reset, funciones
    gratuitas ante caída y budgets arranque/RSS/CPU/cierre. Confirmar control
    del núcleo sin adaptador, IPC/invalidación durable, ownership backend/
    manifests/launcher y rutas autorizadas.
@@ -441,25 +464,40 @@ evidencia honesta. Para Rust: `cargo fmt --check`,
 no ocultos/arreglados fuera de alcance. Tests locales no son runtime físico,
 backend desplegado, CI ni promoción de canal.
 
-**Este corte termina al commitear únicamente el documento.** Verificar
-`git diff --check`, enlaces/alternativas/propiedades y una sola ruta en diff.
-No gates Rust nuevos: no código cambiado e implementación parada.
+## 12. Ampliación elegida: perfiles/layouts en Supabase
 
-## 12. Decisiones de Isaac antes de reanudar
+Estimación de diseño, no medición de datos reales: metadata JSON 20–100 KiB por
+layout, hasta 10 layouts/perfiles por usuario => 0,2–1 MiB activo. Sin texturas,
+capturas, grabaciones ni telemetría en esos documentos. Límite de payload 256 KiB;
+revisar límite con corpus antes de integrar. Sync manual al guardar/publicar o al
+abrir Hub, coalescida por revisión; máximo presupuesto propuesto 10 escrituras y
+10 lecturas/día, sin Realtime/polling ni sync continua. Datos reales pueden superar
+estas hipótesis y obligar a posponer sync; no recortar silenciosamente documentos.
 
-1. ¿Servicios bajo demanda o Hub? Recomendación B/actualizar ADR; ambos
-   cerrados durante juego inicialmente. Futuro residente con opt-in/budget.
-2. ¿Núcleo autoridad disponible sin simulador? Recomendación sí, único reloj/
-   binding y consumidores sin red/tokens; decidir caída/expiry durante juego.
-3. ¿PKCE + DPAPI o transición contraseña/Credential Manager? Recomendación
-   PKCE/DPAPI tipado tras verificar soporte/recuperación SO.
-4. ¿API Vantare fina ahora o puente RPC? API destino, puente explícito para
-   no ampliar primer corte; aprobar ownership/alcance servidor.
-5. ¿JWS v2/enrollment o v1/fingerprint? Destino estándar/clave instalación;
-   acordar transición, rotación/scopes, vigencias/gracia/límites offline.
-6. ¿Roadmap cacheado/envío durable manual? Sí; acordar retención/adjuntos y
-   reconciliación/idempotencia servidor, sin autoenvío.
-7. ¿Qué ampliación primero y con qué budget? Una función concreta; sin
-   plataforma, residentes ni dependencias por anticipado.
+A 1.000 usuarios, con 100 KiB/documento y 10 lecturas/día: ~29 GiB egress/mes,
+300.000 lecturas + hasta 300.000 escrituras/mes; almacenamiento activo ~1 GiB.
+Revisiones/backup/overhead y Clerk TP-MAU añaden costes. Coste monetario:
+max(0, egress - cuota incluida) * tarifa vigente + almacenamiento extra + compute
++ TP-MAU. No asumir precio/plan contratado ni prometer coste cero. Validar cuotas
+con Isaac en corte 6, sin contratar/gastar. Solo implementar ampliación si tamaño,
+frecuencia y presupuesto real permanecen bajos; reducir sync a acción manual
+si no. Revisión servidor/RLS por UUID interno y conflictos explícitos, jamás
+escritura ciega ni metadata editable otorgando derechos.
 
-Hasta decidir, no recuperar WIP ni ejecutar los cortes.
+## 13. Límites de ejecución y próximos pasos
+
+Rutas originales siguen limitadas a `native/services/` y secciones Hub bajo
+`native/hub/src/`; este encargo añade expresamente ADR y este documento. Núcleo,
+launcher de runtime, IPC y manifests de otros workers no se editan. Si el wiring
+requiere esas rutas, entregar contrato/parche en services para el orquestador y
+registrar integración pendiente, sin afirmar enforcement en núcleo completado.
+
+Build actual no contiene configuración de cliente OAuth nativo Clerk ni puente
+OAuth de negocio. No reutilizar publishable key como client_id ni inventar aliases
+de variables del producto. Inventariar `VITE_CLERK_PUBLISHABLE_KEY` de #1187;
+configuración pública OAuth/client ID/issuer/redirect/puente debe incorporarla el
+owner del build con nombres acordados. Sin configuración completa: servicio no
+configurado. Tests inyectan URLs/client ID generados localmente, jamás valores reales.
+
+Cortes 1–5 autorizados, commit por corte, gates Rust -j 2; corte 6 pendiente de
+configuración de Isaac. Stash previo intacto; sin red real, push, PR ni merge.

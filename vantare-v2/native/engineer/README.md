@@ -61,7 +61,7 @@ reason = 0 CoreRestart | 1 Retention | 2 InvalidCursor | 3 RecordingDisabled
 Foto y tail comparten época; eventos no superan el corte. Foto usa el DTO
 existente de `ipc`, no ABI Rust. Codec valida forma, versión, cursores y tamaños;
 **no aporta ACL, identidad de par ni plazos**. Integrar named pipe, dueño de
-persistencia separado, launcher y miembro del workspace padre corresponde a
+persistencia separado y launcher corresponde a
 los propietarios de esas rutas. No conectar el banco a datos reales saltando
 la frontera. `Frame::capture` puede leer disco: NO llamarlo en adquisición.
 Hace falta transferir un corte coherente al dueño del transporte.
@@ -102,7 +102,8 @@ escucha es/en/it/pt-BR pendientes de Isaac. Sin wake/PTT/STT ni ajuste de dispos
 
 ## Gates y evidencia
 
-Workspace local durante el trabajo paralelo. Desde `native/engineer/`:
+Miembro del workspace `native/`: edición/lints comunes y un único Cargo.lock.
+Desde `native/` (los gates incluyen Engineer):
 
 ```powershell
 cargo fmt --check
@@ -110,7 +111,7 @@ cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
 cargo test --workspace --offline -j 2
 ```
 
-Además, los tres gates del workspace padre `native/`. `tests/recovery.rs` usa
+Para Engineer aislado: añadir `-p vantare-engineer` a clippy/test. `tests/recovery.rs` usa
 observaciones **sintéticas explícitas**, procesos y checkpoints reales: reinicio,
 dedup, todos los confirmados, hueco volátil, retención, escritura fallida,
 corrupción y EOF con plazo. `tests/radio.rs` verifica las reglas, TTL, cola,

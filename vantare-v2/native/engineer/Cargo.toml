@@ -1,33 +1,21 @@
 [package]
 name = "vantare-engineer"
-version = "0.0.0"
-edition = "2024"
-rust-version = "1.95"
-publish = false
-
-# Workspace propio durante el trabajo paralelo: el orquestador añade este
-# miembro al padre al integrar, sin dos workers editando su manifiesto/lock.
-[workspace]
-resolver = "3"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
-vantare-domain = { path = "../domain" }
-vantare-ipc = { path = "../ipc" }
+vantare-domain.workspace = true
+vantare-ipc.workspace = true
 # Flows y cierre del proceso; no lee adaptadores ni Core.
 vantare-runtime = { path = "../runtime" }
-serde_json = "=1.0.151"
+serde_json = "1"
 
 # WinMM para clips locales WAV: ya está en el lock del padre. Sin decoder,
 # motor TTS, proceso PowerShell ni servicio de red.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Media_Audio"] }
 
-[lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-unwrap_used = "warn"
-dbg_macro = "warn"
-todo = "warn"
-module_name_repetitions = "allow"
-must_use_candidate = "allow"
-missing_errors_doc = "allow"
-missing_panics_doc = "allow"
+[lints]
+workspace = true

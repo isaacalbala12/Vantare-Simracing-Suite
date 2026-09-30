@@ -43,6 +43,14 @@ PASS (6,71 s), 16 tests PASS, 0 ignorados (compilación 1m01s). `fmt --check`
 padre FAIL solo en la línea importada de UI; no se modifica UI ni se declara
 gate global verde. Sin conflictos, DTO v4 y ambos conjuntos de cambios presentes.
 
+Workspace unificado: `engineer` hereda versión/edición/lints del padre; único
+lock padre, solo añade la entrada de paquete Engineer. Lock e ignore propios
+eliminados. Clippy completo PASS (33,92 s); tests completos 458 PASS contando
+lifecycle, 4 live ignorados (compilación 2m10s). Fmt global sigue FAIL únicamente
+en UI importada; las rutas propias cumplen formato. No dependencias nuevas.
+
+## Histórico de los cortes 1–3 (anterior a la ampliación autorizada)
+
 Fecha: 2026-09-30. Contrato: ADR 0099 completa, §2–4 y §7;
 [issue #1428](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1428).
 Worker Codex; revisión final del diff por Claude Opus 5.5. Base proporcionada

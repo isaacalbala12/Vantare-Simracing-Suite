@@ -5,12 +5,14 @@
 | `domain` | Modelo común (`Snapshot`, `State`, `Quality`, capacidades, banderas), contrato del adaptador (`Adapter`, `Observation`), ViewModels (`standings`, `radar`, `pedals`) y formateador. Puro: sin simuladores, GPUI ni I/O; `unsafe` prohibido. |
 | `runtime` | Adaptadores de simulador (módulos privados), núcleo, flujos y ciclo de vida. |
 | `ipc` | DTO versionados (serde) y transporte entre procesos. |
+| `engineer` | Consumidor de fotos/eventos y voz local bajo demanda, proceso separado. |
 | `ui` | Biblioteca visual y binarios de overlays y Hub. |
 
 ## Dependencias permitidas
 
 ```text
 runtime → domain, ipc      ipc → domain      ui → domain, ipc
+engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
@@ -119,8 +121,8 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 ```powershell
 cd vantare-v2/native
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
+cargo test --workspace --offline -j 2
 ```
 
 `runtime/tests/core_e2e.rs` arranca el binario `vantare-core` con el fixture de

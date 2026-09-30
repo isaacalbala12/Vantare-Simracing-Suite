@@ -5664,6 +5664,17 @@ name = "vantare-domain"
 version = "0.0.0"
 
 [[package]]
+name = "vantare-engineer"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "vantare-domain",
+ "vantare-ipc",
+ "vantare-runtime",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "vantare-ipc"
 version = "0.0.0"
 dependencies = [

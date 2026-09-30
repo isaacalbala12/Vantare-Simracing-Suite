@@ -183,6 +183,36 @@ fn expired_credential_cannot_restore_grace_with_recycled_id_after_cold_restart()
 }
 
 #[test]
+fn late_transfer_uses_core_entry_time_and_never_grants_grace_to_newly_issued_rights() {
+    let start = 1_790_795_000;
+    for (issued, grace) in [(start - 10, true), (start + 6, false)] {
+        let (credential, keys) = signed(start + 60, issued);
+        let root = test_root();
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+        assert!(
+            !owner
+                .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
+                .expect("entrada sin transferencia")
+                .engineer
+        );
+        owner
+            .install(credential, wall(start + 10), Duration::from_secs(10))
+            .expect("transferencia tardía");
+        let policy = owner
+            .advance_observed(
+                &photo(true),
+                wall(start + 5),
+                wall(start + 61),
+                Duration::from_secs(61),
+            )
+            .expect("entrada del núcleo");
+        assert_eq!(policy.engineer, grace);
+        drop(owner);
+        clean(&root);
+    }
+}
+
+#[test]
 fn no_other_grace_invalid_signature_wrong_binding_and_clock_rollback_deny() {
     let start = 1_790_780_000;
     let (credential, keys) = signed(start + 20, start - 10);

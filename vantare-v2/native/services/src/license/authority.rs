@@ -154,7 +154,10 @@ impl Authority {
             eligible: verified
                 .grants
                 .iter()
-                .filter(|grant| grant.expires_at.is_none_or(|expiry| entered_at < expiry))
+                .filter(|grant| {
+                    verified.issued_at <= entered_at
+                        && grant.expires_at.is_none_or(|expiry| entered_at < expiry)
+                })
                 .map(|grant| grant.key.clone())
                 .collect(),
         });

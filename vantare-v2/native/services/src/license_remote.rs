@@ -23,6 +23,14 @@ pub struct Candidate {
     pub device: String,
 }
 
+pub fn candidate_context(base: Option<&str>, channel: Option<&str>) -> String {
+    format!(
+        "license-v1|{}|{}",
+        base.unwrap_or("unconfigured"),
+        channel.unwrap_or("unknown")
+    )
+}
+
 pub fn renew(
     request: &DataRequest<'_>,
     device: &str,

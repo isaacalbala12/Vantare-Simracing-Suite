@@ -8,7 +8,11 @@ use vantare_services::{
 };
 
 fn run() -> vantare_services::Result<()> {
-    let args: Vec<_> = std::env::args().skip(1).collect();
+    let mut args: Vec<_> = std::env::args().skip(1).collect();
+    let managed = args.last().is_some_and(|arg| arg == "--managed");
+    if managed {
+        args.pop();
+    }
     if args.len() != 3 && args.len() != 4 {
         return Err(vantare_services::Error::Protocol);
     }
@@ -25,6 +29,11 @@ fn run() -> vantare_services::Result<()> {
         None => vantare_services::app::default_root()?,
     };
     let mut app = App::new(config, root);
+    if managed {
+        let core = vantare_ipc::control::read(&mut std::io::stdin())
+            .map_err(|_| vantare_services::Error::Protocol)?;
+        app.attach_core(core);
+    }
     host::serve(&options, |command| app.handle(command))
 }
 

@@ -224,6 +224,7 @@ fn run_pipe(
     // imagen; este consumidor además fija la imagen de servidor esperada.
     let expected =
         core_image.unwrap_or(std::env::current_exe()?.with_file_name("vantare-core.exe"));
+    let rights = vantare_ipc::control::Feed::connect(&name, expected.clone())?;
     let mut engineer = Engineer::resume(checkpoint)?;
     let client = vantare_runtime::flows::client::EventClient::connect(
         &vantare_runtime::flows::host::pipe_name(&name),
@@ -239,13 +240,20 @@ fn run_pipe(
         "{{\"version\":\"vantare.radio.status.v1\",\"events\":\"connecting\",\"spotter\":\"waiting_spatial\"}}"
     )?;
     output.flush()?;
+    // El cursor no debe consumir los primeros hechos antes de la política.
+    // Espera inicial acotada fuera de UI; un timeout mantiene la denegación.
+    rights.wait_initial(Duration::from_secs(1));
     while !stop.load(Ordering::Relaxed) {
         if let Some(local) = &mut local {
             local.poll(radio, &mut output)?;
         }
         if let Some(frame) = client.next(Duration::from_millis(50))? {
             let applied = engineer.apply(&frame, checkpoint)?;
-            radio.ingest(&frame.snapshot, &applied, start.elapsed(), &mut output)?;
+            if rights.policy().engineer {
+                radio.ingest(&frame.snapshot, &applied, start.elapsed(), &mut output)?;
+            } else {
+                radio.clear()?;
+            }
             let current = (frame.snapshot.epoch, frame.snapshot.sequence);
             if revision != Some(current) {
                 revision = Some(current);
@@ -272,7 +280,11 @@ fn run_pipe(
                 )?;
                 output.flush()?;
             }
-            radio.tick(start.elapsed(), &mut output)?;
+            if rights.policy().engineer {
+                radio.tick(start.elapsed(), &mut output)?;
+            } else {
+                radio.clear()?;
+            }
         }
         if let Some(local) = &mut local {
             local.publish(

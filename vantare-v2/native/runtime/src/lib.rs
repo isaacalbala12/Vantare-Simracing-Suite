@@ -10,4 +10,6 @@ pub mod rights;
 #[cfg(windows)]
 pub mod service;
 #[cfg(windows)]
+pub mod services;
+#[cfg(windows)]
 pub mod shutdown;

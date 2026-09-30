@@ -169,6 +169,7 @@ pub fn connect_ready(
 pub struct Feed {
     latest: std::sync::Arc<std::sync::Mutex<Option<Policy>>>,
     stop: std::sync::Arc<crate::transport::Event>,
+    initial: std::sync::Arc<crate::transport::Event>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
 #[cfg(windows)]
@@ -177,6 +178,8 @@ impl Feed {
         use crate::transport::Event;
         let latest = std::sync::Arc::new(std::sync::Mutex::new(None));
         let stop = std::sync::Arc::new(Event::new()?);
+        let initial = std::sync::Arc::new(Event::new()?);
+        let ready = std::sync::Arc::clone(&initial);
         let target = std::sync::Arc::clone(&latest);
         let cancel = std::sync::Arc::clone(&stop);
         let link = CoreLink {
@@ -204,6 +207,7 @@ impl Feed {
                     } else {
                         break;
                     }
+                    ready.set();
                     if cancel.wait(std::time::Duration::from_millis(250)) {
                         break;
                     }
@@ -212,6 +216,7 @@ impl Feed {
         Ok(Self {
             latest,
             stop,
+            initial,
             thread: Some(thread),
         })
     }
@@ -222,6 +227,11 @@ impl Feed {
             .and_then(|p| p.clone())
             .filter(Policy::current)
             .unwrap_or_default()
+    }
+    /// Arranque del consumidor sin UI: espera acotada al primer resultado,
+    /// nunca interpreta timeout/ausencia como permiso ni inventa derechos.
+    pub fn wait_initial(&self, timeout: std::time::Duration) -> bool {
+        self.initial.wait(timeout)
     }
 }
 #[cfg(windows)]

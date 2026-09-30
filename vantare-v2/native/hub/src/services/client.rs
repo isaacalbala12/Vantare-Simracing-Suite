@@ -1,111 +1,47 @@
-use std::io::{BufRead, BufReader, Read};
-use std::path::Path;
-use std::process::{Child, Command as Process, Stdio};
-use std::sync::{Arc, mpsc};
-use std::time::Duration;
+//! El Hub conecta con vantare; jamás arranca ni posee el proceso de servicios.
+use super::protocol::{self, Command, Reply, Request, Response, SupervisorHello};
+use std::{path::Path, sync::Arc, time::Duration};
+use vantare_ipc::{
+    control,
+    transport::{Event, Pipe},
+};
 
-use vantare_ipc::transport::{Event, IO_TIMEOUT, Pipe, connect};
-
-use super::protocol::{self, Command, Reply, Request, Response};
-
-/// Propiedad de un worker I/O, nunca del hilo de render. EOF/Drop cierra hijo.
 pub struct Client {
-    child: Child,
     pipe: Pipe,
     stop: Arc<Event>,
     nonce: String,
     sequence: u64,
 }
-
 impl Client {
-    pub fn start(binary: &Path) -> Result<Self, &'static str> {
-        Self::start_in(binary, None)
-    }
-
-    pub fn start_in(binary: &Path, root: Option<&Path>) -> Result<Self, &'static str> {
-        use std::os::windows::process::CommandExt;
-        let parent = std::env::current_exe().map_err(|_| "proceso Hub no identificado")?;
-        let name = format!(
-            "{}-services",
-            vantare_ipc::default_pipe_name().map_err(|_| "IPC no disponible")?
-        );
-        let mut process = Process::new(binary);
-        process
-            .arg(&name)
-            .arg(std::process::id().to_string())
-            .arg(&parent)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .creation_flags(0x0800_0000); // CREATE_NO_WINDOW; helper sin ventana.
-        if let Some(root) = root {
-            process.arg(root);
-        }
-        let mut child = process
-            .spawn()
-            .map_err(|_| "proceso de servicios no instalado")?;
-        match Self::connect(&mut child, binary, &name) {
-            Ok((pipe, stop, nonce)) => Ok(Self {
-                child,
-                pipe,
-                stop,
-                nonce,
-                sequence: 0,
-            }),
-            Err(error) => {
-                // Puede haber salido entre el fallo y kill: cleanup best effort,
-                // no ocultamos el error que impidió iniciar el servicio.
-                let _cleanup = child.kill();
-                let _reaped = child.wait();
-                Err(error)
-            }
-        }
-    }
-
-    fn connect(
-        child: &mut Child,
-        binary: &Path,
-        name: &str,
-    ) -> Result<(Pipe, Arc<Event>, String), &'static str> {
-        let output = child.stdout.take().ok_or("bootstrap no disponible")?;
-        let (send, receive) = mpsc::sync_channel(1);
-        std::thread::spawn(move || {
-            let mut nonce = String::new();
-            let result = BufReader::new(output.take(65))
-                .read_line(&mut nonce)
-                .map(|_| nonce);
-            let _receiver_closed = send.send(result);
-        });
-        let nonce = receive
-            .recv_timeout(IO_TIMEOUT)
-            .map_err(|_| "bootstrap agotado")?
-            .map_err(|_| "bootstrap no disponible")?;
-        let nonce = nonce.trim_end_matches('\n').to_owned();
-        if nonce.len() != 64
-            || !nonce
-                .bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        {
-            return Err("bootstrap inválido");
-        }
+    pub fn start(binary: &Path, photo_pipe: &str) -> Result<Self, &'static str> {
         let stop = Arc::new(Event::new().map_err(|_| "IPC no disponible")?);
-        // Discovery/token/userinfo may each use the HTTP 8s budget. Cancellation
-        // interrupts this wait; the render thread never waits on the pipe.
-        let pipe = connect(name, Arc::clone(&stop), Duration::from_secs(30))
-            .map_err(|_| "IPC no disponible")?;
-        let peer = pipe.server_peer().map_err(|_| "servicio no identificado")?;
-        if peer.pid != child.id()
-            || !peer.is_image(binary)
-            || child
-                .try_wait()
-                .map_err(|_| "estado de servicios no disponible")?
-                .is_some()
-        {
-            return Err("servicio no admitido");
+        let mut pipe = control::connect_ready(
+            &format!("{photo_pipe}-hub-services"),
+            &stop,
+            Duration::from_secs(30),
+        )
+        .map_err(|_| "supervisor vantare no disponible")?;
+        if !pipe.server_peer().is_ok_and(|peer| peer.is_image(binary)) {
+            return Err("supervisor no admitido");
         }
-        Ok((pipe, stop, nonce))
+        let hello: SupervisorHello =
+            control::read(&mut pipe).map_err(|_| "saludo del supervisor inválido")?;
+        if hello.version != protocol::VERSION
+            || hello.nonce.len() != 64
+            || !hello
+                .nonce
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
+            return Err("saludo del supervisor inválido");
+        }
+        Ok(Self {
+            pipe,
+            stop,
+            nonce: hello.nonce,
+            sequence: 0,
+        })
     }
-
     pub fn request(&mut self, command: Command) -> Result<Reply, &'static str> {
         self.sequence = self.sequence.checked_add(1).ok_or("revisión agotada")?;
         protocol::write(
@@ -117,40 +53,30 @@ impl Client {
                 command,
             },
         )
-        .map_err(|_| "servicios desconectado")?;
+        .map_err(|_| "servicios desconectados")?;
         let response: Response =
-            protocol::read(&mut self.pipe).map_err(|_| "servicios desconectado")?;
+            protocol::read(&mut self.pipe).map_err(|_| "servicios desconectados")?;
         if response.version != protocol::VERSION || response.sequence != self.sequence {
-            return Err("respuesta de servicios inválida");
+            return Err("respuesta del supervisor inválida");
         }
         Ok(response.reply)
     }
-
     pub fn cancellation(&self) -> Arc<Event> {
         Arc::clone(&self.stop)
     }
-
-    pub fn is_running(&mut self) -> bool {
-        self.child.try_wait().is_ok_and(|status| status.is_none())
+    pub fn is_running(&self) -> bool {
+        !self.stop.is_set()
     }
 }
-
 impl Drop for Client {
     fn drop(&mut self) {
         self.stop.set();
-        drop(self.child.stdin.take());
-        // Destructor best effort: salida entre kill/wait es normal; ningún
-        // dato ni token se registra. El dueño I/O espera, no el hilo UI.
-        let _killed_or_already_closed = self.child.kill();
-        let _reaped = self.child.wait();
     }
 }
-
 pub fn default_binary() -> Result<std::path::PathBuf, &'static str> {
     std::env::current_exe()
         .ok()
-        .and_then(|p| p.parent().map(|p| p.join("vantare-services.exe")))
-        .ok_or("proceso de servicios no instalado")
+        .and_then(|p| p.parent().map(|p| p.join("vantare.exe")))
+        .ok_or("supervisor no instalado")
 }
-
 pub const REQUEST_POLL: Duration = Duration::from_millis(250);

@@ -47,12 +47,12 @@ impl Host {
             snapshot: Arc::new(Snapshot::default()),
             entered_at: None,
         }));
-        let opened = Owner::open(
+        // Sin trust roots no se abre ni se lee el almacén de credenciales.
+        let opened = open_owner(
             &options.root,
             options.keys.as_deref(),
             options.devices,
             options.epoch,
-            super::wall_now(),
         );
         let failure = opened.as_ref().err().map(ToString::to_string);
         let owner = opened.ok();
@@ -165,6 +165,16 @@ impl Host {
         }));
     }
 }
+fn open_owner(
+    root: &std::path::Path,
+    keys: Option<&str>,
+    devices: Devices,
+    epoch: u64,
+) -> vantare_services::Result<Owner> {
+    let keys = keys.ok_or(vantare_services::Error::Unconfigured)?;
+    Owner::open(root, Some(keys), devices, epoch, super::wall_now())
+}
+
 fn is_live(snapshot: &Snapshot) -> bool {
     snapshot.origin.source.kind == SourceKind::Live
         && snapshot.state.source_state == SourceState::Live

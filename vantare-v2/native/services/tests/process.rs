@@ -1,9 +1,7 @@
 #![cfg(all(windows, feature = "network"))]
 
-// Misma fuente del cliente Hub, sin copiar DTO ni añadir dependencias al Hub.
-#[allow(dead_code)] // El test usa el cliente, no la ubicación instalada del binario.
-#[path = "../../hub/src/services/client.rs"]
-mod hub_client;
+// Cliente del supervisor: el Hub ya no posee ni arranca hijos.
+use vantare_services::process as hub_client;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;

@@ -1,15 +1,11 @@
 # Servicios nativos — ISA-1430
 
-Proceso de usuario bajo demanda, sin GPUI/simuladores. Cuenta Clerk OAuth y
-datos Supabase son identidades/contratos distintos; sin puente validado no se
-reenvía OAuth bearer a RPC legacy. Núcleo es autoridad de licencia, no este host.
-
-Miembro de `native/`, con un único `Cargo.lock`, edición y lints compartidas.
-La integración de runtime/supervisor está autorizada en el corte posterior.
-La evidencia de los cortes previos se conserva como histórica; sus workspaces
-separados ya no existen. Logs y target previo: `C:/tmp/servicios-evidence/`.
-
-Gates (máximo dos jobs, una compilación a la vez):
+`vantare-services` es miembro de `native/`: un workspace, `Cargo.lock`, edición
+y lints compartidas. Proceso de usuario bajo demanda, sin GPUI/simuladores.
+El supervisor `vantare` posee el auxiliar; el Hub solo manda comandos IPC.
+El núcleo verifica y persiste la credencial y publica derechos a los consumidores.
+Cuenta Clerk y datos Supabase tienen contratos distintos; el puente privado
+permanece inactivo hasta acordar configuración/backend con Isaac.
 
 ```powershell
 cd native
@@ -18,60 +14,24 @@ cargo clippy --workspace --all-targets -j 2 -- -D warnings
 cargo test --workspace -j 2
 ```
 
-Tests HTTP solo loopback y entropía/
-firmas generadas localmente. No `.env*`, secretos ni credenciales reales.
-Dependencias propuestas en el plan: ureq/TLS, Ed25519, bindings DPAPI y utilidades
-de formato/entropía/buffers mínimas; no runtime async, DB ni bus genérico.
+Máximo dos jobs, una compilación a la vez. Logs y target standalone histórico
+están fuera del repo, en `C:/tmp/servicios-evidence/`; no recuperar el stash previo.
+No hay dependencias async/DB/bus nuevas: se reutilizan transporte Win32/ACL,
+ureq/TLS del lock, formatos/entropía mínimos y Ed25519/DPAPI de los cortes previos.
+La biblioteca de verificación se consume con `default-features = false`; IPC es
+común, HTTP/URL opcionales. Las pruebas de runtime habilitan network solo como
+dev-dependency. Cargo unifica features en una compilación conjunta: ese grafo
+no se presenta como prueba de ausencia de TLS en el artefacto completo.
 
-Configuración pública existente `option_env!`: VANTARE_SUPABASE_URL,
-VANTARE_SUPABASE_ANON_KEY, VANTARE_LICENSE_PUBLIC_KEYS, VANTARE_BUILD_CHANNEL,
-VITE_CLERK_PUBLISHABLE_KEY (#1187). La última no es un client ID OAuth.
-`VANTARE_VERSION` (workflow release) añade la versión pública a reportes; si
-falta se usa la versión real del crate, no una versión comercial inventada.
-Client ID/issuer/redirect nativos y puente OAuth requieren contrato del owner
-del build/backend: no inventar nombres/aliases ni usar Supabase Auth como fallback.
-Ausencia de contrato/configuración produce «servicio no configurado».
+Sin configuración se muestra «servicio no configurado», con funciones básicas
+y borradores locales. La hora de excepción solo aplica a derechos válidos al
+entrar a la sesión live; no hay otra gracia offline. Límite de restauración
+tras reinicio frío e identidad de carrera, contrato exacto de Clerk pendiente,
+variables del build, IPC, aceptación y riesgos: [INTEGRATION.md](INTEGRATION.md).
+Commits/gates/evidencia y alcance real: [DELIVERY.md](DELIVERY.md).
 
-El host arranca solo por un consumidor autorizado, verifica PID/imagen del
-padre y nonce entregado por stdout heredado; stdin EOF cancela E/S. No datos
-secretos en CLI/DTO/logs. Proceso oculto, deadlines finitos, cierre tras Hub.
-
-Corte 1: fmt, clippy (`-D warnings`, `-j 2`) y tests (`-j 2`) pasan en ambos
-workspaces. Servicios: 8 tests, incluido proceso real local y DPAPI de Windows.
-El workspace nativo completo termina con código 0. No demuestra red remota,
-renderizado del Hub ni derechos aplicados por el núcleo.
-
-Corte 2: cuenta OAuth/PKCE con navegador externo y callback loopback limitado,
-metadata validada y sesión DPAPI, renovación serializada, tombstone de logout y
-generación contra respuestas tardías. OAuth bearer permanece en servicios; no
-se trata como sesión Clerk TPA. Cuenta Orbit usa un worker I/O bajo demanda.
-Los gates de ambos workspaces pasan (10 tests en servicios). Refresh ambiguo
-no se reintenta automáticamente: si el proveedor consumió la rotación y perdió
-la respuesta, se requiere nuevo login. Logout remoto/revocación de Clerk y ACK
-de invalidación del núcleo requieren el puente/backend e IPC del orquestador.
-No se afirma que el núcleo actual reaccione al logout del Hub.
-
-Corte 3: v1 compatible (incluye escapes Go y nanosegundos), JWS destino con
-algoritmo/audience fijos, instalación Ed25519 protegida, autoridad sin red,
-reloj/invalidación durable y hora desde expiry solo dentro del mismo juego.
-Tests: 16 servicios + 8 sin feature network, todos pasan con fmt/clippy.
-Cliente de renovación/reset usa puente explícito y no confía en capabilities
-sin firma. Ver [integración pendiente](INTEGRATION.md): el núcleo/IPC actual
-todavía no consume esta autoridad y el host rechaza esas acciones mientras
-falta el puente y el ACK del núcleo. No presentar esto como corte extremo a
-extremo completado. dalek evita criptografía propia; chrono conserva RFC3339Nano.
-
-Corte 4: RPC público `visual_roadmap_current`, validación antes de reemplazar
-caché, separación por proyecto/canal y vista Orbit. Una publicación válida con
-items vacíos sí reemplaza; ausencia de publicación o respuesta inválida conserva
-la anterior. Sin editor, Realtime ni polling de red; reintento manual, una petición
-por acción. Gates de services (18 tests) y native pasan con -j 2.
-El cliente IPC permite el presupuesto HTTP fuera del hilo UI y
-detecta un helper cerrado antes de emitir la siguiente acción.
-
-Corte 5: borrador de texto DPAPI, preview ligado a cuenta/canal/sesión y acción
-explícita de consentimiento; intento guardado antes del POST; reintento manual
-con bytes/key originales y recibo durable. Nada de autoenvío, logs, capturas,
-diagnósticos ni automatización externa. 23 tests services + 8 sin red pasan;
-los tres gates de native también pasan con -j 2. Integración/configuración y límites
-de Input/una sola operación pendiente se documentan en INTEGRATION.md.
+Roadmap: última publicación válida; Testing Center: texto, borrador DPAPI,
+preview/consentimiento efímero, intento durable manual y recibo. Sin autoenvío.
+Tests: HTTP loopback, claves generadas, procesos/pipes y DPAPI de fixtures;
+ningún secreto ni credencial real, `.env*` ni backend real. El corte 6 queda
+pendiente de Isaac; sync de perfiles/layouts no se implementa aquí.

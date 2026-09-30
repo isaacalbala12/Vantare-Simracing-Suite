@@ -494,6 +494,7 @@ struct Loaded {
     strategy_dir: PathBuf,
     testing_dir: PathBuf,
     subscriber: Subscriber,
+    service_pipe: String,
 }
 
 impl Hub {
@@ -514,6 +515,7 @@ impl Hub {
             strategy_dir,
             testing_dir,
             subscriber,
+            service_pipe,
         } = loaded;
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -538,7 +540,7 @@ impl Hub {
         let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
-        let remote = cx.new(|cx| crate::services::view::Remote::new(&strategy_dir, cx));
+        let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
         cx.observe(&remote, |_, _, cx| cx.notify()).detach();
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
         let testing = cx.new(|cx| Testing::new(testing_dir, cx));
@@ -603,6 +605,11 @@ pub fn run(options: Options) -> Result<(), String> {
         engineer: Engineer::load(options.engineer),
         strategy_dir: options.data_dir.clone(),
         testing_dir: options.data_dir.clone(),
+        service_pipe: options
+            .pipe
+            .clone()
+            .map_or_else(vantare_ipc::default_pipe_name, Ok)
+            .map_err(|_| "IPC no disponible")?,
         subscriber: subscribe(options.pipe)?,
     };
     let stop = watch_stdin(options.controlled)?;

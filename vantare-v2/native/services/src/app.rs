@@ -11,6 +11,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct App {
+    core: Option<vantare_ipc::control::CoreLink>,
+    license_store: Option<Store>,
     config: BuildConfig,
     root: PathBuf,
     http: Http,
@@ -28,6 +30,8 @@ pub struct App {
 impl App {
     pub fn new(config: BuildConfig, root: PathBuf) -> Self {
         Self {
+            core: None,
+            license_store: None,
             config,
             root,
             http: Http::default(),
@@ -52,6 +56,121 @@ impl App {
         crate::config::remote_url(config.supabase.as_str())?;
         self.bridge = Some(config);
         Ok(())
+    }
+
+    pub fn attach_core(&mut self, core: vantare_ipc::control::CoreLink) {
+        self.core = Some(core);
+    }
+
+    fn candidate_store(&mut self) -> Result<&Store> {
+        if self.license_store.is_none() {
+            let context = crate::license_remote::candidate_context(
+                self.config.supabase.as_ref().map(url::Url::as_str),
+                self.config.channel,
+            );
+            self.license_store = Some(Store::open(&self.root, &context)?);
+        }
+        self.license_store.as_ref().ok_or(Error::Storage)
+    }
+
+    fn core_command(
+        &self,
+        command: vantare_ipc::control::Command,
+    ) -> Result<vantare_ipc::control::Policy> {
+        vantare_ipc::control::request(self.core.as_ref().ok_or(Error::Unconfigured)?, command)
+            .map_err(|_| Error::Denied)
+    }
+
+    fn transfer_rights(&mut self) -> Result<Reply> {
+        let candidate = self
+            .candidate_store()?
+            .load::<crate::license_remote::Candidate>("license-candidate");
+        let policy = match candidate {
+            Ok(candidate) => self.core_command(vantare_ipc::control::Command::Install {
+                credential: serde_json::to_string(&candidate.credential)
+                    .map_err(|_| Error::InvalidCredential)?,
+            })?,
+            Err(Error::NotFound) => self.core_command(vantare_ipc::control::Command::Read)?,
+            Err(error) => return Err(error),
+        };
+        Ok(Reply::License {
+            policy,
+            message: "Derechos verificados y guardados por el núcleo".into(),
+        })
+    }
+
+    fn revoke_local(&mut self) -> Result<()> {
+        self.core_command(vantare_ipc::control::Command::Invalidate)?;
+        self.candidate_store()?.remove("license-candidate")?;
+        Ok(())
+    }
+
+    fn license_reply(&mut self, command: &Command) -> Result<Reply> {
+        if matches!(command, Command::LicenseStatus) {
+            return Ok(Reply::License {
+                policy: self.core_command(vantare_ipc::control::Command::Read)?,
+                message: "Política vigente del núcleo".into(),
+            });
+        }
+        if matches!(command, Command::DeviceReset) {
+            self.revoke_local()?;
+        }
+        let time = now()?;
+        self.ensure_data(time)?;
+        let device = crate::license::installation::legacy_fingerprint()?;
+        self.candidate_store()?;
+        let request = self
+            .data_session
+            .as_ref()
+            .ok_or(Error::Authentication)?
+            .request(
+                &self.http,
+                self.bridge.as_ref().ok_or(Error::BridgeUnconfigured)?,
+                self.account.as_ref().ok_or(Error::Authentication)?,
+                time,
+            );
+        if matches!(command, Command::DeviceReset) {
+            crate::license_remote::reset_device(&request, &device)?;
+            return Ok(Reply::License {
+                policy: self.core_command(vantare_ipc::control::Command::Read)?,
+                message: "Dispositivo liberado; solicite una credencial nueva".into(),
+            });
+        }
+        let keys = crate::license::Verifier::public_keys(
+            self.config.license_keys.ok_or(Error::Unconfigured)?,
+        )?;
+        crate::license_remote::renew(
+            &request,
+            &device,
+            &keys,
+            self.license_store.as_ref().ok_or(Error::Storage)?,
+        )?;
+        self.transfer_rights()
+    }
+
+    fn logout_reply(&mut self) -> Result<Reply> {
+        // Invalida primero: ni limpieza local ni UI anuncian éxito antes del ACK.
+        if self.core.is_some() {
+            self.revoke_local()?;
+        }
+        self.login_pending = false;
+        self.data_session = None;
+        if let Some(reports) = self.reports.as_mut() {
+            reports.cancel_preview();
+        }
+        if self.config.native_oauth.is_some() {
+            self.ensure_account()?;
+            self.account
+                .as_mut()
+                .ok_or(Error::Unconfigured)?
+                .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+        }
+        Ok(Reply::Account {
+            signed_in: false,
+            expires_at: None,
+            pending: false,
+            message: "Sesión cerrada y derechos locales revocados".into(),
+        })
     }
 
     fn ensure_data(&mut self, now: u64) -> Result<()> {
@@ -156,9 +275,11 @@ impl App {
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
+            Command::TransferRights => return self.transfer_rights(),
             Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
-                return Err(Error::BridgeUnconfigured);
+                return self.license_reply(&command);
             }
+            Command::Logout => return self.logout_reply(),
             _ => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
@@ -182,14 +303,6 @@ impl App {
             Command::AccountPoll => {}
             Command::AccountRenew => {
                 account.complete(account.refresh()?.run(&self.http, now()?)?, store)?;
-            }
-            Command::Logout => {
-                self.login_pending = false;
-                self.data_session = None;
-                if let Some(reports) = self.reports.as_mut() {
-                    reports.cancel_preview();
-                }
-                account.logout(store)?;
             }
             _ => return Err(Error::Protocol),
         }

@@ -5,7 +5,6 @@ use super::{
 };
 use crate::orbit;
 use gpui::{Context, prelude::*};
-use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -30,7 +29,7 @@ struct AccountState {
 }
 
 pub struct Remote {
-    root: PathBuf,
+    pipe: String,
     send: Option<SyncSender<Command>>,
     receive: Option<Receiver<Reply>>,
     stop: Arc<AtomicBool>,
@@ -47,14 +46,14 @@ pub struct Remote {
 }
 
 impl Remote {
-    pub fn new(root: &Path, cx: &mut Context<Self>) -> Self {
+    pub fn new(pipe: String, cx: &mut Context<Self>) -> Self {
         cx.on_app_quit(|this, _| {
             this.cancel();
             async {}
         })
         .detach();
         Self {
-            root: root.join("services"),
+            pipe,
             send: None,
             receive: None,
             stop: Arc::new(AtomicBool::new(false)),
@@ -87,7 +86,7 @@ impl Remote {
         }
         let (send, commands) = mpsc::sync_channel(2);
         let (responses, receive) = mpsc::sync_channel(2);
-        let root = self.root.clone();
+        let pipe = self.pipe.clone();
         let stop = Arc::clone(&self.stop);
         let cancellation = Arc::clone(&self.cancellation);
         std::thread::spawn(move || {
@@ -106,7 +105,7 @@ impl Remote {
                         client = None;
                     }
                     if client.is_none() {
-                        let started = Client::start_in(&default_binary()?, Some(&root))?;
+                        let started = Client::start(&default_binary()?, &pipe)?;
                         *cancellation.lock().map_err(|_| "servicios cancelado")? =
                             Some(started.cancellation());
                         if stop.load(Ordering::Acquire) {
@@ -222,6 +221,9 @@ impl Remote {
                                     this.account.signed_in = signed_in;
                                     this.account.pending = pending;
                                     this.message = message;
+                                }
+                                Reply::License { policy, message } => {
+                                    this.message = format!("{message} · Overlays avanzados: {} · Engineer: {}", if policy.current() && policy.overlays_advanced { "sí" } else { "no" }, if policy.current() && policy.engineer { "sí" } else { "no" });
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
                                 Reply::Draft { draft,message }=>{
@@ -374,6 +376,7 @@ impl Remote {
         orbit::card("Licencias y dispositivos").child(orbit::card_body()
             .child(orbit::callout(self.message.clone()))
             .child(orbit::text("El núcleo determina los derechos y mantiene la hora de margen si la licencia caduca durante el juego.",13.5,400,orbit::INK_2))
+            .child(orbit::button("services-policy","Consultar derechos").on_click(cx.listener(|this,_,_,cx| this.request(Command::LicenseStatus,cx))))
             .child(orbit::button("services-license","Renovar licencia").on_click(cx.listener(|this,_,_,cx| this.request(Command::LicenseRenew,cx))))
             .child(orbit::text("La credencial local y el reset de dispositivo estarán disponibles al conectar el puente y la autoridad del núcleo.",12.0,400,orbit::INK_3)))
     }

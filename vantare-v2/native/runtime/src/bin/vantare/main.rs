@@ -180,6 +180,7 @@ impl Restarts {
 
 struct Service {
     name: &'static str,
+    bootstrap: Option<String>,
     program: Program,
     child: Option<Child>,
     started: Instant,
@@ -192,6 +193,7 @@ impl Service {
     fn new(name: &'static str, program: Program, budget: u32) -> Self {
         Self {
             name,
+            bootstrap: None,
             program,
             child: None,
             started: Instant::now(),
@@ -204,10 +206,29 @@ impl Service {
     }
 
     fn spawn(&mut self) -> io::Result<()> {
-        let child = Command::new(&self.program.path)
+        let mut child = Command::new(&self.program.path)
             .args(&self.program.args)
             .stdin(Stdio::piped()) // su cierre es la petición de fin de los hijos sin ventana
             .spawn()?;
+        if let Some(nonce) = &self.bootstrap {
+            let sent = child
+                .stdin
+                .as_mut()
+                .ok_or_else(|| io::Error::other("bootstrap no disponible"))
+                .and_then(|stdin| {
+                    vantare_ipc::control::write(
+                        stdin,
+                        &vantare_ipc::control::Bootstrap {
+                            nonce: nonce.clone(),
+                        },
+                    )
+                });
+            if let Err(error) = sent {
+                let _killed = child.kill();
+                let _reaped = child.wait();
+                return Err(error);
+            }
+        }
         log(format_args!("{} en marcha (pid {})", self.name, child.id()));
         self.started = Instant::now();
         self.start_at = None;
@@ -307,21 +328,70 @@ fn shutdown(services: &mut [Service], grace: Duration) {
     }
 }
 
-fn run(config: Config) -> io::Result<ExitCode> {
+fn start_remote_services(
+    config: &mut Config,
+) -> io::Result<(vantare_runtime::services::Host, String)> {
+    let photo = if let Some(pair) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
+        pair[1].clone()
+    } else {
+        let mut photo = vantare_ipc::default_pipe_name()?;
+        if !config.instance.is_empty() {
+            photo.push('-');
+            photo.push_str(&config.instance);
+        }
+        config.core.args.extend(["--pipe".into(), photo.clone()]);
+        photo
+    };
+    config.core.args.push("--managed-rights".into());
+    if let Some(engineer) = &mut config.engineer
+        && !engineer.args.iter().any(|arg| arg == "--pipe-name")
+    {
+        engineer.args.extend(["--pipe-name".into(), photo.clone()]);
+    }
+    if !config.overlays.args.iter().any(|arg| arg == "--fuente") {
+        config
+            .overlays
+            .args
+            .extend(["--fuente".into(), format!("pipe:{photo}")]);
+    }
+    let nonce =
+        vantare_services::random_id().map_err(|_| io::Error::other("bootstrap no disponible"))?;
+    let image = env::current_exe()?;
+    let host = vantare_runtime::services::Host::start(
+        &photo,
+        vantare_runtime::services::Options {
+            binary: image.with_file_name("vantare-services.exe"),
+            hub: image.with_file_name("vantare-hub.exe"),
+            root: None,
+            core: vantare_ipc::control::CoreLink {
+                pipe: vantare_ipc::control::pipe_name(&photo),
+                image: config.core.path.clone(),
+                nonce: nonce.clone(),
+            },
+        },
+    )?;
+    Ok((host, nonce))
+}
+
+fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
         log("ya hay una instancia en marcha");
         return Ok(ExitCode::SUCCESS);
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     win::adopt_self_in_job()?;
+    let remote = start_remote_services(&mut config)?;
+    let mut core = Service::new("núcleo", config.core, config.restarts);
+    core.bootstrap = Some(remote.1);
     let mut services = vec![
-        Service::new("núcleo", config.core, config.restarts),
+        core,
         Service::new("overlays", config.overlays, config.restarts),
     ];
     if let Some(engineer) = config.engineer {
         services.push(Service::new("Engineer", engineer, config.restarts));
     }
     let outcome = supervise(&mut services, &stop);
+    drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     shutdown(&mut services, config.grace);
     Ok(match outcome? {
         Outcome::Stopped => ExitCode::SUCCESS,
@@ -412,6 +482,36 @@ mod tests {
         );
         assert_eq!(config.core.args.last().unwrap(), "voice.exe");
         assert!(parsed(&["--", "--live", "--", "4", "--", "--locale", "en"]).is_err());
+    }
+
+    #[test]
+    fn managed_services_share_the_generated_instance_pipe_with_all_consumers() {
+        let instance = vantare_services::random_id().expect("instancia de test");
+        let mut config = parsed(&["--instancia", &instance, "--engineer", "cursor.json"])
+            .expect("configuración");
+        let (host, _) = start_remote_services(&mut config).expect("supervisor sin hijos");
+        let photo = config
+            .core
+            .args
+            .windows(2)
+            .find(|pair| pair[0] == "--pipe")
+            .expect("pipe del núcleo")[1]
+            .clone();
+        assert!(photo.ends_with(&instance));
+        assert!(config.core.args.iter().any(|arg| arg == "--managed-rights"));
+        assert_eq!(
+            config.overlays.args,
+            args(&["--fuente", &format!("pipe:{photo}")])
+        );
+        assert!(
+            config
+                .engineer
+                .expect("Engineer")
+                .args
+                .windows(2)
+                .any(|pair| pair == ["--pipe-name", &photo])
+        );
+        drop(host);
     }
 
     #[test]

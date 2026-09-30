@@ -7,7 +7,7 @@ publish.workspace = true
 
 [features]
 default = ["network"]
-network = ["dep:ureq", "dep:url", "dep:vantare-ipc"]
+network = ["dep:ureq", "dep:url"]
 
 [[bin]]
 name = "vantare-services"
@@ -18,7 +18,7 @@ required-features = ["network"]
 base64 = "0.22"
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }
-vantare-ipc = { path = "../ipc", optional = true }
+vantare-ipc.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = { version = "3.4.2", default-features = false, features = ["rustls"], optional = true }

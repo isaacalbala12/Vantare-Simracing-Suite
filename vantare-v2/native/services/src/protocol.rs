@@ -13,6 +13,7 @@ pub const MAX_FRAME: usize = 64 * 1024;
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Status,
+    TransferRights,
     AccountBegin,
     AccountPoll,
     AccountRenew,
@@ -31,7 +32,15 @@ pub enum Command {
     Shutdown,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+// Bootstrap privado: no Debug para evitar registrar el nonce.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SupervisorHello {
+    pub version: u32,
+    pub nonce: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub version: u32,
@@ -43,6 +52,10 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    License {
+        policy: vantare_ipc::control::Policy,
+        message: String,
+    },
     Status {
         account_configured: bool,
         message: String,

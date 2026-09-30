@@ -223,8 +223,8 @@ impl Owner {
     ) -> Result<Policy> {
         let live = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Live;
-        if live && self.game != Some(snapshot.state.session.id.0) {
-            if self.game.is_some() {
+        if live {
+            if self.game.is_some() && self.game != Some(snapshot.state.session.id.0) {
                 self.authority.leave_game();
             }
             if self.binding.is_some() && !self.denied {

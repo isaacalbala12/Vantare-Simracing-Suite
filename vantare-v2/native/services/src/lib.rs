@@ -17,6 +17,8 @@ pub mod http;
 pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
+#[cfg(windows)]
+pub mod process;
 pub mod protocol;
 #[cfg(feature = "network")]
 pub mod report;

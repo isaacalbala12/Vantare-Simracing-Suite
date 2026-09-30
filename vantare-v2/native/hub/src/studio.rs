@@ -2,7 +2,7 @@
 use crate::{
     document::Editor,
     inspector::{self, Control},
-    shell::button,
+    orbit::{self, button},
 };
 use gpui::{
     Context, Entity, IntoElement, MouseButton, MouseMoveEvent, Pixels, Point, Render, Window, div,
@@ -10,7 +10,7 @@ use gpui::{
 };
 use std::path::PathBuf;
 use vantare_domain::{Snapshot, format::Preferences};
-use vantare_ui::{Kind, Overlay, efficiency::tokens, layout::Instance};
+use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
 pub struct Prepared {
     editor: Editor,
@@ -154,38 +154,54 @@ impl Studio {
         }
     }
     fn controls(&self, cx: &mut Context<Self>) -> gpui::Div {
-        div()
-            .flex()
-            .flex_wrap()
-            .gap_2()
-            .child(
-                button("studio-reload", "Recargar layout").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.edit(Editor::reload, cx);
-                    },
+        orbit::card("Documento y widgets").child(
+            orbit::card_body()
+                .child(orbit::setting_row(
+                    "Layout común",
+                    "Guardado común en layout.json",
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(orbit::RADIUS_CONTROL))
+                        .child(
+                            button("studio-reload", "Recargar layout").on_click(
+                                cx.listener(|this, _, _, cx| this.edit(Editor::reload, cx)),
+                            ),
+                        )
+                        .child(
+                            button("undo", "Deshacer").on_click(
+                                cx.listener(|this, _, _, cx| this.edit(Editor::undo, cx)),
+                            ),
+                        )
+                        .child(
+                            button("redo", "Rehacer").on_click(
+                                cx.listener(|this, _, _, cx| this.edit(Editor::redo, cx)),
+                            ),
+                        ),
+                ))
+                .child(orbit::setting_row(
+                    "Nueva instancia",
+                    "Elige el renderer y añade una instancia",
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(orbit::RADIUS_CONTROL))
+                        .child(
+                            orbit::select("next-kind", Kind::ALL[self.add_kind].name())
+                                .aria_label("Elegir tipo de widget")
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.add_kind = (this.add_kind + 1) % Kind::ALL.len();
+                                    cx.notify();
+                                })),
+                        )
+                        .child(button("add-widget", "Añadir widget").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                let kind = Kind::ALL[this.add_kind];
+                                this.edit(|editor| editor.add(kind), cx);
+                            },
+                        ))),
                 )),
-            )
-            .child(
-                button("undo", "Deshacer")
-                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::undo, cx))),
-            )
-            .child(
-                button("redo", "Rehacer")
-                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::redo, cx))),
-            )
-            .child(
-                button("next-kind", "Elegir tipo").on_click(cx.listener(|this, _, _, cx| {
-                    this.add_kind = (this.add_kind + 1) % Kind::ALL.len();
-                    cx.notify();
-                })),
-            )
-            .child(Kind::ALL[self.add_kind].name())
-            .child(
-                button("add-widget", "Añadir widget").on_click(cx.listener(|this, _, _, cx| {
-                    let kind = Kind::ALL[this.add_kind];
-                    this.edit(|editor| editor.add(kind), cx);
-                })),
-            )
+        )
     }
     fn property(
         id: &'static str,
@@ -198,107 +214,139 @@ impl Studio {
         )
     }
     fn canvas_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
-        div()
-            .flex()
-            .flex_wrap()
-            .gap_2()
-            .child(self.editor.selected().map_or_else(
-                || "Canvas: selecciona una instancia".into(),
-                |item| format!("Canvas · {} · x {} y {}", item.id, item.x, item.y),
-            ))
-            .child(Self::property("left", "X −10", |item| item.x -= 10.0, cx))
-            .child(Self::property("right", "X +10", |item| item.x += 10.0, cx))
-            .child(Self::property("up", "Y −10", |item| item.y -= 10.0, cx))
-            .child(Self::property("down", "Y +10", |item| item.y += 10.0, cx))
+        orbit::card_body().child(orbit::setting_row(
+            "Posición",
+            &self.editor.selected().map_or_else(
+                || "Selecciona una instancia en la lista o el canvas".into(),
+                |item| format!("{} · x {} · y {}", item.id, item.x, item.y),
+            ),
+            div()
+                .flex()
+                .flex_wrap()
+                .gap(px(orbit::RADIUS_CONTROL))
+                .child(Self::property("left", "X −10", |item| item.x -= 10.0, cx))
+                .child(Self::property("right", "X +10", |item| item.x += 10.0, cx))
+                .child(Self::property("up", "Y −10", |item| item.y -= 10.0, cx))
+                .child(Self::property("down", "Y +10", |item| item.y += 10.0, cx)),
+        ))
     }
     fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
         let Some(item) = self.editor.selected() else {
-            return div().child("Inspector: selecciona una instancia");
+            return orbit::card("Inspector").child(orbit::card_body().child(orbit::callout("Selecciona una instancia en el canvas o en la lista para editar su apariencia y contenido.")));
         };
-        let mut options = div()
-            .flex()
-            .flex_col()
-            .gap_2()
-            .child(format!(
-                "{} · {} · visible {} · opacidad {:.0} %",
+        let mut options = orbit::card_body()
+            .child(orbit::eyebrow(format!(
+                "{} · {}",
                 item.id,
-                item.settings.kind().name(),
-                item.visible,
-                item.opacity * 100.0
-            ))
-            .child(Self::property(
-                "visible",
-                "Mostrar / ocultar",
-                |item| item.visible = !item.visible,
-                cx,
-            ))
-            .child(Self::property(
-                "opacity-minus",
-                "Opacidad −10",
-                |item| item.opacity = (item.opacity - 0.1).max(0.0),
-                cx,
-            ))
-            .child(Self::property(
-                "opacity-plus",
-                "Opacidad +10",
-                |item| item.opacity = (item.opacity + 0.1).min(1.0),
-                cx,
-            ))
-            .child(
-                button("front", "Traer al frente")
-                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::front, cx))),
-            )
-            .child(
-                button("remove-widget", "Eliminar instancia")
-                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::remove, cx))),
-            );
-        for (control, value) in Control::rows(&item.settings) {
-            options = options.child(div().flex().gap_2().child(value).child(
-                button(control.label(), control.label()).on_click(cx.listener(
-                    move |this, _, _, cx| {
+                item.settings.kind().name()
+            )))
+            .child(orbit::setting_row(
+                "Visible",
+                "Esta instancia en los overlays",
+                orbit::toggle("visible", "Visibilidad de la instancia", item.visible, true)
+                    .on_click(cx.listener(|this, _, _, cx| {
                         this.edit(
-                            |editor| editor.edit_selected(|item| control.apply(&mut item.settings)),
+                            |editor| editor.edit_selected(|item| item.visible = !item.visible),
                             cx,
                         );
-                    },
-                )),
+                    })),
+            ))
+            .child(orbit::setting_row(
+                "Opacidad",
+                &format!("{:.0} % · pasos de 10 puntos", item.opacity * 100.0),
+                div()
+                    .flex()
+                    .gap(px(orbit::RADIUS_CONTROL))
+                    .child(Self::property(
+                        "opacity-minus",
+                        "−10",
+                        |item| item.opacity = (item.opacity - 0.1).max(0.0),
+                        cx,
+                    ))
+                    .child(Self::property(
+                        "opacity-plus",
+                        "+10",
+                        |item| item.opacity = (item.opacity + 0.1).min(1.0),
+                        cx,
+                    )),
+            ))
+            .child(orbit::setting_row(
+                "Orden de dibujo",
+                "Por encima del resto",
+                button("front", "Traer al frente")
+                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::front, cx))),
+            ))
+            .child(orbit::eyebrow("Contenido y apariencia"));
+        for (control, value) in Control::rows(&item.settings) {
+            let input = match (&control, &item.settings) {
+                (Control::Header, Settings::Standings(settings)) => orbit::toggle(
+                    control.label(),
+                    control.label(),
+                    settings.show_session_header,
+                    true,
+                ),
+                (Control::Footer, Settings::Standings(settings)) => orbit::toggle(
+                    control.label(),
+                    control.label(),
+                    settings.show_session_footer,
+                    true,
+                ),
+                _ => orbit::select(control.label(), &value),
+            };
+            options = options.child(orbit::setting_row(
+                control.title(),
+                &value,
+                input.on_click(cx.listener(move |this, _, _, cx| {
+                    this.edit(
+                        |editor| editor.edit_selected(|item| control.apply(&mut item.settings)),
+                        cx,
+                    );
+                })),
             ));
         }
-        for pending in inspector::pending(&item.settings) {
-            options = options.child(div().opacity(0.5).child(pending));
+        let pending = inspector::pending(&item.settings);
+        if !pending.is_empty() {
+            options = options.child(orbit::eyebrow("Opciones pendientes"));
+            for pending in pending {
+                options = options.child(orbit::text(pending, 12.0, 400, orbit::INK_3));
+            }
         }
-        options
+        orbit::card("Inspector").child(options).child(
+            orbit::card_body().child(orbit::setting_row(
+                "Eliminar instancia",
+                "Quita este widget del documento común",
+                button("remove-widget", "Eliminar")
+                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::remove, cx))),
+            )),
+        )
     }
 }
 impl Render for Studio {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut list = div().flex().flex_wrap().gap_2();
+        let mut list = orbit::card_body()
+            .flex_row()
+            .flex_wrap()
+            .gap(px(orbit::RADIUS_CONTROL));
         let mut stage = div()
             .relative()
             .w(px(1920.0))
             .h(px(1080.0))
-            .bg(rgb(tokens::PANEL));
+            .bg(rgb(orbit::CANVAS));
         for (index, item) in self.editor.layout().instances.iter().enumerate() {
             let id = item.id.clone();
             list = list.child(
-                div()
-                    .id(("instance", index))
-                    .role(gpui::Role::Button)
-                    .tab_index(0)
-                    .border_1()
-                    .border_color(rgb(tokens::MUTED))
-                    .px_2()
-                    .py_1()
-                    .cursor_pointer()
-                    .child(format!(
-                        "{}{}",
-                        id,
-                        if item.visible { "" } else { " · oculto" }
-                    ))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.editor.selected = Some(id.clone());
-                        cx.notify();
-                    })),
+                button(
+                    "instance",
+                    &format!("{}{}", id, if item.visible { "" } else { " · oculto" }),
+                )
+                .id(("instance", index))
+                .when(self.editor.selected.as_ref() == Some(&item.id), |button| {
+                    button.border_color(rgb(orbit::CARMINE))
+                })
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.editor.selected = Some(id.clone());
+                    cx.notify();
+                })),
             );
             if !item.visible {
                 continue;
@@ -321,7 +369,7 @@ impl Render for Studio {
                         .h(px(dimensions.1))
                         .opacity(item.opacity)
                         .when(self.editor.selected.as_ref() == Some(&item.id), |item| {
-                            item.border_1().border_color(rgb(tokens::MUTED))
+                            item.border_1().border_color(rgb(orbit::CARMINE))
                         })
                         .on_mouse_down(
                             MouseButton::Left,
@@ -333,17 +381,19 @@ impl Render for Studio {
                 );
             }
         }
-        div().size_full().flex().flex_col().gap_2()
+        div().flex().flex_col().gap(px(orbit::RADIUS))
             .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, event: &gpui::MouseUpEvent, _, cx| this.finish_drag(event.position, cx)))
             .on_mouse_up_out(MouseButton::Left, cx.listener(|this, event: &gpui::MouseUpEvent, _, cx| this.finish_drag(event.position, cx)))
-            .child(self.controls(cx)).child(self.status.clone()).child(list)
-            .child(div().flex().flex_1().min_h_0().gap_2()
-                .child(div().flex().flex_col().flex_1().min_w_0().gap_2()
+            .child(self.controls(cx))
+            .child(orbit::callout(self.status.clone()))
+            .child(orbit::card("Instancias del layout").child(list))
+            .child(div().flex().flex_wrap().items_start().gap(px(orbit::RADIUS))
+                .child(orbit::card("Canvas · 1920 × 1080").flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))
                     .child(self.canvas_controls(cx))
-                    .child("Canvas 1920 × 1080. Admite coordenadas negativas; otros monitores fuera de esta preview.")
-                    .child(div().id("studio-canvas").flex_1().overflow_scroll().child(stage)))
-                .child(div().id("studio-inspector").w(px(360.0)).flex_shrink_0().overflow_y_scroll().child(self.inspector(cx))))
+                    .child(div().id("studio-canvas").h(px(orbit::COLUMN_W)).overflow_scroll().child(stage))
+                    .child(orbit::card_body().child(orbit::text("Arrastra para mover. Admite coordenadas negativas; otros monitores quedan fuera de esta preview.", 12.0, 400, orbit::INK_3))))
+                .child(self.inspector(cx).flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))))
     }
 }
 #[cfg(test)]

@@ -41,6 +41,15 @@ impl Control {
             ),
         ]
     }
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Header => "Cabecera de sesión",
+            Self::Footer => "Pie de sesión",
+            Self::Brand => "Marca",
+            Self::FooterFirst => "Primera métrica del pie",
+            Self::FooterSecond => "Segunda métrica del pie",
+        }
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::Header => "Mostrar / ocultar cabecera",

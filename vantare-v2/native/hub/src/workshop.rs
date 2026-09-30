@@ -13,8 +13,8 @@ use vantare_ui::{Kind, Overlay};
 use crate::{
     comparison::{self, Comparison},
     files,
+    orbit::{self, button},
     scene::{self, Scene},
-    shell::button,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -343,46 +343,176 @@ impl Workshop {
     }
 
     fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
-        div()
-            .flex()
-            .flex_wrap()
-            .gap_2()
-            .child(
-                button("widget-prev", "◀ widget")
-                    .on_click(cx.listener(|this, _, _, cx| this.widget(false, cx))),
-            )
-            .child(self.kind.name())
-            .child(
-                button("widget-next", "widget ▶")
-                    .on_click(cx.listener(|this, _, _, cx| this.widget(true, cx))),
-            )
-            .child(
-                button("scene-prev", "◀ escena")
-                    .on_click(cx.listener(|this, _, _, cx| this.choose_scene(false, cx))),
-            )
-            .child(
-                button("scene-next", "escena ▶")
-                    .on_click(cx.listener(|this, _, _, cx| this.choose_scene(true, cx))),
-            )
-            .child(
-                button("reload-scene", "Recargar JSON").on_click(cx.listener(|this, _, _, cx| {
-                    if this.scene.replace(this.scene.path.clone()) {
-                        this.rebuild(cx);
-                    } else {
-                        cx.notify();
-                    }
-                })),
-            )
-            .child(
-                button("save-workshop", "Guardar selección").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if let Err(error) = this.persist() {
-                            this.status = error;
-                        }
-                        cx.notify();
-                    },
+        orbit::card("Selección de trabajo").child(
+            orbit::card_body()
+                .child(orbit::setting_row(
+                    "Widget",
+                    "Renderer productivo",
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(orbit::RADIUS_CONTROL))
+                        .child(
+                            button("widget-prev", "◀")
+                                .aria_label("Widget anterior")
+                                .on_click(cx.listener(|this, _, _, cx| this.widget(false, cx))),
+                        )
+                        .child(orbit::text(self.kind.name(), 13.5, 600, orbit::INK))
+                        .child(
+                            button("widget-next", "▶")
+                                .aria_label("Widget siguiente")
+                                .on_click(cx.listener(|this, _, _, cx| this.widget(true, cx))),
+                        ),
+                ))
+                .child(orbit::setting_row(
+                    "Escena",
+                    "JSON local · catálogo",
+                    div()
+                        .flex()
+                        .gap(px(orbit::RADIUS_CONTROL))
+                        .child(
+                            button("scene-prev", "◀ escena").on_click(
+                                cx.listener(|this, _, _, cx| this.choose_scene(false, cx)),
+                            ),
+                        )
+                        .child(
+                            button("scene-next", "escena ▶").on_click(
+                                cx.listener(|this, _, _, cx| this.choose_scene(true, cx)),
+                            ),
+                        ),
+                ))
+                .child(orbit::setting_row(
+                    "Archivo local",
+                    "Recarga el JSON de la escena",
+                    button("reload-scene", "Recargar JSON").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            if this.scene.replace(this.scene.path.clone()) {
+                                this.rebuild(cx);
+                            } else {
+                                cx.notify();
+                            }
+                        },
+                    )),
+                ))
+                .child(orbit::setting_row(
+                    "Continuidad",
+                    "Conserva la selección actual",
+                    button("save-workshop", "Guardar selección").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            if let Err(error) = this.persist() {
+                                this.status = error;
+                            }
+                            cx.notify();
+                        },
+                    )),
+                ))
+                .child(orbit::text(
+                    self.scene.path.display().to_string(),
+                    12.0,
+                    400,
+                    orbit::INK_3,
                 )),
-            )
+        )
+    }
+
+    fn playback(&self, cx: &mut Context<Self>) -> gpui::Div {
+        orbit::card("Reproducción y comparación").child(
+            orbit::card_body()
+                .child(orbit::setting_row(
+                    "Fotograma",
+                    &format!(
+                        "Foto {} / {} · revisión {}",
+                        self.scene.index() + 1,
+                        self.scene.len(),
+                        self.scene.snapshot().sequence
+                    ),
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(orbit::RADIUS_CONTROL))
+                        .child(button("rewind", "Inicio").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.scene.rewind();
+                                this.ingest(cx);
+                            },
+                        )))
+                        .child(button("step-prev", "◀ foto").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.scene.step(false);
+                                this.ingest(cx);
+                            },
+                        )))
+                        .child(
+                            button("play", if self.scene.playing { "Pausa" } else { "Play" })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.scene.play();
+                                    this.next_frame = Instant::now() + this.scene.delay();
+                                    this.ingest(cx);
+                                })),
+                        )
+                        .child(button("step-next", "foto ▶").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.scene.step(true);
+                                this.ingest(cx);
+                            },
+                        ))),
+                ))
+                .child(orbit::setting_row(
+                    "Repetir escena",
+                    "Vuelve al inicio al terminar la secuencia",
+                    orbit::toggle("loop", "Repetir escena", self.scene.looping, true).on_click(
+                        cx.listener(|this, _, _, cx| {
+                            this.scene.looping = !this.scene.looping;
+                            cx.notify();
+                        }),
+                    ),
+                ))
+                .child(orbit::setting_row(
+                    "Fondo del escenario",
+                    "El fondo no entra en la captura",
+                    orbit::select(
+                        "background",
+                        ["Canvas", "Superficie", "Claro"][self.background],
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.background = (this.background + 1) % 3;
+                        cx.notify();
+                    })),
+                ))
+                .child(orbit::setting_row(
+                    "Referencia congelada",
+                    "PNG fijo durante el replay",
+                    orbit::select(
+                        "reference",
+                        match self.mode {
+                            Mode::SideBySide => "Lado a lado",
+                            Mode::Overlaid => "Superpuesta 50 %",
+                            Mode::Hidden => "Oculta",
+                        },
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.mode = match this.mode {
+                            Mode::SideBySide => Mode::Overlaid,
+                            Mode::Overlaid => Mode::Hidden,
+                            Mode::Hidden => Mode::SideBySide,
+                        };
+                        cx.notify();
+                    })),
+                ))
+                .child(orbit::setting_row(
+                    "Paridad de píxeles",
+                    "ES/métrico · DPI 100 %",
+                    button(
+                        "capture-diff",
+                        if self.capturing {
+                            "Capturando…"
+                        } else {
+                            "Capturar y calcular %"
+                        },
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| this.capture(cx))),
+                )),
+        )
     }
 }
 
@@ -394,20 +524,22 @@ impl Drop for Workshop {
 
 impl Workshop {
     fn catalog(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        let mut catalog = div()
+        let mut catalog = orbit::card("Catálogo local")
             .id("workshop-catalog")
-            .w(px(200.0))
+            .w(px(orbit::COLUMN_W))
             .flex_shrink_0()
-            .h_full()
-            .overflow_scroll()
-            .flex()
-            .flex_col()
-            .gap_1()
-            .child("Widgets registrados");
+            .h(px(orbit::COLUMN_W))
+            .overflow_y_scroll();
+        let mut widgets = orbit::card_body()
+            .flex_shrink_0()
+            .child(orbit::eyebrow("Widgets registrados"));
         for &kind in Kind::ALL {
-            catalog = catalog.child(
+            widgets = widgets.child(
                 button(kind.name(), kind.name())
-                    .when(kind == self.kind, |button| button.bg(rgb(0x0034_3438)))
+                    .justify_start()
+                    .when(kind == self.kind, |button| {
+                        button.border_color(rgb(orbit::CARMINE))
+                    })
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.kind = kind;
                         this.rebuild(cx);
@@ -417,31 +549,32 @@ impl Workshop {
                     })),
             );
         }
-        catalog = catalog.child("Escenas (.snapshot.json / .sequence.json / .jsonl)");
+        catalog = catalog.child(widgets);
+        let mut scenes = orbit::card_body()
+            .flex_shrink_0()
+            .child(orbit::eyebrow("Escenas locales"));
         for (index, path) in self.scenes.iter().enumerate() {
             let label = path.file_name().map_or_else(
                 || path.display().to_string(),
                 |name| name.to_string_lossy().into_owned(),
             );
-            catalog = catalog.child(
-                div()
-                    .id(index)
-                    .role(gpui::Role::Button)
-                    .aria_label(label.clone())
-                    .tab_index(0)
-                    .cursor_pointer()
-                    .p_1()
-                    .when(index == self.chosen_scene, |item| item.bg(rgb(0x0034_3438)))
-                    .child(label)
+            scenes = scenes.child(
+                button("scene", &label)
+                    .id(("scene", index))
+                    .justify_start()
+                    .when(index == self.chosen_scene, |item| {
+                        item.border_color(rgb(orbit::CARMINE))
+                    })
                     .on_click(cx.listener(move |this, _, _, cx| this.select_scene(index, cx))),
             );
         }
+        catalog = catalog.child(scenes);
         catalog
     }
 
     #[allow(clippy::cast_precision_loss)] // PNG acotado a 16 Mpx; tamaño visual f32 de GPUI.
     fn preview(&self, cx: &Context<Self>) -> gpui::Div {
-        let mut preview = div().flex().gap_4();
+        let mut preview = div().flex().gap(px(orbit::GUTTER));
         let reference = match &self.reference {
             Ok(image) => self
                 .comparison
@@ -450,7 +583,7 @@ impl Workshop {
             Err(error) => {
                 return preview
                     .child(self.overlay.clone())
-                    .child(format!("Referencia pendiente: {error}"));
+                    .child(orbit::callout(format!("Referencia pendiente: {error}")));
             }
         };
         let mut candidate = div().relative().flex_shrink_0();
@@ -499,37 +632,20 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let backgrounds = [0x0010_1113, 0x0034_3438, 0x00ff_ffff];
-        div().flex().gap_2().size_full()
-            .child(self.catalog(cx))
-            .child(div().flex().flex_col().gap_2().flex_1().min_w_0()
-            .child(self.toolbar(cx))
-            .child(self.scene.path.display().to_string())
-            .child("Escena local: lmu47 procede del corpus; las demás son fixtures de paridad. La referencia PNG está congelada, no sigue la reproducción.")
-            .child(self.scene.error.clone().unwrap_or_else(|| self.status.clone()))
-            .child(div().flex().flex_wrap().gap_2()
-                .child(button("rewind", "Inicio escena").on_click(cx.listener(|this, _, _, cx| { this.scene.rewind(); this.ingest(cx); })))
-                .child(button("step-prev", "◀ foto").on_click(cx.listener(|this, _, _, cx| { this.scene.step(false); this.ingest(cx); })))
-                .child(button("play", if self.scene.playing { "Pausa" } else { "Play" }).on_click(cx.listener(|this, _, _, cx| {
-                    this.scene.play(); this.next_frame = Instant::now() + this.scene.delay(); this.ingest(cx);
-                })))
-                .child(button("step-next", "foto ▶").on_click(cx.listener(|this, _, _, cx| { this.scene.step(true); this.ingest(cx); })))
-                .child(button("loop", if self.scene.looping { "Loop: sí" } else { "Loop: no" }).on_click(cx.listener(|this, _, _, cx| {
-                    this.scene.looping = !this.scene.looping; cx.notify();
-                })))
-                .child(format!("Foto {} / {} · revisión {}", self.scene.index() + 1, self.scene.len(), self.scene.snapshot().sequence)))
-            .child(div().flex().flex_wrap().gap_2()
-                .child(button("background", "Fondo escenario").on_click(cx.listener(|this, _, _, cx| { this.background = (this.background + 1) % 3; cx.notify(); })))
-                .child(button("reference", match self.mode { Mode::SideBySide => "Comparación: lado a lado", Mode::Overlaid => "Comparación: superpuesta 50 %", Mode::Hidden => "Comparación: oculta" })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.mode = match this.mode { Mode::SideBySide => Mode::Overlaid, Mode::Overlaid => Mode::Hidden, Mode::Hidden => Mode::SideBySide }; cx.notify();
-                    })))
-                .child(button("capture-diff", if self.capturing { "Capturando…" } else { "Capturar y calcular % (ES/métrico)" })
-                    .on_click(cx.listener(|this, _, _, cx| this.capture(cx)))))
-            .child(format!("Vista actual: {:?} / {:?} · comparar captura abre una ventana temporal; requiere vantare-workshop con parity-capture y DPI 100 %", self.prefs.language, self.prefs.units))
-            .when_some(self.comparison.as_ref(), |content, comparison| content.child(format!("{:.4} % de píxeles distintos · ES/métrico · umbral 8 RGBA premultiplicado · sin fondo del escenario", comparison.percent)))
-            .child(div().id("workshop-preview").flex_1().overflow_scroll().bg(rgb(backgrounds[self.background]))
-                .child(self.preview(cx))))
+        let backgrounds = [orbit::CANVAS, orbit::SURFACE_3, orbit::INK];
+        div().flex().flex_col().gap(px(orbit::RADIUS))
+            .child(div().flex().flex_wrap().items_start().gap(px(orbit::RADIUS))
+                .child(self.toolbar(cx).flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER)))
+                .child(self.playback(cx).flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))))
+            .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone())))
+            .child(div().flex().flex_wrap().items_start().gap(px(orbit::RADIUS))
+                .child(self.catalog(cx))
+                .child(orbit::card("Vista previa · renderer productivo").flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))
+                    .child(orbit::card_body()
+                        .child(orbit::text(format!("Vista actual: {:?} / {:?}", self.prefs.language, self.prefs.units), 12.0, 400, orbit::INK_3))
+                        .when_some(self.comparison.as_ref(), |content, comparison| content.child(orbit::text(format!("{:.4} % de píxeles distintos · ES/métrico · umbral 8 RGBA premultiplicado", comparison.percent), 12.0, 400, orbit::INK_2))))
+                    .child(div().id("workshop-preview").h(px(orbit::COLUMN_W)).overflow_scroll().bg(rgb(backgrounds[self.background])).child(self.preview(cx)))))
+            .child(orbit::callout("Escena local: lmu47 procede del corpus; las demás son fixtures de paridad. La referencia PNG está congelada. Comparar abre una ventana temporal de vantare-workshop con parity-capture; el fondo no forma parte del widget."))
     }
 }
 

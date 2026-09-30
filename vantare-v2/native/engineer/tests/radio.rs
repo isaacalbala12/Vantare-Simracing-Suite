@@ -718,3 +718,185 @@ fn local_clips_fail_visibly_without_fallback_and_validate_media_without_playing(
             .is_none()
     );
 }
+
+#[test]
+fn limiter_deduplicates_revalidates_and_respects_cadence() {
+    let mut snapshot = photo();
+    snapshot.state.cars[0].in_pits = Quality::Reliable(true);
+    let player = snapshot.state.player.as_mut().unwrap();
+    player.pit_limiter_active = Quality::Reliable(false);
+    player.telemetry.speed_mps = Quality::Reliable(10.0);
+    let mut f = Families::default();
+    let notices = f
+        .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
+        .0;
+    assert_eq!(intents(&notices), [Intent::EngageLimiter]);
+    f.started(&notices[0]);
+    assert!(
+        f.evaluate(
+            &snapshot,
+            &Applied::default(),
+            Locale::Es,
+            Duration::from_secs(1)
+        )
+        .0
+        .is_empty()
+    );
+    let mut q = Queue::default();
+    assert!(q.submit(notices[0].clone()));
+    snapshot.state.player.as_mut().unwrap().pit_limiter_active = Quality::Reliable(true);
+    assert!(!notices[0].is_current(&snapshot));
+    q.refresh(&snapshot);
+    assert!(q.select(Duration::ZERO).is_none());
+    f.evaluate(
+        &snapshot,
+        &Applied::default(),
+        Locale::Es,
+        Duration::from_secs(1),
+    );
+    snapshot.state.cars[0].in_pits = Quality::Reliable(false);
+    snapshot.state.cars[0].current_sector = Quality::Reliable(0);
+    assert!(
+        f.evaluate(
+            &snapshot,
+            &Applied::default(),
+            Locale::Es,
+            Duration::from_secs(2)
+        )
+        .0
+        .is_empty()
+    );
+    let exit = f
+        .evaluate(
+            &snapshot,
+            &Applied::default(),
+            Locale::Es,
+            Duration::from_secs(30),
+        )
+        .0;
+    assert_eq!(intents(&exit), [Intent::DisengageLimiter]);
+}
+
+#[test]
+fn limiter_requires_reliable_quality_speed_sector_and_source() {
+    let mut snapshot = photo();
+    snapshot.state.cars[0].current_sector = Quality::Reliable(0);
+    let player = snapshot.state.player.as_mut().unwrap();
+    player.pit_limiter_active = Quality::Reliable(true);
+    player.telemetry.speed_mps = Quality::Reliable(10.0);
+    let exit = [message(Intent::DisengageLimiter, &snapshot)];
+    let mut f = Families::default();
+    for quality in [
+        Quality::Unavailable,
+        Quality::Estimated(true),
+        Quality::Stale(true),
+    ] {
+        snapshot.state.player.as_mut().unwrap().pit_limiter_active = quality;
+        assert!(!exit[0].is_current(&snapshot));
+        assert!(
+            Families::default()
+                .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
+                .0
+                .is_empty()
+        );
+    }
+    snapshot.state.player.as_mut().unwrap().pit_limiter_active = Quality::Reliable(true);
+    for speed in [
+        Quality::Unavailable,
+        Quality::Estimated(10.0),
+        Quality::Stale(10.0),
+        Quality::Reliable(5.0),
+        Quality::Reliable(f64::NAN),
+    ] {
+        snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = speed;
+        assert!(!exit[0].is_current(&snapshot));
+    }
+    snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(10.0);
+    for pit in [
+        Quality::Unavailable,
+        Quality::Estimated(false),
+        Quality::Stale(false),
+    ] {
+        snapshot.state.cars[0].in_pits = pit;
+        assert!(!exit[0].is_current(&snapshot));
+    }
+    snapshot.state.cars[0].in_pits = Quality::Reliable(false);
+    snapshot.state.cars[0].current_sector = Quality::Reliable(1);
+    assert!(!exit[0].is_current(&snapshot));
+    snapshot.state.cars[0].current_sector = Quality::Reliable(0);
+    snapshot.state.source_state = vantare_domain::SourceState::Stale;
+    assert!(!exit[0].is_current(&snapshot));
+    assert!(
+        f.evaluate(
+            &snapshot,
+            &Applied::default(),
+            Locale::Es,
+            Duration::from_secs(31)
+        )
+        .0
+        .is_empty()
+    );
+}
+
+#[test]
+fn stopped_state_never_invents_service_completion_and_pit_settings_gate_limiter() {
+    let mut snapshot = photo();
+    snapshot.state.cars[0].in_pits = Quality::Reliable(true);
+    let player = snapshot.state.player.as_mut().unwrap();
+    player.pit_stop_stopped = Quality::Reliable(true);
+    player.pit_limiter_active = Quality::Reliable(false);
+    player.telemetry.speed_mps = Quality::Reliable(0.0);
+    assert!(
+        Families::default()
+            .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
+            .0
+            .is_empty()
+    );
+    // Un stopped fiable contradice velocidad móvil: tampoco autoriza aviso.
+    snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(10.0);
+    assert!(
+        Families::default()
+            .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
+            .0
+            .is_empty()
+    );
+    snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(0.0);
+    snapshot.state.player.as_mut().unwrap().pit_stop_stopped = Quality::Reliable(false);
+    assert!(
+        Families::default()
+            .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
+            .0
+            .is_empty()
+    );
+    snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(10.0);
+    let mut worker = RadioWorker::new(Locale::Es, None).unwrap();
+    let mut settings = vantare_engineer::control::Settings::default();
+    settings.families.pitstops = false;
+    worker.configure(&settings).unwrap();
+    let mut output = Vec::new();
+    worker
+        .ingest(&snapshot, &Applied::default(), Duration::ZERO, &mut output)
+        .unwrap();
+    assert!(
+        lines(&output)
+            .iter()
+            .all(|line| line["version"] != "vantare.radio.v1")
+    );
+    settings.families.pitstops = true;
+    worker.configure(&settings).unwrap();
+    output.clear();
+    snapshot.sequence += 1;
+    worker
+        .ingest(
+            &snapshot,
+            &Applied::default(),
+            Duration::from_millis(1),
+            &mut output,
+        )
+        .unwrap();
+    assert!(
+        lines(&output)
+            .iter()
+            .any(|line| line["intent"] == "pitstops.engage_limiter" && line["voice"] == "disabled")
+    );
+}

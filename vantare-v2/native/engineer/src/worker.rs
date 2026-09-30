@@ -110,9 +110,10 @@ impl RadioWorker {
                 crate::radio::Intent::Yellow | crate::radio::Intent::Blue => {
                     self.settings.families.flags
                 }
-                crate::radio::Intent::PitEntry | crate::radio::Intent::PitExit => {
-                    self.settings.families.pitstops
-                }
+                crate::radio::Intent::PitEntry
+                | crate::radio::Intent::PitExit
+                | crate::radio::Intent::EngageLimiter
+                | crate::radio::Intent::DisengageLimiter => self.settings.families.pitstops,
                 crate::radio::Intent::LapCompleted => self.settings.families.laps,
                 crate::radio::Intent::CarLeft
                 | crate::radio::Intent::CarRight

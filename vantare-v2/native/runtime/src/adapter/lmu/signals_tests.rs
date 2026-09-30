@@ -377,3 +377,112 @@ fn all_existing_menu_and_zeroed_damage_fixtures_remain_dataless() {
         }
     }
 }
+
+#[test]
+fn pit_signals_require_native_presence_and_expire_with_their_own_clock() {
+    let legacy = observe(REAL_44, "1.3.0.0");
+    assert_eq!(
+        legacy.state.player.expect("jugador").pit_limiter_active,
+        Quality::Unavailable
+    );
+    assert_eq!(
+        legacy.state.player.expect("jugador").pit_stop_stopped,
+        Quality::Unavailable
+    );
+    let scoring = (0..44)
+        .map(|i| 2192 + i * 584)
+        .find(|r| REAL_44[*r + 196] == 1)
+        .expect("scoring jugador");
+    let mut bytes = REAL_44.to_vec();
+    for (limiter, expected) in [
+        (0, Quality::Reliable(false)),
+        (1, Quality::Reliable(true)),
+        (2, Quality::Unavailable),
+    ] {
+        bytes[PLAYER + 12..PLAYER + 20].copy_from_slice(&1.0_f64.to_le_bytes());
+        bytes[PLAYER + 604] = limiter;
+        bytes[PLAYER + 656] = 1;
+        bytes[scoring + 457] = 3;
+        let p = observe(&bytes, "1.3.0.0").state.player.expect("jugador");
+        assert_eq!(p.pit_limiter_active, expected);
+        assert_eq!(p.pit_stop_stopped, Quality::Reliable(true));
+    }
+    for phase in [0, 1, 2, 4, 5, 255] {
+        bytes[scoring + 457] = phase;
+        let expected = if phase <= 4 {
+            Quality::Reliable(false)
+        } else {
+            Quality::Unavailable
+        };
+        assert_eq!(
+            observe(&bytes, "1.3.0.0")
+                .state
+                .player
+                .expect("jugador")
+                .pit_stop_stopped,
+            expected
+        );
+    }
+    bytes[scoring + 457] = 3;
+    bytes[PLAYER + 604] = 1;
+    let mut t = Translator::new(SourceKind::Replay);
+    t.observe(&bytes, "1.3.0.0", Duration::ZERO)
+        .expect("primera");
+    // Scoring avanza mientras telemetría queda congelada: solo el limitador caduca.
+    let et = f64::from_le_bytes(bytes[1700..1708].try_into().expect("ET"));
+    bytes[1700..1708].copy_from_slice(&(et + 1.0).to_le_bytes());
+    let p = t
+        .observe(&bytes, "1.3.0.0", Duration::from_millis(500))
+        .expect("segunda")
+        .state
+        .player
+        .expect("jugador");
+    assert_eq!(p.pit_limiter_active, Quality::Stale(true));
+    assert_eq!(p.pit_stop_stopped, Quality::Reliable(true));
+}
+
+#[test]
+fn native_estimate_is_estimated_and_last_sector_two_is_cumulative() {
+    assert!(
+        matches!(observe(REAL_44, "1.3.0.0").state.cars[0].estimated_lap_s, Quality::Estimated(v) if v > 0.0)
+    );
+    let mut bytes = REAL_44.to_vec();
+    for (at, value) in [(152, 30.0_f64), (160, 65.0), (168, 100.0), (472, 99.0)] {
+        bytes[2192 + at..2192 + at + 8].copy_from_slice(&value.to_le_bytes());
+    }
+    let mut t = Translator::new(SourceKind::Replay);
+    let first = t
+        .observe(&bytes, "1.3.0.0", Duration::ZERO)
+        .expect("sectores");
+    assert_eq!(
+        first.state.cars[0].last_sectors_s,
+        vec![
+            Quality::Reliable(30.0),
+            Quality::Reliable(35.0),
+            Quality::Reliable(35.0)
+        ]
+    );
+    assert_eq!(
+        first.state.cars[0].estimated_lap_s,
+        Quality::Estimated(99.0)
+    );
+    let stale = t
+        .observe(&bytes, "1.3.0.0", Duration::from_millis(500))
+        .expect("silencio");
+    assert_eq!(stale.state.cars[0].estimated_lap_s, Quality::Stale(99.0));
+    assert_eq!(stale.state.cars[0].last_sectors_s[1], Quality::Stale(35.0));
+    for s12 in [0.0_f64, -1.0, 20.0, 100.0, f64::NAN] {
+        bytes[2192 + 160..2192 + 168].copy_from_slice(&s12.to_le_bytes());
+        assert_eq!(
+            observe(&bytes, "1.3.0.0").state.cars[0].last_sectors_s,
+            vec![Quality::Unavailable; 3]
+        );
+    }
+    for estimate in [0.0_f64, -1.0] {
+        bytes[2192 + 472..2192 + 480].copy_from_slice(&estimate.to_le_bytes());
+        assert_eq!(
+            observe(&bytes, "1.3.0.0").state.cars[0].estimated_lap_s,
+            Quality::Unavailable
+        );
+    }
+}

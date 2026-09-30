@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn v5_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v6_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
@@ -147,8 +147,8 @@ mod tests {
             let mut snapshot = rich_snapshot(7, 42);
             snapshot.state.source_state = state;
             let text = snapshot_to_json(&snapshot).expect("serializa");
-            assert!(text.contains("\"version\":5"));
-            assert_eq!(snapshot_from_json(&text).expect("v5"), snapshot);
+            assert!(text.contains(&format!("\"version\":{DTO_VERSION}")));
+            assert_eq!(snapshot_from_json(&text).expect("v6"), snapshot);
         }
         let mut json: serde_json::Value =
             serde_json::from_str(&snapshot_to_json(&rich_snapshot(7, 42)).expect("serializa"))
@@ -162,23 +162,48 @@ mod tests {
 
     #[test]
     fn every_workshop_scene_decodes_and_round_trips_at_the_current_version() {
-        let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui/fixtures");
-        let mut count = 0;
-        for entry in std::fs::read_dir(directory).expect("directorio de escenas") {
-            let path = entry.expect("escena").path();
-            if !path.to_string_lossy().ends_with(".snapshot.json") {
-                continue;
+        fn snapshots(value: &serde_json::Value, count: &mut usize) {
+            if value.get("state").is_some() && value.get("epoch").is_some() {
+                let snapshot = snapshot_from_json(&value.to_string()).expect("escena DTO actual");
+                assert_eq!(
+                    snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
+                        .expect("ida y vuelta"),
+                    snapshot
+                );
+                *count += 1;
+            } else {
+                match value {
+                    serde_json::Value::Object(map) => {
+                        map.values().for_each(|v| snapshots(v, count));
+                    }
+                    serde_json::Value::Array(list) => list.iter().for_each(|v| snapshots(v, count)),
+                    _ => {}
+                }
             }
-            let text = std::fs::read_to_string(&path).expect("JSON de escena");
-            let snapshot = snapshot_from_json(&text).expect("escena v5");
-            assert_eq!(
-                snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
-                    .expect("ida y vuelta"),
-                snapshot
-            );
-            count += 1;
         }
-        assert!(count > 0, "las escenas no pueden faltar");
+        fn directory(path: &std::path::Path, count: &mut usize) {
+            for entry in std::fs::read_dir(path).expect("directorio de escenas") {
+                let path = entry.expect("escena").path();
+                if path.extension().is_some_and(|v| v == "json") {
+                    let value: serde_json::Value =
+                        serde_json::from_str(&std::fs::read_to_string(&path).expect("JSON"))
+                            .expect("escena");
+                    snapshots(&value, count);
+                }
+            }
+        }
+        let ui = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui");
+        let mut fixtures = 0;
+        directory(&ui.join("fixtures"), &mut fixtures);
+        assert!(fixtures > 0, "las escenas no pueden faltar");
+        let mut widgets = 0;
+        for entry in std::fs::read_dir(ui.join("src")).expect("widgets") {
+            let scenes = entry.expect("widget").path().join("scenes");
+            if scenes.is_dir() {
+                directory(&scenes, &mut widgets);
+            }
+        }
+        assert!(widgets > 0, "las escenas de widgets no pueden faltar");
     }
 
     #[test]

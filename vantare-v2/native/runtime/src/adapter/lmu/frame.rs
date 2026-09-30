@@ -95,6 +95,9 @@ pub(super) struct Vehicle {
     pub sector: Option<u8>,
     pub best_lap_s: Option<f64>,
     pub last_lap_s: Option<f64>,
+    pub estimated_lap_s: Option<f64>,
+    pub last_sectors_s: [Option<f64>; 3],
+    pub pit_stop_stopped: Option<bool>,
     pub time_behind_next_s: Option<f64>,
     pub laps_behind_next: u32,
     pub time_behind_leader_s: Option<f64>,
@@ -120,6 +123,7 @@ pub(super) struct Inputs {
     pub fuel_level_l: Option<f64>,
     pub fuel_capacity_l: Option<f64>,
     pub delta_best_s: Option<f64>,
+    pub pit_limiter_active: Option<bool>,
 }
 
 pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Rejection> {
@@ -273,6 +277,20 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         sector,
         best_lap_s: (best > 0.0).then_some(best),
         last_lap_s: (last > 0.0).then_some(last),
+        estimated_lap_s: positive(read_f64(buffer, base + 472)),
+        // SDK: S2 es acumulado S1+S2, no un sector independiente.
+        last_sectors_s: last_sectors(
+            read_f64(buffer, base + 152),
+            read_f64(buffer, base + 160),
+            last,
+        ),
+        // mPitState @457: 0=none, 1=request, 2=entering, 3=stopped, 4=exiting.
+        // Legacy sanitizado borró este byte y mElapsedTime. Su cero es ausencia.
+        pit_stop_stopped: match buffer[base + 457] {
+            0 if inputs.as_ref().is_some_and(|i| i.source_time.is_some()) => Some(false),
+            1..=4 => Some(buffer[base + 457] == 3),
+            _ => None,
+        },
         time_behind_next_s: (time_next >= 0.0).then_some(time_next),
         laps_behind_next,
         time_behind_leader_s: (time_leader >= 0.0).then_some(time_leader),
@@ -285,6 +303,18 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         pending_penalties: u32::try_from(read_i16(buffer, base + 194)).map_err(|_| invalid)?,
         inputs,
     })
+}
+
+fn positive(value: f64) -> Option<f64> {
+    (value.is_finite() && value > 0.0).then_some(value)
+}
+
+fn last_sectors(s1: f64, s12: f64, lap: f64) -> [Option<f64>; 3] {
+    if [s1, s12, lap].iter().all(|v| v.is_finite()) && 0.0 < s1 && s1 < s12 && s12 < lap {
+        [Some(s1), Some(s12 - s1), Some(lap - s12)]
+    } else {
+        [None; 3]
+    }
 }
 
 fn inputs(buffer: &[u8], base: usize) -> Inputs {
@@ -306,6 +336,15 @@ fn inputs(buffer: &[u8], base: usize) -> Inputs {
     let delta = read_f64(buffer, base + 696);
     Inputs {
         source_time,
+        // mSpeedLimiter @604; los fixtures legacy borraron este byte.
+        // Exigir el bloque temporizado antes de interpretar incluso falso.
+        pit_limiter_active: source_time
+            .filter(|_| buffer[base + 656] == 1)
+            .and_then(|_| match buffer[base + 604] {
+                0 => Some(false),
+                1 => Some(true),
+                _ => None,
+            }),
         damage: Damage {
             // mDentSeverity[8] (+544) es ordinal (0=ninguno,1=algo,2=más),
             // NO fracción de integridad ni componentes. No dividimos por 2/255.

@@ -57,6 +57,8 @@ impl Locale {
 pub enum Intent {
     PitEntry,
     PitExit,
+    EngageLimiter,
+    DisengageLimiter,
     LapCompleted,
     FuelOne,
     FuelTwo,
@@ -68,7 +70,7 @@ pub enum Intent {
     ThreeWide,
 }
 impl Intent {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 13] = [
         Self::PitEntry,
         Self::PitExit,
         Self::LapCompleted,
@@ -80,11 +82,15 @@ impl Intent {
         Self::CarLeft,
         Self::CarRight,
         Self::ThreeWide,
+        Self::EngageLimiter,
+        Self::DisengageLimiter,
     ];
     pub fn key(self) -> &'static str {
         match self {
             Self::PitEntry => "pitstops.entry",
             Self::PitExit => "pitstops.exit",
+            Self::EngageLimiter => "pitstops.engage_limiter",
+            Self::DisengageLimiter => "pitstops.disengage_limiter",
             Self::LapCompleted => "laps.completed",
             Self::FuelOne => "fuel.low_1l",
             Self::FuelTwo => "fuel.low_2l",
@@ -99,7 +105,7 @@ impl Intent {
     pub fn priority(self) -> u8 {
         match self {
             Self::CarLeft | Self::CarRight | Self::ThreeWide => 3,
-            Self::Yellow | Self::Blue => 2,
+            Self::Yellow | Self::Blue | Self::EngageLimiter | Self::DisengageLimiter => 2,
             Self::FuelOne | Self::FuelTwo | Self::FuelHalf => 1,
             Self::PitEntry | Self::PitExit | Self::LapCompleted => 0,
         }
@@ -132,6 +138,18 @@ impl Intent {
                 "Leaving the pits",
                 "Uscita dai box",
                 "Saindo dos boxes",
+            ],
+            Self::EngageLimiter => [
+                "Activa el limitador de velocidad",
+                "Engage the pit limiter",
+                "Attiva il limitatore di velocità",
+                "Ative o limitador de velocidade",
+            ],
+            Self::DisengageLimiter => [
+                "Desactiva el limitador de velocidad",
+                "Disengage the pit limiter",
+                "Disattiva il limitatore di velocità",
+                "Desative o limitador de velocidade",
             ],
             Self::FuelOne => [
                 "Queda un litro",
@@ -307,6 +325,8 @@ pub struct Families {
     fuel_started: Option<Intent>,
     flags_started: u8,
     spotter_started: Option<Intent>,
+    limiter_started: Option<Intent>,
+    limiter_warned_at: Option<Duration>,
 }
 impl Families {
     pub fn reset(&mut self) {
@@ -316,6 +336,10 @@ impl Families {
         match message.intent {
             Intent::FuelOne | Intent::FuelTwo | Intent::FuelHalf => {
                 self.fuel_started = Some(message.intent);
+            }
+            Intent::EngageLimiter | Intent::DisengageLimiter => {
+                self.limiter_started = Some(message.intent);
+                self.limiter_warned_at = Some(message.created_at);
             }
             Intent::Yellow => self.flags_started |= 1,
             Intent::Blue => self.flags_started |= 2,
@@ -375,6 +399,19 @@ impl Families {
                 Intent::PitExit
             });
         }
+        // Condición actual de seguridad: no es una transición de servicio.
+        // El ACK deduplica; la cadencia de Go limita avisos a uno cada 30 s.
+        let limiter = limiter_intent(snapshot);
+        if self.limiter_started != limiter {
+            self.limiter_started = None;
+            if self
+                .limiter_warned_at
+                .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(30))
+                && let Some(intent) = limiter
+            {
+                intents.push(intent);
+            }
+        }
         let fuel = fuel_intent(snapshot);
         if self.fuel_started != fuel {
             self.fuel_started = None;
@@ -411,6 +448,26 @@ fn millis(value: Duration) -> u64 {
         .as_secs()
         .saturating_mul(1000)
         .saturating_add(u64::from(value.subsec_millis()))
+}
+
+fn limiter_intent(snapshot: &Snapshot) -> Option<Intent> {
+    let player = snapshot.state.player.as_ref()?;
+    let car = snapshot.state.player_car()?;
+    let Quality::Reliable(speed) = player.telemetry.speed_mps else {
+        return None;
+    };
+    if !speed.is_finite() || speed <= 5.0 || player.pit_stop_stopped == Quality::Reliable(true) {
+        return None;
+    }
+    match (car.in_pits, player.pit_limiter_active) {
+        (Quality::Reliable(true), Quality::Reliable(false)) => Some(Intent::EngageLimiter),
+        (Quality::Reliable(false), Quality::Reliable(true))
+            if car.current_sector == Quality::Reliable(0) =>
+        {
+            Some(Intent::DisengageLimiter)
+        }
+        _ => None,
+    }
 }
 
 fn fuel_intent(snapshot: &Snapshot) -> Option<Intent> {
@@ -474,6 +531,9 @@ fn valid_now(message: &Message, snapshot: &Snapshot) -> bool {
         Intent::LapCompleted => message.sequence == snapshot.sequence,
         Intent::FuelOne | Intent::FuelTwo | Intent::FuelHalf => {
             fuel_intent(snapshot) == Some(message.intent)
+        }
+        Intent::EngageLimiter | Intent::DisengageLimiter => {
+            limiter_intent(snapshot) == Some(message.intent)
         }
         Intent::Yellow => active_flags(snapshot) & 1 != 0,
         Intent::Blue => active_flags(snapshot) & 2 != 0,

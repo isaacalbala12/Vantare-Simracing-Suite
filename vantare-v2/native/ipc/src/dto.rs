@@ -10,7 +10,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -169,6 +169,7 @@ struct CarDto {
     laps: QualityDto<u32>,
     last_lap_s: QualityDto<f64>,
     best_lap_s: QualityDto<f64>,
+    estimated_lap_s: QualityDto<f64>,
     last_sectors_s: Vec<QualityDto<f64>>,
     gap_leader: QualityDto<GapDto>,
     gap_ahead: QualityDto<GapDto>,
@@ -215,6 +216,8 @@ struct PlayerDto {
     fuel_laps_left: QualityDto<f64>,
     fuel_history: Vec<(u32, f64)>,
     delta_best_s: QualityDto<f64>,
+    pit_limiter_active: QualityDto<bool>,
+    pit_stop_stopped: QualityDto<bool>,
     damage_aero: QualityDto<f64>,
     damage_body: QualityDto<f64>,
     damage_suspension: QualityDto<f64>,
@@ -314,6 +317,7 @@ fn car(c: &d::Car) -> CarDto {
         laps: q(&c.laps, copied),
         last_lap_s: q(&c.last_lap_s, copied),
         best_lap_s: q(&c.best_lap_s, copied),
+        estimated_lap_s: q(&c.estimated_lap_s, copied),
         last_sectors_s: c.last_sectors_s.iter().map(|s| q(s, copied)).collect(),
         gap_leader: q(&c.gap_leader, gap),
         gap_ahead: q(&c.gap_ahead, gap),
@@ -352,6 +356,8 @@ fn player(p: &d::Player) -> PlayerDto {
         fuel_laps_left: q(&p.fuel.laps_left, copied),
         fuel_history: p.fuel.history.iter().flatten().copied().collect(),
         delta_best_s: q(&p.delta_best_s, copied),
+        pit_limiter_active: q(&p.pit_limiter_active, copied),
+        pit_stop_stopped: q(&p.pit_stop_stopped, copied),
         damage_aero: q(&p.damage.aero, copied),
         damage_body: q(&p.damage.body, copied),
         damage_suspension: q(&p.damage.suspension, copied),
@@ -508,6 +514,7 @@ fn ucar(c: CarDto) -> d::Car {
         laps: uq(c.laps, id),
         last_lap_s: uq(c.last_lap_s, id),
         best_lap_s: uq(c.best_lap_s, id),
+        estimated_lap_s: uq(c.estimated_lap_s, id),
         last_sectors_s: c.last_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
         gap_leader: uq(c.gap_leader, ugap),
         gap_ahead: uq(c.gap_ahead, ugap),
@@ -553,6 +560,8 @@ fn uplayer(p: PlayerDto) -> d::Player {
             history,
         },
         delta_best_s: uq(p.delta_best_s, id),
+        pit_limiter_active: uq(p.pit_limiter_active, id),
+        pit_stop_stopped: uq(p.pit_stop_stopped, id),
         damage: d::Damage {
             aero: uq(p.damage_aero, id),
             body: uq(p.damage_body, id),

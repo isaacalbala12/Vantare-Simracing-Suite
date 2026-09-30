@@ -1,5 +1,34 @@
 # Revisión del port LMU (ISA-1403 `db524bf7` → `native/runtime`)
 
+## Señales de tercera ronda — #1428 (2026-09-30)
+
+Fuente: header ISI `InternalsPlugin.hpp` enlazado abajo, layout Windows pack(4)
+con long de 4 bytes y strides ya admitidos. No se añaden REST ni dependencias.
+
+- `mSpeedLimiter` telemetry +604, byte 0/1, con
+  `mSpeedLimiterAvailable` +656 == 1 y `mElapsedTime` +12 positivo:
+  `Player.pit_limiter_active`. Desconocido/no equipado/bloque sanitizado →
+  `Unavailable`. Su frescura es la de telemetría, aunque scoring avance.
+- `mPitState` scoring +457: 0 none, 1 request, 2 entering, 3 stopped, 4 exiting.
+  Solo se proyecta `Player.pit_stop_stopped`: true únicamente en 3, false en
+  1/2/4; cero solo si el bloque del jugador conserva reloj de telemetría.
+  Los fixtures legacy borraron ambos bytes; su cero no acredita false.
+  Estado desconocido → `Unavailable`; caduca con scoring. **Stopped no
+  acredita un servicio iniciado/completado ni la duración de la parada.**
+- `mEstimatedLapTime` scoring +472, segundos positivos →
+  `Car.estimated_lap_s: Estimated`; cero/negativo → `Unavailable`.
+  NaN/infinito conservan el rechazo transaccional preexistente del frame.
+- `mLastSector1` +152 y `mLastSector2` +160 (S1+S2) con `mLastLapTime` +168:
+  se publican `[S1, S12-S1, Lap-S12]` para cada coche. Solo un triplete finito
+  y estrictamente creciente es admisible; los ceros borrados de los fixtures
+  no fabrican sectores. No se reconstruye historia entre fotos.
+
+Pruebas sobre fixture real sin modificar (estimación positiva y ausencia de
+bytes borrados), mutaciones explícitas (booleanos/estados/sectores/tiempos) y
+scoring avanzando con telemetría congelada. Los vectores de frontera no son
+capturas físicas de servicio ni limitador en LMU. El oráculo Go congelado
+sigue comprobando su contrato original; no acredita las señales nuevas.
+
 ## Segunda ronda — #1428 / #1427 (2026-09-30)
 
 Semántica comprobada en el [header del SDK InternalsPlugin](https://github.com/cosimo/rFactor2-DeltaBest/blob/master/Include/InternalsPlugin.hpp)
@@ -90,7 +119,8 @@ telemetría. Criterios de validez, medidos contra los fixtures reales:
 - **Tiempo de la vuelta en curso** (`scoring` +464): vale si es finito; si todos
   los coches lo traen exactamente a 0 y las distancias de vuelta difieren, es un
   marcador del simulador y se descarta (si no, se publicaría 0,00 s a mitad de
-  vuelta). `last_sectors_s` sigue vacío: el layout no trae tiempos de sector.
+  vuelta). En fase 1 `last_sectors_s` permanecía vacío; la tercera ronda
+  anterior admite los tiempos de sector del SDK, antes descartados.
 - **Vueltas totales** (`mMaximumLaps` @1716): 0 (sesión por tiempo) y `i32::MAX`
   (sin límite) quedan `Unavailable`, igual que un negativo; cota de cordura 10 000.
 - **Longitud del circuito** (@1720): > 0 y finita; los fixtures 1.4.x sin

@@ -296,7 +296,12 @@ impl Translator {
             best_lap_s: quality(vehicle.best_lap_s, stale),
             // LMU solo publica el sector en curso; los tiempos de sector no
             // están en el layout admitido.
-            last_sectors_s: Vec::new(),
+            last_sectors_s: vehicle
+                .last_sectors_s
+                .iter()
+                .map(|v| quality(*v, stale))
+                .collect(),
+            estimated_lap_s: estimate(vehicle.estimated_lap_s, stale),
             lap_distance_m: quality(vehicle.lap_distance_m, stale),
             lap_elapsed_s: quality(vehicle.lap_progress_s, stale),
             current_sector: quality(vehicle.sector, stale),
@@ -395,6 +400,11 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, damage_stale: bool) -> Pla
                 .map(|value| stale_quality(value, damage_stale)),
             ..Damage::default()
         }),
+        pit_limiter_active: quality(
+            inputs.and_then(|i| i.pit_limiter_active),
+            stale || damage_stale,
+        ),
+        pit_stop_stopped: quality(vehicle.pit_stop_stopped, stale),
         // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
         // delta, y un 0 fiable taparía el delta que deriva el núcleo.
         delta_best_s: quality(
@@ -505,6 +515,13 @@ fn capabilities(
             player.is_some_and(|p| p.damage.tyre_wear.iter().any(has)),
             damage_stale,
         ),
+    }
+}
+
+fn estimate<T>(value: Option<T>, stale: bool) -> Quality<T> {
+    match value {
+        Some(value) if !stale => Quality::Estimated(value),
+        _ => quality(value, stale),
     }
 }
 

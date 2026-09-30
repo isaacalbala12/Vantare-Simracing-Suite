@@ -452,6 +452,8 @@ impl Translator {
         };
         if let Some((p, stale)) = self.page(0, now) {
             let stale = stale || gs || self.physics_zero;
+            // SDK physics.pitLimiterOn @248: bool nativo, reloj de physics.
+            player.pit_limiter_active = quality(boolean(i32_at(p, 248)), stale);
             player.telemetry = Telemetry {
                 throttle: quality(fraction(f32_at(p, 4)), stale),
                 brake: quality(fraction(f32_at(p, 8)), stale),
@@ -642,6 +644,8 @@ fn player_car(
         ),
         car.lap_elapsed_s,
     );
+    // iEstimatedLapTime @1396: ms; MAX/0/negativos son marcadores.
+    car.estimated_lap_s = estimated(lap_ms(i32_at(g, 1396)), stale);
     car.current_sector = prefer(
         quality(u8::try_from(i32_at(g, 164)).ok().filter(|s| *s < 3), stale),
         car.current_sector,
@@ -678,6 +682,14 @@ fn player_car(
             ),
             car.pose,
         );
+    }
+}
+
+fn boolean(value: i32) -> Option<bool> {
+    match value {
+        0 => Some(false),
+        1 => Some(true),
+        _ => None,
     }
 }
 
@@ -951,6 +963,108 @@ mod second_round_tests {
                 other => other,
             };
             assert_eq!(car.pending_penalties, stale);
+        }
+    }
+}
+
+#[cfg(test)]
+mod pit_signals_tests {
+    use super::*;
+
+    fn int(bytes: &mut [u8], at: usize, value: i32) {
+        bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
+    }
+    fn translator(limiter: i32, estimate: i32) -> Translator {
+        let mut t = Translator::new(SourceKind::Replay);
+        let mut p = vec![0; PAGE_SIZES[0]];
+        let mut g = vec![0; PAGE_SIZES[1]];
+        int(&mut p, 0, 1);
+        int(&mut p, 248, limiter);
+        // Evitar la página cero de pausa, incluso con limitador apagado.
+        p[4..8].copy_from_slice(&0.1_f32.to_le_bytes());
+        int(&mut g, 0, 1);
+        int(&mut g, 4, 2);
+        int(&mut g, 1396, estimate);
+        t.shm(0, p, Duration::ZERO).expect("physics");
+        t.shm(1, g, Duration::ZERO).expect("graphics");
+        t
+    }
+    #[test]
+    fn real_acc_replay_has_a_native_limiter_and_no_positive_estimate() {
+        use vantare_domain::Adapter;
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testdata/acc/acc-sesion-udp-20260929.tar.gz");
+        let mut replay = super::super::replay::open_acc_replay(&path).expect("corpus obligatorio");
+        let mut found = false;
+        for _ in 0..10_000 {
+            if let Some(obs) = replay.poll(Duration::from_secs(2)).expect("replay")
+                && let Some(p) = obs.state.player
+                && p.pit_limiter_active.current().is_some()
+            {
+                assert_eq!(p.pit_limiter_active, Quality::Reliable(true));
+                assert_eq!(
+                    obs.state.player_car().expect("jugador").estimated_lap_s,
+                    Quality::Unavailable
+                );
+                found = true;
+                break;
+            }
+        }
+        assert!(found, "el test no puede pasar sin foto del jugador real");
+    }
+
+    #[test]
+    fn limiter_is_strict_boolean_and_udp_or_graphics_cannot_refresh_physics() {
+        for (raw, expected) in [
+            (0, Quality::Reliable(false)),
+            (1, Quality::Reliable(true)),
+            (-1, Quality::Unavailable),
+            (2, Quality::Unavailable),
+        ] {
+            let t = translator(raw, 90123);
+            let g = &t.pages[1].as_ref().expect("graphics").bytes;
+            let p = t.player(CarId(1), g, false, Duration::ZERO);
+            assert_eq!(p.pit_limiter_active, expected);
+            assert_eq!(p.pit_stop_stopped, Quality::Unavailable);
+        }
+        let mut t = translator(1, 90123);
+        let mut g = t.pages[1].as_ref().expect("graphics").bytes.clone();
+        int(&mut g, 0, 2);
+        t.shm(1, g.clone(), Duration::from_millis(500))
+            .expect("graphics actual");
+        assert_eq!(
+            t.player(CarId(1), &g, false, Duration::from_millis(500))
+                .pit_limiter_active,
+            Quality::Stale(true)
+        );
+        assert_eq!(
+            t.player(CarId(1), &g, true, Duration::ZERO)
+                .pit_limiter_active,
+            Quality::Stale(true)
+        );
+    }
+    #[test]
+    fn estimate_ms_is_not_measured_and_markers_are_unavailable() {
+        for (ms, expected) in [
+            (90123, Quality::Estimated(90.123)),
+            (0, Quality::Unavailable),
+            (-1, Quality::Unavailable),
+            (i32::MAX, Quality::Unavailable),
+        ] {
+            let t = translator(0, ms);
+            let g = &t.pages[1].as_ref().expect("graphics").bytes;
+            let mut car = Car::default();
+            player_car(&mut car, g, false, None, None);
+            assert_eq!(car.estimated_lap_s, expected);
+            player_car(&mut car, g, true, None, None);
+            assert_eq!(
+                car.estimated_lap_s,
+                if ms == 90123 {
+                    Quality::Stale(90.123)
+                } else {
+                    Quality::Unavailable
+                }
+            );
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -68,6 +68,8 @@
       "fuel_per_lap_l": "unavailable",
       "fuel_laps_left": "unavailable",
       "delta_best_s": "unavailable",
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
       "damage_aero": {
         "reliable": 0
       },

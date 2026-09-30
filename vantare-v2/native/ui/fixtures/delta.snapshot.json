@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -79,6 +79,7 @@
         "best_lap_s": {
           "reliable": 90.964
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": "unavailable",
         "gap_ahead": "unavailable",
@@ -122,6 +123,8 @@
       "delta_best_s": {
         "reliable": 0.214
       },
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
       "damage_aero": "unavailable",
       "damage_body": "unavailable",
       "damage_suspension": "unavailable",

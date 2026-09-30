@@ -1,4 +1,4 @@
-//! Catálogo propio, familias mínimas y una sola cola de presentación/voz.
+//! Catálogo mínimo (textos compartidos con Go) y una sola cola de texto/voz.
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -17,6 +17,15 @@ pub enum Locale {
     PtBr,
 }
 impl Locale {
+    /// Defaults de audio/config.go; nunca probar otra voz ante ausencia.
+    pub fn voice(self) -> &'static str {
+        match self {
+            Self::Es => "ef_dora",
+            Self::En => "af_bella",
+            Self::It => "if_sara",
+            Self::PtBr => "pf_dora",
+        }
+    }
     pub fn parse(value: &str) -> Option<Self> {
         match value {
             "es" => Some(Self::Es),
@@ -59,6 +68,19 @@ pub enum Intent {
     ThreeWide,
 }
 impl Intent {
+    pub const ALL: [Self; 11] = [
+        Self::PitEntry,
+        Self::PitExit,
+        Self::LapCompleted,
+        Self::FuelOne,
+        Self::FuelTwo,
+        Self::FuelHalf,
+        Self::Yellow,
+        Self::Blue,
+        Self::CarLeft,
+        Self::CarRight,
+        Self::ThreeWide,
+    ];
     pub fn key(self) -> &'static str {
         match self {
             Self::PitEntry => "pitstops.entry",
@@ -97,7 +119,7 @@ impl Intent {
                 "Vuelta completada",
                 "Lap completed",
                 "Giro completato",
-                "Volta completada",
+                "Volta concluída",
             ],
             Self::PitEntry => [
                 "Entrando en boxes",

@@ -212,22 +212,12 @@ impl Hub {
                 .child(self.remote.update(cx, |remote, cx| remote.testing(cx)))
                 .child(self.testing.clone())
                 .into_any_element(),
-            Section::Home => crate::calendar::home::render(
-                self.calendar.read(cx),
-                Some(&self.subscriber),
-                self.previous_source,
-                orbit::button("home-studio", "Abrir Studio").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.navigate(Section::Studio, cx);
-                    },
-                )),
-                orbit::button("home-workshop", "Abrir Workshop").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.navigate(Section::Workshop, cx);
-                    },
-                )),
-            )
-            .into_any_element(),
+            Section::Home => {
+                crate::calendar::home::render(self.calendar.read(cx), |control, section| {
+                    control.on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx)))
+                })
+                .into_any_element()
+            }
             Section::Account => self
                 .remote
                 .update(cx, |remote, cx| remote.account(cx))
@@ -271,11 +261,13 @@ impl Render for Hub {
             .flex_col()
             .gap(gpui::px(24.0))
             .p(gpui::px(orbit::GUTTER))
-            .child(orbit::page_header(
-                "Hub nativo",
-                self.section.label(),
-                self.section.subtitle(),
-            ))
+            .when(self.section != Section::Home, |content| {
+                content.child(orbit::page_header(
+                    "Hub nativo",
+                    self.section.label(),
+                    self.section.subtitle(),
+                ))
+            })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status))
             })

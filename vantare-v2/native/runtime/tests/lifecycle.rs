@@ -25,6 +25,7 @@ fn main() -> ExitCode {
         Some("fake-core") => fake_core(&args[1..]),
         Some("fake-crash") => fake_crash(&args[1..]),
         Some("fake-overlays") => fake_overlays(&args[1..]),
+        _ if args.iter().any(|arg| arg == "fake-engineer") => fake_engineer(&args),
         _ => run_scenarios(&args),
     }
 }
@@ -108,6 +109,22 @@ fn fake_crash(args: &[String]) -> ExitCode {
         &format!("crash pid={}", std::process::id()),
     );
     ExitCode::from(1)
+}
+
+/// Tercer hijo sintético: prueba supervisor/EOF/Job, nunca lee juego ni audio.
+fn fake_engineer(args: &[String]) -> ExitCode {
+    let status = opt(args, "--status");
+    note(&status, &format!("engineer pid={}", std::process::id()));
+    if args.iter().any(|arg| arg == "--crash") {
+        return ExitCode::FAILURE;
+    }
+    let closed = stdin_closed();
+    let hang = args.iter().any(|arg| arg == "--hang");
+    while hang || !closed.load(Ordering::Acquire) {
+        thread::sleep(Duration::from_millis(10));
+    }
+    note(&status, "closed engineer");
+    ExitCode::SUCCESS
 }
 
 fn fake_overlays(args: &[String]) -> ExitCode {
@@ -322,6 +339,14 @@ impl Scenario {
 
 impl Drop for Scenario {
     fn drop(&mut self) {
+        assert!(self.dir.is_absolute() && self.dir.parent() == Some(env::temp_dir().as_path()));
+        assert!(
+            self.dir
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("vantare-lifecycle-")
+        );
         let _ = fs::remove_dir_all(&self.dir);
     }
 }
@@ -523,8 +548,131 @@ fn children_die_with_the_launcher() {
     });
 }
 
+fn launch_engineer(scenario: &Scenario, extra: &[&str], budget: u32) -> Launcher {
+    let me = env::current_exe().unwrap();
+    let mut command = scenario.launcher_command(
+        &[
+            "--engineer",
+            &scenario.file("cursor.json"),
+            "--engineer-bin",
+            me.to_str().unwrap(),
+            "--reinicios",
+            &budget.to_string(),
+        ],
+        "fake-core",
+        &[],
+    );
+    command
+        .args(["--", "fake-engineer", "--status", &scenario.file("status")])
+        .args(extra);
+    Launcher(command.spawn().unwrap())
+}
+
+fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
+    let scenario = Scenario::new("engineer-restart");
+    let mut launcher = launch_engineer(&scenario, &[], 2);
+    let first = scenario.wait_for("Engineer arrancado", LONG, || {
+        scenario.starts("engineer").first().copied()
+    });
+    scenario.wait_for("overlays conectado", LONG, || {
+        (!scenario.lines("overlays.log").is_empty()).then_some(())
+    });
+    let core = scenario.starts("core");
+    let overlays = scenario.starts("overlays");
+    kill(first.0);
+    scenario.wait_for("Engineer reiniciado", LONG, || {
+        scenario.starts("engineer").get(1).copied()
+    });
+    let mut watcher = Subscriber::connect(&scenario.pipe, |_| true).unwrap();
+    Scenario::assert_core_progresses(&mut watcher);
+    assert_eq!(scenario.starts("core"), core);
+    assert_eq!(scenario.starts("overlays"), overlays);
+    scenario.stop();
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    let status = scenario.lines("status");
+    let at = |message: &str| status.iter().position(|line| line == message).unwrap();
+    assert!(
+        at("closed engineer") < at("closed overlays") && at("closed overlays") < at("closed core")
+    );
+}
+
+fn engineer_restart_budget_closes_every_child_after_exactly_two_retries() {
+    let scenario = Scenario::new("engineer-budget");
+    let mut launcher = launch_engineer(&scenario, &["--crash"], 2);
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
+    assert_eq!(scenario.starts("engineer").len(), 3);
+    let status = scenario.lines("status");
+    assert!(status.contains(&"closed overlays".into()) && status.contains(&"closed core".into()));
+    assert!(
+        scenario
+            .lines("launcher.log")
+            .iter()
+            .any(|line| line.contains("Engineer: presupuesto de reinicios agotado"))
+    );
+}
+
+fn a_hung_engineer_is_killed_by_the_grace_deadline() {
+    let scenario = Scenario::new("engineer-hung");
+    let mut launcher = launch_engineer(&scenario, &["--hang"], 2);
+    let engineer = scenario
+        .wait_for("Engineer colgado arrancado", LONG, || {
+            scenario.starts("engineer").first().copied()
+        })
+        .0;
+    scenario.stop();
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    assert!(!alive(engineer));
+    assert!(
+        scenario
+            .lines("launcher.log")
+            .iter()
+            .any(|line| line.contains("Engineer no terminó"))
+    );
+    assert!(scenario.lines("status").contains(&"closed core".into()));
+}
+
+fn engineer_dies_in_the_same_job_when_launcher_is_killed() {
+    let scenario = Scenario::new("engineer-job");
+    let launcher = launch_engineer(&scenario, &[], 2);
+    let engineer = scenario
+        .wait_for("Engineer en Job", LONG, || {
+            scenario.starts("engineer").first().copied()
+        })
+        .0;
+    let core = scenario
+        .wait_for("núcleo en Job", LONG, || {
+            scenario.starts("core").first().copied()
+        })
+        .0;
+    let overlays = scenario
+        .wait_for("overlays en Job", LONG, || {
+            scenario.starts("overlays").first().copied()
+        })
+        .0;
+    drop(launcher);
+    scenario.wait_for("tres hijos muertos por Job", LONG, || {
+        (!alive(engineer) && !alive(core) && !alive(overlays)).then_some(())
+    });
+}
+
 fn run_scenarios(filters: &[String]) -> ExitCode {
-    let scenarios: [(&str, fn()); 7] = [
+    let scenarios: [(&str, fn()); 11] = [
+        (
+            "engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core",
+            engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core,
+        ),
+        (
+            "engineer_restart_budget_closes_every_child_after_exactly_two_retries",
+            engineer_restart_budget_closes_every_child_after_exactly_two_retries,
+        ),
+        (
+            "a_hung_engineer_is_killed_by_the_grace_deadline",
+            a_hung_engineer_is_killed_by_the_grace_deadline,
+        ),
+        (
+            "engineer_dies_in_the_same_job_when_launcher_is_killed",
+            engineer_dies_in_the_same_job_when_launcher_is_killed,
+        ),
         (
             "killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted",
             killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted,

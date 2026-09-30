@@ -75,6 +75,8 @@ pipe; I/O tiene plazo 5 s y cancelación. Overflow del ring declara Retention;
 fallo de persistencia degrada recording sin parar fotos. `Frame::capture`
 puede leer disco: NO llamarlo en adquisición. Lectura histórica escanea JSONL:
 no se acredita rendimiento para historiales largos sin medición.
+El plazo es de pipe/peticiones: fsync del archivo no es cancelable; el watchdog
+del núcleo y el plazo del launcher acotan un proceso bloqueado en disco.
 
 `vantare-core --live --recording R.jsonl` activa grabación antes de adquisición;
 sin opción no abre archivo. `EventHost::set_recording` permite on/off fuera del

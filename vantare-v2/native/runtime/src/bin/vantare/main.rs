@@ -17,7 +17,7 @@
 //!   sale con código 0 ha terminado a propósito (overlays cerrado por el
 //!   usuario, replay acabado): el launcher cierra todo y sale con 0.
 //! - **Cierre** (Ctrl+C, cierre de consola o `vantare --parar`): primero
-//!   overlays y después el núcleo; a cada uno se le pide que termine y, pasado
+//!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
 //!   el plazo, se le mata.
 
 mod win;
@@ -30,7 +30,7 @@ use std::{env, io};
 use win::{Instance, Stop};
 
 const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
-[--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]\n     vantare --parar [--instancia S]";
+[--instancia S] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
 const DEFAULT_GRACE: Duration = Duration::from_secs(3);
 const DEFAULT_RESTARTS: u32 = 5;
 /// Espera antes del primer reinicio; se duplica en cada caída seguida.
@@ -287,7 +287,7 @@ fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
     }
 }
 
-/// Overlays primero, después el núcleo. A cada uno se le pide que termine y se
+/// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
 fn shutdown(services: &mut [Service], grace: Duration) {
     for service in services.iter_mut().rev() {
@@ -395,6 +395,7 @@ mod tests {
         .unwrap();
         let engineer = config.engineer.unwrap();
         assert_eq!(engineer.path, Path::new("voice.exe"));
+        let core_image = Path::new("bin").join("vantare-core.exe");
         assert_eq!(
             engineer.args,
             args(&[
@@ -404,16 +405,10 @@ mod tests {
                 "--pipe-name",
                 "p",
                 "--core-image",
-                "bin/vantare-core.exe",
+                core_image.to_str().unwrap(),
                 "--locale",
                 "en"
             ])
-            .iter()
-            .map(|s| s.replace(
-                "bin/vantare-core.exe",
-                &Path::new("bin").join("vantare-core.exe").to_string_lossy()
-            ))
-            .collect::<Vec<_>>()
         );
         assert_eq!(config.core.args.last().unwrap(), "voice.exe");
         assert!(parsed(&["--", "--live", "--", "4", "--", "--locale", "en"]).is_err());

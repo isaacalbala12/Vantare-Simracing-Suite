@@ -19,7 +19,8 @@ const IDLE: Duration = Duration::from_millis(2);
 /// ha cerrado y sus hilos han terminado; el adaptador lo suelta quien llama.
 ///
 /// El pipe solo es del usuario actual (ACL de `ipc`), así que se atiende a
-/// cualquier suscriptor que conecte.
+/// cualquier suscriptor de fotos que conecte. El canal ordenado de eventos
+/// exige además imagen de Engineer y usa otro pipe con la misma ACL.
 ///
 /// # Errors
 /// Si el pipe no se puede abrir (p. ej. otro núcleo ya lo tiene) o `ipc` falla al publicar.

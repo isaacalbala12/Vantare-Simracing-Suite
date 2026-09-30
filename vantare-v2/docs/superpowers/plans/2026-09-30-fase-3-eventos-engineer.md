@@ -27,7 +27,7 @@ Hitos nuevos, cada uno con gates completos y commit local:
    ArcSwap, reutiliza el ring hasta que cambie el tail. Si se pierde retención,
    hueco explícito; si falla persistencia, estado degradado y fotos continúan.
    Peticiones acotadas al dueño; nunca esperar ni fsync en adquisición.
-4. Launcher habilita Engineer solo mediante opción explícita con checkpoint;
+4. Verificar y documentar el launcher: habilita Engineer solo mediante opción explícita con checkpoint;
    mismo Job Object, cancelación EOF, supervisión/backoff/presupuesto y orden
    de cierre. Engineer consume el pipe de eventos y checkpointa antes de ACK;
    conserva el banco `--stream`. Pruebas de procesos, pérdida/reconexión, ACK
@@ -75,14 +75,74 @@ quedan fuera de la paridad mínima: contador no autoriza inferir ninguna de ella
 
 ## Integración productiva y límites comprobables
 
+Estado final del corte 4: integración funcional implementada y verificada;
+entrega local lista para revisión de Opus, aceptación global de formato
+**bloqueada** por `native/ui/src/app.rs:385`, heredado de fase 2 y excluido
+expresamente. El propietario de UI debe aplicar el formato y repetir fmt
+global. No se declara la fase completa/paridad física ni todos los gates verdes.
+Notion no disponible: excepción GitHub explícita de Isaac, sin simular seguimiento.
+
+Hito 4 añade cuatro escenarios reales de lifecycle Engineer (reinicio aislado,
+dos reintentos exactos, colgado/parada por plazo y muerte por Job), manteniendo
+los siete existentes. Añade además `core_e2e`: `vantare-core.exe` reproduce la
+captura real LMU de 44 coches, emite SourceChanged Live→Stale, el cliente recibe
+foto/ID coherentes y watermark durable, el archivo contiene hecho v3 y EOF
+cierra el dueño. Es replay real; no prueba física del juego en marcha.
+
+Gates finales en `native/`, offline y compilación limitada a `-j 2`:
+
+```text
+cargo fmt --check
+FAIL (exit 1): solo ui/src/app.rs:385, formato importado; no tocar UI.
+cargo fmt -p vantare-runtime -p vantare-engineer -p vantare-ipc -- --check
+PASS: rutas propias.
+cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
+PASS (exit 0), 11,68 s.
+cargo test --workspace --offline -j 2
+PASS (exit 0), 472 tests incluyendo 11 escenarios lifecycle; 4 live ignorados.
+Compilación 25,13 s; los 4 ignorados requieren LMU/ACC físicos.
+git diff --check
+PASS.
+```
+
+Salida literal local: `C:/tmp/vf-fase3-fmt-final.log`,
+`C:/tmp/vf-fase3-clippy-final.log`, `C:/tmp/vf-fase3-test-final.log`.
+No dependencias nuevas, unsafe nuevo cero. Después de merge fase 2 no hay
+diff propio en adaptadores, modelo, DTO v4, UI ni Hub.
+
+Ficheros de la ampliación (no incluye los recibidos de fase 2):
+
+- `native/Cargo.toml`, `native/Cargo.lock`, `native/README.md`.
+- `native/engineer/Cargo.toml`, `README.md`, `src/{lib,main,radio}.rs`,
+  `tests/{lifecycle,radio}.rs`; eliminados su `Cargo.lock` y `.gitignore`.
+- `native/ipc/src/{lib,pipe}.rs`: exposición de los mismos primitivos e imagen.
+- `native/runtime/src/core/mod.rs`, `service.rs`,
+  `bin/vantare-core.rs`, `bin/vantare/main.rs`.
+- `native/runtime/src/flows/{mod,journal,recording,wire,tests}.rs`;
+  nuevos `{event,host,client,facts_tests,transport_tests}.rs`.
+- `native/runtime/tests/{core_e2e,lifecycle}.rs` y este microplan.
+
+Para verificar manualmente, usar el ejemplo de `native/README.md` con un
+checkpoint exclusivo y binarios de la misma revisión. Sin `--engineer` solo
+nacen núcleo/overlays. `--parar` cierra Engineer antes de overlays/núcleo;
+`--recording` es opt-in. No se ha abierto ninguna UI durante los tests.
+
+Preguntas pendientes para sus propietarios: admitir las señales exactas de
+la tabla anterior por cada SDK/captura; confirmar assets/voces Kokoro por locale
+y escucha física; medir coste de historial largo y juego/CPU/OBS en la campaña
+correspondiente. No bloquean este cableado, sí Spotter/sanciones/pitstop completo
+y paridad acústica. Append/fsync de archivo no es cancelable por Win32 Event;
+el watchdog de cierre del núcleo (4 s) y el plazo del launcher acotan la vida
+del proceso, sin prometer fsync exitoso en un disco colgado.
+
 Hito 3 implementado: hechos neutrales, dueño I/O, named pipe, Engineer y hook
 opt-in del launcher. Gates completos: `cargo clippy --workspace --all-targets
 --offline -j 2 -- -D warnings` PASS (13,05 s); `cargo test --workspace --offline
 -j 2` PASS, 467 tests incluyendo 7 escenarios lifecycle, 4 live ignorados
 (compilación 1m39s). `cargo fmt --check` FAIL solo por el formato importado de
 `ui/src/app.rs:385`; rutas propias formateadas, sin editar UI. No librerías
-nuevas, unsafe nuevo cero, ninguna red externa ni secretos. Hito siguiente:
-ampliar pruebas lifecycle específicamente para el tercer hijo y handoff final.
+nuevas, unsafe nuevo cero, ninguna red externa ni secretos. El hito 4 completa
+la verificación específica del tercer hijo y el handoff final descritos arriba.
 
 Un mismo cursor identifica todos los hechos. Boxes JSONL v1 sigue legible;
 hechos v3 son enums cerrados, base de recording v2 sin cambio. La entrega de

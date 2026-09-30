@@ -8,7 +8,7 @@
 //! `vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión>] [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]`
 
 const USAGE: &str = "uso: vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
-                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]";
+                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>] [--recording <JSONL>] [--engineer-image <EXE>]";
 
 #[derive(Debug, PartialEq)]
 enum Input {

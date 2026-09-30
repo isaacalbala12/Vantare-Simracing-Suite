@@ -5696,6 +5696,8 @@ dependencies = [
  "gpui_platform",
  "png 0.18.1",
  "raw-window-handle",
+ "serde",
+ "serde_json",
  "vantare-domain",
  "vantare-ipc",
 ]

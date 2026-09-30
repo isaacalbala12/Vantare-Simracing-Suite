@@ -30,6 +30,8 @@ struct Notice {
     started: Instant,
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
     records: Records,
@@ -37,7 +39,7 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: fastest_lap::project(&Snapshot::default(), prefs),
             records: Records::default(),
@@ -335,7 +337,7 @@ mod tests {
     #[test]
     fn preview_is_settled_and_clears_when_the_scene_is_unavailable() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = reference_scene();
         assert!(widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
@@ -375,7 +377,7 @@ mod tests {
             best_lap_s: Quality::Reliable(90.0),
             ..Car::default()
         });
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
         snapshot.sequence = 2;

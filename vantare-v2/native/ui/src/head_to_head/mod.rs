@@ -149,12 +149,35 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub target: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            target: "ahead".into(),
+        }
+    }
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        if self.target == "behind" {
+            self.clone()
+        } else {
+            Self::default()
+        }
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: head_to_head::project(&Snapshot::default(), prefs, Target::Ahead),
         }
@@ -220,7 +243,7 @@ mod tests {
     #[test]
     fn only_visible_changes_repaint_and_frames_finish() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.cars = [1, 2]

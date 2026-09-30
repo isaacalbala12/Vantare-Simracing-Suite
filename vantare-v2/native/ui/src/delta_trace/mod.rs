@@ -97,12 +97,14 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
         }
@@ -143,7 +145,7 @@ mod tests {
     #[test]
     fn repaint_only_when_displayed_values_or_language_change() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.player = Some(Player {
@@ -181,7 +183,7 @@ mod tests {
             snapshot.state.player.map(|player| player.delta_best_s),
             Some(Quality::Reliable(0.214))
         );
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings, Preferences::default());
         assert!(widget.ingest(&snapshot, Preferences::default()));
         // La referencia muestra +0.257 desde el último punto de su historia.
         // Snapshot solo representa el escalar +0.214, nunca sustituirlo a mano.
@@ -193,6 +195,6 @@ mod tests {
     #[cfg(feature = "parity-capture")]
     #[test]
     fn a_static_widget_never_keeps_capture_waiting_for_animation() {
-        assert!(!Widget::new(Preferences::default()).animating());
+        assert!(!Widget::new(&Settings, Preferences::default()).animating());
     }
 }

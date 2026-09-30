@@ -3,20 +3,23 @@
 //! con el `ViewModel` de `domain` que le corresponde y solo repinta cuando ese
 //! ViewModel cambia.
 
+use std::cell::RefCell;
+use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, canvas, div, point,
-    prelude::*, px,
+    App, Bounds, Context, DisplayId, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions, canvas, div,
+    point, prelude::*, px,
 };
 use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
 use crate::efficiency::text;
 use crate::overlay::{self, Hwnd};
-use crate::{Kind, Widget};
+use crate::{Kind, Settings, Widget};
 
 /// Cómo se pinta un widget en el lienzo que GPUI le da.
 pub(crate) type Paint = Box<dyn Fn(&mut Window, &mut App)>;
@@ -63,7 +66,14 @@ pub struct Overlay {
 
 impl Overlay {
     pub(crate) fn new(kind: Kind, prefs: Preferences) -> Self {
-        let widget = Widget::new(kind, prefs);
+        Self::configured(&Settings::default_for(kind), prefs)
+    }
+
+    fn configured(settings: &Settings, prefs: Preferences) -> Self {
+        if let Some(limit) = settings_limit(settings) {
+            eprintln!("{}: {limit}", settings.kind().name());
+        }
+        let widget = Widget::new(settings, prefs);
         Self {
             widget,
             prefs,
@@ -71,6 +81,14 @@ impl Overlay {
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
+    }
+
+    fn with_snapshot(settings: &Settings, prefs: Preferences, snapshot: Option<&Snapshot>) -> Self {
+        let mut overlay = Self::configured(settings, prefs);
+        if let Some(snapshot) = snapshot {
+            overlay.widget.ingest(snapshot, prefs);
+        }
+        overlay
     }
 
     /// Repinta al cabo de `after` (un aviso quieto que caduca). Un solo despertar
@@ -104,6 +122,44 @@ impl Overlay {
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
         self.widget.animating()
+    }
+}
+
+// El encargo permite Settings/constructores; los portes de variantes que exigen
+// editar ingest/paint siguen pendientes. No anunciar una opción ignorada como aplicada.
+fn settings_limit(settings: &Settings) -> Option<&'static str> {
+    match settings {
+        Settings::Delta(options) if options.template_id != "instrument" => {
+            Some("templateId persistido; el renderer actual solo pinta instrument")
+        }
+        Settings::Pedals(options) if options.transparent_background => {
+            Some("transparentBackground persistido; variante aún sin portar")
+        }
+        Settings::BroadcastTower(options) if options.driver_carousel => {
+            Some("driverCarousel persistido; variante aún sin portar")
+        }
+        Settings::PedalsTelemetry(options) if options.steering_wheel != "generic" => {
+            Some("steeringWheel persistido; el renderer actual solo pinta generic")
+        }
+        Settings::RacingFlags(options) if options.text_color != "#000000" => {
+            Some("textColor persistido; variante aún sin portar")
+        }
+        Settings::HeadToHead(options) if options.target != "ahead" => {
+            Some("target persistido; el renderer actual solo proyecta ahead")
+        }
+        Settings::Standings(options)
+            if options.template_id != "signature"
+                || options.header_first != "none"
+                || options.header_second != "none"
+                || options.show_brand
+                || options.footer_slots.is_some()
+                || [&options.footer_first, &options.footer_second]
+                    .iter()
+                    .any(|value| !["none", "track", "estimatedLaps"].contains(&value.as_str())) =>
+        {
+            Some("opciones persistidas; variantes y métricas adicionales aún sin portar")
+        }
+        _ => None,
     }
 }
 
@@ -186,9 +242,15 @@ fn attach(hwnd: &mut Option<Hwnd>, window: &Window, origin: (f32, f32)) {
 /// «Repintado en la ventana grande»). La ventana no cambia de tamaño: el alto de
 /// Standings, que depende de las filas visibles, lo gobierna el propio widget.
 struct Screen {
-    widgets: Vec<(Entity<Overlay>, (f32, f32))>,
+    widgets: Vec<PlacedOverlay>,
     origin: (f32, f32),
     hwnd: Option<Hwnd>,
+}
+
+struct PlacedOverlay {
+    view: Entity<Overlay>,
+    at: (f32, f32),
+    opacity: f32,
 }
 
 impl Render for Screen {
@@ -198,17 +260,24 @@ impl Render for Screen {
         attach(&mut self.hwnd, window, self.origin);
         div()
             .size_full()
-            .children(self.widgets.iter().map(|(widget, (x, y))| {
+            .children(self.widgets.iter().map(|placed| {
                 // Una vista cacheada se coloca y dimensiona por estilo, no por contenido.
-                let (w, h) = widget.read(cx).wanted_size();
-                widget.clone().cached(
-                    StyleRefinement::default()
-                        .absolute()
-                        .left(px(*x))
-                        .top(px(*y))
-                        .w(px(w))
-                        .h(px(h)),
-                )
+                let (w, h) = placed.view.read(cx).wanted_size();
+                // Entity::cached usa el estilo para layout, pero no compone su
+                // opacity. Div sí la propaga al pintado bajo nivel del canvas.
+                div()
+                    .absolute()
+                    .left(px(placed.at.0))
+                    .top(px(placed.at.1))
+                    .w(px(w))
+                    .h(px(h))
+                    .opacity(placed.opacity)
+                    .child(
+                        placed
+                            .view
+                            .clone()
+                            .cached(StyleRefinement::default().w(px(w)).h(px(h))),
+                    )
             }))
     }
 }
@@ -229,11 +298,11 @@ fn popup(bounds: Bounds<Pixels>) -> WindowOptions {
     }
 }
 
-type Placed = Vec<(Kind, (f32, f32))>;
+type Placed<T> = Vec<(T, (f32, f32))>;
 
 /// Reparte los widgets (posición global) entre los monitores: cada uno recibe
 /// los que tienen la esquina dentro, con la posición relativa a su esquina.
-fn partition(monitors: &[Bounds<Pixels>], placed: &[(Kind, (f32, f32))]) -> Vec<Placed> {
+fn partition<T: Clone>(monitors: &[Bounds<Pixels>], placed: &[(T, (f32, f32))]) -> Vec<Placed<T>> {
     monitors
         .iter()
         .map(|monitor| {
@@ -241,7 +310,7 @@ fn partition(monitors: &[Bounds<Pixels>], placed: &[(Kind, (f32, f32))]) -> Vec<
             placed
                 .iter()
                 .filter(|(_, (x, y))| monitor.contains(&point(px(*x), px(*y))))
-                .map(|&(kind, (x, y))| (kind, (x - ox, y - oy)))
+                .map(|(widget, (x, y))| (widget.clone(), (x - ox, y - oy)))
                 .collect()
         })
         .collect()
@@ -267,9 +336,13 @@ pub(crate) fn open_screens(
         }
         let widgets: Vec<_> = mine
             .into_iter()
-            .map(|(kind, at)| (cx.new(|_| Overlay::new(kind, prefs)), at))
+            .map(|(kind, at)| PlacedOverlay {
+                view: cx.new(|_| Overlay::new(kind, prefs)),
+                at,
+                opacity: 1.0,
+            })
             .collect();
-        all.extend(widgets.iter().map(|(widget, _)| widget.clone()));
+        all.extend(widgets.iter().map(|placed| placed.view.clone()));
         let mut options = popup(*bounds);
         options.display_id = Some(display.id());
         let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
@@ -285,6 +358,193 @@ pub(crate) fn open_screens(
         }
     }
     all
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum WindowAction {
+    ReplaceContents,
+    Open,
+    Close,
+    None,
+}
+
+fn window_action(existing: bool, occupied: bool) -> WindowAction {
+    match (existing, occupied) {
+        (true, true) => WindowAction::ReplaceContents,
+        (false, true) => WindowAction::Open,
+        (true, false) => WindowAction::Close,
+        (false, false) => WindowAction::None,
+    }
+}
+
+struct LiveScreens {
+    screens: Vec<(DisplayId, WindowHandle<Screen>)>,
+    prefs: Preferences,
+    last: Option<Arc<Snapshot>>,
+}
+
+impl LiveScreens {
+    fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        let displays = cx.displays();
+        let bounds: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
+        // Una instancia oculta conserva la ocupación de su monitor y su HWND.
+        let placed: Vec<_> = layout
+            .instances
+            .iter()
+            .map(|instance| (instance, (instance.x, instance.y)))
+            .collect();
+        let parts = partition(&bounds, &placed);
+        let occupied: Vec<_> = displays
+            .iter()
+            .zip(&parts)
+            .filter(|(_, mine)| !mine.is_empty())
+            .map(|(display, _)| display.id())
+            .collect();
+        self.screens.retain(|(id, handle)| {
+            if window_action(true, occupied.contains(id)) == WindowAction::Close {
+                if let Err(error) = handle.update(cx, |_, window, _| window.remove_window()) {
+                    eprintln!("cerrar monitor de layout: {error}");
+                }
+                false
+            } else {
+                true
+            }
+        });
+        let mut reused = 0;
+        let mut opened = 0;
+        for ((display, bounds), mine) in displays.iter().zip(&bounds).zip(parts) {
+            let existing = self
+                .screens
+                .iter()
+                .find(|(id, _)| *id == display.id())
+                .map(|(_, handle)| *handle);
+            let action = window_action(existing.is_some(), !mine.is_empty());
+            if matches!(action, WindowAction::None | WindowAction::Close) {
+                continue;
+            }
+            let widgets = mine
+                .into_iter()
+                .filter(|(instance, _)| instance.visible)
+                .map(|(instance, at)| {
+                    let view = cx.new(|_| {
+                        Overlay::with_snapshot(&instance.settings, self.prefs, self.last.as_deref())
+                    });
+                    PlacedOverlay {
+                        view,
+                        at,
+                        opacity: instance.opacity,
+                    }
+                })
+                .collect();
+            if let Some(handle) = existing {
+                match handle.update(cx, |screen, _, cx| {
+                    screen.widgets = widgets;
+                    cx.notify();
+                }) {
+                    Ok(()) => reused += 1,
+                    Err(error) => eprintln!("aplicar layout en monitor existente: {error}"),
+                }
+            } else {
+                let mut options = popup(*bounds);
+                options.display_id = Some(display.id());
+                let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
+                match cx.open_window(options, |_, cx| {
+                    cx.new(|_| Screen {
+                        widgets,
+                        origin,
+                        hwnd: None,
+                    })
+                }) {
+                    Ok(handle) => {
+                        self.screens.push((display.id(), handle));
+                        opened += 1;
+                    }
+                    Err(error) => eprintln!("abrir monitor de layout: {error}"),
+                }
+            }
+        }
+        eprintln!(
+            "layout aplicado: {} instancias visibles, {reused} ventanas reutilizadas, {opened} creadas, {} activas",
+            layout
+                .instances
+                .iter()
+                .filter(|instance| instance.visible)
+                .count(),
+            self.screens.len()
+        );
+    }
+
+    fn ingest(&mut self, snapshot: Arc<Snapshot>, cx: &mut App) {
+        for (_, handle) in &self.screens {
+            if let Err(error) = handle.update(cx, |screen, _, cx| {
+                for placed in &screen.widgets {
+                    placed
+                        .view
+                        .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+                }
+            }) {
+                eprintln!("actualizar monitor de layout: {error}");
+            }
+        }
+        self.last = Some(snapshot);
+    }
+}
+
+/// Vigila el documento cada 500 ms. El proceso sigue vivo incluso sin ventanas;
+/// solo cambia sus HWND cuando cambia el conjunto de monitores ocupados.
+pub fn run_layout(
+    path: PathBuf,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+) -> Result<(), crate::layout::Error> {
+    let mut document = crate::layout::Document::open(path)?;
+    gpui_platform::application().run(move |cx: &mut App| {
+        if !init(cx) {
+            return;
+        }
+        // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
+        // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
+        cx.set_quit_mode(gpui::QuitMode::Explicit);
+        #[cfg(feature = "paint-stats")]
+        crate::stats::report();
+        let screens = Rc::new(RefCell::new(LiveScreens {
+            screens: Vec::new(),
+            prefs,
+            last: None,
+        }));
+        screens.borrow_mut().apply(document.layout(), cx);
+        let feed_screens = screens.clone();
+        cx.spawn(async move |cx| {
+            while let Ok(snapshot) = snapshots.recv_async().await {
+                cx.update(|cx| feed_screens.borrow_mut().ingest(snapshot, cx));
+            }
+        })
+        .detach();
+        cx.spawn(async move |cx| {
+            let mut last_error = None;
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(500))
+                    .await;
+                match document.poll() {
+                    Ok(true) => {
+                        last_error = None;
+                        cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
+                    }
+                    Ok(false) => last_error = None,
+                    Err(error) => {
+                        let message = error.to_string();
+                        if last_error.as_ref() != Some(&message) {
+                            eprintln!("layout conservado: {message}");
+                            last_error = Some(message);
+                        }
+                    }
+                }
+            }
+        })
+        .detach();
+    });
+    Ok(())
 }
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
@@ -371,11 +631,109 @@ mod tests {
     use gpui::size;
 
     #[test]
+    fn changed_settings_recreate_the_widget_and_reingest_the_latest_snapshot() {
+        let snapshot = crate::source::fixed();
+        let prefs = Preferences::default();
+        let initial = Settings::default_for(Kind::Standings);
+        let before = Overlay::with_snapshot(&initial, prefs, Some(&snapshot));
+        let Settings::Standings(mut options) = initial else {
+            panic!("Standings");
+        };
+        options.show_session_footer = false;
+        let mut after =
+            Overlay::with_snapshot(&Settings::Standings(options), prefs, Some(&snapshot));
+        assert_eq!(after.wanted_size().0, before.wanted_size().0);
+        assert_eq!(
+            before.wanted_size().1 - after.wanted_size().1,
+            crate::standings::model::FOOTER_HEIGHT
+        );
+        assert!(
+            !after.widget.ingest(&snapshot, prefs),
+            "la nueva vista ya recibió la última foto"
+        );
+    }
+
+    #[test]
+    fn applying_reuses_occupied_monitor_windows_and_hiding_all_keeps_occupancy() {
+        let mut layout =
+            crate::layout::Layout::from_json(include_bytes!("../fixtures/layout.json"))
+                .expect("fixture");
+        let monitors = [Bounds::new(
+            point(px(0.0), px(0.0)),
+            size(px(1920.0), px(1080.0)),
+        )];
+        let occupied = |layout: &crate::layout::Layout| {
+            let placed: Vec<_> = layout
+                .instances
+                .iter()
+                .map(|instance| (instance.id.as_str(), (instance.x, instance.y)))
+                .collect();
+            !partition(&monitors, &placed)[0].is_empty()
+        };
+        assert_eq!(window_action(false, occupied(&layout)), WindowAction::Open);
+        for instance in &mut layout.instances {
+            instance.visible = false;
+        }
+        assert_eq!(
+            window_action(true, occupied(&layout)),
+            WindowAction::ReplaceContents
+        );
+        layout.instances.clear();
+        assert_eq!(window_action(true, occupied(&layout)), WindowAction::Close);
+        assert_eq!(window_action(false, occupied(&layout)), WindowAction::None);
+        // run_layout usa QuitMode::Explicit; la QA de ventana comprueba que el
+        // proceso continúa tras quitar todas las instancias y vuelve a abrirlas.
+    }
+
+    #[test]
+    fn settings_defaults_partial_json_and_normalization_match_manifest_keys() {
+        for &kind in Kind::ALL {
+            let parsed: Settings = serde_json::from_value(serde_json::json!({"kind": kind.name()}))
+                .expect("opciones parciales");
+            assert_eq!(parsed, Settings::default_for(kind));
+            assert_eq!(parsed.normalized(), parsed);
+            assert!(settings_limit(&parsed).is_none());
+        }
+        let parsed: Settings = serde_json::from_value(
+            serde_json::json!({"kind":"racing-flags","textColor":"#aBc123"}),
+        )
+        .expect("color");
+        assert_eq!(
+            serde_json::to_value(parsed.normalized()).expect("serializar")["textColor"],
+            "#abc123"
+        );
+        let parsed: Settings =
+            serde_json::from_value(serde_json::json!({"kind":"racing-flags","textColor":"rojo"}))
+                .expect("color inválido");
+        assert_eq!(
+            parsed.normalized(),
+            Settings::default_for(Kind::RacingFlags)
+        );
+        for (kind, key) in [
+            (Kind::Delta, "templateId"),
+            (Kind::HeadToHead, "target"),
+            (Kind::PedalsTelemetry, "steeringWheel"),
+        ] {
+            let mut value = serde_json::json!({"kind":kind.name()});
+            value[key] = "desconocido".into();
+            let settings: Settings = serde_json::from_value(value).expect("opciones");
+            assert_eq!(settings.normalized(), Settings::default_for(kind));
+        }
+    }
+
+    #[test]
     fn registry_names_roundtrip_and_each_widget_accepts_a_snapshot() {
         for (index, &kind) in Kind::ALL.iter().enumerate() {
             assert_eq!(kind.name().parse(), Ok(kind));
             assert!(!Kind::ALL[..index].iter().any(|k| k.name() == kind.name()));
-            let mut widget = Widget::new(kind, Preferences::default());
+            let settings = Settings::default_for(kind);
+            let bytes = serde_json::to_vec(&settings).expect("serializar opciones");
+            assert_eq!(
+                serde_json::from_slice::<Settings>(&bytes).expect("opciones"),
+                settings
+            );
+            assert_eq!(settings.kind(), kind);
+            let mut widget = Widget::new(&settings, Preferences::default());
             widget.ingest(&crate::source::fixed(), Preferences::default());
             let (w, h) = widget.size();
             assert!(w > 0.0 && h > 0.0 && w.is_finite() && h.is_finite());
@@ -385,9 +743,10 @@ mod tests {
 
     #[test]
     fn parity_scenes_use_the_existing_snapshot_wire_format() {
-        let standings =
-            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings-legacy.snapshot.json"))
-                .expect("escena de referencia");
+        let standings = vantare_ipc::snapshot_from_json(include_str!(
+            "../fixtures/standings-legacy.snapshot.json"
+        ))
+        .expect("escena de referencia");
         assert_eq!(standings, crate::source::fixed());
         let reference_scene =
             vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings.snapshot.json"))

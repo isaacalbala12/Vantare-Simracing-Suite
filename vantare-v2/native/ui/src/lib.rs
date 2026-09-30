@@ -24,6 +24,7 @@ mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
 pub mod efficiency;
+pub mod layout;
 mod overlay;
 pub mod source;
 #[cfg(feature = "paint-stats")]
@@ -32,4 +33,4 @@ pub mod workshop;
 
 include!("registry.rs");
 
-pub use app::{layout_row, run, run_placed};
+pub use app::{layout_row, run, run_layout, run_placed};

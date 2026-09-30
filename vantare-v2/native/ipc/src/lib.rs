@@ -156,7 +156,7 @@ mod tests {
         let mut count = 0;
         for entry in std::fs::read_dir(directory).expect("directorio de escenas") {
             let path = entry.expect("escena").path();
-            if path.extension().is_none_or(|extension| extension != "json") {
+            if !path.to_string_lossy().ends_with(".snapshot.json") {
                 continue;
             }
             let text = std::fs::read_to_string(&path).expect("JSON de escena");

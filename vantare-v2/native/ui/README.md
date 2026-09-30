@@ -47,8 +47,8 @@ haya animación pide fotogramas).
 
 ## Paridad visual
 
-Con `VANTARE_STANDINGS_LEGACY` presente,
-`parity.ps1 -Parity <tools/native-ui/parity>` captura la escena `standings-44`
+La regresión histórica de Standings (escena `standings-44`, 474 × 364) se retiró
+al fijar la referencia de fase 2; su resultado era este: `parity.ps1` capturaba la escena `standings-44`
 con la feature `parity-capture` (dos pasadas GDI negro/blanco) y la compara con
 `reference/standings-44.png` con `diff.py`. Resultado en esta fase: 3,68 %
 (6341 / 172536 px, umbral 8), igual que el prototipo; la diferencia es la
@@ -69,7 +69,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 
    | Método | Devuelve / responsabilidad |
    | --- | --- |
-   | `new(prefs: Preferences)` | `Self`, estado inicial sin datos |
+   | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
    | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
    | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
    | `frame(&mut self, prefs: Preferences)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
@@ -112,8 +112,8 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 6. Formatear el módulo con `rustfmt --edition 2024 ui/src/<widget>/mod.rs`
    (rustfmt no descubre los módulos declarados dentro de una macro). Antes del
    commit: `cargo fmt --check`,
-   `cargo clippy --workspace --all-targets -j 4 -- -D warnings` y
-   `cargo test --workspace -j 4`; además verificar captura y comparación de su
+   `cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+   `cargo test --workspace -j 2`; además verificar captura y comparación de su
    widget. Informar el porcentaje real y cualquier límite al orquestador.
 
 **Standings de fase 2 (#1427).** El modo predeterminado reproduce Signature:
@@ -125,7 +125,7 @@ Los gaps usan las señales de clase existentes, incluidos los guiones cuando
 faltan datos y la diferencia de una vuelta. El pie conserva Sebring y ≈79.
 
 ```powershell
-# Desde native/, sin VANTARE_STANDINGS_LEGACY en el entorno:
+# Desde native/:
 $cargoExe = (Get-Command cargo.exe).Source
 # Limitar también el -j 4 interno del comparador compartido.
 function cargo {
@@ -138,26 +138,7 @@ function cargo {
 .\ui\compare.ps1 -Widget standings -MaxPercent 4
 ```
 
-**Regresión histórica de Standings (474 × 364).** La escena explícita es
-`fixtures/standings-legacy.snapshot.json`. La preferencia
-`VANTARE_STANDINGS_LEGACY` presente selecciona la configuración histórica:
-clasificación global, 10 filas, mejor vuelta y rail PIT. El nombre de la escena
-no decide el modo. Eliminar la variable restaura Signature.
-
-```powershell
-# Usar el mismo wrapper de cargo del bloque anterior.
-$env:VANTARE_STANDINGS_LEGACY = '1'
-try {
-    .\ui\compare.ps1 -Widget standings -Scene ui/fixtures/standings-legacy.snapshot.json -Reference C:\tmp\vantare-parity-wails\vantare-v2\tools\native-ui\parity\reference\standings-44.png -MaxPercent 4
-} finally {
-    Remove-Item Env:VANTARE_STANDINGS_LEGACY
-}
-```
-
-La ruta antigua `vantare-overlays --parity-capture <png>` y `parity.ps1` necesitan
-esa misma preferencia para mantener su escena histórica. Los tests cubren
-los dos tamaños, columnas, filtro por ID de clase, cambio de jugador, gaps
-faltantes/obsoletos, vueltas de diferencia y repintados de ambas configuraciones.
+Signature de fase 2 es la única configuración de Standings (ver `Settings::config`).
 No se toca ningún `model.rs`, el kit Eficiencia, IPC, runtime ni otros widgets.
 No se añaden dependencias ni señales al modelo común.
 
@@ -438,3 +419,11 @@ cambio de una constante de color en `pedals.rs`, `radar.rs` y `standings/view.rs
 todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
 (3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
 (el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).
+
+## Layout nativo (#1427 → #1430)
+
+Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\native\layout.json`; `--layout <ruta>` permite probar `ui/fixtures/layout.json` (con `--fuente local` solo para QA sintética). Sondeo cada 500 ms, último JSON válido ante errores; ID, posición global, visibilidad, opacidad y `settings.kind` en kebab-case, resto camelCase. Las instancias ocultas conservan el HWND del monitor; eliminar todas las instancias tampoco termina el proceso. El orden del vector es el orden de pintado. Sin escala ni importación V4.
+
+`layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. Cada aplicación recrea los widgets y re-ingiere la última foto, reutilizando las ventanas de los monitores ocupados.
+
+Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Standings aplica cabecera, pie, `brandVisible` y métricas `none/track/estimatedLaps`. Las demás opciones del manifest se conservan y normalizan, pero sus variantes aún requieren cambios en `ingest`/`paint`, excluidos de este encargo: delta capsule, transparencia de pedales, carrusel, volante, color de banderas, target behind y métricas de pie adicionales. No ofrecerlas como funcionales en el Hub antes de completar esos portes. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).

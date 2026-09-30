@@ -17,6 +17,8 @@ use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 const SIZE: (f32, f32) = (360.0, 140.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
     from: [Option<f64>; 3],
@@ -24,7 +26,7 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: vantare_domain::input_telemetry::project(&Snapshot::default(), prefs),
             from: [None; 3],
@@ -323,7 +325,7 @@ mod tests {
     #[test]
     fn repaint_depends_on_visible_values_and_motion_finishes() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         snapshot.state.player = Some(Player {
             ..Player::default()

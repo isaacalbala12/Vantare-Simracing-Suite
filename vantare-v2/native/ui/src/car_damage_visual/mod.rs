@@ -209,12 +209,14 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: car_damage_visual::project(&Snapshot::default(), prefs),
         }
@@ -279,7 +281,7 @@ mod tests {
             },
             ..Player::default()
         });
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         assert!(widget.ingest(&data, prefs));
         data.sequence += 1;
         assert!(!widget.ingest(&data, prefs));

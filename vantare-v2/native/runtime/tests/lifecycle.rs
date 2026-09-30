@@ -317,23 +317,22 @@ impl Scenario {
 
     /// Época y secuencia más recientes que publica el núcleo, vistas por un
     /// suscriptor propio del escenario.
-    fn observe(subscriber: &mut Subscriber) -> (u64, u64) {
-        let snapshot = subscriber
-            .next(Duration::from_secs(5))
-            .expect("el núcleo debía estar publicando");
+    fn observe(&self, subscriber: &mut Subscriber) -> (u64, u64) {
+        let snapshot = self.wait_for("el núcleo publicando", LONG, || {
+            subscriber.next(Duration::from_millis(100))
+        });
         (snapshot.epoch, snapshot.sequence)
     }
 
-    /// El núcleo sigue publicando: su secuencia avanza en ~1 s.
-    fn assert_core_progresses(subscriber: &mut Subscriber) {
-        let (epoch, before) = Self::observe(subscriber);
-        thread::sleep(Duration::from_secs(1));
-        let (epoch_after, after) = Self::observe(subscriber);
-        assert_eq!(epoch, epoch_after, "el núcleo no debía reiniciarse");
-        assert!(
-            after >= before + 30,
-            "el núcleo se ha frenado: {before} -> {after}"
-        );
+    /// El núcleo publica al menos 30 fotos más sin reiniciarse. El plazo es un
+    /// watchdog de bloqueo, no un presupuesto de CPU del equipo que ejecuta el test.
+    fn assert_core_progresses(&self, subscriber: &mut Subscriber) {
+        let (epoch, before) = self.observe(subscriber);
+        self.wait_for("30 fotos más del núcleo sin reinicio", LONG, || {
+            let snapshot = subscriber.next(Duration::from_millis(100))?;
+            assert_eq!(epoch, snapshot.epoch, "el núcleo no debía reiniciarse");
+            (snapshot.sequence >= before + 30).then_some(())
+        });
     }
 }
 
@@ -368,7 +367,10 @@ fn kill(pid: u32) {
     assert!(status.success(), "taskkill {pid}");
 }
 
-const LONG: Duration = Duration::from_secs(20);
+// Bajo carga, el SO puede tardar en ejecutar el launcher incluso después de
+// que los hijos hayan cerrado. No confundir este watchdog con --plazo (1,5 s),
+// que sigue comprobando el cierre forzado de los hijos colgados.
+const LONG: Duration = Duration::from_mins(1);
 
 /// Núcleo y overlays arrancados y conectados; devuelve el launcher.
 fn running(scenario: &Scenario, launcher_args: &[&str], overlays: &[&str]) -> Launcher {
@@ -418,7 +420,7 @@ fn killing_overlays_leaves_the_core_publishing() {
     scenario.wait_for("overlays reiniciado", LONG, || {
         (scenario.starts("overlays").len() == 2).then_some(())
     });
-    Scenario::assert_core_progresses(&mut watcher);
+    scenario.assert_core_progresses(&mut watcher);
     assert_eq!(
         scenario.starts("core"),
         [(core, epoch)],
@@ -442,9 +444,8 @@ fn a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop() {
             .then_some(())
     });
     let mut watcher = Subscriber::connect(&scenario.pipe, |_| true).unwrap();
-    // Con 20 KB por foto el búfer del pipe del colgado se llena en segundos.
-    thread::sleep(Duration::from_secs(1));
-    Scenario::assert_core_progresses(&mut watcher);
+    // 30 fotos de 20 KB desbordan el búfer del pipe del colgado (64 KB).
+    scenario.assert_core_progresses(&mut watcher);
     let (hung, _) = scenario.starts("overlays")[0];
     assert!(alive(hung));
 
@@ -474,14 +475,13 @@ fn a_second_instance_starts_nothing() {
     let started = scenario.lines("status");
 
     let mut second = scenario.launch(&[], "fake-core", &[]);
-    assert_eq!(scenario.exit_code(&mut second, Duration::from_secs(10)), 0);
+    assert_eq!(scenario.exit_code(&mut second, LONG), 0);
     assert!(
         scenario
             .lines("launcher.log")
             .iter()
             .all(|l| !l.contains("cayó"))
     );
-    thread::sleep(Duration::from_millis(500));
     assert_eq!(
         scenario.lines("status"),
         started,
@@ -584,7 +584,7 @@ fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
         scenario.starts("engineer").get(1).copied()
     });
     let mut watcher = Subscriber::connect(&scenario.pipe, |_| true).unwrap();
-    Scenario::assert_core_progresses(&mut watcher);
+    scenario.assert_core_progresses(&mut watcher);
     assert_eq!(scenario.starts("core"), core);
     assert_eq!(scenario.starts("overlays"), overlays);
     scenario.stop();
@@ -600,15 +600,30 @@ fn engineer_restart_budget_closes_every_child_after_exactly_two_retries() {
     let scenario = Scenario::new("engineer-budget");
     let mut launcher = launch_engineer(&scenario, &["--crash"], 2);
     assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
-    assert_eq!(scenario.starts("engineer").len(), 3);
+    assert_eq!(
+        scenario.starts("engineer").len(),
+        3,
+        "arranque inicial y dos reinicios\nstatus: {:?}\nlauncher: {:?}",
+        scenario.lines("status"),
+        scenario.lines("launcher.log"),
+    );
     let status = scenario.lines("status");
-    assert!(status.contains(&"closed overlays".into()) && status.contains(&"closed core".into()));
+    assert!(
+        status.contains(&"closed overlays".into()) && status.contains(&"closed core".into()),
+        "status: {status:?}\nlauncher: {:?}",
+        scenario.lines("launcher.log"),
+    );
     assert!(
         scenario
             .lines("launcher.log")
             .iter()
             .any(|line| line.contains("Engineer: presupuesto de reinicios agotado"))
     );
+    for who in ["engineer", "overlays", "core"] {
+        for (pid, _) in scenario.starts(who) {
+            assert!(!alive(pid), "{who} (pid {pid}) debía estar muerto");
+        }
+    }
 }
 
 fn a_hung_engineer_is_killed_by_the_grace_deadline() {

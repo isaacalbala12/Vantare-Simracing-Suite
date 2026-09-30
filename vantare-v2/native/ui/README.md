@@ -139,9 +139,7 @@ function cargo {
 ```
 
 **Regresión histórica de Standings (474 × 364).** La escena explícita es
-`fixtures/standings-legacy.snapshot.json`. Se conserva `standings-44.snapshot.json`
-como alias idéntico porque `app.rs` lo incluye en una prueba fuera del alcance
-de este worker; una prueba en `standings/` comprueba su igualdad. La preferencia
+`fixtures/standings-legacy.snapshot.json`. La preferencia
 `VANTARE_STANDINGS_LEGACY` presente selecciona la configuración histórica:
 clasificación global, 10 filas, mejor vuelta y rail PIT. El nombre de la escena
 no decide el modo. Eliminar la variable restaura Signature.

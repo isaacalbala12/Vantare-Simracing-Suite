@@ -177,10 +177,6 @@ mod tests {
         ))
         .expect("escena histórica");
         assert_eq!(legacy, source::fixed());
-        assert_eq!(
-            include_bytes!("../../fixtures/standings-legacy.snapshot.json"),
-            include_bytes!("../../fixtures/standings-44.snapshot.json")
-        );
         let mut widget = Widget::with_layout(true);
         widget.ingest(&legacy, Preferences::default());
         assert_eq!(widget.size(), (474.0, 364.0));

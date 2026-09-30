@@ -233,7 +233,7 @@ Umbral por canal 8, máximo 4 %; no se modificaron referencias:
 | delta | 1005/26880 (3,7388 %) | 1005/26880 (3,7388 %) | 0 píxeles |
 | standings-44 (legacy) | 6341/172536 (3,6752 %) | 6341/172536 (3,6752 %) | 0 píxeles |
 
-Para standings legacy se usaron `ui/fixtures/standings-44.snapshot.json` y la
+Para standings legacy se usaron `ui/fixtures/standings-legacy.snapshot.json` y la
 referencia Wails congelada existente en
 `C:/tmp/vantare-parity-wails/vantare-v2/tools/native-ui/parity/reference/standings-44.png`.
 La pareja `standings.snapshot.json`/`ui/reference/standings.png` de fase 2 tiene

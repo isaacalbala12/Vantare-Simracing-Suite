@@ -360,3 +360,22 @@ Corte 7 terminado: fmt/clippy/test exit 0; 408 correctos (incluye lifecycle),
 C++ incluido. Siete pruebas nuevas: seis de DB/protocolo/grafo y una con dos
 procesos reales para exclusión de propietario. Sin DB de usuario.
 Las consultas públicas y cierre/recovery completo siguen en cortes 8/9.
+
+Corte 8: protocolo page con cursor por índice y máximo 16 chunks; queries
+parametrizadas, sin SQL arbitrario. Read-only no reconstruye toda la sesión
+al abrir. Tests de 40 chunks/cuatro vueltas con todas las calidades y f64
+sensible al roundtrip: comparación exacta con análisis live, archivo original
+sin cambios, límites de página/cursor, pérdida y versión desconocida.
+
+Detalle del corte 9 antes de implementarlo: cliente de proceso bajo flows,
+solo stdlib/serde_json/arc-swap ya presentes. Un hilo posee pipes y receiver;
+el padre conserva Child para terminarlo al agotar plazo. Cancelación y join,
+también si el hilo solo espera al productor. Summary live latest-wins del
+prefijo ACK, con ArcSwap existente y SeriesAnalysis compartido, máximo 256
+resúmenes; replay de prefijo antes de reanudar. No bloquea adquisición ni añade
+un motor de cálculo. Finish devuelve estado durable y resumen final. El stop
+se registra con intentos totales, haciendo visible la cola final perdida;
+EOF/caída no inventa ese total. Una DB ajena se inspecciona primero read-only.
+
+Corte 8 gates: fmt/clippy/test exit 0; clippy 14,69 s; compilación test
+1 min 07 s (sin recompilar C++). 410 correctos, 4 live ignorados, cero fallos.

@@ -20,14 +20,20 @@ Protocolo local UTF-8, array JSON por línea, entrada acotada a 32 KiB+128:
 - Arranque devuelve `["ready", watermark]`.
 - `["append", SeriesChunk-v1]` devuelve `["ack", watermark]` tras COMMIT.
 - `["status"]` devuelve `["status", watermark]`.
+- `["page", after_index, limit]` devuelve `["page", [SeriesChunk-v1...]]`.
+  `limit` entre 1 y 16; cursor por índice, orden creciente. Sin filtros SQL
+  arbitrarios. Leer páginas y consumir con `SeriesAnalysis` (flows) reproduce
+  el mismo cálculo que live. Las pérdidas de índice/offset siguen siendo huecos.
 - `["stop"]` o EOF cierra la conexión y el proceso.
 
 Sin SQL arbitrario. Índice ya guardado con bytes iguales es idempotente;
 contenido distinto, orden/progreso inválido o entrada corrupta falla sin ACK.
 Chunk y watermark se escriben en una transacción. Fallo de SQL/COMMIT obliga
 a reabrir antes de continuar, sin reintento ciego de un resultado incierto.
-Al abrir se verifica watermark y se reconstruye el analizador compartido por
-páginas de 16, con memoria acotada. No confundir este watermark (último chunk
+Al abrir para escribir se verifica watermark y se reconstruye el analizador
+compartido por páginas de 16, con memoria acotada. Read-only no recorre la
+sesión al abrir: consulta solo metadata, y lee las páginas solicitadas.
+No confundir este watermark (último chunk
 guardado) con ausencia de huecos: índice/offset/lost_before conservan pérdidas.
 Un proceso caído puede haber confirmado un chunk cuyo ACK se perdió; repetir
 exactamente ese chunk es seguro.

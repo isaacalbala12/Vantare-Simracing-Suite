@@ -10,6 +10,7 @@ use vantare_runtime::flows::{MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk};
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 const SCHEMA: &str = "vantare.series-db.v1";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
+pub const MAX_PAGE_CHUNKS: usize = 16;
 
 struct Store {
     connection: Connection,
@@ -62,37 +63,50 @@ impl Store {
         if maximum != watermark {
             return Err("watermark inconsistente; preservar DB para diagnóstico".into());
         }
-        let mut analysis = SeriesAnalysis::new(1)?;
-        let mut after = 0;
-        loop {
-            let mut statement = connection.prepare(
-                "SELECT idx, CASE WHEN octet_length(payload) <= 32768 THEN payload ELSE NULL END FROM series_chunks WHERE idx > ? ORDER BY idx LIMIT 16",
-            )?;
-            let rows = statement.query_map([after], |row| {
-                Ok((row.get::<_, u64>(0)?, row.get::<_, Vec<u8>>(1)?))
-            })?;
-            let mut count = 0;
-            for row in rows {
-                let (index, payload) = row?;
-                let chunk = SeriesChunk::from_bytes(&payload)?;
-                if chunk.index != index {
-                    return Err("índice/payload inconsistente".into());
-                }
-                analysis.consume(&chunk)?;
-                after = index;
-                count += 1;
-            }
-            if count == 0 {
-                break;
-            }
-        }
-        Ok(Self {
+        let analysis = SeriesAnalysis::new(1)?;
+        let mut store = Self {
             connection,
             read_only,
             watermark,
             analysis,
             failed: false,
-        })
+        };
+        // Consultas históricas no recorren toda la sesión al abrir.
+        if read_only {
+            return Ok(store);
+        }
+        let mut after = 0;
+        loop {
+            let page = store.page(after, MAX_PAGE_CHUNKS)?;
+            if page.is_empty() {
+                break;
+            }
+            for chunk in page {
+                store.analysis.consume(&chunk)?;
+                after = chunk.index;
+            }
+        }
+        Ok(store)
+    }
+
+    fn page(&self, after: u64, limit: usize) -> Result<Vec<SeriesChunk>> {
+        if !(1..=MAX_PAGE_CHUNKS).contains(&limit) {
+            return Err("página fuera de límites".into());
+        }
+        let mut statement = self.connection.prepare("SELECT idx, CASE WHEN octet_length(payload) <= 32768 THEN payload ELSE NULL END FROM series_chunks WHERE idx > ? ORDER BY idx LIMIT ?")?;
+        let rows = statement.query_map(params![after, u64::try_from(limit)?], |row| {
+            Ok((row.get::<_, u64>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })?;
+        let mut chunks = Vec::with_capacity(limit);
+        for row in rows {
+            let (index, payload) = row?;
+            let chunk = SeriesChunk::from_bytes(&payload)?;
+            if chunk.index != index {
+                return Err("índice/payload inconsistente".into());
+            }
+            chunks.push(chunk);
+        }
+        Ok(chunks)
     }
 
     fn append(&mut self, chunk: &SeriesChunk) -> Result<u64> {
@@ -154,6 +168,16 @@ pub fn serve(
                 json!(["ack", store.append(&chunk)?])
             }
             [Value::String(name)] if name == "status" => json!(["status", store.watermark]),
+            [Value::String(name), after, limit] if name == "page" => {
+                let after = after.as_u64().ok_or("cursor inválido")?;
+                let limit = usize::try_from(limit.as_u64().ok_or("límite inválido")?)?;
+                let chunks = store.page(after, limit)?;
+                let values = chunks
+                    .iter()
+                    .map(|chunk| Ok(serde_json::from_slice::<Value>(&chunk.to_bytes()?)?))
+                    .collect::<Result<Vec<_>>>()?;
+                json!(["page", values])
+            }
             [Value::String(name)] if name == "stop" => break,
             _ => return Err("comando desconocido o campos inválidos".into()),
         };

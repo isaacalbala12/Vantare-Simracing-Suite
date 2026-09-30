@@ -1,6 +1,89 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
+
+#[test]
+fn paged_history_is_read_only_and_matches_live_analysis_with_quality_intact() {
+    let db = Database::new();
+    let mut live = SeriesAnalysis::new(4).unwrap();
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        for index in 1..=40_u64 {
+            let mut value = chunk(index, usize::try_from((index - 1) % 10).unwrap());
+            value.block.lap = u32::try_from((index - 1) / 10).unwrap();
+            if index % 10 == 0 {
+                value.block.sealed_at = Some(index + 1);
+            }
+            value.block.samples[0].speed_mps = match index % 4 {
+                0 => vantare_domain::Quality::Reliable(104.055_343_627_929_69),
+                1 => vantare_domain::Quality::Estimated(50.0),
+                2 => vantare_domain::Quality::Stale(50.0),
+                _ => vantare_domain::Quality::Unavailable,
+            };
+            live.consume(&value).unwrap();
+            store.append(&value).unwrap();
+        }
+    }
+    let original = std::fs::read(&db.0).unwrap();
+    {
+        let mut store = Store::open(&db.0, true).unwrap();
+        assert!(store.page(0, 0).is_err());
+        assert!(store.page(0, MAX_PAGE_CHUNKS + 1).is_err());
+        assert!(store.append(&chunk(41, 0)).is_err());
+        let mut replay = SeriesAnalysis::new(4).unwrap();
+        let mut after = 0;
+        let mut count = 0;
+        loop {
+            let page = store.page(after, 7).unwrap();
+            assert!(page.len() <= 7);
+            if page.is_empty() {
+                break;
+            }
+            for value in page {
+                after = value.index;
+                count += 1;
+                replay.consume(&value).unwrap();
+            }
+        }
+        assert_eq!(count, 40);
+        assert_eq!(replay.recent(), live.recent());
+        assert_eq!(replay.active(), live.active());
+        assert!(store.page(u64::MAX, 1).unwrap().is_empty());
+    }
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+}
+
+#[test]
+fn historical_replay_preserves_loss_and_rejects_unknown_database_versions() {
+    let db = Database::new();
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        store.append(&chunk(1, 0)).unwrap();
+        let mut value = chunk(4, 3);
+        value.lost_before = 2;
+        value.block.sealed_at = Some(5);
+        store.append(&value).unwrap();
+    }
+    {
+        let store = Store::open(&db.0, true).unwrap();
+        let mut replay = SeriesAnalysis::new(1).unwrap();
+        for value in store.page(0, 2).unwrap() {
+            replay.consume(&value).unwrap();
+        }
+        assert_eq!(replay.recent()[0].samples, 2);
+        assert!(replay.recent()[0].gap);
+        assert_eq!(replay.recent()[0].continuous_span_s(), None);
+    }
+    let connection = Connection::open(&db.0).unwrap();
+    connection
+        .execute_batch("UPDATE series_meta SET schema_version='unknown-v2'")
+        .unwrap();
+    drop(connection);
+    let original = std::fs::read(&db.0).unwrap();
+    assert!(Store::open(&db.0, true).is_err());
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+}
+
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 

@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -79,6 +79,7 @@
         "best_lap_s": {
           "reliable": 90.964
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": "unavailable",
         "gap_ahead": "unavailable",
@@ -118,6 +119,7 @@
         "best_lap_s": {
           "reliable": 90.94399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -165,6 +167,7 @@
         "best_lap_s": {
           "reliable": 90.92399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -212,6 +215,7 @@
         "best_lap_s": {
           "reliable": 90.904
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -259,6 +263,7 @@
         "best_lap_s": {
           "reliable": 90.884
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -306,6 +311,7 @@
         "best_lap_s": {
           "reliable": 90.86399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -353,6 +359,7 @@
         "best_lap_s": {
           "reliable": 91.33399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -400,6 +407,7 @@
         "best_lap_s": {
           "reliable": 91.314
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -447,6 +455,7 @@
         "best_lap_s": {
           "reliable": 91.294
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -494,6 +503,7 @@
         "best_lap_s": {
           "reliable": 91.274
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -539,6 +549,7 @@
         "best_lap_s": {
           "reliable": 91.25399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -584,6 +595,7 @@
         "best_lap_s": {
           "reliable": 91.234
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -629,6 +641,7 @@
         "best_lap_s": {
           "reliable": 91.21399999999998
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -676,6 +689,7 @@
         "best_lap_s": {
           "reliable": 91.684
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -723,6 +737,7 @@
         "best_lap_s": {
           "reliable": 91.664
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -770,6 +785,7 @@
         "best_lap_s": {
           "reliable": 91.64399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -817,6 +833,7 @@
         "best_lap_s": {
           "reliable": 91.624
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -866,6 +883,7 @@
         "best_lap_s": {
           "reliable": 91.60399999999998
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -915,6 +933,7 @@
         "best_lap_s": {
           "reliable": 91.584
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -964,6 +983,7 @@
         "best_lap_s": {
           "reliable": 91.564
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -1015,6 +1035,8 @@
       "fuel_per_lap_l": "unavailable",
       "fuel_laps_left": "unavailable",
       "delta_best_s": "unavailable",
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
       "damage_aero": "unavailable",
       "damage_body": "unavailable",
       "damage_suspension": "unavailable",

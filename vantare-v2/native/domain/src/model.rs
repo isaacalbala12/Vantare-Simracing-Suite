@@ -115,6 +115,8 @@ pub struct Car {
     pub laps: Quality<u32>,
     pub last_lap_s: Quality<f64>,
     pub best_lap_s: Quality<f64>,
+    /// Predicción nativa de la duración de vuelta; nunca un tiempo medido.
+    pub estimated_lap_s: Quality<f64>,
     /// Sectores de la última vuelta; tantos como tenga el circuito.
     pub last_sectors_s: Vec<Quality<f64>>,
     /// Distancia al líder de la clasificación general.
@@ -201,6 +203,10 @@ pub struct Player {
     /// Diferencia con la mejor vuelta propia en este punto de la vuelta;
     /// negativo = más rápido. Nativo si el simulador lo da; si no, derivado.
     pub delta_best_s: Quality<f64>,
+    /// Estado nativo del limitador. Falso es válido; ausencia no significa apagado.
+    pub pit_limiter_active: Quality<bool>,
+    /// Detenido en la parada según la fuente; no acredita reparación ni servicio cumplido.
+    pub pit_stop_stopped: Quality<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -392,6 +398,7 @@ fn degrade_car(car: &mut Car) {
         laps,
         last_lap_s,
         best_lap_s,
+        estimated_lap_s,
         last_sectors_s,
         gap_leader,
         gap_ahead,
@@ -412,6 +419,7 @@ fn degrade_car(car: &mut Car) {
     make_stale(laps);
     make_stale(last_lap_s);
     make_stale(best_lap_s);
+    make_stale(estimated_lap_s);
     last_sectors_s.iter_mut().for_each(make_stale);
     make_stale(gap_leader);
     make_stale(gap_ahead);
@@ -435,6 +443,8 @@ fn degrade_player(player: &mut Player) {
         fuel,
         damage,
         delta_best_s,
+        pit_limiter_active,
+        pit_stop_stopped,
     } = player;
     let Telemetry {
         throttle,
@@ -464,6 +474,8 @@ fn degrade_player(player: &mut Player) {
     make_stale(per_lap_l);
     make_stale(laps_left);
     make_stale(delta_best_s);
+    make_stale(pit_limiter_active);
+    make_stale(pit_stop_stopped);
     let Damage {
         aero,
         body,

@@ -151,6 +151,7 @@ fn sanitize(state: &mut State) {
             laps: _,
             last_lap_s,
             best_lap_s,
+            estimated_lap_s,
             last_sectors_s,
             gap_leader,
             gap_ahead,
@@ -168,6 +169,7 @@ fn sanitize(state: &mut State) {
         } = car;
         finite(last_lap_s);
         finite(best_lap_s);
+        keep_if(estimated_lap_s, |v| v.is_finite() && *v > 0.0);
         last_sectors_s.iter_mut().for_each(finite);
         for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
             keep_if(gap, finite_gap);
@@ -196,6 +198,8 @@ fn sanitize_player(player: &mut Player) {
         fuel,
         damage,
         delta_best_s,
+        pit_limiter_active: _, // bool: no requiere saneamiento numérico.
+        pit_stop_stopped: _,
     } = player;
     let Telemetry {
         throttle,
@@ -290,6 +294,39 @@ mod tests {
     use vantare_domain::{Capabilities, Capability, Player, SessionId, Source};
 
     use super::*;
+
+    #[test]
+    fn pit_booleans_expire_and_invalid_estimates_cannot_escape_the_core() {
+        for raw in [f64::NAN, f64::INFINITY, -1.0, 0.0] {
+            let mut state = State {
+                cars: vec![Car {
+                    estimated_lap_s: Quality::Estimated(raw),
+                    ..Car::default()
+                }],
+                ..State::default()
+            };
+            sanitize(&mut state);
+            assert_eq!(state.cars[0].estimated_lap_s, Quality::Unavailable);
+        }
+        let mut state = State {
+            cars: vec![Car {
+                estimated_lap_s: Quality::Estimated(90.0),
+                ..Car::default()
+            }],
+            player: Some(Player {
+                pit_limiter_active: Quality::Reliable(false),
+                pit_stop_stopped: Quality::Reliable(true),
+                ..Player::default()
+            }),
+            ..State::default()
+        };
+        sanitize(&mut state);
+        degrade(&mut state);
+        assert_eq!(state.cars[0].estimated_lap_s, Quality::Stale(90.0));
+        let p = state.player.expect("jugador");
+        assert_eq!(p.pit_limiter_active, Quality::Stale(false));
+        assert_eq!(p.pit_stop_stopped, Quality::Stale(true));
+    }
 
     #[test]
     fn velocity_is_sanitized_and_both_signals_expire() {

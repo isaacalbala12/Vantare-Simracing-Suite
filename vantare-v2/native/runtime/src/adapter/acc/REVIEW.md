@@ -1,5 +1,27 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Señales de tercera ronda — #1428 (2026-09-30)
+
+SDK Kunos SHM 1.8.12 (PDF enlazado abajo): `physics.pitLimiterOn` es int
+booleano **@248**, no turboBoost @276. Solo 0/1 → Reliable; cualquier otro
+valor → Unavailable. Caduca con physics, página cero/pausa o graphics obsoleta;
+recibir graphics/UDP no rejuvenece physics. El corpus ACC real contiene 47 651
+páginas physics con el campo igual a 1; no demuestra conducción ni cambios
+del limitador. Regresión de replay real y vectores de frontera separados.
+
+`graphics.iEstimatedLapTime` @1396 es int de ms; el PDF intercambia las
+descripciones de este int y el wchar `estimatedLapTime` @1364. El corpus real
+corrobora el marcador Int32::MAX con texto `35791:23:647`. Positivo distinto de
+MAX → `Car.estimated_lap_s: Estimated(ms/1000)`; MAX/0/negativo → Unavailable.
+Caduca con graphics. No se acredita una estimación positiva física en ACC.
+
+Los sectores por coche ya viajan desde Broadcasting `last.splits` cuando la
+vuelta estable está admitida. `graphics.lastSectorTime` es solo el último
+sector cruzado: no se coloca automáticamente en los tres sectores de la
+última vuelta. Sin UDP con splits válidos, esos sectores siguen ausentes.
+`graphics.isInPit` dice car is pitting; no prueba estado stopped ni servicio
+cumplido. No se equipara a `pit_stop_stopped`; esta señal permanece ausente.
+
 ## Segunda ronda — #1428 / #1427 (2026-09-30)
 
 `Car.velocity_mps` permanece `Unavailable`, también para el jugador: el

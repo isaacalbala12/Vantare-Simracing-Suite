@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -96,6 +96,7 @@
         "best_lap_s": {
           "reliable": 90.964
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": "unavailable",
         "gap_ahead": "unavailable",
@@ -135,6 +136,7 @@
         "best_lap_s": {
           "reliable": 90.94399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -180,6 +182,7 @@
         "best_lap_s": {
           "reliable": 90.92399999999999
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -225,6 +228,7 @@
         "best_lap_s": {
           "reliable": 90.904
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -270,6 +274,7 @@
         "best_lap_s": {
           "reliable": 90.884
         },
+        "estimated_lap_s": "unavailable",
         "last_sectors_s": [],
         "gap_leader": {
           "reliable": {
@@ -317,6 +322,8 @@
       "fuel_per_lap_l": "unavailable",
       "fuel_laps_left": "unavailable",
       "delta_best_s": "unavailable",
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
       "damage_aero": "unavailable",
       "damage_body": "unavailable",
       "damage_suspension": "unavailable",

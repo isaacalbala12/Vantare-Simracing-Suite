@@ -139,6 +139,7 @@ pub(crate) mod tests {
             laps: Quality::Stale(3),
             last_lap_s: Quality::Reliable(92.123_456_789),
             best_lap_s: Quality::Unavailable,
+            estimated_lap_s: Quality::Estimated(91.5),
             last_sectors_s: vec![Quality::Reliable(30.5), Quality::Unavailable],
             gap_leader: Quality::Estimated(Gap::Time { seconds: 1.25 }),
             gap_ahead: Quality::Reliable(Gap::Laps { count: 2 }),
@@ -242,6 +243,8 @@ pub(crate) mod tests {
                         ..Fuel::default()
                     },
                     delta_best_s: Quality::Reliable(-0.125),
+                    pit_limiter_active: Quality::Reliable(false),
+                    pit_stop_stopped: Quality::Unavailable,
                     damage: Damage {
                         aero: Quality::Reliable(0.9),
                         body: Quality::Estimated(0.8),
@@ -277,6 +280,54 @@ pub(crate) mod tests {
         let original = rich_snapshot(3, 42);
         assert_eq!(round_trip(&original), original);
         assert_eq!(round_trip(&Snapshot::default()), Snapshot::default());
+    }
+
+    #[test]
+    fn pit_and_estimated_time_signals_preserve_all_qualities_and_are_required_in_v6() {
+        for (time, limiter, stopped) in [
+            (
+                Quality::Reliable(90.0),
+                Quality::Reliable(false),
+                Quality::Reliable(true),
+            ),
+            (
+                Quality::Estimated(91.0),
+                Quality::Estimated(true),
+                Quality::Estimated(false),
+            ),
+            (
+                Quality::Stale(92.0),
+                Quality::Stale(false),
+                Quality::Stale(true),
+            ),
+            (
+                Quality::Unavailable,
+                Quality::Unavailable,
+                Quality::Unavailable,
+            ),
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].estimated_lap_s = time;
+            let p = original.state.player.as_mut().expect("jugador");
+            p.pit_limiter_active = limiter;
+            p.pit_stop_stopped = stopped;
+            assert_eq!(round_trip(&original), original);
+        }
+        for (section, field) in [
+            ("player", "pit_limiter_active"),
+            ("player", "pit_stop_stopped"),
+            ("cars", "estimated_lap_s"),
+        ] {
+            let mut value =
+                serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+            let object = if section == "cars" {
+                &mut value["state"][section][0]
+            } else {
+                &mut value["state"][section]
+            };
+            object.as_object_mut().expect("sección").remove(field);
+            assert!(serde_json::from_value::<SnapshotDto>(value).is_err());
+        }
     }
 
     #[test]

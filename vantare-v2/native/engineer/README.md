@@ -8,7 +8,7 @@ Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 ## Ejecución de producto
 
 `vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`
-consume foto DTO v5 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
+consume foto DTO v6 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
 PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
 del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
 retira avisos y para clips; una reentrega no rejuvenece la foto. Ctrl+C o EOF
@@ -45,20 +45,68 @@ activa Spotter. Sin clips no hay audio: los tests solo verifican radio visual.
 No se declara paridad completa con el Spotter Go (debounce/avisos clear),
 validación acústica, ni presupuesto de CPU/latencia/frame time.
 
-Pendientes del microplan de fase 3, **sin implementar**:
+### Señales de tercera ronda — #1428 (2026-09-30)
 
-- Servicio de boxes y limitador: LMU `TelemInfoV01.mSpeedLimiter`,
-  `VehicleScoringInfoV01.mPitState` y estado de petición/servicio del SDK/REST;
-  ACC `physics.pitLimiterOn`, `graphics.isInPitLane/isInPit` y
-  `mandatoryPitDone`. Validar su semántica y capturas antes de anunciar
-  inicio/fin de servicio: entrar en boxes no demuestra un servicio terminado.
-- Timings: tiempos, sectores y progreso nativos de scoring LMU y
-  graphics/Broadcasting ACC. La familia requiere contrato de consultas y
-  reloj común y, para historia, hechos canónicos del núcleo; no deducirlos
-  de saltos entre fotos coalescidas. Posición/stint y vueltas históricas
-  dependen del journal y señales de identidad/servicio, según el microplan.
-- Las sanciones quedan en el DTO con calidad; no se añade aquí una familia
-  de avisos ni se infiere tipo, causa, plazo o servicio cumplido.
+DTO v6 añade `Car.estimated_lap_s`, `Player.pit_limiter_active` y
+`Player.pit_stop_stopped`, con ida/vuelta de las cuatro calidades y campos
+obligatorios. Las capacidades de familia ya existentes siguen vigentes;
+la presencia/frescura de cada nueva señal la determina su `Quality`.
+`degrade` y `sanitize` desestructuran todos los campos sin `..`.
+
+LMU: limitador telemetry +604 con disponibilidad +656 y reloj +12, stopped
+scoring +457, vuelta estimada scoring +472. Sectores de la última vuelta por
+coche desde +152/+160/+168, convirtiendo acumulados en duraciones individuales
+solo si son coherentes. Fixtures legacy con bytes borrados no acreditan un
+limitador apagado ni parada inexistente. ACC: limitador physics @248,
+vuelta estimada graphics @1396; los sectores de rivales/jugador ya disponibles
+se conservan desde Broadcasting. Las estimaciones son `Estimated`, nunca
+pruebas fiables de un tiempo medido. Detalle de SDK, offsets, ausencia y
+frescura en `runtime/src/adapter/{lmu,acc}/REVIEW.md`.
+
+Radio nueva: `pitstops.engage_limiter` con jugador en boxes, limitador apagado
+y velocidad >5 m/s; `pitstops.disengage_limiter` fuera de boxes, limitador
+encendido, sector cero y velocidad >5 m/s. Todas las señales necesarias deben
+ser `Reliable`, con fuente `Live`; stopped fiable también retira el aviso.
+La cola existente revalida al presentar y
+retira al perder calidad o cambiar sujeto/época; ACK deduplica la condición
+estable y los avisos comparten 30 s de cadencia desde creación del último
+mensaje presentado. Respeta `families.pitstops` y `enabled`; TTL 10 s.
+Son recordatorios de condición actual, también tras baseline, **no hechos de
+entrada/salida/servicio deducidos entre fotos**. Entrada/salida sigue requiriendo
+el journal productivo, con revisión/sujeto actuales.
+
+Los dos textos nuevos se resuelven en la caché de voz por su hash como el
+resto. Su ausencia se declara `voice:missing`; no se genera ni sustituye audio.
+No se amplía el contrato de packs existentes ni se declara prueba acústica.
+
+Pendientes razonados del microplan:
+
+- Servicio iniciado/terminado y duración de la parada: `mPitState=3` demuestra
+  stopped, no qué operaciones se hicieron ni su finalización. ACC `isInPit`,
+  `mandatoryPitDone` e `isInPitLane` tienen otra semántica. El inventario REST
+  de 2026-09-30 contiene menú/carga, PitMenu HTTP 500 y reparación 404: no hay
+  evidencia de servicio utilizable. No anunciar servicio cumplido.
+- Tiempo en boxes: no hay temporizador nativo admitido. Una futura derivación
+  necesita continuidad y reloj común en el núcleo/journal; no acumular el
+  tiempo entre fotos coalescidas del consumidor.
+- LMU requested/entering/exiting: el SDK los enumera, pero este corte solo
+  necesita stopped. No añade un enum duplicado de fase ni interpreta ninguno
+  como servicio cumplido; captura física positiva pendiente.
+- Timings de radio/consultas: ahora viajan la estimación y los sectores que
+  las fuentes pueden aportar. Faltan contrato de consulta/race-limit/reloj,
+  hechos canónicos para historia y pruebas de vueltas físicas. ACC graphics
+  aporta solo el último sector cruzado; sin splits UDP válidos no fabrica la
+  última vuelta completa. No se activa una familia de timings por estos campos.
+- Avisos de velocidad máxima de boxes, distancia al box, ventana/estrategia,
+  conteo de servicios y swaps: faltan límite nativo, geometría o contratos
+  correspondientes; velocidad + in_pits no bastan.
+- Sanciones: contador con calidad ya presente; no se infiere tipo, causa,
+  plazo ni servicio cumplido y no se añade aquí su familia de avisos.
+
+Migración mecánica de fixtures y `src/*/scenes/*.json`: 247 snapshots en
+27 archivos; versión 6 y nuevas señales `Unavailable`. Verificación estructural
+conserva cada valor anterior, incluidas preferencias y secuencias; renderer y
+ViewModels no se modifican. No se declara nueva campaña de capturas de píxeles.
 
 Notion no disponible: excepción expresa del encargo del 2026-09-30. Evidencia
 local para revisión de Opus; sin actualización Notion, push, PR ni integración.

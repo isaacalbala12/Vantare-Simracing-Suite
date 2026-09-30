@@ -24,6 +24,23 @@ Protocolo local UTF-8, array JSON por línea, entrada acotada a 32 KiB+128:
   `limit` entre 1 y 16; cursor por índice, orden creciente. Sin filtros SQL
   arbitrarios. Leer páginas y consumir con `SeriesAnalysis` (flows) reproduce
   el mismo cálculo que live. Las pérdidas de índice/offset siguen siendo huecos.
+- Solo en modo read-only: `["summaries"]` devuelve
+  `["summaries", "series-summary.v1", total_segmentos, resúmenes]`.
+  Recorre páginas de 16 mediante `SeriesAnalysis`, con 255 recientes + una
+  activa como máximo; total permite mostrar la retención explícitamente.
+  Cada resumen expone identidad completa, `first_chunk`, `next_chunk` (null
+  para el último), seal, gap, muestras, ventana observada y `SignalSummary`
+  (min/media/max y los cuatro contadores de calidad) de velocidad/pedales.
+  No es duración de vuelta ni ritmo Go. No retiene muestras al resumir.
+- Solo en modo read-only: `["plot-page", after_index, limit]` devuelve
+  `["plot-page", "series-plot.v1", chunks]`, sobre la misma consulta paginada
+  y codec validado. Cada chunk lleva index/offset/gap, época/sesión/coche/vuelta y muestras con
+  distance/elapsed/speed/throttle/brake en SI. Solo Reliable lleva número;
+  el resto es null (los contadores de calidad siguen en el resumen).
+  El Hub usa esta lectura para gráficos sin enlazar runtime/DuckDB.
+- Fallo de apertura read-only: `["error", "locked"|"incompatible"|"unreadable", diagnóstico]`
+  antes de salir con error. La distinción lock usa el diagnóstico de DuckDB;
+  no se inventa que una DB con finished=false siga teniendo un writer activo.
 - `["stop"]` o EOF cierra la conexión y el proceso.
 - `["finish", attempted]` confirma COMMIT del cierre con
   `["finished", watermark, true, attempted]`. `attempted >= watermark`.

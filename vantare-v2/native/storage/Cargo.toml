@@ -9,10 +9,8 @@ publish.workspace = true
 # Autorización explícita del orquestador, ISA-1429: solo este proceso usa SQL.
 duckdb = { version = "=1.10505.0", features = ["bundled"] }
 vantare-runtime = { path = "../runtime" }
-serde_json = { version = "1", features = ["float_roundtrip"] }
-
-[dev-dependencies]
 vantare-domain.workspace = true
+serde_json = { version = "1", features = ["float_roundtrip"] }
 
 [lints]
 workspace = true

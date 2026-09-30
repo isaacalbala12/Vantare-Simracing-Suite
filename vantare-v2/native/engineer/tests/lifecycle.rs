@@ -119,6 +119,7 @@ fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real
                 car: CarId(7),
                 ..Player::default()
             }),
+            source_state: vantare_domain::SourceState::Live,
             ..State::default()
         },
     };

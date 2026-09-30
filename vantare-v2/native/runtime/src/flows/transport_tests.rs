@@ -21,6 +21,7 @@ fn photo(tick: u64) -> Observation {
                 laps: Quality::Reliable(u32::try_from(tick - 1).unwrap()),
                 ..Car::default()
             }],
+            source_state: vantare_domain::SourceState::Live,
             ..State::default()
         },
         ..Observation::default()

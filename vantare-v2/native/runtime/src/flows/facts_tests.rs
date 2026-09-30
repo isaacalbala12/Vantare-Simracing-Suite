@@ -27,6 +27,7 @@ fn photo(tick: u64, lap: u32, in_pits: bool) -> Observation {
                 ..Player::default()
             }),
             flags: Quality::Reliable(Vec::new()),
+            source_state: SourceState::Live,
             ..State::default()
         },
         ..Observation::default()

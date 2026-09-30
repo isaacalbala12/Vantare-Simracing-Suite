@@ -66,6 +66,7 @@ fn photo(tick: u64, in_pits: bool) -> Observation {
                 car: CarId(7),
                 ..Player::default()
             }),
+            source_state: vantare_domain::SourceState::Live,
             ..State::default()
         },
     }

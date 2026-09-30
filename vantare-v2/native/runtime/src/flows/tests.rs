@@ -23,6 +23,7 @@ pub(super) fn photo(sequence: u64, in_pits: bool) -> Observation {
                 car: CarId(7),
                 ..Player::default()
             }),
+            source_state: vantare_domain::SourceState::Live,
             ..State::default()
         },
         ..Observation::default()

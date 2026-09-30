@@ -59,3 +59,11 @@ sin firma. Ver [integración pendiente](INTEGRATION.md): el núcleo/IPC actual
 todavía no consume esta autoridad y el host rechaza esas acciones mientras
 falta el puente y el ACK del núcleo. No presentar esto como corte extremo a
 extremo completado. dalek evita criptografía propia; chrono conserva RFC3339Nano.
+
+Corte 4: RPC público `visual_roadmap_current`, validación antes de reemplazar
+caché, separación por proyecto/canal y vista Orbit. Una publicación válida con
+items vacíos sí reemplaza; ausencia de publicación o respuesta inválida conserva
+la anterior. Sin editor, Realtime ni polling de red; reintento manual, una petición
+por acción. Gates de services (18 tests) y native pasan con -j 2.
+El cliente IPC permite el presupuesto HTTP fuera del hilo UI y
+detecta un helper cerrado antes de emitir la siguiente acción.

@@ -18,6 +18,8 @@ pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
 pub mod protocol;
+#[cfg(feature = "network")]
+pub mod roadmap;
 pub mod storage;
 
 pub use error::{Error, Result};

@@ -17,6 +17,8 @@ pub struct App {
     store: Option<Store>,
     account: Option<Account>,
     login_pending: bool,
+    roadmap_store: Option<Store>,
+    roadmap: Option<crate::roadmap::Roadmap>,
 }
 
 impl App {
@@ -28,6 +30,8 @@ impl App {
             store: None,
             account: None,
             login_pending: false,
+            roadmap_store: None,
+            roadmap: None,
         }
     }
 
@@ -94,6 +98,9 @@ impl App {
                 });
             }
             Command::Shutdown => return Ok(Reply::Closed),
+            Command::RoadmapCached | Command::RoadmapRefresh => {
+                return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
+            }
             Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
                 return Err(Error::BridgeUnconfigured);
             }
@@ -125,7 +132,10 @@ impl App {
                 self.login_pending = false;
                 account.logout(store)?;
             }
-            Command::Status | Command::Shutdown => return Err(Error::Protocol),
+            Command::Status
+            | Command::Shutdown
+            | Command::RoadmapCached
+            | Command::RoadmapRefresh => return Err(Error::Protocol),
             Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
                 return Err(Error::BridgeUnconfigured);
             }
@@ -142,6 +152,46 @@ impl App {
                 "Sesión cerrada en este dispositivo"
             }
             .into(),
+        })
+    }
+
+    fn roadmap_reply(&mut self, refresh: bool) -> Result<Reply> {
+        let base = self.config.supabase.as_ref().ok_or(Error::Unconfigured)?;
+        if self.roadmap.is_none() {
+            let context = format!(
+                "roadmap-v1|{base}|{}",
+                self.config.channel.unwrap_or("unknown")
+            );
+            let store = Store::open(&self.root, &context)?;
+            self.roadmap = Some(crate::roadmap::Roadmap::restore(&store)?);
+            self.roadmap_store = Some(store);
+        }
+        let roadmap = self.roadmap.as_mut().ok_or(Error::Storage)?;
+        let outcome = if refresh {
+            match self.config.anon_key {
+                Some(anon) => roadmap.refresh(
+                    &self.http,
+                    base,
+                    anon,
+                    now()?,
+                    self.roadmap_store.as_ref().ok_or(Error::Storage)?,
+                ),
+                None => Err(Error::Unconfigured),
+            }
+        } else {
+            Err(Error::Offline)
+        };
+        Ok(Reply::Roadmap {
+            publication: roadmap.publication().cloned(),
+            fetched_at: roadmap.fetched_at(),
+            stale: outcome.is_err(),
+            message: match outcome {
+                Ok(()) => "Publicación actualizada".into(),
+                Err(Error::Offline) if !refresh => {
+                    "Última publicación guardada; puede actualizarla manualmente".into()
+                }
+                Err(error) => error.to_string(),
+            },
         })
     }
 }

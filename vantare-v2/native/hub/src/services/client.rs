@@ -89,7 +89,10 @@ impl Client {
             return Err("bootstrap inválido");
         }
         let stop = Arc::new(Event::new().map_err(|_| "IPC no disponible")?);
-        let pipe = connect(name, Arc::clone(&stop), IO_TIMEOUT).map_err(|_| "IPC no disponible")?;
+        // Discovery/token/userinfo may each use the HTTP 8s budget. Cancellation
+        // interrupts this wait; the render thread never waits on the pipe.
+        let pipe = connect(name, Arc::clone(&stop), Duration::from_secs(30))
+            .map_err(|_| "IPC no disponible")?;
         let peer = pipe.server_peer().map_err(|_| "servicio no identificado")?;
         if peer.pid != child.id()
             || !peer.is_image(binary)
@@ -125,6 +128,10 @@ impl Client {
 
     pub fn cancellation(&self) -> Arc<Event> {
         Arc::clone(&self.stop)
+    }
+
+    pub fn is_running(&mut self) -> bool {
+        self.child.try_wait().is_ok_and(|status| status.is_none())
     }
 }
 

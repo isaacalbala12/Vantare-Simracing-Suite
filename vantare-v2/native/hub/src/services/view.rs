@@ -15,6 +15,13 @@ use vantare_ipc::transport::Event;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 
+#[derive(Default)]
+struct AccountState {
+    pending: bool,
+    signed_in: bool,
+    cancel_login: bool,
+}
+
 pub struct Remote {
     root: PathBuf,
     send: Option<SyncSender<Command>>,
@@ -22,9 +29,12 @@ pub struct Remote {
     stop: Arc<AtomicBool>,
     cancellation: Cancellation,
     busy: bool,
-    pending: bool,
-    signed_in: bool,
+    account: AccountState,
     message: String,
+    roadmap_active: bool,
+    publication: Option<super::protocol::roadmap_document::Publication>,
+    roadmap_message: String,
+    stale: bool,
 }
 
 impl Remote {
@@ -41,9 +51,12 @@ impl Remote {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: Arc::new(Mutex::new(None)),
             busy: false,
-            pending: false,
-            signed_in: false,
+            account: AccountState::default(),
             message: "servicio no configurado".into(),
+            roadmap_active: false,
+            publication: None,
+            roadmap_message: "No hay una publicación válida guardada".into(),
+            stale: true,
         }
     }
 
@@ -75,6 +88,12 @@ impl Remote {
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 };
                 let result = (|| {
+                    if client
+                        .as_mut()
+                        .is_some_and(|client: &mut Client| !client.is_running())
+                    {
+                        client = None;
+                    }
                     if client.is_none() {
                         let started = Client::start_in(&default_binary()?, Some(&root))?;
                         *cancellation.lock().map_err(|_| "servicios cancelado")? =
@@ -108,6 +127,7 @@ impl Remote {
     }
 
     fn dispatch(&mut self, command: Command) -> bool {
+        self.roadmap_active = matches!(command, Command::RoadmapCached | Command::RoadmapRefresh);
         self.start();
         if self
             .send
@@ -123,6 +143,10 @@ impl Remote {
     }
 
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
+        if self.busy && self.account.pending && matches!(command, Command::Logout) {
+            self.account.cancel_login = true;
+            return;
+        }
         if self.busy || self.stop.load(Ordering::Acquire) || !self.dispatch(command) {
             return;
         }
@@ -131,16 +155,34 @@ impl Remote {
             loop {
                 let keep = this
                     .update(cx, |this, cx| {
-                        let reply = this
-                            .receive
-                            .as_ref()
-                            .and_then(|receive| receive.try_recv().ok());
+                        let reply = match this.receive.as_ref().map(Receiver::try_recv) {
+                            Some(Ok(reply)) => Some(reply),
+                            Some(Err(mpsc::TryRecvError::Disconnected)) => Some(Reply::Error {
+                                message: "servicios desconectado".into(),
+                            }),
+                            _ => None,
+                        };
                         if let Some(reply) = reply {
                             this.busy = false;
-                            this.pending = false;
+                            this.account.pending = false;
                             match reply {
                                 Reply::Status { message, .. } | Reply::Error { message } => {
-                                    this.message = message;
+                                    if this.roadmap_active {
+                                        this.roadmap_message = message;
+                                        this.stale = true;
+                                    } else {
+                                        this.message = message;
+                                    }
+                                }
+                                Reply::Roadmap {
+                                    publication,
+                                    stale,
+                                    message,
+                                    ..
+                                } => {
+                                    this.publication = publication;
+                                    this.stale = stale;
+                                    this.roadmap_message = message;
                                 }
                                 Reply::Account {
                                     signed_in,
@@ -148,14 +190,21 @@ impl Remote {
                                     message,
                                     ..
                                 } => {
-                                    this.signed_in = signed_in;
-                                    this.pending = pending;
+                                    this.account.signed_in = signed_in;
+                                    this.account.pending = pending;
                                     this.message = message;
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
                             }
-                            if this.pending {
-                                this.dispatch(Command::AccountPoll);
+                            if this.account.pending {
+                                let command = if this.account.cancel_login {
+                                    this.account.cancel_login = false;
+                                    Command::Logout
+                                } else {
+                                    Command::AccountPoll
+                                };
+                                this.dispatch(command);
+                                cx.notify();
                             } else {
                                 cx.notify();
                             }
@@ -178,7 +227,7 @@ impl Remote {
                 .child(orbit::callout(self.message.clone()))
                 .child(orbit::setting_row(
                     "Sesión",
-                    if self.signed_in {
+                    if self.account.signed_in {
                         "Conectada en este dispositivo"
                     } else {
                         "Inicie sesión en su navegador"
@@ -207,6 +256,59 @@ impl Remote {
                     orbit::INK_3,
                 )),
         )
+    }
+
+    pub fn roadmap(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let mut body = orbit::card_body()
+            .child(orbit::callout(self.roadmap_message.clone()))
+            .child(
+                orbit::button("services-roadmap-cache", "Ver publicación guardada").on_click(
+                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapCached, cx)),
+                ),
+            )
+            .child(
+                orbit::button("services-roadmap-refresh", "Actualizar roadmap").on_click(
+                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapRefresh, cx)),
+                ),
+            );
+        if let Some(publication) = &self.publication {
+            body = body.child(orbit::text(
+                format!(
+                    "Publicada: {}{}",
+                    publication.published_at,
+                    if self.stale { " · guardada" } else { "" }
+                ),
+                12.0,
+                400,
+                orbit::INK_3,
+            ));
+            if publication.document.items.is_empty() {
+                body = body.child(orbit::text(
+                    "Esta publicación no contiene entradas",
+                    13.5,
+                    400,
+                    orbit::INK_2,
+                ));
+            }
+            for section in ["now", "next", "done"] {
+                for item in publication
+                    .document
+                    .items
+                    .iter()
+                    .filter(|item| item.section == section)
+                {
+                    body = body
+                        .child(orbit::eyebrow(match section {
+                            "now" => "Ahora",
+                            "next" => "Después",
+                            _ => "Completado",
+                        }))
+                        .child(orbit::text(item.title.es.clone(), 15.0, 700, orbit::INK))
+                        .child(orbit::text(item.body.es.clone(), 13.5, 400, orbit::INK_2));
+                }
+            }
+        }
+        orbit::card("Roadmap público").child(body)
     }
 
     pub fn licenses(&self, cx: &mut Context<Self>) -> gpui::Div {

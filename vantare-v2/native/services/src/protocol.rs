@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
 pub const VERSION: u32 = 1;
+#[path = "roadmap_document.rs"]
+pub mod roadmap_document;
 pub const MAX_FRAME: usize = 64 * 1024;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -16,6 +18,8 @@ pub enum Command {
     LicenseStatus,
     LicenseRenew,
     DeviceReset,
+    RoadmapCached,
+    RoadmapRefresh,
     Shutdown,
 }
 
@@ -36,6 +40,12 @@ pub enum Reply {
         message: String,
     },
     Closed,
+    Roadmap {
+        publication: Option<roadmap_document::Publication>,
+        fetched_at: Option<u64>,
+        stale: bool,
+        message: String,
+    },
     Account {
         signed_in: bool,
         expires_at: Option<u64>,

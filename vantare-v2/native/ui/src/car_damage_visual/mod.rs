@@ -138,7 +138,9 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 &value,
             ))
         });
-        let wrapped = widths.iter().sum::<f32>() + 28.0 > 126.0;
+        let start = usize::from(!vm.show_aero);
+        let count = 3 - start;
+        let wrapped = widths[start..].iter().sum::<f32>() + (count - 1) as f32 * 14.0 > 126.0;
         // Chrome ajusta el origen del viewport SVG a píxel físico.
         let y = ((SIZE.1 - if wrapped { 144.0 } else { 113.0 }) / 2.0).round();
         polygon(
@@ -161,13 +163,13 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             fill(vm.damage[0]),
         );
         suspension(window, y, fill(vm.damage[2]));
-        let first_count = if wrapped { 2 } else { 3 };
-        let first_width =
-            widths[..first_count].iter().sum::<f32>() + (first_count - 1) as f32 * 14.0;
+        let first_count = if wrapped { 2 } else { count };
+        let first_width = widths[start..start + first_count].iter().sum::<f32>()
+            + (first_count - 1) as f32 * 14.0;
         let mut x = (SIZE.0 - first_width) / 2.0;
-        for (i, width) in widths.into_iter().enumerate() {
-            let top = y + 90.0 + if wrapped && i == 2 { 31.0 } else { 0.0 };
-            if wrapped && i == 2 {
+        for (i, width) in widths.into_iter().enumerate().skip(start) {
+            let top = y + 90.0 + if wrapped && i == start + 2 { 31.0 } else { 0.0 };
+            if wrapped && i == start + 2 {
                 x = (SIZE.0 - width) / 2.0;
             }
             let center = x + width / 2.0;
@@ -209,16 +211,47 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub show_aero: bool,
+    pub show_percent: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_aero: true,
+            show_percent: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "showPercent",
+        "CarDamageVisualFunctional muestra porcentajes siempre",
+    )];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        self.clone()
+    }
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = car_damage_visual::project(snapshot, prefs);
+        vm.show_aero = self.show_aero;
+        vm
+    }
+}
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: car_damage_visual::project(&Snapshot::default(), prefs),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs),
         }
     }
 
@@ -228,7 +261,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(&mut self.vm, car_damage_visual::project(snapshot, prefs))
+        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
@@ -248,6 +281,23 @@ impl Widget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn aero_setting_hides_only_the_legend_and_preserves_svg_damage() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/car-damage-visual.snapshot.json"
+        ))
+        .expect("scene");
+        let normal = Settings::default().project(&snapshot, Preferences::default());
+        let hidden = Settings {
+            show_aero: false,
+            ..Settings::default()
+        }
+        .project(&snapshot, Preferences::default());
+        assert!(!hidden.show_aero);
+        assert_eq!(hidden.damage, normal.damage);
+        assert_eq!(hidden.percentages, normal.percentages);
+    }
+
     use super::*;
     use vantare_domain::{Capability, Damage, Player, Quality};
 
@@ -282,7 +332,7 @@ mod tests {
             },
             ..Player::default()
         });
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&data, prefs));
         data.sequence += 1;
         assert!(!widget.ingest(&data, prefs));

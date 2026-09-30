@@ -33,6 +33,7 @@ pub enum Event {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
+    pub capsule: bool,
     pub identity: (u64, SessionId, Option<crate::CarId>),
     pub status: Status,
     pub status_text: Option<&'static str>,
@@ -107,6 +108,7 @@ pub fn project_reference(
         (Reference::PreviousLap, Language::En) => Some("Previous lap: unavailable"),
     };
     ViewModel {
+        capsule: false,
         identity: (
             snapshot.epoch,
             state.session.id,

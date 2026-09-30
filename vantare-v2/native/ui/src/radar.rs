@@ -100,6 +100,11 @@ use vantare_domain::{Snapshot, format::Preferences};
 
 empty_settings!();
 
+impl Settings {
+    /// `RadarFunctional` no ofrece ajustes visuales ni de contenido.
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }

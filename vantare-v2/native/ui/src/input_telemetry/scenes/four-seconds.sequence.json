@@ -1,0 +1,3856 @@
+[
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 1,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 0
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 0
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.55
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 2,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 20000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 100000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.565
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 3,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 40000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 200000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.581
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 4,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 60000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 300000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.596
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 5,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 80000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 400000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.612
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 6,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 100000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 500000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.627
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 7,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 120000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 600000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.642
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 8,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 140000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 700000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.658
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 9,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 160000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 800000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.673
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 10,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 180000000
+      },
+      "received_at": {
+        "secs": 0,
+        "nanos": 900000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.688
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 11,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 200000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 0
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.704
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 12,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 220000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 100000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.719
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 13,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 240000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 200000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.735
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 14,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 260000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 300000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.75
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 15,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 280000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 400000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.765
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 16,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 300000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 500000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.781
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 17,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 320000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 600000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.796
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 18,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 340000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 700000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.812
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 19,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 360000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 800000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.827
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 20,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 380000000
+      },
+      "received_at": {
+        "secs": 1,
+        "nanos": 900000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.842
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 21,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 400000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 0
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.858
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 22,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 420000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 100000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.873
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 23,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 440000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 200000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 0.127
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 58.953846153846165
+        },
+        "engine_speed_rad_s": {
+          "reliable": 859.3866980723773
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 24,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 460000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 300000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 0.358
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 53.415384615384625
+        },
+        "engine_speed_rad_s": {
+          "reliable": 784.4717963329283
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 25,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 480000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 400000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 0.588
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 47.87692307692308
+        },
+        "engine_speed_rad_s": {
+          "reliable": 709.5568945934792
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 26,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 500000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 500000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 0.819
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 42.33846153846154
+        },
+        "engine_speed_rad_s": {
+          "reliable": 634.6419928540304
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 27,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 520000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 600000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 1.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 38
+        },
+        "engine_speed_rad_s": {
+          "reliable": 575.9586531581286
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 28,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 540000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 700000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 1.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 38
+        },
+        "engine_speed_rad_s": {
+          "reliable": 575.9586531581286
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 29,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 560000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 800000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 1.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 38
+        },
+        "engine_speed_rad_s": {
+          "reliable": 575.9586531581286
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 30,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 580000000
+      },
+      "received_at": {
+        "secs": 2,
+        "nanos": 900000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 1.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 38
+        },
+        "engine_speed_rad_s": {
+          "reliable": 575.9586531581286
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 31,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 600000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 0
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.0
+        },
+        "brake": {
+          "reliable": 1.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 3
+        },
+        "speed_mps": {
+          "reliable": 38
+        },
+        "engine_speed_rad_s": {
+          "reliable": 575.9586531581286
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 32,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 620000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 100000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 33,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 640000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 200000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 34,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 660000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 300000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 35,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 680000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 400000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 36,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 700000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 500000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 37,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 720000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 600000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 38,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 740000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 700000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 39,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 760000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 800000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 40,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 780000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 900000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 1.0
+        },
+        "brake": {
+          "reliable": 0.0
+        },
+        "clutch": {
+          "reliable": 0
+        },
+        "gear": {
+          "reliable": 5
+        },
+        "speed_mps": {
+          "reliable": 62
+        },
+        "engine_speed_rad_s": {
+          "reliable": 900.589894029074
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  },
+  {
+    "version": 4,
+    "epoch": 3,
+    "sequence": 41,
+    "origin": {
+      "simulator": "unknown",
+      "kind": "replay",
+      "source_time": {
+        "secs": 0,
+        "nanos": 780000000
+      },
+      "received_at": {
+        "secs": 3,
+        "nanos": 900000000
+      }
+    },
+    "state": {
+      "capabilities": {
+        "session_clock": "unsupported",
+        "positions": "unsupported",
+        "lap_times": "unsupported",
+        "gaps": "unsupported",
+        "pit_status": "unsupported",
+        "flags": "unsupported",
+        "spatial": "unsupported",
+        "driver_inputs": "unsupported",
+        "powertrain": "unsupported",
+        "fuel": "unsupported",
+        "delta": "unsupported",
+        "sectors": "unsupported",
+        "lap_progress": "unsupported",
+        "weather": "unsupported",
+        "damage": "unsupported"
+      },
+      "session": {
+        "id": 0,
+        "kind": "unavailable",
+        "state": "unavailable",
+        "elapsed_s": "unavailable",
+        "remaining_s": "unavailable",
+        "track_name": "unavailable",
+        "laps_remaining": "unavailable",
+        "laps_total": "unavailable",
+        "track_length_m": "unavailable",
+        "weather_air_temperature_k": "unavailable",
+        "weather_track_temperature_k": "unavailable",
+        "weather_wind_speed_mps": "unavailable",
+        "weather_wind_direction_rad": "unavailable",
+        "weather_rain": "unavailable",
+        "weather_track_wetness": "unavailable",
+        "weather_pressure_pa": "unavailable"
+      },
+      "flags": "unavailable",
+      "cars": [],
+      "player": {
+        "car": 1,
+        "throttle": {
+          "reliable": 0.75
+        },
+        "brake": {
+          "reliable": 0.125
+        },
+        "clutch": {
+          "reliable": 0.06
+        },
+        "gear": {
+          "reliable": 4
+        },
+        "speed_mps": {
+          "reliable": 50
+        },
+        "engine_speed_rad_s": {
+          "reliable": 753.9822368615503
+        },
+        "fuel_level_l": "unavailable",
+        "fuel_capacity_l": "unavailable",
+        "fuel_per_lap_l": "unavailable",
+        "fuel_laps_left": "unavailable",
+        "delta_best_s": "unavailable",
+        "damage_aero": "unavailable",
+        "damage_body": "unavailable",
+        "damage_suspension": "unavailable",
+        "damage_tyre_wear": [
+          "unavailable",
+          "unavailable",
+          "unavailable",
+          "unavailable"
+        ],
+        "steering": "unavailable",
+        "fuel_history": []
+      },
+      "source_state": "live"
+    }
+  }
+]

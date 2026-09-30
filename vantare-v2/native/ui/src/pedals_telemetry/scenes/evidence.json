@@ -1,0 +1,583 @@
+{
+  "issue": 1427,
+  "widget": "pedals-telemetry",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "no-clutch",
+      "settings": {
+        "showClutch": false
+      },
+      "capture": "evidence/no-clutch.png",
+      "capture_sha256": "54c027c4990022bb35b947c0c53bbb099b951436f13524c5858c993f43275709",
+      "fresh_product_capture_sha256": "f1e7de03b5a24692802d3d6d5fe68ec7fa2537bbe94586e4ac3be462d7e1cd12",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1176,
+        "total_pixels": 33600,
+        "percent": 3.5,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "alpine-a424",
+      "settings": {
+        "steeringWheel": "alpine-a424"
+      },
+      "capture": "evidence/alpine-a424.png",
+      "capture_sha256": "e300a5edbc6fd9a63f1266b1e39eff94aa051b1f217eb4ccbe268f82e3b9d581",
+      "fresh_product_capture_sha256": "c9dd5b6fa508a81d610e35820a2e67f2bd5aeb4c27c72183ef5bddeead7991d0",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1044,
+        "total_pixels": 33600,
+        "percent": 3.1071,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "aston-martin-valkyrie",
+      "settings": {
+        "steeringWheel": "aston-martin-valkyrie"
+      },
+      "capture": "evidence/aston-martin-valkyrie.png",
+      "capture_sha256": "11a77cc503688d8da5b238403998e6acafeda583347edf3a92350cfc03097720",
+      "fresh_product_capture_sha256": "4c4ac2e93afdd7f7c4b427d48f969343614561d2d51669bd7266a701f9fbcd5e",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1020,
+        "total_pixels": 33600,
+        "percent": 3.0357,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "bmw-m-hybrid-v8-pre-le-mans",
+      "settings": {
+        "steeringWheel": "bmw-m-hybrid-v8-pre-le-mans"
+      },
+      "capture": "evidence/bmw-m-hybrid-v8-pre-le-mans.png",
+      "capture_sha256": "85434de713ced122d6069d06a3a38bfc825fcf63699e9afeec90b736dedf4b2b",
+      "fresh_product_capture_sha256": "9774acb75842d2c551ae0d66aebf5416d69efb1a4138c3cf45e80634d6fb5623",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1040,
+        "total_pixels": 33600,
+        "percent": 3.0952,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "bmw-m-hybrid-v8",
+      "settings": {
+        "steeringWheel": "bmw-m-hybrid-v8"
+      },
+      "capture": "evidence/bmw-m-hybrid-v8.png",
+      "capture_sha256": "934c37432817c332c9fa61bfe468399960c0d7e7ae3a44447108326ffdcdc23f",
+      "fresh_product_capture_sha256": "15ac341083064593a15bd2de941a15a5bf5861f74d5137479a8b9949f26e5244",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1020,
+        "total_pixels": 33600,
+        "percent": 3.0357,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "cadillac-v-series-r",
+      "settings": {
+        "steeringWheel": "cadillac-v-series-r"
+      },
+      "capture": "evidence/cadillac-v-series-r.png",
+      "capture_sha256": "927e581a024a8c0c641bc08f1ba9c12f67587b4621a9ccb1cf2bcf729a30a581",
+      "fresh_product_capture_sha256": "65b13c2f55753213106ac9546f7583573eca69417b0998b22e8187d0a6488992",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 951,
+        "total_pixels": 33600,
+        "percent": 2.8304,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "ferrari-499p",
+      "settings": {
+        "steeringWheel": "ferrari-499p"
+      },
+      "capture": "evidence/ferrari-499p.png",
+      "capture_sha256": "011da2aa67aae18f01b469598d201493751fcd3d96e0ffd55580bc9eb3bd49a9",
+      "fresh_product_capture_sha256": "5e40de4f47ff51b872f1665dcc91ae1194d582aa8aff5c3d175f0a1079d74032",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1001,
+        "total_pixels": 33600,
+        "percent": 2.9792,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "genesis-gmr-001",
+      "settings": {
+        "steeringWheel": "genesis-gmr-001"
+      },
+      "capture": "evidence/genesis-gmr-001.png",
+      "capture_sha256": "3f1afec59c1495aecd0441bb28d4fa381287e37a1241a631588e9ccfe3c05b9a",
+      "fresh_product_capture_sha256": "38655da0e64f36de4e9348f6efa35b19537b295e92516c18e6c281c68b9ad7ca",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 994,
+        "total_pixels": 33600,
+        "percent": 2.9583,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "glickenhaus-scg007",
+      "settings": {
+        "steeringWheel": "glickenhaus-scg007"
+      },
+      "capture": "evidence/glickenhaus-scg007.png",
+      "capture_sha256": "082d8cde969df8e90d7bbac662c1948b9e5cf5bdb6030c3b58223fd6bf8be8ac",
+      "fresh_product_capture_sha256": "ce3379171b20f2b5cc670f6dce9c7cf60e9ee3173c8de55dbfab7db53c339d13",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 945,
+        "total_pixels": 33600,
+        "percent": 2.8125,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "isotta-fraschini-tipo6",
+      "settings": {
+        "steeringWheel": "isotta-fraschini-tipo6"
+      },
+      "capture": "evidence/isotta-fraschini-tipo6.png",
+      "capture_sha256": "84ab54d7e0d8722341926512b7f6dd683028c7979982136931558e7583650091",
+      "fresh_product_capture_sha256": "ede9e71a46871dc4c9f738979f81a584035feccbed9e80509d241fda73e368fd",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1024,
+        "total_pixels": 33600,
+        "percent": 3.0476,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "lamborghini-sc63",
+      "settings": {
+        "steeringWheel": "lamborghini-sc63"
+      },
+      "capture": "evidence/lamborghini-sc63.png",
+      "capture_sha256": "2eaacbdc0a28cf5ed503c8110bc9d2c793519dccef1487786860a559ffde0915",
+      "fresh_product_capture_sha256": "3e5e78d638d4cadb205c75a4f6879efdaf68f6a384a85339dbcd62b12d924c63",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1023,
+        "total_pixels": 33600,
+        "percent": 3.0446,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "peugeot-9x8",
+      "settings": {
+        "steeringWheel": "peugeot-9x8"
+      },
+      "capture": "evidence/peugeot-9x8.png",
+      "capture_sha256": "9548bbac9991ec4890f6f04ece2d9c6762516a9b06752357569b6e10abafd85d",
+      "fresh_product_capture_sha256": "ee53ecedc8434f880d879f5fd10bb6bc48bbf900d0136001789ee8d34d9752ca",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 938,
+        "total_pixels": 33600,
+        "percent": 2.7917,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "peugeot-9x8-2024",
+      "settings": {
+        "steeringWheel": "peugeot-9x8-2024"
+      },
+      "capture": "evidence/peugeot-9x8-2024.png",
+      "capture_sha256": "0d3b2bf9fa7326b5eb64dfcaad0eaa3e8af6b0914411e1deff86eef3905f980f",
+      "fresh_product_capture_sha256": "65a65a9534d3ecb109262b161991118f9f40c3720171540ca1c05dcbf4d9b01c",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 943,
+        "total_pixels": 33600,
+        "percent": 2.8065,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "porsche-963",
+      "settings": {
+        "steeringWheel": "porsche-963"
+      },
+      "capture": "evidence/porsche-963.png",
+      "capture_sha256": "e84c95fda842ba2f708aba02440b2006104a036fdf4355ac1bf87ba605be0688",
+      "fresh_product_capture_sha256": "7fc0f386d209d593a1539c1dd6792af2cad20988843dc64326ebde5fcd00208a",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1001,
+        "total_pixels": 33600,
+        "percent": 2.9792,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "toyota-gr010",
+      "settings": {
+        "steeringWheel": "toyota-gr010"
+      },
+      "capture": "evidence/toyota-gr010.png",
+      "capture_sha256": "892bb5dfb0f1975e1c131ce9761e91ebdd1fb77b4366c65e0ee3243f7ffdfb27",
+      "fresh_product_capture_sha256": "b48400575736d915f132618b6971d24ee4229bc173effec6ed4a482965208bf7",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1048,
+        "total_pixels": 33600,
+        "percent": 3.119,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "toyota-tr010",
+      "settings": {
+        "steeringWheel": "toyota-tr010"
+      },
+      "capture": "evidence/toyota-tr010.png",
+      "capture_sha256": "892bb5dfb0f1975e1c131ce9761e91ebdd1fb77b4366c65e0ee3243f7ffdfb27",
+      "fresh_product_capture_sha256": "b48400575736d915f132618b6971d24ee4229bc173effec6ed4a482965208bf7",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1048,
+        "total_pixels": 33600,
+        "percent": 3.119,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "vanwall-vandervell-680",
+      "settings": {
+        "steeringWheel": "vanwall-vandervell-680"
+      },
+      "capture": "evidence/vanwall-vandervell-680.png",
+      "capture_sha256": "67ccf2458d8610370316d702fc5d4dc3f45006e1254d30c9bc83ae81cc2897df",
+      "fresh_product_capture_sha256": "1db8a61dea55ff4df7eeeddeea83dbecfacfe5484b05a8733a56205c6f7a9500",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1017,
+        "total_pixels": 33600,
+        "percent": 3.0268,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "aston-martin-vantage-gt3",
+      "settings": {
+        "steeringWheel": "aston-martin-vantage-gt3"
+      },
+      "capture": "evidence/aston-martin-vantage-gt3.png",
+      "capture_sha256": "70335de505e4d206b6a8f77e2f7958aba031fcef1802b91359ff1ecfa1aea793",
+      "fresh_product_capture_sha256": "2d62962d4260d637c0d9ff08f7d41a6db8fb999677ec61d7ecc7f8644b744ae1",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 940,
+        "total_pixels": 33600,
+        "percent": 2.7976,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "bmw-m4-gt3",
+      "settings": {
+        "steeringWheel": "bmw-m4-gt3"
+      },
+      "capture": "evidence/bmw-m4-gt3.png",
+      "capture_sha256": "c5ac5c2731d3c6d89289e975172004a2120838001247b338648f535e0253574a",
+      "fresh_product_capture_sha256": "22c9267531d4720ac913c2bffa04f912d7fbee95db6889f3c31fd7c1a9bf6ab1",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 946,
+        "total_pixels": 33600,
+        "percent": 2.8155,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "corvette-z06-gt3",
+      "settings": {
+        "steeringWheel": "corvette-z06-gt3"
+      },
+      "capture": "evidence/corvette-z06-gt3.png",
+      "capture_sha256": "022d676d78329bc827bbe92dbe7da6afed5dadc72ea6321bb8484292bc12d53e",
+      "fresh_product_capture_sha256": "02e7e9769a813c3e977f982b4d389e46249984c6abda686826ec17b69a0f1924",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 985,
+        "total_pixels": 33600,
+        "percent": 2.9315,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "ferrari-296-gt3",
+      "settings": {
+        "steeringWheel": "ferrari-296-gt3"
+      },
+      "capture": "evidence/ferrari-296-gt3.png",
+      "capture_sha256": "a79d98f41970a611bd36d15999e29603a4070deb636d91f655d8903b0551c4ce",
+      "fresh_product_capture_sha256": "567182303844ee72c908b3ae8994cc8fead08d9d26b8ef700c065d4a4161c7ce",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 962,
+        "total_pixels": 33600,
+        "percent": 2.8631,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "ford-mustang-gt3",
+      "settings": {
+        "steeringWheel": "ford-mustang-gt3"
+      },
+      "capture": "evidence/ford-mustang-gt3.png",
+      "capture_sha256": "a12091af6ec3d03c41b3f9a051905ba24d819e351fda71b8627addc6b658b361",
+      "fresh_product_capture_sha256": "8ac679eba4b457b25fe70cb666cf638cdcc9b457de546e91acc70d9cdbb24887",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 944,
+        "total_pixels": 33600,
+        "percent": 2.8095,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "lamborghini-huracan-gt3",
+      "settings": {
+        "steeringWheel": "lamborghini-huracan-gt3"
+      },
+      "capture": "evidence/lamborghini-huracan-gt3.png",
+      "capture_sha256": "9094345dcfc8a81fab42eef9bca2391e21197cff711cd4fb0a80cb947235be70",
+      "fresh_product_capture_sha256": "ddf4e0b46cd48aabdfcbce1822ef3f4002e398e20f3c793582884a704e5981bf",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1125,
+        "total_pixels": 33600,
+        "percent": 3.3482,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "lexus-rc-f-gt3",
+      "settings": {
+        "steeringWheel": "lexus-rc-f-gt3"
+      },
+      "capture": "evidence/lexus-rc-f-gt3.png",
+      "capture_sha256": "2e15e5da720013911dee1ea3676ab2ded7f593b30754b5c3f5a47e92d987c447",
+      "fresh_product_capture_sha256": "f41394684ade1a0a5f26c322718c2e836ea8b4e3cf6c1bdef5f5a6e9d048548d",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1137,
+        "total_pixels": 33600,
+        "percent": 3.3839,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "mclaren-720s-gt3",
+      "settings": {
+        "steeringWheel": "mclaren-720s-gt3"
+      },
+      "capture": "evidence/mclaren-720s-gt3.png",
+      "capture_sha256": "849442cb12e7031f23587136dbdfd6dabc40e4d585c2b5bfe637c639ad3e1ede",
+      "fresh_product_capture_sha256": "02783e559b3ecb3be6b227c28a1402edc51f0934e5e2f5b1ecf2268d1d8318a9",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 942,
+        "total_pixels": 33600,
+        "percent": 2.8036,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "mercedes-amg-gt3",
+      "settings": {
+        "steeringWheel": "mercedes-amg-gt3"
+      },
+      "capture": "evidence/mercedes-amg-gt3.png",
+      "capture_sha256": "fd4d270aa188beb543377cf458bf48ff7d0a6afd52634a14ec4c72ee424219c5",
+      "fresh_product_capture_sha256": "6a0d6dd692893492c0bae56c5b5b5895e07d511f4b60d86aa84edfc879319d83",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1124,
+        "total_pixels": 33600,
+        "percent": 3.3452,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "porsche-911-gt3-r",
+      "settings": {
+        "steeringWheel": "porsche-911-gt3-r"
+      },
+      "capture": "evidence/porsche-911-gt3-r.png",
+      "capture_sha256": "06c01137212d5733001087db53385ab380ae0f9efd3c85715f522143531f5f52",
+      "fresh_product_capture_sha256": "503743f38f6844c37b15b1ad2e7d52b9446fbcb1178fe543c358984a022bcfc9",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1131,
+        "total_pixels": 33600,
+        "percent": 3.3661,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "oreca-07",
+      "settings": {
+        "steeringWheel": "oreca-07"
+      },
+      "capture": "evidence/oreca-07.png",
+      "capture_sha256": "3e58b3b3339ceec13947064d449d13079b547506da858ee7983cfcfb2302b0c7",
+      "fresh_product_capture_sha256": "c3fef143624c20357d89dc6ddebcaa723e266b8cc76c57a9def7d8cf9aeec466",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1018,
+        "total_pixels": 33600,
+        "percent": 3.0298,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "adess-ad25",
+      "settings": {
+        "steeringWheel": "adess-ad25"
+      },
+      "capture": "evidence/adess-ad25.png",
+      "capture_sha256": "134317500ef42845f5a4b809c570bb336d9c46d19ad1442ac71287ed4123e418",
+      "fresh_product_capture_sha256": "faa6cc75f58533462e320cfff056519f6732abf8fb65ce63f6656722ed122768",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 948,
+        "total_pixels": 33600,
+        "percent": 2.8214,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "duqueine-d09",
+      "settings": {
+        "steeringWheel": "duqueine-d09"
+      },
+      "capture": "evidence/duqueine-d09.png",
+      "capture_sha256": "ed379d0e5f65873e375747a87e6d4382e6958ab5c1135750e156f64c2f2a1467",
+      "fresh_product_capture_sha256": "2c1745df4c22217abe4cc3a170ccd70014adc9033d5cc0aab0d5acc0c19c0724",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1043,
+        "total_pixels": 33600,
+        "percent": 3.1042,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "ginetta-g61-lt-p3-evo",
+      "settings": {
+        "steeringWheel": "ginetta-g61-lt-p3-evo"
+      },
+      "capture": "evidence/ginetta-g61-lt-p3-evo.png",
+      "capture_sha256": "c6d596f554b5d71e81f13d734950ebbac6c5e643e4e91ee9eeb3be2a09e5f6c8",
+      "fresh_product_capture_sha256": "811b712c0152c979e159eff21de40b857f7a2fcf31ecd5fd8c9e9d6ea1361765",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1012,
+        "total_pixels": 33600,
+        "percent": 3.0119,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "ligier-js-p325",
+      "settings": {
+        "steeringWheel": "ligier-js-p325"
+      },
+      "capture": "evidence/ligier-js-p325.png",
+      "capture_sha256": "f4e33adcd166602ac29fc95f33d77b198e0f9a7065ae166f1733ca17c6b51a1c",
+      "fresh_product_capture_sha256": "a2bb11a9b1ebf3b055a608627c1651f68ba3358454729bef399d410ef60e8df5",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 961,
+        "total_pixels": 33600,
+        "percent": 2.8601,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

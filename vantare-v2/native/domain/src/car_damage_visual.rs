@@ -5,6 +5,7 @@ use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
+    pub show_aero: bool,
     pub status: Option<&'static str>,
     /// Aero, carrocería, suspensión. `None` conserva la ausencia del dato.
     pub damage: [Option<f64>; 3],
@@ -40,6 +41,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         [None; 3]
     };
     ViewModel {
+        show_aero: true,
         status,
         damage,
         labels: match prefs.language {

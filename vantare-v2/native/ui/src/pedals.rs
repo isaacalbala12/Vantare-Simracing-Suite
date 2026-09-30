@@ -21,20 +21,21 @@ const VALUE_H: f32 = 10.0;
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
-    paint_panel(window, width, height, 0.90);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            180.0,
-            linear_color_stop(col(0xffffff, 0.04), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.32),
-        ),
-        Edges::all(px(0.0)),
-        col(0x000000, 0.0),
-        BorderStyle::default(),
-    ));
-
+    if !vm.transparent_background {
+        paint_panel(window, width, height, 0.90);
+        window.paint_quad(quad(
+            rect(0.0, 0.0, width, height),
+            Corners::all(px(tokens::RADIUS)),
+            linear_gradient(
+                180.0,
+                linear_color_stop(col(0xffffff, 0.04), 0.0),
+                linear_color_stop(col(0xffffff, 0.0), 0.32),
+            ),
+            Edges::all(px(0.0)),
+            col(0x000000, 0.0),
+            BorderStyle::default(),
+        ));
+    }
     let columns = [
         ("C", vm.clutch, &vm.clutch_text, 0xc9a15c),
         ("B", vm.brake, &vm.brake_text, tokens::LOSS),
@@ -130,23 +131,25 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     }
     // El marco (::after) se compone al final; 12 % en los lados y 24 % arriba.
     // La bandera no está en este ViewModel: se conserva el borde neutro.
-    paint_frame(window, width, height);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, tokens::RADIUS),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_right: px(0.0),
-            bottom_left: px(0.0),
-        },
-        col(0x000000, 0.0),
-        Edges {
-            top: px(1.0),
-            ..Edges::all(px(0.0))
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    if !vm.transparent_background {
+        paint_frame(window, width, height);
+        window.paint_quad(quad(
+            rect(0.0, 0.0, width, tokens::RADIUS),
+            Corners {
+                top_left: px(tokens::RADIUS),
+                top_right: px(tokens::RADIUS),
+                bottom_right: px(0.0),
+                bottom_left: px(0.0),
+            },
+            col(0x000000, 0.0),
+            Edges {
+                top: px(1.0),
+                ..Edges::all(px(0.0))
+            },
+            col(0xffffff, 0.136),
+            BorderStyle::default(),
+        ));
+    }
 }
 
 fn fill_height(value: f64, inner_h: f32) -> f32 {
@@ -163,6 +166,13 @@ pub struct Settings {
     pub transparent_background: bool,
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = vantare_domain::pedals::project(snapshot, prefs);
+        vm.transparent_background = self.transparent_background;
+        vm
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
         self.clone()
@@ -170,13 +180,16 @@ impl Settings {
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: vantare_domain::pedals::project(&Snapshot::default(), prefs),
+            vm: settings.project(&Snapshot::default(), prefs),
+            settings,
         }
     }
 
@@ -187,10 +200,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(
-            &mut self.vm,
-            vantare_domain::pedals::project(snapshot, prefs),
-        )
+        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
@@ -210,6 +220,23 @@ impl Widget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn transparent_projection_keeps_the_same_inputs() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("escena");
+        let settings = Settings {
+            transparent_background: true,
+        };
+        let mut vm = settings.project(&snapshot, Preferences::default());
+        assert!(vm.transparent_background);
+        vm.transparent_background = false;
+        assert_eq!(
+            vm,
+            Settings::default().project(&snapshot, Preferences::default())
+        );
+    }
+
     use super::*;
     use crate::source;
 

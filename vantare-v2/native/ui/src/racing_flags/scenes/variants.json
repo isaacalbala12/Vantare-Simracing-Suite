@@ -1,0 +1,27 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/racing-flags.snapshot.json",
+  "variants": [
+    {
+      "name": "white-text",
+      "settings": {
+        "textColor": "#ffffff"
+      }
+    },
+    {
+      "name": "no-sectors",
+      "settings": {
+        "showSectorFlags": false
+      },
+      "snapshot": "sectors.snapshot.json"
+    },
+    {
+      "name": "hide-green",
+      "settings": {
+        "hideWhenGreen": true
+      },
+      "snapshot": "green.snapshot.json"
+    }
+  ]
+}

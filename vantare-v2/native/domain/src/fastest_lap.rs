@@ -25,6 +25,7 @@ impl Timing {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewModel {
+    pub show_driver: bool,
     pub scope: (u64, SessionId, Option<CarId>, String, Option<ClassId>),
     pub sequence: u64,
     pub ready: bool,
@@ -85,6 +86,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         .min_by_key(|row| row.best_ms)
         .cloned();
     ViewModel {
+        show_driver: true,
         scope: (
             snapshot.epoch,
             snapshot.state.session.id,
@@ -168,6 +170,14 @@ fn observed(current: &Timing, prior: Option<&Timing>) -> bool {
 
 impl Records {
     pub fn accept(&mut self, vm: ViewModel) -> Update {
+        self.accept_visible(vm, true, true)
+    }
+    pub fn accept_visible(
+        &mut self,
+        vm: ViewModel,
+        show_class: bool,
+        show_personal: bool,
+    ) -> Update {
         if !vm.ready {
             *self = Self::default();
             return Update::Clear;
@@ -191,14 +201,19 @@ impl Records {
             .candidate
             .as_ref()
             .filter(|row| {
-                class_improved
+                show_class
+                    && class_improved
                     && observed(row, previous.rows.iter().find(|prior| prior.car == row.car))
             })
             .map(|row| (Kind::Class, row.clone()))
             .or_else(|| {
                 vm.personal
                     .as_ref()
-                    .filter(|row| personal_improved && observed(row, previous.personal.as_ref()))
+                    .filter(|row| {
+                        show_personal
+                            && personal_improved
+                            && observed(row, previous.personal.as_ref())
+                    })
                     .map(|row| (Kind::Personal, row.clone()))
             });
         if class_improved {
@@ -214,6 +229,29 @@ impl Records {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn notification_choices_keep_records_and_allow_personal_after_disabled_class() {
+        for (class, personal, kind) in [
+            (true, true, Some(Kind::Class)),
+            (false, true, Some(Kind::Personal)),
+            (true, false, Some(Kind::Class)),
+            (false, false, None),
+        ] {
+            let mut records = Records::default();
+            records.accept_visible(vm(1, 90.0), class, personal);
+            let mut next = scene(2, 89.0);
+            next.state.cars[0].laps = Quality::Reliable(5);
+            let update =
+                records.accept_visible(project(&next, Preferences::default()), class, personal);
+            match kind {
+                Some(kind) => {
+                    assert!(matches!(update, Update::Notice(actual, _) if actual == kind));
+                }
+                None => assert_eq!(update, Update::Unchanged),
+            }
+        }
+    }
+
     use super::*;
     use crate::{Capability, Class, Driver, Player};
 

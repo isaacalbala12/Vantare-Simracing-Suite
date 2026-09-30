@@ -19,6 +19,7 @@ use vantare_domain::{
 };
 
 pub const SIZE: (f32, f32) = (480.0, 104.0);
+#[cfg(test)]
 const LIFETIME: Duration = Duration::from_secs(6);
 const TRANSITION: Duration = Duration::from_millis(220);
 
@@ -30,18 +31,56 @@ struct Notice {
     started: Instant,
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub show_personal: bool,
+    pub show_class: bool,
+    pub duration_seconds: u8,
+    pub show_driver: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_personal: true,
+            show_class: true,
+            duration_seconds: 6,
+            show_driver: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            duration_seconds: self.duration_seconds.clamp(3, 15),
+            ..self.clone()
+        }
+    }
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = fastest_lap::project(snapshot, prefs);
+        vm.show_driver = self.show_driver;
+        vm
+    }
+    fn lifetime(&self) -> Duration {
+        Duration::from_secs(u64::from(self.duration_seconds))
+    }
+}
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
     records: Records,
     notice: Option<Notice>,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: fastest_lap::project(&Snapshot::default(), prefs),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs),
             records: Records::default(),
             notice: None,
         }
@@ -53,11 +92,15 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let next = fastest_lap::project(snapshot, prefs);
+        let next = self.settings.project(snapshot, prefs);
         let labels_changed = self.vm.class_label != next.class_label
             || self.vm.personal_label != next.personal_label
             || self.vm.active_class != next.active_class;
-        let update = self.records.accept(next.clone());
+        let update = self.records.accept_visible(
+            next.clone(),
+            self.settings.show_class,
+            self.settings.show_personal,
+        );
         #[cfg(feature = "parity-capture")]
         let preview_changed = self.vm.candidate != next.candidate
             || self.vm.personal != next.personal
@@ -91,12 +134,13 @@ impl Widget {
             let timing = if vm.ready {
                 vm.candidate
                     .clone()
-                    .or_else(|| vm.personal.clone())
+                    .filter(|_| self.settings.show_class)
+                    .or_else(|| vm.personal.clone().filter(|_| self.settings.show_personal))
                     .filter(|timing| timing.best_ms.is_some())
             } else {
                 None
             };
-            let kind = if vm.candidate.is_some() {
+            let kind = if self.settings.show_class && vm.candidate.is_some() {
                 Kind::Class
             } else {
                 Kind::Personal
@@ -114,8 +158,9 @@ impl Widget {
                 return (Box::new(|_, _| {}), Wake::Idle);
             };
             let age = notice.started.elapsed();
-            let (alpha, offset, wake) = motion(age);
-            if age >= LIFETIME {
+            let lifetime = self.settings.lifetime();
+            let (alpha, offset, wake) = motion_for(age, lifetime);
+            if age >= lifetime {
                 self.notice = None;
                 return (Box::new(|_, _| {}), Wake::Idle);
             }
@@ -136,11 +181,16 @@ impl Widget {
     }
 }
 
+#[cfg(test)]
 fn motion(age: Duration) -> (f32, f32, Wake) {
-    if age >= LIFETIME {
+    motion_for(age, LIFETIME)
+}
+
+fn motion_for(age: Duration, lifetime: Duration) -> (f32, f32, Wake) {
+    if age >= lifetime {
         return (0.0, -6.0, Wake::Idle);
     }
-    let exit = LIFETIME.saturating_sub(TRANSITION);
+    let exit = lifetime.saturating_sub(TRANSITION);
     let progress = if age < TRANSITION {
         ease_out(age.as_secs_f32() / TRANSITION.as_secs_f32())
     } else if age >= exit {
@@ -232,7 +282,7 @@ fn paint_content(
         Kind::Personal => &vm.personal_label,
     };
     // Al faltar el piloto, CSS centra las dos líneas restantes.
-    let top_shift = if timing.driver.is_empty() {
+    let top_shift = if !vm.show_driver || timing.driver.is_empty() {
         10.615
     } else {
         0.0
@@ -270,16 +320,18 @@ fn paint_content(
         text::baseline(36.48 + top_shift, 30.38, 30.38).round(),
         &time_ink,
     );
-    let driver_ink = ink(12.152, 600.0, 0.0, col(0xc6c7cd, alpha));
-    let driver = text::fit(window, &timing.driver, &driver_ink, 359.0);
-    text::draw(
-        window,
-        cx,
-        &driver,
-        96.0,
-        text::baseline(69.86, 18.228, 12.152).round(),
-        &driver_ink,
-    );
+    if vm.show_driver {
+        let driver_ink = ink(12.152, 600.0, 0.0, col(0xc6c7cd, alpha));
+        let driver = text::fit(window, &timing.driver, &driver_ink, 359.0);
+        text::draw(
+            window,
+            cx,
+            &driver,
+            96.0,
+            text::baseline(69.86, 18.228, 12.152).round(),
+            &driver_ink,
+        );
+    }
 }
 
 fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
@@ -298,6 +350,31 @@ fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn driver_and_duration_variants_affect_projection_and_expiry() {
+        for duration in [3, 15] {
+            let settings = Settings {
+                show_driver: false,
+                duration_seconds: duration,
+                ..Settings::default()
+            };
+            let vm = settings.project(&Snapshot::default(), Preferences::default());
+            assert!(!vm.show_driver);
+            assert!(matches!(
+                motion_for(
+                    settings.lifetime().saturating_sub(Duration::from_secs(1)),
+                    settings.lifetime()
+                )
+                .2,
+                Wake::At(_)
+            ));
+            assert_eq!(
+                motion_for(settings.lifetime(), settings.lifetime()).2,
+                Wake::Idle
+            );
+        }
+    }
+
     use super::*;
 
     fn reference_scene() -> Snapshot {
@@ -337,7 +414,7 @@ mod tests {
     #[test]
     fn preview_is_settled_and_clears_when_the_scene_is_unavailable() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = reference_scene();
         assert!(widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
@@ -378,7 +455,7 @@ mod tests {
             best_lap_s: Quality::Reliable(90.0),
             ..Car::default()
         });
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
         snapshot.sequence = 2;

@@ -4,6 +4,22 @@ use crate::format::{self, Language, Preferences};
 use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Config {
+    pub history_rows: u8,
+    pub show_projection: bool,
+    pub virtual_energy: bool,
+}
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            history_rows: 4,
+            show_projection: true,
+            virtual_energy: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LapsBasis {
     Fuel,
     Session,
@@ -28,6 +44,7 @@ pub struct HistoryRow {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewModel {
+    pub show_projection: bool,
     pub status: Option<&'static str>,
     pub labels: [&'static str; 5],
     pub fuel: String,
@@ -42,6 +59,9 @@ pub struct ViewModel {
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_with_config(snapshot, prefs, Config::default())
+}
+pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Config) -> ViewModel {
     let state = &snapshot.state;
     let fuel = state.player.map(|player| player.fuel).unwrap_or_default();
     let status = if state.source_state == SourceState::Lost {
@@ -67,6 +87,12 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     } else {
         None
     };
+    let status = status.or_else(|| {
+        config.virtual_energy.then_some(match prefs.language {
+            Language::Es => "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO",
+            Language::En => "VIRTUAL ENERGY SIGNAL UNAVAILABLE",
+        })
+    });
     let current = |value: &Quality<f64>| {
         if status.is_some() {
             None
@@ -93,17 +119,56 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         Language::Es => "NEC.",
         Language::En => "REQ",
     };
-    let history = if status.is_none() {
+    let history = history_rows(&fuel, config.history_rows, prefs.language, status.is_none());
+    ViewModel {
+        show_projection: config.show_projection,
+        status,
+        labels: match prefs.language {
+            Language::Es => ["COMBUSTIBLE", "MED.", "VUELTAS", "NEC.", "EST. META:"],
+            Language::En => ["FUEL", "AVG", "LAPS", "REQ", "EST. FINISH:"],
+        },
+        fuel: liters(current(&fuel.level_l), 1),
+        average: liters(current(&fuel.per_lap_l), 2),
+        laps: decimal(laps.filter(|_| config.show_projection), 1),
+        laps_basis: laps_basis.filter(|_| config.show_projection),
+        finish: if !config.show_projection {
+            format::PLACEHOLDER.into()
+        } else if required == format::PLACEHOLDER {
+            required.clone()
+        } else {
+            format!("{required} {required_label}")
+        },
+        required: if config.show_projection {
+            required
+        } else {
+            format::PLACEHOLDER.into()
+        },
+        history,
+        history_label: if prefs.language == Language::Es {
+            "HISTORIAL"
+        } else {
+            "HISTORY"
+        },
+    }
+}
+
+fn history_rows(
+    fuel: &crate::Fuel,
+    rows: u8,
+    language: Language,
+    available: bool,
+) -> Vec<HistoryRow> {
+    if available {
         fuel.history
             .into_iter()
             .flatten()
             .rev()
-            .take(4)
+            .take(usize::from(rows.clamp(1, 8)))
             .filter(|(_, liters)| liters.is_finite() && *liters >= 0.0)
             .map(|(lap, consumed)| HistoryRow {
                 lap: format!(
                     "{} {lap}",
-                    if prefs.language == Language::Es {
+                    if language == Language::Es {
                         "VUELTA"
                     } else {
                         "LAP"
@@ -114,29 +179,6 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             .collect()
     } else {
         Vec::new()
-    };
-    ViewModel {
-        status,
-        labels: match prefs.language {
-            Language::Es => ["COMBUSTIBLE", "MED.", "VUELTAS", "NEC.", "EST. META:"],
-            Language::En => ["FUEL", "AVG", "LAPS", "REQ", "EST. FINISH:"],
-        },
-        fuel: liters(current(&fuel.level_l), 1),
-        average: liters(current(&fuel.per_lap_l), 2),
-        laps: decimal(laps, 1),
-        laps_basis,
-        finish: if required == format::PLACEHOLDER {
-            required.clone()
-        } else {
-            format!("{required} {required_label}")
-        },
-        required,
-        history,
-        history_label: if prefs.language == Language::Es {
-            "HISTORIAL"
-        } else {
-            "HISTORY"
-        },
     }
 }
 
@@ -193,6 +235,55 @@ fn decimal(value: Option<f64>, decimals: u8) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fuel_variants_clip_history_hide_projection_and_declare_virtual_energy() {
+        let mut fuel = Fuel {
+            level_l: Quality::Reliable(42.0),
+            ..Fuel::default()
+        };
+        for (i, row) in fuel.history.iter_mut().enumerate() {
+            *row = Some((u32::try_from(i).expect("index"), 2.0));
+        }
+        let data = snapshot(&fuel);
+        for rows in [1, 4, 8] {
+            let vm = project_with_config(
+                &data,
+                Preferences::default(),
+                Config {
+                    history_rows: rows,
+                    ..Config::default()
+                },
+            );
+            assert_eq!(vm.history.len(), usize::from(rows));
+            assert_eq!(vm.history[0].lap, "VUELTA 9");
+        }
+        let hidden = project_with_config(
+            &data,
+            Preferences::default(),
+            Config {
+                show_projection: false,
+                ..Config::default()
+            },
+        );
+        assert!(!hidden.show_projection);
+        assert_eq!(hidden.laps, "—");
+        assert_eq!(hidden.required, "—");
+        let energy = project_with_config(
+            &data,
+            Preferences::default(),
+            Config {
+                virtual_energy: true,
+                ..Config::default()
+            },
+        );
+        assert_eq!(
+            energy.status,
+            Some("ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO")
+        );
+        assert_eq!(energy.fuel, "—");
+        assert!(energy.history.is_empty());
+    }
+
     use super::*;
     use crate::{Capabilities, Fuel, Player, State};
 

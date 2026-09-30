@@ -1,5 +1,30 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Segunda ronda — #1428 / #1427 (2026-09-30)
+
+`Car.velocity_mps` permanece `Unavailable`, también para el jugador: el
+Broadcasting SDK da `kmh` escalar, no un vector de rivales. No se multiplica
+esa velocidad por yaw ni se deriva de posiciones coalescidas.
+
+Graphics SHM 1.9: `penalty` @1228 es `ACC_PENALTY_TYPE`; `penaltyTime` @1220
+es float «Penalty time to wait», nunca contador. Fuente documental: PDF Kunos
+[Shared Memory 1.8.12](https://github.com/rrennoir/PyAccSharedMemory/blob/main/ACCSharedMemoryDocumentationV1.8.12.pdf),
+leído mediante copia local `C:/tmp/acc-shm-sdk.txt` (tabla y enum).
+No se certifica la unidad ni el significado de todos los valores de ese tiempo.
+
+La señal `pending_penalties` solo se rellena en el coche del jugador:
+
+- None (0) con `penaltyTime == 0`: `Reliable(0)`.
+- DT/SG (1–4, 7–10, 19): `Estimated(1)`, **límite inferior** de una sanción
+  pendiente. No hay contador nativo para saber si hay varias en cola.
+- DSQ, vuelta borrada, tiempo postcarrera (14), valores desconocidos o
+  None con tiempo positivo/no finito: `Unavailable`. No equivalen a servicio
+  pendiente ni prueban una cantidad. No se adivina qué significa 18/22.
+
+Rivales: contador `Unavailable`. El jugador caduca con graphics (500 ms o
+pausa), aunque UDP siga actual. Tests sobre páginas sintéticas prueban cada
+caso y degradación; no son evidencia física de sanciones en ACC.
+
 ## Fase 6 — ISA-1431 (2026-09-30)
 
 Microplan: `docs/superpowers/plans/2026-09-30-fase-6-acc-completo.md`.

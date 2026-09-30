@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -92,7 +92,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 2,
@@ -143,7 +143,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 3,
@@ -194,7 +194,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 4,
@@ -245,7 +245,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 5,
@@ -296,7 +296,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 6,
@@ -347,7 +347,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 7,
@@ -398,7 +398,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 8,
@@ -449,7 +449,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 9,
@@ -500,7 +500,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 10,
@@ -551,7 +551,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 11,
@@ -602,7 +602,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 12,
@@ -653,7 +653,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 13,
@@ -704,7 +704,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 14,
@@ -755,7 +755,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 15,
@@ -806,7 +806,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 16,
@@ -857,7 +857,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 17,
@@ -908,7 +908,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 18,
@@ -959,7 +959,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 19,
@@ -1010,7 +1010,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 20,
@@ -1061,7 +1061,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       }
     ],
     "player": {

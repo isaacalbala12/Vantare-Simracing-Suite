@@ -10,7 +10,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub(crate) const VERSION: u32 = 4;
+pub(crate) const VERSION: u32 = 5;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -181,6 +181,8 @@ struct CarDto {
     current_sector: QualityDto<u8>,
     in_pits: QualityDto<bool>,
     pose: QualityDto<PoseDto>,
+    velocity_mps: QualityDto<[f64; 2]>,
+    pending_penalties: QualityDto<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -328,6 +330,8 @@ fn car(c: &d::Car) -> CarDto {
             y_m: p.y_m,
             yaw_rad: p.yaw_rad,
         }),
+        velocity_mps: q(&c.velocity_mps, copied),
+        pending_penalties: q(&c.pending_penalties, copied),
     }
 }
 
@@ -520,6 +524,8 @@ fn ucar(c: CarDto) -> d::Car {
             y_m: p.y_m,
             yaw_rad: p.yaw_rad,
         }),
+        velocity_mps: uq(c.velocity_mps, id),
+        pending_penalties: uq(c.pending_penalties, id),
     }
 }
 

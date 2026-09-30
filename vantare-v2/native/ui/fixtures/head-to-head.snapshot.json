@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -92,7 +92,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 2,
@@ -139,7 +139,7 @@
         "relative_s": {
           "reliable": 4.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 3,
@@ -186,7 +186,7 @@
         "relative_s": {
           "reliable": 9
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 4,
@@ -233,7 +233,7 @@
         "relative_s": {
           "reliable": 13.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 5,
@@ -280,7 +280,7 @@
         "relative_s": {
           "reliable": 18
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 6,
@@ -327,7 +327,7 @@
         "relative_s": {
           "reliable": 22.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 7,
@@ -374,7 +374,7 @@
         "relative_s": {
           "reliable": 27
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 8,
@@ -421,7 +421,7 @@
         "relative_s": {
           "reliable": 31.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 9,
@@ -468,7 +468,7 @@
         "relative_s": {
           "reliable": 36
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 10,
@@ -513,7 +513,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 11,
@@ -558,7 +558,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 12,
@@ -603,7 +603,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 13,
@@ -650,7 +650,7 @@
         "relative_s": {
           "reliable": -36
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 14,
@@ -697,7 +697,7 @@
         "relative_s": {
           "reliable": -31.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 15,
@@ -744,7 +744,7 @@
         "relative_s": {
           "reliable": -27
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 16,
@@ -791,7 +791,7 @@
         "relative_s": {
           "reliable": -22.5
         },
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 17,
@@ -840,7 +840,7 @@
         },
         "relative_laps": {
           "reliable": -1
-        }
+        },"velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 18,
@@ -889,7 +889,7 @@
         },
         "relative_laps": {
           "reliable": -1
-        }
+        },"velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 19,
@@ -938,7 +938,7 @@
         },
         "relative_laps": {
           "reliable": -1
-        }
+        },"velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 20,
@@ -987,7 +987,7 @@
         },
         "relative_laps": {
           "reliable": -1
-        }
+        },"velocity_mps":"unavailable","pending_penalties":"unavailable"
       }
     ],
     "player": {

@@ -23,27 +23,39 @@ pub struct Scene {
 fn load(path: &Path) -> Result<Vec<Snapshot>, String> {
     let data = files::read(path, MAX_SCENE_BYTES)?;
     let text = std::str::from_utf8(&data).map_err(|e| format!("escena no UTF-8: {e}"))?;
-    let mut frames = Vec::new();
-    if path.extension().is_some_and(|ext| ext == "jsonl") {
-        for (line, text) in text.lines().enumerate() {
-            if frames.len() == MAX_FRAMES {
-                return Err("escena supera 512 fotos".into());
-            }
-            let next = vantare_ipc::snapshot_from_json(text)
-                .map_err(|e| format!("foto {}: {e}", line + 1))?;
-            if let Some(previous) = frames.last() {
-                let previous: &Snapshot = previous;
-                if previous.epoch != next.epoch
-                    || previous.sequence >= next.sequence
-                    || previous.origin.received_at > next.origin.received_at
-                {
-                    return Err("secuencia fuera de orden o época distinta".into());
-                }
-            }
-            frames.push(next);
-        }
+    decode(text, path.extension().is_some_and(|ext| ext == "jsonl"))
+}
+
+fn decode(text: &str, jsonl: bool) -> Result<Vec<Snapshot>, String> {
+    let photos: Vec<String> = if jsonl {
+        text.lines()
+            .take(MAX_FRAMES + 1)
+            .map(str::to_owned)
+            .collect()
+    } else if text.trim_start().starts_with('[') {
+        let values: Vec<serde_json::Value> =
+            serde_json::from_str(text).map_err(|e| format!("secuencia JSON inválida: {e}"))?;
+        values.into_iter().map(|value| value.to_string()).collect()
     } else {
-        frames.push(vantare_ipc::snapshot_from_json(text).map_err(|e| e.to_string())?);
+        vec![text.to_owned()]
+    };
+    if photos.len() > MAX_FRAMES {
+        return Err("escena supera 512 fotos".into());
+    }
+    let mut frames = Vec::new();
+    for (line, text) in photos.iter().enumerate() {
+        let next =
+            vantare_ipc::snapshot_from_json(text).map_err(|e| format!("foto {}: {e}", line + 1))?;
+        if let Some(previous) = frames.last() {
+            let previous: &Snapshot = previous;
+            if previous.epoch != next.epoch
+                || previous.sequence >= next.sequence
+                || previous.origin.received_at > next.origin.received_at
+            {
+                return Err("secuencia fuera de orden o época distinta".into());
+            }
+        }
+        frames.push(next);
     }
     if frames.is_empty() {
         return Err("escena vacía".into());
@@ -120,10 +132,14 @@ impl Scene {
 
     pub fn play(&mut self) {
         if self.frames.len() > 1 {
+            if self.playing {
+                self.playing = false;
+                return;
+            }
             if self.index + 1 == self.frames.len() {
                 self.index = 0;
             }
-            self.playing = !self.playing;
+            self.playing = true;
         }
     }
 
@@ -163,6 +179,7 @@ pub fn catalog(directory: &Path, initial: &Path) -> Result<Vec<PathBuf>, String>
     paths.retain(|path| {
         path.is_file()
             && (path.to_string_lossy().ends_with(".snapshot.json")
+                || path.to_string_lossy().ends_with(".sequence.json")
                 || path.extension().is_some_and(|ext| ext == "jsonl"))
     });
     if !paths.iter().any(|path| path == initial) {
@@ -175,6 +192,62 @@ pub fn catalog(directory: &Path, initial: &Path) -> Result<Vec<PathBuf>, String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn json_arrays_use_the_current_dto_and_reject_invalid_order_limits_or_version() {
+        let original =
+            Scene::open(Path::new(FIXTURES).join("lmu47.snapshot.json")).expect("corpus");
+        let first = original.snapshot().clone();
+        let mut second = first.clone();
+        second.sequence += 1;
+        second.origin.received_at += Duration::from_millis(40);
+        let json = |snapshot: &Snapshot| vantare_ipc::snapshot_to_json(snapshot).expect("DTO");
+        let (a, b) = (json(&first), json(&second));
+        let frames = decode(&format!("[{a},{b}]"), false).expect("secuencia JSON");
+        assert_eq!(frames, vec![first.clone(), second.clone()]);
+        assert_eq!(decode(&a, false).expect("foto única"), vec![first.clone()]);
+        assert_eq!(decode(&format!("{a}\n{b}"), true).expect("JSONL"), frames);
+        for text in [
+            "[]".into(),
+            "[null]".into(),
+            format!("[{a},{a}]"),
+            format!("[{b},{a}]"),
+        ] {
+            assert!(decode(&text, false).is_err());
+        }
+        second.epoch += 1;
+        assert!(decode(&format!("[{a},{}]", json(&second)), false).is_err());
+        second.epoch = first.epoch;
+        second.origin.received_at = Duration::ZERO;
+        assert!(decode(&format!("[{a},{}]", json(&second)), false).is_err());
+        let mut old: serde_json::Value = serde_json::from_str(&a).expect("JSON");
+        old["version"] = 3.into();
+        assert!(decode(&format!("[{old}]"), false).is_err());
+        assert!(decode(&format!("[{}]", vec![a; MAX_FRAMES + 1].join(",")), false).is_err());
+    }
+
+    #[test]
+    fn pause_on_last_photo_preserves_cursor_and_single_photo_cannot_play() {
+        let mut scene = Scene::open(Path::new(FIXTURES).join("lmu47.snapshot.json")).expect("foto");
+        scene.play();
+        assert!(!scene.playing);
+        scene.frames.push(scene.snapshot().clone());
+        scene.play();
+        scene.advance();
+        scene.play();
+        assert!(!scene.playing);
+        assert_eq!(scene.index(), 1);
+        scene.play();
+        assert!(scene.playing);
+        assert_eq!(scene.index(), 0);
+        scene.seek(1).expect("última foto");
+        assert!(!scene.playing);
+        assert!(scene.seek(2).is_err());
+        scene.step(true);
+        assert_eq!(scene.index(), 1);
+        scene.rewind();
+        assert_eq!(scene.index(), 0);
+    }
 
     #[test]
     fn real_capture_is_preserved_after_failed_reload_and_playback_keeps_timestamps() {

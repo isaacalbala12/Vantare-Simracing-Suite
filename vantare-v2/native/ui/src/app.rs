@@ -386,6 +386,7 @@ struct LiveScreens {
 
 impl LiveScreens {
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        self.prefs = layout.preferences;
         let displays = cx.displays();
         let bounds: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
         // Una instancia oculta conserva la ocupación de su monitor y su HWND.
@@ -493,10 +494,12 @@ impl LiveScreens {
 
 /// Vigila el documento cada 500 ms. El proceso sigue vivo incluso sin ventanas;
 /// solo cambia sus HWND cuando cambia el conjunto de monitores ocupados.
+/// El documento posee las preferencias; el último parámetro se conserva por
+/// compatibilidad de la API y no sustituye el formato persistido.
 pub fn run_layout(
     path: PathBuf,
     snapshots: flume::Receiver<Arc<Snapshot>>,
-    prefs: Preferences,
+    _prefs: Preferences,
 ) -> Result<(), crate::layout::Error> {
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -510,7 +513,7 @@ pub fn run_layout(
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
             screens: Vec::new(),
-            prefs,
+            prefs: document.layout().preferences,
             last: None,
         }));
         screens.borrow_mut().apply(document.layout(), cx);
@@ -651,6 +654,32 @@ mod tests {
         assert!(
             !after.widget.ingest(&snapshot, prefs),
             "la nueva vista ya recibió la última foto"
+        );
+    }
+
+    #[test]
+    fn layout_preferences_reproject_the_latest_photo_without_waiting_for_telemetry() {
+        use vantare_domain::format::{Language, Units};
+        let layout = crate::layout::Layout {
+            preferences: Preferences {
+                units: Units::Imperial,
+                language: Language::En,
+            },
+            ..Default::default()
+        };
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("fixture de pedales con velocidad disponible");
+        let mut overlay = Overlay::with_snapshot(
+            &Settings::default_for(Kind::Pedals),
+            layout.preferences,
+            Some(&snapshot),
+        );
+        assert_eq!(overlay.prefs, layout.preferences);
+        assert!(!overlay.widget.ingest(&snapshot, layout.preferences));
+        assert!(
+            overlay.widget.ingest(&snapshot, Preferences::default()),
+            "el formato anterior produce otra proyección"
         );
     }
 

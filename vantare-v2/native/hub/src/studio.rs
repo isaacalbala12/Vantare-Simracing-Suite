@@ -49,6 +49,19 @@ impl Drag {
     }
 }
 impl Studio {
+    pub fn preferences(&self) -> Preferences {
+        self.editor.layout().preferences
+    }
+
+    pub fn set_preferences(
+        &mut self,
+        prefs: Preferences,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        self.editor.set_preferences(prefs)?;
+        self.rebuild(cx);
+        Ok(())
+    }
     pub fn new(prepared: Prepared, snapshot: Snapshot, cx: &mut Context<Self>) -> Self {
         let mut studio = Self {
             editor: prepared.editor,
@@ -67,7 +80,7 @@ impl Studio {
         self.renderers.clear();
         for item in &self.editor.layout().instances {
             let renderer = cx.new(|cx| {
-                let mut overlay = Overlay::configured(&item.settings, Preferences::default());
+                let mut overlay = Overlay::configured(&item.settings, self.preferences());
                 overlay.ingest(&self.snapshot, cx);
                 overlay
             });

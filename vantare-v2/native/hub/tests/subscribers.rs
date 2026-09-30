@@ -27,7 +27,7 @@ fn hub_and_overlays_receive_the_same_publisher_without_sharing_a_cursor() {
     publisher.publish(Arc::new(snapshot.clone())).expect("live");
     let received = hub.next(wait).expect("flanco Hub");
     assert!(vantare_hub::lifecycle::should_close(
-        Some(previous.origin.source.kind),
+        Some(vantare_hub::lifecycle::is_live(&previous)),
         &received
     ));
     assert_eq!(

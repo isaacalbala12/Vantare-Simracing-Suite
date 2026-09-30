@@ -302,3 +302,60 @@ Gates finales de corte 4: fmt PASS; clippy workspace/all-targets -j 2 -D warning
 PASS (3,29 s); tests workspace -j 2 PASS, incluidos 20 tests Hub y oráculos
 LMU/ACC. Compilación observada 54,83 s; cuatro pruebas físicas heredadas
 omitidas. La carga concurrente produjo tiempos variables, no son benchmark.
+
+### Corte 5 — cierre y entrega aislada
+
+Referencia del flanco es `Option<bool>`: `None` primera foto, después valor
+completo de `is_live`. Al integrar DTO v4 basta exigir SourceState::Live en
+ese predicado, y probar Waiting→Live/Stale→Live/primera Live. Hasta entonces
+SourceKind solo permite observar Replay→Live. No inferir entrada al juego de
+SessionKind ni de snapshots de Workshop. Subscriber se destruye al terminar
+el Hub; la prueba de dos consumidores protege continuidad de overlays.
+
+`--pipe NOMBRE` permite elegir el mismo pipe que core/overlays y aislar pruebas.
+Sin argumento usa el nombre privado por usuario ya existente de IPC. Argumentos
+vacíos/repetidos/incompletos fallan antes de abrir ventana. No es un nuevo
+protocolo ni un canal de comandos.
+
+`hub/verify-process.ps1`: copia del exe y datos temporales únicos, pipe único
+sin productor, proceso GPUI vivo antes de EOF, guardado de selección y salida
+completa con código 0. Limpia solo sus archivos, sin borrado recursivo ni
+matar core/overlays/juegos. Esperas de arranque/salida son acotadas, no métricas
+de rendimiento. El smoke abre una ventana GPUI, no hace interacción visual.
+
+Checklist de integración para Opus (no completada por este worker):
+
+1. Integrar primero Settings/ui::layout y DTO v4 de fase 2. Sustituir tipos
+   puente por imports comunes, delegar load/save a Document, guardar cada
+   edición/undo/redo confirmada y conservar anterior si falla. Retirar botón
+   de guardado bloqueado. No reintroducir Project ni otro archivo de layout.
+2. Completar is_live con SourceKind::Live && SourceState::Live; ampliar tests
+   de Waiting/Stale y primera foto Live. Probar proceso real con core v4,
+   además de overlays simultáneo, entrada a LMU/ACC y apertura con juego vivo.
+3. Aplicación del layout pertenece al worker de ui: comprobar continuidad
+   de ventanas/OBS al editar y ocultar todos, incluido fallo de escritura.
+4. Revisión visual, teclado, DPI, multi-monitor, captura/paridad y presupuestos
+   con juego/OBS y Hub cerrado. No sustituir ese gate por EOF o replay.
+5. Conectar servicios pendientes mediante sus contratos de trabajos; pruebas
+   autenticadas y de publicación requieren Isaac, credenciales bajo su control
+   y autorización externa. No hay servicios de red en este diff.
+
+Los cortes locales quedan revisables; **fase 5 completa sigue bloqueada** por
+integración de APIs de fase 2, servicios y aceptación física. Preguntas abiertas
+para la integración: DTO/endpoint de jobs Strategy, Engineer, análisis y
+Testing Center; entrega de auth/licencias al Hub sin autoridad local; API de
+publicación/calendario/recordatorios/roadmap y publishers/toasts. No hay una
+decisión de arquitectura nueva para layout ni para cierre que pedir a Isaac.
+
+Smoke de proceso ejecutado: `./hub/verify-process.ps1` PASS, PID 19844,
+salida 0; proceso vivo antes de EOF, selección escrita y proceso terminado.
+Duración total observada 2,40 s bajo carga concurrente (no benchmark). Parser
+PowerShell PASS. No se inició core, overlays ni juego, ni se leyó una cuenta.
+
+Gates finales de corte 5: `cargo fmt --check` PASS (salida vacía, código 0);
+`cargo clippy --offline --workspace --all-targets -j 2 -- -D warnings` PASS,
+Finished dev en 8,81 s; `cargo test --offline --workspace -j 2` PASS, código 0,
+20 tests Hub y suites/oráculos del workspace en verde. Compilación 56,15 s;
+cuatro pruebas físicas heredadas ignoradas. No se ejecutaron pruebas físicas
+LMU/ACC/OBS, DPI, teclado, watch de recompilación/reapertura ni benchmarks.
+EOF sí se comprobó con proceso real; el pipe de dos consumidores con test.

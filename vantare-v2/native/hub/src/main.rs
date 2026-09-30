@@ -8,6 +8,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut controlled = false;
     let mut data_dir = None;
     let mut scene = None;
+    let mut pipe = None;
     let mut section = Section::Home;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -20,6 +21,13 @@ fn parse(args: &[String]) -> Result<Options, String> {
             }
             "--scene" if scene.is_none() => {
                 scene = Some(PathBuf::from(args.next().ok_or("falta escena")?));
+            }
+            "--pipe" if pipe.is_none() => {
+                let name = args.next().ok_or("falta nombre de pipe")?;
+                if name.trim().is_empty() {
+                    return Err("pipe vacío".into());
+                }
+                pipe = Some(name.clone());
             }
             _ => return Err("argumento desconocido o repetido".into()),
         }
@@ -35,6 +43,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         data_dir,
         scene,
         section,
+        pipe,
     })
 }
 
@@ -44,7 +53,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -76,15 +85,21 @@ mod tests {
             "--scene",
             "capture.jsonl",
             "--control-stdin",
+            "--pipe",
+            "hub-test",
         ]))
         .expect("opciones");
         assert_eq!(options.section, Section::Workshop);
         assert!(options.controlled);
+        assert_eq!(options.pipe.as_deref(), Some("hub-test"));
         assert_eq!(options.data_dir, PathBuf::from("local"));
         assert_eq!(options.scene, Some(PathBuf::from("capture.jsonl")));
         for bad in [
             vec!["--data-dir"],
             vec!["--scene"],
+            vec!["--pipe"],
+            vec!["--pipe", ""],
+            vec!["--pipe", "a", "--pipe", "b"],
             vec!["--workshop", "--workshop"],
             vec!["--control-stdin", "--control-stdin"],
             vec!["--scene", "a", "--scene", "b"],

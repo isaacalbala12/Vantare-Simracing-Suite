@@ -1,4 +1,4 @@
-//! Shell GPUI independiente. El propietario puede cerrarla por EOF en stdin.
+//! Shell GPUI independiente: flanco IPC y EOF opcional para desarrollo.
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{
@@ -11,7 +11,6 @@ use gpui::{
     App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
     rgb,
 };
-use vantare_domain::SourceKind;
 use vantare_domain::format::{Language, Units};
 use vantare_ipc::Subscriber;
 use vantare_ui::efficiency::{text, tokens};
@@ -29,6 +28,7 @@ pub struct Options {
     pub data_dir: PathBuf,
     pub scene: Option<PathBuf>,
     pub section: Section,
+    pub pipe: Option<String>,
 }
 
 struct Hub {
@@ -40,7 +40,7 @@ struct Hub {
     notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
-    previous_source: Option<SourceKind>,
+    previous_source: Option<bool>,
 }
 
 impl Hub {
@@ -52,7 +52,7 @@ impl Hub {
     fn poll_source(&mut self, cx: &mut Context<Self>) {
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
-            self.previous_source = Some(snapshot.origin.source.kind);
+            self.previous_source = Some(crate::lifecycle::is_live(&snapshot));
             if close {
                 cx.quit();
             }
@@ -122,7 +122,7 @@ impl Hub {
             .child("Contexto local del Workshop; no es diagnóstico del juego ni reporte completo.")
             .child(format!("Fuente de la foto: {} · {:?} · época {} · revisión {} · {} coches",
                 snapshot.origin.source.simulator, snapshot.origin.source.kind, snapshot.epoch, snapshot.sequence, snapshot.state.cars.len()))
-            .child(format!("Fotos cargadas: {} · escena válida: {}", scene.len(), scene.error.is_none()))
+            .child(format!("Fotos cargadas: {} · última carga sin error: {}", scene.len(), scene.error.is_none()))
             .child("Testing Center: exportación sanitizada, logs, reports y automatización esperan contrato del worker. Sin datos de cuenta, envío ni acciones externas.")
     }
 }
@@ -283,9 +283,12 @@ fn wire_sections(
     .detach();
 }
 
-fn subscribe() -> Result<Subscriber, String> {
+fn subscribe(pipe: Option<String>) -> Result<Subscriber, String> {
     // Mismo ACL privado del IPC que overlays; no consulta servicios ni credenciales.
-    let pipe = vantare_ipc::default_pipe_name().map_err(|error| format!("pipe Hub: {error}"))?;
+    let pipe = match pipe {
+        Some(name) => name,
+        None => vantare_ipc::default_pipe_name().map_err(|error| format!("pipe Hub: {error}"))?,
+    };
     Subscriber::connect(&pipe, |_| true).map_err(|error| format!("suscribir Hub: {error}"))
 }
 
@@ -309,7 +312,7 @@ pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load()?;
     let calendar = Calendar::load(&options.data_dir)?;
-    let subscriber = subscribe()?;
+    let subscriber = subscribe(options.pipe)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();

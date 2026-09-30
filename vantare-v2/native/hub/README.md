@@ -95,3 +95,18 @@ del Workshop sobre su estado existente. Testing Center muestra únicamente
 contexto del snapshot local del Workshop; no genera ni envía un reporte.
 Cuenta/licencias, Strategy, Engineer, análisis, Launcher y roadmap conservan
 sus dependencias explícitas en el microplan y en cada pantalla.
+
+## Verificación de proceso
+
+`--pipe NOMBRE` selecciona un pipe local privado; por defecto usa el nombre
+por usuario de IPC. Desde native, después de construir el binario:
+
+```powershell
+./hub/verify-process.ps1
+```
+
+Usa una copia y datos temporales propios más un pipe sin productor para
+comprobar proceso vivo, guardado y salida total por EOF. No lanza núcleo ni
+juego ni demuestra entrada al juego, paridad, DPI/OBS o presupuesto de memoria.
+La condición de cierre espera SourceState de DTO v4; las APIs comunes de
+Settings/layout y esa condición se completan en el orden del microplan.

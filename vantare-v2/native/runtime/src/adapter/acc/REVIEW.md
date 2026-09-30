@@ -1,5 +1,60 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Spotter con velocidad estimada — #1428 (2026-09-30)
+
+La derivación vive en el adaptador, antes del núcleo y del IPC: conserva las
+poses originales y sus relojes por coche. El núcleo no conoce ACC ni estima
+desde fotos coalescidas. LMU conserva su vector nativo, sin sustitución.
+
+Broadcasting v4 incluye `CurrentLap.LaptimeMS` en el mismo datagrama que
+`WorldPosX/Y`, `Laps` y `DriverIndex`: se usa su diferencia en segundos,
+**nunca** la diferencia entre recepciones ni el reloj global de sesión. Véase
+el [SDK Kunos distribuido con el servidor](https://github.com/goelp14/simracerproj/blob/main/bot/Assetto%20Corsa%20Competizione%20Dedicated%20Server/sdk/broadcasting/Sources/ksBroadcastingNetwork/BroadcastingNetworkProtocol.cs).
+Para el jugador, cuando se elige la pose SHM, se usa `graphics.iCurrentTime`
+@140, `completedLaps` @132 y `playerCarID` @1216 de esa misma página. Con pose
+UDP actual y SHM obsoleta/ausente se usa su historial UDP independiente.
+`Origin.source_time` sigue ausente: un reloj por vuelta/coche no es un reloj
+monotónico global ni acredita la edad previa a la lectura.
+
+`velocity_mps` se publica como `Estimated` tras tres poses admitidas y dos
+velocidades compatibles. Intervalo de fuente 50–300 ms; graphics más rápida
+acumula al menos 50 ms conservando la última pose admitida. Desplazamientos
+de hasta 5 cm se tratan como ruido; filtro exponencial con tau de 100 ms.
+Se rechazan magnitudes >110 m/s y cambios de vector >40 m/s² más la tolerancia
+de cuantización (4 × 5 cm / dt en m/s). Son límites conservadores de admisión,
+no una afirmación de rendimiento físico de ACC.
+
+Boxes/ubicación desconocida, pausa/página physics cero, reloj inválido,
+invertido o repetido con pose distinta, cambio de vuelta/piloto/identidad,
+retirada del índice, reconexión o nueva época cortan el historial. Un hueco
+de fuente >300 ms o de recepción >=300 ms también lo corta. Un teletransporte
+que incumple los límites retira la estimación y exige nueva línea base;
+un desplazamiento indistinguible de movimiento físicamente plausible no
+puede identificarse con estos campos. No se infiere movimiento durante boxes.
+Duplicados y otras señales no prolongan frescura: a 300 ms sin nueva
+estimación, el vector pasa a `Stale` y Spotter lo rechaza.
+
+Latencia **esperada, no medida de punta a punta**: la diferencia representa
+el punto medio del intervalo y el filtro añade aproximadamente 100 ms.
+A 100 ms UDP, el retraso del vector ronda 150 ms y el arranque necesita unos
+200 ms; con graphics admitida a 50–65 ms, unos 125–133 ms y 100–130 ms de
+arranque. Faltan adquisición previa, IPC, selección y audio. La pose que
+determina el solape sigue siendo actual; el vector filtra velocidades de cierre.
+Si el error de cada posición fuese 5 cm, el error de diferencia sería hasta
+2 × 5 cm / dt, antes del filtro (2 m/s a 50 ms). Es una hipótesis de ruido,
+no una precisión certificada; cambios de dirección/aceleración añaden error
+por retraso y el umbral de cierre de Spotter sigue siendo 12 m/s por componente.
+
+Tests: vectores explícitos separados del corpus real obligatorio
+`testdata/acc/acc-sesion-udp-20260929.tar.gz`, con su hash congelado. La prueba
+contrasta la magnitud estimada con el `Kmh` nativo independiente (solo oráculo,
+no usado en producción) y exige >10 000 muestras de >20 coches, error medio
+<2 m/s y p99 <6 m/s. Esto no prueba el error de dirección contra ground truth.
+El corpus tiene jugador parado en boxes: no demuestra avisos físicos de
+Spotter conduciendo. Logs y cifras de QA están fuera del repo en
+`C:/tmp/spotter-acc-evidence/`. Notion indisponible por el encargo; referencia
+GitHub #1428, sin declarar seguimiento Notion completado.
+
 ## Señales de tercera ronda — #1428 (2026-09-30)
 
 SDK Kunos SHM 1.8.12 (PDF enlazado abajo): `physics.pitLimiterOn` es int
@@ -24,7 +79,7 @@ cumplido. No se equipara a `pit_stop_stopped`; esta señal permanece ausente.
 
 ## Segunda ronda — #1428 / #1427 (2026-09-30)
 
-`Car.velocity_mps` permanece `Unavailable`, también para el jugador: el
+En ese corte previo, `Car.velocity_mps` permanecía `Unavailable`, también para el jugador: el
 Broadcasting SDK da `kmh` escalar, no un vector de rivales. No se multiplica
 esa velocidad por yaw ni se deriva de posiciones coalescidas.
 

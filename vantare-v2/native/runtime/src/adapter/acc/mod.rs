@@ -11,6 +11,10 @@ mod replay;
 mod shm;
 mod translate;
 mod udp;
+mod velocity;
+
+#[cfg(test)]
+mod velocity_corpus_tests;
 
 #[cfg(windows)]
 pub use live::Acc;

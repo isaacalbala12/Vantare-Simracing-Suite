@@ -1,5 +1,6 @@
 //! Geometría Go portada sobre los ejes neutrales del radar (ahead/right).
-//! Solo señales actuales y fiables: nunca velocidad inferida de fotos coalescidas.
+//! Poses fiables y vectores actuales: nativos o estimados por el adaptador.
+//! Nunca se estima velocidad desde las fotos coalescidas del consumidor.
 
 use crate::radio::Intent;
 use vantare_domain::{Quality, Snapshot, SourceState};
@@ -13,7 +14,7 @@ pub fn evaluate(snapshot: &Snapshot, existing: Option<Intent>) -> Option<Intent>
     let car = snapshot.state.player_car()?;
     let (
         Quality::Reliable(pose),
-        Quality::Reliable([vx, vy]),
+        Quality::Reliable([vx, vy]) | Quality::Estimated([vx, vy]),
         Quality::Reliable(false),
         Quality::Reliable(speed),
     ) = (
@@ -40,8 +41,11 @@ pub fn evaluate(snapshot: &Snapshot, existing: Option<Intent>) -> Option<Intent>
         if rival.id == car.id {
             continue;
         }
-        let (Quality::Reliable(position), Quality::Reliable([rx, ry]), Quality::Reliable(false)) =
-            (rival.pose, rival.velocity_mps, rival.in_pits)
+        let (
+            Quality::Reliable(position),
+            Quality::Reliable([rx, ry]) | Quality::Estimated([rx, ry]),
+            Quality::Reliable(false),
+        ) = (rival.pose, rival.velocity_mps, rival.in_pits)
         else {
             continue;
         };
@@ -204,11 +208,11 @@ mod tests {
     }
 
     #[test]
-    fn unavailable_estimated_stale_pit_and_low_speed_do_not_announce() {
+    fn unavailable_stale_pit_and_low_speed_do_not_announce() {
         for index in [0, 1] {
             for q in [
                 Quality::Unavailable,
-                Quality::Estimated([40.0, 0.0]),
+                Quality::Estimated([f64::NAN, 0.0]),
                 Quality::Stale([40.0, 0.0]),
                 Quality::Reliable([f64::NAN, 0.0]),
             ] {
@@ -233,6 +237,27 @@ mod tests {
         let mut s = photo();
         s.state.source_state = SourceState::Stale;
         assert_eq!(evaluate(&s, None), None);
+    }
+
+    #[test]
+    fn estimated_vectors_announce_but_other_estimated_evidence_does_not() {
+        let mut s = photo();
+        for c in &mut s.state.cars {
+            c.velocity_mps = Quality::Estimated([40.0, 0.0]);
+        }
+        assert_eq!(evaluate(&s, None), Some(Intent::CarLeft));
+        for index in [0, 1] {
+            let mut missing = s.clone();
+            missing.state.cars[index].velocity_mps = Quality::Stale([40.0, 0.0]);
+            assert_eq!(evaluate(&missing, Some(Intent::CarLeft)), None);
+            missing = s.clone();
+            missing.state.cars[index].pose =
+                Quality::Estimated(*missing.state.cars[index].pose.current().expect("pose"));
+            assert_eq!(evaluate(&missing, None), None);
+            missing = s.clone();
+            missing.state.cars[index].in_pits = Quality::Estimated(false);
+            assert_eq!(evaluate(&missing, None), None);
+        }
     }
 
     #[test]
@@ -264,6 +289,9 @@ mod tests {
     #[test]
     fn worker_delivers_spotter_without_audio_and_retires_missing_evidence() {
         let mut s = photo();
+        for car in &mut s.state.cars {
+            car.velocity_mps = Quality::Estimated([40.0, 0.0]);
+        }
         let mut worker = RadioWorker::new(Locale::Es, None).expect("worker");
         let mut out = Vec::new();
         worker

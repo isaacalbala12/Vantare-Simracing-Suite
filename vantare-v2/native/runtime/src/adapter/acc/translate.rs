@@ -13,6 +13,7 @@ use vantare_domain::{
 
 use super::bytes::{f32_at, i32_at, invalid, wide_at};
 use super::protocol::{self, CarUpdate, Entry, Lap, Message, SessionUpdate};
+use super::velocity::{Sample, Velocity};
 
 const SHM_TTL: Duration = Duration::from_millis(500);
 
@@ -32,6 +33,7 @@ struct Timed<T> {
 }
 struct Rival {
     update: Timed<CarUpdate>,
+    velocity: Velocity,
     // CrewChief: no aceptar lapCount/best/last entre spline 0.93 y 0.07.
     stable: Option<(u16, Lap, Lap)>,
 }
@@ -41,6 +43,7 @@ pub(super) struct Translator {
     pages: [Option<Page>; 3],
     physics_zero: bool,
     player_laps: Option<(u32, Option<f64>, Option<f64>)>,
+    player_velocity: Velocity,
     cars: BTreeMap<u16, Rival>,
     entries: BTreeMap<u16, Entry>,
     list: Option<Vec<u16>>,
@@ -66,6 +69,7 @@ impl Translator {
             pages: [None, None, None],
             physics_zero: false,
             player_laps: None,
+            player_velocity: Velocity::default(),
             cars: BTreeMap::new(),
             entries: BTreeMap::new(),
             list: None,
@@ -90,6 +94,7 @@ impl Translator {
         self.entries.clear();
         self.list = None;
         self.player_laps = None;
+        self.player_velocity = Velocity::default();
         self.session = None;
         self.track = None;
         self.shm_signature = None;
@@ -119,6 +124,7 @@ impl Translator {
         if kind == 0 {
             self.physics_zero = bytes[4..].iter().all(|b| *b == 0);
             if self.physics_zero {
+                self.clear_velocities();
                 return Ok(true);
             } // pausa: conservar último valor, obsoleto.
         }
@@ -152,7 +158,45 @@ impl Translator {
                 });
             }
         }
+        if kind == 1 {
+            self.update_player_velocity(at);
+        }
         Ok(true)
+    }
+
+    fn clear_velocities(&mut self) {
+        self.player_velocity = Velocity::default();
+        for rival in self.cars.values_mut() {
+            rival.velocity = Velocity::default();
+        }
+    }
+
+    fn update_player_velocity(&mut self, at: Duration) {
+        let Some(g) = self.pages[1].as_ref().map(|p| p.bytes.as_slice()) else {
+            return;
+        };
+        if !matches!(i32_at(g, 4), 1 | 2) || self.physics_zero {
+            self.clear_velocities();
+            return;
+        }
+        let sample = (|| {
+            if boolean(i32_at(g, 160))? || boolean(i32_at(g, 1236))? {
+                return None;
+            }
+            let id = u32::try_from(i32_at(g, 1216)).ok()?;
+            let lap = u32::try_from(i32_at(g, 132)).ok()?;
+            let time = i32_at(g, 140);
+            if time == i32::MAX {
+                return None;
+            }
+            Some(Sample {
+                position: graphics_position(g, CarId(id))?,
+                clock: f64::from(time) / 1000.0,
+                identity: (lap, id),
+                at,
+            })
+        })();
+        self.player_velocity.update(sample);
     }
 
     pub(super) fn udp(&mut self, bytes: &[u8], at: Duration) -> io::Result<bool> {
@@ -197,10 +241,12 @@ impl Translator {
                         .get(&update.index)
                         .and_then(|old| old.stable.clone())
                 };
+                let velocity = self.rival_velocity(&update, at);
                 self.cars.insert(
                     update.index,
                     Rival {
                         update: Timed { value: update, at },
+                        velocity,
                         stable,
                     },
                 );
@@ -222,7 +268,7 @@ impl Translator {
                     .as_ref()
                     .is_some_and(|list| list.contains(&entry.index))
                 {
-                    self.entries.insert(entry.index, entry);
+                    self.update_entry(entry);
                 } else {
                     self.request_entries = true;
                     return Ok(false);
@@ -248,7 +294,53 @@ impl Translator {
         Ok(true)
     }
 
+    fn update_entry(&mut self, entry: Entry) {
+        if self
+            .entries
+            .get(&entry.index)
+            .is_some_and(|old| *old != entry)
+        {
+            if let Some(car) = self.cars.get_mut(&entry.index) {
+                car.velocity = Velocity::default();
+            }
+            if self.pages[1]
+                .as_ref()
+                .is_some_and(|g| i32_at(&g.bytes, 1216) == i32::from(entry.index))
+            {
+                self.player_velocity = Velocity::default();
+            }
+        }
+        self.entries.insert(entry.index, entry);
+    }
+
+    fn rival_velocity(&self, update: &CarUpdate, at: Duration) -> Velocity {
+        let mut velocity = self
+            .cars
+            .get(&update.index)
+            .filter(|old| old.update.value.driver_count == update.driver_count)
+            .map_or_else(Velocity::default, |old| old.velocity);
+        let paused = self.physics_zero
+            || self.pages[1]
+                .as_ref()
+                .is_some_and(|g| !matches!(i32_at(&g.bytes, 4), 1 | 2));
+        let sample = (!paused && update.location == 1)
+            .then(|| {
+                update.current.time.map(|clock| Sample {
+                    position: [update.x, update.y],
+                    clock,
+                    identity: (u32::from(update.laps), u32::from(update.driver)),
+                    at,
+                })
+            })
+            .flatten();
+        velocity.update(sample);
+        velocity
+    }
+
     fn register(&mut self, id: i32, success: bool) -> io::Result<()> {
+        if self.connection != Some(id) || !success {
+            self.clear_velocities();
+        }
         self.connection = success.then_some(id);
         if success && !self.registered.contains(&id) {
             if self.registered.len() == 8 {
@@ -309,7 +401,7 @@ impl Translator {
                 });
             }
             if let Some(car) = cars.iter_mut().find(|car| car.id == id) {
-                player_car(
+                let shm_pose = player_car(
                     car,
                     g,
                     gs || paused,
@@ -317,6 +409,13 @@ impl Translator {
                         .map(|(p, stale)| (p, stale || self.physics_zero)),
                     self.track.as_ref(),
                 );
+                // La velocidad debe corresponder a la pose seleccionada. No
+                // mezclar una diferencia UDP anterior con un teletransporte SHM.
+                if shm_pose {
+                    car.velocity_mps = self.player_velocity.quality(now);
+                } else if !matches!(car.pose, Quality::Reliable(_)) || paused {
+                    car.velocity_mps = Quality::Unavailable;
+                }
                 if let Some((laps, best, last)) = self.player_laps {
                     car.laps = prefer(quality(Some(laps), gs || paused), car.laps);
                     car.best_lap_s = prefer(quality(best, gs || paused), car.best_lap_s);
@@ -430,6 +529,7 @@ impl Translator {
             last_sectors_s: sectors,
             in_pits: quality(location(update.location), stale),
             pose: quality(pose, stale),
+            velocity_mps: rival.velocity.quality(now),
             lap_distance_m: estimated(distance, stale),
             lap_elapsed_s: quality(update.current.time, stale),
             current_sector: estimated(current_sector, stale),
@@ -606,7 +706,7 @@ fn player_car(
     stale: bool,
     physics: Option<(&[u8], bool)>,
     track: Option<&(i32, String, f64)>,
-) {
+) -> bool {
     // Graphics 1.9: penalty @1228 es un enum, NO un contador; penaltyTime
     // @1220 es tiempo de espera, NO cantidad. DT/SG indican al menos una
     // sanción pendiente (Estimated(1)); no sabemos si hay varias en cola.
@@ -669,20 +769,20 @@ fn player_car(
         car.lap_distance_m,
     );
     // No indexar por playerCarID: es un ID, no un hueco (especialmente online).
-    let slot = (0..60).find(|slot| u32::try_from(i32_at(g, 976 + slot * 4)).ok() == Some(car.id.0));
-    if let (Some(slot), Some((p, ps))) = (slot, physics) {
-        car.pose = prefer(
-            quality(
-                pose(
-                    f32_at(g, 256 + slot * 12),
-                    f32_at(g, 264 + slot * 12),
-                    f32_at(p, 208),
-                ),
-                stale || ps,
-            ),
-            car.pose,
-        );
+    if let (Some([x, y]), Some((p, ps))) = (graphics_position(g, car.id), physics) {
+        let shm_pose = quality(pose(x, y, f32_at(p, 208)), stale || ps);
+        let current = shm_pose.current().is_some();
+        car.pose = prefer(shm_pose, car.pose);
+        current
+    } else {
+        false
     }
+}
+
+fn graphics_position(g: &[u8], id: CarId) -> Option<[f64; 2]> {
+    let slot = (0..60).find(|slot| u32::try_from(i32_at(g, 976 + slot * 4)).ok() == Some(id.0))?;
+    let position = [f32_at(g, 256 + slot * 12), f32_at(g, 264 + slot * 12)];
+    position.iter().all(|v| v.is_finite()).then_some(position)
 }
 
 fn boolean(value: i32) -> Option<bool> {

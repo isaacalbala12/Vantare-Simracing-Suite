@@ -1,9 +1,9 @@
 //! Multiclass Relative Eficiencia: clasificación filtrada y centrada en el jugador.
-//! No sustituye `relative[].gap` por gaps al líder: Snapshot aún no representa
-//! esa señal (segundos firmados al jugador, con calidad). Los rivales muestran —.
+//! Selección por clasificación; gaps de la señal relativa en pista.
 
-use crate::format::{Language, PLACEHOLDER, Preferences};
-use crate::{Capability, Car, CarId, Snapshot};
+use crate::format::{PLACEHOLDER, Preferences};
+use crate::relative::{displayed, relative_seconds, source_status};
+use crate::{Car, CarId, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ClassMode {
@@ -52,31 +52,26 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> Vie
     let state = &snapshot.state;
     let missing = || ViewModel {
         rows: Vec::new(),
-        status: Some(
-            match prefs.language {
-                Language::Es => "SIN DATOS",
-                Language::En => "NO DATA",
-            }
-            .into(),
-        ),
+        status: source_status(SourceState::Waiting, prefs),
     };
-    // El núcleo invalida valores al perder frescura. No mostrar posiciones viejas.
-    if state.capabilities.positions == Capability::WithData {
+    if matches!(state.source_state, SourceState::Waiting | SourceState::Lost) {
         return ViewModel {
             rows: Vec::new(),
-            status: Some(
-                match prefs.language {
-                    Language::Es => "DATOS ANTIGUOS",
-                    Language::En => "DATA OUT OF DATE",
-                }
-                .into(),
-            ),
+            status: source_status(state.source_state, prefs),
         };
     }
     let Some(player) = state.player_car() else {
         return missing();
     };
-    let Some(player_position) = player.position.current().filter(|p| **p > 0) else {
+    let position = |car: &Car| {
+        if state.source_state == SourceState::Stale {
+            displayed(&car.position).copied()
+        } else {
+            car.position.current().copied()
+        }
+        .filter(|p| *p > 0)
+    };
+    let Some(player_position) = position(player) else {
         return missing();
     };
     let player_class = class_name(player).to_uppercase();
@@ -84,7 +79,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> Vie
         .cars
         .iter()
         .filter_map(|car| {
-            let position = *car.position.current().filter(|p| **p > 0)?;
+            let position = position(car)?;
             let same = class_name(car).to_uppercase() == player_class;
             match content.class_mode {
                 ClassMode::Same if !same => None,
@@ -97,7 +92,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> Vie
     let player_index = if content.class_mode == ClassMode::Other {
         candidates
             .iter()
-            .filter(|(_, position)| position < player_position)
+            .filter(|(_, position)| *position < player_position)
             .count()
     } else {
         candidates
@@ -130,7 +125,11 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> Vie
                 } else {
                     car.driver.name.clone()
                 },
-                gap: gap_text(if is_player { Some(0.0) } else { None }),
+                gap: gap_text(if is_player {
+                    Some(0.0)
+                } else {
+                    relative_seconds(car)
+                }),
                 is_player,
                 divider: content.show_class_divider
                     && index > 0
@@ -141,7 +140,10 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> Vie
     if rows.is_empty() {
         return missing();
     }
-    ViewModel { rows, status: None }
+    ViewModel {
+        rows,
+        status: source_status(state.source_state, prefs),
+    }
 }
 
 fn class_name(car: &Car) -> &str {
@@ -181,10 +183,12 @@ pub fn gap_text(seconds: Option<f64>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Class, ClassId, Gap, Player, Quality};
+    use crate::format::Language;
+    use crate::{Capability, Class, ClassId, Gap, Player, Quality};
 
     fn scene(player: u32) -> Snapshot {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = SourceState::Live;
         snapshot.state.capabilities.positions = Capability::Fresh;
         snapshot.state.player = Some(Player {
             car: CarId(player),
@@ -206,6 +210,56 @@ mod tests {
             })
             .collect();
         snapshot
+    }
+
+    #[test]
+    fn relative_gap_does_not_change_classification_selection() {
+        let mut snapshot = scene(3);
+        snapshot.state.source_state = crate::SourceState::Live;
+        for car in &mut snapshot.state.cars {
+            car.relative_s = Quality::Reliable(if car.id == CarId(1) { -2.3 } else { 4.5 });
+        }
+        let vm = project(&snapshot, Preferences::default(), Content::default());
+        assert_eq!(
+            vm.rows.iter().map(|r| r.id.0).collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5]
+        );
+        assert_eq!(vm.rows[0].gap, "-2.3");
+        assert_eq!(vm.rows[1].gap, "+4.5");
+        assert_eq!(vm.rows[2].gap, "0.0");
+    }
+
+    #[test]
+    fn source_states_and_relative_quality_never_invent_gaps() {
+        for (state, status, count) in [
+            (SourceState::Waiting, Some("SIN DATOS"), 0),
+            (SourceState::Live, None, 5),
+            (SourceState::Stale, Some("DATOS ANTIGUOS"), 5),
+            (SourceState::Lost, Some("DESCONECTADO"), 0),
+        ] {
+            let mut snapshot = scene(3);
+            snapshot.state.source_state = state;
+            let vm = project(&snapshot, Preferences::default(), Content::default());
+            assert_eq!(vm.status.as_deref(), status);
+            assert_eq!(vm.rows.len(), count);
+        }
+        for (quality, expected) in [
+            (Quality::Reliable(0.0), "0.0"),
+            (Quality::Estimated(4.5), "+4.5"),
+            (Quality::Stale(-2.3), "-2.3"),
+            (Quality::Reliable(f64::NAN), "—"),
+            (Quality::Reliable(f64::INFINITY), "—"),
+            (Quality::Unavailable, "—"),
+        ] {
+            let mut snapshot = scene(3);
+            for car in &mut snapshot.state.cars {
+                car.relative_s = quality;
+            }
+            assert_eq!(
+                project(&snapshot, Preferences::default(), Content::default()).rows[0].gap,
+                expected
+            );
+        }
     }
 
     #[test]
@@ -290,6 +344,11 @@ mod tests {
     fn stale_positions_and_empty_other_class_are_labelled() {
         let mut snapshot = scene(3);
         snapshot.state.capabilities.positions = Capability::WithData;
+        snapshot.state.source_state = SourceState::Stale;
+        for car in &mut snapshot.state.cars {
+            car.position = Quality::Stale(car.id.0);
+            car.relative_s = Quality::Stale(-2.3);
+        }
         let vm = project(
             &snapshot,
             Preferences {
@@ -298,9 +357,11 @@ mod tests {
             },
             Content::default(),
         );
-        assert!(vm.rows.is_empty());
+        assert_eq!(vm.rows.len(), 5);
+        assert_eq!(vm.rows[0].gap, "-2.3");
         assert_eq!(vm.status.as_deref(), Some("DATA OUT OF DATE"));
         snapshot.state.capabilities.positions = Capability::Fresh;
+        snapshot.state.source_state = SourceState::Live;
         snapshot.state.cars.retain(|car| car.id.0 % 2 == 1);
         assert!(
             project(

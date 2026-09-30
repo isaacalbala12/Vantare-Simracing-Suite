@@ -1,5 +1,10 @@
 # Relative Eficiencia — entrega del worker (ISA-1427)
 
+> Continuación v4, 2026-09-30: este informe conserva la entrega anterior como
+> evidencia histórica. La ventana ya consume `relative_s`/`relative_laps` y
+> `source_state`. Estado vigente de la familia, gates y bloqueos:
+> [PARIDAD.md](PARIDAD.md). Relative baja a 5,8091 %; aún no supera el gate de 4 %.
+
 Issue: [#1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427).
 Rama: `vantareapp/isa-1427-w-relative`; base asignada `6973c81f`.
 Verificación local: 2026-09-30. Proyecto técnico: Arquitectura Rust nativa,

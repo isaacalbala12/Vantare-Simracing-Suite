@@ -1,5 +1,5 @@
 //! Renderer Relative Eficiencia, sobre el kit común y la geometría congelada.
-//! La proyección no inventa la ventana relativa que falta en el modelo común.
+//! La proyección usa las señales relativas v4 del núcleo.
 
 mod motion;
 
@@ -51,7 +51,10 @@ impl Widget {
         let next = relative::project(snapshot, prefs);
         let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, prefs));
         let interrupted = self.boundary != boundary && self.motion.animating(Instant::now());
-        if self.boundary == boundary {
+        if next.status.is_some() || self.vm.status.is_some() {
+            self.motion = Motion::default();
+            self.boundary = boundary;
+        } else if self.boundary == boundary {
             self.motion.update(&self.vm, &next, Instant::now());
         } else {
             self.motion = Motion::default();
@@ -107,7 +110,24 @@ fn paint(vm: &ViewModel, rows: &[Visual], prefs: Preferences, window: &mut Windo
         BorderStyle::default(),
     ));
     let has_meta = !vm.track.is_empty() || !vm.player_badge.is_empty();
-    let top = if has_meta { BAND } else { 0.0 };
+    let meta_bottom = if has_meta { BAND } else { 0.0 };
+    let top = meta_bottom
+        + if vm.status.is_some() {
+            38.0 * SCALE
+        } else {
+            0.0
+        };
+    if let Some(status) = &vm.status {
+        let font = ink(12.0 * SCALE, 700.0, 0.0, col(0xe2c568, 1.0));
+        text::draw(
+            window,
+            cx,
+            status,
+            12.0 * SCALE,
+            meta_bottom + text::baseline(10.0, 18.0, 12.0) * SCALE,
+            &font,
+        );
+    }
     if has_meta {
         line(window, BAND - SCALE, tokens::INK, 0.1);
         let (label, _) = labels(prefs.language);
@@ -124,7 +144,7 @@ fn paint(vm: &ViewModel, rows: &[Visual], prefs: Preferences, window: &mut Windo
             for row in rows {
                 paint_row(row, top, prefs.language, window, cx);
             }
-            if rows.is_empty() {
+            if rows.is_empty() && vm.status.is_none() {
                 let message = if prefs.language == Language::Es {
                     "SIN DATOS"
                 } else {
@@ -295,7 +315,7 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
         cx,
         &row.position,
         pos_x,
-        y + 17.5 * SCALE,
+        y + 18.25 * SCALE,
         &position,
     );
     let color = match row.class.to_uppercase().as_str() {
@@ -320,7 +340,7 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
         &row.number,
         edges[2],
         edges[3],
-        y + 17.5 * SCALE,
+        y + 17.75 * SCALE,
         &number,
         true,
     );
@@ -353,8 +373,8 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
                 0.0
             },
     );
-    // Baseline tras el transform CSS congelado; DirectWrite queda 1 px arriba.
-    text::draw(window, cx, &value, edges[3], y + 19.5 * SCALE + 1.0, &name);
+    // Línea de 21px centrada en la fila de 28px, escalada con el widget.
+    text::draw(window, cx, &value, edges[3], y + 19.5 * SCALE, &name);
     if let Some(value) = badge {
         let x = edges[4] - 10.0 * SCALE - badge_width;
         window.paint_quad(quad(
@@ -370,18 +390,23 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
             cx,
             &value,
             x + 5.0 * SCALE,
-            y + 18.0 * SCALE,
+            y + 17.0 * SCALE,
             &badge_font,
         );
     }
-    let gap = ink(13.0 * SCALE, 650.0, -0.02, col(tokens::INK, opacity));
+    let gap = ink(
+        13.0 * SCALE,
+        650.0,
+        -0.02,
+        col(tokens::INK, opacity * if row.gap_stale { 0.6 } else { 1.0 }),
+    );
     cell(
         window,
         cx,
         &row.gap,
         edges[4],
         edges[5],
-        y + 17.5 * SCALE,
+        y + 18.25 * SCALE,
         &gap,
         false,
     );
@@ -400,7 +425,7 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
         &row.best_lap,
         edges[5],
         edges[6],
-        y + 17.5 * SCALE,
+        y + 18.25 * SCALE,
         &lap,
         false,
     );
@@ -446,10 +471,33 @@ mod tests {
     }
 
     #[test]
-    fn frozen_scene_preserves_missing_relative_laps_and_si_weather() {
+    fn source_interruption_clears_rows_without_animated_ghosts() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings, prefs);
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+                .expect("escena reconstruida v4");
+        assert!(widget.ingest(&snapshot, prefs));
+        snapshot.state.cars[1].relative_s = vantare_domain::Quality::Reliable(-0.1);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.frame(prefs).1, Wake::Frame);
+        snapshot.state.source_state = vantare_domain::SourceState::Lost;
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(widget.vm.slots.iter().all(Option::is_none));
+        assert_eq!(widget.vm.status.as_deref(), Some("DESCONECTADO"));
+        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+    }
+
+    #[test]
+    fn reconstructed_reference_scene_preserves_relative_gaps_laps_and_si_weather() {
+        // Datos reconstruidos de tools/widget-reference/scene.tsx, congelados
+        // en reference/relative.geometry.json; no son evidencia de LMU live.
         let snapshot =
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
-                .expect("escena Relative DTO v3");
+                .expect("escena Relative DTO v4");
         assert_eq!(snapshot.state.cars.len(), 20);
         assert_eq!(snapshot.epoch, 3);
         let vm = relative::project(&snapshot, Preferences::default());
@@ -462,6 +510,17 @@ mod tests {
         assert_eq!(vm.air, "21°");
         assert_eq!(vm.track_temperature, "28°");
         assert_eq!(vm.wind, "14 km/h");
-        assert_eq!(vm.slots.iter().flatten().count(), 1);
+        assert_eq!(vm.slots.iter().flatten().count(), 7);
+        assert_eq!(
+            vm.slots
+                .iter()
+                .flatten()
+                .map(|r| r.id.0)
+                .collect::<Vec<_>>(),
+            vec![4, 3, 2, 1, 20, 19, 18]
+        );
+        assert_eq!(vm.slots[0].as_ref().expect("rival").lap_delta, Some(-1));
+        assert_eq!(vm.slots[2].as_ref().expect("delante").gap, "+0.4");
+        assert_eq!(vm.slots[4].as_ref().expect("detrás").gap, "-0.3");
     }
 }

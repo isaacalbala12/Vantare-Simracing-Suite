@@ -222,7 +222,7 @@ mod tests {
         let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/head-to-head.snapshot.json"
         ))
-        .expect("escena Workshop DTO v3 válida");
+        .expect("escena Workshop DTO v4 válida");
         let prefs = Preferences::default();
         assert_eq!(snapshot.state.cars.len(), 20);
         assert_eq!(
@@ -237,7 +237,9 @@ mod tests {
         let behind = head_to_head::project(&snapshot, prefs, Target::Behind);
         assert_eq!(behind.rows[1].name, "Ben Hanley");
         assert!(behind.rows[1].selected);
-        assert!(behind.rows[1].gap.is_empty());
+        // Gap reconstruido desde reference/head-to-head.geometry.json,
+        // generado por tools/widget-reference/scene.tsx; no es telemetría live.
+        assert_eq!(behind.rows[1].gap, "+4.500");
     }
 
     #[test]
@@ -257,6 +259,7 @@ mod tests {
             car: CarId(2),
             ..Player::default()
         });
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
         snapshot.state.cars[1].best_lap_s = Reliable(90.0);

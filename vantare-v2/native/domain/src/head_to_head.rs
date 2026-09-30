@@ -1,10 +1,10 @@
 //! H2H Eficiencia: vecinos de la clasificación general, sin reglas de simulador.
-//! Falta el gap relativo firmado por `CarId` (segundos + `Quality`); no se sustituye
-//! por `gap_leader` ni `gap_ahead`. Team y `sectorComparisons` tampoco los publica el
+//! El gap viene de `relative_s`; nunca de `gap_leader` ni `gap_ahead`.
+//! Team y `sectorComparisons` tampoco los publica el
 //! contrato productivo V2 y Eficiencia no los dibuja.
 
 use crate::format::{Language, PLACEHOLDER, Preferences};
-use crate::{Car, Snapshot};
+use crate::{Car, Snapshot, SourceState, relative::relative_seconds};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Target {
@@ -50,6 +50,9 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewM
         .into(),
         rows: Vec::new(),
     };
+    if snapshot.state.source_state != SourceState::Live {
+        return vm;
+    }
     let Some(player) = snapshot.state.player else {
         return vm;
     };
@@ -123,7 +126,28 @@ fn row(car: &Car, position: u32, is_player: bool, selected: bool, prefs: Prefere
         .into(),
         is_player,
         selected,
-        gap: String::new(),
+        gap: if selected {
+            gap_text(relative_seconds(car))
+        } else {
+            String::new()
+        },
+    }
+}
+
+fn gap_text(seconds: Option<f64>) -> String {
+    match seconds.filter(|s| s.is_finite()) {
+        Some(0.0) => "0.000".into(),
+        Some(s) => {
+            // Empates binarios exactos a tres decimales: fracciones impares
+            // de 1/16. JS redondea hacia arriba; Rust lo haría al par.
+            let magnitude = if matches!((s.abs().fract() * 8.0).fract(), 0.5) {
+                s.abs() + 0.0005
+            } else {
+                s.abs()
+            };
+            format!("{}{magnitude:.3}", if s > 0.0 { "+" } else { "-" })
+        }
+        None => String::new(),
     }
 }
 
@@ -136,6 +160,7 @@ mod tests {
     fn scene(player: u32) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: SourceState::Live,
                 // Orden de llegada distinto del orden de clasificación.
                 cars: [3, 1, 2]
                     .map(|id| Car {
@@ -153,6 +178,52 @@ mod tests {
                 ..State::default()
             },
             ..Snapshot::default()
+        }
+    }
+
+    #[test]
+    fn selected_classification_rival_uses_track_gap() {
+        let mut snapshot = scene(2);
+        snapshot.state.source_state = crate::SourceState::Live;
+        snapshot.state.cars[1].relative_s = Reliable(-4.5);
+        let vm = project(&snapshot, Preferences::default(), Target::Ahead);
+        assert_eq!(vm.rows[0].place, "1");
+        assert_eq!(vm.rows[0].gap, "-4.500");
+        assert!(vm.rows[1..].iter().all(|r| r.gap.is_empty()));
+    }
+
+    #[test]
+    fn source_state_and_gap_quality_match_the_product() {
+        for (state, ready) in [
+            (SourceState::Waiting, false),
+            (SourceState::Live, true),
+            (SourceState::Stale, false),
+            (SourceState::Lost, false),
+        ] {
+            let mut snapshot = scene(2);
+            snapshot.state.source_state = state;
+            assert_eq!(
+                !project(&snapshot, Preferences::default(), Target::Ahead)
+                    .rows
+                    .is_empty(),
+                ready
+            );
+        }
+        for (quality, expected) in [
+            (Reliable(0.0), "0.000"),
+            (Estimated(1.0625), "+1.063"),
+            (Stale(-1.0625), "-1.063"),
+            (Reliable(-0.0), "0.000"),
+            (Reliable(f64::NAN), ""),
+            (Reliable(f64::INFINITY), ""),
+            (Unavailable, ""),
+        ] {
+            let mut snapshot = scene(2);
+            snapshot.state.cars[1].relative_s = quality;
+            assert_eq!(
+                project(&snapshot, Preferences::default(), Target::Ahead).rows[0].gap,
+                expected
+            );
         }
     }
 

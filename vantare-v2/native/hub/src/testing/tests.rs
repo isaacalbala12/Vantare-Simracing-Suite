@@ -11,6 +11,61 @@ use std::{
 use vantare_domain::{Snapshot, SourceKind, SourceState};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn report_form_uses_wails_utf8_limits_and_optional_context() {
+    use super::{empty_fields, model::field_errors};
+    let mut fields = empty_fields();
+    assert_eq!(
+        field_errors(&fields).map(|error| error.is_some()),
+        [true, true, true, false]
+    );
+    fields.action_text = " éé ".into();
+    fields.expected_text = "abc".into();
+    fields.observed_text = "é".repeat(1024);
+    fields.context_text = "é".repeat(2048);
+    assert!(field_errors(&fields).iter().all(Option::is_none));
+    fields.observed_text.push('x');
+    fields.context_text.push('x');
+    assert_eq!(
+        field_errors(&fields).map(|error| error.is_some()),
+        [false, false, true, true]
+    );
+}
+
+#[test]
+fn report_send_requires_the_exact_reviewed_preview_and_fresh_consent() {
+    use super::model::{Consent, can_send};
+    use crate::services::protocol::report_document::Preview;
+    let preview = Preview {
+        id: "preview-test".into(),
+        digest: "digest-test".into(),
+        payload: "texto revisado".into(),
+        account_id: "cuenta-test".into(),
+        channel: "nightly".into(),
+        retry: false,
+    };
+    let consent = Consent::from(&preview);
+    assert!(!can_send(None, Some(&consent), false));
+    assert!(!can_send(Some(&preview), None, false));
+    assert!(!can_send(Some(&preview), Some(&consent), true));
+    assert!(can_send(Some(&preview), Some(&consent), false));
+    for index in 0..6 {
+        let mut changed = preview.clone();
+        match index {
+            0 => changed.id.push('x'),
+            1 => changed.digest.push('x'),
+            2 => changed.payload.push('x'),
+            3 => changed.account_id.push('x'),
+            4 => changed.channel = "testers".into(),
+            _ => changed.retry = true,
+        }
+        assert!(!can_send(Some(&changed), Some(&consent), false));
+    }
+    let mut retry = preview;
+    retry.retry = true;
+    assert!(can_send(Some(&retry), Some(&Consent::from(&retry)), true));
+}
 struct Temp(PathBuf);
 impl Temp {
     fn new() -> Self {

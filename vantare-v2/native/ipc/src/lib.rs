@@ -126,6 +126,67 @@ mod tests {
     }
 
     #[test]
+    fn v4_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+        use vantare_domain::SourceState;
+        for state in [
+            SourceState::Waiting,
+            SourceState::Live,
+            SourceState::Stale,
+            SourceState::Lost,
+        ] {
+            let mut snapshot = rich_snapshot(7, 42);
+            snapshot.state.source_state = state;
+            let text = snapshot_to_json(&snapshot).expect("serializa");
+            assert!(text.contains("\"version\":4"));
+            assert_eq!(snapshot_from_json(&text).expect("v4"), snapshot);
+        }
+        let mut json: serde_json::Value =
+            serde_json::from_str(&snapshot_to_json(&rich_snapshot(7, 42)).expect("serializa"))
+                .expect("JSON");
+        json["state"]["player"]["fuel_history"] = serde_json::json!(vec![(1, 3.5); 11]);
+        assert!(matches!(
+            snapshot_from_json(&json.to_string()),
+            Err(Error::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn every_workshop_scene_is_migrated_with_new_signals_unavailable() {
+        let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui/fixtures");
+        let mut count = 0;
+        for entry in std::fs::read_dir(directory).expect("directorio de escenas") {
+            let path = entry.expect("escena").path();
+            if path.extension().is_none_or(|extension| extension != "json") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).expect("JSON de escena");
+            let snapshot = snapshot_from_json(&text).expect("escena v4");
+            assert_eq!(
+                snapshot.state.source_state,
+                vantare_domain::SourceState::Live
+            );
+            for car in &snapshot.state.cars {
+                assert_eq!(car.relative_s, vantare_domain::Quality::Unavailable);
+                assert_eq!(car.relative_laps, vantare_domain::Quality::Unavailable);
+            }
+            if let Some(player) = snapshot.state.player {
+                assert_eq!(
+                    player.telemetry.steering,
+                    vantare_domain::Quality::Unavailable
+                );
+                assert_eq!(player.fuel.history, [None; 10]);
+            }
+            assert_eq!(
+                snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
+                    .expect("ida y vuelta"),
+                snapshot
+            );
+            count += 1;
+        }
+        assert!(count > 0, "las escenas no pueden faltar");
+    }
+
+    #[test]
     fn workshop_scene_decodes_with_unavailable_weather_and_damage() {
         let scene = snapshot_from_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
             .expect("escena migrada al DTO vigente");

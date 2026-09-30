@@ -10,6 +10,7 @@ use vantare_domain::{Car, Player, Quality};
 /// Ventana de la media móvil. El original la configuraba hasta 10; aquí nada la
 /// configura y se fija su valor por defecto (3).
 const WINDOW_LAPS: usize = 3;
+const HISTORY_LAPS: usize = 10;
 /// Subida de nivel que delata un repostaje (epsilon del original).
 const REFUEL_EPSILON_L: f64 = 0.05;
 
@@ -18,7 +19,8 @@ const REFUEL_EPSILON_L: f64 = 0.05;
 #[derive(Debug, Default)]
 pub(super) struct Tracker {
     open: Option<OpenLap>,
-    samples: VecDeque<f64>,
+    samples: VecDeque<(u32, f64)>,
+    last_lap: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -38,12 +40,14 @@ impl Tracker {
     /// nueva o cambio de coche del jugador).
     pub(super) fn reset(&mut self) {
         self.open = None;
+        self.last_lap = None;
         self.samples.clear();
     }
 
     /// Pierde la vuelta en curso (dato ausente); la ventana medida se conserva.
     pub(super) fn invalidate(&mut self) {
         self.open = None;
+        self.last_lap = None;
     }
 
     /// Consume la foto y completa las señales derivadas del jugador si el
@@ -72,9 +76,17 @@ impl Tracker {
             return;
         }
         let Some(open) = self.open else {
-            self.start(lap, level, in_pit);
+            // Primera foto a mitad de vuelta: esperar a un cruce observado.
+            if self
+                .last_lap
+                .is_some_and(|last| last.checked_add(1) == Some(lap))
+            {
+                self.start(lap, level, in_pit);
+            }
+            self.last_lap = Some(lap);
             return;
         };
+        self.last_lap = Some(lap);
         let mut open = open;
         if level > open.last_l + REFUEL_EPSILON_L || in_pit {
             open.invalid = true;
@@ -88,7 +100,7 @@ impl Tracker {
                 self.close(open, level);
                 self.start(lap, level, in_pit);
             }
-            _ => self.start(lap, level, in_pit),
+            _ => self.open = None,
         }
     }
 
@@ -102,10 +114,10 @@ impl Tracker {
         if !consumed.is_finite() || consumed <= 0.0 {
             return;
         }
-        if self.samples.len() == WINDOW_LAPS {
+        if self.samples.len() == HISTORY_LAPS {
             self.samples.pop_front();
         }
-        self.samples.push_back(consumed);
+        self.samples.push_back((open.lap, consumed));
     }
 
     fn start(&mut self, lap: u32, level: f64, in_pit: bool) {
@@ -124,7 +136,7 @@ impl Tracker {
         }
         let mut sum = 0.0;
         let mut count = 0_u32;
-        for sample in &self.samples {
+        for (_, sample) in self.samples.iter().rev().take(WINDOW_LAPS) {
             sum += sample;
             count += 1;
         }
@@ -135,6 +147,10 @@ impl Tracker {
     /// `per_lap_l` = media de la ventana; `laps_left` = nivel / `per_lap_l`.
     /// Un dato nativo actual nunca se pisa.
     fn write(&self, player: &mut Player) {
+        player.fuel.history = [None; HISTORY_LAPS];
+        for (slot, sample) in player.fuel.history.iter_mut().zip(&self.samples) {
+            *slot = Some(*sample);
+        }
         if player.fuel.per_lap_l.current().is_none()
             && let Some(per_lap) = self.per_lap()
         {
@@ -161,6 +177,54 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn first_observation_is_not_a_full_lap() {
+        let mut tracker = Tracker::default();
+        tracker.derive(&mut at_level(100.0), &car(1, false));
+        let mut player = at_level(98.0);
+        tracker.derive(&mut player, &car(2, false));
+        assert_eq!(player.fuel.per_lap_l, Quality::Unavailable);
+        player = at_level(94.0);
+        tracker.derive(&mut player, &car(3, false));
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(4.0));
+    }
+
+    #[test]
+    fn history_keeps_ten_laps_and_average_only_the_last_three() {
+        let mut tracker = Tracker::default();
+        let mut level = 200.0;
+        tracker.derive(&mut at_level(level), &car(0, false));
+        tracker.derive(&mut at_level(level), &car(1, false));
+        let mut player = at_level(level);
+        for lap in 1..=12 {
+            level -= f64::from(lap);
+            player = at_level(level);
+            tracker.derive(&mut player, &car(lap + 1, false));
+        }
+        let history: Vec<_> = player.fuel.history.into_iter().flatten().collect();
+        assert_eq!(
+            history,
+            (3..=12)
+                .map(|lap| (lap, f64::from(lap)))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(11.0));
+        tracker.invalidate();
+        tracker.derive(&mut player, &car(20, false));
+        assert_eq!(
+            player
+                .fuel
+                .history
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+            history
+        );
+        tracker.reset();
+        tracker.derive(&mut at_level(200.0), &car(0, false));
+        assert!(tracker.samples.is_empty());
+    }
+
     fn car(lap: u32, in_pit: bool) -> Car {
         Car {
             id: CarId(1),
@@ -184,6 +248,7 @@ mod tests {
     #[test]
     fn three_laps_average_and_laps_left() {
         let mut tracker = Tracker::default();
+        tracker.derive(&mut at_level(100.0), &car(0, false));
         let mut player = at_level(100.0);
         tracker.derive(&mut player, &car(1, false));
         assert_eq!(
@@ -211,6 +276,7 @@ mod tests {
     #[test]
     fn refuel_invalidates_the_lap() {
         let mut tracker = Tracker::default();
+        tracker.derive(&mut at_level(100.0), &car(0, false));
         let mut player = at_level(100.0);
         tracker.derive(&mut player, &car(1, false));
         player = at_level(96.0);
@@ -234,6 +300,7 @@ mod tests {
     #[test]
     fn pit_stop_invalidates_the_lap() {
         let mut tracker = Tracker::default();
+        tracker.derive(&mut at_level(100.0), &car(0, false));
         let mut player = at_level(100.0);
         tracker.derive(&mut player, &car(1, false));
         player = at_level(99.0);
@@ -249,6 +316,7 @@ mod tests {
     #[test]
     fn native_values_win_and_gaps_in_the_lap_do_not_invent_measurements() {
         let mut tracker = Tracker::default();
+        tracker.derive(&mut at_level(100.0), &car(0, false));
         let mut player = at_level(100.0);
         tracker.derive(&mut player, &car(1, false));
         // La foto que cierra la vuelta llega con los valores nativos actuales.

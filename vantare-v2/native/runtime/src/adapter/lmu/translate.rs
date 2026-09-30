@@ -130,6 +130,7 @@ impl Translator {
                 received_at: now,
             },
             state: State {
+                source_state: vantare_domain::SourceState::Waiting,
                 capabilities: capabilities(
                     &frame,
                     &cars,
@@ -369,6 +370,7 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, damage_stale: bool) -> Pla
             throttle: quality(inputs.throttle, stale),
             brake: quality(inputs.brake, stale),
             clutch: quality(inputs.clutch, stale),
+            steering: quality(inputs.steering, stale || damage_stale),
             gear: quality(inputs.gear, stale),
             speed_mps: quality(inputs.speed_mps, stale),
             engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
@@ -455,7 +457,9 @@ fn capabilities(
         ),
         spatial: capability(cars.iter().any(|car| has(&car.pose)), stale),
         driver_inputs: capability(
-            telemetry.is_some_and(|t| has(&t.throttle) || has(&t.brake) || has(&t.clutch)),
+            telemetry.is_some_and(|t| {
+                has(&t.throttle) || has(&t.brake) || has(&t.clutch) || has(&t.steering)
+            }),
             stale,
         ),
         powertrain: capability(

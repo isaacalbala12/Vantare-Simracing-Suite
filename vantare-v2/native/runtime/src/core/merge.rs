@@ -2,11 +2,10 @@
 //! derivaciones que necesitan memoria entre fotos (combustible y delta).
 
 use std::collections::HashSet;
-use std::mem;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Damage, Fuel, Gap, Observation, Player, Pose, Quality,
-    Session, SessionId, Snapshot, State, Telemetry, Weather,
+    Car, CarId, Damage, Fuel, Gap, Observation, Player, Pose, Quality, Session, SessionId,
+    Snapshot, SourceState, State, Telemetry, Weather, degrade,
 };
 
 use super::derive::derive;
@@ -47,6 +46,7 @@ pub(super) fn merge(
     if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
         return Err(Reject::DuplicateCar(car.id));
     }
+    state.source_state = SourceState::Live;
     sanitize(&mut state);
     derive(&mut state);
     trackers.derive(&mut state);
@@ -99,7 +99,7 @@ impl Trackers {
             return;
         };
         self.fuel.derive(player, car);
-        self.delta.derive(player, car);
+        self.delta.derive(player, car, state.session.track_length_m);
     }
 }
 
@@ -109,127 +109,83 @@ pub(super) fn stale(previous: &Snapshot) -> Snapshot {
     let mut next = previous.clone();
     next.sequence += 1;
     degrade(&mut next.state);
+    next.state.source_state = SourceState::Stale;
     next
 }
 
-/// Lo actual pasa a obsoleto: los valores siguen ahí, ya no son "actuales".
-///
-/// Desestructura cada tipo sin `..`: una señal nueva en `domain` no compila
-/// hasta que se decide aquí cómo se vuelve obsoleta.
-pub(super) fn degrade(state: &mut State) {
+/// Frontera de confianza: un `NaN` o infinito del simulador se vuelve ausente,
+/// no se propaga a gaps, radar ni formato.
+// Desestructuración exhaustiva: una señal nueva obliga a decidir su saneado.
+fn sanitize(state: &mut State) {
     let State {
-        capabilities,
+        source_state: _,
+        capabilities: _,
         session,
-        flags,
+        flags: _,
         cars,
         player,
     } = state;
-    let Capabilities {
-        session_clock,
-        positions,
-        lap_times,
-        gaps,
-        pit_status,
-        flags: flags_capability,
-        spatial,
-        driver_inputs,
-        powertrain,
-        fuel,
-        delta,
-        sectors,
-        lap_progress,
-        weather,
-        damage,
-    } = capabilities;
-    for capability in [
-        session_clock,
-        positions,
-        lap_times,
-        gaps,
-        pit_status,
-        flags_capability,
-        spatial,
-        driver_inputs,
-        powertrain,
-        fuel,
-        delta,
-        sectors,
-        lap_progress,
-        weather,
-        damage,
-    ] {
-        if *capability == Capability::Fresh {
-            *capability = Capability::WithData;
-        }
-    }
     let Session {
         id: _,
-        kind,
-        state,
+        kind: _,
+        state: _,
         elapsed_s,
         remaining_s,
-        track_name,
-        laps_remaining,
-        laps_total,
+        track_name: _,
+        laps_remaining: _,
+        laps_total: _,
         track_length_m,
         weather,
     } = session;
-    make_stale(kind);
-    make_stale(state);
-    make_stale(elapsed_s);
-    make_stale(remaining_s);
-    make_stale(track_name);
-    make_stale(laps_remaining);
-    make_stale(laps_total);
-    make_stale(track_length_m);
-    degrade_weather(weather);
-    make_stale(flags);
-    cars.iter_mut().for_each(degrade_car);
+    finite(elapsed_s);
+    finite(remaining_s);
+    finite(track_length_m);
+    sanitize_weather(weather);
+    for car in cars {
+        let Car {
+            id: _,
+            number: _,
+            driver: _,
+            class: _,
+            position: _,
+            class_position: _,
+            laps: _,
+            last_lap_s,
+            best_lap_s,
+            last_sectors_s,
+            gap_leader,
+            gap_ahead,
+            gap_class_leader,
+            gap_class_ahead,
+            relative_s,
+            relative_laps: _,
+            lap_distance_m,
+            lap_elapsed_s,
+            current_sector: _,
+            in_pits: _,
+            pose,
+        } = car;
+        finite(last_lap_s);
+        finite(best_lap_s);
+        last_sectors_s.iter_mut().for_each(finite);
+        for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
+            keep_if(gap, finite_gap);
+        }
+        finite(relative_s);
+        finite(lap_distance_m);
+        finite(lap_elapsed_s);
+        keep_if(pose, |pose: &Pose| {
+            [pose.x_m, pose.y_m, pose.yaw_rad]
+                .iter()
+                .all(|v| v.is_finite())
+        });
+    }
     if let Some(player) = player {
-        degrade_player(player);
+        sanitize_player(player);
     }
 }
 
-fn degrade_car(car: &mut Car) {
-    let Car {
-        id: _,
-        number: _,
-        driver: _,
-        class: _,
-        position,
-        class_position,
-        laps,
-        last_lap_s,
-        best_lap_s,
-        last_sectors_s,
-        gap_leader,
-        gap_ahead,
-        gap_class_leader,
-        gap_class_ahead,
-        lap_distance_m,
-        lap_elapsed_s,
-        current_sector,
-        in_pits,
-        pose,
-    } = car;
-    make_stale(position);
-    make_stale(class_position);
-    make_stale(laps);
-    make_stale(last_lap_s);
-    make_stale(best_lap_s);
-    last_sectors_s.iter_mut().for_each(make_stale);
-    make_stale(gap_leader);
-    make_stale(gap_ahead);
-    make_stale(gap_class_leader);
-    make_stale(gap_class_ahead);
-    make_stale(lap_distance_m);
-    make_stale(lap_elapsed_s);
-    make_stale(current_sector);
-    make_stale(in_pits);
-    make_stale(pose);
-}
-
-fn degrade_player(player: &mut Player) {
+fn sanitize_player(player: &mut Player) {
     let Player {
         car: _,
         telemetry,
@@ -241,115 +197,41 @@ fn degrade_player(player: &mut Player) {
         throttle,
         brake,
         clutch,
-        gear,
+        steering,
+        gear: _,
         speed_mps,
         engine_speed_rad_s,
     } = telemetry;
-    make_stale(throttle);
-    make_stale(brake);
-    make_stale(clutch);
-    make_stale(gear);
-    make_stale(speed_mps);
-    make_stale(engine_speed_rad_s);
+    for signal in [throttle, brake, clutch, speed_mps, engine_speed_rad_s] {
+        finite(signal);
+    }
+    keep_if(steering, |v| (-1.0..=1.0).contains(v));
     let Fuel {
         level_l,
         capacity_l,
         per_lap_l,
         laps_left,
+        history,
     } = fuel;
-    make_stale(level_l);
-    make_stale(capacity_l);
-    make_stale(per_lap_l);
-    make_stale(laps_left);
-    make_stale(delta_best_s);
+    for signal in [level_l, capacity_l, per_lap_l, laps_left] {
+        finite(signal);
+    }
+    for entry in history {
+        if entry.is_some_and(|(_, litres)| !litres.is_finite() || litres <= 0.0) {
+            *entry = None;
+        }
+    }
+    finite(delta_best_s);
     let Damage {
         aero,
         body,
         suspension,
         tyre_wear,
     } = damage;
-    make_stale(aero);
-    make_stale(body);
-    make_stale(suspension);
-    tyre_wear.iter_mut().for_each(make_stale);
-}
-
-fn degrade_weather(weather: &mut Weather) {
-    let Weather {
-        air_temperature_k,
-        track_temperature_k,
-        wind_speed_mps,
-        wind_direction_rad,
-        rain,
-        track_wetness,
-        pressure_pa,
-    } = weather;
-    make_stale(air_temperature_k);
-    make_stale(track_temperature_k);
-    make_stale(wind_speed_mps);
-    make_stale(wind_direction_rad);
-    make_stale(rain);
-    make_stale(track_wetness);
-    make_stale(pressure_pa);
-}
-
-fn make_stale<T>(quality: &mut Quality<T>) {
-    *quality = match mem::take(quality) {
-        Quality::Reliable(value) | Quality::Estimated(value) => Quality::Stale(value),
-        other => other,
-    };
-}
-
-/// Frontera de confianza: un `NaN` o infinito del simulador se vuelve ausente,
-/// no se propaga a gaps, radar ni formato.
-// ponytail: lista explícita de campos numéricos; una señal `f64` nueva hay que
-// añadirla aquí (si no, pasa sin sanear). Sustituir por un recorrido común solo
-// si las señales numéricas crecen.
-fn sanitize(state: &mut State) {
-    let session = &mut state.session;
-    finite(&mut session.elapsed_s);
-    finite(&mut session.remaining_s);
-    finite(&mut session.track_length_m);
-    sanitize_weather(&mut session.weather);
-    for car in &mut state.cars {
-        finite(&mut car.last_lap_s);
-        finite(&mut car.best_lap_s);
-        car.last_sectors_s.iter_mut().for_each(finite);
-        keep_if(&mut car.gap_leader, finite_gap);
-        keep_if(&mut car.gap_ahead, finite_gap);
-        keep_if(&mut car.gap_class_leader, finite_gap);
-        keep_if(&mut car.gap_class_ahead, finite_gap);
-        finite(&mut car.lap_distance_m);
-        finite(&mut car.lap_elapsed_s);
-        keep_if(&mut car.pose, |pose: &Pose| {
-            [pose.x_m, pose.y_m, pose.yaw_rad]
-                .iter()
-                .all(|v| v.is_finite())
-        });
-    }
-    if let Some(player) = &mut state.player {
-        let telemetry = &mut player.telemetry;
-        finite(&mut telemetry.throttle);
-        finite(&mut telemetry.brake);
-        finite(&mut telemetry.clutch);
-        finite(&mut telemetry.speed_mps);
-        finite(&mut telemetry.engine_speed_rad_s);
-        finite(&mut player.fuel.level_l);
-        finite(&mut player.fuel.capacity_l);
-        finite(&mut player.fuel.per_lap_l);
-        finite(&mut player.fuel.laps_left);
-        finite(&mut player.delta_best_s);
-        let Damage {
-            aero,
-            body,
-            suspension,
-            tyre_wear,
-        } = &mut player.damage;
-        fraction(aero);
-        fraction(body);
-        fraction(suspension);
-        tyre_wear.iter_mut().for_each(fraction);
-    }
+    fraction(aero);
+    fraction(body);
+    fraction(suspension);
+    tyre_wear.iter_mut().for_each(fraction);
 }
 
 fn sanitize_weather(weather: &mut Weather) {
@@ -401,9 +283,52 @@ fn keep_if<T>(quality: &mut Quality<T>, ok: impl Fn(&T) -> bool) {
 
 #[cfg(test)]
 mod tests {
-    use vantare_domain::{Player, SessionId, Source};
+    use vantare_domain::{Capabilities, Capability, Player, SessionId, Source};
 
     use super::*;
+
+    #[test]
+    fn new_signals_are_sanitized_and_degraded_without_losing_history() {
+        let mut obs = observation(vec![car(1, 1)]);
+        obs.state.cars[0].relative_s = Quality::Reliable(f64::INFINITY);
+        obs.state.cars[0].relative_laps = Quality::Estimated(-2);
+        obs.state.player = Some(Player {
+            car: CarId(1),
+            telemetry: Telemetry {
+                steering: Quality::Reliable(1.1),
+                ..Telemetry::default()
+            },
+            ..Player::default()
+        });
+        let player = obs.state.player.as_mut().expect("jugador");
+        player.fuel.history[0] = Some((1, 3.5));
+        player.fuel.history[1] = Some((2, f64::NAN));
+        sanitize(&mut obs.state);
+        assert_eq!(obs.state.cars[0].relative_s, Quality::Unavailable);
+        assert_eq!(
+            obs.state.player.expect("jugador").telemetry.steering,
+            Quality::Unavailable
+        );
+        obs.state.cars[0].relative_s = Quality::Estimated(-2.0);
+        obs.state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .steering = Quality::Reliable(-0.5);
+        let before = Snapshot {
+            state: obs.state,
+            ..Snapshot::default()
+        };
+        let after = stale(&before);
+        assert_eq!(after.state.source_state, SourceState::Stale);
+        assert_eq!(after.state.cars[0].relative_s, Quality::Stale(-2.0));
+        assert_eq!(after.state.cars[0].relative_laps, Quality::Stale(-2));
+        let player = after.state.player.expect("jugador");
+        assert_eq!(player.telemetry.steering, Quality::Stale(-0.5));
+        assert_eq!(player.fuel.history[0], Some((1, 3.5)));
+        assert_eq!(player.fuel.history[1], None);
+    }
 
     fn car(id: u32, position: u32) -> Car {
         Car {
@@ -494,6 +419,9 @@ mod tests {
             },
             ..Player::default()
         });
+        let mut preceding = first.clone();
+        preceding.state.cars[0].laps = Quality::Reliable(0);
+        merge(None, preceding, 1, &mut trackers).unwrap();
         merge(None, first.clone(), 1, &mut trackers).unwrap();
         let mut second = first.clone();
         second.state.cars[0].laps = Quality::Reliable(2);

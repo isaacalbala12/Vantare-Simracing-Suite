@@ -386,7 +386,7 @@ mod tests {
     #[test]
     fn parity_scenes_use_the_existing_snapshot_wire_format() {
         let standings =
-            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings-44.snapshot.json"))
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/standings-legacy.snapshot.json"))
                 .expect("escena de referencia");
         assert_eq!(standings, crate::source::fixed());
         let reference_scene =

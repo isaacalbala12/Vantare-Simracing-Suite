@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "epoch": 1,
   "sequence": 1,
   "origin": {
@@ -67,6 +67,7 @@
     },
     "flags": "unavailable",
     "cars": [],
-    "player": null
+    "player": null,
+    "source_state": "live"
   }
 }

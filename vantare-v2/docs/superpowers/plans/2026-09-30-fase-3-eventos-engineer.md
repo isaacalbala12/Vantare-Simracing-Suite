@@ -1,5 +1,48 @@
 # Fase 3 — Eventos y Engineer (ISA-1428)
 
+## Ampliación autorizada: integración del corte 4
+
+Revisión de Opus/Isaac: integrar `vantareapp/isa-1427-fase2` (punta leída
+`e172eb3fb0e92915468209d8c0cc46a30362a115`), unificar workspace y conectar
+producción. Se autoriza además `native/Cargo.toml`, lock padre, transporte IPC,
+`runtime/src/core/`, servicio y launcher/tests, lo mínimo necesario. Adaptadores,
+modelo, `ui/` y `hub/` no se editan: sus cambios de fase 2 se reciben por merge.
+Ponytail sigue activo; no se crean subagentes ni se hace push/PR/promoción.
+
+Hitos nuevos, cada uno con gates completos y commit local:
+
+1. Merge fase 2 sin perder ninguna rama. DTO v4 se conserva. Primer fmt encontró
+   un formato heredado en `native/ui/src/app.rs:385`; no se corrige fuera del
+   alcance autorizado. Clippy/test se ejecutan y se registra esta deuda explícita.
+2. Engineer miembro de `native/`, package/lints heredados, un lock. Eliminar solo
+   lock y `.gitignore` propios; nada de librerías nuevas.
+3. Extender el mismo journal con hechos neutrales tipados (boxes existente,
+   vuelta completada, bandera activada/retirada con ámbito, sesión/estado de sesión,
+   estado de fuente). Cursor único y registros versionados; v1 de boxes sigue
+   legible. Solo comparar fotos consecutivas fiables; primera foto es base,
+   saltos de contador/calidad no fabrican vueltas ni retiradas de banderas.
+4. Transporte de eventos sobre los mismos primitivos Win32 de IPC: ACL de
+   usuario/PID/imagen, límite/versionado existente, ACK exacto y plazos/cancelación.
+   Dueño I/O separado de adquisición: publica corte inmutable foto+ring con
+   ArcSwap, reutiliza el ring hasta que cambie el tail. Si se pierde retención,
+   hueco explícito; si falla persistencia, estado degradado y fotos continúan.
+   Peticiones acotadas al dueño; nunca esperar ni fsync en adquisición.
+5. Launcher habilita Engineer solo mediante opción explícita con checkpoint;
+   mismo Job Object, cancelación EOF, supervisión/backoff/presupuesto y orden
+   de cierre. Engineer consume el pipe de eventos y checkpointa antes de ACK;
+   conserva el banco `--stream`. Pruebas de procesos, pérdida/reconexión, ACK
+   incorrecto, recording, source_state y lifecycle; sin audio ni juego físicos.
+
+Señales pendientes se detallan más abajo con unidad/calidad/procedencia, sin
+editar `model.rs`. Voz física/Spotter completo siguen pendientes; integrar el
+flujo no autoriza afirmar paridad acústica ni presupuestos de rendimiento.
+
+Merge fase 2 verificado: clippy padre PASS (23,56 s); tests padre 442 PASS
+incluyendo lifecycle, 4 live ignorados (compilación 2m59s). Engineer fmt/clippy
+PASS (6,71 s), 16 tests PASS, 0 ignorados (compilación 1m01s). `fmt --check`
+padre FAIL solo en la línea importada de UI; no se modifica UI ni se declara
+gate global verde. Sin conflictos, DTO v4 y ambos conjuntos de cambios presentes.
+
 Fecha: 2026-09-30. Contrato: ADR 0099 completa, §2–4 y §7;
 [issue #1428](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1428).
 Worker Codex; revisión final del diff por Claude Opus 5.5. Base proporcionada

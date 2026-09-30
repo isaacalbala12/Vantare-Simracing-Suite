@@ -44,18 +44,41 @@ pub struct Row {
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_scoped(snapshot, prefs, false)
+}
+
+/// Clasificación de la clase del jugador; conserva la posición global y usa
+/// exclusivamente los gaps de clase que ya publica el núcleo.
+pub fn project_player_class(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_scoped(snapshot, prefs, true)
+}
+
+fn project_scoped(snapshot: &Snapshot, prefs: Preferences, player_class: bool) -> ViewModel {
     let state = &snapshot.state;
     let session = &state.session;
     let kind = session.kind.current();
     let gap_to_best_lap = matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying));
-    let session_best = state
+    let class = state
+        .player_car()
+        .or_else(|| state.cars.first())
+        .and_then(|car| car.class.as_ref());
+    let mut cars: Vec<&Car> = state
         .cars
+        .iter()
+        .filter(|car| {
+            !player_class
+                || car
+                    .class
+                    .as_ref()
+                    .is_none_or(|c| Some(c.id) == class.map(|c| c.id))
+        })
+        .collect();
+    let session_best = cars
         .iter()
         .filter_map(|car| positive(&car.best_lap_s))
         .min_by(f64::total_cmp);
     let player = state.player.map(|p| p.car);
 
-    let mut cars: Vec<&Car> = state.cars.iter().collect();
     cars.sort_by_key(|car| car.position.current().copied().unwrap_or(u32::MAX));
     let rows = cars
         .into_iter()
@@ -71,10 +94,27 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             gap: if gap_to_best_lap {
                 best_lap_gap(car, session_best, prefs)
             } else {
-                let leader = car.position.current() == Some(&1);
-                format::gap(car.gap_leader.current().copied(), leader, prefs)
+                let (gap, leader) = if player_class {
+                    (
+                        car.gap_class_leader,
+                        car.class.is_some() && car.class_position.current() == Some(&1),
+                    )
+                } else {
+                    (car.gap_leader, car.position.current() == Some(&1))
+                };
+                format::gap(gap.current().copied(), leader, prefs)
             },
-            interval: format::gap(car.gap_ahead.current().copied(), false, prefs),
+            interval: format::gap(
+                if player_class {
+                    car.gap_class_ahead
+                } else {
+                    car.gap_ahead
+                }
+                .current()
+                .copied(),
+                false,
+                prefs,
+            ),
             laps: number_or_dash(car.laps),
             last_lap: format::lap_time(car.last_lap_s.current().copied()),
             best_lap: format::lap_time(car.best_lap_s.current().copied()),
@@ -187,6 +227,7 @@ mod tests {
     fn snapshot(kind: SessionKind, cars: Vec<Car>) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: crate::SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,
                     ..Capabilities::default()
@@ -216,6 +257,53 @@ mod tests {
             },
             ..Snapshot::default()
         }
+    }
+
+    #[test]
+    fn player_class_keeps_global_positions_and_never_substitutes_global_gaps() {
+        let mut leader = car(1, 2, "Ana");
+        leader.class_position = Reliable(1);
+        let mut second = car(2, 5, "Ben");
+        second.class_position = Reliable(2);
+        second.gap_leader = Reliable(Gap::Time { seconds: 20.0 });
+        second.gap_class_leader = Stale(Gap::Time { seconds: 2.0 });
+        let mut other = car(3, 1, "Cy");
+        other.class.as_mut().expect("clase").id = ClassId(2);
+        let mut snapshot = snapshot(SessionKind::Race, vec![second, other, leader]);
+        let prefs = Preferences::default();
+        let vm = project_player_class(&snapshot, prefs);
+        assert_eq!(
+            vm.rows.len(),
+            2,
+            "se filtra por ID, no por el nombre de clase"
+        );
+        assert_eq!(vm.rows[0].position, "2");
+        assert_eq!(vm.rows[0].gap, "LÍDER");
+        assert_eq!(vm.rows[1].gap, PLACEHOLDER);
+        snapshot.state.cars[0].gap_class_leader = Reliable(Gap::Laps { count: 1 });
+        snapshot.state.cars[0].gap_class_ahead = Reliable(Gap::Time { seconds: 0.8 });
+        let vm = project_player_class(&snapshot, prefs);
+        assert_eq!(vm.rows[1].gap, "+1 V");
+        assert_eq!(vm.rows[1].interval, "+0.80s");
+        assert_eq!(project(&snapshot, prefs).rows.len(), 3);
+    }
+
+    #[test]
+    fn player_class_practice_compares_only_fresh_scoped_best_laps() {
+        let mut player = car(2, 2, "Ben");
+        player.best_lap_s = Reliable(110.0);
+        let mut other = car(1, 1, "Ana");
+        other.class.as_mut().expect("clase").id = ClassId(2);
+        other.best_lap_s = Reliable(100.0);
+        let mut same_class = car(3, 3, "Cy");
+        same_class.best_lap_s = Stale(109.0);
+        let vm = project_player_class(
+            &snapshot(SessionKind::Practice, vec![other, player, same_class]),
+            Preferences::default(),
+        );
+        assert_eq!(vm.rows.len(), 2);
+        assert_eq!(vm.rows[0].gap, "LÍDER");
+        assert_eq!(vm.rows[1].gap, PLACEHOLDER);
     }
 
     #[test]

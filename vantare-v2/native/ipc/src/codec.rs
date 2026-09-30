@@ -144,6 +144,8 @@ pub(crate) mod tests {
             gap_ahead: Quality::Reliable(Gap::Laps { count: 2 }),
             gap_class_leader: Quality::Stale(Gap::Time { seconds: 3.5 }),
             gap_class_ahead: Quality::Unavailable,
+            relative_s: Quality::Estimated(-2.5),
+            relative_laps: Quality::Estimated(-1),
             lap_distance_m: Quality::Reliable(1234.5),
             lap_elapsed_s: Quality::Estimated(41.25),
             current_sector: Quality::Reliable(2),
@@ -170,6 +172,7 @@ pub(crate) mod tests {
                 received_at: Duration::from_millis(1500),
             },
             state: State {
+                source_state: vantare_domain::SourceState::Live,
                 capabilities: Capabilities {
                     session_clock: Capability::Fresh,
                     positions: Capability::WithData,
@@ -215,12 +218,25 @@ pub(crate) mod tests {
                     car: CarId(2),
                     telemetry: Telemetry {
                         throttle: Quality::Reliable(0.75),
+                        steering: Quality::Reliable(-0.25),
                         gear: Quality::Reliable(-1),
                         ..Telemetry::default()
                     },
                     fuel: Fuel {
                         level_l: Quality::Reliable(42.5),
                         per_lap_l: Quality::Estimated(3.1),
+                        history: [
+                            Some((1, 3.0)),
+                            Some((2, 3.2)),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ],
                         ..Fuel::default()
                     },
                     delta_best_s: Quality::Reliable(-0.125),

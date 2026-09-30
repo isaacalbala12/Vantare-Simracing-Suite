@@ -13,7 +13,7 @@ use vantare_domain::{
 
 use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, Ink, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
+use crate::efficiency::{col, paint_highlighted_frame, paint_panel, paint_rect, rect, tokens};
 
 pub const SIZE: (f32, f32) = (680.0, 204.0);
 const MAIN_WIDTH: f32 = 680.0 * 1.2 / 2.2;
@@ -58,26 +58,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     } else {
         paint_main(vm, window, cx);
     }
-    paint_frame(window, SIZE.0, SIZE.1);
-    // ::after: borde superior al 24 %, resto al 12 %. Falta esta variante al kit.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, SIZE.0, tokens::RADIUS),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0x000000, 0.0),
-        Edges {
-            top: px(1.0),
-            right: px(0.0),
-            bottom: px(0.0),
-            left: px(0.0),
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    paint_highlighted_frame(window, SIZE.0, SIZE.1);
 }
 
 fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {

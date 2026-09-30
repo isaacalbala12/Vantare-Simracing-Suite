@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -90,7 +90,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 2,
@@ -139,7 +141,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 3,
@@ -188,7 +192,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 4,
@@ -237,7 +243,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 5,
@@ -286,7 +294,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 6,
@@ -335,7 +345,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 7,
@@ -384,7 +396,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 8,
@@ -433,7 +447,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 9,
@@ -482,7 +498,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 10,
@@ -531,7 +549,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 11,
@@ -580,7 +600,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 12,
@@ -629,7 +651,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 13,
@@ -678,7 +702,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 14,
@@ -727,7 +753,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 15,
@@ -776,7 +804,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 16,
@@ -825,7 +855,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 17,
@@ -874,7 +906,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 18,
@@ -923,7 +957,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 19,
@@ -972,7 +1008,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       },
       {
         "id": 20,
@@ -1021,7 +1059,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       }
     ],
     "player": {
@@ -1057,8 +1097,11 @@
         "unavailable",
         "unavailable",
         "unavailable"
-      ]
-    }
+      ],
+      "steering": "unavailable",
+      "fuel_history": []
+    },
+    "source_state": "live"
   },
   "_reference": {
     "issue": 1427,

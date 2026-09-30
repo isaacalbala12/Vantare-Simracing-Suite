@@ -1,0 +1,1380 @@
+{
+  "cases": [
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.0.0"
+      },
+      "name": "legacy_without_rules",
+      "valid": true
+    },
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "rules": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": {
+                "allowedCompoundsByClimate": {
+                  "wet": [
+                    "wet"
+                  ]
+                },
+                "driverLimits": {
+                  "driver-1": {
+                    "maxLaps": 20,
+                    "minLaps": 2
+                  }
+                },
+                "mandatoryCompounds": [
+                  "soft",
+                  "hard"
+                ],
+                "maxPitStops": 3,
+                "minPitStops": 1,
+                "requiredWindows": [
+                  {
+                    "fromLap": 10,
+                    "toLap": 12
+                  }
+                ]
+              }
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.0.0"
+      },
+      "name": "legacy_rules_rejected",
+      "valid": false
+    },
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "rules": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": {
+                "allowedCompoundsByClimate": {
+                  "wet": [
+                    "wet"
+                  ]
+                },
+                "driverLimits": {
+                  "driver-1": {
+                    "maxLaps": 20,
+                    "minLaps": 2
+                  }
+                },
+                "mandatoryCompounds": [
+                  "soft",
+                  "hard"
+                ],
+                "maxPitStops": 3,
+                "minPitStops": 1,
+                "requiredWindows": [
+                  {
+                    "fromLap": 10,
+                    "toLap": 12
+                  }
+                ]
+              }
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.1.0"
+      },
+      "name": "rules_v2_1",
+      "valid": true
+    },
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "rules": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": {
+                "minPitStops": -1
+              }
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.1.0"
+      },
+      "name": "negative_stop_count",
+      "valid": false
+    },
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "rules": {
+              "value": {}
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.1.0"
+      },
+      "name": "missing_evidence",
+      "valid": false
+    },
+    {
+      "input": {
+        "activeEventId": "own-1",
+        "contractVersion": "strategy.v2",
+        "events": [
+          {
+            "availability": {
+              "driver-1": [
+                {
+                  "from": 780,
+                  "state": "ok",
+                  "to": 1110
+                }
+              ]
+            },
+            "cls": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "LMGT3"
+            },
+            "drivers": [
+              {
+                "id": "driver-1",
+                "order": 0
+              }
+            ],
+            "durationMin": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 120
+            },
+            "fillMode": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "manual"
+            },
+            "id": "own-1",
+            "name": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit.events-full"
+                }
+              },
+              "value": "Evento legacy completo"
+            },
+            "pitLossSeconds": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 54
+            },
+            "rules": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": {
+                "mandatoryCompounds": [
+                  "unknown"
+                ]
+              }
+            },
+            "source": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "custom"
+            },
+            "startAt": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "2026-08-21T14:00:00Z"
+            },
+            "strategies": [
+              {
+                "id": "s1",
+                "mode": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "dry"
+                },
+                "name": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "Base"
+                },
+                "note": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": ""
+                },
+                "order": [
+                  "driver-1"
+                ],
+                "state": {
+                  "evidence": {
+                    "confidence": {
+                      "basis": "m",
+                      "level": "high"
+                    },
+                    "provenance": {
+                      "kind": "observed",
+                      "sourceId": "orbit"
+                    }
+                  },
+                  "value": "ok"
+                }
+              }
+            ],
+            "tankLiters": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": 100
+            },
+            "track": {
+              "evidence": {
+                "confidence": {
+                  "basis": "manual",
+                  "level": "high"
+                },
+                "provenance": {
+                  "kind": "observed",
+                  "sourceId": "orbit"
+                }
+              },
+              "value": "Spa-Francorchamps"
+            },
+            "tyreInventory": {
+              "sets": []
+            }
+          }
+        ],
+        "generatedAt": "2026-08-21T14:00:00Z",
+        "schemaVersion": "2.1.0"
+      },
+      "name": "unknown_compound",
+      "valid": false
+    }
+  ],
+  "goCommit": "bd28ed40dd7d2079de7bcfeb9ee9f9d06950cd52",
+  "sourceHashes": {
+    "internal/strategy/document/document.go": "ce393d0ddc469798df62dfb21bba97459669b1074c08d858964d9a92a5e903eb",
+    "internal/strategy/document/document_event_rules_test.go": "dd3a77d67edfca715f9b592bee78edb2c7d075114ca15ccfecd4dc50d92c36e0",
+    "internal/strategy/solver/event_rules.go": "ce7105c6916339ac8e5ae0f43ee5dab1392009a98a01b4379f4f9b4df9d3f2a9",
+    "internal/strategy/solver/solver_v2.go": "94da0b0405a7fb1331edc5d944ed22b614b561d7bf6d94734d22150dadd3153a"
+  }
+}

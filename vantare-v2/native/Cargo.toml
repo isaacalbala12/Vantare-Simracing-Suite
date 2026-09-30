@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui"]
+members = ["domain", "runtime", "ipc", "ui", "storage"]
+# DuckDB bundled solo se compila al pedir storage o los gates --workspace.
+default-members = ["domain", "runtime", "ipc", "ui"]
 
 [workspace.package]
 version = "0.0.0"

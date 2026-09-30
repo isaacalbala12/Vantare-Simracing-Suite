@@ -321,3 +321,42 @@ overflow de offset en codec y del conteo u32 en análisis antes de mutar.
 
 Corte 6 gates: fmt exit 0; clippy exit 0 (5,77 s); test workspace exit 0,
 401 correctos, 4 live ignorados y cero fallos. El test nuevo pasa con 60.000.
+
+Primer build storage: `cargo build --offline -p vantare-storage --bin
+vantare-storage -j 2`, perfil dev/debug, target MSVC, DuckDB/C++ y sus 49
+paquetes nuevos sin artefactos previos; dependencias antiguas del workspace
+calientes. 886,605 s hasta acabar C++/binding y detectar E0507 en la frontera
+BufRead propia. Corregido reborrow explícito con `Read::take`, sin cambiar el
+binding ni flags. No es medida de workspace completamente frío ni de release.
+DuckDB compiló 280 unidades C++; archivo estático final 2.323.527.676 bytes
+(2,16 GiB; la lectura previa durante su escritura era parcial). Tiempo
+del build corregido y tamaño final del ejecutable se registran a continuación.
+El lock añade 49 paquetes, no actualiza versiones anteriores (solo desambigua
+nombres de dependencias que ahora tienen dos versiones). Ningún crate vivo
+depende de DuckDB: test de grafo transitivo añadido en storage, sin editar
+domain/IPC/UI. Nuevo crate necesario para aislar binding y proceso; estándar,
+helper Go read-only, CLI/Python o FFI manual no cumplen esta frontera.
+
+Build corregido: 19,474 s, exit 0. Primer ejecutable debug: 61.479.936 bytes
+(58,63 MiB); archivo estático DuckDB debug: 2.323.527.676 bytes. Inspección local con
+`llvm-readobj --coff-imports`: sin duckdb.dll; sí MSVCP140, VCRUNTIME140 y
+VCRUNTIME140_1 además de DLL del sistema. Redistribución VC++/notices final
+corresponde a empaquetado, no se declara portable autónomo por bundled.
+El primer clippy `--workspace` genera otro fingerprint del build-script
+por unificación de features host con UI y recompila C++; también registrar
+este coste. Builds normales de default-members no incorporan storage.
+
+Gate clippy workspace: exit 0, 12 min 37 s; segundo archivo estático final
+2.323.527.568 bytes. `cargo test --workspace -j 2` genera un tercer fingerprint
+del build-script/artefactos host y compila otras 280 unidades C++ antes de
+ejecutar pruebas. Dos cl.exe del proceso propio confirmados; no se saltan
+gates ni se cambia el perfil para ocultar este coste. La caché de fuentes no
+equivale a caché de artefactos. Fmt exit 0; suite aún en curso a este punto.
+Comprobación manual del binario: DB temporal nueva bajo target, ready=0,
+ACK=1 y cierre normal exit 0; fixture explícita, no telemetría física.
+
+Corte 7 terminado: fmt/clippy/test exit 0; 408 correctos (incluye lifecycle),
+4 live ignorados, cero fallos. Compilación test: 12 min 39 s, tercer artefacto
+C++ incluido. Siete pruebas nuevas: seis de DB/protocolo/grafo y una con dos
+procesos reales para exclusión de propietario. Sin DB de usuario.
+Las consultas públicas y cierre/recovery completo siguen en cortes 8/9.

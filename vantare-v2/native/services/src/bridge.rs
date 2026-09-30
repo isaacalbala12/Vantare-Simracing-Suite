@@ -16,7 +16,7 @@ pub struct Config {
 }
 pub struct DataSession {
     identity: Identity,
-    generation: u64,
+    generation: u128,
     account_id: String,
     token: Secret,
     expires_at: u64,
@@ -67,6 +67,11 @@ impl Config {
 }
 
 impl DataSession {
+    pub fn valid(&self, account: &Account, now: u64) -> bool {
+        account.identity() == Some(&self.identity)
+            && account.generation() == self.generation
+            && now < self.expires_at
+    }
     pub fn account_id(&self) -> &str {
         &self.account_id
     }
@@ -79,10 +84,7 @@ impl DataSession {
         path: &str,
         payload: &impl serde::Serialize,
     ) -> Result<crate::http::Response> {
-        if account.identity() != Some(&self.identity)
-            || account.generation() != self.generation
-            || now >= self.expires_at
-        {
+        if !self.valid(account, now) {
             return Err(Error::Authentication);
         }
         // Callers supply fixed paths, never a remote URL from a response/Hub DTO.
@@ -90,7 +92,7 @@ impl DataSession {
             path,
             "functions/v1/license-credential"
                 | "rest/v1/rpc/reset_active_device"
-                | "rest/v1/rpc/submit_testing_center_report"
+                | "rest/v1/rpc/testing_center_submit_report"
         ) {
             return Err(Error::Protocol);
         }
@@ -131,6 +133,16 @@ pub struct DataRequest<'a> {
     now: u64,
 }
 impl DataRequest<'_> {
+    pub(crate) fn check(&self) -> Result<()> {
+        if self.session.valid(self.account, self.now) {
+            Ok(())
+        } else {
+            Err(Error::Authentication)
+        }
+    }
+    pub(crate) fn binding(&self) -> (&Identity, u128) {
+        (&self.session.identity, self.session.generation)
+    }
     pub fn account_id(&self) -> &str {
         self.session.account_id()
     }

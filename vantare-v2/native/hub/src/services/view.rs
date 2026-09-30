@@ -15,6 +15,13 @@ use vantare_ipc::transport::Event;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 
+enum Area {
+    Account,
+    Licenses,
+    Roadmap,
+    Report,
+}
+
 #[derive(Default)]
 struct AccountState {
     pending: bool,
@@ -31,7 +38,9 @@ pub struct Remote {
     busy: bool,
     account: AccountState,
     message: String,
-    roadmap_active: bool,
+    active: Area,
+    report_revision: Option<u64>,
+    pub(crate) editor: crate::testing::Editor,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     stale: bool,
@@ -53,7 +62,9 @@ impl Remote {
             busy: false,
             account: AccountState::default(),
             message: "servicio no configurado".into(),
-            roadmap_active: false,
+            active: Area::Account,
+            report_revision: None,
+            editor: crate::testing::Editor::new(crate::testing::empty_fields(), cx),
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             stale: true,
@@ -127,7 +138,22 @@ impl Remote {
     }
 
     fn dispatch(&mut self, command: Command) -> bool {
-        self.roadmap_active = matches!(command, Command::RoadmapCached | Command::RoadmapRefresh);
+        self.active = match command {
+            Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
+            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => Area::Licenses,
+            Command::DraftLoad
+            | Command::DraftSave { .. }
+            | Command::DraftDiscard
+            | Command::ReportPrepare
+            | Command::ReportRetryPrepare
+            | Command::ReportSend { .. } => Area::Report,
+            _ => Area::Account,
+        };
+        self.report_revision = if matches!(self.active, Area::Report) {
+            Some(self.editor.revision)
+        } else {
+            None
+        };
         self.start();
         if self
             .send
@@ -167,9 +193,12 @@ impl Remote {
                             this.account.pending = false;
                             match reply {
                                 Reply::Status { message, .. } | Reply::Error { message } => {
-                                    if this.roadmap_active {
+                                    if matches!(this.active,Area::Roadmap) {
                                         this.roadmap_message = message;
                                         this.stale = true;
+                                    } else if matches!(this.active,Area::Report) {
+                                        this.editor.message=message;
+                                        this.editor.preview=None;
                                     } else {
                                         this.message = message;
                                     }
@@ -195,6 +224,22 @@ impl Remote {
                                     this.message = message;
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
+                                Reply::Draft { draft,message }=>{
+                                    if this.report_revision==Some(this.editor.revision) {
+                                        this.editor=crate::testing::Editor::new(draft.map_or_else(crate::testing::empty_fields,|draft|draft.fields),cx);
+                                        this.editor.message=message;
+                                    } else { this.editor.message="Texto cambiado durante la operación; guarde el nuevo borrador".into(); }
+                                },
+                                Reply::ReportPreview { preview }=>{
+                                    if this.report_revision==Some(this.editor.revision) { this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
+                                    else { this.editor.message="Texto cambiado; vuelva a revisar el envío".into(); }
+                                },
+                                Reply::ReportReceipt { receipt,cleanup_pending }=>{
+                                    let changed=this.report_revision!=Some(this.editor.revision);
+                                    if !changed && !cleanup_pending { this.editor=crate::testing::Editor::new(crate::testing::empty_fields(),cx); }
+                                    this.editor.preview=None;
+                                    this.editor.message=format!("Recibo guardado: {} · {}{}",receipt.report_id,receipt.created_at,if cleanup_pending { " · borrador pendiente de limpiar" } else { "" });
+                                },
                             }
                             if this.account.pending {
                                 let command = if this.account.cancel_login {
@@ -256,6 +301,20 @@ impl Remote {
                     orbit::INK_3,
                 )),
         )
+    }
+
+    pub fn report_action(&mut self, command: Command, cx: &mut Context<Self>) {
+        if self.editor.dirty && matches!(command, Command::ReportPrepare) {
+            self.editor.preview = None;
+            self.editor.message = "Guarde los cambios antes de revisar el envío".into();
+            cx.notify();
+            return;
+        }
+        self.request(command, cx);
+    }
+
+    pub fn testing(&self, cx: &mut Context<Self>) -> gpui::Div {
+        self.editor.render(cx)
     }
 
     pub fn roadmap(&self, cx: &mut Context<Self>) -> gpui::Div {

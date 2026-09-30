@@ -27,6 +27,8 @@ de formato/entropía/buffers mínimas; no runtime async, DB ni bus genérico.
 Configuración pública existente `option_env!`: VANTARE_SUPABASE_URL,
 VANTARE_SUPABASE_ANON_KEY, VANTARE_LICENSE_PUBLIC_KEYS, VANTARE_BUILD_CHANNEL,
 VITE_CLERK_PUBLISHABLE_KEY (#1187). La última no es un client ID OAuth.
+`VANTARE_VERSION` (workflow release) añade la versión pública a reportes; si
+falta se usa la versión real del crate, no una versión comercial inventada.
 Client ID/issuer/redirect nativos y puente OAuth requieren contrato del owner
 del build/backend: no inventar nombres/aliases ni usar Supabase Auth como fallback.
 Ausencia de contrato/configuración produce «servicio no configurado».
@@ -67,3 +69,10 @@ la anterior. Sin editor, Realtime ni polling de red; reintento manual, una petic
 por acción. Gates de services (18 tests) y native pasan con -j 2.
 El cliente IPC permite el presupuesto HTTP fuera del hilo UI y
 detecta un helper cerrado antes de emitir la siguiente acción.
+
+Corte 5: borrador de texto DPAPI, preview ligado a cuenta/canal/sesión y acción
+explícita de consentimiento; intento guardado antes del POST; reintento manual
+con bytes/key originales y recibo durable. Nada de autoenvío, logs, capturas,
+diagnósticos ni automatización externa. 23 tests services + 8 sin red pasan;
+los tres gates de native también pasan con -j 2. Integración/configuración y límites
+de Input/una sola operación pendiente se documentan en INTEGRATION.md.

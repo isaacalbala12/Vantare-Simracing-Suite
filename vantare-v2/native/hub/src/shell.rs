@@ -173,7 +173,13 @@ impl Hub {
             Section::Strategy => self.strategy.clone().into_any_element(),
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
-            Section::Testing => self.diagnostics(cx).into_any_element(),
+            Section::Testing => gpui::div()
+                .flex()
+                .flex_col()
+                .gap_4()
+                .child(self.remote.update(cx, |remote, cx| remote.testing(cx)))
+                .child(self.diagnostics(cx))
+                .into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
                 Some(&self.subscriber),
@@ -210,12 +216,25 @@ impl Hub {
     fn diagnostics(&self, cx: &Context<Self>) -> gpui::Div {
         let scene = &self.workshop.read(cx).scene;
         let snapshot = scene.snapshot();
-        div().flex().flex_col().gap_2()
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
             .child("Contexto local del Workshop; no es diagnóstico del juego ni reporte completo.")
-            .child(format!("Fuente de la foto: {} · {:?} · época {} · revisión {} · {} coches",
-                snapshot.origin.source.simulator, snapshot.origin.source.kind, snapshot.epoch, snapshot.sequence, snapshot.state.cars.len()))
-            .child(format!("Fotos cargadas: {} · última carga sin error: {}", scene.len(), scene.error.is_none()))
-            .child("Testing Center: exportación sanitizada, logs, reports y automatización esperan contrato del worker. Sin datos de cuenta, envío ni acciones externas.")
+            .child(format!(
+                "Fuente de la foto: {} · {:?} · época {} · revisión {} · {} coches",
+                snapshot.origin.source.simulator,
+                snapshot.origin.source.kind,
+                snapshot.epoch,
+                snapshot.sequence,
+                snapshot.state.cars.len()
+            ))
+            .child(format!(
+                "Fotos cargadas: {} · última carga sin error: {}",
+                scene.len(),
+                scene.error.is_none()
+            ))
+            .child("Este contexto del Workshop no se adjunta al informe de texto.")
     }
 }
 

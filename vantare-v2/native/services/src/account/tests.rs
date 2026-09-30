@@ -186,3 +186,39 @@ fn failed_refresh_is_not_retried_and_changed_subject_cannot_replace_account() {
     drop(store);
     crate::cleanup_store(&root, "refresh-test", &["account"]);
 }
+
+#[test]
+fn successful_rotation_is_protected_before_restart() {
+    let access = crate::random_id().expect("test entropy");
+    let refresh = crate::random_id().expect("test entropy");
+    let server=Server::start(vec![(200,serde_json::json!({"access_token":access,"refresh_token":refresh,"expires_in":60,"token_type":"Bearer"}).to_string()),(200,"{\"sub\":\"user_fixture\"}".into())]);
+    let (root, store) = crate::test_store("rotation-test");
+    let mut account = super::fixture(&server.base, &store);
+    let oauth = account.oauth.clone();
+    let completion = account
+        .refresh()
+        .expect("ticket")
+        .run(&Http::default(), 900)
+        .expect("rotate");
+    account
+        .complete(completion, &store)
+        .expect("persist before ACK");
+    drop(account);
+    let restored = Account::restore(oauth, &store).expect("restart");
+    assert!(
+        restored
+            .authorized(950, |bearer| Ok(bearer == access))
+            .expect("rotated access")
+    );
+    assert!(restored.session.as_ref().expect("session").refresh.expose() == refresh);
+    assert_eq!(restored.expires_at(), Some(960));
+    for _ in 0..2 {
+        server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("capture");
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "rotation-test", &["account"]);
+}

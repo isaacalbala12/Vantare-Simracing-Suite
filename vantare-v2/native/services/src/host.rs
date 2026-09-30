@@ -23,10 +23,14 @@ pub fn validate(request: &Request, nonce: &str, previous: u64) -> Result<()> {
 pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Result<()> {
     use std::io::{Read, Write};
     use std::sync::Arc;
-    use vantare_ipc::transport::{Event, IO_TIMEOUT, Listener};
+    use vantare_ipc::transport::{Event, Listener};
     let stop = Arc::new(Event::new().map_err(|_| Error::Protocol)?);
-    let mut listener =
-        Listener::new(&options.pipe, Arc::clone(&stop), IO_TIMEOUT).map_err(|_| Error::Protocol)?;
+    let mut listener = Listener::new(
+        &options.pipe,
+        Arc::clone(&stop),
+        std::time::Duration::from_mins(5),
+    )
+    .map_err(|_| Error::Protocol)?;
     let mut pipe = listener.instance().map_err(|_| Error::Protocol)?;
     let nonce = crate::random_id()?;
     // Bootstrap solo por stdout heredado privado, no log/CLI/pipe público.

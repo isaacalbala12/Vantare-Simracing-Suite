@@ -19,6 +19,10 @@ pub struct App {
     login_pending: bool,
     roadmap_store: Option<Store>,
     roadmap: Option<crate::roadmap::Roadmap>,
+    bridge: Option<crate::bridge::Config>,
+    data_session: Option<crate::bridge::DataSession>,
+    report_store: Option<Store>,
+    reports: Option<crate::report::Reports>,
 }
 
 impl App {
@@ -32,7 +36,52 @@ impl App {
             login_pending: false,
             roadmap_store: None,
             roadmap: None,
+            bridge: None,
+            data_session: None,
+            report_store: None,
+            reports: None,
         }
+    }
+
+    /// Public build/backend owner supplies the agreed, pinned contract. Not IPC.
+    pub fn configure_bridge(&mut self, config: crate::bridge::Config) -> Result<()> {
+        if self.bridge.is_some() {
+            return Err(Error::Conflict);
+        }
+        crate::config::remote_url(config.authorize.as_str())?;
+        crate::config::remote_url(config.supabase.as_str())?;
+        self.bridge = Some(config);
+        Ok(())
+    }
+
+    fn ensure_data(&mut self, now: u64) -> Result<()> {
+        if self.bridge.is_none() {
+            return Err(Error::BridgeUnconfigured);
+        }
+        self.ensure_account()?;
+        let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        if account
+            .expires_at()
+            .is_some_and(|expires| expires <= now.saturating_add(60))
+        {
+            account.complete(
+                account.refresh()?.run(&self.http, now)?,
+                self.store.as_ref().ok_or(Error::Storage)?,
+            )?;
+        }
+        if self
+            .data_session
+            .as_ref()
+            .is_none_or(|session| !session.valid(account, now))
+        {
+            self.data_session = Some(
+                self.bridge
+                    .as_ref()
+                    .ok_or(Error::BridgeUnconfigured)?
+                    .authorize(&self.http, account, now)?,
+            );
+        }
+        Ok(())
     }
 
     fn ensure_account(&mut self) -> Result<()> {
@@ -98,6 +147,12 @@ impl App {
                 });
             }
             Command::Shutdown => return Ok(Reply::Closed),
+            Command::DraftLoad
+            | Command::DraftSave { .. }
+            | Command::DraftDiscard
+            | Command::ReportPrepare
+            | Command::ReportRetryPrepare
+            | Command::ReportSend { .. } => return self.report_reply(command),
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
@@ -130,15 +185,13 @@ impl App {
             }
             Command::Logout => {
                 self.login_pending = false;
+                self.data_session = None;
+                if let Some(reports) = self.reports.as_mut() {
+                    reports.cancel_preview();
+                }
                 account.logout(store)?;
             }
-            Command::Status
-            | Command::Shutdown
-            | Command::RoadmapCached
-            | Command::RoadmapRefresh => return Err(Error::Protocol),
-            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
-                return Err(Error::BridgeUnconfigured);
-            }
+            _ => return Err(Error::Protocol),
         }
         Ok(Reply::Account {
             signed_in: account.identity().is_some(),
@@ -193,6 +246,104 @@ impl App {
                 Err(error) => error.to_string(),
             },
         })
+    }
+
+    fn report_reply(&mut self, command: Command) -> Result<Reply> {
+        if self.reports.is_none() {
+            let context = format!(
+                "report-v1|{}|{}",
+                self.config
+                    .supabase
+                    .as_ref()
+                    .map_or("unconfigured", url::Url::as_str),
+                self.config.channel.unwrap_or("unknown")
+            );
+            let store = Store::open(&self.root, &context)?;
+            self.reports = Some(crate::report::Reports::restore(&store)?);
+            self.report_store = Some(store);
+        }
+        let store = self.report_store.as_ref().ok_or(Error::Storage)?;
+        match command {
+            Command::DraftLoad => {
+                return Ok(Reply::Draft {
+                    draft: crate::report::load_draft(store)?,
+                    message: "Borrador local; no se ha enviado".into(),
+                });
+            }
+            Command::DraftSave { fields } => {
+                self.reports
+                    .as_mut()
+                    .ok_or(Error::Storage)?
+                    .cancel_preview();
+                return Ok(Reply::Draft {
+                    draft: Some(crate::report::save_draft(store, fields)?),
+                    message: "Borrador protegido guardado; no se ha enviado".into(),
+                });
+            }
+            Command::DraftDiscard => {
+                self.reports
+                    .as_mut()
+                    .ok_or(Error::Storage)?
+                    .cancel_preview();
+                store.remove("report-draft")?;
+                return Ok(Reply::Draft {
+                    draft: None,
+                    message:
+                        "Borrador eliminado; cualquier intento previo sigue pendiente de revisión"
+                            .into(),
+                });
+            }
+            Command::ReportRetryPrepare => {
+                if let Some(receipt) = self
+                    .reports
+                    .as_ref()
+                    .and_then(crate::report::Reports::receipt)
+                {
+                    return Ok(Reply::ReportReceipt {
+                        receipt: receipt.clone(),
+                        cleanup_pending: crate::report::load_draft(store)?.is_some(),
+                    });
+                }
+            }
+            _ => {}
+        }
+        let now = now()?;
+        self.ensure_data(now)?;
+        let request = self
+            .data_session
+            .as_ref()
+            .ok_or(Error::Authentication)?
+            .request(
+                &self.http,
+                self.bridge.as_ref().ok_or(Error::BridgeUnconfigured)?,
+                self.account.as_ref().ok_or(Error::Authentication)?,
+                now,
+            );
+        let store = self.report_store.as_ref().ok_or(Error::Storage)?;
+        let reports = self.reports.as_mut().ok_or(Error::Storage)?;
+        match command {
+            Command::ReportPrepare => {
+                let draft = crate::report::load_draft(store)?.ok_or(Error::NotFound)?;
+                let environment = crate::report::Environment::local(
+                    self.config.channel.ok_or(Error::Unconfigured)?,
+                )?;
+                Ok(Reply::ReportPreview {
+                    preview: reports.prepare(&request, draft, environment)?,
+                })
+            }
+            Command::ReportRetryPrepare => Ok(Reply::ReportPreview {
+                preview: reports
+                    .prepare_retry(&request, self.config.channel.ok_or(Error::Unconfigured)?)?,
+            }),
+            Command::ReportSend { preview_id } => {
+                let (receipt, cleanup_pending) = reports.send(&request, &preview_id, store)?;
+                Ok(Reply::ReportReceipt {
+                    receipt,
+                    cleanup_pending,
+                })
+            }
+            _ => Err(Error::Protocol),
+        }
     }
 }
 

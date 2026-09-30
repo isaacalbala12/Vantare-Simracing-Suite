@@ -19,6 +19,8 @@ pub mod license;
 pub mod license_remote;
 pub mod protocol;
 #[cfg(feature = "network")]
+pub mod report;
+#[cfg(feature = "network")]
 pub mod roadmap;
 pub mod storage;
 

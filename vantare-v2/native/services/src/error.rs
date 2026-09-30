@@ -30,7 +30,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Unconfigured => "servicio no configurado",
-            Self::BridgeUnconfigured => "puente de identidad no configurado",
+            Self::BridgeUnconfigured => "servicio no configurado: falta el puente de identidad",
             Self::Authentication => "se requiere iniciar sesión",
             Self::Denied => "operación no autorizada",
             Self::DeviceLimit => "límite de dispositivos",

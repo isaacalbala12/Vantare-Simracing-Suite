@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
 pub const VERSION: u32 = 1;
+#[path = "report_document.rs"]
+pub mod report_document;
 #[path = "roadmap_document.rs"]
 pub mod roadmap_document;
 pub const MAX_FRAME: usize = 64 * 1024;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Status,
@@ -20,6 +22,12 @@ pub enum Command {
     DeviceReset,
     RoadmapCached,
     RoadmapRefresh,
+    DraftLoad,
+    DraftSave { fields: report_document::Fields },
+    DraftDiscard,
+    ReportPrepare,
+    ReportRetryPrepare,
+    ReportSend { preview_id: String },
     Shutdown,
 }
 
@@ -40,6 +48,17 @@ pub enum Reply {
         message: String,
     },
     Closed,
+    Draft {
+        draft: Option<report_document::Draft>,
+        message: String,
+    },
+    ReportPreview {
+        preview: report_document::Preview,
+    },
+    ReportReceipt {
+        receipt: report_document::Receipt,
+        cleanup_pending: bool,
+    },
     Roadmap {
         publication: Option<roadmap_document::Publication>,
         fetched_at: Option<u64>,

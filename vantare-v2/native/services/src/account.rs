@@ -11,6 +11,12 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{Error, Result, http::Http, storage::Store};
 
+fn fresh_generation() -> Result<u128> {
+    let mut bytes = [0; 16];
+    getrandom::fill(&mut bytes).map_err(|_| Error::Storage)?;
+    Ok(u128::from_le_bytes(bytes))
+}
+
 #[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 #[serde(transparent)]
 pub struct Secret(String);
@@ -148,13 +154,13 @@ pub struct Account {
     oauth: OAuth,
     session: Option<Session>,
     attempt: Option<Attempt>,
-    generation: u64,
+    generation: u128,
 }
 
 // Tickets carry secrets inside the service process, never over IPC or Debug.
 pub struct Exchange {
     oauth: OAuth,
-    generation: u64,
+    generation: u128,
     grant: Grant,
     previous_identity: Option<Identity>,
 }
@@ -167,7 +173,7 @@ enum Grant {
     Refresh(Secret),
 }
 pub struct Completion {
-    generation: u64,
+    generation: u128,
     session: Session,
 }
 
@@ -274,7 +280,7 @@ impl Account {
             oauth,
             session,
             attempt: None,
-            generation: 0,
+            generation: fresh_generation()?,
         })
     }
 
@@ -282,7 +288,7 @@ impl Account {
         self.session.as_ref().map(|session| &session.identity)
     }
 
-    pub(crate) fn generation(&self) -> u64 {
+    pub(crate) fn generation(&self) -> u128 {
         self.generation
     }
     pub fn expires_at(&self) -> Option<u64> {

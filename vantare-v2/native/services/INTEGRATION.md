@@ -7,6 +7,11 @@ No recuperar el stash anterior para resolver el wiring.
 1. Incorporar el miembro `services` al workspace y empaquetar su exe junto al
    Hub. El crate aislado permite verificarlo antes. El núcleo consume la misma
    biblioteca con `default-features = false`: sin ureq, url, IPC ni GPUI.
+   Verificar `cargo tree` del target core: Cargo puede unificar features si se
+   compila services/network y core juntos en el workspace. Construir el core
+   por target separado; si el pipeline exige unión, extraer verificador/Store a
+   un paquete puro antes de integrar. El test sin red actual demuestra el perfil
+   aislado, no ese futuro grafo del workspace ni el binario core.
 2. El build propietario debe proveer el cliente público OAuth Clerk (issuer,
    client ID, redirect registrado de loopback). `BuildConfig::native_oauth`
    permanece `None`: no existe aún contrato de variables del build para ello.
@@ -61,3 +66,39 @@ Prueba pendiente tras wiring: core/overlays/Engineer reales, Hub cerrado, caduca
 durante juego a T+3599 y T+3600, parar juego, reconnect/restart, logout/reset,
 rollback/disco lleno e IPC falsificado. Los tests actuales prueban política,
 criptografía, DPAPI y HTTP/process local; no sustituyen esa aceptación.
+
+## Testing Center / Hub
+
+El Hub edita texto y presenta revisión; el helper es el único escritor DPAPI del
+borrador y del intento. Esa adaptación evita introducir otra dependencia Win32
+en GPUI. Son namespaces separados de sesión/roadmap, por proyecto/canal. No se
+reutiliza ni modifica el borrador Go. Abrir/cargar/restaurar nunca envía ni concede
+consentimiento; solo `ReportSend` con ID de revisión vigente tras el botón de
+consentimiento. El RPC exacto del producto es `testing_center_submit_report`.
+Clerk OAuth no puede llamarlo directamente: falta el puente y su migración RLS.
+
+`App::configure_bridge` es un hook exclusivo del owner del build (no IPC ni
+config editable en UI). Cuentas/licencias/reportes remotos siguen inertes por
+defecto. Borradores locales sí funcionan sin configuración. Probar después el
+contrato de intercambio del punto 3; si backend elige API que devuelve recursos
+directamente, cambiar este adaptador explícito antes de habilitar el build.
+
+Input del Launcher es privado y pertenece a otro worker. Testing usa temporalmente
+esa misma fuente con allow `duplicate_mod` solo en ese `mod`, explicado allí;
+no copia implementación ni modifica Launcher/widgets. Opus debe cambiar
+`launcher::input` a `pub(crate)` y sustituir el `mod` de testing por `use`; retirar
+el allow. No hay suppressions globales ni flags laxos del gate.
+
+Límites deliberados: campos UI de una línea (el Input compartido actual), solo
+texto, un intento pendiente por proyecto/canal que debe resolverse con su cuenta
+original antes de otro; no cola, adjuntos ni agente automático. Edición rota key,
+invalida revisión, y las respuestas I/O no pisan texto cambiado mientras estaban
+en vuelo. Reintentar muestra los bytes originales incluso si el editor cambió.
+Recibo se persiste antes de limpiar borrador; fallo de limpieza no es fallo de
+envío. El consentimiento no se guarda, caduca en tres minutos y queda ligado a
+la instancia/renovación de sesión (época aleatoria 128 bits) y cuenta/canal.
+
+Helper tiene deadline de cinco minutos para IPC inactivo mientras Hub permanece
+abierto; no polling HTTP, residencia en juego ni autoconfirmación tras reinicio.
+Hub EOF/cancelación cierra el host. Evaluar ese deadline y presupuesto con Isaac
+en runtime real; una caída durante POST queda como intento incierto durable.

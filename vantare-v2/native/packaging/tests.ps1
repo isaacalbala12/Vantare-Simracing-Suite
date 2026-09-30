@@ -48,6 +48,7 @@ $active = Join-Path $install "generations/$($state.active.generation)"
 Assert-True ($state.channel -ceq 'nightly' -and $null -eq $state.previous) 'instalación nueva sin versión anterior'
 foreach ($bin in $script:NativeBins) {
     Assert-True ((Get-NativeHash (Join-Path $active "bin/$bin.exe")) -ceq (Get-NativeHash (Join-Path $ArtifactsDirectory "payload/bin/$bin.exe"))) "binario real instalado sin alteración: $bin"
+    Assert-True ([IO.File]::ReadAllText((Join-Path $active "bin/$bin.exe.sha256")) -ceq "$(Get-NativeHash (Join-Path $active "bin/$bin.exe"))  $bin.exe`n") "sidecar de binario verificado: $bin"
 }
 Assert-Rejected { Install-NativeCandidate $install $script:Package $hash 'nightly' } 'no reinstala encima de datos activos'
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-hash') $script:Package ('0' * 64) 'nightly' } 'rechaza SHA externo incorrecto'
@@ -75,17 +76,39 @@ $tampered = New-TestArchive 'tampered' {
     try { $writer.Write('no es un ejecutable') } finally { $writer.Dispose() }
 }
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'tampered') $tampered (Get-NativeHash $tampered) 'nightly' } 'detecta archivo alterado aunque el SHA externo coincida'
+$badSidecar = New-TestArchive 'bad-sidecar' {
+    param($zip)
+    $name = 'bin/vantare-hub.exe.sha256'
+    $zip.GetEntry($name).Delete()
+    $writer = [IO.StreamWriter]::new($zip.CreateEntry($name).Open())
+    try { $writer.Write('checksum falso') } finally { $writer.Dispose() }
+    Set-TestManifest $zip {
+        param($m)
+        $file = $m.files | Where-Object { $_.path -ceq $name }
+        $file.size = 14
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $file.sha256 = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('checksum falso'))).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() }
+    }
+}
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-sidecar') $badSidecar (Get-NativeHash $badSidecar) 'nightly' } 'sidecar de Hub alterado rechaza instalación'
 
 $portable = Join-Path $script:TestRoot 'portable'
 [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $ArtifactsDirectory 'vantare-native-portable-amd64.zip'), $portable)
 $portableState = Read-NativeState (Open-NativeRoot $portable)
 Assert-True ((Get-NativeHash (Join-Path $portable "generations/$($portableState.active.generation)/bin/vantare.exe")) -ceq (Get-NativeHash (Join-Path $active 'bin/vantare.exe'))) 'portable tiene los mismos binarios que instalación'
 
-# CLI real de los seis exe: argumento inválido; no abre juego, UI o red.
+# CLI real de todos los exe: argumentos inválidos; no abre DB, juego, UI o red.
 foreach ($bin in $script:NativeBins) {
     $info = [Diagnostics.ProcessStartInfo]::new()
     $info.FileName = Join-Path $active "bin/$bin.exe"
     $info.Arguments = '--phase7-invalid-option'
+    $expectedExit = 2
+    if ($bin -ceq 'vantare-engineer') { $expectedExit = 1 }
+    if ($bin -ceq 'vantare-storage') {
+        # Storage recibe ruta posicional; el segundo argumento invalida antes de abrirla.
+        $info.Arguments = 'unused.db --phase7-invalid-option'
+        $expectedExit = 1
+    }
     $info.UseShellExecute = $false; $info.CreateNoWindow = $true
     $info.RedirectStandardOutput = $true; $info.RedirectStandardError = $true
     $process = [Diagnostics.Process]::Start($info)
@@ -93,7 +116,7 @@ foreach ($bin in $script:NativeBins) {
         if (-not $process.WaitForExit(10000)) { $process.Kill(); throw "Smoke excede plazo: $bin" }
         $stderr = $process.StandardError.ReadToEnd()
         [IO.File]::WriteAllText((Join-Path $script:TestRoot "$bin-smoke.log"), $stderr)
-        Assert-True ($process.ExitCode -eq 2 -and $stderr.Length -gt 0) "exe empaquetado carga y rechaza argumento inválido: $bin"
+        Assert-True ($process.ExitCode -eq $expectedExit -and $stderr.Length -gt 0) "exe empaquetado carga y rechaza argumento inválido: $bin"
     } finally { $process.Dispose() }
 }
 $lock = Open-NativeLock $install
@@ -212,6 +235,30 @@ $notProfile = Join-Path $script:TestRoot 'app-settings.json'
 [IO.File]::WriteAllText($notProfile, '{"language":"es"}')
 Assert-Rejected { Import-NativeProfiles $install @($notProfile) } 'no importa ajustes como perfil'
 Assert-True ((Get-NativeHash (Join-Path $install 'state.json')) -ceq $stateHash) 'importaciones rechazadas preservan estado'
+
+# Conversión V4 real por el CLI empaquetado, activación y reversión de layout.
+$v4 = Join-Path $PSScriptRoot 'fixtures/studio-v4.json'
+$v4Hash = Get-NativeHash $v4
+$before = Read-NativeState $install
+$previousLayout = Join-Path $install "generations/$($before.active.generation)/data/layout.json"
+[IO.File]::WriteAllText($previousLayout, '{"version":1,"instances":[]}')
+$previousHash = Get-NativeHash $previousLayout
+$state = & (Join-Path $PSScriptRoot 'candidate.ps1') -Operation ImportLayout -Root $install -ProfileFiles @($v4) -MonitorBounds @(-2560, 100, 2560, 1440) | ConvertFrom-Json
+$convertedData = Join-Path $install "generations/$($state.active.generation)/data"
+$layoutJson = [IO.File]::ReadAllText((Join-Path $convertedData 'layout.json')) | ConvertFrom-Json
+Assert-True ($layoutJson.instances.Count -eq 4 -and $layoutJson.instances[0].x -eq -2368 -and $layoutJson.instances[0].opacity -eq 0.6) 'V4 convierte posición global/opacidad con Settings nativo'
+Assert-True (-not $layoutJson.instances[1].visible -and -not $layoutJson.instances[2].visible -and $layoutJson.instances[0].settings.showBrand) 'V4 preserva enabled y overrides; visibleWhen se oculta'
+$reportPath = Join-Path $convertedData "legacy-profiles/$($state.active.generation)/native/report.json"
+$report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
+Assert-True ($report.imported -eq 4 -and @($report.notices | Where-Object { $_.reason -clike 'tipo no portado:*' }).Count -eq 4) 'informe identifica cuatro tipos no portados'
+Assert-True ((Get-NativeHash $v4) -ceq $v4Hash -and (Get-NativeHash $previousLayout) -ceq $previousHash) 'conversión no altera original ni layout anterior'
+$state = Restore-NativeCandidate $install
+Assert-True ($state.active.generation -ceq $before.active.generation -and (Get-NativeHash $previousLayout) -ceq $previousHash) 'rollback de V4 restaura layout previo con binarios/datos'
+Assert-True (Test-Path -LiteralPath $reportPath) 'informe y layout importados sobreviven en generación retirada'
+$stateHash = Get-NativeHash (Join-Path $install 'state.json')
+Assert-Rejected { Import-NativeProfiles $install @($profileFile) @(0, 0, 1920, 1080) } 'conversión rechaza V2 sin migración implícita'
+Assert-Rejected { Import-NativeProfiles $install @($v4) @(0, 0, 0, 1080) } 'conversión rechaza monitor inválido'
+Assert-True ((Get-NativeHash (Join-Path $install 'state.json')) -ceq $stateHash) 'conversión fallida conserva generación activa'
 
 $malformed = New-TestArchive 'bad-files-list' { param($zip); Set-TestManifest $zip { param($m); $m.files[0].path = 'bin/../escape.exe' } }
 Assert-Rejected { Update-NativeCandidate $install $malformed (Get-NativeHash $malformed) } 'rechaza escape en lista del manifiesto'

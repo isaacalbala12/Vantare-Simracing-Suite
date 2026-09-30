@@ -1,7 +1,7 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'Status', 'Start')][string]$Operation = 'Status',
+    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start')][string]$Operation = 'Status',
     [string]$Root = $PSScriptRoot,
     [string]$Archive,
     [string]$ExpectedSha256,
@@ -11,15 +11,16 @@ param(
     [string]$OutputDirectory,
     [switch]$AllowDirty,
     [string[]]$ApplicationArgs = @(),
-    [string[]]$ProfileFiles = @()
+    [string[]]$ProfileFiles = @(),
+    [double[]]$MonitorBounds = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
-$script:NativeBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc')
-$script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe" }) + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
+$script:NativeBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
+$script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
 
 function Get-NativeHash([string]$Path) {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -118,7 +119,11 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
         $seen[$file.path] = $true
         $actual = Get-Item -LiteralPath (Join-Path $Directory $file.path)
         if ($actual.Length -ne $file.size -or (Get-NativeHash $actual.FullName) -cne $file.sha256) { throw "Integridad incorrecta: $($file.path)" }
-        if ($file.path.StartsWith('bin/')) { Assert-NativePe $actual.FullName }
+        if ($file.path.EndsWith('.exe')) {
+            Assert-NativePe $actual.FullName
+            $sidecar = [IO.File]::ReadAllText("$($actual.FullName).sha256")
+            if ($sidecar -cne "$($file.sha256)  $($actual.Name)`n") { throw "Sidecar incorrecto: $($file.path)" }
+        }
     }
     if ($seen.Count -ne $script:NativeMembers.Count) { throw 'Faltan archivos obligatorios.' }
     $manifest
@@ -291,8 +296,9 @@ function Restore-NativeCandidate([string]$Directory) {
     } finally { $lock.Dispose() }
 }
 
-function Import-NativeProfiles([string]$Directory, [string[]]$Files) {
+function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$Bounds = @()) {
     if (-not $Files.Count) { throw 'Indique perfiles JSON explícitos; no se descubre AppData.' }
+    if ($Bounds.Count -and ($Bounds.Count -ne 4 -or $Files.Count -ne 1)) { throw 'ImportLayout exige un perfil y bounds x,y,width,height explícitos.' }
     $directory = Open-NativeRoot $Directory
     $lock = Open-NativeLock $directory
     try {
@@ -305,7 +311,7 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files) {
             foreach ($member in ($script:NativeMembers + @('manifest.json'))) {
                 $from = Join-Path $source $member; $to = Join-Path $generation $member
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to)) | Out-Null
-                if ($member.StartsWith('bin/')) {
+                if ($member.EndsWith('.exe')) {
                     # Leer a través del handle que ya mantiene bloqueada la imagen.
                     $inputFile = $handles[[IO.Path]::GetFullPath($from)]; $inputFile.Position = 0
                     $outputFile = [IO.File]::Open($to, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
@@ -342,6 +348,14 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files) {
                 } finally { $inputFile.Dispose() }
             }
             Write-NativeJson (Join-Path $import 'import.json') ([ordered]@{ schema = 1; kind = 'wails-profile-archive'; conversion = 'none'; files = $records })
+            if ($Bounds.Count) {
+                $converter = Join-Path $generation 'bin/vantare-import-profile.exe'
+                $converted = Join-Path $import 'native'
+                $arguments = @((Join-Path $import $records[0].name), $converted) + @($Bounds | ForEach-Object { $_.ToString('R', [Globalization.CultureInfo]::InvariantCulture) })
+                & $converter @arguments
+                if ($LASTEXITCODE) { throw 'Conversión V4 rechazada; generación anterior sigue activa.' }
+                Copy-Item -LiteralPath (Join-Path $converted 'layout.json') -Destination (Join-Path $generation 'data/layout.json') -Force
+            }
             Invoke-NativeCheckpoint 'staged'
             Set-NativeState $directory ([ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = @{ generation = $id; manifest_sha256 = $state.active.manifest_sha256 }; previous = $state.active })
         } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
@@ -367,6 +381,8 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
+        $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
+        if (@(Compare-Object $script:NativeBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
     } finally { Pop-Location }
     $payload = Join-Path $destination 'payload'
     [IO.Directory]::CreateDirectory((Join-Path $payload 'bin')) | Out-Null
@@ -375,6 +391,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         $source = Join-Path $metadata.target_directory ($Profile.ToLowerInvariant() + "/$bin.exe")
         Assert-NativePe $source
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")
+        [IO.File]::WriteAllText((Join-Path $payload "bin/$bin.exe.sha256"), "$(Get-NativeHash $source)  $bin.exe`n", [Text.UTF8Encoding]::new($false))
     }
     Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $payload 'candidate.ps1')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination (Join-Path $payload 'README.md')
@@ -411,6 +428,10 @@ switch ($Operation) {
     'Update' { Update-NativeCandidate $Root $Archive $ExpectedSha256 | ConvertTo-Json -Depth 5 }
     'Rollback' { Restore-NativeCandidate $Root | ConvertTo-Json -Depth 5 }
     'ImportProfiles' { Import-NativeProfiles $Root $ProfileFiles | ConvertTo-Json -Depth 5 }
+    'ImportLayout' {
+        if ($MonitorBounds.Count -ne 4) { throw 'Indique MonitorBounds x,y,width,height.' }
+        Import-NativeProfiles $Root $ProfileFiles $MonitorBounds | ConvertTo-Json -Depth 5
+    }
     'Status' {
         $Root = Open-NativeRoot $Root; $lock = Open-NativeLock $Root
         try { Read-NativeState $Root | ConvertTo-Json -Depth 5 } finally { $lock.Dispose() }
@@ -421,6 +442,12 @@ switch ($Operation) {
         try {
             $state = Read-NativeState $Root
             $exe = Join-Path $Root "generations/$($state.active.generation)/bin/vantare.exe"
+            $layout = Join-Path $Root "generations/$($state.active.generation)/data/layout.json"
+            # Sin grupo explícito de overlays, usar el layout de esta generación.
+            # Nunca sobreescribir un grupo de argumentos elegido por el usuario.
+            if ((Test-Path -LiteralPath $layout) -and @($ApplicationArgs | Where-Object { $_ -ceq '--' }).Count -eq 1) {
+                $ApplicationArgs += @('--', '--layout', $layout)
+            }
             # Quoting de argv de Windows: duplicar backslashes ante comillas y
             # al final. El launcher recibe argv y PowerShell termina tras crearlo.
             $quoted = @($ApplicationArgs | ForEach-Object {

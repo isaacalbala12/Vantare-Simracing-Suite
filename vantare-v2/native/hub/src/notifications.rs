@@ -1,6 +1,8 @@
 //! Centro local acotado; fuentes y acciones cerradas del contrato Go.
 use crate::{Section, orbit};
-use gpui::{Context, IntoElement, Render, Window, div, prelude::*};
+use gpui::{
+    Context, Entity, FocusHandle, IntoElement, Render, WeakEntity, Window, div, prelude::*, px,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,6 +150,31 @@ impl Center {
         }
         self.revision = self.revision.saturating_add(1);
     }
+    /// El orden de fuentes sigue su aviso más reciente; cada grupo conserva el historial.
+    fn groups(&self) -> Vec<(Source, Vec<&Record>)> {
+        let mut groups: Vec<(Source, Vec<&Record>)> = Vec::new();
+        for record in &self.records {
+            if let Some((_, records)) = groups
+                .iter_mut()
+                .find(|(source, _)| *source == record.source)
+            {
+                records.push(record);
+            } else {
+                groups.push((record.source, vec![record]));
+            }
+        }
+        groups
+    }
+    fn activate(&mut self, id: &str) -> Option<Section> {
+        let destination = self
+            .records
+            .iter()
+            .find(|record| record.id == id)
+            .and_then(|record| record.action.as_ref())
+            .and_then(|action| action.destination().ok());
+        self.mark_read(id);
+        destination
+    }
     pub fn clear(&mut self) {
         self.records.clear();
         self.revision = self.revision.saturating_add(1);
@@ -158,8 +185,145 @@ pub struct Notifications {
     center: Center,
     pub destination: Option<Section>,
     pub error: Option<String>,
+    layer: Option<Entity<orbit::Layer>>,
+    pub bell_bounds: Option<gpui::Bounds<gpui::Pixels>>,
+    pub bell_was_open: bool,
+    focus: BTreeMap<String, FocusHandle>,
+}
+#[derive(Clone)]
+enum Intent {
+    ReadAll,
+    Clear,
+    FullView,
+    Activate(String),
+}
+
+/// La capa no mantiene viva su dueña: evita Notifications → Layer → Panel → Notifications.
+struct Panel {
+    notifications: WeakEntity<Notifications>,
+}
+impl Render for Panel {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        match self.notifications.upgrade() {
+            Some(notifications) => notifications.update(cx, |this, cx| this.history(true, cx)),
+            None => div(),
+        }
+    }
+}
+
+fn source_label(source: Source) -> &'static str {
+    match source {
+        Source::Updater => "Actualizador",
+        Source::Launcher => "Launcher",
+        Source::System => "Sistema",
+    }
+}
+fn severity(record: &Record) -> (&'static str, orbit::Tone) {
+    match record.severity {
+        Severity::Info => ("Información", orbit::Tone::Neutral),
+        Severity::Warning => ("Aviso", orbit::Tone::Warning),
+        Severity::Error => ("Error", orbit::Tone::Danger),
+    }
+}
+fn message(key: &str, params: &BTreeMap<String, String>) -> String {
+    let template = match key {
+        "hub.local.error" => "Error local del Hub",
+        "notifications.record.launcher.finished.title" => "Perfil listo",
+        "notifications.record.launcher.finished.text" => "{{profile}} se inició correctamente.",
+        "notifications.record.launcher.failed.title" => "El perfil falló",
+        "notifications.record.launcher.failed.text" => "{{profile}} no se pudo iniciar del todo.",
+        "notifications.record.updater.available.title" => "Actualización disponible",
+        "notifications.record.updater.available.text" => "{{tag}} ya está lista para instalar.",
+        "notifications.record.updater.error.title" => "La actualización falló",
+        "notifications.record.updater.installed.title" => "Instalador en marcha",
+        "notifications.record.system.test.title" => "Notificación de prueba",
+        "notifications.record.system.test.sent" => "Se envió la notificación de prueba.",
+        "notifications.record.system.test.failed" => "La notificación de prueba falló.",
+        _ => key,
+    };
+    params
+        .iter()
+        .fold(template.to_owned(), |text, (key, value)| {
+            text.replace(&format!("{{{{{key}}}}}"), value)
+        })
+}
+fn time(occurred_at: i64) -> String {
+    chrono::DateTime::from_timestamp_millis(occurred_at)
+        .map(|date| {
+            date.with_timezone(&chrono::Local)
+                .format("%H:%M")
+                .to_string()
+        })
+        .unwrap_or_default()
 }
 impl Notifications {
+    pub fn unread(&self) -> usize {
+        self.center.unread()
+    }
+    pub fn popover(&self) -> Option<Entity<orbit::Layer>> {
+        self.layer.clone()
+    }
+    pub fn popover_open(&self, cx: &gpui::App) -> bool {
+        self.layer.as_ref().is_some_and(|layer| layer.read(cx).open)
+    }
+    pub fn click_bell(
+        &mut self,
+        event: &gpui::ClickEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !matches!(event, gpui::ClickEvent::Mouse(_)) {
+            self.bell_was_open = false;
+        }
+        // MouseDown fuera del panel lo cierra antes del click de su propia campana.
+        if std::mem::take(&mut self.bell_was_open) {
+            if let Some(layer) = &self.layer {
+                layer.update(cx, |layer, cx| layer.dismiss(window, cx));
+            }
+        } else {
+            self.toggle_popover(window, cx);
+        }
+        cx.notify();
+    }
+    pub fn toggle_popover(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(layer) = self.layer.take() {
+            let was_open = layer.read(cx).open;
+            layer.update(cx, |layer, cx| layer.dismiss(window, cx));
+            if was_open {
+                cx.notify();
+                return;
+            }
+        }
+        let notifications = cx.entity();
+        let panel = cx.new(|cx| {
+            cx.observe(&notifications, |_, _, cx| cx.notify()).detach();
+            Panel {
+                notifications: notifications.downgrade(),
+            }
+        });
+        let Some(bounds) = self.bell_bounds else {
+            return;
+        };
+        let position = gpui::point(
+            bounds.origin.x + bounds.size.width - px(orbit::POPOVER_W),
+            bounds.origin.y + bounds.size.height + px(orbit::MENU_PAD),
+        );
+        let layer = cx.new(|cx| {
+            orbit::Layer::new(
+                "Notificaciones",
+                orbit::LayerKind::Popover(position),
+                panel.into(),
+                vec![],
+                window,
+                cx,
+            )
+        });
+        cx.subscribe(&layer, |_, _, _: &orbit::Dismissed, cx| cx.notify())
+            .detach();
+        layer.update(cx, |layer, cx| layer.show(window, cx));
+        self.layer = Some(layer);
+        cx.notify();
+    }
     pub fn report(&mut self, key: &str, cause: String, cx: &mut Context<Self>) {
         if let Err(error) = self.center.publish(
             Record::local_error(key, cause),
@@ -170,87 +334,301 @@ impl Notifications {
         }
         cx.notify();
     }
+    fn execute(&mut self, intent: Intent, window: &mut Window, cx: &mut Context<Self>) {
+        match intent {
+            Intent::ReadAll => self.center.mark_read("all"),
+            Intent::Clear => self.center.clear(),
+            Intent::FullView => self.destination = Some(Section::Notifications),
+            Intent::Activate(id) => self.destination = self.center.activate(&id),
+        }
+        if self.destination.is_some()
+            && let Some(layer) = &self.layer
+        {
+            layer.update(cx, |layer, cx| layer.dismiss(window, cx));
+        }
+        cx.notify();
+    }
+    fn focus(&mut self, id: &str, cx: &mut Context<Self>) -> FocusHandle {
+        self.focus
+            .entry(id.to_owned())
+            .or_insert_with(|| cx.focus_handle())
+            .clone()
+    }
+    fn tool(
+        &mut self,
+        id: &'static str,
+        label: &str,
+        enabled: bool,
+        intent: Intent,
+        compact: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let focus = self.focus(id, cx);
+        // Acción textual del popover Wails: composición del texto/foco del kit.
+        let button = if compact {
+            orbit::text(label.to_owned(), orbit::MICRO, 400, orbit::INK_3)
+                .id(id)
+                .role(gpui::Role::Button)
+                .aria_label(label.to_owned())
+                .tab_index(0)
+                .cursor_pointer()
+                .focus_visible(|s| s.border_2().border_color(gpui::rgb(orbit::CORAL)))
+        } else {
+            orbit::button(id, label)
+        };
+        button
+            .track_focus(&focus)
+            .tab_stop(enabled)
+            .when(!enabled, |tool| {
+                tool.aria_label(format!("{label} · deshabilitado"))
+            })
+            .when(!enabled, |tool| tool.opacity(orbit::DISABLED))
+            .on_click(cx.listener(move |this, _, window, cx| {
+                if enabled {
+                    this.execute(intent.clone(), window, cx);
+                }
+            }))
+    }
+    fn record_row(
+        record: &Record,
+        focus: &FocusHandle,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let id = record.id.clone();
+        let (severity, tone) = severity(record);
+        let detail = [
+            message(&record.text_key, &record.params),
+            record.concrete_cause.clone(),
+        ]
+        .into_iter()
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join(" · ");
+
+        orbit::list_row(
+            id.clone(),
+            &message(&record.title_key, &record.params),
+            &detail,
+            record.unread,
+            true,
+        )
+        .track_focus(focus)
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(orbit::MENU_PAD))
+                .child(orbit::chip(severity, tone))
+                .child(orbit::text(
+                    time(record.occurred_at),
+                    orbit::MICRO,
+                    400,
+                    orbit::INK_3,
+                ))
+                .child(orbit::text(
+                    if record.unread { "Sin leer" } else { "Leído" },
+                    orbit::MICRO,
+                    400,
+                    orbit::INK_3,
+                ))
+                .when(record.action.is_some(), |row| {
+                    row.child(orbit::text(
+                        "Abrir destino",
+                        orbit::MICRO,
+                        500,
+                        orbit::INK_2,
+                    ))
+                }),
+        )
+        .on_click(cx.listener(move |this, _, window, cx| {
+            this.execute(Intent::Activate(id.clone()), window, cx);
+        }))
+    }
+    fn history(&mut self, compact: bool, cx: &mut Context<Self>) -> gpui::Div {
+        // Mantiene solo los controles del historial acotado, sin crecer por sesión.
+        self.focus.retain(|id, _| {
+            matches!(
+                id.as_str(),
+                "read-all" | "clear-notifications" | "full-notifications"
+            ) || self.center.records.iter().any(|record| record.id == *id)
+        });
+        let mut targets = Vec::new();
+        let unread = self.center.unread();
+        let nonempty = !self.center.records.is_empty();
+        let read = self.tool(
+            "read-all",
+            "Marcar todo como leído",
+            unread > 0,
+            Intent::ReadAll,
+            compact,
+            cx,
+        );
+        let clear = self.tool(
+            "clear-notifications",
+            "Limpiar",
+            nonempty,
+            Intent::Clear,
+            compact,
+            cx,
+        );
+        for (id, enabled) in [("read-all", unread > 0), ("clear-notifications", nonempty)] {
+            if enabled {
+                targets.push(self.focus(id, cx));
+            }
+        }
+        let tools = div()
+            .flex()
+            .flex_wrap()
+            .gap(px(orbit::MENU_PAD))
+            .child(read)
+            .child(clear);
+        let header = if compact {
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(orbit::eyebrow("Notificaciones"))
+                .child(tools)
+        } else {
+            tools
+        };
+        let mut view = div()
+            .flex()
+            .flex_col()
+            .gap(px(orbit::MENU_PAD))
+            .p(px(orbit::FIELD_PAD))
+            .child(header);
+        if self.center.records.is_empty() {
+            view = view.child(if compact {
+                orbit::text("Sin notificaciones.", orbit::PILL_TEXT, 400, orbit::INK_3)
+            } else {
+                orbit::empty_state("Sin notificaciones.", "")
+            });
+        }
+        // Clonar el máximo de 50 registros permite componer controles con su propio foco.
+        let groups: Vec<_> = self
+            .center
+            .groups()
+            .into_iter()
+            .map(|(source, records)| (source, records.into_iter().cloned().collect::<Vec<_>>()))
+            .collect();
+        for (source, records) in groups {
+            view = view.child(orbit::eyebrow(source_label(source)));
+            for record in records {
+                let id = record.id.clone();
+                let focus = self.focus(&id, cx);
+                targets.push(focus.clone());
+                view = view.child(Self::record_row(&record, &focus, cx));
+            }
+        }
+        if compact {
+            view = view.child(self.tool(
+                "full-notifications",
+                "Ver todas las notificaciones",
+                true,
+                Intent::FullView,
+                true,
+                cx,
+            ));
+            targets.push(self.focus("full-notifications", cx));
+            if let Some(layer) = &self.layer {
+                layer.update(cx, |layer, _| layer.set_targets(targets));
+            }
+        }
+        view.when_some(self.error.clone(), |view, error| {
+            view.child(orbit::callout(error))
+        })
+    }
 }
 impl Render for Notifications {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut rows = div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0));
-        for (index, record) in self.center.records.iter().enumerate() {
-            let id = record.id.clone();
-            let destination = record
-                .action
-                .as_ref()
-                .and_then(|action| action.destination().ok());
-            let source = match record.source {
-                Source::Updater => "Actualizador",
-                Source::Launcher => "Launcher",
-                Source::System => "Sistema",
-            };
-            let severity = match record.severity {
-                Severity::Info => "Información",
-                Severity::Warning => "Aviso",
-                Severity::Error => "Error",
-            };
-            let title = if record.title_key == "hub.local.error" {
-                "Error local del Hub"
-            } else {
-                &record.title_key
-            };
-            rows = rows.child(
-                orbit::card(title).id(("notification", index)).child(
-                    orbit::card_body()
-                        .child(orbit::setting_row(
-                            &format!("{source} · {severity}"),
-                            &format!(
-                                "{} · {}",
-                                record.occurred_at,
-                                if record.unread { "Sin leer" } else { "Leído" }
-                            ),
-                            orbit::button("read", "Marcar leído").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.center.mark_read(&id);
-                                    cx.notify();
-                                },
-                            )),
-                        ))
-                        .child(orbit::text(
-                            record.concrete_cause.clone(),
-                            13.5,
-                            400,
-                            orbit::INK_2,
-                        ))
-                        .when_some(destination, |row, destination| {
-                            row.child(
-                                orbit::button("notification-action", "Abrir destino").on_click(
-                                    cx.listener(move |this, _, _, cx| {
-                                        this.destination = Some(destination);
-                                        cx.notify();
-                                    }),
-                                ),
-                            )
-                        }),
-                ),
-            );
-        }
-        if self.center.records.is_empty() {
-            rows = rows.child(orbit::card("Todo al día").child(
-                orbit::card_body().child(orbit::callout("No hay notificaciones en esta sesión.")),
-            ));
-        }
-        div().id("notification-center").flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0))
-            .child(orbit::card("Tu bandeja local").child(orbit::card_body()
-                .child(orbit::setting_row("Sin leer", &format!("Revisión {} · historial de esta sesión", self.center.revision),
-                    orbit::text(self.center.unread().to_string(), 15.0, 700, orbit::INK)))
-                .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 4.0))
-                    .child(orbit::button("read-all", "Marcar todo leído").on_click(cx.listener(|this, _, _, cx| { this.center.mark_read("all"); cx.notify(); })))
-                    .child(orbit::button("clear-notifications", "Vaciar historial").on_click(cx.listener(|this, _, _, cx| { this.center.clear(); cx.notify(); }))))))
-            .when_some(self.error.clone(), |view, error| view.child(orbit::callout(error)))
-            .child(rows)
-            .child(orbit::callout("Historial local de esta sesión (máximo 50). Solo errores reales. Sin toasts ni publishers remotos; calendario y Spotter son otras superficies."))
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div().flex().flex_col().gap(px(orbit::FIELD_PAD))
+            .child(orbit::card("Notificaciones").child(self.history(false, cx)))
+            .child(orbit::callout("Historial local de esta sesión (máximo 50). Avisos del actualizador y notificación de prueba: pendiente."))
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn groups_follow_recency_and_keep_each_sources_order() {
+        let mut center = Center::default();
+        for (key, source) in [
+            ("one", Source::Launcher),
+            ("two", Source::System),
+            ("three", Source::Launcher),
+            ("four", Source::Updater),
+        ] {
+            let mut record = Record::local_error(key, key.into());
+            record.source = source;
+            center.publish(record, 1, false).expect("publicar");
+        }
+        let groups = center.groups();
+        assert_eq!(
+            groups.iter().map(|(source, _)| *source).collect::<Vec<_>>(),
+            [Source::Updater, Source::Launcher, Source::System]
+        );
+        assert_eq!(
+            groups[1]
+                .1
+                .iter()
+                .map(|record| record.dedupe_key.as_str())
+                .collect::<Vec<_>>(),
+            ["three", "one"]
+        );
+        center.clear();
+        assert!(center.groups().is_empty());
+    }
+    #[test]
+    fn activation_reads_only_the_selected_record_and_uses_the_allowlist() {
+        let mut center = Center::default();
+        let mut record = Record::local_error("launch", "fallo real de prueba".into());
+        record.action = Some(Action {
+            kind: "navigate".into(),
+            target: "launcher".into(),
+        });
+        center.publish(record, 1, false).expect("publicar");
+        let id = center.records[0].id.clone();
+        center
+            .publish(Record::local_error("save", "otro error".into()), 2, false)
+            .expect("publicar");
+        assert_eq!(center.activate("unknown"), None);
+        assert_eq!(center.unread(), 2);
+        assert_eq!(center.activate(&id), Some(Section::Launcher));
+        assert_eq!(center.unread(), 1);
+        let local = center.records[0].id.clone();
+        assert_eq!(center.activate(&local), None);
+        assert_eq!(center.unread(), 0);
+        assert_eq!(
+            Action {
+                kind: "navigate".into(),
+                target: "settings:updates".into()
+            }
+            .destination(),
+            Ok(Section::Settings)
+        );
+    }
+    #[test]
+    fn messages_and_time_use_the_product_text_instead_of_raw_timestamps() {
+        let params = BTreeMap::from([
+            ("profile".into(), "Carrera".into()),
+            ("tag".into(), "v2".into()),
+        ]);
+        assert_eq!(
+            message("notifications.record.launcher.finished.text", &params),
+            "Carrera se inició correctamente."
+        );
+        assert_eq!(
+            message("notifications.record.updater.available.text", &params),
+            "v2 ya está lista para instalar."
+        );
+        assert_eq!(message("hub.local.error", &params), "Error local del Hub");
+        assert_eq!(message("", &params), "");
+        assert_eq!(message("future.key", &params), "future.key");
+        assert_eq!(time(i64::MAX), "");
+        assert_eq!(time(0).len(), 5);
+    }
     #[test]
     fn repetitions_stay_read_changed_occurrences_resurface_and_retention_is_bounded() {
         let mut center = Center::default();

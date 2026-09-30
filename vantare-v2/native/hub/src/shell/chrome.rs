@@ -15,6 +15,7 @@ pub(super) struct State {
     pub column_open: bool,
     pub palette_open: bool,
     pub navigation_notice: Option<String>,
+    notification_subscription: Option<gpui::Subscription>,
     query: Entity<Input>,
     context_query: Entity<Input>,
     last_query: String,
@@ -39,6 +40,7 @@ impl State {
             column_open: true,
             palette_open: false,
             navigation_notice: None,
+            notification_subscription: None,
             query,
             context_query,
             last_query: String::new(),
@@ -130,6 +132,10 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // La capa de la campana gestiona Tab/Esc y devuelve el foco al cerrarse.
+        if self.notifications.read(cx).popover_open(cx) {
+            return;
+        }
         let key = &event.keystroke;
         if (key.modifiers.control || key.modifiers.platform) && key.key.eq_ignore_ascii_case("k") {
             self.toggle_palette(window, cx);
@@ -404,7 +410,69 @@ impl Hub {
             .child(rows)
     }
 
-    pub(super) fn topbar(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+    fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Div {
+        if self.shell.notification_subscription.is_none() {
+            self.shell.notification_subscription =
+                Some(cx.observe(&self.notifications, |_, _, cx| cx.notify()));
+        }
+        div()
+            .flex()
+            .items_center()
+            .gap(px(orbit::MENU_PAD))
+            .child(
+                orbit::rail_button(
+                    "notifications",
+                    "i-campana",
+                    "Notificaciones",
+                    self.notifications.read(cx).popover_open(cx),
+                    None,
+                )
+                .size(px(orbit::CONTROL_H))
+                .when(self.notifications.read(cx).unread() > 0, |bell| {
+                    bell.child(
+                        orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
+                            .absolute()
+                            .top_0()
+                            .right_0(),
+                    )
+                })
+                .child({
+                    let notifications = self.notifications.clone();
+                    // Mismo seguimiento de ancla que el dropdown Orbit.
+                    gpui::canvas(
+                        move |bounds, _, cx| {
+                            notifications.update(cx, |center, _| center.bell_bounds = Some(bounds));
+                        },
+                        |_, (), _, _| {},
+                    )
+                    .absolute()
+                    .size_full()
+                })
+                .aria_expanded(self.notifications.read(cx).popover_open(cx))
+                .aria_label(format!(
+                    "Notificaciones · {} sin leer",
+                    self.notifications.read(cx).unread()
+                ))
+                .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                    if event.button == gpui::MouseButton::Left {
+                        let open = this.notifications.read(cx).popover_open(cx);
+                        this.notifications
+                            .update(cx, |center, _| center.bell_was_open = open);
+                    }
+                }))
+                .on_click(cx.listener(|this, event, window, cx| {
+                    this.notifications
+                        .update(cx, |center, cx| center.click_bell(event, window, cx));
+                    cx.notify();
+                })),
+            )
+            .when_some(self.notifications.read(cx).popover(), |bell, layer| {
+                bell.child(layer)
+            })
+    }
+
+    pub(super) fn topbar(&mut self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+        let bell = self.notification_bell(cx);
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
         orbit::topbar(
             "Vantare",
@@ -413,19 +481,7 @@ impl Hub {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(
-                    orbit::rail_button(
-                        "notifications",
-                        "i-campana",
-                        "Notificaciones locales",
-                        self.section == Section::Notifications,
-                        None,
-                    )
-                    .size(px(orbit::CONTROL_H))
-                    .on_click(
-                        cx.listener(|this, _, _, cx| this.navigate(Section::Notifications, cx)),
-                    ),
-                )
+                .child(bell)
                 // El actualizador no está integrado: hueco local sin avisos ficticios.
                 .when(!narrow, |row| {
                     row.child(

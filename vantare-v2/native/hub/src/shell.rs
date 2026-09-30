@@ -9,11 +9,9 @@ use std::time::{Duration, Instant};
 
 use gpui::{
     App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
-    rgb,
 };
-use vantare_domain::format::{Language, Units};
 use vantare_ipc::Subscriber;
-use vantare_ui::efficiency::{text, tokens};
+use vantare_ui::efficiency::text;
 
 use crate::{
     Section,
@@ -33,6 +31,8 @@ mod assets;
 mod chrome;
 mod input;
 pub mod navigation;
+#[path = "settings/mod.rs"]
+mod settings;
 
 pub struct Options {
     pub controlled: bool,
@@ -60,6 +60,7 @@ struct Hub {
     strategy: Entity<Strategy>,
     remote: Entity<crate::services::view::Remote>,
     testing: Entity<Testing>,
+    settings: settings::State,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -147,45 +148,6 @@ impl Hub {
         }
     }
 
-    fn preferences(&mut self, units: bool, cx: &mut Context<Self>) {
-        let mut prefs = self.studio.read(cx).preferences();
-        if units {
-            prefs.units = if prefs.units == Units::Metric {
-                Units::Imperial
-            } else {
-                Units::Metric
-            };
-        } else {
-            prefs.language = if prefs.language == Language::Es {
-                Language::En
-            } else {
-                Language::Es
-            };
-        }
-        if let Err(error) = self
-            .studio
-            .update(cx, |studio, cx| studio.set_preferences(prefs, cx))
-        {
-            self.notifications.update(cx, |center, cx| {
-                center.report("hub.preferences", error.clone(), cx);
-            });
-            self.status = Some(error);
-        }
-        cx.notify();
-    }
-
-    fn settings(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let prefs = self.studio.read(cx).preferences();
-        div().flex().flex_col().gap_2()
-            .child(format!("Formato de los widgets: {:?} · {:?}", prefs.units, prefs.language))
-            .child(button("settings-units", "Métrico / Imperial").on_click(cx.listener(|this, _, _, cx| this.preferences(true, cx))))
-            .child(button("settings-language", "ES / EN").on_click(cx.listener(|this, _, _, cx| this.preferences(false, cx))))
-            .child("Guardado en el layout local; se aplica a Studio, Workshop y overlays al recargar el documento.")
-            .child(div().opacity(0.5).child("Rendimiento · pendiente: sin contrato nativo de configuración"))
-            .child(div().opacity(0.5).child("Actualizaciones · pendiente: sin contrato nativo del actualizador"))
-            .child(div().opacity(0.5).child("Atajos · pendiente: sin contrato nativo de teclas globales"))
-    }
-
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
         if let Some(reason) = self.shell.access.lock(self.section) {
@@ -244,38 +206,26 @@ impl Hub {
     }
 }
 
-pub(crate) fn button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label)
-        .tab_index(0)
-        .px_2()
-        .py_1()
-        .bg(rgb(tokens::PANEL))
-        .border_1()
-        .border_color(rgb(tokens::MUTED))
-        .focus_visible(|style| style.bg(rgb(0x0034_3438)))
-        .cursor_pointer()
-        .child(label)
-}
-
 impl Render for Hub {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        let column = self.context_column(window, cx);
+        let column = if self.section == Section::Settings {
+            self.settings_column(window, cx)
+        } else {
+            self.context_column(window, cx)
+        };
         let content = div()
             .flex_1()
             .flex()
             .flex_col()
             .gap(gpui::px(24.0))
             .p(gpui::px(orbit::GUTTER))
-            .child(orbit::page_header(
-                "Hub nativo",
-                self.section.label(),
-                self.section.subtitle(),
-            ))
+            .child(if self.section == Section::Settings {
+                self.settings_header()
+            } else {
+                orbit::page_header("Hub nativo", self.section.label(), self.section.subtitle())
+            })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status))
             })
@@ -296,6 +246,9 @@ impl Render for Hub {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
+                    .when(self.section == Section::Settings, |content| {
+                        content.track_scroll(&self.settings.scroll)
+                    })
                     .child(content),
             );
         div()
@@ -528,6 +481,7 @@ impl Hub {
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
         cx.observe(&remote, |_, _, cx| cx.notify()).detach();
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
+        let settings = settings::State::new(prefs, testing_dir.clone(), window, cx);
         let testing = cx.new(|cx| Testing::new(testing_dir, cx));
         wire_strategy(&strategy, cx);
         cx.observe(&workshop, |this, workshop, cx| {
@@ -562,6 +516,7 @@ impl Hub {
             strategy,
             remote,
             testing,
+            settings,
             notifications,
             status: None,
             subscriber,

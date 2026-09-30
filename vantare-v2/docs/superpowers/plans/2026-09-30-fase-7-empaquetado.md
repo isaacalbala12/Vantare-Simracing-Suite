@@ -118,3 +118,15 @@ preguntas abiertas; ningún fallback se presenta como producto terminado.
 Se actualizará por corte con checks, artefactos y límites realmente observados.
 
 - Microplan: fmt/clippy/test PASS offline (-j 2; dos pruebas físicas ignored). Logs microplan-*.log en native/target/phase7-evidence. Inventario comprometido en ba2c32c6. Implementación aún no iniciada.
+- Corte 3: paquete, instalador script por usuario y portable creados con seis
+  binarios Debug reales; 30 comprobaciones locales PASS (instalación, integridad,
+  entradas ZIP adversarias, portable, seis smoke CLI y exclusión mutua).
+  Artefactos de prueba en `native/target/phase7-cut3-v3`, `source_dirty=true`
+  explícito: no se presentan como build del commit limpio. PowerShell 5.1
+  genera separadores ZIP diferentes con CreateFromDirectory; el builder fija
+  nombres POSIX explícitos y conserva directorios vacíos de datos del portable.
+  Inspección PE: dependencia MSVC VCRUNTIME140; GPUI importa ICU/DX11. Su
+  distribución/preflight en Windows limpio sigue bloqueada, no se descarga.
+  Logs `corte3-build-v3.log`, `corte3-tests-final.log`,
+  `corte3-{core,overlays}-imports.log` en `native/target/phase7-evidence`.
+- Gates corte 3: fmt/clippy/test PASS offline (-j 2); 2 físicos ignored. git diff --check PASS. Sin cambios Rust ni dependencias nuevas.

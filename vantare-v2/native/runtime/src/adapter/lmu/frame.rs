@@ -114,6 +114,7 @@ pub(super) struct Inputs {
     pub throttle: Option<f64>,
     pub brake: Option<f64>,
     pub clutch: Option<f64>,
+    pub steering: Option<f64>,
     pub fuel_level_l: Option<f64>,
     pub fuel_capacity_l: Option<f64>,
     pub delta_best_s: Option<f64>,
@@ -327,6 +328,12 @@ fn inputs(buffer: &[u8], base: usize) -> Inputs {
         throttle: ratio(read_f64(buffer, base + 420)),
         brake: ratio(read_f64(buffer, base + 428)),
         clutch: ratio(read_f64(buffer, base + 444)),
+        // TelemInfoV01.mUnfilteredSteering @404 (Pack=4), -1 izquierda/+1 derecha.
+        // @436 es mFilteredSteering: aquí se conserva la entrada del volante.
+        steering: {
+            let value = read_f64(buffer, base + 404);
+            (-1.0..=1.0).contains(&value).then_some(value)
+        },
         fuel_level_l: fuel.map(|(level, _)| level),
         fuel_capacity_l: fuel.map(|(_, capacity)| capacity),
         delta_best_s: (delta.is_finite() && delta.abs() < DELTA_LIMIT_S).then_some(delta),

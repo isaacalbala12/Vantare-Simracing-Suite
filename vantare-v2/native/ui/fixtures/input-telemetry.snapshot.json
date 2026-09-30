@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -90,7 +90,9 @@
         "gap_class_ahead": "unavailable",
         "lap_distance_m": "unavailable",
         "lap_elapsed_s": "unavailable",
-        "current_sector": "unavailable"
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable"
       }
     ],
     "player": {
@@ -126,7 +128,10 @@
         "unavailable",
         "unavailable",
         "unavailable"
-      ]
-    }
+      ],
+      "steering": "unavailable",
+      "fuel_history": []
+    },
+    "source_state": "live"
   }
 }

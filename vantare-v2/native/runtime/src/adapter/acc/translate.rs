@@ -325,6 +325,7 @@ impl Translator {
             }
         }
         let state = State {
+            source_state: vantare_domain::SourceState::Waiting,
             session,
             flags,
             cars,
@@ -440,6 +441,8 @@ impl Translator {
                 throttle: quality(fraction(f32_at(p, 4)), stale),
                 brake: quality(fraction(f32_at(p, 8)), stale),
                 clutch: quality(fraction(f32_at(p, 364)), stale),
+                // Physics.steerAngle @24: -1..1 (izquierda a derecha), no radianes.
+                steering: quality(steering(f32_at(p, 24)), stale),
                 gear: quality(
                     i32_at(p, 16)
                         .checked_sub(1)
@@ -759,7 +762,12 @@ fn capabilities(s: &State) -> Capabilities {
         pit_status: capability(s.cars.iter().map(|c| c.in_pits)),
         flags: capability([s.flags.clone()]),
         spatial: capability(s.cars.iter().map(|c| c.pose)),
-        driver_inputs: capability([p.telemetry.throttle, p.telemetry.brake, p.telemetry.clutch]),
+        driver_inputs: capability([
+            p.telemetry.throttle,
+            p.telemetry.brake,
+            p.telemetry.clutch,
+            p.telemetry.steering,
+        ]),
         powertrain: capability([p.telemetry.speed_mps, p.telemetry.engine_speed_rad_s]),
         fuel: capability([p.fuel.level_l, p.fuel.capacity_l]),
         delta: capability([p.delta_best_s]),
@@ -778,5 +786,53 @@ fn capabilities(s: &State) -> Capabilities {
         ]),
         // Ninguna señal de daño tiene conversión fiable al contrato de integridad.
         damage: Capability::Unsupported,
+    }
+}
+
+fn steering(value: f64) -> Option<f64> {
+    (-1.0..=1.0).contains(&value).then_some(value)
+}
+
+#[cfg(test)]
+mod steering_tests {
+    use super::*;
+
+    #[test]
+    fn physics_steering_is_normalized_and_keeps_its_own_freshness() {
+        for (raw, expected) in [
+            (-1.0_f32, Quality::Reliable(-1.0)),
+            (-0.5, Quality::Reliable(-0.5)),
+            (0.0, Quality::Reliable(0.0)),
+            (0.5, Quality::Reliable(0.5)),
+            (1.0, Quality::Reliable(1.0)),
+            (-1.01, Quality::Unavailable),
+            (1.01, Quality::Unavailable),
+            (f32::NAN, Quality::Unavailable),
+            (f32::INFINITY, Quality::Unavailable),
+        ] {
+            let mut translator = Translator::new(SourceKind::Live);
+            let mut physics = vec![0; PAGE_SIZES[0]];
+            physics[24..28].copy_from_slice(&raw.to_le_bytes());
+            translator.pages[0] = Some(Page {
+                bytes: physics,
+                at: Duration::ZERO,
+            });
+            let graphics = vec![0; PAGE_SIZES[1]];
+            let fresh = translator.player(CarId(1), &graphics, false, Duration::ZERO);
+            assert_eq!(fresh.telemetry.steering, expected);
+            let old = translator.player(CarId(1), &graphics, false, SHM_TTL);
+            assert_eq!(
+                old.telemetry.steering,
+                match expected {
+                    Quality::Reliable(v) => Quality::Stale(v),
+                    _ => Quality::Unavailable,
+                }
+            );
+            let state = State {
+                player: Some(fresh),
+                ..State::default()
+            };
+            assert_eq!(capabilities(&state).driver_inputs, Capability::Fresh);
+        }
     }
 }

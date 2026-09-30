@@ -63,6 +63,21 @@ fn snapshots_arrive_in_order() {
 }
 
 #[test]
+fn heartbeats_advance_activity_without_repeating_the_last_photo() {
+    let name = unique_name("activity");
+    let mut publisher = Publisher::new(&name, any_peer).expect("publicador");
+    let mut subscriber = Subscriber::connect(&name, any_peer).expect("suscriptor");
+    publisher.publish(snapshot(1, 1)).expect("foto");
+    assert_eq!(next(&mut subscriber), (1, 1));
+    let activity = subscriber.activity();
+    assert!(subscriber.next(Duration::from_secs(2)).is_none());
+    assert!(
+        subscriber.activity() > activity,
+        "latidos recibidos por un pipe real"
+    );
+}
+
+#[test]
 fn slow_consumer_sees_the_latest_and_never_blocks_the_publisher() {
     const LAST: u64 = 1500;
     let name = unique_name("slow");

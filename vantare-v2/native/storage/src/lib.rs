@@ -6,6 +6,7 @@ use std::path::Path;
 use duckdb::{Config, Connection, params};
 use serde_json::{Value, json};
 use vantare_runtime::flows::{MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk};
+mod inspection;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 const SCHEMA: &str = "vantare.series-db.v1";
@@ -204,7 +205,15 @@ pub fn serve(
     mut input: impl BufRead,
     mut output: impl Write,
 ) -> Result<()> {
-    let mut store = Store::open(path, read_only)?;
+    let mut store = match Store::open(path, read_only) {
+        Ok(store) => store,
+        Err(error) => {
+            if read_only {
+                respond(&mut output, &inspection::open_error(error.as_ref()))?;
+            }
+            return Err(error);
+        }
+    };
     respond(&mut output, &store.state("ready"))?;
     while let Some(bytes) = read_frame(&mut input)? {
         let command: Value = serde_json::from_slice(&bytes)?;
@@ -215,6 +224,14 @@ pub fn serve(
                 json!(["ack", store.append(&chunk)?])
             }
             [Value::String(name)] if name == "status" => store.state("status"),
+            [Value::String(name)] if name == "summaries" && read_only => {
+                inspection::summaries(&store)?
+            }
+            [Value::String(name), after, limit] if name == "plot-page" && read_only => {
+                let after = after.as_u64().ok_or("cursor inválido")?;
+                let limit = usize::try_from(limit.as_u64().ok_or("límite inválido")?)?;
+                inspection::page(&store, after, limit)?
+            }
             [Value::String(name), attempted] if name == "finish" => {
                 store.finish(attempted.as_u64().ok_or("intentos inválidos")?)?;
                 store.state("finished")

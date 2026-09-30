@@ -10,6 +10,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut scene = None;
     let mut layout = None;
     let mut pipe = None;
+    let mut recordings = None;
     let mut section = Section::Home;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -17,6 +18,12 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--control-stdin" if !controlled => controlled = true,
             "--workshop" if section == Section::Home => section = Section::Workshop,
             "--studio" if section == Section::Home => section = Section::Studio,
+            "--analysis" if section == Section::Home => section = Section::Analysis,
+            "--recordings" if recordings.is_none() => {
+                recordings = Some(PathBuf::from(
+                    args.next().ok_or("falta directorio de grabaciones")?,
+                ));
+            }
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
             }
@@ -52,6 +59,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         },
         section,
         pipe,
+        recordings,
     })
 }
 
@@ -61,7 +69,8 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+                "{error}
+uso: vantare-hub [--workshop|--studio|--analysis] [--recordings DIRECTORIO] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -107,6 +116,9 @@ mod tests {
         assert_eq!(options.scene, Some(PathBuf::from("capture.jsonl")));
         for bad in [
             vec!["--data-dir"],
+            vec!["--recordings"],
+            vec!["--recordings", "a", "--recordings", "b"],
+            vec!["--analysis", "--analysis"],
             vec!["--scene"],
             vec!["--layout"],
             vec!["--layout", "a", "--layout", "b"],
@@ -119,5 +131,15 @@ mod tests {
         ] {
             assert!(parse(&args(&bad)).is_err());
         }
+        let options = parse(&args(&[
+            "--analysis",
+            "--recordings",
+            "recordings",
+            "--data-dir",
+            "local",
+        ]))
+        .expect("análisis");
+        assert_eq!(options.section, Section::Analysis);
+        assert_eq!(options.recordings, Some(PathBuf::from("recordings")));
     }
 }

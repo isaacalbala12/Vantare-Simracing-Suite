@@ -90,6 +90,55 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn hub_inspection_uses_canonical_summary_and_read_only_pages() {
+    let not_a_lock = inspection::open_error(&io::Error::other("DB corrupta: clock.duckdb"));
+    assert_eq!(not_a_lock[1], "unreadable");
+    let windows_lock = inspection::open_error(&io::Error::other(
+        "IO Error: Cannot open file. File is already open in vantare-storage.exe",
+    ));
+    assert_eq!(windows_lock[1], "locked");
+    let db = Database::new();
+    let mut first = chunk(1, 0);
+    first.block.sealed_at = Some(2);
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        store.append(&first).unwrap();
+        store.finish(1).unwrap();
+    }
+    let original = std::fs::read(&db.0).unwrap();
+    let mut output = Vec::new();
+    serve(
+        &db.0,
+        true,
+        &b"[\"summaries\"]\n[\"plot-page\",0,1]\n"[..],
+        &mut output,
+    )
+    .unwrap();
+    let frames: Vec<Value> = output
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).unwrap())
+        .collect();
+    assert_eq!(frames[1][0], "summaries");
+    assert_eq!(frames[1][2], 1);
+    assert_eq!(frames[1][3][0]["speed"]["mean"], 50.0);
+    assert_eq!(frames[1][3][0]["throttle"]["estimated"], 1);
+    assert_eq!(frames[1][3][0]["sealed"], true);
+    assert_eq!(frames[2][2][0]["samples"][0]["speed"], 50.0);
+    assert!(frames[2][2][0]["samples"][0]["throttle"].is_null());
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    let connection = Connection::open(&db.0).unwrap();
+    connection
+        .execute_batch("UPDATE series_meta SET schema_version='future'")
+        .unwrap();
+    drop(connection);
+    let mut output = Vec::new();
+    assert!(serve(&db.0, true, &b""[..], &mut output).is_err());
+    let error: Value = serde_json::from_slice(output.trim_ascii()).unwrap();
+    assert_eq!(error[1], "incompatible");
+}
+
+#[test]
 fn finish_records_the_lost_tail_and_refuses_new_data_or_invented_totals() {
     let db = Database::new();
     {

@@ -182,7 +182,7 @@ de los widgets, cuatro tipos pendientes de fase 2 y edición de escenas/captura
 con aceptación visual. Captura/paridad siguen disponibles en `ui`; no se crea
 otro pipeline. Continuar con la edición local independiente de Studio.
 
-### Corte 3 — Studio: corrección vinculante del orquestador
+### Corte 3 — Studio: corrección vinculante del orquestador (histórico; sustituido abajo)
 
 El hito inicial `7cb67a96` tenía un documento propio. **Queda sustituido**:
 se ha retirado `Project`, múltiples layouts, filtros de sesión, bloqueo y
@@ -369,3 +369,40 @@ El corte Studio provisional queda sustituido por `ui::layout::Document`; el sigu
 Incidencia de validación del merge: el primer `cargo test --offline --workspace -j 2` falló al enlazar por disco C: lleno (`no space on device`, LNK1318/PDB). Se verificó que `native/target` era directorio local, sin enlace, dentro de este worktree; `cargo clean` retiró 15,0 GiB de artefactos propios. Repetición con `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0` solo en el entorno de los gates; no se cambian perfiles ni pruebas. fmt PASS y Clippy completo PASS (3m37s tras reconstrucción). Resultado de tests a continuación.
 
 Repetición de tests del merge: PASS, código 0, compilación 6m42s. Veinte pruebas Hub; seis omitidas heredadas (cuatro físicas y dos bloqueadas ACC/núcleo). fmt y Clippy completo PASS. Sin cambios a los tests importados ni a sus marcas ignored.
+
+
+### Continuación — Studio sobre el documento común (ISA-1430)
+
+Se elimina por completo Layout/Instance/settings JSON opaco y el load/save
+provisional. Editor posee `ui::layout::Document`; el único documento es
+`%LOCALAPPDATA%/Vantare/native/layout.json`. `--layout` permite aislar QA sobre
+exactamente esa API, también en dev/smoke. Cada edición/undo/redo guarda antes
+de cambiar historial/selección; conflicto por bytes conserva el anterior.
+Recargar es explícito, resetea historial solo tras una lectura válida y conserva
+selección si existe. Cierre no fuerza otra escritura del layout.
+
+Inspector consume Settings tipados. Activos: cabecera, pie, brandVisible y dos
+métricas de pie de Standings (none/track/estimatedLaps), además de visibilidad y
+opacidad. Deshabilitados, sin callbacks/foco y con «pendiente»: plantilla,
+headerFirst/Second, showBrand legacy, footerSlots y todas las variantes solo
+persistidas de Delta, Pedals, BroadcastTower, PedalsTelemetry, RacingFlags y
+HeadToHead. Métricas de pie aún no aplicadas se señalan y no están entre las
+opciones seleccionables. Se preservan campos no implementados. Referencia:
+`native/ui/src/standings/mod.rs::Settings::config`, `native/ui/src/app.rs::settings_limit`
+y `native/ui/layout-evidence.md`. Otros Settings son vacíos. El inspector del
+Hub expresa capacidades; no altera widgets ni crea renderer/config alternativo.
+
+Canvas conserva drag transitorio y nudge X/Y en su propia barra. Inspector
+lateral con scroll evita ocultar el canvas al crecer los ajustes. Preview sigue
+1920×1080; coordenadas globales negativas se guardan, otros monitores no se
+visualizan aquí. No hay filtros, escala, proyectos múltiples ni documento por Hub.
+
+Pruebas: documento común leído tras editar/deshacer/rehacer; conflicto real con
+segundo Document, bytes externos intactos, selección/historial conservados y
+recarga válida/corrupta; opciones tipadas preservan variantes pendientes; orden,
+selección, drag; proceso rechaza layout corrupto antes de abrir ventana.
+Gates de este hito se registran a continuación.
+
+Incidencia en tests de Studio: la suite se detuvo en `engineer/tests/lifecycle.rs::engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real_pipe`: consumidor timed out y recv_timeout de 10 s (línea 70). Había pasado en el gate del merge; no cambió Engineer, runtime ni IPC en este hito. Se repite aislado y después se exige nuevamente el workspace completo. No se modifica ni omite ese test fuera de ownership.
+
+Gates finales Studio: fmt PASS; Clippy workspace/all-targets -j 2 -D warnings PASS (1,24 s); workspace test -j 2 PASS, código 0, incluidas 23 pruebas Hub y seis ignored heredadas. El test Engineer aislado pasó (3/3, 0,93 s); la repetición completa también pasó sin cambios ni omisiones. Intermitencia observada, causa raíz no acreditada; entregar al propietario de fase 3 si se repite. Variables de reducción de artefactos iguales al gate del merge. Sin dependencias nuevas.

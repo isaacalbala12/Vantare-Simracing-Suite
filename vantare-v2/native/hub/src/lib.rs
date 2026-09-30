@@ -4,6 +4,7 @@
 pub mod calendar;
 pub mod document;
 pub mod files;
+mod inspector;
 pub mod lifecycle;
 pub mod notifications;
 pub mod scene;

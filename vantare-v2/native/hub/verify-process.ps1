@@ -26,6 +26,8 @@ try {
     $process.StartInfo.ArgumentList.Add('vantare-hub-smoke-' + [Guid]::NewGuid().ToString('N'))
     $process.StartInfo.ArgumentList.Add('--control-stdin')
     $process.StartInfo.ArgumentList.Add('--workshop')
+    $process.StartInfo.ArgumentList.Add('--layout')
+    $process.StartInfo.ArgumentList.Add((Join-Path $probeDirectory 'layout.json'))
     $process.StartInfo.ArgumentList.Add('--data-dir')
     $process.StartInfo.ArgumentList.Add($probeDirectory)
     if (-not $process.Start()) { throw 'No se inició el Hub' }
@@ -45,7 +47,7 @@ try {
     if ($started -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit(10000) | Out-Null }
     $process.Dispose()
     # Solo los ficheros propios, sin borrado recursivo.
-    foreach ($name in @('workshop-selection.json', 'vantare-hub.exe')) {
+    foreach ($name in @('workshop-selection.json', 'layout.json', 'layout.json.lock', 'layout.json.bak', 'vantare-hub.exe')) {
         $file = Join-Path $resolvedProbe $name
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
     }

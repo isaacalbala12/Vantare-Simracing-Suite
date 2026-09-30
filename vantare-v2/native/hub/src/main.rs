@@ -8,6 +8,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut controlled = false;
     let mut data_dir = None;
     let mut scene = None;
+    let mut layout = None;
     let mut pipe = None;
     let mut section = Section::Home;
     let mut args = args.iter();
@@ -18,6 +19,9 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--studio" if section == Section::Home => section = Section::Studio,
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
+            }
+            "--layout" if layout.is_none() => {
+                layout = Some(PathBuf::from(args.next().ok_or("falta layout")?));
             }
             "--scene" if scene.is_none() => {
                 scene = Some(PathBuf::from(args.next().ok_or("falta escena")?));
@@ -42,6 +46,10 @@ fn parse(args: &[String]) -> Result<Options, String> {
         controlled,
         data_dir,
         scene,
+        layout: match layout {
+            Some(path) => path,
+            None => vantare_ui::layout::default_path().map_err(|error| error.to_string())?,
+        },
         section,
         pipe,
     })
@@ -53,7 +61,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--pipe NOMBRE] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -87,9 +95,12 @@ mod tests {
             "--control-stdin",
             "--pipe",
             "hub-test",
+            "--layout",
+            "layout-local.json",
         ]))
         .expect("opciones");
         assert_eq!(options.section, Section::Workshop);
+        assert_eq!(options.layout, PathBuf::from("layout-local.json"));
         assert!(options.controlled);
         assert_eq!(options.pipe.as_deref(), Some("hub-test"));
         assert_eq!(options.data_dir, PathBuf::from("local"));
@@ -97,6 +108,8 @@ mod tests {
         for bad in [
             vec!["--data-dir"],
             vec!["--scene"],
+            vec!["--layout"],
+            vec!["--layout", "a", "--layout", "b"],
             vec!["--pipe"],
             vec!["--pipe", ""],
             vec!["--pipe", "a", "--pipe", "b"],

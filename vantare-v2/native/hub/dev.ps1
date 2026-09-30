@@ -5,7 +5,8 @@ Solo procesos y copia de ejecutable de esta sesión; nunca inicia juego ni núcl
 #requires -Version 7
 param(
     [string]$DataDir = (Join-Path $env:LOCALAPPDATA 'VantareNative/hub'),
-    [string]$Scene
+    [string]$Scene,
+    [string]$Layout
 )
 $ErrorActionPreference = 'Stop'
 $nativeRoot = Split-Path $PSScriptRoot
@@ -43,6 +44,10 @@ function Start-Hub {
     $info.ArgumentList.Add('--control-stdin')
     $info.ArgumentList.Add('--data-dir')
     $info.ArgumentList.Add([IO.Path]::GetFullPath($DataDir))
+    if ($Layout) {
+        $info.ArgumentList.Add("--layout")
+        $info.ArgumentList.Add([IO.Path]::GetFullPath($Layout))
+    }
     if ($Scene -and $script:firstStart) {
         $info.ArgumentList.Add('--scene')
         $info.ArgumentList.Add([IO.Path]::GetFullPath($Scene))

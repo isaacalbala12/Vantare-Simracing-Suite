@@ -27,6 +27,7 @@ pub struct Options {
     pub controlled: bool,
     pub data_dir: PathBuf,
     pub scene: Option<PathBuf>,
+    pub layout: PathBuf,
     pub section: Section,
     pub pipe: Option<String>,
 }
@@ -45,7 +46,7 @@ struct Hub {
 
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
-        // Studio es preview sin escritura hasta integrar la autoridad ui::layout.
+        // Studio guarda cada edición antes de confirmarla; aquí solo queda la selección Workshop.
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
@@ -310,7 +311,7 @@ fn create_workshop(prepared: Prepared, cx: &mut App) -> Entity<Workshop> {
 
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
-    let prepared_studio = PreparedStudio::load()?;
+    let prepared_studio = PreparedStudio::load(options.layout)?;
     let calendar = Calendar::load(&options.data_dir)?;
     let subscriber = subscribe(options.pipe)?;
     let stop = watch_stdin(options.controlled)?;

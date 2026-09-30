@@ -57,9 +57,34 @@ fn a_missing_scene_fails_without_creating_or_overwriting_user_data() {
     let output = Command::new(env!("CARGO_BIN_EXE_vantare-hub"))
         .args(["--workshop", "--data-dir"])
         .arg(&path)
+        .arg("--layout")
+        .arg(path.join("layout.json"))
         .args(["--scene", "missing.snapshot.json"])
         .output()
         .expect("arrancar Hub");
     assert_eq!(output.status.code(), Some(1));
     assert!(!path.exists());
+}
+
+#[test]
+fn corrupt_common_layout_fails_before_window_without_replacing_it() {
+    let path = std::env::temp_dir().join(format!(
+        "vantare-hub-layout-preflight-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir(&path).expect("temporal exclusivo");
+    let layout = path.join("layout.json");
+    std::fs::write(&layout, b"{").expect("layout inválido");
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-hub"))
+        .args(["--studio", "--data-dir"])
+        .arg(&path)
+        .arg("--layout")
+        .arg(&layout)
+        .output()
+        .expect("arrancar Hub");
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(std::fs::read(&layout).expect("documento preservado"), b"{");
+    assert!(!path.join("workshop-selection.json").exists());
+    std::fs::remove_file(layout).expect("limpiar archivo propio");
+    std::fs::remove_dir(path).expect("limpiar directorio propio");
 }

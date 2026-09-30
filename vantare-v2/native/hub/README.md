@@ -50,33 +50,47 @@ abrupta revisar los restos antes de quitarlos. Conflictos o falta de permisos
 no sobrescriben el archivo. Cierre normal rechazado si falla guardar; EOF
 supervisado siempre cierra y devuelve error si no pudo guardar.
 
-Pendiente de Workshop completo: catálogo de 22 widgets de fase 2, configuración
-de contenido por widget, edición/timeline de escenas y exportación de capturas
+Pendiente de Workshop completo: catálogo de 22 widgets (Kind::ALL expone 18 en esta integración), configuración
+de contenido en Workshop (Studio ya ofrece las opciones aplicadas), edición/timeline de escenas y exportación de capturas
 desde Hub. El comparador y el binario de captura existentes de `ui` siguen
 siendo el camino de paridad. Este corte no los duplica ni afirma paridad aprobada.
 
 ## Studio local
 
 ```powershell
-cargo run --offline -j 2 -p vantare-hub -- --studio --data-dir C:/tmp/hub-local
+cargo run --offline -j 2 -p vantare-hub -- --studio --data-dir C:/tmp/hub-local --layout C:/tmp/hub-local/layout.json
 ```
 
-Editor de un único layout: selección, añadir/eliminar/ordenar instancias,
-coordenadas globales (admite negativas), visibilidad, opacidad 0..1 y undo/redo
-acotado a 50 cambios. Drag mantiene preview fuera del documento y confirma
-una sola edición al soltar. Mismo renderer que Workshop/overlays.
+Editor del único `vantare_ui::layout::Layout`: selección, añadir/eliminar/ordenar
+instancias, visibilidad, opacidad 0..1 y undo/redo acotado a 50 cambios. Canvas
+edita posición global mediante drag y controles X/Y; admite negativas. Drag
+mantiene preview fuera del documento y confirma una sola edición al soltar.
+Inspector edita los `Settings` tipados. Mismo `Overlay::configured` que overlays;
+no hay otra implementación visual ni otro formato de layout.
 
-**Solo preview en memoria; se pierde al cerrar.** Guardar muestra un bloqueo,
-no escribe otro documento. La autoridad será `vantare_ui::layout` de fase 2
-en `%LOCALAPPDATA%/Vantare/native/layout.json`, junto al enum Settings por kind.
-Las pequeñas funciones load/save dejan esa integración señalada. No existen
-proyectos múltiples, filtros propios, bloqueo, escala ni preferencias por
-instancia. No se leen perfiles V4 ni el antiguo `native-layouts.json`.
+Cada edición, undo y redo se guarda mediante `layout::Document::save` antes de
+confirmarla. Usa `%LOCALAPPDATA%/Vantare/native/layout.json`, independiente de
+`--data-dir`. Conflicto por bytes/error conserva documento, selección e historial.
+Recargar layout acepta explícitamente el archivo externo y descarta historial;
+si es inválido, conserva el anterior. Un archivo inválido al arrancar falla sin
+abrir ventana ni reemplazarlo. Tamaño/normalización/backup/escritura pertenecen
+solo a la API común. Cerrar no vuelve a escribir el layout ni pisa cambios externos.
 
-Canvas de preview 1920×1080, otros monitores quedan fuera de la preview.
-Tamaños intrínsecos; editor de contenido/Settings y escritura en cada edición
-esperan integrar la API de fase 2. Tests de geometría/undo no sustituyen
-arrastre físico, DPI, aplicación a overlays ni paridad.
+Opciones aplicadas de Standings: cabecera, pie, marca (auto/oculta/visible) y
+métricas de pie `none`, `track`, `estimatedLaps`. Plantillas, métricas de cabecera,
+marca legacy, slots alternativos y variantes de Delta/Pedals/BroadcastTower/
+PedalsTelemetry/RacingFlags/HeadToHead que solo se persisten se muestran sin
+edición con «pendiente». Se conservan al editar otra propiedad. Otros widgets
+no tienen opciones extra en la API actual. Fuente: constructores de `ui` y
+`ui/layout-evidence.md`; habilitar variantes exige que su renderer las aplique.
+
+Para probar en un archivo aislado, usar `--layout C:/tmp/hub-local/layout.json`
+en Hub y en `vantare-overlays`; sin ese argumento ambos usan el layout común.
+`hub/dev.ps1 -Layout C:/tmp/hub-local/layout.json` conserva esa ruta al recompilar.
+El overlay ya vigila el archivo: no se añade comando de aplicación desde Hub.
+Canvas de preview 1920×1080, otros monitores quedan fuera de esta preview.
+Tests de documento/geometría no sustituyen arrastre físico, DPI, vigilancia
+de ventanas/OBS ni paridad.
 
 ## Secciones locales
 

@@ -1,22 +1,24 @@
-//! Canvas e inspector sobre el renderer compartido. Preview hasta integrar `ui::layout`.
+//! Canvas e inspector sobre el renderer y el documento compartidos.
 use crate::{
-    document::{self, Editor, Instance},
+    document::Editor,
+    inspector::{self, Control},
     shell::button,
 };
 use gpui::{
     Context, Entity, IntoElement, MouseButton, MouseMoveEvent, Pixels, Point, Render, Window, div,
     prelude::*, px, rgb,
 };
+use std::path::PathBuf;
 use vantare_domain::{Snapshot, format::Preferences};
-use vantare_ui::{Kind, Overlay, efficiency::tokens};
+use vantare_ui::{Kind, Overlay, efficiency::tokens, layout::Instance};
 
 pub struct Prepared {
     editor: Editor,
 }
 impl Prepared {
-    pub fn load() -> Result<Self, String> {
+    pub fn load(path: PathBuf) -> Result<Self, String> {
         Ok(Self {
-            editor: Editor::new(document::load())?,
+            editor: Editor::open(path)?,
         })
     }
 }
@@ -53,32 +55,23 @@ impl Studio {
             renderers: vec![],
             snapshot,
             add_kind: 0,
-            status: "Solo preview: guardado y ajustes por widget esperan ui::layout (fase 2)"
+            status: "Cada edición confirmada guarda el layout común; overlays vigila el archivo."
                 .into(),
             drag: None,
         };
         studio.rebuild(cx);
         studio
     }
-    pub fn persist(&mut self) -> Result<(), String> {
-        document::save(self.editor.layout())
-    }
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.drag = None;
         self.renderers.clear();
         for item in &self.editor.layout().instances {
-            match item.kind() {
-                Ok(kind) => {
-                    // TODO(ISA-1430): Overlay::new(&item.settings, prefs) con Settings de ui.
-                    let renderer = cx.new(|cx| {
-                        let mut overlay = Overlay::new(kind, Preferences::default());
-                        overlay.ingest(&self.snapshot, cx);
-                        overlay
-                    });
-                    self.renderers.push((item.id.clone(), renderer));
-                }
-                Err(error) => self.status = error,
-            }
+            let renderer = cx.new(|cx| {
+                let mut overlay = Overlay::configured(&item.settings, Preferences::default());
+                overlay.ingest(&self.snapshot, cx);
+                overlay
+            });
+            self.renderers.push((item.id.clone(), renderer));
         }
         cx.notify();
     }
@@ -99,9 +92,7 @@ impl Studio {
     ) {
         match edit(&mut self.editor) {
             Ok(()) => {
-                // TODO(ISA-1430): confirmar solo tras Document::save, revertir si falla.
-                self.status =
-                    "Preview en memoria; se perderá al cerrar. Guardado común pendiente".into();
+                self.status = "Documento común actualizado; overlays vigila layout.json.".into();
                 self.rebuild(cx);
             }
             Err(error) => {
@@ -155,34 +146,19 @@ impl Studio {
             .flex_wrap()
             .gap_2()
             .child(
-                button("studio-save", "Guardar layout").on_click(cx.listener(|this, _, _, cx| {
-                    if let Err(error) = this.persist() {
-                        this.status = error;
-                    }
-                    cx.notify();
-                })),
+                button("studio-reload", "Recargar layout").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.edit(Editor::reload, cx);
+                    },
+                )),
             )
             .child(
-                button("undo", "Deshacer").on_click(cx.listener(|this, _, _, cx| {
-                    this.edit(
-                        |editor| {
-                            editor.undo();
-                            Ok(())
-                        },
-                        cx,
-                    );
-                })),
+                button("undo", "Deshacer")
+                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::undo, cx))),
             )
             .child(
-                button("redo", "Rehacer").on_click(cx.listener(|this, _, _, cx| {
-                    this.edit(
-                        |editor| {
-                            editor.redo();
-                            Ok(())
-                        },
-                        cx,
-                    );
-                })),
+                button("redo", "Rehacer")
+                    .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::redo, cx))),
             )
             .child(
                 button("next-kind", "Elegir tipo").on_click(cx.listener(|this, _, _, cx| {
@@ -208,27 +184,35 @@ impl Studio {
             cx.listener(move |this, _, _, cx| this.edit(|editor| editor.edit_selected(edit), cx)),
         )
     }
-    fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn canvas_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .flex()
             .flex_wrap()
             .gap_2()
             .child(self.editor.selected().map_or_else(
-                || "Selecciona una instancia".into(),
-                |item| {
-                    format!(
-                        "{} · x {} y {} · opacidad {:.0} %",
-                        item.id,
-                        item.x,
-                        item.y,
-                        item.opacity * 100.0
-                    )
-                },
+                || "Canvas: selecciona una instancia".into(),
+                |item| format!("Canvas · {} · x {} y {}", item.id, item.x, item.y),
             ))
             .child(Self::property("left", "X −10", |item| item.x -= 10.0, cx))
             .child(Self::property("right", "X +10", |item| item.x += 10.0, cx))
             .child(Self::property("up", "Y −10", |item| item.y -= 10.0, cx))
             .child(Self::property("down", "Y +10", |item| item.y += 10.0, cx))
+    }
+    fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let Some(item) = self.editor.selected() else {
+            return div().child("Inspector: selecciona una instancia");
+        };
+        let mut options = div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(format!(
+                "{} · {} · visible {} · opacidad {:.0} %",
+                item.id,
+                item.settings.kind().name(),
+                item.visible,
+                item.opacity * 100.0
+            ))
             .child(Self::property(
                 "visible",
                 "Mostrar / ocultar",
@@ -254,7 +238,23 @@ impl Studio {
             .child(
                 button("remove-widget", "Eliminar instancia")
                     .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::remove, cx))),
-            )
+            );
+        for (control, value) in Control::rows(&item.settings) {
+            options = options.child(div().flex().gap_2().child(value).child(
+                button(control.label(), control.label()).on_click(cx.listener(
+                    move |this, _, _, cx| {
+                        this.edit(
+                            |editor| editor.edit_selected(|item| control.apply(&mut item.settings)),
+                            cx,
+                        );
+                    },
+                )),
+            ));
+        }
+        for pending in inspector::pending(&item.settings) {
+            options = options.child(div().opacity(0.5).child(pending));
+        }
+        options
     }
 }
 impl Render for Studio {
@@ -324,9 +324,13 @@ impl Render for Studio {
             .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, event: &gpui::MouseUpEvent, _, cx| this.finish_drag(event.position, cx)))
             .on_mouse_up_out(MouseButton::Left, cx.listener(|this, event: &gpui::MouseUpEvent, _, cx| this.finish_drag(event.position, cx)))
-            .child(self.controls(cx)).child(self.status.clone()).child(list).child(self.inspector(cx))
-            .child("Preview 1920 × 1080. Coordenadas de escritorio, admite negativas; otros monitores fuera de esta preview. Ajustes compartidos pendientes.")
-            .child(div().id("studio-canvas").flex_1().overflow_scroll().child(stage))
+            .child(self.controls(cx)).child(self.status.clone()).child(list)
+            .child(div().flex().flex_1().min_h_0().gap_2()
+                .child(div().flex().flex_col().flex_1().min_w_0().gap_2()
+                    .child(self.canvas_controls(cx))
+                    .child("Canvas 1920 × 1080. Admite coordenadas negativas; otros monitores fuera de esta preview.")
+                    .child(div().id("studio-canvas").flex_1().overflow_scroll().child(stage)))
+                .child(div().id("studio-inspector").w(px(360.0)).flex_shrink_0().overflow_y_scroll().child(self.inspector(cx))))
     }
 }
 #[cfg(test)]
@@ -334,7 +338,8 @@ mod tests {
     use super::*;
     #[test]
     fn drag_preview_does_not_jump_and_commit_is_one_undoable_edit() {
-        let mut editor = Editor::new(document::load()).expect("editor");
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
         editor.add(Kind::Radar).expect("añadir");
         let original = editor.layout().clone();
         let mut drag = Drag {
@@ -358,7 +363,7 @@ mod tests {
             editor.selected().map(|item| (item.x, item.y)),
             Some((70.0, 80.0))
         );
-        editor.undo();
+        editor.undo().expect("deshacer");
         assert_eq!(editor.layout(), &original);
     }
 }

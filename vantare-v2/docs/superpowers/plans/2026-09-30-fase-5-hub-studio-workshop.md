@@ -518,3 +518,14 @@ verify-process.ps1 PASS. Smoke EOF del hito anterior PASS, PID 12172/exit 0.
 Sin nuevas dependencias ni modificaciones propias a widgets/kit/model/IPC/runtime.
 No quedan procesos de prueba propios ni acciones externas por ejecutar en el
 alcance autorizado; quedan los bloqueos/aceptación física enumerados arriba.
+
+## Paridad estricta (decisión de Isaac, 2026-09-30)
+
+La primera pasada de secciones no alcanza la paridad: faltan elementos y hay
+pantallas distintas. Cada sección pasa ahora dos rondas, en este orden:
+1. **Visual, medida**: banco de capturas del Hub (`native/hub/reference/`) con los
+   mismos datos de demostración que el Hub Wails, comparación por píxeles contra
+   cada referencia a 1440×900 y objetivo inicial ≤ 5 % por pantalla; revisión del
+   mapa de diferencias por el orquestador.
+2. **Uso**: flujos, orden de pasos, atajos y comportamiento iguales al Hub actual
+   (Launcher señalado expresamente por Isaac).

@@ -1,0 +1,105 @@
+[
+  {
+    "name": "menu",
+    "file": "menu.tar.gz",
+    "sha256": "b123d75db7c94d685412b520a973ca01e138c32e44fa9a16ed8c55e7461f640a",
+    "bytes": 5172,
+    "startedUtc": "2026-09-30T10:31:42.391215800Z",
+    "durationSeconds": 12.0146886,
+    "counts": {
+      "responses": 90,
+      "rest": 0,
+      "shm": 1
+    },
+    "statuses": {
+      "200": 90
+    },
+    "sourceStates": [
+      "connected"
+    ]
+  },
+  {
+    "name": "carga-practica",
+    "file": "carga-practica.tar.gz",
+    "sha256": "6d7cac8735b58876b50fb79867718233c0950b67020327dd94e98b2ebb5d320f",
+    "bytes": 4520,
+    "startedUtc": "2026-09-30T10:35:55.624633000Z",
+    "durationSeconds": 30.3953655,
+    "counts": {
+      "responses": 60,
+      "rest": 0,
+      "shm": 2
+    },
+    "statuses": {
+      "200": 30,
+      "None": 30
+    },
+    "sourceStates": [
+      "connected"
+    ]
+  },
+  {
+    "name": "monza-carga",
+    "file": "monza-carga.tar.gz",
+    "sha256": "f6dd6d774e514b06efaf071264d7a474e859bcbb770aa9d5109b8b1a5ba927fc",
+    "bytes": 9195,
+    "startedUtc": "2026-09-30T11:08:41.982132400Z",
+    "durationSeconds": 90.0270751,
+    "counts": {
+      "responses": 176,
+      "rest": 0,
+      "shm": 1
+    },
+    "statuses": {
+      "200": 88,
+      "None": 88
+    },
+    "sourceStates": [
+      "connected"
+    ]
+  },
+  {
+    "name": "singlecar-entrada",
+    "file": "singlecar-entrada.tar.gz",
+    "sha256": "1cc84dc5860bb262d4462b82c1d22633ff9fe10032f5c0aabc0e0a930e017fff",
+    "bytes": 11996,
+    "startedUtc": "2026-09-30T11:13:06.571310700Z",
+    "durationSeconds": 121.2494098,
+    "counts": {
+      "responses": 206,
+      "rest": 0,
+      "shm": 2
+    },
+    "statuses": {
+      "200": 82,
+      "None": 124
+    },
+    "sourceStates": [
+      "connected",
+      "disconnected",
+      "unavailable"
+    ]
+  },
+  {
+    "name": "cierre-observado",
+    "file": "cierre-observado.tar.gz",
+    "sha256": "66983099642db08a98b32c4d1c1d91bee80474095c0aa4feb3bae25b1acee035",
+    "bytes": 8945,
+    "startedUtc": "2026-09-30T11:17:37.450995600Z",
+    "durationSeconds": 45.6318941,
+    "counts": {
+      "responses": 140,
+      "rest": 0,
+      "shm": 3
+    },
+    "statuses": {
+      "200": 104,
+      "None": 36
+    },
+    "sourceStates": [
+      "connected",
+      "disconnected",
+      "unavailable"
+    ]
+  }
+]

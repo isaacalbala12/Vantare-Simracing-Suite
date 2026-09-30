@@ -19,6 +19,7 @@ use crate::{
     Section,
     calendar::Calendar,
     notifications::Notifications,
+    orbit,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
 };
@@ -116,6 +117,31 @@ impl Hub {
             .child("Guardado local en selección del Workshop. Actualizaciones, hotkeys, privacidad, audio y rendimiento esperan sus servicios; no se altera el núcleo.")
     }
 
+    fn nav(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let mut nav = orbit::column("Vantare", env!("CARGO_PKG_VERSION")).child(
+            div()
+                .px(gpui::px(24.0))
+                .pt(gpui::px(20.0))
+                .pb(gpui::px(8.0))
+                .child(orbit::eyebrow("Secciones")),
+        );
+        for &section in Section::ALL {
+            nav = nav.child(
+                orbit::nav_item(
+                    section.label(),
+                    section.label(),
+                    section.subtitle(),
+                    self.section == section,
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.section = section;
+                    cx.notify();
+                })),
+            );
+        }
+        nav
+    }
+
     fn diagnostics(&self, cx: &Context<Self>) -> gpui::Div {
         let scene = &self.workshop.read(cx).scene;
         let snapshot = scene.snapshot();
@@ -146,28 +172,21 @@ pub(crate) fn button(id: &'static str, label: &'static str) -> gpui::Stateful<gp
 
 impl Render for Hub {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut nav = div().flex().flex_col().gap_1().w(gpui::px(195.0));
-        for &section in Section::ALL {
-            nav = nav.child(
-                button(section.label(), section.label())
-                    .when(self.section == section, |item| item.bg(rgb(0x0034_3438)))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.section = section;
-                        cx.notify();
-                    })),
-            );
-        }
+        let nav = self.nav(cx);
         let content = div()
             .flex_1()
             .flex()
             .flex_col()
-            .gap_4()
-            .child(self.section.label())
-            .when_some(self.status.clone(), gpui::ParentElement::child)
-            .child(
-                button("close-hub", "Guardar y cerrar Hub")
-                    .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
-            )
+            .gap(gpui::px(24.0))
+            .p(gpui::px(orbit::GUTTER))
+            .child(orbit::page_header(
+                "Hub nativo",
+                self.section.label(),
+                self.section.subtitle(),
+            ))
+            .when_some(self.status.clone(), |content, status| {
+                content.child(orbit::callout(status))
+            })
             .when(self.section == Section::Workshop, |content| {
                 content.child(self.workshop.clone())
             })
@@ -198,6 +217,24 @@ impl Render for Hub {
                 ),
                 |content| content.child(self.section.pending()),
             );
+        let main = div()
+            .flex_1()
+            .flex()
+            .flex_col()
+            .min_w_0()
+            .child(orbit::topbar(
+                "Vantare",
+                self.section.label(),
+                orbit::button("close-hub", "Guardar y cerrar")
+                    .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
+            ))
+            .child(
+                div()
+                    .id("hub-content")
+                    .flex_1()
+                    .overflow_y_scroll()
+                    .child(content),
+            );
         div()
             .id("hub")
             .track_focus(&self.focus)
@@ -215,13 +252,11 @@ impl Render for Hub {
             })
             .size_full()
             .flex()
-            .gap_4()
-            .p_4()
-            .bg(rgb(tokens::PANEL))
-            .text_color(rgb(tokens::INK))
+            .bg(gpui::rgb(orbit::CANVAS))
+            .text_color(gpui::rgb(orbit::INK))
             .font_family("Inter W400")
             .child(nav)
-            .child(content)
+            .child(main)
     }
 }
 

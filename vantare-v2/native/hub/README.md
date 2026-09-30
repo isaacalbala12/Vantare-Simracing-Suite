@@ -139,3 +139,11 @@ comprobar proceso vivo, guardado y salida total por EOF. No lanza núcleo ni
 juego ni demuestra entrada al juego, paridad, DPI/OBS o presupuesto de memoria.
 La condición de cierre usa DTO v4 y el Studio usa la API común de layout.
 El smoke usa una ruta de layout aislada y no lee el layout personal.
+
+## Kit visual
+
+`src/orbit.rs` reproduce los tokens y piezas de Command Orbit v0.3
+(`frontend/src/styles/orbit.tokens.css`): columna de contexto, barra superior,
+cabecera de página, tarjetas, filas de ajuste, interruptores, botones, selects
+y notas. Toda sección nueva compone estas piezas; no define colores ni tamaños
+propios. La dirección visual la mantiene el orquestador.

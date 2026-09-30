@@ -7,6 +7,7 @@ pub mod files;
 mod inspector;
 pub mod lifecycle;
 pub mod notifications;
+pub mod orbit;
 pub mod scene;
 pub mod shell;
 pub mod studio;
@@ -65,6 +66,26 @@ impl Section {
             Self::Licenses => "Licencias",
             Self::Notifications => "Notificaciones",
             Self::Settings => "Ajustes",
+        }
+    }
+
+    /// Subtítulo de la entrada de navegación (columna de contexto Orbit).
+    pub fn subtitle(self) -> &'static str {
+        match self {
+            Self::Home => "Resumen y próximas carreras",
+            Self::Workshop => "Widgets, escenas y paridad",
+            Self::Studio => "Layout, contenido y apariencia",
+            Self::Launcher => "Aplicaciones y cadena de arranque",
+            Self::Calendar => "Series, sesiones y recordatorios",
+            Self::Strategy => "Planes, variantes y paradas",
+            Self::Engineer => "Radio, voz y Spotter",
+            Self::Analysis => "Sesiones grabadas y vueltas",
+            Self::Testing => "Diagnóstico y reportes",
+            Self::Roadmap => "Lo que viene",
+            Self::Account => "Sesión, plan y dispositivos",
+            Self::Licenses => "Plan y derechos",
+            Self::Notifications => "Avisos del Hub",
+            Self::Settings => "Interfaz y preferencias",
         }
     }
 

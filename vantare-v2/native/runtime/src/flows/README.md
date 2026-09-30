@@ -102,13 +102,14 @@ bloque abierto sin inventar un cierre; cambiar sesión, época o jugador
 descarta los bloques de la identidad anterior.
 
 Solo se retienen el bloque abierto y el último sellado: máximo 18.000 muestras
-en cada uno. Saturación marca `gap = true` y deja de añadir muestras. También
-marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
+en cada ventana. Reciclar la ventana no corta el feed (ver offsets abajo).
+Marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
 distancia o tiempo. En un retroceso se espera al avance del contador para
 evitar meter datos de la vuelta nueva en la anterior. Las señales ausentes o
 estimadas de velocidad/pedales conservan su etiqueta y no frenan el muestreo.
-Las series no escriben disco, tampoco con recording; almacenamiento, workers,
-IPC y buffers de múltiples vueltas pertenecen a fases posteriores.
+Las series no escriben disco, tampoco con recording. La entrega incremental
+de ISA-1429 descrita abajo añade una cola volátil; esta cola no confirma
+durabilidad. El backend aislado debe confirmar su transacción.
 
 `LapBlock::to_bytes()` serializa fuera de adquisición. UTF-8 JSON compacto,
 sin espacios, mapas ni reloj de pared, con este array de orden fijo:
@@ -181,3 +182,133 @@ Los gates globales son `cargo fmt --check`,
 `cargo test --workspace -j 2`. Las pruebas live LMU/ACC del workspace siguen
 ignoradas por defecto y requieren el juego en marcha; no las sustituye este
 módulo. El orquestador mantiene el handoff vivo y revisa el diff completo.
+
+## Entrega incremental — ISA-1429
+
+Antes de adquirir, `core.series_mut().subscribe(capacity)` devuelve un único
+`Receiver<SeriesChunk>`, con capacidad 1–256. No activa recording. Se rechaza
+otro receptor o configuración tras la primera muestra. El propietario del
+worker recibe bloques por esta API. `SeriesWorker` arranca el proceso SQL
+explícitamente; el launcher actual aún no lo configura. El accessor de seis líneas en `core/mod.rs`
+solo permite configurar este flujo y publicar parciales, sin cambiar Core.
+
+Cada 64 muestras se publica una porción inmutable de LapBlock v1; `offset`
+indica su posición en la vuelta. Cerrar publica el resto o un marcador vacío
+con `sealed_at` coherente. `flush()` publica antes un parcial y/o un hueco
+nuevo; llamarlo con la cadencia deseada y antes de parar. No duplica un parcial
+vacío sin cambio. Sesión/coche/época o salto de contador entregan el resto
+anterior con `gap = true` y sin inventar un cierre.
+
+`index` crece por intento; `lost_before` cuenta los intentos perdidos desde
+la última entrega. `try_send` no espera a un consumidor lento. El estado
+`publication_status()` expone intentos/entregados/perdidos/desconexión y
+agotamiento de índice, incluso si nunca se puede entregar otro bloque. No hay
+ACK durable ni promesa de pérdida cero. Tras desconexión no se copian nuevas
+muestras para el receptor muerto. Las señales conservan su calidad original.
+Máximo adicional en cola: `capacity × 64` muestras, además de las dos vueltas
+acotadas ya existentes. Serialización y análisis ocurren en el consumidor.
+El tope de 18.000 solo limita retención diagnóstica; el feed continúa durante
+vueltas largas, con offsets absolutos y sin hueco causado por ese tope.
+
+Los seis tests de `series_feed_tests.rs` prueban entrega durante vuelta,
+parciales/cierre, saturación/desconexión, configuración única, hueco y cambio
+de identidad; los goldens LapBlock v1 anteriores siguen obligatorios.
+El [microplan](../../../../docs/superpowers/plans/2026-09-30-fase-4-series-grabacion-analisis.md)
+registra la autorización DuckDB y los presupuestos físicos pendientes.
+
+## Codec y análisis compartido — ISA-1429
+
+`SeriesChunk::to_bytes/from_bytes` usa UTF-8 JSON con esta envoltura v1:
+
+```text
+["vantare.series-chunk.v1", index, lost_before, offset, LapBlock-v1]
+```
+
+La cabecera de LapBlock v1 se conserva; sus muestras son solo la porción del
+chunk. Máximo 64 muestras y 32 KiB antes de parsear; offset absoluto con
+sumas comprobadas, sin techo por duración/distancia de vuelta.
+Se rechazan versiones/formas desconocidas, valores no finitos/negativos,
+pedales fuera de 0–1, calidad inválida, secuencias repetidas/regresivas y
+retrocesos de progreso Reliable. `Unavailable` exige null y no equivale a cero.
+Las versiones futuras fallan cerradas: no se intenta un fallback.
+
+`serde_json/float_roundtrip`, activado en el manifest runtime existente, es
+necesario: el fixture LMU real perdía un ULP en distancia al decodificar con
+el parser por defecto. No añade paquetes ni modifica Cargo.lock. El test
+conserva igualdad exacta de chunk y resultado, sin relajar tolerancias.
+
+`SeriesAnalysis::new(retention)` (1–256) y `consume(&chunk)` calculan
+`series-summary.v1` en el consumidor, sin I/O, simulador ni muestras retenidas.
+`active()`, `recent()` y `find_lap(LapId)` exponen resúmenes inmutables. Ante
+contador reutilizado, `find_lap` devuelve el segmento más reciente; `first_chunk`
+lo distingue de los anteriores. No usar solo (sesión, coche, lap) como clave
+única de almacenamiento futuro. Conservar epoch e índice del feed.
+
+Por velocidad/throttle/brake se cuentan Reliable/Estimated/Stale/Unavailable,
+y min/max/media **aritmética de muestras Reliable**. Son estadísticas
+derivadas, no ritmo representativo Go ni media ponderada por tiempo. No se
+usan valores estimados/obsoletos en la media. El resumen conserva secuencias,
+primer/último tiempo observado, seal y hueco. `continuous_span_s()` devuelve
+la ventana continua observada; devuelve None con hueco. Nunca da duración
+total, consumo, vuelta válida o cruce de meta interpolado.
+
+Entrada corrupta/repetida falla antes de alterar el analizador. Índice u offset
+omitido marca hueco y mantiene solo lo recibido. Cambio de identidad conserva
+la vuelta abierta como incompleta, sin seal inventado. Retención agotada
+expulsa solo el resumen más antiguo. No hay catálogo multisesión en disco.
+
+Nueve tests en `analysis_tests.rs`: golden manual, calidad/cero, wire inválido
+y topes, orden con estado intacto, retención/queries, huecos y paridad entre
+live y bytes/replay. También fixture LMU productivo obligatorio de una muestra:
+demuestra roundtrip exacto y no fabrica una vuelta completa. El replay de
+cierre sigue siendo sintético explícito. La prueba física de presupuestos
+requiere Isaac; no se declara la fase 4 completa por este test.
+
+## Carga reproducible del feed volátil — ISA-1429
+
+`series_load_tests.rs` entrega 36.000 observaciones sintéticas de 104 coches,
+100 Hz lógicos y vueltas de 120 s, por Core. El receptor no lee hasta que el
+productor termina: timeout de diagnóstico, sin sleeps. Comprueba progreso,
+cola de dos chunks/128 muestras, pérdidas visibles y reanudación con hueco
+en análisis. No ejecuta almacenamiento ni SHM/REST productivo.
+
+```powershell
+cargo test --offline --workspace -j 2 flows::series_load_tests -- --nocapture
+```
+
+Imprime tiempos debug con/sin feed, incluyendo generador; una pareja ruidosa
+con otros workers no fija ratio ni presupuesto de CPU, memoria privada,
+latencia o frame time. Evidencia cruda, hashes, gates y límites en el microplan.
+DuckDB está autorizado y se implementa en el crate/proceso `native/storage`.
+
+## Retención diagnóstica y vueltas largas
+
+`MAX_LAP_SAMPLES = 18.000` limita únicamente las ventanas de `active/sealed`.
+Al llenarse una ventana se publica el resto antes de reciclar su Vec, conservando
+capacidad, sin mover muestras ni generar hueco en el feed. `active_offset()` y
+`sealed_offset()` indican el prefijo omitido de esas ventanas diagnósticas;
+no tratarlas como vueltas completas. Los chunks mantienen offsets absolutos.
+Una vuelta de diez minutos a 100 Hz entrega exactamente 60.000 muestras y
+seal, con codec y análisis continuos; prueba de regresión sintética explícita.
+No hay techo temporal/de distancia de grabación. Desbordamiento de offset o
+contadores de análisis falla cerrado; u32 de resumen admite ~497 días a 100 Hz.
+
+## Proceso SQL y API de análisis durable
+
+`SeriesWorker::start(exe, db, receiver)` consume en un hilo, sin esperar ready
+desde adquisición. `analysis()` devuelve Arc de resúmenes del prefijo ACK,
+latest-wins con arc-swap existente, hasta 256 resúmenes; watermark y resumen
+se publican juntos. El consumidor no bloquea al escritor de esa foto. `failed()`
+hace visible una caída. Store valida con el mismo SeriesAnalysis antes de SQL.
+`finish(attempted, timeout)` devuelve estado y resumen final después del COMMIT
+de cierre y salida del hijo. Primero parar observaciones y flush; mantener Core
+vivo hasta finish. Drop/timeout cancela y une el hilo y termina el proceso propio.
+
+`SeriesReader::open(exe, db)`, `page(after, limit)` (1–16), `state()` y
+`analyze(retention)` (1–256) consultan por un proceso read-only. Son síncronas:
+usar fuera de adquisición/renderizado. El algoritmo y codec compartidos dan
+igualdad exacta live/durable/replay. La vuelta parcial y gaps no se completan.
+`state.tail_lost()` distingue cola final perdida conocida de total desconocido
+tras EOF/caída; finished es cierre de productor, nunca promesa de sesión íntegra.
+El [crate storage](../../../storage/README.md) documenta protocolo y esquema.
+No dependencia de DuckDB en runtime: solo transporte stdio, sin editar IPC.

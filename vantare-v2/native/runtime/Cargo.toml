@@ -9,7 +9,8 @@ publish.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
 # Cuerpos REST de LMU (`/rest/watch/*`), decodificados con límites.
-serde_json = "1"
+# El codec de series debe recuperar exactamente los f64 originales (ISA-1429).
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # Cliente HTTP síncrono para el REST local de LMU (sin TLS ni gzip: solo 127.0.0.1).
 ureq = { version = "3.4", default-features = false }
 # Foto latest-wins: los lectores nunca bloquean al escritor (ver core/publish.rs).

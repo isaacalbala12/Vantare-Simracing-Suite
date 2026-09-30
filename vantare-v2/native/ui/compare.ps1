@@ -11,6 +11,9 @@ param(
     [ValidateRange(0, 100)][double]$MaxPercent = 4.0
 )
 $ErrorActionPreference = 'Stop'
+# Los widgets con traza usan una secuencia de fotos: tiene prioridad si existe.
+$sequence = Join-Path $PSScriptRoot "fixtures\$Widget.sequence.json"
+if (-not $PSBoundParameters.ContainsKey('Scene') -and (Test-Path -LiteralPath $sequence)) { $Scene = $sequence }
 foreach ($file in $Scene, $Reference, $Diff) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "falta $file" }
 }

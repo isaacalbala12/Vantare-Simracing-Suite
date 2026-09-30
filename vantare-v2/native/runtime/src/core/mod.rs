@@ -244,6 +244,7 @@ mod tests {
         cars[2].gap_leader = Quality::Reliable(Gap::Time { seconds: 5.0 });
         let mut obs = Observation {
             state: State {
+                source_state: SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,
                     gaps: Capability::Fresh,

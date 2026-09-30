@@ -8,6 +8,7 @@ fn fresh_udp_player_survives_stale_graphics_and_invalid_shm_fields() {
     let mut t = setup();
     t.udp(&car(1005, 0.5, 9, 95000), ms(600)).expect("UDP");
     let o = t.observe(ms(600)).expect("observación");
+    assert_eq!(o.state.source_state, SourceState::Live);
     let c = o.state.player_car().expect("jugador");
     assert_eq!(c.position, Quality::Reliable(1));
     assert_eq!(c.laps, Quality::Reliable(9));
@@ -258,7 +259,6 @@ fn common_core_derives_gaps_keeps_native_fuel_and_roundtrips_dto_v4() {
 }
 
 #[test]
-#[ignore = "ISA-1431 bloqueado: Core impone Live para OFF/caducidad; propietario de núcleo debe decidir"]
 fn source_off_and_expiry_only_observations_require_shared_core_decision() {
     let mut states = Vec::new();
     for off in [true, false] {
@@ -277,10 +277,36 @@ fn source_off_and_expiry_only_observations_require_shared_core_decision() {
         states.push(core.snapshot().state.source_state);
     }
     assert_eq!(states, [SourceState::Waiting, SourceState::Stale]);
+
+    let mut t = setup();
+    // Sin graphics aún, static por sí sola no declara una sesión activa.
+    t.pages[1] = None;
+    assert_eq!(
+        t.observe(ms(0)).expect("sin sesión").state.source_state,
+        SourceState::Waiting
+    );
+    t.udp(&session(0, 10, 5, 1000.0), ms(0))
+        .expect("sesión UDP");
+    assert_eq!(
+        t.observe(ms(0)).expect("UDP actual").state.source_state,
+        SourceState::Live
+    );
+    assert_eq!(
+        t.observe(ms(1000))
+            .expect("UDP caducado")
+            .state
+            .source_state,
+        SourceState::Stale
+    );
+    t.udp(&session(0, 10, 5, 2000.0), ms(1010))
+        .expect("UDP recuperado");
+    assert_eq!(
+        t.observe(ms(1010)).expect("UDP actual").state.source_state,
+        SourceState::Live
+    );
 }
 
 #[test]
-#[ignore = "ISA-1431 bloqueado: núcleo no publica gap general cero del líder para derivar gaps de clase"]
 fn class_gap_from_native_player_ahead_requires_common_leader_anchor() {
     let core = core_with_grid();
     let snapshot = core.snapshot();

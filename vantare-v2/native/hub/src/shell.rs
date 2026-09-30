@@ -11,6 +11,8 @@ use gpui::{
     App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
     rgb,
 };
+use vantare_domain::SourceKind;
+use vantare_ipc::Subscriber;
 use vantare_ui::efficiency::{text, tokens};
 
 use crate::{
@@ -32,12 +34,24 @@ struct Hub {
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
     status: Option<String>,
+    subscriber: Subscriber,
+    previous_source: Option<SourceKind>,
 }
 
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
-        self.workshop.update(cx, |workshop, _| workshop.persist())?;
-        self.studio.update(cx, |studio, _| studio.persist())
+        // Studio es preview sin escritura hasta integrar la autoridad ui::layout.
+        self.workshop.update(cx, |workshop, _| workshop.persist())
+    }
+
+    fn poll_source(&mut self, cx: &mut Context<Self>) {
+        if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
+            let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
+            self.previous_source = Some(snapshot.origin.source.kind);
+            if close {
+                cx.quit();
+            }
+        }
     }
 
     fn close(&mut self, cx: &mut Context<Self>) {
@@ -158,9 +172,30 @@ fn watch_stdin(controlled: bool) -> Result<Arc<AtomicBool>, String> {
     Ok(stop)
 }
 
+fn start_source_poll(cx: &mut Context<Hub>) {
+    cx.spawn(async move |this, cx| {
+        loop {
+            if this.update(cx, Hub::poll_source).is_err() {
+                break;
+            }
+            cx.background_executor()
+                .timer(Duration::from_millis(100))
+                .await;
+        }
+    })
+    .detach();
+}
+
+fn subscribe() -> Result<Subscriber, String> {
+    // Mismo ACL privado del IPC que overlays; no consulta servicios ni credenciales.
+    let pipe = vantare_ipc::default_pipe_name().map_err(|error| format!("pipe Hub: {error}"))?;
+    Subscriber::connect(&pipe, |_| true).map_err(|error| format!("suscribir Hub: {error}"))
+}
+
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
-    let prepared_studio = PreparedStudio::load(&options.data_dir)?;
+    let prepared_studio = PreparedStudio::load()?;
+    let subscriber = subscribe()?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
@@ -181,6 +216,7 @@ pub fn run(options: Options) -> Result<(), String> {
         let initial_section = options.section;
         if let Err(error) = cx.open_window(window_options, |window, cx| {
             let hub = cx.new(|cx: &mut Context<Hub>| {
+                start_source_poll(cx);
                 let focus = cx.focus_handle();
                 focus.focus(window, cx);
                 let workshop = cx.new(|cx| {
@@ -220,6 +256,8 @@ pub fn run(options: Options) -> Result<(), String> {
                     workshop,
                     studio,
                     status: None,
+                    subscriber,
+                    previous_source: None,
                 }
             });
             let closing = hub.downgrade();

@@ -11,11 +11,12 @@ cargo run --offline -j 2 -p vantare-hub
 Todas las secciones del producto distribuido están en la navegación. Los
 paneles que indican pendiente no implementan el servicio ni conceden acceso.
 
-El botón Cerrar Hub y cerrar su ventana terminan el proceso. Un launcher puede
-arrancarlo con `--control-stdin` y cerrar su stdin para pedir salida (100 ms de
-sondeo); por defecto no se supervisa stdin para permitir arrancar sin consola.
-La detección de entrada al juego y no relanzarlo tras el cierre pertenecen al
-launcher y requieren integración; esta shell no demuestra ese gate físico.
+El botón Cerrar Hub y cerrar su ventana terminan el proceso. El Hub no es
+hijo del launcher: consume el pipe IPC con Subscriber y cierra al observar
+Replay→Live. Primera foto Live no cierra. **Pendiente DTO v4**: la base actual
+no expone SourceState; falta exigir estado Live para cubrir Waiting→Live.
+No usar este corte como prueba completa de cierre al entrar al juego.
+`--control-stdin` y EOF son exclusivamente el ciclo de desarrollo (100 ms).
 
 La paridad y los bloqueos están en el
 [microplan](../../docs/superpowers/plans/2026-09-30-fase-5-hub-studio-workshop.md).
@@ -60,22 +61,19 @@ siendo el camino de paridad. Este corte no los duplica ni afirma paridad aprobad
 cargo run --offline -j 2 -p vantare-hub -- --studio --data-dir C:/tmp/hub-local
 ```
 
-`native-layouts.json` es un documento nativo versionado propio. No lee, migra
-ni sobrescribe perfiles V4 de Wails. Nuevo/duplicar/cambiar layout; añadir tipos
-del registro; seleccionar desde lista o canvas, mover por arrastre o inspector,
-traer al frente, eliminar, mostrar/ocultar, bloquear, opacidad, filtro por
-sesión y formato ES/EN/métrico/imperial. Los filtros no consideran actual una
-sesión ausente u obsoleta. Workshop y Studio comparten la escena seleccionada.
+Editor de un único layout: selección, añadir/eliminar/ordenar instancias,
+coordenadas globales (admite negativas), visibilidad, opacidad 0..1 y undo/redo
+acotado a 50 cambios. Drag mantiene preview fuera del documento y confirma
+una sola edición al soltar. Mismo renderer que Workshop/overlays.
 
-El gesto conserva una preview fuera del documento y hace un único commit de
-posición al soltar. Undo/redo acotados a 50 cambios. El documento admite hasta
-32 layouts y 128 instancias por layout; se valida antes de cambiar o guardar.
-Guardar usa el mismo protocolo de archivo/lock/conflicto del Workshop. Cargar
-rechaza cambios locales sin guardar, JSON inválido o versión/tipo desconocidos.
-Una importación fallida conserva documento y renderizadores actuales.
+**Solo preview en memoria; se pierde al cerrar.** Guardar muestra un bloqueo,
+no escribe otro documento. La autoridad será `vantare_ui::layout` de fase 2
+en `%LOCALAPPDATA%/Vantare/native/layout.json`, junto al enum Settings por kind.
+Las pequeñas funciones load/save dejan esa integración señalada. No existen
+proyectos múltiples, filtros propios, bloqueo, escala ni preferencias por
+instancia. No se leen perfiles V4 ni el antiguo `native-layouts.json`.
 
-Límites: tamaño intrínseco del renderer, sin resize, editor de contenido por
-widget, temas adicionales ni envío de configuración a overlays. No hay nombres
-editables en la UI todavía (son campos del documento). La geometría de drag y
-su undo tienen test de lógica; captura, interacción, DPI y paridad del editor
-requieren revisión física. Studio sigue siendo parcial.
+Canvas de preview 1920×1080, otros monitores quedan fuera de la preview.
+Tamaños intrínsecos; editor de contenido/Settings y escritura en cada edición
+esperan integrar la API de fase 2. Tests de geometría/undo no sustituyen
+arrastre físico, DPI, aplicación a overlays ni paridad.

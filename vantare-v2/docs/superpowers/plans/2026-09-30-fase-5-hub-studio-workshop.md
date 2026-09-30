@@ -68,12 +68,13 @@ no constituyen aceptación del Hub nativo.
    foto válida, secuencia de snapshots real con play/pausa/step/loop y persistir
    selección. Recompilar/reabrir manteniendo estado con script local. Tests de
    JSON inválido, límites, secuencia y conservación; captura visual por Opus.
-3. **Studio local.** Documento nativo versionado, instancias, selección,
-   colocación, orden, visibilidad/bloqueo, undo/redo y persistencia protegida ante
-   fallo/conflicto, mismo `Overlay`. Inspector con preferencias de formato
-   compartidas. Tests de edición/undo/roundtrip/conflictos. No migrar ni
-   sobrescribir documentos Go V4. Consumo del layout por overlays: depende del
-   comando de configuración de otras fases.
+3. **Studio sobre layout común.** Consumir `vantare_ui::layout` de fase 2:
+   `Layout { version, instances }`, IDs de texto, coordenadas globales (también
+   negativas), visibilidad, opacidad 0..1, Settings por kind, vector = pintado.
+   Selección/undo/redo son estado del editor, no campos del documento. Sin
+   proyectos múltiples, filtros propios, bloqueo ni escala. Mientras la API
+   no está en esta base: editor de preview en memoria, funciones load/save
+   pequeñas con TODO; ninguna escritura de layout ni migración V4.
 4. **Servicios restantes por contrato.** Registrar gates y dependencias por
    sección; implementar solo operaciones locales cuyo contrato exista sin
    inventar autoridad, simulaciones de cuenta ni trabajadores ficticios.
@@ -82,10 +83,12 @@ no constituyen aceptación del Hub nativo.
    necesita conservar el documento V2 entero y coordinar solver/storage; análisis,
    Engineer y Testing Center dependen de sus workers/IPC. Continuar con cortes
    independientes; dejar una pregunta concreta por cada bloqueo.
-5. **Cierre al juego y checklist.** Guardado antes del cierre, EOF desde el
-   propietario; pruebas reales de proceso hijo. La entrada automática al juego,
-   ausencia de reinicio del Hub, liberación de memoria, DPI/OBS/LMU y paridad
-   completa son gates físicos/de integración, no se sustituyen por un test puro.
+5. **Cierre al juego y checklist.** Hub independiente, Subscriber del pipe
+   de fotos; flanco no-Live→Live, primera foto Live no cierra. Exigir también
+   SourceState::Live cuando se integre DTO v4. Prueba con dos suscriptores.
+   Persistir cada edición confirmada mediante ui::layout al integrar su API.
+   EOF queda únicamente para el ciclo de desarrollo, no para supervisión del
+   launcher. Liberación de memoria, DPI/OBS/LMU siguen siendo gates físicos.
 
 ## Dependencias y alcance de archivos
 
@@ -116,11 +119,13 @@ ocultarlos. Builds concurrentes no sirven de benchmark incremental.
   `Preferences`, no contrato de configuración por widget. ¿Qué API común y
   tipada expondrá fase 2 para rowCount, columnas, contenido, opacidad/escala y
   comportamiento sin duplicar renderer? Hasta ella no etiquetar Studio completo.
-- **Bloqueo configuración de overlays:** ¿qué mensaje versionado y confirmación
-  usa el propietario para aplicar un layout? No conectar a runtime por dependencia.
-- **Bloqueo cierre automático:** ¿qué señal del propietario indica entrar al
-  juego, y qué política evita relanzar Hub tras salida deliberada? Debe verificar
-  el orquestador en el launcher, no inferirse de una sesión Race en un replay.
+- **Configuración de overlays resuelta por el orquestador:** archivo común
+  `%LOCALAPPDATA%/Vantare/native/layout.json`, vigilancia en overlays y reutilización
+  de ventanas por monitor. No añadir un comando IPC ni otro formato.
+- **Cierre decidido:** Subscriber, flanco Live. Esta base DTO v3 carece de
+  `state.source_state` (fase 2 añade SourceState Waiting/Live/Stale en DTO v4).
+  La implementación provisional solo discrimina SourceKind. Falta integrar
+  ese campo y probar Waiting→Live/Stale→Live antes de dar el gate por cerrado.
 - **Bloqueo servicios:** ¿qué worker/DTO expone auth/entitlements, calendario,
   Strategy V2, notifications, análisis y Testing Center? Validación autenticada
   y física requiere Isaac; la restricción de red impide probarla aquí.
@@ -177,32 +182,66 @@ de los widgets, cuatro tipos pendientes de fase 2 y edición de escenas/captura
 con aceptación visual. Captura/paridad siguen disponibles en `ui`; no se crea
 otro pipeline. Continuar con la edición local independiente de Studio.
 
-### Corte 3 — Studio local (aceptación completa bloqueada)
+### Corte 3 — Studio: corrección vinculante del orquestador
 
-Documento nativo independiente `native-layouts.json`, schema 1; no migra ni
-reescribe perfiles del distribuido (migración reversible pertenece a fase 7).
-Hasta 32 layouts, 128 instancias/layout, 50 cambios undo, archivo 5 MiB.
-Nuevo/duplicar/cambiar layout, selección, añadir/eliminar/ordenar instancias,
-posición con inspector y drag de preview hasta commit único al soltar,
-bloqueo espacial, visibilidad, opacidad de host, filtro de sesión con calidad y
-preferencias del formateador. Renderer `Overlay` compartido; escena del Workshop
-compartida por observación, sin leer el núcleo ni fabricar un modelo propio.
-Persistencia/reload con validación, conflicto y conservación del documento ante
-error; no existe un botón que afirme aplicar el layout a los overlays.
+El hito inicial `7cb67a96` tenía un documento propio. **Queda sustituido**:
+se ha retirado `Project`, múltiples layouts, filtros de sesión, bloqueo y
+preferencias por instancia. No se lee ni se escribe `native-layouts.json`.
+`document.rs` es únicamente editor en memoria con la forma exacta de fase 2:
+`version`, `instances { id: String, x, y, visible, opacity: f32, settings }`.
+Settings se conservan como JSON opaco con kind y opciones hasta consumir el
+enum compartido. No se inventan defaults de opciones; la preview usa el
+constructor vigente por kind. Negativas son válidas para otros monitores.
 
-Tests nuevos: roundtrip completo de opciones y bloqueo, mutación inválida
-transaccional, separación de layouts y selección, filtro con calidad de datos,
-preview de drag sin salto y un solo undo. Contenido específico, resize,
-comportamiento de cadencias/efectos, nombres editables en UI y entrega a overlays
-siguen pendientes. La opacidad es la del host, no un tema nuevo.
+Selección, orden, undo/redo (50 cambios) y preview de drag con un único cambio
+al soltar se conservan. Guardar devuelve un bloqueo explícito. Preview en
+memoria se pierde al cerrar; cerrar no intenta escribirla y no se afirma
+edición durable. `load/save` apuntan con TODO a `vantare_ui::layout::Document`;
+tras integración deberán guardar cada edición y revertir una que falle.
+No se copia la escritura atómica del worker de layout. `files.rs` solo sirve
+al estado local del Workshop y otros servicios locales, nunca a layouts.
 
-No se porta a mano la API privada de widgets mientras fase 2 los modifica.
-No se sustituye resize por clipping de un widget de tamaño fijo. Se requiere
-la API de configuración de fase 2 para completar esos ejes; arrastre físico,
-paridad y presupuestos son gates del revisor. Continuar con servicios locales
-independientes y registrar los servicios remotos/trabajos que faltan.
+API observada en el worktree del worker (solo lectura, sin incorporar su diff):
+`C:/tmp/vw2-layout/vantare-v2/native/ui/src/layout.rs`, Layout/Instance y Document
+open/layout/poll/save. El editor se ha ajustado a esos tipos sin depender de
+un worktree ajeno en Cargo. Pendiente integrar API, Settings y aplicación;
+no completar por duplicación. Paridad, drag físico/DPI y captura los valida Opus.
 
-Gates de corte 3: fmt PASS; clippy workspace/all-targets `-j 2 -D warnings`
-PASS; tests workspace `-j 2` PASS. Trece tests Hub; cuatro pruebas físicas
-heredadas omitidas. Compilación de tests observada 1m04s bajo carga compartida,
-no usada como benchmark. No hay dependencia nueva ni cambios adicionales en ui.
+### Punto 4 de la decisión — cierre por IPC
+
+Subscriber privado, sondeo no bloqueante a 100 ms, referencia inicial vacía.
+`should_close` pura y test: primera foto Live no cierra, Replay→Live cierra,
+Live→Live y Live→Replay no cierran. Workshop no alimenta ese suscriptor.
+Prueba sobre pipe real con overlays+Hub, misma foto/cursor independiente,
+y continuidad del suscriptor overlays tras Drop del Hub. No cambia IPC.
+
+**Bloqueo preciso**: DTO v3 no tiene estado Waiting/Live/Stale. La función
+lleva TODO para exigir `state.source_state == SourceState::Live` y almacenar
+el booleano completo al integrar DTO v4. Por ahora solo cierra Replay→Live;
+no detecta la entrada desde Waiting con kind Live. No se considera completada
+la condición vinculante ni la persistencia antes del cierre hasta ambas APIs.
+
+### Precisión del corte 4 antes de implementarlo
+
+Se porta la lectura local del catálogo oficial UTC y el seguimiento local de
+series, sin importar/publicar datos remotos. El seed actual vence
+`2026-09-01T00:00:00Z`: se presenta como histórico, sin inventar próximas carreras.
+Una agenda externa explícita puede ser vigente; se valida su ventana y recurrencia.
+Las zonas distintas de UTC requieren el porte de la conversión de zonas, no
+se aproximan con el offset de hoy. Publicación Owner, inbox Discord, eventos
+manuales y generación de recordatorios completos quedan pendientes de su
+contrato de servicio e integración autenticada.
+
+`chrono = 0.4` pasa a dependencia directa de Hub, **ya resuelta** en Cargo.lock
+por GPUI. Justificación: RFC3339, fecha/weekday y ventanas UTC del calendario.
+Alternativa std no tiene parser/calendario civil; hacerlo a mano añade riesgo
+en límites de fecha. No se añade chrono-tz ni otro paquete/versión resuelta.
+
+Centro de notificaciones: conservar fuentes cerradas updater/launcher/system,
+severidades, dedupe, unread, límite 50 y acciones allowlisted. Calendario y
+Spotter NO entran en ese centro (`internal/notify/center.go:32`, `:105`);
+los recordatorios son otra superficie. Solo errores locales reales alimentan
+el Hub en este corte; los otros publishers y toasts esperan integración.
+
+Gates de la corrección vinculante: fmt PASS; clippy workspace/all-targets -j 2 -D warnings PASS (3,01 s); test workspace -j 2 PASS (compilación 1m27s), 14 tests Hub. Cuatro tests físicos heredados omitidos. La dependencia chrono ya fijada queda declarada para el corte 4 descrito arriba; no hay paquete nuevo resuelto.
+

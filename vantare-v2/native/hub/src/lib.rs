@@ -3,6 +3,7 @@
 
 pub mod document;
 pub mod files;
+pub mod lifecycle;
 pub mod scene;
 pub mod shell;
 pub mod studio;

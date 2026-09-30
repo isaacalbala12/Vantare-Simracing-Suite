@@ -24,20 +24,24 @@ impl Process {
     }
     fn status(
         &self,
+        step: &str,
         predicate: impl Fn(&vantare_engineer::control::Status) -> bool,
     ) -> vantare_engineer::control::Status {
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        let mut last = None;
         loop {
             let path = vantare_engineer::control::status_path(&self.settings());
             if let Ok(Some(bytes)) = vantare_engineer::control::read(&path)
                 && let Ok(status) = vantare_engineer::control::Status::parse(&bytes)
-                && predicate(&status)
             {
-                return status;
+                if predicate(&status) {
+                    return status;
+                }
+                last = Some(status);
             }
             assert!(
                 std::time::Instant::now() < deadline,
-                "plazo de estado local"
+                "plazo de estado local: {step}; último estado: {last:?}"
             );
             // Sondeo de un proceso real: esperar la confirmación, no fingir aplicación.
             thread::sleep(Duration::from_millis(10));
@@ -244,7 +248,14 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
     core.observe(observation(0)).unwrap();
     host.publish(Arc::clone(&core.snapshot()), core.events());
     let mut process = Process::start_as(&name, Some(&std::env::current_exe().unwrap()));
-    process.status(|status| status.active);
+    process.status("inicio", |status| status.active);
+    // Los ajustes deben aplicarse también con la foto congelada: pausa/menú.
+    process.status("foto congelada", |status| {
+        status
+            .error
+            .as_ref()
+            .is_some_and(|error| error.starts_with("fuente ausente/obsoleta"))
+    });
     let mut editor = Document::new(process.settings(), Settings::default());
     editor.poll().unwrap();
     let settings = Settings {
@@ -252,10 +263,10 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
         ..Default::default()
     };
     editor.save(settings.clone()).unwrap();
-    process.status(|status| status.settings == settings && status.error.is_none());
+    process.status("locale aplicado", |status| status.settings == settings);
     core.observe(observation(1)).unwrap();
     host.publish(Arc::clone(&core.snapshot()), core.events());
-    let message = process.status(|status| {
+    let message = process.status("radio inglesa", |status| {
         status
             .last_message
             .as_ref()
@@ -264,7 +275,7 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
     let last_message = message.last_message.unwrap();
     assert_eq!(last_message.text, "Lap completed");
     std::fs::write(process.settings(), b"{").unwrap();
-    let invalid = process.status(|status| {
+    let invalid = process.status("JSON inválido", |status| {
         status
             .error
             .as_ref()
@@ -275,7 +286,7 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
     next.enabled = false;
     let bytes = serde_json::to_vec(&next.json()).unwrap();
     vantare_engineer::control::save(&process.settings(), Some(b"{"), &bytes).unwrap();
-    process.status(|status| status.settings == next);
+    process.status("apagado", |status| status.settings == next);
     core.observe(observation(2)).unwrap();
     host.publish(Arc::clone(&core.snapshot()), core.events());
     // El ACK del hecho confirma que el proceso lo consumió con radio apagada.
@@ -287,13 +298,15 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
     }
     assert_eq!(
         process
-            .status(|status| status.settings == next)
+            .status("hecho consumido con radio apagada", |status| status
+                .settings
+                == next)
             .last_message
             .unwrap(),
         last_message
     );
     drop(process.input.take());
-    process.status(|status| !status.active);
+    process.status("cierre", |status| !status.active);
     assert!(process.child.wait().unwrap().success());
 }
 

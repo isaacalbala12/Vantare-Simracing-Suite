@@ -3,6 +3,10 @@
 
 pub mod calendar;
 pub mod document;
+// Un único contrato serde_json sin arrastrar engineer → runtime al Hub.
+pub mod engineer;
+#[path = "../../engineer/src/control.rs"]
+pub mod engineer_control;
 pub mod files;
 mod inspector;
 pub mod lifecycle;

@@ -9,6 +9,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut data_dir = None;
     let mut scene = None;
     let mut layout = None;
+    let mut engineer = None;
     let mut pipe = None;
     let mut section = Section::Home;
     let mut args = args.iter();
@@ -17,6 +18,10 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--control-stdin" if !controlled => controlled = true,
             "--workshop" if section == Section::Home => section = Section::Workshop,
             "--studio" if section == Section::Home => section = Section::Studio,
+            "--engineer" if section == Section::Home => section = Section::Engineer,
+            "--engineer-settings" if engineer.is_none() => {
+                engineer = Some(PathBuf::from(args.next().ok_or("falta ajustes Engineer")?));
+            }
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
             }
@@ -50,6 +55,12 @@ fn parse(args: &[String]) -> Result<Options, String> {
             Some(path) => path,
             None => vantare_ui::layout::default_path().map_err(|error| error.to_string())?,
         },
+        engineer: match engineer {
+            Some(path) => path,
+            None => {
+                vantare_hub::engineer_control::default_path().map_err(|error| error.to_string())?
+            }
+        },
         section,
         pipe,
     })
@@ -61,7 +72,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio|--engineer] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--engineer-settings RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -97,10 +108,13 @@ mod tests {
             "hub-test",
             "--layout",
             "layout-local.json",
+            "--engineer-settings",
+            "engineer-local.json",
         ]))
         .expect("opciones");
         assert_eq!(options.section, Section::Workshop);
         assert_eq!(options.layout, PathBuf::from("layout-local.json"));
+        assert_eq!(options.engineer, PathBuf::from("engineer-local.json"));
         assert!(options.controlled);
         assert_eq!(options.pipe.as_deref(), Some("hub-test"));
         assert_eq!(options.data_dir, PathBuf::from("local"));
@@ -116,6 +130,10 @@ mod tests {
             vec!["--workshop", "--workshop"],
             vec!["--control-stdin", "--control-stdin"],
             vec!["--scene", "a", "--scene", "b"],
+            vec!["--engineer-settings"],
+            vec!["--engineer-settings", "a", "--engineer-settings", "b"],
+            vec!["--engineer", "--engineer"],
+            vec!["--engineer", "--studio"],
         ] {
             assert!(parse(&args(&bad)).is_err());
         }

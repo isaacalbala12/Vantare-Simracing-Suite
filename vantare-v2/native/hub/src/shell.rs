@@ -18,6 +18,7 @@ use vantare_ui::efficiency::{text, tokens};
 use crate::{
     Section,
     calendar::Calendar,
+    engineer::Engineer,
     notifications::Notifications,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
@@ -28,6 +29,7 @@ pub struct Options {
     pub data_dir: PathBuf,
     pub scene: Option<PathBuf>,
     pub layout: PathBuf,
+    pub engineer: PathBuf,
     pub section: Section,
     pub pipe: Option<String>,
 }
@@ -38,6 +40,7 @@ struct Hub {
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
     calendar: Entity<Calendar>,
+    engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
@@ -174,6 +177,9 @@ impl Render for Hub {
             .when(self.section == Section::Studio, |content| {
                 content.child(self.studio.clone())
             })
+            .when(self.section == Section::Engineer, |content| {
+                content.child(self.engineer.clone())
+            })
             .when(self.section == Section::Calendar, |content| {
                 content.child(self.calendar.clone())
             })
@@ -189,7 +195,8 @@ impl Render for Hub {
             .when(
                 !matches!(
                     self.section,
-                    Section::Workshop
+                    Section::Engineer
+                        | Section::Workshop
                         | Section::Studio
                         | Section::Calendar
                         | Section::Notifications
@@ -309,10 +316,35 @@ fn create_workshop(prepared: Prepared, cx: &mut App) -> Entity<Workshop> {
     })
 }
 
+fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
+    cx.new(|cx| {
+        cx.spawn(async move |this, cx| {
+            loop {
+                if this
+                    .update(cx, |this: &mut Engineer, cx| {
+                        if this.poll() {
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+                cx.background_executor()
+                    .timer(Duration::from_millis(250))
+                    .await;
+            }
+        })
+        .detach();
+        engineer
+    })
+}
+
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load(options.layout)?;
     let calendar = Calendar::load(&options.data_dir)?;
+    let engineer = Engineer::load(options.engineer);
     let subscriber = subscribe(options.pipe)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -342,6 +374,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
                 let notifications = cx.new(|_| Notifications::default());
                 let calendar = cx.new(|_| calendar);
+                let engineer = create_engineer(engineer, cx);
                 wire_sections(&calendar, &notifications, cx);
                 cx.observe(&workshop, |this, workshop, cx| {
                     let snapshot = workshop.read(cx).scene.snapshot().clone();
@@ -363,6 +396,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     workshop,
                     studio,
                     calendar,
+                    engineer,
                     notifications,
                     status: None,
                     subscriber,

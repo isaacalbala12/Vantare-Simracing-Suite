@@ -145,12 +145,14 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     );
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: fuel_strategy::project(&Snapshot::default(), prefs),
         }
@@ -211,7 +213,7 @@ mod tests {
     #[test]
     fn only_visual_changes_repaint_and_frames_are_idle() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut data = Snapshot {
             state: State {
                 capabilities: Capabilities {

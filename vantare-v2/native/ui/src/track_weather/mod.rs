@@ -19,12 +19,14 @@ const SLOT_HEIGHT: f32 = 7.0 + 2.0 + 14.390_625;
 const ROW_GAP: f32 = 8.0;
 const COLUMN_WIDTH: f32 = 101.0;
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: track_weather::project(&Snapshot::default(), prefs),
         }
@@ -145,7 +147,7 @@ mod tests {
     #[test]
     fn repaint_follows_visible_values_and_preferences() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.session.weather.air_temperature_k = Quality::Reliable(295.15);
@@ -183,7 +185,7 @@ mod tests {
             Quality::Unavailable
         );
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.vm.status, Status::Ready);
         assert_eq!(

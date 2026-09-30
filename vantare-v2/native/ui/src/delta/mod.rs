@@ -8,13 +8,36 @@ use motion::Motion;
 use std::time::Instant;
 use vantare_domain::{Snapshot, delta, format::Preferences};
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub template_id: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            template_id: "instrument".into(),
+        }
+    }
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        if self.template_id == "capsule" {
+            self.clone()
+        } else {
+            Self::default()
+        }
+    }
+}
+
 pub(crate) struct Widget {
     vm: delta::ViewModel,
     motion: Motion,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: delta::project(&Snapshot::default(), prefs),
             motion: Motion::default(),
@@ -82,7 +105,7 @@ mod tests {
         );
         assert_eq!(vm.status, delta::Status::Ready);
         assert_eq!(vm.completed_lap, Some(127));
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.motion.wake(Instant::now()), Wake::Idle));
@@ -92,7 +115,7 @@ mod tests {
     fn repaint_only_for_display_changes() {
         use vantare_domain::{Player, Quality};
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut s = Snapshot::default();
         s.state.player = Some(Player {
             delta_best_s: Quality::Reliable(0.214),
@@ -124,7 +147,7 @@ mod tests {
             laps: Quality::Reliable(127),
             ..Car::default()
         });
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&s, prefs));
         s.state.cars[0].last_lap_s = Quality::Reliable(91.234);
         s.state.cars[0].best_lap_s = Quality::Reliable(90.964);

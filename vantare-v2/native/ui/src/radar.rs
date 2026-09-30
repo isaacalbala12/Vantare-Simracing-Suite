@@ -98,12 +98,14 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 use crate::app::{Paint, Wake, replace_if_changed};
 use vantare_domain::{Snapshot, format::Preferences};
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, _prefs: Preferences) -> Self {
         Self {
             vm: vantare_domain::radar::project(&Snapshot::default()),
         }
@@ -169,7 +171,7 @@ mod tests {
 
     #[test]
     fn repaint_only_on_a_new_view_model() {
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings, Preferences::default());
         assert!(widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(!widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(widget.ingest(&source::synthetic(300), Preferences::default()));

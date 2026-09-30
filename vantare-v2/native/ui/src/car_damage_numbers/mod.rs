@@ -90,11 +90,13 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     }
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: car_damage_numbers::project(&Snapshot::default(), prefs, true),
         }
@@ -137,7 +139,7 @@ mod tests {
         let vm = car_damage_numbers::project(&snapshot, prefs, true);
         assert_eq!(vm.values, ["100%", "100%", "100%", "13%"]);
         assert_eq!(vm.status_text, None);
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), SIZE);
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
@@ -148,7 +150,7 @@ mod tests {
     #[test]
     fn redraws_only_display_changes_and_never_schedules_animation() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.capabilities.damage = Capability::Fresh;

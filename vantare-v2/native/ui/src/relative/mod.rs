@@ -25,6 +25,8 @@ const ROW: f32 = 28.0 * SCALE;
 // Tabla fixed: colgroup 20/6/36/90/60/60 distribuido en todo el ancho.
 const EDGES: [f32; 7] = [0.0, 20.0, 26.0, 62.0, 152.0, 212.0, 272.0];
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
     motion: Motion,
@@ -32,7 +34,7 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: relative::project(&Snapshot::default(), prefs),
             motion: Motion::default(),
@@ -432,7 +434,7 @@ mod tests {
     #[test]
     fn unchanged_drawing_does_not_repaint_and_first_snapshot_is_quiet() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;

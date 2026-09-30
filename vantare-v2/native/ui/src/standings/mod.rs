@@ -10,6 +10,87 @@ use motion::{Motion, Wake};
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, standings};
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub show_session_header: bool,
+    pub template_id: String,
+    pub header_first: String,
+    pub header_second: String,
+    pub show_session_footer: bool,
+    pub footer_first: String,
+    pub footer_second: String,
+    pub show_brand: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub footer_slots: Option<Vec<String>>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_session_header: true,
+            template_id: "signature".into(),
+            header_first: "none".into(),
+            header_second: "none".into(),
+            show_session_footer: true,
+            footer_first: "track".into(),
+            footer_second: "estimatedLaps".into(),
+            show_brand: false,
+            brand_visible: None,
+            footer_slots: None,
+        }
+    }
+}
+
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        let mut settings = self.clone();
+        if !["signature", "broadcast"].contains(&settings.template_id.as_str()) {
+            settings.template_id = "signature".into();
+        }
+        let choices = [
+            "none",
+            "trackTemperature",
+            "airTemperature",
+            "estimatedLaps",
+            "totalLaps",
+            "track",
+            "remaining",
+            "rain",
+            "wetness",
+        ];
+        for (value, fallback) in [
+            (&mut settings.header_first, "none"),
+            (&mut settings.header_second, "none"),
+            (&mut settings.footer_first, "track"),
+            (&mut settings.footer_second, "estimatedLaps"),
+        ] {
+            if !choices.contains(&value.as_str()) {
+                *value = fallback.into();
+            }
+        }
+        settings
+    }
+
+    fn config(&self) -> Config {
+        let mut config = Config::reference();
+        config.show_session_header = self.show_session_header;
+        config.show_session_footer = self.show_session_footer;
+        config.brand_visible = self.brand_visible;
+        let info = |value: &str| match value {
+            "track" => model::InfoMetric::Track,
+            "estimatedLaps" => model::InfoMetric::EstimatedLaps,
+            _ => model::InfoMetric::None,
+        };
+        config.footer_first = info(&self.footer_first);
+        config.footer_second = info(&self.footer_second);
+        config
+    }
+}
+
 pub(crate) struct Widget {
     config: Config,
     vm: Vm,
@@ -18,8 +99,8 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(_prefs: Preferences) -> Self {
-        let mut config = Config::reference();
+    pub(crate) fn new(settings: &Settings, _prefs: Preferences) -> Self {
+        let mut config = settings.normalized().config();
         // Tamaño inicial de una lista llena; solo cambia si hay menos coches.
         config.fit(config.row_count);
         let vm = Vm::unavailable(Status::Disconnected);
@@ -99,7 +180,7 @@ mod tests {
     #[test]
     fn standings_repaint_only_when_what_is_drawn_changes() {
         let prefs = Preferences::default();
-        let mut standings = Widget::new(Preferences::default());
+        let mut standings = Widget::new(&Settings::default(), Preferences::default());
         let first = source::fixed();
         assert!(standings.ingest(&first, prefs), "el primer estado se pinta");
 
@@ -126,7 +207,7 @@ mod tests {
 
     /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
     fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
-        let mut standings = Widget::new(Preferences::default());
+        let mut standings = Widget::new(&Settings::default(), Preferences::default());
         (0..30 * 60)
             .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
             .count()

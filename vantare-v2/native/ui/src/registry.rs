@@ -1,5 +1,38 @@
 // Una línea por widget; la macro solo genera módulos y despacho de enums.
 // Cada módulo define `Widget::{new, size, ingest, frame, animating}`.
+// Una unidad Rust se representa como objeto vacío en el enum con tag interno.
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+pub(crate) struct EmptySettings {}
+
+macro_rules! empty_settings {
+    () => {
+        #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+        #[serde(
+            rename_all = "camelCase",
+            from = "crate::EmptySettings",
+            into = "crate::EmptySettings"
+        )]
+        pub struct Settings;
+
+        impl From<crate::EmptySettings> for Settings {
+            fn from(_: crate::EmptySettings) -> Self {
+                Self
+            }
+        }
+        impl From<Settings> for crate::EmptySettings {
+            fn from(_: Settings) -> Self {
+                Self {}
+            }
+        }
+        impl Settings {
+            #[must_use]
+            pub fn normalized(&self) -> Self {
+                self.clone()
+            }
+        }
+    };
+}
+
 macro_rules! widgets {
     ($($kind:ident => $module:ident: $name:literal),+ $(,)?) => {
         $(pub mod $module;)+
@@ -23,11 +56,30 @@ macro_rules! widgets {
             }
         }
 
+        #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        #[serde(tag = "kind", rename_all = "kebab-case")]
+        pub enum Settings { $($kind($module::Settings)),+ }
+
+        impl Settings {
+            pub fn kind(&self) -> Kind {
+                match self { $(Self::$kind(_) => Kind::$kind),+ }
+            }
+
+            pub fn default_for(kind: Kind) -> Self {
+                match kind { $(Kind::$kind => Self::$kind($module::Settings::default())),+ }
+            }
+
+            #[must_use]
+    pub fn normalized(&self) -> Self {
+                match self { $(Self::$kind(settings) => Self::$kind(settings.normalized())),+ }
+            }
+        }
+
         pub(crate) enum Widget { $($kind(Box<$module::Widget>)),+ }
 
         impl Widget {
-            pub(crate) fn new(kind: Kind, prefs: vantare_domain::format::Preferences) -> Self {
-                match kind { $(Kind::$kind => Self::$kind(Box::new($module::Widget::new(prefs)))),+ }
+            pub(crate) fn new(settings: &Settings, prefs: vantare_domain::format::Preferences) -> Self {
+                match settings { $(Settings::$kind(settings) => Self::$kind(Box::new($module::Widget::new(settings, prefs)))),+ }
             }
 
             #[cfg(feature = "paint-stats")]

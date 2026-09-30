@@ -136,12 +136,14 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: multiclass_relative::project(&Snapshot::default(), prefs, Content::default()),
         }
@@ -210,7 +212,7 @@ mod tests {
     #[test]
     fn snapshot_metadata_and_unrendered_signals_do_not_repaint() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));

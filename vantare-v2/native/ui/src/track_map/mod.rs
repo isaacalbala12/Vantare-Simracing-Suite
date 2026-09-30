@@ -19,12 +19,14 @@ use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens}
 const WIDTH: f32 = 320.0;
 const SCALE: f32 = 0.95; // preserveAspectRatio: 304 / 320 = 209 / 220.
 
+empty_settings!();
+
 pub(crate) struct Widget {
     vm: track_map::ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: track_map::project(&Snapshot::default(), prefs),
         }
@@ -212,7 +214,7 @@ mod tests {
     #[test]
     fn repaint_tracks_only_visible_changes_and_empty_is_idle() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
@@ -253,7 +255,7 @@ mod tests {
     #[test]
     fn reference_data_never_supplies_a_fake_live_outline() {
         let snapshot = reference_snapshot();
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings, Preferences::default());
         assert!(!widget.ingest(&snapshot, Preferences::default()));
         assert!(widget.vm.outline.is_empty());
         assert!(widget.vm.markers.is_empty());
@@ -276,7 +278,7 @@ mod tests {
             vantare_domain::Quality::Unavailable
         );
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), (320.0, 248.0));
         assert_eq!(
@@ -322,7 +324,7 @@ mod tests {
         without_position.state.cars[1].pose = vantare_domain::Quality::Unavailable;
         for snapshot in [live, next_epoch, without_position] {
             assert!(scene::geometry(&snapshot).is_none());
-            let mut widget = Widget::new(Preferences::default());
+            let mut widget = Widget::new(&Settings, Preferences::default());
             assert!(widget.ingest(&reference, Preferences::default()));
             assert!(widget.ingest(&snapshot, Preferences::default()));
             assert_eq!(widget.size(), (320.0, 220.0));

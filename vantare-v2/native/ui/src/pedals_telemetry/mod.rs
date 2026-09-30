@@ -26,6 +26,63 @@ use vantare_domain::{
 const SIZE: (f32, f32) = (300.0, 112.0);
 const TRANSITION: Duration = Duration::from_millis(60);
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub steering_wheel: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            steering_wheel: "generic".into(),
+        }
+    }
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        const WHEELS: &[&str] = &[
+            "generic",
+            "alpine-a424",
+            "aston-martin-valkyrie",
+            "bmw-m-hybrid-v8-pre-le-mans",
+            "bmw-m-hybrid-v8",
+            "cadillac-v-series-r",
+            "ferrari-499p",
+            "genesis-gmr-001",
+            "glickenhaus-scg007",
+            "isotta-fraschini-tipo6",
+            "lamborghini-sc63",
+            "peugeot-9x8",
+            "peugeot-9x8-2024",
+            "porsche-963",
+            "toyota-gr010",
+            "toyota-tr010",
+            "vanwall-vandervell-680",
+            "aston-martin-vantage-gt3",
+            "bmw-m4-gt3",
+            "corvette-z06-gt3",
+            "ferrari-296-gt3",
+            "ford-mustang-gt3",
+            "lamborghini-huracan-gt3",
+            "lexus-rc-f-gt3",
+            "mclaren-720s-gt3",
+            "mercedes-amg-gt3",
+            "porsche-911-gt3-r",
+            "oreca-07",
+            "adess-ad25",
+            "duqueine-d09",
+            "ginetta-g61-lt-p3-evo",
+            "ligier-js-p325",
+        ];
+        if WHEELS.contains(&self.steering_wheel.as_str()) {
+            self.clone()
+        } else {
+            Self::default()
+        }
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
     from: [Option<f64>; 3],
@@ -34,7 +91,7 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: pedals_telemetry::project(&Snapshot::default(), prefs),
             from: [None; 3],
@@ -276,7 +333,7 @@ mod tests {
             ),
             ("4", "180", "km/h", "7.2k")
         );
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), (300.0, 112.0));
         assert_eq!(widget.frame(prefs).1, Wake::Idle);
@@ -286,7 +343,7 @@ mod tests {
     #[test]
     fn transitions_end_and_missing_inputs_clear_without_a_zero_tween() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         let mut player = Player::default();
         player.telemetry.throttle = Quality::Reliable(0.0);
@@ -320,7 +377,7 @@ mod tests {
     #[test]
     fn a_new_epoch_does_not_animate_from_the_old_producer() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         widget.vm.pedals = [Some(0.0); 3];
         let mut snapshot = Snapshot {
             epoch: 1,
@@ -343,7 +400,7 @@ mod tests {
     fn instruments_do_not_restart_bars_and_retargeting_starts_at_the_visible_value() {
         let prefs = Preferences::default();
         let now = Instant::now();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         let mut player = Player::default();
         player.telemetry.throttle = Quality::Reliable(0.0);

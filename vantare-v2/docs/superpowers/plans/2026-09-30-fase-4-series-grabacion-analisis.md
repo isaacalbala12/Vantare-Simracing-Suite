@@ -17,8 +17,10 @@ desactivado por defecto. No prometer durabilidad sin commit efectivo DuckDB.
 Rutas principales: `native/runtime/src/flows/` y este expediente. Enganche mínimo:
 un accessor `Core::series_mut` en `core/mod.rs` para configurar la entrega
 antes de adquirir; no cambiar adquisición, modelo, derivaciones o IPC.
-Almacenamiento y cálculo serán módulos propios bajo flows, sin nuevo crate:
-el workspace de cuatro paquetes no necesita otra frontera de build ahora.
+El cálculo puro permanece bajo flows. Almacenamiento tendrá crate y proceso
+propios `native/storage`, autorizado por el orquestador el 2026-09-30; ningún
+crate actual dependerá de él. `default-members` conserva los cuatro paquetes
+ligeros, mientras los gates `--workspace` verifican también almacenamiento.
 El orquestador es propietario del handoff vivo compartido y de la integración.
 Única configuración Cargo necesaria para el codec: activar `float_roundtrip`
 en serde_json existente (`native/runtime/Cargo.toml`). Sin nueva dependencia,
@@ -47,7 +49,8 @@ Notion inaccesible, excepción explícita de Isaac; seguimiento sin completar.
    parcial explícita permite cadencia menor a 64 muestras.
    Tests: entrega antes del cierre, cierre sin mezclar vueltas, saturación,
    desconexión, sesión/contador y memoria acotada. Conservar goldens v1 previos.
-3. **Almacenamiento DuckDB, propietario único**: BLOQUEADO desde el inventario.
+3. **Almacenamiento DuckDB, propietario único**: desbloqueado por autorización
+   explícita del orquestador el 2026-09-30. El bloqueo inicial fue:
    No hay bindings en Cargo.lock/caché y el encargo prohíbe descargar artefactos.
    No reemplazarlo por JSONL, SQLite, Python ni CLI embebido. El helper Go
    existente es read-only y no se modifica. Reanudar con crate/runtime fijado
@@ -129,6 +132,8 @@ cargo test --offline --workspace -j 2
 ```
 
 Nunca más de dos jobs. No tocar UI, otros manifests/lock ni otros worktrees.
+Excepción necesaria autorizada: workspace Cargo.toml y Cargo.lock para agregar
+únicamente storage y su dependencia DuckDB fijada; ningún manifest UI/domain/IPC.
 Revisar `git diff --check`, diff completo, rutas staged y commits con trailer
 `Co-Authored-By: GPT-6.1 Sol <noreply@openai.com>`.
 Registrar resultados, producción/tests añadidos y límites al finalizar.
@@ -244,7 +249,7 @@ No movidos/eliminados. `domain/model.rs`, IPC, adaptadores, UI y Go intactos.
 No suites Go/frontend: solo inventariados, sin cambios. No pruebas físicas,
 release, CI remoto ni DB real: no disponibles/autorizados en este encargo.
 
-**Estado: entrega local parcial para review de Opus, fase 4 NO cerrada.**
+**Estado anterior a la continuación: entrega local parcial para review.**
 Bloqueados: writer/proceso DuckDB, esquema persistido y queries históricas
 contra DB, watermark durable/recovery/disco lleno y prueba de presupuesto
 journal+series+LMU+OBS. No hay wiring de worker/CLI ni transporte IPC nuevo.
@@ -256,3 +261,55 @@ Notion cuando vuelva el acceso; provisionar bindings/runtime offline fijados,
 decidir política del techo por vuelta y continuar el corte DuckDB. Isaac
 ratifica presupuestos y autoriza la prueba física. Sin push, PR, merge,
 promoción, release, gasto, secretos ni cambios de otros worktrees.
+
+## Continuación autorizada — 2026-09-30 (plan previo al código)
+
+DuckDB autorizado: `duckdb = { version = "=1.10505.0", features = ["bundled"] }`.
+Crate y libduckdb-sys comprobados en caché. Trabajar estrictamente offline.
+Es la única dependencia nueva directa; stdlib no ofrece SQL/DuckDB y bindings
+manuales, CLI o Python añadirían riesgo/runtime. C++ bundled implica coste
+de compilación y binario; registrar tiempo de primer build y tamaño por perfil,
+sin presentarlos como build de distribución. No activar extensiones ni red.
+
+Cortes pendientes, un commit por hito, en este orden:
+
+6. **Vueltas largas**: quitar el techo de grabación. Mantener como máximo
+   18.000 muestras de ventana diagnóstica, reciclando la ventana con offset
+   explícito; publicar antes de reciclar. Chunks de 64 y offsets absolutos
+   no dependen del tiempo/distancia de la vuelta. Test de regresión primero:
+   600 s a 100 Hz, receptor rápido, continuidad exacta y memoria acotada.
+   El techo describe memoria local, nunca genera hueco en el feed.
+7. **Writer aislado**: crate storage con binario bajo demanda, única conexión
+   en su proceso; cliente de proceso en el mismo crate consume Receiver en
+   hilo propio. Ningún SQL, serialización o espera entra en Core. Protocolo
+   local acotado con comandos cerrados, sin SQL arbitrario. DB nueva por
+   grabación, esquema versionado, chunks originales BLOB sin transformar,
+   índice de intento como clave y watermark actualizado en la transacción.
+   ACK solo después de COMMIT; duplicado idéntico idempotente, conflicto falla.
+   Tests de escritura/lectura real, conexión única, validación y cola llena.
+8. **Consultas**: paginación por índice, máximo acotado, replay con el mismo
+   codec y analizador puro. Lectura histórica read-only; no importar/modificar
+   bases Go/LMU. Schema desconocido falla. Tests de paridad live/durable/replay,
+   límites, identidad y huecos. El proceso serializa peticiones; análisis
+   fuera de la conexión, nunca en adquisición. La vista Hub sigue en fase 5.
+9. **Durabilidad y recuperación**: reabrir WAL tras matar proceso real después
+   de ACK, repetir envío sin duplicar y detectar cola final no confirmada.
+   Validar watermark con filas persistidas; errores SQL/I/O no avanzan ACK.
+   Cierre por EOF; cliente ofrece plazo y terminación del hijo si se bloquea.
+   Tests rollback y DB ajena preservada, proceso caído, recuperación exacta.
+   Carga con writer detenido prueba progreso y pérdida explícita; medir
+   escritura real separadamente. Corte físico LMU+OBS/journal requiere Isaac.
+
+El proceso no recibe rutas de importación/SQL desde chunks. Ruta de DB y
+recording son parámetros explícitos del propietario. No interpreta formatos
+Go/LMU ni migra originales. Solo v1 de velocidad/pedales; cálculos Go ricos
+siguen fuera por señales ausentes. Integración de arranque Hub/fase 5 y
+journal/fase 3 permanece del orquestador: entregar API ejecutable y probada.
+
+Preguntas pendientes para Isaac: presupuesto físico total con journal+series,
+campaña LMU/OBS y empaquetado final/notices DuckDB. No bloquean estos cortes.
+Gates previos al commit de esta continuación: fmt/clippy/test del workspace
+original, offline y `-j 2`; registrar resultado antes de commitear.
+
+Gates de este microplan: fmt exit 0; clippy exit 0 (33,32 s); test exit 0,
+400 correctos y 4 live ignorados, incluyendo 7 lifecycle sin harness.

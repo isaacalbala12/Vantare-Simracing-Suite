@@ -26,3 +26,6 @@ mod series_feed_tests;
 
 #[cfg(test)]
 mod analysis_tests;
+
+#[cfg(test)]
+mod series_load_tests;

@@ -182,6 +182,11 @@ ACK durable ni promesa de pérdida cero. Tras desconexión no se copian nuevas
 muestras para el receptor muerto. Las señales conservan su calidad original.
 Máximo adicional en cola: `capacity × 64` muestras, además de las dos vueltas
 acotadas ya existentes. Serialización y análisis ocurren en el consumidor.
+El límite previo de 18.000 muestras por vuelta sigue vigente también con
+receptor rápido: al agotarse deja de muestrear y marca hueco hasta la vuelta
+siguiente (180 s a 100 Hz, 300 s a 60 Hz). Esta entrega no promete grabación
+íntegra de vueltas que superen ese límite; revisar la política con el backend
+DuckDB antes de declarar la fase completa.
 
 Los seis tests de `series_feed_tests.rs` prueban entrega durante vuelta,
 parciales/cierre, saturación/desconexión, configuración única, hueco y cambio
@@ -235,3 +240,20 @@ live y bytes/replay. También fixture LMU productivo obligatorio de una muestra:
 demuestra roundtrip exacto y no fabrica una vuelta completa. El replay de
 cierre sigue siendo sintético explícito. Persistencia DuckDB y prueba física
 de presupuestos siguen bloqueadas; no se declara la fase 4 completa.
+
+## Carga reproducible del feed volátil — ISA-1429
+
+`series_load_tests.rs` entrega 36.000 observaciones sintéticas de 104 coches,
+100 Hz lógicos y vueltas de 120 s, por Core. El receptor no lee hasta que el
+productor termina: timeout de diagnóstico, sin sleeps. Comprueba progreso,
+cola de dos chunks/128 muestras, pérdidas visibles y reanudación con hueco
+en análisis. No ejecuta almacenamiento ni SHM/REST productivo.
+
+```powershell
+cargo test --offline --workspace -j 2 flows::series_load_tests -- --nocapture
+```
+
+Imprime tiempos debug con/sin feed, incluyendo generador; una pareja ruidosa
+con otros workers no fija ratio ni presupuesto de CPU, memoria privada,
+latencia o frame time. Evidencia cruda, hashes, gates y límites en el microplan.
+El siguiente corte sigue siendo almacenamiento DuckDB, actualmente bloqueado.

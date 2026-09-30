@@ -282,6 +282,16 @@ pub fn run(path: PathBuf) -> ExitCode {
 
 /// Captura el renderer productivo con una sola foto, sin núcleo ni feed live.
 pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
+    run_sequence(kind, &[snapshot], path)
+}
+
+/// Alimenta todas las fotos en orden antes de esperar el fin de las animaciones.
+pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCode {
+    if snapshots.is_empty() {
+        eprintln!("la escena no contiene fotos");
+        return ExitCode::FAILURE;
+    }
+    let snapshots = snapshots.to_vec();
     let failure = Rc::new(Cell::new(false));
     let flag = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
@@ -297,7 +307,11 @@ pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
             cx.quit();
             return;
         };
-        view.update(cx, |v, cx| v.ingest(&snapshot, cx));
+        view.update(cx, |v, cx| {
+            for snapshot in &snapshots {
+                v.ingest(snapshot, cx);
+            }
+        });
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;
             if let Err(error) = &result {

@@ -1,6 +1,5 @@
 //! Input telemetry Eficiencia, layout por defecto de 360 × 140.
-//! Sin `controls.history` el productivo oculta la traza: el cuerpo ocupa su alto.
-//! No se acumulan instantáneas locales para fabricar una serie canónica.
+//! La traza corta pertenece al widget y solo conserva muestras observadas.
 
 use std::time::{Duration, Instant};
 
@@ -8,7 +7,11 @@ use gpui::{
     App, BorderStyle, Corners, Edges, FontWeight, TextAlign, TextRun, Window, font,
     linear_color_stop, linear_gradient, point, px, quad,
 };
-use vantare_domain::{Snapshot, format::Preferences, input_telemetry::ViewModel};
+use vantare_domain::{
+    Snapshot,
+    format::Preferences,
+    input_telemetry::{Sample, Trace, ViewModel},
+};
 
 use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
@@ -23,6 +26,7 @@ pub(crate) struct Widget {
     vm: ViewModel,
     from: [Option<f64>; 3],
     started: Option<Instant>,
+    trace: Trace,
 }
 
 impl Widget {
@@ -31,6 +35,7 @@ impl Widget {
             vm: vantare_domain::input_telemetry::project(&Snapshot::default(), prefs),
             from: [None; 3],
             started: None,
+            trace: Trace::default(),
         }
     }
 
@@ -40,13 +45,14 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        let trace_changed = self.trace.push(snapshot);
         let next = vantare_domain::input_telemetry::project(snapshot, prefs);
         if next.pedals != self.vm.pedals {
             let now = Instant::now();
             self.from = self.pedals_at(now);
             self.started = Some(now);
         }
-        replace_if_changed(&mut self.vm, next)
+        replace_if_changed(&mut self.vm, next) || trace_changed
     }
 
     fn pedals_at(&self, now: Instant) -> [Option<f64>; 3] {
@@ -69,13 +75,14 @@ impl Widget {
         let vm = self.vm.clone();
         let now = Instant::now();
         let pedals = self.pedals_at(now);
+        let samples: Vec<_> = self.trace.samples().iter().copied().collect();
         let wake = if self.moving(now) {
             Wake::Frame
         } else {
             Wake::Idle
         };
         (
-            Box::new(move |window, cx| paint(&vm, pedals, window, cx)),
+            Box::new(move |window, cx| paint(&vm, pedals, &samples, window, cx)),
             wake,
         )
     }
@@ -100,7 +107,13 @@ fn interpolate(
     })
 }
 
-fn paint(vm: &ViewModel, pedals: [Option<f64>; 3], window: &mut Window, cx: &mut App) {
+fn paint(
+    vm: &ViewModel,
+    pedals: [Option<f64>; 3],
+    samples: &[Sample],
+    window: &mut Window,
+    cx: &mut App,
+) {
     paint_surface(window);
     let mut body_top = 10.0;
     if let Some(status) = vm.status_text {
@@ -155,7 +168,47 @@ fn paint(vm: &ViewModel, pedals: [Option<f64>; 3], window: &mut Window, cx: &mut
         );
     }
     let bars_left = 12.0 + primary_w + 14.0;
-    paint_bars(vm, pedals, bars_left, body_top, window, cx);
+    paint_bars(
+        vm,
+        pedals,
+        bars_left,
+        body_top,
+        !samples.is_empty(),
+        window,
+        cx,
+    );
+    if !samples.is_empty() {
+        // CSS: 28 px, margin-top 8, padding-top 6, borde 1; contenido de 21 px.
+        window.paint_quad(gpui::fill(
+            rect(12.0, 102.0, 336.0, 1.0),
+            col(tokens::INK, 0.12),
+        ));
+        let column = ((336.0 - (samples.len() - 1) as f32) / samples.len() as f32).max(2.0);
+        for (i, sample) in samples.iter().enumerate() {
+            if let Some(value) = sample.throttle {
+                let height = 21.0 * value as f32 / 100.0;
+                if height > 0.0 {
+                    window.paint_quad(quad(
+                        rect(
+                            12.0 + i as f32 * (column + 1.0),
+                            130.0 - height,
+                            column,
+                            height,
+                        ),
+                        Corners {
+                            top_left: px(1.0),
+                            top_right: px(1.0),
+                            ..Corners::default()
+                        },
+                        col(0x6fae7d, 0.55),
+                        Edges::all(px(0.0)),
+                        col(0, 0.0),
+                        BorderStyle::default(),
+                    ));
+                }
+            }
+        }
+    }
 }
 
 fn paint_surface(window: &mut Window) {
@@ -200,11 +253,12 @@ fn paint_bars(
     pedals: [Option<f64>; 3],
     bars_left: f32,
     body_top: f32,
+    has_trace: bool,
     window: &mut Window,
     cx: &mut App,
 ) {
     let width = SIZE.0;
-    let track_h = SIZE.1 - 10.0 - body_top - 9.0;
+    let track_h = (SIZE.1 - 10.0 - body_top - 9.0 - if has_trace { 36.0 } else { 0.0 }).max(40.0);
     let column_w = (width - 12.0 - bars_left - 20.0) / 3.0;
     for (i, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
         let middle = bars_left + i as f32 * (column_w + 10.0) + column_w / 2.0;
@@ -293,19 +347,27 @@ mod tests {
     use vantare_domain::{Player, Quality};
 
     #[test]
-    fn reconstructed_workshop_scene_keeps_the_frozen_available_channels()
-    -> Result<(), vantare_ipc::Error> {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
-            "../../fixtures/input-telemetry.snapshot.json"
-        ))?;
-        let vm = vantare_domain::input_telemetry::project(&snapshot, Preferences::default());
+    fn reconstructed_workshop_scene_keeps_the_frozen_available_channels() {
+        let snapshots = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/input-telemetry.sequence.json"
+        ))
+        .expect("secuencia DTO");
+        let snapshot = snapshots.last().expect("foto actual");
+        let vm = vantare_domain::input_telemetry::project(snapshot, Preferences::default());
         assert_eq!(vm.status_text, None);
         assert_eq!(
             (vm.gear.as_str(), vm.speed.as_str(), vm.rpm.as_str()),
             ("4", "180 KPH", "7200")
         );
         assert_eq!(vm.pedals, [Some(6.0), Some(13.0), Some(75.0)]);
-        Ok(())
+        let mut widget = Widget::new(&Settings, Preferences::default());
+        for snapshot in &snapshots {
+            widget.ingest(snapshot, Preferences::default());
+        }
+        assert_eq!(widget.trace.samples().len(), 40);
+        assert_eq!(widget.trace.samples()[0].throttle, Some(55.0));
+        assert_eq!(widget.trace.samples()[23].throttle, Some(0.0));
+        assert_eq!(widget.trace.samples()[39].throttle, Some(100.0));
     }
 
     #[test]
@@ -327,6 +389,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.player = Some(Player {
             ..Player::default()
         });
@@ -334,6 +397,7 @@ mod tests {
         if let Some(player) = snapshot.state.player.as_mut() {
             player.telemetry.throttle = Quality::Reliable(0.75);
         }
+        snapshot.sequence += 1;
         assert!(widget.ingest(&snapshot, prefs));
         assert!(widget.moving(Instant::now()));
         snapshot.sequence += 1;

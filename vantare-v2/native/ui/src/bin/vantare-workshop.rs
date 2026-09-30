@@ -177,21 +177,23 @@ fn save(file: &PathBuf, pipe: Option<String>) -> Result<(), String> {
     Ok(())
 }
 
-fn load_scene(scene: Option<PathBuf>) -> Result<Snapshot, String> {
+fn load_scene(scene: Option<PathBuf>) -> Result<Vec<Snapshot>, String> {
     let text = match scene {
         Some(path) => {
             std::fs::read_to_string(&path).map_err(|e| format!("leer {}: {e}", path.display()))?
         }
         None => DEFAULT_SCENE.to_owned(),
     };
-    vantare_ipc::snapshot_from_json(&text).map_err(|e| e.to_string())
+    vantare_ui::workshop::snapshots_from_json(&text)
 }
 
 fn show(widgets: &[Kind], pos: (f32, f32), scene: Option<PathBuf>) -> Result<(), String> {
-    let snapshot = load_scene(scene)?;
-    // Una sola foto: los widgets la conservan; el emisor vive hasta que se cierre la ventana.
-    let (sender, receiver) = flume::bounded(1);
-    sender.send(Arc::new(snapshot)).map_err(|e| e.to_string())?;
+    let snapshots = load_scene(scene)?;
+    // Caben todas antes de arrancar GPUI; el feed las entrega en orden sin coalescer.
+    let (sender, receiver) = flume::bounded(snapshots.len());
+    for snapshot in snapshots {
+        sender.send(Arc::new(snapshot)).map_err(|e| e.to_string())?;
+    }
     run_placed(layout_row(widgets, pos), receiver, Preferences::default());
     drop(sender);
     Ok(())
@@ -212,7 +214,7 @@ fn main() -> ExitCode {
             output,
         } => {
             return match load_scene(Some(scene)) {
-                Ok(snapshot) => vantare_ui::capture::run_widget(widget, snapshot, output),
+                Ok(snapshots) => vantare_ui::capture::run_sequence(widget, &snapshots, output),
                 Err(error) => {
                     eprintln!("vantare-workshop: {error}");
                     ExitCode::FAILURE

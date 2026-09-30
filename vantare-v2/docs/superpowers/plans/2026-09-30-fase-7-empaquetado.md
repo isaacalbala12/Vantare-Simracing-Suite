@@ -163,3 +163,15 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   sobre los artefactos finales antes de entregar al orquestador.
 - Gates corte 5 finales: fmt/clippy/test PASS offline (-j 2; cuatro entradas físicas ignored); packaging 74 PASS; diff --check PASS. Sin nuevas dependencias.
 - Auditoría de recuento: cada hito registra 377 tests estándar PASS + 7 escenarios lifecycle PASS, 0 fallos, 4 entradas ignoradas (LMU REST, LMU shm en lib y grabadora, ACC live). Se corrigen los resúmenes previos que contaban solo dos; recuento-fmt/clippy/test PASS offline -j 2. Primera build Release limpia PASS en source 8e10053c; los seis exe NotSigned. Se regenera el paquete tras esta corrección documental.
+- Entrega local: paquete y portable Release regenerados desde checkout limpio
+  `82ce7e128dc32cbea6d4cd5fea5d221c03d190f6`, `source_dirty=false`.
+  Las 74 comprobaciones pasan sobre esos artefactos; el instalador generado
+  instala por CLI con exit 0. Los tres sidecars SHA coinciden. Gates finales
+  fmt/clippy/test PASS offline -j 2: 377 tests estándar + 7 escenarios lifecycle,
+  0 fallos y 4 entradas ignored. Logs `final-release-tests.log`,
+  `final-installer-cli.log` y `entrega-{fmt,clippy,test}.log`.
+  [Informe de verificación](../../../native/packaging/VERIFICACION.md) recoge
+  SHAs, tamaños, reproducción y preguntas. El commit final solo añade evidencia.
+  Mecanismo local terminado; fase 7 completa bloqueada por los cortes de
+  migración funcional, paridad, distribución y prueba física ya descritos.
+  Sin publicación, promoción, dependencias nuevas ni cambios de producto.

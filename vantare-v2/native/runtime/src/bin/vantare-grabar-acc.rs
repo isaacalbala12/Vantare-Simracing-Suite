@@ -108,6 +108,9 @@ const INTERVALO_MS: u32 = 100;
 /// Reintento del registro; también reconecta si ACC se reinicia a mitad.
 #[cfg(windows)]
 const REINTENTO_REGISTRO: Duration = Duration::from_secs(2);
+/// Una pausa breve del feed no justifica renovar una conexión ya admitida.
+#[cfg(windows)]
+const SILENCIO_CONEXION: Duration = Duration::from_secs(10);
 
 /// Intentos de una lectura estable antes de descartarla.
 const MAX_INTENTOS_ESTABLES: usize = 4;
@@ -170,10 +173,13 @@ fn copia_estable(
     mut leer_packet_id: impl FnMut() -> u32,
     mut copiar: impl FnMut(&mut [u8]) -> io::Result<()>,
 ) -> io::Result<u32> {
+    if destino.len() < 4 {
+        return Err(io::Error::from(io::ErrorKind::InvalidInput));
+    }
     for _ in 0..MAX_INTENTOS_ESTABLES {
         let antes = leer_packet_id();
         copiar(destino)?;
-        if leer_packet_id() == antes {
+        if leer_packet_id() == antes && destino[..4] == antes.to_le_bytes() {
             return Ok(antes);
         }
     }
@@ -235,21 +241,21 @@ fn mensaje_registro(
     nombre: &str,
     password_conexion: &str,
     intervalo_ms: u32,
-    password_comandos: &str,
 ) -> io::Result<Vec<u8>> {
     let mut mensaje = vec![MSG_REGISTRO, PROTOCOLO_VERSION];
     escribir_cadena(&mut mensaje, nombre)?;
     escribir_cadena(&mut mensaje, password_conexion)?;
     mensaje.extend_from_slice(&intervalo_ms.to_le_bytes());
-    escribir_cadena(&mut mensaje, password_comandos)?;
+    mensaje.extend_from_slice(&0_u16.to_le_bytes()); // Sin contraseña de comandos.
     Ok(mensaje)
 }
 
-/// `UNREGISTER_COMMAND_APPLICATION` (9), `REQUEST_ENTRY_LIST` (10) y
-/// `REQUEST_TRACK_DATA` (11): tipo (1 B) + connectionId (i32 LE).
+/// UNREGISTER v4 solo lleva tipo; las peticiones de lista/pista añaden connectionId.
 fn mensaje_conexion(tipo: u8, conexion: i32) -> Vec<u8> {
     let mut mensaje = vec![tipo];
-    mensaje.extend_from_slice(&conexion.to_le_bytes());
+    if tipo != MSG_DESREGISTRO {
+        mensaje.extend_from_slice(&conexion.to_le_bytes());
+    }
     mensaje
 }
 
@@ -259,57 +265,22 @@ struct ResultadoRegistro {
     conexion: i32,
     exito: bool,
     solo_lectura: bool,
-    error: String,
-}
-
-/// Cursor mínimo para leer el datagrama sin tocar memoria ajena.
-struct Lector<'a> {
-    datos: &'a [u8],
-    posicion: usize,
-}
-
-impl Lector<'_> {
-    fn u8(&mut self) -> Option<u8> {
-        let valor = *self.datos.get(self.posicion)?;
-        self.posicion += 1;
-        Some(valor)
-    }
-
-    fn u16_le(&mut self) -> Option<u16> {
-        let fin = self.posicion.checked_add(2)?;
-        let bytes = self.datos.get(self.posicion..fin)?;
-        self.posicion = fin;
-        Some(u16::from_le_bytes([bytes[0], bytes[1]]))
-    }
-
-    fn i32_le(&mut self) -> Option<i32> {
-        let fin = self.posicion.checked_add(4)?;
-        let bytes = self.datos.get(self.posicion..fin)?;
-        self.posicion = fin;
-        Some(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-    }
-
-    fn cadena(&mut self) -> Option<String> {
-        let longitud = usize::from(self.u16_le()?);
-        let fin = self.posicion.checked_add(longitud)?;
-        let bytes = self.datos.get(self.posicion..fin)?;
-        self.posicion = fin;
-        Some(String::from_utf8_lossy(bytes).into_owned())
-    }
 }
 
 /// `REGISTRATION_RESULT` (1): connectionId (i32 LE), success (u8), isReadonly
 /// (u8) y el error como cadena. `None` si no es ese mensaje o viene truncado.
 fn parsear_registro(datos: &[u8]) -> Option<ResultadoRegistro> {
-    let mut lector = Lector { datos, posicion: 0 };
-    if lector.u8()? != RESULTADO_REGISTRO {
+    let h = datos.get(..9)?;
+    let longitud = usize::from(u16::from_le_bytes([h[7], h[8]]));
+    if h[0] != RESULTADO_REGISTRO || datos.len() != 9 + longitud {
         return None;
     }
+    // Validar el texto sin conservarlo ni mostrarlo: puede incluir credenciales.
+    std::str::from_utf8(&datos[9..]).ok()?;
     Some(ResultadoRegistro {
-        conexion: lector.i32_le()?,
-        exito: lector.u8()? > 0,
-        solo_lectura: lector.u8()? > 0,
-        error: lector.cadena()?,
+        conexion: i32::from_le_bytes([h[1], h[2], h[3], h[4]]),
+        exito: h[5] > 0,
+        solo_lectura: h[6] == 0, // SDK: 0 significa read-only.
     })
 }
 
@@ -645,10 +616,12 @@ impl Pagina {
 
     /// `packetId` de la página (primeros 4 bytes, entero nativo little-endian).
     fn leer_packet_id(&self) -> u32 {
-        // SAFETY: la vista mapea al menos `self.tamano` (>= 800) bytes legibles
-        // durante toda la vida de la `Pagina`; `read_unaligned` no exige
-        // alineación.
-        unsafe { self.vista.as_ptr().cast::<u32>().read_unaligned() }
+        let mut bytes = [0; 4];
+        for (i, byte) in bytes.iter_mut().enumerate() {
+            // SAFETY: mapping Win32 vivo de al menos 800 B; i < 4.
+            *byte = unsafe { self.vista.as_ptr().add(i).read_volatile() };
+        }
+        u32::from_le_bytes(bytes)
     }
 
     fn copiar(&self, destino: &mut [u8]) -> io::Result<()> {
@@ -658,12 +631,10 @@ impl Pagina {
                 "búfer de tamaño distinto a la página",
             ));
         }
-        // SAFETY: la vista mapea exactamente `self.tamano` bytes legibles
-        // durante toda la vida de la `Pagina`, y `destino` es un búfer propio
-        // de ese tamaño. Que el productor escriba a la vez no rompe la memoria:
-        // produce una copia rasgada, que `copia_estable` descarta.
-        unsafe {
-            std::ptr::copy_nonoverlapping(self.vista.as_ptr(), destino.as_mut_ptr(), self.tamano);
+        for (i, byte) in destino.iter_mut().enumerate() {
+            // SAFETY: mapping Win32 vivo de tamano bytes; destino mide tamano.
+            // Volátil ante escritor externo; copia_estable descarta rasgados.
+            *byte = unsafe { self.vista.as_ptr().add(i).read_volatile() };
         }
         Ok(())
     }
@@ -711,7 +682,7 @@ impl Paginas {
 struct Avisos {
     esperando: Option<Instant>,
     registrado: Option<i32>,
-    rechazo: Option<String>,
+    rechazo: bool,
 }
 
 /// Configuración del listener de broadcasting de ACC.
@@ -719,24 +690,30 @@ struct Avisos {
 struct ConfigBroadcasting {
     puerto: u16,
     password_conexion: String,
-    password_comandos: String,
 }
 
 /// Texto UTF-16LE (BOM `FF FE`, o segundo byte nulo como en `{` + `\0`) pasado a
 /// UTF-8; cualquier otra cosa se devuelve tal cual.
-fn utf8(bytes: &[u8]) -> Vec<u8> {
+fn utf8(bytes: &[u8]) -> io::Result<Vec<u8>> {
     let utf16 = bytes.starts_with(&[0xFF, 0xFE]) || bytes.get(1) == Some(&0);
     if !utf16 {
-        return bytes.to_vec();
+        return Ok(bytes.to_vec());
+    }
+    if !bytes.len().is_multiple_of(2) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "UTF-16 truncado",
+        ));
     }
     let unidades: Vec<u16> = bytes
         .chunks_exact(2)
         .map(|par| u16::from_le_bytes([par[0], par[1]]))
         .collect();
-    String::from_utf16_lossy(&unidades)
+    Ok(String::from_utf16(&unidades)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "UTF-16 inválido"))?
         .trim_start_matches('\u{feff}')
         .as_bytes()
-        .to_vec()
+        .to_vec())
 }
 
 /// Lee `broadcasting.json`. ACC ha usado las dos grafías del puerto
@@ -750,23 +727,24 @@ fn config_broadcasting(ruta: &Path) -> io::Result<Option<ConfigBroadcasting>> {
     };
     // ACC lo escribe en UTF-16LE (con o sin BOM) y a veces en UTF-8 con BOM;
     // lo deja vacío mientras el broadcasting no está configurado.
-    let contenido = utf8(&contenido);
+    let contenido = utf8(&contenido)?;
     let contenido = contenido
         .strip_prefix([0xEF, 0xBB, 0xBF].as_slice())
         .unwrap_or(&contenido);
     if contenido.iter().all(u8::is_ascii_whitespace) {
         return Ok(None);
     }
-    let valor: Value = serde_json::from_slice(contenido).map_err(|error| {
+    let valor: Value = serde_json::from_slice(contenido).map_err(|_| {
         io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("broadcasting.json no es JSON válido: {error}"),
+            "broadcasting.json no es JSON válido",
         )
     })?;
     let puerto = ["udpListenerPort", "updListenerPort"]
         .iter()
         .find_map(|clave| valor.get(*clave).and_then(Value::as_u64))
         .and_then(|puerto| u16::try_from(puerto).ok())
+        .filter(|puerto| *puerto > 0)
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -783,7 +761,6 @@ fn config_broadcasting(ruta: &Path) -> io::Result<Option<ConfigBroadcasting>> {
     Ok(Some(ConfigBroadcasting {
         puerto,
         password_conexion: texto("connectionPassword"),
-        password_comandos: texto("commandPassword"),
     }))
 }
 
@@ -794,7 +771,6 @@ struct FuenteUdp {
     socket: UdpSocket,
     destino: std::net::SocketAddr,
     password_conexion: String,
-    password_comandos: String,
     conexion: Option<i32>,
     proximo_registro: Instant,
     ultima_senal: Instant,
@@ -814,7 +790,6 @@ impl FuenteUdp {
             socket,
             destino,
             password_conexion: config.password_conexion.clone(),
-            password_comandos: config.password_comandos.clone(),
             conexion: None,
             proximo_registro: ahora,
             ultima_senal: ahora,
@@ -831,17 +806,12 @@ impl FuenteUdp {
     }
 
     fn enviar_registro(&mut self) {
-        match mensaje_registro(
-            NOMBRE_APP,
-            &self.password_conexion,
-            INTERVALO_MS,
-            &self.password_comandos,
-        ) {
+        match mensaje_registro(NOMBRE_APP, &self.password_conexion, INTERVALO_MS) {
             Ok(mensaje) => self.enviar(&mensaje),
             Err(error) => eprintln!("broadcasting: {error}"),
         }
-        self.ultima_senal = Instant::now();
-        self.proximo_registro = self.ultima_senal + REINTENTO_REGISTRO;
+        // Enviar no es recibir: no rejuvenece la última muestra del feed.
+        self.proximo_registro = Instant::now() + REINTENTO_REGISTRO;
     }
 
     /// Drena el socket, guarda cada datagrama e interpreta el resultado del
@@ -854,9 +824,9 @@ impl FuenteUdp {
         inicio: Instant,
         avisos: &mut Avisos,
     ) -> io::Result<()> {
-        loop {
+        for _ in 0..256 {
             match self.socket.recv_from(&mut self.bufer) {
-                Ok((leidos, _)) => {
+                Ok((leidos, peer)) if peer == self.destino => {
                     escribir_udp(salida, t_rel_ns(inicio), &self.bufer[..leidos])?;
                     contadores.udp += 1;
                     self.ultima_senal = Instant::now();
@@ -864,6 +834,7 @@ impl FuenteUdp {
                         self.procesar(&resultado, avisos);
                     }
                 }
+                Ok(_) => {} // Un peer ajeno no entra en el corpus ni refresca el feed.
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
                 // Un ICMP de "puerto cerrado" (ACC apagado) no debe matar la
                 // grabación; se trata como silencio.
@@ -882,9 +853,11 @@ impl FuenteUdp {
         if self.conexion.is_some() {
             // Registrado y con tráfico: nada que hacer. Solo un silencio
             // (ACC reiniciado) obliga a registrarse de nuevo.
-            if self.ultima_senal.elapsed() < REINTENTO_REGISTRO {
+            if self.ultima_senal.elapsed() < SILENCIO_CONEXION {
                 return Ok(());
             }
+            self.cerrar();
+            self.conexion = None;
             self.proximo_registro = ahora;
         }
         if ahora >= self.proximo_registro {
@@ -895,18 +868,16 @@ impl FuenteUdp {
 
     fn procesar(&mut self, resultado: &ResultadoRegistro, avisos: &mut Avisos) {
         if !resultado.exito {
-            if avisos.rechazo.as_deref() != Some(resultado.error.as_str()) {
-                eprintln!("broadcasting: ACC rechazó el registro: {}", resultado.error);
-                avisos.rechazo = Some(resultado.error.clone());
+            self.conexion = None;
+            if !avisos.rechazo {
+                eprintln!("broadcasting: ACC rechazó el registro; revisar configuración local");
+                avisos.rechazo = true;
             }
             return;
         }
-        if let Some(anterior) = self.conexion.replace(resultado.conexion)
-            && anterior != resultado.conexion
-        {
-            // La suscripción anterior puede seguir viva: se retira.
-            self.enviar(&mensaje_conexion(MSG_DESREGISTRO, anterior));
-        }
+        // UNREGISTER identifica el endpoint, no un ID. No retirarlo después
+        // del ACK nuevo: cancelaría también la suscripción recién admitida.
+        self.conexion = Some(resultado.conexion);
         if avisos.registrado != Some(resultado.conexion) {
             println!(
                 "broadcasting: registrado (conexión {}{})",
@@ -918,7 +889,7 @@ impl FuenteUdp {
                 }
             );
             avisos.registrado = Some(resultado.conexion);
-            avisos.rechazo = None;
+            avisos.rechazo = false;
         }
         self.enviar(&mensaje_conexion(MSG_PEDIR_LISTA, resultado.conexion));
         self.enviar(&mensaje_conexion(MSG_PEDIR_PISTA, resultado.conexion));
@@ -1479,6 +1450,77 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn un_packet_estable_fuera_del_blob_no_admite_una_copia_distinta() {
+        let mut destino = [0; 64];
+        let error = copia_estable(
+            &mut destino,
+            || 17,
+            |b| {
+                b[..4].copy_from_slice(&18_u32.to_le_bytes());
+                Ok(())
+            },
+        )
+        .expect_err("cabecera y blob deben tener el mismo packet");
+        assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn silencio_breve_no_renueva_y_silencio_largo_retira_antes_de_registrar() {
+        let server = UdpSocket::bind("127.0.0.1:0").expect("servidor vector");
+        server
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("plazo");
+        let config = ConfigBroadcasting {
+            puerto: server.local_addr().expect("puerto").port(),
+            password_conexion: String::new(),
+        };
+        let mut fuente = FuenteUdp::nuevo(&config).expect("socket vector");
+        fuente.conexion = Some(42);
+        let inicio = Instant::now();
+        fuente.ultima_senal = inicio
+            .checked_sub(Duration::from_secs(3))
+            .expect("reloj vector");
+        fuente.proximo_registro = inicio;
+        let mut out = Vec::new();
+        fuente
+            .atender(
+                &mut out,
+                &mut Contadores::default(),
+                inicio,
+                &mut Avisos::default(),
+            )
+            .expect("silencio breve");
+        server.set_nonblocking(true).expect("sin espera");
+        let mut b = [0; 512];
+        assert_eq!(
+            server
+                .recv(&mut b)
+                .expect_err("no renovar a los 3 s")
+                .kind(),
+            io::ErrorKind::WouldBlock
+        );
+        server.set_nonblocking(false).expect("plazo");
+        fuente.ultima_senal = inicio
+            .checked_sub(Duration::from_secs(11))
+            .expect("reloj vector");
+        fuente
+            .atender(
+                &mut out,
+                &mut Contadores::default(),
+                inicio,
+                &mut Avisos::default(),
+            )
+            .expect("silencio largo");
+        let n = server.recv(&mut b).expect("retirar antes de renovar");
+        assert_eq!(&b[..n], &[9]);
+        let n = server.recv(&mut b).expect("renovar");
+        assert_eq!(&b[..2], &[1, 4]);
+        assert!(n > 2);
+        assert_eq!(fuente.conexion, None);
+    }
     use std::cell::Cell;
 
     fn parsed(lista: &[&str]) -> Result<Args, String> {
@@ -1563,6 +1605,7 @@ mod tests {
             lecturas.set(lecturas.get() + 1);
             if lecturas.get() == 1 {
                 generacion.set(12);
+                datos[..4].copy_from_slice(&12_u32.to_le_bytes());
                 datos[8] = 99;
             }
             bufer.copy_from_slice(&datos);
@@ -1623,27 +1666,23 @@ mod tests {
             0x00, b'a', b's', b'd', 250, 0, 0, 0, 0x00, 0x00,
         ];
         assert_eq!(
-            mensaje_registro("Your name", "asd", 250, "").expect("mensaje válido"),
+            mensaje_registro("Your name", "asd", 250).expect("mensaje válido"),
             esperado
         );
         // Y el que envía la grabadora: 100 ms y «vantare-grabar-acc».
-        let mensaje =
-            mensaje_registro(NOMBRE_APP, "clave", INTERVALO_MS, "cmd").expect("mensaje válido");
+        let mensaje = mensaje_registro(NOMBRE_APP, "clave", INTERVALO_MS).expect("mensaje válido");
         assert_eq!(&mensaje[..2], &[MSG_REGISTRO, PROTOCOLO_VERSION]);
         assert_eq!(&mensaje[2..4], &18_u16.to_le_bytes());
         assert_eq!(&mensaje[4..22], NOMBRE_APP.as_bytes());
         assert_eq!(&mensaje[22..24], &5_u16.to_le_bytes());
         assert_eq!(&mensaje[24..29], b"clave");
         assert_eq!(&mensaje[29..33], &INTERVALO_MS.to_le_bytes());
-        assert_eq!(&mensaje[33..], &[3, 0, b'c', b'm', b'd']);
+        assert_eq!(&mensaje[33..], &[0, 0]);
     }
 
     #[test]
     fn las_peticiones_llevan_tipo_e_identificador_de_conexion() {
-        assert_eq!(
-            mensaje_conexion(MSG_DESREGISTRO, 7),
-            vec![0x09, 0x07, 0, 0, 0]
-        );
+        assert_eq!(mensaje_conexion(MSG_DESREGISTRO, 7), vec![0x09]);
         assert_eq!(
             mensaje_conexion(MSG_PEDIR_LISTA, 3),
             vec![0x0A, 0x03, 0, 0, 0]
@@ -1666,12 +1705,18 @@ mod tests {
             Some(ResultadoRegistro {
                 conexion: 3,
                 exito: true,
-                solo_lectura: false,
-                error: "éxito".into(),
+                solo_lectura: true,
             })
         );
         assert_eq!(parsear_registro(&[0x02, 0x00]), None);
         assert_eq!(parsear_registro(&datos[..3]), None);
+        for n in 0..datos.len() {
+            assert_eq!(parsear_registro(&datos[..n]), None);
+        }
+        datos[6] = 1;
+        assert!(!parsear_registro(&datos).expect("ACK completo").solo_lectura);
+        datos.push(0);
+        assert_eq!(parsear_registro(&datos), None, "sin bytes sobrantes");
     }
 
     #[test]
@@ -1776,7 +1821,6 @@ mod tests {
             Some(ConfigBroadcasting {
                 puerto: 9000,
                 password_conexion: "uno".into(),
-                password_comandos: "dos".into(),
             })
         );
         fs::write(&ruta, r#"{"udpListenerPort": 9001}"#).expect("escribir config");
@@ -1785,7 +1829,6 @@ mod tests {
             .expect("está el fichero");
         assert_eq!(config.puerto, 9001);
         assert_eq!(config.password_conexion, "");
-        assert_eq!(config.password_comandos, "");
         assert!(
             config_broadcasting(&base.join("no-existe.json"))
                 .expect("la ausencia no es error")
@@ -1800,6 +1843,12 @@ mod tests {
             .expect("está configurado");
         assert_eq!(config.puerto, 9002);
         assert_eq!(config.password_conexion, "clave");
+        fs::write(&ruta, br#"{"udpListenerPort":0}"#).expect("puerto cero");
+        assert!(config_broadcasting(&ruta).is_err());
+        fs::write(&ruta, [0xff, 0xfe, b'{', 0, 1]).expect("UTF-16 truncado");
+        assert!(config_broadcasting(&ruta).is_err());
+        fs::write(&ruta, [0xff, 0xfe, 0, 0xd8]).expect("surrogate suelto");
+        assert!(config_broadcasting(&ruta).is_err());
         fs::write(&ruta, b"").expect("escribir config");
         assert!(
             config_broadcasting(&ruta)

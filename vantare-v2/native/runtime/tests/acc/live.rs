@@ -98,3 +98,41 @@ fn delayed_handshake_retries_registration_on_the_same_socket() {
     let (_, repeated) = server.recv_from(&mut buf).expect("registro repetido");
     assert_eq!(repeated, peer);
 }
+
+#[test]
+fn unchanged_udp_values_still_advance_reception_in_live_poll() {
+    let server = UdpSocket::bind("127.0.0.1:0").expect("servidor vector");
+    let socket = UdpSocket::bind("127.0.0.1:0").expect("adaptador");
+    socket
+        .connect(server.local_addr().expect("dirección"))
+        .expect("peer");
+    socket.set_nonblocking(true).expect("no bloquear");
+    let peer = socket.local_addr().expect("puerto");
+    let mut acc = Acc::new();
+    acc.socket = Some(socket);
+    acc.retry = Duration::MAX; // No abrir SHM/config real en este vector.
+    acc.next_register = Duration::MAX;
+    let mut s = vec![0; 820];
+    for (offset, text) in [(0, "1.9"), (30, "1.7")] {
+        for (i, unit) in text.encode_utf16().enumerate() {
+            s[offset + i * 2..offset + i * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+        }
+    }
+    acc.translator
+        .shm(2, s, Duration::ZERO)
+        .expect("static vector");
+    let hex = "030000000001016eefa9c3eec4a643faea1d40020000200001000000538b253d000000000000ffffff7f0000000003ffffff7fffffff7fffffff7f00010000ffffff7f000000000000010000e7011800000000000000010001";
+    let car: Vec<_> = hex
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|b| u8::from_str_radix(std::str::from_utf8(b).expect("hex"), 16).expect("byte"))
+        .collect();
+    for ms in [0, 100] {
+        server.send_to(&car, peer).expect("UDP con mismos valores");
+        let observation = acc
+            .poll(Duration::from_millis(ms))
+            .expect("poll")
+            .expect("una muestra nueva aunque no cambien los valores");
+        assert_eq!(observation.origin.received_at, Duration::from_millis(ms));
+    }
+}

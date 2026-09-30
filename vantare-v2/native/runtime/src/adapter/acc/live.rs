@@ -188,9 +188,12 @@ impl Adapter for Acc {
                 }
             }
         }
-        if let Err(error) = self.receive(now) {
-            eprintln!("broadcasting ACC: {error}; reconectando");
-            self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
+        match self.receive(now) {
+            Ok(received) => changed |= received,
+            Err(error) => {
+                eprintln!("broadcasting ACC: {error}; reconectando");
+                self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
+            }
         }
         let Some(observation) = self.translator.observe(now) else {
             return Err(AdapterError::Disconnected);

@@ -160,6 +160,7 @@ fn real_corpus_conformance_and_neutral_projections() {
                 assert_eq!(vm, standings::project(&relabelled, Preferences::default()));
                 assert_eq!(pedals, pedals::project(&relabelled, Preferences::default()));
                 assert_eq!(radar, radar::project(&relabelled));
+                check_extended_neutral_projections(&snapshot, &relabelled);
             }
             last = Some(o);
         }
@@ -184,6 +185,22 @@ fn real_corpus_conformance_and_neutral_projections() {
     eprintln!(
         "ACC real: {count} observaciones, {max_cars} coches, {} identidades, {projected} muestras neutrales, radar cercano={radar_seen}",
         names.len()
+    );
+}
+
+fn check_extended_neutral_projections(a: &vantare_domain::Snapshot, b: &vantare_domain::Snapshot) {
+    macro_rules! neutral {
+        ($($module:ident),+) => { $(assert_eq!(
+            vantare_domain::$module::project(a, Preferences::default()),
+            vantare_domain::$module::project(b, Preferences::default())
+        );)+ };
+    }
+    neutral!(
+        racing_flags,
+        fuel_strategy,
+        track_weather,
+        input_telemetry,
+        broadcast_tower
     );
 }
 
@@ -252,8 +269,8 @@ fn check_player(o: &Observation) {
     assert_eq!(player.telemetry.throttle, Quality::Reliable(0.0));
     assert_eq!(player.telemetry.brake, Quality::Reliable(0.0));
     assert_eq!(player.telemetry.gear, Quality::Reliable(0));
-    assert_eq!(player.fuel.level_l, Quality::Reliable(62.0));
-    assert_eq!(player.fuel.capacity_l, Quality::Reliable(120.0));
+    assert_eq!(player.fuel.level_l, Quality::Unavailable);
+    assert_eq!(player.fuel.capacity_l, Quality::Unavailable);
     assert!(
         (player.telemetry.engine_speed_rad_s.current().expect("rpm")
             - 1982.0 * std::f64::consts::TAU / 60.0)
@@ -273,6 +290,17 @@ fn check_player(o: &Observation) {
 // Estas igualdades comparan los mismos floats del cable, sin cálculo intermedio.
 #[allow(clippy::float_cmp)]
 fn check_final(o: &Observation) {
+    let g = last_graphics();
+    let positive = |value: f64| (value.is_finite() && value > 0.0).then_some(value);
+    let fuel = o.state.player.expect("jugador real").fuel;
+    assert_eq!(
+        fuel.per_lap_l,
+        positive(number(&g, 1284)).map_or(Quality::Unavailable, Quality::Reliable)
+    );
+    assert_eq!(
+        fuel.laps_left,
+        positive(number(&g, 1412)).map_or(Quality::Unavailable, Quality::Estimated)
+    );
     assert_eq!(
         o.state.session.kind,
         Quality::Reliable(SessionKind::Practice)
@@ -354,6 +382,22 @@ fn check_final(o: &Observation) {
         pedals::project(&decoded, Preferences::default()),
         pedals::project(&snapshot, Preferences::default())
     );
+}
+
+fn last_graphics() -> Vec<u8> {
+    let mut r = member("shm.bin");
+    let mut last = None;
+    while r.limit() > 0 {
+        let mut h = [0; 13];
+        r.read_exact(&mut h).expect("cabecera SHM real");
+        let size = [800, 1588, 820][usize::from(h[0])];
+        let mut b = vec![0; size];
+        r.read_exact(&mut b).expect("página real");
+        if h[0] == 1 {
+            last = Some(b);
+        }
+    }
+    last.expect("graphics obligatoria en corpus")
 }
 
 fn verify_frozen_package() {

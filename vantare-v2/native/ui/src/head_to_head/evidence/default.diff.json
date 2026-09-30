@@ -1,0 +1,12 @@
+{
+  "width": 360,
+  "height": 128,
+  "threshold": 0,
+  "compared_pixels": 46080,
+  "different_pixels": 0,
+  "different_percent": 0.0,
+  "max_channel_delta": 0,
+  "boxes": [],
+  "masks": [],
+  "diff_png": null
+}

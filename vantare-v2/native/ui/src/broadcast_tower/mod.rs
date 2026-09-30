@@ -23,28 +23,53 @@ use vantare_domain::{
 
 const SIZE: (f32, f32) = (1920.0, 71.0);
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub driver_carousel: bool,
+    pub row_count: usize,
+    pub show_weather: bool,
+    /// SOF está desactivado también en el contrato Eficiencia productivo.
+    pub show_sof: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            driver_carousel: false,
+            row_count: 5,
+            show_weather: true,
+            show_sof: false,
+        }
+    }
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "showSof",
+        "Eficiencia no ofrece SOF y Snapshot no transporta rating",
+    )];
     #[must_use]
     pub fn normalized(&self) -> Self {
-        self.clone()
+        let mut value = self.clone();
+        value.row_count = value.row_count.clamp(3, 10);
+        value.show_sof = false;
+        value
     }
 }
 
 pub(crate) struct Widget {
     vm: ViewModel,
+    settings: Settings,
+    carousel_start: Instant,
     motion: Motion,
     boundary: Option<(u64, SessionId)>,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         Self {
-            vm: broadcast_tower::project(&Snapshot::default(), prefs),
+            vm: broadcast_tower::project_rows(&Snapshot::default(), prefs, settings.row_count),
+            settings: settings.normalized(),
+            carousel_start: Instant::now(),
             motion: Motion::default(),
             boundary: None,
         }
@@ -56,7 +81,10 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let next = broadcast_tower::project(snapshot, prefs);
+        let mut next = broadcast_tower::project_rows(snapshot, prefs, self.settings.row_count);
+        if !self.settings.show_weather {
+            next.weather.clear();
+        }
         let boundary = (snapshot.epoch, snapshot.state.session.id);
         let changed = self.vm != next;
         let was_animating = self.motion.wake(Instant::now()) != Wake::Idle;
@@ -64,6 +92,7 @@ impl Widget {
             self.motion.ingest(&self.vm, &next, Instant::now());
         } else {
             self.motion.reset(&next, Instant::now());
+            self.carousel_start = Instant::now();
         }
         self.boundary = Some(boundary);
         self.vm = next;
@@ -73,10 +102,25 @@ impl Widget {
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
-        let cards = self.motion.frame(now);
+        let carousel =
+            self.settings.driver_carousel && vm.status == Status::Ready && !vm.rows.is_empty();
+        let cards = if carousel {
+            carousel_cards(
+                &vm,
+                now.saturating_duration_since(self.carousel_start)
+                    .as_secs_f32(),
+            )
+        } else {
+            self.motion.frame(now)
+        };
+        let show_weather = self.settings.show_weather;
         (
-            Box::new(move |window, cx| paint(&vm, &cards, prefs, window, cx)),
-            self.motion.wake(now),
+            Box::new(move |window, cx| paint(&vm, &cards, show_weather, prefs, window, cx)),
+            if carousel {
+                Wake::Frame
+            } else {
+                self.motion.wake(now)
+            },
         )
     }
 
@@ -86,6 +130,22 @@ impl Widget {
     }
 }
 
+// La copia contigua hace el bucle de 30 s del CSS sin saltos ni una tarea propia.
+fn carousel_cards(vm: &ViewModel, seconds: f32) -> Vec<Card> {
+    let count = vm.rows.len() as f32;
+    let offset = (seconds.rem_euclid(30.0) / 30.0) * count;
+    (0..2)
+        .flat_map(|copy| {
+            vm.rows.iter().enumerate().map(move |(i, row)| Card {
+                row: row.clone(),
+                slot: i as f32 + copy as f32 * count - offset,
+                opacity: 1.0,
+                cue: 0.0,
+            })
+        })
+        .collect()
+}
+
 fn label(language: Language, es: &'static str, en: &'static str) -> &'static str {
     match language {
         Language::Es => es,
@@ -93,7 +153,14 @@ fn label(language: Language, es: &'static str, en: &'static str) -> &'static str
     }
 }
 
-fn paint(vm: &ViewModel, cards: &[Card], prefs: Preferences, window: &mut Window, cx: &mut App) {
+fn paint(
+    vm: &ViewModel,
+    cards: &[Card],
+    show_weather: bool,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
     let (width, height) = SIZE;
     efficiency::paint_panel(window, width, height, 0.87);
     window.paint_quad(quad(
@@ -126,7 +193,11 @@ fn paint(vm: &ViewModel, cards: &[Card], prefs: Preferences, window: &mut Window
     };
     let lead = (lap_width + total_width).max(text::width(window, &vm.session, &session_ink)) + 29.0;
     let weather = format!("{} {}", label(prefs.language, "PISTA", "TRACK"), vm.weather);
-    let side = text::width(window, &weather, &weather_ink) + 29.0;
+    let side = if show_weather {
+        text::width(window, &weather, &weather_ink) + 29.0
+    } else {
+        0.0
+    };
     let stream_end = width - side;
     paint_rect(window, lead - 1.0, 0.0, 1.0, height, col(tokens::INK, 0.10));
     paint_rect(window, stream_end, 0.0, 1.0, height, col(tokens::INK, 0.10));
@@ -148,14 +219,16 @@ fn paint(vm: &ViewModel, cards: &[Card], prefs: Preferences, window: &mut Window
         lap_base,
         &total_ink,
     );
-    text::draw(
-        window,
-        cx,
-        &weather,
-        stream_end + 15.0,
-        text::baseline(31.5, 8.0, 8.0),
-        &weather_ink,
-    );
+    if show_weather {
+        text::draw(
+            window,
+            cx,
+            &weather,
+            stream_end + 15.0,
+            text::baseline(31.5, 8.0, 8.0),
+            &weather_ink,
+        );
+    }
 
     window.with_content_mask(
         Some(ContentMask {
@@ -418,6 +491,36 @@ fn polygon(window: &mut Window, poly: &[(f32, f32)], rgb: u32, alpha: f32) {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn configured_cards_weather_and_carousel_follow_product_options() {
+        let prefs = Preferences::default();
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+                .expect("escena");
+        for count in [3, 5, 10] {
+            let mut widget = Widget::new(
+                &Settings {
+                    row_count: count,
+                    show_weather: false,
+                    driver_carousel: true,
+                    ..Settings::default()
+                },
+                prefs,
+            );
+            widget.ingest(&snapshot, prefs);
+            assert_eq!(widget.vm.rows.len(), count);
+            assert!(widget.vm.weather.is_empty());
+            let cards = carousel_cards(&widget.vm, 15.0);
+            assert_eq!(cards.len(), count * 2);
+            assert_eq!(cards[0].slot, -(count as f32) / 2.0);
+            assert_eq!(widget.frame(prefs).1, Wake::Frame);
+            let mut lost = snapshot.clone();
+            lost.state.source_state = vantare_domain::SourceState::Lost;
+            widget.ingest(&lost, prefs);
+            assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        }
+    }
 
     #[test]
     fn sequence_only_and_invisible_rows_do_not_repaint() {

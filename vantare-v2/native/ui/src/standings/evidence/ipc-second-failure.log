@@ -1,0 +1,22 @@
+test pipe::tests::write_to_a_peer_that_never_reads_times_out ... ok
+test pipe::tests::read_times_out_and_stop_interrupts ... ok
+test publisher::tests::a_client_that_never_reads_blocks_neither_publish_nor_shutdown ... ok
+test subscriber::tests::incompatible_server_reconnects_without_publishing_a_snapshot ... ok
+
+failures:
+
+---- latest::tests::put_wakes_a_waiting_reader_and_close_releases_it stdout ----
+
+thread 'latest::tests::put_wakes_a_waiting_reader_and_close_releases_it' (37064) panicked at ipc\src\latest.rs:119:9:
+assertion `left == right` failed
+  left: (false, true)
+ right: (true, true)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    latest::tests::put_wakes_a_waiting_reader_and_close_releases_it
+
+test result: FAILED. 27 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+error: test failed, to rerun pass `-p vantare-ipc --lib`

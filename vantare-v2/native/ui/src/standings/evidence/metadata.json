@@ -1,0 +1,616 @@
+{
+  "issue": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427",
+  "branch": "vantareapp/isa-1427-w-variantes-a",
+  "sourceParent": "63a59d0762f33b7e20455a0bc14dee073be175a6",
+  "fetchedNightly": "f29b5fee04022756f9ae59f19bf153f91eebe4ed",
+  "dpi": 96,
+  "deviceScaleFactor": 1,
+  "sceneCount": 30,
+  "productSourceSha256": {
+    "frontend/src/overlay/design-systems/vantare-functional/manifest.ts": "d9e881574aa0bebce577f425466755099aa26f62d7f192e5c6a34a26dc1bd6f7",
+    "frontend/src/overlay/design-systems/vantare-functional/StandingsFunctional.tsx": "0e7056ff1e29f1021eada1cd89f31da62091dc63fa5d944a807c274dfc82d93d",
+    "frontend/src/overlay/design-systems/vantare-functional/RelativeFunctional.tsx": "7532cde02d6f67506d69c6ec3c694c70c27415cbe0ddf31d4c065b873bf410ad",
+    "frontend/src/overlay/design-systems/vantare-functional/MulticlassRelativeFunctional.tsx": "e4067ed40e2737d77cdb864e9ca3185456a2b860a208d4660d64ecdc58ed186b",
+    "frontend/src/overlay/design-systems/vantare-functional/HeadToHeadFunctional.tsx": "8dfb954da6c20f14368e781075c63bfdc0a2a8069cdd7cac1f01597c72e21d52",
+    "frontend/src/overlay/design-systems/vantare-functional/BroadcastTowerFunctional.tsx": "eded7ddb64cb55d928225aa46a9f51313ce64ac1734e2aba016612eab6a95955"
+  },
+  "capturedScenesExecutableSha256": "0e1459eb38023159430af6ee7770ac639053e3e74ca63492940844a5bfd1fe03",
+  "baselineWorkshopExecutableSha256": "03855e8b8afeb30793d2467d52135198934c2cc8356eb765f5071603c978135e",
+  "notes": [
+    "Escenas: DTO v4 reconstruidos existentes; no evidencia LMU física.",
+    "Captura nativa usa run_layout; montaje web temporal usa TSX/CSS productivos y locale ES.",
+    "Capturas realizadas antes de la normalización final includePlayer=true; todas las escenas Relative usan ese valor por defecto. Ninguna escena declara false.",
+    "El carrusel web está pausado en fase 0; el nativo está en movimiento.",
+    "Clima/vueltas totales ausentes en DTO Standings; se representan con guion.",
+    "No hay referencia congelada nueva."
+  ],
+  "scenes": [
+    {
+      "widget": "standings",
+      "name": "broadcast",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/broadcast.native.png",
+          "sha256": "2780e9c69c025ffc991fe6956433f8da0203f5fdbe98b1e715f238954a0d5e0d"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/broadcast.product.png",
+          "sha256": "f16730247c3566060e5aee9049cc6b29a462fbf5f6ae9c257aa2ed0e318248a8"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "no-header",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/no-header.native.png",
+          "sha256": "d1c2f25a9a1289d3d5e2579ab2afa871735cd6c04c8cdf672a551b79e161041e"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/no-header.product.png",
+          "sha256": "49d53be93f9034734d6136df6cbd61f98def8925696c0e6ca4a8f1b62f7ed33d"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "no-footer",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/no-footer.native.png",
+          "sha256": "c234d48290d62e505fe7cc2a41edb15cacda5a35f0f04c8a753fc34eca64d9dc"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/no-footer.product.png",
+          "sha256": "4f9b7e659aeb380bc52b48d8b9e4d5e2767305e4597bd611cca86596a2d6049a"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "bare-header",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/bare-header.native.png",
+          "sha256": "982577629fa24a0c2318a51b3c6bb76c54140f3c65283d7b91a26f90d5e3cbdf"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/bare-header.product.png",
+          "sha256": "8ae33ce2a0ef471fd80109aebd7975d85afc09a3fe53b94231fdbbcfec7ea061"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "brand-band",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/brand-band.native.png",
+          "sha256": "f4891501e38c964c7bdf6c145ae7592ef704326c3014f10bc18d12b4e9f380a1"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/brand-band.product.png",
+          "sha256": "d65ad22e33b7ebc3b93695ada5df6221cee9677436c7d4c80c32cfd72f05e112"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "multiclass",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/multiclass.native.png",
+          "sha256": "f437aa473c6b2be9bbd8b5849923e4ad02f060b601724f705e280ec33cbc9cef"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/multiclass.product.png",
+          "sha256": "6b5d67a47f55a2aa1016d983cab8577865a6e25733198eeed0012b8ed9351503"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "player-window",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/player-window.native.png",
+          "sha256": "444ae225a6f8ea530d300ac60e2220de2354ec8bd9336514fd65b1acd7cd86df"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/player-window.product.png",
+          "sha256": "2145de11cfcb644e9f3754eb924403baa46eb2747a3dbc981436097aad97c00a"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "columns-pit",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/columns-pit.native.png",
+          "sha256": "b85e028928ecb91b189789ec45235e656e9a0881c5946eb1c6b9c1b93a87a5ed"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/columns-pit.product.png",
+          "sha256": "cdab359a7c6f0d0050195c1da4975a8e2a5dba8b4ad77c9d4e796d2dda26f561"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "slots",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/slots.native.png",
+          "sha256": "6e246513255361666aa1df0d1a3450d94bf8410bb7aae32a6ad3a0f0f1cf5365"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/slots.product.png",
+          "sha256": "e70168c71c0763716a9345a797602bbbfc42ff9e99dfdb9b5e0bcf807ae49b02"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "many-slots",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/many-slots.native.png",
+          "sha256": "8c82a39708675e0c488dda356a254623c13bcc5359dafcb7f5c494a6579196f3"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/many-slots.product.png",
+          "sha256": "5cfb5c053d0a6b2a759b2d96f1b322399a8b3b1193a580135aa99ff99d8887d2"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "trackTemperature",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/trackTemperature.native.png",
+          "sha256": "b60a99e165a9cdccfff811973a06d684eafcbbd1e7896fa19717494ecced1170"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/trackTemperature.product.png",
+          "sha256": "3635582c252d7195acbdce71591075a3f01d0a92d308060c513ef914b6cab8d4"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "airTemperature",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/airTemperature.native.png",
+          "sha256": "acd1d3dc6ceec5bbbf9a655946067afedc7238bd3f0bdca9220e18afadbe37c1"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/airTemperature.product.png",
+          "sha256": "b37e064f420af8e0b46f9dff413b6ec406a8b1af4d6a8dbb4f3b0bf7e02baa34"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "totalLaps",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/totalLaps.native.png",
+          "sha256": "f31ae2b42d247ce91bef8f3138e80b569c7f2558c083d9a912dc60f38e16f577"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/totalLaps.product.png",
+          "sha256": "44f269ba704bf933b431b9058044d2cb434627f562dbb6d4b0df9d5091c1bfde"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "remaining",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/remaining.native.png",
+          "sha256": "d14691bfd7b67e4720f0cbeb2167686160250f43a909e505e7ac7b87eeb7172d"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/remaining.product.png",
+          "sha256": "6430cdf685f4791da192f33b1359123c3d833fad94dff0da9a8e6e64c03dcc1c"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "rain",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/rain.native.png",
+          "sha256": "cc1f0198a2002ca776de15f4516c2a13104140dd491206352d2736ed4725a7b5"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/rain.product.png",
+          "sha256": "ebeb245624e640b7cbe1dc08e368366e38523c02d64b8f8d91e0a73052d0af10"
+        }
+      }
+    },
+    {
+      "widget": "standings",
+      "name": "wetness",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/standings/evidence/wetness.native.png",
+          "sha256": "42d42d2931152c41be9b0c7231f28ddd62fceb9c32dbb8758636fd08d458d675"
+        },
+        "product": {
+          "file": "native/ui/src/standings/evidence/wetness.product.png",
+          "sha256": "a55f1952ebbf11a6f5ec636ea19d5e62bbecd3d902f8d2beed560fb0e314dfbd"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "asymmetric",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/asymmetric.native.png",
+          "sha256": "484e8e68229b0d0b45272380ece6ece7e2d4ed02672e75f1ffc03eceabc2e7ae"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/asymmetric.product.png",
+          "sha256": "c3258ead1884f37aba91029cc892f476e08cb0acddd92aa941c14de8aed013c7"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "same-class",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/same-class.native.png",
+          "sha256": "687ed7bd2d3570cb46f3109e0b69e5376599fe42a5479af69b5c7b8b44864051"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/same-class.product.png",
+          "sha256": "5b86333dcda4410d932a95eef24cf975a61c67e4e4224e510ced448746feaa8f"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "fill",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/fill.native.png",
+          "sha256": "b9514619261ed10b1d1932596d96ceee1a4f6dd8768b015c945ed18412a50d3d"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/fill.product.png",
+          "sha256": "e4d758a2d29b1d676d294ed0a73fa7071ed4870d895aa0634c667b7f4f837744"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "last-lap-columns",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/last-lap-columns.native.png",
+          "sha256": "afb62d0ceb09bf369c98a760bedf1cd614b976bf69411ea9bec6d3b02da62b59"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/last-lap-columns.product.png",
+          "sha256": "0e065cf7bdb502ace09ad124d4b5b5e364b23907b00e48aba0710690fcfa653b"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "initial-name",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/initial-name.native.png",
+          "sha256": "6f4e109331ca156da8ecdd3b786195b8e9041b9e2a093531cb00d3b372d02e8c"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/initial-name.product.png",
+          "sha256": "3b173dea0cf626be1b0daa33f9bf08d56e41bb233ff2772c29224803efda2dbd"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "slots",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/slots.native.png",
+          "sha256": "d3a0d357c6419040e2451bffbb18d0931160239242722f292dbb6cfb8120b00d"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/slots.product.png",
+          "sha256": "908051c44b920e1410c8ba1eb073e0f40481d0684a476c4062ba867b65db1d28"
+        }
+      }
+    },
+    {
+      "widget": "relative",
+      "name": "many-slots",
+      "snapshot": "native/ui/fixtures/relative.snapshot.json",
+      "snapshotSha256": "172d7fb06c8efbbf254243278e3f4c636a923a0e2a6f5fd77239db112cd883fe",
+      "images": {
+        "native": {
+          "file": "native/ui/src/relative/evidence/many-slots.native.png",
+          "sha256": "2cee7ecf6d3abd816340bd87d24e1f75dc1408aa787aa1fcf9a364da3d9321c4"
+        },
+        "product": {
+          "file": "native/ui/src/relative/evidence/many-slots.product.png",
+          "sha256": "aac57c70bbc4828146a0dfbbc51186b23398552c6aeb0e453fd3ca35a2b4d0c7"
+        }
+      }
+    },
+    {
+      "widget": "multiclass_relative",
+      "name": "same-7-dividers",
+      "snapshot": "native/ui/fixtures/multiclass-relative.snapshot.json",
+      "snapshotSha256": "dbcff89f9c2cb8ec0942637a0d63b72a211d1646792e823cc6e6bb6f149321f4",
+      "images": {
+        "native": {
+          "file": "native/ui/src/multiclass_relative/evidence/same-7-dividers.native.png",
+          "sha256": "f0c88152be7ee407d4469a7cf9316d79d4783307d53076e1033525722e708b08"
+        },
+        "product": {
+          "file": "native/ui/src/multiclass_relative/evidence/same-7-dividers.product.png",
+          "sha256": "f1ba571f9afbbe5a22d6a604da0a757770dfd9e8f837aa1ec8acabeca09e05c8"
+        }
+      }
+    },
+    {
+      "widget": "multiclass_relative",
+      "name": "other-3-dividers",
+      "snapshot": "native/ui/fixtures/multiclass-relative.snapshot.json",
+      "snapshotSha256": "dbcff89f9c2cb8ec0942637a0d63b72a211d1646792e823cc6e6bb6f149321f4",
+      "images": {
+        "native": {
+          "file": "native/ui/src/multiclass_relative/evidence/other-3-dividers.native.png",
+          "sha256": "c6ca54a9c4e5a596cfc9baadf0df52569f76f89dc9f41baa17306de351cfc075"
+        },
+        "product": {
+          "file": "native/ui/src/multiclass_relative/evidence/other-3-dividers.product.png",
+          "sha256": "e53f1006423caaa21dd4a90dc687d09dc41b964c2a077de570cf397c4e672c60"
+        }
+      }
+    },
+    {
+      "widget": "multiclass_relative",
+      "name": "all-7-plain",
+      "snapshot": "native/ui/fixtures/multiclass-relative.snapshot.json",
+      "snapshotSha256": "dbcff89f9c2cb8ec0942637a0d63b72a211d1646792e823cc6e6bb6f149321f4",
+      "images": {
+        "native": {
+          "file": "native/ui/src/multiclass_relative/evidence/all-7-plain.native.png",
+          "sha256": "5d239490bcfdd56ef074648afd7680364c1964d5226190c5397745c243ed57a1"
+        },
+        "product": {
+          "file": "native/ui/src/multiclass_relative/evidence/all-7-plain.product.png",
+          "sha256": "2400731f07d7ff8eb5ed346028f881e6cd0bcb2c3e47b487439f61d596e1d9f2"
+        }
+      }
+    },
+    {
+      "widget": "head_to_head",
+      "name": "behind",
+      "snapshot": "native/ui/fixtures/head-to-head.snapshot.json",
+      "snapshotSha256": "b5d373f8ec6ed31f33c4590f98fa6bf51125a3cf475b4eab7883143bd41b0804",
+      "images": {
+        "native": {
+          "file": "native/ui/src/head_to_head/evidence/behind.native.png",
+          "sha256": "5fccb43102c3d122e10002bfb80509c67b6a37171ceb4487b8ec159557716b9c"
+        },
+        "product": {
+          "file": "native/ui/src/head_to_head/evidence/behind.product.png",
+          "sha256": "70cc112bb7c9855be732938c5d6bfc323226e71eaa88651e17a7629c917a7244"
+        }
+      }
+    },
+    {
+      "widget": "broadcast_tower",
+      "name": "ten-no-weather",
+      "snapshot": "native/ui/fixtures/standings.snapshot.json",
+      "snapshotSha256": "7624aa5a0f174c64d0961b7ea5c27e73b70cc4c1fe417571aa5ba9020891c598",
+      "images": {
+        "native": {
+          "file": "native/ui/src/broadcast_tower/evidence/ten-no-weather.native.png",
+          "sha256": "04d90776ab47017e4edb060b504d4a03e9b441650441b7929ee1ca9b8004bf66"
+        },
+        "product": {
+          "file": "native/ui/src/broadcast_tower/evidence/ten-no-weather.product.png",
+          "sha256": "7b90e0dc70e11650cf5442f04e760ddfcc81c840b37b01907e76778ef061c034"
+        }
+      }
+    },
+    {
+      "widget": "broadcast_tower",
+      "name": "three",
+      "snapshot": "native/ui/fixtures/broadcast-tower.snapshot.json",
+      "snapshotSha256": "32dbab6bd5f4f3301fe2f7b9734b4087d3eee7f3e417bc43485b53e1bdf75856",
+      "images": {
+        "native": {
+          "file": "native/ui/src/broadcast_tower/evidence/three.native.png",
+          "sha256": "ad0b58dce2de81e4c4c55f715458417d50d71d7d1a43a7206bc9322310bb3168"
+        },
+        "product": {
+          "file": "native/ui/src/broadcast_tower/evidence/three.product.png",
+          "sha256": "552a6016a831c6b99c74a493a0975b1a5e16bef2566cdf2a228c9757c0c67cea"
+        }
+      }
+    },
+    {
+      "widget": "broadcast_tower",
+      "name": "carousel",
+      "snapshot": "native/ui/fixtures/broadcast-tower.snapshot.json",
+      "snapshotSha256": "32dbab6bd5f4f3301fe2f7b9734b4087d3eee7f3e417bc43485b53e1bdf75856",
+      "images": {
+        "native": {
+          "file": "native/ui/src/broadcast_tower/evidence/carousel.native.png",
+          "sha256": "6adc9e759e8d2121ab7afda2a9a5af3125039dd38fc4eef9ba05c179af25b6d3"
+        },
+        "product": {
+          "file": "native/ui/src/broadcast_tower/evidence/carousel.product.png",
+          "sha256": "182e9ad986fffbde4163c7eaa73ee88dc51ee03e050827690a86752832e39a91"
+        }
+      }
+    }
+  ],
+  "nativeSourceGitBlobSha256": {
+    "native/ui/src/standings/mod.rs": "423f77ea505739bdc4a7486bc051fc08f7a79dd46393ef0de543028a6abbb7a2",
+    "native/ui/src/standings/model.rs": "cb4fa3f32b6cb64871fc133861ce5349533ff36add8300c3baed83d3cf6406f5",
+    "native/ui/src/standings/motion.rs": "bdff5622f30210a4134a7c4c0e3d59b6b5a7752253db8022c9e199a558bb8fa1",
+    "native/ui/src/standings/options.rs": "8433a5542c12ae10c8a98c64ddb23ca283317f74f9f6f9086ea77a44b59809f4",
+    "native/ui/src/standings/scenes.rs": "920113683b17d375f02eeee65199294f10f6060239184011020d35e93f9eec2c",
+    "native/ui/src/standings/view.rs": "2b79461198630a6ac93028c4b1fdcca2bf2fb522b4d83d6869cb0cc05e5bc746",
+    "native/ui/src/relative/mod.rs": "2e36fa9e86e35999db9a2ec254946a3cbf437341a94e7e171c143d2bf0dae9cf",
+    "native/ui/src/relative/motion.rs": "f810263aa8cfd34ad2e8ebad37674f831ff62d2f3fc0b2fbad0a76d94cded6bf",
+    "native/ui/src/multiclass_relative/mod.rs": "24886c5ac0de8b277aa896f268322a352ed32f602fcc32960e3c6aa6fc376646",
+    "native/ui/src/head_to_head/mod.rs": "e65024ea08957550f718a32e860863dd8d7eab204773b6968904e6af5793baba",
+    "native/ui/src/broadcast_tower/mod.rs": "e847885546ed0bd2e800276d303802e8da9c129fef51b1e055d0c4e4e69a4d06",
+    "native/ui/src/broadcast_tower/motion.rs": "75b2347ec530b86d906388bb5526dccf78fca28efd43f927d89d1b7b3e808f7c",
+    "native/domain/src/standings.rs": "67b41ceaa32f61348b347529324dedf11e163822816fd8e2e61d343318b2cef4",
+    "native/domain/src/relative.rs": "40bc4e921562531aa19277bdba3313ff9906d1f04bbff8cf441ea206546ac1cd",
+    "native/domain/src/multiclass_relative.rs": "2eaa27cb994fe7399acc1e58af6e431ce557dbce03c6cacef2cf84f007c803c3",
+    "native/domain/src/head_to_head.rs": "55c396588f90d413feec81c7d33c2b8d3017a1e29163d7dea14838393a363b76",
+    "native/domain/src/broadcast_tower.rs": "3772e83b6a7c62da778aaadd9511237e6ce7a0bab0ac7be67fd88844524b0a57"
+  },
+  "defaultCandidateWorkshopExecutableSha256": "d9d376de4b19f82916dfdf853a4babe66dc8443f4dbc27031f446b267ec1488d",
+  "defaults": [
+    {
+      "widget": "standings",
+      "result": {
+        "width": 440,
+        "height": 664,
+        "threshold": 0,
+        "compared_pixels": 292160,
+        "different_pixels": 0,
+        "different_percent": 0.0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "beforeSha256": "45f30e6fad6eb5464cb3bfd9f6fd0e6c662bd093a093e36cdb56397bc821a6e6",
+      "afterSha256": "45f30e6fad6eb5464cb3bfd9f6fd0e6c662bd093a093e36cdb56397bc821a6e6"
+    },
+    {
+      "widget": "relative",
+      "result": {
+        "width": 304,
+        "height": 285,
+        "threshold": 0,
+        "compared_pixels": 86640,
+        "different_pixels": 0,
+        "different_percent": 0.0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "beforeSha256": "42b5add3263e2caecd0c72396e0ae9993442c86daba7052609be8a047f9788f0",
+      "afterSha256": "42b5add3263e2caecd0c72396e0ae9993442c86daba7052609be8a047f9788f0"
+    },
+    {
+      "widget": "multiclass_relative",
+      "result": {
+        "width": 420,
+        "height": 155,
+        "threshold": 0,
+        "compared_pixels": 65100,
+        "different_pixels": 0,
+        "different_percent": 0.0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "beforeSha256": "828ae3c56afa1be9f5bd064109250e183553c4fa9c4583eda1e9d09235998048",
+      "afterSha256": "828ae3c56afa1be9f5bd064109250e183553c4fa9c4583eda1e9d09235998048"
+    },
+    {
+      "widget": "head_to_head",
+      "result": {
+        "width": 360,
+        "height": 128,
+        "threshold": 0,
+        "compared_pixels": 46080,
+        "different_pixels": 0,
+        "different_percent": 0.0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "beforeSha256": "2e1cb5441b68f617079218fcb19504c77b043e1bd8f2e027d1719e26969cadd2",
+      "afterSha256": "2e1cb5441b68f617079218fcb19504c77b043e1bd8f2e027d1719e26969cadd2"
+    },
+    {
+      "widget": "broadcast_tower",
+      "result": {
+        "width": 1920,
+        "height": 71,
+        "threshold": 0,
+        "compared_pixels": 136320,
+        "different_pixels": 0,
+        "different_percent": 0.0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "beforeSha256": "93b7e0b1019204953a3290ca721fe4406feefcbb9dbe2bf25e352211c94e2377",
+      "afterSha256": "93b7e0b1019204953a3290ca721fe4406feefcbb9dbe2bf25e352211c94e2377"
+    }
+  ]
+}

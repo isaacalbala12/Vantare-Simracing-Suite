@@ -31,6 +31,10 @@ impl LapBlock {
     /// JSON compacto de esquema v1 (ver README), sin mapas ni reloj de pared.
     /// Serializar fuera de adquisición; no persiste ni toca el bloque original.
     pub fn to_bytes(&self) -> serde_json::Result<Vec<u8>> {
+        serde_json::to_vec(&self.to_value())
+    }
+
+    pub(super) fn to_value(&self) -> serde_json::Value {
         let samples: Vec<_> = self
             .samples
             .iter()
@@ -45,7 +49,7 @@ impl LapBlock {
                 ])
             })
             .collect();
-        serde_json::to_vec(&serde_json::json!([
+        serde_json::json!([
             "vantare.player-lap.v1",
             self.epoch,
             self.session.0,
@@ -54,7 +58,7 @@ impl LapBlock {
             self.sealed_at,
             self.gap,
             samples
-        ]))
+        ])
     }
 }
 

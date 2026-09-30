@@ -14,12 +14,18 @@ sin esperar a almacenamiento o análisis, y calcular exactamente lo mismo
 al consumir esos bloques en directo o reproducirlos. Recording permanece
 desactivado por defecto. No prometer durabilidad sin commit efectivo DuckDB.
 
-Solo `native/runtime/src/flows/` y este expediente. Enganche mínimo permitido:
+Rutas principales: `native/runtime/src/flows/` y este expediente. Enganche mínimo:
 un accessor `Core::series_mut` en `core/mod.rs` para configurar la entrega
 antes de adquirir; no cambiar adquisición, modelo, derivaciones o IPC.
 Almacenamiento y cálculo serán módulos propios bajo flows, sin nuevo crate:
 el workspace de cuatro paquetes no necesita otra frontera de build ahora.
 El orquestador es propietario del handoff vivo compartido y de la integración.
+Única configuración Cargo necesaria para el codec: activar `float_roundtrip`
+en serde_json existente (`native/runtime/Cargo.toml`). Sin nueva dependencia,
+sin cambio de lock: el fixture real reproduce pérdida de un ULP con el parser
+por defecto. Esta feature vacía de dependencias permite roundtrip exacto sin
+parser propio; se justifica en el commit y requiere revisión del orquestador
+al combinar manifests. No se modifica la configuración de otro crate.
 
 No se altera la base ni se hace fetch: el encargo entrega este worktree e
 impide red excepto documentación pública. `origin/nightly` local no acredita
@@ -118,7 +124,7 @@ cargo clippy --offline --workspace --all-targets -j 2 -- -D warnings
 cargo test --offline --workspace -j 2
 ```
 
-Nunca más de dos jobs. No tocar UI, Cargo manifests/lock ni otros worktrees.
+Nunca más de dos jobs. No tocar UI, otros manifests/lock ni otros worktrees.
 Revisar `git diff --check`, diff completo, rutas staged y commits con trailer
 `Co-Authored-By: GPT-6.1 Sol <noreply@openai.com>`.
 Registrar resultados, producción/tests añadidos y límites al finalizar.
@@ -133,4 +139,10 @@ en serie; no producir cifras comparativas de UI mientras otros compilan.
   tests correctos (incluye siete lifecycle sin harness), cuatro live ignorados,
   cero fallos. LapBlock v1 y sus goldens se conservan.
 - Corte 3: bloqueado; no worker DuckDB ni persistencia nueva implementados.
-- Cortes 4–5: siguientes, independientes del backend de almacenamiento.
+- Corte 2 entregado en `9cd79448`, pendiente de review del orquestador.
+- Corte 4: codec y cálculo implementados. Primer gate reproduce un ULP perdido
+  con el fixture LMU real: `104.05534362792969 → 104.05534362792967`.
+  Se activa float_roundtrip en serde_json existente, sin paquetes nuevos;
+  la prueba exacta no se debilita. Tras la corrección: fmt/clippy workspace
+  correctos, 399 tests workspace correctos, cuatro live ignorados, cero fallos.
+- Corte 5: siguiente; carga del feed volátil, no benchmark de grabación DuckDB.

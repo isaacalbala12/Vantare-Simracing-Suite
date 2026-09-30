@@ -188,3 +188,50 @@ parciales/cierre, saturación/desconexión, configuración única, hueco y cambi
 de identidad; los goldens LapBlock v1 anteriores siguen obligatorios.
 El [microplan](../../../../docs/superpowers/plans/2026-09-30-fase-4-series-grabacion-analisis.md)
 conserva el bloqueo DuckDB y los presupuestos físicos pendientes.
+
+## Codec y análisis compartido — ISA-1429
+
+`SeriesChunk::to_bytes/from_bytes` usa UTF-8 JSON con esta envoltura v1:
+
+```text
+["vantare.series-chunk.v1", index, lost_before, offset, LapBlock-v1]
+```
+
+La cabecera de LapBlock v1 se conserva; sus muestras son solo la porción del
+chunk. Máximo 64 muestras, offset+longitud ≤18.000 y 32 KiB antes de parsear.
+Se rechazan versiones/formas desconocidas, valores no finitos/negativos,
+pedales fuera de 0–1, calidad inválida, secuencias repetidas/regresivas y
+retrocesos de progreso Reliable. `Unavailable` exige null y no equivale a cero.
+Las versiones futuras fallan cerradas: no se intenta un fallback.
+
+`serde_json/float_roundtrip`, activado en el manifest runtime existente, es
+necesario: el fixture LMU real perdía un ULP en distancia al decodificar con
+el parser por defecto. No añade paquetes ni modifica Cargo.lock. El test
+conserva igualdad exacta de chunk y resultado, sin relajar tolerancias.
+
+`SeriesAnalysis::new(retention)` (1–256) y `consume(&chunk)` calculan
+`series-summary.v1` en el consumidor, sin I/O, simulador ni muestras retenidas.
+`active()`, `recent()` y `find_lap(LapId)` exponen resúmenes inmutables. Ante
+contador reutilizado, `find_lap` devuelve el segmento más reciente; `first_chunk`
+lo distingue de los anteriores. No usar solo (sesión, coche, lap) como clave
+única de almacenamiento futuro. Conservar epoch e índice del feed.
+
+Por velocidad/throttle/brake se cuentan Reliable/Estimated/Stale/Unavailable,
+y min/max/media **aritmética de muestras Reliable**. Son estadísticas
+derivadas, no ritmo representativo Go ni media ponderada por tiempo. No se
+usan valores estimados/obsoletos en la media. El resumen conserva secuencias,
+primer/último tiempo observado, seal y hueco. `continuous_span_s()` devuelve
+la ventana continua observada; devuelve None con hueco. Nunca da duración
+total, consumo, vuelta válida o cruce de meta interpolado.
+
+Entrada corrupta/repetida falla antes de alterar el analizador. Índice u offset
+omitido marca hueco y mantiene solo lo recibido. Cambio de identidad conserva
+la vuelta abierta como incompleta, sin seal inventado. Retención agotada
+expulsa solo el resumen más antiguo. No hay catálogo multisesión en disco.
+
+Nueve tests en `analysis_tests.rs`: golden manual, calidad/cero, wire inválido
+y topes, orden con estado intacto, retención/queries, huecos y paridad entre
+live y bytes/replay. También fixture LMU productivo obligatorio de una muestra:
+demuestra roundtrip exacto y no fabrica una vuelta completa. El replay de
+cierre sigue siendo sintético explícito. Persistencia DuckDB y prueba física
+de presupuestos siguen bloqueadas; no se declara la fase 4 completa.

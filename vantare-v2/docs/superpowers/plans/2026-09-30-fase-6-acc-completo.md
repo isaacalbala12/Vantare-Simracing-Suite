@@ -153,3 +153,80 @@ en el vector, corregidas con checked_sub; no se debilitaron checks.
 Logs `acc-f6-cut2-{fmt,clippy,test}-final.log`. Producción de grabadora:
 1478 →1449 líneas (+63/-92, neto -29); tests 422 →500 (+90/-12).
 Sin dependencias nuevas ni cambios de esquema/corpus.
+
+### Corte 3 — conformidad y cierre verificable
+
+Tiempo de vuelta actual UDP 0 reproducido como Unavailable (FAIL), corregido
+solo en parser ACC; best/last cero siguen ausentes y MAX sigue siendo sentinel.
+El gap jugador no se publica como cero de clasificación estando en boxes.
+Nuevo vector atraviesa traductor → núcleo → DTO v4: gaps generales derivados,
+fuel nativo preservado, historial ausente sin litros, banderas sesión/sector/
+coche, Waiting inicial → Live → Stale por silencio y DTO stale. Ocho familias
+de proyección conservan resultado al relabelar únicamente Source acc→lmu.
+El corpus obligatorio también comprueba esas ocho familias y contrasta fuelXLap
+y fuelEstimatedLaps con la última graphics cruda mediante lector independiente.
+
+**Bloqueos compartidos reproducidos, sin editar núcleo/modelo:**
+
+- `source_off_and_expiry_only_observations_require_shared_core_decision`:
+  actual `[Live, Live]`, esperado `[Waiting, Stale]`. `core/merge.rs:49` impone
+  Live a toda observación; `core/mod.rs:157` refresca avance cuando falta
+  source_time. Un cambio solo de calidad/caducidad no es una recepción nueva.
+- `class_gap_from_native_player_ahead_requires_common_leader_anchor`:
+  actual Unavailable, esperado Estimated(Time 2.5 s). `core/derive.rs:120-150`
+  utiliza cero del líder en cálculo local sin publicarlo; `:170-203` requiere
+  ese gap publicado como base de los gaps de clase.
+
+Ambas pruebas quedan `ignored` **con motivo explícito**, tras ejecutarlas y
+conservar FAIL 0 passed / 2 failed en `acc-f6-core-blocked.log`; no son pruebas
+físicas ni se cuentan como conformidad satisfecha. Reproducir:
+`cargo test --offline -p vantare-runtime --lib -j 2 completion_tests -- --ignored --nocapture`.
+Resolver con propietario de núcleo/fase 2, mantener neutralidad y activar
+ambos tests antes de aceptar la fase 6. No añadir if ACC fuera del adaptador.
+
+Estado: entrega local para revisión, **fase 6 bloqueada en aceptación completa**.
+Nivel/capacidad en litros y prueba física siguen bloqueados; duración total
+en vueltas no expuesta se deja ausente por contrato, no se inventa.
+Notion/GitHub remoto y medidas CPU/p99/OBS no verificados por restricciones
+del encargo. El orquestador mantiene seguimiento y mide en serie.
+
+## Entrega y gates finales
+
+Gates ejecutados desde `native/`, offline, CARGO_BUILD_JOBS=2 / `-j 2`:
+
+| Gate | Salida final | Evidencia local |
+| --- | --- | --- |
+| rustfmt --check de todas las rutas Rust tocadas | exit 0 | `C:/tmp/acc-f6-final-scope-fmt.log` |
+| cargo fmt --check | exit 1; único diff heredado `ui/src/app.rs:385` | `C:/tmp/acc-f6-final-fmt-verified.log` |
+| cargo clippy --workspace --all-targets -- -D warnings | exit 0, Finished dev 2.26 s | `C:/tmp/acc-f6-final-clippy-verified.log` |
+| cargo test --workspace | exit 0; 437 passed, 0 failed, 6 ignored en 21 resúmenes; otros 7 escenarios lifecycle PASS | `C:/tmp/acc-f6-final-test-verified.log` |
+| Reproducciones compartidas, --ignored | exit 101; 0 passed / 2 failed, valores literales arriba | `C:/tmp/acc-f6-core-blocked.log` |
+
+Los 6 ignored son 4 físicos heredados + 2 bloqueos compartidos nuevos; no se
+afirma suite íntegra ni aceptación verde. Conformidad ACC real: 2 PASS (36.77 s);
+190 308 observaciones, 32 identidades, 133 muestras neutrales; hash congelado
+verificado de nuevo. Logs rojos se conservan; clippy final no tiene avisos.
+El primer E0425 desapareció al regenerar artefactos domain del target propio.
+No se tocó UI para resolverlo. La deuda de formato requiere al dueño de UI.
+
+Cambios de producción frente a base: +173/-142 líneas (neto +31);
+tests +498/-17; generado 0; dependencias nuevas 0. Grabadora producción -29.
+No se midió compilación incremental UI ni CPU/frame time: pertenece al
+orquestador, y la carga concurrente no permite comparación representativa.
+
+Archivos: este microplan; `native/runtime/src/adapter/acc/{REVIEW.md,live.rs,
+protocol.rs,translate.rs}`; `native/runtime/src/bin/vantare-grabar-acc.rs`;
+`native/runtime/tests/acc/{completion.rs,live.rs,translation.rs,weather.rs}`;
+`native/runtime/tests/acc_conformance.rs`; `testdata/acc/README.md`.
+No se modificó el tar.gz, modelo, núcleo, IPC, widgets ni otros adaptadores.
+
+Commits previos: plan `a76072033be7d0bc0b2b0168d190bb319dba0eb5`;
+fusión `34f9ef4bcc75737240be2b0023ec5b1f56db8aba`;
+grabadora `6365894961d554b2319986ed4355a70685132820`.
+El commit de conformidad final se obtiene con `git log -1`; todos son locales
+y llevan `(ISA-1431)` y el trailer solicitado. Rama/base no cambiadas.
+Sin push, PR, CI remoto, merge, promoción, release ni escrituras externas.
+Seguimiento Notion no disponible; GitHub #1431 es referencia del encargo, sin
+actualización remota. Siguiente paso: Opus revisa diff completo y deriva los
+dos fallos reproducidos al dueño de núcleo; Isaac captura las sesiones descritas
+para resolver unidades y validar runtime/OBS antes de aceptar fase 6.

@@ -76,8 +76,13 @@ fn time(ms: i32) -> Option<f64> {
     (ms > 0 && ms != i32::MAX).then(|| f64::from(ms) / 1000.0)
 }
 
-fn lap(r: &mut Reader<'_>) -> io::Result<Lap> {
-    let total = time(r.i32()?);
+fn lap(r: &mut Reader<'_>, current: bool) -> io::Result<Lap> {
+    let ms = r.i32()?;
+    let total = if current && ms == 0 {
+        Some(0.0)
+    } else {
+        time(ms)
+    };
     r.take(4)?; // carIndex, driverIndex
     let count = r.u8()?;
     if count > 3 {
@@ -204,7 +209,7 @@ fn read_session(r: &mut Reader<'_>) -> io::Result<Message> {
     // SDK Kunos v4: RainLevel/Wetness = byte / 10, fracciones, no porcentajes.
     let rain = f64::from(r.u8()?) / 10.0;
     let wetness = f64::from(r.u8()?) / 10.0;
-    lap(r)?;
+    lap(r, false)?;
     Ok(Message::Session(SessionUpdate {
         event,
         index,
@@ -243,8 +248,8 @@ fn read_car(r: &mut Reader<'_>) -> io::Result<Message> {
         cup_position,
         spline,
         laps,
-        best: lap(r)?,
-        last: lap(r)?,
-        current: lap(r)?,
+        best: lap(r, false)?,
+        last: lap(r, false)?,
+        current: lap(r, true)?,
     }))
 }

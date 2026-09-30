@@ -615,7 +615,11 @@ fn player_car(
     let gap = i32_at(g, 1580);
     car.gap_ahead = prefer(
         quality(
-            (gap >= 0 && gap != i32::MAX && i32_at(g, 136) > 1).then(|| Gap::Time {
+            (gap >= 0
+                && gap != i32::MAX
+                && i32_at(g, 136) > 1
+                && car.in_pits.current() == Some(&false))
+            .then(|| Gap::Time {
                 seconds: f64::from(gap) / 1000.0,
             }),
             stale,

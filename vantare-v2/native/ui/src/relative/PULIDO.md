@@ -84,7 +84,7 @@ $env:CARGO_PROFILE_DEV_DEBUG = '0'
 $env:CARGO_INCREMENTAL = '0'
 $env:RUST_TEST_THREADS = '2'
 & "$env:TEMP/vantare-pulido-1427/compare.ps1" -Widget relative -MaxPercent 4
-python ui/src/relative/contar_texto.py relative `
+python ui/contar_texto.py relative `
   "$env:TEMP/vantare-pulido-1427/after/relative/relative.png" `
   ui/reference/relative.png ui/reference/relative.geometry.json
 ```

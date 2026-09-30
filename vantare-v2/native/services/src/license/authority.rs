@@ -116,7 +116,22 @@ impl Authority {
     }
 
     pub fn enter_game(&mut self, session: u64, now: DateTime<Utc>, tick: Duration) -> Result<()> {
+        self.enter_game_observed(session, now, now, tick)
+    }
+
+    /// Solo el núcleo aporta la hora de entrada observada, conservada fuera de
+    /// adquisición. Un retraso de E/S no convierte una entrada válida en vencida.
+    pub fn enter_game_observed(
+        &mut self,
+        session: u64,
+        entered_at: DateTime<Utc>,
+        now: DateTime<Utc>,
+        tick: Duration,
+    ) -> Result<()> {
         let now = self.observe(now, tick)?;
+        if entered_at > now {
+            return Err(Error::Clock);
+        }
         if self.invalidated {
             return Err(Error::Denied);
         }
@@ -135,11 +150,11 @@ impl Authority {
             session,
             subject: verified.subject.clone(),
             device: verified.device.clone(),
-            entered_at: now,
+            entered_at,
             eligible: verified
                 .grants
                 .iter()
-                .filter(|grant| grant.expires_at.is_none_or(|expiry| now < expiry))
+                .filter(|grant| grant.expires_at.is_none_or(|expiry| entered_at < expiry))
                 .map(|grant| grant.key.clone())
                 .collect(),
         });
@@ -150,6 +165,28 @@ impl Authority {
     pub fn leave_game(&mut self) {
         self.game = None;
         self.confirmed_game = false;
+    }
+
+    /// Deadline efectivo ya aprobado: el consumidor no inventa gracia local.
+    pub fn next_deadline(&self, rights: &[String]) -> Option<DateTime<Utc>> {
+        self.verified
+            .as_ref()?
+            .grants
+            .iter()
+            .filter(|grant| rights.contains(&grant.key))
+            .filter_map(|grant| {
+                let expiry = grant.expires_at?;
+                if self.confirmed_game
+                    && self.game.as_ref().is_some_and(|game| {
+                        game.entered_at < expiry && game.eligible.contains(&grant.key)
+                    })
+                {
+                    expiry.checked_add_signed(TimeDelta::hours(1))
+                } else {
+                    Some(expiry)
+                }
+            })
+            .min()
     }
     pub fn invalidate(&mut self, now: DateTime<Utc>, tick: Duration) -> Result<()> {
         self.invalidated = true;

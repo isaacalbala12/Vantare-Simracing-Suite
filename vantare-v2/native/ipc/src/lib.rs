@@ -15,6 +15,7 @@
 #![deny(unsafe_code)]
 
 mod codec;
+pub mod control;
 mod dto;
 /// Versión vigente del DTO de fotos (JSON).
 pub use dto::VERSION as DTO_VERSION;

@@ -6,6 +6,8 @@ pub mod adapter;
 pub mod core;
 pub mod flows;
 #[cfg(windows)]
+pub mod rights;
+#[cfg(windows)]
 pub mod service;
 #[cfg(windows)]
 pub mod shutdown;

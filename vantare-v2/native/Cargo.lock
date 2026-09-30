@@ -6311,12 +6311,18 @@ name = "vantare-runtime"
 version = "0.0.0"
 dependencies = [
  "arc-swap",
+ "base64 0.22.1",
+ "chrono",
+ "ed25519-dalek",
  "flate2",
+ "getrandom 0.3.4",
+ "serde",
  "serde_json",
  "sha2",
  "ureq",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-services",
  "windows-sys 0.61.2",
 ]
 

@@ -128,6 +128,27 @@ pub struct Verifier {
     keys: BTreeMap<String, VerifyingKey>,
 }
 impl Verifier {
+    /// El subject se extrae para verificarlo, pero solo adquiere autoridad
+    /// después de verificar la firma y todos los claims del envelope.
+    pub fn proof(&self, text: &str, legacy_device: &str, installation: &str) -> Result<Verified> {
+        if text.len() > 64 * 1024 {
+            return Err(Error::TooLarge);
+        }
+        if text.trim_start().starts_with('{') {
+            let credential: CredentialV1 =
+                serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
+            self.v1(&credential, &credential.claims.subject, legacy_device)
+        } else {
+            let body = text.split('.').nth(1).ok_or(Error::InvalidCredential)?;
+            let claims: ClaimsV2 = serde_json::from_slice(
+                &URL_SAFE_NO_PAD
+                    .decode(body)
+                    .map_err(|_| Error::InvalidCredential)?,
+            )
+            .map_err(|_| Error::InvalidCredential)?;
+            self.jws(text, &claims.sub, installation)
+        }
+    }
     pub fn public_keys(text: &str) -> Result<Self> {
         let mut keys = BTreeMap::new();
         for pair in text.split(',') {

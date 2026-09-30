@@ -82,7 +82,9 @@ impl Section {
             Self::Strategy => {
                 "Pendiente: documento V2 y worker solver/storage. No se fabrican planes ni resultados."
             }
-            Self::Engineer => "Pendiente: worker de Engineer/voz y eventos de fase 3.",
+            Self::Engineer => {
+                "Ajustes y estado de Engineer pendientes de integración con el launcher."
+            }
             Self::Analysis => "Pendiente: worker de almacenamiento/análisis de fase 4.",
             Self::Testing => {
                 "Pendiente: worker de diagnóstico/reportes y política por canal. Sin automatización."

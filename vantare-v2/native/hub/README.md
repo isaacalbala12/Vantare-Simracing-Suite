@@ -110,8 +110,20 @@ unread/read/clear y destinos cerrados. Vive durante el proceso, como el
 contrato Go; no tiene toasts ni emisores remotos. Ajustes guarda el formato
 del Workshop sobre su estado existente. Testing Center muestra únicamente
 contexto del snapshot local del Workshop; no genera ni envía un reporte.
-Cuenta/licencias, Strategy, Engineer, análisis, Launcher y roadmap conservan
-sus dependencias explícitas en el microplan y en cada pantalla.
+Cuenta/licencias, Strategy, análisis, Launcher y roadmap conservan sus
+dependencias explícitas en el microplan y en cada pantalla. Cuenta, licencias,
+roadmap y envío del Testing Center no se implementan por instrucción del
+orquestador; cada servicio tiene su pregunta concreta en el microplan.
+
+Engineer de fase 3 está integrado en el workspace y pertenece al launcher.
+Su contrato local ofrece CLI de arranque (locale/clip) y JSONL de radio/estado
+por stdout, pero no un canal Hub para leer el proceso existente o modificar
+sus ajustes. La sección conserva estado pendiente: no inventa configuración
+persistida ni muestra datos de Workshop como estado del Engineer. Pregunta:
+¿qué canal local del propietario publica radio/status al Hub y aplica
+locale/clips en el siguiente arranque o reinicio, manteniendo al Engineer
+bajo el launcher cuando el Hub termina? Ver `../engineer/README.md`.
+
 
 ## Verificación de proceso
 

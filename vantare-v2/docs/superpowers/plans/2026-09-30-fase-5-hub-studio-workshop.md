@@ -1,5 +1,12 @@
 # Fase 5 — Hub, Studio y Workshop: microplan y evidencia
 
+> Estado vigente: Studio usa el layout/Settings común de fase 2 y el flanco de
+> cierre consume DTO v4. Las entradas anteriores que describen tipos puente,
+> DTO v3 o guardado bloqueado son registro histórico, sustituido por las
+> continuaciones al final. Servicios de red y contrato Hub/Engineer siguen
+> bloqueados explícitamente; no se declara la fase 5 completa.
+
+
 Issue: [#1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430).
 Decisión: [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md), fase 5 del
 [plan aceptado](2026-09-29-arquitectura-rust-nativa.md).
@@ -426,3 +433,88 @@ caducidad y gap de clase siguen fuera de ownership; aquí solo se consume el DTO
 Gates de este hito se registran a continuación.
 
 Gates flanco DTO v4: fmt PASS; Clippy workspace/all-targets -j 2 -D warnings PASS (2,88 s); workspace test -j 2 PASS, código 0, 502 pruebas Rust ejecutadas y seis ignored heredadas (más harness de lifecycle con 0 failed). Hub: 24 pruebas. Compilación 8,81 s, sin benchmark. `./hub/verify-process.ps1` PASS, PID 12172, exit 0: vivo antes de EOF, selección guardada, proceso terminado completamente; layout temporal explícito. No acredita flanco de juego físico. Variables de reducción de artefactos iguales al merge. Sin dependencias nuevas.
+
+
+### Continuación — Engineer y fronteras de servicios (ISA-1430)
+
+Se leyó `native/engineer/README.md` completo. El contrato **local existente**
+es CLI de inicio (`--locale es|en|it|pt-BR`, `--clips`, cursor/pipe) y stdout
+JSONL `vantare.radio.v1` / `vantare.radio.status.v1`; no son un endpoint de
+consulta/cambio para un Hub separado. Véase `native/engineer/src/main.rs:12`
+(Options), `:84` (inicialización RadioWorker) y
+`native/runtime/src/bin/vantare/main.rs:129` (argumentos del tercer hijo),
+`:321` (Service bajo el launcher). No hay documento compartido de ajustes de
+Engineer ni lectura Hub de su stdout. Importar su crate arrastraría runtime
+al Hub, contradiciendo la frontera y su test de arquitectura; no se hace.
+
+**Corte Engineer bloqueado por contrato Hub/propietario.** La sección indica
+que ajustes/estado esperan integración con el propietario; no simula
+estado, no guarda ajustes sin efecto, no lanza ni posee Engineer, no cambia
+fase 3. Pregunta concreta para el orquestador: **¿qué canal local del launcher
+publica radio/status al Hub y aplica locale/clips al siguiente arranque o
+reinicio, conservando a Engineer bajo su Job Object cuando el Hub se cierra?**
+El contrato no expone al Hub el stdout del hijo ya iniciado; el propietario
+debe publicar ese estado mediante un canal local definido.
+Si requiere protocolo nuevo fuera del ADR, fijarlo antes de implementarlo.
+
+Por instrucción vinculante, no se implementan los cuatro servicios siguientes.
+Preguntas separadas, sin red, tokens, credenciales ni nuevos servicios:
+
+| Sección | Pregunta concreta antes de portar | Estado |
+|---|---|---|
+| Cuenta | ¿Qué worker/contrato local entrega sesión autenticada al Hub y administra el almacén protegido Supabase, incluyendo renovación/logout sin exponer secretos a UI/domain? | Bloqueado; no implementar red |
+| Licencias | ¿Qué propietario verifica/renueva la credencial firmada y publica entitlements/estado al Hub, y qué contrato autorizado tramita reset de dispositivo sin autoridad local de concesión? | Bloqueado; no implementar red |
+| Roadmap | ¿Qué worker entrega la publicación Supabase vigente con versión, caducidad y error al Hub, conservándolo como lector sin editor ni copia inventada? | Bloqueado; no implementar red |
+| Testing Center: envío | ¿Qué contrato acepta el reporte sanitizado, devuelve destino/canal/acuse y permite cancelarlo, con política de consentimiento/envío ya aprobada? | Bloqueado; solo diagnóstico local existente |
+
+### Estado vigente para revisión del orquestador
+
+- Integración local autorizada de fase 2 en ecfbde31f5ec83f285f3e28882819f7a1f19c9d1,
+  con fases 3/6, en merge 905afe8b. Cuatro conflictos resueltos: workspace,
+  lock, constructor y exports de UI. Solo exposición mínima de Overlay.
+- Studio común en 6dc4b25d: archivo único, Settings tipados, opciones aplicadas
+  activas, pendientes deshabilitadas, selección/orden/undo/redo y conflictos
+  por bytes. Canvas edita posición, inspector contenido/apariencia. Vigilancia
+  y aplicación en overlays permanecen en UI de fase 2; no se añade protocolo.
+- Flanco DTO v4 en a085c318: Subscriber independiente, Waiting/Stale→Live con
+  origen Live; primera Live no cierra, Workshop no decide. Gates + EOF reales
+  documentados. Esta prueba de proceso no es prueba física de entrada al juego.
+- Workshop reutiliza todos los 18 Kind actuales y renderer común; no inventa
+  los 22 anunciados por el plan. Configuración de contenido en Workshop,
+  edición/timeline y exportación integrada siguen sin completar. Inspector
+  de Studio solo habilita lo que los widgets aplican de verdad; variantes y
+  catálogo productivo adicional pertenecen al worker UI.
+- Secciones locales anteriores: calendario UTC, follow/unfollow, notificaciones,
+  formato Workshop y diagnóstico local. Strategy, análisis, Launcher completo,
+  zonas/recordatorios y publishers siguen esperando contratos de sus propietarios.
+- Engineer y los cuatro servicios de red: bloqueos y preguntas arriba. Sin
+  implementación de red. Pruebas físicas con LMU/ACC/OBS, DPI, multi-monitor,
+  teclado/arrastre y presupuestos requieren aceptación externa, pendientes.
+- Notion no disponible: excepción GitHub explícita; evidencia local de #1430,
+  sin afirmar seguimiento Notion actualizado. Rama aislada; sin push, PR,
+  integración en nightly/testers/master, release ni acciones externas.
+
+Verificación manual propuesta (no ejecutada ni acreditada por gates): iniciar
+Hub y overlays con el mismo --layout en una carpeta de QA; añadir Standings,
+mover, editar cabecera/pie/marca/métricas, ocultar y cambiar opacidad; verificar
+aplicación automática sin reiniciar overlays. Reiniciar Hub y comprobar archivo.
+Abrir segundo editor, cambiar bytes y confirmar rechazo del primero; Recargar
+acepta solo documento válido. Con Core real v4, verificar Waiting/Stale→Live,
+apertura inicial ya Live y continuidad de overlays/Engineer con Hub cerrado.
+No iniciar juego/voz ni usar credenciales automáticamente.
+
+El hito de fronteras solo cambia texto declarativo en la navegación y documentos;
+no añade comportamiento de servicio que requiera fixtures ficticios. El test
+existente cubre las 14 secciones únicas con entrada explícita; gates completos
+se repiten y registran abajo. Sin dependencias nuevas.
+
+Gates finales de fronteras: `cargo fmt --check` PASS (salida vacía, código 0);
+`cargo clippy --offline --workspace --all-targets -j 2 -- -D warnings` PASS
+(2,61 s); `cargo test --offline --workspace -j 2` PASS, código 0, 502 pruebas
+Rust ejecutadas, 0 fallos, seis ignored heredadas y harness lifecycle 0 failed.
+Hub: 24 pruebas. Variables DEBUG=0 e INCREMENTAL=0 de entorno como arriba;
+compilación 7,25 s, sin medición de rendimiento. PowerShell AST de dev.ps1 y
+verify-process.ps1 PASS. Smoke EOF del hito anterior PASS, PID 12172/exit 0.
+Sin nuevas dependencias ni modificaciones propias a widgets/kit/model/IPC/runtime.
+No quedan procesos de prueba propios ni acciones externas por ejecutar en el
+alcance autorizado; quedan los bloqueos/aceptación física enumerados arriba.

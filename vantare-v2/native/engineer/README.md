@@ -7,7 +7,7 @@ Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 
 ## Ejecución de producto
 
-`vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA]`
+`vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`
 consume foto DTO v4 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
 PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
 del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
@@ -120,6 +120,69 @@ sin prueba acústica. WinMM no da ACK de fin: se usa duración validada y tick d
 local ocurre en este worker, nunca en adquisición. No exactamente una vez para
 audio ante muerte entre checkpoint y salida; permisos/distribución de assets y
 escucha es/en/it/pt-BR pendientes de Isaac. Sin wake/PTT/STT ni ajuste de dispositivo.
+
+## Control local desde Hub — ISA-1428 / ISA-1430
+
+El Hub escribe `%LOCALAPPDATA%/Vantare/native/engineer.json`; Engineer lo
+sondea cada turno (espera de hasta 50 ms, sin promesa bajo I/O bloqueado) y
+confirma sus ajustes efectivos en `engineer-status.json` del mismo directorio.
+Un archivo ausente inicialmente usa `--locale` y voz opt-in por `--clips`;
+cuando existe, el documento manda. JSON inválido o retirado conserva los
+últimos ajustes válidos y publica error. El siguiente JSON válido recupera
+sin reiniciar. El banco `--stream` solo usa estos archivos con `--settings`.
+
+Contrato cerrado v1, máximo 64 KiB, sin migración del producto Go:
+
+```json
+{
+  "version": 1,
+  "enabled": true,
+  "locale": "es",
+  "voice": false,
+  "families": {"fuel": true, "flags": true, "pitstops": true, "laps": true}
+}
+```
+
+Solo `es`, `en`, `it`, `pt-BR`; `voice` activa los clips de `--clips`, no
+selecciona otra voz ni descarga assets. Sin carpeta/clip válido conserva texto
+y declara `missing`. No hay control de volumen propio (se usa Windows),
+Spotter audible/on-off, penalties o timings; Hub muestra su indisponibilidad.
+`flags` es una familia nativa, no una afirmación de paridad de las familias Go.
+`enabled=false` silencia radio pero continúa consumiendo/checkpointando hechos;
+no arranca ni mata el proceso. Cada cambio retira cola/voz/presentación previas.
+
+Ambos lados compilan el mismo `engineer/src/control.rs` (`#[path]` en Hub):
+contrato JSON e I/O sin dependencia Hub → Engineer/runtime ni dependencia
+nueva. Guardado: lock del SO, bytes observados, temporal exclusivo, fsync y
+rename sin borrar destino. Conflicto conserva disco/memoria; Hub permite
+recargar explícitamente. No hay garantía CAS ante un editor externo que
+ignore el lock ni durabilidad del rename ante corte eléctrico; no usar el
+directorio compartido para dos Engineer simultáneos.
+
+Estado: versión, PID, proceso activo, ajustes confirmados, presencia de pack
+completo y WAV válido por locale, último mensaje con época/revisión y error. Solo
+se reemplaza cuando cambia su contenido; assets se inspeccionan cada segundo
+por mtime/tamaño y solo se releen cuando cambia esa firma. El último mensaje
+es histórico, no una presentación con TTL ni prueba acústica. Cierre ordenado
+publica `active=false`; muerte abrupta puede dejar un informe antiguo. Hub
+sondea cada 250 ms y conserva el último estado válido ante JSON inválido.
+
+Verificación aislada desde `native/`, sin escribir los ajustes de producto:
+
+```powershell
+target/debug/vantare-hub.exe --engineer --engineer-settings C:/tmp/engineer-check/engineer.json --layout C:/tmp/engineer-check/layout.json --data-dir C:/tmp/engineer-check/hub --pipe vantare-engineer-check
+target/debug/vantare-engineer.exe --pipe --pipe-name vantare-engineer-check --cursor C:/tmp/engineer-check/cursor.json --settings C:/tmp/engineer-check/engineer.json
+```
+
+Mantener stdin abierto; cambiar locale/familias, comprobar ajustes confirmados,
+introducir JSON roto y recuperar, probar dos Hub y recargar tras conflicto,
+cerrar Engineer con EOF y comprobar inactivo. La radio requiere el Core
+hermano/launcher; sin él el estado declara fuente ausente. `tests/lifecycle.rs`
+comprueba cambios en caliente y radio inglesa sobre named pipe y proceso
+reales con observaciones sintéticas explícitas, JSON roto, apagado de radio
+sin perder hechos y publicación de cierre. Los tests de contrato y Hub
+cubren roundtrip, conflictos, lock y recuperación de escritura parcial.
+Sin prueba física LMU/OBS, escucha ni aceptación visual del orquestador.
 
 ## Gates y evidencia
 

@@ -11,6 +11,10 @@ use crate::{
 use vantare_domain::Snapshot;
 
 pub struct RadioWorker {
+    settings: crate::control::Settings,
+    clips_configured: bool,
+    voice_error: Option<String>,
+    last_message: Option<crate::control::Message>,
     families: Families,
     queue: Queue,
     voice: Voice,
@@ -23,6 +27,14 @@ pub struct RadioWorker {
 impl RadioWorker {
     pub fn new(locale: Locale, clips: Option<&Path>) -> io::Result<Self> {
         Ok(Self {
+            settings: crate::control::Settings {
+                locale: locale.code().into(),
+                voice: clips.is_some(),
+                ..Default::default()
+            },
+            clips_configured: clips.is_some(),
+            voice_error: None,
+            last_message: None,
             families: Families::default(),
             queue: Queue::default(),
             voice: Voice::new(clips)?,
@@ -32,6 +44,26 @@ impl RadioWorker {
             source_stale: false,
             presentation: None,
         })
+    }
+    pub fn configure(&mut self, settings: &crate::control::Settings) -> io::Result<bool> {
+        settings.validate()?;
+        let locale =
+            Locale::parse(&settings.locale).ok_or_else(|| io::Error::other("locale inválido"))?;
+        if self.settings == *settings {
+            return Ok(false);
+        }
+        // Retirar cola/voz del ajuste anterior antes de confirmar el nuevo.
+        self.clear()?;
+        self.locale = locale;
+        self.settings = settings.clone();
+        self.voice_error = None;
+        Ok(true)
+    }
+    pub fn last_message(&self) -> Option<&crate::control::Message> {
+        self.last_message.as_ref()
+    }
+    pub fn voice_error(&self) -> Option<&str> {
+        self.voice_error.as_deref()
     }
     pub fn clear(&mut self) -> io::Result<()> {
         self.queue.clear();
@@ -71,6 +103,24 @@ impl RadioWorker {
             self.voice.stop()?;
         }
         for message in messages {
+            let enabled = match message.intent {
+                crate::radio::Intent::FuelOne
+                | crate::radio::Intent::FuelTwo
+                | crate::radio::Intent::FuelHalf => self.settings.families.fuel,
+                crate::radio::Intent::Yellow | crate::radio::Intent::Blue => {
+                    self.settings.families.flags
+                }
+                crate::radio::Intent::PitEntry | crate::radio::Intent::PitExit => {
+                    self.settings.families.pitstops
+                }
+                crate::radio::Intent::LapCompleted => self.settings.families.laps,
+                crate::radio::Intent::CarLeft
+                | crate::radio::Intent::CarRight
+                | crate::radio::Intent::ThreeWide => false,
+            };
+            if !self.settings.enabled || !enabled {
+                continue;
+            }
             if !self.queue.submit(message) {
                 writeln!(
                     output,
@@ -109,7 +159,18 @@ impl RadioWorker {
                 self.voice.stop()?;
             }
             let mut presentation = message.to_json();
-            let playing = match self.voice.play(message.locale, message.intent, now) {
+            self.voice_error = None;
+            let played = if !self.settings.voice {
+                Ok(None)
+            } else if !self.clips_configured {
+                Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "sin carpeta de clips; indicar --clips",
+                ))
+            } else {
+                self.voice.play(message.locale, message.intent, now)
+            };
+            let playing = match played {
                 Ok(Some(_)) => {
                     presentation["voice"] = "started".into();
                     true
@@ -119,6 +180,7 @@ impl RadioWorker {
                     false
                 }
                 Err(error) => {
+                    self.voice_error = Some(format!("voz {}: {error}", message.intent.key()));
                     presentation["voice"] = if error.kind() == io::ErrorKind::NotFound {
                         "missing"
                     } else {
@@ -133,6 +195,13 @@ impl RadioWorker {
             writeln!(output)?;
             output.flush()?;
             self.families.started(&message); // ACK visual; no claim de acústica.
+            self.last_message = Some(crate::control::Message {
+                epoch: message.epoch,
+                sequence: message.sequence,
+                intent: message.intent.key().into(),
+                locale: message.locale.code().into(),
+                text: message.intent.text(message.locale).into(),
+            });
             self.presentation = Some(message);
             if playing {
                 break;

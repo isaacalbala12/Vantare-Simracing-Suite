@@ -17,6 +17,36 @@ struct Process {
     checkpoint: std::path::PathBuf,
 }
 impl Process {
+    fn settings(&self) -> std::path::PathBuf {
+        self.checkpoint
+            .with_extension("settings")
+            .join("engineer.json")
+    }
+    fn status(
+        &self,
+        step: &str,
+        predicate: impl Fn(&vantare_engineer::control::Status) -> bool,
+    ) -> vantare_engineer::control::Status {
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        let mut last = None;
+        loop {
+            let path = vantare_engineer::control::status_path(&self.settings());
+            if let Ok(Some(bytes)) = vantare_engineer::control::read(&path)
+                && let Ok(status) = vantare_engineer::control::Status::parse(&bytes)
+            {
+                if predicate(&status) {
+                    return status;
+                }
+                last = Some(status);
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "plazo de estado local: {step}; último estado: {last:?}"
+            );
+            // Sondeo de un proceso real: esperar la confirmación, no fingir aplicación.
+            thread::sleep(Duration::from_millis(10));
+        }
+    }
     fn start(name: &str) -> Self {
         Self::start_as(name, None)
     }
@@ -25,7 +55,9 @@ impl Process {
         let mut command = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"));
         command
             .args(["--pipe", "--pipe-name", name, "--cursor"])
-            .arg(&checkpoint);
+            .arg(&checkpoint)
+            .arg("--settings")
+            .arg(checkpoint.with_extension("settings").join("engineer.json"));
         if let Some(core) = core {
             command.arg("--core-image").arg(core);
         }
@@ -85,6 +117,21 @@ impl Drop for Process {
         self.child.wait().unwrap();
         if let Some(reader) = self.reader.take() {
             reader.join().unwrap();
+        }
+        let directory = self.checkpoint.with_extension("settings");
+        if directory.exists() {
+            for name in [
+                "engineer-status.json",
+                "engineer-status.json.lock",
+                "engineer.json",
+                "engineer.json.lock",
+            ] {
+                let path = directory.join(name);
+                if path.exists() {
+                    std::fs::remove_file(path).unwrap();
+                }
+            }
+            std::fs::remove_dir(directory).unwrap();
         }
         if self.checkpoint.exists() {
             std::fs::remove_file(&self.checkpoint).unwrap();
@@ -164,6 +211,103 @@ fn pipe_worker_closes_on_eof_while_core_is_absent() {
     assert_eq!(status["events"], "connecting");
     assert_eq!(status["spotter"], "unavailable_opponent_velocity");
     worker.eof();
+}
+
+#[test]
+fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
+    use std::sync::Arc;
+    use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
+    use vantare_engineer::control::{Document, Settings};
+    use vantare_runtime::core::Core;
+    let name = format!("vantare-engineer-hot-settings-{}", std::process::id());
+    let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
+    let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
+        peer.is_image(&expected)
+    })
+    .unwrap();
+    let mut core = Core::with_event_base(host.base()).unwrap();
+    let observation = |lap| Observation {
+        origin: vantare_domain::Origin {
+            received_at: Duration::from_millis(u64::from(lap) + 1),
+            ..Default::default()
+        },
+        state: State {
+            cars: vec![Car {
+                id: CarId(7),
+                laps: Quality::Reliable(lap),
+                ..Default::default()
+            }],
+            player: Some(Player {
+                car: CarId(7),
+                ..Default::default()
+            }),
+            source_state: vantare_domain::SourceState::Live,
+            ..Default::default()
+        },
+    };
+    core.observe(observation(0)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    let mut process = Process::start_as(&name, Some(&std::env::current_exe().unwrap()));
+    process.status("inicio", |status| status.active);
+    // Los ajustes deben aplicarse también con la foto congelada: pausa/menú.
+    process.status("foto congelada", |status| {
+        status
+            .error
+            .as_ref()
+            .is_some_and(|error| error.starts_with("fuente ausente/obsoleta"))
+    });
+    let mut editor = Document::new(process.settings(), Settings::default());
+    editor.poll().unwrap();
+    let settings = Settings {
+        locale: "en".into(),
+        ..Default::default()
+    };
+    editor.save(settings.clone()).unwrap();
+    process.status("locale aplicado", |status| status.settings == settings);
+    core.observe(observation(1)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    let message = process.status("radio inglesa", |status| {
+        status
+            .last_message
+            .as_ref()
+            .is_some_and(|m| m.locale == "en")
+    });
+    let last_message = message.last_message.unwrap();
+    assert_eq!(last_message.text, "Lap completed");
+    std::fs::write(process.settings(), b"{").unwrap();
+    let invalid = process.status("JSON inválido", |status| {
+        status
+            .error
+            .as_ref()
+            .is_some_and(|error| error.starts_with("ajustes:"))
+    });
+    assert_eq!(invalid.settings, settings);
+    let mut next = settings.clone();
+    next.enabled = false;
+    let bytes = serde_json::to_vec(&next.json()).unwrap();
+    vantare_engineer::control::save(&process.settings(), Some(b"{"), &bytes).unwrap();
+    process.status("apagado", |status| status.settings == next);
+    core.observe(observation(2)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    // El ACK del hecho confirma que el proceso lo consumió con radio apagada.
+    loop {
+        let line = process.next().unwrap();
+        if line["cursor"] == serde_json::json!([1, 2]) {
+            break;
+        }
+    }
+    assert_eq!(
+        process
+            .status("hecho consumido con radio apagada", |status| status
+                .settings
+                == next)
+            .last_message
+            .unwrap(),
+        last_message
+    );
+    drop(process.input.take());
+    process.status("cierre", |status| !status.active);
+    assert!(process.child.wait().unwrap().success());
 }
 
 #[test]

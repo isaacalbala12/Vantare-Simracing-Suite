@@ -19,6 +19,7 @@ use crate::{
     Section,
     analysis::Analysis,
     calendar::Calendar,
+    engineer::Engineer,
     launcher::{Store as LauncherStore, view::Launcher},
     notifications::Notifications,
     orbit,
@@ -31,6 +32,7 @@ pub struct Options {
     pub data_dir: PathBuf,
     pub scene: Option<PathBuf>,
     pub layout: PathBuf,
+    pub engineer: PathBuf,
     pub section: Section,
     pub pipe: Option<String>,
     pub recordings: Option<PathBuf>,
@@ -45,6 +47,7 @@ struct Hub {
     calendar: Entity<Calendar>,
     analysis: Entity<Analysis>,
     launcher: Entity<Launcher>,
+    engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
@@ -202,6 +205,9 @@ impl Render for Hub {
             .when(self.section == Section::Studio, |content| {
                 content.child(self.studio.clone())
             })
+            .when(self.section == Section::Engineer, |content| {
+                content.child(self.engineer.clone())
+            })
             .when(self.section == Section::Calendar, |content| {
                 content.child(self.calendar.clone())
             })
@@ -223,7 +229,8 @@ impl Render for Hub {
             .when(
                 !matches!(
                     self.section,
-                    Section::Workshop
+                    Section::Engineer
+                        | Section::Workshop
                         | Section::Studio
                         | Section::Calendar
                         | Section::Analysis
@@ -402,13 +409,127 @@ fn quit_when_done(cx: &mut App, controlled: bool, stop: Arc<AtomicBool>) {
     }
 }
 
+fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
+    cx.new(|cx| {
+        cx.spawn(async move |this, cx| {
+            loop {
+                if this
+                    .update(cx, |this: &mut Engineer, cx| {
+                        if this.poll() {
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+                cx.background_executor()
+                    .timer(Duration::from_millis(250))
+                    .await;
+            }
+        })
+        .detach();
+        engineer
+    })
+}
+
+/// Entradas ya cargadas y validadas antes de abrir la ventana.
+struct Loaded {
+    prepared: Prepared,
+    studio: PreparedStudio,
+    calendar: Calendar,
+    analysis: Analysis,
+    launcher: LauncherStore,
+    engineer: Engineer,
+    subscriber: Subscriber,
+}
+
+impl Hub {
+    fn build(
+        loaded: Loaded,
+        section: Section,
+        failure_on_quit: std::rc::Rc<std::cell::RefCell<Option<String>>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let Loaded {
+            prepared,
+            studio: prepared_studio,
+            calendar,
+            analysis: mut prepared_analysis,
+            launcher: launcher_store,
+            engineer,
+            subscriber,
+        } = loaded;
+        start_source_poll(cx);
+        let focus = cx.focus_handle();
+        focus.focus(window, cx);
+        let workshop = create_workshop(prepared, cx);
+        let snapshot = workshop.read(cx).scene.snapshot().clone();
+        let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
+        let prefs = studio.read(cx).preferences();
+        workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
+        cx.observe(&studio, |this, studio, cx| {
+            let prefs = studio.read(cx).preferences();
+            this.workshop
+                .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
+        })
+        .detach();
+        let notifications = cx.new(|_| Notifications::default());
+        let calendar = cx.new(|_| calendar);
+        let analysis = cx.new(|cx| {
+            prepared_analysis.refresh(cx);
+            prepared_analysis
+        });
+        let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
+        wire_sections(&calendar, &notifications, &launcher, cx);
+        let engineer = create_engineer(engineer, cx);
+        cx.observe(&workshop, |this, workshop, cx| {
+            let snapshot = workshop.read(cx).scene.snapshot().clone();
+            this.studio
+                .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
+        })
+        .detach();
+        cx.on_app_quit(move |this, cx| {
+            this.analysis.update(cx, |analysis, _| analysis.cancel());
+            if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
+                eprintln!("cerrar Launcher: {error}");
+                *failure_on_quit.borrow_mut() = Some(error);
+            }
+            if let Err(error) = this.save(cx) {
+                eprintln!("guardar antes de salir: {error}");
+                *failure_on_quit.borrow_mut() = Some(error);
+            }
+            async {}
+        })
+        .detach();
+        Hub {
+            section,
+            focus,
+            workshop,
+            studio,
+            calendar,
+            analysis,
+            launcher,
+            engineer,
+            notifications,
+            status: None,
+            subscriber,
+            previous_source: None,
+        }
+    }
+}
+
 pub fn run(options: Options) -> Result<(), String> {
-    let mut prepared_analysis = prepare_analysis(&options)?;
-    let prepared = Prepared::load(&options.data_dir, options.scene)?;
-    let prepared_studio = PreparedStudio::load(options.layout)?;
-    let calendar = Calendar::load(&options.data_dir)?;
-    let launcher_store = LauncherStore::load(options.launcher_file)?;
-    let subscriber = subscribe(options.pipe)?;
+    let loaded = Loaded {
+        analysis: prepare_analysis(&options)?,
+        prepared: Prepared::load(&options.data_dir, options.scene)?,
+        studio: PreparedStudio::load(options.layout)?,
+        calendar: Calendar::load(&options.data_dir)?,
+        launcher: LauncherStore::load(options.launcher_file)?,
+        engineer: Engineer::load(options.engineer),
+        subscriber: subscribe(options.pipe)?,
+    };
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
@@ -429,61 +550,7 @@ pub fn run(options: Options) -> Result<(), String> {
         let initial_section = options.section;
         if let Err(error) = cx.open_window(window_options, |window, cx| {
             let hub = cx.new(|cx: &mut Context<Hub>| {
-                start_source_poll(cx);
-                let focus = cx.focus_handle();
-                focus.focus(window, cx);
-                let workshop = create_workshop(prepared, cx);
-                let snapshot = workshop.read(cx).scene.snapshot().clone();
-                let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
-                let prefs = studio.read(cx).preferences();
-                workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
-                cx.observe(&studio, |this, studio, cx| {
-                    let prefs = studio.read(cx).preferences();
-                    this.workshop
-                        .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
-                })
-                .detach();
-                let notifications = cx.new(|_| Notifications::default());
-                let calendar = cx.new(|_| calendar);
-                let analysis = cx.new(|cx| {
-                    prepared_analysis.refresh(cx);
-                    prepared_analysis
-                });
-                let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
-                wire_sections(&calendar, &notifications, &launcher, cx);
-                cx.observe(&workshop, |this, workshop, cx| {
-                    let snapshot = workshop.read(cx).scene.snapshot().clone();
-                    this.studio
-                        .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
-                })
-                .detach();
-                cx.on_app_quit(move |this, cx| {
-                    this.analysis.update(cx, |analysis, _| analysis.cancel());
-                    if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown())
-                    {
-                        eprintln!("cerrar Launcher: {error}");
-                        *failure_on_quit.borrow_mut() = Some(error);
-                    }
-                    if let Err(error) = this.save(cx) {
-                        eprintln!("guardar antes de salir: {error}");
-                        *failure_on_quit.borrow_mut() = Some(error);
-                    }
-                    async {}
-                })
-                .detach();
-                Hub {
-                    section: initial_section,
-                    focus,
-                    workshop,
-                    studio,
-                    calendar,
-                    analysis,
-                    launcher,
-                    notifications,
-                    status: None,
-                    subscriber,
-                    previous_source: None,
-                }
+                Hub::build(loaded, initial_section, failure_on_quit, window, cx)
             });
             let closing = hub.downgrade();
             window.on_window_should_close(cx, move |_, cx| {

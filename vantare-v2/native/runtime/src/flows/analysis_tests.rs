@@ -228,7 +228,7 @@ fn boundary_validation_rejects_bad_wire_and_typed_values_before_use() {
         |v| v[0] = "v2".into(),
         |v| v[1] = 0.into(),
         |v| v[2] = 1.into(),
-        |v| v[3] = (MAX_LAP_SAMPLES + 1).into(),
+        |v| v[3] = usize::MAX.into(),
         |v| v[4][0] = "v2".into(),
         |v| v[4][1] = 0.into(),
         |v| v[4][3] = (u64::from(u32::MAX) + 1).into(),

@@ -164,7 +164,11 @@ impl SeriesAnalysis {
         if let Some(active) = &self.active
             && active.summary.id == id
         {
-            if chunk.offset < active.next_offset
+            if u32::try_from(chunk.block.samples.len())
+                .ok()
+                .and_then(|count| active.summary.samples.checked_add(count))
+                .is_none()
+                || chunk.offset < active.next_offset
                 || chunk.block.sealed_at.is_some_and(|seal| {
                     active
                         .summary

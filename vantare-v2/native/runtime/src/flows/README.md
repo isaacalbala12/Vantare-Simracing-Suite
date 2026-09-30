@@ -77,14 +77,14 @@ bloque abierto sin inventar un cierre; cambiar sesión, época o jugador
 descarta los bloques de la identidad anterior.
 
 Solo se retienen el bloque abierto y el último sellado: máximo 18.000 muestras
-en cada uno. Saturación marca `gap = true` y deja de añadir muestras. También
-marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
+en cada ventana. Reciclar la ventana no corta el feed (ver offsets abajo).
+Marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
 distancia o tiempo. En un retroceso se espera al avance del contador para
 evitar meter datos de la vuelta nueva en la anterior. Las señales ausentes o
 estimadas de velocidad/pedales conservan su etiqueta y no frenan el muestreo.
 Las series no escriben disco, tampoco con recording. La entrega incremental
-de ISA-1429 descrita abajo añade una cola volátil; almacenamiento DuckDB e IPC
-siguen pendientes y no confirman durabilidad.
+de ISA-1429 descrita abajo añade una cola volátil; esta cola no confirma
+durabilidad. El backend aislado debe confirmar su transacción.
 
 `LapBlock::to_bytes()` serializa fuera de adquisición. UTF-8 JSON compacto,
 sin espacios, mapas ni reloj de pared, con este array de orden fijo:
@@ -182,17 +182,14 @@ ACK durable ni promesa de pérdida cero. Tras desconexión no se copian nuevas
 muestras para el receptor muerto. Las señales conservan su calidad original.
 Máximo adicional en cola: `capacity × 64` muestras, además de las dos vueltas
 acotadas ya existentes. Serialización y análisis ocurren en el consumidor.
-El límite previo de 18.000 muestras por vuelta sigue vigente también con
-receptor rápido: al agotarse deja de muestrear y marca hueco hasta la vuelta
-siguiente (180 s a 100 Hz, 300 s a 60 Hz). Esta entrega no promete grabación
-íntegra de vueltas que superen ese límite; revisar la política con el backend
-DuckDB antes de declarar la fase completa.
+El tope de 18.000 solo limita retención diagnóstica; el feed continúa durante
+vueltas largas, con offsets absolutos y sin hueco causado por ese tope.
 
 Los seis tests de `series_feed_tests.rs` prueban entrega durante vuelta,
 parciales/cierre, saturación/desconexión, configuración única, hueco y cambio
 de identidad; los goldens LapBlock v1 anteriores siguen obligatorios.
 El [microplan](../../../../docs/superpowers/plans/2026-09-30-fase-4-series-grabacion-analisis.md)
-conserva el bloqueo DuckDB y los presupuestos físicos pendientes.
+registra la autorización DuckDB y los presupuestos físicos pendientes.
 
 ## Codec y análisis compartido — ISA-1429
 
@@ -203,7 +200,8 @@ conserva el bloqueo DuckDB y los presupuestos físicos pendientes.
 ```
 
 La cabecera de LapBlock v1 se conserva; sus muestras son solo la porción del
-chunk. Máximo 64 muestras, offset+longitud ≤18.000 y 32 KiB antes de parsear.
+chunk. Máximo 64 muestras y 32 KiB antes de parsear; offset absoluto con
+sumas comprobadas, sin techo por duración/distancia de vuelta.
 Se rechazan versiones/formas desconocidas, valores no finitos/negativos,
 pedales fuera de 0–1, calidad inválida, secuencias repetidas/regresivas y
 retrocesos de progreso Reliable. `Unavailable` exige null y no equivale a cero.
@@ -238,8 +236,8 @@ Nueve tests en `analysis_tests.rs`: golden manual, calidad/cero, wire inválido
 y topes, orden con estado intacto, retención/queries, huecos y paridad entre
 live y bytes/replay. También fixture LMU productivo obligatorio de una muestra:
 demuestra roundtrip exacto y no fabrica una vuelta completa. El replay de
-cierre sigue siendo sintético explícito. Persistencia DuckDB y prueba física
-de presupuestos siguen bloqueadas; no se declara la fase 4 completa.
+cierre sigue siendo sintético explícito. La prueba física de presupuestos
+requiere Isaac; no se declara la fase 4 completa por este test.
 
 ## Carga reproducible del feed volátil — ISA-1429
 
@@ -256,4 +254,16 @@ cargo test --offline --workspace -j 2 flows::series_load_tests -- --nocapture
 Imprime tiempos debug con/sin feed, incluyendo generador; una pareja ruidosa
 con otros workers no fija ratio ni presupuesto de CPU, memoria privada,
 latencia o frame time. Evidencia cruda, hashes, gates y límites en el microplan.
-El siguiente corte sigue siendo almacenamiento DuckDB, actualmente bloqueado.
+DuckDB está autorizado y se implementa en el crate/proceso `native/storage`.
+
+## Retención diagnóstica y vueltas largas
+
+`MAX_LAP_SAMPLES = 18.000` limita únicamente las ventanas de `active/sealed`.
+Al llenarse una ventana se publica el resto antes de reciclar su Vec, conservando
+capacidad, sin mover muestras ni generar hueco en el feed. `active_offset()` y
+`sealed_offset()` indican el prefijo omitido de esas ventanas diagnósticas;
+no tratarlas como vueltas completas. Los chunks mantienen offsets absolutos.
+Una vuelta de diez minutos a 100 Hz entrega exactamente 60.000 muestras y
+seal, con codec y análisis continuos; prueba de regresión sintética explícita.
+No hay techo temporal/de distancia de grabación. Desbordamiento de offset o
+contadores de análisis falla cerrado; u32 de resumen admite ~497 días a 100 Hz.

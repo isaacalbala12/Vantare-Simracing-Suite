@@ -313,3 +313,11 @@ original, offline y `-j 2`; registrar resultado antes de commitear.
 
 Gates de este microplan: fmt exit 0; clippy exit 0 (33,32 s); test exit 0,
 400 correctos y 4 live ignorados, incluyendo 7 lifecycle sin harness.
+
+Corte 6: prueba previa falló con `left: 18000 / right: 60000` (exit 101).
+Se publica antes de reciclar la ventana; offsets diagnósticos explícitos,
+chunks absolutos y memoria constante sin trasladar el Vec. Se comprueba
+overflow de offset en codec y del conteo u32 en análisis antes de mutar.
+
+Corte 6 gates: fmt exit 0; clippy exit 0 (5,77 s); test workspace exit 0,
+401 correctos, 4 live ignorados y cero fallos. El test nuevo pasa con 60.000.

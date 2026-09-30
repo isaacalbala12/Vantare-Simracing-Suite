@@ -69,13 +69,18 @@ impl Series {
     /// Publica la porción parcial y/o un hueco nuevo, para una cadencia menor
     /// que 64 muestras o antes de parar. Un flush vacío no duplica entregas.
     pub fn flush(&mut self) {
+        let offset = self.active_offset();
         if let (Some(publisher), Some(block)) = (&mut self.publication, &self.active) {
-            publisher.publish(block);
+            publisher.publish(block, offset);
         }
     }
 }
 
 impl Publisher {
+    pub(super) fn rebase(&mut self) {
+        self.next_sample = 0;
+    }
+
     pub(super) fn reset_lap(&mut self) {
         self.next_sample = 0;
         self.last_gap = false;
@@ -85,7 +90,7 @@ impl Publisher {
         block.samples.len() - self.next_sample >= MAX_CHUNK_SAMPLES
     }
 
-    pub(super) fn publish(&mut self, block: &LapBlock) {
+    pub(super) fn publish(&mut self, block: &LapBlock, base_offset: usize) {
         let samples = &block.samples[self.next_sample..];
         if samples.is_empty() && block.sealed_at.is_none() && block.gap == self.last_gap {
             return;
@@ -96,7 +101,7 @@ impl Publisher {
             return;
         };
         self.status.attempted = index;
-        let offset = self.next_sample;
+        let offset = base_offset + self.next_sample;
         self.next_sample = block.samples.len();
         self.last_gap = block.gap;
         if self.status.disconnected {

@@ -5,7 +5,7 @@ use std::io;
 use serde_json::Value;
 use vantare_domain::{CarId, Quality, SessionId};
 
-use super::{LapBlock, LapSample, MAX_CHUNK_SAMPLES, MAX_LAP_SAMPLES, SeriesChunk};
+use super::{LapBlock, LapSample, MAX_CHUNK_SAMPLES, SeriesChunk};
 
 pub const MAX_CHUNK_BYTES: usize = 32 * 1024;
 
@@ -83,10 +83,7 @@ impl SeriesChunk {
             || self.lost_before >= self.index
             || self.block.epoch == 0
             || self.block.samples.len() > MAX_CHUNK_SAMPLES
-            || self
-                .offset
-                .checked_add(self.block.samples.len())
-                .is_none_or(|end| end > MAX_LAP_SAMPLES)
+            || self.offset.checked_add(self.block.samples.len()).is_none()
             || self.block.sealed_at == Some(0)
         {
             return Err(invalid());

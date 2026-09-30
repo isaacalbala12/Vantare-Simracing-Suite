@@ -182,7 +182,7 @@ fn delayed_lap_counter_never_assigns_next_lap_samples_to_the_previous_one() {
 }
 
 #[test]
-fn series_memory_is_bounded_and_saturation_is_visible_in_the_sealed_block() {
+fn diagnostic_windows_are_bounded_and_report_the_discarded_prefix() {
     let mut series = Series::default();
     let mut snapshot = vantare_domain::Snapshot {
         epoch: 1,
@@ -193,12 +193,56 @@ fn series_memory_is_bounded_and_saturation_is_visible_in_the_sealed_block() {
         snapshot.sequence += 1;
         series.observe(&snapshot);
     }
-    assert_eq!(series.active().unwrap().samples.len(), MAX_LAP_SAMPLES);
-    assert!(series.active().unwrap().gap);
+    assert_eq!(series.active().unwrap().samples.len(), 1);
+    assert_eq!(series.active_offset(), MAX_LAP_SAMPLES);
+    assert!(!series.active().unwrap().gap);
     snapshot.sequence += 1;
     snapshot.state.cars[0].laps = Quality::Reliable(1);
     series.observe(&snapshot);
-    assert_eq!(series.sealed().unwrap().samples.len(), MAX_LAP_SAMPLES);
-    assert!(series.sealed().unwrap().gap);
+    assert_eq!(series.sealed().unwrap().samples.len(), 1);
+    assert_eq!(series.sealed_offset(), MAX_LAP_SAMPLES);
+    assert!(!series.sealed().unwrap().gap);
+    assert_eq!(series.active_offset(), 0);
     assert_eq!(series.active().unwrap().samples.len(), 1);
+}
+
+#[test]
+fn a_ten_minute_lap_streams_every_sample_without_a_retention_gap() {
+    let mut series = Series::default();
+    let receiver = series.subscribe(2).unwrap();
+    let mut snapshot = vantare_domain::Snapshot {
+        epoch: 1,
+        state: lap_photo(1, 0, 0.0, 0.0).state,
+        ..vantare_domain::Snapshot::default()
+    };
+    let mut analysis = SeriesAnalysis::new(1).unwrap();
+    let mut count = 0;
+    for index in 0..60_000_u32 {
+        snapshot.sequence += 1;
+        snapshot.state.cars[0].lap_distance_m = Quality::Reliable(f64::from(index));
+        snapshot.state.cars[0].lap_elapsed_s = Quality::Reliable(f64::from(index) / 100.0);
+        series.observe(&snapshot);
+        assert!(series.active().unwrap().samples.len() <= MAX_LAP_SAMPLES);
+        while let Ok(chunk) = receiver.try_recv() {
+            assert_eq!(chunk.offset, count);
+            assert!(!chunk.block.gap);
+            count += chunk.block.samples.len();
+            analysis
+                .consume(&SeriesChunk::from_bytes(&chunk.to_bytes().unwrap()).unwrap())
+                .unwrap();
+        }
+    }
+    snapshot.sequence += 1;
+    snapshot.state.cars[0].laps = Quality::Reliable(1);
+    snapshot.state.cars[0].lap_distance_m = Quality::Reliable(0.0);
+    snapshot.state.cars[0].lap_elapsed_s = Quality::Reliable(0.0);
+    series.observe(&snapshot);
+    let seal = receiver.try_recv().unwrap();
+    assert_eq!(seal.offset, count);
+    count += seal.block.samples.len();
+    assert_eq!(count, 60_000);
+    analysis.consume(&seal).unwrap();
+    assert!(!analysis.recent()[0].gap);
+    assert_eq!(analysis.recent()[0].samples, 60_000);
+    assert_eq!(series.publication_status().unwrap().dropped, 0);
 }

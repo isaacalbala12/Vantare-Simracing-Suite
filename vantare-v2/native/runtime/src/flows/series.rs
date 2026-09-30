@@ -1,6 +1,6 @@
 use vantare_domain::{CarId, Quality, SessionId, Snapshot};
 
-/// Tope por vuelta; también se conserva únicamente el último bloque sellado.
+/// Ventana diagnóstica máxima; nunca limita el número de muestras del feed.
 pub const MAX_LAP_SAMPLES: usize = 18_000;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -76,6 +76,8 @@ fn signal(value: Quality<f64>) -> serde_json::Value {
 pub struct Series {
     pub(super) active: Option<LapBlock>,
     sealed: Option<LapBlock>,
+    active_offset: usize,
+    sealed_offset: usize,
     pub(super) publication: Option<super::series_feed::Publisher>,
     /// Distancia/tiempo ya se reiniciaron pero el contador aún no avanzó.
     waiting_for_lap: bool,
@@ -88,6 +90,15 @@ impl Series {
 
     pub fn sealed(&self) -> Option<&LapBlock> {
         self.sealed.as_ref()
+    }
+
+    /// Prefijo descartado de la ventana diagnóstica, no de la grabación.
+    pub fn active_offset(&self) -> usize {
+        self.active_offset
+    }
+
+    pub fn sealed_offset(&self) -> usize {
+        self.sealed_offset
     }
 
     pub(crate) fn observe(&mut self, snapshot: &Snapshot) {
@@ -109,6 +120,8 @@ impl Series {
             self.flush();
             self.active = None;
             self.sealed = None;
+            self.active_offset = 0;
+            self.sealed_offset = 0;
             self.waiting_for_lap = false;
             if let Some(publisher) = &mut self.publication {
                 publisher.reset_lap();
@@ -127,13 +140,15 @@ impl Series {
                     block.gap = true;
                 }
                 if let Some(publisher) = &mut self.publication {
-                    publisher.publish(&block);
+                    publisher.publish(&block, self.active_offset);
                     publisher.reset_lap();
                 }
                 if closed {
                     self.sealed = Some(block);
+                    self.sealed_offset = self.active_offset;
                 }
             }
+            self.active_offset = 0;
             // Un salto/retroceso descarta la vuelta abierta, no inventa cierres.
             self.waiting_for_lap = false;
         }
@@ -163,8 +178,18 @@ impl Series {
             return;
         }
         if block.samples.len() == MAX_LAP_SAMPLES {
-            block.gap = true;
-            return;
+            let Some(offset) = self.active_offset.checked_add(block.samples.len()) else {
+                block.gap = true;
+                return;
+            };
+            // Publicar el resto ANTES de reciclar. Vec::clear conserva capacidad:
+            // sin desplazar 18.000 muestras ni asignar otra ventana en el hot path.
+            if let Some(publisher) = &mut self.publication {
+                publisher.publish(block, self.active_offset);
+                publisher.rebase();
+            }
+            self.active_offset = offset;
+            block.samples.clear();
         }
         block.samples.push(LapSample {
             sequence: snapshot.sequence,
@@ -177,7 +202,7 @@ impl Series {
         if let Some(publisher) = &mut self.publication
             && publisher.ready(block)
         {
-            publisher.publish(block);
+            publisher.publish(block, self.active_offset);
         }
     }
 

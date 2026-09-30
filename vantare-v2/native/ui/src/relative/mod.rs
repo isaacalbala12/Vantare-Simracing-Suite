@@ -294,7 +294,12 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
         paint_rect(window, 0.0, y, SIZE.0, ROW, col(color, alpha * opacity));
     }
     if visual.y < 6.0 {
-        line(window, y + ROW - SCALE, tokens::INK, 0.1 * opacity);
+        let (color, alpha) = if player {
+            (0xffffff, 0.08)
+        } else {
+            (tokens::INK, 0.1)
+        };
+        line(window, y + ROW - SCALE, color, alpha * opacity);
     }
     let edges = EDGES.map(|x| x * SIZE.0 / 272.0);
     let position = ink(
@@ -373,8 +378,8 @@ fn paint_row(visual: &Visual, top: f32, language: Language, window: &mut Window,
                 0.0
             },
     );
-    // Línea de 21px centrada en la fila de 28px, escalada con el widget.
-    text::draw(window, cx, &value, edges[3], y + 19.5 * SCALE, &name);
+    // Baseline de la línea de 21px centrada en la fila CSS de 28px.
+    text::draw(window, cx, &value, edges[3], y + 20.0 * SCALE, &name);
     if let Some(value) = badge {
         let x = edges[4] - 10.0 * SCALE - badge_width;
         window.paint_quad(quad(

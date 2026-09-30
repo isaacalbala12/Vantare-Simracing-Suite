@@ -28,7 +28,8 @@ describe("HubToast", () => {
     expect(screen.getByTestId("hub-toast-message").textContent).toBe(
       "Creator · 3/4 apps listas, falló OBS",
     );
-    expect(screen.getByTestId("hub-toast-retry")).toBeTruthy();
+    expect(screen.getByTestId("hub-toast-retry-failed").textContent).toBe("Repetir pasos fallidos");
+    expect(screen.getByTestId("hub-toast-retry-all").textContent).toBe("Repetir todos los pasos");
   });
 
   it("emits retry event on retry button click", () => {
@@ -40,11 +41,17 @@ describe("HubToast", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("hub-toast-retry"));
+    fireEvent.click(screen.getByTestId("hub-toast-retry-failed"));
 
     expect(Events.Emit).toHaveBeenCalledWith(
       "launcher:profile:retry:failed",
       { id: "creator" },
     );
+  });
+
+  it("emits a distinct event to repeat every step", () => {
+    render(<HubToast variant="error" message="Falló" profileId="creator" />);
+    fireEvent.click(screen.getByTestId("hub-toast-retry-all"));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:profile:retry:all", { id: "creator" });
   });
 });

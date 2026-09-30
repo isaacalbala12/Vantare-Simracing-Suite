@@ -212,10 +212,10 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // not rewritten sixty times a minute; pausing or stepping parks it in the
   // query, which is what makes a single frame linkable.
   const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId, parsed.system, parsed.session) : undefined;
-  // Nothing plays until asked. Selecting an animation arms it at rest; a run
-  // plays that animation once, start to finish, and stops on its last frame.
-  const [playing, setPlaying] = useState(false);
-  const [loop, setLoop] = useState(false);
+  // Radar traffic starts moving when its scene link opens. Other scenes keep
+  // their explicit play action so their discrete events remain inspectable.
+  const [playing, setPlaying] = useState(initialQuery.sceneId === "radar-nearby-traffic");
+  const [loop, setLoop] = useState(initialQuery.sceneId === "radar-nearby-traffic");
   const [playbackRun, setPlaybackRun] = useState(0);
   const [authoringPlayback, setAuthoringPlayback] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(
@@ -245,7 +245,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const [elapsedScene, setElapsedScene] = useState(initialQuery.sceneId);
   if (elapsedScene !== parsed.sceneId) {
     setElapsedScene(parsed.sceneId);
-    setPlaying(false);
+    setPlaying(scene?.widget === "radar");
+    setLoop(scene?.widget === "radar");
     setAuthoringPlayback(false);
     setElapsedMs(scene ? (parsed.sceneFrame ?? 0) * scene.frameMs : 0);
   }
@@ -270,6 +271,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       }
       setRejected(undefined);
       const nextScene = next.sceneId ? getAnimationScene(next.sceneId, next.system, next.session) : undefined;
+      setPlaying(nextScene?.widget === "radar");
+      setLoop(nextScene?.widget === "radar");
       setElapsedScene(next.sceneId);
       setElapsedMs(nextScene ? (next.sceneFrame ?? 0) * nextScene.frameMs : 0);
       setQuery(next);
@@ -403,6 +406,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     setAuthoringPlayback(true);
     setPlaybackRun(run => run + 1);
     setElapsedMs(0);
+    if (sceneId === "radar-nearby-traffic") setLoop(true);
     update({ ...parsed, sceneId, sceneFrame: 0 });
     setPlaying(true);
   };
@@ -458,7 +462,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
             </div>
             <label className="overlay-workshop-transport__scrub">
               <span>
-                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s · datos a {updateHz} Hz, como en juego
+                Fase {currentKeyframe + 1} de {scene.frames.length} · {((loop ? scene.frameMs * scene.frames.length : sceneDurationMs(scene)) / 1000).toFixed(1)}s · datos a {updateHz} Hz, como en juego
               </span>
               <input
                 type="range"

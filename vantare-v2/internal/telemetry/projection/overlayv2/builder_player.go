@@ -114,6 +114,7 @@ func ProjectV2(
 		Delta:             BuildDelta(final, preferences),
 		Fuel:              BuildFuel(final, preferences),
 		Spotter:           BuildSpotter(final),
+		Radar:             BuildRadar(final),
 		Damage:            BuildDamage(final),
 		Weather:           BuildWeather(final),
 		Capabilities:      BuildCapabilities(final, source),

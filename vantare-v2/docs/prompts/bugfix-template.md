@@ -25,7 +25,7 @@ Reproduccion:
 
 Antes de editar:
 - Lee `AGENTS.md`.
-- Lee `docs/roadmap/plan.md`.
+- Lee la tarea Notion y el handoff vivo.
 - Revisa `git status --short`.
 - Localiza el test mas cercano.
 

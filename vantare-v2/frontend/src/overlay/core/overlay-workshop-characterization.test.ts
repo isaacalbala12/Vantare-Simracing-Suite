@@ -43,16 +43,16 @@ describe("Overlay Workshop characterization", () => {
     const crystal = designs.filter((design) => design.systemId === "vantare-crystal");
     const historical = historicalCrystalManifest.entries;
 
-    expect(ALL_WIDGET_TYPES).toHaveLength(21);
+    expect(ALL_WIDGET_TYPES).toHaveLength(22);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 19], ["vantare-iracing", 1],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 20], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(88);
+    expect(designs).toHaveLength(89);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
       "fastest-lap-functional-signature",
       "standings-functional-compact", "standings-functional-broadcast",
       "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature", "pedals-functional-overlay",
-      "track-weather-functional-signature", "track-map-functional-signature", "pedals-telemetry-functional-signature",
+      "track-weather-functional-signature", "track-map-functional-signature", "radar-functional-signature", "pedals-telemetry-functional-signature",
       "fuel-strategy-functional-signature", "car-damage-numbers-functional-signature", "input-telemetry-functional-signature",
       "racing-flags-functional-signature", "race-schedule-functional-signature",
       "broadcast-tower-functional-signature", "multiclass-relative-functional-signature", "car-damage-visual-functional-signature",

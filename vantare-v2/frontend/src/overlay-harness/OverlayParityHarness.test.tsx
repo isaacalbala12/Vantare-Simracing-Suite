@@ -178,7 +178,7 @@ describe("OverlayParityHarness", () => {
   });
 
   it("renders each default widget marker", () => {
-    expect(ALL_WIDGET_TYPES).toHaveLength(21);
+    expect(ALL_WIDGET_TYPES).toHaveLength(22);
     for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
       const parsed = parseHarnessQuery(`?widget=${widget}`);

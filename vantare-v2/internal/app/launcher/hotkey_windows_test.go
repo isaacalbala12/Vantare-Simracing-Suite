@@ -75,7 +75,7 @@ func TestParseHotkeyString(t *testing.T) {
 
 func TestHotkeyWhitelistRejectsReserved(t *testing.T) {
 	rejected := []string{
-		"ctrl+c", "Ctrl+C", "ctrl+v", "ctrl+x", "ctrl+z",
+		"ctrl+c", "Ctrl+C", "ctrl+v", "ctrl+x", "ctrl+z", "ctrl+a", "ctrl+p",
 		"alt+f4", "alt+tab", "win+l",
 	}
 	for _, combo := range rejected {

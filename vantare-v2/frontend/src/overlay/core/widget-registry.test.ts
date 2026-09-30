@@ -83,6 +83,7 @@ describe("widgetTypeRegistry", () => {
       "multiclass-relative",
       "head-to-head",
       "track-map",
+      "radar",
       "broadcast-tower",
       "track-weather",
       "car-damage-numbers",

@@ -24,7 +24,7 @@ Tipo de tarea:
 
 Antes de editar:
 1. Lee `AGENTS.md`.
-2. Lee `docs/roadmap/plan.md`.
+2. Lee la tarea Notion y el handoff vivo.
 3. Lee los docs especificos de esta tarea:
    - [LISTA]
 4. Ejecuta o informa:

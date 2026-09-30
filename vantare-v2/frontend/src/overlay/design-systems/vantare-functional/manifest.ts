@@ -22,6 +22,7 @@ import { RaceScheduleFunctional } from "./RaceScheduleFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
 import { StandingsFunctional } from "./StandingsFunctional";
 import { TrackMapFunctional } from "./TrackMapFunctional";
+import { RadarFunctional } from "./RadarFunctional";
 import { TrackWeatherFunctional } from "./TrackWeatherFunctional";
 import { FUNCTIONAL_DEFAULT_SETTINGS, FUNCTIONAL_INFO_METRICS, parseFunctionalSettings } from "./session-info-settings";
 
@@ -133,6 +134,15 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       },
       inspector: { appearance: [] },
       Renderer: TrackMapFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "radar",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings: () => ({}),
+      inspector: { appearance: [] },
+      Renderer: RadarFunctional as ComponentType<WidgetRendererProps>,
     },
     {
       widgetType: "fuel-strategy",

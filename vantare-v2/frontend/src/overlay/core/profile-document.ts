@@ -36,7 +36,8 @@ export type WidgetType =
   | "car-damage-visual"
   | "car-damage-numbers"
   | "engineer-radio"
-  | "track-map";
+  | "track-map"
+  | "radar";
 export type { DesignSystemId } from "./design-system-names";
 export type SessionLayoutType = "general" | "practice" | "qualifying" | "race" | "endurance";
 export type DisplayMode = "racing" | "edit" | "streaming";
@@ -63,6 +64,7 @@ export const ALL_WIDGET_TYPES = [
   "car-damage-numbers",
   "engineer-radio",
   "track-map",
+  "radar",
 ] as const satisfies readonly WidgetType[];
 export const WIDGET_TYPES = new Set<WidgetType>(ALL_WIDGET_TYPES);
 const SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([

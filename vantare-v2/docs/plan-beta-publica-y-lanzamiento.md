@@ -28,7 +28,7 @@ iterativas dentro de la beta y la fase de lanzamiento estable.
 | `docs/branch-channels.md` | Flujo `rama de issue -> nightly -> testers -> master` y acceso por rol |
 | `docs/release-checklists.md` | Checklists operativas de alpha, beta testers, beta pública y release |
 | `docs/release-beta-operations-runbook.md` | Procedimiento de release, tags, Discord y rollback |
-| `docs/roadmap/plan.md` | Estado público vigente del roadmap |
+| Roadmap visual en la app | Estado público que Owner decide publicar |
 | Notion: tarea y proyecto | Estado operativo y alcance aprobado de cada módulo |
 | `docs/vantare-program/project-map.md` + handoffs | Fronteras y evidencia técnica fechada; no sustituyen el estado de Notion |
 
@@ -283,8 +283,8 @@ Reglas:
 
 La Gate Review y sus hitos viven en Notion con enlaces a PR, CI, canal y release.
 El [contrato vigente](vantare-program/notion-transition.md) obliga a actualizar
-y releer Notion. Conservar una referencia GitHub `roadmap:required` únicamente
-para los validadores actuales, enlazada desde la tarea.
+y releer Notion. Las referencias GitHub sirven para código, PR y CI, y se
+enlazan desde la tarea cuando corresponde.
 
 Cada transición de fase se evalúa con una tarea Notion
 titulada `Gate review vX.Y.0.0`, cuyo cuerpo es la
@@ -496,11 +496,10 @@ Evidencia medible exigida:
 
 - Este documento es interno y puede cambiar con cada decisión de Isaac; se
   actualiza en el PR que introduce el cambio material.
-- La cara pública vive en `docs/roadmap/plan.md`: cada etapa nueva o cerrada
-  se refleja allí en el mismo PR, y `roadmap.json` se regenera con
-  `python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly`.
-- Lo entregado nunca se anuncia como plan: un hito cumplido pasa de `plan` a
-  `feature`/`fix`/`release` y su cuerpo se reescribe a lo que la app hace hoy.
+- La cara pública se edita visualmente en la app. Owner guarda un borrador y
+  publica explícitamente la versión que verán todos los usuarios.
+- Lo entregado se describe según lo que la app hace hoy; publicar el roadmap
+  no sustituye la verificación de código, canal o release.
 - El estado operativo vive en la tarea y el proyecto Notion. El handoff Git
   conserva evidencia técnica enlazada, no una segunda lista de ejecución.
 

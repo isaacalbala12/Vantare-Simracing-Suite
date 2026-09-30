@@ -112,14 +112,14 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 describe("deriveStudioCatalog", () => {
   it("keeps the complete catalog including Engineer radio and fastest lap", () => {
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES.filter((type) => type !== "pedals-telemetry-compact"));
-    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(20);
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(21);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions["input-telemetry"]).toEqual([
       "input-crystal-blade",
       "input-crystal-capsule",
       "input-crystal-dense",
     ]);
-    expect(deriveStudioCatalog()).toHaveLength(20);
+    expect(deriveStudioCatalog()).toHaveLength(21);
     expect(deriveStudioCatalog().map((entry) => entry.type)).toContain("input-telemetry");
   });
 

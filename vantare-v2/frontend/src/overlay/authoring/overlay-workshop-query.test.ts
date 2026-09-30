@@ -7,6 +7,13 @@ import {
 import { buildWorkshopWidget } from "./fixtures/authoring-v2-workshop-frame";
 
 describe("Overlay Workshop query", () => {
+  it("opens the radar in Efficiency when no system is specified", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=radar");
+    expect(parsed).not.toHaveProperty("error");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.system).toBe("vantare-functional");
+  });
+
   it("validates and round-trips the productive steering-wheel appearance", () => {
     const parsed = parseOverlayWorkshopQuery("?widget=pedals-telemetry&system=vantare-functional&steeringWheel=genesis-gmr-001");
     if ("error" in parsed) throw new Error(parsed.error);

@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -17,6 +18,32 @@ type spyEmitter struct {
 	events    []string
 	payload   map[string]ChainProgress
 	discovery []LauncherDiscoveryProgress
+}
+
+type blockingStepEmitter struct {
+	spyEmitter
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+type decisionEmitter struct {
+	spyEmitter
+	requests chan DecisionRequest
+}
+
+func (e *decisionEmitter) Emit(name string, data any) {
+	if name == "launcher:decision:required" {
+		e.requests <- data.(DecisionRequest)
+	}
+	e.spyEmitter.Emit(name, data)
+}
+
+func (e *blockingStepEmitter) Emit(name string, data any) {
+	if name == "launcher:chain:step" {
+		e.once.Do(func() { close(e.entered); <-e.release })
+	}
+	e.spyEmitter.Emit(name, data)
 }
 
 func (s *spyEmitter) Emit(name string, data any) {
@@ -82,7 +109,7 @@ func stubSlowExec(name string, args ...string) *exec.Cmd {
 
 func sampleApps() map[string]app.LauncherAppEntry {
 	return map[string]app.LauncherAppEntry{
-		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate", LaunchMethod: "steam-uri", SteamAppID: 2399420},
+		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`},
 		// ExecutablePath points at a binary that exists on Windows so fileExists
 		// passes; the actual spawn is replaced by stubChainExec (cmd /c exit 0).
 		"obs": {ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`},
@@ -149,6 +176,126 @@ func TestChainFailurePolicyControlsContinuation(t *testing.T) {
 	}
 }
 
+func TestAlreadyRunningReuseDoesNotLaunchOrClaimOwnership(t *testing.T) {
+	emit := &spyEmitter{}
+	launches := 0
+	runner := NewChainRunner(sampleBackend(), emit, func(string, ...string) *exec.Cmd {
+		launches++
+		return stubChainExec("")
+	})
+	runner.findRunning = func(context.Context, string) ([]ProcessInfo, error) {
+		return []ProcessInfo{{PID: 42, ExecutablePath: `C:\Windows\System32\cmd.exe`, CreationTime: 100, Alive: true}}, nil
+	}
+	profile := app.LaunchProfile{ID: "creator", Policy: &app.LaunchPolicy{AlreadyRunning: app.AlreadyRunningReuse}, Steps: []app.LaunchStep{{AppID: "obs"}}}
+	runner.RunChain(context.Background(), profile)
+	if launches != 0 {
+		t.Fatalf("reuse must not spawn another executable, got %d launches", launches)
+	}
+	step, ok := emit.lastPayload("launcher:chain:step")
+	if !ok || step.Status != "done" || step.Pid != 42 || step.ProcessPath != "" || step.CreationTime != 0 {
+		t.Fatalf("reuse must report existing PID without claiming ownership, got %+v", step)
+	}
+}
+
+func TestMissingAppHonorsFailureStop(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "missing", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
+		Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}},
+	}
+	runner.RunChain(context.Background(), profile)
+	if got := emit.count("launcher:chain:step"); got != 1 {
+		t.Fatalf("stop policy must stop after missing app; got %d step events", got)
+	}
+}
+
+func TestFailureAskWaitsForUserDecision(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "ask", Policy: &app.LaunchPolicy{Failure: app.FailureAsk},
+		Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan struct{})
+	go func() { runner.RunChain(ctx, profile); close(done) }()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-ctx.Done():
+		t.Fatal("missing app did not ask for a decision")
+	}
+	if emit.count("launcher:chain:step") != 1 {
+		t.Fatal("next app started before the decision")
+	}
+	if request.Kind != "failure" || request.ProfileID != "ask" || request.AppID != "unknown" {
+		t.Fatalf("wrong decision request: %+v", request)
+	}
+	if request.ExpiresAt <= time.Now().UnixMilli() {
+		t.Fatalf("decision deadline missing or expired: %+v", request)
+	}
+	if pending := runner.PendingDecisions(); len(pending) != 1 || pending[0].DecisionID != request.DecisionID {
+		t.Fatalf("late UI cannot recover the pending decision: %+v", pending)
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "restart"); !errors.Is(err, ErrInvalidDecision) {
+		t.Fatalf("unoffered action must be rejected, got %v", err)
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "continue"); err != nil {
+		t.Fatal(err)
+	}
+	if pending := runner.PendingDecisions(); len(pending) != 0 {
+		t.Fatalf("resolved decision remains pending: %+v", pending)
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatal("chain did not resume after continue")
+	}
+	if emit.count("launcher:chain:step") < 2 {
+		t.Fatal("continue decision did not visit next app")
+	}
+}
+
+func TestFailureAskCancellationExpiresDecision(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		runner.RunChain(ctx, app.LaunchProfile{ID: "ask", Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}}})
+		close(done)
+	}()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-time.After(time.Second):
+		cancel()
+		t.Fatal("chain did not request a decision")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("chain did not exit after cancellation")
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "continue"); !errors.Is(err, ErrDecisionNotFound) {
+		t.Fatalf("expired decision accepted an answer: %v", err)
+	}
+}
+
+func TestFailureAskDoesNotPromptAfterFinalStep(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	runner.RunChain(context.Background(), app.LaunchProfile{ID: "ask", Steps: []app.LaunchStep{{AppID: "unknown"}}})
+	select {
+	case request := <-emit.requests:
+		t.Fatalf("final failure asked to continue nonexistent steps: %+v", request)
+	default:
+	}
+}
+
 // sampleBackend returns a fakeProfilesBackend pre-loaded with sample apps and
 // an empty profile list.
 func sampleBackend() *fakeProfilesBackend {
@@ -204,7 +351,7 @@ func TestRunChainDoneEventHasSuccessFalseOnFailure(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)
@@ -296,7 +443,7 @@ func TestRunChainErrorOnMissingApp(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "ghost", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)
@@ -321,7 +468,7 @@ func TestRunChainErrorOnMissingExecutable(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}},
 	}
 
@@ -359,6 +506,72 @@ func TestCancelChain(t *testing.T) {
 	// A second cancel must report no active chain.
 	if runner.CancelChain("creator") {
 		t.Error("CancelChain should return false after cancellation")
+	}
+}
+
+func TestCancelledRunReportsStopped(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	runner.RunChain(ctx, app.LaunchProfile{ID: "creator", Steps: []app.LaunchStep{{AppID: "lmu"}}})
+	got, ok := emit.lastPayload("launcher:chain:done")
+	if !ok || got.Status != "stopped" || got.Success {
+		t.Fatalf("cancelled chain must report stopped, got %+v", got)
+	}
+}
+
+func TestRetryAllRepeatsEntireChainFromFirstStep(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator",
+		Policy: &app.LaunchPolicy{Retry: app.RetryAll, MaxRetries: 1, Failure: app.FailureContinue},
+		Steps:  []app.LaunchStep{{AppID: "missing-first"}, {AppID: "missing-second"}},
+	}
+	runner.RunChain(context.Background(), profile)
+	if got := emit.count("launcher:chain:step"); got != 4 {
+		t.Fatalf("retry all must run both steps twice, got %d step events", got)
+	}
+	if got := emit.count("launcher:chain:done"); got != 1 {
+		t.Fatalf("the complete retry must produce one final result, got %d", got)
+	}
+}
+
+func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	defer func() { close(emit.release); runner.CancelAll() }()
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	runner.StartChain(context.Background(), profile)
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		t.Fatal("first chain did not begin")
+	}
+	if !runner.CancelChain(profile.ID) {
+		t.Fatal("first chain was not cancellable")
+	}
+	runner.StartChain(context.Background(), profile)
+	if emit.count("launcher:chain:error") != 0 {
+		t.Fatal("duplicate launch must not overwrite the running chain with an error")
+	}
+}
+
+func TestFirstStepDelayCanBeCancelledBeforeLaunch(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator", Policy: &app.LaunchPolicy{FirstStepDelay: 1},
+		Steps: []app.LaunchStep{{AppID: "lmu"}},
+	}
+	if runner.runChained(ctx, profile) {
+		t.Fatal("first step launched before its configured delay")
+	}
+	if pending, ok := emit.lastPayload("launcher:chain:step"); !ok || pending.Status != "pending" || pending.DelaySeconds != 1 {
+		t.Fatalf("pending step must report planned delay, got %+v", pending)
 	}
 }
 
@@ -455,7 +668,7 @@ func TestChainRunnerCancellationStopsAtStepBoundary(t *testing.T) {
 	profile := app.LaunchProfile{
 		ID: "creator", Name: "Creador de Contenido",
 		Steps: []app.LaunchStep{
-			{AppID: "lmu", Delay: 0},  // immediate (steam-uri → instant done)
+			{AppID: "lmu", Delay: 0},  // immediate controlled executable
 			{AppID: "obs", Delay: 10}, // long delay → we cancel before it launches
 		},
 	}
@@ -507,21 +720,17 @@ func TestChainRunnerRejectsDoubleLaunch(t *testing.T) {
 	}
 
 	// First launch starts the chain (step 0 completes instantly, step 1 waits).
-	runner.StartChain(context.Background(), profile)
-	time.Sleep(20 * time.Millisecond) // let the goroutine register in active map
+	if err := runner.StartChain(context.Background(), profile); err != nil {
+		t.Fatal(err)
+	}
 
 	// Second launch for the same profileID must be rejected.
-	runner.StartChain(context.Background(), profile)
-
-	// Verify the error event was emitted.
-	if emit.count("launcher:chain:error") != 1 {
-		t.Errorf("expected 1 chain:error for double launch, got %d", emit.count("launcher:chain:error"))
+	if err := runner.StartChain(context.Background(), profile); !errors.Is(err, ErrProfileInProgress) {
+		t.Fatalf("second launch must report profile in progress, got %v", err)
 	}
-	// Check the error message.
-	if p, ok := emit.lastPayload("launcher:chain:error"); ok {
-		if p.Message != "perfil ya en curso" {
-			t.Errorf("expected message 'perfil ya en curso', got %q", p.Message)
-		}
+
+	if emit.count("launcher:chain:error") != 0 {
+		t.Fatal("duplicate launch must leave the first chain's progress intact")
 	}
 
 	// Cancel the first chain so the goroutine doesn't keep running.
@@ -531,7 +740,7 @@ func TestChainRunnerRejectsDoubleLaunch(t *testing.T) {
 func TestChainRunnerFailureDoesNotUpdateAvgButUpdatesCount(t *testing.T) {
 	backend := sampleBackend()
 	backend.profiles = []app.LaunchProfile{
-		{ID: "pro", Name: "Pro", Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}}},
+		{ID: "pro", Name: "Pro", Policy: &app.LaunchPolicy{Failure: app.FailureStop}, Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}}},
 	}
 	emit := &spyEmitter{}
 	runner := NewChainRunner(backend, emit, stubFailingExec)
@@ -568,7 +777,7 @@ func TestChainRunnerLivenessProbeCatchesCrash(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubFailingExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "crash", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)

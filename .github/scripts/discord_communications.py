@@ -28,11 +28,8 @@ REQUIRED_FRAGMENT_FIELDS = {
     "knownLimitations": list,
 }
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
-# Sources for the daily development digest, tried in order. The roadmap file is
-# the product's own statement of what is being built; open milestones are the
-# operational fallback now that the tracker is GitHub Issues.
-ROADMAP_JSON_PATH = "vantare-v2/docs/roadmap/roadmap.json"
-DEVELOPMENT_SOURCE_ROADMAP = "roadmap"
+# The development digest uses open GitHub milestones; the editable roadmap is
+# published separately by its owner from the desktop app.
 DEVELOPMENT_SOURCE_MILESTONES = "milestones"
 DEVELOPMENT_SOURCE_NONE = "none"
 # The embed's accent stripe sits right beside the card image, so it uses the
@@ -622,13 +619,6 @@ def render_build_html(version: str, notes: str, sha256: str, channel: str = "tes
 
 
 DEFAULT_DEVELOPMENT_UPDATE = "Desarrollo en curso. Consulta el repositorio para ver el estado operativo completo."
-# Anything a roadmap phase might call "being worked on right now". Matching is
-# case-insensitive and ignores separators, so "in_progress" and "In Progress"
-# both land here.
-ACTIVE_STATUS_WORDS = {
-    "inprogress", "progress", "started", "active", "doing", "wip", "ongoing",
-    "encurso", "enprogreso", "activo", "enmarcha", "current", "building",
-}
 
 
 def sanitize_public_text(value: str | None) -> str:
@@ -638,118 +628,6 @@ def sanitize_public_text(value: str | None) -> str:
     return " ".join(
         str(value).replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere").split()
     )
-
-
-# The digest speaks Spanish, so a localized field is read in that order.
-DIGEST_LOCALES = ("es", "en", "pt", "it")
-
-
-def _localized_str(value: Any) -> str:
-    """Flatten a plain string or a {es,en,pt,it} block into one string.
-
-    roadmap.json stores every human-facing field as a locale map, so a reader
-    that only accepted `str` would silently drop every phase.
-    """
-    if isinstance(value, str):
-        return value.strip()
-    if isinstance(value, dict):
-        for locale in DIGEST_LOCALES:
-            candidate = value.get(locale)
-            if isinstance(candidate, str) and candidate.strip():
-                return candidate.strip()
-        for candidate in value.values():
-            if isinstance(candidate, str) and candidate.strip():
-                return candidate.strip()
-    return ""
-
-
-def _first_str(source: dict[str, Any], keys: Sequence[str]) -> str:
-    for key in keys:
-        text = _localized_str(source.get(key))
-        if text:
-            return text
-    return ""
-
-
-def _coerce_progress(value: Any) -> float:
-    """Normalize the many shapes a progress figure arrives in to a 0..1 float."""
-    if isinstance(value, dict):
-        percent = value.get("percent")
-        if isinstance(percent, (int, float)):
-            return max(0.0, min(1.0, float(percent) / 100))
-        done, total = value.get("done"), value.get("total")
-        if isinstance(done, (int, float)) and isinstance(total, (int, float)) and total:
-            return max(0.0, min(1.0, float(done) / float(total)))
-        return 0.0
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return 0.0
-    number = float(value)
-    if number > 1:  # percentages arrive as 0..100
-        number /= 100
-    return max(0.0, min(1.0, number))
-
-
-def _is_active_status(status: Any) -> bool | None:
-    """True/False when the entry states a status, None when it states none."""
-    if isinstance(status, dict):
-        status = status.get("type") or status.get("name") or status.get("id")
-    if not isinstance(status, str) or not status.strip():
-        return None
-    normalized = re.sub(r"[^a-z]", "", status.casefold())
-    return any(word in normalized for word in ACTIVE_STATUS_WORDS)
-
-
-def _roadmap_entries(document: Any) -> list[dict[str, Any]]:
-    """Pull the list of phases out of whichever shape the roadmap file uses."""
-    if isinstance(document, list):
-        candidates: Any = document
-    elif isinstance(document, dict):
-        candidates = []
-        for key in ("phases", "projects", "items", "entries", "roadmap", "milestones"):
-            value = document.get(key)
-            if isinstance(value, list) and value:
-                candidates = value
-                break
-    else:
-        return []
-    return [entry for entry in candidates if isinstance(entry, dict)]
-
-
-def load_roadmap_projects(path: pathlib.Path) -> list[dict[str, Any]]:
-    """Read the roadmap snapshot, tolerating an absent or unexpected schema.
-
-    ISA-378 owns that file's shape, so anything unreadable here is treated as
-    "no roadmap data" and the caller falls through to the next source instead
-    of failing the daily announcement.
-    """
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return []
-    selected = []
-    for entry in _roadmap_entries(document):
-        if _is_active_status(entry.get("status") or entry.get("state")) is False:
-            continue
-        name = _first_str(entry, ("name", "title", "label", "phase"))
-        if not name:
-            continue
-        # roadmap.json numbers its phases separately from their title, and the
-        # digest reads better carrying both ("Fase 2 · Pulido beta v0.1.x").
-        prefix = _first_str(entry, ("phaseLabel",))
-        if prefix and not name.casefold().startswith(prefix.casefold()):
-            name = f"{prefix} · {name}"
-        selected.append({
-            "name": sanitize_public_text(name),
-            "url": _first_str(entry, ("url", "link", "href")),
-            "progress": _coerce_progress(
-                entry.get("progress", entry.get("percent", entry.get("completion")))
-            ),
-            "update": sanitize_public_text(
-                _first_str(entry, ("update", "summary", "description", "note", "detail"))
-            ) or DEFAULT_DEVELOPMENT_UPDATE,
-            "updatedAt": _first_str(entry, ("updatedAt", "updated_at", "date")),
-        })
-    return selected
 
 
 def milestones_to_projects(milestones: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -967,15 +845,11 @@ def fetch_open_milestones(
 
 def resolve_development_projects(
     *,
-    roadmap_path: pathlib.Path | None = None,
     token: str = "",
     repository: str = "",
     opener: Callable[..., Any] = urllib.request.urlopen,
 ) -> tuple[list[dict[str, Any]], str]:
-    """Pick the digest's source: roadmap first, open milestones next, else none."""
-    roadmap = load_roadmap_projects(roadmap_path or pathlib.Path(ROADMAP_JSON_PATH))
-    if roadmap:
-        return roadmap, DEVELOPMENT_SOURCE_ROADMAP
+    """Pick open milestones or an honest empty state for the daily digest."""
     try:
         milestones = milestones_to_projects(fetch_open_milestones(token, repository, opener=opener))
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as error:

@@ -11,7 +11,8 @@ func TestDeriveAvailability(t *testing.T) {
 		{"catalog only", DetectionEvidence{Catalogued: true}, Availability{Catalogued: true}},
 		{"registry without executable", DetectionEvidence{Catalogued: true, Found: true}, Availability{Catalogued: true, Found: true}},
 		{"valid executable", DetectionEvidence{Catalogued: true, Found: true, ExecutableExists: true}, Availability{Catalogued: true, Found: true, Installed: true, Launchable: true}},
-		{"steam installed", DetectionEvidence{Catalogued: true, Found: true, SteamInstalled: true, SteamAppID: 2399420}, Availability{Catalogued: true, Found: true, Installed: true, Launchable: true}},
+		{"steam installed without game path", DetectionEvidence{Catalogued: true, Found: true, SteamInstalled: true, SteamAppID: 2399420}, Availability{Catalogued: true, Found: true, Installed: true}},
+		{"steam installed with game path", DetectionEvidence{Catalogued: true, Found: true, SteamInstalled: true, SteamAppID: 2399420, ExecutableExists: true}, Availability{Catalogued: true, Found: true, Installed: true, Launchable: true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

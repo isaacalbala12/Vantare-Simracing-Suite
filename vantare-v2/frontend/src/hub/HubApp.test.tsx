@@ -102,20 +102,6 @@ vi.mock('./onboarding/BetaWelcome', () => ({
   ),
 }));
 
-vi.mock('./roadmap/projects-data', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./roadmap/projects-data')>();
-  return {
-    ...actual,
-    fetchRoadmapProjectsDataset: vi.fn().mockResolvedValue({
-      dataset: actual.ROADMAP_PROJECTS_FALLBACK,
-      status: 'embedded-fallback',
-      state: 'embedded-fallback',
-      provenance: 'embedded',
-      reason: 'unavailable',
-    }),
-  };
-});
-
 import { HubApp } from './HubApp';
 
 function setLicense(result: unknown, loading = false) {

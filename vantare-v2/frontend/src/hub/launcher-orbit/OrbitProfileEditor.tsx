@@ -12,7 +12,7 @@ import {
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import { parseKeyEvent } from "../settings/hotkey-capture";
-import type { LaunchProfile, LauncherAppEntry } from "../launcher/launcher-state";
+import type { LaunchPolicy, LaunchProfile, LauncherAppEntry } from "../launcher/launcher-state";
 import {
   hasDuplicateSteps,
   isHotkeyAllowed,
@@ -21,6 +21,7 @@ import {
 import { hotkeyKeys } from "./launcher-orbit-model";
 import { registerHubSuspendBlocker } from "../hub-suspend-guard";
 import "../../styles/orbit-launcher.css";
+import "../../styles/orbit-launcher-policy.css";
 
 export type OrbitProfileEditorProps = {
   profile: LaunchProfile;
@@ -30,14 +31,21 @@ export type OrbitProfileEditorProps = {
   apps: LauncherAppEntry[];
 };
 
+const defaultPolicy: LaunchPolicy = {
+  alreadyRunning: "ask",
+  failure: "ask",
+  cancel: "ask",
+  exit: "ask",
+  retry: "ask",
+  maxRetries: 0,
+};
+
 /**
  * Editor de perfil de lanzamiento en Orbit.
  *
- * Es el mismo formulario y **la misma lógica** que el `ProfileEditor` legado
- * (borrador local, reglas de validación de `launcher-state`, un único
- * `onSave(draft)`): lo que cambia es el envoltorio, que pasa de Tailwind suelto
- * al `Drawer` del kit y a `Field`/`Input`/`Select`/`Textarea`/`Toggle`. No se
- * toca el contrato ni se añade ninguna regla nueva.
+ * Conserva el borrador local, las reglas de validación de `launcher-state` y
+ * un único `onSave(draft)`. Los controles del kit editan el contrato real de
+ * políticas sin mantener otro estado para cada elección.
  */
 export function OrbitProfileEditor({
   profile,
@@ -61,10 +69,16 @@ export function OrbitProfileEditor({
 
   const advanced = draft.advanced === true;
   const launchable = useMemo(() => isProfileLaunchable(draft, apps), [draft, apps]);
-  const invalidSteps = draft.steps.some((step) => !step.appId || step.delay < 0);
+  const validDelay = (seconds: number) => Number.isSafeInteger(seconds) && seconds >= 0;
+  const invalidSteps = draft.steps.some((step) => !step.appId || !validDelay(step.delay)) ||
+    !validDelay(draft.policy?.firstStepDelay ?? 0) ||
+    !Number.isSafeInteger(draft.policy?.maxRetries ?? 0) ||
+    (draft.policy?.maxRetries ?? 0) < 0 || (draft.policy?.maxRetries ?? 0) > 3;
   const duplicateSteps = hasDuplicateSteps(draft);
   const hotkeyInvalid = Boolean(draft.hotkey) && !isHotkeyAllowed(draft.hotkey as string);
   const canSave =
+    draft.name.trim().length > 0 &&
+    !hotkeyInvalid &&
     !invalidSteps &&
     (draft.steps.length === 0 || (launchable && (advanced || !duplicateSteps)));
 
@@ -80,7 +94,7 @@ export function OrbitProfileEditor({
         return;
       }
       if (!combo) return;
-      setDraft((current) => ({ ...current, hotkey: combo }));
+      setDraft((current) => ({ ...current, hotkey: combo.split("+").map((part) => part === "meta" ? "win" : part).join("+") }));
       setRecording(false);
     };
     window.addEventListener("keydown", onKeyDown, true);
@@ -97,6 +111,14 @@ export function OrbitProfileEditor({
 
   const setSteps = (steps: LaunchProfile["steps"]) =>
     setDraft((current) => ({ ...current, steps }));
+
+  const setPolicy = <K extends keyof LaunchPolicy>(key: K, value: LaunchPolicy[K]) =>
+    setDraft((current) => ({
+      ...current,
+      policy: { ...defaultPolicy, ...current.policy, [key]: value },
+    }));
+
+  const policy = draft.policy ?? defaultPolicy;
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -195,13 +217,19 @@ export function OrbitProfileEditor({
               data-testid={`orbit-editor-step-delay-${index}`}
               min={0}
               numeric
+              step={1}
               onChange={(event) => {
+                const delay = Number(event.target.value) || 0;
+                if (index === 0) {
+                  setPolicy("firstStepDelay", delay);
+                  return;
+                }
                 const next = [...draft.steps];
-                next[index] = { ...step, delay: Number(event.target.value) || 0 };
+                next[index] = { ...step, delay };
                 setSteps(next);
               }}
               type="number"
-              value={step.delay}
+              value={index === 0 ? (draft.policy?.firstStepDelay ?? 0) : step.delay}
             />
             {advanced ? (
               <Input
@@ -285,6 +313,102 @@ export function OrbitProfileEditor({
           </p>
         ) : null}
       </section>
+
+      {advanced ? (
+        <section className="orbit-profile-editor__policies" aria-label={t("launcher.editor.policies")}>
+          <span className="orbit-eyebrow">{t("launcher.editor.policies")}</span>
+          <div className="orbit-profile-editor__policy-grid">
+            <Field htmlFor="orbit-profile-already-running" label={t("launcher.editor.alreadyRunning")}>
+              <Select
+                id="orbit-profile-already-running"
+                label={t("launcher.editor.alreadyRunning")}
+                onChange={(value) => setPolicy("alreadyRunning", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "reuse", label: t("launcher.editor.reuse") },
+                  { value: "restart", label: t("launcher.editor.restart") },
+                ]}
+                value={policy.alreadyRunning}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-failure" label={t("launcher.editor.failure")}>
+              <Select
+                id="orbit-profile-failure"
+                label={t("launcher.editor.failure")}
+                onChange={(value) => setPolicy("failure", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "stop", label: t("launcher.editor.stop") },
+                  { value: "continue", label: t("launcher.editor.continue") },
+                ]}
+                value={policy.failure}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-cancel" label={t("launcher.editor.cancelPolicy")}>
+              <Select
+                id="orbit-profile-cancel"
+                label={t("launcher.editor.cancelPolicy")}
+                onChange={(value) => setPolicy("cancel", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "leave", label: t("launcher.editor.leave") },
+                  { value: "close-started", label: t("launcher.editor.closeStarted") },
+                ]}
+                value={policy.cancel}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-exit" label={t("launcher.editor.exitPolicy")}>
+              <Select
+                id="orbit-profile-exit"
+                label={t("launcher.editor.exitPolicy")}
+                onChange={(value) => setPolicy("exit", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "leave", label: t("launcher.editor.leave") },
+                  { value: "close-started", label: t("launcher.editor.closeStarted") },
+                ]}
+                value={policy.exit}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-retry" label={t("launcher.editor.retryPolicy")}>
+              <Select
+                id="orbit-profile-retry"
+                label={t("launcher.editor.retryPolicy")}
+                onChange={(value) => setDraft((current) => ({
+                  ...current,
+                  policy: {
+                    ...defaultPolicy,
+                    ...current.policy,
+                    retry: value as LaunchPolicy["retry"],
+                    maxRetries: value === "ask" ? 0 : Math.max(1, current.policy?.maxRetries ?? 0),
+                  },
+                }))}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "failed", label: t("launcher.editor.retryFailed") },
+                  { value: "all", label: t("launcher.editor.retryAll") },
+                ]}
+                value={policy.retry}
+              />
+            </Field>
+            {policy.retry !== "ask" ? (
+              <Field htmlFor="orbit-profile-max-retries" label={t("launcher.editor.maxRetries")}>
+                <Input
+                  aria-label={t("launcher.editor.maxRetries")}
+                  id="orbit-profile-max-retries"
+                  max={3}
+                  min={1}
+                  numeric
+                  onChange={(event) => setPolicy("maxRetries", Number(event.target.value))}
+                  step={1}
+                  type="number"
+                  value={policy.maxRetries}
+                />
+              </Field>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <KeycapRow
         className="orbit-profile-editor__hotkey"

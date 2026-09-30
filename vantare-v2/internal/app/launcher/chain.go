@@ -20,11 +20,26 @@ import (
 // executable, and records telemetry (RecordProfileAttempt always,
 // RecordProfileSuccess only on full success).
 type ChainRunner struct {
-	backend ProfilesBackend // reads apps + profiles; used for telemetry writes
-	exec    execLauncher    // injectable for tests
-	emit    Emitter
-	mu      sync.Mutex
-	active  map[string]context.CancelFunc // profileID -> cancel func
+	backend             ProfilesBackend // reads apps + profiles; used for telemetry writes
+	exec                execLauncher    // injectable for tests
+	emit                Emitter
+	findRunning         func(context.Context, string) ([]ProcessInfo, error)
+	ownedProcess        func(string, int) (ProcessIdentity, bool)
+	closeOwned          func(context.Context, string, ProcessIdentity) error
+	steamReadyTimeout   time.Duration
+	processPollInterval time.Duration
+	mu                  sync.Mutex
+	stopping            bool
+	shutdown            chan struct{}
+	active              map[string]*activeChain // profileID -> running chain
+	nextDecision        uint64
+	pendingDecisions    map[string]pendingDecision
+}
+
+type activeChain struct {
+	cancelled bool
+	cancel    context.CancelFunc
+	done      chan struct{}
 }
 
 // NewChainRunner builds a ChainRunner. execFn defaults to defaultExecLauncher
@@ -34,24 +49,31 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 		execFn = defaultExecLauncher
 	}
 	return &ChainRunner{
-		backend: backend,
-		exec:    execFn,
-		emit:    emit,
-		active:  map[string]context.CancelFunc{},
+		backend:             backend,
+		exec:                execFn,
+		emit:                emit,
+		active:              map[string]*activeChain{},
+		shutdown:            make(chan struct{}),
+		pendingDecisions:    map[string]pendingDecision{},
+		steamReadyTimeout:   2 * time.Minute,
+		processPollInterval: 500 * time.Millisecond,
 	}
 }
 
 // ChainProgress is the payload emitted on chain progress events.
 type ChainProgress struct {
-	ProfileID  string `json:"profileId"`
-	StepIndex  int    `json:"stepIndex"`
-	AppID      string `json:"appId"`
-	Status     string `json:"status"`               // "pending" | "launching" | "done" | "failed"
-	Success    bool   `json:"success"`              // only meaningful for chain:done
-	StartedAt  int64  `json:"startedAt,omitempty"`  // epoch ms
-	FinishedAt int64  `json:"finishedAt,omitempty"` // epoch ms
-	Pid        int    `json:"pid,omitempty"`
-	Message    string `json:"message,omitempty"`
+	ProfileID    string `json:"profileId"`
+	StepIndex    int    `json:"stepIndex"`
+	AppID        string `json:"appId"`
+	Status       string `json:"status"`               // "pending" | "launching" | "done" | "failed"
+	Success      bool   `json:"success"`              // only meaningful for chain:done
+	StartedAt    int64  `json:"startedAt,omitempty"`  // epoch ms
+	FinishedAt   int64  `json:"finishedAt,omitempty"` // epoch ms
+	Pid          int    `json:"pid,omitempty"`
+	ProcessPath  string `json:"processPath,omitempty"`
+	CreationTime uint64 `json:"creationTime,omitempty"`
+	Message      string `json:"message,omitempty"`
+	DelaySeconds int    `json:"delaySeconds,omitempty"`
 }
 
 // chainStepResult carries the outcome of a single step.
@@ -59,6 +81,9 @@ type chainStepResult struct {
 	success  bool
 	exitCode int
 	pid      int
+	path     string
+	created  uint64
+	message  string
 }
 
 // livenessResult carries the outcome of the liveness probe.
@@ -69,23 +94,23 @@ type livenessResult struct {
 }
 
 // StartChain creates a derived context and runs RunChain on a goroutine.
-// It rejects a second call for the same profileID by emitting
-// launcher:chain:error with message "perfil ya en curso".
+// It rejects a second call for the same profileID without changing the
+// running chain's progress.
 // When the chain finishes it records telemetry: RecordProfileAttempt always,
 // RecordProfileSuccess only when the chain succeeds.
-func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfile) {
+func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfile) error {
 	r.mu.Lock()
+	if r.stopping {
+		r.mu.Unlock()
+		return ErrLauncherStopping
+	}
 	if _, exists := r.active[profile.ID]; exists {
 		r.mu.Unlock()
-		r.emit.Emit("launcher:chain:error", ChainProgress{
-			ProfileID: profile.ID,
-			Status:    "failed",
-			Message:   "perfil ya en curso",
-		})
-		return
+		return ErrProfileInProgress
 	}
 	ctx, cancel := context.WithCancel(parent)
-	r.active[profile.ID] = cancel
+	chain := &activeChain{cancel: cancel, done: make(chan struct{})}
+	r.active[profile.ID] = chain
 	r.mu.Unlock()
 
 	go func() {
@@ -93,32 +118,67 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 			r.mu.Lock()
 			delete(r.active, profile.ID)
 			r.mu.Unlock()
+			cancel()
+			close(chain.done)
 		}()
 		r.RunChain(ctx, profile)
 	}()
+	return nil
 }
 
 // CancelChain cancels the active chain for a profile. Returns true if a chain
 // was cancelled.
 func (r *ChainRunner) CancelChain(profileID string) bool {
+	_, cancelled := r.CancelChainAndWait(profileID)
+	return cancelled
+}
+
+// CancelChainAndWait returns a signal that closes after all step events have
+// been recorded, so cleanup can safely inspect the processes this run started.
+func (r *ChainRunner) CancelChainAndWait(profileID string) (<-chan struct{}, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if cancel, ok := r.active[profileID]; ok {
-		cancel()
-		delete(r.active, profileID)
-		return true
+	if chain, ok := r.active[profileID]; ok && !chain.cancelled {
+		chain.cancelled = true
+		chain.cancel()
+		return chain.done, true
 	}
-	return false
+	return nil, false
 }
 
 // CancelAll cancels every active chain. Used by the Wails shutdown hook.
 func (r *ChainRunner) CancelAll() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, cancel := range r.active {
-		cancel()
+	for _, chain := range r.active {
+		chain.cancelled = true
+		chain.cancel()
 	}
-	r.active = map[string]context.CancelFunc{}
+}
+
+// CancelAllAndWait ensures every runner has finished recording its last step
+// before exit policy inspects the processes launched in this session.
+func (r *ChainRunner) CancelAllAndWait(ctx context.Context) error {
+	r.mu.Lock()
+	if !r.stopping {
+		r.stopping = true
+		close(r.shutdown)
+	}
+	done := make([]<-chan struct{}, 0, len(r.active))
+	for _, chain := range r.active {
+		chain.cancelled = true
+		chain.cancel()
+		done = append(done, chain.done)
+	}
+	r.mu.Unlock()
+	for _, finished := range done {
+		select {
+		case <-finished:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }
 
 // RunChain executes the profile synchronously and emits progress events.
@@ -126,7 +186,17 @@ func (r *ChainRunner) CancelAll() {
 // RecordProfileSuccess only on full success) and emits chain:done.
 func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 	chainStart := time.Now()
-	success := r.runChained(ctx, profile)
+	policy := app.NormalizeLaunchPolicy(profile.Policy)
+	success := false
+	for attempt := 0; ; attempt++ {
+		success = r.runChained(ctx, profile)
+		if success || ctx.Err() != nil || policy.Retry != app.RetryAll || attempt >= FullRetryAttempts(policy.MaxRetries) {
+			break
+		}
+	}
+	if ctx.Err() != nil {
+		success = false
+	}
 	durationMs := time.Since(chainStart).Milliseconds()
 
 	if err := RecordProfileAttempt(r.backend, profile.ID); err != nil {
@@ -138,9 +208,13 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 		}
 	}
 
+	status := "done"
+	if ctx.Err() != nil {
+		status = "stopped"
+	}
 	r.emit.Emit("launcher:chain:done", ChainProgress{
 		ProfileID: profile.ID,
-		Status:    "done",
+		Status:    status,
 		Success:   success,
 	})
 }
@@ -175,22 +249,31 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				Message:    fmt.Sprintf("app %q not found", step.AppID),
 			})
 			allSucceeded = false
-			continue // continue to next step, don't stop
+			if i == len(profile.Steps)-1 {
+				return false
+			}
+			if !r.continueAfterFailure(ctx, profile, step.AppID, "app not found", policy.Failure) {
+				return false
+			}
+			continue
 		}
 
-		// Emit pending before the delay.
+		// The first step has its own explicit delay; later steps use their step delay.
+		delay := step.Delay
+		if i == 0 {
+			delay = policy.FirstStepDelay
+		}
+		// Emit pending before the delay so the UI can keep the planned wait alive.
 		now := time.Now()
 		r.emit.Emit("launcher:chain:step", ChainProgress{
 			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
-			Status: "pending", StartedAt: now.UnixMilli(),
+			Status: "pending", StartedAt: now.UnixMilli(), DelaySeconds: delay,
 		})
-
-		// Delay before the step (skip for the first step even if its delay > 0).
-		if step.Delay > 0 && i > 0 {
+		if delay > 0 {
 			select {
 			case <-ctx.Done():
 				return false
-			case <-time.After(time.Duration(step.Delay) * time.Second):
+			case <-time.After(time.Duration(delay) * time.Second):
 			}
 		}
 
@@ -200,18 +283,23 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 
 		// Launch the app.
 		startedAt := time.Now()
-		result := chainStepResult{}
-		attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
-		for attempt := 0; ; attempt++ {
-			result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
-			if result.success || attempt >= attempts || ctx.Err() != nil {
-				break
+		result, handled, abort := r.resolveRunningStep(ctx, profile, entry)
+		if abort {
+			return false
+		}
+		if !handled {
+			attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
+			for attempt := 0; ; attempt++ {
+				result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+				if result.success || attempt >= attempts || ctx.Err() != nil {
+					break
+				}
 			}
 		}
 
 		finishedAt := time.Now()
 		stepStatus := "done"
-		msg := ""
+		msg := result.message
 		if !result.success {
 			stepStatus = "failed"
 			if result.exitCode != 0 {
@@ -221,26 +309,30 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{
-			ProfileID:  profile.ID,
-			StepIndex:  i,
-			AppID:      step.AppID,
-			Status:     stepStatus,
-			StartedAt:  startedAt.UnixMilli(),
-			FinishedAt: finishedAt.UnixMilli(),
-			Pid:        result.pid,
-			Message:    msg,
+			ProfileID:    profile.ID,
+			StepIndex:    i,
+			AppID:        step.AppID,
+			Status:       stepStatus,
+			StartedAt:    startedAt.UnixMilli(),
+			FinishedAt:   finishedAt.UnixMilli(),
+			Pid:          result.pid,
+			ProcessPath:  result.path,
+			CreationTime: result.created,
+			Message:      msg,
 		})
-		if !result.success && !ContinueAfterFailure(policy.Failure, false) {
-			return false
+		if !result.success {
+			if i == len(profile.Steps)-1 || !r.continueAfterFailure(ctx, profile, step.AppID, msg, policy.Failure) {
+				return false
+			}
 		}
 	}
 
 	return allSucceeded
 }
 
-// launchAndProbe starts the app and emits the "launching" event. For
-// steam-uri it returns success immediately without probing. For executable
-// it runs a liveness probe that waits up to 3s for the process to exit.
+// launchAndProbe starts the app and emits the "launching" event. Steam URI
+// launches wait for the observed game process; executable launches use a
+// short liveness probe after process creation.
 func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppEntry, i int, step app.LaunchStep, profile app.LaunchProfile, startedAt time.Time) chainStepResult {
 	if runtime.GOOS != "windows" {
 		return chainStepResult{success: false}
@@ -248,6 +340,9 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 
 	switch entry.LaunchMethod {
 	case "steam-uri":
+		if entry.ExecutablePath == "" || !fileExists(entry.ExecutablePath) || r.findRunning == nil {
+			return chainStepResult{message: "no se encontró el ejecutable del juego para verificar Steam"}
+		}
 		uri := fmt.Sprintf("steam://run/%d", entry.SteamAppID)
 		cmd := r.exec("rundll32.exe", "url.dll,FileProtocolHandler", uri)
 		if cmd == nil {
@@ -256,16 +351,21 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if err := cmd.Start(); err != nil {
 			return chainStepResult{success: false}
 		}
-		pid := 0
 		if cmd.Process != nil {
-			pid = cmd.Process.Pid
+			if err := cmd.Process.Release(); err != nil {
+				return chainStepResult{message: fmt.Sprintf("no se pudo liberar el enlace de Steam: %v", err)}
+			}
 		}
 		r.emit.Emit("launcher:chain:step", ChainProgress{
 			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
-			Status: "launching", StartedAt: startedAt.UnixMilli(), Pid: pid,
+			Status: "launching", StartedAt: startedAt.UnixMilli(),
+			DelaySeconds: int(r.steamReadyTimeout.Seconds()),
 		})
-		go func(c *exec.Cmd) { _ = c.Wait() }(cmd) // detach
-		return chainStepResult{success: true, pid: pid}
+		info, err := r.waitForSteamReady(ctx, entry.ExecutablePath)
+		if err != nil {
+			return chainStepResult{message: err.Error()}
+		}
+		return chainStepResult{success: true, pid: info.PID}
 
 	case "executable":
 		if !fileExists(entry.ExecutablePath) {
@@ -293,9 +393,15 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if cmd.Process != nil {
 			pid = cmd.Process.Pid
 		}
+		identity := ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
+		info, observed := DefaultProcessInspector().Find(ctx, identity)
+		if !observed || !ProcessIsReady(identity, info) {
+			info = ProcessInfo{}
+		}
 		r.emit.Emit("launcher:chain:step", ChainProgress{
 			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
 			Status: "launching", StartedAt: startedAt.UnixMilli(), Pid: pid,
+			ProcessPath: info.ExecutablePath, CreationTime: info.CreationTime,
 		})
 
 		// Liveness probe: wait up to 3s for the process to exit.
@@ -306,7 +412,7 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if !res.timedOut && res.exitCode != 0 {
 			return chainStepResult{success: false, exitCode: res.exitCode, pid: pid}
 		}
-		return chainStepResult{success: true, pid: pid}
+		return chainStepResult{success: true, pid: pid, path: info.ExecutablePath, created: info.CreationTime}
 
 	default:
 		return chainStepResult{success: false}

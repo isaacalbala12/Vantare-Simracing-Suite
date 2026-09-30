@@ -31,6 +31,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "car-damage-numbers": "overlays.advanced",
   "engineer-radio": "engineer.ai",
   "track-map": "overlays.advanced",
+  radar: "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {

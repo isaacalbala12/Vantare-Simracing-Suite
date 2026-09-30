@@ -4,9 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const cdpHelper = await readFile(new URL("./huella-cdp.mjs", import.meta.url), "utf8");
 const bench = await readFile(new URL("./huella.ps1", import.meta.url), "utf8");
+const comun = await readFile(new URL("./huella-comun.ps1", import.meta.url), "utf8");
 const buildMeasurement = await readFile(new URL("./build-measurement.ps1", import.meta.url), "utf8");
 
 test('inicio y fin base reciben el mismo escenario del juego', () => {
@@ -19,7 +21,7 @@ test('inicio y fin base reciben el mismo escenario del juego', () => {
 test('el contexto LMU exporta decimales invariantes en Windows español', {skip: process.platform !== 'win32'}, () => {
   const start = bench.indexOf('            $gameRows.Add(');
   const end = bench.indexOf('            })', start) + '            })'.length;
-  const formatter = bench.slice(bench.indexOf('function Format-Invariant'), bench.indexOf('function Update-ProcessClassification'));
+  const formatter = comun.slice(comun.indexOf('function Format-Invariant'), comun.indexOf('function Get-GpuTotals'));
   execFileSync('pwsh', ['-NoProfile', '-Command', `
     [Threading.Thread]::CurrentThread.CurrentCulture = 'es-ES'
     ${formatter}
@@ -62,7 +64,7 @@ test("HUD visible exige evidencia nativa durante toda la captura, no sólo DOM",
 });
 
 test("GPU conserva PID, adaptador y motor separados; ausencia no inventa muestras", {skip: process.platform !== "win32"}, () => {
-  const gpu = bench.slice(bench.indexOf('function Get-GpuTotals'), bench.indexOf('function Get-VantareEtwSessions'));
+  const gpu = comun.slice(comun.indexOf('function Get-GpuTotals'), comun.indexOf('function Stop-HuellaEtwSession'));
   execFileSync('pwsh', ['-NoProfile', '-Command', `
     $ErrorActionPreference = 'Stop'
     function Get-Counter {
@@ -342,4 +344,33 @@ test("la medida conserva prueba de seis widgets vivos después de muestrear", ()
   assert.match(bench, /\$endFrame\.sequence -gt \$startFrame\.sequence/);
   assert.match(bench, /\$overlayLiveAtEnd = \$false/);
   assert.match(bench, /\$row\.publishable = \$false/);
+});
+
+test("Read-PresentMonFrames lee frames v2 y cuenta los perdidos", { skip: process.platform !== "win32" }, () => {
+  const fixture = fileURLToPath(new URL("./testdata/presentmon-v2.csv", import.meta.url));
+  const out = execFileSync("pwsh", ["-NoProfile", "-Command", `
+    $ErrorActionPreference = 'Stop'
+    . '${fileURLToPath(new URL("./huella-comun.ps1", import.meta.url))}'
+    $r = Read-PresentMonFrames '${fixture}'
+    "$($r.Frames.Count)/$($r.Dropped)/$($r.Frames[0].FrameTimeMs)/$($r.Frames[0].Timestamp)"
+  `], { encoding: "utf8" }).trim();
+  assert.equal(out, "2/1/15.8548/16.2337");
+});
+
+test("el runner intercalado alterna A0/A1 en orden ABBA con los mismos bloques por condición", { skip: process.platform !== "win32" }, async () => {
+  const runner = await readFile(new URL("./huella-intercalado.ps1", import.meta.url), "utf8");
+  const slice = runner.slice(runner.indexOf("$blocks = @("), runner.indexOf("function Invoke-Block"));
+  const out = execFileSync("pwsh", ["-NoProfile", "-Command", `
+    $Bloques = 8; $runDir = 'x'
+    ${slice}
+    $blocks.condition -join ','
+  `], { encoding: "utf8" }).trim();
+  assert.equal(out, "A0,A1,A1,A0,A0,A1,A1,A0");
+});
+
+test("huella-medir en DryRun resuelve procesos por PID sin lanzar nada", { skip: process.platform !== "win32" }, () => {
+  const plan = JSON.parse(execFileSync("pwsh", ["-NoProfile", "-File", fileURLToPath(new URL("./huella-medir.ps1", import.meta.url)),
+    "-DryRun", "-SinJuego", "-Procesos", String(process.pid), "-Etiqueta", "nativo"], { encoding: "utf8" }));
+  assert.equal(plan.label, "nativo");
+  assert.deepEqual(plan.matchedProcesses, [{ pid: process.pid, role: "app" }]);
 });

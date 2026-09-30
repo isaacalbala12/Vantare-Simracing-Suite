@@ -26,6 +26,24 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(malformed)).toThrow("frame.damage.tyreWear.v");
   });
 
+  it("rejects invented or out-of-range radar positions", () => {
+    const update = golden();
+    expect(() => decodeOverlayUpdateV2({
+      ...update, frame: { ...update.frame, radar: { mode: "xyz", cars: [{ id: "rival", x: 31, z: 0, overlap: false, near: false, lapped: false }] } },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.radar.cars[0].x");
+    expect(() => decodeOverlayUpdateV2({
+      ...update, frame: { ...update.frame, radar: { mode: "none", cars: [{ id: "rival", x: 0, z: 0, overlap: true, near: true, lapped: false }] } },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.radar.cars");
+  });
+
+  it("requires observed radar proximity and lapped flags", () => {
+    const update = golden();
+    const car = { id: "rival", x: 4, z: 0, overlap: true, near: true, lapped: false };
+    const radar = { mode: "xyz", cars: [car] };
+    expect(decodeOverlayUpdateV2({ ...update, frame: { ...update.frame, radar } }).frame?.radar.cars[0]?.near).toBe(true);
+    expect(() => decodeOverlayUpdateV2({ ...update, frame: { ...update.frame, radar: { ...radar, cars: [{ ...car, lapped: "yes" }] } } })).toThrow("frame.radar.cars[0].lapped");
+  });
+
   it("includes upstream JSON parsing in ingestion diagnostics", () => {
     const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
     let now = 0;

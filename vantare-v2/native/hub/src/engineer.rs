@@ -1,7 +1,7 @@
 //! Ajustes persistidos y último estado publicado; no arranca procesos.
 use crate::{
     engineer_control::{self as control, Document, Settings, Status},
-    shell::button,
+    orbit,
 };
 use gpui::{Context, IntoElement, Render, Window, div, prelude::*};
 use std::{path::PathBuf, time::SystemTime};
@@ -71,101 +71,167 @@ impl Engineer {
     }
 }
 
+impl Engineer {
+    fn locale_choices(&self, cx: &Context<Self>) -> gpui::Div {
+        let settings = self.settings();
+        let mut locales = div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 4.0));
+        for &locale in control::LOCALES {
+            locales = locales.child(
+                orbit::select(
+                    locale,
+                    &format!(
+                        "{locale}{}",
+                        if settings.locale == locale {
+                            " ✓"
+                        } else {
+                            ""
+                        }
+                    ),
+                )
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.edit(|s| s.locale = locale.into(), cx)),
+                ),
+            );
+        }
+        locales
+    }
+
+    fn status_view(&self) -> gpui::Div {
+        let mut status_body = orbit::card_body();
+        if let Some(status) = &self.status {
+            status_body = status_body
+                .child(orbit::setting_row("Último informe", "Un cierre ordenado publica activo=false; no acredita vida tras una muerte abrupta.",
+                    orbit::text(format!("PID {} · activo {}", status.pid, status.active), 13.5, 600, orbit::INK_2)))
+                .child(orbit::setting_row("Radio publicada", "Valores confirmados en el informe del proceso.",
+                    orbit::text(format!("{} · {} · voz {}", status.settings.enabled, status.settings.locale, status.settings.voice), 13.5, 600, orbit::INK_2)));
+            for (locale, present) in &status.assets {
+                status_body = status_body.child(orbit::setting_row(
+                    &format!("Clips {locale}"),
+                    "Conjunto completo y válido.",
+                    orbit::text(
+                        if *present {
+                            "Disponible"
+                        } else {
+                            "No disponible"
+                        },
+                        12.0,
+                        600,
+                        orbit::INK_2,
+                    ),
+                ));
+            }
+            if let Some(message) = &status.last_message {
+                status_body = status_body.child(orbit::callout(format!(
+                    "Última radio ({}): {} · {}",
+                    message.locale, message.intent, message.text
+                )));
+            }
+            status_body = status_body.when_some(status.error.clone(), |body, error| {
+                body.child(orbit::callout(error))
+            });
+            if status.settings != *self.settings() {
+                status_body = status_body.child(orbit::callout(
+                    "Ajustes guardados pendientes de confirmación por Engineer.",
+                ));
+            }
+        } else {
+            status_body = status_body.child(orbit::callout("Sin estado publicado por Engineer."));
+        }
+        orbit::card("Estado y última radio").child(status_body)
+    }
+}
+
 impl Render for Engineer {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let settings = self.settings();
-        let mut view = div()
-            .id("engineer-section")
-            .flex()
-            .flex_col()
+        let locales = self.locale_choices(cx);
+        let controls = orbit::card("Radio y voz local")
             .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
-            .gap_2()
-            .child(format!(
-                "Radio: {} · Locale: {} · Voz local: {}",
-                settings.enabled, settings.locale, settings.voice
-            ))
+            .min_w(gpui::px(orbit::COLUMN_W))
             .child(
-                button("engineer-enable", "Activar / desactivar radio").on_click(
-                    cx.listener(|this, _, _, cx| this.edit(|s| s.enabled = !s.enabled, cx)),
-                ),
-            )
-            .child(
-                button("engineer-voice", "Activar / desactivar voz local")
-                    .on_click(cx.listener(|this, _, _, cx| this.edit(|s| s.voice = !s.voice, cx))),
-            )
-            .child(
-                button("engineer-reload", "Recargar ajustes de disco").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.error = this.reload().err();
-                        cx.notify();
-                    },
-                )),
+                orbit::card_body()
+                    .child(orbit::setting_row(
+                        "Engineer",
+                        "Mensajes de radio de las familias activas.",
+                        orbit::toggle("engineer-enable", "Activar radio", settings.enabled, true)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.edit(|s| s.enabled = !s.enabled, cx);
+                            })),
+                    ))
+                    .child(orbit::setting_row(
+                        "Voz local",
+                        "Reproduce los clips disponibles en este equipo.",
+                        orbit::toggle("engineer-voice", "Activar voz local", settings.voice, true)
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.edit(|s| s.voice = !s.voice, cx)),
+                            ),
+                    ))
+                    .child(orbit::eyebrow("Idioma de radio"))
+                    .child(locales)
+                    .child(orbit::setting_row(
+                        "Ajustes guardados",
+                        "Recupera la versión actual del disco.",
+                        orbit::button("engineer-reload", "Recargar").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.error = this.reload().err();
+                                cx.notify();
+                            },
+                        )),
+                    )),
             );
-        for &locale in control::LOCALES {
-            view = view.child(button(locale, locale).on_click(
-                cx.listener(move |this, _, _, cx| this.edit(|s| s.locale = locale.into(), cx)),
-            ));
-        }
-        for (id, label, enabled) in [
-            ("engineer-fuel", "Combustible", settings.families.fuel),
-            ("engineer-flags", "Banderas", settings.families.flags),
+        let mut families = orbit::card_body();
+        for (id, label, help, enabled) in [
+            (
+                "engineer-fuel",
+                "Combustible",
+                "Avisos de combustible disponible.",
+                settings.families.fuel,
+            ),
+            (
+                "engineer-flags",
+                "Banderas",
+                "Cambios de bandera observados.",
+                settings.families.flags,
+            ),
             (
                 "engineer-pits",
-                "Entrada / salida de boxes",
+                "Boxes",
+                "Entrada y salida de boxes.",
                 settings.families.pitstops,
             ),
             (
                 "engineer-laps",
-                "Vueltas completadas",
+                "Vueltas",
+                "Vueltas completadas.",
                 settings.families.laps,
             ),
         ] {
-            view = view.child(
-                div()
-                    .flex()
-                    .gap_2()
-                    .child(format!("{label}: {enabled}"))
-                    .child(
-                        button(id, label).on_click(cx.listener(move |this, _, _, cx| {
-                            this.edit(
-                                |s| match id {
-                                    "engineer-fuel" => s.families.fuel = !s.families.fuel,
-                                    "engineer-flags" => s.families.flags = !s.families.flags,
-                                    "engineer-pits" => s.families.pitstops = !s.families.pitstops,
-                                    _ => s.families.laps = !s.families.laps,
-                                },
-                                cx,
-                            );
-                        })),
-                    ),
-            );
+            families = families.child(orbit::setting_row(
+                label,
+                help,
+                orbit::toggle(id, label, enabled, true).on_click(cx.listener(
+                    move |this, _, _, cx| {
+                        this.edit(
+                            |s| match id {
+                                "engineer-fuel" => s.families.fuel = !s.families.fuel,
+                                "engineer-flags" => s.families.flags = !s.families.flags,
+                                "engineer-pits" => s.families.pitstops = !s.families.pitstops,
+                                _ => s.families.laps = !s.families.laps,
+                            },
+                            cx,
+                        );
+                    },
+                )),
+            ));
         }
-        view = view.child("Spotter no disponible: falta velocidad de rivales. Volumen, elección de voz, penalties y timings no tienen control nativo. La voz usa --clips y el volumen de Windows.")
-            .child("Guardar ajustes no inicia Engineer. Arrancar con el launcher --engineer CURSOR; los cambios se aplican mientras esté en marcha.")
-            .when_some(self.error.clone(), gpui::ParentElement::child)
-            .when_some(self.status_error.clone(), gpui::ParentElement::child);
-        if let Some(status) = &self.status {
-            view = view.child(format!("Último estado publicado: proceso {} · activo {} · radio {} · locale {} · voz {}", status.pid, status.active, status.settings.enabled, status.settings.locale, status.settings.voice))
-                .child("El estado es el último informe, no una prueba de vida tras muerte abrupta. Un cierre ordenado publica activo=false.");
-            for (locale, present) in &status.assets {
-                view = view.child(format!("Clips completos y válidos {locale}: {present}"));
-            }
-            if let Some(message) = &status.last_message {
-                view = view.child(format!(
-                    "Última radio ({}): {} · {}",
-                    message.locale, message.intent, message.text
-                ));
-            }
-            view = view.when_some(status.error.clone(), gpui::ParentElement::child);
-            if status.settings != *settings {
-                view = view.child("Ajustes guardados pendientes de confirmación por Engineer.");
-            }
-        } else {
-            view = view.child("Sin estado publicado por Engineer.");
-        }
-        view
+        div().id("engineer-section").flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0))
+            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0)).child(controls)
+                .child(orbit::card("Familias de mensajes").flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(families)))
+            .child(self.status_view())
+            .child(orbit::callout("Guardar ajustes no inicia Engineer. Arrancar con el launcher --engineer CURSOR; los cambios se aplican mientras esté en marcha."))
+            .child(orbit::callout("Spotter no disponible: falta velocidad de rivales. Volumen, elección de voz, penalties y timings no tienen control nativo. La voz usa --clips y el volumen de Windows."))
+            .when_some(self.error.clone(), |view, error| view.child(orbit::callout(error)))
+            .when_some(self.status_error.clone(), |view, error| view.child(orbit::callout(error)))
     }
 }
 

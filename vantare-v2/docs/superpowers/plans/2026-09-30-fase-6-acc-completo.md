@@ -130,3 +130,26 @@ propio (artefacto anterior incompatible; cero cambios de fuentes ajenas).
 Fmt workspace FAIL únicamente en `ui/src/app.rs:385`, ya presente al entrar;
 rustfmt de todas las rutas Rust tocadas PASS. Logs `acc-f6-cut1-{fmt,test}.log`,
 `acc-f6-cut1-clippy-rebuilt.log`. No se declara fmt global verde.
+
+### Corte 2 — grabadora
+
+Dos reproducciones rojas: copia con packet externo 17 y blob 18 admitida,
+y renovación tras silencio de 3 s (`acc-f6-recorder-red.log`,
+`acc-f6-recorder-silence-red.log`). Primer focal tras arreglo: 17 PASS.
+La grabadora valida antes/blob/después con lectura volátil de mappings Win32,
+no renueva una conexión admitida hasta 10 s de silencio, no considera una
+petición enviada como recepción, y retira con `[9]` antes de renovar.
+Un ACK nuevo no retira la suscripción recién admitida. Se conserva puerto
+durante reintentos de handshake de 2 s; ninguna renovación periódica con feed activo.
+Drenaje máximo 256 datagramas por vuelta; peer ajeno excluido. Registro
+solo lectura, sin usar commandPassword; texto de error de ACK no se conserva
+ni imprime. Parser fijo y acotado del ACK sustituye cursor propio.
+UTF-16 truncado/inválido y puerto cero rechazados; formato temporal intacto.
+Esto prueba la política de silencio con vectores, **no** demuestra la causa
+física de los re-registros cada ~2 min ni su desaparición con ACC real.
+Gates finales: clippy workspace PASS (2.34 s); test workspace PASS; fmt FAIL
+solo por la deuda inicial de UI. Primer clippy detectó dos restas de Instant
+en el vector, corregidas con checked_sub; no se debilitaron checks.
+Logs `acc-f6-cut2-{fmt,clippy,test}-final.log`. Producción de grabadora:
+1478 →1449 líneas (+63/-92, neto -29); tests 422 →500 (+90/-12).
+Sin dependencias nuevas ni cambios de esquema/corpus.

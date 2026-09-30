@@ -37,6 +37,24 @@ El corpus real y su hash no se alteran; los nuevos vectores no son capturas.
 La aceptación completa sigue pendiente de capturas físicas y resolución de
 las unidades del nivel/capacidad; no se declara ACC completo en producto.
 
+### Grabadora (corte 2)
+
+Antes del arreglo, dos tests FAIL demuestran packet de blob distinto y
+renovación tras tres segundos sin feed; tras el arreglo, 17 tests PASS.
+Se exige packet antes/blob/después coincidente y se leen mappings volátiles.
+ACK fijo de nueve bytes + texto acotado sustituye el cursor propio; 0 = readonly,
+UTF-8 inválido/truncamiento/trailing se rechazan. El texto del servidor no se
+guarda ni muestra. Config UTF-16 inválida/truncada y puerto cero se rechazan.
+Registro sin commandPassword; requests conservan ID y UNREGISTER solo `[9]`,
+según el SDK. Renovación después de 10 s de silencio con retirada previa;
+reintento de handshake 2 s en el mismo puerto, envío no cuenta como recepción.
+Un nuevo ACK no cancela la suscripción recién admitida. Máximo 256 datagramas
+por vuelta y solo desde el endpoint configurado; SHM puede seguir capturándose.
+Formato del corpus intacto. El umbral 10 s es tolerancia de reconexión, no
+frescura: las señales ya caducan a 500 ms/1 s en el adaptador.
+No se afirma haber demostrado la causa de silencios periódicos de ACC ni cero
+pérdida UDP del sistema operativo. Nueva captura física >5 min pendiente.
+
 ## Clima y daños — fase 2 (ISA-1427)
 
 Alcance del worker: solo adaptador ACC y tests ACC; sin dependencias nuevas.

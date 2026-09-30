@@ -5,10 +5,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-use gpui::{
-    Context, FocusHandle, IntoElement, KeyDownEvent, PathPromptOptions, Render, Window, div,
-    prelude::*, rgb,
-};
+use gpui::{Context, Entity, IntoElement, PathPromptOptions, Render, Window, div, prelude::*};
 use serde_json::{Value, json};
 
 use crate::{
@@ -22,7 +19,12 @@ use crate::{
     },
 };
 
+#[path = "strategy/view.rs"]
+mod view;
+use view::Page;
+
 const LIMIT: u64 = 12 * 1024 * 1024;
+const DURATIONS: [u32; 4] = [60, 120, 240, 360];
 
 #[derive(Default)]
 pub struct Editor {
@@ -119,18 +121,23 @@ const FIELDS: &[(&str, &str)] = &[
     ("Paso VE (%)", "veStep"),
     ("Reserva final (v)", "reserve"),
     ("Servicio (parallel / sequential)", "serviceMode"),
+    ("Salida (RFC 3339 con zona; opcional)", "startAt"),
+    ("Equipo", "team"),
+    ("Piloto", "driverName"),
+    ("Iniciales", "driverInitials"),
 ];
 
 pub struct Strategy {
     editor: Editor,
     directory: PathBuf,
-    focus: FocusHandle,
     fields: Vec<String>,
-    editing: Option<usize>,
-    buffer: String,
+    inputs: Vec<Entity<orbit::Input>>,
+    page: Page,
+    duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
     form_dirty: bool,
+    scalar_dirty: bool,
     pub status: String,
     pub error: Option<String>,
     result: Option<ResultV2>,
@@ -140,25 +147,63 @@ pub struct Strategy {
 }
 impl Strategy {
     pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
-        Self {
-            editor: Editor::default(),
+        let mut editor = Editor::default();
+        let path = directory.join("strategy-v2.json");
+        let error = path.exists().then(|| editor.open(path).err()).flatten();
+        let inputs = FIELDS
+            .iter()
+            .enumerate()
+            .map(|(index, (label, _))| {
+                let input = cx.new(|cx| orbit::Input::new(String::new(), label, cx));
+                cx.observe(&input, move |this, input, cx| {
+                    let value = input.read(cx).value.clone();
+                    if this.fields[index] != value {
+                        this.fields[index] = value;
+                        this.form_dirty = true;
+                        this.scalar_dirty |= (9..24).contains(&index);
+                        if index == 1
+                            && this.page == Page::Create
+                            && let Some(duration) = &this.duration
+                        {
+                            let selected = duration_selection(&this.fields[1]);
+                            duration.update(cx, |duration, cx| {
+                                duration.state.selected = selected;
+                                duration.state.active = selected;
+                                cx.notify();
+                            });
+                        }
+                        this.invalidate();
+                        this.status = "Entradas pendientes de confirmar".into();
+                        cx.notify();
+                    }
+                })
+                .detach();
+                input
+            })
+            .collect();
+        let mut this = Self {
+            editor,
             directory,
-            focus: cx.focus_handle(),
             fields: vec![String::new(); FIELDS.len()],
-            editing: None,
-            buffer: String::new(),
+            inputs,
+            page: Page::Collection,
+            duration: None,
             event: 0,
             variant: 0,
             form_dirty: false,
+            scalar_dirty: false,
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
-            error: None,
+            error,
             result: None,
             running: false,
             cancellation: Arc::new(AtomicBool::new(false)),
             generation: 0,
-        }
+        };
+        this.restore_selection();
+        this.load_fields(cx);
+        this
     }
     fn outcome(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
         self.error = result.err();
@@ -171,11 +216,8 @@ impl Strategy {
         self.result = None;
     }
     fn ensure_clean_form(&self) -> Result<(), String> {
-        if self.form_dirty || self.editing.is_some() {
-            return Err(
-                "Aplica la edición y confirma los datos con Calcular, o descarta los cambios"
-                    .into(),
-            );
+        if self.form_dirty {
+            return Err("Confirma los cambios pendientes o descártalos antes de continuar".into());
         }
         Ok(())
     }
@@ -183,16 +225,24 @@ impl Strategy {
         self.ensure_clean_form()?;
         self.editor.save()
     }
-    fn load_fields(&mut self) {
+    fn load_fields(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
-        self.editing = None;
         self.form_dirty = false;
+        self.scalar_dirty = false;
         let Some(doc) = &self.editor.document else {
+            self.sync_inputs(cx);
             return;
         };
         let event = &doc.value()["events"][self.event];
         for (index, (_, field)) in FIELDS.iter().take(6).enumerate() {
             self.fields[index] = display(&event[field]["value"]);
+        }
+        self.fields[24] = display(&event["startAt"]["value"]);
+        self.fields[25] = display(&event["team"]["value"]);
+        self.fields[26] = display(&event["drivers"][0]["name"]["value"]);
+        self.fields[27] = display(&event["drivers"][0]["ini"]["value"]);
+        for (index, key) in [(10, "base_pace_seconds"), (11, "fuel_per_lap_liters")] {
+            self.fields[index] = display(&event["planningInputs"]["overrides"][key]["value"]);
         }
         let variant = &event["strategies"][self.variant];
         for (index, field) in [(6, "name"), (7, "note"), (8, "mode")] {
@@ -222,6 +272,7 @@ impl Strategy {
             self.fields[22] = display(&input.fuel_reserve["laps"]["value"]);
             self.fields[23] = input.pit_cost.service_mode;
         }
+        self.sync_inputs(cx);
     }
     fn choose(&mut self, event: usize, variant: usize, cx: &mut Context<Self>) {
         let result = self.ensure_clean_form().and_then(|()| {
@@ -247,18 +298,7 @@ impl Strategy {
             self.event = event;
             self.variant = variant;
             self.invalidate();
-            self.load_fields();
-        }
-        self.outcome(result, cx);
-    }
-    fn create(&mut self, cx: &mut Context<Self>) {
-        let result = self.ensure_clean_form().and_then(|()| self.editor.create());
-        if result.is_ok() {
-            self.event = 0;
-            self.variant = 0;
-            self.invalidate();
-            self.load_fields();
-            self.status="Documento vacío; completa nombre, duración, depósito y tránsito para añadir un evento.".into();
+            self.load_fields(cx);
         }
         self.outcome(result, cx);
     }
@@ -268,7 +308,8 @@ impl Strategy {
             self.event = 0;
             self.variant = 0;
             self.invalidate();
-            self.load_fields();
+            self.load_fields(cx);
+            self.page = Page::Collection;
             self.status = "Cambios locales descartados; los bytes en disco no se alteran.".into();
         }
         self.outcome(result, cx);
@@ -308,7 +349,8 @@ impl Strategy {
                 if result.is_ok() {
                     this.restore_selection();
                     this.invalidate();
-                    this.load_fields();
+                    this.load_fields(cx);
+                    this.page = Page::Collection;
                     this.status =
                         "Documento cargado; procedencia y campos desconocidos conservados.".into();
                 }
@@ -337,7 +379,13 @@ impl Strategy {
         }
     }
     fn save(&mut self, cx: &mut Context<Self>) {
-        let result = self.persist();
+        let result = self.ensure_clean_form().and_then(|()| {
+            if self.editor.path.is_none() {
+                self.editor.save_as(self.directory.join("strategy-v2.json"))
+            } else {
+                self.editor.save()
+            }
+        });
         if result.is_ok() {
             self.status = "Documento guardado de forma atómica.".into();
         }
@@ -368,85 +416,45 @@ impl Strategy {
         })
         .detach();
     }
-    fn apply(&mut self, cx: &mut Context<Self>) {
-        let Some(index) = self.editing else {
-            return;
-        };
-        let result = (|| {
-            if index < 9 && self.current_event().is_some() {
-                let field = if index < 6 {
-                    FIELDS[index].1
-                } else {
-                    ["name", "note", "mode"][index - 6]
-                };
-                let pointer = if index < 6 {
-                    format!("/events/{}/{field}", self.event)
-                } else {
-                    format!("/events/{}/strategies/{}/{field}", self.event, self.variant)
-                };
-                let value = if index == 1 {
-                    json!(
-                        self.buffer
-                            .trim()
-                            .parse::<u32>()
-                            .map_err(|_| "Duración entera requerida")?
-                    )
-                } else if [2, 3].contains(&index) {
-                    json!(parse_number(&self.buffer)?)
-                } else {
-                    json!(self.buffer.trim())
-                };
-                self.editor
-                    .document
-                    .as_mut()
-                    .ok_or("Documento ausente")?
-                    .edit_sourced(&pointer, &value)?;
-            } else {
-                self.form_dirty = true;
-            }
-            self.fields[index].clone_from(&self.buffer);
-            self.editing = None;
-            self.invalidate();
-            Ok(())
-        })();
+    fn confirm_event(&mut self, cx: &mut Context<Self>) {
+        let result = self
+            .editor
+            .document
+            .as_mut()
+            .ok_or_else(|| "Documento ausente".into())
+            .and_then(|doc| confirm_metadata(doc, self.event, self.variant, &self.fields));
+        if result.is_ok() {
+            self.form_dirty = self.scalar_dirty;
+            self.status =
+                "Evento y variante confirmados; las entradas de cálculo se confirman al calcular."
+                    .into();
+        }
         self.outcome(result, cx);
+    }
+    fn sync_inputs(&self, cx: &mut Context<Self>) {
+        for (index, input) in self.inputs.iter().enumerate() {
+            if input.read(cx).value != self.fields[index] {
+                input.update(cx, |input, cx| {
+                    input.set_value(self.fields[index].clone(), cx);
+                });
+            }
+        }
     }
     fn add_event(&mut self, cx: &mut Context<Self>) {
         let result = (|| {
-            if self.editing.is_some() {
-                return Err("Aplica primero el campo en edición".into());
-            }
-            let name = self.fields[0].trim();
-            if name.is_empty() {
-                return Err("Nombre del evento requerido".into());
-            }
-            let duration = self.fields[1]
-                .parse::<u32>()
-                .map_err(|_| "Duración entera requerida")?;
-            let tank = parse_number(&self.fields[2])?;
-            let pit = parse_number(&self.fields[3])?;
-            let doc = self
-                .editor
-                .document
-                .as_mut()
-                .ok_or("Crea un documento primero")?;
-            let count = doc.value()["events"].as_array().map_or(0, Vec::len);
-            let existing = doc.value()["events"]
-                .as_array()
-                .map_or(&[][..], Vec::as_slice);
-            let id = (1..=count + 1)
-                .map(|n| format!("native-event-{n}"))
-                .find(|id| !existing.iter().any(|e| e["id"] == id.as_str()))
-                .ok_or("No se pudo crear ID")?;
-            let mut event = new_event(&id, name, duration, tank, pit);
-            event["track"] = crate::strategy_core::document::manual(json!(self.fields[4]));
-            event["cls"] = crate::strategy_core::document::manual(json!(self.fields[5]));
-            doc.append_event(&event)?;
-            self.event = count;
+            let mut next = match &self.editor.document {
+                Some(doc) => doc.clone(),
+                None => Document::empty(&chrono::Utc::now().to_rfc3339())?,
+            };
+            let index = append_manual_event(&mut next, &self.fields)?;
+            self.editor.document = Some(next);
+            self.event = index;
             self.variant = 0;
             self.invalidate();
-            self.load_fields();
-            self.status="Evento añadido con una variante y un piloto; completa los datos manuales del cálculo.".into();
+            self.load_fields(cx);
+            self.page = Page::Workspace;
+            self.status =
+                "Evento creado. Completa las entradas explícitas para calcular el plan.".into();
             Ok(())
         })();
         self.outcome(result, cx);
@@ -503,9 +511,6 @@ impl Strategy {
         Ok(input)
     }
     fn prepare_input(&mut self) -> Result<Input, String> {
-        if self.editing.is_some() {
-            return Err("Aplica primero el campo en edición".into());
-        }
         let event = self
             .current_event()
             .ok_or("Selecciona un evento con variante")?;
@@ -514,7 +519,11 @@ impl Strategy {
         if event["source"]["value"] != "custom"
             || event["planningInputs"]["overrides"]
                 .as_object()
-                .is_some_and(|a| !a.is_empty())
+                .is_some_and(|a| {
+                    a.keys().any(|key| {
+                        !["base_pace_seconds", "fuel_per_lap_liters"].contains(&key.as_str())
+                    })
+                })
             || event["weatherScenarios"]
                 .as_array()
                 .is_some_and(|a| !a.is_empty())
@@ -564,7 +573,8 @@ impl Strategy {
         } else if !variant["overrides"]["nativeScalarInput"].is_null() {
             return Err("Entrada nativa guardada inválida; se conserva sin sobrescribir".into());
         }
-        if variant["mode"]["value"] != "dry"
+        if self.fields[8].trim() != "dry"
+            || variant["mode"]["value"] != "dry"
             || variant["tyres"].as_object().is_some_and(|a| !a.is_empty())
             || variant["overrides"]
                 .as_object()
@@ -573,6 +583,27 @@ impl Strategy {
             return Err("La variante contiene modo, neumáticos o restricciones aún no portados; se conservan, pero no se ignoran al calcular".into());
         }
         let mut next = doc.clone();
+        confirm_metadata(&mut next, self.event, self.variant, &self.fields)?;
+        let planning = format!("/events/{}/planningInputs", self.event);
+        if next.value().pointer(&planning).is_none_or(Value::is_null) {
+            next.put(&planning, &json!({}))?;
+        }
+        if next
+            .value()
+            .pointer(&format!("{planning}/overrides"))
+            .is_none_or(Value::is_null)
+        {
+            next.put(&format!("{planning}/overrides"), &json!({}))?;
+        }
+        for (key, value) in [
+            ("base_pace_seconds", input.base_lap_seconds.value),
+            ("fuel_per_lap_liters", input.fuel_per_lap_liters.value),
+        ] {
+            next.put(
+                &format!("{planning}/overrides/{key}"),
+                &manual_override(value),
+            )?;
+        }
         if next.value().pointer(&pointer).is_none_or(Value::is_null) {
             next.put(&pointer, &json!({}))?;
         }
@@ -597,6 +628,7 @@ impl Strategy {
         };
         self.invalidate();
         self.form_dirty = false;
+        self.scalar_dirty = false;
         self.running = true;
         self.error = None;
         self.status = "Calculando el espacio escalar con entradas manuales confirmadas…".into();
@@ -631,42 +663,23 @@ impl Strategy {
         .detach();
         cx.notify();
     }
-    fn key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        if self.editing.is_none() {
-            return;
-        }
-        let key = &event.keystroke;
-        if key.modifiers.control && key.key == "v" {
-            if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-                self.buffer.push_str(&text.replace(['\n', '\r'], " "));
-            }
-        } else if key.modifiers.control && key.key == "a" {
-            self.buffer.clear();
-        } else if key.key == "backspace" {
-            self.buffer.pop();
-        } else if key.key == "escape" {
-            self.editing = None;
-        } else if key.key == "enter" {
-            self.apply(cx);
-        } else if !key.modifiers.control
-            && !key.modifiers.alt
-            && let Some(text) = &key.key_char
-        {
-            self.buffer.push_str(text);
-        } else {
-            return;
-        }
-        if self.buffer.len() > 4096 {
-            self.buffer.truncate(self.buffer.floor_char_boundary(4096));
-        }
-        cx.stop_propagation();
-        cx.notify();
-    }
 }
 impl Drop for Strategy {
     fn drop(&mut self) {
         self.cancellation.store(true, Ordering::Relaxed);
     }
+}
+fn duration_selection(value: &str) -> Option<usize> {
+    if value.trim().is_empty() {
+        return None;
+    }
+    let minutes = value.trim().parse::<u32>().ok();
+    Some(
+        DURATIONS
+            .iter()
+            .position(|preset| Some(*preset) == minutes)
+            .unwrap_or(DURATIONS.len()),
+    )
 }
 fn parse_number(value: &str) -> Result<f64, String> {
     let number = value
@@ -691,137 +704,101 @@ fn display(value: &Value) -> String {
     )
 }
 
-impl Strategy {
-    fn field_evidence(&self, index: usize) -> String {
-        let Some(event) = self.current_event() else {
-            return "sin confirmar".into();
-        };
-        let sourced = match index {
-            0..=5 => &event[FIELDS[index].1],
-            6..=8 => {
-                let field = ["name", "note", "mode"][index - 6];
-                &event["strategies"][self.variant][field]
-            }
-            _ => return "entrada manual explícita al confirmar".into(),
-        };
-        let evidence = &sourced["evidence"];
-        format!(
-            "{} · confianza {} · {}",
-            display(&evidence["provenance"]["kind"]),
-            display(&evidence["confidence"]["level"]),
-            display(&evidence["confidence"]["basis"])
-        )
+/// Only confirmed user values enter the V2 document; no solver defaults here.
+fn append_manual_event(doc: &mut Document, fields: &[String]) -> Result<usize, String> {
+    let name = fields[0].trim();
+    if name.is_empty() {
+        return Err("Nombre del evento requerido".into());
     }
+    let duration = fields[1]
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| "Duración entera requerida")?;
+    let tank = parse_number(&fields[2])?;
+    let pit = parse_number(&fields[3])?;
+    let events = doc.value()["events"]
+        .as_array()
+        .map_or(&[][..], Vec::as_slice);
+    let index = events.len();
+    let id = (1..=index + 1)
+        .map(|n| format!("native-event-{n}"))
+        .find(|id| !events.iter().any(|event| event["id"] == id.as_str()))
+        .ok_or("No se pudo crear ID")?;
+    let mut event = new_event(&id, name, duration, tank, pit);
+    event["teamMode"] = crate::strategy_core::document::manual(json!("solo"));
+    for (index, key) in [(4, "track"), (5, "cls"), (25, "team")] {
+        event[key] = crate::strategy_core::document::manual(json!(fields[index].trim()));
+    }
+    if !fields[24].trim().is_empty() {
+        chrono::DateTime::parse_from_rfc3339(fields[24].trim())
+            .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
+        event["startAt"] = crate::strategy_core::document::manual(json!(fields[24].trim()));
+    }
+    for (index, key) in [(26, "name"), (27, "ini")] {
+        if !fields[index].trim().is_empty() {
+            event["drivers"][0][key] =
+                crate::strategy_core::document::manual(json!(fields[index].trim()));
+        }
+    }
+    let mut overrides = serde_json::Map::new();
+    for (index, key) in [(10, "base_pace_seconds"), (11, "fuel_per_lap_liters")] {
+        if !fields[index].trim().is_empty() {
+            overrides.insert(key.into(), manual_override(parse_number(&fields[index])?));
+        }
+    }
+    if !overrides.is_empty() {
+        event["planningInputs"] = json!({"overrides": overrides});
+    }
+    // Commit all edits together: failed validation leaves the collection intact.
+    let mut next = doc.clone();
+    next.append_event(&event)?;
+    next.put("/activeEventId", &json!(id))?;
+    next.put(
+        &format!("/events/{index}/activeStrategyId"),
+        &json!("variant-1"),
+    )?;
+    *doc = next;
+    Ok(index)
+}
 
-    fn choices(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut choices = orbit::card_body();
-        if let Some(doc) = &self.editor.document {
-            for (event, event_value) in doc.value()["events"]
-                .as_array()
-                .map_or(&[][..], Vec::as_slice)
-                .iter()
-                .enumerate()
-            {
-                let label = display(&event_value["name"]["value"]);
-                choices = choices.child(orbit::setting_row(
-                    &label,
-                    &format!(
-                        "{} variantes",
-                        event_value["strategies"].as_array().map_or(0, Vec::len)
-                    ),
-                    button(
-                        "strategy-event",
-                        if event == self.event {
-                            "Seleccionado"
-                        } else {
-                            "Elegir evento"
-                        },
-                    )
-                    .id(("strategy-event", event))
-                    .when(event == self.event, |control| {
-                        control.bg(rgb(orbit::SURFACE_3))
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| this.choose(event, 0, cx))),
-                ));
-            }
-            if let Some(event) = self.current_event() {
-                choices = choices.child(orbit::eyebrow("Variantes").py_2());
-                for (variant, value) in event["strategies"]
-                    .as_array()
-                    .map_or(&[][..], Vec::as_slice)
-                    .iter()
-                    .enumerate()
-                {
-                    let event = self.event;
-                    let label = display(&value["name"]["value"]);
-                    choices = choices.child(orbit::setting_row(
-                        &label,
-                        &display(&value["mode"]["value"]),
-                        button(
-                            "strategy-variant",
-                            if variant == self.variant {
-                                "Seleccionada"
-                            } else {
-                                "Elegir variante"
-                            },
-                        )
-                        .id(("strategy-variant", variant))
-                        .when(variant == self.variant, |control| {
-                            control.bg(rgb(orbit::SURFACE_3))
-                        })
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.choose(event, variant, cx)),
-                        ),
-                    ));
-                }
-            } else {
-                choices = choices.child(orbit::text(
-                    "Añade un evento con los datos de la tarjeta Evento.",
-                    12.5,
-                    400,
-                    orbit::INK_2,
-                ));
-            }
+fn manual_override(value: f64) -> Value {
+    let scalar = Scalar::manual(value);
+    json!({"value": value, "presence": "valid", "provenance": scalar.provenance, "confidence": scalar.confidence})
+}
+
+fn confirm_metadata(
+    doc: &mut Document,
+    event: usize,
+    variant: usize,
+    fields: &[String],
+) -> Result<(), String> {
+    let mut next = doc.clone();
+    for (index, (_, key)) in FIELDS.iter().take(9).enumerate() {
+        let pointer = if index < 6 {
+            format!("/events/{event}/{key}")
         } else {
-            choices = choices.child(orbit::text(
-                "Abre un documento V2 o crea uno para organizar tus eventos y variantes.",
-                12.5,
-                400,
-                orbit::INK_2,
-            ));
+            let key = ["name", "note", "mode"][index - 6];
+            format!("/events/{event}/strategies/{variant}/{key}")
+        };
+        let value = match index {
+            1 => json!(
+                fields[index]
+                    .trim()
+                    .parse::<u32>()
+                    .map_err(|_| "Duración entera requerida")?
+            ),
+            2 | 3 => json!(parse_number(&fields[index])?),
+            _ => json!(fields[index].trim()),
+        };
+        if next.value().pointer(&format!("{pointer}/value")) != Some(&value) {
+            next.edit_sourced(&pointer, &value)?;
         }
-        orbit::card("Eventos y variantes").child(choices)
     }
+    *doc = next;
+    Ok(())
+}
 
-    fn fields(&self, range: std::ops::Range<usize>, cx: &mut Context<Self>) -> gpui::Div {
-        let mut fields = orbit::card_body();
-        for index in range {
-            let label = FIELDS[index].0;
-            let editing = self.editing == Some(index);
-            let value = if editing {
-                format!("{}▏", self.buffer)
-            } else {
-                self.fields[index].clone()
-            };
-            fields = fields.child(orbit::setting_row(
-                label,
-                &self.field_evidence(index),
-                orbit::select("strategy-field", &value)
-                    .id(("strategy-field", index))
-                    .role(gpui::Role::TextInput)
-                    .aria_label(label)
-                    .cursor(gpui::CursorStyle::IBeam)
-                    .when(editing, |control| control.border_color(rgb(orbit::CARMINE)))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.editing = Some(index);
-                        this.buffer = this.fields[index].clone();
-                        this.focus.focus(window, cx);
-                        cx.notify();
-                    })),
-            ));
-        }
-        fields
-    }
+impl Strategy {
     fn result_card(&self) -> gpui::Div {
         let mut result = orbit::card_body();
         if let Some(plan) = &self.result {
@@ -905,46 +882,122 @@ impl Strategy {
 }
 
 impl Render for Strategy {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div().id("strategy").track_focus(&self.focus).flex().flex_col().min_w_0().gap(gpui::px(orbit::GUTTER / 2.0))
-            .on_key_down(cx.listener(|this, event, _, cx| this.key(event, cx)))
-            .child(orbit::card("Documento de Strategy").child(orbit::card_body()
-                .child(orbit::setting_row("Archivo", &self.editor.path.as_ref().map_or_else(|| "Sin guardar".into(), |p| p.display().to_string()),
-                    orbit::text(if self.editor.dirty() || self.form_dirty { "Cambios pendientes" } else { "Sin cambios pendientes" }, 12.0, 500, orbit::INK_3)))
-                .child(div().flex().gap_2().flex_wrap().py_2()
-                    .child(button("strategy-open", "Abrir").on_click(cx.listener(|this, _, _, cx| this.open(cx))))
-                    .child(button("strategy-create", "Crear documento").on_click(cx.listener(|this, _, _, cx| this.create(cx))))
-                    .child(button("strategy-save", "Guardar").on_click(cx.listener(|this, _, _, cx| this.save(cx))))
-                    .child(button("strategy-save-as", "Guardar como").on_click(cx.listener(|this, _, _, cx| this.save_as(cx))))
-                    .child(button("strategy-discard", "Descartar cambios").on_click(cx.listener(|this, _, _, cx| this.discard(cx)))))))
-            .child(orbit::callout(self.status.clone()))
-            .when_some(self.error.clone(), |page, error| page.child(orbit::callout(error)))
-            .child(self.choices(cx))
-            .child(orbit::callout("Cálculo manual escalar: sin telemetría, forecast, pilotos múltiples, inventario físico, ahorro ni incertidumbre. Escribe todos los números; 0 desactiva VE/vida/reserva. No se inventan entradas ausentes."))
-            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).flex().flex_col().gap_3()
-                    .child(orbit::card("Evento").child(self.fields(0..6, cx)))
-                    .child(orbit::card("Variante").child(self.fields(6..9, cx))))
-                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).flex().flex_col().gap_3()
-                    .child(orbit::card("Ritmo y recursos").child(self.fields(9..16, cx)))
-                    .child(orbit::card("Boxes y reservas").child(self.fields(16..24, cx)))))
-            .child(orbit::callout("Edición: clic, escribir; Ctrl+A vacía, Ctrl+V pega, Enter aplica, Esc cancela. Procedencia manual solo al confirmar."))
-            .child(div().flex().gap_2().flex_wrap()
-                .child(button("strategy-apply", "Aplicar campo").on_click(cx.listener(|this, _, _, cx| this.apply(cx))))
-                .child(button("strategy-add-event", "Añadir evento con estos datos").on_click(cx.listener(|this, _, _, cx| this.add_event(cx))))
-                .child(button("strategy-calculate", "Confirmar entradas y calcular").on_click(cx.listener(|this, _, _, cx| this.calculate(cx))))
-                .child(button("strategy-cancel", "Cancelar cálculo").on_click(cx.listener(|this, _, _, cx| {
-                    this.invalidate();
-                    this.status = "Cálculo cancelado; no se conserva resultado parcial".into();
-                    cx.notify();
-                }))))
-            .child(self.result_card())
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.render_page(window, cx)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn manual_duration_selects_matching_preset_or_custom_without_filling_empty_input() {
+        assert_eq!(duration_selection(""), None);
+        assert_eq!(duration_selection(" 120 "), Some(1));
+        assert_eq!(duration_selection("060"), Some(0));
+        assert_eq!(duration_selection("130"), Some(4));
+        assert_eq!(duration_selection("invalid"), Some(4));
+    }
+    fn event_fields() -> Vec<String> {
+        let mut fields = vec![String::new(); FIELDS.len()];
+        for (index, value) in [
+            (0, "Carrera manual"),
+            (1, "120"),
+            (2, "90"),
+            (3, "60"),
+            (4, "Imola"),
+            (5, "LMGT3"),
+            (10, "105"),
+            (11, "2.8"),
+            (24, "2026-09-30T17:00:00+02:00"),
+            (26, "Piloto"),
+            (27, "PI"),
+        ] {
+            fields[index] = value.into();
+        }
+        fields
+    }
+    #[test]
+    fn manual_creation_preserves_collection_selects_event_and_round_trips_confirmed_inputs() {
+        let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
+        let fields = event_fields();
+        assert_eq!(append_manual_event(&mut doc, &fields).expect("first"), 0);
+        let first = doc.value()["events"][0].clone();
+        assert_eq!(append_manual_event(&mut doc, &fields).expect("second"), 1);
+        assert_eq!(doc.value()["events"][0], first);
+        assert_eq!(doc.value()["activeEventId"], "native-event-2");
+        assert_eq!(doc.value()["events"][1]["activeStrategyId"], "variant-1");
+        let restarted = Document::parse(doc.bytes()).expect("round trip");
+        let event = &restarted.value()["events"][1];
+        assert_eq!(event["startAt"]["value"], fields[24]);
+        assert_eq!(event["drivers"][0]["name"]["value"], "Piloto");
+        assert_eq!(event["teamMode"]["value"], "solo");
+        assert_eq!(
+            event["planningInputs"]["overrides"]["base_pace_seconds"]["value"],
+            105.0
+        );
+        assert_eq!(
+            event["planningInputs"]["overrides"]["fuel_per_lap_liters"]["provenance"]["kind"],
+            "manual"
+        );
+        // Unentered resources remain absent, including the full solver input.
+        assert!(event["strategies"][0]["overrides"]["nativeScalarInput"].is_null());
+    }
+    #[test]
+    fn invalid_manual_form_never_changes_existing_document_or_selection() {
+        let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
+        append_manual_event(&mut doc, &event_fields()).expect("original");
+        let bytes = doc.bytes().to_vec();
+        for (index, invalid) in [
+            (0, ""),
+            (1, "0"),
+            (1, "2.5"),
+            (2, "-1"),
+            (3, "NaN"),
+            (10, "0"),
+            (11, "-2"),
+            (24, "2026-09-30 17:00"),
+        ] {
+            let mut fields = event_fields();
+            fields[index] = invalid.into();
+            assert!(
+                append_manual_event(&mut doc, &fields).is_err(),
+                "field {index}"
+            );
+            assert_eq!(doc.bytes(), bytes);
+        }
+    }
+    #[test]
+    fn empty_optional_inputs_are_not_filled_with_example_data() {
+        let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
+        let mut fields = event_fields();
+        for index in [10, 11, 24, 26, 27] {
+            fields[index].clear();
+        }
+        append_manual_event(&mut doc, &fields).expect("minimal form");
+        let event = &doc.value()["events"][0];
+        assert!(event["planningInputs"].is_null());
+        assert!(event["startAt"]["value"].is_null());
+        assert!(event["drivers"][0]["name"].is_null());
+    }
+    #[test]
+    fn metadata_confirmation_is_atomic_and_preserves_unchanged_evidence() {
+        let mut doc = Document::empty("2026-09-30T00:00:00Z").expect("document");
+        let mut fields = event_fields();
+        append_manual_event(&mut doc, &fields).expect("original");
+        fields[6] = "Base".into();
+        fields[8] = "dry".into();
+        let original = doc.bytes().to_vec();
+        confirm_metadata(&mut doc, 0, 0, &fields).expect("unchanged");
+        assert_eq!(doc.bytes(), original);
+        fields[0] = "Nombre nuevo".into();
+        fields[8] = "invalid".into();
+        assert!(confirm_metadata(&mut doc, 0, 0, &fields).is_err());
+        assert_eq!(doc.bytes(), original);
+        fields[8] = "dry".into();
+        confirm_metadata(&mut doc, 0, 0, &fields).expect("confirmed edit");
+        assert_eq!(doc.value()["events"][0]["name"]["value"], "Nombre nuevo");
+    }
     #[test]
     fn atomic_save_restart_conflict_and_failed_open_preserve_the_document() {
         let directory =

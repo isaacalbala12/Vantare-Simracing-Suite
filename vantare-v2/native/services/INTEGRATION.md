@@ -1,104 +1,158 @@
-# Integración pendiente — #1430
+# Integración nativa — ISA-1430
 
-Este worker no tiene ownership de runtime/núcleo/IPC/manifests/packaging. Esta
-lista es un contrato para Opus, no evidencia de enforcement en esos procesos.
-No recuperar el stash anterior para resolver el wiring.
+2026-09-30. Integración local autorizada por Isaac, sin push/PR ni promoción.
+Se fusionó `vantareapp/isa-1427-fase2`; el stash previo permanece intacto.
+`services` pertenece a `native/`: un workspace, lock, edición y lints.
+Se retiraron su lock y target aislados. `native/strategy/` conserva un workspace
+histórico ajeno a este corte; no se modificó su lock ni se incorpora aquí.
 
-1. Incorporar el miembro `services` al workspace y empaquetar su exe junto al
-   Hub. El crate aislado permite verificarlo antes. El núcleo consume la misma
-   biblioteca con `default-features = false`: sin ureq, url, IPC ni GPUI.
-   Verificar `cargo tree` del target core: Cargo puede unificar features si se
-   compila services/network y core juntos en el workspace. Construir el core
-   por target separado; si el pipeline exige unión, extraer verificador/Store a
-   un paquete puro antes de integrar. El test sin red actual demuestra el perfil
-   aislado, no ese futuro grafo del workspace ni el binario core.
-2. El build propietario debe proveer el cliente público OAuth Clerk (issuer,
-   client ID, redirect registrado de loopback). `BuildConfig::native_oauth`
-   permanece `None`: no existe aún contrato de variables del build para ello.
-   Publishable key del SDK no es client ID. No Supabase Auth como fallback.
-3. Acordar/desplegar la API fina. `bridge::Config::authorize` modela un puente
-   explícito, aún no existente: recibe OAuth, valida issuer/audience/scopes con
-   Clerk, resuelve `(iss,sub)` a UUID interno (#909), entrega una sesión de datos
-   como máximo cinco minutos con rol authenticated/RLS por ese UUID. Nunca
-   service_role, claim editable del cliente ni OAuth reenviado a TPA. El backend
-   firma/mapea; desktop no puede mintar este token. Alternativa preferible cuando
-   la API esté lista: resolver los recursos allí y retirar el intercambio de
-   bearer de datos. #1173/#1187 están abiertos; no presumir despliegue.
-4. Núcleo inicia su plano de control sin simulador. Posee Store/contexto separado
-   para binding admitido, credencial raw, reloj, sesión de juego y invalidación.
-   Recibe solo bytes firmados/contexto; `Verifier` reconstruye v1 como Go o
-   verifica JWS v2 sobre bytes compactos. No acepta online_capabilities ni bools
-   `is_pro` del Hub. Subject esperado procede del binding validado del servidor,
-   nunca de email, metadata o convertir `user_...` a UUID.
-5. Al admitir credencial: verificar -> `Authority::install` -> persistir raw y
-   estado -> publicar. Publicar únicamente tras `rights_and_persist`; error de
-   firma/contexto/reloj/disco significa derechos vacíos y error tipado. Snapshot
-   a overlays/Engineer incluye versión, época, revisión, origen núcleo y siguiente
-   vencimiento. Consumidores rechazan versión/época/revisión antiguas y no hacen
-   red. Añadir peer/nonce/ACL al canal de control con el transporte existente.
-6. Entrada/salida de juego viene de hechos del núcleo. `enter_game` registra qué
-   grants eran válidos a la entrada, y se persiste antes de publicar. Margen
-   termina en expiry firmado + una hora, nunca reconnect + una hora. Reinicio
-   restaura el registro pero exige confirmar la misma sesión real desde núcleo;
-   no basta un ID enviado por Hub. `leave_game` elimina la excepción. Sin juego
-   o con grant ya vencido a la entrada: sin gracia. Persistir salidas también.
-7. Logout/reset/cambio de cuenta: núcleo invalida y persiste antes de ACK; luego
-   servicios limpia sesión/candidate y efectúa reset remoto manual. No mostrar
-   éxito de revocación antes del ACK. `invalidate` impide reactivar la credencial
-   anterior tras reinicio: se necesita emisión nueva posterior. El host actual
-   rechaza renovación/reset con «puente no configurado» mientras falta este
-   canal. `license_remote` prueba cliente legacy/firmas, no activa recursos.
+## Propiedad y contratos implementados
 
-JWS v2 es un contrato propuesto: `alg=Ed25519`, `typ=vantare-license+jwt`, kid
-de trust roots compiladas, claims version=2, iss=vantare-license,
-aud=vantare-native, sub=UUID interno, device_key_id=thumbprint RFC7638 OKP,
-iat/exp Unix y capabilities v1. Exp del envelope limita todos los grants.
-Revisar este esquema con backend antes de emitirlo; no se autonegocia algoritmo
-ni claves de un JWKS remoto. v1 conserva edición perpetua compatible.
+- `vantare` posee el auxiliar `vantare-services.exe`, que hereda su Job Object.
+  El Hub conecta a `<photo>-hub-services`; no arranca ni posee hijos. El saludo
+  por sí solo no arranca servicios: la primera acción explícita lo solicita.
+- El supervisor identifica la imagen del Hub; el auxiliar fija PID e imagen
+  del supervisor. Sus nonces viajan por pipes/stdin/stdout privados heredados,
+  nunca por argumentos, logs ni DTO de derechos. Marcos JSON de 64 KiB,
+  versión y secuencia cerradas; los pipes reutilizan ACL del SID actual,
+  `FIRST_PIPE_INSTANCE`, rechazo remoto, plazos y cancelación del ADR 0099.
+- El supervisor entrega al núcleo y al auxiliar el bootstrap privado. Solo
+  `vantare-services.exe` más nonce puede instalar/invalidate en `<photo>-rights`.
+  El núcleo identifica a los lectores (overlays, Engineer, Hub y supervisor).
+  Cada cliente fija a su vez la imagen de servidor. Esperar un pipe ocupado
+  solo reintenta su apertura; jamás reenvía una mutación o un POST.
+- El auxiliar entrega **bytes de la credencial firmada**, no derechos calculados.
+  El núcleo verifica v1 compatible o JWS destino con la biblioteca compartida,
+  issuer/audience/algoritmo/kid, subject y dispositivo; no admite capabilities
+  online, email, metadata Clerk ni booleanos del Hub como autoridad.
+- El núcleo mantiene binding y reloj DPAPI en un namespace separado del
+  auxiliar; instalación Ed25519 protegida y fingerprint legacy son locales.
+  Sin trust roots no abre el almacén de credenciales ni lee MachineGuid.
+  Firma, disco y control viven fuera de adquisición; ésta solo publica un Arc.
+  Guardar binding/reloj y revocación precede al ACK. Un error deja derechos
+  protegidos denegados; la telemetría básica sigue disponible.
+- La política solo incluye versión, época, revisión, comprobación temporal,
+  deadline y permisos, sin credenciales ni PII. Overlays/Engineer usan el feed
+  de control autenticado, sin HTTP propio. Política incompatible, antigua,
+  expirada, reloj hacia atrás o sin heartbeat durante dos segundos deniega.
+  Standings/Pedals siguen disponibles; los restantes overlays requieren acceso
+  avanzado. Engineer conserva su cursor/eventos y vacía radio/voz al denegar.
+  Workshop, capturas y fuente `local` son previsualizaciones de prueba explícitas.
 
-Instalación posee key DPAPI y prueba solo dominio enrollment. Core fija key ID
-admitido por servidor; v1 usa SHA256 MachineGuid sin fallback a home. Fingerprint
-no es atestación. El worker no lee valores de registry ni usa claves reales en
-tests. DPAPI/ACL protegen entre usuarios, no contra admin/malware del mismo SID;
-restauración de toda una copia antigua del perfil no tiene antirreplay hardware.
+## Juego, cierre y revocación
 
-Prueba pendiente tras wiring: core/overlays/Engineer reales, Hub cerrado, caducar
-durante juego a T+3599 y T+3600, parar juego, reconnect/restart, logout/reset,
-rollback/disco lleno e IPC falsificado. Los tests actuales prueban política,
-criptografía, DPAPI y HTTP/process local; no sustituyen esa aceptación.
+La entrada es un hecho live adquirido por el núcleo; el Hub no decide su ID ni
+su hora. Solo los derechos válidos a esa entrada reciben la excepción. Termina
+exactamente en **caducidad firmada + 3.600 segundos**, no reconexión + una hora.
+Fuera de juego, entrada con credencial vencida o derechos emitidos después de
+la entrada: sin gracia. La transferencia tardía usa la entrada observada por
+el núcleo y no inventa un margen nuevo. Salir del juego elimina la excepción.
 
-## Testing Center / Hub
+**Límite pendiente:** los adaptadores reciclan `SessionId` al reiniciar el núcleo.
+El reloj/binding se restauran, pero no prueban que siga la misma carrera. Por
+seguridad, un reinicio frío no restaura la excepción de una credencial ya
+caducada. Durante un núcleo continuo sí se mantiene la hora completa. Restaurar
+ese margen tras reinicio requiere identidad estable de sesión de simulador y
+su verificación; no se sustituye por un ID del Hub. Revisar esta limitación con
+Isaac antes de aceptar runtime real.
 
-El Hub edita texto y presenta revisión; el helper es el único escritor DPAPI del
-borrador y del intento. Esa adaptación evita introducir otra dependencia Win32
-en GPUI. Son namespaces separados de sesión/roadmap, por proyecto/canal. No se
-reutiliza ni modifica el borrador Go. Abrir/cargar/restaurar nunca envía ni concede
-consentimiento; solo `ReportSend` con ID de revisión vigente tras el botón de
-consentimiento. El RPC exacto del producto es `testing_center_submit_report`.
-Clerk OAuth no puede llamarlo directamente: falta el puente y su migración RLS.
+Antes de atender la primera acción del Hub, servicios transfiere el candidate
+local y obtiene ACK del núcleo. Tras renovar, vuelve a transferirlo. Al detectar
+live (vigilancia local cada 250 ms) se transfiere otra vez y se cierra/recolecta
+el hijo. Si había E/S remota en vuelo, se cancela; sobreviven los últimos derechos
+confirmados y el candidate/intento durable, sin autoenvío ni reintento de red.
+La transferencia final fallida se registra solo como clase genérica. Cierre/EOF
+del Hub o del supervisor también cierra al auxiliar. El siguiente arranque
+requiere otra acción manual fuera de juego. No hay HTTP residente en carrera.
 
-`App::configure_bridge` es un hook exclusivo del owner del build (no IPC ni
-config editable en UI). Cuentas/licencias/reportes remotos siguen inertes por
-defecto. Borradores locales sí funcionan sin configuración. Probar después el
-contrato de intercambio del punto 3; si backend elige API que devuelve recursos
-directamente, cambiar este adaptador explícito antes de habilitar el build.
+Logout/reset revoca y persiste en el núcleo antes de limpiar el candidate o
+mostrar éxito; el tombstone impide reutilizar la emisión anterior incluso tras
+reinicio. Reset remoto exige después una acción manual y el puente configurado.
+Logout es local: revocación global de sesiones Clerk todavía depende del backend.
+Una operación incierta conserva sus bytes/idempotency key y debe revisarse.
 
-Input del Launcher es privado y pertenece a otro worker. Testing usa temporalmente
-esa misma fuente con allow `duplicate_mod` solo en ese `mod`, explicado allí;
-no copia implementación ni modifica Launcher/widgets. Opus debe cambiar
-`launcher::input` a `pub(crate)` y sustituir el `mod` de testing por `use`; retirar
-el allow. No hay suppressions globales ni flags laxos del gate.
+## Configuración pendiente: pregunta concreta para Isaac
 
-Límites deliberados: campos UI de una línea (el Input compartido actual), solo
-texto, un intento pendiente por proyecto/canal que debe resolverse con su cuenta
-original antes de otro; no cola, adjuntos ni agente automático. Edición rota key,
-invalida revisión, y las respuestas I/O no pisan texto cambiado mientras estaban
-en vuelo. Reintentar muestra los bytes originales incluso si el editor cambió.
-Recibo se persiste antes de limpiar borrador; fallo de limpieza no es fallo de
-envío. El consentimiento no se guarda, caduca en tres minutos y queda ligado a
-la instancia/renovación de sesión (época aleatoria 128 bits) y cuenta/canal.
+**Isaac: ¿qué issuer HTTPS de Clerk debemos fijar, cuál es el `client_id` de un
+cliente OAuth público nativo con PKCE/S256 (sin client secret), y cuál es la URI
+loopback registrada exactamente — esquema, host `127.0.0.1`, puerto permitido y
+path— para Vantare?** Confirma también scopes/audience y las páginas alojadas de
+login, más los nombres públicos de compilación que debe usar el build existente
+para esos tres datos. La publishable key del SDK **no es** ese client ID.
 
-Helper tiene deadline de cinco minutos para IPC inactivo mientras Hub permanece
-abierto; no polling HTTP, residencia en juego ni autoconfirmación tras reinicio.
-Hub EOF/cancelación cierra el host. Evaluar ese deadline y presupuesto con Isaac
-en runtime real; una caída durante POST queda como intento incierto durable.
+Falta además la URL/versión y propietario del puente explícito OAuth → datos:
+validar issuer/audience/scopes Clerk en servidor, resolver `(iss,sub)` a UUID
+interno (#909) y devolver recursos o bearer RLS de datos de hasta cinco minutos.
+Nunca mapear email/metadata editable ni enviar OAuth directamente a Supabase
+como si fuera JWT de sesión Clerk. La API Vantare fina sigue siendo el destino;
+el puente compatible con los RPC actuales debe acordarse/desplegarse primero.
+No se presume despliegue de #911/#1173 ni #915/#1187. Se mantiene
+`BuildConfig::native_oauth = None` y el hook de build `App::configure_bridge`
+inactivo por defecto: no se inventaron aliases, valores ni Supabase Auth fallback.
+
+Variables públicas existentes de compilación (`option_env!`), nombres exactos:
+
+| Variable | Contrato |
+|---|---|
+| `VANTARE_SUPABASE_URL` | Origen/proyecto HTTPS de datos; namespaces de caché. |
+| `VANTARE_SUPABASE_ANON_KEY` | Anon pública del producto; nunca service_role. |
+| `VANTARE_LICENSE_PUBLIC_KEYS` | Trust roots `kid:base64url-sin-padding`, separados por coma. |
+| `VANTARE_BUILD_CHANNEL` | Canal del artefacto; no concede derechos. |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Nombre del SDK/frontend; no activa OAuth nativo. |
+| `VANTARE_VERSION` | Versión pública de informes; si falta, versión real del crate. |
+
+Estos seis nombres **no bastan para activar Clerk/remotos privados**. Isaac debe
+fijar el contrato anterior antes del corte 6. No se piden claves privadas,
+service_role, client secret ni tokens reales al worker ni en el repo/logs.
+
+JWS v2/enrollment siguen siendo un destino no desplegado: Ed25519, kid compilado,
+issuer `vantare-license`, audience `vantare-native`, subject UUID, key ID de
+instalación RFC7638 y iat/exp; el envelope limita todos los grants. El cliente
+legacy emite/renueva v1; no se inventa endpoint v2. DPAPI/ACL no protegen frente a
+admin/malware del mismo SID ni rollback de una copia completa antigua del perfil.
+La prueba de posesión de instalación firma solo el dominio enrollment; fingerprint
+no es atestación. No hay fallback MachineGuid a home ni autoaceptación de claves
+procedentes de JWKS remoto para derechos: los trust roots son los del build.
+
+## Testing Center, paquete y aceptación
+
+Testing Center conserva los diagnósticos/borradores de fase 2 y el editor remoto
+con Orbit e Input compartido `pub(crate)` (sin módulo duplicado). El auxiliar es
+el único escritor DPAPI del borrador/intento remoto. Solo consentimiento explícito
+sobre preview vigente permite `testing_center_submit_report`; nada automático,
+adjuntos, logs/capturas ni borradores Go. Un intento pendiente por cuenta/contexto,
+campos de una línea y revocación Clerk remota siguen como límites documentados.
+Roadmap conserva la última publicación válida; no hay polling de red/Realtime.
+Editar rota la idempotency key/invalida la revisión; una respuesta tardía no pisa
+texto cambiado. Reintento muestra los bytes originales aunque cambie el editor.
+El recibo se persiste antes de limpiar el borrador; un fallo de limpieza no vuelve
+a enviar. El consentimiento no se guarda, caduca en tres minutos y queda ligado
+a cuenta/canal y época aleatoria de sesión de 128 bits. Abrir/restaurar nunca
+concede consentimiento. Un intento pendiente exige resolverlo con su cuenta original.
+El IPC del auxiliar tiene deadline de cinco minutos de inactividad; el siguiente
+arranque requiere acción explícita y no autoconfirma ni reenvía POST inciertos.
+
+El candidato enumera once binarios, incluido `vantare-services.exe`, con hash y
+sidecar. MSIX deriva los bins de Cargo metadata del mismo workspace. Empaquetar
+no instala servicios Windows ni configura autenticación, no firma/publica release.
+
+Prueba local: núcleo host + auxiliar **real** + supervisor de biblioteca + pipes
+ACL, claves generadas y DPAPI de directorios aleatorios de test; HTTP solo loopback.
+La fixture comparte únicamente el namespace público compilado del auxiliar;
+ningún bearer/trust root del build ni endpoint remoto se usa como vector de test.
+Pruebas de tiempo inyectado cubren T+3599/T+3600, entrada/salida, transferencia
+retrasada, firma/binding/reloj inválidos, replay de revocación e IPC impostor.
+El ejecutable real de Engineer consume hechos/checkpoints por pipes con una
+política firmada generada; sin política conserva el checkpoint sin presentar
+radio protegida. Un test del supervisor comprueba el pipe compartido de una
+instancia generada entre núcleo, overlays y Engineer.
+Eso no es aceptación física del juego ni evidencia visual/audio GPUI/SAPI.
+
+Corte 6: build con configuración pública acordada; arrancar `vantare -- --live`
+y Hub contra el mismo pipe; login alojado, reinicio/rotación/logout/reset con
+cuenta de prueba; comprobar Hub/auxiliar cerrados y derechos en overlays/Engineer
+con juego real; T+3599/T+3600, desconexión, pérdida del núcleo y margen frío
+pendiente; roadmap real e informe de prueba solo con consentimiento. Medir
+CPU/RSS/latencia de cierre. Sync de perfiles/layouts sigue fuera de este corte,
+sin sincronización continua ni gasto. Notion no disponible: excepción explícita
+GitHub de Isaac; no se declara su seguimiento completado.

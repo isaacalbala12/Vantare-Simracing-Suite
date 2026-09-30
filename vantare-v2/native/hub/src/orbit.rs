@@ -7,6 +7,98 @@ use gpui::{
     linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba,
 };
 
+mod controls;
+mod input;
+mod layer;
+mod specimen;
+mod state;
+pub use controls::*;
+pub use input::Input;
+pub use layer::{Dismissed, Layer, LayerKind};
+pub use specimen::{Specimen, run_kit};
+pub use state::{ChoiceState, NumberRange, OptionItem};
+
+// Tokens del kit CSS, además de los tokens de shell ya portados.
+pub const CORAL: u32 = 0x00ff_6a5f;
+pub const EMBER: u32 = 0x00ff_9b57;
+pub const RED: u32 = 0x00f0_4755;
+pub const CYAN: u32 = 0x005c_cbd5;
+pub const BRONZE: u32 = 0x00d2_9a6c;
+pub const SILVER: u32 = 0x00c9_c9cf;
+pub const INK_4: u32 = 0x0078_7379;
+pub const ROW_H: f32 = 49.0;
+pub const CHIP_H: f32 = 26.0;
+pub const PILL_H: f32 = 30.0;
+pub const RADIUS_CHIP: f32 = 8.0;
+pub const BODY: f32 = 13.5;
+pub const SECONDARY: f32 = 12.0;
+pub const MICRO: f32 = 10.5;
+pub const CHIP_TEXT: f32 = 10.0;
+pub const PILL_TEXT: f32 = 11.5;
+pub const CHIP_PAD: f32 = 9.0;
+pub const PILL_GAP: f32 = 9.0;
+pub const LINE_WIDTH: f32 = 1.0;
+pub const WHITE: u32 = 0x00ff_ffff;
+pub const LINE_CHIP: u32 = 0xffff_ff09;
+pub const LINE_PILL: u32 = 0xffff_ff0f;
+// Medidas de componentes que orbit-kit.css fija fuera de orbit.tokens.css.
+pub const FIELD_W: f32 = 168.0;
+pub const TEXTAREA_H: f32 = 83.0;
+pub const FIELD_PAD: f32 = 13.0;
+pub const FIELD_TEXT: f32 = 14.0;
+pub const TAB_PAD: f32 = 14.0;
+pub const TAB_INSET: f32 = 10.0;
+pub const FADER_W: f32 = 150.0;
+pub const FADER_H: f32 = 6.0;
+pub const FADER_RADIUS: f32 = 3.0;
+pub const FADER_THUMB: f32 = 16.0;
+pub const PRIMARY_BG: u32 = 0x00f3_eeee;
+pub const OPTION_H: f32 = 38.0;
+pub const MENU_PAD: f32 = 6.0;
+pub const CHECK_SIZE: f32 = 18.0;
+pub const CHECK_RADIUS: f32 = 5.0;
+pub const SEGMENT_H: f32 = 29.0;
+pub const SEGMENT_PAD: f32 = 4.0;
+pub const SEGMENT_GAP: f32 = 2.5;
+pub const DOT: f32 = 6.0;
+pub const PILL_DOT: f32 = 8.0;
+pub const FOCUS_WIDTH: f32 = 2.0;
+pub const DISABLED: f32 = 0.45;
+pub const MENU_Z: usize = 30;
+pub const MODAL_Z: usize = 100;
+pub const MENU_SHADOW_Y: f32 = 24.0;
+pub const MENU_SHADOW_BLUR: f32 = 70.0;
+pub const PALETTE_SHADOW_Y: f32 = 44.0;
+pub const PALETTE_SHADOW_BLUR: f32 = 143.0;
+pub const MENU_SHADOW_COLOR: u32 = 0x0000_0099;
+pub const PALETTE_SHADOW_COLOR: u32 = 0x0000_00a8;
+
+fn layer_shadow(modal: bool) -> Vec<gpui::BoxShadow> {
+    vec![gpui::BoxShadow {
+        color: rgba(if modal {
+            PALETTE_SHADOW_COLOR
+        } else {
+            MENU_SHADOW_COLOR
+        })
+        .into(),
+        offset: gpui::point(
+            px(0.0),
+            px(if modal {
+                PALETTE_SHADOW_Y
+            } else {
+                MENU_SHADOW_Y
+            }),
+        ),
+        blur_radius: px(if modal {
+            PALETTE_SHADOW_BLUR
+        } else {
+            MENU_SHADOW_BLUR
+        }),
+        spread_radius: px(0.0),
+        inset: false,
+    }]
+}
+
 pub const CANVAS: u32 = 0x0008_090b;
 pub const SURFACE_1: u32 = 0x0012_1316;
 pub const SURFACE_2: u32 = 0x0018_191e;
@@ -37,6 +129,10 @@ pub const COLUMN_COMPACT_W: f32 = 216.0;
 pub const COLUMN_BREAKPOINT: f32 = 1152.0;
 pub const RAIL_BUTTON: f32 = 52.0;
 pub const PALETTE_W: f32 = 640.0;
+// Panel de campana (`orbit-shell.css`), con la misma infraestructura de capa.
+pub const POPOVER_W: f32 = 360.0;
+pub const POPOVER_RADIUS: f32 = 14.0;
+pub const POPOVER_MAX_H: f32 = 520.0;
 pub const PALETTE_BACKDROP: u32 = 0x0404_069e;
 pub const FEATURED_RADIUS: f32 = 25.0;
 

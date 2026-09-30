@@ -198,6 +198,10 @@ impl Render for Hub {
             self.studio.read(cx).context_column().into_any_element()
         } else if self.section == Section::Settings {
             self.settings_column(window, cx).into_any_element()
+        } else if self.section == Section::Launcher {
+            self.launcher
+                .update(cx, |launcher, cx| launcher.context_column(window, cx))
+                .into_any_element()
         } else {
             self.context_column(window, cx).into_any_element()
         };
@@ -254,6 +258,12 @@ impl Render for Hub {
             .child(rail)
             .when(self.shell.column_open, |root| root.child(column))
             .child(main)
+            .when(self.section == Section::Launcher, |root| {
+                root.when_some(
+                    self.launcher.read(cx).form_layer(),
+                    gpui::ParentElement::child,
+                )
+            })
             .when(self.shell.palette_open, |root| {
                 root.child(self.palette(window, cx))
             })
@@ -464,6 +474,7 @@ impl Hub {
             prepared_analysis
         });
         let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
+        cx.observe(&launcher, |_, _, cx| cx.notify()).detach();
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));

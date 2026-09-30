@@ -6,7 +6,9 @@ use super::{
     input::Input,
 };
 use crate::orbit::{self, button};
-use gpui::{Context, Entity, IntoElement, PathPromptOptions, Render, Window, div, prelude::*};
+use gpui::{
+    Context, Entity, IntoElement, PathPromptOptions, Render, WeakEntity, Window, div, prelude::*,
+};
 use std::{
     path::PathBuf,
     time::{Duration, Instant},
@@ -19,14 +21,21 @@ struct AppDraft {
     executable: Option<PathBuf>,
 }
 struct StepDraft {
-    app_id: String,
-    delay: Entity<Input>,
+    app: Entity<orbit::Choice>,
+    delay: Entity<orbit::NumberControl>,
     args: Entity<Input>,
 }
 struct ProfileDraft {
     profile: Profile,
     name: Entity<Input>,
-    first_delay: Entity<Input>,
+    description: Entity<Input>,
+    notes: Entity<Input>,
+    first_delay: Entity<orbit::NumberControl>,
+    retries: Entity<orbit::NumberControl>,
+    failure: Entity<orbit::Checkbox>,
+    reuse: Entity<orbit::Checkbox>,
+    tabs: Entity<orbit::Choice>,
+    app_ids: Vec<String>,
     steps: Vec<StepDraft>,
 }
 
@@ -34,10 +43,14 @@ pub struct Launcher {
     store: Store,
     discovered: Discovery,
     scanning: bool,
+    last_scan: Option<chrono::DateTime<chrono::Local>>,
     chain: Option<Chain>,
     progress: Vec<Progress>,
     app_draft: Option<AppDraft>,
     profile_draft: Option<ProfileDraft>,
+    form_layer: Option<Entity<orbit::Layer>>,
+    form_actions: [gpui::FocusHandle; 3],
+    query: Entity<Input>,
     trigger: LmuTrigger,
     trigger_polling: bool,
     next_trigger: Instant,
@@ -56,29 +69,36 @@ fn parse_args(value: &str) -> Result<Vec<String>, String> {
     serde_json::from_str(value)
         .map_err(|error| format!("argumentos: usa un array JSON de strings: {error}"))
 }
-fn seconds(value: &str) -> Result<u32, String> {
-    value
-        .trim()
-        .parse()
-        .map_err(|error| format!("delay: indica segundos enteros: {error}"))
-}
+#[path = "editor.rs"]
+mod editor;
+#[path = "presentation.rs"]
+mod presentation;
 
 impl Launcher {
+    pub fn form_layer(&self) -> Option<Entity<orbit::Layer>> {
+        self.form_layer.clone()
+    }
+
     pub fn new(store: Store, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
             store,
             discovered: Discovery::default(),
             scanning: false,
+            last_scan: None,
             chain: None,
             progress: vec![],
             app_draft: None,
             profile_draft: None,
+            form_layer: None,
+            form_actions: [cx.focus_handle(), cx.focus_handle(), cx.focus_handle()],
+            query: input(String::new(), "Buscar aplicaciones y perfiles", cx),
             trigger: LmuTrigger::default(),
             trigger_polling: false,
             next_trigger: Instant::now(),
             error: None,
             status: "Sin escaneo".into(),
         };
+        cx.observe(&view.query, |_, _, cx| cx.notify()).detach();
         view.scan(cx);
         cx.spawn(async move |this, cx| {
             loop {
@@ -133,6 +153,7 @@ impl Launcher {
                     return;
                 }
                 this.discovered = found;
+                this.last_scan = Some(chrono::Local::now());
                 this.status = "Escaneo local terminado".into();
                 cx.notify();
             });
@@ -275,7 +296,7 @@ impl Launcher {
         self.start(profile, cx);
     }
 
-    fn app_editor(&mut self, app: Option<App>, cx: &mut Context<Self>) {
+    fn app_editor(&mut self, app: Option<App>, window: &mut Window, cx: &mut Context<Self>) {
         let (id, name, args, executable) = app
             .map_or((None, "Nueva aplicación".into(), vec![], None), |app| {
                 (Some(app.id), app.name, app.args, app.executable)
@@ -286,7 +307,8 @@ impl Launcher {
             args: input(args_json(&args), "Argumentos de aplicación en JSON", cx),
             executable,
         });
-        cx.notify();
+        self.profile_draft = None;
+        self.open_form(window, cx);
     }
 
     fn pick_executable(&mut self, cx: &mut Context<Self>) {
@@ -370,122 +392,6 @@ impl Launcher {
         }
     }
 
-    fn profile_editor(&mut self, profile: Profile, cx: &mut Context<Self>) {
-        let steps = profile
-            .steps
-            .iter()
-            .map(|step| StepDraft {
-                app_id: step.app_id.clone(),
-                delay: input(
-                    step.delay_seconds.to_string(),
-                    "Delay de paso en segundos",
-                    cx,
-                ),
-                args: input(
-                    step.args_override
-                        .as_deref()
-                        .map_or(String::new(), args_json),
-                    "Argumentos del paso en JSON",
-                    cx,
-                ),
-            })
-            .collect();
-        self.profile_draft = Some(ProfileDraft {
-            name: input(profile.name.clone(), "Nombre de perfil", cx),
-            first_delay: input(
-                profile.first_step_delay.to_string(),
-                "Delay inicial en segundos",
-                cx,
-            ),
-            profile,
-            steps,
-        });
-        cx.notify();
-    }
-
-    fn new_profile(&mut self, source: Option<Profile>, cx: &mut Context<Self>) {
-        let Some(id) = (1..=129).map(|n| format!("profile:{n}")).find(|id| {
-            !self
-                .store
-                .document
-                .profiles
-                .iter()
-                .any(|profile| &profile.id == id)
-        }) else {
-            self.report(Err("límite de perfiles alcanzado".into()), cx);
-            return;
-        };
-        let mut profile = source.unwrap_or_else(|| Profile::new(id.clone(), "Nuevo perfil".into()));
-        profile.id = id;
-        self.profile_editor(profile, cx);
-    }
-
-    fn save_profile(&mut self, cx: &mut Context<Self>) {
-        let Some(draft) = &self.profile_draft else {
-            return;
-        };
-        let result = (|| {
-            let mut profile = draft.profile.clone();
-            profile.name = draft.name.read(cx).value.trim().to_string();
-            profile.first_step_delay = seconds(&draft.first_delay.read(cx).value)?;
-            profile.steps = draft
-                .steps
-                .iter()
-                .map(|step| {
-                    let args = &step.args.read(cx).value;
-                    Ok(Step {
-                        app_id: step.app_id.clone(),
-                        delay_seconds: seconds(&step.delay.read(cx).value)?,
-                        args_override: if args.trim().is_empty() {
-                            None
-                        } else {
-                            Some(parse_args(args)?)
-                        },
-                    })
-                })
-                .collect::<Result<Vec<_>, String>>()?;
-            Ok::<_, String>(profile)
-        })();
-        let profile = match result {
-            Ok(profile) => profile,
-            Err(error) => {
-                self.report(Err(error), cx);
-                return;
-            }
-        };
-        if self.edit(
-            move |document| {
-                if let Some(current) = document
-                    .profiles
-                    .iter_mut()
-                    .find(|current| current.id == profile.id)
-                {
-                    *current = profile;
-                } else {
-                    document.profiles.push(profile);
-                }
-                Ok(())
-            },
-            cx,
-        ) {
-            self.profile_draft = None;
-        }
-    }
-
-    fn append_step(&mut self, app_id: String, cx: &mut Context<Self>) {
-        let step = StepDraft {
-            app_id,
-            delay: input("0".into(), "Delay de paso en segundos", cx),
-            args: input(String::new(), "Argumentos del paso en JSON", cx),
-        };
-        if let Some(draft) = &mut self.profile_draft
-            && draft.steps.len() < 128
-        {
-            draft.steps.push(step);
-            cx.notify();
-        }
-    }
-
     fn app_form(&self, cx: &mut Context<Self>) -> gpui::Div {
         let Some(draft) = &self.app_draft else {
             return div();
@@ -504,6 +410,9 @@ impl Launcher {
         );
         orbit::card("Aplicación · borrador sin guardar").child(
             orbit::card_body()
+                .when_some(self.error.clone(), |body, error| {
+                    body.child(orbit::callout(error))
+                })
                 .child(orbit::setting_row(
                     "Nombre",
                     "Nombre visible en el catálogo",
@@ -521,10 +430,12 @@ impl Launcher {
                         .flex()
                         .flex_wrap()
                         .gap_2()
-                        .child(
-                            button("pick-app-path", "Elegir ejecutable")
-                                .on_click(cx.listener(|this, _, _, cx| this.pick_executable(cx))),
-                        )
+                        .child(editor::form_button(
+                            button("pick-app-path", "Elegir ejecutable"),
+                            &self.form_actions[0],
+                            |this, _, cx| this.pick_executable(cx),
+                            cx,
+                        ))
                         .when(official, |row| {
                             row.child(button("auto-app-path", "Usar descubrimiento").on_click(
                                 cx.listener(|this, _, _, cx| {
@@ -536,490 +447,44 @@ impl Launcher {
                             ))
                         }),
                 ))
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap_2()
-                        .py_2()
-                        .child(
-                            button("save-app", "Guardar aplicación")
-                                .on_click(cx.listener(|this, _, _, cx| this.save_app(cx))),
-                        )
-                        .child(
-                            button("discard-app", "Descartar borrador").on_click(cx.listener(
-                                |this, _, _, cx| {
-                                    this.app_draft = None;
-                                    cx.notify();
-                                },
-                            )),
-                        ),
-                ),
+                .child(self.app_actions(cx)),
         )
     }
-
-    fn profile_form(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let Some(draft) = &self.profile_draft else {
+    fn app_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let Some(draft) = &self.app_draft else {
             return div();
         };
-        let mut form = orbit::card_body()
-            .child(orbit::setting_row(
-                "Nombre",
-                "Nombre visible del perfil",
-                draft.name.clone(),
+        div()
+            .flex()
+            .flex_wrap()
+            .gap_2()
+            .py_2()
+            .child(editor::form_button(
+                button("save-app", "Guardar aplicación"),
+                &self.form_actions[2],
+                Self::commit_form,
+                cx,
             ))
-            .child(orbit::setting_row(
-                "Espera inicial",
-                "Segundos antes del primer paso",
-                draft.first_delay.clone(),
+            .child(editor::form_button(
+                button("discard-app", "Descartar borrador"),
+                &self.form_actions[1],
+                Self::close_form,
+                cx,
             ))
-            .child(orbit::setting_row(
-                "Continuar ante un fallo",
-                "Desactivado: detener la cadena si falla un paso",
-                orbit::toggle(
-                    "failure-policy",
-                    "Continuar ante un fallo",
-                    draft.profile.continue_on_error,
-                    true,
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if let Some(draft) = &mut this.profile_draft {
-                        draft.profile.continue_on_error = !draft.profile.continue_on_error;
-                    }
-                    cx.notify();
-                })),
-            ))
-            .child(orbit::setting_row(
-                "Reutilizar aplicaciones abiertas",
-                "Comprueba la ruta del ejecutable antes de reutilizar",
-                orbit::toggle(
-                    "reuse-policy",
-                    "Reutilizar aplicaciones abiertas",
-                    draft.profile.reuse_running,
-                    true,
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if let Some(draft) = &mut this.profile_draft {
-                        draft.profile.reuse_running = !draft.profile.reuse_running;
-                    }
-                    cx.notify();
-                })),
-            ))
-            .child(orbit::setting_row(
-                "Reintentos por paso",
-                "Pulsa para recorrer de 0 a 3 reintentos",
-                orbit::select("retry-policy", &draft.profile.max_retries.to_string()).on_click(
-                    cx.listener(|this, _, _, cx| {
-                        if let Some(draft) = &mut this.profile_draft {
-                            draft.profile.max_retries = (draft.profile.max_retries + 1) % 4;
-                        }
-                        cx.notify();
-                    }),
-                ),
-            ));
-        for (index, step) in draft.steps.iter().enumerate() {
-            form = form.child(self.step_form(index, step, cx));
-        }
-        orbit::card("Perfil · borrador sin guardar").child(
-            form.child(orbit::callout(
-                "Añade pasos con el botón del catálogo. Guardar confirma el borrador.",
-            ))
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .py_2()
-                    .child(
-                        button("save-profile", "Guardar perfil")
-                            .on_click(cx.listener(|this, _, _, cx| this.save_profile(cx))),
-                    )
-                    .child(
-                        button("discard-profile", "Descartar borrador").on_click(cx.listener(
-                            |this, _, _, cx| {
-                                this.profile_draft = None;
-                                cx.notify();
+            .when_some(
+                draft.id.clone().filter(|id| id.starts_with("custom:")),
+                |row, id| {
+                    row.child(
+                        button("delete-app", "Eliminar aplicación").on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                if this.edit(|doc| doc.remove_app(&id), cx) {
+                                    this.close_form(window, cx);
+                                    this.scan(cx);
+                                }
                             },
                         )),
-                    ),
-            ),
-        )
-    }
-
-    fn step_form(
-        &self,
-        index: usize,
-        step: &StepDraft,
-        cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
-        let name = self
-            .store
-            .document
-            .apps
-            .iter()
-            .find(|app| app.id == step.app_id)
-            .map_or(step.app_id.clone(), |app| app.name.clone());
-        orbit::card(&format!("Paso {} · {name}", index + 1))
-            .id(("edit-step", index))
-            .my_2()
-            .child(
-                orbit::card_body()
-                    .child(orbit::setting_row(
-                        "Espera",
-                        "Segundos antes del paso; el primero usa la espera inicial",
-                        step.delay.clone(),
-                    ))
-                    .child(orbit::setting_row(
-                        "Argumentos propios",
-                        "JSON; vacío usa los argumentos de la aplicación",
-                        step.args.clone(),
-                    ))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_wrap()
-                            .gap_2()
-                            .py_2()
-                            .child(button("step-up", "Subir").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    if let Some(draft) = &mut this.profile_draft
-                                        && index > 0
-                                        && index < draft.steps.len()
-                                    {
-                                        draft.steps.swap(index, index - 1);
-                                    }
-                                    cx.notify();
-                                },
-                            )))
-                            .child(button("step-down", "Bajar").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    if let Some(draft) = &mut this.profile_draft
-                                        && index + 1 < draft.steps.len()
-                                    {
-                                        draft.steps.swap(index, index + 1);
-                                    }
-                                    cx.notify();
-                                },
-                            )))
-                            .child(button("remove-step", "Quitar paso").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    if let Some(draft) = &mut this.profile_draft
-                                        && index < draft.steps.len()
-                                    {
-                                        draft.steps.remove(index);
-                                    }
-                                    cx.notify();
-                                },
-                            ))),
-                    ),
-            )
-    }
-
-    fn delete_profile(&mut self, id: &str, cx: &mut Context<Self>) {
-        self.edit(
-            |doc| {
-                doc.profiles.retain(|profile| profile.id != id);
-                if doc.lmu_trigger_profile.as_deref() == Some(id) {
-                    doc.lmu_trigger_profile = None;
-                }
-                Ok(())
-            },
-            cx,
-        );
-    }
-
-    fn catalog(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut rows = orbit::card_body();
-        let mut apps = self.store.document.apps.clone();
-        apps.sort_by(|a, b| {
-            b.favorite
-                .cmp(&a.favorite)
-                .then_with(|| a.name.cmp(&b.name))
-        });
-        for (index, app) in apps.into_iter().enumerate() {
-            rows = rows.child(self.app_card(index, app, cx));
-        }
-        orbit::card("Aplicaciones").child(rows)
-    }
-
-    fn app_card(
-        &self,
-        index: usize,
-        app: App,
-        cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
-        let id = app.id.clone();
-        let favorite_id = id.clone();
-        let launch_id = id.clone();
-        let step_id = id.clone();
-        let remove_id = id.clone();
-        let official = CATALOG.iter().find(|entry| entry.id == id);
-        let detected = self.discovered.app(&id);
-        let availability = detected.map(|entry| &entry.availability);
-        let state = if self.scanning {
-            "escaneando"
-        } else if availability.is_some_and(|value| value.launchable) {
-            "ruta de ejecutable disponible"
-        } else if availability.is_some_and(|value| value.installed) {
-            "instalada, sin ejecutable"
-        } else if availability.is_some_and(|value| value.found) {
-            "encontrada, no instalada"
-        } else {
-            "catálogo, sin detección"
-        };
-        orbit::card("").id(("launcher-app", index)).my_2().child(
-            orbit::card_body()
-                .child(orbit::setting_row(
-                    &format!("{}{}", if app.favorite { "★ " } else { "" }, app.name),
-                    official.map_or("Manual", |app| app.category),
-                    orbit::text(state, 12.0, 400, orbit::INK_3),
-                ))
-                .when_some(
-                    detected.and_then(|entry| entry.executable.as_ref()),
-                    |row, path| {
-                        row.child(
-                            orbit::text(path.display().to_string(), 12.0, 400, orbit::INK_3)
-                                .overflow_hidden(),
-                        )
-                    },
-                )
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap_2()
-                        .py_2()
-                        .child(button("app-favorite", "Favorita").on_click(cx.listener(
-                            move |this, _, _, cx| {
-                                this.edit(
-                                    |doc| {
-                                        let app = doc
-                                            .apps
-                                            .iter_mut()
-                                            .find(|app| app.id == favorite_id)
-                                            .ok_or("app inexistente")?;
-                                        app.favorite = !app.favorite;
-                                        Ok(())
-                                    },
-                                    cx,
-                                );
-                            },
-                        )))
-                        .child(
-                            button("edit-app", "Editar app / ruta").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.app_editor(Some(app.clone()), cx);
-                                },
-                            )),
-                        )
-                        .when(
-                            !self.scanning && availability.is_some_and(|value| value.launchable),
-                            |row| {
-                                row.child(button("launch-app", "Abrir").on_click(cx.listener(
-                                    move |this, _, _, cx| {
-                                        this.launch_app(&launch_id, cx);
-                                    },
-                                )))
-                            },
-                        )
-                        .when(self.profile_draft.is_some(), |row| {
-                            row.child(button("append-step", "Añadir al perfil").on_click(
-                                cx.listener(move |this, _, _, cx| {
-                                    this.append_step(step_id.clone(), cx);
-                                }),
-                            ))
-                        })
-                        .when(official.is_none(), |row| {
-                            row.child(button("delete-app", "Eliminar app").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    if this.edit(|doc| doc.remove_app(&remove_id), cx) {
-                                        this.scan(cx);
-                                    }
-                                },
-                            )))
-                        }),
-                ),
-        )
-    }
-
-    fn profiles(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut rows = div().flex().flex_col().gap_3();
-        let mut profiles = self.store.document.profiles.clone();
-        profiles.sort_by_key(|profile| !profile.favorite);
-        for (index, profile) in profiles.iter().enumerate() {
-            rows = rows.child(self.profile_card(index, profile, cx));
-        }
-        orbit::card("Perfiles").child(
-            orbit::card_body()
-                .when(self.store.document.profiles.is_empty(), |body| {
-                    body.child(orbit::text(
-                        "Todavía no hay perfiles. Crea uno y añade pasos desde el catálogo.",
-                        12.5,
-                        400,
-                        orbit::INK_2,
-                    ))
-                })
-                .child(rows),
-        )
-    }
-    fn profile_card(
-        &self,
-        index: usize,
-        profile: &Profile,
-        cx: &mut Context<Self>,
-    ) -> gpui::Stateful<gpui::Div> {
-        let edit = profile.clone();
-        let duplicate = profile.clone();
-        let launch = profile.clone();
-        let id = profile.id.clone();
-        let favorite_id = id.clone();
-        let delete_id = id.clone();
-        let triggered = self.store.document.lmu_trigger_profile.as_deref() == Some(&id);
-        let mut summary = format!("{} pasos", profile.steps.len());
-        if triggered {
-            summary.push_str(" · trigger al abrir LMU");
-        }
-        let trigger = cx.listener(move |this, _, _, cx| {
-            if this.edit(
-                |doc| {
-                    doc.lmu_trigger_profile = if doc.lmu_trigger_profile.as_deref() == Some(&id) {
-                        None
-                    } else {
-                        Some(id.clone())
-                    };
-                    Ok(())
+                    )
                 },
-                cx,
-            ) {
-                this.trigger = LmuTrigger::default();
-            }
-        });
-        orbit::card(&format!(
-            "{}{}",
-            if profile.favorite { "★ " } else { "" },
-            profile.name
-        ))
-        .id(("launcher-profile", index))
-        .child(
-            orbit::card_body()
-                .child(orbit::text(summary, 12.0, 400, orbit::INK_3))
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap_2()
-                        .py_2()
-                        .child(
-                            button("edit-profile", "Editar perfil").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.profile_editor(edit.clone(), cx);
-                                },
-                            )),
-                        )
-                        .child(
-                            button("duplicate-profile", "Duplicar").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.new_profile(Some(duplicate.clone()), cx);
-                                },
-                            )),
-                        )
-                        .child(
-                            button("launch-profile", "Iniciar cadena").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.start(launch.clone(), cx);
-                                },
-                            )),
-                        )
-                        .child(button("favorite-profile", "Favorito").on_click(cx.listener(
-                            move |this, _, _, cx| {
-                                this.edit(
-                                    |doc| {
-                                        let profile = doc
-                                            .profiles
-                                            .iter_mut()
-                                            .find(|p| p.id == favorite_id)
-                                            .ok_or("perfil inexistente")?;
-                                        profile.favorite = !profile.favorite;
-                                        Ok(())
-                                    },
-                                    cx,
-                                );
-                            },
-                        )))
-                        .child(
-                            button("trigger-profile", "Activar / desactivar trigger LMU")
-                                .on_click(trigger),
-                        )
-                        .child(
-                            button("delete-profile", "Eliminar perfil").on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.delete_profile(&delete_id, cx);
-                                },
-                            )),
-                        ),
-                ),
-        )
-    }
-}
-
-impl Render for Launcher {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut progress = orbit::card_body();
-        for event in &self.progress {
-            progress = progress.child(orbit::setting_row(
-                &event
-                    .step
-                    .map_or("Resultado".into(), |step| format!("Paso {}", step + 1)),
-                &format!(
-                    "{:?}{}",
-                    event.status,
-                    event
-                        .pid
-                        .map_or(String::new(), |pid| format!(" · PID {pid}"))
-                ),
-                orbit::text(
-                    format!(
-                        "{}{}",
-                        event.message,
-                        if event.step.is_none() {
-                            format!(" · éxito: {}", event.success)
-                        } else {
-                            String::new()
-                        }
-                    ),
-                    12.5,
-                    400,
-                    orbit::INK_2,
-                ),
-            ));
-        }
-        let mut warnings = div().flex().flex_col().gap_2();
-        for warning in &self.discovered.warnings {
-            warnings = warnings.child(orbit::callout(warning.clone()));
-        }
-        div().id("launcher").flex().flex_col().min_w_0().gap(gpui::px(orbit::GUTTER / 2.0))
-            .child(orbit::card("Tu sim-rig").child(orbit::card_body()
-                .child(orbit::setting_row("Descubrimiento local", &self.status,
-                    button("launcher-rescan", if self.scanning { "Escaneando…" } else { "Volver a escanear" })
-                        .on_click(cx.listener(|this, _, _, cx| this.scan(cx)))))
-                .child(orbit::setting_row("Datos del Launcher", &self.store.path.display().to_string(),
-                    button("launcher-reload", "Recargar y descartar borradores")
-                        .on_click(cx.listener(|this, _, _, cx| this.reload(cx)))))
-                .child(div().flex().flex_wrap().gap_2().py_2()
-                    .child(button("launcher-add-app", "Añadir aplicación").on_click(cx.listener(|this, _, _, cx| this.app_editor(None, cx))))
-                    .child(button("launcher-add-profile", "Crear perfil").on_click(cx.listener(|this, _, _, cx| this.new_profile(None, cx))))
-                    .when(self.chain.is_some(), |row| row.child(button("launcher-cancel", "Cancelar cadena").on_click(cx.listener(|this, _, _, cx| {
-                        if let Some(chain) = &this.chain { chain.cancel(); }
-                        cx.notify();
-                    })))))))
-            .when_some(self.error.clone(), |page, error| page.child(orbit::callout(error)))
-            .when(!self.discovered.warnings.is_empty(), |page| page.child(warnings))
-            .when(!self.progress.is_empty(), |page| page.child(orbit::card("Progreso de la cadena").child(progress)))
-            .when(self.app_draft.is_some(), |page| page.child(self.app_form(cx)))
-            .when(self.profile_draft.is_some(), |page| page.child(self.profile_form(cx)))
-            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(self.catalog(cx)))
-                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(self.profiles(cx))))
-            .child(orbit::callout("Cancelar o cerrar Hub deja abiertas las aplicaciones iniciadas. Atajos, inicio con Windows y cierre/reinicio de aplicaciones no disponibles en este corte."))
+            )
     }
 }

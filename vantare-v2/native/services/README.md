@@ -39,3 +39,13 @@ Corte 1: fmt, clippy (`-D warnings`, `-j 2`) y tests (`-j 2`) pasan en ambos
 workspaces. Servicios: 8 tests, incluido proceso real local y DPAPI de Windows.
 El workspace nativo completo termina con código 0. No demuestra red remota,
 renderizado del Hub ni derechos aplicados por el núcleo.
+
+Corte 2: cuenta OAuth/PKCE con navegador externo y callback loopback limitado,
+metadata validada y sesión DPAPI, renovación serializada, tombstone de logout y
+generación contra respuestas tardías. OAuth bearer permanece en servicios; no
+se trata como sesión Clerk TPA. Cuenta Orbit usa un worker I/O bajo demanda.
+Los gates de ambos workspaces pasan (10 tests en servicios). Refresh ambiguo
+no se reintenta automáticamente: si el proveedor consumió la rotación y perdió
+la respuesta, se requiere nuevo login. Logout remoto/revocación de Clerk y ACK
+de invalidación del núcleo requieren el puente/backend e IPC del orquestador.
+No se afirma que el núcleo actual reaccione al logout del Hub.

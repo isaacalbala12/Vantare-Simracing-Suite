@@ -51,6 +51,7 @@ struct Hub {
     engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
     strategy: Entity<Strategy>,
+    remote: Entity<crate::services::view::Remote>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -191,7 +192,11 @@ impl Hub {
                 )),
             )
             .into_any_element(),
-            Section::Roadmap | Section::Account | Section::Licenses => {
+            Section::Account => self
+                .remote
+                .update(cx, |remote, cx| remote.account(cx))
+                .into_any_element(),
+            Section::Roadmap | Section::Licenses => {
                 orbit::callout(self.section.pending()).into_any_element()
             }
         }
@@ -488,6 +493,8 @@ impl Hub {
         let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
+        let remote = cx.new(|cx| crate::services::view::Remote::new(&strategy_dir, cx));
+        cx.observe(&remote, |_, _, cx| cx.notify()).detach();
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
         wire_strategy(&strategy, cx);
         cx.observe(&workshop, |this, workshop, cx| {
@@ -519,6 +526,7 @@ impl Hub {
             launcher,
             engineer,
             strategy,
+            remote,
             notifications,
             status: None,
             subscriber,

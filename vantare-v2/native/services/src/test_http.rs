@@ -14,12 +14,17 @@ pub struct Server {
 
 impl Server {
     pub fn start(responses: Vec<(u16, String)>) -> Self {
+        Self::start_with(|_| responses)
+    }
+
+    pub fn start_with(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("servidor test");
         let base = Url::parse(&format!(
             "http://{}/",
             listener.local_addr().expect("puerto test")
         ))
         .expect("URL test");
+        let responses = responses(&base);
         let (tx, requests) = mpsc::channel();
         let thread = std::thread::spawn(move || {
             for (status, body) in responses {

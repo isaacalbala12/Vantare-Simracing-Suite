@@ -5,10 +5,14 @@ use std::io::{self, Read, Write};
 pub const VERSION: u32 = 1;
 pub const MAX_FRAME: usize = 64 * 1024;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Status,
+    AccountBegin,
+    AccountPoll,
+    AccountRenew,
+    Logout,
     Shutdown,
 }
 
@@ -29,6 +33,12 @@ pub enum Reply {
         message: String,
     },
     Closed,
+    Account {
+        signed_in: bool,
+        expires_at: Option<u64>,
+        pending: bool,
+        message: String,
+    },
     Error {
         message: String,
     },

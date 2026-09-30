@@ -2,8 +2,8 @@
 
 // Misma fuente del cliente Hub, sin copiar DTO ni añadir dependencias al Hub.
 #[allow(dead_code)] // El test usa el cliente, no la ubicación instalada del binario.
-#[path = "../../hub/src/services/mod.rs"]
-mod hub_services;
+#[path = "../../hub/src/services/client.rs"]
+mod hub_client;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
@@ -16,12 +16,10 @@ use vantare_services::protocol::{self, Command as RequestCommand, Request};
 #[test]
 fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
     let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
-    let mut client = hub_services::client::Client::start(binary).expect("servicio propio");
+    let mut client = hub_client::Client::start(binary).expect("servicio propio");
     assert!(matches!(
-        client
-            .request(hub_services::protocol::Command::Status)
-            .expect("status"),
-        hub_services::protocol::Reply::Status {
+        client.request(protocol::Command::Status).expect("status"),
+        protocol::Reply::Status {
             account_configured: false,
             ..
         }

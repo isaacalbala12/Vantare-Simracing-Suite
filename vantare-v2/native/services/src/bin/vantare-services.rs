@@ -2,14 +2,14 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 use vantare_services::{
+    app::App,
     config::BuildConfig,
     host::{self, Options},
-    protocol::{Command, Reply},
 };
 
 fn run() -> vantare_services::Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if args.len() != 3 {
+    if args.len() != 3 && args.len() != 4 {
         return Err(vantare_services::Error::Protocol);
     }
     let options = Options {
@@ -20,13 +20,12 @@ fn run() -> vantare_services::Result<()> {
         parent_image: PathBuf::from(&args[2]),
     };
     let config = BuildConfig::load();
-    host::serve(&options, |command| match command {
-        Command::Status => Reply::Status {
-            account_configured: config.native_account_configured(),
-            message: "servicio no configurado".into(),
-        },
-        Command::Shutdown => Reply::Closed,
-    })
+    let root = match args.get(3) {
+        Some(root) => PathBuf::from(root),
+        None => vantare_services::app::default_root()?,
+    };
+    let mut app = App::new(config, root);
+    host::serve(&options, |command| app.handle(command))
 }
 
 fn main() -> ExitCode {

@@ -1,10 +1,10 @@
 //! Campo de una línea con entrada GPUI/IME, selección por teclado y UTF-16.
+use crate::orbit;
 use gpui::{
     Bounds, Context, ElementInputHandler, EntityInputHandler, FocusHandle, IntoElement, Pixels,
-    Point, Render, UTF16Selection, Window, canvas, div, prelude::*, rgb,
+    Point, Render, UTF16Selection, Window, canvas, prelude::*, rgb,
 };
 use std::ops::Range;
-use vantare_ui::efficiency::tokens;
 
 // ponytail: campo de 16 KiB y cursor por caracteres; ratón/grafemas requieren el editor común futuro.
 pub struct Input {
@@ -221,18 +221,17 @@ impl Render for Input {
         } else {
             self.value.clone()
         };
-        div()
-            .id("launcher-input")
+        orbit::select("launcher-input", &display)
             .track_focus(&self.focus)
             .tab_index(0)
             .role(gpui::Role::TextInput)
             .aria_label(self.label)
             .relative()
-            .px_2()
-            .py_1()
-            .min_w(gpui::px(140.0))
-            .border_1()
-            .border_color(rgb(if focused { tokens::INK } else { tokens::MUTED }))
+            .cursor(gpui::CursorStyle::IBeam)
+            .when(focused, |input| input.border_color(rgb(orbit::CARMINE)))
+            .when(focused && !self.selection.is_empty(), |input| {
+                input.bg(rgb(orbit::SURFACE_3))
+            })
             .overflow_hidden()
             .on_mouse_down(
                 gpui::MouseButton::Left,
@@ -242,13 +241,6 @@ impl Render for Input {
                 }),
             )
             .on_key_down(cx.listener(Self::key))
-            .child(
-                div()
-                    .when(focused && !self.selection.is_empty(), |div| {
-                        div.bg(rgb(0x0034_3438))
-                    })
-                    .child(display),
-            )
             .child(
                 canvas(
                     |_, _, _| (),

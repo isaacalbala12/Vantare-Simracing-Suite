@@ -99,8 +99,9 @@ con Steam requiere instalación real y aceptación física del orquestador.
 
 ## Límites y siguientes decisiones
 
-No declara paridad visual Orbit ni fase 5 completa. UI funcional usa los tokens
-Eficiencia existentes; selección de texto por teclado, sin selección precisa
+La entrega original no declaró paridad visual Orbit ni fase 5 completa y usó
+los tokens Eficiencia. El porte de presentación Orbit se registra debajo.
+Selección de texto por teclado, sin selección precisa
 con ratón ni movimiento por grafemas compuestos. Ediciones son borradores hasta
 Guardar; cerrar Hub descarta borradores. Paridad visual, DPI, IME físico y
 LMU/OBS quedan para validación del orquestador, no demostrados por tests.
@@ -121,3 +122,59 @@ cancela esta cadena. Si un perfil pone apps después del juego, pueden quedar
 pendientes al entrar en Live. El perfil recomendado coloca el simulador al
 final. Decisión de continuidad: ¿se aplaza ese cierre hasta terminar la cadena?
 No se cambió el contrato de cierre ni se creó un supervisor paralelo.
+
+## Presentación Orbit — worker B, 2026-09-30 (#1430)
+
+Rama `vantareapp/isa-1430-w-orbit-b`, worktree `C:/tmp/vw3-orbit-b`, base
+asignada `0e40f2a9ef12ff71ccc4e6cdeac7b41e7c6451ce`. Notion no disponible:
+excepción expresa del encargo; seguimiento pendiente del orquestador.
+
+`view.rs` compone exclusivamente tarjetas, cuerpos, filas, botones, toggles,
+selects, notas y texto del kit `hub/src/orbit.rs`. Catálogo y perfiles se
+distribuyen en columnas; aplicaciones, perfiles y pasos conservan sus acciones.
+`input.rs` conserva su entrada/IME y usa un select Orbit como superficie de
+campo con rol TextInput, foco carmín y selección visible. No se modifica el
+kit, la shell, otras secciones ni el sistema Eficiencia. Sin dependencias nuevas.
+
+La misma entrega presenta Strategy con el kit Orbit: documento, selección de
+eventos/variantes, tarjetas de evento, variante, ritmo/recursos y boxes/reservas,
+resultado y paradas. Conserva sus 24 campos, procedencia, edición, acciones y
+límites del solver escalar. Los tests existentes permanecen intactos. Los
+cuerpos de lógica anteriores a la presentación se compararon con la base y
+son idénticos; solo se recolocan los handlers de presentación.
+
+Capturas de ventanas reales, con PowerShell/System.Drawing y PID exclusivo,
+en `C:/tmp/vw3-orbit-b-evidence/`: `launcher.png`, `launcher-1280.png`,
+`launcher-profile-edited.png`, `launcher-step.png`, `strategy.png`,
+`strategy-1280.png`, `strategy-fields.png` y `strategy-typing.png`.
+Revisión a 1600×1000 y 1280×900. Datos y archivos de revisión aislados en ese
+directorio: discovery real; el perfil de revisión y los campos de Strategy
+son ediciones manuales para comprobar controles, no evidencia de una carrera.
+No se inicia ninguna aplicación ni se presenta telemetría simulada como real.
+
+Piezas propuestas para el kit, sin crearlas: campo de texto editable común
+(aquí se compone con select), botones compactos/iconos para las acciones del
+catálogo y chips de procedencia. La tarjeta de resultado usa filas hasta que
+el kit incorpore la timeline de stints del Hub Wails. No se afirma paridad por
+píxeles, DPI mixto, OBS, IME físico ni paridad funcional completa de fase 5.
+
+Gates completos sobre las fuentes finales, 2026-09-30, desde `native/`:
+
+- `cargo fmt --check`: exit 0, sin diferencias.
+- `cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings`:
+  exit 0, sin advertencias.
+- `cargo test --workspace --offline -j 2`: exit 0; 619 tests estándar y
+  11 del harness de ciclo de vida pasados (630 total), 0 fallidos, 4 ignorados
+  explícitos que requieren LMU/ACC reales. Hub lib: 53; Hub CLI: 2.
+- `cargo build --offline -j 2 -p vantare-hub`: exit 0. Se repitieron las
+  capturas principales y el formulario de perfil con el ejecutable final.
+- `git diff --check`: exit 0. No se ejecutan Go/frontend, no modificados,
+  ni CI remoto, porque no hay push ni PR.
+
+Logs completos: `C:/tmp/vw3-orbit-b-evidence/{fmt,clippy,tests,build-final}.log`.
+Hash del ejecutable de las capturas finales: `binary-final-hash.json` en ese
+directorio. Los formularios editados/paso/campo en edición se capturaron antes
+de la última extracción de metadatos y handlers (misma presentación); las
+capturas principales, 1280 px y `launcher-profile.png` se repitieron al final.
+No se añadió ningún test que copie el render: la lógica está intacta y la
+presentación se verificó en ventanas reales. Sin push, PR, merge ni release.

@@ -10,11 +10,10 @@ use gpui::{
     prelude::*, rgb,
 };
 use serde_json::{Value, json};
-use vantare_ui::efficiency::tokens;
 
 use crate::{
     files,
-    shell::button,
+    orbit::{self, button},
     strategy_core::{
         document::{Document, new_event},
         solver::{
@@ -715,7 +714,7 @@ impl Strategy {
     }
 
     fn choices(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut choices = div().flex().flex_col().gap_1();
+        let mut choices = orbit::card_body();
         if let Some(doc) = &self.editor.document {
             for (event, event_value) in doc.value()["events"]
                 .as_array()
@@ -723,19 +722,30 @@ impl Strategy {
                 .iter()
                 .enumerate()
             {
-                let label = format!(
-                    "{} · {} variantes",
-                    display(&event_value["name"]["value"]),
-                    event_value["strategies"].as_array().map_or(0, Vec::len)
-                );
-                choices = choices.child(
-                    button("strategy-event", "Elegir evento")
-                        .id(("strategy-event", event))
-                        .child(label)
-                        .on_click(cx.listener(move |this, _, _, cx| this.choose(event, 0, cx))),
-                );
+                let label = display(&event_value["name"]["value"]);
+                choices = choices.child(orbit::setting_row(
+                    &label,
+                    &format!(
+                        "{} variantes",
+                        event_value["strategies"].as_array().map_or(0, Vec::len)
+                    ),
+                    button(
+                        "strategy-event",
+                        if event == self.event {
+                            "Seleccionado"
+                        } else {
+                            "Elegir evento"
+                        },
+                    )
+                    .id(("strategy-event", event))
+                    .when(event == self.event, |control| {
+                        control.bg(rgb(orbit::SURFACE_3))
+                    })
+                    .on_click(cx.listener(move |this, _, _, cx| this.choose(event, 0, cx))),
+                ));
             }
             if let Some(event) = self.current_event() {
+                choices = choices.child(orbit::eyebrow("Variantes").py_2());
                 for (variant, value) in event["strategies"]
                     .as_array()
                     .map_or(&[][..], Vec::as_slice)
@@ -744,101 +754,191 @@ impl Strategy {
                 {
                     let event = self.event;
                     let label = display(&value["name"]["value"]);
-                    choices = choices.child(
-                        button("strategy-variant", "Elegir variante")
-                            .id(("strategy-variant", variant))
-                            .child(label)
-                            .on_click(
-                                cx.listener(move |this, _, _, cx| this.choose(event, variant, cx)),
-                            ),
-                    );
+                    choices = choices.child(orbit::setting_row(
+                        &label,
+                        &display(&value["mode"]["value"]),
+                        button(
+                            "strategy-variant",
+                            if variant == self.variant {
+                                "Seleccionada"
+                            } else {
+                                "Elegir variante"
+                            },
+                        )
+                        .id(("strategy-variant", variant))
+                        .when(variant == self.variant, |control| {
+                            control.bg(rgb(orbit::SURFACE_3))
+                        })
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.choose(event, variant, cx)),
+                        ),
+                    ));
                 }
+            } else {
+                choices = choices.child(orbit::text(
+                    "Añade un evento con los datos de la tarjeta Evento.",
+                    12.5,
+                    400,
+                    orbit::INK_2,
+                ));
             }
+        } else {
+            choices = choices.child(orbit::text(
+                "Abre un documento V2 o crea uno para organizar tus eventos y variantes.",
+                12.5,
+                400,
+                orbit::INK_2,
+            ));
         }
-        choices
+        orbit::card("Eventos y variantes").child(choices)
     }
-}
 
-impl Render for Strategy {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let choices = self.choices(cx);
-        let mut fields = div().flex().flex_col().gap_1();
-        for (index, (label, _)) in FIELDS.iter().enumerate() {
-            let value = if self.editing == Some(index) {
+    fn fields(&self, range: std::ops::Range<usize>, cx: &mut Context<Self>) -> gpui::Div {
+        let mut fields = orbit::card_body();
+        for index in range {
+            let label = FIELDS[index].0;
+            let editing = self.editing == Some(index);
+            let value = if editing {
                 format!("{}▏", self.buffer)
             } else {
                 self.fields[index].clone()
             };
-            fields = fields.child(
-                div()
-                    .id(index)
+            fields = fields.child(orbit::setting_row(
+                label,
+                &self.field_evidence(index),
+                orbit::select("strategy-field", &value)
+                    .id(("strategy-field", index))
                     .role(gpui::Role::TextInput)
-                    .aria_label(*label)
-                    .tab_index(0)
-                    .px_2()
-                    .py_1()
-                    .border_1()
-                    .border_color(rgb(tokens::MUTED))
+                    .aria_label(label)
                     .cursor(gpui::CursorStyle::IBeam)
-                    .child(format!("{label}: {value}"))
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(tokens::MUTED))
-                            .child(self.field_evidence(index)),
-                    )
+                    .when(editing, |control| control.border_color(rgb(orbit::CARMINE)))
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.editing = Some(index);
                         this.buffer = this.fields[index].clone();
                         this.focus.focus(window, cx);
                         cx.notify();
                     })),
-            );
+            ));
         }
-        let mut result = div().flex().flex_col().gap_1();
+        fields
+    }
+    fn result_card(&self) -> gpui::Div {
+        let mut result = orbit::card_body();
         if let Some(plan) = &self.result {
             if plan.feasible {
                 result = result
-                    .child(format!(
-                        "Factible: {} · {:.3} s · stints {:?}",
-                        plan.feasible, plan.expected.total_seconds, plan.stints
+                    .child(orbit::setting_row(
+                        "Tiempo previsto",
+                        "Plan escalar factible con las entradas confirmadas",
+                        orbit::text(
+                            format!("{:.3} s", plan.expected.total_seconds),
+                            15.0,
+                            700,
+                            orbit::INK,
+                        ),
                     ))
-                    .child(format!(
-                        "Salida Fuel {:.3} L / VE {:.3} % · llegada Fuel {:.3} L / VE {:.3} %",
-                        plan.fuel_start_liters,
-                        plan.ve_start_percent,
-                        plan.fuel_remaining_liters,
-                        plan.ve_remaining_percent
+                    .child(orbit::setting_row(
+                        "Stints",
+                        "Vueltas por stint",
+                        orbit::text(format!("{:?}", plan.stints), 13.5, 600, orbit::INK),
+                    ))
+                    .child(orbit::setting_row(
+                        "Recursos de salida",
+                        "Fuel / energía virtual",
+                        orbit::text(
+                            format!(
+                                "{:.3} L / {:.3} %",
+                                plan.fuel_start_liters, plan.ve_start_percent
+                            ),
+                            13.5,
+                            600,
+                            orbit::INK,
+                        ),
+                    ))
+                    .child(orbit::setting_row(
+                        "Recursos de llegada",
+                        "Fuel / energía virtual",
+                        orbit::text(
+                            format!(
+                                "{:.3} L / {:.3} %",
+                                plan.fuel_remaining_liters, plan.ve_remaining_percent
+                            ),
+                            13.5,
+                            600,
+                            orbit::INK,
+                        ),
                     ));
                 for pit in &plan.pit_stops {
-                    result = result.child(format!(
-                        "Vuelta {} · Fuel +{:.3} L · VE +{:.3} % · {}",
-                        pit.lap, pit.fuel_liters, pit.ve_percent, pit.service_mode
+                    result = result.child(orbit::setting_row(
+                        &format!("Boxes · vuelta {}", pit.lap),
+                        &pit.service_mode,
+                        orbit::text(
+                            format!(
+                                "Fuel +{:.3} L · VE +{:.3} %",
+                                pit.fuel_liters, pit.ve_percent
+                            ),
+                            12.5,
+                            400,
+                            orbit::INK_2,
+                        ),
                     ));
                 }
             } else {
-                result = result
-                    .child("Sin plan factible; no hay tiempos ni recursos de salida que mostrar.");
+                result = result.child(orbit::callout(
+                    "Sin plan factible; no hay tiempos ni recursos de salida que mostrar.",
+                ));
             }
+        } else {
+            result = result.child(orbit::text(
+                if self.running {
+                    "Calculando…"
+                } else {
+                    "Confirma las entradas y calcula para ver el plan y sus paradas."
+                },
+                12.5,
+                400,
+                orbit::INK_2,
+            ));
         }
-        div().id("strategy").track_focus(&self.focus).flex_1().min_h_0().flex().flex_col().gap_2().overflow_y_scroll().on_key_down(cx.listener(|this,event,_,cx|this.key(event,cx)))
-            .child(self.status.clone()).when_some(self.error.clone(),gpui::ParentElement::child)
-            .child(format!("Archivo: {} · cambios {}",self.editor.path.as_ref().map_or_else(||"sin guardar".into(),|p|p.display().to_string()),self.editor.dirty()||self.form_dirty))
+        orbit::card("Resultado y paradas").child(result)
+    }
+}
+
+impl Render for Strategy {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div().id("strategy").track_focus(&self.focus).flex().flex_col().min_w_0().gap(gpui::px(orbit::GUTTER / 2.0))
+            .on_key_down(cx.listener(|this, event, _, cx| this.key(event, cx)))
+            .child(orbit::card("Documento de Strategy").child(orbit::card_body()
+                .child(orbit::setting_row("Archivo", &self.editor.path.as_ref().map_or_else(|| "Sin guardar".into(), |p| p.display().to_string()),
+                    orbit::text(if self.editor.dirty() || self.form_dirty { "Cambios pendientes" } else { "Sin cambios pendientes" }, 12.0, 500, orbit::INK_3)))
+                .child(div().flex().gap_2().flex_wrap().py_2()
+                    .child(button("strategy-open", "Abrir").on_click(cx.listener(|this, _, _, cx| this.open(cx))))
+                    .child(button("strategy-create", "Crear documento").on_click(cx.listener(|this, _, _, cx| this.create(cx))))
+                    .child(button("strategy-save", "Guardar").on_click(cx.listener(|this, _, _, cx| this.save(cx))))
+                    .child(button("strategy-save-as", "Guardar como").on_click(cx.listener(|this, _, _, cx| this.save_as(cx))))
+                    .child(button("strategy-discard", "Descartar cambios").on_click(cx.listener(|this, _, _, cx| this.discard(cx)))))))
+            .child(orbit::callout(self.status.clone()))
+            .when_some(self.error.clone(), |page, error| page.child(orbit::callout(error)))
+            .child(self.choices(cx))
+            .child(orbit::callout("Cálculo manual escalar: sin telemetría, forecast, pilotos múltiples, inventario físico, ahorro ni incertidumbre. Escribe todos los números; 0 desactiva VE/vida/reserva. No se inventan entradas ausentes."))
+            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0))
+                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).flex().flex_col().gap_3()
+                    .child(orbit::card("Evento").child(self.fields(0..6, cx)))
+                    .child(orbit::card("Variante").child(self.fields(6..9, cx))))
+                .child(div().flex_1().min_w(gpui::px(orbit::COLUMN_W)).flex().flex_col().gap_3()
+                    .child(orbit::card("Ritmo y recursos").child(self.fields(9..16, cx)))
+                    .child(orbit::card("Boxes y reservas").child(self.fields(16..24, cx)))))
+            .child(orbit::callout("Edición: clic, escribir; Ctrl+A vacía, Ctrl+V pega, Enter aplica, Esc cancela. Procedencia manual solo al confirmar."))
             .child(div().flex().gap_2().flex_wrap()
-                .child(button("strategy-open","Abrir").on_click(cx.listener(|this,_,_,cx|this.open(cx))))
-                .child(button("strategy-create","Crear documento").on_click(cx.listener(|this,_,_,cx|this.create(cx))))
-                .child(button("strategy-save","Guardar").on_click(cx.listener(|this,_,_,cx|this.save(cx))))
-                .child(button("strategy-save-as","Guardar como").on_click(cx.listener(|this,_,_,cx|this.save_as(cx))))
-                .child(button("strategy-discard","Descartar cambios").on_click(cx.listener(|this,_,_,cx|this.discard(cx)))))
-            .child("Cálculo manual escalar: sin telemetría, forecast, pilotos múltiples, inventario físico, ahorro ni incertidumbre. Escribe todos los números; 0 desactiva VE/vida/reserva. No se inventan entradas ausentes.")
-            .child(choices).child(fields)
-            .child("Edición: clic, escribir; Ctrl+A vacía, Ctrl+V pega, Enter aplica, Esc cancela. Procedencia manual solo al confirmar.")
-            .child(div().flex().gap_2().flex_wrap()
-                .child(button("strategy-apply","Aplicar campo").on_click(cx.listener(|this,_,_,cx|this.apply(cx))))
-                .child(button("strategy-add-event","Añadir evento con estos datos").on_click(cx.listener(|this,_,_,cx|this.add_event(cx))))
-                .child(button("strategy-calculate","Confirmar entradas y calcular").on_click(cx.listener(|this,_,_,cx|this.calculate(cx))))
-                .child(button("strategy-cancel","Cancelar cálculo").on_click(cx.listener(|this,_,_,cx|{this.invalidate();this.status="Cálculo cancelado; no se conserva resultado parcial".into();cx.notify();}))))
-            .child(result)
+                .child(button("strategy-apply", "Aplicar campo").on_click(cx.listener(|this, _, _, cx| this.apply(cx))))
+                .child(button("strategy-add-event", "Añadir evento con estos datos").on_click(cx.listener(|this, _, _, cx| this.add_event(cx))))
+                .child(button("strategy-calculate", "Confirmar entradas y calcular").on_click(cx.listener(|this, _, _, cx| this.calculate(cx))))
+                .child(button("strategy-cancel", "Cancelar cálculo").on_click(cx.listener(|this, _, _, cx| {
+                    this.invalidate();
+                    this.status = "Cálculo cancelado; no se conserva resultado parcial".into();
+                    cx.notify();
+                }))))
+            .child(self.result_card())
     }
 }
 

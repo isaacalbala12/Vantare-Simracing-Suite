@@ -29,7 +29,7 @@ pub(super) struct CarUpdate {
     pub(super) current: Lap,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub(super) struct Entry {
     pub(super) index: u16,
     pub(super) number: i32,

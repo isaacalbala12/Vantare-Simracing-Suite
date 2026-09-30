@@ -29,8 +29,10 @@ No aceptar el pipe latest-wins como sustituto del journal.
 
 ### Señales de segunda ronda — #1428 / #1427
 
-Spotter usa pose, velocidad vectorial nativa del jugador y rivales, estado de
-boxes y velocidad escalar del jugador, todos `Reliable` y fuente `Live`.
+Spotter usa pose, estado de boxes y velocidad escalar del jugador `Reliable`,
+con fuente `Live`. Los vectores del jugador y rivales pueden ser `Reliable`
+(nativos) o `Estimated` actuales admitidos por el adaptador; `Stale`, ausentes
+o no finitos no autorizan avisos. La calidad de las otras señales no se relaja.
 Mínimo 10 m/s (también en el vector horizontal); el filtro Go exige diferencia
 estrictamente menor de 12 m/s en cada componente del mundo al entrar al solape.
 La geometría conserva la histéresis de 5 m para un lado ya comunicado. El ACK
@@ -40,8 +42,12 @@ reinician el estado. Falta de evidencia retira presentación con `clear:true`;
 no se añade un anuncio audible de pista despejada. El ajuste global `enabled`
 controla también Spotter; no se cambia el contrato de preferencias del Hub.
 
-LMU aporta vector por coche; ACC no aporta vector de rivales y por tanto no
-activa Spotter. Sin clips no hay audio: los tests solo verifican radio visual.
+LMU aporta vector nativo por coche. ACC deriva un vector `Estimated` de poses
+originales con reloj de vuelta por coche, filtro y cortes de continuidad:
+véanse los [límites, latencia y error esperados](../runtime/src/adapter/acc/REVIEW.md).
+Spotter puede anunciar en ACC después del calentamiento de ambas series,
+si jugador y rivales están fuera de boxes y las otras señales son fiables.
+Sin clips no hay audio: los tests solo verifican radio visual.
 No se declara paridad completa con el Spotter Go (debounce/avisos clear),
 validación acústica, ni presupuesto de CPU/latencia/frame time.
 
@@ -183,8 +189,8 @@ Fuel: 1 l, 2 l, medio depósito con nivel/capacidad fiables; flags: yellow/blue
 fiables de sesión o jugador. No hay aviso por sector ni autonomía estimada.
 
 `spotter::classify_position` conserva los límites longitudinales/laterales Go
-en los ejes neutrales ahead/right, con histéresis. **Solo geometría**: faltan
-velocidades de rivales para el filtro de cierre, por tanto no emite radio.
+en los ejes neutrales ahead/right, con histéresis. El filtro de cierre consume
+vectores nativos o estimados actuales; no deriva desde fotos del consumidor.
 Penalties/timings/pitstop completo también requieren señales/contratos
 comunes pendientes en el microplan. No es paridad de todas las familias Go.
 

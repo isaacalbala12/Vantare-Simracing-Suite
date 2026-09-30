@@ -7,6 +7,9 @@ mod weather_tests;
 #[path = "completion.rs"]
 mod completion_tests;
 
+#[path = "velocity.rs"]
+mod velocity_tests;
+
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
 }

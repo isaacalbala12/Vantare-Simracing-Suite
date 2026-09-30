@@ -268,3 +268,35 @@ juego queda pendiente de una campaña con consola elevada.
 3. Solo se porta el sistema de diseño **Eficiencia**.
 4. La salida remota para análisis live queda **fuera de este plan**, mucho
    después del corte.
+
+## Estado a 2026-09-30 (desarrollo autónomo nocturno)
+
+Integración única en `vantareapp/isa-1427-fase2` (fases 2–7 fusionadas; ramas
+por fase con su microplan en `docs/superpowers/plans/2026-09-30-fase-*.md`).
+Workers Codex gpt-6.1-sol; decisiones de contrato consultadas con Astra y Fable.
+
+- **Fase 2 (#1427):** 18 widgets Eficiencia portados; DTO v4 (relative, volante,
+  historial de combustible, estado de la fuente), ajustes tipados por widget,
+  `layout.json` aplicado en caliente reutilizando ventanas, trazas en el widget
+  con escenas en secuencia. Pendientes: variantes de ajustes solo persistidas,
+  residuo de rasterización de texto de GPUI (controles privados; decisión de
+  Isaac si se parchea GPUI) y widgets aún por encima del 4 %.
+- **Fase 3 (#1428):** journal con recording on/off, hechos productivos del
+  núcleo, Engineer como proceso con cursor/checkpoint, radio y clips locales.
+  Pendientes: assets Kokoro y escucha de Isaac; señales para Spotter
+  (velocidad de rivales), sanciones y servicio de boxes.
+- **Fase 4 (#1429):** series por vuelta, codec, análisis puro live/replay,
+  `vantare-storage` con DuckDB bundled (propietario único, WAL, recuperación).
+  Pendiente: presupuesto físico con LMU/OBS.
+- **Fase 5 (#1430):** Hub GPUI con kit visual Orbit, Studio sobre el layout
+  común, Workshop, calendario, notificaciones, cierre por flanco Live.
+  En curso: Engineer, análisis, Workshop completo y Ajustes, Launcher,
+  Strategy. Bloqueado por Isaac: cuenta, licencias, roadmap y envío del
+  Testing Center (servicios Supabase/credenciales).
+- **Fase 6 (#1431):** ACC completo sobre corpus; estado de fuente declarado
+  por el adaptador; pendientes capturas físicas.
+- **Fase 7 (#1432):** candidato local instalable/portable con actualización y
+  rollback probados. En curso: todos los binarios e importación V4 → layout.
+  Bloqueado por Isaac: firma, publicación y pruebas en otra GPU.
+- **Fase 8:** no iniciada; espera las capturas físicas (decisión de Isaac).
+- **Fase 9:** requiere autorización de Isaac.

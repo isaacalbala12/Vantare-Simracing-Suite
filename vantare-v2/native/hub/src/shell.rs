@@ -12,11 +12,14 @@ use gpui::{
     rgb,
 };
 use vantare_domain::SourceKind;
+use vantare_domain::format::{Language, Units};
 use vantare_ipc::Subscriber;
 use vantare_ui::efficiency::{text, tokens};
 
 use crate::{
     Section,
+    calendar::Calendar,
+    notifications::Notifications,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
 };
@@ -33,6 +36,8 @@ struct Hub {
     focus: FocusHandle,
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
+    calendar: Entity<Calendar>,
+    notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<SourceKind>,
@@ -64,11 +69,61 @@ impl Hub {
         match self.save(cx) {
             Ok(()) => true,
             Err(error) => {
+                self.notifications.update(cx, |center, cx| {
+                    center.report("hub.save", error.clone(), cx);
+                });
                 self.status = Some(error);
                 cx.notify();
                 false
             }
         }
+    }
+
+    fn preferences(&mut self, units: bool, cx: &mut Context<Self>) {
+        let mut prefs = self.workshop.read(cx).preferences();
+        if units {
+            prefs.units = if prefs.units == Units::Metric {
+                Units::Imperial
+            } else {
+                Units::Metric
+            };
+        } else {
+            prefs.language = if prefs.language == Language::Es {
+                Language::En
+            } else {
+                Language::Es
+            };
+        }
+        if let Err(error) = self
+            .workshop
+            .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx))
+        {
+            self.notifications.update(cx, |center, cx| {
+                center.report("hub.preferences", error.clone(), cx);
+            });
+            self.status = Some(error);
+        }
+        cx.notify();
+    }
+
+    fn settings(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let prefs = self.workshop.read(cx).preferences();
+        div().flex().flex_col().gap_2()
+            .child(format!("Formato del Workshop: {:?} · {:?}", prefs.units, prefs.language))
+            .child(button("settings-units", "Métrico / Imperial").on_click(cx.listener(|this, _, _, cx| this.preferences(true, cx))))
+            .child(button("settings-language", "ES / EN").on_click(cx.listener(|this, _, _, cx| this.preferences(false, cx))))
+            .child("Guardado local en selección del Workshop. Actualizaciones, hotkeys, privacidad, audio y rendimiento esperan sus servicios; no se altera el núcleo.")
+    }
+
+    fn diagnostics(&self, cx: &Context<Self>) -> gpui::Div {
+        let scene = &self.workshop.read(cx).scene;
+        let snapshot = scene.snapshot();
+        div().flex().flex_col().gap_2()
+            .child("Contexto local del Workshop; no es diagnóstico del juego ni reporte completo.")
+            .child(format!("Fuente de la foto: {} · {:?} · época {} · revisión {} · {} coches",
+                snapshot.origin.source.simulator, snapshot.origin.source.kind, snapshot.epoch, snapshot.sequence, snapshot.state.cars.len()))
+            .child(format!("Fotos cargadas: {} · escena válida: {}", scene.len(), scene.error.is_none()))
+            .child("Testing Center: exportación sanitizada, logs, reports y automatización esperan contrato del worker. Sin datos de cuenta, envío ni acciones externas.")
     }
 }
 
@@ -118,8 +173,28 @@ impl Render for Hub {
             .when(self.section == Section::Studio, |content| {
                 content.child(self.studio.clone())
             })
+            .when(self.section == Section::Calendar, |content| {
+                content.child(self.calendar.clone())
+            })
+            .when(self.section == Section::Notifications, |content| {
+                content.child(self.notifications.clone())
+            })
+            .when(self.section == Section::Settings, |content| {
+                content.child(self.settings(cx))
+            })
+            .when(self.section == Section::Testing, |content| {
+                content.child(self.diagnostics(cx))
+            })
             .when(
-                self.section != Section::Workshop && self.section != Section::Studio,
+                !matches!(
+                    self.section,
+                    Section::Workshop
+                        | Section::Studio
+                        | Section::Calendar
+                        | Section::Notifications
+                        | Section::Settings
+                        | Section::Testing
+                ),
                 |content| content.child(self.section.pending()),
             );
         div()
@@ -186,15 +261,54 @@ fn start_source_poll(cx: &mut Context<Hub>) {
     .detach();
 }
 
+fn wire_sections(
+    calendar: &Entity<Calendar>,
+    notifications: &Entity<Notifications>,
+    cx: &mut Context<Hub>,
+) {
+    cx.observe(calendar, |this, calendar, cx| {
+        if let Some(error) = &calendar.read(cx).error {
+            let error = error.clone();
+            this.notifications
+                .update(cx, |center, cx| center.report("hub.calendar", error, cx));
+        }
+    })
+    .detach();
+    cx.observe(notifications, |this, center, cx| {
+        if let Some(destination) = center.update(cx, |center, _| center.destination.take()) {
+            this.section = destination;
+            cx.notify();
+        }
+    })
+    .detach();
+}
+
 fn subscribe() -> Result<Subscriber, String> {
     // Mismo ACL privado del IPC que overlays; no consulta servicios ni credenciales.
     let pipe = vantare_ipc::default_pipe_name().map_err(|error| format!("pipe Hub: {error}"))?;
     Subscriber::connect(&pipe, |_| true).map_err(|error| format!("suscribir Hub: {error}"))
 }
 
+fn create_workshop(prepared: Prepared, cx: &mut App) -> Entity<Workshop> {
+    cx.new(|cx| {
+        let workshop = Workshop::new(prepared, cx);
+        cx.spawn(async move |this, cx| {
+            loop {
+                let Ok(delay) = this.update(cx, |this, cx| this.tick(Instant::now(), cx)) else {
+                    break;
+                };
+                cx.background_executor().timer(delay).await;
+            }
+        })
+        .detach();
+        workshop
+    })
+}
+
 pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load()?;
+    let calendar = Calendar::load(&options.data_dir)?;
     let subscriber = subscribe()?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -219,23 +333,12 @@ pub fn run(options: Options) -> Result<(), String> {
                 start_source_poll(cx);
                 let focus = cx.focus_handle();
                 focus.focus(window, cx);
-                let workshop = cx.new(|cx| {
-                    let workshop = Workshop::new(prepared, cx);
-                    cx.spawn(async move |this, cx| {
-                        loop {
-                            let Ok(delay) =
-                                this.update(cx, |this, cx| this.tick(Instant::now(), cx))
-                            else {
-                                break;
-                            };
-                            cx.background_executor().timer(delay).await;
-                        }
-                    })
-                    .detach();
-                    workshop
-                });
+                let workshop = create_workshop(prepared, cx);
                 let snapshot = workshop.read(cx).scene.snapshot().clone();
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
+                let notifications = cx.new(|_| Notifications::default());
+                let calendar = cx.new(|_| calendar);
+                wire_sections(&calendar, &notifications, cx);
                 cx.observe(&workshop, |this, workshop, cx| {
                     let snapshot = workshop.read(cx).scene.snapshot().clone();
                     this.studio
@@ -255,6 +358,8 @@ pub fn run(options: Options) -> Result<(), String> {
                     focus,
                     workshop,
                     studio,
+                    calendar,
+                    notifications,
                     status: None,
                     subscriber,
                     previous_source: None,

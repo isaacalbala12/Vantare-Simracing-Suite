@@ -77,3 +77,21 @@ Canvas de preview 1920×1080, otros monitores quedan fuera de la preview.
 Tamaños intrínsecos; editor de contenido/Settings y escritura en cada edición
 esperan integrar la API de fase 2. Tests de geometría/undo no sustituyen
 arrastre físico, DPI, aplicación a overlays ni paridad.
+
+## Secciones locales
+
+Calendario lee el seed oficial UTC de Go. El empaquetado caduca el 1 de
+septiembre de 2026: se muestra histórico y no ofrece próximas carreras.
+Seguir/dejar de seguir guarda `calendar-following.json`. Para una agenda
+explícita, dejar un catálogo UTC en `--data-dir/official-schedule.json` y
+pulsar Cargar; fallo conserva la última agenda. Se ofrecen hasta 20 salidas
+de las siguientes 24 horas de series seguidas si la publicación es vigente.
+No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
+
+Notificaciones contiene errores locales reales, hasta 50, con dedupe,
+unread/read/clear y destinos cerrados. Vive durante el proceso, como el
+contrato Go; no tiene toasts ni emisores remotos. Ajustes guarda el formato
+del Workshop sobre su estado existente. Testing Center muestra únicamente
+contexto del snapshot local del Workshop; no genera ni envía un reporte.
+Cuenta/licencias, Strategy, Engineer, análisis, Launcher y roadmap conservan
+sus dependencias explícitas en el microplan y en cada pantalla.

@@ -1,9 +1,11 @@
 //! Proceso Hub de ADR 0099: edición local, sin dependencia del runtime.
 #![forbid(unsafe_code)]
 
+pub mod calendar;
 pub mod document;
 pub mod files;
 pub mod lifecycle;
+pub mod notifications;
 pub mod scene;
 pub mod shell;
 pub mod studio;

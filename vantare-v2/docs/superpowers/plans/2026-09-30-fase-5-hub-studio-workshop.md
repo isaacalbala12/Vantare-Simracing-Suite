@@ -52,9 +52,10 @@ no constituyen aceptación del Hub nativo.
   editar ese kit. `ui/src/workshop.rs:18` ya retiene la última foto válida.
 - `native/ipc/`: wire de snapshots existente; no hay contrato aprobado de
   comandos Hub → núcleo para layout/licencias/trabajos. No añadirlo por aquí.
-- `native/runtime/src/bin/vantare/`: launcher propietario de procesos; otro
-  worker mantiene runtime. Un botón o EOF no demuestra entrada automática al
-  juego. El cierre integrado requiere coordinación con ese propietario.
+- `native/runtime/src/bin/vantare/`: propietario de core/overlays, mantenido
+  por otro worker. Hub no es su hijo. El Hub usa Subscriber y termina por flanco;
+  EOF opcional solo sirve al ciclo de desarrollo. El test de pipe no demuestra
+  entrada física al juego ni memoria liberada en un escenario LMU/OBS.
 
 ## Objetivo y cortes por valor (cada uno con commit ISA-1430)
 
@@ -115,10 +116,9 @@ Antes de cada commit con Rust, en native: `cargo fmt --check`,
 fmt no tiene flag jobs. Registrar resultado, tiempo observado y fallos sin
 ocultarlos. Builds concurrentes no sirven de benchmark incremental.
 
-- **Bloqueo contenido/apariencia completos:** el host actual acepta snapshot y
-  `Preferences`, no contrato de configuración por widget. ¿Qué API común y
-  tipada expondrá fase 2 para rowCount, columnas, contenido, opacidad/escala y
-  comportamiento sin duplicar renderer? Hasta ella no etiquetar Studio completo.
+- **Bloqueo contenido/apariencia completos:** Settings tipado por widget,
+  default/normalized/kind ya está decidido en fase 2. Falta integrar su API;
+  no etiquetar Studio/Workshop completos ni implementar escala (excluida).
 - **Configuración de overlays resuelta por el orquestador:** archivo común
   `%LOCALAPPDATA%/Vantare/native/layout.json`, vigilancia en overlays y reutilización
   de ventanas por monitor. No añadir un comando IPC ni otro formato.
@@ -245,3 +245,60 @@ el Hub en este corte; los otros publishers y toasts esperan integración.
 
 Gates de la corrección vinculante: fmt PASS; clippy workspace/all-targets -j 2 -D warnings PASS (3,01 s); test workspace -j 2 PASS (compilación 1m27s), 14 tests Hub. Cuatro tests físicos heredados omitidos. La dependencia chrono ya fijada queda declarada para el corte 4 descrito arriba; no hay paquete nuevo resuelto.
 
+### Corte 4 — secciones con operaciones locales
+
+Calendario: proyección de catálogo oficial UTC del seed Go, validación de
+versión/ventana/IDs/recurrencias y expansión interval/weekly-slots con el
+mismo anclaje año 1 y ventana exclusiva de Go. Seguimiento se guarda en
+`calendar-following.json`; un fallo de escritura no cambia la selección.
+`official-schedule.json` en data-dir se carga por botón, sin publicar ni
+reescribir el catálogo; un JSON inválido conserva el anterior. Seed vencido
+no genera próximas carreras. Solo una agenda local vigente ofrece 24 h de
+salidas seguidas (máximo 20 en pantalla). Validación es de los campos de la
+proyección, no reemplaza validación/publicación oficial del backend Go.
+
+Notificaciones: fuentes updater/launcher/system cerradas, severidades,
+acciones navigate allowlisted a launcher/settings:updates, dedupe por clave,
+repetición conserva leído, firma cambiada vuelve a unread, retención 50,
+lectura/vaciado y causa UTF-8 hasta 240 bytes. Se alimenta de errores reales
+de guardado/formato/calendario. Historial de proceso, como Go; no se persiste
+ni se añaden toasts. No se simulan publishers remotos.
+
+Ajustes: formato del Workshop mediante su fuente de preferencias existente;
+guardado inmediato, rollback si falla, sin segundo documento de ajustes.
+Testing Center: contexto de la foto local del Workshop (simulador, origen,
+época, secuencia, número de coches/fotos, error de escena), sin copiar nombres
+de pilotos, rutas de cuenta ni credenciales. No es reporte ni diagnóstico
+físico. Otros servicios siguen con su frontera explícita, sin autoridad nueva.
+
+Tests: seed vencido y frontera exclusiva, recurrencia inválida/zona distinta
+UTC/ID repetido, redondeo interval y weekday/slots UTC, seguimiento después de
+reiniciar, fallo de guardado e importación conservan estado; notificaciones
+repetidas/cambiadas, read/mute/retención, fuentes/acciones y truncado UTF-8.
+
+| Sección pendiente | Dependencia / siguiente acción concreta |
+|---|---|
+| Inicio / estado real | Integrar DTO v4 para fuente Waiting/Live/Stale; no mostrar Workshop como juego vivo |
+| Studio / Workshop completo | Integrar ui::Settings y ui::layout de fase 2; eliminar puente opaco, guardar edición común y aplicar mediante vigilancia de overlays |
+| Launcher | Consumo del catálogo, descubrimiento y cadena del propietario; Hub nunca hijo ni servicio permanente |
+| Calendario completo | Porte UTC/local de zonas y contratos de recordatorios/eventos/Discord; agenda publicada autenticada requiere Isaac |
+| Cuenta | Worker de auth Supabase y almacén protegido; sin credenciales/red no verificar sesión real |
+| Licencias | DTO validado por propietario, credenciales firmadas y acciones de dispositivo; Hub no concede permisos |
+| Strategy | Documento V2 con evidencia completa más contrato de jobs solver/storage; no crear un documento reducido ni cálculos ficticios |
+| Engineer | Estado/ajustes/eventos y audio de fase 3; sin canal de trabajos aprobado no ejecutar voz desde Hub |
+| Análisis | Respuestas del único propietario DuckDB de fase 4; Hub no abre DB ni importa otra implementación |
+| Testing Center completo | Contrato sanitizado de diagnóstico/draft/reportes y cancelación; automatización sigue inerte |
+| Roadmap | Lectura de publicación Supabase vigente; sin copia local editable ni contenido inventado |
+| Ajustes completos | API de hotkeys/actualizaciones/privacy/audio/rendimiento; formato local no equivale a estos efectos |
+| Notificaciones completas | Publishers de updater/launcher y worker de toasts; local Center no demuestra esos emisores |
+
+Hallazgo resuelto de corte 4: el primer run de tests falló en tres pruebas de
+calendario porque camelCase de serde produce `timesUtc`, distinto del contrato
+Go `timesUTC`. Se añadió rename explícito y se repitió la lectura del seed real,
+los tests dirigidos y el workspace. Seguimiento valida IDs vacíos/repetidos y
+límite 256 tanto al cargar como antes de guardar, con test de conservación.
+
+Gates finales de corte 4: fmt PASS; clippy workspace/all-targets -j 2 -D warnings
+PASS (3,29 s); tests workspace -j 2 PASS, incluidos 20 tests Hub y oráculos
+LMU/ACC. Compilación observada 54,83 s; cuatro pruebas físicas heredadas
+omitidas. La carga concurrente produjo tiempos variables, no son benchmark.

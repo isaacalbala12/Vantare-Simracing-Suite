@@ -118,6 +118,24 @@ impl Prepared {
 }
 
 impl Workshop {
+    pub fn preferences(&self) -> Preferences {
+        self.prefs
+    }
+
+    pub fn set_preferences(
+        &mut self,
+        prefs: Preferences,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        let previous = self.prefs;
+        self.prefs = prefs;
+        if let Err(error) = self.persist() {
+            self.prefs = previous;
+            return Err(error);
+        }
+        self.rebuild(cx);
+        Ok(())
+    }
     pub fn new(prepared: Prepared, cx: &mut Context<Self>) -> Self {
         let Prepared {
             scene,

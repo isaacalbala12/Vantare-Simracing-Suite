@@ -43,6 +43,44 @@ impl Editor {
             Ok(())
         })
     }
+    pub fn can_undo(&self) -> bool {
+        !self.undo.is_empty()
+    }
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
+    pub fn duplicate(&mut self) -> Result<(), String> {
+        let mut item = self.selected().cloned().ok_or("selecciona una instancia")?;
+        let id = self.next_id()?;
+        item.id.clone_from(&id);
+        item.x += 20.0;
+        item.y += 20.0;
+        self.change(|layout| {
+            layout.instances.push(item);
+            Ok(())
+        })?;
+        self.selected = Some(id);
+        Ok(())
+    }
+    fn next_id(&self) -> Result<String, String> {
+        (1..=self.layout().instances.len().saturating_add(1))
+            .map(|number| format!("widget-{number}"))
+            .find(|id| self.layout().instances.iter().all(|item| item.id != *id))
+            .ok_or_else(|| "identidad agotada".into())
+    }
+    pub fn back(&mut self) -> Result<(), String> {
+        let id = self.selected.clone().ok_or("selecciona una instancia")?;
+        self.change(|layout| {
+            let index = layout
+                .instances
+                .iter()
+                .position(|item| item.id == id)
+                .ok_or("instancia no existe")?;
+            let item = layout.instances.remove(index);
+            layout.instances.insert(0, item);
+            Ok(())
+        })
+    }
     pub fn selected(&self) -> Option<&Instance> {
         self.layout()
             .instances
@@ -105,10 +143,7 @@ impl Editor {
         })
     }
     pub fn add(&mut self, kind: Kind) -> Result<(), String> {
-        let id = (1..=self.layout().instances.len().saturating_add(1))
-            .map(|number| format!("widget-{number}"))
-            .find(|id| self.layout().instances.iter().all(|item| item.id != *id))
-            .ok_or("identidad agotada")?;
+        let id = self.next_id()?;
         self.change(|layout| {
             layout.instances.push(Instance {
                 id: id.clone(),
@@ -311,6 +346,36 @@ pub(crate) mod tests {
         let valid = editor.layout().clone();
         assert!(editor.reload().is_err());
         assert_eq!(editor.layout(), &valid);
+    }
+    #[test]
+    fn duplicate_is_durable_unique_and_one_history_entry() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        assert!(!editor.can_undo());
+        assert!(editor.duplicate().is_err());
+        editor.add(Kind::Radar).expect("añadir");
+        let original = editor.layout().clone();
+        editor.duplicate().expect("duplicar");
+        let duplicate = editor.selected().cloned().expect("duplicado");
+        assert_ne!(duplicate.id, original.instances[0].id);
+        assert_eq!(duplicate.settings, original.instances[0].settings);
+        assert_eq!(
+            duplicate.x.to_bits(),
+            (original.instances[0].x + 20.0).to_bits()
+        );
+        assert_eq!(
+            Document::open(file.path.clone()).expect("reabrir").layout(),
+            editor.layout()
+        );
+        editor.undo().expect("deshacer duplicado");
+        assert_eq!(editor.layout(), &original);
+        assert!(editor.can_redo());
+        editor.redo().expect("rehacer");
+        editor.selected = Some(duplicate.id.clone());
+        editor.back().expect("fondo");
+        assert_eq!(editor.layout().instances[0].id, duplicate.id);
+        editor.undo().expect("deshacer orden");
+        assert_eq!(editor.layout().instances[1].id, duplicate.id);
     }
     #[test]
     fn paint_order_and_selection_survive_undo_redo() {

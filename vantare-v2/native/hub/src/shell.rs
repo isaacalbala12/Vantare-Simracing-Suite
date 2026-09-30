@@ -254,7 +254,11 @@ impl Render for Hub {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        let column = self.context_column(window, cx);
+        let column = if self.section == Section::Studio {
+            self.studio.read(cx).context_column().into_any_element()
+        } else {
+            self.context_column(window, cx).into_any_element()
+        };
         let content = div()
             .flex_1()
             .flex()

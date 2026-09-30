@@ -67,6 +67,9 @@ impl Hub {
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
             self.previous_source = Some(crate::lifecycle::is_live(&snapshot));
+            if self.section == Section::Home {
+                cx.notify();
+            }
             if close {
                 cx.quit();
             }
@@ -170,7 +173,25 @@ impl Hub {
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
             Section::Testing => self.diagnostics(cx).into_any_element(),
-            Section::Home | Section::Roadmap | Section::Account | Section::Licenses => {
+            Section::Home => crate::calendar::home::render(
+                self.calendar.read(cx),
+                Some(&self.subscriber),
+                self.previous_source,
+                orbit::button("home-studio", "Abrir Studio").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.section = Section::Studio;
+                        cx.notify();
+                    },
+                )),
+                orbit::button("home-workshop", "Abrir Workshop").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.section = Section::Workshop;
+                        cx.notify();
+                    },
+                )),
+            )
+            .into_any_element(),
+            Section::Roadmap | Section::Account | Section::Licenses => {
                 orbit::callout(self.section.pending()).into_any_element()
             }
         }

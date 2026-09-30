@@ -195,6 +195,8 @@ pub fn setting_row(label: &str, help: &str, control: impl IntoElement) -> Div {
         .border_color(rgba(LINE_ROW))
         .child(
             div()
+                .flex_1()
+                .min_w_0()
                 .flex()
                 .flex_col()
                 .gap(px(2.0))

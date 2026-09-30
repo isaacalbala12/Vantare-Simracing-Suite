@@ -13,6 +13,9 @@ pub enum Command {
     AccountPoll,
     AccountRenew,
     Logout,
+    LicenseStatus,
+    LicenseRenew,
+    DeviceReset,
     Shutdown,
 }
 

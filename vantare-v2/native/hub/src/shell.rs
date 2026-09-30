@@ -196,9 +196,11 @@ impl Hub {
                 .remote
                 .update(cx, |remote, cx| remote.account(cx))
                 .into_any_element(),
-            Section::Roadmap | Section::Licenses => {
-                orbit::callout(self.section.pending()).into_any_element()
-            }
+            Section::Licenses => self
+                .remote
+                .update(cx, |remote, cx| remote.licenses(cx))
+                .into_any_element(),
+            Section::Roadmap => orbit::callout(self.section.pending()).into_any_element(),
         }
     }
 

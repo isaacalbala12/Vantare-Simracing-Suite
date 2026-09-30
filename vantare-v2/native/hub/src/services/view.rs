@@ -208,6 +208,14 @@ impl Remote {
                 )),
         )
     }
+
+    pub fn licenses(&self, cx: &mut Context<Self>) -> gpui::Div {
+        orbit::card("Licencias y dispositivos").child(orbit::card_body()
+            .child(orbit::callout(self.message.clone()))
+            .child(orbit::text("El núcleo determina los derechos y mantiene la hora de margen si la licencia caduca durante el juego.",13.5,400,orbit::INK_2))
+            .child(orbit::button("services-license","Renovar licencia").on_click(cx.listener(|this,_,_,cx| this.request(Command::LicenseRenew,cx))))
+            .child(orbit::text("La credencial local y el reset de dispositivo estarán disponibles al conectar el puente y la autoridad del núcleo.",12.0,400,orbit::INK_3)))
+    }
 }
 
 impl Drop for Remote {

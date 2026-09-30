@@ -49,3 +49,13 @@ no se reintenta automáticamente: si el proveedor consumió la rotación y perdi
 la respuesta, se requiere nuevo login. Logout remoto/revocación de Clerk y ACK
 de invalidación del núcleo requieren el puente/backend e IPC del orquestador.
 No se afirma que el núcleo actual reaccione al logout del Hub.
+
+Corte 3: v1 compatible (incluye escapes Go y nanosegundos), JWS destino con
+algoritmo/audience fijos, instalación Ed25519 protegida, autoridad sin red,
+reloj/invalidación durable y hora desde expiry solo dentro del mismo juego.
+Tests: 16 servicios + 8 sin feature network, todos pasan con fmt/clippy.
+Cliente de renovación/reset usa puente explícito y no confía en capabilities
+sin firma. Ver [integración pendiente](INTEGRATION.md): el núcleo/IPC actual
+todavía no consume esta autoridad y el host rechaza esas acciones mientras
+falta el puente y el ACK del núcleo. No presentar esto como corte extremo a
+extremo completado. dalek evita criptografía propia; chrono conserva RFC3339Nano.

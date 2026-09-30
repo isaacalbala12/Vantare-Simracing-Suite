@@ -1,4 +1,4 @@
-#![cfg(windows)]
+#![cfg(all(windows, feature = "network"))]
 
 // Misma fuente del cliente Hub, sin copiar DTO ni añadir dependencias al Hub.
 #[allow(dead_code)] // El test usa el cliente, no la ubicación instalada del binario.

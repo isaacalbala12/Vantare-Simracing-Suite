@@ -94,6 +94,9 @@ impl App {
                 });
             }
             Command::Shutdown => return Ok(Reply::Closed),
+            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
+                return Err(Error::BridgeUnconfigured);
+            }
             _ => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
@@ -123,6 +126,9 @@ impl App {
                 account.logout(store)?;
             }
             Command::Status | Command::Shutdown => return Err(Error::Protocol),
+            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
+                return Err(Error::BridgeUnconfigured);
+            }
         }
         Ok(Reply::Account {
             signed_in: account.identity().is_some(),

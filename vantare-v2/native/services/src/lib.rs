@@ -1,12 +1,22 @@
 //! Servicios de usuario bajo demanda. Sin GPUI ni acceso a simuladores.
 #![deny(unsafe_code)]
 
+#[cfg(feature = "network")]
 pub mod account;
+#[cfg(feature = "network")]
 pub mod app;
+#[cfg(feature = "network")]
+pub mod bridge;
+#[cfg(feature = "network")]
 pub mod config;
 pub mod error;
+#[cfg(feature = "network")]
 pub mod host;
+#[cfg(feature = "network")]
 pub mod http;
+pub mod license;
+#[cfg(feature = "network")]
+pub mod license_remote;
 pub mod protocol;
 pub mod storage;
 
@@ -25,7 +35,7 @@ pub fn random_id() -> Result<String> {
     Ok(text)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "network"))]
 mod test_http;
 
 #[cfg(all(test, windows))]

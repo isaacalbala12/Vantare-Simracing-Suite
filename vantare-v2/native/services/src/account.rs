@@ -281,6 +281,10 @@ impl Account {
     pub fn identity(&self) -> Option<&Identity> {
         self.session.as_ref().map(|session| &session.identity)
     }
+
+    pub(crate) fn generation(&self) -> u64 {
+        self.generation
+    }
     pub fn expires_at(&self) -> Option<u64> {
         self.session.as_ref().map(|session| session.expires_at)
     }
@@ -450,3 +454,34 @@ impl Account {
 
 #[cfg(all(test, windows))]
 mod tests;
+
+#[cfg(all(test, windows))]
+pub(crate) fn fixture(issuer: &Url, store: &Store) -> Account {
+    let oauth = OAuth {
+        authorization: issuer.join("authorize").expect("test"),
+        token: issuer.join("token").expect("test"),
+        userinfo: issuer.join("userinfo").expect("test"),
+        issuer: issuer.clone(),
+        client_id: "public-fixture".into(),
+        redirect: Url::parse("http://127.0.0.1:0/callback").expect("test"),
+    };
+    store
+        .save(
+            "account",
+            &Saved::SignedIn {
+                version: 1,
+                session: Session {
+                    identity: Identity {
+                        issuer: issuer.to_string(),
+                        subject: "user_fixture".into(),
+                    },
+                    client_id: oauth.client_id.clone(),
+                    access: Secret(crate::random_id().expect("test entropy")),
+                    refresh: Secret(crate::random_id().expect("test entropy")),
+                    expires_at: 1000,
+                },
+            },
+        )
+        .expect("fixture protected session");
+    Account::restore(oauth, store).expect("fixture account")
+}

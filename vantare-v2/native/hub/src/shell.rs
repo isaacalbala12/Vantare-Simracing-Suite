@@ -18,6 +18,7 @@ use vantare_ui::efficiency::{text, tokens};
 use crate::{
     Section,
     calendar::Calendar,
+    launcher::{Store as LauncherStore, view::Launcher},
     notifications::Notifications,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
@@ -30,6 +31,7 @@ pub struct Options {
     pub layout: PathBuf,
     pub section: Section,
     pub pipe: Option<String>,
+    pub launcher_file: PathBuf,
 }
 
 struct Hub {
@@ -38,6 +40,7 @@ struct Hub {
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
     calendar: Entity<Calendar>,
+    launcher: Entity<Launcher>,
     notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
@@ -177,6 +180,9 @@ impl Render for Hub {
             .when(self.section == Section::Calendar, |content| {
                 content.child(self.calendar.clone())
             })
+            .when(self.section == Section::Launcher, |content| {
+                content.child(self.launcher.clone())
+            })
             .when(self.section == Section::Notifications, |content| {
                 content.child(self.notifications.clone())
             })
@@ -192,6 +198,7 @@ impl Render for Hub {
                     Section::Workshop
                         | Section::Studio
                         | Section::Calendar
+                        | Section::Launcher
                         | Section::Notifications
                         | Section::Settings
                         | Section::Testing
@@ -265,8 +272,17 @@ fn start_source_poll(cx: &mut Context<Hub>) {
 fn wire_sections(
     calendar: &Entity<Calendar>,
     notifications: &Entity<Notifications>,
+    launcher: &Entity<Launcher>,
     cx: &mut Context<Hub>,
 ) {
+    cx.observe(launcher, |this, launcher, cx| {
+        if let Some(error) = &launcher.read(cx).error {
+            let error = error.clone();
+            this.notifications
+                .update(cx, |center, cx| center.report("hub.launcher", error, cx));
+        }
+    })
+    .detach();
     cx.observe(calendar, |this, calendar, cx| {
         if let Some(error) = &calendar.read(cx).error {
             let error = error.clone();
@@ -313,6 +329,7 @@ pub fn run(options: Options) -> Result<(), String> {
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load(options.layout)?;
     let calendar = Calendar::load(&options.data_dir)?;
+    let launcher_store = LauncherStore::load(options.launcher_file)?;
     let subscriber = subscribe(options.pipe)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -342,7 +359,8 @@ pub fn run(options: Options) -> Result<(), String> {
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
                 let notifications = cx.new(|_| Notifications::default());
                 let calendar = cx.new(|_| calendar);
-                wire_sections(&calendar, &notifications, cx);
+                let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
+                wire_sections(&calendar, &notifications, &launcher, cx);
                 cx.observe(&workshop, |this, workshop, cx| {
                     let snapshot = workshop.read(cx).scene.snapshot().clone();
                     this.studio
@@ -350,6 +368,11 @@ pub fn run(options: Options) -> Result<(), String> {
                 })
                 .detach();
                 cx.on_app_quit(move |this, cx| {
+                    if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown())
+                    {
+                        eprintln!("cerrar Launcher: {error}");
+                        *failure_on_quit.borrow_mut() = Some(error);
+                    }
                     if let Err(error) = this.save(cx) {
                         eprintln!("guardar antes de salir: {error}");
                         *failure_on_quit.borrow_mut() = Some(error);
@@ -363,6 +386,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     workshop,
                     studio,
                     calendar,
+                    launcher,
                     notifications,
                     status: None,
                     subscriber,

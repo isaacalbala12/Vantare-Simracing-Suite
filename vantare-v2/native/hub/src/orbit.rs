@@ -30,6 +30,148 @@ pub const RADIUS: f32 = 18.0;
 pub const RADIUS_CONTROL: f32 = 12.0;
 pub const CONTROL_H: f32 = 39.0;
 
+// Piezas adicionales de shell; las piezas de sección anteriores no cambian.
+pub const RAIL_BG: u32 = 0x000b_0c0e;
+pub const RAIL_W: f32 = 81.0;
+pub const COLUMN_COMPACT_W: f32 = 216.0;
+pub const COLUMN_BREAKPOINT: f32 = 1152.0;
+pub const RAIL_BUTTON: f32 = 52.0;
+pub const PALETTE_W: f32 = 640.0;
+pub const PALETTE_BACKDROP: u32 = 0x0404_069e;
+pub const FEATURED_RADIUS: f32 = 25.0;
+
+/// Fila seleccionada de paleta (`orbit-shell.css`, selección carmín).
+pub fn palette_item(index: usize, active: bool) -> Stateful<Div> {
+    div()
+        .id(("command", index))
+        .role(gpui::Role::ListBoxOption)
+        .tab_stop(false)
+        .aria_selected(active)
+        .mx(px(8.0))
+        .px(px(12.0))
+        .h(px(49.0))
+        .flex()
+        .items_center()
+        .gap(px(12.0))
+        .rounded(px(RADIUS_CONTROL))
+        .cursor_pointer()
+        .when(active, |row| {
+            row.bg(linear_gradient(
+                90.0,
+                linear_color_stop(tint(CARMINE, 0.14), 0.0),
+                linear_color_stop(tint(CARMINE, 0.025), 1.0),
+            ))
+        })
+}
+
+pub fn icon(name: &'static str, size: f32, color: u32) -> gpui::Svg {
+    gpui::svg()
+        .path(format!("icons/{name}.svg"))
+        .size(px(size))
+        .text_color(rgb(color))
+}
+
+/// Botón de rail con selección, candado, tooltip y semántica de teclado GPUI.
+pub fn rail_button(
+    id: &'static str,
+    name: &'static str,
+    label: &str,
+    active: bool,
+    locked: Option<&str>,
+) -> Stateful<Div> {
+    let tip = locked.map_or_else(|| label.to_owned(), |reason| format!("{label} · {reason}"));
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(tip.clone())
+        .aria_selected(active)
+        .tab_index(0)
+        .size(px(RAIL_BUTTON))
+        .flex_none()
+        .relative()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(14.0))
+        .cursor_pointer()
+        .hover(|s| s.bg(rgba(LINE_ROW)))
+        .focus_visible(|s| s.border_1().border_color(rgb(CARMINE)))
+        .when(active, |s| {
+            s.bg(linear_gradient(
+                135.0,
+                linear_color_stop(tint(CARMINE, 0.24), 0.0),
+                linear_color_stop(tint(CARMINE, 0.07), 1.0),
+            ))
+            .border_1()
+            .border_color(tint(CARMINE, 0.22))
+        })
+        .child(icon(
+            name,
+            23.0,
+            if locked.is_some() {
+                INK_MUTED
+            } else if active {
+                INK
+            } else {
+                INK_3
+            },
+        ))
+        .when(locked.is_some(), |s| {
+            s.child(
+                div()
+                    .absolute()
+                    .right(px(5.0))
+                    .bottom(px(5.0))
+                    .child(icon("i-lock", 15.0, INK_MUTED)),
+            )
+        })
+        .tooltip(move |_, cx| cx.new(|_| Tooltip(tip.clone())).into())
+}
+
+struct Tooltip(String);
+impl gpui::Render for Tooltip {
+    fn render(&mut self, _: &mut gpui::Window, _: &mut gpui::Context<Self>) -> impl IntoElement {
+        div()
+            .px_3()
+            .py_2()
+            .rounded(px(RADIUS_CONTROL))
+            .bg(rgb(SURFACE_3))
+            .border_1()
+            .border_color(rgba(LINE_STRONG))
+            .child(text(self.0.clone(), 12.0, 500, INK))
+    }
+}
+
+/// Medida en píxeles lógicos, como la media query del kit Wails.
+pub fn column_width(viewport: f32) -> f32 {
+    if viewport <= COLUMN_BREAKPOINT {
+        COLUMN_COMPACT_W
+    } else {
+        COLUMN_W
+    }
+}
+
+/// Respaldo de avatar de Wails para una cuenta sin nombre/foto: punto medio.
+pub fn avatar(active: bool) -> Stateful<Div> {
+    div()
+        .id("account")
+        .role(gpui::Role::Button)
+        .aria_label("Cuenta · sin sesión")
+        .aria_selected(active)
+        .tab_index(0)
+        .size(px(CONTROL_H))
+        .rounded(px(RADIUS_CONTROL))
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(rgb(SURFACE_3))
+        .cursor_pointer()
+        .hover(|s| s.bg(rgb(SURFACE_2)))
+        .focus_visible(|s| s.border_1().border_color(rgb(CARMINE)))
+        .child(text("·", 12.0, 800, INK))
+        .tooltip(|_, cx| cx.new(|_| Tooltip("Cuenta · sin sesión".into())).into())
+}
+
 fn weight(w: u16) -> SharedString {
     format!("Inter W{w}").into()
 }
@@ -280,4 +422,19 @@ pub fn callout(content: impl Into<SharedString>) -> Div {
         .border_1()
         .border_color(tint(CARMINE, 0.18))
         .child(text(content, 12.5, 400, INK_2))
+}
+
+#[cfg(test)]
+mod shell_tests {
+    #[test]
+    fn context_width_uses_the_wails_breakpoint_in_logical_pixels() {
+        for (viewport, width) in [
+            (1600.0, 296.0),
+            (1153.0, 296.0),
+            (1152.0, 216.0),
+            (900.0, 216.0),
+        ] {
+            assert!((super::column_width(viewport) - width).abs() < f32::EPSILON);
+        }
+    }
 }

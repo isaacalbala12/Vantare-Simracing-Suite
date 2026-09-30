@@ -31,6 +31,10 @@ use crate::{
 #[path = "testing/mod.rs"]
 pub mod testing;
 use testing::{Testing, diagnostic::Module as TestingModule};
+mod assets;
+mod chrome;
+mod input;
+pub mod navigation;
 
 pub struct Options {
     pub controlled: bool,
@@ -46,6 +50,7 @@ pub struct Options {
 
 struct Hub {
     section: Section,
+    shell: chrome::State,
     focus: FocusHandle,
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
@@ -74,8 +79,10 @@ impl Hub {
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
             let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
-            self.previous_source = Some(crate::lifecycle::is_live(&snapshot));
-            if self.section == Section::Home {
+            let observed = Some(crate::lifecycle::is_live(&snapshot));
+            let changed = self.previous_source != observed;
+            self.previous_source = observed;
+            if self.section == Section::Home || changed {
                 cx.notify();
             }
             if close {
@@ -180,33 +187,15 @@ impl Hub {
             .child(div().opacity(0.5).child("Atajos · pendiente: sin contrato nativo de teclas globales"))
     }
 
-    fn nav(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut nav = orbit::column("Vantare", env!("CARGO_PKG_VERSION")).child(
-            div()
-                .px(gpui::px(24.0))
-                .pt(gpui::px(20.0))
-                .pb(gpui::px(8.0))
-                .child(orbit::eyebrow("Secciones")),
-        );
-        for &section in Section::ALL {
-            nav = nav.child(
-                orbit::nav_item(
-                    section.label(),
-                    section.label(),
-                    section.subtitle(),
-                    self.section == section,
-                )
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.section = section;
-                    cx.notify();
-                })),
-            );
-        }
-        nav
-    }
-
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        if let Some(reason) = self.shell.access.lock(self.section) {
+            return orbit::callout(format!(
+                "{} · {reason}. Abre Cuenta para consultar el acceso.",
+                self.section.label()
+            ))
+            .into_any_element();
+        }
         match self.section {
             Section::Workshop => self.workshop.clone().into_any_element(),
             Section::Studio => self.studio.clone().into_any_element(),
@@ -224,14 +213,12 @@ impl Hub {
                 self.previous_source,
                 orbit::button("home-studio", "Abrir Studio").on_click(cx.listener(
                     |this, _, _, cx| {
-                        this.section = Section::Studio;
-                        cx.notify();
+                        this.navigate(Section::Studio, cx);
                     },
                 )),
                 orbit::button("home-workshop", "Abrir Workshop").on_click(cx.listener(
                     |this, _, _, cx| {
-                        this.section = Section::Workshop;
-                        cx.notify();
+                        this.navigate(Section::Workshop, cx);
                     },
                 )),
             )
@@ -260,8 +247,10 @@ pub(crate) fn button(id: &'static str, label: &'static str) -> gpui::Stateful<gp
 }
 
 impl Render for Hub {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let nav = self.nav(cx);
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.refresh_query(cx);
+        let rail = self.rail(cx);
+        let column = self.context_column(window, cx);
         let content = div()
             .flex_1()
             .flex()
@@ -276,22 +265,22 @@ impl Render for Hub {
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status))
             })
+            .when_some(self.shell.navigation_notice.clone(), |content, notice| {
+                content.child(orbit::callout(notice))
+            })
             .child(self.section_view(cx));
         let main = div()
             .flex_1()
             .flex()
             .flex_col()
             .min_w_0()
-            .child(orbit::topbar(
-                "Vantare",
-                self.section.label(),
-                orbit::button("close-hub", "Guardar y cerrar")
-                    .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
-            ))
+            .min_h_0()
+            .child(self.topbar(window, cx))
             .child(
                 div()
                     .id("hub-content")
                     .flex_1()
+                    .min_h_0()
                     .overflow_y_scroll()
                     .child(content),
             );
@@ -300,23 +289,19 @@ impl Render for Hub {
             .track_focus(&self.focus)
             .tab_group()
             .tab_stop(false)
-            .on_key_down(|event, window, cx| {
-                if event.keystroke.key == "tab" {
-                    if event.keystroke.modifiers.shift {
-                        window.focus_prev(cx);
-                    } else {
-                        window.focus_next(cx);
-                    }
-                    cx.stop_propagation();
-                }
-            })
+            .capture_key_down(cx.listener(Self::shell_key))
             .size_full()
+            .relative()
             .flex()
             .bg(gpui::rgb(orbit::CANVAS))
             .text_color(gpui::rgb(orbit::INK))
             .font_family("Inter W400")
-            .child(nav)
+            .child(rail)
+            .when(self.shell.column_open, |root| root.child(column))
             .child(main)
+            .when(self.shell.palette_open, |root| {
+                root.child(self.palette(window, cx))
+            })
     }
 }
 
@@ -381,8 +366,7 @@ fn wire_sections(
     .detach();
     cx.observe(notifications, |this, center, cx| {
         if let Some(destination) = center.update(cx, |center, _| center.destination.take()) {
-            this.section = destination;
-            cx.notify();
+            this.navigate(destination, cx);
         }
     })
     .detach();
@@ -486,6 +470,7 @@ impl Hub {
     fn build(
         loaded: Loaded,
         section: Section,
+        access: navigation::Access,
         failure_on_quit: std::rc::Rc<std::cell::RefCell<Option<String>>>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -548,6 +533,7 @@ impl Hub {
         .detach();
         Hub {
             section,
+            shell: chrome::State::new(access, cx),
             focus,
             workshop,
             studio,
@@ -577,6 +563,12 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
 }
 
 pub fn run(options: Options) -> Result<(), String> {
+    run_with_access(options, navigation::Access::default())
+}
+
+/// La integración de cuenta entrega derechos ya resueltos. Esta shell no
+/// autentica el plan; sin integración deja el acceso monetizado sin verificar.
+pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(), String> {
     let loaded = Loaded {
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,
@@ -591,38 +583,40 @@ pub fn run(options: Options) -> Result<(), String> {
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
-        if let Err(error) = text::register_fonts(cx) {
-            *failure.borrow_mut() = Some(error);
-            cx.quit();
-            return;
-        }
-        let window_options = WindowOptions {
-            titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Vantare Hub — nativo".into()),
+    gpui_platform::application()
+        .with_assets(assets::Icons)
+        .run(move |cx: &mut App| {
+            if let Err(error) = text::register_fonts(cx) {
+                *failure.borrow_mut() = Some(error);
+                cx.quit();
+                return;
+            }
+            let window_options = WindowOptions {
+                titlebar: Some(gpui::TitlebarOptions {
+                    title: Some("Vantare Hub — nativo".into()),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let failure_on_quit = failure.clone();
-        let initial_section = options.section;
-        if let Err(error) = cx.open_window(window_options, |window, cx| {
-            let hub = cx.new(|cx: &mut Context<Hub>| {
-                Hub::build(loaded, initial_section, failure_on_quit, window, cx)
-            });
-            let closing = hub.downgrade();
-            window.on_window_should_close(cx, move |_, cx| {
-                closing.update(cx, Hub::can_close).unwrap_or(true)
-            });
-            hub
-        }) {
-            *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
-            cx.quit();
-            return;
-        }
-        quit_when_done(cx, options.controlled, stop);
-        cx.activate(true);
-    });
+            };
+            let failure_on_quit = failure.clone();
+            let initial_section = options.section;
+            if let Err(error) = cx.open_window(window_options, |window, cx| {
+                let hub = cx.new(|cx: &mut Context<Hub>| {
+                    Hub::build(loaded, initial_section, access, failure_on_quit, window, cx)
+                });
+                let closing = hub.downgrade();
+                window.on_window_should_close(cx, move |_, cx| {
+                    closing.update(cx, Hub::can_close).unwrap_or(true)
+                });
+                hub
+            }) {
+                *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
+                cx.quit();
+                return;
+            }
+            quit_when_done(cx, options.controlled, stop);
+            cx.activate(true);
+        });
     match result.borrow_mut().take() {
         Some(error) => Err(error),
         None => Ok(()),

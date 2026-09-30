@@ -14,6 +14,9 @@ use vantare_ipc::transport::Event;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 
+#[path = "access.rs"]
+mod access;
+
 enum Area {
     Account,
     Licenses,
@@ -36,6 +39,7 @@ pub struct Remote {
     cancellation: Cancellation,
     busy: bool,
     account: AccountState,
+    access: access::State,
     message: String,
     active: Area,
     report_revision: Option<u64>,
@@ -52,7 +56,7 @@ impl Remote {
             async {}
         })
         .detach();
-        Self {
+        let mut remote = Self {
             pipe,
             send: None,
             receive: None,
@@ -60,6 +64,7 @@ impl Remote {
             cancellation: Arc::new(Mutex::new(None)),
             busy: false,
             account: AccountState::default(),
+            access: access::State::from_build(),
             message: "servicio no configurado".into(),
             active: Area::Account,
             report_revision: None,
@@ -67,7 +72,9 @@ impl Remote {
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             stale: true,
-        }
+        };
+        remote.request(Command::Status, cx);
+        remote
     }
 
     pub fn cancel(&mut self) {
@@ -163,16 +170,27 @@ impl Remote {
             true
         } else {
             self.message = "servicios ocupado".into();
+            self.access.observe(
+                &Reply::Error {
+                    message: self.message.clone(),
+                },
+                matches!(self.active, Area::Account),
+            );
             false
         }
     }
 
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
-        if self.busy && self.account.pending && matches!(command, Command::Logout) {
+        if self.busy
+            && (self.account.pending || self.access.login_requested)
+            && matches!(command, Command::Logout)
+        {
             self.account.cancel_login = true;
+            cx.notify();
             return;
         }
         if self.busy || self.stop.load(Ordering::Acquire) || !self.dispatch(command) {
+            cx.notify();
             return;
         }
         cx.notify();
@@ -188,6 +206,8 @@ impl Remote {
                             _ => None,
                         };
                         if let Some(reply) = reply {
+                            let check_session = matches!(reply, Reply::Status { account_configured: true, .. });
+                            this.access.observe(&reply, matches!(this.active, Area::Account));
                             this.busy = false;
                             this.account.pending = false;
                             match reply {
@@ -243,18 +263,11 @@ impl Remote {
                                     this.editor.message=format!("Recibo guardado: {} · {}{}",receipt.report_id,receipt.created_at,if cleanup_pending { " · borrador pendiente de limpiar" } else { "" });
                                 },
                             }
-                            if this.account.pending {
-                                let command = if this.account.cancel_login {
-                                    this.account.cancel_login = false;
-                                    Command::Logout
-                                } else {
-                                    Command::AccountPoll
-                                };
+                            if let Some(command) = access::follow_up(this.account.pending, &mut this.account.cancel_login, check_session) {
+                                this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
                                 this.dispatch(command);
-                                cx.notify();
-                            } else {
-                                cx.notify();
                             }
+                            cx.notify();
                         }
                         this.busy && !this.stop.load(Ordering::Acquire)
                     })

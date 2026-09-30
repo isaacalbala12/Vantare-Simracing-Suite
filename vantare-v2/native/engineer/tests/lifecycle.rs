@@ -8,6 +8,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use vantare_runtime::flows::host::{EventHost, pipe_name};
+mod rights;
 
 struct Process {
     child: Child,
@@ -145,6 +146,7 @@ fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real
     use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
     use vantare_runtime::{core::Core, flows::Cursor};
     let name = format!("vantare-engineer-authorized-{}", std::process::id());
+    let _rights = rights::Fixture::new(&name);
     let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
     let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
         peer.is_image(&expected)
@@ -204,6 +206,64 @@ fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real
 }
 
 #[test]
+fn authentic_events_without_rights_keep_checkpoint_but_never_present_paid_radio() {
+    use std::sync::Arc;
+    use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
+    use vantare_runtime::core::Core;
+    let name = format!("vantare-engineer-no-rights-{}", std::process::id());
+    let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
+    let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
+        peer.is_image(&expected)
+    })
+    .unwrap();
+    let mut core = Core::with_event_base(host.base()).unwrap();
+    let observation = |lap| Observation {
+        origin: vantare_domain::Origin {
+            received_at: Duration::from_millis(u64::from(lap) + 1),
+            ..Default::default()
+        },
+        state: State {
+            cars: vec![Car {
+                id: CarId(7),
+                laps: Quality::Reliable(lap),
+                ..Default::default()
+            }],
+            player: Some(Player {
+                car: CarId(7),
+                ..Default::default()
+            }),
+            source_state: vantare_domain::SourceState::Live,
+            ..Default::default()
+        },
+    };
+    core.observe(observation(0)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    let mut process = Process::start_as(&name, Some(&std::env::current_exe().unwrap()));
+    assert_eq!(process.next().unwrap()["events"], "connecting");
+    process.status("base checkpointada sin radio", |_| {
+        vantare_engineer::load_cursor(&process.checkpoint).unwrap()
+            == Some(vantare_runtime::flows::Cursor { epoch: 1, index: 0 })
+    });
+    core.observe(observation(1)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    loop {
+        let line = process.next().unwrap();
+        assert!(
+            line.get("intent").is_none(),
+            "sin política no se presenta radio protegida"
+        );
+        if line["cursor"] == serde_json::json!([1, 1]) {
+            break;
+        }
+    }
+    assert_eq!(
+        vantare_engineer::load_cursor(&process.checkpoint).unwrap(),
+        Some(core.events().tail())
+    );
+    process.eof();
+}
+
+#[test]
 fn pipe_worker_closes_on_eof_while_core_is_absent() {
     let name = format!("vantare-engineer-absent-{}", std::process::id());
     let mut worker = Process::start(&name);
@@ -220,6 +280,7 @@ fn real_pipe_process_applies_local_edits_and_invalid_json_keeps_last_valid() {
     use vantare_engineer::control::{Document, Settings};
     use vantare_runtime::core::Core;
     let name = format!("vantare-engineer-hot-settings-{}", std::process::id());
+    let _rights = rights::Fixture::new(&name);
     let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
     let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
         peer.is_image(&expected)

@@ -26,6 +26,7 @@ pub mod capture;
 pub mod efficiency;
 pub mod layout;
 mod overlay;
+mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]
 mod stats;
@@ -34,4 +35,6 @@ pub mod workshop;
 include!("registry.rs");
 
 // Hub incrusta el mismo renderer productivo.
-pub use app::{Overlay, layout_row, run, run_layout, run_placed};
+pub use app::{
+    Overlay, layout_row, run, run_layout, run_layout_with_rights, run_placed, run_with_rights,
+};

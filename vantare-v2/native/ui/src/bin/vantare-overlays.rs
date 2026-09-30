@@ -66,6 +66,26 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     };
+    let rights = match &feed {
+        Feed::Local => None,
+        Feed::Pipe(name) => {
+            let result = (|| -> std::io::Result<_> {
+                let name = name
+                    .clone()
+                    .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+                vantare_ipc::control::Feed::connect(
+                    &name,
+                    std::env::current_exe()?.with_file_name("vantare-core.exe"),
+                )
+            })();
+            if let Ok(feed) = result {
+                Some(feed)
+            } else {
+                eprintln!("vantare-overlays: control de derechos no disponible");
+                return ExitCode::FAILURE;
+            }
+        }
+    };
     let snapshots = match feed {
         Feed::Local => Ok(vantare_ui::source::local_feed()),
         Feed::Pipe(name) => name
@@ -81,11 +101,13 @@ fn main() -> ExitCode {
         }
     };
     if let Some(windows) = windows {
-        vantare_ui::run(windows, snapshots, Preferences::default());
+        vantare_ui::run_with_rights(windows, snapshots, Preferences::default(), rights);
     } else {
         let result = layout
             .map_or_else(vantare_ui::layout::default_path, Ok)
-            .and_then(|path| vantare_ui::run_layout(path, snapshots, Preferences::default()));
+            .and_then(|path| {
+                vantare_ui::run_layout_with_rights(path, snapshots, Preferences::default(), rights)
+            });
         if let Err(error) = result {
             eprintln!("vantare-overlays: {error}");
             return ExitCode::FAILURE;

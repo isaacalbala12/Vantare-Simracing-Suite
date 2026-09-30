@@ -27,6 +27,7 @@ struct Args {
     simulator: String,
     recording: Option<std::path::PathBuf>,
     engineer_image: Option<std::path::PathBuf>,
+    managed_rights: bool,
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
@@ -34,6 +35,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
     let (mut build, mut speed, mut pipe) = (None, None, None);
     let mut simulator = "lmu".to_owned();
     let (mut recording, mut engineer_image) = (None, None);
+    let mut managed_rights = false;
     let mut args = args.iter();
     while let Some(flag) = args.next() {
         let mut value = || {
@@ -57,6 +59,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--pipe" => pipe = Some(value()?),
             "--recording" => recording = Some(value()?.into()),
             "--engineer-image" => engineer_image = Some(value()?.into()),
+            "--managed-rights" if !managed_rights => managed_rights = true,
             "--simulator" => simulator = value()?,
             other => return Err(format!("argumento desconocido: {other}")),
         }
@@ -83,6 +86,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         simulator,
         recording,
         engineer_image,
+        managed_rights,
     })
 }
 
@@ -116,6 +120,21 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     use vantare_runtime::{service, shutdown};
 
     let stop = shutdown::install()?;
+    let rights_nonce = if args.managed_rights {
+        let bootstrap: vantare_ipc::control::Bootstrap =
+            vantare_ipc::control::read(&mut std::io::stdin().lock())?;
+        if bootstrap.nonce.len() != 64
+            || !bootstrap
+                .nonce
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        {
+            return Err("bootstrap de derechos inválido".into());
+        }
+        Some(bootstrap.nonce)
+    } else {
+        None
+    };
     // Contrato con el launcher: pide el cierre cerrando el stdin del núcleo, que
     // debe terminar al llegar a EOF. Lanzado a mano en una terminal, no llega EOF.
     std::thread::spawn(|| {
@@ -150,14 +169,17 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let image = args
         .engineer_image
         .unwrap_or(std::env::current_exe()?.with_file_name("vantare-engineer.exe"));
-    service::run_with_events(
+    service::run_controlled(
         adapter.as_mut(),
         &pipe,
         epoch,
         speed,
         stop,
-        args.recording.as_deref(),
-        image,
+        service::Options {
+            recording: args.recording.as_deref(),
+            engineer_image: image,
+            rights_nonce,
+        },
     )?;
     Ok(())
 }

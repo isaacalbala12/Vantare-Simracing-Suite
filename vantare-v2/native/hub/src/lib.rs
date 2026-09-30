@@ -16,9 +16,11 @@ pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
 pub mod scene;
+pub mod services;
 pub mod shell;
 pub mod strategy;
 pub mod studio;
+pub mod testing;
 pub mod workshop;
 // Same pure crate sources; temporary wiring inside the worker's owned paths.
 // Orchestrator replaces this with the workspace dependency in the manifests.

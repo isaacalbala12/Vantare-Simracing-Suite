@@ -45,14 +45,49 @@ pub fn run_with_events(
     recording: Option<&std::path::Path>,
     engineer_image: std::path::PathBuf,
 ) -> Result<(), Error> {
+    run_controlled(
+        adapter,
+        pipe,
+        epoch,
+        speed,
+        stop,
+        Options {
+            recording,
+            engineer_image,
+            rights_nonce: None,
+        },
+    )
+}
+
+pub struct Options<'a> {
+    pub recording: Option<&'a std::path::Path>,
+    pub engineer_image: std::path::PathBuf,
+    pub rights_nonce: Option<String>,
+}
+
+pub fn run_controlled(
+    adapter: &mut dyn Adapter,
+    pipe: &str,
+    epoch: u64,
+    speed: f64,
+    stop: &AtomicBool,
+    options: Options<'_>,
+) -> Result<(), Error> {
     use crate::flows::host::{EventHost, pipe_name};
-    let mut events = EventHost::start(&pipe_name(pipe), epoch, recording, move |peer| {
-        peer.is_image(&engineer_image)
+    let rights = crate::rights::production(
+        pipe,
+        epoch,
+        options.rights_nonce,
+        options.engineer_image.clone(),
+    )?;
+    let mut events = EventHost::start(&pipe_name(pipe), epoch, options.recording, move |peer| {
+        peer.is_image(&options.engineer_image)
     })?;
     let mut core = Core::with_event_base(events.base())?;
     let mut publisher = Publisher::new(pipe, |_| true)?;
     drive_core(&mut core, adapter, speed, stop, |core| {
         let snapshot = core.snapshot();
+        rights.publish(Arc::clone(&snapshot));
         events.publish(Arc::clone(&snapshot), core.events());
         publisher.publish(snapshot)
     })

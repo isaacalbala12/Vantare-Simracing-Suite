@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage"]
+members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services"]
 # DuckDB bundled solo se compila al pedir storage o los gates --workspace.
-default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer"]
+default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services"]
 
 [workspace.package]
 version = "0.0.0"
@@ -13,6 +13,7 @@ publish = false
 [workspace.dependencies]
 vantare-domain = { path = "domain" }
 vantare-ipc = { path = "ipc" }
+vantare-services = { path = "services", default-features = false }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

@@ -28,9 +28,7 @@ use crate::{
     workshop::{Prepared, Workshop},
 };
 
-#[path = "testing/mod.rs"]
-pub mod testing;
-use testing::{Testing, diagnostic::Module as TestingModule};
+use crate::testing::{self, Testing, diagnostic::Module as TestingModule};
 mod assets;
 mod chrome;
 mod input;
@@ -60,6 +58,7 @@ struct Hub {
     engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
     strategy: Entity<Strategy>,
+    remote: Entity<crate::services::view::Remote>,
     testing: Entity<Testing>,
     status: Option<String>,
     subscriber: Subscriber,
@@ -206,7 +205,13 @@ impl Hub {
             Section::Strategy => self.strategy.clone().into_any_element(),
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
-            Section::Testing => self.testing.clone().into_any_element(),
+            Section::Testing => gpui::div()
+                .flex()
+                .flex_col()
+                .gap_4()
+                .child(self.remote.update(cx, |remote, cx| remote.testing(cx)))
+                .child(self.testing.clone())
+                .into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
                 Some(&self.subscriber),
@@ -223,9 +228,18 @@ impl Hub {
                 )),
             )
             .into_any_element(),
-            Section::Roadmap | Section::Account | Section::Licenses => {
-                orbit::callout(self.section.pending()).into_any_element()
-            }
+            Section::Account => self
+                .remote
+                .update(cx, |remote, cx| remote.account(cx))
+                .into_any_element(),
+            Section::Licenses => self
+                .remote
+                .update(cx, |remote, cx| remote.licenses(cx))
+                .into_any_element(),
+            Section::Roadmap => self
+                .remote
+                .update(cx, |remote, cx| remote.roadmap(cx))
+                .into_any_element(),
         }
     }
 }
@@ -464,6 +478,7 @@ struct Loaded {
     strategy_dir: PathBuf,
     testing_dir: PathBuf,
     subscriber: Subscriber,
+    service_pipe: String,
 }
 
 impl Hub {
@@ -485,6 +500,7 @@ impl Hub {
             strategy_dir,
             testing_dir,
             subscriber,
+            service_pipe,
         } = loaded;
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -509,6 +525,8 @@ impl Hub {
         let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
+        let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
+        cx.observe(&remote, |_, _, cx| cx.notify()).detach();
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
         let testing = cx.new(|cx| Testing::new(testing_dir, cx));
         wire_strategy(&strategy, cx);
@@ -542,6 +560,7 @@ impl Hub {
             launcher,
             engineer,
             strategy,
+            remote,
             testing,
             notifications,
             status: None,
@@ -578,6 +597,11 @@ pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(
         engineer: Engineer::load(options.engineer),
         strategy_dir: options.data_dir.clone(),
         testing_dir: options.data_dir.clone(),
+        service_pipe: options
+            .pipe
+            .clone()
+            .map_or_else(vantare_ipc::default_pipe_name, Ok)
+            .map_err(|_| "IPC no disponible")?,
         subscriber: subscribe(options.pipe)?,
     };
     let stop = watch_stdin(options.controlled)?;

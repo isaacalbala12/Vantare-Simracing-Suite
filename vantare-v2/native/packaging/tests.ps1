@@ -103,7 +103,7 @@ foreach ($bin in $script:NativeBins) {
     $info.FileName = Join-Path $active "bin/$bin.exe"
     $info.Arguments = '--phase7-invalid-option'
     $expectedExit = 2
-    if ($bin -ceq 'vantare-engineer') { $expectedExit = 1 }
+    if ($bin -cin @('vantare-engineer', 'vantare-services')) { $expectedExit = 1 }
     if ($bin -ceq 'vantare-storage') {
         # Storage recibe ruta posicional; el segundo argumento invalida antes de abrirla.
         $info.Arguments = 'unused.db --phase7-invalid-option'

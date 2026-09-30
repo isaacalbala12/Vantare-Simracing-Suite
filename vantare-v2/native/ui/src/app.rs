@@ -55,6 +55,7 @@ pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))>
 /// Widget de una ventana: proyecta la instantánea y se pinta en un lienzo de su
 /// tamaño. No sabe si la ventana es suya o compartida con otros widgets.
 pub struct Overlay {
+    kind: Kind,
     widget: Widget,
     prefs: Preferences,
     /// Hay un despertar programado (ver `wake_after`).
@@ -76,6 +77,7 @@ impl Overlay {
         }
         let widget = Widget::new(settings, prefs);
         Self {
+            kind: settings.kind(),
             widget,
             prefs,
             wake_pending: false,
@@ -115,6 +117,9 @@ impl Overlay {
 
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
+        if crate::rights::denied(self.kind, cx) {
+            return;
+        }
         if self.widget.ingest(snapshot, self.prefs) {
             cx.notify();
         }
@@ -175,6 +180,15 @@ pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool
 
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if crate::rights::denied(self.kind, cx) {
+            return div()
+                .w(px(self.wanted_size().0))
+                .h(px(self.wanted_size().1))
+                .bg(gpui::rgba(0x181818ee))
+                .text_color(gpui::white())
+                .child("Requiere licencia vigente")
+                .into_any_element();
+        }
         #[cfg(feature = "paint-stats")]
         let kind = self.widget.kind();
         #[cfg(feature = "paint-stats")]
@@ -215,7 +229,7 @@ impl Render for Overlay {
             Wake::At(after) => self.wake_after(after, cx),
             Wake::Idle => {}
         }
-        element
+        element.into_any_element()
     }
 }
 
@@ -499,13 +513,23 @@ impl LiveScreens {
 pub fn run_layout(
     path: PathBuf,
     snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+) -> Result<(), crate::layout::Error> {
+    run_layout_with_rights(path, snapshots, prefs, None)
+}
+
+pub fn run_layout_with_rights(
+    path: PathBuf,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
     _prefs: Preferences,
+    rights: Option<vantare_ipc::control::Feed>,
 ) -> Result<(), crate::layout::Error> {
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
+        crate::rights::install(rights, cx);
         // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
         // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
         cx.set_quit_mode(gpui::QuitMode::Explicit);
@@ -593,8 +617,17 @@ fn origin_of(index: usize) -> (f32, f32) {
 /// Abre `windows` widgets, una ventana por monitor con widgets, y reenvía cada
 /// `Snapshot` del canal a todos. Vuelve cuando se cierra la última ventana.
 pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
+    run_with_rights(windows, snapshots, prefs, None);
+}
+
+pub fn run_with_rights(
+    windows: usize,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+    rights: Option<vantare_ipc::control::Feed>,
+) {
     let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-    run_placed(placed, snapshots, prefs);
+    run_placed_authorized(placed, snapshots, prefs, rights);
 }
 
 /// Como [`run`], con los widgets y sus posiciones (px globales de pantalla) dados.
@@ -603,10 +636,20 @@ pub fn run_placed(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     prefs: Preferences,
 ) {
+    run_placed_authorized(placed, snapshots, prefs, None);
+}
+
+fn run_placed_authorized(
+    placed: Vec<(Kind, (f32, f32))>,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+    rights: Option<vantare_ipc::control::Feed>,
+) {
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
+        crate::rights::install(rights, cx);
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let widgets = open_screens(cx, &placed, prefs);

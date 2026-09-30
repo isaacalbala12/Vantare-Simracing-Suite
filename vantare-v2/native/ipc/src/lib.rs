@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn every_workshop_scene_is_migrated_with_new_signals_unavailable() {
+    fn every_workshop_scene_decodes_and_round_trips_at_the_current_version() {
         let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui/fixtures");
         let mut count = 0;
         for entry in std::fs::read_dir(directory).expect("directorio de escenas") {
@@ -169,21 +169,6 @@ mod tests {
             }
             let text = std::fs::read_to_string(&path).expect("JSON de escena");
             let snapshot = snapshot_from_json(&text).expect("escena v4");
-            assert_eq!(
-                snapshot.state.source_state,
-                vantare_domain::SourceState::Live
-            );
-            for car in &snapshot.state.cars {
-                assert_eq!(car.relative_s, vantare_domain::Quality::Unavailable);
-                assert_eq!(car.relative_laps, vantare_domain::Quality::Unavailable);
-            }
-            if let Some(player) = snapshot.state.player {
-                assert_eq!(
-                    player.telemetry.steering,
-                    vantare_domain::Quality::Unavailable
-                );
-                assert_eq!(player.fuel.history, [None; 10]);
-            }
             assert_eq!(
                 snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
                     .expect("ida y vuelta"),

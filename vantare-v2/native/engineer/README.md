@@ -368,3 +368,15 @@ sintéticas explícitas y temporales; los tests normales no reproducen audio.
 
 Referencia de API del sistema: [BCryptHash de Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcrypthash)
 y [status de MCI](https://learn.microsoft.com/en-us/previous-versions/ms713277(v=vs.85)).
+
+### Actualización de caché #1428 — 2026-09-30
+
+En la caché local del producto se añadieron las voces `flags.yellow` y
+`flags.blue` para `es` (`ef_dora`) y `en` (`af_bella`; cuatro MP3). No se
+versionan: los archivos quedan fuera del repositorio. La cobertura local sube
+a 11/11 en `es` y `en`; `it` (`if_sara`) y `pt-BR` (`pf_dora`) siguen en
+9/11 porque el CLI offline no encuentra sus archivos de voz locales. No se
+descargaron modelos ni voces. El banco `voice-cache play` aceptó y detuvo una
+frase en cada locale: las banderas nuevas en `es`/`en` y clips existentes en
+`it`/`pt-BR`. La evidencia detallada de esta ejecución queda en
+`C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.

@@ -1,15 +1,33 @@
 # Engineer nativo — ISA-1428
 
 Proceso bajo demanda: solo foto y eventos neutrales, sin UI, lectura del juego,
-red ni síntesis TTS. Reutiliza `runtime::flows` para cursor, ACK y codec, sin
-duplicar el journal. Producción solo importa `flows`; no invoca Core ni los
-adaptadores privados. Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
+red ni síntesis TTS. Reutiliza `runtime::flows` para cursor, ACK y codec y
+`runtime::shutdown` para Ctrl+C/EOF; no invoca Core ni los adaptadores privados.
+Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
+
+## Ejecución parcial de producto
+
+`vantare-engineer --pipe [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA]`
+consume el named pipe de **fotos** ya existente. Windows, ACL de usuario,
+PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
+del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
+retira avisos y para clips; una reentrega no rejuvenece la foto. Ctrl+C o EOF
+en stdin termina y cancela Subscriber. El launcher debe mantener stdin abierto
+durante el trabajo y cerrarlo al parar. Todavía no está registrado en launcher.
+
+stdout: JSONL `vantare.radio.v1` con intent, prioridad, texto localizado,
+epoch/sequence, session/car y TTL; `vantare.radio.status.v1` con degradaciones
+y `clear:true` (retirar presentación, **no** anunciar pista despejada). El estado
+inicial declara eventos no disponibles y Spotter sin velocidad de rivales.
+Este modo sirve fuel/flags por foto; boxes necesita la conexión de eventos
+pendiente. No aceptar el pipe latest-wins como sustituto del journal.
 
 ## Consumo y recuperación
 
 `vantare-engineer --stream --cursor <checkpoint>` usa stdin/stdout heredados:
 HELLO con cursor, frame individual, checkpoint y ACK. Es **el banco IPC**, no
-el named pipe de ADR 0099. EOF termina con código 0; error de codec, checkpoint
+el named pipe de eventos de ADR 0099. En este modo stdout es solo HELLO/ACK;
+radio JSONL y diagnóstico salen por stderr. EOF termina con código 0; error de codec, checkpoint
 o continuidad termina con 1. El consumidor nuevo recibe foto y base actuales.
 Los siguientes recuperan desde cursor, uno por ACK. El servidor solo reconoce
 el cursor pendiente: no aceptar un ACK superior a ciegas. Reconexión conserva
@@ -48,6 +66,40 @@ los propietarios de esas rutas. No conectar el banco a datos reales saltando
 la frontera. `Frame::capture` puede leer disco: NO llamarlo en adquisición.
 Hace falta transferir un corte coherente al dueño del transporte.
 
+## Radio y voz
+
+Una cola de 8 pendientes, coalescida por intent/sujeto, FIFO entre prioridades
+iguales y TTL. Solo Safety puede interrumpir otra prioridad. TTL caducado,
+cambio de identidad, hueco, pérdida de calidad o foto congelada retiran el
+aviso; no generan un hecho contrario. Condiciones estables de fuel/flags no
+repiten tras ACK visual. Boxes exige evento nuevo del jugador y foto fiable
+de esa misma revisión: eventos históricos se recuperan sin hablarlos tarde.
+Fuel: 1 l, 2 l, medio depósito con nivel/capacidad fiables; flags: yellow/blue
+fiables de sesión o jugador. No hay aviso por sector ni autonomía estimada.
+
+`spotter::classify_position` conserva los límites longitudinales/laterales Go
+en los ejes neutrales ahead/right, con histéresis. **Solo geometría**: faltan
+velocidades de rivales para el filtro de cierre, por tanto no emite radio.
+Penalties/laps/timings/pitstop completo también requieren señales/contratos
+comunes pendientes en el microplan. No es paridad de todas las familias Go.
+
+Voz opt-in mediante clips locales pregenerados Kokoro, sin red ni síntesis:
+`<CARPETA>/<locale>/<intent>.wav`, por ejemplo `es/fuel.low_1l.wav`. El batch
+de assets debe normalizar a RIFF/WAVE canónico con cabecera de 44 bytes,
+PCM16 mono/estéreo, 16–48 kHz, máximo 8 s; no acepta chunks de metadatos ni
+MP3 de la caché Go. Validación acotada (4 MiB), ruta canonical dentro de la
+carpeta y archivo regular. Reproductor Win32 WinMM asíncrono, sin proceso extra,
+con stop y `SND_NODEFAULT`; unsafe solo en `voice/win.rs` con comentarios SAFETY.
+
+`voice` en JSON es `disabled`, `missing`, `failed` o `started`; el último
+significa que WinMM aceptó iniciar, **no** acredita salida acústica. Aviso visual
+permanece cuando falta clip; no hay motor alternativo. Sin assets incluidos y
+sin prueba acústica. WinMM no da ACK de fin: se usa duración validada y tick de
+50 ms; I/O/salida bloqueados no acreditan plazo acústico estricto. Leer el clip
+local ocurre en este worker, nunca en adquisición. No exactamente una vez para
+audio ante muerte entre checkpoint y salida; permisos/distribución de assets y
+escucha es/en/it/pt-BR pendientes de Isaac. Sin wake/PTT/STT ni ajuste de dispositivo.
+
 ## Gates y evidencia
 
 Workspace local durante el trabajo paralelo. Desde `native/engineer/`:
@@ -61,5 +113,9 @@ cargo test --workspace --offline -j 2
 Además, los tres gates del workspace padre `native/`. `tests/recovery.rs` usa
 observaciones **sintéticas explícitas**, procesos y checkpoints reales: reinicio,
 dedup, todos los confirmados, hueco volátil, retención, escritura fallida,
-corrupción y EOF con plazo. No demuestra LMU/OBS, acústica ni rendimiento.
+corrupción y EOF con plazo. `tests/radio.rs` verifica las reglas, TTL, cola,
+calidad, fotos congeladas, locales y WAV sin reproducir. `tests/lifecycle.rs`
+ejercita EOF sin Core y rechazo de publicador con imagen distinta mediante
+named pipe real (datos sintéticos); no sustituye prueba con Core empaquetado.
+No demuestra LMU/OBS, acústica ni rendimiento.
 Notion pendiente de restablecer acceso; no hay push, PR o merge.

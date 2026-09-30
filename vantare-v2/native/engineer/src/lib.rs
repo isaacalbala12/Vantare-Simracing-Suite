@@ -2,6 +2,10 @@
 #![deny(unsafe_code)]
 
 mod checkpoint;
+pub mod radio;
+pub mod spotter;
+pub mod voice;
+pub mod worker;
 pub use checkpoint::load_cursor;
 
 use std::io;

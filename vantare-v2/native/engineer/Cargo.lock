@@ -309,6 +309,7 @@ dependencies = [
  "vantare-domain",
  "vantare-ipc",
  "vantare-runtime",
+ "windows-sys",
 ]
 
 [[package]]

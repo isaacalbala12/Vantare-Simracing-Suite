@@ -81,8 +81,8 @@ IPC latest-wins, al reiniciar o a través de un hueco.
 Solo se modifican `native/runtime/src/flows/`, `native/engineer/` y este
 microplan. Series se conserva para fase 4. Sin cambios en widgets, kit,
 `model.rs`, `ipc/`, `runtime/src/core/`, adaptadores, producto Go o frontend.
-El crate Engineer usa `domain`, `ipc` (foto DTO existente) y `runtime::flows`
-(tipos neutrales/codec, adaptadores privados inaccesibles): evita duplicar
+El crate Engineer usa `domain`, `ipc` (foto DTO/Subscriber existente),
+`runtime::flows` (tipos neutrales/codec) y `runtime::shutdown` (cierre compartido): evita duplicar
 cursor, journal y codec. No invoca adaptadores ni Core en producción. Aislamiento
 es de proceso; no se introduce otra abstracción de telemetría. En el futuro el
 orquestador puede mover el codec a `ipc` sin cambiar el wire.
@@ -123,6 +123,13 @@ MP3 quedan fuera de este corte: gates humanos, activos o fases propias.
   fuel, banderas ni la salida de clips.
 - **Voz:** confirmar assets Kokoro WAV PCM y voces por locale; escucha perceptual
   de Isaac pendiente. Sin assets no hay voz audible aceptada. No gastar ni descargar.
+  [Microsoft documenta WinMM como API legacy](https://learn.microsoft.com/en-us/windows/win32/multimedia/using-playsound-to-play-waveform-audio-files)
+  y recomienda WASAPI/Audio Graphs para código nuevo cuando sea posible. Aquí
+  se elige el player mínimo de clips por ausencia de streaming/micrófono,
+  device routing y ACK acústico; no se promete esa paridad. Si la aceptación
+  exige dispositivo seleccionable o plazos acústicos estrictos, sustituir el
+  player en una tarea acotada con prueba física; no ampliar este corte a un
+  motor multimedia. `SND_NODEFAULT` impide el sonido por defecto.
 - **Persistencia:** búsqueda lineal existente por evento tiene techo conocido;
   perfilar con corpus representativo antes de añadir un índice. Tests de fallos
   de disco son inyección determinista, no prueba de disco físico lleno/corte eléctrico.
@@ -157,3 +164,63 @@ Registrar resultados y tests ignorados; los tests físicos ignorados no son PASS
   El crate propio se justifica por aislamiento de proceso; bibliotecas de
   terceros nuevas: 0 (serde_json existente fijado al lock). `wire` es contrato
   y banco heredado, no se declara integración named pipe ni fase aceptada.
+- Corte 3: PASS fmt, clippy workspace/all-targets offline `-j 2 -D warnings`
+  y test workspace offline `-j 2` en ambos workspaces. Padre: 390 PASS
+  contando los 7 escenarios lifecycle, 4 live ignorados; clippy 6,78 s y
+  compilación test 4,59 s (también hubo espera por lock de caché). Engineer:
+  16 PASS, 0 fallos/ignorados; clippy 1,27 s y compilación test 3,66 s;
+  radio 10 casos/0,01 s, lifecycle 2/0,45 s, recovery 3/0,86 s y CLI 1.
+  Tiempos de gates, **no benchmark ni evidencia de presupuestos**.
+  Named pipe de fotos: reusa Subscriber de producto, fija imagen Core hermano,
+  consume fuel/flags y cierra por EOF/Ctrl+C. Tests de proceso ejercitan EOF
+  antes de conectar y rechazo por imagen de publicador sintético (dos conexiones
+  acreditan rechazo/reintento). No demuestra Core empaquetado ni launcher.
+  Radio: una cola de 8, FIFO/prioridad/preempción Safety, TTL, calidad/sujeto,
+  cuatro locales, no repetir condición estable y retirar con revisión congelada
+  500 ms, gap/identidad/pérdida de evidencia. Geometría aislada de voz; clips
+  ausentes son visibles; PCM/malformados se prueban sin reproducir audio.
+  Dependencia directa de `windows-sys 0.61.2` justificada por WinMM; misma
+  librería/versión del padre, feature Audio, **0 terceros nuevos**. Dos llamadas
+  unsafe confinadas a `voice/win.rs`, ambas con SAFETY; 0 unwrap en producción.
+  No se edita el manifiesto/lock padre ni modelo/core/IPC/launcher.
+
+## Estado de entrega y siguiente acción del orquestador
+
+Cortes 1 y 2 entregados en `e4b272db` y `8fd73005`; inventario/microplan previo
+en `da3a9dc3`. Corte 3 listo para revisión local. **Fase 3 no aceptada aún**:
+corte 4 bloqueado por las rutas reservadas y voz/Spotter por sus dependencias.
+No hay actualización Notion, push, PR, CI remoto, merge, release o promoción.
+La issue GitHub #1428 fue leída; este documento es evidencia técnica local,
+no afirma haber sustituido el seguimiento operativo del proyecto.
+
+Preguntas/encargos concretos para desbloquear, sin ejecutar en este worktree:
+
+1. Asignar servidor de eventos con ACL/PID/imagen, handshake y plazos/ACK,
+   corte foto+tail coherente y dueño de persistencia fuera de adquisición.
+   Conectar el codec existente en vez de deducir hechos del pipe de fotos.
+   Añadir flag recording y alta del proceso/cancelación en launcher.
+2. Integrar `engineer` como miembro del workspace padre y consolidar lock;
+   mantener gates del workspace local hasta hacerlo. Conectar JSONL radio a
+   presentación nativa (TTL/generación), sin segunda cola de selección.
+3. Solicitar al dueño del modelo `Car.velocity_mps` y capability; sanciones,
+   limitador/servicio y eventos históricos tipados. Spotter audible, laps,
+   penalties/timings y pitstop completo quedan bloqueados, no implementados
+   con heurísticas de fotos latest-wins.
+4. Isaac: assets Kokoro normalizados, licencias/voces es/en/it/pt-BR y escucha;
+   luego prueba física Core/LMU/OBS y presupuestos seriales. No generación,
+   gasto, descarga, micrófono ni audio físico ejecutados aquí.
+
+Reproducción: ejecutar los tres gates en `native/` y en `native/engineer/`
+con `--offline -j 2` en clippy/test. Focales: `cargo test -p vantare-runtime
+--lib flows --offline -j 2` desde padre; `cargo test --test recovery --test
+radio --test lifecycle --offline -j 2` desde Engineer. Para comprobar cierre
+manual sin Core, `'' | .\native\target\debug\vantare-engineer.exe --pipe
+--pipe-name vantare-engineer-manual-absent`: estado no disponible y salida 0,
+sin audio. Voz real se verifica solo tras autorizar/proporcionar assets; no
+se presenta ese comando de cierre como aceptación de una sesión real.
+
+Delta total Rust frente a la base: **+2.920 líneas incluyendo tests**; el corte
+3 añade 13 rutas/modificaciones locales. Aumenta por añadir journal/codec y
+proceso inexistente: se mantiene una cola, un checkpoint y el DTO existente, sin índice,
+framework async, decoder/TTS ni renderer paralelo. Los tests son bancos
+sintéticos identificados, con archivos/procesos/named pipe reales y plazos.

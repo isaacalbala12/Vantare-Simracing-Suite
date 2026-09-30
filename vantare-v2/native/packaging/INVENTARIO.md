@@ -50,4 +50,4 @@ La matriz de servicios y los bloqueos físicos se concretarán en el microplan.
 Empaquetar y arrancar localmente no demuestra instalación comercial, firma,
 paridad, recursos en carrera, OBS, sesión prolongada ni compatibilidad otra GPU.
 
-Gates del inventario: cargo fmt --check, clippy --workspace --all-targets -j 2 -- -D warnings y test --workspace -j 2: PASS offline. Dos pruebas físicas ignoradas por la suite (LMU y ACC). Logs locales en native/target/phase7-evidence/inventario-*.log.
+Gates del inventario: cargo fmt --check, clippy --workspace --all-targets -j 2 -- -D warnings y test --workspace -j 2: PASS offline. Cuatro entradas físicas ignoradas (tres de LMU, una de ACC). Logs locales en native/target/phase7-evidence/inventario-*.log.

@@ -119,7 +119,7 @@ preguntas abiertas; ningún fallback se presenta como producto terminado.
 
 Se actualizará por corte con checks, artefactos y límites realmente observados.
 
-- Microplan: fmt/clippy/test PASS offline (-j 2; dos pruebas físicas ignored). Logs microplan-*.log en native/target/phase7-evidence. Inventario comprometido en ba2c32c6. Implementación aún no iniciada.
+- Microplan: fmt/clippy/test PASS offline (-j 2; cuatro entradas físicas ignored). Logs microplan-*.log en native/target/phase7-evidence. Inventario comprometido en ba2c32c6. Implementación aún no iniciada.
 - Corte 3: paquete, instalador script por usuario y portable creados con seis
   binarios Debug reales; 30 comprobaciones locales PASS (instalación, integridad,
   entradas ZIP adversarias, portable, seis smoke CLI y exclusión mutua).
@@ -131,7 +131,7 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   distribución/preflight en Windows limpio sigue bloqueada, no se descarga.
   Logs `corte3-build-v3.log`, `corte3-tests-final.log`,
   `corte3-{core,overlays}-imports.log` en `native/target/phase7-evidence`.
-- Gates corte 3: fmt/clippy/test PASS offline (-j 2); 2 físicos ignored. git diff --check PASS. Sin cambios Rust ni dependencias nuevas.
+- Gates corte 3: fmt/clippy/test PASS offline (-j 2); 4 entradas físicas ignored. git diff --check PASS. Sin cambios Rust ni dependencias nuevas.
 - Corte 4: 53 comprobaciones packaging PASS con los binarios reales. La versión
   siguiente es **simulada** cambiando solo el manifiesto: no se finge una segunda
   build del producto. Se prueban actualización por copia, rollback/retorno,
@@ -144,7 +144,7 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   Límite: interrupción de proceso, no apagón/durabilidad física del disco.
   Bootstrap estable schema=1: evolucionarlo exige otro corte revisado, no
   reemplazar automáticamente el script instalado ni ejecutar código del ZIP.
-- Gates corte 4: fmt/clippy/test PASS offline (-j 2; dos físicos ignored), packaging 53 PASS y git diff --check PASS. Sin nuevas dependencias ni cambios de producto.
+- Gates corte 4: fmt/clippy/test PASS offline (-j 2; cuatro entradas físicas ignored), packaging 53 PASS y git diff --check PASS. Sin nuevas dependencias ni cambios de producto.
 - Corte 5: 74 comprobaciones packaging PASS (`corte5-tests-v4.log`) con el
   prototipo Debug real. Importación por copia del fixture Wails V2 preserva SHA
   de origen/destino, recibo `conversion=none`, rollback y archivo retirado.
@@ -161,4 +161,5 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   No se toca Rust, persistencia real de usuario ni esquema de otras fases.
   Pendiente inmediato: reconstrucción Release limpia y repetición de packaging
   sobre los artefactos finales antes de entregar al orquestador.
-- Gates corte 5 finales: fmt/clippy/test PASS offline (-j 2; dos físicos ignored); packaging 74 PASS; diff --check PASS. Sin nuevas dependencias.
+- Gates corte 5 finales: fmt/clippy/test PASS offline (-j 2; cuatro entradas físicas ignored); packaging 74 PASS; diff --check PASS. Sin nuevas dependencias.
+- Auditoría de recuento: cada hito registra 377 tests estándar PASS + 7 escenarios lifecycle PASS, 0 fallos, 4 entradas ignoradas (LMU REST, LMU shm en lib y grabadora, ACC live). Se corrigen los resúmenes previos que contaban solo dos; recuento-fmt/clippy/test PASS offline -j 2. Primera build Release limpia PASS en source 8e10053c; los seis exe NotSigned. Se regenera el paquete tras esta corrección documental.

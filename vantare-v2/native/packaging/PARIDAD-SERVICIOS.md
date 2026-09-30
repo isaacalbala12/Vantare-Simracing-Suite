@@ -41,7 +41,7 @@ fixtures no equivale a paridad funcional/visual ni validación física.
   notices/licencias/SBOM completos, firma e instalador final revisados.
 - Isaac/orquestador fijan y ejecutan soak con LMU + OBS y prueba en otra GPU,
   con hashes y criterios de duración/recursos acordados. Ninguna se ejecuta
-  aquí; dos pruebas live de la suite están ignoradas por diseño.
+  aquí; cuatro entradas live de la suite están ignoradas por diseño.
 - Integrar assets nativos al canal existente de GitHub Releases solo tras
   revisión/autorización. No se modifica ni dispara release.yml en este trabajo.
 - Reconciliar evidencia y seguimiento en Notion al recuperar acceso. La

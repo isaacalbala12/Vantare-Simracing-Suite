@@ -178,3 +178,88 @@ de la última extracción de metadatos y handlers (misma presentación); las
 capturas principales, 1280 px y `launcher-profile.png` se repitieron al final.
 No se añadió ningún test que copie el render: la lógica está intacta y la
 presentación se verificó en ventanas reales. Sin push, PR, merge ni release.
+
+## Sección Launcher — paridad, 2026-09-30 (#1430)
+
+Worker Codex para revisión íntegra de Claude Opus 5.5. Worktree
+`C:/tmp/vw3-sec-launcher/vantare-v2`, rama
+`vantareapp/isa-1430-w-sec-launcher`, base asignada
+`95c20ae2bb4efada1d2dfe0de1b160bb1b471c68`. Se obtuvo y leyó
+`origin/nightly` `f29b5fee04022756f9ae59f19bf153f91eebe4ed`; se conserva
+la integración nativa asignada, sin rebase. Notion no disponible: excepción
+expresa del encargo; no se declara su seguimiento completado.
+
+Referencias: fila Launcher de `docs/analysis/2026-09-30-hub-paridad.md`,
+`frontend/src/hub/launcher-orbit/` y sus dos PNG congelados. La referencia
+Wails usa una demo con perfiles/detecciones; el Hub nativo usa discovery
+real y datos locales aislados. No se copia la demo al documento nativo.
+
+- `presentation.rs`: contexto propio con búsqueda compartida por nombres,
+  categorías y aplicaciones de los perfiles; perfiles/favoritas, catálogo,
+  cuatro resúmenes, cadenas visuales y chips de políticas realmente ejecutadas.
+- `editor.rs`: modal Orbit en el host de la ventana, borrador, pestañas Básico/Avanzado, desplegable por
+  paso, esperas 0..3600 s, argumentos JSON, ordenar/quitar/añadir, checkbox de
+  fallo/reutilización, reintentos 0..3, Guardar/Cancelar y cierre por Escape.
+  Los campos y acciones principales participan en el foco del modal.
+- `view.rs`: conserva escaneo, ejecución, progreso, trigger y confirmación
+  atómica de datos. Descripción/notas se muestran como campos deshabilitados;
+  no se persisten propiedades sin contrato. Apps manuales siguen eliminándose
+  solo cuando ningún perfil las referencia.
+- `shell.rs`: enlace de la columna contextual y del modal al host de ventana
+  de Launcher. El host completo evita recortar la capa dentro del scroll de
+  contenido.
+
+Disponibilidad y capacidad de lanzamiento siguen siendo hechos distintos:
+un manifest instalado sin ejecutable no habilita Abrir/Lanzar. Durante el scan
+o una cadena activa tampoco se habilitan nuevas ejecuciones. La fecha de
+detección procede del scan local terminado, no de la demo ni del guardado.
+
+**Límites de paridad:** el kit ofrece modal centrado, no drawer lateral ni
+cadena/monograma de aplicación equivalente a Wails. Se componen tarjetas,
+avatares, filas y chips comunes, sin CSS/renderer alternativo ni extracción
+inventada de iconos. Iconos reales/overrides: pendientes del contrato y pieza
+compartida; los avatares solo muestran iniciales. El encabezado/topbar global
+conserva el de la shell asignada. Calendario/perfil de overlay en el contexto,
+historial, descripción/notas, atajo global, inicio Windows y policies
+preguntar/reiniciar/cerrar aparecen pendientes; no se simulan sus servicios.
+
+El orquestador debe decidir/incorporar al kit un drawer y un monograma/chain
+con icono resuelto si exige esa geometría. Esta entrega no certifica paridad
+por píxeles, fase 5 completa, rendimiento ni arranque físico Steam/LMU/OBS.
+El handoff canónico queda fuera de las rutas de este worker y corresponde al
+orquestador incorporar la continuidad tras revisar el diff.
+
+Pruebas nuevas: búsqueda por nombre/categoría sin distinguir mayúsculas,
+disponibilidad sin confundir instalación con lanzamiento, orden y bordes de
+pasos, límites de selección y herencia/override de argumentos JSON.
+
+**Validación final:** `cargo fmt --check`, `cargo clippy --workspace
+--all-targets -j 2 -- -D warnings`, `cargo test --workspace -j 2`,
+`cargo build -p vantare-hub -j 2` y `git diff --check`: exit 0. La suite
+completa informa 744 tests estándar y 11 checks del harness de ciclo de vida
+pasados; 4 tests de conformidad que requieren simuladores reales están
+ignorados explícitamente. Los 6 tests de Launcher añadidos están incluidos.
+El primer intento de `cargo test` terminó mientras otro worktree poseía el
+pipe de servicios del usuario y el bootstrap propio devolvió EOF; el mismo
+gate pasó después cuando ese proceso liberó el pipe. Evidencia de proceso y
+logs completos externos en `C:/tmp/isa-1430-sec-launcher-evidence/`.
+
+Capturas finales a 1440 × 900 con el ejecutable del build final: comparar
+`comparison.html` en `C:/tmp/isa-1430-sec-launcher-evidence/`. Incluye el
+catálogo vacío de perfiles, creación/edición básica y avanzada, selección real
+por teclado, perfil QA guardado, búsqueda y favorita. El archivo
+`launcher-modal-final.json` conserva solo el perfil manual `QA ISA-1430` con
+un paso `lmu` de 2 s y argumentos heredados, más la favorita local de LMU; no
+se lanzó el juego ni otra aplicación. `persistence-summary.json` contiene el
+resumen de esa verificación. El Hub de QA cerró limpiamente. El SHA-256 del
+ejecutable es `8604230E76F624C593CD2EC7F800172B85FCEBA83D51BAF5C737E7F5303B0052`
+y coincide con `binary-final-hash.json`.
+
+**Pendiente del kit:** `Choice::Dropdown` cambió el paso al usar teclado; su
+lista flotante no llegó a verse en la capa modal durante la prueba física.
+Elevar la prioridad de menús anidados o proveer una composición modal/popover
+compatible requiere revisar Orbit fuera del alcance de este worker. Tampoco
+se certifica click de selección en esa lista, IME, DPI mixto, otras
+resoluciones, paridad por píxeles, fase 5 completa, LMU/ACC/Steam/OBS físicos,
+ni rendimiento. Notion no estaba disponible; no se actualizó ni se afirma
+haber completado su seguimiento. No hubo push, PR, merge ni release.

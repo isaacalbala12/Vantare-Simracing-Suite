@@ -211,11 +211,7 @@ impl Render for Hub {
                 content.child(if self.section == Section::Settings {
                     self.settings_header()
                 } else {
-                    orbit::page_header(
-                        "Hub nativo",
-                        self.section.label(),
-                        self.section.subtitle(),
-                    )
+                    orbit::page_header("Hub nativo", self.section.label(), self.section.subtitle())
                 })
             })
             .when_some(self.status.clone(), |content, status| {

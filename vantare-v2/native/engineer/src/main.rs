@@ -85,7 +85,11 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let options = options(std::env::args_os().skip(1))?;
-    let mut radio = RadioWorker::new(options.locale, options.clips.as_deref())?;
+    let clips = options
+        .clips
+        .clone()
+        .or_else(vantare_engineer::voice::default_cache_root);
+    let mut radio = RadioWorker::new(options.locale, clips.as_deref())?;
     let settings_path = match options.settings {
         Some(path) => Some(path),
         None if !options.stream => Some(control::default_path()?),
@@ -96,7 +100,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         voice: options.clips.is_some(),
         ..Default::default()
     };
-    let mut local = settings_path.map(|path| Local::new(path, seed, options.clips));
+    radio.configure(&seed)?;
+    let mut local = settings_path.map(|path| Local::new(path, seed, clips));
     let result = if options.stream {
         run_stream(
             options.cursor.as_deref().ok_or("falta cursor")?,

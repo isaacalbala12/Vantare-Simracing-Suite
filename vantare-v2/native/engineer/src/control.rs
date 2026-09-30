@@ -99,7 +99,7 @@ pub struct Status {
     pub active: bool,
     pub pid: u32,
     pub settings: Settings,
-    /// true solo si todos los clips de las familias nativas pasan validación WAV.
+    /// true si todos los clips de las familias nativas pasan validación WAV/MCI.
     pub assets: std::collections::BTreeMap<String, bool>,
     pub last_message: Option<Message>,
     pub error: Option<String>,

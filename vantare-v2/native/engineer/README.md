@@ -104,29 +104,69 @@ velocidades de rivales para el filtro de cierre, por tanto no emite radio.
 Penalties/timings/pitstop completo también requieren señales/contratos
 comunes pendientes en el microplan. No es paridad de todas las familias Go.
 
-Voz opt-in mediante clips locales pregenerados Kokoro, sin red ni síntesis:
-`<CARPETA>/<locale>/<intent>.wav`, por ejemplo `es/fuel.low_1l.wav`. El batch
-de assets debe normalizar a RIFF/WAVE canónico con cabecera de 44 bytes,
-PCM16 mono/estéreo, 16–48 kHz, máximo 8 s; no acepta chunks de metadatos ni
-MP3 de la caché Go. Validación acotada (4 MiB), ruta canonical dentro de la
-carpeta y archivo regular. Reproductor Win32 WinMM asíncrono, sin proceso extra,
-con stop y `SND_NODEFAULT`; unsafe solo en `voice/win.rs` con comentarios SAFETY.
+Voz opt-in mediante la caché Kokoro ya generada por el producto Go. Por
+defecto se lee `%APPDATA%/Vantare/Ingeniero/tts-cache/kokoro`; `--clips CARPETA`
+cambia esa raíz y activa voz en los ajustes iniciales. Con ajustes locales,
+`voice:true` activa la raíz por defecto sin necesitar `--clips`. Una carpeta
+ausente no impide consumir eventos: conserva texto y publica `voice:missing`.
+No se crea ni modifica la caché, no hay red, descarga ni síntesis.
 
-`voice` en JSON es `disabled`, `missing`, `failed` o `started`; el último
-significa que WinMM aceptó iniciar, **no** acredita salida acústica. Aviso visual
-permanece cuando falta clip; no hay motor alternativo. Sin assets incluidos y
-sin prueba acústica. WinMM no da ACK de fin: se usa duración validada y tick de
-50 ms; I/O/salida bloqueados no acreditan plazo acústico estricto. Leer el clip
-local ocurre en este worker, nunca en adquisición. No exactamente una vez para
-audio ante muerte entre checkpoint y salida; permisos/distribución de assets y
-escucha es/en/it/pt-BR pendientes de Isaac. Sin wake/PTT/STT ni ajuste de dispositivo.
+La clave es SHA-256 de `locale + NUL + voz + NUL + texto` en UTF-8, hexadecimal
+minúscula: la misma `tts.Cache.Key` del Go. Las voces son las canónicas de
+`internal/engineer/audio/config.go`: es/ef_dora, en/af_bella, it/if_sara y
+pt-BR/pf_dora. Los nueve textos compartidos coinciden con
+`internal/engineer/presentation/presentation.go`, incluida «Volta concluída».
+No se buscan otras voces, idiomas, sinónimos ni claves de intent como texto.
+Flags conserva su catálogo nativo: esas dos frases no existen en el catálogo
+canónico Go y su ausencia de clip se declara, sin sustituir el mensaje.
+
+Se busca `<hash>.wav`, luego `<hash>.mp3`. Se conserva en último lugar el
+pack nativo previo `<locale>/<intent>.wav`. Si un candidato existe pero es
+irregular, corrupto o inaccesible, se informa el error sin probar otro medio.
+Ruta canonical dentro de la raíz, archivo regular, máximo 4 MiB y 8 s.
+WAV conserva la validación RIFF PCM16 mono/estéreo de 16–48 kHz y cabecera
+canónica de 44 bytes; no se normaliza ni convierte ningún archivo.
+WAV usa `PlaySoundW` asíncrono con `SND_NODEFAULT`; MP3 usa
+`mciSendStringW` (open/set/status/play/stop/close), alias exclusivo por clip
+y cierre RAII también ante errores. Windows mide su duración sin reproducir
+durante la inspección. SHA-256 usa `BCryptHash` de CNG (Windows 10+).
+Sin dependencias nuevas; solo features de `windows-sys` ya fijado.
+Unsafe queda en `voice/win.rs`, con comentarios SAFETY.
+
+La misma cola/TTL controla ambas APIs: preempción, hueco, cambio de identidad,
+ajustes, pérdida de calidad, foto congelada y cierre paran el medio. La espera
+de apertura/inspección no recorta la duración del audio recién iniciado; TTL
+sigue acotándolo. `voice` es `disabled`, `missing`, `failed` o `started`;
+este último acredita que Windows aceptó el inicio, no escucha humana.
+Aviso visual permanece ante ausencia/error de clip. Duración más tick de 50 ms,
+sin promesa de plazo acústico estricto bajo I/O bloqueado. Lectura local en
+Engineer, nunca en adquisición. Sin wake/PTT/STT ni ajuste de dispositivo.
+No se promete exactamente una entrega acústica tras una caída.
+
+Banco explícito desde `native/`, sin tocar ajustes, cursor ni caché:
+
+```powershell
+cargo run -p vantare-engineer --offline -j 2 --example voice-cache -- coverage
+cargo run -p vantare-engineer --offline -j 2 --example voice-cache -- play es fuel.low_1l
+cargo run -p vantare-engineer --offline -j 2 --example voice-cache -- play it fuel.low_half_tank
+cargo run -p vantare-engineer --offline -j 2 --example voice-cache -- play pt-BR laps.completed
+cargo run -p vantare-engineer --offline -j 2 --example voice-cache -- preempt es fuel.low_1l
+# Para otra raíz, añadir CARPETA al final de coverage o play.
+```
+
+`coverage` inspecciona las 11 frases por cada locale sin reproducir: devuelve
+texto, voz, disponible/ausente/fallido, nombre hash y duración del clip válido.
+`play` reproduce solo la selección explícita y registra duración y tiempo
+total (incluye I/O y cierre); no habilita Spotter en la radio productiva.
+`preempt` inicia el seleccionado, lo sustituye por `pitstops.exit` después de
+100 ms y verifica parada explícita e idempotente del reemplazo.
 
 ## Control local desde Hub — ISA-1428 / ISA-1430
 
 El Hub escribe `%LOCALAPPDATA%/Vantare/native/engineer.json`; Engineer lo
 sondea cada turno (espera de hasta 50 ms, sin promesa bajo I/O bloqueado) y
 confirma sus ajustes efectivos en `engineer-status.json` del mismo directorio.
-Un archivo ausente inicialmente usa `--locale` y voz opt-in por `--clips`;
+Un archivo de ajustes ausente inicialmente usa `--locale` y voz opt-in por `--clips`;
 cuando existe, el documento manda. JSON inválido o retirado conserva los
 últimos ajustes válidos y publica error. El siguiente JSON válido recupera
 sin reiniciar. El banco `--stream` solo usa estos archivos con `--settings`.
@@ -143,8 +183,9 @@ Contrato cerrado v1, máximo 64 KiB, sin migración del producto Go:
 }
 ```
 
-Solo `es`, `en`, `it`, `pt-BR`; `voice` activa los clips de `--clips`, no
-selecciona otra voz ni descarga assets. Sin carpeta/clip válido conserva texto
+Solo `es`, `en`, `it`, `pt-BR`; `voice` activa la caché por defecto o
+la raíz de `--clips`; no selecciona otra voz ni descarga assets.
+Sin carpeta/clip válido conserva texto
 y declara `missing`. No hay control de volumen propio (se usa Windows),
 Spotter audible/on-off, penalties o timings; Hub muestra su indisponibilidad.
 `flags` es una familia nativa, no una afirmación de paridad de las familias Go.
@@ -160,7 +201,7 @@ ignore el lock ni durabilidad del rename ante corte eléctrico; no usar el
 directorio compartido para dos Engineer simultáneos.
 
 Estado: versión, PID, proceso activo, ajustes confirmados, presencia de pack
-completo y WAV válido por locale, último mensaje con época/revisión y error. Solo
+completo y clips WAV/MP3 válidos por locale, último mensaje con época/revisión y error. Solo
 se reemplaza cuando cambia su contenido; assets se inspeccionan cada segundo
 por mtime/tamaño y solo se releen cuando cambia esa firma. El último mensaje
 es histórico, no una presentación con TTL ni prueba acústica. Cierre ordenado
@@ -199,8 +240,95 @@ Para Engineer aislado: añadir `-p vantare-engineer` a clippy/test. `tests/recov
 observaciones **sintéticas explícitas**, procesos y checkpoints reales: reinicio,
 dedup, todos los confirmados, hueco volátil, retención, escritura fallida,
 corrupción y EOF con plazo. `tests/radio.rs` verifica las reglas, TTL, cola,
-calidad, fotos congeladas, locales y WAV sin reproducir. `tests/lifecycle.rs`
+calidad, fotos congeladas, locales y WAV sin reproducir. `tests/voice_cache.rs` verifica SHA-256 contra
+vectores congelados obtenidos invocando el Go, paridad de catálogo/voz,
+resolución exacta y solo lectura, ausencia, medios corruptos/irregulares y cobertura. `tests/lifecycle.rs`
 ejercita EOF sin Core y rechazo de publicador con imagen distinta mediante
 named pipe real (datos sintéticos); no sustituye prueba con Core empaquetado.
 No demuestra LMU/OBS, acústica ni rendimiento.
 Notion pendiente de restablecer acceso; no hay push, PR o merge.
+
+Verificación de este diff, 2026-09-30, con los comandos anteriores:
+
+- `cargo fmt --check`: código 0, sin salida.
+- Clippy workspace/all-targets con `-D warnings`: código 0,
+  `Finished dev profile` en 11,44 s.
+- Tests workspace: código 0, **634 pasados, 0 fallidos, 4 ignorados**:
+  623 del harness estándar y 11 del banco de ciclo de vida del launcher.
+  Engineer aporta 25 tests. Los ignorados requieren LMU (3) o ACC (1) en marcha;
+  no se ejecutaron ni sustituyen evidencia física de este worker.
+- `go test ./internal/tts -run TestCache_NewAndKeyDeterminism -count=1`:
+  `ok`, 0,113 s; Go solo se consultó, sin modificarlo.
+
+Antes de ese resultado hubo bloqueos por memoria: paginación insuficiente al
+compilar DuckDB y `LNK1102` al enlazar Storage. El gate final usa el perfil y
+linker originales, sin modificar configuración, cachés compartidas ni tests.
+Otro intento falló en el test ajeno
+`ipc::latest::tests::put_wakes_a_waiting_reader_and_close_releases_it`:
+el cierre puede adelantarse al lector durante sus dos esperas de 20 ms, sin
+sincronización de recepción. Pasó aislado y en la repetición global final;
+queda documentado para el orquestador, sin editar IPC ni ocultar el fallo previo.
+
+## Evidencia de caché y voz — worker de #1428, 2026-09-30
+
+Rama `vantareapp/isa-1428-w-voz-engineer`, entrada limpia en
+`e8b0927a3e8f63b8e89d2043b18c57ac1753c0fd`. Issue
+[#1428](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1428),
+proyecto Rust nativo, fase 3. Notion no disponible; Isaac autoriza explícitamente
+trabajar solo con GitHub en este encargo. No se declara seguimiento Notion
+completado; el orquestador actualizará el handoff común al revisar el diff.
+Se conserva la base de integración asignada, sin rebase ni cambios ajenos.
+`origin/nightly` leído tras fetch: `f29b5fee04022756f9ae59f19bf153f91eebe4ed`;
+merge-base con la rama asignada: `5838de5a4abee3e99d9d50aebd5dc20609c53611`.
+
+Caché real: **807 archivos, 779 MP3 y 28 WAV**. Informe reproducible por
+`voice-cache coverage`, congelado en
+[`coverage-2026-09-30.json`](coverage-2026-09-30.json) sin versionar clips.
+
+| Locale | Voz Go | Catálogo con clip válido | Frases habilitadas con clip |
+| --- | --- | --- | --- |
+| es | ef_dora | 9/11 | 6/8 |
+| en | af_bella | 9/11 | 6/8 |
+| it | if_sara | 9/11 | 6/8 |
+| pt-BR | pf_dora | 9/11 | 6/8 |
+
+Disponibles: `pitstops.entry`, `pitstops.exit`, `laps.completed`,
+`fuel.low_1l`, `fuel.low_2l`, `fuel.low_half_tank`, `spotter.car_left`,
+`spotter.car_right`, `spotter.three_wide`. Ausentes en los cuatro locales:
+`flags.yellow` y `flags.blue` (texto/aviso sin voz). Sin clips inválidos en
+estas 44 resoluciones. Las tres frases Spotter tienen WAV, pero siguen sin
+emitirse: faltan las señales que ya declaraba el Engineer, fuera de este encargo.
+`Status.assets` conserva su significado de pack completo, por eso es false
+mientras falten flags; no impide reproducir una frase que sí tenga clip.
+
+La prueba explícita usa los clips reales directamente en su sitio y las mismas
+funciones `Voice::play/tick/stop` del worker. Duraciones del medio:
+
+| Selección | Medio | Duración | Operación completa |
+| --- | --- | --- | --- |
+| es / fuel.low_1l / ef_dora | MP3 | 948 ms | 2151 ms |
+| it / fuel.low_half_tank / if_sara | MP3 | 1695 ms | 2426 ms |
+| pt-BR / laps.completed / pf_dora | MP3 | 1233 ms | 1554 ms |
+| en / spotter.car_left / af_bella | WAV | 874 ms | 929 ms |
+
+Prueba sobre el binario final `voice-cache.exe`, SHA-256
+`15067eb7ba097af660ed3ce19292561abdd9e86335e9696d8e1ff9468664fbcc`.
+Windows aceptó inicio y parada (`started_and_stopped`) de los cuatro clips.
+La operación completa incluye apertura/inspección, reproducción y cierre;
+se ejecutó mientras había compilaciones, no es un benchmark de latencia.
+`preempt es fuel.low_1l` y `preempt en spotter.car_left` devolvieron
+`preempted_and_stopped`: MP3→MP3 (reemplazo de 1332 ms) y WAV→MP3
+(reemplazo de 1050 ms), con segunda llamada stop sin error. No se afirma escucha/aceptación humana,
+calidad perceptual, selección de dispositivo ni prueba LMU/OBS. El banco de
+preempción no sustituye el test de política de cola: solo comprueba parar el
+medio actual, sustituirlo y cerrar el reemplazo. No hay medición de presupuesto
+de CPU, latencia o memoria, ni modificación de señales o familias productivas.
+
+El SHA-256 agregado de nombres ordenados UTF-8 y los digest de cada archivo
+antes y después de las reproducciones y preempciones fue idéntico
+`912a7462e4bfcc4a9362b635d1f0cc4563dc504e238c8f4845aebb68dddeea07`.
+No se copian, convierten ni generan medios. Las fixtures WAV de los tests son
+sintéticas explícitas y temporales; los tests normales no reproducen audio.
+
+Referencia de API del sistema: [BCryptHash de Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcrypthash)
+y [status de MCI](https://learn.microsoft.com/en-us/previous-versions/ms713277(v=vs.85)).

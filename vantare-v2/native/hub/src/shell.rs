@@ -44,11 +44,16 @@ pub struct Options {
     pub pipe: Option<String>,
     pub recordings: Option<PathBuf>,
     pub launcher_file: PathBuf,
+    pub demo: Option<crate::demo::DemoData>,
+    pub capture: Option<crate::demo::CaptureState>,
+    pub capture_output: Option<PathBuf>,
 }
 
 struct Hub {
     section: Section,
     shell: chrome::State,
+    demo: Option<crate::demo::DemoData>,
+    capture: Option<crate::demo::CaptureState>,
     focus: FocusHandle,
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
@@ -168,12 +173,14 @@ impl Hub {
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
             Section::Testing => self.testing.clone().into_any_element(),
-            Section::Home => {
-                crate::calendar::home::render(self.calendar.read(cx), |control, section| {
+            Section::Home => crate::calendar::home::render(
+                self.calendar.read(cx),
+                self.demo.as_ref(),
+                |control, section| {
                     control.on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx)))
-                })
-                .into_any_element()
-            }
+                },
+            )
+            .into_any_element(),
             Section::Account => self
                 .remote
                 .update(cx, |remote, cx| remote.account(cx))
@@ -194,6 +201,17 @@ impl Render for Hub {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.refresh_query(cx);
         let rail = self.rail(cx);
+        let topbar = self.topbar(window, cx);
+        if self
+            .capture
+            .as_ref()
+            .is_some_and(|capture| capture.notifications_open)
+            && self.notifications.read(cx).bell_bounds.is_some()
+            && !self.notifications.read(cx).popover_open(cx)
+        {
+            self.notifications
+                .update(cx, |center, cx| center.toggle_popover(window, cx));
+        }
         let column = if self.section == Section::Studio {
             self.studio.read(cx).context_column().into_any_element()
         } else if self.section == Section::Settings {
@@ -227,7 +245,7 @@ impl Render for Hub {
             .flex_col()
             .min_w_0()
             .min_h_0()
-            .child(self.topbar(window, cx))
+            .child(topbar)
             .child(
                 div()
                     .id("hub-content")
@@ -327,6 +345,15 @@ fn wire_sections(
     .detach();
 }
 
+fn wire_studio_workshop(workshop: &Entity<Workshop>, cx: &mut Context<Hub>) {
+    cx.observe(workshop, |this, workshop, cx| {
+        let snapshot = workshop.read(cx).scene.snapshot().clone();
+        this.studio
+            .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
+    })
+    .detach();
+}
+
 fn subscribe(pipe: Option<String>) -> Result<Subscriber, String> {
     // Mismo ACL privado del IPC que overlays; no consulta servicios ni credenciales.
     let pipe = match pipe {
@@ -413,6 +440,7 @@ struct Loaded {
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
+    notifications: crate::notifications::Center,
     analysis: Analysis,
     launcher: LauncherStore,
     engineer: Engineer,
@@ -420,6 +448,8 @@ struct Loaded {
     testing_dir: PathBuf,
     subscriber: Subscriber,
     service_pipe: String,
+    demo: Option<crate::demo::DemoData>,
+    capture: Option<crate::demo::CaptureState>,
 }
 
 impl Hub {
@@ -435,6 +465,7 @@ impl Hub {
             prepared,
             studio: prepared_studio,
             calendar,
+            notifications: notification_center,
             analysis: mut prepared_analysis,
             launcher: launcher_store,
             engineer,
@@ -442,6 +473,8 @@ impl Hub {
             testing_dir,
             subscriber,
             service_pipe,
+            demo,
+            capture,
         } = loaded;
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -457,27 +490,42 @@ impl Hub {
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         })
         .detach();
-        let notifications = cx.new(|_| Notifications::default());
+        let notifications = cx.new(|_| Notifications::from_center(notification_center));
         let calendar = cx.new(|_| calendar);
         let analysis = cx.new(|cx| {
             prepared_analysis.refresh(cx);
             prepared_analysis
         });
-        let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
+        let launcher = cx.new(|cx| match &demo {
+            Some(demo) => Launcher::new_demo(
+                launcher_store,
+                demo,
+                capture
+                    .as_ref()
+                    .is_some_and(|capture| capture.launcher_new_profile),
+                cx,
+            ),
+            None => Launcher::new(launcher_store, cx),
+        });
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
         cx.observe(&remote, |_, _, cx| cx.notify()).detach();
-        let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
-        let settings = settings::State::new(prefs, testing_dir.clone(), window, cx);
+        let strategy = cx.new(|cx| match &demo {
+            Some(_) => Strategy::new_demo(
+                strategy_dir,
+                capture.as_ref().and_then(|capture| capture.strategy_page),
+                cx,
+            ),
+            None => Strategy::new(strategy_dir, cx),
+        });
+        let mut settings = settings::State::new(prefs, testing_dir.clone(), window, cx);
+        if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
+            settings.select_demo_page(page);
+        }
         let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
         wire_strategy(&strategy, cx);
-        cx.observe(&workshop, |this, workshop, cx| {
-            let snapshot = workshop.read(cx).scene.snapshot().clone();
-            this.studio
-                .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
-        })
-        .detach();
+        wire_studio_workshop(&workshop, cx);
         cx.on_app_quit(move |this, cx| {
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
@@ -493,7 +541,9 @@ impl Hub {
         .detach();
         Hub {
             section,
-            shell: chrome::State::new(access, cx),
+            shell: chrome::State::new(access, capture.as_ref(), cx),
+            demo,
+            capture,
             focus,
             workshop,
             studio,
@@ -531,12 +581,24 @@ pub fn run(options: Options) -> Result<(), String> {
 /// La integración de cuenta entrega derechos ya resueltos. Esta shell no
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
 pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(), String> {
+    let notifications = match options.demo.as_ref() {
+        Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
+        None => crate::notifications::Center::default(),
+    };
+    let launcher = match options.demo.as_ref() {
+        Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
+        None => LauncherStore::load(options.launcher_file.clone())?,
+    };
     let loaded = Loaded {
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,
         studio: PreparedStudio::load(options.layout)?,
-        calendar: Calendar::load(&options.data_dir)?,
-        launcher: LauncherStore::load(options.launcher_file)?,
+        calendar: match options.demo.as_ref() {
+            Some(demo) => Calendar::load_demo(&options.data_dir, demo)?,
+            None => Calendar::load(&options.data_dir)?,
+        },
+        notifications,
+        launcher,
         engineer: Engineer::load(options.engineer),
         strategy_dir: options.data_dir.clone(),
         testing_dir: options.data_dir.clone(),
@@ -546,6 +608,8 @@ pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(
             .map_or_else(vantare_ipc::default_pipe_name, Ok)
             .map_err(|_| "IPC no disponible")?,
         subscriber: subscribe(options.pipe)?,
+        demo: options.demo.clone(),
+        capture: options.capture.clone(),
     };
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));

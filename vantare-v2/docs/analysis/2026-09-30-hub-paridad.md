@@ -173,3 +173,35 @@ conserva Workshop como herramienta dev separada o sección nativa de producto?
 ¿cuál es el contrato local de versión/actualizador/autenticación que alimentará
 la shell? ¿qué sesión autorizada permite validar Owner/Roadmap sin fixture
 inventada? Corresponden al orquestador/Isaac; no se implementaron decisiones aquí.
+
+## Banco de captura nativo · issue #1430
+
+Este apartado registra la entrega del banco de comparación pixel a pixel en el
+worktree `vantareapp/isa-1430-w-hub-banco`. La matriz y las capturas anteriores
+son el corte histórico descrito arriba; la comparación actual se regenera con
+el código de este worktree y no se presenta como paridad alcanzada.
+
+`native/hub/reference/compare.ps1` acepta `-Pantalla <nombre>` o `-Todas`.
+El segundo modo captura las 48 referencias Wails en orden de peor a mejor y
+genera una fila CSV por pantalla. Ambos modos usan `native/ui/diff.py`, umbral
+RGBA de 8 por canal y salida 1440 × 900. Candidatos, JSON del comparador,
+mapas de diferencias, tabla inicial y logs se escriben fuera del repo en
+`C:/tmp/hub-banco-evidence/`. Las referencias Wails demo, 6.853.618 bytes,
+están congeladas en `native/hub/reference/wails/` para que la ejecución no
+dependa de la carpeta externa original.
+
+La prueba de repetición se solicita con
+`native/hub/reference/compare.ps1 -Todas -VerificarDeterminismo`: vuelve a
+capturar `inicio-base` y exige que los dos PNG tengan SHA256 idénticos. Cada
+captura usa datos de fixture en memoria o una raíz temporal exclusiva; el
+helper espera `C:/tmp/fase2/pantalla-ocupada` y mantiene
+`Global\VantareParityCapture` durante la captura. No escribe persistencia del
+usuario.
+
+La entrega inicial mide el estado actual de cada sección. No cambia la
+apariencia de las secciones para acercarla a Wails. El historial Engineer,
+Strategy y las sesiones Telemetry quedan representados en el conjunto demo
+como datos de prueba; solo se aplican a las vistas nativas cuyos contratos
+actuales los consumen. Las referencias Wails conservan los mismos datos y
+estados nombrados del harness; las capturas no prueban runtime real,
+autenticación, licencias, actualizaciones ni telemetría live.

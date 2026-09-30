@@ -146,6 +146,29 @@ pub struct Strategy {
     generation: u64,
 }
 impl Strategy {
+    pub fn new_demo(
+        directory: PathBuf,
+        page: Option<crate::demo::CaptureStrategyPage>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut strategy = Self::new(directory, cx);
+        let Some(page) = page else {
+            return strategy;
+        };
+        strategy.page = match page {
+            crate::demo::CaptureStrategyPage::Collection => Page::Collection,
+            crate::demo::CaptureStrategyPage::Continue => Page::Continue,
+            crate::demo::CaptureStrategyPage::Origin => Page::Origin,
+            crate::demo::CaptureStrategyPage::Team => Page::Team,
+            crate::demo::CaptureStrategyPage::Start => Page::Start,
+            crate::demo::CaptureStrategyPage::Create => Page::Create,
+        };
+        if page == crate::demo::CaptureStrategyPage::Create {
+            strategy.start_form(cx);
+        }
+        strategy
+    }
+
     pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
         let mut editor = Editor::default();
         let path = directory.join("strategy-v2.json");

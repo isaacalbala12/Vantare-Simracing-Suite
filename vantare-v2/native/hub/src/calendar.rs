@@ -191,6 +191,7 @@ pub struct Calendar {
     path: PathBuf,
     following: Following,
     saved: Option<Vec<u8>>,
+    demo_now: Option<DateTime<Utc>>,
     pub error: Option<String>,
     pub status: String,
 }
@@ -223,9 +224,17 @@ impl Calendar {
             path,
             following,
             saved,
+            demo_now: None,
             error: None,
             status: "Catálogo local empaquetado; sin consultar servicios".into(),
         })
+    }
+    pub fn load_demo(data_dir: &Path, demo: &crate::demo::DemoData) -> Result<Self, String> {
+        let mut calendar = Self::load(data_dir)?;
+        calendar.schedule = Schedule::parse(&demo.calendar_json()?)?;
+        calendar.demo_now = Some(demo.fixed_now()?);
+        calendar.status = "Fixture Wails de demostración · solo captura".into();
+        Ok(calendar)
     }
     fn follow(&mut self, id: String) -> Result<(), String> {
         let mut next = self.following.series_ids.clone();
@@ -306,7 +315,7 @@ impl Calendar {
 
 impl Render for Calendar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let now = Utc::now();
+        let now = self.demo_now.unwrap_or_else(Utc::now);
         let current = self.schedule.is_current(now).unwrap_or(false);
         let (starts, error) = self.upcoming(now);
         if let Some(error) = error {
@@ -359,6 +368,7 @@ mod tests {
             path: PathBuf::new(),
             following: Following::default(),
             saved: None,
+            demo_now: None,
             error: None,
             status: String::new(),
         };

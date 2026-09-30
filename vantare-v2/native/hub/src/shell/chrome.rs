@@ -29,21 +29,28 @@ pub(super) struct State {
 }
 
 impl State {
-    pub fn new(access: Access, cx: &mut Context<Hub>) -> Self {
-        let query = cx.new(|cx| Input::new(String::new(), "Buscar secciones y acciones", cx));
+    pub fn new(
+        access: Access,
+        capture: Option<&crate::demo::CaptureState>,
+        cx: &mut Context<Hub>,
+    ) -> Self {
+        let query_text = capture
+            .and_then(|capture| capture.palette_query.clone())
+            .unwrap_or_default();
+        let query = cx.new(|cx| Input::new(query_text.clone(), "Buscar secciones y acciones", cx));
         let context_query = cx.new(|cx| Input::new(String::new(), "Buscar en el contexto", cx));
         for input in [&query, &context_query] {
             cx.observe(input, |_, _, cx| cx.notify()).detach();
         }
         Self {
             access,
-            column_open: true,
-            palette_open: false,
+            column_open: capture.is_none_or(|capture| capture.column_open),
+            palette_open: capture.is_some_and(|capture| capture.palette_query.is_some()),
             navigation_notice: None,
             notification_subscription: None,
             query,
             context_query,
-            last_query: String::new(),
+            last_query: query_text,
             cursor: 0,
             palette_focus: cx.focus_handle(),
             close_focus: cx.focus_handle(),
@@ -441,7 +448,12 @@ impl Hub {
                     // Mismo seguimiento de ancla que el dropdown Orbit.
                     gpui::canvas(
                         move |bounds, _, cx| {
-                            notifications.update(cx, |center, _| center.bell_bounds = Some(bounds));
+                            notifications.update(cx, |center, cx| {
+                                if center.bell_bounds.is_none() {
+                                    center.bell_bounds = Some(bounds);
+                                    cx.notify();
+                                }
+                            });
                         },
                         |_, (), _, _| {},
                     )

@@ -1,0 +1,477 @@
+//! Fixtures del harness Wails; solo se cargan con `--capture`.
+use crate::Section;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
+const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoData {
+    pub captured_at: String,
+    pub user: DemoUser,
+    pub profile: DemoProfile,
+    pub launcher: DemoLauncher,
+    pub home_races: Vec<DemoRace>,
+    pub calendar: DemoCalendar,
+    pub strategy: DemoStrategy,
+    pub engineer: DemoEngineer,
+    pub telemetry: DemoTelemetry,
+    pub notifications: Vec<DemoNotification>,
+    pub versions: DemoVersions,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoUser {
+    pub id: String,
+    pub name: String,
+    pub full_name: String,
+    pub email: String,
+    pub plan: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoProfile {
+    pub id: String,
+    pub file: String,
+    pub name: String,
+    pub active: bool,
+    pub widgets: usize,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoLauncher {
+    pub apps: Vec<DemoLauncherApp>,
+    pub profiles: Vec<DemoLauncherProfile>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoLauncherApp {
+    pub id: String,
+    pub display_name: String,
+    pub abbreviation: String,
+    pub category: String,
+    pub launch_method: String,
+    pub found: bool,
+    pub installed: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoLauncherProfile {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub favorite: bool,
+    pub steps: Vec<DemoLauncherStep>,
+    pub retry_limit: u8,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoLauncherStep {
+    pub app_id: String,
+    pub delay_seconds: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoRace {
+    pub id: String,
+    pub name: String,
+    pub track: String,
+    pub license_label: String,
+    pub at_utc: String,
+    pub interval_minutes: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoCalendar {
+    pub version: u32,
+    pub timezone: String,
+    pub valid_from: String,
+    pub valid_until: String,
+    pub series: Vec<DemoSeries>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoSeries {
+    pub id: String,
+    pub name: String,
+    pub track: String,
+    pub vehicle_class: String,
+    pub license_label: String,
+    pub tier: String,
+    pub event_kind: String,
+    pub start_offset_minute: i64,
+    pub recurrence: DemoRecurrence,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoRecurrence {
+    pub kind: String,
+    #[serde(default)]
+    pub interval_minutes: i64,
+    #[serde(default)]
+    pub days: Vec<String>,
+    #[serde(default, rename = "timesUTC")]
+    pub times_utc: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoStrategy {
+    pub event: DemoStrategyEvent,
+    pub drivers: Vec<DemoDriver>,
+    pub plans: Vec<DemoPlan>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoStrategyEvent {
+    pub start_minute: u32,
+    pub duration_minute: u32,
+    pub tank_liters: u32,
+    pub pit_seconds: u32,
+    pub name: String,
+    pub subtitle: String,
+    pub vehicle_class: String,
+    pub team: String,
+    pub day_label: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoDriver {
+    pub id: String,
+    pub name: String,
+    pub initials: String,
+    pub class: String,
+    pub dry: [f64; 2],
+    pub wet: [f64; 2],
+    pub eco: [f64; 2],
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoPlan {
+    pub id: String,
+    pub name: String,
+    pub note: String,
+    pub mode: String,
+    pub order: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoEngineer {
+    pub captured_at: String,
+    pub messages: Vec<DemoEngineerMessage>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoEngineerMessage {
+    pub text: String,
+    pub role: String,
+    pub intent: String,
+    pub severity: String,
+    pub seconds_ago: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoTelemetry {
+    pub synthetic: bool,
+    pub model: String,
+    pub sessions: Vec<DemoTelemetrySession>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoTelemetrySession {
+    pub id: String,
+    pub track: String,
+    pub car: String,
+    pub when: String,
+    pub laps: u32,
+    pub best: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoNotification {
+    pub source: String,
+    pub severity: String,
+    pub title_key: String,
+    pub text_key: String,
+    pub tag: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct DemoVersions {
+    pub hub: String,
+    pub testing: String,
+    pub current: String,
+    pub pending: String,
+    pub updater_channel: String,
+    pub testing_channel: String,
+}
+
+impl DemoData {
+    pub fn load() -> Result<Self, String> {
+        let data: Self =
+            serde_json::from_str(DATA).map_err(|error| format!("demo Hub: {error}"))?;
+        data.validate()?;
+        Ok(data)
+    }
+
+    pub fn fixed_now(&self) -> Result<DateTime<Utc>, String> {
+        DateTime::parse_from_rfc3339(&self.captured_at)
+            .map(|value| value.with_timezone(&Utc))
+            .map_err(|error| format!("hora fija demo: {error}"))
+    }
+
+    pub fn calendar_json(&self) -> Result<Vec<u8>, String> {
+        serde_json::to_vec(&self.calendar).map_err(|error| format!("calendario demo: {error}"))
+    }
+
+    fn validate(&self) -> Result<(), String> {
+        self.fixed_now()?;
+        DateTime::parse_from_rfc3339(&self.engineer.captured_at)
+            .map_err(|error| format!("hora de Engineer demo: {error}"))?;
+        for race in &self.home_races {
+            DateTime::parse_from_rfc3339(&race.at_utc)
+                .map_err(|error| format!("hora de carrera demo {}: {error}", race.id))?;
+        }
+        if self.user.name.is_empty()
+            || self.user.plan != "paid"
+            || self.profile.name != "Clean Overlay"
+            || !self.profile.active
+            || self.profile.widgets != 3
+            || self.profile.width == 0
+            || self.profile.height == 0
+            || self.launcher.apps.len() != 7
+            || self.launcher.profiles.len() != 2
+            || self.home_races.len() != 4
+            || self.calendar.series.len() != 10
+            || self.strategy.plans.len() != 2
+            || self.strategy.drivers.len() != 3
+            || self.engineer.messages.len() != 20
+            || !self.telemetry.synthetic
+            || self.telemetry.sessions.len() != 3
+            || self.telemetry.model != "13.6"
+            || self.notifications.len() != 1
+            || self.versions.updater_channel != "stable"
+            || self.versions.testing_channel != "nightly"
+        {
+            return Err("fixture demo Wails incompleta".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CaptureState {
+    pub name: String,
+    pub section: Section,
+    pub palette_query: Option<String>,
+    pub column_open: bool,
+    pub notifications_open: bool,
+    pub launcher_new_profile: bool,
+    pub settings_page: Option<CaptureSettingsPage>,
+    pub strategy_page: Option<CaptureStrategyPage>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptureSettingsPage {
+    Application,
+    Appearance,
+    Performance,
+    Updates,
+    Hotkeys,
+    Privacy,
+    Diagnostics,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptureStrategyPage {
+    Collection,
+    Continue,
+    Origin,
+    Team,
+    Start,
+    Create,
+}
+
+impl CaptureState {
+    pub fn parse(name: &str) -> Result<Self, String> {
+        #[derive(Deserialize)]
+        struct Screen {
+            name: String,
+        }
+        let screens: Vec<Screen> =
+            serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
+        if !screens.iter().any(|screen| screen.name == name) {
+            return Err(format!("pantalla Wails desconocida: {name}"));
+        }
+        let section = match name {
+            "shell-notificaciones-abiertas" => Section::Home,
+            "launcher-base" | "launcher-nuevo-perfil" => Section::Launcher,
+            "calendario-base"
+            | "calendario-dia"
+            | "calendario-semana"
+            | "calendario-mes"
+            | "calendario-timeline" => Section::Calendar,
+            "strategy-base"
+            | "strategy-lista"
+            | "strategy-continuar"
+            | "strategy-asistente-origen"
+            | "strategy-asistente-equipo"
+            | "strategy-asistente-inicio"
+            | "strategy-nuevo-evento" => Section::Strategy,
+            "engineer-base" | "engineer-historial" => Section::Engineer,
+            "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
+            "testing-center-informe"
+            | "testing-center-detalle"
+            | "testing-center-validar"
+            | "testing-center-mis-reportes" => Section::Testing,
+            "roadmap-base" => Section::Roadmap,
+            "cuenta-base" => Section::Account,
+            "licencias-modulos-dispositivos" => Section::Licenses,
+            "studio-base" => Section::Studio,
+            "workshop-base" | "workshop-detalle" => Section::Workshop,
+            name if name.starts_with("ajustes-") => Section::Settings,
+            name if name.starts_with("shell-") || name == "inicio-base" => Section::Home,
+            _ => return Err(format!("pantalla Wails sin sección nativa: {name}")),
+        };
+        let palette_query = match name {
+            "shell-paleta-abierta" => Some(String::new()),
+            "shell-paleta-busqueda" => Some("Studio".into()),
+            "shell-paleta-vacia" => Some("zz-no-resultados".into()),
+            _ => None,
+        };
+        let settings_page = match name {
+            "ajustes-preparacion-oscuro" | "ajustes-apariencia" | "ajustes-apariencia-detalle" => {
+                Some(CaptureSettingsPage::Appearance)
+            }
+            "ajustes-rendimiento" | "ajustes-rendimiento-detalle" => {
+                Some(CaptureSettingsPage::Performance)
+            }
+            "ajustes-actualizaciones" => Some(CaptureSettingsPage::Updates),
+            "ajustes-atajos" => Some(CaptureSettingsPage::Hotkeys),
+            "ajustes-privacidad" => Some(CaptureSettingsPage::Privacy),
+            "ajustes-diagnostico" | "ajustes-diagnostico-detalle" => {
+                Some(CaptureSettingsPage::Diagnostics)
+            }
+            name if name.starts_with("ajustes-") => Some(CaptureSettingsPage::Application),
+            _ => None,
+        };
+        let strategy_page = match name {
+            "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
+            "strategy-continuar" => Some(CaptureStrategyPage::Continue),
+            "strategy-asistente-origen" => Some(CaptureStrategyPage::Origin),
+            "strategy-asistente-equipo" => Some(CaptureStrategyPage::Team),
+            "strategy-asistente-inicio" => Some(CaptureStrategyPage::Start),
+            "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
+            _ => None,
+        };
+        Ok(Self {
+            name: name.into(),
+            section,
+            palette_query,
+            column_open: name != "shell-columna-colapsada",
+            notifications_open: name == "shell-notificaciones-abiertas",
+            launcher_new_profile: name == "launcher-nuevo-perfil",
+            settings_page,
+            strategy_page,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loads_the_wails_demo_snapshot_and_fixed_clock_deterministically() {
+        let first = DemoData::load().expect("fixture demo");
+        let second = DemoData::load().expect("segunda carga");
+        assert_eq!(
+            serde_json::to_vec(&first).expect("serializar"),
+            serde_json::to_vec(&second).expect("serializar")
+        );
+        assert_eq!(
+            first.fixed_now().expect("reloj"),
+            second.fixed_now().expect("reloj")
+        );
+        assert_eq!(first.user.name, "test");
+        assert_eq!(first.user.full_name, "Isaac Albalá");
+        assert_eq!(first.captured_at, "2026-09-30T17:00:00Z");
+        assert_eq!(first.profile.name, "Clean Overlay");
+        assert_eq!(first.launcher.profiles[0].name, "Creador de Contenido");
+        assert_eq!(first.launcher.apps[1].display_name, "OBS Studio");
+        assert_eq!(first.home_races[0].name, "LMGT3 Fixed");
+        assert_eq!(first.calendar.series.len(), 10);
+        assert_eq!(first.strategy.event.name, "4 Horas de Imola");
+        assert_eq!(first.strategy.plans[1].name, "Estrategia #2");
+        assert_eq!(first.engineer.messages.len(), 20);
+        assert_eq!(first.telemetry.sessions[0].best, "2:04.512");
+        assert_eq!(first.notifications[0].tag, "v0.1.0.2");
+        assert_eq!(first.versions.current, "v0.1.0.1");
+        assert_eq!(first.versions.testing_channel, "nightly");
+    }
+
+    #[test]
+    fn every_wails_reference_has_a_native_capture_target() {
+        let screens: Vec<serde_json::Value> = serde_json::from_str(SCREENS).expect("referencias");
+        assert_eq!(screens.len(), 48);
+        for screen in screens {
+            let name = screen["name"].as_str().expect("nombre");
+            assert!(CaptureState::parse(name).is_ok(), "{name}");
+        }
+        assert_eq!(
+            CaptureState::parse("shell-paleta-busqueda")
+                .expect("paleta")
+                .palette_query
+                .as_deref(),
+            Some("Studio")
+        );
+        assert!(
+            !CaptureState::parse("shell-columna-colapsada")
+                .expect("columna")
+                .column_open
+        );
+        assert!(
+            CaptureState::parse("launcher-nuevo-perfil")
+                .expect("Launcher")
+                .launcher_new_profile
+        );
+        assert_eq!(
+            CaptureState::parse("strategy-asistente-equipo")
+                .expect("Strategy")
+                .strategy_page,
+            Some(CaptureStrategyPage::Team)
+        );
+        assert!(CaptureState::parse("ajustes-desconocidos").is_err());
+    }
+
+    #[test]
+    fn demo_calendar_uses_the_native_schedule_contract() {
+        let demo = DemoData::load().expect("fixture demo");
+        let schedule = crate::calendar::Schedule::parse(&demo.calendar_json().expect("json"))
+            .expect("contrato de calendario");
+        assert_eq!(schedule.series.len(), 10);
+    }
+}

@@ -1,0 +1,90 @@
+{
+  "capturedAt": "2026-09-30T17:00:00Z",
+  "user": { "id": "mock-user", "name": "test", "fullName": "Isaac Albalá", "email": "test@example.com", "plan": "paid" },
+  "profile": { "id": "custom-clean-overlay", "file": "custom-clean-overlay.json", "name": "Clean Overlay", "active": true, "widgets": 3, "width": 1920, "height": 1080 },
+  "launcher": {
+    "apps": [
+      { "id": "lmu", "displayName": "Le Mans Ultimate", "abbreviation": "LMU", "category": "simulator", "launchMethod": "steam-uri", "found": true, "installed": true },
+      { "id": "obs", "displayName": "OBS Studio", "abbreviation": "OBS", "category": "streaming", "launchMethod": "executable", "found": true, "installed": true },
+      { "id": "crewchief", "displayName": "CrewChief", "abbreviation": "CC", "category": "utility", "launchMethod": "executable", "found": false, "installed": false },
+      { "id": "discord", "displayName": "Discord", "abbreviation": "DC", "category": "utility", "launchMethod": "executable", "found": false, "installed": false },
+      { "id": "spotify", "displayName": "Spotify", "abbreviation": "SP", "category": "audio", "launchMethod": "executable", "found": false, "installed": false },
+      { "id": "motec", "displayName": "MoTeC", "abbreviation": "MT", "category": "telemetry", "launchMethod": "executable", "found": false, "installed": false },
+      { "id": "simhub", "displayName": "SimHub", "abbreviation": "SH", "category": "telemetry", "launchMethod": "executable", "found": false, "installed": false }
+    ],
+    "profiles": [
+      { "id": "creator", "name": "Creador de Contenido", "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.", "favorite": true, "retryLimit": 2, "steps": [{ "appId": "lmu", "delaySeconds": 0 }, { "appId": "obs", "delaySeconds": 2 }, { "appId": "spotify", "delaySeconds": 2 }] },
+      { "id": "pro", "name": "Pro", "description": "Cadena completa con ingeniero de voz y telemetría externa. Cierra lo lanzado al salir del simulador.", "favorite": false, "retryLimit": 0, "steps": [{ "appId": "lmu", "delaySeconds": 0 }, { "appId": "crewchief", "delaySeconds": 2 }, { "appId": "spotify", "delaySeconds": 2 }, { "appId": "motec", "delaySeconds": 2 }] }
+    ]
+  },
+  "homeRaces": [
+    { "id": "a", "name": "LMGT3 Fixed", "track": "Sebring (School)", "licenseLabel": "Bronze SR", "atUtc": "2026-07-07T18:15:00Z", "intervalMinutes": 15 },
+    { "id": "b", "name": "LMGT3 Sprint Cup", "track": "Sebring (School)", "licenseLabel": "Bronze SR", "atUtc": "2026-07-07T18:30:00Z", "intervalMinutes": 15 },
+    { "id": "c", "name": "One Stint Sprint", "track": "Sebring (School)", "licenseLabel": "Bronze SR", "atUtc": "2026-07-07T18:45:00Z", "intervalMinutes": 15 },
+    { "id": "d", "name": "WEC Weekly", "track": "Sebring (School)", "licenseLabel": "Bronze SR", "atUtc": "2026-07-07T19:00:00Z", "intervalMinutes": 15 }
+  ],
+  "calendar": {
+    "version": 1, "timezone": "UTC", "validFrom": "2026-07-01T00:00:00Z", "validUntil": "2026-08-01T00:00:00Z",
+    "series": [
+      { "id": "beginner-lmgt3-fixed", "name": "LMGT3 Fixed", "tier": "beginner", "licenseLabel": "Bronze SR", "track": "Sebring (School)", "vehicleClass": "LMGT3 Class", "eventKind": "race", "startOffsetMinute": 15, "recurrence": { "kind": "interval", "intervalMinutes": 15 } },
+      { "id": "beginner-mclaren-challenge", "name": "Logitech McLaren G Challenge Q5", "tier": "beginner", "licenseLabel": "Bronze SR", "track": "Monza (WEC)", "vehicleClass": "McLaren 720S LMGT3", "eventKind": "race", "startOffsetMinute": 30, "recurrence": { "kind": "interval", "intervalMinutes": 15 } },
+      { "id": "beginner-lmp3-fixed", "name": "LMP3 Fixed", "tier": "beginner", "licenseLabel": "Bronze SR", "track": "Fuji (Classic)", "vehicleClass": "LMP3 Class", "eventKind": "race", "startOffsetMinute": 45, "recurrence": { "kind": "interval", "intervalMinutes": 15 } },
+      { "id": "intermediate-lmgt3-sprint", "name": "LMGT3 Sprint Cup", "tier": "intermediate", "licenseLabel": "Silver SR", "track": "COTA (National)", "vehicleClass": "LMGT3 Class", "eventKind": "race", "startOffsetMinute": 15, "recurrence": { "kind": "interval", "intervalMinutes": 20 } },
+      { "id": "intermediate-prototype-fixed", "name": "Prototype Fixed", "tier": "intermediate", "licenseLabel": "Silver SR", "track": "Barcelona (ELMS)", "vehicleClass": "LMP2 (ELMS) & LMP3 Classes", "eventKind": "race", "startOffsetMinute": 30, "recurrence": { "kind": "interval", "intervalMinutes": 20 } },
+      { "id": "intermediate-elms-sprint", "name": "ELMS Sprint Trophy", "tier": "intermediate", "licenseLabel": "Silver SR", "track": "Portimao (WEC)", "vehicleClass": "LMP2 (ELMS), LMP3 & LMGT3 Classes", "eventKind": "race", "startOffsetMinute": 45, "recurrence": { "kind": "interval", "intervalMinutes": 20 } },
+      { "id": "advanced-one-stint-sprint", "name": "One Stint Sprint", "tier": "advanced", "licenseLabel": "Gold SR", "track": "Paul Ricard (Layout 1A)", "vehicleClass": "Hypercar & LMGT3 Classes", "eventKind": "race", "startOffsetMinute": 15, "recurrence": { "kind": "interval", "intervalMinutes": 30 } },
+      { "id": "advanced-elms-super-60", "name": "ELMS Super 60", "tier": "advanced", "licenseLabel": "Gold SR", "track": "Spa (ELMS)", "vehicleClass": "LMP2 (ELMS, full fuel tank), LMP3 (70L fuel tank) & LMGT3 Classes (75% VE)", "eventKind": "race", "startOffsetMinute": 30, "recurrence": { "kind": "interval", "intervalMinutes": 30 } },
+      { "id": "advanced-wec-xperience", "name": "WEC-Xperience", "tier": "advanced", "licenseLabel": "Gold SR", "track": "Silverstone (ELMS)", "vehicleClass": "Hypercar & LMGT3 Classes, 75% VE Limit", "eventKind": "race", "startOffsetMinute": 45, "recurrence": { "kind": "interval", "intervalMinutes": 30 } },
+      { "id": "weekly-wec-weekly", "name": "WEC Weekly", "tier": "weekly", "licenseLabel": "SR S2", "track": "Portimao (ELMS)", "vehicleClass": "Hypercar & LMGT3 Classes", "eventKind": "race", "startOffsetMinute": 0, "recurrence": { "kind": "weekly-slots", "days": ["Wed", "Thu", "Fri", "Sat", "Sun", "Mon"], "timesUTC": ["02:00", "06:00", "09:00", "12:00", "15:00", "18:00", "20:00", "23:00"] } }
+    ]
+  },
+  "strategy": {
+    "event": { "startMinute": 840, "durationMinute": 240, "tankLiters": 90, "pitSeconds": 64, "name": "4 Horas de Imola", "subtitle": "ELMS · Imola · horario de muestra", "vehicleClass": "LMGT3", "team": "Vantare Racing · #58", "dayLabel": "Sáb 12" },
+    "drivers": [
+      { "id": "isaac", "name": "Isaac Albalá", "initials": "IA", "class": "Gold SR · 4.12", "dry": [104.0, 2.75], "wet": [112.4, 2.4], "eco": [105.1, 2.55] },
+      { "id": "sol", "name": "Sol Martín", "initials": "SM", "class": "Gold SR · 3.88", "dry": [104.6, 2.72], "wet": [113.0, 2.38], "eco": [105.7, 2.52] },
+      { "id": "diego", "name": "Diego Ferrer", "initials": "DF", "class": "Silver SR · 3.40", "dry": [105.3, 2.8], "wet": [114.2, 2.44], "eco": [106.4, 2.58] }
+    ],
+    "plans": [
+      { "id": "s1", "name": "Estrategia #1", "note": "Mínimo tiempo · un set nuevo por stint", "mode": "dry", "order": ["isaac", "sol", "diego"] },
+      { "id": "s2", "name": "Estrategia #2", "note": "Economía · una parada menos", "mode": "eco", "order": ["isaac", "sol", "diego"] }
+    ]
+  },
+  "engineer": {
+    "capturedAt": "2026-07-07T18:44:12Z",
+    "messages": [
+      { "text": "Coche a la izquierda", "role": "spotter", "intent": "spotter.car_left", "severity": "critical", "secondsAgo": 12 },
+      { "text": "Ventana de boxes abierta", "role": "engineer", "intent": "pitstops.window_open", "severity": "info", "secondsAgo": 44 },
+      { "text": "Consumo por encima del objetivo", "role": "engineer", "intent": "fuel.over_target", "severity": "warning", "secondsAgo": 137 },
+      { "text": "Libre", "role": "spotter", "intent": "spotter.clear", "severity": "info", "secondsAgo": 149 },
+      { "text": "Aviso de limites de pista", "role": "engineer", "intent": "penalties.track_limits", "severity": "warning", "secondsAgo": 233 },
+      { "text": "Vuelta 1:29.455", "role": "engineer", "intent": "laps.personal_best", "severity": "info", "secondsAgo": 320 },
+      { "text": "Coche a la derecha", "role": "spotter", "intent": "spotter.car_right", "severity": "critical", "secondsAgo": 335 },
+      { "text": "Diferencia con el coche de delante", "role": "engineer", "intent": "timings.gap_ahead", "severity": "info", "secondsAgo": 401 },
+      { "text": "Dos de ancho", "role": "spotter", "intent": "spotter.two_wide", "severity": "critical", "secondsAgo": 448 },
+      { "text": "Quedan 6 vueltas de combustible", "role": "engineer", "intent": "fuel.remaining", "severity": "info", "secondsAgo": 512 },
+      { "text": "Bandera azul en el sector 2", "role": "engineer", "intent": "penalties.blue_flag", "severity": "warning", "secondsAgo": 588 },
+      { "text": "Coche detras, mas rapido", "role": "spotter", "intent": "spotter.car_behind", "severity": "info", "secondsAgo": 640 },
+      { "text": "Entrada a boxes en dos vueltas", "role": "engineer", "intent": "pitstops.box_soon", "severity": "info", "secondsAgo": 702 },
+      { "text": "Coche a la izquierda", "role": "spotter", "intent": "spotter.car_left", "severity": "critical", "secondsAgo": 744 },
+      { "text": "Sector 2 mejorado", "role": "engineer", "intent": "laps.sector_gain", "severity": "info", "secondsAgo": 803 },
+      { "text": "Libre", "role": "spotter", "intent": "spotter.clear", "severity": "info", "secondsAgo": 826 },
+      { "text": "Penalizacion de 5 s aplicada", "role": "engineer", "intent": "penalties.applied", "severity": "warning", "secondsAgo": 889 },
+      { "text": "Diferencia con el coche de detras", "role": "engineer", "intent": "timings.gap_behind", "severity": "info", "secondsAgo": 941 },
+      { "text": "Coche a la derecha", "role": "spotter", "intent": "spotter.car_right", "severity": "critical", "secondsAgo": 998 },
+      { "text": "Objetivo de consumo alcanzado", "role": "engineer", "intent": "fuel.on_target", "severity": "info", "secondsAgo": 1054 }
+    ]
+  },
+  "telemetry": {
+    "synthetic": true, "model": "13.6",
+    "sessions": [
+      { "id": "s1", "track": "Sebring (School)", "car": "LMGT3", "when": "Hoy 18:42", "laps": 12, "best": "2:04.512" },
+      { "id": "s2", "track": "Sebring (School)", "car": "LMGT3", "when": "Ayer 21:10", "laps": 9, "best": "2:05.087" },
+      { "id": "s3", "track": "COTA (National)", "car": "LMGT3", "when": "Sáb 17:30", "laps": 15, "best": "2:11.930" }
+    ]
+  },
+  "notifications": [
+    { "source": "updater", "severity": "info", "titleKey": "notifications.record.updater.available.title", "textKey": "notifications.record.updater.available.text", "tag": "v0.1.0.2" }
+  ],
+  "versions": { "hub": "v0.3.9", "testing": "v0.3.10", "current": "v0.1.0.1", "pending": "v0.1.0.2", "updaterChannel": "stable", "testingChannel": "nightly" }
+}

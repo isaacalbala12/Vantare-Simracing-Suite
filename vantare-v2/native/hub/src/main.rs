@@ -1,87 +1,238 @@
 #![forbid(unsafe_code)]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use vantare_hub::{Section, shell::Options};
 
-fn parse(args: &[String]) -> Result<Options, String> {
-    let mut controlled = false;
-    let mut data_dir = None;
-    let mut scene = None;
-    let mut layout = None;
-    let mut engineer = None;
-    let mut pipe = None;
-    let mut recordings = None;
-    let mut launcher_file = None;
-    let mut section = Section::Home;
-    let mut args = args.iter();
-    while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--control-stdin" if !controlled => controlled = true,
-            "--workshop" if section == Section::Home => section = Section::Workshop,
-            "--studio" if section == Section::Home => section = Section::Studio,
-            "--analysis" if section == Section::Home => section = Section::Analysis,
-            "--recordings" if recordings.is_none() => {
-                recordings = Some(PathBuf::from(
-                    args.next().ok_or("falta directorio de grabaciones")?,
-                ));
-            }
-            "--launcher" if section == Section::Home => section = Section::Launcher,
-            "--launcher-file" if launcher_file.is_none() => {
-                launcher_file = Some(PathBuf::from(args.next().ok_or("falta archivo Launcher")?));
-            }
-            "--engineer" if section == Section::Home => section = Section::Engineer,
-            "--engineer-settings" if engineer.is_none() => {
-                engineer = Some(PathBuf::from(args.next().ok_or("falta ajustes Engineer")?));
-            }
-            "--strategy" if section == Section::Home => section = Section::Strategy,
-            "--data-dir" if data_dir.is_none() => {
-                data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
-            }
-            "--layout" if layout.is_none() => {
-                layout = Some(PathBuf::from(args.next().ok_or("falta layout")?));
-            }
-            "--scene" if scene.is_none() => {
-                scene = Some(PathBuf::from(args.next().ok_or("falta escena")?));
-            }
-            "--pipe" if pipe.is_none() => {
-                let name = args.next().ok_or("falta nombre de pipe")?;
-                if name.trim().is_empty() {
-                    return Err("pipe vacío".into());
-                }
-                pipe = Some(name.clone());
-            }
-            _ => return Err("argumento desconocido o repetido".into()),
+fn persistence_paths(
+    capture_root: Option<&Path>,
+    data_dir: Option<PathBuf>,
+    layout: Option<PathBuf>,
+    engineer: Option<PathBuf>,
+    launcher_file: Option<PathBuf>,
+) -> Result<(PathBuf, PathBuf, PathBuf, PathBuf), String> {
+    let data_dir = if let Some(root) = capture_root {
+        root.join("data")
+    } else {
+        match data_dir {
+            Some(path) => path,
+            None => PathBuf::from(std::env::var_os("LOCALAPPDATA").ok_or("indica --data-dir")?)
+                .join("VantareNative")
+                .join("hub"),
         }
-    }
-    let data_dir = match data_dir {
-        Some(path) => path,
-        None => PathBuf::from(std::env::var_os("LOCALAPPDATA").ok_or("indica --data-dir")?)
-            .join("VantareNative")
-            .join("hub"),
     };
-    Ok(Options {
-        controlled,
-        data_dir,
-        scene,
-        layout: match layout {
-            Some(path) => path,
-            None => vantare_ui::layout::default_path().map_err(|error| error.to_string())?,
-        },
-        engineer: match engineer {
-            Some(path) => path,
-            None => {
-                vantare_hub::engineer_control::default_path().map_err(|error| error.to_string())?
+    let (layout, engineer, launcher_file) = if let Some(root) = capture_root {
+        (
+            root.join("layout.json"),
+            root.join("engineer.json"),
+            root.join("launcher.json"),
+        )
+    } else {
+        (
+            layout
+                .unwrap_or(vantare_ui::layout::default_path().map_err(|error| error.to_string())?),
+            engineer.unwrap_or(
+                vantare_hub::engineer_control::default_path().map_err(|error| error.to_string())?,
+            ),
+            launcher_file.unwrap_or(vantare_hub::launcher::default_path()?),
+        )
+    };
+    Ok((data_dir, layout, engineer, launcher_file))
+}
+
+struct RawOptions {
+    controlled: bool,
+    data_dir: Option<PathBuf>,
+    scene: Option<PathBuf>,
+    layout: Option<PathBuf>,
+    engineer: Option<PathBuf>,
+    pipe: Option<String>,
+    recordings: Option<PathBuf>,
+    launcher_file: Option<PathBuf>,
+    section: Section,
+    explicit_section: bool,
+    capture_name: Option<String>,
+    capture_output: Option<PathBuf>,
+    demo_requested: bool,
+}
+
+impl RawOptions {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let mut parsed = Self {
+            controlled: false,
+            data_dir: None,
+            scene: None,
+            layout: None,
+            engineer: None,
+            pipe: None,
+            recordings: None,
+            launcher_file: None,
+            section: Section::Home,
+            explicit_section: false,
+            capture_name: None,
+            capture_output: None,
+            demo_requested: false,
+        };
+        let mut args = args.iter();
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--control-stdin" if !parsed.controlled => parsed.controlled = true,
+                "--demo" if !parsed.demo_requested => parsed.demo_requested = true,
+                "--capture" if parsed.capture_name.is_none() => {
+                    parsed.capture_name =
+                        Some(args.next().ok_or("falta nombre de pantalla")?.clone());
+                }
+                "--out" if parsed.capture_output.is_none() => {
+                    parsed.capture_output =
+                        Some(PathBuf::from(args.next().ok_or("falta PNG de salida")?));
+                }
+                "--workshop" if parsed.section == Section::Home => {
+                    parsed.section = Section::Workshop;
+                    parsed.explicit_section = true;
+                }
+                "--studio" if parsed.section == Section::Home => {
+                    parsed.section = Section::Studio;
+                    parsed.explicit_section = true;
+                }
+                "--analysis" if parsed.section == Section::Home => {
+                    parsed.section = Section::Analysis;
+                    parsed.explicit_section = true;
+                }
+                "--recordings" if parsed.recordings.is_none() => {
+                    parsed.recordings = Some(PathBuf::from(
+                        args.next().ok_or("falta directorio de grabaciones")?,
+                    ));
+                }
+                "--launcher" if parsed.section == Section::Home => {
+                    parsed.section = Section::Launcher;
+                    parsed.explicit_section = true;
+                }
+                "--launcher-file" if parsed.launcher_file.is_none() => {
+                    parsed.launcher_file =
+                        Some(PathBuf::from(args.next().ok_or("falta archivo Launcher")?));
+                }
+                "--engineer" if parsed.section == Section::Home => {
+                    parsed.section = Section::Engineer;
+                    parsed.explicit_section = true;
+                }
+                "--engineer-settings" if parsed.engineer.is_none() => {
+                    parsed.engineer =
+                        Some(PathBuf::from(args.next().ok_or("falta ajustes Engineer")?));
+                }
+                "--strategy" if parsed.section == Section::Home => {
+                    parsed.section = Section::Strategy;
+                    parsed.explicit_section = true;
+                }
+                "--data-dir" if parsed.data_dir.is_none() => {
+                    parsed.data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
+                }
+                "--layout" if parsed.layout.is_none() => {
+                    parsed.layout = Some(PathBuf::from(args.next().ok_or("falta layout")?));
+                }
+                "--scene" if parsed.scene.is_none() => {
+                    parsed.scene = Some(PathBuf::from(args.next().ok_or("falta escena")?));
+                }
+                "--pipe" if parsed.pipe.is_none() => {
+                    let name = args.next().ok_or("falta nombre de pipe")?;
+                    if name.trim().is_empty() {
+                        return Err("pipe vacío".into());
+                    }
+                    parsed.pipe = Some(name.clone());
+                }
+                _ => return Err("argumento desconocido o repetido".into()),
             }
-        },
-        section,
-        pipe,
-        recordings,
-        launcher_file: match launcher_file {
-            Some(path) => path,
-            None => vantare_hub::launcher::default_path()?,
-        },
-    })
+        }
+        Ok(parsed)
+    }
+
+    fn finish(self) -> Result<Options, String> {
+        let Self {
+            controlled,
+            data_dir,
+            scene,
+            layout,
+            engineer,
+            pipe,
+            recordings,
+            launcher_file,
+            mut section,
+            explicit_section,
+            capture_name,
+            capture_output,
+            demo_requested,
+        } = self;
+        if capture_name.is_some() != capture_output.is_some() {
+            return Err("--capture requiere --out".into());
+        }
+        let capture = capture_name
+            .as_deref()
+            .map(vantare_hub::demo::CaptureState::parse)
+            .transpose()?;
+        if demo_requested && capture.is_none() {
+            return Err("--demo solo está disponible con --capture".into());
+        }
+        if capture.is_some()
+            && (explicit_section
+                || controlled
+                || data_dir.is_some()
+                || scene.is_some()
+                || layout.is_some()
+                || engineer.is_some()
+                || pipe.is_some()
+                || recordings.is_some()
+                || launcher_file.is_some())
+        {
+            return Err("--capture usa datos aislados y no admite rutas persistentes".into());
+        }
+        let demo = capture
+            .as_ref()
+            .map(|_| vantare_hub::demo::DemoData::load())
+            .transpose()?;
+        let capture_root = capture.as_ref().map(|state| {
+            let ticks = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |duration| duration.as_nanos());
+            std::env::temp_dir()
+                .join("vantare-hub-parity")
+                .join(format!("{}-{ticks}-{}", std::process::id(), state.name))
+        });
+        if let Some(state) = &capture {
+            section = state.section;
+        }
+        let (data_dir, layout_path, engineer_path, launcher_path) = persistence_paths(
+            capture_root.as_deref(),
+            data_dir,
+            layout,
+            engineer,
+            launcher_file,
+        )?;
+        Ok(Options {
+            controlled,
+            data_dir,
+            scene,
+            layout: layout_path,
+            engineer: engineer_path,
+            section,
+            pipe: if capture.is_some() {
+                Some("isa1430-parity-no-producer".into())
+            } else {
+                pipe
+            },
+            recordings: if capture.is_some() {
+                capture_root.as_ref().map(|root| root.join("recordings"))
+            } else {
+                recordings
+            },
+            launcher_file: launcher_path,
+            demo,
+            capture,
+            capture_output,
+        })
+    }
+}
+
+fn parse(args: &[String]) -> Result<Options, String> {
+    RawOptions::parse(args)?.finish()
 }
 
 fn main() -> ExitCode {
@@ -100,11 +251,34 @@ fn main() -> ExitCode {
         Err(error) => {
             eprintln!(
                 "{error}
-uso: vantare-hub [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [--recordings DIRECTORIO] [--launcher-file RUTA] [--engineer-settings RUTA] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+uso: vantare-hub [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
+     vantare-hub --capture PANTALLA --out PNG [--demo]"
             );
             return ExitCode::from(2);
         }
     };
+    if let Some(state) = options.capture.clone() {
+        let Some(output) = options.capture_output.clone() else {
+            eprintln!("vantare-hub: falta PNG de salida");
+            return ExitCode::from(2);
+        };
+        #[cfg(feature = "parity-capture")]
+        {
+            return match vantare_hub::capture::run(options, state, output) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(error) => {
+                    eprintln!("vantare-hub: {error}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+        #[cfg(not(feature = "parity-capture"))]
+        {
+            let _ = (state, output);
+            eprintln!("vantare-hub: reconstruye con --features parity-capture");
+            return ExitCode::from(2);
+        }
+    }
     match vantare_hub::shell::run(options) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
@@ -211,5 +385,54 @@ mod tests {
                 .expect("LOCALAPPDATA")
                 .ends_with("Vantare/native/launcher.json")
         );
+    }
+
+    #[test]
+    fn capture_requires_reference_name_and_isolates_all_persistence_paths() {
+        let args = |items: &[&str]| {
+            items
+                .iter()
+                .map(|item| (*item).into())
+                .collect::<Vec<String>>()
+        };
+        let options = parse(&args(&[
+            "--capture",
+            "inicio-base",
+            "--out",
+            "C:/tmp/hub-banco-evidence/inicio.png",
+        ]))
+        .expect("captura demo");
+        assert_eq!(options.section, Section::Home);
+        assert!(options.demo.is_some());
+        assert!(options.data_dir.starts_with(std::env::temp_dir()));
+        assert!(options.layout.starts_with(std::env::temp_dir()));
+        assert!(options.engineer.starts_with(std::env::temp_dir()));
+        assert!(options.launcher_file.starts_with(std::env::temp_dir()));
+        assert_eq!(
+            options.capture_output,
+            Some(PathBuf::from("C:/tmp/hub-banco-evidence/inicio.png"))
+        );
+        for bad in [
+            vec!["--capture", "inicio-base"],
+            vec!["--capture", "no-existe", "--out", "capture.png"],
+            vec!["--demo"],
+            vec![
+                "--capture",
+                "inicio-base",
+                "--out",
+                "capture.png",
+                "--data-dir",
+                "user-data",
+            ],
+            vec![
+                "--capture",
+                "inicio-base",
+                "--out",
+                "capture.png",
+                "--launcher",
+            ],
+        ] {
+            assert!(parse(&args(&bad)).is_err());
+        }
     }
 }

@@ -5,6 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+parity-capture = ["vantare-ui/parity-capture"]
+
 [dependencies]
 vantare-ui = { path = "../ui" }
 vantare-domain.workspace = true

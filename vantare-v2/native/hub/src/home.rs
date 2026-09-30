@@ -1,5 +1,5 @@
 //! Inicio compone Orbit y el calendario local. La shell conserva la navegación.
-use super::{Calendar, Schedule, Series};
+use super::{Calendar, Schedule};
 use crate::{Section, orbit};
 use chrono::{DateTime, Duration, Local, Timelike, Utc};
 use gpui::{Div, Stateful, div, prelude::*, px};
@@ -14,14 +14,17 @@ fn greeting(hour: u32) -> &'static str {
     }
 }
 
-struct Race<'a> {
+struct Race {
+    id: String,
     at: DateTime<Utc>,
-    series: &'a Series,
+    name: String,
+    track: String,
+    license_label: String,
 }
 
 /// Cuatro salidas por serie bastan para las cuatro primeras del conjunto y
 /// para la primera serie seguida. No expande agendas caducadas ni futuras.
-fn races(schedule: &Schedule, now: DateTime<Utc>) -> Result<Vec<Race<'_>>, String> {
+fn races(schedule: &Schedule, now: DateTime<Utc>) -> Result<Vec<Race>, String> {
     if !schedule.is_current(now)? {
         return Ok(vec![]);
     }
@@ -32,17 +35,47 @@ fn races(schedule: &Schedule, now: DateTime<Utc>) -> Result<Vec<Race<'_>>, Strin
                 .starts(series, now, now + Duration::days(1))?
                 .into_iter()
                 .take(RACE_ROWS)
-                .map(|at| Race { at, series }),
+                .map(|at| Race {
+                    id: series.id.clone(),
+                    at,
+                    name: series.name.clone(),
+                    track: series.track.clone(),
+                    license_label: series.license_label.clone(),
+                }),
         );
     }
-    races.sort_unstable_by(|a, b| (a.at, &a.series.id).cmp(&(b.at, &b.series.id)));
+    races.sort_unstable_by(|a, b| (a.at, &a.id).cmp(&(b.at, &b.id)));
     Ok(races)
 }
 
-fn target<'a, 's>(races: &'a [Race<'s>], following: &[String]) -> Option<&'a Race<'s>> {
+fn demo_races(
+    schedule: &Schedule,
+    demo: &crate::demo::DemoData,
+    now: DateTime<Utc>,
+) -> Result<Vec<Race>, String> {
+    if !schedule.is_current(now)? {
+        return Ok(vec![]);
+    }
+    demo.home_races
+        .iter()
+        .map(|race| {
+            Ok(Race {
+                id: race.id.clone(),
+                at: DateTime::parse_from_rfc3339(&race.at_utc)
+                    .map_err(|error| format!("carrera demo {}: {error}", race.id))?
+                    .with_timezone(&Utc),
+                name: race.name.clone(),
+                track: race.track.clone(),
+                license_label: race.license_label.clone(),
+            })
+        })
+        .collect()
+}
+
+fn target<'a>(races: &'a [Race], following: &[String]) -> Option<&'a Race> {
     races
         .iter()
-        .find(|race| following.contains(&race.series.id))
+        .find(|race| following.contains(&race.id))
         .or_else(|| races.first())
 }
 
@@ -101,7 +134,7 @@ fn command() -> Stateful<Div> {
 }
 
 fn next_race(
-    race: Option<&Race<'_>>,
+    race: Option<&Race>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
 ) -> Div {
     let mut view = div().w(px(300.0)).flex_none();
@@ -110,9 +143,9 @@ fn next_race(
             orbit::card("").child(
                 orbit::card_body()
                     .child(orbit::eyebrow("Próxima serie"))
-                    .child(orbit::text(race.series.name.clone(), 15.0, 700, orbit::INK))
+                    .child(orbit::text(race.name.clone(), 15.0, 700, orbit::INK))
                     .child(orbit::text(
-                        race.series.track.clone(),
+                        race.track.clone(),
                         orbit::SECONDARY,
                         400,
                         orbit::INK_3,
@@ -141,7 +174,11 @@ fn next_race(
     view
 }
 
-fn hero(next: Div, navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
+fn hero(
+    next: Div,
+    greeting: String,
+    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+) -> Div {
     div()
         .flex()
         .items_center()
@@ -153,12 +190,7 @@ fn hero(next: Div, navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) 
                 .flex()
                 .flex_col()
                 .gap(px(orbit::GUTTER / 2.0))
-                .child(orbit::text(
-                    greeting(Local::now().hour()),
-                    34.0,
-                    700,
-                    orbit::INK,
-                ))
+                .child(orbit::text(greeting, 34.0, 700, orbit::INK))
                 .child(command())
                 .child(
                     div()
@@ -183,7 +215,10 @@ fn hero(next: Div, navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) 
         .child(next)
 }
 
-fn profile(navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
+fn profile(
+    demo: Option<&crate::demo::DemoData>,
+    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+) -> Div {
     // Falta una API de Studio que exponga su layout/renderers y una escala de
     // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
     orbit::card("").child(
@@ -201,14 +236,27 @@ fn profile(navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
                         .gap(px(orbit::RADIUS_CHIP))
                         .child(orbit::eyebrow("Perfil activo"))
                         .child(orbit::text(
-                            "Perfil activo · pendiente",
+                            demo.map_or("Perfil activo · pendiente", |data| {
+                                data.profile.name.as_str()
+                            }),
                             24.0,
                             700,
                             orbit::INK,
                         ))
-                        .child(orbit::chip("Perfiles · pendiente", orbit::Tone::Neutral))
+                        .child({
+                            let label = demo.map_or_else(
+                                || "Perfiles · pendiente".to_owned(),
+                                |data| format!("{} widgets · activa", data.profile.widgets),
+                            );
+                            orbit::chip(&label, orbit::Tone::Neutral)
+                        })
                         .child(orbit::text(
-                            "Perfiles y vista previa pendientes.",
+                            demo.map_or("Perfiles y vista previa pendientes.".to_owned(), |data| {
+                                format!(
+                                    "Perfil de demostración · {} × {}.",
+                                    data.profile.width, data.profile.height
+                                )
+                            }),
                             orbit::SECONDARY,
                             400,
                             orbit::INK_3,
@@ -237,7 +285,7 @@ fn profile(navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
     )
 }
 
-fn lists(starts: &[Race<'_>], navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
+fn lists(starts: &[Race], navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
     let mut race_list = orbit::card_body();
     if starts.is_empty() {
         race_list = race_list.child(orbit::empty_state("Sin salidas próximas", ""));
@@ -246,12 +294,12 @@ fn lists(starts: &[Race<'_>], navigate: &impl Fn(Stateful<Div>, Section) -> Stat
         race_list = race_list.child(navigate(
             orbit::list_row(
                 ("home-race", index),
-                &race.series.name,
+                &race.name,
                 &format!(
                     "{} · {} · {}",
                     race.at.with_timezone(&Local).format("%d/%m %H:%M"),
-                    race.series.track,
-                    race.series.license_label
+                    race.track,
+                    race.license_label
                 ),
                 index == 0,
                 true,
@@ -315,12 +363,23 @@ fn lists(starts: &[Race<'_>], navigate: &impl Fn(Stateful<Div>, Section) -> Stat
 /// de overlays aún no existen. Un layout sin identidad no se inventa como perfil.
 pub fn render(
     calendar: &Calendar,
+    demo: Option<&crate::demo::DemoData>,
     navigate: impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
 ) -> Stateful<Div> {
-    let now = Utc::now();
-    let (starts, error) = match races(&calendar.schedule, now) {
+    let now = calendar.demo_now.unwrap_or_else(Utc::now);
+    let starts_result = match demo {
+        Some(data) => demo_races(&calendar.schedule, data, now),
+        None => races(&calendar.schedule, now),
+    };
+    let (starts, error) = match starts_result {
         Ok(starts) => (starts, None),
         Err(error) => (vec![], Some(error)),
+    };
+    let salute = if let Some(demo) = demo {
+        let phrase = greeting(now.hour());
+        phrase.replace("piloto", &demo.user.name)
+    } else {
+        greeting(now.with_timezone(&Local).hour()).into()
     };
     div()
         .id("home")
@@ -329,9 +388,10 @@ pub fn render(
         .gap(px(orbit::GUTTER / 2.0))
         .child(hero(
             next_race(target(&starts, &calendar.following.series_ids), &navigate),
+            salute,
             &navigate,
         ))
-        .child(profile(&navigate))
+        .child(profile(demo, &navigate))
         .child(lists(&starts, &navigate))
         .when_some(error, |view, error| view.child(orbit::callout(error)))
         .when_some(calendar.error.clone(), |view, error| {
@@ -358,6 +418,21 @@ mod tests {
     }
 
     #[test]
+    fn demo_races_follow_the_fixture_calendar_window() -> Result<(), String> {
+        let demo = crate::demo::DemoData::load()?;
+        let schedule = Schedule::parse(&demo.calendar_json()?)?;
+        let first = DateTime::parse_from_rfc3339(&demo.home_races[0].at_utc)
+            .map_err(|error| error.to_string())?
+            .with_timezone(&Utc);
+        assert_eq!(
+            demo_races(&schedule, &demo, first - Duration::minutes(8))?.len(),
+            4
+        );
+        assert!(demo_races(&schedule, &demo, demo.fixed_now()?)?.is_empty());
+        Ok(())
+    }
+
+    #[test]
     fn calendar_includes_unfollowed_series_orders_rows_and_prefers_followed_target()
     -> Result<(), String> {
         let schedule = Schedule::parse(super::super::SEED.as_bytes())?;
@@ -379,18 +454,18 @@ mod tests {
             target(&starts, &[]).map(|race| race.at),
             starts.first().map(|race| race.at)
         );
-        let followed = &starts.last().ok_or("sin carreras")?.series.id;
+        let followed = &starts.last().ok_or("sin carreras")?.id;
         let followed_race = starts
             .iter()
-            .find(|race| &race.series.id == followed)
+            .find(|race| &race.id == followed)
             .ok_or("serie sin salida en 24 h")?;
         assert_eq!(
-            target(&starts, std::slice::from_ref(followed)).map(|race| (&race.series.id, race.at)),
+            target(&starts, std::slice::from_ref(followed)).map(|race| (&race.id, race.at)),
             Some((followed, followed_race.at))
         );
         assert_eq!(
-            target(&starts, &["serie-desconocida".into()]).map(|race| (&race.series.id, race.at)),
-            starts.first().map(|race| (&race.series.id, race.at))
+            target(&starts, &["serie-desconocida".into()]).map(|race| (&race.id, race.at)),
+            starts.first().map(|race| (&race.id, race.at))
         );
         assert!(target(&[], &[]).is_none());
         Ok(())
@@ -413,7 +488,7 @@ mod tests {
         let rows: Vec<_> = starts
             .iter()
             .take(RACE_ROWS)
-            .map(|race| (race.at, &race.series.id))
+            .map(|race| (race.at, &race.id))
             .collect();
         assert_eq!(rows, expanded.into_iter().take(4).collect::<Vec<_>>());
         assert_eq!(rows.len(), 4);

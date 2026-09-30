@@ -329,6 +329,54 @@ impl Store {
         })
     }
 
+    pub fn demo(path: PathBuf, demo: &crate::demo::DemoData) -> Result<Self, String> {
+        let document = Document {
+            version: 1,
+            apps: demo
+                .launcher
+                .apps
+                .iter()
+                .map(|app| App {
+                    id: app.id.clone(),
+                    name: app.display_name.clone(),
+                    executable: None,
+                    args: vec![],
+                    favorite: false,
+                })
+                .collect(),
+            profiles: demo
+                .launcher
+                .profiles
+                .iter()
+                .map(|profile| Profile {
+                    id: profile.id.clone(),
+                    name: profile.name.clone(),
+                    favorite: profile.favorite,
+                    steps: profile
+                        .steps
+                        .iter()
+                        .map(|step| Step {
+                            app_id: step.app_id.clone(),
+                            delay_seconds: step.delay_seconds,
+                            args_override: None,
+                        })
+                        .collect(),
+                    first_step_delay: profile.steps.first().map_or(0, |step| step.delay_seconds),
+                    continue_on_error: profile.retry_limit > 0,
+                    reuse_running: true,
+                    max_retries: profile.retry_limit,
+                })
+                .collect(),
+            lmu_trigger_profile: None,
+        };
+        document.validate()?;
+        Ok(Self {
+            document,
+            path,
+            saved: None,
+        })
+    }
+
     /// Confirmar en memoria solo después de escritura, sync y reemplazo atómicos.
     pub fn replace(&mut self, document: Document) -> Result<(), String> {
         document.validate()?;

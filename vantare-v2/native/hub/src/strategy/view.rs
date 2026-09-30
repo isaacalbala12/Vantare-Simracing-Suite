@@ -88,7 +88,7 @@ impl Strategy {
         self.error = None;
         cx.notify();
     }
-    fn start_form(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn start_form(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
         self.form_dirty = false;
         self.scalar_dirty = false;

@@ -171,6 +171,16 @@ fn v1_signing_payload_matches_go_html_escaping_without_real_keys() {
 }
 
 #[cfg(windows)]
+fn game_identity() -> authority::SessionIdentity {
+    authority::SessionIdentity {
+        simulator: "test-simulator".into(),
+        track: "test-track".into(),
+        kind: "race".into(),
+        started: "test-session-start".into(),
+    }
+}
+
+#[cfg(windows)]
 #[test]
 fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logout() {
     use authority::Authority;
@@ -187,8 +197,10 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
         Duration::ZERO,
     )
     .expect("install");
-    core.enter_game(
+    core.enter_game_identified(
         7,
+        Some(game_identity()),
+        date("2026-09-30T10:30:00Z").expect("date"),
         date("2026-09-30T10:30:00Z").expect("date"),
         Duration::from_mins(30),
     )
@@ -220,8 +232,10 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
             .is_empty()
     );
     restarted
-        .enter_game(
-            7,
+        .enter_game_identified(
+            1,
+            Some(game_identity()),
+            date("2026-09-30T11:59:59Z").expect("date"),
             date("2026-09-30T11:59:59Z").expect("date"),
             Duration::ZERO,
         )
@@ -307,6 +321,50 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     core.persist(&store).expect("persist");
     drop(store);
     crate::cleanup_store(&root, "no-grace", &["authority"]);
+}
+
+#[cfg(windows)]
+#[test]
+fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let root = std::env::var_os("VANTARE_TEST_EVIDENCE_DIR")
+        .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
+        .join(format!(
+            "vantare-session-test-{}",
+            crate::random_id().expect("test entropy")
+        ));
+    let store = crate::storage::Store::open(&root, "recycled-session").expect("store");
+    let mut core = Authority::restore(&store).expect("core");
+    let proof = || {
+        verifier
+            .v1(&credential, SUBJECT, "test-device")
+            .expect("verify")
+    };
+    let entered = date("2026-09-30T10:30:00Z").expect("date");
+    let resumed = date("2026-09-30T11:30:00Z").expect("date");
+    core.install(proof(), entered, Duration::ZERO)
+        .expect("install");
+    core.enter_game(7, entered, Duration::ZERO).expect("enter");
+    core.rights_and_persist(resumed, Duration::from_hours(1), &store)
+        .expect("persist");
+    let mut restarted = Authority::restore(&store).expect("restart");
+    restarted
+        .install(proof(), resumed, Duration::ZERO)
+        .expect("binding");
+    restarted
+        .enter_game(7, resumed, Duration::ZERO)
+        .expect("recycled id");
+    assert!(
+        restarted
+            .rights(resumed, Duration::ZERO)
+            .expect("rights")
+            .is_empty()
+    );
+    drop(store);
+    crate::cleanup_store(&root, "recycled-session", &["authority"]);
 }
 
 #[cfg(windows)]

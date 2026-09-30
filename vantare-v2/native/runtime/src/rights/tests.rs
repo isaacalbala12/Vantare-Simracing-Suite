@@ -49,10 +49,225 @@ fn devices() -> Devices {
     }
 }
 fn test_root() -> std::path::PathBuf {
-    std::env::temp_dir().join(format!(
-        "vantare-rights-test-{}",
-        vantare_services::random_id().expect("entropía")
-    ))
+    std::env::var_os("VANTARE_TEST_EVIDENCE_DIR")
+        .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
+        .join(format!(
+            "vantare-rights-test-{}",
+            vantare_services::random_id().expect("entropía")
+        ))
+}
+
+fn identified_photo() -> Snapshot {
+    let mut snapshot = photo(true);
+    snapshot.origin.source.simulator = "lmu";
+    snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Monza".into());
+    snapshot.state.session.kind = vantare_domain::Quality::Reliable(SessionKind::Race);
+    snapshot
+}
+
+fn saved_grace(root: &std::path::Path, start: i64) -> String {
+    let (credential, keys) = signed(start + 20, start - 10);
+    let mut owner = Owner::open(root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("instalar");
+    owner
+        .advance_observed_session(
+            &identified_photo(),
+            Some("fixture-session-start-1"),
+            wall(start + 5),
+            wall(start + 25),
+            Duration::from_secs(25),
+        )
+        .expect("margen durable con identidad de fixture");
+    keys
+}
+
+#[test]
+fn restart_preserves_same_absolute_deadline_even_across_two_restarts_and_local_ids() {
+    let start = 1_790_800_000;
+    let end = start + 20 + 3600;
+    let root = test_root();
+    let keys = saved_grace(&root, start);
+    let mut snapshot = identified_photo();
+    for (epoch, now) in [(2, start + 100), (3, end - 1)] {
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), epoch, wall(now)).expect("reinicio");
+        assert!(!owner.policy().engineer);
+        assert!(
+            !owner
+                .advance(&Snapshot::default(), wall(now), Duration::ZERO)
+                .expect("esperando primera live")
+                .engineer
+        );
+        snapshot.state.session.id = vantare_domain::SessionId(epoch);
+        let policy = owner
+            .advance_observed_session(
+                &snapshot,
+                Some("fixture-session-start-1"),
+                wall(now),
+                wall(now),
+                Duration::ZERO,
+            )
+            .expect("misma sesión estable");
+        assert!(policy.engineer && policy.overlays_advanced);
+        assert_eq!(
+            policy.valid_until_ms,
+            Some(u64::try_from(end).expect("deadline") * 1000)
+        );
+        if now == end - 1 {
+            let policy = owner
+                .advance_observed_session(
+                    &snapshot,
+                    Some("fixture-session-start-1"),
+                    wall(now),
+                    wall(end),
+                    Duration::from_secs(1),
+                )
+                .expect("fin exacto");
+            assert!(!policy.engineer && !policy.overlays_advanced);
+        }
+    }
+    clean(&root);
+}
+
+#[test]
+fn first_live_mismatch_or_missing_identity_discards_saved_grace_permanently() {
+    let start = 1_790_810_000;
+    for change in 0..8 {
+        let root = test_root();
+        let keys = saved_grace(&root, start);
+        let mut snapshot = identified_photo();
+        let mut marker = Some("fixture-session-start-1");
+        match change {
+            0 => marker = Some("fixture-session-start-2"),
+            1 => snapshot.origin.source.simulator = "acc",
+            2 => {
+                snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Spa".into());
+            }
+            3 => {
+                snapshot.state.session.kind =
+                    vantare_domain::Quality::Reliable(SessionKind::Practice);
+            }
+            4 => marker = None,
+            5 => snapshot.state.session.track_name = vantare_domain::Quality::Stale("Monza".into()),
+            6 => snapshot.origin.source.kind = SourceKind::Replay,
+            _ => {
+                snapshot.origin.source.kind = SourceKind::Replay;
+                snapshot.state.source_state = SourceState::Stale;
+            }
+        }
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(start + 100)).expect("reinicio");
+        let policy = owner
+            .advance_observed_session(
+                &snapshot,
+                marker,
+                wall(start + 100),
+                wall(start + 100),
+                Duration::ZERO,
+            )
+            .expect("primera sesión no coincide");
+        assert!(
+            !policy.engineer && !policy.overlays_advanced,
+            "caso {change}"
+        );
+        drop(owner);
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 3, wall(start + 101))
+            .expect("otro reinicio");
+        assert!(
+            !owner
+                .advance_observed_session(
+                    &identified_photo(),
+                    Some("fixture-session-start-1"),
+                    wall(start + 101),
+                    wall(start + 101),
+                    Duration::ZERO,
+                )
+                .expect("la identidad original ya no recupera el margen")
+                .engineer
+        );
+        drop(owner);
+        clean(&root);
+    }
+}
+
+#[test]
+fn restart_at_expired_deadline_or_with_clock_rollback_cannot_restore_grace() {
+    let start = 1_790_820_000;
+    let root = test_root();
+    let keys = saved_grace(&root, start);
+    assert!(matches!(
+        Owner::open(&root, Some(&keys), devices(), 2, wall(start + 24)),
+        Err(Error::Clock)
+    ));
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(start + 3620))
+        .expect("reinicio en plazo vencido");
+    assert!(
+        !owner
+            .advance_observed_session(
+                &identified_photo(),
+                Some("fixture-session-start-1"),
+                wall(start + 3620),
+                wall(start + 3620),
+                Duration::ZERO,
+            )
+            .expect("no se renueva la hora")
+            .engineer
+    );
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn missing_corrupt_or_legacy_state_cannot_restore_grace() {
+    use sha2::{Digest, Sha256};
+    let start = 1_790_830_000;
+    for corruption in 0..3 {
+        let root = test_root();
+        let keys = saved_grace(&root, start);
+        let path = root
+            .join(format!("{:x}", Sha256::digest(b"core-rights-v1")))
+            .join("authority.dpapi");
+        match corruption {
+            0 => std::fs::remove_file(path).expect("estado ausente"),
+            1 => std::fs::write(path, b"corrupt").expect("corrupción DPAPI"),
+            _ => {
+                let store = Store::open(&root, "core-rights-v1").expect("store");
+                let mut saved = store
+                    .load::<serde_json::Value>("authority")
+                    .expect("estado protegido");
+                saved["game"]
+                    .as_object_mut()
+                    .expect("game")
+                    .remove("identity");
+                saved["game"]
+                    .as_object_mut()
+                    .expect("game")
+                    .remove("deadlines");
+                store.save("authority", &saved).expect("estado legacy");
+            }
+        }
+        let opened = Owner::open(&root, Some(&keys), devices(), 2, wall(start + 100));
+        if corruption == 1 {
+            assert!(matches!(opened, Err(Error::Storage)));
+        } else {
+            let mut owner = opened.expect("binding conservado");
+            assert!(
+                !owner
+                    .advance_observed_session(
+                        &identified_photo(),
+                        Some("fixture-session-start-1"),
+                        wall(start + 100),
+                        wall(start + 100),
+                        Duration::ZERO,
+                    )
+                    .expect("sin estado de margen verificable")
+                    .engineer
+            );
+        }
+        clean(&root);
+    }
 }
 fn wall(seconds: i64) -> DateTime<Utc> {
     DateTime::from_timestamp(seconds, 0).expect("reloj test")

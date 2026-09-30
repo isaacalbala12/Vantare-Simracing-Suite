@@ -2,11 +2,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, time::Duration};
-use vantare_domain::{Snapshot, SourceKind, SourceState};
+use vantare_domain::{SessionKind, Snapshot, SourceKind, SourceState, UNKNOWN_SIMULATOR};
 use vantare_ipc::control::{Policy, VERSION};
 use vantare_services::{
     Error, Result,
-    license::{CredentialV1, Verifier, authority::Authority},
+    license::{
+        CredentialV1, Verifier,
+        authority::{Authority, SessionIdentity},
+    },
     storage::Store,
 };
 
@@ -114,11 +117,7 @@ impl Owner {
         now: DateTime<Utc>,
     ) -> Result<Self> {
         let store = Store::open(root, "core-rights-v1")?;
-        let mut authority = Authority::restore(&store)?;
-        // SessionId de los adaptadores es local al arranque. No usar su valor
-        // reciclado para confirmar una carrera previa ni conceder gracia nueva.
-        // La biblioteca permite restaurarla si existe una identidad real estable.
-        authority.leave_game();
+        let authority = Authority::restore(&store)?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
         let mut owner = Self {
             store,
@@ -221,6 +220,19 @@ impl Owner {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<Policy> {
+        self.advance_observed_session(snapshot, None, entered_at, now, tick)
+    }
+
+    /// `started` debe proceder del adaptador y sobrevivir al reinicio del núcleo.
+    /// Hub/IPC no pueden proporcionarlo. Ausencia nunca confirma gracia guardada.
+    pub fn advance_observed_session(
+        &mut self,
+        snapshot: &Snapshot,
+        started: Option<&str>,
+        entered_at: DateTime<Utc>,
+        now: DateTime<Utc>,
+        tick: Duration,
+    ) -> Result<Policy> {
         let live = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Live;
         if live {
@@ -228,16 +240,30 @@ impl Owner {
                 self.authority.leave_game();
             }
             if self.binding.is_some() && !self.denied {
-                self.authority.enter_game_observed(
+                let entered = self.authority.enter_game_identified(
                     snapshot.state.session.id.0,
+                    session_identity(snapshot, started),
                     entered_at,
                     now,
                     tick,
-                )?;
+                );
+                if let Err(error) = entered {
+                    self.denied = true;
+                    self.policy.overlays_advanced = false;
+                    self.policy.engineer = false;
+                    self.policy.error = Some(error.to_string());
+                    return Err(error);
+                }
             }
             self.game = Some(snapshot.state.session.id.0);
-        } else if !live && snapshot.state.source_state != SourceState::Stale {
-            self.authority.leave_game();
+        } else if snapshot.origin.source.kind == SourceKind::Replay
+            || snapshot.state.source_state != SourceState::Stale
+        {
+            // Waiting inicial no es evidencia de que terminó la carrera guardada.
+            // La primera sesión live confirma o descarta; replay nunca confirma.
+            if self.game.is_some() || snapshot.origin.source.kind == SourceKind::Replay {
+                self.authority.leave_game();
+            }
             self.game = None;
         }
         let result = if self.binding.is_some() && !self.denied {
@@ -282,4 +308,24 @@ impl Owner {
     pub fn policy(&self) -> Policy {
         self.policy.clone()
     }
+}
+
+fn session_identity(snapshot: &Snapshot, started: Option<&str>) -> Option<SessionIdentity> {
+    let simulator = snapshot.origin.source.simulator;
+    if simulator == UNKNOWN_SIMULATOR {
+        return None;
+    }
+    let track = snapshot.state.session.track_name.current()?;
+    let kind = match snapshot.state.session.kind.current()? {
+        SessionKind::Practice => "practice".into(),
+        SessionKind::Qualifying => "qualifying".into(),
+        SessionKind::Race => "race".into(),
+        SessionKind::Other(value) => format!("other:{value}"),
+    };
+    Some(SessionIdentity {
+        simulator: simulator.into(),
+        track: track.clone(),
+        kind,
+        started: started?.into(),
+    })
 }

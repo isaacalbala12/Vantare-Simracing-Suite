@@ -7,7 +7,7 @@ use gpui::{
 use vantare_domain::{
     Snapshot,
     format::Preferences,
-    multiclass_relative::{self, Content, ViewModel},
+    multiclass_relative::{self, ClassMode, Content, ViewModel},
 };
 
 use crate::app::{Paint, Wake, replace_if_changed};
@@ -21,8 +21,8 @@ const SIZE: (f32, f32) = (420.0, 155.0);
 // Fallback explícito del ViewModel v2 productivo: classColor no es telemetría.
 const CLASS_COLOR: u32 = 0x8b93a7;
 
-fn paint_background(window: &mut Window) {
-    let (width, height) = SIZE;
+fn paint_background(size: (f32, f32), window: &mut Window) {
+    let (width, height) = size;
     let transparent = col(0x000000, 0.0);
     paint_panel(window, width, height, 0.87);
     // Misma aproximación del degradado 120° que Standings. El kit aún no
@@ -41,10 +41,10 @@ fn paint_background(window: &mut Window) {
     ));
 }
 
-fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    let (width, height) = SIZE;
+fn paint(vm: &ViewModel, size: (f32, f32), window: &mut Window, cx: &mut App) {
+    let (width, height) = size;
     let transparent = col(0x000000, 0.0);
-    paint_background(window);
+    paint_background(size, window);
     let main = ink(11.0, 650.0, 0.0, col(tokens::INK, 1.0));
     let number = ink(9.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
     let badge = ink(7.0, 700.0, 0.0, col(0xffffff, 1.0));
@@ -136,35 +136,83 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub row_count: usize,
+    pub class_mode: String,
+    pub show_class_divider: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            row_count: 5,
+            class_mode: "all".into(),
+            show_class_divider: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        let mut value = self.clone();
+        value.row_count = value.row_count.clamp(3, 7);
+        if !["all", "same", "other"].contains(&value.class_mode.as_str()) {
+            value.class_mode = "all".into();
+        }
+        value
+    }
+    fn content(&self) -> Content {
+        Content {
+            row_count: self.row_count,
+            class_mode: match self.class_mode.as_str() {
+                "same" => ClassMode::Same,
+                "other" => ClassMode::Other,
+                _ => ClassMode::All,
+            },
+            show_class_divider: self.show_class_divider,
+        }
+    }
+    fn size(&self) -> (f32, f32) {
+        (SIZE.0, SIZE.1 + (self.row_count as f32 - 5.0) * 28.0)
+    }
+}
 
 pub(crate) struct Widget {
     vm: ViewModel,
+    settings: Settings,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         Self {
-            vm: multiclass_relative::project(&Snapshot::default(), prefs, Content::default()),
+            vm: multiclass_relative::project(
+                &Snapshot::default(),
+                prefs,
+                settings.normalized().content(),
+            ),
+            settings: settings.normalized(),
         }
     }
 
     #[allow(clippy::unused_self)] // Contrato del registro; tamaño de la configuración por defecto.
     pub(crate) fn size(&self) -> (f32, f32) {
-        SIZE
+        self.settings.size()
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         replace_if_changed(
             &mut self.vm,
-            multiclass_relative::project(snapshot, prefs, Content::default()),
+            multiclass_relative::project(snapshot, prefs, self.settings.content()),
         )
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let size = self.size();
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, size, window, cx)),
             Wake::Idle,
         )
     }
@@ -180,6 +228,45 @@ impl Widget {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn configured_class_rows_and_dividers_project_independently() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/multiclass-relative.snapshot.json"
+        ))
+        .expect("escena");
+        let prefs = Preferences::default();
+        for mode in ["all", "same", "other"] {
+            for count in [3, 5, 7] {
+                for divider in [false, true] {
+                    let settings = Settings {
+                        row_count: count,
+                        class_mode: mode.into(),
+                        show_class_divider: divider,
+                    };
+                    let mut widget = Widget::new(&settings, prefs);
+                    widget.ingest(&snapshot, prefs);
+                    assert_eq!(
+                        widget.vm,
+                        multiclass_relative::project(&snapshot, prefs, settings.content())
+                    );
+                    assert_eq!(
+                        widget.vm.rows.len(),
+                        count.min(if mode == "same" { 7 } else { 13 })
+                    );
+                    if mode == "same" {
+                        assert!(widget.vm.rows.iter().all(|r| r.class_label == "HC"));
+                    }
+                    if mode == "other" {
+                        assert!(widget.vm.rows.iter().all(|r| r.class_label != "HC"));
+                    }
+                    if !divider {
+                        assert!(widget.vm.rows.iter().all(|r| !r.divider));
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn reconstructed_reference_scene_preserves_identity_and_relative_gaps() {
@@ -214,7 +301,7 @@ mod tests {
     #[test]
     fn snapshot_metadata_and_unrendered_signals_do_not_repaint() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));

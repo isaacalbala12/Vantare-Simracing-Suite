@@ -100,6 +100,8 @@ pub(super) struct Vehicle {
     pub time_behind_leader_s: Option<f64>,
     pub laps_behind_leader: u32,
     pub pose: Option<Pose>,
+    pub velocity_mps: Option<[f64; 2]>,
+    pub pending_penalties: u32,
     /// Solo el coche del jugador.
     pub inputs: Option<Inputs>,
 }
@@ -221,8 +223,8 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
     };
     let lap_distance = read_f64(buffer, base + 104);
     let lap_progress = read_f64(buffer, base + 464);
-    // Vueltas de boxes y sanciones (base+192/194) y `estimated` (base+472) no
-    // viajan en el modelo, pero un valor imposible sigue invalidando la fila.
+    // mNumPitstops (+192), mNumPenalties (+194) y estimated (+472):
+    // un contador negativo invalida la fila, nunca se convierte en cero.
     let counters_ok = read_i16(buffer, base + 192) >= 0 && read_i16(buffer, base + 194) >= 0;
     let finite_ok = [
         lap_distance,
@@ -276,6 +278,11 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         time_behind_leader_s: (time_leader >= 0.0).then_some(time_leader),
         laps_behind_leader,
         pose,
+        // Scoring aporta velocidad y orientación para TODOS los coches; usar
+        // su reloj para ambos, incluso el jugador. No mezclar mLocalVel de
+        // scoring con mOri de telemetría ni inferir velocidad entre fotos.
+        velocity_mps: world_velocity(buffer, base + 288, base + 336),
+        pending_penalties: u32::try_from(read_i16(buffer, base + 194)).map_err(|_| invalid)?,
         inputs,
     })
 }

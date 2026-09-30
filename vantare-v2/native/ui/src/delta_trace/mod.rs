@@ -117,7 +117,42 @@ fn paint(vm: &ViewModel, samples: &[Sample], window: &mut Window, cx: &mut App) 
     ));
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub window_seconds: f64,
+    pub show_sectors: bool,
+    pub show_track_map: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            window_seconds: 4.0,
+            show_sectors: true,
+            show_track_map: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
+        ("showSectors", "Snapshot no publica deltas por sector"),
+        (
+            "showTrackMap",
+            "Snapshot no publica trackPath ni turnInsight",
+        ),
+    ];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            window_seconds: if self.window_seconds.is_finite() {
+                self.window_seconds.clamp(1.0, 8.0)
+            } else {
+                4.0
+            },
+            ..self.clone()
+        }
+    }
+}
 
 fn paint_trace(samples: &[Sample], window: &mut Window) {
     let min = samples
@@ -181,13 +216,16 @@ fn paint_trace(samples: &[Sample], window: &mut Window) {
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
     trace: Trace,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
+            settings: settings.clone(),
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
             trace: Trace::default(),
         }
@@ -199,7 +237,10 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let changed = self.trace.push(snapshot);
+        let changed = self.trace.push_with_window(
+            snapshot,
+            std::time::Duration::from_secs_f64(self.settings.window_seconds),
+        );
         replace_if_changed(&mut self.vm, self.trace.project(snapshot, prefs)) || changed
     }
 
@@ -221,13 +262,36 @@ impl Widget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn selected_history_window_changes_the_projected_observed_trace() {
+        let snapshots = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/delta-trace.sequence.json"
+        ))
+        .expect("secuencia Workshop DTO v4");
+        let prefs = Preferences::default();
+        let mut default = Widget::new(&Settings::default(), prefs);
+        let mut short = Widget::new(
+            &Settings {
+                window_seconds: 1.0,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        for snapshot in &snapshots {
+            default.ingest(snapshot, prefs);
+            short.ingest(snapshot, prefs);
+        }
+        assert!(short.trace.samples().len() < default.trace.samples().len());
+        assert_eq!(short.trace.samples().back(), default.trace.samples().back());
+    }
+
     use super::*;
     use vantare_domain::{Player, Quality, format::Language};
 
     #[test]
     fn repaint_only_when_displayed_values_or_language_change() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.source_state = vantare_domain::SourceState::Live;
@@ -267,7 +331,7 @@ mod tests {
             snapshot.state.player.map(|player| player.delta_best_s),
             Some(Quality::Reliable(0.214))
         );
-        let mut widget = Widget::new(&Settings, Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         for snapshot in &snapshots {
             widget.ingest(snapshot, Preferences::default());
         }
@@ -280,6 +344,6 @@ mod tests {
     #[cfg(feature = "parity-capture")]
     #[test]
     fn a_static_widget_never_keeps_capture_waiting_for_animation() {
-        assert!(!Widget::new(&Settings, Preferences::default()).animating());
+        assert!(!Widget::new(&Settings::default(), Preferences::default()).animating());
     }
 }

@@ -7,6 +7,8 @@ use crate::Snapshot;
 use crate::format::{self, Language, Preferences};
 
 const MAX_SAMPLES: usize = 120;
+// Hasta ocho segundos a la cadencia del widget, incluyendo ambos extremos.
+const EXTENDED_MAX_SAMPLES: usize = 161;
 const WINDOW: Duration = Duration::from_secs(4);
 const CADENCE: Duration = Duration::from_millis(50);
 // El silencio supera el plazo de frescura del nucleo (500 ms).
@@ -35,6 +37,10 @@ impl Trace {
         &self.samples
     }
     pub fn push(&mut self, snapshot: &Snapshot) -> bool {
+        self.push_with_window(snapshot, WINDOW)
+    }
+    pub fn push_with_window(&mut self, snapshot: &Snapshot, window: Duration) -> bool {
+        let window = window.clamp(Duration::from_secs(1), Duration::from_secs(8));
         let car = snapshot.state.player_car();
         let lap = car.and_then(|c| match c.laps {
             crate::Quality::Reliable(v)
@@ -107,11 +113,16 @@ impl Trace {
             break_before: self.cut,
         });
         self.cut = value.is_none();
-        while self.samples.len() > MAX_SAMPLES
+        let max_samples = if window > WINDOW {
+            EXTENDED_MAX_SAMPLES
+        } else {
+            MAX_SAMPLES
+        };
+        while self.samples.len() > max_samples
             || self
                 .samples
                 .front()
-                .is_some_and(|p| at.saturating_sub(p.at) > WINDOW)
+                .is_some_and(|p| at.saturating_sub(p.at) > window)
         {
             self.samples.pop_front();
         }
@@ -328,6 +339,45 @@ mod tests {
 
 #[cfg(test)]
 mod trace_tests {
+
+    #[test]
+    fn eight_seconds_retain_the_full_window_at_native_cadence() {
+        let mut trace = Trace::default();
+        let step = u64::try_from(CADENCE.as_millis()).expect("cadencia acotada");
+        for i in 0..=EXTENDED_MAX_SAMPLES as u64 {
+            let snapshot = sample(i + 1, i * step, Quality::Reliable(0.2));
+            trace.push_with_window(&snapshot, Duration::from_secs(8));
+        }
+        assert_eq!(trace.samples().len(), EXTENDED_MAX_SAMPLES);
+        let first = trace.samples().front().expect("primera muestra");
+        let last = trace.samples().back().expect("última muestra");
+        assert_eq!(last.at.checked_sub(first.at), Some(Duration::from_secs(8)));
+    }
+
+    #[test]
+    fn configurable_window_clips_observed_samples_and_stays_bounded() {
+        let mut short = Trace::default();
+        let mut long = Trace::default();
+        let mut snapshot = sample(1, 0, Quality::Reliable(0.2));
+        for i in 0..=80_u64 {
+            snapshot.sequence = i + 1;
+            snapshot.origin.received_at = Duration::from_millis(i * 100);
+            short.push_with_window(&snapshot, Duration::from_secs(1));
+            long.push_with_window(&snapshot, Duration::from_secs(8));
+        }
+        assert_eq!(short.samples().len(), 11);
+        assert_eq!(long.samples().len(), 81);
+        assert!(long.samples().len() <= MAX_SAMPLES);
+        assert_eq!(
+            short.samples().front().expect("sample").at,
+            Duration::from_secs(7)
+        );
+        snapshot.sequence += 2;
+        snapshot.origin.received_at += Duration::from_millis(100);
+        long.push_with_window(&snapshot, Duration::from_secs(8));
+        assert!(long.samples().back().expect("sample").break_before);
+    }
+
     use super::*;
     use crate::{Player, Quality, State};
 

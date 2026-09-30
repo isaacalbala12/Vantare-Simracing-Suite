@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "epoch": 3,
   "sequence": 2,
   "origin": {
@@ -109,7 +109,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 2,
@@ -154,7 +154,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 3,
@@ -199,7 +199,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 4,
@@ -244,7 +244,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       },
       {
         "id": 5,
@@ -289,7 +289,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       }
     ],
     "player": {

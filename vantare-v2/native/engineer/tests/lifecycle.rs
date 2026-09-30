@@ -209,7 +209,7 @@ fn pipe_worker_closes_on_eof_while_core_is_absent() {
     let mut worker = Process::start(&name);
     let status = worker.next().unwrap();
     assert_eq!(status["events"], "connecting");
-    assert_eq!(status["spotter"], "unavailable_opponent_velocity");
+    assert_eq!(status["spotter"], "waiting_spatial");
     worker.eof();
 }
 

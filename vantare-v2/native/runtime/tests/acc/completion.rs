@@ -207,9 +207,9 @@ fn common_core_derives_gaps_keeps_native_fuel_and_roundtrips_dto_v4() {
     let json = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO");
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&json).expect("JSON")["version"],
-        4
+        u64::from(vantare_ipc::DTO_VERSION)
     );
-    let decoded = vantare_ipc::snapshot_from_json(&json).expect("DTO v4");
+    let decoded = vantare_ipc::snapshot_from_json(&json).expect("DTO vigente");
     assert_eq!(decoded, *snapshot);
     let flags = decoded.state.flags.current().expect("ámbitos conservados");
     for scope in [

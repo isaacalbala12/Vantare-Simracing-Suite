@@ -5,6 +5,7 @@ use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
+    pub transparent_background: bool,
     pub status_text: Option<&'static str>,
     pub inputs: Capability,
     pub powertrain: Capability,
@@ -45,6 +46,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         _ => None,
     };
     ViewModel {
+        transparent_background: false,
         status_text,
         inputs: state.capabilities.driver_inputs,
         powertrain: state.capabilities.powertrain,

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "same-7-dividers",
+    "snapshot": "../../fixtures/multiclass-relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "multiclass-relative",
+            "classMode": "same",
+            "rowCount": 7,
+            "showClassDivider": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "other-3-dividers",
+    "snapshot": "../../fixtures/multiclass-relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "multiclass-relative",
+            "classMode": "other",
+            "rowCount": 3,
+            "showClassDivider": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "all-7-plain",
+    "snapshot": "../../fixtures/multiclass-relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "multiclass-relative",
+            "classMode": "all",
+            "rowCount": 7,
+            "showClassDivider": false
+          }
+        }
+      ]
+    }
+  }
+]

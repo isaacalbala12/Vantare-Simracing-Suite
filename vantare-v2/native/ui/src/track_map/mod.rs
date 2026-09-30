@@ -19,16 +19,49 @@ use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens}
 const WIDTH: f32 = 320.0;
 const SCALE: f32 = 0.95; // preserveAspectRatio: 304 / 320 = 209 / 220.
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub show_track_label: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_track_label: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "showTrackLabel",
+        "TrackMapFunctional dibuja el pie sin consultar showTrackLabel",
+    )];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        self.clone()
+    }
+    #[allow(clippy::unused_self)] // El productivo conserva showTrackLabel, pero no lo aplica.
+    fn project(
+        &self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        geometry: Option<&track_map::Geometry<'_>>,
+    ) -> track_map::ViewModel {
+        track_map::project_with_geometry(snapshot, prefs, geometry)
+    }
+}
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: track_map::ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: track_map::project(&Snapshot::default(), prefs),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs, None),
         }
     }
 
@@ -38,11 +71,11 @@ impl Widget {
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         #[cfg(not(feature = "parity-capture"))]
-        let next = track_map::project(snapshot, prefs);
+        let next = self.settings.project(snapshot, prefs, None);
         #[cfg(feature = "parity-capture")]
         let next = {
             let geometry = scene::geometry(snapshot);
-            track_map::project_with_geometry(snapshot, prefs, geometry.as_ref())
+            self.settings.project(snapshot, prefs, geometry.as_ref())
         };
         replace_if_changed(&mut self.vm, next)
     }
@@ -208,13 +241,35 @@ fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn unsupported_track_label_setting_preserves_the_productive_footer() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.session.track_name = vantare_domain::Quality::Reliable("test".into());
+        let geometry = track_map::Geometry {
+            track_name: "test",
+            label: "TEST",
+            points_m: &[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
+            synthetic: true,
+        };
+        let visible =
+            Settings::default().project(&snapshot, Preferences::default(), Some(&geometry));
+        let hidden = Settings {
+            show_track_label: false,
+        }
+        .project(&snapshot, Preferences::default(), Some(&geometry));
+        assert!(visible.track_label.is_some());
+        assert_eq!(hidden, visible);
+        assert_eq!(height(&hidden), 248.0);
+    }
+
     use super::*;
     use vantare_domain::format::Language;
 
     #[test]
     fn repaint_tracks_only_visible_changes_and_empty_is_idle() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         snapshot.state.source_state = vantare_domain::SourceState::Live;
         assert!(
@@ -259,7 +314,7 @@ mod tests {
     #[test]
     fn reference_data_never_supplies_a_fake_live_outline() {
         let snapshot = reference_snapshot();
-        let mut widget = Widget::new(&Settings, Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         assert!(
             widget.ingest(&snapshot, Preferences::default()),
             "la fuente pasa de Waiting a Live sin inventar un trazado"
@@ -286,7 +341,7 @@ mod tests {
             vantare_domain::Quality::Unavailable
         );
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), (320.0, 248.0));
         assert_eq!(
@@ -332,7 +387,7 @@ mod tests {
         without_position.state.cars[1].pose = vantare_domain::Quality::Unavailable;
         for snapshot in [live, next_epoch, without_position] {
             assert!(scene::geometry(&snapshot).is_none());
-            let mut widget = Widget::new(&Settings, Preferences::default());
+            let mut widget = Widget::new(&Settings::default(), Preferences::default());
             assert!(widget.ingest(&reference, Preferences::default()));
             assert!(widget.ingest(&snapshot, Preferences::default()));
             assert_eq!(widget.size(), (320.0, 220.0));

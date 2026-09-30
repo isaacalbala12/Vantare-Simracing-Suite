@@ -137,6 +137,13 @@ pub struct Car {
     pub current_sector: Quality<u8>,
     pub in_pits: Quality<bool>,
     pub pose: Quality<Pose>,
+    /// Velocidad nativa en el plano del mundo, m/s: [x, y], mismos ejes que `Pose`.
+    /// No se deriva de posiciones ni de la velocidad escalar.
+    pub velocity_mps: Quality<[f64; 2]>,
+    /// Sanciones pendientes. `Reliable` es el contador nativo; `Estimated` puede
+    /// ser un límite inferior si la fuente solo expone una sanción activa.
+    /// La del jugador se consulta mediante `State::player_car`, sin duplicarla.
+    pub pending_penalties: Quality<u32>,
 }
 
 /// Telemetría del coche del jugador.
@@ -397,6 +404,8 @@ fn degrade_car(car: &mut Car) {
         current_sector,
         in_pits,
         pose,
+        velocity_mps,
+        pending_penalties,
     } = car;
     make_stale(position);
     make_stale(class_position);
@@ -415,6 +424,8 @@ fn degrade_car(car: &mut Car) {
     make_stale(current_sector);
     make_stale(in_pits);
     make_stale(pose);
+    make_stale(velocity_mps);
+    make_stale(pending_penalties);
 }
 
 fn degrade_player(player: &mut Player) {

@@ -2,7 +2,7 @@
 use crate::{
     control::{self, Document, Settings, Status},
     radio::{Intent, Locale},
-    voice::resolve_clip,
+    voice::{clip_paths, resolve_clip},
     worker::RadioWorker,
 };
 use std::{
@@ -83,17 +83,18 @@ impl Local {
             .scan_at
             .is_none_or(|at| at.elapsed() >= Duration::from_secs(1))
         {
-            // Validar WAV solo cuando cambien los archivos, no leer el pack
+            // Validar clips solo cuando cambien los archivos, no leer el pack
             // completo cada segundo mientras el piloto está en pista.
             let stamps: Vec<_> = control::LOCALES
                 .iter()
                 .flat_map(|code| SPOKEN.iter().map(move |intent| (*code, *intent)))
-                .map(|(code, intent)| {
-                    self.clips.as_ref().and_then(|root| {
-                        let meta = std::fs::metadata(
-                            root.join(code).join(format!("{}.wav", intent.key())),
-                        )
-                        .ok()?;
+                .flat_map(|(code, intent)| {
+                    let paths = self
+                        .clips
+                        .as_ref()
+                        .and_then(|root| clip_paths(root, Locale::parse(code)?, intent).ok());
+                    paths.into_iter().flatten().map(|path| {
+                        let meta = std::fs::metadata(path).ok()?;
                         Some((meta.modified().ok()?, meta.len()))
                     })
                 })
@@ -184,8 +185,6 @@ mod tests {
             Some(old),
             "no reescribir sin cambio"
         );
-        let locale = clips.join("es");
-        fs::create_dir(&locale).expect("locale");
         let mut wav = vec![0; 44 + 320];
         wav[..4].copy_from_slice(b"RIFF");
         wav[4..8].copy_from_slice(&356_u32.to_le_bytes());
@@ -200,13 +199,21 @@ mod tests {
         wav[36..40].copy_from_slice(b"data");
         wav[40..44].copy_from_slice(&320_u32.to_le_bytes());
         for intent in SPOKEN {
-            fs::write(locale.join(format!("{}.wav", intent.key())), &wav).expect("clip");
+            fs::write(
+                &clip_paths(&clips, Locale::Es, *intent).expect("hash")[0],
+                &wav,
+            )
+            .expect("clip");
         }
         local.scan_at = None;
         local.poll(&mut radio, &mut Vec::new()).expect("pack nuevo");
         assert!(local.status.assets["es"]);
         assert!(!local.status.assets["en"]);
-        fs::write(locale.join("fuel.low_1l.wav"), b"roto").expect("corrupto");
+        fs::write(
+            &clip_paths(&clips, Locale::Es, Intent::FuelOne).expect("hash")[0],
+            b"roto",
+        )
+        .expect("corrupto");
         local.scan_at = None;
         local
             .poll(&mut radio, &mut Vec::new())
@@ -220,9 +227,9 @@ mod tests {
         assert!(!status.active);
         assert!(status.error.is_some());
         for intent in SPOKEN {
-            fs::remove_file(locale.join(format!("{}.wav", intent.key()))).expect("limpiar clip");
+            fs::remove_file(&clip_paths(&clips, Locale::Es, *intent).expect("hash")[0])
+                .expect("limpiar clip");
         }
-        fs::remove_dir(locale).expect("limpiar locale");
         fs::remove_dir(clips).expect("limpiar clips");
         fs::remove_file(&local.path).expect("limpiar estado");
         fs::remove_file(local.path.with_extension("json.lock")).expect("limpiar lock");

@@ -1,7 +1,6 @@
 //! Porte de `HeadToHeadFunctional.tsx` (360 × 128). El productivo no tiene
 //! animaciones ni avisos temporales: `Wake::Idle`, sin un reloj adicional.
-//! La configuración del host aún no transporta content.target; se conserva
-//! el valor por defecto `Ahead`. La proyección pura también admite `Behind`.
+//! La dirección configurada selecciona el rival en la proyección pura.
 //! Referencia Workshop congelada: líder mirando delante, SIN RIVAL; 20 coches
 //! presentes. `compare.ps1`: 635/46080 px (1,3780 %), umbral RGBA 8, sin máscaras.
 
@@ -153,33 +152,50 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub target: String,
+    /// Compatibilidad: Eficiencia tampoco dibuja sectorComparisons.
+    pub show_sectors: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
             target: "ahead".into(),
+            show_sectors: true,
         }
     }
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "showSectors",
+        "HeadToHeadFunctional no dibuja sectores; no se inventa una variante",
+    )];
+    fn target(&self) -> Target {
+        if self.target == "behind" {
+            Target::Behind
+        } else {
+            Target::Ahead
+        }
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
-        if self.target == "behind" {
-            self.clone()
-        } else {
-            Self::default()
+        let mut settings = self.clone();
+        if settings.target != "behind" {
+            settings.target = "ahead".into();
         }
+        settings
     }
 }
 
 pub(crate) struct Widget {
     vm: ViewModel,
+    target: Target,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         Self {
-            vm: head_to_head::project(&Snapshot::default(), prefs, Target::Ahead),
+            vm: head_to_head::project(&Snapshot::default(), prefs, settings.target()),
+            target: settings.target(),
         }
     }
 
@@ -191,7 +207,7 @@ impl Widget {
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         replace_if_changed(
             &mut self.vm,
-            head_to_head::project(snapshot, prefs, Target::Ahead),
+            head_to_head::project(snapshot, prefs, self.target),
         )
     }
 
@@ -214,6 +230,39 @@ impl Widget {
 mod tests {
     use super::*;
     use vantare_domain::{Car, CarId, Player, Quality::Reliable};
+
+    #[test]
+    fn configured_direction_projects_the_selected_rival() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/head-to-head.snapshot.json"
+        ))
+        .expect("escena");
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(
+            &Settings {
+                target: "behind".into(),
+                ..Settings::default()
+            },
+            prefs,
+        );
+        widget.ingest(&snapshot, prefs);
+        assert_eq!(widget.vm.header, "H2H · DETRÁS");
+        assert_eq!(widget.vm.rows[1].name, "Ben Hanley");
+        assert!(widget.vm.rows[1].selected);
+        assert_eq!(
+            widget.vm,
+            head_to_head::project(&snapshot, prefs, Target::Behind)
+        );
+        assert_eq!(
+            Settings {
+                target: "invalid".into(),
+                show_sectors: false
+            }
+            .normalized()
+            .target,
+            "ahead"
+        );
+    }
 
     #[test]
     fn frozen_workshop_scene_contains_the_rival_without_changing_the_player() {

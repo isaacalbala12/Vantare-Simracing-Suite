@@ -1,5 +1,33 @@
 # Revisión del port LMU (ISA-1403 `db524bf7` → `native/runtime`)
 
+## Segunda ronda — #1428 / #1427 (2026-09-30)
+
+Semántica comprobada en el [header del SDK InternalsPlugin](https://github.com/cosimo/rFactor2-DeltaBest/blob/master/Include/InternalsPlugin.hpp)
+(copia del header de ISI), y offsets contra `internal/telemetry/drivers/lmu/layout.go`
+y `format.go`. El SDK describe `mNumPenalties` como sanciones pendientes y la
+matriz como transformación de vectores locales al mundo mediante sus filas.
+
+`Car.velocity_mps` es `[x, y]` en m/s del plano de `Pose`, no velocidad
+escalar ni derivada de posiciones. Scoring `mLocalVel` @288 y `mOri` @336
+(fila de 584 bytes) se transforman con la función existente `world_velocity`:
+columnas locales al mundo, dominio x = LMU x e y = LMU z. Cada coche, incluido
+el jugador, usa el par de scoring y su reloj/frescura. No se mezcla una
+orientación de telemetría con velocidad de scoring. Matriz no ortonormal,
+vector no finito o resultado no finito → `Unavailable` (núcleo sanea resultado).
+La pose del jugador sigue usando telemetría y la alineación de poses rivales
+se conserva. No se añade ninguna derivación de velocidad ni lector paralelo.
+
+`mNumPenalties` @194, int16 no negativo, es el **número de sanciones pendientes**
+por coche, incluido el jugador (`State::player_car`). Cero es dato presente.
+El SDK/mapper Go expone contador, no tipos, causas, plazos ni número histórico
+de sanciones recibidas o cumplidas; estos datos no se infieren. Negativo rechaza
+la fila/frame conforme al validador existente. Ambas señales caducan con
+scoring y con el silencio del núcleo, sin recuperar valores de fotos anteriores.
+
+Pruebas: fixture real admitido con mutaciones explícitas para vector local,
+rotación de 90 grados, contador 3/negativo, NaN/matriz inválida y 500 ms de
+silencio. Son vectores de frontera, no capturas físicas con sanciones.
+
 Origen: `rust/telemetry/src/{lmu.rs, lmu/*, quality.rs}`. No se porta
 `acquisition`, `engine`, `projection`, `ipc`, `assembly`, `delivery`, `core/`
 ni `derive/`: el núcleo y las derivaciones son de otra tarea. Se releyó cada

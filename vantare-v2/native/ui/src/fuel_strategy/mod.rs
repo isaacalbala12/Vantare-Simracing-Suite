@@ -62,6 +62,11 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     paint_highlighted_frame(window, SIZE.0, SIZE.1);
 }
 
+fn pane_height(vm: &ViewModel) -> f32 {
+    // CSS grid-auto-rows conserva el mínimo intrínseco del historial.
+    SIZE.1.max(59.0 + vm.history.len() as f32 * 34.0)
+}
+
 fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let muted = col(tokens::MUTED, 1.0);
     let label = ink(8.0, 600.0, 0.16, muted);
@@ -76,9 +81,21 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         &value,
     );
 
+    let extra_height = pane_height(vm) - SIZE.1;
+    let bar_top = if vm.show_projection {
+        65.33 + extra_height / 3.0
+    } else {
+        81.0 + extra_height / 2.0
+    };
+    let stat_top = if vm.show_projection {
+        98.67 + extra_height * 2.0 / 3.0
+    } else {
+        130.0 + extra_height
+    };
+
     // El productivo deja fuelPercent sin definir aunque haya capacidad: barra vacía.
     window.paint_quad(quad(
-        rect(20.0, 65.33, CONTENT_WIDTH, 8.0),
+        rect(20.0, bar_top, CONTENT_WIDTH, 8.0),
         Corners::all(px(4.0)),
         col(0xffffff, 0.07),
         Edges::all(px(1.0)),
@@ -91,9 +108,12 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         .into_iter()
         .enumerate()
     {
+        if !vm.show_projection && index > 0 {
+            continue;
+        }
         let x = 20.0 + index as f32 * (cell_width + 8.0);
         window.paint_quad(quad(
-            rect(x, 98.67, cell_width, 42.0),
+            rect(x, stat_top, cell_width, 42.0),
             Corners::all(px(5.0)),
             col(0xffffff, 0.03),
             Edges::all(px(1.0)),
@@ -107,7 +127,7 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             cx,
             label,
             center - text::width(window, label, &small) / 2.0,
-            107.67,
+            stat_top + 9.0,
             &small,
         );
         let style = ink(
@@ -121,32 +141,90 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             cx,
             value,
             center - text::width(window, value, &style) / 2.0,
-            117.67,
+            stat_top + 19.0,
             &style,
         );
+    }
+    if !vm.show_projection {
+        return;
     }
     paint_rect(
         window,
         20.0,
-        166.0,
+        166.0 + extra_height,
         CONTENT_WIDTH,
         1.0,
         col(tokens::INK, 0.10),
     );
     let footer = ink(8.0, 600.0, 0.12, muted);
     let required = ink(9.0, 650.0, 0.12, col(0xe2c568, 1.0));
-    draw(window, cx, vm.labels[4], 20.0, 178.0, &footer);
+    draw(
+        window,
+        cx,
+        vm.labels[4],
+        20.0,
+        178.0 + extra_height,
+        &footer,
+    );
     draw(
         window,
         cx,
         &vm.finish,
         MAIN_WIDTH - 20.0 - text::width(window, &vm.finish, &required),
-        177.0,
+        177.0 + extra_height,
         &required,
     );
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub history_rows: u8,
+    pub show_projection: bool,
+    pub source: String,
+    pub units: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            history_rows: 4,
+            show_projection: true,
+            source: "fuel".into(),
+            units: "liters".into(),
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "source=virtual-energy:live",
+        "Solo estado no disponible; Snapshot no publica energía virtual",
+    )];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            history_rows: self.history_rows.clamp(1, 8),
+            source: if self.source == "virtual-energy" {
+                "virtual-energy"
+            } else {
+                "fuel"
+            }
+            .into(),
+            units: "liters".into(),
+            ..self.clone()
+        }
+    }
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        fuel_strategy::project_with_config(
+            snapshot,
+            prefs,
+            fuel_strategy::Config {
+                history_rows: self.history_rows,
+                show_projection: self.show_projection,
+                virtual_energy: self.source == "virtual-energy",
+            },
+        )
+    }
+}
 
 fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     if vm.history.is_empty() {
@@ -159,7 +237,7 @@ fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         MAIN_WIDTH,
         0.0,
         SIZE.0 - MAIN_WIDTH,
-        SIZE.1,
+        pane_height(vm),
         col(0, 0.16),
     );
     paint_rect(window, MAIN_WIDTH, 0.0, 1.0, SIZE.1, col(tokens::INK, 0.10));
@@ -170,7 +248,11 @@ fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     // <b> más específico que el font:650 del padre; Inter disponible W800.
     let value = ink(12.0, 800.0, 0.0, col(tokens::INK, 1.0));
     let rows_height = vm.history.len() as f32 * 34.0 - 2.0;
-    let top = 43.0 + (143.0 - rows_height) / 2.0;
+    let top = if vm.history.len() > 4 {
+        43.0
+    } else {
+        43.0 + (143.0 - rows_height) / 2.0
+    };
     for (index, row) in vm.history.iter().enumerate() {
         let y = top + index as f32 * 34.0;
         window.paint_quad(quad(
@@ -194,13 +276,16 @@ fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: fuel_strategy::project(&Snapshot::default(), prefs),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs),
         }
     }
 
@@ -210,7 +295,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(&mut self.vm, fuel_strategy::project(snapshot, prefs))
+        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
@@ -231,6 +316,24 @@ impl Widget {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn eight_lap_scene_projects_all_canonical_rows() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("scenes/eight-laps.snapshot.json"))
+                .expect("escena DTO v4 de variante");
+        let settings = Settings {
+            history_rows: 8,
+            ..Settings::default()
+        };
+        let vm = settings.project(&snapshot, Preferences::default());
+        assert_eq!(vm.history.len(), 8);
+        assert_eq!(pane_height(&vm), 331.0);
+        assert_eq!(
+            pane_height(&Settings::default().project(&snapshot, Preferences::default())),
+            204.0
+        );
+    }
+
     use vantare_domain::{Capabilities, Capability, Fuel, Player, Quality, State};
 
     #[test]
@@ -261,7 +364,7 @@ mod tests {
     #[test]
     fn only_visual_changes_repaint_and_frames_are_idle() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut data = Snapshot {
             state: State {
                 source_state: vantare_domain::SourceState::Live,

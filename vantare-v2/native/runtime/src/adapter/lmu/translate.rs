@@ -310,6 +310,8 @@ impl Translator {
             ),
             in_pits: quality(Some(vehicle.in_pit), stale),
             pose: quality(vehicle.pose, stale),
+            velocity_mps: quality(vehicle.velocity_mps, stale),
+            pending_penalties: quality(Some(vehicle.pending_penalties), stale),
             ..Car::default()
         }
     }

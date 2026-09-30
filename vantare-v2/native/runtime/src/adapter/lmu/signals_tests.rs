@@ -5,6 +5,70 @@ const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin")
 const TRACK_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-track-fixture.bin");
 const PLAYER: usize = 128_468 + 43 * 1_888;
 
+#[test]
+fn scoring_velocity_rotates_into_pose_axes_and_penalties_are_pending_counts() {
+    // La captura sin modificar conserva contador nativo cero: no es ausencia.
+    assert_eq!(
+        observe(REAL_44, "1.3.0.0").state.cars[0].pending_penalties,
+        Quality::Reliable(0)
+    );
+    let mut bytes = REAL_44.to_vec();
+    let scoring = 2192;
+    let write = |bytes: &mut [u8], at: usize, value: f64| {
+        bytes[at..at + 8].copy_from_slice(&value.to_le_bytes());
+    };
+    // Rotación de 90°: local +x -> mundo -z, local +z -> mundo +x.
+    for (i, value) in [0.0, 0.0, 1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0]
+        .into_iter()
+        .enumerate()
+    {
+        write(&mut bytes, scoring + 336 + i * 8, value);
+    }
+    for (i, value) in [2.0, 3.0, 40.0].into_iter().enumerate() {
+        write(&mut bytes, scoring + 288 + i * 8, value);
+    }
+    bytes[scoring + 194..scoring + 196].copy_from_slice(&3_i16.to_le_bytes());
+    let mut translator = Translator::new(SourceKind::Replay);
+    let first = translator
+        .observe(&bytes, "1.3.0.0", Duration::ZERO)
+        .expect("fixture mutado");
+    assert_eq!(
+        first.state.cars[0].velocity_mps,
+        Quality::Reliable([40.0, -2.0])
+    );
+    assert_eq!(first.state.cars[0].pending_penalties, Quality::Reliable(3));
+    let player_index = bytes[2192..2192 + 44 * 584]
+        .chunks_exact(584)
+        .position(|row| row[196] == 1)
+        .expect("jugador");
+    assert_eq!(
+        first.state.player_car().expect("jugador").pending_penalties,
+        first.state.cars[player_index].pending_penalties
+    );
+    let old = translator
+        .observe(&bytes, "1.3.0.0", Duration::from_millis(500))
+        .expect("caducado");
+    assert_eq!(old.state.cars[0].velocity_mps, Quality::Stale([40.0, -2.0]));
+    assert_eq!(old.state.cars[0].pending_penalties, Quality::Stale(3));
+    write(&mut bytes, scoring + 288, f64::NAN);
+    assert_eq!(
+        observe(&bytes, "1.3.0.0").state.cars[0].velocity_mps,
+        Quality::Unavailable
+    );
+    write(&mut bytes, scoring + 288, 2.0);
+    write(&mut bytes, scoring + 336, 2.0); // matriz no ortonormal.
+    assert_eq!(
+        observe(&bytes, "1.3.0.0").state.cars[0].velocity_mps,
+        Quality::Unavailable
+    );
+    bytes[scoring + 194..scoring + 196].copy_from_slice(&(-1_i16).to_le_bytes());
+    assert!(
+        Translator::new(SourceKind::Replay)
+            .observe(&bytes, "1.3.0.0", Duration::ZERO)
+            .is_err()
+    );
+}
+
 fn observe(bytes: &[u8], build: &str) -> Observation {
     Translator::new(SourceKind::Replay)
         .observe(bytes, build, Duration::ZERO)

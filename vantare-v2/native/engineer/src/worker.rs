@@ -116,7 +116,7 @@ impl RadioWorker {
                 crate::radio::Intent::LapCompleted => self.settings.families.laps,
                 crate::radio::Intent::CarLeft
                 | crate::radio::Intent::CarRight
-                | crate::radio::Intent::ThreeWide => false,
+                | crate::radio::Intent::ThreeWide => true,
             };
             if !self.settings.enabled || !enabled {
                 continue;

@@ -283,7 +283,7 @@ Workers Codex gpt-6.1-sol; decisiones de contrato consultadas con Astra y Fable.
   Isaac si se parchea GPUI) y widgets aún por encima del 4 %.
 - **Fase 3 (#1428):** journal con recording on/off, hechos productivos del
   núcleo, Engineer como proceso con cursor/checkpoint, radio y clips locales.
-  Pendientes: assets Kokoro y escucha de Isaac; señales para Spotter
+  Voces: caché Kokoro del producto reutilizada; visto bueno de Isaac para alpha (2026-09-30). Pendientes: clips de bandera amarilla/azul; señales para Spotter
   (velocidad de rivales), sanciones y servicio de boxes.
 - **Fase 4 (#1429):** series por vuelta, codec, análisis puro live/replay,
   `vantare-storage` con DuckDB bundled (propietario único, WAL, recuperación).

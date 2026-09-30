@@ -1,4 +1,4 @@
-//! Catálogo propio, familias mínimas y una sola cola de presentación/voz.
+//! Catálogo mínimo (textos compartidos con Go) y una sola cola de texto/voz.
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -17,6 +17,15 @@ pub enum Locale {
     PtBr,
 }
 impl Locale {
+    /// Defaults de audio/config.go; nunca probar otra voz ante ausencia.
+    pub fn voice(self) -> &'static str {
+        match self {
+            Self::Es => "ef_dora",
+            Self::En => "af_bella",
+            Self::It => "if_sara",
+            Self::PtBr => "pf_dora",
+        }
+    }
     pub fn parse(value: &str) -> Option<Self> {
         match value {
             "es" => Some(Self::Es),
@@ -59,6 +68,19 @@ pub enum Intent {
     ThreeWide,
 }
 impl Intent {
+    pub const ALL: [Self; 11] = [
+        Self::PitEntry,
+        Self::PitExit,
+        Self::LapCompleted,
+        Self::FuelOne,
+        Self::FuelTwo,
+        Self::FuelHalf,
+        Self::Yellow,
+        Self::Blue,
+        Self::CarLeft,
+        Self::CarRight,
+        Self::ThreeWide,
+    ];
     pub fn key(self) -> &'static str {
         match self {
             Self::PitEntry => "pitstops.entry",
@@ -97,7 +119,7 @@ impl Intent {
                 "Vuelta completada",
                 "Lap completed",
                 "Giro completato",
-                "Volta completada",
+                "Volta concluída",
             ],
             Self::PitEntry => [
                 "Entrando en boxes",
@@ -284,6 +306,7 @@ pub struct Families {
     context: Option<(u64, SessionId, CarId)>,
     fuel_started: Option<Intent>,
     flags_started: u8,
+    spotter_started: Option<Intent>,
 }
 impl Families {
     pub fn reset(&mut self) {
@@ -296,6 +319,9 @@ impl Families {
             }
             Intent::Yellow => self.flags_started |= 1,
             Intent::Blue => self.flags_started |= 2,
+            Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => {
+                self.spotter_started = Some(message.intent);
+            }
             _ => {}
         }
     }
@@ -360,6 +386,13 @@ impl Families {
         self.flags_started &= flags;
         for (bit, intent) in [(1, Intent::Yellow), (2, Intent::Blue)] {
             if flags & bit != 0 && self.flags_started & bit == 0 {
+                intents.push(intent);
+            }
+        }
+        let spotter = crate::spotter::evaluate(snapshot, self.spotter_started);
+        if self.spotter_started != spotter {
+            self.spotter_started = None;
+            if let Some(intent) = spotter {
                 intents.push(intent);
             }
         }
@@ -450,7 +483,8 @@ fn valid_now(message: &Message, snapshot: &Snapshot) -> bool {
                     car.in_pits == Quality::Reliable(message.intent == Intent::PitEntry)
                 })
         }
-        // No activar geometría audible sin velocidad vectorial de oponentes.
-        Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => false,
+        Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => {
+            crate::spotter::evaluate(snapshot, Some(message.intent)) == Some(message.intent)
+        }
     }
 }

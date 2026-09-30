@@ -44,6 +44,11 @@ pub struct ViewModel {
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_rows(snapshot, prefs, 5)
+}
+
+/// Cantidad productiva de tarjetas, acotada entre tres y diez.
+pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -> ViewModel {
     let state = &snapshot.state;
     let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
     let status = match (state.source_state, state.capabilities.positions) {
@@ -64,7 +69,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let rows = cars
         .into_iter()
         .filter(|_| status == Status::Ready)
-        .take(5)
+        .take(row_count.clamp(3, 10))
         .map(|car| {
             let class = car.class.as_ref().map_or("", |class| class.name.as_str());
             let place = car.position.current().copied().filter(|p| *p > 0);

@@ -1,0 +1,13 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/track-map.snapshot.json",
+  "variants": [
+    {
+      "name": "no-label",
+      "settings": {
+        "showTrackLabel": false
+      }
+    }
+  ]
+}

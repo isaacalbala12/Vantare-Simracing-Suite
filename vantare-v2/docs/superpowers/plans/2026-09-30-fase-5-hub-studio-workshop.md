@@ -303,7 +303,7 @@ PASS (3,29 s); tests workspace -j 2 PASS, incluidos 20 tests Hub y oráculos
 LMU/ACC. Compilación observada 54,83 s; cuatro pruebas físicas heredadas
 omitidas. La carga concurrente produjo tiempos variables, no son benchmark.
 
-### Corte 5 — cierre y entrega aislada
+### Corte 5 — cierre y entrega aislada (histórico; completado abajo)
 
 Referencia del flanco es `Option<bool>`: `None` primera foto, después valor
 completo de `is_live`. Al integrar DTO v4 basta exigir SourceState::Live en
@@ -406,3 +406,23 @@ Gates de este hito se registran a continuación.
 Incidencia en tests de Studio: la suite se detuvo en `engineer/tests/lifecycle.rs::engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real_pipe`: consumidor timed out y recv_timeout de 10 s (línea 70). Había pasado en el gate del merge; no cambió Engineer, runtime ni IPC en este hito. Se repite aislado y después se exige nuevamente el workspace completo. No se modifica ni omite ese test fuera de ownership.
 
 Gates finales Studio: fmt PASS; Clippy workspace/all-targets -j 2 -D warnings PASS (1,24 s); workspace test -j 2 PASS, código 0, incluidas 23 pruebas Hub y seis ignored heredadas. El test Engineer aislado pasó (3/3, 0,93 s); la repetición completa también pasó sin cambios ni omisiones. Intermitencia observada, causa raíz no acreditada; entregar al propietario de fase 3 si se repite. Variables de reducción de artefactos iguales al gate del merge. Sin dependencias nuevas.
+
+
+### Continuación — flanco DTO v4 (ISA-1430)
+
+`is_live` exige SourceKind::Live y snapshot.state.source_state == SourceState::Live.
+Referencia inicial None no cierra; Waiting/Stale/Lost o Replay establecen false;
+el flanco observado false→true cierra con cx.quit. Una Live repetida no cierra.
+No se deduce de SessionKind ni del Workshop y no se manda parar al launcher.
+La selección Workshop se guarda al salir; layout no necesita otra escritura
+porque cada edición ya se confirmó en disco. Subscriber se cancela con el Hub.
+
+Tabla pura de origen/estado/primera foto y transición Waiting/Stale/Lost→Live.
+Pipe real con dos suscriptores: mismo SourceKind Live durante Waiting→Live,
+cierre lógico del Hub, overlays sigue recibiendo tras destruir su suscriptor.
+Fotos sintéticas explícitas en tests; no prueba física de entrada a LMU/ACC,
+OBS, DPI, voz ni presupuesto. Los dos ignored ACC/núcleo importados sobre OFF/
+caducidad y gap de clase siguen fuera de ownership; aquí solo se consume el DTO.
+Gates de este hito se registran a continuación.
+
+Gates flanco DTO v4: fmt PASS; Clippy workspace/all-targets -j 2 -D warnings PASS (2,88 s); workspace test -j 2 PASS, código 0, 502 pruebas Rust ejecutadas y seis ignored heredadas (más harness de lifecycle con 0 failed). Hub: 24 pruebas. Compilación 8,81 s, sin benchmark. `./hub/verify-process.ps1` PASS, PID 12172, exit 0: vivo antes de EOF, selección guardada, proceso terminado completamente; layout temporal explícito. No acredita flanco de juego físico. Variables de reducción de artefactos iguales al merge. Sin dependencias nuevas.

@@ -13,9 +13,12 @@ paneles que indican pendiente no implementan el servicio ni conceden acceso.
 
 El botón Cerrar Hub y cerrar su ventana terminan el proceso. El Hub no es
 hijo del launcher: consume el pipe IPC con Subscriber y cierra al observar
-Replay→Live. Primera foto Live no cierra. **Pendiente DTO v4**: la base actual
-no expone SourceState; falta exigir estado Live para cubrir Waiting→Live.
-No usar este corte como prueba completa de cierre al entrar al juego.
+un flanco no-Live→Live. Live exige origen `SourceKind::Live` **y**
+`state.source_state == SourceState::Live` (DTO v4). Waiting, Stale, Lost y
+Replay no cierran; primera foto Live establece referencia y tampoco cierra.
+El cierre cancela el Subscriber, sin parar núcleo, overlays ni Engineer.
+La escena del Workshop no participa en esta decisión. La entrada física
+al juego y la clasificación real de su estado siguen pendientes de QA.
 `--control-stdin` y EOF son exclusivamente el ciclo de desarrollo (100 ms).
 
 La paridad y los bloqueos están en el
@@ -122,5 +125,5 @@ por usuario de IPC. Desde native, después de construir el binario:
 Usa una copia y datos temporales propios más un pipe sin productor para
 comprobar proceso vivo, guardado y salida total por EOF. No lanza núcleo ni
 juego ni demuestra entrada al juego, paridad, DPI/OBS o presupuesto de memoria.
-La condición de cierre espera SourceState de DTO v4; las APIs comunes de
-Settings/layout y esa condición se completan en el orden del microplan.
+La condición de cierre usa DTO v4 y el Studio usa la API común de layout.
+El smoke usa una ruta de layout aislada y no lee el layout personal.

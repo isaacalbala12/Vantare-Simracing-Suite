@@ -1,6 +1,6 @@
 #![cfg(windows)]
 use std::{sync::Arc, time::Duration};
-use vantare_domain::{Snapshot, SourceKind};
+use vantare_domain::{Snapshot, SourceKind, SourceState};
 use vantare_ipc::{Publisher, Subscriber};
 
 #[test]
@@ -15,15 +15,16 @@ fn hub_and_overlays_receive_the_same_publisher_without_sharing_a_cursor() {
         sequence: 1,
         ..Snapshot::default()
     };
-    snapshot.origin.source.kind = SourceKind::Replay;
+    snapshot.origin.source.kind = SourceKind::Live;
+    snapshot.state.source_state = SourceState::Waiting;
     publisher
         .publish(Arc::new(snapshot.clone()))
-        .expect("replay");
+        .expect("waiting");
     assert_eq!(*overlays.next(wait).expect("foto overlays"), snapshot);
     let previous = hub.next(wait).expect("foto Hub");
     assert!(!vantare_hub::lifecycle::should_close(None, &previous));
     snapshot.sequence += 1;
-    snapshot.origin.source.kind = SourceKind::Live;
+    snapshot.state.source_state = SourceState::Live;
     publisher.publish(Arc::new(snapshot.clone())).expect("live");
     let received = hub.next(wait).expect("flanco Hub");
     assert!(vantare_hub::lifecycle::should_close(

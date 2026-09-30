@@ -1,10 +1,9 @@
-//! Flanco de entrada al juego: solo fotos IPC, nunca escenas de Workshop.
-use vantare_domain::{Snapshot, SourceKind};
+//! Cierre por actividad de la fuente neutral; la escena Workshop no participa.
+use vantare_domain::{Snapshot, SourceKind, SourceState};
 
 pub fn is_live(snapshot: &Snapshot) -> bool {
-    // TODO(ISA-1430): exigir también snapshot.state.source_state == SourceState::Live
-    // al integrar DTO v4. Este checkout solo expone SourceKind (DTO v3).
     snapshot.origin.source.kind == SourceKind::Live
+        && snapshot.state.source_state == SourceState::Live
 }
 
 /// La primera foto, incluso Live, establece la referencia y no cierra el Hub.
@@ -16,14 +15,45 @@ pub fn should_close(previous: Option<bool>, snapshot: &Snapshot) -> bool {
 mod tests {
     use super::*;
     #[test]
-    fn only_an_observed_non_live_to_live_edge_closes() {
-        let mut snapshot = Snapshot::default();
-        assert!(!should_close(None, &snapshot));
-        assert!(!should_close(Some(true), &snapshot));
-        assert!(should_close(Some(false), &snapshot));
-        snapshot.origin.source.kind = SourceKind::Replay;
-        assert!(!should_close(None, &snapshot));
-        assert!(!should_close(Some(true), &snapshot));
-        assert!(!should_close(Some(false), &snapshot));
+    fn initial_live_and_waiting_stale_lost_or_replay_never_close() {
+        for (kind, state, closes_after_non_live) in [
+            (SourceKind::Live, SourceState::Waiting, false),
+            (SourceKind::Live, SourceState::Live, true),
+            (SourceKind::Live, SourceState::Stale, false),
+            (SourceKind::Live, SourceState::Lost, false),
+            (SourceKind::Replay, SourceState::Waiting, false),
+            (SourceKind::Replay, SourceState::Live, false),
+            (SourceKind::Replay, SourceState::Stale, false),
+            (SourceKind::Replay, SourceState::Lost, false),
+        ] {
+            let mut snapshot = Snapshot::default();
+            snapshot.origin.source.kind = kind;
+            snapshot.state.source_state = state;
+            assert!(
+                !should_close(None, &snapshot),
+                "primera foto: {kind:?}/{state:?}"
+            );
+            assert!(
+                !should_close(Some(true), &snapshot),
+                "sin flanco: {kind:?}/{state:?}"
+            );
+            assert_eq!(
+                should_close(Some(false), &snapshot),
+                closes_after_non_live,
+                "{kind:?}/{state:?}"
+            );
+        }
+    }
+    #[test]
+    fn waiting_or_stale_to_live_edges_close_and_do_not_repeat() {
+        for state in [SourceState::Waiting, SourceState::Stale, SourceState::Lost] {
+            let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = state;
+            assert!(!should_close(None, &snapshot));
+            let previous = is_live(&snapshot);
+            snapshot.state.source_state = SourceState::Live;
+            assert!(should_close(Some(previous), &snapshot));
+            assert!(!should_close(Some(is_live(&snapshot)), &snapshot));
+        }
     }
 }

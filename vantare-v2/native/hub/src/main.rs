@@ -61,7 +61,7 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(error) => {
             eprintln!(
-                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+                "{error}\nuso: vantare-hub [--workshop|--studio] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }

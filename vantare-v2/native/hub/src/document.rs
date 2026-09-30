@@ -34,6 +34,15 @@ impl Editor {
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }
+    pub fn set_preferences(
+        &mut self,
+        preferences: vantare_domain::format::Preferences,
+    ) -> Result<(), String> {
+        self.change(|layout| {
+            layout.preferences = preferences;
+            Ok(())
+        })
+    }
     pub fn selected(&self) -> Option<&Instance> {
         self.layout()
             .instances
@@ -238,6 +247,34 @@ pub(crate) mod tests {
                 .layout(),
             &before
         );
+    }
+
+    #[test]
+    fn settings_use_the_shared_document_and_survive_edits_undo_and_restart() {
+        use vantare_domain::format::{Language, Preferences, Units};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        let prefs = Preferences {
+            units: Units::Imperial,
+            language: Language::En,
+        };
+        editor.set_preferences(prefs).expect("ajustes");
+        editor.add(Kind::Pedals).expect("widget");
+        editor.undo().expect("deshacer widget");
+        assert_eq!(editor.layout().preferences, prefs);
+        let reader = Document::open(file.path.clone()).expect("overlays");
+        assert_eq!(reader.layout().preferences, prefs);
+        assert_eq!(
+            Editor::open(file.path.clone())
+                .expect("reiniciar Hub")
+                .layout()
+                .preferences,
+            prefs
+        );
+        editor.undo().expect("deshacer ajustes");
+        assert_eq!(editor.layout().preferences, Preferences::default());
+        editor.redo().expect("rehacer ajustes");
+        assert_eq!(editor.layout().preferences, prefs);
     }
     #[test]
     fn conflict_preserves_selection_history_and_external_bytes_until_reload() {

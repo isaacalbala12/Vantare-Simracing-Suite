@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod calendar;
+pub mod comparison;
 pub mod document;
 pub mod files;
 mod inspector;

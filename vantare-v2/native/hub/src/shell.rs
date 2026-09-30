@@ -82,7 +82,7 @@ impl Hub {
     }
 
     fn preferences(&mut self, units: bool, cx: &mut Context<Self>) {
-        let mut prefs = self.workshop.read(cx).preferences();
+        let mut prefs = self.studio.read(cx).preferences();
         if units {
             prefs.units = if prefs.units == Units::Metric {
                 Units::Imperial
@@ -97,8 +97,8 @@ impl Hub {
             };
         }
         if let Err(error) = self
-            .workshop
-            .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx))
+            .studio
+            .update(cx, |studio, cx| studio.set_preferences(prefs, cx))
         {
             self.notifications.update(cx, |center, cx| {
                 center.report("hub.preferences", error.clone(), cx);
@@ -109,12 +109,15 @@ impl Hub {
     }
 
     fn settings(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let prefs = self.workshop.read(cx).preferences();
+        let prefs = self.studio.read(cx).preferences();
         div().flex().flex_col().gap_2()
-            .child(format!("Formato del Workshop: {:?} · {:?}", prefs.units, prefs.language))
+            .child(format!("Formato de los widgets: {:?} · {:?}", prefs.units, prefs.language))
             .child(button("settings-units", "Métrico / Imperial").on_click(cx.listener(|this, _, _, cx| this.preferences(true, cx))))
             .child(button("settings-language", "ES / EN").on_click(cx.listener(|this, _, _, cx| this.preferences(false, cx))))
-            .child("Guardado local en selección del Workshop. Actualizaciones, hotkeys, privacidad, audio y rendimiento esperan sus servicios; no se altera el núcleo.")
+            .child("Guardado en el layout local; se aplica a Studio, Workshop y overlays al recargar el documento.")
+            .child(div().opacity(0.5).child("Rendimiento · pendiente: sin contrato nativo de configuración"))
+            .child(div().opacity(0.5).child("Actualizaciones · pendiente: sin contrato nativo del actualizador"))
+            .child(div().opacity(0.5).child("Atajos · pendiente: sin contrato nativo de teclas globales"))
     }
 
     fn nav(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -375,6 +378,14 @@ pub fn run(options: Options) -> Result<(), String> {
                 let workshop = create_workshop(prepared, cx);
                 let snapshot = workshop.read(cx).scene.snapshot().clone();
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
+                let prefs = studio.read(cx).preferences();
+                workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
+                cx.observe(&studio, |this, studio, cx| {
+                    let prefs = studio.read(cx).preferences();
+                    this.workshop
+                        .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
+                })
+                .detach();
                 let notifications = cx.new(|_| Notifications::default());
                 let calendar = cx.new(|_| calendar);
                 wire_sections(&calendar, &notifications, cx);

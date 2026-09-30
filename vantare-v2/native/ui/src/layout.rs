@@ -9,6 +9,7 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use crate::Settings;
+use vantare_domain::format::Preferences;
 
 pub const VERSION: u32 = 1;
 pub const MAX_BYTES: u64 = 1024 * 1024;
@@ -18,6 +19,10 @@ pub const MAX_BYTES: u64 = 1024 * 1024;
 pub struct Layout {
     pub version: u32,
     pub instances: Vec<Instance>,
+    /// Un solo documento permite aplicar formato y layout con la misma recarga.
+    /// Los documentos v1 anteriores conservan ES/métrico por defecto.
+    #[serde(default, with = "preferences")]
+    pub preferences: Preferences,
 }
 
 impl Default for Layout {
@@ -25,7 +30,64 @@ impl Default for Layout {
         Self {
             version: VERSION,
             instances: Vec::new(),
+            preferences: Preferences::default(),
         }
+    }
+}
+
+// El dominio sigue siendo puro y no depende de serde: el formato persistido
+// pertenece a UI, igual que las posiciones y Settings.
+mod preferences {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use vantare_domain::format::{Language, Preferences, Units};
+
+    #[derive(Serialize, Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    enum Unit {
+        Metric,
+        Imperial,
+    }
+    #[derive(Serialize, Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    enum Locale {
+        Es,
+        En,
+    }
+    #[derive(Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Stored {
+        units: Unit,
+        language: Locale,
+    }
+
+    #[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde(with).
+    pub fn serialize<S: Serializer>(prefs: &Preferences, serializer: S) -> Result<S::Ok, S::Error> {
+        Stored {
+            units: match prefs.units {
+                Units::Metric => Unit::Metric,
+                Units::Imperial => Unit::Imperial,
+            },
+            language: match prefs.language {
+                Language::Es => Locale::Es,
+                Language::En => Locale::En,
+            },
+        }
+        .serialize(serializer)
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Preferences, D::Error> {
+        let stored = Stored::deserialize(deserializer)?;
+        Ok(Preferences {
+            units: match stored.units {
+                Unit::Metric => Units::Metric,
+                Unit::Imperial => Units::Imperial,
+            },
+            language: match stored.language {
+                Locale::Es => Language::Es,
+                Locale::En => Language::En,
+            },
+        })
     }
 }
 
@@ -292,6 +354,47 @@ mod tests {
         assert!(options.get("showSessionHeader").is_some());
         assert!(options.get("width").is_none());
         assert!(options.get("height").is_none());
+    }
+
+    #[test]
+    fn preferences_are_durable_polled_and_old_layouts_keep_defaults() {
+        use vantare_domain::format::{Language, Units};
+        let dir = directory();
+        let path = dir.join("layout.json");
+        fs::write(&path, FIXTURE).expect("layout previo");
+        let mut overlay_reader = Document::open(path.clone()).expect("overlays");
+        assert_eq!(overlay_reader.layout().preferences, Preferences::default());
+        let mut editor = Document::open(path.clone()).expect("Hub");
+        let mut layout = editor.layout().clone();
+        layout.preferences = Preferences {
+            units: Units::Imperial,
+            language: Language::En,
+        };
+        editor.save(&layout).expect("guardar");
+        overlay_reader.modified = None;
+        assert!(overlay_reader.poll().expect("vigilar"));
+        assert_eq!(overlay_reader.layout(), &layout);
+        assert_eq!(
+            Document::open(path.clone()).expect("reiniciar").layout(),
+            &layout
+        );
+        assert_eq!(
+            vantare_domain::format::speed(Some(50.0), overlay_reader.layout().preferences),
+            "112 mph"
+        );
+        for prefs in [
+            r#"{"units":"metric","language":"it"}"#,
+            r#"{"units":"invalid","language":"es"}"#,
+            r#"{"units":"metric","language":"es","extra":true}"#,
+        ] {
+            assert!(
+                Layout::from_json(
+                    format!(r#"{{"version":1,"instances":[],"preferences":{prefs}}}"#).as_bytes()
+                )
+                .is_err()
+            );
+        }
+        fs::remove_dir_all(dir).expect("limpiar");
     }
 
     #[test]

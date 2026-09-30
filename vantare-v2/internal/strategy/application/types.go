@@ -10,6 +10,9 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	"github.com/vantare/overlays/v2/internal/strategy/tyres"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const ProtocolVersionV1 = "strategy.application.v1"
@@ -22,6 +25,9 @@ const (
 	OperationOpen                    Operation = "open"
 	OperationEdit                    Operation = "edit"
 	OperationSaveRevision            Operation = "save_revision"
+	OperationGetPendingRevisionSave  Operation = "get_pending_revision_save"
+	OperationResolveRevisionSave     Operation = "resolve_pending_revision_save"
+	OperationAcknowledgeRevisionSave Operation = "acknowledge_pending_revision_save"
 	OperationDuplicate               Operation = "duplicate"
 	OperationActivate                Operation = "activate"
 	OperationDeactivate              Operation = "deactivate"
@@ -44,6 +50,7 @@ const (
 	OperationCalculateOrbit          Operation = "calculate_orbit"
 	OperationListSessionCombinations Operation = "list_session_combinations"
 	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
+	OperationGetRevisionInputs       Operation = "get_revision_planning_inputs"
 	OperationGetValidatedExamples    Operation = "get_validated_examples"
 	OperationListReferenceCatalog    Operation = "list_reference_catalog"
 	OperationGetColdStartStatus      Operation = "get_cold_start_status"
@@ -71,7 +78,8 @@ type CreateCommand[T any] struct {
 
 type OpenCommand struct {
 	CommandHeader
-	DraftID contract.DraftID `json:"draftId"`
+	DraftID  contract.DraftID      `json:"draftId,omitempty"`
+	Revision *contract.RevisionRef `json:"revision,omitempty"`
 }
 
 type EditCommand[T any] struct {
@@ -81,10 +89,31 @@ type EditCommand[T any] struct {
 
 type SaveRevisionCommand[T any] struct {
 	CommandHeader
-	Draft      contract.PlanDraft[T] `json:"draft"`
-	RevisionID contract.RevisionID   `json:"revisionId"`
-	CreatedAt  time.Time             `json:"createdAt"`
+	Draft       contract.PlanDraft[T] `json:"draft"`
+	RevisionID  contract.RevisionID   `json:"revisionId"`
+	CreatedAt   time.Time             `json:"createdAt"`
+	Recoverable bool                  `json:"recoverable,omitempty"`
 }
+
+type PendingRevisionCommand struct{ CommandHeader }
+
+type AcknowledgePendingRevisionCommand struct {
+	CommandHeader
+	PendingCommandID string `json:"pendingCommandId"`
+	CommandDigest    string `json:"commandDigest"`
+}
+
+type PendingRevisionSave[T any] struct {
+	Command       SaveRevisionCommand[T] `json:"command"`
+	CommandDigest string                 `json:"commandDigest"`
+}
+
+type PendingRevisionResolution string
+
+const (
+	PendingRevisionStored    PendingRevisionResolution = "stored"
+	PendingRevisionNotStored PendingRevisionResolution = "not_stored"
+)
 
 type DuplicateCommand[T any] struct {
 	CommandHeader
@@ -136,6 +165,13 @@ type GetEventPlanningInputsCommand struct {
 	CommandHeader
 	EventID     strategydocument.EventID `json:"eventId"`
 	GeneratedAt time.Time                `json:"generatedAt"`
+}
+
+type GetRevisionPlanningInputsCommand struct {
+	CommandHeader
+	CombinationID   string                                   `json:"combinationId"`
+	SourceRevisions []strategyprojection.AnalysisRevisionRef `json:"sourceRevisions"`
+	GeneratedAt     time.Time                                `json:"generatedAt"`
 }
 
 type GetValidatedExamplesCommand struct {
@@ -245,6 +281,8 @@ type PlanSummary struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 	HasDraft      bool      `json:"hasDraft"`
 	RevisionCount int       `json:"revisionCount"`
+	// RevisionRefs lets a client discover immutable history without loading payloads.
+	RevisionRefs []contract.RevisionRef `json:"revisionRefs,omitempty"`
 	// LatestRevision identifies what would be opened or activated.
 	LatestRevision   *contract.RevisionRef `json:"latestRevision,omitempty"`
 	LatestRevisionAt *time.Time            `json:"latestRevisionAt,omitempty"`
@@ -350,9 +388,36 @@ type OrbitCalculationInput struct {
 }
 
 type OrbitCalculationEvent struct {
-	DurationMinutes float64 `json:"durationMinutes"`
-	TankLiters      float64 `json:"tankLiters"`
-	PitLossSeconds  float64 `json:"pitLossSeconds"`
+	Rules             *solver.EventRules             `json:"rules,omitempty"`
+	RaceKind          string                         `json:"raceKind,omitempty"`
+	DurationMinutes   float64                        `json:"durationMinutes"`
+	TargetLaps        *int64                         `json:"targetLaps,omitempty"`
+	TankLiters        float64                        `json:"tankLiters"`
+	InitialFuelLiters *float64                       `json:"initialFuelLiters,omitempty"`
+	FuelReserveLiters *float64                       `json:"fuelReserveLiters,omitempty"`
+	VirtualEnergy     *OrbitCalculationVirtualEnergy `json:"virtualEnergy,omitempty"`
+	TyreInventory     *solver.TyreInventoryInput     `json:"tyreInventory,omitempty"`
+	CompoundPace      []solver.CompoundPaceParameter `json:"compoundPace,omitempty"`
+	PitServices       *OrbitCalculationPitServices   `json:"pitServices,omitempty"`
+	FormationSeconds  *float64                       `json:"formationSeconds,omitempty"`
+	PitLossSeconds    float64                        `json:"pitLossSeconds"`
+}
+
+// OrbitCalculationPitServices is the complete product-level pit model. When
+// present it replaces the legacy all-in pitLossSeconds value.
+type OrbitCalculationPitServices struct {
+	TransitSeconds  *float64 `json:"transitSeconds"`
+	RefuelRateLPerS *float64 `json:"refuelRateLPerS"`
+	VERatePPerS     *float64 `json:"veRatePPerS"`
+	TyreSeconds     *float64 `json:"tyreSeconds"`
+	ServiceMode     string   `json:"serviceMode"`
+}
+
+type OrbitCalculationVirtualEnergy struct {
+	Applicability   string   `json:"applicability"`
+	CapacityPercent *float64 `json:"capacityPercent,omitempty"`
+	InitialPercent  *float64 `json:"initialPercent,omitempty"`
+	ReservePercent  *float64 `json:"reservePercent,omitempty"`
 }
 
 type OrbitCalculationPace struct {
@@ -361,11 +426,12 @@ type OrbitCalculationPace struct {
 }
 
 type OrbitCalculationDriver struct {
-	ID   string               `json:"id"`
-	Name string               `json:"name"`
-	Dry  OrbitCalculationPace `json:"dry"`
-	Wet  OrbitCalculationPace `json:"wet"`
-	Eco  OrbitCalculationPace `json:"eco"`
+	ID               string               `json:"id"`
+	Name             string               `json:"name"`
+	PaceDeltaSeconds float64              `json:"paceDeltaSeconds,omitempty"`
+	Dry              OrbitCalculationPace `json:"dry"`
+	Wet              OrbitCalculationPace `json:"wet"`
+	Eco              OrbitCalculationPace `json:"eco"`
 }
 
 type OrbitCalculationOverride struct {
@@ -373,30 +439,45 @@ type OrbitCalculationOverride struct {
 	Fuel *float64 `json:"fuel,omitempty"`
 }
 
+// OrbitCalculationPitOverride fixes the services performed at one visible
+// stop. Amounts are added at the stop, rather than target loads for the next
+// stint. The event remains the single authority for service timing/mode.
+type OrbitCalculationPitOverride struct {
+	FuelLiters  *float64        `json:"fuelLiters,omitempty"`
+	VEPercent   *float64        `json:"vePercent,omitempty"`
+	ChangeTyres *bool           `json:"changeTyres,omitempty"`
+	Compound    *tyres.Compound `json:"compound,omitempty"`
+}
+
 type OrbitCalculationVariant struct {
-	ID        string                           `json:"id"`
-	Mode      string                           `json:"mode"`
-	Order     []string                         `json:"order"`
-	Overrides map[int]OrbitCalculationOverride `json:"overrides"`
+	ID              string                              `json:"id"`
+	Mode            string                              `json:"mode"`
+	DriverOrderMode string                              `json:"driverOrderMode,omitempty"`
+	Order           []string                            `json:"order"`
+	Overrides       map[int]OrbitCalculationOverride    `json:"overrides"`
+	PitOverrides    map[int]OrbitCalculationPitOverride `json:"pitOverrides,omitempty"`
 }
 
 type OrbitCalculationStint struct {
-	Index             int     `json:"i"`
-	DriverID          string  `json:"d"`
-	Laps              int64   `json:"laps"`
-	Fuel              float64 `json:"fuel"`
-	Pace              float64 `json:"pace"`
-	StartSeconds      float64 `json:"start"`
-	EndSeconds        float64 `json:"end"`
-	FirstLap          int64   `json:"lap0"`
-	LastLap           int64   `json:"lap1"`
-	PitWindowLap      int64   `json:"pitWindowLap"`
-	PitWindowSeconds  float64 `json:"pitWindowSeconds"`
-	OverCapacity      bool    `json:"over"`
-	Manual            bool    `json:"manual"`
-	SavingLevel       string  `json:"savingLevel"`
-	FuelSavedPerLap   float64 `json:"fuelSavedPerLap"`
-	SavingCostSeconds float64 `json:"savingCostSeconds"`
+	Index             int            `json:"i"`
+	DriverID          string         `json:"d"`
+	Laps              int64          `json:"laps"`
+	Fuel              float64        `json:"fuel"`
+	VirtualEnergy     *float64       `json:"virtualEnergy,omitempty"`
+	Pace              float64        `json:"pace"`
+	StartSeconds      float64        `json:"start"`
+	EndSeconds        float64        `json:"end"`
+	FirstLap          int64          `json:"lap0"`
+	LastLap           int64          `json:"lap1"`
+	PitWindowLap      int64          `json:"pitWindowLap"`
+	PitWindowSeconds  float64        `json:"pitWindowSeconds"`
+	OverCapacity      bool           `json:"over"`
+	Manual            bool           `json:"manual"`
+	SavingLevel       string         `json:"savingLevel"`
+	FuelSavedPerLap   float64        `json:"fuelSavedPerLap"`
+	SavingCostSeconds float64        `json:"savingCostSeconds"`
+	Compound          tyres.Compound `json:"compound,omitempty"`
+	TyreFitment       *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
 type OrbitCalculationDistribution struct {
@@ -406,18 +487,28 @@ type OrbitCalculationDistribution struct {
 }
 
 type OrbitCalculationStop struct {
-	Index                 int     `json:"index"`
-	Lap                   int64   `json:"lap"`
-	FuelInLiters          float64 `json:"fuelInLiters"`
-	FuelOutLiters         float64 `json:"fuelOutLiters"`
-	PitLossSeconds        float64 `json:"pitLossSeconds"`
-	PitTransitSeconds     float64 `json:"pitTransitSeconds"`
-	PitServiceSeconds     float64 `json:"pitServiceSeconds"`
-	PitOverlapSeconds     float64 `json:"pitOverlapSeconds"`
-	PitBreakdownAvailable bool    `json:"pitBreakdownAvailable"`
+	Index                   int            `json:"index"`
+	Lap                     int64          `json:"lap"`
+	FuelInLiters            float64        `json:"fuelInLiters"`
+	FuelOutLiters           float64        `json:"fuelOutLiters"`
+	VirtualEnergyInPercent  *float64       `json:"virtualEnergyInPercent,omitempty"`
+	VirtualEnergyOutPercent *float64       `json:"virtualEnergyOutPercent,omitempty"`
+	PitLossSeconds          float64        `json:"pitLossSeconds"`
+	PitTransitSeconds       float64        `json:"pitTransitSeconds"`
+	PitServiceSeconds       float64        `json:"pitServiceSeconds"`
+	PitOverlapSeconds       float64        `json:"pitOverlapSeconds"`
+	PitBreakdownAvailable   bool           `json:"pitBreakdownAvailable"`
+	ChangeTyres             *bool          `json:"changeTyres,omitempty"`
+	Compound                tyres.Compound `json:"compound,omitempty"`
+	TyreFitment             *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
 type OrbitCalculationPlan struct {
+	FinalLapStartSeconds float64 `json:"finalLapStartSeconds"`
+	ModelVersion         string  `json:"modelVersion"`
+	Objective            string  `json:"objective"`
+	// A fixed replay proves constraints and cost, not global optimality.
+	Optimality              string                         `json:"optimality"`
 	Stints                  []OrbitCalculationStint        `json:"stints"`
 	TotalLaps               int64                          `json:"totalLaps"`
 	TotalSeconds            float64                        `json:"total"`
@@ -428,6 +519,7 @@ type OrbitCalculationPlan struct {
 	Distribution            []OrbitCalculationDistribution `json:"distribution"`
 	DrivingSeconds          float64                        `json:"drivingSeconds"`
 	PitSeconds              float64                        `json:"pitSeconds"`
+	FormationSeconds        *float64                       `json:"formationSeconds,omitempty"`
 	StartFuelLiters         float64                        `json:"startFuelLiters"`
 	FinishFuelLiters        float64                        `json:"finishFuelLiters"`
 	ReserveLaps             float64                        `json:"reserveLaps"`
@@ -494,8 +586,10 @@ type OrbitWeatherRobustRecommendation struct {
 }
 
 type OrbitWeatherResult struct {
-	Plans  []OrbitWeatherScenarioPlan       `json:"plans"`
-	Robust OrbitWeatherRobustRecommendation `json:"robust"`
+	ComparisonBasis string                           `json:"comparisonBasis"`
+	ComparisonLaps  int64                            `json:"comparisonLaps"`
+	Plans           []OrbitWeatherScenarioPlan       `json:"plans"`
+	Robust          OrbitWeatherRobustRecommendation `json:"robust"`
 }
 
 type LegacyStorageSource struct {
@@ -543,6 +637,8 @@ type Result[T any] struct {
 	Draft             *contract.PlanDraft[T]    `json:"draft,omitempty"`
 	SavedDraft        *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
 	Revision          *contract.PlanRevision[T] `json:"revision,omitempty"`
+	PendingRevision   *PendingRevisionSave[T]   `json:"pendingRevision,omitempty"`
+	PendingResolution PendingRevisionResolution `json:"pendingResolution,omitempty"`
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
 	// Activations is the audit trail, oldest first: what was activated, when,
 	// and what it replaced. It is append-only and never rewritten.

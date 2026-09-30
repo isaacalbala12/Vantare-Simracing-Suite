@@ -192,16 +192,24 @@ type PitWindow struct {
 }
 
 type DriverLimit struct {
-	MinLaps                  *int64              `json:"minLaps,omitempty"`
-	MaxLaps                  *int64              `json:"maxLaps,omitempty"`
-	MaxContinuousTimeSeconds *float64            `json:"maxContinuousTimeSeconds,omitempty"`
-	MaxTotalTimeSeconds      *float64            `json:"maxTotalTimeSeconds,omitempty"`
-	Unavailable              []UnavailableWindow `json:"unavailable,omitempty"`
+	MinLaps                  *int64                  `json:"minLaps,omitempty"`
+	MaxLaps                  *int64                  `json:"maxLaps,omitempty"`
+	MaxContinuousTimeSeconds *float64                `json:"maxContinuousTimeSeconds,omitempty"`
+	MaxTotalTimeSeconds      *float64                `json:"maxTotalTimeSeconds,omitempty"`
+	Unavailable              []UnavailableWindow     `json:"unavailable,omitempty"`
+	UnavailableTime          []UnavailableTimeWindow `json:"unavailableTime,omitempty"`
 }
 
 type UnavailableWindow struct {
 	FromLap int64 `json:"fromLap"`
 	ToLap   int64 `json:"toLap"`
+}
+
+// UnavailableTimeWindow uses seconds elapsed from race start, including
+// formation and pit time. Its interval is half-open [fromSeconds,toSeconds).
+type UnavailableTimeWindow struct {
+	FromSeconds float64 `json:"fromSeconds"`
+	ToSeconds   float64 `json:"toSeconds"`
 }
 
 // ComputeBudget es el presupuesto p95 de cómputo como parámetro (spec F1.3).
@@ -229,6 +237,7 @@ func (b ComputeBudget) Validate() error {
 type SolverInputV2 struct {
 	ContractVersion      ContractVersion               `json:"contractVersion"`
 	RaceLaps             int64                         `json:"raceLaps"`
+	RaceDurationSeconds  *float64                      `json:"raceDurationSeconds,omitempty"`
 	BaseLapSeconds       ScalarInput                   `json:"baseLapSeconds"`
 	BaseLapClimateBucket sp.ClimateBucket              `json:"baseLapClimateBucket,omitempty"`
 	Projection           *sp.StrategyInputProjectionV2 `json:"projection"`
@@ -238,9 +247,11 @@ type SolverInputV2 struct {
 	EventRules           EventRules                    `json:"eventRules"`
 	Budget               ComputeBudget                 `json:"budget"`
 	// Inputs manuales cuando projection está missing/unsupported
-	FuelCapacityLiters ScalarInput `json:"fuelCapacityLiters"`
-	VECapacityPercent  ScalarInput `json:"veCapacityPercent"`
-	TyreLifeLaps       ScalarInput `json:"tyreLifeLaps"`
+	FuelCapacityLiters ScalarInput  `json:"fuelCapacityLiters"`
+	VECapacityPercent  ScalarInput  `json:"veCapacityPercent"`
+	InitialFuelLiters  *ScalarInput `json:"initialFuelLiters,omitempty"`
+	InitialVEPercent   *ScalarInput `json:"initialVEPercent,omitempty"`
+	TyreLifeLaps       ScalarInput  `json:"tyreLifeLaps"`
 	// Consumos manuales usados cuando la familia correspondiente de Projection
 	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
 	FuelPerLapLiters     ScalarInput                      `json:"fuelPerLapLiters"`
@@ -253,6 +264,7 @@ type SolverInputV2 struct {
 	TyreInventory        *TyreInventoryInput              `json:"tyreInventory,omitempty"`
 	CompoundPace         []CompoundPaceParameter          `json:"compoundPace,omitempty"`
 	DriverProfiles       []DriverProfileInput             `json:"driverProfiles,omitempty"`
+	DriverSequence       []string                         `json:"driverSequence,omitempty"`
 	Weather              *WeatherPlanInput                `json:"weather,omitempty"`
 	Discretization       ServiceDiscretization            `json:"serviceDiscretization"`
 }
@@ -273,18 +285,26 @@ type WeatherPlanInput struct {
 }
 
 // WeatherBucketParameter es el fallback manual/reference por condicion. Los
-// consumos son punteros porque cero es un valor valido; si Projection publica
-// el mismo bucket, esa familia derivada es la autoridad y el fallback se omite.
-// CompoundPace reemplaza, vuelta a vuelta, los parametros globales declarados
-// para esos mismos compuestos.
+// consumos son punteros porque cero es un valor valido. Un perfil individual
+// prevalece para ese piloto; sin el, Projection prevalece sobre el promedio
+// del bucket. CompoundPace reemplaza los parametros globales de su compuesto.
 type WeatherBucketParameter struct {
 	Bucket           sp.ClimateBucket        `json:"bucket"`
 	PaceDeltaSeconds float64                 `json:"paceDeltaSeconds"`
 	FuelPerLapLiters *float64                `json:"fuelPerLapLiters,omitempty"`
 	VEPerLapPercent  *float64                `json:"vePerLapPercent,omitempty"`
+	DriverProfiles   []WeatherDriverProfile  `json:"driverProfiles,omitempty"`
 	CompoundPace     []CompoundPaceParameter `json:"compoundPace,omitempty"`
 	Provenance       sp.Provenance           `json:"provenance"`
 	Confidence       sp.Confidence           `json:"confidence"`
+}
+
+// WeatherDriverProfile replaces the fleet average for one identified driver
+// in this bucket. A missing fuel value still follows the usual bucket source.
+type WeatherDriverProfile struct {
+	DriverID         string   `json:"driverId"`
+	PaceDeltaSeconds float64  `json:"paceDeltaSeconds"`
+	FuelPerLapLiters *float64 `json:"fuelPerLapLiters,omitempty"`
 }
 
 // SavingCostParameter transporta niveles manuales o de referencia. El nivel
@@ -407,6 +427,14 @@ func (in SolverInputV2) Validate() error {
 	if in.RaceLaps <= 0 || in.RaceLaps > 100000 {
 		return fmt.Errorf("raceLaps out of range")
 	}
+	if in.RaceDurationSeconds != nil {
+		if math.IsNaN(*in.RaceDurationSeconds) || math.IsInf(*in.RaceDurationSeconds, 0) || *in.RaceDurationSeconds <= 0 {
+			return fmt.Errorf("raceDurationSeconds invalid")
+		}
+		if in.Formation.Seconds.Value >= *in.RaceDurationSeconds {
+			return fmt.Errorf("formation.seconds must be below raceDurationSeconds")
+		}
+	}
 	if in.BaseLapClimateBucket != "" && !in.BaseLapClimateBucket.Valid() {
 		return fmt.Errorf("baseLapClimateBucket invalid")
 	}
@@ -431,20 +459,31 @@ func (in SolverInputV2) Validate() error {
 	if in.VECapacityPercent.Value > 100 {
 		return fmt.Errorf("veCapacityPercent invalid")
 	}
+	for field, resource := range map[string]struct {
+		initial  *ScalarInput
+		capacity float64
+	}{
+		"initialFuelLiters": {initial: in.InitialFuelLiters, capacity: in.FuelCapacityLiters.Value},
+		"initialVEPercent":  {initial: in.InitialVEPercent, capacity: in.VECapacityPercent.Value},
+	} {
+		if resource.initial == nil {
+			continue
+		}
+		if err := resource.initial.validate(field, true); err != nil {
+			return err
+		}
+		if resource.initial.Value > resource.capacity {
+			return fmt.Errorf("%s exceeds capacity", field)
+		}
+	}
 	if err := in.TyreLifeLaps.validate("tyreLifeLaps", true); err != nil {
 		return err
 	}
 	if in.TyreLifeLaps.Value > maxSupportedLaps || math.Trunc(in.TyreLifeLaps.Value) != in.TyreLifeLaps.Value {
 		return fmt.Errorf("tyreLifeLaps out of range")
 	}
-	if in.EventRules.MinPitStops != nil && *in.EventRules.MinPitStops < 0 {
-		return fmt.Errorf("eventRules.minPitStops invalid")
-	}
-	if in.EventRules.MaxPitStops != nil && *in.EventRules.MaxPitStops < 0 {
-		return fmt.Errorf("eventRules.maxPitStops invalid")
-	}
-	if in.EventRules.MinPitStops != nil && in.EventRules.MaxPitStops != nil && *in.EventRules.MinPitStops > *in.EventRules.MaxPitStops {
-		return fmt.Errorf("eventRules pit stop range invalid")
+	if err := in.EventRules.Validate(); err != nil {
+		return err
 	}
 	for field, value := range map[string]ScalarInput{
 		"fuelPerLapLiters":         in.FuelPerLapLiters,
@@ -590,6 +629,8 @@ type ResolvedScalarInputs struct {
 	BaseLapSeconds     ScalarInput  `json:"baseLapSeconds"`
 	FuelCapacityLiters ScalarInput  `json:"fuelCapacityLiters"`
 	VECapacityPercent  ScalarInput  `json:"veCapacityPercent"`
+	InitialFuelLiters  *ScalarInput `json:"initialFuelLiters,omitempty"`
+	InitialVEPercent   *ScalarInput `json:"initialVEPercent,omitempty"`
 	TyreLifeLaps       ScalarInput  `json:"tyreLifeLaps"`
 	FuelPerLapLiters   ScalarInput  `json:"fuelPerLapLiters"`
 	VEPerLapPercent    ScalarInput  `json:"vePerLapPercent"`
@@ -598,11 +639,18 @@ type ResolvedScalarInputs struct {
 	PitCost            PitCostModel `json:"pitCost"`
 }
 
+// ResolveScalarInputs applies the solver's source precedence without solving.
+func (in SolverInputV2) ResolveScalarInputs() ResolvedScalarInputs {
+	return in.resolvedScalarInputs()
+}
+
 func (in SolverInputV2) resolvedScalarInputs() ResolvedScalarInputs {
 	return ResolvedScalarInputs{
 		BaseLapSeconds:     in.baseLapSource(),
 		FuelCapacityLiters: in.FuelCapacityLiters,
 		VECapacityPercent:  in.VECapacityPercent,
+		InitialFuelLiters:  in.InitialFuelLiters,
+		InitialVEPercent:   in.InitialVEPercent,
 		TyreLifeLaps:       in.tyreLifeSource(),
 		FuelPerLapLiters:   in.resourcePerLapSource(ResourceFuel),
 		VEPerLapPercent:    in.resourcePerLapSource(ResourceVirtualEnergy),
@@ -723,6 +771,7 @@ type WeatherBucketCostSource struct {
 	PaceDeltaSeconds float64                  `json:"paceDeltaSeconds"`
 	FuelPerLapLiters *float64                 `json:"fuelPerLapLiters,omitempty"`
 	VEPerLapPercent  *float64                 `json:"vePerLapPercent,omitempty"`
+	DriverProfiles   []WeatherDriverProfile   `json:"driverProfiles,omitempty"`
 	CompoundPace     []CompoundPaceCostSource `json:"compoundPace,omitempty"`
 	Provenance       sp.Provenance            `json:"provenance"`
 	Confidence       sp.Confidence            `json:"confidence"`

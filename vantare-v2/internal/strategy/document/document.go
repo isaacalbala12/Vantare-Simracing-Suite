@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -15,9 +16,10 @@ import (
 // migración traerá según matriz-migracion-orbit.csv, incluida la marca
 // legacy_synthetic_default. Compatibilidad: v1 = strategy.v1, v2 = strategy.v2.
 const (
-	ContractVersionV1 ContractVersion = "strategy.v1"
-	ContractVersionV2 ContractVersion = "strategy.v2"
-	SchemaVersionV2   string          = "2.0.0"
+	ContractVersionV1    ContractVersion = "strategy.v1"
+	ContractVersionV2    ContractVersion = "strategy.v2"
+	SchemaVersionV2      string          = "2.0.0"
+	SchemaVersionV2Rules string          = "2.1.0"
 )
 
 type ContractVersion string
@@ -324,6 +326,8 @@ type TyreSet struct {
 type SessionSelection struct {
 	SessionID string `json:"sessionId"`
 	Included  bool   `json:"included"`
+	// Revision identifies immutable Analysis input, never a source authorization.
+	Revision *sp.AnalysisRevisionRef `json:"revision,omitempty"`
 }
 
 // CombinationReference links an event to Analysis-owned historical sessions.
@@ -384,6 +388,7 @@ type PlanningInputs struct {
 }
 
 type Event struct {
+	Rules            *Sourced[solver.EventRules]       `json:"rules,omitempty"`
 	ID               EventID                           `json:"id"`
 	Name             Sourced[string]                   `json:"name"`
 	Source           Sourced[EventSource]              `json:"source"`
@@ -475,7 +480,7 @@ func (d StrategyDocumentV2) Validate() error {
 	if d.ContractVersion != ContractVersionV2 {
 		return fmt.Errorf("unsupported contractVersion %q", d.ContractVersion)
 	}
-	if d.SchemaVersion != SchemaVersionV2 {
+	if d.SchemaVersion != SchemaVersionV2 && d.SchemaVersion != SchemaVersionV2Rules {
 		return fmt.Errorf("unsupported schemaVersion %q", d.SchemaVersion)
 	}
 	if d.GeneratedAt.IsZero() {
@@ -490,6 +495,17 @@ func (d StrategyDocumentV2) Validate() error {
 			return fmt.Errorf("duplicate event id %q", ev.ID)
 		}
 		seen[ev.ID] = struct{}{}
+		if ev.Rules != nil {
+			if d.SchemaVersion != SchemaVersionV2Rules {
+				return fmt.Errorf("event %q rules require schema %s", ev.ID, SchemaVersionV2Rules)
+			}
+			if err := ev.Rules.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q rules evidence: %w", ev.ID, err)
+			}
+			if err := ev.Rules.Value.Validate(); err != nil {
+				return fmt.Errorf("event %q rules: %w", ev.ID, err)
+			}
+		}
 		if err := ev.Name.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q name evidence: %w", ev.ID, err)
 		}
@@ -542,11 +558,13 @@ func (d StrategyDocumentV2) Validate() error {
 		if err := ev.PitLossSeconds.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q pitLossSeconds evidence: %w", ev.ID, err)
 		}
+		selectedRevisions := make(map[string]sp.AnalysisRevisionRef)
 		if ev.Combination != nil {
 			if strings.TrimSpace(ev.Combination.CombinationID) == "" {
 				return fmt.Errorf("event %q combination id is required", ev.ID)
 			}
 			sessions := make(map[string]struct{}, len(ev.Combination.Sessions))
+			includedCount := 0
 			for _, session := range ev.Combination.Sessions {
 				if strings.TrimSpace(session.SessionID) == "" {
 					return fmt.Errorf("event %q combination session id is required", ev.ID)
@@ -555,6 +573,20 @@ func (d StrategyDocumentV2) Validate() error {
 					return fmt.Errorf("event %q duplicate combination session %q", ev.ID, session.SessionID)
 				}
 				sessions[session.SessionID] = struct{}{}
+				if session.Included {
+					includedCount++
+				}
+				if session.Revision != nil {
+					if err := sp.ValidateSourceRevisions([]string{session.SessionID}, []sp.AnalysisRevisionRef{*session.Revision}); err != nil {
+						return fmt.Errorf("event %q selected revision: %w", ev.ID, err)
+					}
+					if session.Included {
+						selectedRevisions[session.SessionID] = *session.Revision
+					}
+				}
+			}
+			if len(selectedRevisions) != 0 && len(selectedRevisions) != includedCount {
+				return fmt.Errorf("event %q requires exact revisions for all included sessions", ev.ID)
 			}
 		}
 		if len(ev.WeatherScenarios) > 16 {
@@ -592,6 +624,17 @@ func (d StrategyDocumentV2) Validate() error {
 				}
 				if len(included) != len(ev.PlanningInputs.Projection.SourceSessions) {
 					return fmt.Errorf("event %q planning projection selection mismatch", ev.ID)
+				}
+				if len(selectedRevisions) != 0 {
+					if len(ev.PlanningInputs.Projection.SourceRevisions) != len(selectedRevisions) {
+						return fmt.Errorf("event %q planning projection requires selected revisions", ev.ID)
+					}
+					for _, ref := range ev.PlanningInputs.Projection.SourceRevisions {
+						selected, ok := selectedRevisions[ref.SessionID]
+						if !ok || selected != ref {
+							return fmt.Errorf("event %q planning projection revision mismatch", ev.ID)
+						}
+					}
 				}
 				for _, sessionID := range ev.PlanningInputs.Projection.SourceSessions {
 					if _, ok := included[sessionID]; !ok {
@@ -761,7 +804,7 @@ func (d StrategyDocumentV2) Validate() error {
 		}
 		archived := StrategyDocumentV2{
 			ContractVersion: ContractVersionV2,
-			SchemaVersion:   SchemaVersionV2,
+			SchemaVersion:   d.SchemaVersion,
 			GeneratedAt:     archive.GeneratedAt,
 			Events:          archive.Events,
 			ActiveEventID:   archive.ActiveEventID,

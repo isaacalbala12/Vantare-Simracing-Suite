@@ -1,17 +1,19 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
 import { StrategyOrbitPage, STRATEGY_CONTEXT_SLOT_ID } from "./StrategyOrbitPage";
 import type { StrategyRoster } from "./strategy-orbit-bridge";
 import orbitGolden from "./testdata/orbit-go-golden.json";
-import type {
-  StrategyApplicationClient,
-  StrategyApplicationCommandV1,
-  StrategyApplicationResultV1,
-  StrategyOrbitCalculationResultV1,
-  StrategyEventV2,
-  StrategyPlanningInputsV2,
+import {
+  createStrategyApplicationClient,
+  type StrategyApplicationClient,
+  type StrategyApplicationCommandV1,
+  type StrategyApplicationEventTransport,
+  type StrategyApplicationResultV1,
+  type StrategyOrbitCalculationResultV1,
+  type StrategyEventV2,
+  type StrategyPlanningInputsV2,
 } from "../../strategy/strategy-application-client";
 
 vi.mock("@wailsio/runtime", () => ({
@@ -136,17 +138,100 @@ afterEach(() => {
 });
 
 describe("StrategyOrbitPage · cableado auditado", () => {
+  it("no acepta una respuesta de cálculo de un montaje anterior", async () => {
+    window.localStorage.clear();
+    const listeners = new Map<string, Set<(payload: unknown) => void>>();
+    const calculations: StrategyApplicationCommandV1<unknown>[] = [];
+    const emitTransport = (name: string, payload: unknown) => {
+      for (const listener of listeners.get(name) ?? []) {
+        listener({ data: [payload] });
+      }
+    };
+    const transport: StrategyApplicationEventTransport = {
+      emit(name, payload) {
+        if (name !== "strategy:application:command") return;
+        const command = payload as StrategyApplicationCommandV1<unknown>;
+        if (command.operation === "calculate_orbit") {
+          calculations.push(command);
+          return;
+        }
+        if (command.operation === "list_session_combinations" || command.operation === "list_events") {
+          emitTransport("strategy:application:error", {
+            commandId: command.commandId,
+            code: "invalid_command",
+            field: "operation",
+            message: "catalog unavailable",
+          });
+          return;
+        }
+        if (command.operation === "list") {
+          emitTransport("strategy:application:result", {
+            protocolVersion: "strategy.application.v1",
+            commandId: command.commandId,
+            repositoryVersion: 0,
+            plans: [],
+            recoveredFromBackup: false,
+            closed: false,
+          });
+        }
+      },
+      on(name, listener) {
+        const bucket = listeners.get(name) ?? new Set();
+        bucket.add(listener);
+        listeners.set(name, bucket);
+        return () => bucket.delete(listener);
+      },
+    };
+    const client = createStrategyApplicationClient<unknown>(transport);
+    const first = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(calculations).toHaveLength(1));
+    first.unmount();
+
+    window.localStorage.clear();
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(calculations).toHaveLength(2));
+
+    await act(async () => emitTransport("strategy:application:error", {
+      commandId: calculations[0].commandId,
+      code: "calculation_timeout",
+      field: "input",
+      message: "old calculation",
+    }));
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    expect(calculations[1].commandId).not.toBe(calculations[0].commandId);
+
+    await act(async () => emitTransport("strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: calculations[0].commandId,
+      repositoryVersion: 0,
+      orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1,
+      recoveredFromBackup: false,
+      closed: false,
+    }));
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+
+    await act(async () => emitTransport("strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: calculations[1].commandId,
+      repositoryVersion: 0,
+      orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1,
+      recoveredFromBackup: false,
+      closed: false,
+    }));
+    expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
+  });
+
   it("muestra exactamente el golden producido por manual+solver Go", async () => {
     window.localStorage.clear();
     mount();
     const stints = await screen.findAllByTestId(/^orbit-stint-\d+$/);
     expect(stints).toHaveLength(5);
-    // Mismo motivo que en el puente: el margen de reserva acorta el ultimo stint.
-    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([12, 32, 32, 32, 31]);
-    expect(stints.reduce((sum, stint) => sum + Number(stint.getAttribute("data-laps")), 0)).toBe(139);
+    // The race clock includes all four stops before selecting the final horizon.
+    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([9, 32, 32, 32, 31]);
+    expect(stints.reduce((sum, stint) => sum + Number(stint.getAttribute("data-laps")), 0)).toBe(136);
 
     fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));
-    expect(await screen.findByText("4:05:12")).toBeTruthy();
+    expect(await screen.findByText("4:00:00")).toBeTruthy();
   });
 
   it("la columna «Eventos» lista el evento del puente y ya no explica un límite", async () => {
@@ -170,29 +255,42 @@ describe("StrategyOrbitPage · cableado auditado", () => {
   it("vincula una combinación y persiste el toggle de sesión en el documento canónico", async () => {
     window.localStorage.clear();
     let saved: StrategyEventV2 | undefined;
+    const rules: NonNullable<StrategyEventV2["rules"]> = { value: { minPitStops: 2 }, evidence: { provenance: { kind: "manual", sourceId: "event-rules-test" }, confidence: { level: "high", basis: "configured event" } } };
     let version = 0;
     const calculatedInputs: unknown[] = [];
+    let planningCalls = 0;
+    let deferPlanning = true;
+    let rejectPlanning = false;
+    let catalogHasCombination = true;
+    let resolvePlanning!: (result: StrategyApplicationResultV1<unknown>) => void;
+    const planning = new Promise<StrategyApplicationResultV1<unknown>>((resolve) => { resolvePlanning = resolve; });
     const client: StrategyApplicationClient<unknown> = {
       async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
         const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
-        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: catalogHasCombination ? [{
           combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3",
           sessionCount: 1, raceCount: 1, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }],
           sessions: [{ sessionId: "race-1", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }] }],
-        }] };
+        }] : [] };
         if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
         if (command.operation === "create_event" || command.operation === "edit_event") {
-          saved = command.event;
+          saved = command.operation === "create_event" ? { ...command.event, rules } : command.event;
           version += 1;
-          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.1.0", generatedAt: command.updatedAt, events: [saved] } };
         }
-        if (command.operation === "get_event_planning_inputs") return {
-          ...base,
-          planningInputStatus: saved?.combination?.sessions.some((session) => session.included) ? "available" : "no_included_sessions",
-          planningInputs: saved?.combination?.sessions.some((session) => session.included)
-            ? { ...derivedPlanning, overrides: saved.planningInputs?.overrides ?? {} }
-            : { overrides: saved?.planningInputs?.overrides ?? {} },
-        };
+        if (command.operation === "get_event_planning_inputs") {
+          planningCalls += 1;
+          if (deferPlanning) return planning;
+          if (rejectPlanning) throw new Error("planning failed");
+          const included = saved?.combination?.sessions.some((session) => session.included);
+          return {
+            ...base,
+            planningInputStatus: included ? "available" : "no_included_sessions",
+            planningInputs: included
+              ? { ...derivedPlanning, overrides: saved?.planningInputs?.overrides ?? {} }
+              : { overrides: saved?.planningInputs?.overrides ?? {} },
+          };
+        }
         if (command.operation === "calculate_orbit") {
           calculatedInputs.push(command.input);
           return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
@@ -206,10 +304,27 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     const slot = document.createElement("div");
     slot.id = STRATEGY_CONTEXT_SLOT_ID;
     document.body.append(slot);
-    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    const first = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
 
     expect(await screen.findByTestId("orbit-strategy-session-picker")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
+    await waitFor(() => expect(saved?.combination?.sessions.some((session) => session.included)).toBe(true));
+    first.unmount();
+    calculatedInputs.length = 0;
+    const second = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(planningCalls).toBeGreaterThanOrEqual(2));
+    expect(calculatedInputs).toHaveLength(0);
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    deferPlanning = false;
+    await act(async () => resolvePlanning({
+      protocolVersion: "strategy.application.v1",
+      commandId: "planning",
+      repositoryVersion: version,
+      recoveredFromBackup: false,
+      closed: false,
+      planningInputStatus: "available",
+      planningInputs: { ...derivedPlanning, overrides: saved?.planningInputs?.overrides ?? {} },
+    }));
     expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Datos" }));
     expect(within(await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters")).getByLabelText(/Derivado: Calculado con 4 muestras/)).toBeTruthy();
@@ -235,6 +350,8 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(await within(overriddenFuel).findByRole("button", { name: "Volver al derivado" })).toBeTruthy();
     expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(3.538);
     expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5);
+    expect(saved?.rules).toEqual(rules);
+    await waitFor(() => expect(calculatedInputs).toContainEqual(expect.objectContaining({ event: expect.objectContaining({ rules: rules.value }) })));
     expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"fuel_per_lap_liters":{"value":3.5'))).toBe(true);
     fireEvent.click(within(overriddenFuel).getByRole("button", { name: "Volver al derivado" }));
     await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined());
@@ -247,6 +364,21 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     fireEvent.click(within(sessions).getByRole("button", { name: "Excluir" }));
     await screen.findByText("Excluida por ti");
     expect(saved?.combination?.sessions).toEqual([{ sessionId: "race-1", included: false }]);
+    rejectPlanning = true;
+    calculatedInputs.length = 0;
+    const include = await screen.findByRole("button", { name: "Incluir" });
+    await waitFor(() => expect(include.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(include);
+    await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(calculatedInputs).toHaveLength(0);
+    second.unmount();
+    catalogHasCombination = false;
+    calculatedInputs.length = 0;
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    fireEvent.click(await screen.findByTestId("orbit-strategy-session-skip"));
+    await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(screen.queryByTestId("orbit-strategy-calculation-loading")).toBeNull();
+    expect(calculatedInputs).toHaveLength(0);
   });
 
   it("muestra ejemplos validados ordenados con cifras neutrales del replay Go", async () => {
@@ -330,7 +462,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
 
     fireEvent.click((await screen.findByTestId("orbit-session-combination-lmu:imola")));
-    expect((await screen.findByTestId("orbit-validated-examples")).textContent).toContain("Aún no hay carreras de esta combinación");
+    await waitFor(() => expect(screen.getByTestId("orbit-validated-examples").textContent).toContain("Aún no hay carreras de esta combinación"));
   });
 
   it("edita NODE_50 y muestra planes por escenario con recomendación robusta", async () => {
@@ -356,6 +488,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
             orbitCalculation: {
               ...(orbitGolden as StrategyOrbitCalculationResultV1),
               ...(hasWeather ? { weather: {
+                comparisonBasis: "fixed_distance", comparisonLaps: 43,
                 plans: [{ scenarioId: command.input.weatherScenarios![0].scenario.scenarioId, weight: 1, totalSeconds: 15000, stops: 4, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }], timeline: [{ lap: 1, rainChance: 0, bucket: "dry" }, { lap: 70, rainChance: 100, bucket: "wet" }] }],
                 robust: { method: "minimax_regret", maxRegretSeconds: 6, weightedExpectedLossSeconds: 2.5, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }] },
               } } : {}),
@@ -391,4 +524,25 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(screen.getByText("V70 · Mojado · 100%")).toBeTruthy();
     expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"progress":"50","rainChance":100'))).toBe(true);
   });
+});
+
+it("permite preparar sesiones aunque el cálculo falle", async () => {
+  window.localStorage.clear();
+  let saved: StrategyEventV2 | undefined;
+  const client: StrategyApplicationClient<unknown> = {
+    async execute(command) {
+      const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false };
+      if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{ combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3", sessionCount: 0, raceCount: 0, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [], sessions: [] }] };
+      if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+      if (command.operation === "create_event" || command.operation === "edit_event") { saved = command.event; return { ...base, events: [saved] }; }
+      if (command.operation === "get_event_planning_inputs") return { ...base, planningInputStatus: "no_included_sessions", planningInputs: { overrides: {} } };
+      if (command.operation === "calculate_orbit") throw new Error("backend deadline");
+      if (command.operation === "list") return { ...base, plans: [] };
+      throw new Error(`unexpected ${command.operation}`);
+    }, cancel: () => false, dispose: () => undefined,
+  };
+  render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+  fireEvent.click(await screen.findByTestId("orbit-session-combination-lmu:imola"));
+  await screen.findByTestId("orbit-strategy-calculation-error");
+  expect(screen.getByRole("button", { name: "Buscar sesiones" })).toBeTruthy();
 });

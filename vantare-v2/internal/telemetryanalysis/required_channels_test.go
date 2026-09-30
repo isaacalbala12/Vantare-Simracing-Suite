@@ -13,7 +13,7 @@ func TestRequiredHistoricalPageChannelsComeFromDerivationFamilies(t *testing.T) 
 	t.Parallel()
 
 	families := historicalPageChannelFamilies()
-	wantFamilies := []string{"consumption_pace", "derived_curves", "lap_validity", "pit_observation"}
+	wantFamilies := []string{"consumption_pace", "derived_curves", "lap_validity", "pit_observation", "temporal_alignment"}
 	gotFamilies := make([]string, 0, len(families))
 	for family, channels := range families {
 		gotFamilies = append(gotFamilies, family)
@@ -43,6 +43,14 @@ func TestRequiredHistoricalPageChannelsComeFromDerivationFamilies(t *testing.T) 
 		if _, ok := declared[channel]; !ok {
 			t.Fatalf("required channel %q is not declared by a derivation family", channel)
 		}
+	}
+}
+
+func TestRequiredHistoricalPageChannelsIncludesTemporalBridge(t *testing.T) {
+	t.Parallel()
+
+	if !slices.Contains(RequiredHistoricalPageChannels(), "gps time") {
+		t.Fatal("required historical channels do not include GPS Time")
 	}
 }
 

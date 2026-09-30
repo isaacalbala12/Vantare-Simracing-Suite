@@ -17,6 +17,10 @@ import (
 
 const maxTelemetryAnalysisOpenSessions = 4
 
+// MaxTelemetryAnalysisCandidates matches the bounded existing LMU importer.
+// Discovery reads metadata only; opening content retains its separate limits.
+const MaxTelemetryAnalysisCandidates = 1024
+
 var (
 	ErrTelemetryAnalysisUnauthorized       = errors.New("Telemetry Analysis requires an active eligible license")
 	ErrTelemetryAnalysisApprovalRequired   = errors.New("approve this discovered telemetry file before opening it")
@@ -27,6 +31,7 @@ var (
 	ErrTelemetryAnalysisTooLarge           = errors.New("the telemetry file exceeds the configured analysis limit")
 	ErrTelemetryAnalysisInvalidRequest     = errors.New("the Telemetry Analysis request is outside the configured limits")
 	ErrTelemetryAnalysisIncompatible       = errors.New("the telemetry file is not compatible with this Telemetry Analysis reader")
+	ErrTelemetryAnalysisCandidateLimit     = errors.New("the telemetry folders exceed the supported discovery file limit")
 	ErrTelemetryAnalysisBusy               = errors.New("close an open Telemetry Analysis session before opening another")
 	ErrTelemetryAnalysisClosed             = errors.New("Telemetry Analysis is shutting down")
 	ErrTelemetryAnalysisCleanup            = errors.New("Telemetry Analysis could not release all private resources")
@@ -53,10 +58,17 @@ type TelemetryAnalysisConfig struct {
 	LMURoots             []string
 	ApplicationDirectory string
 	StagingRoot          string
+	CorrectionRoot       string
 	StabilityWindow      time.Duration
 	MaxCandidates        int
 	MaxSourceBytes       int64
 	MaxPageRows          int
+	// SessionCatalog is the optional native catalog instance supplied by the
+	// composition root. SaveCorrections passes its ResolveCanonicalCombination
+	// method as the J3 resolver callback; the J5 method treats a nil receiver
+	// as ErrCanonicalCombinationUnavailable. Analysis never requires it to
+	// start and no other field or service may duplicate it.
+	SessionCatalog *telemetryanalysis.SessionCatalog
 }
 
 type TelemetryAnalysisStatus struct {
@@ -65,11 +77,12 @@ type TelemetryAnalysisStatus struct {
 }
 
 type TelemetryAnalysisCandidate struct {
-	ID         string    `json:"id"`
-	State      string    `json:"state"`
-	Size       int64     `json:"size"`
-	ModifiedAt time.Time `json:"modifiedAt"`
-	WALPresent bool      `json:"walPresent"`
+	DisplayName string    `json:"displayName,omitempty"`
+	ID          string    `json:"id"`
+	State       string    `json:"state"`
+	Size        int64     `json:"size"`
+	ModifiedAt  time.Time `json:"modifiedAt"`
+	WALPresent  bool      `json:"walPresent"`
 }
 
 type TelemetryAnalysisOpenRequest struct {
@@ -90,47 +103,57 @@ type TelemetryAnalysisPageRequest struct {
 }
 
 type telemetryAnalysisCandidateRecord struct {
-	mu        sync.Mutex
-	root      telemetryanalysis.SourceRoot
-	candidate telemetryanalysis.Candidate
-	tracker   *telemetryanalysis.StabilityTracker
+	mu                sync.Mutex
+	root              telemetryanalysis.SourceRoot
+	candidate         telemetryanalysis.Candidate
+	tracker           *telemetryanalysis.StabilityTracker
+	selected          bool
+	selectedPath      string
+	expectedSessionID string
 }
 
 type telemetryAnalysisSession struct {
-	mu           sync.Mutex
-	parser       *telemetryanalysis.LMUDuckDBParser
-	reader       telemetryAnalysisReader
-	staged       telemetryanalysis.StagedHistoricalArtifact
-	retired      bool
-	readerClosed bool
-	stagingClean bool
-	closed       bool
+	mu                sync.Mutex
+	artifact          telemetryanalysis.AuthorizedHistoricalArtifact
+	sourcePath        string
+	parser            *telemetryanalysis.LMUDuckDBParser
+	reader            telemetryAnalysisReader
+	staged            telemetryanalysis.StagedHistoricalArtifact
+	correctionBase    *telemetryanalysis.SourceAnalysisRef
+	correctionSummary *telemetryanalysis.CorrectionSummary
+	retired           bool
+	readerClosed      bool
+	stagingClean      bool
+	closed            bool
 }
 
 // TelemetryAnalysisService is the non-visual application boundary for the
 // existing TA-02/TA-03C contracts. Paths stay inside candidate records and the
 // private staging artifact; consumers receive only opaque IDs.
 type TelemetryAnalysisService struct {
-	cfg        TelemetryAnalysisConfig
-	authorizer telemetryAnalysisAuthorizer
-	metadata   telemetryanalysis.MetadataSource
-	content    telemetryanalysis.ContentSource
-	now        func() time.Time
+	cfg         TelemetryAnalysisConfig
+	authorizer  telemetryAnalysisAuthorizer
+	corrections *telemetryanalysis.CorrectionStore
+	metadata    telemetryanalysis.MetadataSource
+	content     telemetryanalysis.ContentSource
+	now         func() time.Time
 
-	discoveryMu     sync.Mutex
-	closeMu         sync.Mutex
-	mu              sync.Mutex
-	candidates      map[string]*telemetryAnalysisCandidateRecord
-	sessions        map[string]*telemetryAnalysisSession
-	pendingCleanup  map[*telemetryAnalysisSession]struct{}
-	openingSessions int
-	runtimeReady    bool
-	readerFactory   telemetryAnalysisReaderFactory
-	cleanupStaged   func(*telemetryanalysis.StagedHistoricalArtifact) error
-	closed          bool
-	closeCtx        context.Context
-	cancelClose     context.CancelFunc
-	operations      sync.WaitGroup
+	discoveryMu      sync.Mutex
+	copyRegistryMu   sync.Mutex
+	correctionReadMu sync.Mutex
+	closeMu          sync.Mutex
+	mu               sync.Mutex
+	candidates       map[string]*telemetryAnalysisCandidateRecord
+	sessions         map[string]*telemetryAnalysisSession
+	pendingCleanup   map[*telemetryAnalysisSession]struct{}
+	openingSessions  int
+	runtimeReady     bool
+	readerFactory    telemetryAnalysisReaderFactory
+	cleanupStaged    func(*telemetryanalysis.StagedHistoricalArtifact) error
+	closed           bool
+	closeCtx         context.Context
+	cancelClose      context.CancelFunc
+	operations       sync.WaitGroup
 }
 
 func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemetryAnalysisAuthorizer) (*TelemetryAnalysisService, error) {
@@ -154,6 +177,9 @@ func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemet
 		pendingCleanup: make(map[*telemetryAnalysisSession]struct{}), closeCtx: closeCtx, cancelClose: cancelClose,
 		cleanupStaged: func(staged *telemetryanalysis.StagedHistoricalArtifact) error { return staged.Cleanup() },
 	}
+	if cfg.CorrectionRoot != "" {
+		service.corrections = telemetryanalysis.NewCorrectionStore(cfg.CorrectionRoot)
+	}
 	runtimeFiles, runtimeErr := duckdbadapter.LoadRuntime(duckdbadapter.ProductionTrust(cfg.ApplicationDirectory))
 	if runtimeErr == nil {
 		service.runtimeReady = true
@@ -165,9 +191,12 @@ func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemet
 }
 
 func validateTelemetryAnalysisConfig(cfg TelemetryAnalysisConfig, authorizer telemetryAnalysisAuthorizer) error {
+	if cfg.CorrectionRoot != "" && !cleanAbsolutePath(cfg.CorrectionRoot) {
+		return ErrTelemetryAnalysisInvalidRequest
+	}
 	if authorizer == nil || !cleanAbsolutePath(cfg.ApplicationDirectory) || !cleanAbsolutePath(cfg.StagingRoot) ||
 		cfg.StabilityWindow <= 0 || cfg.StabilityWindow > 10*time.Minute ||
-		cfg.MaxCandidates <= 0 || cfg.MaxCandidates > 256 ||
+		cfg.MaxCandidates <= 0 || cfg.MaxCandidates > MaxTelemetryAnalysisCandidates ||
 		cfg.MaxSourceBytes <= 0 || cfg.MaxSourceBytes > 8<<30 ||
 		cfg.MaxPageRows <= 0 || cfg.MaxPageRows > telemetryanalysis.MaxLMUDuckDBPageRows {
 		return ErrTelemetryAnalysisInvalidRequest
@@ -278,7 +307,8 @@ func observationForCandidate(candidate telemetryanalysis.Candidate, observedAt t
 
 func publicTelemetryAnalysisCandidate(candidate telemetryanalysis.Candidate) TelemetryAnalysisCandidate {
 	return TelemetryAnalysisCandidate{
-		ID: candidate.Locator, State: string(candidate.State), Size: candidate.Size,
+		DisplayName: candidate.DisplayName,
+		ID:          candidate.Locator, State: string(candidate.State), Size: candidate.Size,
 		ModifiedAt: candidate.ModTime, WALPresent: candidate.WALPresent,
 	}
 }
@@ -324,6 +354,9 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if revalidateErr != nil {
 		return TelemetryAnalysisOpenedSession{}, revalidateErr
 	}
+	record.mu.Lock()
+	expectedSessionID := record.expectedSessionID
+	record.mu.Unlock()
 	if !service.runtimeReady || service.readerFactory == nil {
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisRuntimeUnavailable
 	}
@@ -340,7 +373,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if stageErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(stageErr)
 	}
-	ownedSession := &telemetryAnalysisSession{staged: staged}
+	ownedSession := &telemetryAnalysisSession{staged: staged, artifact: artifact, sourcePath: candidate.LocalPath()}
 	cleanupOwnedSession := true
 	defer func() {
 		if cleanupOwnedSession {
@@ -369,6 +402,9 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	session, inspectErr := parser.Inspect(operationCtx)
 	if inspectErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(inspectErr)
+	}
+	if expectedSessionID != "" && session.ID != expectedSessionID {
+		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisCopyChanged
 	}
 	if err := operationCtx.Err(); err != nil {
 		return TelemetryAnalysisOpenedSession{}, err
@@ -403,6 +439,17 @@ func (service *TelemetryAnalysisService) ownedResourceCountLocked() int {
 func (service *TelemetryAnalysisService) revalidateCandidate(ctx context.Context, record *telemetryAnalysisCandidateRecord) (telemetryanalysis.Candidate, error) {
 	record.mu.Lock()
 	defer record.mu.Unlock()
+	if record.selected {
+		candidate, err := telemetryanalysis.DiscoverSelected(ctx, service.metadata, record.root, record.selectedPath)
+		if err != nil || candidate.Locator != record.candidate.Locator {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisCandidateUnknown
+		}
+		record.candidate = record.tracker.Assess(candidate, observationForCandidate(candidate, service.now()))
+		if record.candidate.State != telemetryanalysis.StateReady {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisNotReady
+		}
+		return record.candidate, nil
+	}
 	candidates, err := telemetryanalysis.Discover(ctx, service.metadata, record.root, service.cfg.MaxCandidates)
 	if err != nil {
 		return telemetryanalysis.Candidate{}, publicTelemetryAnalysisError(err)
@@ -620,6 +667,8 @@ func publicTelemetryAnalysisError(err error) error {
 		return err
 	case errors.Is(err, telemetryanalysis.ErrByteLimit):
 		return ErrTelemetryAnalysisTooLarge
+	case errors.Is(err, telemetryanalysis.ErrCandidateLimit):
+		return ErrTelemetryAnalysisCandidateLimit
 	case errors.Is(err, telemetryanalysis.ErrNotReady), errors.Is(err, telemetryanalysis.ErrSourceChanged),
 		errors.Is(err, telemetryanalysis.ErrStagingRejected):
 		return ErrTelemetryAnalysisNotReady

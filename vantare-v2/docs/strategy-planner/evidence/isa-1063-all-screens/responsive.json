@@ -1,0 +1,338 @@
+[
+  {
+    "width": 320,
+    "screen": "step-0",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-1",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-2",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-3",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-4",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-5",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "step-6",
+    "mainScroll": 250,
+    "mainWidth": 250,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "summary",
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "advanced",
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "plan",
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "calculation",
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 320,
+    "screen": "revisions",
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-0",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-1",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-2",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-3",
+    "mainScroll": 686,
+    "mainWidth": 686,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-4",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-5",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "step-6",
+    "mainScroll": 696,
+    "mainWidth": 696,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "summary",
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "advanced",
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "plan",
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "calculation",
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "screen": "revisions",
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-0",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-1",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-2",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-3",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-4",
+    "mainScroll": 942,
+    "mainWidth": 942,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-5",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "step-6",
+    "mainScroll": 952,
+    "mainWidth": 952,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "summary",
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "advanced",
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "plan",
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "calculation",
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "screen": "revisions",
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-0",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-1",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-2",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-3",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-4",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-5",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "step-6",
+    "mainScroll": 1112,
+    "mainWidth": 1112,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "summary",
+    "mainScroll": 1349,
+    "mainWidth": 1349,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "advanced",
+    "mainScroll": 1359,
+    "mainWidth": 1359,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "plan",
+    "mainScroll": 1349,
+    "mainWidth": 1349,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "calculation",
+    "mainScroll": 1359,
+    "mainWidth": 1359,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "screen": "revisions",
+    "mainScroll": 1359,
+    "mainWidth": 1359,
+    "overflow": false
+  }
+]

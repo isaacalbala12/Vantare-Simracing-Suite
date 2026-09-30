@@ -7,10 +7,39 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestPersistentCopyIOErrorClassifiesDestinationFailure(t *testing.T) {
+	tests := []struct {
+		name  string
+		cause error
+		want  error
+	}{
+		{name: "permission", cause: &os.PathError{Op: "open", Path: "destination", Err: os.ErrPermission}, want: ErrPersistentCopyPermission},
+		{name: "no space", cause: &os.PathError{Op: "write", Path: "destination", Err: syscall.ENOSPC}, want: ErrPersistentCopyNoSpace},
+		{name: "other", cause: errors.New("unknown write failure"), want: ErrPersistentCopyRejected},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := persistentCopyIOError(test.cause)
+			if !errors.Is(got, test.want) || !errors.Is(got, ErrPersistentCopyRejected) {
+				t.Fatalf("copy error = %v, want %v and rejection", got, test.want)
+			}
+		})
+	}
+	if runtime.GOOS == "windows" {
+		for _, code := range []syscall.Errno{39, 112} {
+			if got := persistentCopyIOError(&os.PathError{Op: "write", Path: "destination", Err: code}); !errors.Is(got, ErrPersistentCopyNoSpace) {
+				t.Fatalf("Windows disk-full code %d = %v", code, got)
+			}
+		}
+	}
+}
 
 func TestStageAuthorizedHistoricalArtifactCopiesExactBytesAndCleansUp(t *testing.T) {
 	originalDirectory := t.TempDir()
@@ -55,6 +84,90 @@ func TestStageAuthorizedHistoricalArtifactCopiesExactBytesAndCleansUp(t *testing
 	}
 	if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("staging directory still exists: %v", err)
+	}
+}
+
+func TestPersistVerifiedHistoricalCopySurvivesStagingCleanup(t *testing.T) {
+	originalPath := filepath.Join(t.TempDir(), "original.duckdb")
+	content := []byte("authorized recorded telemetry")
+	if err := os.WriteFile(originalPath, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifact, candidate := authorizedOSArtifact(t, originalPath)
+	staged, err := StageAuthorizedHistoricalArtifact(context.Background(), OSContentSource{}, candidate, artifact, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Cleanup()
+	destination := t.TempDir()
+	copyPath, err := PersistVerifiedHistoricalCopy(context.Background(), staged, destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(copyPath) != destination || filepath.Ext(copyPath) != ".duckdb" {
+		t.Fatalf("copy path outside selected folder: %q", copyPath)
+	}
+	if err := staged.Cleanup(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{originalPath, copyPath} {
+		got, err := os.ReadFile(path)
+		if err != nil || string(got) != string(content) {
+			t.Fatalf("content at %q = %q, %v", path, got, err)
+		}
+	}
+}
+
+func TestPersistVerifiedHistoricalCopyRejectsChangedStagingWithoutLeavingFile(t *testing.T) {
+	originalPath := filepath.Join(t.TempDir(), "original.duckdb")
+	if err := os.WriteFile(originalPath, []byte("authorized recorded telemetry"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifact, candidate := authorizedOSArtifact(t, originalPath)
+	staged, err := StageAuthorizedHistoricalArtifact(context.Background(), OSContentSource{}, candidate, artifact, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Cleanup()
+	if err := os.WriteFile(staged.Path(), []byte("changed staged telemetry"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destination := t.TempDir()
+	if _, err := PersistVerifiedHistoricalCopy(context.Background(), staged, destination); !errors.Is(err, ErrPersistentCopyRejected) {
+		t.Fatalf("changed staging error = %v", err)
+	}
+	entries, err := os.ReadDir(destination)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("leftovers = %v, %v", entries, err)
+	}
+}
+
+func TestPersistVerifiedHistoricalCopyRejectsInvalidDestinationAndCancellation(t *testing.T) {
+	originalPath := filepath.Join(t.TempDir(), "original.duckdb")
+	if err := os.WriteFile(originalPath, []byte("authorized recorded telemetry"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifact, candidate := authorizedOSArtifact(t, originalPath)
+	staged, err := StageAuthorizedHistoricalArtifact(context.Background(), OSContentSource{}, candidate, artifact, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Cleanup()
+	destination := t.TempDir()
+	if _, err := PersistVerifiedHistoricalCopy(context.Background(), staged, filepath.Join(destination, "missing")); !errors.Is(err, ErrPersistentCopyRejected) {
+		t.Fatalf("missing destination error = %v", err)
+	}
+	if _, err := PersistVerifiedHistoricalCopy(context.Background(), staged, staged.Directory()); !errors.Is(err, ErrPersistentCopyRejected) {
+		t.Fatalf("ephemeral destination error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := PersistVerifiedHistoricalCopy(ctx, staged, destination); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled copy error = %v", err)
+	}
+	entries, err := os.ReadDir(destination)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("leftovers = %v, %v", entries, err)
 	}
 }
 

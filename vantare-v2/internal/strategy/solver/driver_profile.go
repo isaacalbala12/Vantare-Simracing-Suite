@@ -65,6 +65,13 @@ func (input SolverInputV2) applyDriverConstraints(before searchNode, after *sear
 			return false, "driver_unavailable", fmt.Sprintf("el piloto %s no esta disponible entre las vueltas %d y %d", driver.id, window.FromLap, window.ToLap)
 		}
 	}
+	startSeconds := before.total(input.Formation.Seconds.Value)
+	endSeconds := after.total(input.Formation.Seconds.Value)
+	for _, window := range limit.UnavailableTime {
+		if compareTotalSeconds(startSeconds, window.ToSeconds) < 0 && compareTotalSeconds(endSeconds, window.FromSeconds) > 0 {
+			return false, "driver_unavailable_time", fmt.Sprintf("el piloto %s no esta disponible entre %.3f s y %.3f s de carrera", driver.id, window.FromSeconds, window.ToSeconds)
+		}
+	}
 	driveSeconds := drivingSeconds(*after) - drivingSeconds(before)
 	usage := after.driverUsage[driver.id]
 	usage.laps += endLap - startLap + 1
@@ -109,6 +116,9 @@ func sameDriverUsage(left, right map[string]driverUsage) bool {
 
 func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecisionModel, error) {
 	if len(input.DriverProfiles) == 0 {
+		if len(input.DriverSequence) != 0 {
+			return driverDecisionModel{}, fmt.Errorf("driverSequence requires driverProfiles")
+		}
 		if len(input.EventRules.DriverLimits) != 0 {
 			return driverDecisionModel{}, fmt.Errorf("eventRules.driverLimits requires driverProfiles")
 		}
@@ -137,6 +147,11 @@ func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecis
 		}
 		model.order = append(model.order, cost)
 	}
+	for index, driverID := range input.DriverSequence {
+		if _, ok := seen[driverID]; !ok {
+			return driverDecisionModel{}, fmt.Errorf("driverSequence[%d] has no driverProfile", index)
+		}
+	}
 	for _, driverID := range input.sortedDriverLimitIDs() {
 		limit := input.EventRules.DriverLimits[driverID]
 		if _, ok := seen[driverID]; !ok {
@@ -147,6 +162,25 @@ func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecis
 		}
 	}
 	return model, nil
+}
+
+func (input SolverInputV2) driverSequenceAllows(stintIndex int, driverID string) bool {
+	return len(input.DriverSequence) == 0 || input.DriverSequence[stintIndex%len(input.DriverSequence)] == driverID
+}
+
+func (input SolverInputV2) driverSequenceComplete(decision DecisionVector) bool {
+	if len(input.DriverSequence) == 0 {
+		return true
+	}
+	if len(decision.Stints) < len(input.DriverSequence) {
+		return false
+	}
+	for index, stint := range decision.Stints {
+		if !input.driverSequenceAllows(index, stint.Driver) {
+			return false
+		}
+	}
+	return true
 }
 
 func (input SolverInputV2) sortedDriverLimitIDs() []string {
@@ -255,6 +289,11 @@ func (limit DriverLimit) validate(raceLaps int64) error {
 	for index, window := range limit.Unavailable {
 		if window.FromLap < 1 || window.ToLap < window.FromLap || window.ToLap > raceLaps {
 			return fmt.Errorf("unavailable[%d] must satisfy 1 <= fromLap <= toLap <= raceLaps", index)
+		}
+	}
+	for index, window := range limit.UnavailableTime {
+		if !finite(window.FromSeconds) || !finite(window.ToSeconds) || window.FromSeconds < 0 || window.ToSeconds <= window.FromSeconds {
+			return fmt.Errorf("unavailableTime[%d] must satisfy 0 <= fromSeconds < toSeconds with finite values", index)
 		}
 	}
 	return nil

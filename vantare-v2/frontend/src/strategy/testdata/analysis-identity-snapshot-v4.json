@@ -1,0 +1,72 @@
+{
+  "contractVersion": "analysis.mixed-snapshot.v4",
+  "base": {
+    "sessionId": "session",
+    "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sizeBytes": 100,
+    "parserId": "lmu-duckdb",
+    "parserVersion": "1",
+    "schemaFingerprint": "schema",
+    "analysisVersion": "analysis.v1",
+    "segmentationDigest": "e8fb6e78f344927b5c2e8e4a2a22eb8008e73e8fc5a91444772134796b72055d"
+  },
+  "snapshotId": "27f05875cc73750171fd2841fdad24bc99649c8433760ff22606467bd9d774f4",
+  "corrections": [],
+  "classifications": [
+    {
+      "baseId": "f202b32be5e606e55a48d5b4d23c7a1f98fb41fb740c68108f4a66ba9888407b",
+      "correctionId": "e41f953dc3bad9871499d1063798ed3ab52d3dc530f37580114a6f5836d169eb",
+      "request": {
+        "base": {
+          "sessionId": "session",
+          "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sizeBytes": 100,
+          "parserId": "lmu-duckdb",
+          "parserVersion": "1",
+          "schemaFingerprint": "schema",
+          "analysisVersion": "analysis.v1",
+          "segmentationDigest": "e8fb6e78f344927b5c2e8e4a2a22eb8008e73e8fc5a91444772134796b72055d"
+        },
+        "field": "SessionType",
+        "expectedOriginal": "race",
+        "replacement": "qualify",
+        "reason": "Reviewed session type",
+        "provenance": "manual"
+      },
+      "original": "race",
+      "corrected": "qualify"
+    },
+    {
+      "baseId": "f202b32be5e606e55a48d5b4d23c7a1f98fb41fb740c68108f4a66ba9888407b",
+      "correctionId": "a94b06e805a9e8f37a3409d3feb0b78900a154ed09f6e96d3859b07e8462c766",
+      "request": {
+        "base": {
+          "sessionId": "session",
+          "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sizeBytes": 100,
+          "parserId": "lmu-duckdb",
+          "parserVersion": "1",
+          "schemaFingerprint": "schema",
+          "analysisVersion": "analysis.v1",
+          "segmentationDigest": "e8fb6e78f344927b5c2e8e4a2a22eb8008e73e8fc5a91444772134796b72055d"
+        },
+        "field": "TrackName",
+        "expectedOriginal": "Imola",
+        "replacement": "Monza",
+        "reason": "Reviewed identity",
+        "provenance": "manual",
+        "canonicalCombinationId": "lmu:955ca64f59038ce1b39f3e58fb50bde0cec0c36b99a235253f235c0f89b9d8cb"
+      },
+      "original": "Imola",
+      "corrected": "Monza"
+    }
+  ],
+  "canonicalCombination": {
+    "id": "lmu:955ca64f59038ce1b39f3e58fb50bde0cec0c36b99a235253f235c0f89b9d8cb",
+    "simId": "lmu",
+    "trackName": "Monza",
+    "trackLayout": "GP",
+    "carName": "Oreca 07",
+    "carClass": "LMP2"
+  }
+}

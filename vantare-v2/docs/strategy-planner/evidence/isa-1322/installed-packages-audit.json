@@ -1,0 +1,38 @@
+[
+  {
+    "package": "vite@8.0.16",
+    "registry_and_archive_integrity": true,
+    "files_compared": 36,
+    "differences": []
+  },
+  {
+    "package": "@vitejs/plugin-react@6.0.2",
+    "registry_and_archive_integrity": true,
+    "files_compared": 8,
+    "differences": []
+  },
+  {
+    "package": "@tailwindcss/vite@4.3.0",
+    "registry_and_archive_integrity": true,
+    "files_compared": 5,
+    "differences": []
+  },
+  {
+    "package": "react@19.2.7",
+    "registry_and_archive_integrity": true,
+    "files_compared": 27,
+    "differences": []
+  },
+  {
+    "package": "react-dom@19.2.7",
+    "registry_and_archive_integrity": true,
+    "files_compared": 43,
+    "differences": []
+  },
+  {
+    "package": "@wailsio/runtime@3.0.0-alpha.79",
+    "registry_and_archive_integrity": true,
+    "files_compared": 49,
+    "differences": []
+  }
+]

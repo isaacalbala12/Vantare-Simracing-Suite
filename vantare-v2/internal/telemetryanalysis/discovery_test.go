@@ -82,6 +82,32 @@ func TestDiscoverHonorsCancellationAndCandidateLimit(t *testing.T) {
 	}
 }
 
+func TestDiscoverSanitizesLocalLabelsWithoutSerializingThem(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct{ name, want string }{
+		{"Imola_R_2026.duckdb", "Imola_R_2026.duckdb"},
+		{"Imola\n\u202erace.duckdb", "Imolarace.duckdb"},
+		{"São_Paulo.duckdb", "São_Paulo.duckdb"},
+		{strings.Repeat("a", 300) + ".duckdb", strings.Repeat("a", 255) + "…"},
+	} {
+		source := staticMetadataSource{entries: []MetadataEntry{{Name: test.name, Size: 10}}}
+		found, err := Discover(context.Background(), source, SourceRoot{Kind: SourceLMU, Root: "private-user/sessions", Extensions: []string{".duckdb"}}, 1)
+		if err != nil || len(found) != 1 {
+			t.Fatalf("discovery: %d candidates, %v", len(found), err)
+		}
+		if found[0].DisplayName != test.want {
+			t.Fatalf("label = %q, want %q", found[0].DisplayName, test.want)
+		}
+		encoded, err := json.Marshal(found[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(encoded), test.want) || strings.Contains(string(encoded), "private-user") {
+			t.Fatal("domain candidate JSON contains local filename or directory")
+		}
+	}
+}
+
 func TestDiscoverTemporaryFilesystemDoesNotModifyOriginal(t *testing.T) {
 	t.Parallel()
 

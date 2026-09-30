@@ -48,7 +48,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
-	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
+	"github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -309,7 +309,7 @@ func resolveTelemetryAnalysisBackendConfig(
 		ApplicationDirectory: filepath.Dir(executablePath),
 		StagingRoot:          filepath.Join(cacheDirectory, "Vantare", "telemetry-analysis", "staging"),
 		StabilityWindow:      5 * time.Second,
-		MaxCandidates:        128,
+		MaxCandidates:        app.MaxTelemetryAnalysisCandidates,
 		MaxSourceBytes:       2 << 30,
 		MaxPageRows:          4096,
 	}, nil
@@ -1440,6 +1440,7 @@ func replayAutostartFlag(id string, svc *launcher.Service, launch func(string)) 
 }
 
 func main() {
+	localResult := localDevelopmentResult()
 	if nonce, child := voiceinput.ChildNonceFromArgs(os.Args[1:]); child {
 		if err := voiceinput.RunUnavailableChild(nonce, os.Stdout); err != nil {
 			os.Exit(2)
@@ -1449,7 +1450,11 @@ func main() {
 	configureRuntimeGC(os.LookupEnv, debug.SetGCPercent)
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := webviewUserDataFolder(filepath.Join(appData, "Vantare", "webview_v0.1.0.5"))
+		folder := "webview_v0.1.0.5"
+		if localResult != nil {
+			folder = "webview_localdev"
+		}
+		udf := webviewUserDataFolder(filepath.Join(appData, "Vantare", folder))
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
@@ -1533,6 +1538,9 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(distFS),
 		},
+	}
+	if localResult != nil {
+		appOptions.Name = "Vantare — Desarrollo local"
 	}
 	// Gancho de diagnostico: `VANTARE_WEBVIEW_DEBUG_PORT=9222` abre el protocolo
 	// DevTools del WebView2 para poder perfilar la app real (tracing, metricas de
@@ -1704,51 +1712,7 @@ func main() {
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
-	var strategyBridge strategyCommandExecutor
 	strategyRoot, strategyRootErr := strategyRepositoryRoot(cfgDir)
-	if strategyRootErr != nil {
-		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
-		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
-	} else {
-		referenceCatalog := strategycatalog.NewConsumer(strategycatalog.ConsumerOptions{
-			StatePath: filepath.Join(strategyRoot, "reference-catalog-state.json"),
-			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
-			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
-		})
-		var sessionCatalog *telemetryanalysis.SessionCatalog
-		var coldStart *strategycoldstart.Service
-		sessionStore, storeErr := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Join(strategyRoot, "authorized-sessions.json"))
-		if storeErr != nil {
-			log.Printf("warning: authorized Strategy sessions are unavailable")
-			sessionCatalog = telemetryanalysis.NewSessionCatalog(nil)
-		} else {
-			sessionCatalog = telemetryanalysis.NewSessionCatalog(sessionStore)
-			if executable, executableErr := os.Executable(); executableErr == nil {
-				importer, importerErr := strategycoldstart.NewLMUImporter(filepath.Dir(executable), filepath.Join(strategyRoot, "telemetry-staging"))
-				if importerErr == nil {
-					coldStart = strategycoldstart.NewService(strategycoldstart.ServiceOptions{
-						StatePath: filepath.Join(strategyRoot, "cold-start.json"),
-						Discover: func(ctx context.Context) ([]telemetryanalysis.Candidate, error) {
-							return strategycoldstart.DiscoverStandardLMU(ctx, strategycoldstart.StandardLMUTelemetryRoot(), time.Second)
-						},
-						Importer: importer, Store: sessionStore,
-					})
-				} else {
-					log.Printf("warning: Strategy cold start importer is unavailable")
-				}
-			}
-		}
-		// Un *Service nulo dentro de la interfaz coldStartPort no es nil como
-		// interfaz: pasarlo tal cual hace que Status() entre con receptor nulo y
-		// rompa la app al arrancar. Solo se inyecta cuando existe de verdad.
-		strategyService := strategyapplication.NewServiceWithSources(repo, sessionCatalog, nil, referenceCatalog)
-		if coldStart != nil {
-			strategyService = strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
-		}
-		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
-	}
-	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	var curationUploadService *curation.UploadService
 	if strategyRootErr == nil {
 		curationTarget := fmt.Sprintf("Vantare/%s/CurationCredentialsV1", buildChannel)
@@ -1982,41 +1946,48 @@ func main() {
 		licensePublicKeys,
 		os.Getenv("VANTARE_LICENSE_PUBLIC_KEYS"),
 	)
-	licenseClockTarget, authSessionTarget := protectedStoreTargets(
-		buildChannel,
-		supabaseURLResolved,
-	)
-	licenseSvc := license.NewService(license.Config{
-		SupabaseURL:     supabaseURLResolved,
-		SupabaseAnonKey: supabaseAnonKeyResolved,
-		CachePath:       licenseCachePath,
-	}, emitter, license.MachineFingerprint)
-	licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
-	publicKeys, publicKeyErr := license.ParsePublicKeys(licensePublicKeysResolved)
-	if publicKeyErr != nil {
-		log.Printf("license: invalid public key configuration: %v", publicKeyErr)
-	} else if len(publicKeys) == 0 {
-		log.Printf("license: no offline credential public keys configured")
+	licenseClockTarget, authSessionTarget := protectedStoreTargets(buildChannel, supabaseURLResolved)
+	var licenseSvc *license.Service
+	if localResult != nil {
+		licenseSvc = license.NewService(license.Config{}, emitter, nil)
+		licenseSvc.EmitChanged(localResult)
 	} else {
-		licenseSvc.WithVerifier(license.NewCredentialVerifier(
-			publicKeys,
-			license.NewProtectedClockStore(licenseClockTarget),
-		))
-	}
-	if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
-		licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURLResolved, supabaseAnonKeyResolved))
-	} else {
-		log.Printf("license: supabase env vars missing, running in offline-grace mode")
-	}
-	if err := licenseSvc.LoadCache(); err != nil {
-		log.Printf("warning: could not load license cache: %v", err)
+		licenseSvc = license.NewService(license.Config{
+			SupabaseURL:     supabaseURLResolved,
+			SupabaseAnonKey: supabaseAnonKeyResolved,
+			CachePath:       licenseCachePath,
+		}, emitter, license.MachineFingerprint)
+		licenseSvc.WithCache(license.NewLicenseCache(licenseCachePath))
+		publicKeys, publicKeyErr := license.ParsePublicKeys(licensePublicKeysResolved)
+		if publicKeyErr != nil {
+			log.Printf("license: invalid public key configuration: %v", publicKeyErr)
+		} else if len(publicKeys) == 0 {
+			log.Printf("license: no offline credential public keys configured")
+		} else {
+			licenseSvc.WithVerifier(license.NewCredentialVerifier(
+				publicKeys,
+				license.NewProtectedClockStore(licenseClockTarget),
+			))
+		}
+		if supabaseURLResolved != "" && supabaseAnonKeyResolved != "" {
+			licenseSvc.WithClient(license.NewStdlibSupabaseClient(supabaseURLResolved, supabaseAnonKeyResolved))
+		} else {
+			log.Printf("license: supabase env vars missing, running in offline-grace mode")
+		}
+		if err := licenseSvc.LoadCache(); err != nil {
+			log.Printf("warning: could not load license cache: %v", err)
+		}
 	}
 	// Publica el estado cacheado en cuanto haya un suscriptor, para que el Hub
 	// pinte sin esperar a la validacion de red. Sin esto, LoadCache cargaba la
 	// cache y nadie la usaba: el frontend se quedaba en "Cargando licencia..."
 	// uno a tres segundos en cada arranque.
 	wailsApp.Event.On("license:cached:get", func(_ *application.CustomEvent) {
-		licenseSvc.EmitCachedState()
+		if localResult != nil {
+			licenseSvc.EmitChanged(localResult)
+		} else {
+			licenseSvc.EmitCachedState()
+		}
 	})
 	// Widget policy snapshot for Studio/Desktop consumers (ISA-1097). The
 	// frontend requests Events.Emit("widget-policy:get") and applies the
@@ -2030,10 +2001,30 @@ func main() {
 		emitter.Emit("widget-policy:snapshot", licenseSvc.CurrentWidgetPolicy().ToWire())
 	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	var strategyRepo *strategyrepository.Repository[json.RawMessage]
+	var sessionCatalog *telemetryanalysis.SessionCatalog
+	var coldStart *coldstart.Service
+	if strategyRootErr != nil {
+		log.Printf("warning: Strategy repository is unavailable")
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
+		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+	} else {
+		strategyRepo = repo
+		executable, executableErr := os.Executable()
+		executableDir := ""
+		if executableErr == nil {
+			executableDir = filepath.Dir(executable)
+		}
+		sessionCatalog, coldStart = strategyTelemetrySources(strategyRoot, executableDir)
+	}
 	telemetryAnalysisCfg, telemetryAnalysisCfgErr := telemetryAnalysisBackendConfig()
 	if telemetryAnalysisCfgErr != nil {
 		log.Printf("warning: Telemetry Analysis backend configuration is unavailable")
 	} else {
+		if strategyRootErr == nil {
+			telemetryAnalysisCfg.CorrectionRoot = filepath.Join(filepath.Dir(strategyRoot), "telemetry-analysis")
+		}
+		telemetryAnalysisCfg.SessionCatalog = sessionCatalog
 		analysisService, analysisServiceErr := app.NewTelemetryAnalysisService(telemetryAnalysisCfg, licenseSvc)
 		if analysisServiceErr != nil {
 			log.Printf("warning: Telemetry Analysis service is unavailable")
@@ -2045,7 +2036,21 @@ func main() {
 			}
 		}
 	}
+	// Analysis and its license boundary must exist before Strategy consumes pinned revisions.
+	var strategyBridge strategyCommandExecutor
+	if strategyRepo != nil {
+		referenceCatalog := strategycatalog.NewConsumer(strategyReferenceCatalogOptions(strategyRoot))
+		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(strategyRepo, app.NewStrategyRevisionCatalog(sessionCatalog, telemetryAnalysisSvc), nil, referenceCatalog, coldStart)
+		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
+	}
+	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
+	restoreAuthSession := func() (authsession.Session, error) {
+		if localResult != nil {
+			return authsession.Session{}, authsession.ErrNotFound
+		}
+		return authManager.Restore()
+	}
 
 	// Forward UI license validation requests to the Go service. The frontend
 	// fires Events.Emit("license:validate", { sessionToken }) and we answer
@@ -2060,6 +2065,10 @@ func main() {
 		licenseValidateInFlight = map[string]bool{}
 	)
 	wailsApp.Event.On("license:validate", func(event *application.CustomEvent) {
+		if localResult != nil {
+			licenseSvc.EmitChanged(localResult)
+			return
+		}
 		var payload struct {
 			SessionToken string `json:"sessionToken"`
 			RefreshToken string `json:"refreshToken"`
@@ -2088,7 +2097,7 @@ func main() {
 			licenseValidateMu.Unlock()
 		}()
 		trustedSessionToken := ""
-		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
+		if protectedSession, restoreErr := restoreAuthSession(); restoreErr == nil {
 			trustedSessionToken = protectedSession.AccessToken
 		} else if !errors.Is(restoreErr, authsession.ErrNotFound) &&
 			!errors.Is(restoreErr, authsession.ErrInvalidStoredSessionRemoved) {
@@ -2125,7 +2134,10 @@ func main() {
 	})
 
 	wailsApp.Event.On("auth:session:get", func(_ *application.CustomEvent) {
-		session, err := authManager.Restore()
+		if localResult != nil {
+			return
+		}
+		session, err := restoreAuthSession()
 		if err != nil {
 			if errors.Is(err, authsession.ErrInvalidStoredSessionRemoved) {
 				log.Printf("invalid protected auth session removed")
@@ -2142,6 +2154,9 @@ func main() {
 	})
 
 	wailsApp.Event.On("auth:session:clear:request", func(event *application.CustomEvent) {
+		if localResult != nil {
+			return
+		}
 		var payload struct {
 			RequestID string `json:"requestId"`
 		}
@@ -2175,6 +2190,9 @@ func main() {
 	// validated or restored from Credential Manager. An arbitrary WebView event
 	// can never establish the first trusted session.
 	wailsApp.Event.On("auth:session:save", func(event *application.CustomEvent) {
+		if localResult != nil {
+			return
+		}
 		var payload struct {
 			AccessToken  string `json:"accessToken"`
 			RefreshToken string `json:"refreshToken"`
@@ -2196,6 +2214,9 @@ func main() {
 	})
 
 	wailsApp.Event.On("license:reset-device", func(event *application.CustomEvent) {
+		if localResult != nil {
+			return
+		}
 		var payload struct {
 			SessionToken string `json:"sessionToken"`
 		}
@@ -2437,6 +2458,7 @@ func main() {
 	// --- OBS / SSE / Auth HTTP server (start early, before any login gate) ---
 	httpSrv = server.New(server.ServerConfig{
 		Addr:        *httpAddr,
+		DisableAuth: localResult != nil,
 		DistFS:      distFS,
 		CfgDir:      cfgDir,
 		EngineerSvc: engSvc,
@@ -2473,6 +2495,12 @@ func main() {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
+		}
+		if localResult != nil {
+			emitter.Emit("auth:attempt:error", map[string]any{
+				"requestId": payload.RequestID, "message": "Account login is unavailable in local development",
+			})
+			return
 		}
 		attempt, err := httpSrv.CreateAuthAttempt(payload.Provider)
 		if err != nil {
@@ -2596,7 +2624,7 @@ func main() {
 		calendarRefreshMu.Lock()
 		defer calendarRefreshMu.Unlock()
 		app.HandleCalendarRefresh(calendarSvc, func() error {
-			session, err := authManager.Restore()
+			session, err := restoreAuthSession()
 			if err != nil {
 				return err
 			}
@@ -3752,7 +3780,7 @@ func main() {
 			RequestID string `json:"requestId"`
 		}
 		decodeEventPayload(event, &payload)
-		session, err := authManager.Restore()
+		session, err := restoreAuthSession()
 		if err != nil {
 			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario", "requestId": payload.RequestID})
 			return
@@ -3765,7 +3793,7 @@ func main() {
 			DraftID string `json:"draftId"`
 		}
 		decodeEventPayload(event, &payload)
-		session, err := authManager.Restore()
+		session, err := restoreAuthSession()
 		if err != nil {
 			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario", "requestId": payload.DraftID})
 			return
@@ -3777,7 +3805,7 @@ func main() {
 	})
 
 	wailsApp.Event.On("schedule:draft:get", func(_ *application.CustomEvent) {
-		session, err := authManager.Restore()
+		session, err := restoreAuthSession()
 		if err != nil {
 			return
 		}
@@ -4074,8 +4102,12 @@ func (w *wailsHubWindow) UnMinimise()       { w.w.UnMinimise() }
 func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
 
 func hubWindowOptions(generation string) application.WebviewWindowOptions {
+	title := "Vantare Hub"
+	if localDevelopmentResult() != nil {
+		title = "Vantare — Desarrollo local"
+	}
 	return application.WebviewWindowOptions{
-		Title:          "Vantare Hub",
+		Title:          title,
 		Width:          1280,
 		Height:         800,
 		Frameless:      false,
@@ -4659,4 +4691,13 @@ func decodeEventPayload(event *application.CustomEvent, out any) {
 		return
 	}
 	_ = json.Unmarshal(raw, out)
+}
+
+func strategyReferenceCatalogOptions(root string) strategycatalog.ConsumerOptions {
+	return strategycatalog.ConsumerOptions{
+		StatePath: filepath.Join(root, "reference-catalog-state.json"),
+		URL:       strategyCatalogURL,
+		// Production trust is empty until an approved catalog/key is provisioned.
+		// TEST fixtures and their cached envelopes must never feed real plans.
+	}
 }

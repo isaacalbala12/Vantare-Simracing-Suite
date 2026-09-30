@@ -3,11 +3,43 @@ package telemetryanalysis
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestProducerPreservesCompleteRevisionSelection(t *testing.T) {
+	request := projectionProducerFixture()
+	for i := range request.Sessions {
+		request.Sessions[i].Revision = &strategyprojection.AnalysisRevisionRef{SessionID: request.Sessions[i].Classified.SessionID, BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	}
+	got, err := ProduceStrategyInputProjectionV2(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.SourceRevisions) != len(request.Sessions) {
+		t.Fatal("lost revisions")
+	}
+	for i := range request.Sessions {
+		if got.SourceRevisions[i] != *request.Sessions[i].Revision {
+			t.Fatal("changed revision")
+		}
+	}
+	request.Sessions[0].Revision.RevisionID = strings.Repeat("d", 64)
+	if got.SourceRevisions[0].RevisionID != strings.Repeat("b", 64) {
+		t.Fatal("aliased input")
+	}
+	request.Sessions[0].Revision.SessionID = "foreign"
+	if _, err := ProduceStrategyInputProjectionV2(request); err == nil {
+		t.Fatal("accepted foreign revision")
+	}
+	request.Sessions[0].Revision = nil
+	if _, err := ProduceStrategyInputProjectionV2(request); err == nil {
+		t.Fatal("accepted partial revisions")
+	}
+}
 
 type projectionProducerExpected struct {
 	ContractVersion string                        `json:"contractVersion"`
@@ -105,6 +137,37 @@ func TestProduceStrategyInputProjectionV2ComposesIndependentFamilies(t *testing.
 	if got.Temporal.Segments[0].SegmentID != "race-1:segment-1" ||
 		got.Temporal.Gaps[0].GapID != "race-1:gap-1" {
 		t.Fatalf("temporal ids must be session scoped: %#v", got.Temporal)
+	}
+}
+
+func TestProduceStrategyInputProjectionV2VirtualEnergyCapability(t *testing.T) {
+	for _, tc := range []struct {
+		name, simID, class string
+		want               strategyprojection.Presence
+	}{
+		{"LMU LMP2", SimIDLMU, "LMP2_ELMS", strategyprojection.PresenceMissing},
+		{"LMU GT3", SimIDLMU, "LMGT3", strategyprojection.PresenceValid},
+		{"LMU Hypercar", SimIDLMU, "Hypercar", strategyprojection.PresenceValid},
+		{"LMU Hyper alias", SimIDLMU, "Hyper", strategyprojection.PresenceValid},
+		{"other simulator", "other", "LMP2", strategyprojection.PresenceValid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := projectionProducerFixture()
+			request.Combination.SimID, request.Combination.CarClass = tc.simID, tc.class
+			for i := range request.Sessions {
+				request.Sessions[i].Classified.Combination = request.Combination
+			}
+			got, err := ProduceStrategyInputProjectionV2(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.VirtualEnergyConsumption.Presence != tc.want {
+				t.Fatalf("VE presence = %s, want %s", got.VirtualEnergyConsumption.Presence, tc.want)
+			}
+			if tc.want == strategyprojection.PresenceMissing && got.VirtualEnergyConsumption.Reason != reasonVENotApplicable {
+				t.Fatalf("VE reason = %q", got.VirtualEnergyConsumption.Reason)
+			}
+		})
 	}
 }
 

@@ -1,4 +1,12 @@
 import { Events } from "@wailsio/runtime";
+import { validateStrategyEventRules, type StrategyEventRules } from "./strategy-event-rules";
+import {
+  STRATEGY_COMPOUNDS,
+  parseStrategyTyreFitment,
+  type StrategyCompound,
+  type StrategyTyre,
+  type StrategyTyreFitment,
+} from "./strategy-tyre";
 
 import {
   decodePlanRevisionV1,
@@ -18,6 +26,9 @@ export type StrategyApplicationOperation =
   | "open"
   | "edit"
   | "save_revision"
+  | "get_pending_revision_save"
+  | "resolve_pending_revision_save"
+  | "acknowledge_pending_revision_save"
   | "duplicate"
   | "activate"
   | "deactivate"
@@ -40,6 +51,7 @@ export type StrategyApplicationOperation =
   | "calculate_orbit"
   | "list_session_combinations"
   | "get_event_planning_inputs"
+  | "get_revision_planning_inputs"
   | "get_validated_examples"
   | "list_reference_catalog"
   | "get_cold_start_status"
@@ -147,11 +159,19 @@ export type StrategyProjectionFamilyV2 = {
 
 export type StrategyClassPaceReasonV2 = "no_class_pace_source";
 
+export type StrategyAnalysisRevisionRef = {
+  readonly sessionId: string;
+  readonly baseDigest: string;
+  readonly revisionId: string;
+  readonly snapshotId: string;
+};
+
 export type StrategyInputProjectionV2 = {
   readonly contractVersion: "strategyinputprojection.v2";
   readonly generatedAt: string;
   readonly computationVersion: string;
   readonly sourceSessions: readonly string[];
+  readonly sourceRevisions?: readonly StrategyAnalysisRevisionRef[];
   readonly combinationId: string;
   readonly fuelConsumption: StrategyProjectionFamilyV2 & {
     readonly meanPerLap: number;
@@ -234,7 +254,14 @@ export type StrategyWeatherScenarioV1 = {
 };
 export type StrategyWeightedWeatherScenarioV1 = { readonly scenario: StrategyWeatherScenarioV1; readonly weight: number };
 
+export type StrategySessionSelectionV2 = {
+  readonly sessionId: string;
+  readonly included: boolean;
+  readonly revision?: StrategyAnalysisRevisionRef;
+};
+
 export type StrategyEventV2 = {
+  readonly rules?: StrategySourcedV2<StrategyEventRules>;
   readonly id: string;
   readonly name: StrategySourcedV2<string>;
   readonly source: StrategySourcedV2<"custom" | "series" | "roster">;
@@ -256,7 +283,7 @@ export type StrategyEventV2 = {
   readonly tyreInventory: StrategyTyreInventoryV2;
   readonly combination?: {
     readonly combinationId: string;
-    readonly sessions: readonly { readonly sessionId: string; readonly included: boolean }[];
+    readonly sessions: readonly StrategySessionSelectionV2[];
   };
   readonly planningInputs?: StrategyPlanningInputsV2;
   readonly weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[];
@@ -266,7 +293,7 @@ export type StrategyEventV2 = {
 
 export type StrategyDocumentV2 = {
   readonly contractVersion: "strategy.v2";
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "2.0.0" | "2.1.0";
   readonly generatedAt: string;
   readonly events: readonly StrategyEventV2[];
   readonly activeEventId?: string;
@@ -331,24 +358,84 @@ export type StrategyVariantComparisonV2 = {
   readonly differentFields: readonly string[];
 };
 
-export type StrategyOrbitCalculationInputV1 = {
-  readonly event: {
-    readonly durationMinutes: number;
-    readonly tankLiters: number;
-    readonly pitLossSeconds: number;
+export type StrategyOrbitPitServicesV1 = {
+  readonly transitSeconds: number;
+  readonly refuelRateLPerS: number;
+  readonly veRatePPerS: number;
+  readonly tyreSeconds: number;
+  readonly serviceMode: "parallel" | "sequential";
+};
+
+type StrategyOrbitCalculationEventV1 = {
+  readonly rules?: StrategyEventRules;
+  readonly tankLiters: number;
+  readonly initialFuelLiters?: number;
+  readonly fuelReserveLiters?: number;
+  readonly virtualEnergy?:
+    | {
+      readonly applicability: "applicable";
+      readonly capacityPercent: number;
+      readonly initialPercent?: number;
+      readonly reservePercent: number;
+    }
+    | {
+      readonly applicability: "not_applicable";
+      readonly capacityPercent?: number;
+      readonly initialPercent?: number;
+      readonly reservePercent?: number;
+    };
+  readonly tyreInventory?: {
+    readonly maximum: number;
+    readonly tyres: readonly StrategyTyre[];
   };
+  readonly compoundPace?: readonly {
+    readonly compound: StrategyCompound;
+    readonly presence: "valid";
+    readonly provenance: StrategyProjectionFamilyV2["provenance"] & { readonly kind: "manual" | "reference" };
+    readonly confidence: StrategyProjectionConfidenceV2;
+    readonly paceDeltaSeconds: number;
+    readonly degradationPerLapSeconds: number;
+    readonly curve?: readonly { readonly lapInStint: number; readonly deltaSeconds: number }[];
+  }[];
+  readonly formationSeconds?: number;
+  readonly pitServices?: StrategyOrbitPitServicesV1;
+  readonly pitLossSeconds: number;
+} & (
+  | {
+    readonly raceKind?: "time";
+    readonly durationMinutes: number;
+    readonly targetLaps?: never;
+  }
+  | {
+    readonly raceKind: "laps";
+    readonly targetLaps: number;
+    readonly durationMinutes: 0;
+  }
+);
+
+export type StrategyOrbitCalculationInputV1 = {
+  readonly event: StrategyOrbitCalculationEventV1;
   readonly drivers: readonly {
     readonly id: string;
     readonly name: string;
-    readonly dry: StrategyOrbitCalculationPaceV1;
-    readonly wet: StrategyOrbitCalculationPaceV1;
-    readonly eco: StrategyOrbitCalculationPaceV1;
+    readonly paceDeltaSeconds?: number;
+    /** Optional legacy fallback. Recorded calculations resolve observed values from planningInputs. */
+    readonly dry?: StrategyOrbitCalculationPaceV1;
+    readonly wet?: StrategyOrbitCalculationPaceV1;
+    readonly eco?: StrategyOrbitCalculationPaceV1;
   }[];
   readonly variants: readonly {
     readonly id: string;
     readonly mode: "dry" | "wet" | "eco";
+    readonly driverOrderMode?: "fixed" | "free";
     readonly order: readonly string[];
     readonly overrides: Readonly<Record<number, { readonly laps?: number; readonly fuel?: number }>>;
+    readonly pitOverrides?: Readonly<Record<number, {
+      readonly fuelLiters?: number;
+      readonly vePercent?: number;
+      readonly changeTyres?: boolean;
+      readonly compound?: StrategyCompound;
+    }>>;
   }[];
   readonly activeVariantId: string;
   readonly planningInputs?: StrategyPlanningInputsV2;
@@ -365,6 +452,7 @@ export type StrategyOrbitCalculatedStintV1 = {
   readonly d: string;
   readonly laps: number;
   readonly fuel: number;
+  readonly virtualEnergy?: number;
   readonly pace: number;
   readonly start: number;
   readonly end: number;
@@ -377,9 +465,13 @@ export type StrategyOrbitCalculatedStintV1 = {
   readonly savingLevel: string;
   readonly fuelSavedPerLap: number;
   readonly savingCostSeconds: number;
+  readonly compound?: StrategyCompound;
+  readonly tyreFitment?: StrategyTyreFitment;
 };
 
 export type StrategyOrbitCalculatedPlanV1 = {
+  readonly modelVersion?: "strategy.solver.v2";
+  readonly objective?: "minimum_total_seconds";
   readonly stints: readonly StrategyOrbitCalculatedStintV1[];
   readonly totalLaps: number;
   readonly total: number;
@@ -394,22 +486,30 @@ export type StrategyOrbitCalculatedPlanV1 = {
   }[];
   readonly drivingSeconds: number;
   readonly pitSeconds: number;
+  readonly formationSeconds?: number;
   readonly startFuelLiters: number;
   readonly finishFuelLiters: number;
   readonly reserveLaps: number;
   /** Margen exigido por producto y si el plan lo cumple (ISA-832). */
   readonly reserveRequiredLaps: number;
   readonly reserveSatisfied: boolean;
+	/** Result of evaluating the final visible decision. Absent on older responses. */
+	readonly optimality?: "proven" | "not_proven";
   readonly stopDetails: readonly {
     readonly index: number;
     readonly lap: number;
     readonly fuelInLiters: number;
     readonly fuelOutLiters: number;
+    readonly virtualEnergyInPercent?: number;
+    readonly virtualEnergyOutPercent?: number;
     readonly pitLossSeconds: number;
     readonly pitTransitSeconds: number;
     readonly pitServiceSeconds: number;
     readonly pitOverlapSeconds: number;
     readonly pitBreakdownAvailable: boolean;
+    readonly changeTyres?: boolean;
+    readonly compound?: StrategyCompound;
+    readonly tyreFitment?: StrategyTyreFitment;
   }[];
   readonly savingApplied: boolean;
 };
@@ -440,6 +540,8 @@ export type StrategyOrbitCalculationResultV1 = {
 export type StrategyOrbitWeatherStintV1 = { readonly index: number; readonly laps: number; readonly compound?: string };
 export type StrategyOrbitWeatherConditionV1 = { readonly lap: number; readonly rainChance: number; readonly bucket: "dry" | "humid" | "wet" };
 export type StrategyOrbitWeatherResultV1 = {
+ readonly comparisonBasis: "fixed_distance";
+ readonly comparisonLaps: number;
   readonly plans: readonly {
     readonly scenarioId: string;
     readonly weight: number;
@@ -500,12 +602,21 @@ type CommandHeader<T extends StrategyApplicationOperation> = {
 
 export type StrategyApplicationCommandV1<TPayload> =
   | (CommandHeader<"create"> & { draft: PlanDraftV1<TPayload> })
-  | (CommandHeader<"open"> & { draftId: string })
+  | (CommandHeader<"open"> & (
+      | { draftId: string; revision?: never }
+      | { revision: RevisionRefV1; draftId?: never }
+    ))
   | (CommandHeader<"edit"> & { draft: PlanDraftV1<TPayload> })
   | (CommandHeader<"save_revision"> & {
       draft: PlanDraftV1<TPayload>;
       revisionId: string;
       createdAt: string;
+      recoverable?: boolean;
+    })
+  | CommandHeader<"get_pending_revision_save" | "resolve_pending_revision_save">
+  | (CommandHeader<"acknowledge_pending_revision_save"> & {
+      pendingCommandId: string;
+      commandDigest: string;
     })
   | (CommandHeader<"duplicate"> & {
       sourceDraft: PlanDraftV1<TPayload>;
@@ -542,6 +653,11 @@ export type StrategyApplicationCommandV1<TPayload> =
   | CommandHeader<"list_events">
   | CommandHeader<"list_session_combinations">
   | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
+  | (CommandHeader<"get_revision_planning_inputs"> & {
+      combinationId: string;
+      sourceRevisions: readonly StrategyAnalysisRevisionRef[];
+      generatedAt: string;
+    })
   | (CommandHeader<"get_validated_examples"> & { eventId: string })
   | CommandHeader<"list_reference_catalog" | "get_cold_start_status" | "import_cold_start_next" | "retry_cold_start_failures" | "reject_cold_start">
   | (CommandHeader<"create_driver" | "edit_driver"> & {
@@ -598,6 +714,7 @@ export type StrategyPlanSummaryV1 = {
   readonly updatedAt: string;
   readonly hasDraft: boolean;
   readonly revisionCount: number;
+  readonly revisionRefs?: readonly RevisionRefV1[];
   readonly latestRevision?: RevisionRefV1;
   readonly latestRevisionAt?: string;
 };
@@ -658,6 +775,8 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly draft?: PlanDraftV1<TPayload>;
   readonly savedDraft?: PlanDraftV1<TPayload>;
   readonly revision?: PlanRevisionV1<TPayload>;
+  readonly pendingRevision?: StrategyPendingRevisionSaveV1<TPayload>;
+  readonly pendingResolution?: "stored" | "not_stored";
   readonly activePlan?: ActivePlanV1;
   readonly activations?: readonly ActivePlanV1[];
   readonly plans?: readonly StrategyPlanSummaryV1[];
@@ -683,6 +802,11 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly imported?: boolean;
   readonly recoveredFromBackup: boolean;
   readonly closed: boolean;
+};
+
+export type StrategyPendingRevisionSaveV1<TPayload> = {
+  readonly command: Extract<StrategyApplicationCommandV1<TPayload>, { operation: "save_revision" }>;
+  readonly commandDigest: string;
 };
 
 export type StrategySessionClimateBucketV1 = {
@@ -753,6 +877,8 @@ export type StrategyReferenceCatalogResultV1 = {
 };
 
 export type StrategyColdStartStatusV1 = {
+  readonly reason?: "catalog_unavailable" | "state_unavailable" | "importer_unavailable";
+  readonly recovered?: boolean;
   readonly shouldShow: boolean;
   readonly checking: boolean;
   readonly found: number;
@@ -771,6 +897,7 @@ export type StrategyApplicationErrorCode =
   | "draft_not_found"
   | "draft_conflict"
   | "revision_not_found"
+  | "pending_revision_conflict"
   | "active_plan_conflict"
   | "unsaved_changes"
   | "plan_not_found"
@@ -786,6 +913,7 @@ export type StrategyApplicationErrorCode =
   | "calculation_invalid"
   | "calculation_infeasible"
   | "calculation_overflow"
+  | "calculation_cancelled"
   | "calculation_timeout"
   | "import_refused"
   // Refusals raised by the package format itself.
@@ -840,6 +968,7 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "draft_not_found",
   "draft_conflict",
   "revision_not_found",
+  "pending_revision_conflict",
   "active_plan_conflict",
   "unsaved_changes",
   "plan_not_found",
@@ -855,6 +984,7 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "calculation_invalid",
   "calculation_infeasible",
   "calculation_overflow",
+  "calculation_cancelled",
   "calculation_timeout",
   "import_refused",
   "invalid_package",
@@ -911,6 +1041,16 @@ export function createStrategyApplicationClient<TPayload>(
               if (payload.commandId !== command.commandId) return;
               void parseResult<TPayload>(payload).then(
                 (result) => {
+                  if (
+                    command.operation === "open" &&
+                    "revision" in command &&
+                    command.revision !== undefined &&
+                    (result.revision === undefined ||
+                      !sameRevisionRef(command.revision, result.revision))
+                  ) {
+                    fail(new Error("Strategy application opened a different revision"));
+                    return;
+                  }
                   if (settled) return;
                   settled = true;
                   cleanup();
@@ -949,6 +1089,16 @@ export function createStrategyApplicationClient<TPayload>(
     },
   };
   return client;
+}
+
+function sameRevisionRef(
+  expected: RevisionRefV1,
+  actual: PlanRevisionV1<unknown>,
+): boolean {
+  return expected.planId === actual.planId &&
+    expected.variantId === actual.variantId &&
+    expected.revisionId === actual.revisionId &&
+    expected.contentHash === actual.contentHash;
 }
 
 export function createWailsStrategyApplicationTransport(): StrategyApplicationEventTransport {
@@ -1016,6 +1166,12 @@ async function parseResult<TPayload>(
             JSON.stringify(payload.revision),
           )) as PlanRevisionV1<TPayload>,
         }),
+    ...(payload.pendingRevision === undefined
+      ? {}
+      : { pendingRevision: parsePendingRevisionSave<TPayload>(payload.pendingRevision) }),
+    ...(payload.pendingResolution === undefined
+      ? {}
+      : { pendingResolution: parsePendingRevisionResolution(payload.pendingResolution) }),
     ...(payload.activePlan === undefined
       ? {}
       : { activePlan: parseActivePlanV1(payload.activePlan) }),
@@ -1079,6 +1235,39 @@ async function parseResult<TPayload>(
   return deepFreeze(result);
 }
 
+function parsePendingRevisionSave<TPayload>(value: unknown): StrategyPendingRevisionSaveV1<TPayload> {
+  const pending = strategyRecord(value, "pendingRevision");
+  const command = strategyRecord(pending.command, "pendingRevision.command");
+  if (command.protocolVersion !== STRATEGY_APPLICATION_PROTOCOL_V1 || command.operation !== "save_revision" || command.recoverable !== true) {
+    throw new Error("Invalid Strategy pending revision command");
+  }
+  strategyString(command.commandId, "pendingRevision.command.commandId");
+  strategyInteger(command.expectedRepositoryVersion, "pendingRevision.command.expectedRepositoryVersion");
+  if ((command.expectedRepositoryVersion as number) < 0) throw new Error("Invalid Strategy pending revision repository version");
+  strategyString(command.revisionId, "pendingRevision.command.revisionId");
+  strategyString(command.createdAt, "pendingRevision.command.createdAt");
+  strategyString(pending.commandDigest, "pendingRevision.commandDigest");
+  if (!/^[a-f0-9]{64}$/.test(pending.commandDigest as string)) throw new Error("Invalid Strategy pending revision digest");
+  return {
+    command: {
+      protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+      commandId: command.commandId as string,
+      operation: "save_revision",
+      expectedRepositoryVersion: command.expectedRepositoryVersion as number,
+      draft: parsePlanDraftV1<TPayload>(command.draft),
+      revisionId: command.revisionId as string,
+      createdAt: command.createdAt as string,
+      recoverable: true,
+    },
+    commandDigest: pending.commandDigest as string,
+  };
+}
+
+function parsePendingRevisionResolution(value: unknown): "stored" | "not_stored" {
+  strategyEnum(value, "pendingResolution", ["stored", "not_stored"]);
+  return value as "stored" | "not_stored";
+}
+
 function parseActivePlans(value: unknown): readonly ActivePlanV1[] {
   if (!Array.isArray(value)) {
     throw new Error("Invalid Strategy activation list");
@@ -1088,11 +1277,14 @@ function parseActivePlans(value: unknown): readonly ActivePlanV1[] {
 
 function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
   const document = strategyRecord(value, "document");
-  if (document.contractVersion !== "strategy.v2" || document.schemaVersion !== "2.0.0") {
+  if (document.contractVersion !== "strategy.v2" || !["2.0.0", "2.1.0"].includes(document.schemaVersion as string)) {
     throw new Error("Unsupported Strategy document version");
   }
   strategyString(document.generatedAt, "document.generatedAt");
   const events = parseStrategyEventsV2(document.events, "document.events");
+  if (document.schemaVersion === "2.0.0" && events.some(event => event.rules !== undefined)) {
+    throw new Error("Invalid Strategy document.rules version");
+  }
   if (document.activeEventId !== undefined) {
     strategyString(document.activeEventId, "document.activeEventId");
   }
@@ -1128,7 +1320,10 @@ function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
       strategyString(archive.journalId, `document.migrationArchives.${index}.journalId`);
       strategyString(archive.archivedAt, `document.migrationArchives.${index}.archivedAt`);
       strategyString(archive.generatedAt, `document.migrationArchives.${index}.generatedAt`);
-      parseStrategyEventsV2(archive.events, `document.migrationArchives.${index}.events`);
+      const archivedEvents = parseStrategyEventsV2(archive.events, `document.migrationArchives.${index}.events`);
+      if (document.schemaVersion === "2.0.0" && archivedEvents.some(event => event.rules !== undefined)) {
+        throw new Error("Invalid Strategy document.migrationArchives.rules version");
+      }
       if (archive.activeEventId !== undefined) strategyString(archive.activeEventId, `document.migrationArchives.${index}.activeEventId`);
     }
   }
@@ -1188,6 +1383,7 @@ function parseStrategyEventsV2(value: unknown, field: string): readonly Strategy
 
 function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
   const event = strategyRecord(value, field);
+  if (event.rules !== undefined) validateStrategyEventRules(parseStrategySourcedV2(event.rules, `${field}.rules`), `${field}.rules.value`);
   strategyString(event.id, `${field}.id`);
   strategyString(parseStrategySourcedV2(event.name, `${field}.name`), `${field}.name.value`);
   strategyEnum(parseStrategySourcedV2(event.source, `${field}.source`), `${field}.source.value`, ["custom", "series", "roster"]);
@@ -1218,17 +1414,41 @@ function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
   }
   if (event.activeStrategyId !== undefined) strategyString(event.activeStrategyId, `${field}.activeStrategyId`);
   if (event.rawLegacy !== undefined) strategyString(event.rawLegacy, `${field}.rawLegacy`);
+  const selectedRevisions = new Map<string, StrategyAnalysisRevisionRef>();
+  let combinationId: unknown;
   if (event.combination !== undefined) {
     const combination = strategyRecord(event.combination, `${field}.combination`);
     strategyString(combination.combinationId, `${field}.combination.combinationId`);
+    combinationId = combination.combinationId;
+    let includedCount = 0;
+    const sessionIds = new Set<string>();
     if (!Array.isArray(combination.sessions)) throw new Error(`Invalid Strategy ${field}.combination.sessions`);
     for (const [index, candidate] of combination.sessions.entries()) {
       const session = strategyRecord(candidate, `${field}.combination.sessions.${index}`);
       strategyString(session.sessionId, `${field}.combination.sessions.${index}.sessionId`);
       if (typeof session.included !== "boolean") throw new Error(`Invalid Strategy ${field}.combination.sessions.${index}.included`);
+      const sessionId = session.sessionId as string;
+      if (sessionIds.has(sessionId)) throw new Error(`Invalid Strategy ${field}.combination.sessions.duplicate`);
+      sessionIds.add(sessionId);
+      if (session.included) includedCount++;
+      if (session.revision !== undefined) {
+        validateProjectionRevisions([sessionId], [session.revision], `${field}.combination.sessions.${index}.revision`);
+        if (session.included) selectedRevisions.set(sessionId, session.revision as StrategyAnalysisRevisionRef);
+      }
+    }
+    if (selectedRevisions.size > 0 && selectedRevisions.size !== includedCount) throw new Error(`Invalid Strategy ${field}.combination.sessions.revisionCoverage`);
+  }
+  if (event.planningInputs !== undefined) {
+    const planning = parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
+    if (planning.projection && selectedRevisions.size > 0) {
+      const projection = planning.projection;
+      if (projection.combinationId !== combinationId || projection.sourceRevisions?.length !== selectedRevisions.size) throw new Error(`Invalid Strategy ${field}.planningInputs.projection.revisionSelection`);
+      for (const revision of projection.sourceRevisions) {
+        const selected = selectedRevisions.get(revision.sessionId);
+        if (!selected || selected.baseDigest !== revision.baseDigest || selected.revisionId !== revision.revisionId || selected.snapshotId !== revision.snapshotId) throw new Error(`Invalid Strategy ${field}.planningInputs.projection.revisionSelection`);
+      }
     }
   }
-  if (event.planningInputs !== undefined) parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
   if (event.weatherScenarios !== undefined) parseWeatherScenarios(event.weatherScenarios, `${field}.weatherScenarios`);
   parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
   return { ...event, drivers, strategies, availability } as StrategyEventV2;
@@ -1322,11 +1542,29 @@ function parsePlanningInputs(value: unknown, field: string): StrategyPlanningInp
   return { ...(projection ? { projection } : {}), overrides: overrides as StrategyPlanningInputsV2["overrides"] };
 }
 
-function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
+function validateProjectionRevisions(sessions: readonly unknown[], value: unknown, field: string): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value) || value.length === 0 || value.length !== sessions.length) throw new Error(`Invalid Strategy ${field}`);
+  const remaining = new Set<string>();
+  for (const id of sessions) {
+    if (typeof id !== "string" || id.trim() === "" || new TextEncoder().encode(id).length > 256 || remaining.has(id)) throw new Error(`Invalid Strategy ${field}`);
+    remaining.add(id);
+  }
+  for (const candidate of value) {
+    const ref = strategyRecord(candidate, field);
+    if (typeof ref.sessionId !== "string" || !remaining.delete(ref.sessionId)) throw new Error(`Invalid Strategy ${field}.sessionId`);
+    for (const key of ["baseDigest", "revisionId", "snapshotId"] as const) {
+      if (typeof ref[key] !== "string" || !/^[a-f0-9]{64}$/.test(ref[key])) throw new Error(`Invalid Strategy ${field}.${key}`);
+    }
+  }
+}
+
+export function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
   const projection = strategyRecord(value, field);
   strategyEnum(projection.contractVersion, `${field}.contractVersion`, ["strategyinputprojection.v2"]);
   for (const name of ["generatedAt", "computationVersion", "combinationId"] as const) strategyString(projection[name], `${field}.${name}`);
   if (!Array.isArray(projection.sourceSessions) || projection.sourceSessions.some((id) => typeof id !== "string" || id === "")) throw new Error(`Invalid Strategy ${field}.sourceSessions`);
+  validateProjectionRevisions(projection.sourceSessions, projection.sourceRevisions, `${field}.sourceRevisions`);
   for (const name of ["fuelConsumption", "virtualEnergyConsumption"] as const) {
     const family = parseProjectionFamily(projection[name], `${field}.${name}`);
     for (const numeric of ["meanPerLap", "rangeLower", "rangeUpper"] as const) strategyNumber(family[numeric], `${field}.${name}.${numeric}`);
@@ -1440,6 +1678,8 @@ function parseSessionCatalogStatus(value: unknown): "available" | "no_authorized
 
 function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
   const status = strategyRecord(value, "coldStartStatus");
+  if (status.reason !== undefined) strategyEnum(status.reason, "coldStartStatus.reason", ["catalog_unavailable", "state_unavailable", "importer_unavailable"]);
+  if (status.recovered !== undefined && typeof status.recovered !== "boolean") throw new Error("Invalid Strategy coldStartStatus.recovered");
   if (typeof status.shouldShow !== "boolean") throw new Error("Invalid Strategy coldStartStatus.shouldShow");
   if (typeof status.checking !== "boolean") throw new Error("Invalid Strategy coldStartStatus.checking");
   strategyInteger(status.found, "coldStartStatus.found");
@@ -1579,6 +1819,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     ] as const) {
       strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
+    if (plan.formationSeconds !== undefined) strategyNumber(plan.formationSeconds, `orbitCalculation.plans.${id}.formationSeconds`);
+    if (plan.modelVersion !== undefined) strategyEnum(plan.modelVersion, `orbitCalculation.plans.${id}.modelVersion`, ["strategy.solver.v2"]);
+    if (plan.objective !== undefined) strategyEnum(plan.objective, `orbitCalculation.plans.${id}.objective`, ["minimum_total_seconds"]);
     for (const field of ["totalLaps", "stops", "maxLaps"] as const) {
       strategyInteger(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
@@ -1595,9 +1838,11 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       for (const field of ["fuel", "pace", "start", "end", "pitWindowSeconds", "fuelSavedPerLap", "savingCostSeconds"] as const) {
         strategyNumber(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
       }
+      if (stint.virtualEnergy !== undefined) strategyNumber(stint.virtualEnergy, `orbitCalculation.plans.${id}.stints.${index}.virtualEnergy`);
       if (typeof stint.over !== "boolean" || typeof stint.manual !== "boolean") {
         throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stints.${index}`);
       }
+      parseOrbitTyreDecision(stint, `orbitCalculation.plans.${id}.stints.${index}`, false);
       return stint as StrategyOrbitCalculatedStintV1;
     });
     const distribution = plan.distribution.map((entry, index) => {
@@ -1608,6 +1853,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       return slice as StrategyOrbitCalculatedPlanV1["distribution"][number];
     });
     if (typeof plan.savingApplied !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.savingApplied`);
+    if (plan.optimality !== undefined) {
+    strategyEnum(plan.optimality, `orbitCalculation.plans.${id}.optimality`, ["proven", "not_proven"]);
+    }
     const stopDetails = plan.stopDetails.map((entry, index) => {
       const stop = strategyRecord(entry, `orbitCalculation.plans.${id}.stopDetails.${index}`);
       for (const field of ["index", "lap"] as const) {
@@ -1616,7 +1864,11 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       for (const field of ["fuelInLiters", "fuelOutLiters", "pitLossSeconds", "pitTransitSeconds", "pitServiceSeconds", "pitOverlapSeconds"] as const) {
         strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
       }
+      for (const field of ["virtualEnergyInPercent", "virtualEnergyOutPercent"] as const) {
+        if (stop[field] !== undefined) strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
+      }
       if (typeof stop.pitBreakdownAvailable !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stopDetails.${index}.pitBreakdownAvailable`);
+      parseOrbitTyreDecision(stop, `orbitCalculation.plans.${id}.stopDetails.${index}`, true);
       return stop as StrategyOrbitCalculatedPlanV1["stopDetails"][number];
     });
     plans[id] = {
@@ -1630,11 +1882,15 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       avgPace: plan.avgPace as number,
       drivingSeconds: plan.drivingSeconds as number,
       pitSeconds: plan.pitSeconds as number,
+      ...(plan.formationSeconds === undefined ? {} : { formationSeconds: plan.formationSeconds as number }),
       startFuelLiters: plan.startFuelLiters as number,
       finishFuelLiters: plan.finishFuelLiters as number,
       reserveLaps: plan.reserveLaps as number,
       reserveRequiredLaps: plan.reserveRequiredLaps as number,
       reserveSatisfied: plan.reserveSatisfied === true,
+      ...(plan.modelVersion === "strategy.solver.v2" ? { modelVersion: "strategy.solver.v2" as const } : {}),
+      ...(plan.objective === "minimum_total_seconds" ? { objective: "minimum_total_seconds" as const } : {}),
+      ...(plan.optimality === "proven" || plan.optimality === "not_proven" ? { optimality: plan.optimality } : {}),
       stopDetails,
       savingApplied: plan.savingApplied as boolean,
     };
@@ -1662,8 +1918,27 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
   return { plans, comparisons, ...(weather ? { weather } : {}) };
 }
 
+function parseOrbitTyreDecision(value: Record<string, unknown>, field: string, requireChange: boolean): void {
+  const physical = value.compound !== undefined || value.tyreFitment !== undefined || value.changeTyres !== undefined;
+  if (!physical) return;
+  if (typeof value.compound !== "string" || !(STRATEGY_COMPOUNDS as readonly string[]).includes(value.compound)) {
+    throw new Error(`Invalid Strategy ${field}.compound`);
+  }
+  try {
+    parseStrategyTyreFitment(value.tyreFitment);
+  } catch {
+    throw new Error(`Invalid Strategy ${field}.tyreFitment`);
+  }
+  if (requireChange && typeof value.changeTyres !== "boolean") {
+    throw new Error(`Invalid Strategy ${field}.changeTyres`);
+  }
+}
+
 function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {
   const weather = strategyRecord(value, "orbitCalculation.weather");
+ strategyEnum(weather.comparisonBasis, "orbitCalculation.weather.comparisonBasis", ["fixed_distance"]);
+ strategyInteger(weather.comparisonLaps, "orbitCalculation.weather.comparisonLaps");
+ if ((weather.comparisonLaps as number) <= 0) throw new Error("Invalid Strategy orbitCalculation.weather.comparisonLaps");
   if (!Array.isArray(weather.plans)) throw new Error("Invalid Strategy orbitCalculation.weather.plans");
   const parseStints = (candidate: unknown, field: string): readonly StrategyOrbitWeatherStintV1[] => {
     if (!Array.isArray(candidate)) throw new Error(`Invalid Strategy ${field}`);
@@ -1702,7 +1977,7 @@ function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {
   strategyEnum(robust.method, "orbitCalculation.weather.robust.method", ["minimax_regret"]);
   strategyNumber(robust.maxRegretSeconds, "orbitCalculation.weather.robust.maxRegretSeconds");
   strategyNumber(robust.weightedExpectedLossSeconds, "orbitCalculation.weather.robust.weightedExpectedLossSeconds");
-  return { plans, robust: { ...robust, stints: parseStints(robust.stints, "orbitCalculation.weather.robust.stints") } as StrategyOrbitWeatherResultV1["robust"] };
+  return { comparisonBasis: "fixed_distance", comparisonLaps: weather.comparisonLaps as number, plans, robust: { ...robust, stints: parseStints(robust.stints, "orbitCalculation.weather.robust.stints") } as StrategyOrbitWeatherResultV1["robust"] };
 }
 
 function parseStrategySourcedV2(value: unknown, field: string): unknown {
@@ -1799,6 +2074,9 @@ function parsePlanSummaries(value: unknown): readonly StrategyPlanSummaryV1[] {
     if (typeof entry.revisionCount !== "number" || !Number.isSafeInteger(entry.revisionCount)) {
       throw new Error(`Invalid Strategy plan summary ${index}: revisionCount`);
     }
+    if (entry.revisionRefs !== undefined && !Array.isArray(entry.revisionRefs)) {
+      throw new Error(`Invalid Strategy plan summary ${index}: revisionRefs`);
+    }
     return {
       planId: entry.planId as string,
       variantId: entry.variantId as string,
@@ -1808,6 +2086,16 @@ function parsePlanSummaries(value: unknown): readonly StrategyPlanSummaryV1[] {
       hasDraft: entry.hasDraft === true,
       revisionCount: entry.revisionCount,
       ...(typeof entry.draftId === "string" ? { draftId: entry.draftId } : {}),
+      ...(entry.revisionRefs === undefined
+        ? {}
+        : {
+            revisionRefs: entry.revisionRefs.map(
+              (reference, revisionIndex) => parseRevisionRef(
+                reference,
+                `plans.${index}.revisionRefs.${revisionIndex}`,
+              ),
+            ),
+          }),
       ...(entry.latestRevision === undefined
         ? {}
         : { latestRevision: parseRevisionRef(entry.latestRevision, `plans.${index}.latestRevision`) }),

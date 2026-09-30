@@ -1,12 +1,12 @@
 import type { RaceSeries, VehicleClass } from "../../calendar/calendar-types";
 import type { StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
 
-export function calendarSessionCombinations(
+export function calendarSessionCombinations<T extends Pick<StrategySessionCombinationV1, "trackName" | "carClass" | "trackLayout">>(
   series: Pick<RaceSeries, "telemetryTrackName">,
   vehicleClass: Pick<VehicleClass, "telemetryClassName">,
-  combinations: readonly StrategySessionCombinationV1[],
+  combinations: readonly T[],
   trackLayout?: string,
-): StrategySessionCombinationV1[] {
+): T[] {
   if (!series.telemetryTrackName || !vehicleClass.telemetryClassName) return [];
   return combinations.filter((combination) =>
     combination.trackName === series.telemetryTrackName

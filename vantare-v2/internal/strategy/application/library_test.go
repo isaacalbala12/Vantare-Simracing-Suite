@@ -109,6 +109,32 @@ func TestListCountsRevisionsAndPointsAtTheNewest(t *testing.T) {
 	if summary.RevisionCount != 2 {
 		t.Fatalf("expected two revisions, got %d", summary.RevisionCount)
 	}
+	if len(summary.RevisionRefs) != 2 {
+		t.Fatalf("expected both revision references, got %+v", summary.RevisionRefs)
+	}
+	var first contract.RevisionRef
+	for _, reference := range summary.RevisionRefs {
+		if reference.RevisionID == "revision-1" {
+			first = reference
+		}
+	}
+	if first.RevisionID == "" || first.ContentHash == "" {
+		t.Fatalf("the first revision must be discoverable by its complete reference: %+v", summary.RevisionRefs)
+	}
+	opened, err := service.Open(context.Background(), OpenCommand{
+		CommandHeader: commandHeader("open-revision-1", OperationOpen, 0),
+		Revision:      &first,
+	})
+	if err != nil {
+		t.Fatalf("Open historical revision: %v", err)
+	}
+	if opened.Revision == nil {
+		t.Fatalf("historical reference opened the wrong payload: %+v", opened.Revision)
+	}
+	payload, err := opened.Revision.Payload()
+	if err != nil || payload.Laps != 11 {
+		t.Fatalf("historical reference opened the wrong payload: %+v (%v)", payload, err)
+	}
 	if summary.LatestRevision == nil || summary.LatestRevision.RevisionID != "revision-2" {
 		t.Fatalf("the newest revision must be the one offered: %+v", summary.LatestRevision)
 	}
@@ -129,6 +155,16 @@ func TestListKeepsVariantsOfOnePlanApart(t *testing.T) {
 
 	createPlan(t, service, first, 0)
 	createPlan(t, service, second, 1)
+	for index, draft := range []contract.PlanDraft[testPayload]{first, second} {
+		if _, err := service.SaveRevision(context.Background(), SaveRevisionCommand[testPayload]{
+			CommandHeader: commandHeader(CommandID("save-"+string(draft.VariantID)), OperationSaveRevision, uint64(index+2)),
+			Draft:         draft,
+			RevisionID:    contract.RevisionID("revision-" + string(draft.VariantID)),
+			CreatedAt:     canonicalTime(index + 3),
+		}); err != nil {
+			t.Fatalf("SaveRevision %s: %v", draft.VariantID, err)
+		}
+	}
 
 	plans := listPlans(t, service, "list-1")
 	if len(plans) != 2 {
@@ -138,6 +174,9 @@ func TestListKeepsVariantsOfOnePlanApart(t *testing.T) {
 	for _, summary := range plans {
 		if summary.PlanID != "plan-1" {
 			t.Fatalf("variant lost its plan: %+v", summary)
+		}
+		if len(summary.RevisionRefs) != 1 || summary.RevisionRefs[0].VariantID != summary.VariantID {
+			t.Fatalf("variant received another variant's revisions: %+v", summary)
 		}
 		seen[summary.VariantID] = true
 	}

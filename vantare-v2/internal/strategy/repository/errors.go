@@ -13,6 +13,8 @@ var (
 	ErrCorruptRepository            = errors.New("strategy repository is corrupt")
 	ErrUnsupportedRepositoryVersion = errors.New("unsupported strategy repository version")
 	ErrCommitUncertain              = errors.New("strategy repository commit outcome is uncertain")
+	ErrPendingRevisionConflict      = errors.New("strategy pending revision conflicts with stored intent")
+	ErrInvalidPendingRevision       = errors.New("strategy pending revision is invalid")
 	// ErrRevisionNotStored guards the active pointer: the repository refuses to
 	// name a revision it does not hold.
 	ErrRevisionNotStored = errors.New("strategy revision is not stored in this repository")

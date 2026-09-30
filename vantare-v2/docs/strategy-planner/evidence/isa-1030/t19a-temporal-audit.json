@@ -1,0 +1,119 @@
+{
+  "issue": "ISA-1030",
+  "slice": "T19a",
+  "generated": "2026-09-14",
+  "note": "Agregados sanitizados del audit temporal. Sin rutas ni metadata sensible. Segundos en el reloj de eventos salvo que se indique eje continuo.",
+  "runtime": {
+    "manifestSha256": "700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869",
+    "duckdb": "v1.5.5",
+    "schemaVersion": 1
+  },
+  "sessions": {
+    "S125": {
+      "sourceSha256": "35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0",
+      "eventChannels": 42,
+      "continuousChannels": 56,
+      "lapEvents": { "rows": 39, "numberFirst": 0, "numberLast": 38, "tsFirst": 24.545, "tsLast": 3796.82, "duplicateTs": 0, "numberGaps": 0 },
+      "lapTimeZeroAtTs": [24.545, 321.92, 699.52, 985.36, 1173.56, 1546.16, 1838.94, 2121.48],
+      "lapDistResets": { "count": 39, "unmatchedToLapEvent": 1, "unmatchedIndex": 1012, "note": "cruce real que cierra la vuelta parcial previa a la grabación; sin evento Lap" },
+      "gpsTimeOffset": { "first": 24.545, "last": 25.4825, "driftSeconds": 0.9375, "monotonic": true },
+      "inPits": { "intervals": [[2874.12, 2928.24]], "initialState": false, "openAtEnd": false },
+      "fuel": { "lastLiters": 4.07, "pitWindowRiseLiters": 25.58, "fuelJumpLapIndices": [30] },
+      "finishStatus": { "rows": 2, "transitions": [[24.545, 0], [3796.82, 1]] },
+      "impactTrueTs": [24.545, 1000.74, 1649.12, 1701.4, 1701.54, 2526.64],
+      "tyresCompound": { "rows": 1, "values": [0, 0, 0, 0] },
+      "product": {
+        "segment": [0, 3772.0],
+        "gaps": [[3772.0, 3796.82]],
+        "lapBoundaryQuality": "valid",
+        "lapBoundarySource": "reconciled",
+        "reconciliationNote": "igualdad de conteos eventos=resets=39 declara valid sin emparejamiento real",
+        "stintBoundaries": [
+          { "stint": 2, "ts": 2893.76, "cause": "pit", "presence": "valid" },
+          { "stint": 3, "ts": 3022.54, "cause": "fuel_jump", "presence": "unknown" }
+        ],
+        "derivedStints": [[0, 29], [30, 30], [31, 38]],
+        "phantomStint": "vuelta 30 (out-lap) aislada por fuel_jump una vuelta tarde",
+        "pitIntervals": [{ "start": 2874.12, "end": 2928.24, "durationS": 54.12, "ambiguous": true, "reason": "resource_clock_unaligned" }],
+        "consumptionLapsWithFuel": 25,
+        "consumptionLapsTotal": 39,
+        "consumptionNote": "ventanas muestreadas ~25 s después del límite real (offset no declarado); error silencioso"
+      }
+    },
+    "S266": {
+      "sourceSha256": "6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362",
+      "eventChannels": 42,
+      "continuousChannels": 56,
+      "lapEvents": { "rows": 71, "numberFirst": 101, "numberLast": 171, "tsFirst": 10104.66, "tsLast": 16840.14, "duplicateTs": 0, "numberGaps": 0 },
+      "lapTimeZeroAtTs": [10466.84, 13134.56, 16078.0, 16269.24, 16745.06],
+      "lapDistResets": { "count": 70, "unmatchedToLapEvent": 0, "phase": "resets[k] emparejan evento k+1" },
+      "gpsTimeOffset": { "first": 10104.66, "last": 10104.6725, "driftSeconds": 0.0125, "monotonic": true },
+      "inPits": { "intervals": [[10104.66, 10167.6], [13513.52, 13588.52]], "initialState": true, "openAtEnd": true, "lastEntryTs": 16933.28 },
+      "fuel": { "lastLiters": 14.55, "pitWindowRiseLiters": [58.92, 74.59], "fuelJumpLapIndices": [35, 70] },
+      "finishStatus": { "rows": 1, "transitions": [[10104.66, 0]], "note": "grabación cortada en la última parada; sin transición a 1" },
+      "impactClusters": [[12278, 12293], [15283.94]],
+      "tyresCompound": { "rows": 1, "values": [0, 0, 0, 0] },
+      "product": {
+        "segment": [0, 6855.0],
+        "gaps": [[6855.0, 16840.14]],
+        "gapNote": "~10078 s de hueco publicado = desfase de orígenes entre ejes, no pérdida real de cobertura",
+        "lapBoundaryQuality": "unknown",
+        "stintBoundaries": [
+          { "stint": 2, "ts": 13421.12, "cause": "fuel_jump", "presence": "unknown" },
+          { "stint": 3, "ts": 13580.36, "cause": "pit", "presence": "valid" },
+          { "stint": 4, "ts": 16840.14, "cause": "fuel_jump", "presence": "unknown" }
+        ],
+        "derivedStints": [[101, 136], [137, 137], [138, 171]],
+        "phantomStint": "vuelta 137 (in-lap) aislada por fuel_jump una vuelta antes",
+        "pitIntervals": [
+          { "start": 10104.66, "end": 10167.6, "durationS": 62.94, "ambiguous": true, "reason": "resource_clock_unaligned" },
+          { "start": 13513.52, "end": 13588.52, "durationS": 75.0, "ambiguous": true, "reason": "resource_clock_unaligned" }
+        ],
+        "consumptionLapsWithFuel": 0,
+        "consumptionLapsTotal": 71,
+        "paceReason": "no_stable_climate_bucket_for_representative_pace",
+        "pitFamily": { "presence": "unknown", "reason": "degraded_no_transit_service_breakdown" }
+      }
+    },
+    "S026": {
+      "sourceSha256": "08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538",
+      "eventChannels": 42,
+      "continuousChannels": 56,
+      "lapEvents": { "rows": 61, "numberFirst": 60, "numberLast": 120, "tsFirst": 6144.0175, "tsLast": 12158.9, "duplicateTs": 0, "numberGaps": 0 },
+      "lapTimeZeroAtTs": [6806.46, 7880.66, 11469.16],
+      "lapDistResets": { "count": 60, "unmatchedToLapEvent": 0, "phase": "resets[k] emparejan evento k+1" },
+      "gpsTimeOffset": { "first": 6144.0175, "last": 6144.0525, "driftSeconds": 0.035, "monotonic": true },
+      "inPits": { "intervals": [[6144.0175, 6198.92], [9144.62, 9214.18]], "initialState": true, "openAtEnd": true, "lastEntryTs": 12153.72 },
+      "fuel": { "lastLiters": 29.45, "fuelJumpLapIndices": [30, 60] },
+      "finishStatus": { "rows": 1, "transitions": [[6144.0175, 0]] },
+      "impactTrueTs": [],
+      "tyresCompound": { "rows": 1, "values": [0, 0, 0, 0] },
+      "product": {
+        "note": "S026 corrió como target del banco (import+derivación verificados); sus límites provienen de la simulación fiel del código (contrastada en S125/S266 contra el modelo exportado)",
+        "stintBoundariesSimulated": [
+          { "stint": 2, "ts": 9149.8, "cause": "pit", "presence": "valid" },
+          { "stint": 3, "ts": 12158.9, "cause": "pit", "presence": "valid" }
+        ],
+        "derivedStintsSimulated": [[60, 90], [91, 120]],
+        "phaseNote": "fuel_jump coincide en lapIndex con pit por fase afortunada; prioridad pit fusiona"
+      }
+    }
+  },
+  "bench": {
+    "test": "TestRecordedStrategyRealDuckDB",
+    "runs": [
+      { "pair": "S125+S026", "seconds": 19.73, "result": "PASS" },
+      { "pair": "S266+S026", "seconds": 29.46, "result": "PASS" },
+      { "pair": "S125+S266+export", "seconds": 19.84, "result": "PASS" },
+      { "pair": "S266+S026+export", "seconds": 31.03, "result": "PASS" }
+    ],
+    "originalHashesUnchanged": true,
+    "walPresent": false
+  },
+  "capabilitySummary": {
+    "usable": ["ts de eventos", "Lap (ts,value) como borde de vuelta", "In Pits transiciones", "Minimum Path Wetness (mismo reloj)"],
+    "ambiguous": ["Lap Dist resets (fase no verificable)", "Fuel/VE subidas (instante en eje continuo)", "Finish Status ausente", "LastImpactMagnitude", "Cobertura publicada (mezcla ejes)"],
+    "unknown": ["TyresCompound (constante 0)", "origen absoluto de ts"],
+    "unsupported": ["driver swap", "garaje vs pit lane", "reloj absoluto", "ancla intra-vuelta en eje continuo"]
+  }
+}

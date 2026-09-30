@@ -35,6 +35,7 @@ export function SideLauncher({ profiles, onManage, onRun, labels, className }: S
         ) : (
           profiles.slice(0, 2).map((profile) => (
             <ListRow
+              className="orbit-row--side-launcher"
               key={profile.id}
               leading={
                 <span aria-hidden="true" className="orbit-mono">

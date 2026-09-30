@@ -15,6 +15,7 @@ const (
 	ErrorDraftNotFound           ErrorCode = "draft_not_found"
 	ErrorDraftConflict           ErrorCode = "draft_conflict"
 	ErrorRevisionNotFound        ErrorCode = "revision_not_found"
+	ErrorPendingRevisionConflict ErrorCode = "pending_revision_conflict"
 	ErrorActiveConflict          ErrorCode = "active_plan_conflict"
 	ErrorUnsavedChanges          ErrorCode = "unsaved_changes"
 	ErrorPlanNotFound            ErrorCode = "plan_not_found"
@@ -30,6 +31,7 @@ const (
 	ErrorCalculationInvalid      ErrorCode = "calculation_invalid"
 	ErrorCalculationInfeasible   ErrorCode = "calculation_infeasible"
 	ErrorCalculationOverflow     ErrorCode = "calculation_overflow"
+	ErrorCalculationCancelled    ErrorCode = "calculation_cancelled"
 	ErrorCalculationTimeout      ErrorCode = "calculation_timeout"
 	// ErrorImportRefused means the package was readable and intact but would
 	// have collided with what is already stored. Nothing was written.
@@ -42,6 +44,7 @@ var (
 	ErrDraftNotFound           = errors.New("strategy draft not found")
 	ErrDraftConflict           = errors.New("strategy draft conflicts with an existing draft")
 	ErrRevisionNotFound        = errors.New("strategy revision not found")
+	ErrPendingRevisionConflict = errors.New("strategy pending revision conflicts with another intent")
 	ErrActiveConflict          = errors.New("strategy active plan conflict")
 	ErrUnsavedChanges          = errors.New("strategy draft has unsaved changes")
 	ErrPlanNotFound            = errors.New("strategy plan not found")
@@ -57,6 +60,7 @@ var (
 	ErrCalculationInvalid      = errors.New("strategy calculation input is invalid")
 	ErrCalculationInfeasible   = errors.New("strategy calculation is infeasible")
 	ErrCalculationOverflow     = errors.New("strategy calculation overflowed")
+	ErrCalculationCancelled    = errors.New("strategy calculation was cancelled")
 	ErrCalculationTimeout      = errors.New("strategy calculation reached its deadline")
 	ErrImportRefused           = errors.New("strategy package import refused")
 )

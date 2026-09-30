@@ -22,18 +22,13 @@ type Decision string
 const (
 	defaultImportConcurrency = 4
 	maximumImportConcurrency = 4
-
-	// La representacion normalizada infla el fichero de origen ~16x: acotar la
-	// tanda a 4 GiB estimados mantiene el pico conjunto controlado incluso con
-	// el maximo de importaciones en paralelo.
+	// Keep the existing 30-minute client budget, allowing a minute for the response.
+	defaultCandidateTimeout      = 29 * time.Minute
 	maxImportBatchEstimatedBytes = int64(4 << 30)
 	importMemoryExpansionFactor  = int64(16)
-	// Candidatos sin tamano declarado cuentan ~1 GiB: el presupuesto de tanda
-	// reproduce entonces el limite historico de 4 importaciones paralelas.
-	defaultImportMemoryEstimate = int64(1 << 30)
+	defaultImportMemoryEstimate  = int64(1 << 30)
 )
 
-// importMemoryEstimate estima el heap retenido al importar un candidato.
 func importMemoryEstimate(candidate telemetryanalysis.Candidate) int64 {
 	if candidate.Size <= 0 {
 		return defaultImportMemoryEstimate
@@ -41,16 +36,7 @@ func importMemoryEstimate(candidate telemetryanalysis.Candidate) int64 {
 	return candidate.Size * importMemoryExpansionFactor
 }
 
-// selectPendingBatch elige la siguiente tanda de importacion acotada por
-// memoria estimada, no solo por numero de ficheros: varias sesiones grandes en
-// paralelo multiplicarian el pico de heap. Un candidato que solo no cabe sigue
-// pudiendo importarse a solas en su propia tanda.
-func selectPendingBatch(
-	candidates []telemetryanalysis.Candidate,
-	imported map[string]struct{},
-	failed map[string]struct{},
-	limit int,
-) []telemetryanalysis.Candidate {
+func selectPendingBatch(candidates []telemetryanalysis.Candidate, imported, failed map[string]struct{}, limit int) []telemetryanalysis.Candidate {
 	pending := make([]telemetryanalysis.Candidate, 0, limit)
 	var batchEstimate int64
 	for _, candidate := range candidates {
@@ -80,6 +66,8 @@ const (
 )
 
 type Status struct {
+	Reason     string    `json:"reason,omitempty"`
+	Recovered  bool      `json:"recovered,omitempty"`
 	ShouldShow bool      `json:"shouldShow"`
 	Checking   bool      `json:"checking"`
 	Found      int       `json:"found"`
@@ -114,14 +102,18 @@ type SessionStore interface {
 type DiscoverFunc func(context.Context) ([]telemetryanalysis.Candidate, error)
 
 type ServiceOptions struct {
-	StatePath         string
-	Discover          DiscoverFunc
-	Importer          SessionImporter
-	Store             SessionStore
-	ImportConcurrency int
+	CatalogUnavailable bool
+	CatalogRecovered   bool
+	StatePath          string
+	Discover           DiscoverFunc
+	Importer           SessionImporter
+	Store              SessionStore
+	ImportConcurrency  int
+	CandidateTimeout   time.Duration
 }
 
 type Service struct {
+	recovered    bool
 	mu           sync.Mutex
 	options      ServiceOptions
 	candidates   []telemetryanalysis.Candidate
@@ -140,17 +132,30 @@ func NewService(options ServiceOptions) *Service {
 	return &Service{options: options}
 }
 
-func (service *Service) Status(ctx context.Context) (Status, error) {
+func (service *Service) Status(ctx context.Context) (status Status, err error) {
 	// Defensa ante un receptor nulo: si el arranque no pudo construir el
 	// servicio, el arranque en frío queda pendiente en vez de romper la app.
 	if service == nil {
-		return Status{Decision: DecisionPending}, nil
+		return Status{Decision: DecisionPending, Failures: []Failure{}}, nil
 	}
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	state, err := service.readState()
+	defer func() {
+		if status.Failures == nil {
+			status.Failures = []Failure{}
+		}
+		status.Recovered = service.recovered || service.options.CatalogRecovered
+	}()
+	if service.options.CatalogUnavailable {
+		return Status{Decision: DecisionPending, Reason: "catalog_unavailable"}, nil
+	}
+	state, _, err := service.readReconciledState(ctx)
 	if err != nil {
-		return Status{}, err
+		reason := "state_unavailable"
+		if errors.Is(err, errCatalogReconciliation) {
+			reason = "catalog_unavailable"
+		}
+		return Status{Decision: DecisionPending, Reason: reason}, nil
 	}
 	if state.Decision == DecisionRejected {
 		return statusFromState(state, false, false), nil
@@ -159,7 +164,7 @@ func (service *Service) Status(ctx context.Context) (Status, error) {
 		return statusFromState(state, len(state.Failures) > 0, false), nil
 	}
 	if service.options.Discover == nil || service.options.Importer == nil || service.options.Store == nil {
-		return Status{Decision: DecisionPending}, nil
+		return Status{Decision: DecisionPending, Reason: "importer_unavailable"}, nil
 	}
 	if service.candidates == nil {
 		if service.discoveryErr != nil {
@@ -170,14 +175,17 @@ func (service *Service) Status(ctx context.Context) (Status, error) {
 		}
 		return statusFromState(state, true, true), nil
 	}
-	state.Total = len(service.candidates)
+	state.Total, _ = importCompletion(state, service.candidates)
 	return statusFromState(state, len(service.candidates) > 0, false), nil
 }
 
 func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	state, err := service.readState()
+	if service.options.CatalogUnavailable || service.options.Store == nil || service.options.Importer == nil {
+		return Progress{}, fmt.Errorf("cold start import unavailable")
+	}
+	state, stored, err := service.readReconciledState(ctx)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -206,6 +214,16 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	for _, failure := range state.Failures {
 		failed[failure.Locator] = struct{}{}
 	}
+	for _, candidate := range service.candidates {
+		if _, exists := imported[candidate.Locator]; exists {
+			continue
+		}
+		if _, exists := stored[candidate.Locator]; exists {
+			state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
+			imported[candidate.Locator] = struct{}{}
+			continue
+		}
+	}
 	pending := selectPendingBatch(service.candidates, imported, failed, service.importConcurrency())
 	if len(pending) > 0 {
 		results := make([]candidateImportResult, len(pending))
@@ -214,7 +232,9 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		for index, candidate := range pending {
 			go func() {
 				defer wait.Done()
-				results[index].model, results[index].err = importCandidate(ctx, service.options.Importer, candidate)
+				candidateCtx, cancel := context.WithTimeout(ctx, service.candidateTimeout())
+				defer cancel()
+				results[index].model, results[index].err = importCandidate(candidateCtx, service.options.Importer, candidate)
 			}()
 		}
 		wait.Wait()
@@ -238,9 +258,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 				state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
 			}
 		}
-		if len(state.ImportedLocators)+len(state.Failures) == len(service.candidates) {
-			state.Decision = DecisionAccepted
-		}
+		state.Total, state.Decision = importCompletion(state, service.candidates)
 		if err := ctx.Err(); err != nil {
 			return progressFromState(state), err
 		}
@@ -252,7 +270,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	if err := ctx.Err(); err != nil {
 		return progressFromState(state), err
 	}
-	state.Decision = DecisionAccepted
+	state.Total, state.Decision = importCompletion(state, service.candidates)
 	if err := service.writeState(state); err != nil {
 		return Progress{}, err
 	}
@@ -262,7 +280,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 func (service *Service) RetryFailures(ctx context.Context) (Progress, error) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	state, err := service.readState()
+	state, _, err := service.readReconciledState(ctx)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -294,6 +312,14 @@ func (service *Service) importConcurrency() int {
 	return concurrency
 }
 
+func (service *Service) candidateTimeout() time.Duration {
+	timeout := service.options.CandidateTimeout
+	if timeout <= 0 || timeout > defaultCandidateTimeout {
+		return defaultCandidateTimeout
+	}
+	return timeout
+}
+
 type candidateImportResult struct {
 	model telemetryanalysis.AuthorizedSessionModel
 	err   error
@@ -304,7 +330,14 @@ func importCandidate(ctx context.Context, importer SessionImporter, candidate te
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("import session panic: %v", recovered)
 		}
+		if contextErr := ctx.Err(); contextErr != nil {
+			model = telemetryanalysis.AuthorizedSessionModel{}
+			err = contextErr
+		}
 	}()
+	if err := ctx.Err(); err != nil {
+		return model, err
+	}
 	return importer.Import(ctx, candidate)
 }
 
@@ -375,6 +408,9 @@ func sortCandidates(candidates []telemetryanalysis.Candidate) {
 }
 
 func failureReason(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "candidate_timeout"
+	}
 	reason := strings.TrimSpace(err.Error())
 	const maxReasonBytes = 512
 	if len(reason) > maxReasonBytes {
@@ -383,22 +419,59 @@ func failureReason(err error) string {
 	return reason
 }
 
+var ErrInvalidColdStartState = errors.New("invalid cold start state")
+
 func (service *Service) readState() (persistedState, error) {
-	data, err := os.ReadFile(service.options.StatePath)
-	if errors.Is(err, os.ErrNotExist) {
-		return persistedState{Decision: DecisionPending, ImportedLocators: []string{}}, nil
+	path := service.options.StatePath
+	data, readErr := os.ReadFile(path)
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+		return persistedState{}, fmt.Errorf("read cold start state: %w", readErr)
 	}
+	if readErr == nil {
+		state, err := decodeColdStartState(data)
+		if err == nil {
+			return state, nil
+		}
+	}
+	backup, backupErr := os.ReadFile(path + ".bak")
+	if errors.Is(readErr, os.ErrNotExist) && errors.Is(backupErr, os.ErrNotExist) {
+		return persistedState{Decision: DecisionPending, ImportedLocators: []string{}, Failures: []Failure{}}, nil
+	}
+	if backupErr != nil {
+		return persistedState{}, fmt.Errorf("%w: backup: %w", ErrInvalidColdStartState, backupErr)
+	}
+	state, err := decodeColdStartState(backup)
 	if err != nil {
-		return persistedState{}, fmt.Errorf("read cold start state: %w", err)
+		return persistedState{}, err
 	}
+	if readErr == nil {
+		file, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".corrupt-*")
+		if err != nil {
+			return persistedState{}, fmt.Errorf("create cold start quarantine: %w", err)
+		}
+		_, writeErr := file.Write(data)
+		syncErr := file.Sync()
+		closeErr := file.Close()
+		if err := errors.Join(writeErr, syncErr, closeErr); err != nil {
+			return persistedState{}, fmt.Errorf("preserve cold start quarantine: %w", err)
+		}
+	}
+	if err := writeColdStartFile(path, backup); err != nil {
+		return persistedState{}, err
+	}
+	service.recovered = true
+	return state, nil
+}
+
+func decodeColdStartState(data []byte) (persistedState, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var state persistedState
 	if err := decoder.Decode(&state); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-		return persistedState{}, fmt.Errorf("decode cold start state")
+		return persistedState{}, ErrInvalidColdStartState
 	}
 	if state.Decision != DecisionPending && state.Decision != DecisionAccepted && state.Decision != DecisionRejected {
-		return persistedState{}, fmt.Errorf("invalid cold start decision")
+		return persistedState{}, ErrInvalidColdStartState
 	}
 	if state.ImportedLocators == nil {
 		state.ImportedLocators = []string{}
@@ -408,7 +481,7 @@ func (service *Service) readState() (persistedState, error) {
 	}
 	for _, failure := range state.Failures {
 		if failure.Locator == "" || failure.Reason == "" {
-			return persistedState{}, fmt.Errorf("invalid cold start failure")
+			return persistedState{}, ErrInvalidColdStartState
 		}
 	}
 	return state, nil
@@ -419,7 +492,22 @@ func (service *Service) writeState(state persistedState) error {
 	if err != nil {
 		return fmt.Errorf("encode cold start state: %w", err)
 	}
-	directory := filepath.Dir(service.options.StatePath)
+	previous, err := os.ReadFile(service.options.StatePath)
+	if errors.Is(err, os.ErrNotExist) {
+		previous = data
+	} else if err != nil {
+		return fmt.Errorf("read cold start backup source: %w", err)
+	} else if _, err := decodeColdStartState(previous); err != nil {
+		return err
+	}
+	if err := writeColdStartFile(service.options.StatePath+".bak", previous); err != nil {
+		return err
+	}
+	return writeColdStartFile(service.options.StatePath, data)
+}
+
+func writeColdStartFile(path string, data []byte) error {
+	directory := filepath.Dir(path)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return fmt.Errorf("create cold start state directory: %w", err)
 	}
@@ -444,7 +532,7 @@ func (service *Service) writeState(state persistedState) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(temporaryPath, service.options.StatePath); err != nil {
+	if err := os.Rename(temporaryPath, path); err != nil {
 		return fmt.Errorf("replace cold start state: %w", err)
 	}
 	return nil

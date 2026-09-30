@@ -106,6 +106,7 @@ describe("strategy-orbit-bridge application client", () => {
         variants: [{ id: "variant-1", mode: "dry", order: ["driver-1"], overrides: {} }],
         activeVariantId: "variant-1",
       } },
+      { ...header("get_revision_planning_inputs", "recorded-inputs"), combinationId: "combo", sourceRevisions: [{ sessionId: "race-1", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) }], generatedAt: "2026-09-15T01:00:00Z" },
     ];
     const client = createStrategyOrbitApplicationClient<unknown>();
 
@@ -170,10 +171,8 @@ describe("strategy-orbit-bridge application client", () => {
       activeVariantId: "s1",
     });
 
-    // El reparto cambia con el margen de reserva de ISA-832: mismas 139 vueltas
-    // y mismas 4 paradas, pero el ultimo stint se acorta para llegar con margen
-    // (1,73 vueltas de reserva frente a las 0,80 exigidas).
-    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([12, 32, 32, 32, 31]);
+    // Four 64-second stops leave time for 136 laps at 104 seconds.
+    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([9, 32, 32, 32, 31]);
     expect(Object.isFrozen(result.plans.s1)).toBe(true);
   });
 

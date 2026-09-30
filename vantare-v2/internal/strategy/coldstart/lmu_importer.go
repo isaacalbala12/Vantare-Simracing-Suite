@@ -105,7 +105,8 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 	if importer == nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("LMU importer unavailable")
 	}
-	artifact, err := telemetryanalysis.BuildAuthorizedHistoricalArtifact(ctx, telemetryanalysis.OSContentSource{}, candidate, telemetryanalysis.ImportOptions{Storage: telemetryanalysis.StorageManagedCopy, Access: telemetryanalysis.AccessUserApproved, MaxBytes: maxInitialFileBytes, ParserID: telemetryanalysis.LMUDuckDBParserID, ParserVersion: telemetryanalysis.LMUDuckDBParserVersion, Provenance: telemetryanalysis.Provenance{Kind: telemetryanalysis.ProvenanceUser, EvidenceID: "strategy-cold-start"}})
+	// The private staged file is deleted after import; it is not a retained copy.
+	artifact, err := telemetryanalysis.BuildAuthorizedHistoricalArtifact(ctx, telemetryanalysis.OSContentSource{}, candidate, telemetryanalysis.ImportOptions{Storage: telemetryanalysis.StorageReference, Access: telemetryanalysis.AccessUserApproved, MaxBytes: maxInitialFileBytes, ParserID: telemetryanalysis.LMUDuckDBParserID, ParserVersion: telemetryanalysis.LMUDuckDBParserVersion, Provenance: telemetryanalysis.Provenance{Kind: telemetryanalysis.ProvenanceUser, EvidenceID: "strategy-cold-start"}})
 	if err != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("authorize LMU historical session: %w", err)
 	}
@@ -136,8 +137,9 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 }
 
 func enrichCatalogableModel(model telemetryanalysis.AuthorizedSessionModel, pages []telemetryanalysis.HistoricalPage) (telemetryanalysis.AuthorizedSessionModel, error) {
-	session := model.Session
-	validity, validityErr := telemetryanalysis.AnalyzeLapValidity(session, pages)
+	alignment := telemetryanalysis.BuildTemporalAlignment(model.Session, pages)
+	model.Session, pages = alignment.Session, alignment.Pages
+	validity, validityErr := telemetryanalysis.AnalyzeAlignedLapValidity(alignment)
 	if validityErr != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("analyze LMU lap validity: %w", validityErr)
 	}

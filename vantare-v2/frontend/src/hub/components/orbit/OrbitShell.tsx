@@ -5,6 +5,7 @@ import { useAccess } from '../../../lib/access';
 import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
+import type { AnalysisClient } from '../../../strategy/analysis-client';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
 import { useLauncherProfiles } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
@@ -61,6 +62,7 @@ import {
   RACES_TOPBAR_SLOT_ID,
   SETTINGS_CONTEXT_SLOT_ID,
   STRATEGY_CONTEXT_SLOT_ID,
+  STRATEGY_TOPBAR_SLOT_ID,
   TELEMETRY_CONTEXT_SLOT_ID,
 } from './orbit-slot-ids';
 import { ToastProvider } from '../../../ui/orbit/Toast';
@@ -86,8 +88,8 @@ const LauncherOrbitPage = lazy(() =>
 const RacesOrbitPage = lazy(() =>
   import('../../races-orbit/RacesOrbitPage').then((m) => ({ default: m.RacesOrbitPage })),
 );
-const StrategyOrbitPage = lazy(() =>
-  import('../../strategy-orbit/StrategyOrbitPage').then((m) => ({ default: m.StrategyOrbitPage })),
+const StrategyRecordedPage = lazy(() =>
+  import('../../strategy-orbit/StrategyRecordedPage').then((m) => ({ default: m.StrategyRecordedPage })),
 );
 const EngineerOrbitPage = lazy(() =>
   import('../../engineer-orbit/EngineerOrbitPage').then((m) => ({ default: m.EngineerOrbitPage })),
@@ -119,7 +121,7 @@ function prefetchOrbitPages(): void {
     () => import('../../home-orbit/HomeOrbitPage'),
     () => import('../../launcher-orbit/LauncherOrbitPage'),
     () => import('../../races-orbit/RacesOrbitPage'),
-    () => import('../../strategy-orbit/StrategyOrbitPage'),
+    () => import('../../strategy-orbit/StrategyRecordedPage'),
     () => import('../../engineer-orbit/EngineerOrbitPage'),
     () => import('../../telemetry-orbit/TelemetryOrbitPage'),
     () => import('../../roadmap-orbit/RoadmapOrbitPage'),
@@ -160,6 +162,8 @@ export type OrbitShellProps = {
   sourceStatus?: TelemetrySourceStatus | null;
   testingCenterChannel?: TestingCenterChannel | null;
   target?: string;
+  /** Optional native boundary supplied by deterministic visual/integration harnesses. */
+  strategyAnalysisClient?: AnalysisClient;
 };
 
 function resolveSimStatus(source: TelemetrySourceStatus | null | undefined): SimStatus {
@@ -186,6 +190,7 @@ function OrbitShellBody({
   sourceStatus,
   testingCenterChannel,
   target,
+  strategyAnalysisClient,
 }: OrbitShellProps) {
   const { t } = useI18n();
   const access = useAccess();
@@ -502,7 +507,7 @@ function OrbitShellBody({
     activeView === 'ajustes'
       ? 0
       : blocks.filter((block) => !block.hiddenFor.includes(activeView)).length;
-  const columnAvailable = Boolean(contextNode) || visibleBlockCount > 0;
+  const columnAvailable = activeView !== 'estrategia' && (Boolean(contextNode) || visibleBlockCount > 0);
 
   const destinations: PaletteItem[] = useMemo(() => {
     const items: PaletteItem[] = railItems.map((item) => ({
@@ -586,9 +591,10 @@ function OrbitShellBody({
   );
 
   const shell = (
-    <div className="orbit-root" data-testid="orbit-shell">
+    <div className="orbit-root" data-testid="orbit-shell" data-view={activeView}>
       <div
         className="orbit-shell"
+        data-view={activeView}
         data-column={effectiveColumnOpen && columnAvailable ? 'open' : 'closed'}
       >
         <Rail
@@ -655,6 +661,8 @@ function OrbitShellBody({
               <div className="orbit-topbar__slot" id={LAUNCHER_TOPBAR_SLOT_ID} />
             ) : activeView === 'carreras' ? (
               <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
+            ) : activeView === 'estrategia' ? (
+              <div className="orbit-topbar__slot" id={STRATEGY_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
           {activeView !== 'studio' ? <ScheduleReviewNotice owner={access.roles.includes('owner') && !access.isBlocked} onReview={(target) => navigate('ajustes', target)} /> : null}
@@ -686,7 +694,7 @@ function OrbitShellBody({
                 ) : activeView === 'carreras' ? (
                   <RacesOrbitPage calendar={races.calendar} target={navTarget} refreshState={races.refreshState} calendarError={races.calendarError} />
                 ) : activeView === 'estrategia' ? (
-                  <StrategyOrbitPage />
+                  <StrategyRecordedPage analysisClient={strategyAnalysisClient} />
                 ) : activeView === 'ingeniero' ? (
                   <EngineerOrbitPage />
                 ) : activeView === 'telemetria' ? (

@@ -53,6 +53,12 @@ const VARIANT: StrategyVariant = {
 };
 
 describe("shaping de Orbit", () => {
+  it("conserva reglas explícitas sin derivar ventanas ni límites", () => {
+    const rules = { minPitStops: 2, maxPitStops: 3, requiredWindows: [{ fromLap: 10, toLap: 20 }], driverLimits: { isaac: { maxTotalTimeSeconds: 3600 } } };
+    const input = orbitCalculationInput(EVENT, [DRIVER], [VARIANT], "s1", undefined, undefined, rules);
+    expect(input.event.rules).toEqual(rules);
+    expect(orbitCalculationInput(EVENT, [DRIVER], [VARIANT], "s1").event).not.toHaveProperty("rules");
+  });
   it("mapea el estado editable al input del motor sin derivar cifras", () => {
     expect(orbitCalculationInput(EVENT, [DRIVER], [VARIANT], "s1")).toEqual({
       event: { durationMinutes: 240, tankLiters: 90, pitLossSeconds: 64 },
@@ -66,6 +72,11 @@ describe("shaping de Orbit", () => {
       variants: [{ id: "s1", mode: "dry", order: ["isaac"], overrides: {} }],
       activeVariantId: "s1",
     });
+  });
+
+  it("transporta un delta de ritmo del piloto sin cambiar sus consumos", () => {
+    const input = orbitCalculationInput(EVENT, [{ ...DRIVER, paceDeltaSeconds: 2 }], [VARIANT], "s1");
+    expect(input.drivers[0]).toMatchObject({ paceDeltaSeconds: 2, dry: { fuelLitersPerLap: 2.75 } });
   });
 
   it("transporta WeatherScenario v1 al motor sin recalcular el timeline", () => {

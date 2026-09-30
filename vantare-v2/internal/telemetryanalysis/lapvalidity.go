@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	lapValidityComputationVersion = "lap-validity.v1"
+	lapValidityComputationVersion = "lap-validity.v3"
 	lapDistResetMinimumMeters     = 500.0
 	coverageClockToleranceSeconds = 5.0
 	fuelJumpMinimumLitres         = 3.0
@@ -62,6 +62,9 @@ const (
 )
 
 type LapFamilyUse struct {
+	// Only the effective view sets this after validating a complete correction set.
+	// Original observations and stored correction preconditions leave it empty.
+	CorrectionID     string               `json:"correctionId,omitempty"`
 	Family           DerivationFamily     `json:"family"`
 	Included         bool                 `json:"included"`
 	ExclusionReasons []LapExclusionReason `json:"exclusionReasons"`
@@ -87,28 +90,40 @@ func (l AnalyzedLap) HasLabel(wanted LapLabel) bool {
 }
 
 type LapValidityDiagnostics struct {
-	ReconciledLaps     int `json:"reconciledLaps"`
-	LapEventRows       int `json:"lapEventRows"`
-	DuplicateLapEvents int `json:"duplicateLapEvents,omitempty"`
-	UsableLapTimeRows  int `json:"usableLapTimeRows"`
-	LapDistResets      int `json:"lapDistResets"`
+	ReconciledLaps     int                                `json:"reconciledLaps"`
+	LapEventRows       int                                `json:"lapEventRows"`
+	DuplicateLapEvents int                                `json:"duplicateLapEvents,omitempty"`
+	UsableLapTimeRows  int                                `json:"usableLapTimeRows"`
+	LapDistResets      int                                `json:"lapDistResets"`
+	TemporalBridge     TemporalAlignmentStatus            `json:"temporalBridge"`
+	TemporalChannels   map[string]TemporalAlignmentStatus `json:"temporalChannels,omitempty"`
 }
 
 type LapValidityAnalysis struct {
-	Temporal    strategyprojection.TemporalSegmentsV1 `json:"temporal"`
-	Laps        []AnalyzedLap                         `json:"laps"`
-	Diagnostics LapValidityDiagnostics                `json:"diagnostics"`
+	// Empty on legacy persisted results: never infer the current version on read.
+	SessionID          string                                `json:"sessionId,omitempty"`
+	ComputationVersion string                                `json:"computationVersion,omitempty"`
+	Temporal           strategyprojection.TemporalSegmentsV1 `json:"temporal"`
+	Laps               []AnalyzedLap                         `json:"laps"`
+	Diagnostics        LapValidityDiagnostics                `json:"diagnostics"`
 }
 
 type observedLapEvent struct {
-	index     int64
-	seconds   float64
-	lapNumber int
+	index        int64
+	seconds      float64
+	lapNumber    int
+	qualityValid bool
 }
 
 type observedEvent struct {
 	seconds float64
 	values  []HistoricalValue
+}
+
+type observedLapReset struct {
+	index        int64
+	seconds      *float64
+	qualityValid bool
 }
 
 type stintCandidate struct {
@@ -123,30 +138,75 @@ type stintCandidate struct {
 // normalized pages. It never opens DuckDB and never assumes a shared clock
 // between event and continuous channels.
 func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapValidityAnalysis, error) {
-	if strings.TrimSpace(session.ID) == "" {
-		return LapValidityAnalysis{}, fmt.Errorf("%w: session id", ErrInvalidLapValidityInput)
-	}
+	return AnalyzeAlignedLapValidity(BuildTemporalAlignment(session, pages))
+}
+
+// AnalyzeAlignedLapValidity reuses one already validated temporal view across
+// validity and downstream derivations.
+func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAnalysis, error) {
+	session, pages := alignment.Session, alignment.Pages
 	grouped, err := groupPagesBySource(session, pages)
 	if err != nil {
 		return LapValidityAnalysis{}, err
 	}
-
 	lapEvents, duplicateLapEvents := readLapEvents(grouped["lap"])
-	resetIndices, lapDistFrequency, lapDistEnd := readLapDistResets(grouped["lap dist"])
-	continuousEnd := continuousCoverageEnd(
+	resets, resetFrequency := readLapDistResetObservations(grouped["lap dist"])
+	continuousStart, continuousEnd, hasContinuousCoverage := continuousCoverageWindow(
 		grouped["ambient temperature"],
 		grouped["track temperature"],
 		grouped["wind heading"],
 		grouped["wind speed"],
+		grouped["lap dist"],
 	)
-	if continuousEnd == 0 {
-		continuousEnd = lapDistEnd
+	return analyzeLapValidityObservations(alignment, lapValidityObservations{
+		lapEvents: lapEvents, duplicateLapEvents: duplicateLapEvents,
+		resets: resets, resetFrequency: resetFrequency,
+		continuousStart: continuousStart, continuousEnd: continuousEnd,
+		hasContinuousCoverage: hasContinuousCoverage,
+		lapTimes:              readEvents(grouped["lap time"]),
+		pitEvents:             readEvents(grouped["in pits"]),
+		impactEvents:          readEvents(grouped["lastimpactmagnitude"]),
+		tyreEvents:            readEvents(grouped["tyrescompound"]),
+		fuelRises:             observedFuelRises(grouped["fuel level"]),
+		labelTraffic: func(laps []AnalyzedLap) error {
+			labelTrafficLaps(laps, grouped["time behind next"])
+			return nil
+		},
+	})
+}
+
+// Observations are bounded by lap/event counts and the current page when a
+// correction reader supplies them. The pure API above remains the oracle.
+type lapValidityObservations struct {
+	lapEvents             []observedLapEvent
+	duplicateLapEvents    int
+	resets                []observedLapReset
+	resetFrequency        int
+	continuousStart       float64
+	continuousEnd         float64
+	hasContinuousCoverage bool
+	lapTimes              []observedEvent
+	pitEvents             []observedEvent
+	impactEvents          []observedEvent
+	tyreEvents            []observedEvent
+	fuelRises             []fuelRise
+	labelTraffic          func([]AnalyzedLap) error
+}
+
+func analyzeLapValidityObservations(alignment TemporalAlignmentResult, observations lapValidityObservations) (LapValidityAnalysis, error) {
+	session := alignment.Session
+	if strings.TrimSpace(session.ID) == "" {
+		return LapValidityAnalysis{}, fmt.Errorf("%w: session id", ErrInvalidLapValidityInput)
 	}
-	if len(lapEvents) == 0 && len(resetIndices) == 0 {
+	lapEvents, duplicateLapEvents := observations.lapEvents, observations.duplicateLapEvents
+	resets, resetFrequency := observations.resets, observations.resetFrequency
+	if len(lapEvents) == 0 && alignedResetCount(resets) == 0 {
 		return LapValidityAnalysis{}, fmt.Errorf("%w: no lap event or lap distance reset", ErrInvalidLapValidityInput)
 	}
 
 	result := LapValidityAnalysis{
+		SessionID:          session.ID,
+		ComputationVersion: lapValidityComputationVersion,
 		Temporal: strategyprojection.TemporalSegmentsV1{
 			ContractVersion: strategyprojection.ContractVersionTemporalSegmentsV1,
 			Segments:        []strategyprojection.ContinuousSegment{},
@@ -155,10 +215,14 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 			StintBoundaries: []strategyprojection.StintBoundary{},
 		},
 		Laps: []AnalyzedLap{},
+		Diagnostics: LapValidityDiagnostics{
+			TemporalBridge:   alignment.Bridge,
+			TemporalChannels: alignment.Channels,
+		},
 	}
 	result.Diagnostics.LapEventRows = len(lapEvents)
 	result.Diagnostics.DuplicateLapEvents = duplicateLapEvents
-	result.Diagnostics.LapDistResets = len(resetIndices)
+	result.Diagnostics.LapDistResets = len(resets)
 	if len(lapEvents) > 1 {
 		for index := 1; index < len(lapEvents); index++ {
 			if lapEvents[index].lapNumber < lapEvents[index-1].lapNumber {
@@ -166,31 +230,27 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 			}
 		}
 		result.Diagnostics.ReconciledLaps = lapEvents[len(lapEvents)-1].lapNumber - lapEvents[0].lapNumber
-	} else if len(resetIndices) > 0 {
-		result.Diagnostics.ReconciledLaps = len(resetIndices)
+	} else if len(resets) > 0 {
+		result.Diagnostics.ReconciledLaps = alignedResetCount(resets)
 	}
 
 	provenance := strategyprojection.Provenance{
 		Kind:     strategyprojection.ProvenanceDerived,
 		SourceID: session.ID,
 	}
-	result.Temporal.LapBoundaries = reconcileLapBoundaries(lapEvents, resetIndices, lapDistFrequency, provenance)
-	result.Laps, result.Diagnostics.UsableLapTimeRows = buildLapRecords(
-		lapEvents,
-		readEvents(grouped["lap time"]),
-	)
+	result.Temporal.LapBoundaries = reconcileLapBoundaries(lapEvents, resets, resetFrequency, alignment.Bridge.Aligned, provenance)
+	result.Laps, result.Diagnostics.UsableLapTimeRows = buildLapRecords(lapEvents, observations.lapTimes)
 	if len(lapEvents) == 0 {
-		result.Laps = buildResetOnlyLapRecords(resetIndices, lapDistFrequency)
+		result.Laps = buildResetOnlyLapRecords(resets)
 	}
 
-	labelPitLaps(result.Laps, readEvents(grouped["in pits"]))
-	labelIncidentLaps(result.Laps, readEvents(grouped["lastimpactmagnitude"]))
-	labelTrafficLaps(
-		result.Laps,
-		resetIndices,
-		lapDistFrequency,
-		grouped["time behind next"],
-	)
+	labelPitLaps(result.Laps, observations.pitEvents)
+	labelIncidentLaps(result.Laps, observations.impactEvents)
+	if observations.labelTraffic != nil {
+		if err := observations.labelTraffic(result.Laps); err != nil {
+			return LapValidityAnalysis{}, err
+		}
+	}
 	labelPaceOutliers(result.Laps)
 	for index := range result.Laps {
 		if !result.Laps[index].Complete {
@@ -203,13 +263,11 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 		session.ID,
 		result.Laps,
 		lapEvents,
-		readEvents(grouped["in pits"]),
-		readEvents(grouped["tyrescompound"]),
-		resetIndices,
-		lapDistFrequency,
-		grouped["fuel level"],
+		observations.pitEvents,
+		observations.tyreEvents,
+		observations.fuelRises,
 	)
-	addCoverage(session.ID, &result.Temporal, continuousEnd, lapEvents)
+	addCoverage(session.ID, &result.Temporal, observations.continuousStart, observations.continuousEnd, observations.hasContinuousCoverage, lapEvents)
 	return result, nil
 }
 
@@ -241,8 +299,10 @@ func readLapEvents(pages []HistoricalPage) ([]observedLapEvent, int) {
 			if sample.TimestampSeconds == nil || !ok || value < 0 || value > math.MaxInt32 {
 				continue
 			}
+			validValue, qualityValid := singleValidNumber(sample.Values)
 			events = append(events, observedLapEvent{
 				index: sample.Index, seconds: *sample.TimestampSeconds, lapNumber: int(value),
+				qualityValid: qualityValid && validValue == value && value == math.Trunc(value),
 			})
 		}
 	}
@@ -252,8 +312,6 @@ func readLapEvents(pages []HistoricalPage) ([]observedLapEvent, int) {
 		}
 		return events[i].seconds < events[j].seconds
 	})
-	// El mismo numero de vuelta dos veces es una reobservacion del evento
-	// (frontera de pagina o timestamp repetido), no una vuelta nueva.
 	deduped := events[:0]
 	duplicates := 0
 	for index, event := range events {
@@ -280,7 +338,65 @@ func readEvents(pages []HistoricalPage) []observedEvent {
 	return events
 }
 
-func readLapDistResets(pages []HistoricalPage) ([]int64, int, float64) {
+func readLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {
+	// Recorded pages arrive in sample order. Keep only the previous sample on
+	// that path; retain the sorted path for callers with unordered pages.
+	var scan orderedLapDistResetScan
+	for _, page := range pages {
+		if !scan.accept(page) {
+			return readUnorderedLapDistResetObservations(pages)
+		}
+	}
+	return scan.finish()
+}
+
+// The authorized reader supplies Lap Dist pages in index order. This state can
+// consume them as they arrive without retaining the continuous signal. Raw LMU
+// pages still need GPS alignment before their reset timestamps can be used.
+type orderedLapDistResetScan struct {
+	resets       []observedLapReset
+	previous     HistoricalSample
+	havePrevious bool
+	frequency    int
+	invalid      bool
+}
+
+func (scan *orderedLapDistResetScan) accept(page HistoricalPage) bool {
+	if scan.invalid || page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
+		return true
+	}
+	if scan.frequency == 0 {
+		scan.frequency = page.Sampling.FrequencyHz
+	}
+	if page.Sampling.FrequencyHz != scan.frequency {
+		scan.invalid = true
+		return true
+	}
+	for _, sample := range page.Samples {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
+			sample.TimestampSeconds = nil
+		}
+		if scan.havePrevious && sample.Index <= scan.previous.Index {
+			return false
+		}
+		if scan.havePrevious {
+			if reset, ok := lapDistResetBetween(scan.previous, sample); ok {
+				scan.resets = append(scan.resets, reset)
+			}
+		}
+		scan.previous, scan.havePrevious = sample, true
+	}
+	return true
+}
+
+func (scan orderedLapDistResetScan) finish() ([]observedLapReset, int) {
+	if scan.invalid {
+		return nil, 0
+	}
+	return scan.resets, scan.frequency
+}
+
+func readUnorderedLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {
 	frequency := 0
 	var samples []HistoricalSample
 	for _, page := range pages {
@@ -291,112 +407,193 @@ func readLapDistResets(pages []HistoricalPage) ([]int64, int, float64) {
 			frequency = page.Sampling.FrequencyHz
 		}
 		if page.Sampling.FrequencyHz != frequency {
-			return nil, 0, 0
+			return nil, 0
+		}
+		for _, sample := range page.Samples {
+			if page.Sampling.Origin != TimeOriginSourceTimestamp {
+				sample.TimestampSeconds = nil
+			}
+			samples = append(samples, sample)
+		}
+	}
+	sort.Slice(samples, func(i, j int) bool { return samples[i].Index < samples[j].Index })
+	var resets []observedLapReset
+	for index := 1; index < len(samples); index++ {
+		left, right := samples[index-1], samples[index]
+		if reset, ok := lapDistResetBetween(left, right); ok {
+			resets = append(resets, reset)
+		}
+	}
+	return resets, frequency
+}
+
+func lapDistResetBetween(left, right HistoricalSample) (observedLapReset, bool) {
+	if right.Index != left.Index+1 {
+		return observedLapReset{}, false
+	}
+	before, beforeOK := firstNumber(left.Values)
+	after, afterOK := firstNumber(right.Values)
+	if !beforeOK || !afterOK || !(before-after > lapDistResetMinimumMeters) {
+		return observedLapReset{}, false
+	}
+	validBefore, leftValid := singleValidNumber(left.Values)
+	validAfter, rightValid := singleValidNumber(right.Values)
+	reset := observedLapReset{index: right.Index, qualityValid: leftValid && rightValid && validBefore == before && validAfter == after}
+	if right.TimestampSeconds != nil {
+		seconds := *right.TimestampSeconds
+		reset.seconds = &seconds
+	}
+	return reset, true
+}
+
+func readLapDistResets(pages []HistoricalPage) ([]int64, int, float64) {
+	resets, frequency := readLapDistResetObservations(pages)
+	indices := make([]int64, 0, len(resets))
+	for _, reset := range resets {
+		indices = append(indices, reset.index)
+	}
+	continuousEnd := 0.0
+	for _, page := range pages {
+		for _, sample := range page.Samples {
+			if frequency > 0 {
+				continuousEnd = math.Max(continuousEnd, float64(sample.Index+1)/float64(frequency))
+			}
+		}
+	}
+	return indices, frequency, continuousEnd
+}
+
+func continuousCoverageWindow(channels ...[]HistoricalPage) (float64, float64, bool) {
+	for _, pages := range channels {
+		if start, end, ok := channelCoverageWindow(pages); ok {
+			return start, end, true
+		}
+	}
+	return 0, 0, false
+}
+
+func channelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
+	var scan orderedCoverageScan
+	for _, page := range pages {
+		if !scan.accept(page) {
+			return unorderedChannelCoverageWindow(pages)
+		}
+	}
+	return scan.finish()
+}
+
+// orderedCoverageScan keeps only the endpoints and previous aligned sample.
+// A page visitor can feed it without retaining the continuous signal.
+type orderedCoverageScan struct {
+	frequency int
+	first     float64
+	last      float64
+	lastIndex int64
+	count     int
+	invalid   bool
+}
+
+// false means the input is out of index order; in-memory callers retain the
+// sorted fallback. Authorized correction pages arrive in index order.
+func (scan *orderedCoverageScan) accept(page HistoricalPage) bool {
+	if page.Sampling.Kind != SamplingContinuousImplicitFrequency ||
+		page.Sampling.Origin != TimeOriginSourceTimestamp || page.Sampling.FrequencyHz <= 0 ||
+		(scan.frequency != 0 && page.Sampling.FrequencyHz != scan.frequency) {
+		scan.invalid = true
+		return true
+	}
+	if scan.frequency == 0 {
+		scan.frequency = page.Sampling.FrequencyHz
+	}
+	for _, sample := range page.Samples {
+		if scan.count > 0 && sample.Index <= scan.lastIndex {
+			return false
+		}
+		if sample.TimestampSeconds == nil ||
+			(scan.count > 0 && (sample.Index != scan.lastIndex+1 || *sample.TimestampSeconds <= scan.last)) {
+			scan.invalid = true
+		}
+		if scan.count == 0 && sample.TimestampSeconds != nil {
+			scan.first = *sample.TimestampSeconds
+		}
+		if sample.TimestampSeconds != nil {
+			scan.last = *sample.TimestampSeconds
+		}
+		scan.lastIndex = sample.Index
+		scan.count++
+	}
+	return true
+}
+
+func (scan orderedCoverageScan) finish() (float64, float64, bool) {
+	if scan.invalid || scan.count < 2 {
+		return 0, 0, false
+	}
+	return scan.first, scan.last, true
+}
+
+func unorderedChannelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
+	var samples []HistoricalSample
+	frequency := 0
+	for _, page := range pages {
+		if page.Sampling.Kind != SamplingContinuousImplicitFrequency ||
+			page.Sampling.Origin != TimeOriginSourceTimestamp || page.Sampling.FrequencyHz <= 0 {
+			return 0, 0, false
+		}
+		if frequency == 0 {
+			frequency = page.Sampling.FrequencyHz
+		}
+		if page.Sampling.FrequencyHz != frequency {
+			return 0, 0, false
 		}
 		samples = append(samples, page.Samples...)
 	}
+	if len(samples) < 2 {
+		return 0, 0, false
+	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].Index < samples[j].Index })
-	var resets []int64
-	for index := 1; index < len(samples); index++ {
-		left, right := samples[index-1], samples[index]
-		if right.Index != left.Index+1 {
-			continue
-		}
-		before, beforeOK := firstNumber(left.Values)
-		after, afterOK := firstNumber(right.Values)
-		if beforeOK && afterOK && before-after > lapDistResetMinimumMeters {
-			resets = append(resets, right.Index)
+	for index, sample := range samples {
+		if sample.TimestampSeconds == nil ||
+			(index > 0 && (sample.Index != samples[index-1].Index+1 ||
+				*sample.TimestampSeconds <= *samples[index-1].TimestampSeconds)) {
+			return 0, 0, false
 		}
 	}
-	continuousEnd := 0.0
-	if frequency > 0 && len(samples) > 0 {
-		continuousEnd = float64(samples[len(samples)-1].Index+1) / float64(frequency)
-	}
-	return resets, frequency, continuousEnd
-}
-
-func continuousCoverageEnd(channels ...[]HistoricalPage) float64 {
-	selectedFrequency := 0
-	selectedEnd := 0.0
-	for _, pages := range channels {
-		for _, page := range pages {
-			frequency := page.Sampling.FrequencyHz
-			if page.Sampling.Kind != SamplingContinuousImplicitFrequency || frequency <= 0 || len(page.Samples) == 0 {
-				continue
-			}
-			maximumIndex := page.Samples[0].Index
-			for _, sample := range page.Samples[1:] {
-				if sample.Index > maximumIndex {
-					maximumIndex = sample.Index
-				}
-			}
-			end := float64(maximumIndex+1) / float64(frequency)
-			if selectedFrequency == 0 || frequency < selectedFrequency ||
-				(frequency == selectedFrequency && end > selectedEnd) {
-				selectedFrequency = frequency
-				selectedEnd = end
-			}
-		}
-	}
-	return selectedEnd
+	return *samples[0].TimestampSeconds, *samples[len(samples)-1].TimestampSeconds, true
 }
 
 func reconcileLapBoundaries(
 	events []observedLapEvent,
-	resets []int64,
+	resets []observedLapReset,
 	resetFrequency int,
+	bridgeAligned bool,
 	provenance strategyprojection.Provenance,
 ) []strategyprojection.LapBoundary {
-	boundaries := make([]strategyprojection.LapBoundary, 0, max(len(events), len(resets)))
-	difference := float64(len(resets) - len(events))
-	quality := strategyprojection.PresenceUnknown
-	if len(events) == len(resets) && len(events) > 0 {
-		quality = strategyprojection.PresenceValid
-	}
-	for _, event := range events {
-		source := strategyprojection.LapBoundarySourceLapEvent
-		locationPresence := strategyprojection.PresenceMissing
-		if len(resets) > 0 {
-			source = strategyprojection.LapBoundarySourceReconciled
-			locationPresence = quality
-		}
+	boundaries := make([]strategyprojection.LapBoundary, 0, max(len(events), alignedResetCount(resets)))
+	for index, event := range events {
 		boundaries = append(boundaries, strategyprojection.LapBoundary{
 			LapNumber:  event.lapNumber,
 			Timestamp:  secondsTimestamp(event.seconds),
-			Source:     source,
-			Quality:    quality,
+			Source:     strategyprojection.LapBoundarySourceLapEvent,
+			Quality:    reconciledLapEventQuality(events, resets, resetFrequency, bridgeAligned, index),
 			Provenance: provenance,
 			Confidence: strategyprojection.Confidence{
-				SampleSize: 2, RangeLower: floatPointer(difference), RangeUpper: floatPointer(difference),
-				ComputationVersion: lapValidityComputationVersion,
+				SampleSize: 1, ComputationVersion: lapValidityComputationVersion,
 			},
 			Location: strategyprojection.TrackLocation{
 				NormalizedDistance: 0,
-				Presence:           locationPresence,
+				Presence:           strategyprojection.PresenceMissing,
 			},
 		})
 	}
-	if len(events) > 0 && len(resets) > len(events) && resetFrequency > 0 {
-		for _, reset := range resets[len(events):] {
-			boundaries = append(boundaries, strategyprojection.LapBoundary{
-				Timestamp:  secondsTimestamp(float64(reset) / float64(resetFrequency)),
-				Source:     strategyprojection.LapBoundarySourceLapDistReset,
-				Quality:    strategyprojection.PresenceUnknown,
-				Provenance: provenance,
-				Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: lapValidityComputationVersion},
-				Location:   strategyprojection.TrackLocation{Presence: strategyprojection.PresenceUnknown},
-			})
-		}
-	}
 	if len(events) == 0 {
-		for index, reset := range resets {
-			seconds := float64(reset)
-			if resetFrequency > 0 {
-				seconds /= float64(resetFrequency)
+		for _, reset := range resets {
+			if reset.seconds == nil {
+				continue
 			}
 			boundaries = append(boundaries, strategyprojection.LapBoundary{
-				LapNumber:  index + 1,
-				Timestamp:  secondsTimestamp(seconds),
+				LapNumber:  len(boundaries) + 1,
+				Timestamp:  secondsTimestamp(*reset.seconds),
 				Source:     strategyprojection.LapBoundarySourceLapDistReset,
 				Quality:    strategyprojection.PresenceUnknown,
 				Provenance: provenance,
@@ -406,6 +603,53 @@ func reconcileLapBoundaries(
 		}
 	}
 	return boundaries
+}
+
+// An event anchors the boundary; an independent, clock-aligned distance reset
+// must corroborate the crossing within one distance sample and match no other
+// event. The first event is only the recorded initial state.
+func reconciledLapEventQuality(events []observedLapEvent, resets []observedLapReset, frequency int, bridgeAligned bool, index int) strategyprojection.Presence {
+	if !bridgeAligned || frequency <= 0 || index == 0 || !events[index].qualityValid ||
+		events[index].lapNumber != events[index-1].lapNumber+1 || events[index].seconds <= events[index-1].seconds {
+		return strategyprojection.PresenceUnknown
+	}
+	tolerance := 1 / float64(frequency)
+	matched := -1
+	for resetIndex, reset := range resets {
+		if reset.seconds == nil || !reset.qualityValid || math.Abs(*reset.seconds-events[index].seconds) > tolerance {
+			continue
+		}
+		if matched >= 0 {
+			return strategyprojection.PresenceUnknown
+		}
+		matched = resetIndex
+	}
+	if matched < 0 {
+		return strategyprojection.PresenceUnknown
+	}
+	for other := 1; other < len(events); other++ {
+		if other != index && math.Abs(*resets[matched].seconds-events[other].seconds) <= tolerance {
+			return strategyprojection.PresenceUnknown
+		}
+	}
+	return strategyprojection.PresenceValid
+}
+
+func singleValidNumber(values []HistoricalValue) (float64, bool) {
+	if len(values) != 1 {
+		return 0, false
+	}
+	return numericHistoricalValue(values[0])
+}
+
+func alignedResetCount(resets []observedLapReset) int {
+	count := 0
+	for _, reset := range resets {
+		if reset.seconds != nil {
+			count++
+		}
+	}
+	return count
 }
 
 func buildLapRecords(events []observedLapEvent, lapTimes []observedEvent) ([]AnalyzedLap, int) {
@@ -430,21 +674,21 @@ func buildLapRecords(events []observedLapEvent, lapTimes []observedEvent) ([]Ana
 	return laps, usable
 }
 
-func buildResetOnlyLapRecords(resets []int64, frequency int) []AnalyzedLap {
-	if frequency <= 0 {
-		return []AnalyzedLap{}
-	}
-	laps := make([]AnalyzedLap, 0, len(resets))
-	for index, reset := range resets {
+func buildResetOnlyLapRecords(resets []observedLapReset) []AnalyzedLap {
+	laps := make([]AnalyzedLap, 0, alignedResetCount(resets))
+	for _, reset := range resets {
+		if reset.seconds == nil {
+			continue
+		}
 		lap := AnalyzedLap{
-			Number: index + 1,
-			End:    secondsTimestamp(float64(reset) / float64(frequency)),
+			Number: len(laps) + 1,
+			End:    secondsTimestamp(*reset.seconds),
 			Labels: []LapLabel{LapLabelIncomplete},
 		}
-		if index == 0 {
+		if len(laps) == 0 {
 			addLapLabel(&lap, LapLabelOutLap)
 		} else {
-			start := laps[index-1].End
+			start := laps[len(laps)-1].End
 			lap.Start = &start
 		}
 		laps = append(laps, lap)
@@ -466,6 +710,29 @@ func labelPitLaps(laps []AnalyzedLap, events []observedEvent) {
 		}
 		previousPit = pit
 	}
+	// End-of-lap state misses a complete pit visit between two boundaries.
+	// Keep that state-based labeling and include observed transitions too.
+	previousEventPit := false
+	for _, event := range events {
+		pit, ok := firstBoolean(event.values)
+		if !ok {
+			continue
+		}
+		wasPit := previousEventPit
+		previousEventPit = pit
+		index := lapIndexAt(laps, event.seconds)
+		if index >= len(laps) || laps[index].Start != nil && event.seconds < timestampSeconds(*laps[index].Start) {
+			continue
+		}
+		if pit {
+			addLapLabel(&laps[index], LapLabelPit)
+			if !wasPit && index > 0 {
+				addLapLabel(&laps[index], LapLabelInLap)
+			}
+		} else if wasPit {
+			addLapLabel(&laps[index], LapLabelOutLap)
+		}
+	}
 }
 
 func labelIncidentLaps(laps []AnalyzedLap, events []observedEvent) {
@@ -480,26 +747,17 @@ func labelIncidentLaps(laps []AnalyzedLap, events []observedEvent) {
 	}
 }
 
-func labelTrafficLaps(
-	laps []AnalyzedLap,
-	resets []int64,
-	lapDistFrequency int,
-	pages []HistoricalPage,
-) {
-	if lapDistFrequency <= 0 {
-		return
-	}
+func labelTrafficLaps(laps []AnalyzedLap, pages []HistoricalPage) {
 	for _, page := range pages {
-		if page.Sampling.FrequencyHz <= 0 {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
 			continue
 		}
 		for _, sample := range page.Samples {
 			gap, ok := firstNumber(sample.Values)
-			if !ok || math.Abs(gap) < 0.05 || math.Abs(gap) > trafficMaximumGapSeconds {
+			if sample.TimestampSeconds == nil || !ok || math.Abs(gap) < 0.05 || math.Abs(gap) > trafficMaximumGapSeconds {
 				continue
 			}
-			lapDistIndex := sample.Index * int64(lapDistFrequency) / int64(page.Sampling.FrequencyHz)
-			lapIndex := sort.Search(len(resets), func(i int) bool { return resets[i] >= lapDistIndex })
+			lapIndex := lapIndexAt(laps, *sample.TimestampSeconds)
 			if lapIndex >= 0 && lapIndex < len(laps) {
 				addLapLabel(&laps[lapIndex], LapLabelTraffic)
 			}
@@ -536,9 +794,7 @@ func inferStintBoundaries(
 	lapEvents []observedLapEvent,
 	pitEvents []observedEvent,
 	tyreEvents []observedEvent,
-	resetIndices []int64,
-	lapDistFrequency int,
-	fuelPages []HistoricalPage,
+	fuelRises []fuelRise,
 ) []strategyprojection.StintBoundary {
 	candidates := make(map[int]stintCandidate)
 	for _, entry := range booleanEntries(pitEvents) {
@@ -558,16 +814,21 @@ func inferStintBoundaries(
 			presence: strategyprojection.PresenceValid, sampleSize: 2,
 		})
 	}
-	fuelByLap, fuelPresent := continuousLapEndValues(fuelPages, resetIndices, lapDistFrequency)
-	for index := 1; index < len(fuelByLap); index++ {
-		if !fuelPresent[index-1] || !fuelPresent[index] {
+	for _, rise := range fuelRises {
+		boundarySeconds := rise.seconds
+		if entry, inside, observedEntry := pitIntervalAt(pitEvents, rise.seconds); inside && !observedEntry {
+			continue
+		} else if inside {
+			boundarySeconds = entry
+		}
+		if boundarySeconds <= firstLapSeconds(lapEvents) {
 			continue
 		}
-		delta := fuelByLap[index] - fuelByLap[index-1]
-		if delta <= fuelJumpMinimumLitres {
+		index := lapEventIndexAtOrAfter(lapEvents, boundarySeconds)
+		if index >= len(lapEvents) {
 			continue
 		}
-		candidateDelta := delta
+		candidateDelta := rise.delta
 		addStintCandidate(candidates, stintCandidate{
 			lapIndex: index, cause: strategyprojection.StintCauseFuelJump,
 			presence: strategyprojection.PresenceUnknown, sampleSize: 2, delta: &candidateDelta,
@@ -608,21 +869,24 @@ func inferStintBoundaries(
 func addCoverage(
 	sessionID string,
 	temporal *strategyprojection.TemporalSegmentsV1,
+	continuousStart float64,
 	continuousEnd float64,
+	hasContinuousCoverage bool,
 	lapEvents []observedLapEvent,
 ) {
-	if continuousEnd <= 0 {
+	if !hasContinuousCoverage || len(lapEvents) == 0 {
 		return
 	}
-	eventEnd := continuousEnd
-	if len(lapEvents) > 0 {
-		eventEnd = lapEvents[len(lapEvents)-1].seconds
-	}
+	eventStart := lapEvents[0].seconds
+	eventEnd := lapEvents[len(lapEvents)-1].seconds
+	coveredStart := math.Max(continuousStart, eventStart)
 	coveredEnd := math.Min(continuousEnd, eventEnd)
-	timelineEnd := math.Max(continuousEnd, eventEnd)
-	start := secondsTimestamp(0)
+	if coveredEnd <= coveredStart {
+		return
+	}
+	start := secondsTimestamp(coveredStart)
 	end := secondsTimestamp(coveredEnd)
-	duration := coveredEnd
+	duration := coveredEnd - coveredStart
 	temporal.Segments = append(temporal.Segments, strategyprojection.ContinuousSegment{
 		SegmentID: "continuous-1", SessionStartTs: start, SessionEndTs: end,
 		Reason: "local_driver_window", Presence: strategyprojection.PresenceValid,
@@ -632,11 +896,22 @@ func addCoverage(
 			ComputationVersion: lapValidityComputationVersion,
 		},
 	})
-	if timelineEnd-coveredEnd <= coverageClockToleranceSeconds {
+	gapOrdinal := 1
+	if math.Abs(continuousStart-eventStart) > coverageClockToleranceSeconds {
+		appendCoverageGap(sessionID, temporal, gapOrdinal, math.Min(continuousStart, eventStart), coveredStart)
+		gapOrdinal++
+	}
+	if math.Abs(continuousEnd-eventEnd) > coverageClockToleranceSeconds {
+		appendCoverageGap(sessionID, temporal, gapOrdinal, coveredEnd, math.Max(continuousEnd, eventEnd))
+	}
+}
+
+func appendCoverageGap(sessionID string, temporal *strategyprojection.TemporalSegmentsV1, ordinal int, start, end float64) {
+	if end <= start {
 		return
 	}
 	temporal.Gaps = append(temporal.Gaps, strategyprojection.CoverageGap{
-		GapID: "coverage-gap-1", StartTs: end, EndTs: secondsTimestamp(timelineEnd),
+		GapID: fmt.Sprintf("coverage-gap-%d", ordinal), StartTs: secondsTimestamp(start), EndTs: secondsTimestamp(end),
 		Reason: "no_coverage", Presence: strategyprojection.PresenceMissing,
 		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID},
 	})
@@ -693,48 +968,127 @@ func appendStateExclusions(reasons []LapExclusionReason, lap AnalyzedLap, paceOu
 	return reasons
 }
 
-// continuousLapEndValues devuelve un valor por frontera (cada reset y la ultima
-// muestra). present[i] marca si la frontera i tiene muestra numerica: sin ella el
-// resultado quedaria compactado y una frontera sin muestra desplazaria los
-// siguientes valores a vueltas que no les corresponden.
-func continuousLapEndValues(pages []HistoricalPage, resets []int64, lapDistFrequency int) ([]float64, []bool) {
-	if lapDistFrequency <= 0 {
-		return nil, nil
-	}
-	var samples []HistoricalSample
-	frequency := 0
+type fuelRise struct {
+	seconds float64
+	delta   float64
+}
+
+func observedFuelRises(pages []HistoricalPage) []fuelRise {
+	// The authorized reader supplies fuel pages in increasing sample order.
+	// Keep only the previous value and completed rises on that path; pure
+	// callers with unordered pages retain the original sorted behavior.
+	var scan orderedFuelRiseScan
 	for _, page := range pages {
-		if page.Sampling.FrequencyHz <= 0 {
+		if !scan.accept(page) {
+			return unorderedFuelRises(pages)
+		}
+	}
+	return scan.finish()
+}
+
+type orderedFuelRiseScan struct {
+	rises         []fuelRise
+	current       fuelRise
+	previousIndex int64
+	previousValue float64
+	previousValid bool
+	lastIndex     int64
+	seen          bool
+}
+
+func (scan *orderedFuelRiseScan) accept(page HistoricalPage) bool {
+	if page.Sampling.Origin != TimeOriginSourceTimestamp {
+		return true
+	}
+	for _, sample := range page.Samples {
+		if scan.seen && sample.Index <= scan.lastIndex {
+			return false
+		}
+		scan.lastIndex, scan.seen = sample.Index, true
+		scan.consume(sample)
+	}
+	return true
+}
+
+func (scan *orderedFuelRiseScan) flush() {
+	if scan.current.delta > fuelJumpMinimumLitres {
+		scan.rises = append(scan.rises, scan.current)
+	}
+	scan.current = fuelRise{}
+}
+
+func (scan *orderedFuelRiseScan) consume(sample HistoricalSample) {
+	value, ok := firstNumber(sample.Values)
+	if !ok || sample.TimestampSeconds == nil {
+		scan.flush()
+		scan.previousValid = false
+		return
+	}
+	if !scan.previousValid || sample.Index != scan.previousIndex+1 {
+		scan.flush()
+		scan.previousIndex, scan.previousValue, scan.previousValid = sample.Index, value, true
+		return
+	}
+	delta := value - scan.previousValue
+	if delta > 0 {
+		if scan.current.delta == 0 {
+			scan.current.seconds = *sample.TimestampSeconds
+		}
+		scan.current.delta += delta
+	} else if delta < 0 {
+		scan.flush()
+	}
+	scan.previousIndex, scan.previousValue = sample.Index, value
+}
+
+func (scan *orderedFuelRiseScan) finish() []fuelRise {
+	scan.flush()
+	return scan.rises
+}
+
+func unorderedFuelRises(pages []HistoricalPage) []fuelRise {
+	var samples []HistoricalSample
+	for _, page := range pages {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
 			continue
 		}
-		frequency = page.Sampling.FrequencyHz
 		samples = append(samples, page.Samples...)
 	}
-	if frequency <= 0 || len(samples) == 0 {
-		return nil, nil
-	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].Index < samples[j].Index })
-	ends := append(append([]int64(nil), resets...), math.MaxInt64)
-	values := make([]float64, len(ends))
-	present := make([]bool, len(ends))
-	for index, lapDistEnd := range ends {
-		target := lapDistEnd
-		if target != math.MaxInt64 {
-			target = target * int64(frequency) / int64(lapDistFrequency)
-		}
-		position := sort.Search(len(samples), func(i int) bool { return samples[i].Index > target }) - 1
-		if target == math.MaxInt64 {
-			position = len(samples) - 1
-		}
-		if position < 0 {
+	var scan orderedFuelRiseScan
+	for _, sample := range samples {
+		scan.consume(sample)
+	}
+	return scan.finish()
+}
+
+func pitIntervalAt(events []observedEvent, seconds float64) (float64, bool, bool) {
+	initialized, active, observedEntry := false, false, false
+	entry := 0.0
+	for _, event := range events {
+		state, ok := firstBoolean(event.values)
+		if !ok {
 			continue
 		}
-		if value, ok := firstNumber(samples[position].Values); ok {
-			values[index] = value
-			present[index] = true
+		if !initialized {
+			initialized, active = true, state
+			if state {
+				entry = event.seconds
+			}
+			continue
 		}
+		if state && !active {
+			entry, observedEntry = event.seconds, true
+		}
+		if !state && active {
+			if seconds >= entry && seconds <= event.seconds {
+				return entry, true, observedEntry
+			}
+			observedEntry = false
+		}
+		active = state
 	}
-	return values, present
+	return entry, active && seconds >= entry, observedEntry
 }
 
 func addStintCandidate(candidates map[int]stintCandidate, candidate stintCandidate) {
@@ -762,15 +1116,16 @@ func stintCausePriority(cause strategyprojection.StintBoundaryCause) int {
 
 func booleanEntries(events []observedEvent) []observedEvent {
 	entries := []observedEvent{}
-	previous := false
+	previous, initialized := false, false
 	for _, event := range events {
 		active, ok := firstBoolean(event.values)
-		if ok && active && !previous {
+		if !ok {
+			continue
+		}
+		if initialized && active && !previous {
 			entries = append(entries, event)
 		}
-		if ok {
-			previous = active
-		}
+		previous, initialized = active, true
 	}
 	return entries
 }

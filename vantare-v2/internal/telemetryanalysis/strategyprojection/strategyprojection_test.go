@@ -208,6 +208,30 @@ func TestPitWithoutResourceRiseMustBeAmbiguous(t *testing.T) {
 	}
 }
 
+func TestOpenPitIntervalAllowsUnknownDuration(t *testing.T) {
+	start := time.Now().UTC().Truncate(time.Millisecond)
+	projection := StrategyInputProjectionV2{
+		ContractVersion: ContractVersionStrategyInputProjectionV2, GeneratedAt: start, ComputationVersion: "test.v1",
+		CombinedStintPaceCurve: CombinedStintPaceCurve{
+			Presence: PresenceMissing, Provenance: Provenance{Kind: ProvenanceDerived, SourceID: "test"},
+			Confidence: Confidence{ComputationVersion: "test.v1"}, Identifiability: IdentifiabilityCombinedOnly, Points: []PacePoint{},
+		},
+		Pit: PitFamily{Presence: PresenceUnknown, ObservedIntervals: []ObservedPitLaneInterval{{
+			PitNumber: 1, StartTimestamp: &start, DurationSeconds: 0,
+			Ambiguous: true, AmbiguityReason: "open_pit_lane_interval",
+		}}},
+	}
+	if err := projection.Validate(); err != nil {
+		t.Fatalf("open pit interval should validate: %v", err)
+	}
+	fuel := 5.0
+	projection.Pit.ObservedIntervals[0].HasFuelRise = true
+	projection.Pit.ObservedIntervals[0].FuelAddedLiters = &fuel
+	if err := projection.Validate(); err == nil {
+		t.Fatal("open pit interval accepted final resources")
+	}
+}
+
 func TestFixturesDecode(t *testing.T) {
 	cases := []struct {
 		file string

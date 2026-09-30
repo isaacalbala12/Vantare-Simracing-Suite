@@ -1,5 +1,5 @@
 //! Centro local acotado; fuentes y acciones cerradas del contrato Go.
-use crate::{Section, shell::button};
+use crate::{Section, orbit};
 use gpui::{Context, IntoElement, Render, Window, div, prelude::*};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -173,56 +173,79 @@ impl Notifications {
 }
 impl Render for Notifications {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut rows = div().flex().flex_col().gap_2();
+        let mut rows = div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0));
         for (index, record) in self.center.records.iter().enumerate() {
             let id = record.id.clone();
             let destination = record
                 .action
                 .as_ref()
                 .and_then(|action| action.destination().ok());
+            let source = match record.source {
+                Source::Updater => "Actualizador",
+                Source::Launcher => "Launcher",
+                Source::System => "Sistema",
+            };
+            let severity = match record.severity {
+                Severity::Info => "Información",
+                Severity::Warning => "Aviso",
+                Severity::Error => "Error",
+            };
+            let title = if record.title_key == "hub.local.error" {
+                "Error local del Hub"
+            } else {
+                &record.title_key
+            };
             rows = rows.child(
-                div()
-                    .id(("notification", index))
-                    .flex()
-                    .flex_col()
-                    .gap_1()
-                    .child(format!(
-                        "{:?} · {:?} · {} · {}",
-                        record.source,
-                        record.severity,
-                        record.occurred_at,
-                        if record.unread { "sin leer" } else { "leído" }
-                    ))
-                    .child(if record.title_key == "hub.local.error" {
-                        "Error local del Hub".into()
-                    } else {
-                        record.title_key.clone()
-                    })
-                    .child(record.concrete_cause.clone())
-                    .child(button("read", "Marcar leído").on_click(cx.listener(
-                        move |this, _, _, cx| {
-                            this.center.mark_read(&id);
-                            cx.notify();
-                        },
-                    )))
-                    .when_some(destination, |row, destination| {
-                        row.child(button("notification-action", "Abrir destino").on_click(
-                            cx.listener(move |this, _, _, cx| {
-                                this.destination = Some(destination);
-                                cx.notify();
-                            }),
+                orbit::card(title).id(("notification", index)).child(
+                    orbit::card_body()
+                        .child(orbit::setting_row(
+                            &format!("{source} · {severity}"),
+                            &format!(
+                                "{} · {}",
+                                record.occurred_at,
+                                if record.unread { "Sin leer" } else { "Leído" }
+                            ),
+                            orbit::button("read", "Marcar leído").on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.center.mark_read(&id);
+                                    cx.notify();
+                                },
+                            )),
                         ))
-                    }),
+                        .child(orbit::text(
+                            record.concrete_cause.clone(),
+                            13.5,
+                            400,
+                            orbit::INK_2,
+                        ))
+                        .when_some(destination, |row, destination| {
+                            row.child(
+                                orbit::button("notification-action", "Abrir destino").on_click(
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.destination = Some(destination);
+                                        cx.notify();
+                                    }),
+                                ),
+                            )
+                        }),
+                ),
             );
         }
-        div().id("notification-center").flex().flex_col().gap_2().overflow_y_scroll()
-            .child(format!("{} sin leer · revisión {}",self.center.unread(),self.center.revision))
-            .child("Historial local de esta sesión (máximo 50). Solo errores reales. Sin toasts ni publishers remotos; calendario/Spotter son otras superficies.")
-            .when_some(self.error.clone(),gpui::ParentElement::child)
-            .child(div().flex().gap_2()
-                .child(button("read-all","Marcar todo leído").on_click(cx.listener(|this,_,_,cx|{this.center.mark_read("all");cx.notify();})))
-                .child(button("clear-notifications","Vaciar historial").on_click(cx.listener(|this,_,_,cx|{this.center.clear();cx.notify();}))))
+        if self.center.records.is_empty() {
+            rows = rows.child(orbit::card("Todo al día").child(
+                orbit::card_body().child(orbit::callout("No hay notificaciones en esta sesión.")),
+            ));
+        }
+        div().id("notification-center").flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0))
+            .child(orbit::card("Tu bandeja local").child(orbit::card_body()
+                .child(orbit::setting_row("Sin leer", &format!("Revisión {} · historial de esta sesión", self.center.revision),
+                    orbit::text(self.center.unread().to_string(), 15.0, 700, orbit::INK)))
+                .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 4.0))
+                    .child(orbit::button("read-all", "Marcar todo leído").on_click(cx.listener(|this, _, _, cx| { this.center.mark_read("all"); cx.notify(); })))
+                    .child(orbit::button("clear-notifications", "Vaciar historial").on_click(cx.listener(|this, _, _, cx| { this.center.clear(); cx.notify(); }))))))
+            .when_some(self.error.clone(), |view, error| view.child(orbit::callout(error)))
             .child(rows)
+            .child(orbit::callout("Historial local de esta sesión (máximo 50). Solo errores reales. Sin toasts ni publishers remotos; calendario y Spotter son otras superficies."))
     }
 }
 #[cfg(test)]

@@ -2,7 +2,7 @@ use super::{
     model::{Charts, Lap, Point, Signal, project_laps},
     reader::{Cancel, Reader, recordings},
 };
-use crate::shell::button;
+use crate::orbit;
 use gpui::{
     Context, IntoElement, PathBuilder, Render, Window, canvas, div, point, prelude::*, px, rgb,
 };
@@ -194,8 +194,8 @@ impl Analysis {
                 this.job = None;
                 match result {
                     Ok(charts) => {
-                        this.status = if allow_delta { "A azul · B naranja · delta A−B (positivo: A más lento). Solo tramo observado común; no duración total de vuelta.".into() }
-                            else { "A azul · B naranja · Delta no disponible: resumen con huecos. Las líneas se cortan donde falta cobertura.".into() };
+                        this.status = if allow_delta { "A carmín · B gris · delta A−B (positivo: A más lento). Solo tramo observado común; no duración total de vuelta.".into() }
+                            else { "A carmín · B gris · Delta no disponible: resumen con huecos. Las líneas se cortan donde falta cobertura.".into() };
                         this.charts = charts;
                     }
                     Err(error) => this.status = error,
@@ -230,7 +230,8 @@ fn chart(
 ) -> gpui::Div {
     let points: Vec<_> = series.iter().flatten().collect();
     if points.is_empty() {
-        return div().child(format!("{title}: sin muestras fiables comparables"));
+        return orbit::card(title)
+            .child(orbit::card_body().child(orbit::callout("Sin muestras fiables comparables")));
     }
     let measured_min = points
         .iter()
@@ -247,12 +248,13 @@ fn chart(
             points.iter().map(|p| p.value).fold(0.0, f64::max),
         )
     });
-    div()
-        .flex()
-        .flex_col()
-        .child(format!(
-            "{title} · {x_min:.0}–{x_max:.0} m · {y_min:.2}–{y_max:.2}"
-        ))
+    orbit::card(title)
+        .child(orbit::card_body().child(orbit::text(
+            format!("{x_min:.0}–{x_max:.0} m · {y_min:.2}–{y_max:.2}"),
+            12.0,
+            400,
+            orbit::INK_3,
+        )))
         .child(
             canvas(
                 |_, _, _| (),
@@ -262,7 +264,7 @@ fn chart(
                     axes.line_to(point(bounds.origin.x, bounds.bottom()));
                     axes.line_to(point(bounds.right(), bounds.bottom()));
                     if let Ok(path) = axes.build() {
-                        window.paint_path(path, rgb(0x0066_6666));
+                        window.paint_path(path, rgb(orbit::INK_3));
                     }
                     let zero = ((0.0 - y_min) / (y_max - y_min).max(0.001)).clamp(0.0, 1.0);
                     #[allow(clippy::cast_possible_truncation)]
@@ -271,9 +273,9 @@ fn chart(
                     baseline.move_to(point(bounds.origin.x, zero_y));
                     baseline.line_to(point(bounds.right(), zero_y));
                     if let Ok(path) = baseline.build() {
-                        window.paint_path(path, rgb(0x0044_4444));
+                        window.paint_path(path, rgb(orbit::INK_MUTED));
                     }
-                    for (line, color) in series.iter().zip([0x0055_99ff, 0x00ff_aa55]) {
+                    for (line, color) in series.iter().zip([orbit::CARMINE, orbit::INK_2]) {
                         let mut path = PathBuilder::stroke(px(1.5));
                         let mut previous = None;
                         for p in line {
@@ -306,59 +308,61 @@ fn chart(
                 },
             )
             .w_full()
-            .h(px(115.0)),
+            .h(px(orbit::CONTROL_H * 3.0)),
         )
+}
+
+impl Analysis {
+    fn recordings_view(&self, cx: &Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let mut files = orbit::card_body()
+            .id("analysis-recordings")
+            .max_h(px(orbit::CONTROL_H * 4.0))
+            .overflow_y_scroll();
+        for (index, path) in self.files.iter().enumerate() {
+            let path = path.clone();
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            files = files.child(orbit::setting_row(
+                &name,
+                if self.selected.as_ref() == Some(&path) {
+                    "Grabación seleccionada"
+                } else {
+                    "Grabación nativa · solo lectura"
+                },
+                orbit::button("open-recording", "Abrir")
+                    .id(("recording", index))
+                    .on_click(cx.listener(move |this, _, _, cx| this.open(path.clone(), cx))),
+            ));
+        }
+        if self.files.is_empty() {
+            files = files.child(orbit::callout(
+                "Sin grabaciones disponibles. Recarga el directorio local para buscar sesiones.",
+            ));
+        }
+        files
+    }
 }
 
 impl Render for Analysis {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut files = div()
-            .id("analysis-recordings")
-            .flex()
-            .flex_col()
-            .gap_1()
-            .max_h(px(160.0))
-            .overflow_y_scroll();
-        for (index, path) in self.files.iter().enumerate() {
-            let path = path.clone();
-            files = files.child(
-                div()
-                    .id(("recording", index))
-                    .role(gpui::Role::Button)
-                    .tab_index(0)
-                    .cursor_pointer()
-                    .child(format!(
-                        "{}{}",
-                        if self.selected.as_ref() == Some(&path) {
-                            "▶ "
-                        } else {
-                            ""
-                        },
-                        path.file_name().unwrap_or_default().to_string_lossy()
-                    ))
-                    .on_click(cx.listener(move |this, _, _, cx| this.open(path.clone(), cx))),
-            );
-        }
+        let files = self.recordings_view(cx);
         let mut laps = div()
             .id("analysis-laps")
             .flex()
             .flex_col()
-            .gap_2()
-            .max_h(px(240.0))
+            .gap(px(orbit::GUTTER / 2.0))
+            .max_h(px(orbit::CONTROL_H * 6.0))
             .overflow_y_scroll();
         for (index, lap) in self.laps.iter().enumerate() {
-            let mut row = div().flex().gap_2().child(format!("Época {} · sesión {} · coche {} · contador vuelta {} · chunk {} · {} muestras · {}{} · ventana {}",
-                lap.epoch, lap.session, lap.car, lap.lap, lap.first_chunk, lap.samples,
-                if lap.sealed { "sellada" } else { "sin cierre" }, if lap.gap { " / con huecos" } else { "" },
-                lap.observed_span_s.map_or_else(|| "—".into(), |v| format!("{v:.3} s"))));
+            let mut choices = div().flex().gap(px(orbit::GUTTER / 4.0));
             for side in 0..2 {
-                row = row.child(
-                    div()
-                        .id((if side == 0 { "lap-a" } else { "lap-b" }, index))
-                        .role(gpui::Role::Button)
-                        .tab_index(0)
-                        .cursor_pointer()
-                        .child(format!(
+                choices = choices.child(
+                    orbit::button(
+                        "choose-lap",
+                        &format!(
                             "{}{}",
                             if side == 0 { "A" } else { "B" },
                             if self.pair[side] == Some(index) {
@@ -366,25 +370,60 @@ impl Render for Analysis {
                             } else {
                                 ""
                             }
-                        ))
-                        .on_click(cx.listener(move |this, _, _, cx| this.choose(side, index, cx))),
+                        ),
+                    )
+                    .id((if side == 0 { "lap-a" } else { "lap-b" }, index))
+                    .on_click(cx.listener(move |this, _, _, cx| this.choose(side, index, cx))),
                 );
             }
             laps = laps.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .child(row)
-                    .child(stats("km/h", &lap.speed, 3.6))
-                    .child(stats("Acelerador %", &lap.throttle, 100.0))
-                    .child(stats("Freno %", &lap.brake, 100.0)),
+                orbit::card(&format!("Vuelta {} · coche {}", lap.lap, lap.car)).child(
+                    orbit::card_body()
+                        .child(orbit::setting_row(
+                            &format!("Época {} · sesión {}", lap.epoch, lap.session),
+                            &format!(
+                                "Chunk {} · {} muestras · {}{} · ventana {}",
+                                lap.first_chunk,
+                                lap.samples,
+                                if lap.sealed { "sellada" } else { "sin cierre" },
+                                if lap.gap { " / con huecos" } else { "" },
+                                lap.observed_span_s
+                                    .map_or_else(|| "—".into(), |v| format!("{v:.3} s"))
+                            ),
+                            choices,
+                        ))
+                        .child(orbit::text(
+                            stats("km/h", &lap.speed, 3.6),
+                            12.0,
+                            400,
+                            orbit::INK_2,
+                        ))
+                        .child(orbit::text(
+                            stats("Acelerador %", &lap.throttle, 100.0),
+                            12.0,
+                            400,
+                            orbit::INK_2,
+                        ))
+                        .child(orbit::text(
+                            stats("Freno %", &lap.brake, 100.0),
+                            12.0,
+                            400,
+                            orbit::INK_2,
+                        )),
+                ),
             );
         }
-        div().id("analysis").flex().flex_col().gap_2().overflow_y_scroll()
-            .child(format!("Grabaciones: {} · solo lectura fuera de carrera", self.root.display()))
-            .child(button("analysis-refresh", "Recargar grabaciones").on_click(cx.listener(|this, _, _, cx| this.refresh(cx))))
-            .child(self.status.clone()).child(self.recording_status.clone()).child(files).child(laps)
-            .child("Selecciona A y B. Medias aritméticas de muestras fiables; ventana observada no equivale a tiempo de vuelta. Máximo 1024 puntos/canal; sin 3D.")
+        div().id("analysis").flex().flex_col().gap(px(orbit::GUTTER / 2.0))
+            .child(orbit::card("Grabaciones").child(orbit::card_body()
+                .child(orbit::setting_row("Directorio local", &self.root.display().to_string(),
+                    orbit::button("analysis-refresh", if self.busy { "Leyendo…" } else { "Recargar grabaciones" })
+                        .on_click(cx.listener(|this, _, _, cx| this.refresh(cx)))))
+                .child(orbit::callout(self.status.clone()))
+                .when(!self.recording_status.is_empty(), |body| body.child(orbit::callout(self.recording_status.clone()))))
+                .child(files))
+            .child(orbit::card("Comparar vueltas · A / B").child(orbit::card_body()
+                .child(orbit::callout("Selecciona A y B. Medias aritméticas de muestras fiables; ventana observada no equivale a tiempo de vuelta. Máximo 1024 puntos/canal; solo lectura fuera de carrera, sin 3D.")))
+                .child(laps))
             .child(chart("Velocidad km/h", self.charts.speed.clone(), self.charts.distance_range, None))
             .child(chart("Acelerador %", self.charts.throttle.clone(), self.charts.distance_range, Some((0.0, 100.0))))
             .child(chart("Freno %", self.charts.brake.clone(), self.charts.distance_range, Some((0.0, 100.0))))

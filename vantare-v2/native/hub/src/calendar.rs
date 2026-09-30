@@ -1,5 +1,9 @@
 //! Lectura local del catálogo oficial UTC; sin publicación, Discord ni recordatorios.
-use crate::{files, shell::button};
+use crate::{files, orbit};
+
+// Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
+#[path = "home.rs"]
+pub mod home;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
 use gpui::{Context, IntoElement, Render, Window, div, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -234,70 +238,144 @@ impl Calendar {
         Ok(())
     }
 }
-impl Render for Calendar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let now = Utc::now();
-        let current = self.schedule.is_current(now).unwrap_or(false);
-        let mut rows = div().flex().flex_col().gap_2();
+impl Calendar {
+    fn upcoming(&self, now: DateTime<Utc>) -> (Vec<(DateTime<Utc>, String)>, Option<String>) {
         let mut starts = vec![];
-        for (index, series) in self.schedule.series.iter().enumerate() {
-            let id = series.id.clone();
-            let followed = self.following.series_ids.contains(&id);
-            rows = rows.child(
-                div()
-                    .flex()
-                    .gap_2()
-                    .child(
-                        div()
-                            .id(("follow", index))
-                            .role(gpui::Role::Button)
-                            .tab_index(0)
-                            .cursor_pointer()
-                            .child(if followed {
-                                "Dejar de seguir"
-                            } else {
-                                "Seguir"
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                match this.follow(id.clone()) {
-                                    Ok(()) => this.error = None,
-                                    Err(error) => this.error = Some(error),
-                                }
-                                cx.notify();
-                            })),
-                    )
-                    .child(format!(
-                        "{} · {} · {} · {}",
-                        series.name, series.track, series.vehicle_class, series.license_label
-                    )),
-            );
-            if current && followed {
-                match self.schedule.starts(series, now, now + Duration::days(1)) {
-                    Ok(times) => {
-                        starts.extend(times.into_iter().map(|time| (time, series.name.clone())));
+        let mut error = None;
+        if self.schedule.is_current(now).unwrap_or(false) {
+            for series in &self.schedule.series {
+                if self.following.series_ids.contains(&series.id) {
+                    match self.schedule.starts(series, now, now + Duration::days(1)) {
+                        Ok(times) => {
+                            starts
+                                .extend(times.into_iter().map(|time| (time, series.name.clone())));
+                        }
+                        Err(cause) => error = Some(cause),
                     }
-                    Err(error) => self.error = Some(error),
                 }
             }
         }
         starts.sort_unstable();
-        let mut agenda = div().flex().flex_col().gap_1();
-        for (time, name) in starts.iter().take(20) {
-            agenda = agenda.child(format!("{} · {}", time.format("%Y-%m-%d %H:%M UTC"), name));
+        starts.truncate(20);
+        (starts, error)
+    }
+
+    fn agenda(
+        &self,
+        now: DateTime<Utc>,
+        starts: &[(DateTime<Utc>, String)],
+        limit: usize,
+    ) -> gpui::Div {
+        let mut body = orbit::card_body();
+        if starts.is_empty() {
+            body = body.child(orbit::callout(if self.schedule.is_current(now).unwrap_or(false) {
+                "No hay salidas próximas de las series seguidas. Sigue una serie para ver sus próximas 24 horas."
+            } else {
+                "Catálogo histórico o aún no vigente; no se ofrecen próximas carreras."
+            }));
         }
-        div().id("calendar").flex().flex_col().gap_2().overflow_y_scroll()
-            .child(if current {"Agenda vigente (UTC)"}else{"Catálogo histórico o aún no vigente; no se ofrecen próximas carreras"})
-            .child(format!("Ventana {} → {}",self.schedule.valid_from,self.schedule.valid_until))
-            .child(self.status.clone()).when_some(self.error.clone(),gpui::ParentElement::child)
-            .child(button("reload-calendar","Cargar official-schedule.json local").on_click(cx.listener(|this,_,_,cx|{
-                match this.reload(){Ok(())=>this.error=None,Err(error)=>this.error=Some(error)}cx.notify();})))
-            .child("Seguimiento local. Próximas 24 h, hasta 20 salidas. Sin recordatorios, eventos manuales, inbox Discord ni publicación Owner.")
-            .child(rows).child(agenda)
+        for (time, name) in starts.iter().take(limit) {
+            body = body.child(orbit::setting_row(
+                name,
+                "Serie seguida · calendario local",
+                orbit::text(
+                    time.format("%Y-%m-%d %H:%M UTC").to_string(),
+                    13.5,
+                    600,
+                    orbit::INK_2,
+                ),
+            ));
+        }
+        body
+    }
+}
+
+impl Render for Calendar {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let now = Utc::now();
+        let current = self.schedule.is_current(now).unwrap_or(false);
+        let (starts, error) = self.upcoming(now);
+        if let Some(error) = error {
+            self.error = Some(error);
+        }
+        let mut rows = orbit::card_body();
+        for (index, series) in self.schedule.series.iter().enumerate() {
+            let id = series.id.clone();
+            let followed = self.following.series_ids.contains(&id);
+            rows = rows.child(orbit::setting_row(
+                &series.name,
+                &format!(
+                    "{} · {} · {}",
+                    series.track, series.vehicle_class, series.license_label
+                ),
+                orbit::toggle("follow", &format!("Seguir {}", series.name), followed, true)
+                    .id(("follow", index))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        match this.follow(id.clone()) {
+                            Ok(()) => this.error = None,
+                            Err(error) => this.error = Some(error),
+                        }
+                        cx.notify();
+                    })),
+            ));
+        }
+        div().id("calendar").flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0))
+            .child(orbit::card("Catálogo local").child(orbit::card_body()
+                .child(orbit::setting_row("Vigencia", &format!("Ventana {} → {}", self.schedule.valid_from, self.schedule.valid_until),
+                    orbit::text(if current { "Vigente · UTC" } else { "Fuera de vigencia" }, 13.5, 600, orbit::INK_2)))
+                .child(orbit::setting_row("Publicación", &self.status,
+                    orbit::button("reload-calendar", "Cargar agenda local").on_click(cx.listener(|this, _, _, cx| {
+                        match this.reload() { Ok(()) => this.error = None, Err(error) => this.error = Some(error) }
+                        cx.notify();
+                    }))))))
+            .when_some(self.error.clone(), |view, error| view.child(orbit::callout(error)))
+            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0))
+                .child(orbit::card("Series · seguimiento").flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(rows))
+                .child(orbit::card("Próximas carreras · 24 h").flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(self.agenda(now, &starts, 20))))
+            .child(orbit::callout("Seguimiento local. Carga official-schedule.json desde el directorio del Hub. Hasta 20 salidas UTC; sin recordatorios, eventos manuales, inbox Discord ni publicación Owner."))
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn upcoming_only_includes_followed_current_series_in_order_and_is_bounded() {
+        let mut calendar = Calendar {
+            schedule: Schedule::parse(SEED.as_bytes()).expect("catálogo real empaquetado"),
+            path: PathBuf::new(),
+            following: Following::default(),
+            saved: None,
+            error: None,
+            status: String::new(),
+        };
+        let now = timestamp("2026-08-25T00:07:00Z").expect("dentro de vigencia");
+        assert!(calendar.upcoming(now).0.is_empty());
+        let series = &mut calendar.schedule.series[0];
+        series.recurrence = Recurrence {
+            kind: "interval".into(),
+            interval_minutes: 15,
+            days: vec![],
+            times_utc: vec![],
+        };
+        let name = series.name.clone();
+        calendar.following.series_ids.push(series.id.clone());
+        let (starts, error) = calendar.upcoming(now);
+        assert!(error.is_none());
+        assert_eq!(starts.len(), 20);
+        assert_eq!(
+            starts[0].0,
+            timestamp("2026-08-25T00:15:00Z").expect("salida")
+        );
+        assert!(
+            starts
+                .iter()
+                .all(|(time, series)| *time >= now && *series == name)
+        );
+        assert!(starts.windows(2).all(|pair| pair[0].0 < pair[1].0));
+        let expired = timestamp("2026-09-30T12:00:00Z").expect("caducado");
+        assert!(calendar.upcoming(expired).0.is_empty());
+    }
+
     #[test]
     fn following_survives_restart_failed_writes_and_invalid_catalog_reload_keep_last_state() {
         let dir = std::env::temp_dir().join(format!("vantare-calendar-{}", std::process::id()));

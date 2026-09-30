@@ -41,6 +41,7 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
     // El productivo conserva un valor stale y su color hasta que desaparezca
     // la señal; Unavailable y una lista vacía no equivalen a bandera verde.
     let flags = match &snapshot.state.flags {
+        _ if snapshot.state.source_state == crate::SourceState::Lost => &[][..],
         Quality::Reliable(flags) | Quality::Estimated(flags) | Quality::Stale(flags) => {
             flags.as_slice()
         }
@@ -119,6 +120,7 @@ mod tests {
 
     fn snapshot(flags: Quality<Vec<Flag>>) -> Snapshot {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.flags = flags;
         snapshot
     }

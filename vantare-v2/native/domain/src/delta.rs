@@ -1,7 +1,7 @@
 //! Delta Eficiencia: comparación ya resuelta por el núcleo, nunca reconstruida aquí.
 
 use crate::format::{self, Language, Preferences};
-use crate::{Capability, Quality, SessionId, Snapshot};
+use crate::{Capability, Quality, SessionId, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reference {
@@ -15,6 +15,7 @@ pub enum Status {
     Ready,
     Missing,
     Stale,
+    Disconnected,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,8 +63,13 @@ pub fn project_reference(
     reference: Reference,
 ) -> ViewModel {
     let state = &snapshot.state;
-    let car = state.player_car();
-    let delta = state.player.map(|p| p.delta_best_s).unwrap_or_default();
+    let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
+    let car = state.player_car().filter(|_| available);
+    let delta = state
+        .player
+        .filter(|_| available)
+        .map(|p| p.delta_best_s)
+        .unwrap_or_default();
     let last = car.map(|c| c.last_lap_s).unwrap_or_default();
     let best = car.map(|c| c.best_lap_s).unwrap_or_default();
     // Stale conserva el valor y lo etiqueta; no se presenta como fresco.
@@ -75,7 +81,9 @@ pub fn project_reference(
             || state.capabilities.delta == Capability::WithData))
         || matches!(last, Quality::Stale(_))
         || matches!(best, Quality::Stale(_));
-    let status = if has_stale_value {
+    let status = if matches!(state.source_state, SourceState::Waiting | SourceState::Lost) {
+        Status::Disconnected
+    } else if state.source_state == SourceState::Stale || has_stale_value {
         Status::Stale
     } else if seconds.is_some() {
         Status::Ready
@@ -87,7 +95,9 @@ pub fn project_reference(
         (Status::Missing, Language::Es) => Some("SIN DATOS"),
         (Status::Missing, Language::En) => Some("NO DATA"),
         (Status::Stale, Language::Es) => Some("DATOS ANTIGUOS"),
-        (Status::Stale, Language::En) => Some("STALE DATA"),
+        (Status::Stale, Language::En) => Some("DATA OUT OF DATE"),
+        (Status::Disconnected, Language::Es) => Some("DESCONECTADO"),
+        (Status::Disconnected, Language::En) => Some("DISCONNECTED"),
     };
     let reference_notice = match (reference, prefs.language) {
         (Reference::PersonalBest, _) => None,
@@ -189,6 +199,7 @@ mod tests {
 
     fn snapshot(delta: Quality<f64>) -> Snapshot {
         let mut s = Snapshot::default();
+        s.state.source_state = SourceState::Live;
         s.state.player = Some(Player {
             car: CarId(7),
             delta_best_s: delta,

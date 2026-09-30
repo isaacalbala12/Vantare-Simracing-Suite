@@ -158,6 +158,7 @@ mod tests {
 
     fn vm(delta: f64, lap: u32, best: f64) -> ViewModel {
         let mut s = Snapshot::default();
+        s.state.source_state = vantare_domain::SourceState::Live;
         s.state.player = Some(Player {
             car: CarId(1),
             delta_best_s: Quality::Reliable(delta),

@@ -2,7 +2,9 @@
 //! solo se muestran valores fiables o estimados, y un dato ausente es `—`.
 
 use crate::format::{self, PLACEHOLDER, Preferences};
-use crate::{Capability, Car, CarId, FlagKind, FlagScope, Gap, Quality, SessionKind, Snapshot};
+use crate::{
+    Capability, Car, CarId, FlagKind, FlagScope, Gap, Quality, SessionKind, Snapshot, SourceState,
+};
 
 /// Diferencia con la mejor vuelta de la sesión por debajo de la cual un coche
 /// se considera el más rápido.
@@ -10,6 +12,7 @@ const SESSION_BEST_TOLERANCE_S: f64 = 0.0005;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
+    pub source_state: SourceState,
     pub capability: Capability,
     pub session_label: String,
     /// Tiempo restante de la sesión.
@@ -55,8 +58,9 @@ pub fn project_player_class(snapshot: &Snapshot, prefs: Preferences) -> ViewMode
 
 fn project_scoped(snapshot: &Snapshot, prefs: Preferences, player_class: bool) -> ViewModel {
     let state = &snapshot.state;
+    let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
     let session = &state.session;
-    let kind = session.kind.current();
+    let kind = session.kind.current().filter(|_| available);
     let gap_to_best_lap = matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying));
     let class = state
         .player_car()
@@ -66,11 +70,12 @@ fn project_scoped(snapshot: &Snapshot, prefs: Preferences, player_class: bool) -
         .cars
         .iter()
         .filter(|car| {
-            !player_class
-                || car
-                    .class
-                    .as_ref()
-                    .is_none_or(|c| Some(c.id) == class.map(|c| c.id))
+            available
+                && (!player_class
+                    || car
+                        .class
+                        .as_ref()
+                        .is_none_or(|c| Some(c.id) == class.map(|c| c.id)))
         })
         .collect();
     let session_best = cars
@@ -124,11 +129,16 @@ fn project_scoped(snapshot: &Snapshot, prefs: Preferences, player_class: bool) -
         .collect();
 
     ViewModel {
+        source_state: state.source_state,
         capability: state.capabilities.positions,
         session_label: kind.map_or_else(|| PLACEHOLDER.into(), |k| format::session_kind(k, prefs)),
         clock: format::clock(session.remaining_s.current().copied()),
         class_chip: class_chip(snapshot),
-        flag: session_flag(snapshot),
+        flag: if state.source_state == SourceState::Live {
+            session_flag(snapshot)
+        } else {
+            None
+        },
         gap_to_best_lap,
         track: session
             .track_name

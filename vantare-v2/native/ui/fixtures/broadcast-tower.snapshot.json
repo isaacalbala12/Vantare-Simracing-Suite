@@ -89,9 +89,7 @@
         "class_position": {
           "reliable": 1
         },
-        "laps": {
-          "reliable": 127
-        },
+        "laps": "unavailable",
         "last_lap_s": {
           "reliable": 91.234
         },

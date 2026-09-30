@@ -153,6 +153,7 @@ mod tests {
         let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.capabilities.damage = Capability::Fresh;
         snapshot.state.player = Some(Player {
             damage: Damage {

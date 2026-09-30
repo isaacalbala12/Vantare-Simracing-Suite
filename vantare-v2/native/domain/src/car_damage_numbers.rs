@@ -2,7 +2,7 @@
 //! Los valores obsoletos se conservan con aviso, como el renderer productivo.
 
 use crate::format::{self, Language, Preferences};
-use crate::{Capability, Damage, Quality, Snapshot};
+use crate::{Capability, Damage, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewModel {
@@ -14,7 +14,14 @@ pub struct ViewModel {
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences, show_tyres: bool) -> ViewModel {
     let damage = match snapshot.state.player {
-        Some(player) if snapshot.state.capabilities.damage >= Capability::WithData => player.damage,
+        Some(player)
+            if !matches!(
+                snapshot.state.source_state,
+                SourceState::Waiting | SourceState::Lost
+            ) && snapshot.state.capabilities.damage >= Capability::WithData =>
+        {
+            player.damage
+        }
         _ => Damage::default(),
     };
     let structural = [damage.aero, damage.body, damage.suspension];
@@ -31,11 +38,15 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, show_tyres: bool) -> Vie
                 .iter()
                 .chain(damage.tyre_wear.iter())
                 .any(|value| matches!(value, Quality::Stale(_))));
-    let status_text = match (missing, stale, prefs.language) {
-        (true, _, Language::Es) => Some("SIN DATOS"),
-        (true, _, Language::En) => Some("NO DATA"),
-        (_, true, Language::Es) => Some("DATOS ANTIGUOS"),
-        (_, true, Language::En) => Some("DATA OUT OF DATE"),
+    let status_text = match (snapshot.state.source_state, missing, stale, prefs.language) {
+        (SourceState::Lost, _, _, Language::Es) => Some("DESCONECTADO"),
+        (SourceState::Lost, _, _, Language::En) => Some("DISCONNECTED"),
+        (SourceState::Stale, _, _, Language::Es) => Some("DATOS ANTIGUOS"),
+        (SourceState::Stale, _, _, Language::En) => Some("DATA OUT OF DATE"),
+        (_, true, _, Language::Es) => Some("SIN DATOS"),
+        (_, true, _, Language::En) => Some("NO DATA"),
+        (_, _, true, Language::Es) => Some("DATOS ANTIGUOS"),
+        (_, _, true, Language::En) => Some("DATA OUT OF DATE"),
         _ => None,
     };
     ViewModel {
@@ -78,6 +89,7 @@ mod tests {
 
     fn snapshot(damage: Damage) -> Snapshot {
         let mut state = State {
+            source_state: crate::SourceState::Live,
             player: Some(Player {
                 damage,
                 ..Player::default()

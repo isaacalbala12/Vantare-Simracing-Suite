@@ -2,13 +2,14 @@
 //! las unidades y los puntos cardinales pertenecen al formateador común.
 
 use crate::format::{self, Language, Preferences};
-use crate::{Capability, Quality, Snapshot};
+use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Ready,
     Missing,
     Stale,
+    Disconnected,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,9 +46,14 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let has_stale = signals.iter().any(
         |(signal, min, max)| matches!(signal, Quality::Stale(value) if valid(*value, *min, *max)),
     );
-    let status = if !has_current && !has_stale {
+    let status = if snapshot.state.source_state == SourceState::Lost {
+        Status::Disconnected
+    } else if !has_current && !has_stale {
         Status::Missing
-    } else if !has_current || snapshot.state.capabilities.weather == Capability::WithData {
+    } else if snapshot.state.source_state == SourceState::Stale
+        || !has_current
+        || snapshot.state.capabilities.weather == Capability::WithData
+    {
         Status::Stale
     } else {
         Status::Ready
@@ -58,6 +64,8 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         (Status::Missing, Language::En) => "NO DATA",
         (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
         (Status::Stale, Language::En) => "DATA OUT OF DATE",
+        (Status::Disconnected, Language::Es) => "DESCONECTADO",
+        (Status::Disconnected, Language::En) => "DISCONNECTED",
     };
     let mut metrics = Vec::new();
     if status == Status::Ready {
@@ -166,6 +174,7 @@ mod tests {
             ),
         ] {
             let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = crate::SourceState::Live;
             snapshot.state.capabilities.weather = capability;
             snapshot.state.session.weather.air_temperature_k = quality;
             let vm = project(&snapshot, Preferences::default());
@@ -183,6 +192,7 @@ mod tests {
     #[test]
     fn reference_scene_and_preferences_use_shared_formats() {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.capabilities.weather = Capability::Fresh;
         snapshot.state.session.weather = Weather {
             track_temperature_k: Quality::Reliable(301.15),
@@ -237,6 +247,7 @@ mod tests {
             ),
         ] {
             let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = crate::SourceState::Live;
             snapshot.state.session.weather = Weather {
                 air_temperature_k: Quality::Reliable(295.15),
                 wind_direction_rad: Quality::Reliable(0.0),

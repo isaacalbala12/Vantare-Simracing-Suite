@@ -359,6 +359,7 @@ mod tests {
             sequence: 1,
             ..Snapshot::default()
         };
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.capabilities.lap_times = Capability::Fresh;
         snapshot.state.player = Some(Player {
             car: CarId(1),

@@ -129,7 +129,7 @@
         "unavailable",
         "unavailable"
       ],
-      "steering": "unavailable",
+      "steering": { "reliable": 0.08 },
       "fuel_history": []
     },
     "source_state": "live"

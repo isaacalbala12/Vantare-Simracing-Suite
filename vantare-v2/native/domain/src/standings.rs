@@ -187,6 +187,7 @@ mod tests {
     fn snapshot(kind: SessionKind, cars: Vec<Car>) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: crate::SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,
                     ..Capabilities::default()

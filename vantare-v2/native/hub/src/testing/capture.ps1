@@ -3,13 +3,28 @@
 param(
     [Parameter(Mandatory)][int]$HubProcessId,
     [string]$OutputPath,
-    [int]$Width = 1600,
-    [int]$Height = 1000,
+    [int]$Width = 1440,
+    [int]$Height = 900,
     [int]$X = -1,
     [int]$Y = -1,
+    [ValidateRange(-2400,2400)][int]$WheelDelta = 0,
     [string]$Keys = ''
 )
 $ErrorActionPreference = 'Stop'
+while (Test-Path -LiteralPath 'C:/tmp/fase2/pantalla-ocupada') {
+    Start-Sleep -Seconds 60
+}
+$captureMutex = [System.Threading.Mutex]::new($false, 'Global\VantareParityCapture')
+$captureHeld = $false
+try {
+    $captureHeld = $captureMutex.WaitOne()
+    # Otro worker pudo reservar la pantalla mientras esperábamos el mutex.
+    while (Test-Path -LiteralPath 'C:/tmp/fase2/pantalla-ocupada') {
+        $captureMutex.ReleaseMutex()
+        $captureHeld = $false
+        Start-Sleep -Seconds 60
+        $captureHeld = $captureMutex.WaitOne()
+    }
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 Add-Type @'
 using System; using System.Runtime.InteropServices;
@@ -49,6 +64,8 @@ if ($hubProcess.MainWindowHandle -eq 0) { throw 'La ventana no está disponible'
 [TestingCapture]::FocusHub($hubProcess.MainWindowHandle)
 if ($OutputPath) {
     [void][TestingCapture]::MoveWindow($hubProcess.MainWindowHandle,0,0,$Width,$Height,$true)
+    # Evita tooltips/hover del control pulsado sin salir de la ventana de QA.
+    [void][TestingCapture]::SetCursorPos([int]($Width * 0.65),80)
 }
 [void][TestingCapture]::SetForegroundWindow($hubProcess.MainWindowHandle)
 Start-Sleep -Milliseconds 500
@@ -65,6 +82,12 @@ if ($X -ge 0 -and $Y -ge 0) {
     [TestingCapture]::mouse_event(0x0004,0,0,0,[UIntPtr]::Zero)
 }
 if ($Keys) { [System.Windows.Forms.SendKeys]::SendWait($Keys) }
+if ($WheelDelta -ne 0) {
+    $bounds = New-Object TestingCapture+RECT
+    if (-not [TestingCapture]::GetWindowRect($foreground,[ref]$bounds)) { throw 'No se pudo leer la ventana' }
+    [void][TestingCapture]::SetCursorPos(($bounds.L + [int](($bounds.R-$bounds.L)*0.75)),($bounds.T + [int](($bounds.B-$bounds.T)*0.75)))
+    [TestingCapture]::mouse_event(0x0800,0,0,$WheelDelta,[UIntPtr]::Zero)
+}
 if ($OutputPath) {
     if ([TestingCapture]::GetForegroundWindow() -ne $hubProcess.MainWindowHandle) { throw 'Solo se captura el Hub, sin diálogos ni otras aplicaciones' }
     $rect = New-Object TestingCapture+RECT
@@ -76,4 +99,8 @@ if ($OutputPath) {
         $bitmap.Save([IO.Path]::GetFullPath($OutputPath))
         Write-Output "$($bitmap.Width) x $($bitmap.Height) · PID $HubProcessId"
     } finally { $graphics.Dispose(); $bitmap.Dispose() }
+}
+} finally {
+    if ($captureHeld) { $captureMutex.ReleaseMutex() }
+    $captureMutex.Dispose()
 }

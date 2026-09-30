@@ -1,5 +1,10 @@
 # Testing Center local — worker de #1430
 
+La sección actual incorpora el editor del servicio nativo de envío de texto.
+Consulta [la nota de paridad](PARITY.md) para el alcance vigente y sus límites.
+Este documento conserva la evidencia del diagnóstico y exportación locales;
+sus afirmaciones de ausencia de envío describen aquel corte anterior.
+
 Encargo: [GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430),
 fase 5 / ADR 0099. Worker Codex; revisión completa pendiente de Claude Opus 5.5.
 Rama `vantareapp/isa-1430-w-tc-local`; base recibida

@@ -205,13 +205,7 @@ impl Hub {
             Section::Strategy => self.strategy.clone().into_any_element(),
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
-            Section::Testing => gpui::div()
-                .flex()
-                .flex_col()
-                .gap_4()
-                .child(self.remote.update(cx, |remote, cx| remote.testing(cx)))
-                .child(self.testing.clone())
-                .into_any_element(),
+            Section::Testing => self.testing.clone().into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
                 Some(&self.subscriber),
@@ -528,7 +522,7 @@ impl Hub {
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
         cx.observe(&remote, |_, _, cx| cx.notify()).detach();
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
-        let testing = cx.new(|cx| Testing::new(testing_dir, cx));
+        let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
         wire_strategy(&strategy, cx);
         cx.observe(&workshop, |this, workshop, cx| {
             let snapshot = workshop.read(cx).scene.snapshot().clone();

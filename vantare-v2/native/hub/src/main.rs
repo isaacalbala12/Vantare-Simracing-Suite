@@ -86,6 +86,15 @@ fn parse(args: &[String]) -> Result<Options, String> {
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.as_slice() == ["--kit"] {
+        return match vantare_hub::orbit::run_kit() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("kit Orbit: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let options = match parse(&args) {
         Ok(options) => options,
         Err(error) => {

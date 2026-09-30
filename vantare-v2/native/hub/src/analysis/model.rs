@@ -119,7 +119,7 @@ fn channel(samples: &[Option<Sample>], value: fn(Sample) -> Option<f64>) -> Vec<
 
 /// A − B a igual distancia; interpola solo entre tiempos fiables contiguos de B.
 /// No extrapola ni convierte ventana observada en duración total de vuelta.
-pub fn project(a: &[Option<Sample>], b: &[Option<Sample>], allow_delta: bool) -> Charts {
+pub fn project_delta(a: &[Option<Sample>], b: &[Option<Sample>], allow_delta: bool) -> Vec<Point> {
     let mut delta = Vec::new();
     if allow_delta {
         let elapsed_a = channel(a, |sample| sample.elapsed);
@@ -149,6 +149,10 @@ pub fn project(a: &[Option<Sample>], b: &[Option<Sample>], allow_delta: bool) ->
             }
         }
     }
+    delta
+}
+
+pub fn project(a: &[Option<Sample>], b: &[Option<Sample>], allow_delta: bool) -> Charts {
     Charts {
         distance_range: a
             .iter()
@@ -173,7 +177,7 @@ pub fn project(a: &[Option<Sample>], b: &[Option<Sample>], allow_delta: bool) ->
             thin(channel(a, |s| s.brake.map(|v| v * 100.0))),
             thin(channel(b, |s| s.brake.map(|v| v * 100.0))),
         ],
-        delta: thin(delta),
+        delta: thin(project_delta(a, b, allow_delta)),
     }
 }
 

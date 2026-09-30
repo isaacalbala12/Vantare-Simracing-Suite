@@ -1,5 +1,6 @@
 //! Lectura local del catálogo oficial UTC; sin publicación, Discord ni recordatorios.
 use crate::{files, orbit};
+pub mod views;
 
 // Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
 #[path = "home.rs"]
@@ -30,6 +31,12 @@ pub struct Series {
     pub track: String,
     pub vehicle_class: String,
     pub license_label: String,
+    #[serde(default)]
+    pub tier: String,
+    #[serde(default)]
+    pub event_kind: String,
+    #[serde(default)]
+    start_offset_minute: i64,
     recurrence: Recurrence,
 }
 #[derive(Deserialize)]
@@ -117,6 +124,13 @@ impl Schedule {
                 .and_then(|date| date.and_hms_opt(0, 0, 0))
                 .ok_or("fecha base")?
                 .and_utc();
+            let base = base
+                .checked_add_signed(Duration::minutes(
+                    series
+                        .start_offset_minute
+                        .rem_euclid(series.recurrence.interval_minutes),
+                ))
+                .ok_or("offset fuera de rango")?;
             let interval = Duration::minutes(series.recurrence.interval_minutes);
             let width = interval.num_milliseconds();
             let elapsed = (from - base).num_milliseconds();

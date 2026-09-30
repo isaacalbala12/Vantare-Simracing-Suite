@@ -1,4 +1,5 @@
 //! Ajustes persistidos y último estado publicado; no arranca procesos.
+pub mod history;
 use crate::{
     engineer_control::{self as control, Document, Settings, Status},
     orbit,

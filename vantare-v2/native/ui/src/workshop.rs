@@ -18,13 +18,36 @@ const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures");
 struct Scene {
     path: PathBuf,
     modified: Option<SystemTime>,
-    snapshot: Snapshot,
+    snapshots: Vec<Snapshot>,
     error: Option<String>,
 }
 
-fn load(path: &Path) -> Result<Snapshot, String> {
+/// Foto DTO o secuencia no vacía; cada miembro conserva la validación del IPC.
+pub fn snapshots_from_json(json: &str) -> Result<Vec<Snapshot>, String> {
+    if json.trim_start().starts_with('[') {
+        let values: Vec<serde_json::Value> =
+            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        if values.is_empty() {
+            return Err("la escena no contiene fotos".into());
+        }
+        values
+            .into_iter()
+            .enumerate()
+            .map(|(i, value)| {
+                vantare_ipc::snapshot_from_json(&value.to_string())
+                    .map_err(|e| format!("foto {i}: {e}"))
+            })
+            .collect()
+    } else {
+        vantare_ipc::snapshot_from_json(json)
+            .map(|snapshot| vec![snapshot])
+            .map_err(|e| e.to_string())
+    }
+}
+
+fn load(path: &Path) -> Result<Vec<Snapshot>, String> {
     let json = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    vantare_ipc::snapshot_from_json(&json).map_err(|e| format!("{}: {e}", path.display()))
+    snapshots_from_json(&json).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn modified(path: &Path) -> Option<SystemTime> {
@@ -34,11 +57,11 @@ fn modified(path: &Path) -> Option<SystemTime> {
 impl Scene {
     fn new(path: PathBuf) -> Result<Self, String> {
         let stamp = modified(&path);
-        let snapshot = load(&path)?;
+        let snapshots = load(&path)?;
         Ok(Self {
             path,
             modified: stamp,
-            snapshot,
+            snapshots,
             error: None,
         })
     }
@@ -46,8 +69,8 @@ impl Scene {
     fn reload(&mut self) {
         // Una escritura incompleta o JSON inválido nunca reemplaza la última foto válida.
         match load(&self.path) {
-            Ok(snapshot) => {
-                self.snapshot = snapshot;
+            Ok(snapshots) => {
+                self.snapshots = snapshots;
                 self.error = None;
             }
             Err(error) => self.error = Some(error),
@@ -77,7 +100,11 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
         .map(|entry| entry.map(|e| e.path()))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-    paths.retain(|p| p.is_file() && p.to_string_lossy().ends_with(".snapshot.json"));
+    paths.retain(|p| {
+        p.is_file()
+            && (p.to_string_lossy().ends_with(".snapshot.json")
+                || p.to_string_lossy().ends_with(".sequence.json"))
+    });
     let mut paths = paths
         .into_iter()
         .map(std::fs::canonicalize)
@@ -115,11 +142,7 @@ impl Workshop {
     fn change_widget(&mut self, step: usize, cx: &mut Context<Self>) {
         let index = Kind::ALL.iter().position(|k| *k == self.kind).unwrap_or(0);
         self.kind = Kind::ALL[(index + step) % Kind::ALL.len()];
-        self.overlay = cx.new(|cx| {
-            let mut overlay = Overlay::new(self.kind, Preferences::default());
-            overlay.ingest(&self.scene.snapshot, cx);
-            overlay
-        });
+        self.replay(cx);
         self.persist();
         cx.notify();
     }
@@ -132,10 +155,22 @@ impl Workshop {
             .unwrap_or(0);
         self.scene
             .select(self.scenes[(index + step) % self.scenes.len()].clone());
-        self.overlay
-            .update(cx, |overlay, cx| overlay.ingest(&self.scene.snapshot, cx));
+        if self.scene.error.is_none() {
+            self.replay(cx);
+        }
         self.persist();
         cx.notify();
+    }
+
+    fn replay(&mut self, cx: &mut Context<Self>) {
+        // Recargar crea el mismo widget limpio: no concatena dos escenas de igual época.
+        self.overlay = cx.new(|cx| {
+            let mut overlay = Overlay::new(self.kind, Preferences::default());
+            for snapshot in &self.scene.snapshots {
+                overlay.ingest(snapshot, cx);
+            }
+            overlay
+        });
     }
 }
 
@@ -222,6 +257,10 @@ impl Render for Workshop {
 /// Abre una ventana interactiva; las capturas siguen usando su host independiente.
 pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
     let path = path.unwrap_or_else(|| {
+        let sequence = Path::new(FIXTURES).join(format!("{}.sequence.json", kind.name()));
+        if sequence.is_file() {
+            return sequence;
+        }
         let matching = Path::new(FIXTURES).join(format!("{}.snapshot.json", kind.name()));
         if matching.is_file() {
             matching
@@ -253,7 +292,9 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                 focus.focus(window, cx);
                 let overlay = cx.new(|cx| {
                     let mut overlay = Overlay::new(kind, Preferences::default());
-                    overlay.ingest(&scene.snapshot, cx);
+                    for snapshot in &scene.snapshots {
+                        overlay.ingest(snapshot, cx);
+                    }
                     overlay
                 });
                 let mut workshop = Workshop {
@@ -274,9 +315,9 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                         if this
                             .update(cx, |this, cx| {
                                 if this.scene.poll() {
-                                    this.overlay.update(cx, |overlay, cx| {
-                                        overlay.ingest(&this.scene.snapshot, cx);
-                                    });
+                                    if this.scene.error.is_none() {
+                                        this.replay(cx);
+                                    }
                                     cx.notify();
                                 }
                             })
@@ -313,6 +354,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn scenes_accept_one_or_many_valid_dto_photos_in_order() {
+        let json = include_str!("../fixtures/pedals.snapshot.json");
+        let single = snapshots_from_json(json).expect("foto");
+        let mut second = single[0].clone();
+        second.sequence += 1;
+        let sequence = format!(
+            "[{json},{}]",
+            vantare_ipc::snapshot_to_json(&second).expect("DTO")
+        );
+        let photos = snapshots_from_json(&sequence).expect("secuencia");
+        assert_eq!(photos, vec![single[0].clone(), second]);
+        for invalid in ["[]", "[{}]", "[null]", "{}"] {
+            assert!(snapshots_from_json(invalid).is_err());
+        }
+        assert!(snapshots_from_json(&format!("[{json},{{}}]")).is_err());
+    }
+
+    #[test]
     fn reload_keeps_last_valid_snapshot_and_recovers_after_invalid_or_missing_json() {
         let dir =
             std::env::temp_dir().join(format!("vantare-workshop-test-{}", std::process::id()));
@@ -321,23 +380,23 @@ mod tests {
         let valid = include_str!("../fixtures/pedals.snapshot.json");
         std::fs::write(&path, valid).expect("escena");
         let mut scene = Scene::new(path.clone()).expect("cargar");
-        let previous = scene.snapshot.clone();
+        let previous = scene.snapshots.clone();
         assert!(!scene.poll());
         std::fs::write(&path, "{").expect("JSON inválido");
         // Fuerza mtime anterior sin sleeps: el test no depende de la resolución del FS.
         scene.modified = None;
         assert!(scene.poll());
         assert!(scene.error.is_some());
-        assert_eq!(scene.snapshot, previous);
+        assert_eq!(scene.snapshots, previous);
         std::fs::remove_file(&path).expect("borrar escena");
         assert!(scene.poll());
         assert!(scene.error.is_some());
         std::fs::write(&path, valid).expect("restaurar");
         assert!(scene.poll());
         assert!(scene.error.is_none());
-        assert_eq!(scene.snapshot, previous);
+        assert_eq!(scene.snapshots, previous);
         scene.select(Path::new(FIXTURES).join("radar.snapshot.json"));
-        assert_ne!(scene.snapshot, previous);
+        assert_ne!(scene.snapshots, previous);
         assert!(scene.error.is_none());
         scene.select(path.with_file_name("missing.json"));
         assert!(scene.error.is_some());

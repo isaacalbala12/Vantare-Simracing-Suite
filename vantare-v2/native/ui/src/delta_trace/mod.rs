@@ -1,12 +1,15 @@
 //! Delta-trace Eficiencia, geometría congelada de `reference/delta-trace`.
-//! El delta actual se proyecta en domain. Sin historia canónica en Snapshot,
-//! no hay curva, punto ni tendencia inferidos; solo la guía estática de cero.
+//! El widget posee una traza pura de domain; Snapshot sigue siendo una foto.
 
 use gpui::{
-    App, BorderStyle, Bounds, Corners, Edges, Window, fill, linear_color_stop, linear_gradient,
-    point, px, quad, size,
+    App, BorderStyle, Bounds, Corners, Edges, PathBuilder, Window, fill, linear_color_stop,
+    linear_gradient, point, px, quad, size,
 };
-use vantare_domain::{Snapshot, delta_trace::ViewModel, format::Preferences};
+use vantare_domain::{
+    Snapshot,
+    delta_trace::{Sample, Trace, Trend, ViewModel},
+    format::Preferences,
+};
 
 use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
@@ -17,7 +20,7 @@ use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 pub const SIZE: (f32, f32) = (1000.0, 277.718_75);
 const GRAPH_HEIGHT: f32 = SIZE.1 - 50.0;
 
-pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
+fn paint(vm: &ViewModel, samples: &[Sample], window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
     paint_panel(window, width, height, 0.87);
     // Igual que Standings: primer tramo del brillo CSS de 120°, resto < 1 %.
@@ -43,7 +46,12 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         text::baseline(10.0, 22.0, 22.0),
         &current_ink,
     );
-    let trend_ink = ink(9.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
+    let trend_color = match vm.trend {
+        Trend::Gaining => 0x7fb686,
+        Trend::Losing => 0xd95360,
+        _ => tokens::MUTED,
+    };
+    let trend_ink = ink(9.0, 600.0, 0.08, col(trend_color, 1.0));
     let trend_x = width - 12.0 - text::width(window, vm.trend_text, &trend_ink);
     text::draw(
         window,
@@ -75,6 +83,18 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         ));
     }
 
+    paint_trace(samples, window);
+    if let Some(status) = vm.status_text {
+        text::draw(
+            window,
+            cx,
+            status,
+            12.0,
+            text::baseline(38.0, 18.0, 12.0),
+            &ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0)),
+        );
+    }
+
     paint_frame(window, width, height);
     // ::after tiene borde superior al 24 %, el resto al 12 % (como Standings).
     window.paint_quad(quad(
@@ -99,14 +119,77 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 
 empty_settings!();
 
+fn paint_trace(samples: &[Sample], window: &mut Window) {
+    let min = samples
+        .iter()
+        .filter_map(|p| p.delta_seconds)
+        .fold(-0.5_f64, f64::min);
+    let max = samples
+        .iter()
+        .filter_map(|p| p.delta_seconds)
+        .fold(0.5_f64, f64::max);
+    let span = (max - min).max(0.01);
+    let (ox, oy) = text::origin();
+    let position = |i: usize, value: f64| {
+        point(
+            px(ox
+                + 12.0
+                + i as f32 / (samples.len().saturating_sub(1).max(1)) as f32 * (SIZE.0 - 24.0)),
+            px(oy + 40.0 + GRAPH_HEIGHT * (1.0 - ((value - min) / span) as f32)),
+        )
+    };
+    let mut path = PathBuilder::stroke(px(2.0 * GRAPH_HEIGHT / 70.0));
+    let mut connected = false;
+    let mut segments = 0;
+    for (i, sample) in samples.iter().enumerate() {
+        if let Some(value) = sample.delta_seconds {
+            let p = position(i, value);
+            if connected && !sample.break_before {
+                path.line_to(p);
+                segments += 1;
+            } else {
+                path.move_to(p);
+            }
+            connected = true;
+        } else {
+            connected = false;
+        }
+    }
+    if segments > 0 {
+        match path.build() {
+            Ok(path) => window.paint_path(path, col(0xc1121f, 1.0)),
+            Err(error) => eprintln!("delta-trace: trazar: {error}"),
+        }
+    }
+    if let Some(value) = samples.last().and_then(|p| p.delta_seconds) {
+        let center = position(samples.len() - 1, value);
+        let r = px(3.0 * GRAPH_HEIGHT / 70.0);
+        let k = r * 0.552_284_8;
+        let p = |x, y| point(center.x + x, center.y + y);
+        let mut dot = PathBuilder::fill();
+        dot.move_to(p(r, px(0.0)));
+        dot.cubic_bezier_to(p(px(0.0), r), p(r, k), p(k, r));
+        dot.cubic_bezier_to(p(-r, px(0.0)), p(-k, r), p(-r, k));
+        dot.cubic_bezier_to(p(px(0.0), -r), p(-r, -k), p(-k, -r));
+        dot.cubic_bezier_to(p(r, px(0.0)), p(k, -r), p(r, -k));
+        dot.close();
+        match dot.build() {
+            Ok(path) => window.paint_path(path, col(tokens::INK, 1.0)),
+            Err(error) => eprintln!("delta-trace: punto: {error}"),
+        }
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
+    trace: Trace,
 }
 
 impl Widget {
     pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
+            trace: Trace::default(),
         }
     }
 
@@ -116,16 +199,15 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(
-            &mut self.vm,
-            vantare_domain::delta_trace::project(snapshot, prefs),
-        )
+        let changed = self.trace.push(snapshot);
+        replace_if_changed(&mut self.vm, self.trace.project(snapshot, prefs)) || changed
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let samples: Vec<_> = self.trace.samples().iter().copied().collect();
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, &samples, window, cx)),
             Wake::Idle,
         )
     }
@@ -148,6 +230,7 @@ mod tests {
         let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.player = Some(Player {
             delta_best_s: Quality::Reliable(0.214_1),
             ..Player::default()
@@ -174,21 +257,23 @@ mod tests {
     }
 
     #[test]
-    fn reference_scene_preserves_the_scalar_without_fabricating_history() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
-            "../../fixtures/delta-trace.snapshot.json"
+    fn reference_sequence_reproduces_history_scalar_and_trend() {
+        let snapshots = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/delta-trace.sequence.json"
         ))
-        .expect("escena Workshop reconstruida en DTO v3");
+        .expect("escena Workshop reconstruida en DTO v4");
+        let snapshot = snapshots.last().expect("foto actual");
         assert_eq!(
             snapshot.state.player.map(|player| player.delta_best_s),
             Some(Quality::Reliable(0.214))
         );
         let mut widget = Widget::new(&Settings, Preferences::default());
-        assert!(widget.ingest(&snapshot, Preferences::default()));
-        // La referencia muestra +0.257 desde el último punto de su historia.
-        // Snapshot solo representa el escalar +0.214, nunca sustituirlo a mano.
-        assert_eq!(widget.vm.current_text, "+0.214");
-        assert_eq!(widget.vm.trend_text, "DESCONOCIDO");
+        for snapshot in &snapshots {
+            widget.ingest(snapshot, Preferences::default());
+        }
+        assert_eq!(widget.trace.samples().len(), 81);
+        assert_eq!(widget.vm.current_text, "+0.257");
+        assert_eq!(widget.vm.trend_text, "PERDIENDO");
         assert!(matches!(widget.frame(Preferences::default()).1, Wake::Idle));
     }
 

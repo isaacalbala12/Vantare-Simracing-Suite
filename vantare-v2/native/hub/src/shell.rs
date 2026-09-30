@@ -17,6 +17,7 @@ use vantare_ui::efficiency::{text, tokens};
 
 use crate::{
     Section,
+    analysis::Analysis,
     calendar::Calendar,
     notifications::Notifications,
     studio::{Prepared as PreparedStudio, Studio},
@@ -30,6 +31,7 @@ pub struct Options {
     pub layout: PathBuf,
     pub section: Section,
     pub pipe: Option<String>,
+    pub recordings: Option<PathBuf>,
 }
 
 struct Hub {
@@ -38,6 +40,7 @@ struct Hub {
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
     calendar: Entity<Calendar>,
+    analysis: Entity<Analysis>,
     notifications: Entity<Notifications>,
     status: Option<String>,
     subscriber: Subscriber,
@@ -177,6 +180,9 @@ impl Render for Hub {
             .when(self.section == Section::Calendar, |content| {
                 content.child(self.calendar.clone())
             })
+            .when(self.section == Section::Analysis, |content| {
+                content.child(self.analysis.clone())
+            })
             .when(self.section == Section::Notifications, |content| {
                 content.child(self.notifications.clone())
             })
@@ -192,6 +198,7 @@ impl Render for Hub {
                     Section::Workshop
                         | Section::Studio
                         | Section::Calendar
+                        | Section::Analysis
                         | Section::Notifications
                         | Section::Settings
                         | Section::Testing
@@ -309,7 +316,19 @@ fn create_workshop(prepared: Prepared, cx: &mut App) -> Entity<Workshop> {
     })
 }
 
+fn prepare_analysis(options: &Options) -> Result<Analysis, String> {
+    let recordings = options
+        .recordings
+        .clone()
+        .unwrap_or_else(|| options.data_dir.join("recordings"));
+    let storage_exe = std::env::current_exe()
+        .map_err(|error| format!("ruta del Hub: {error}"))?
+        .with_file_name("vantare-storage.exe");
+    Ok(Analysis::new(recordings, storage_exe))
+}
+
 pub fn run(options: Options) -> Result<(), String> {
+    let mut prepared_analysis = prepare_analysis(&options)?;
     let prepared = Prepared::load(&options.data_dir, options.scene)?;
     let prepared_studio = PreparedStudio::load(options.layout)?;
     let calendar = Calendar::load(&options.data_dir)?;
@@ -342,6 +361,10 @@ pub fn run(options: Options) -> Result<(), String> {
                 let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
                 let notifications = cx.new(|_| Notifications::default());
                 let calendar = cx.new(|_| calendar);
+                let analysis = cx.new(|cx| {
+                    prepared_analysis.refresh(cx);
+                    prepared_analysis
+                });
                 wire_sections(&calendar, &notifications, cx);
                 cx.observe(&workshop, |this, workshop, cx| {
                     let snapshot = workshop.read(cx).scene.snapshot().clone();
@@ -350,6 +373,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 })
                 .detach();
                 cx.on_app_quit(move |this, cx| {
+                    this.analysis.update(cx, |analysis, _| analysis.cancel());
                     if let Err(error) = this.save(cx) {
                         eprintln!("guardar antes de salir: {error}");
                         *failure_on_quit.borrow_mut() = Some(error);
@@ -363,6 +387,7 @@ pub fn run(options: Options) -> Result<(), String> {
                     workshop,
                     studio,
                     calendar,
+                    analysis,
                     notifications,
                     status: None,
                     subscriber,

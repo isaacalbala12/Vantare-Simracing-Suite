@@ -211,6 +211,7 @@ mod tests {
             lap_delta: None,
             position_stale: false,
             best_lap_stale: false,
+            gap_stale: false,
         });
         vm
     }

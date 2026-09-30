@@ -1,5 +1,11 @@
 # Multiclass Relative — ISA-1427, fase 2
 
+> Continuación v4, 2026-09-30: este informe conserva la entrega anterior como
+> evidencia histórica. Los gaps ya vienen de `relative_s` y el estado de
+> `source_state`; Stale conserva las filas con aviso. Estado vigente de la
+> familia, gates y bloqueos: [PARIDAD.md](../relative/PARIDAD.md).
+> Multiclass baja a 4,3180 %; aún no supera el gate de 4 %.
+
 Entrega local para revisión del orquestador; issue técnica
 https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427.
 Base del worktree: `6973c81f29574a573d76f3fae48e128d6964960a`.

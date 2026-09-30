@@ -182,20 +182,22 @@ mod tests {
     use crate::source;
 
     #[test]
-    fn frozen_workshop_scene_preserves_identity_and_unavailable_relative_gaps() {
+    fn reconstructed_reference_scene_preserves_identity_and_relative_gaps() {
+        // Reconstrucción de tools/widget-reference/scene.tsx desde los
+        // metadatos congelados; estas señales no proceden de una captura live.
         let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/multiclass-relative.snapshot.json"
         ))
-        .expect("escena DTO v3");
+        .expect("escena DTO v4");
         assert_eq!(snapshot.state.cars.len(), 20);
         let vm =
             multiclass_relative::project(&snapshot, Preferences::default(), Content::default());
         let expected = [
             ("1", "HC", "André Lotterer", "0.0"),
-            ("2", "LMP", "Ben Hanley", "—"),
-            ("3", "GTE", "Kévin Estre", "—"),
-            ("4", "HC", "Antonio Giovinazzi", "—"),
-            ("5", "LMP", "Filipe Albuquerque", "—"),
+            ("2", "LMP", "Ben Hanley", "+4.5"),
+            ("3", "GTE", "Kévin Estre", "+9.0"),
+            ("4", "HC", "Antonio Giovinazzi", "+13.5"),
+            ("5", "LMP", "Filipe Albuquerque", "+18.0"),
         ];
         assert_eq!(vm.rows.len(), expected.len());
         for (row, (place, class, name, gap)) in vm.rows.iter().zip(expected) {

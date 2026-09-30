@@ -28,3 +28,8 @@ missing_panics_doc = "allow"
 
 [patch."https://github.com/zed-industries/zed"]
 gpui_windows = { path = "vendor/gpui_windows" }
+
+# Solo líneas de depuración: las trazas siguen dando fichero y línea, pero se
+# enlaza más rápido y los target/ ocupan ~25 % menos.
+[profile.dev]
+debug = "line-tables-only"

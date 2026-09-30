@@ -1,6 +1,7 @@
+use std::mem;
 use std::time::Duration;
 
-use crate::{Capabilities, Flag, Quality};
+use crate::{Capabilities, Capability, Flag, Quality};
 
 /// Identidad de coche estable durante la sesión; la asigna el adaptador.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -124,6 +125,10 @@ pub struct Car {
     pub gap_class_leader: Quality<Gap>,
     /// Distancia al coche de delante en su clase.
     pub gap_class_ahead: Quality<Gap>,
+    /// Gap temporal al jugador: positivo = rival delante en pista.
+    pub relative_s: Quality<f64>,
+    /// Vueltas de progreso respecto al jugador, truncadas hacia cero.
+    pub relative_laps: Quality<i32>,
     /// Metros recorridos en la vuelta en curso.
     pub lap_distance_m: Quality<f64>,
     /// Tiempo transcurrido en la vuelta en curso.
@@ -141,6 +146,8 @@ pub struct Telemetry {
     pub throttle: Quality<f64>,
     pub brake: Quality<f64>,
     pub clutch: Quality<f64>,
+    /// Volante normalizado -1..1: negativo = izquierda, positivo = derecha.
+    pub steering: Quality<f64>,
     /// -1 marcha atrás, 0 punto muerto, 1.. marchas.
     pub gear: Quality<i8>,
     pub speed_mps: Quality<f64>,
@@ -156,6 +163,11 @@ pub struct Fuel {
     pub per_lap_l: Quality<f64>,
     /// Vueltas que da el combustible actual al consumo medio. Lo deriva el núcleo.
     pub laps_left: Quality<f64>,
+    /// Últimas diez vueltas medidas (vuelta completada, litros), de antigua a
+    /// reciente; plazas vacías al final. Tamaño fijo para conservar Player: Copy
+    /// y no cambiar las proyecciones. El DTO publica solo las plazas ocupadas.
+    /// Son medidas históricas: el silencio no cambia sus litros.
+    pub history: [Option<(u32, f64)>; 10],
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -239,11 +251,23 @@ pub struct Origin {
     pub received_at: Duration,
 }
 
+/// Estado del enlace. El núcleo publica Waiting/Live/Stale; Lost solo lo marca
+/// el consumidor cuando el pipe deja de entregar fotos (sin renumerarlas).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SourceState {
+    #[default]
+    Waiting,
+    Live,
+    Stale,
+    Lost,
+}
+
 /// Contenido neutral de un instante. Lo produce el adaptador (en una
 /// `Observation`) y lo publica el núcleo tras fusionarlo y derivar (en un
 /// `Snapshot`); añadir una señal es añadir un campo aquí y en ningún otro sitio.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct State {
+    pub source_state: SourceState,
     pub capabilities: Capabilities,
     pub session: Session,
     /// Banderas activas en cualquier ámbito.
@@ -269,6 +293,202 @@ pub struct Snapshot {
     pub sequence: u64,
     pub origin: Origin,
     pub state: State,
+}
+
+/// Lo actual pasa a obsoleto: los valores siguen ahí, ya no son "actuales".
+///
+/// Desestructura cada tipo sin `..`: una señal nueva en `domain` no compila
+/// hasta que se decide aquí cómo se vuelve obsoleta.
+pub fn degrade(state: &mut State) {
+    let State {
+        source_state: _,
+        capabilities,
+        session,
+        flags,
+        cars,
+        player,
+    } = state;
+    let Capabilities {
+        session_clock,
+        positions,
+        lap_times,
+        gaps,
+        pit_status,
+        flags: flags_capability,
+        spatial,
+        driver_inputs,
+        powertrain,
+        fuel,
+        delta,
+        sectors,
+        lap_progress,
+        weather,
+        damage,
+    } = capabilities;
+    for capability in [
+        session_clock,
+        positions,
+        lap_times,
+        gaps,
+        pit_status,
+        flags_capability,
+        spatial,
+        driver_inputs,
+        powertrain,
+        fuel,
+        delta,
+        sectors,
+        lap_progress,
+        weather,
+        damage,
+    ] {
+        if *capability == Capability::Fresh {
+            *capability = Capability::WithData;
+        }
+    }
+    let Session {
+        id: _,
+        kind,
+        state,
+        elapsed_s,
+        remaining_s,
+        track_name,
+        laps_remaining,
+        laps_total,
+        track_length_m,
+        weather,
+    } = session;
+    make_stale(kind);
+    make_stale(state);
+    make_stale(elapsed_s);
+    make_stale(remaining_s);
+    make_stale(track_name);
+    make_stale(laps_remaining);
+    make_stale(laps_total);
+    make_stale(track_length_m);
+    degrade_weather(weather);
+    make_stale(flags);
+    cars.iter_mut().for_each(degrade_car);
+    if let Some(player) = player {
+        degrade_player(player);
+    }
+}
+
+fn degrade_car(car: &mut Car) {
+    let Car {
+        id: _,
+        number: _,
+        driver: _,
+        class: _,
+        position,
+        class_position,
+        laps,
+        last_lap_s,
+        best_lap_s,
+        last_sectors_s,
+        gap_leader,
+        gap_ahead,
+        gap_class_leader,
+        gap_class_ahead,
+        relative_s,
+        relative_laps,
+        lap_distance_m,
+        lap_elapsed_s,
+        current_sector,
+        in_pits,
+        pose,
+    } = car;
+    make_stale(position);
+    make_stale(class_position);
+    make_stale(laps);
+    make_stale(last_lap_s);
+    make_stale(best_lap_s);
+    last_sectors_s.iter_mut().for_each(make_stale);
+    make_stale(gap_leader);
+    make_stale(gap_ahead);
+    make_stale(gap_class_leader);
+    make_stale(gap_class_ahead);
+    make_stale(relative_s);
+    make_stale(relative_laps);
+    make_stale(lap_distance_m);
+    make_stale(lap_elapsed_s);
+    make_stale(current_sector);
+    make_stale(in_pits);
+    make_stale(pose);
+}
+
+fn degrade_player(player: &mut Player) {
+    let Player {
+        car: _,
+        telemetry,
+        fuel,
+        damage,
+        delta_best_s,
+    } = player;
+    let Telemetry {
+        throttle,
+        brake,
+        clutch,
+        steering,
+        gear,
+        speed_mps,
+        engine_speed_rad_s,
+    } = telemetry;
+    make_stale(throttle);
+    make_stale(brake);
+    make_stale(clutch);
+    make_stale(steering);
+    make_stale(gear);
+    make_stale(speed_mps);
+    make_stale(engine_speed_rad_s);
+    let Fuel {
+        level_l,
+        capacity_l,
+        per_lap_l,
+        laps_left,
+        history: _,
+    } = fuel;
+    make_stale(level_l);
+    make_stale(capacity_l);
+    make_stale(per_lap_l);
+    make_stale(laps_left);
+    make_stale(delta_best_s);
+    let Damage {
+        aero,
+        body,
+        suspension,
+        tyre_wear,
+    } = damage;
+    make_stale(aero);
+    make_stale(body);
+    make_stale(suspension);
+    tyre_wear.iter_mut().for_each(make_stale);
+}
+
+fn degrade_weather(weather: &mut Weather) {
+    let Weather {
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        wind_direction_rad,
+        rain,
+        track_wetness,
+        pressure_pa,
+    } = weather;
+    make_stale(air_temperature_k);
+    make_stale(track_temperature_k);
+    make_stale(wind_speed_mps);
+    make_stale(wind_direction_rad);
+    make_stale(rain);
+    make_stale(track_wetness);
+    make_stale(pressure_pa);
+}
+
+fn make_stale<T>(quality: &mut Quality<T>) {
+    *quality = match mem::take(quality) {
+        Quality::Reliable(value) | Quality::Estimated(value) => Quality::Stale(value),
+        other => other,
+    };
 }
 
 #[cfg(test)]

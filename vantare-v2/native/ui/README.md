@@ -47,7 +47,8 @@ haya animación pide fotogramas).
 
 ## Paridad visual
 
-`parity.ps1 -Parity <tools/native-ui/parity>` captura la escena `standings-44`
+La regresión histórica de Standings (escena `standings-44`, 474 × 364) se retiró
+al fijar la referencia de fase 2; su resultado era este: `parity.ps1` capturaba la escena `standings-44`
 con la feature `parity-capture` (dos pasadas GDI negro/blanco) y la compara con
 `reference/standings-44.png` con `diff.py`. Resultado en esta fase: 3,68 %
 (6341 / 172536 px, umbral 8), igual que el prototipo; la diferencia es la
@@ -68,7 +69,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 
    | Método | Devuelve / responsabilidad |
    | --- | --- |
-   | `new(prefs: Preferences)` | `Self`, estado inicial sin datos |
+   | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
    | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
    | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
    | `frame(&mut self, prefs: Preferences)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
@@ -111,24 +112,66 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 6. Formatear el módulo con `rustfmt --edition 2024 ui/src/<widget>/mod.rs`
    (rustfmt no descubre los módulos declarados dentro de una macro). Antes del
    commit: `cargo fmt --check`,
-   `cargo clippy --workspace --all-targets -j 4 -- -D warnings` y
-   `cargo test --workspace -j 4`; además verificar captura y comparación de su
+   `cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+   `cargo test --workspace -j 2`; además verificar captura y comparación de su
    widget. Informar el porcentaje real y cualquier límite al orquestador.
 
-**Regresión histórica de Standings (474 × 364).** No confundir con la referencia
-de fase 2 (`reference/standings.png`, 440 × 664, 20 filas y otros datos). Para
-reproducir 3,6752 % con el Workshop genérico:
+**Standings de fase 2 (#1427).** El modo predeterminado reproduce Signature:
+440 × 664, capacidad de 20 filas, clase del jugador, posiciones globales,
+última vuelta y sin rail PIT. La escena `fixtures/standings.snapshot.json`
+conserva los 20 coches de `reference/standings.geometry.json`; el filtro muestra
+los siete Hypercar, dejando libre la altura reservada por el documento Wails.
+Los gaps usan las señales de clase existentes, incluidos los guiones cuando
+faltan datos y la diferencia de una vuelta. El pie conserva Sebring y ≈79.
 
 ```powershell
-.\ui\compare.ps1 -Widget standings -Scene ui/fixtures/standings-44.snapshot.json -Reference C:\tmp\vantare-parity-wails\vantare-v2\tools\native-ui\parity\reference\standings-44.png
+# Desde native/:
+$cargoExe = (Get-Command cargo.exe).Source
+# Limitar también el -j 4 interno del comparador compartido.
+function cargo {
+    $limited = @($args)
+    for ($i = 0; $i -lt $limited.Count - 1; $i++) {
+        if ($limited[$i] -eq '-j') { $limited[$i + 1] = '2' }
+    }
+    & $cargoExe @limited
+}
+.\ui\compare.ps1 -Widget standings -MaxPercent 4
 ```
 
-También sigue funcionando `vantare-overlays --parity-capture <png>`. Las escenas
+Signature de fase 2 es la única configuración de Standings (ver `Settings::config`).
+No se toca ningún `model.rs`, el kit Eficiencia, IPC, runtime ni otros widgets.
+No se añaden dependencias ni señales al modelo común.
+
+Validación de Standings (2026-09-30): fase 2 = 10705/292160 px (3,6641 %),
+histórica = 6341/172536 px (3,6752 %); ambas PASS con umbral por canal 8 y
+límite 4 %, sin máscaras. Capturas en `C:/tmp/vw2-standings2-evidence/`,
+subdirectorios `phase2` y `legacy`, con hashes en `parity.json`. Gates PASS:
+`cargo fmt --check`, `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+y `cargo test --workspace -j 2` (400 pruebas del harness, 0 fallos, 4 omitidas
+porque requieren LMU/ACC live; también pasan las pruebas de procesos). Salida
+de tests en `C:/tmp/vw2-standings2-evidence/tests.log`. El primer build usó
+artefactos de domain obsoletos; tras recompilarlo pasó la captura sin tocar otros módulos.
+El comparador compartido invoca Cargo con `-j 4`; para respetar el límite del
+encargo se ejecuta con un wrapper local de `cargo` que sustituye ese argumento
+por `-j 2`, sin cambiar el script compartido. Las capturas se serializan mediante
+su mutex global. Los PNG y logs quedan fuera del árbol de código.
+
+Límites: preferencias de presentación por proceso, aún sin editor de configuración
+nativo por instancia; `Vm::from_domain` conserva el cálculo histórico de posiciones
+de clase por orden y la lectura de números desde texto para las animaciones.
+La paridad de estas fotos no demuestra telemetría live, OBS, DPI mixto ni estados
+en movimiento. Estos aspectos requieren la revisión y pruebas del orquestador.
+Notion no está disponible según el encargo: reconciliación pendiente por el
+orquestador. Entrega local en `vantareapp/isa-1427-w-standings2`, base `13dc3b22`,
+sin push, PR, CI remoto, integración ni promoción.
+
+Registro de infraestructura previo (2026-09-29): las escenas
 `standings`, `radar` y `pedals` reconstruyen los canales que domain representa
 del runtime congelado. El radar aún deriva el solapamiento (a 4 m exactos difiere
 del booleano del demo) y no representa `lapped`; estos límites del porte visual
-existente no se resuelven en esta infraestructura. La configuración/altura de
-Standings de fase 2 tampoco se porta aquí.
+existente no se resuelven en esta infraestructura. El tamaño de Standings de
+fase 2 se corrige en la entrega anterior del 2026-09-30; los valores de este
+registro corresponden a la base de infraestructura.
 
 Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
 base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
@@ -140,7 +183,7 @@ Validación de infraestructura (2026-09-29): Workshop `standings-44` =
 con umbral 0. Capturas de fase 2: radar 220 × 220, 8,2665 %; pedales 120 × 160,
 8,5104 % (ambos superan el límite de 4 % y el script sale con 1). Standings de
 fase 2 detecta tamaño distinto (474 × 364 frente a 440 × 664, salida 2).
-Son límites pendientes de los portes, no gates de paridad aprobados.
+Eran límites pendientes de los portes, no gates de paridad aprobados en esa base.
 
 ## Una ventana por monitor
 
@@ -376,3 +419,11 @@ cambio de una constante de color en `pedals.rs`, `radar.rs` y `standings/view.rs
 todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
 (3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
 (el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).
+
+## Layout nativo (#1427 → #1430)
+
+Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\native\layout.json`; `--layout <ruta>` permite probar `ui/fixtures/layout.json` (con `--fuente local` solo para QA sintética). Sondeo cada 500 ms, último JSON válido ante errores; ID, posición global, visibilidad, opacidad y `settings.kind` en kebab-case, resto camelCase. Las instancias ocultas conservan el HWND del monitor; eliminar todas las instancias tampoco termina el proceso. El orden del vector es el orden de pintado. Sin escala ni importación V4.
+
+`layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. Cada aplicación recrea los widgets y re-ingiere la última foto, reutilizando las ventanas de los monitores ocupados.
+
+Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Standings aplica cabecera, pie, `brandVisible` y métricas `none/track/estimatedLaps`. Las demás opciones del manifest se conservan y normalizan, pero sus variantes aún requieren cambios en `ingest`/`paint`, excluidos de este encargo: delta capsule, transparencia de pedales, carrusel, volante, color de banderas, target behind y métricas de pie adicionales. No ofrecerlas como funcionales en el Hub antes de completar esos portes. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).

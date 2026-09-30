@@ -135,12 +135,24 @@ fn fill_height(value: f64, inner_h: f32) -> f32 {
 use crate::app::{Paint, Wake, replace_if_changed};
 use vantare_domain::{Snapshot, format::Preferences};
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub transparent_background: bool,
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        self.clone()
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: vantare_domain::pedals::project(&Snapshot::default(), prefs),
         }
@@ -188,7 +200,7 @@ mod tests {
 
     #[test]
     fn repaint_only_on_a_new_view_model() {
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         assert!(widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(!widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(widget.ingest(&source::synthetic(300), Preferences::default()));

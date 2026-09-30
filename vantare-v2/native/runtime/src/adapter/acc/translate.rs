@@ -318,13 +318,14 @@ impl Translator {
                     self.track.as_ref(),
                 );
                 if let Some((laps, best, last)) = self.player_laps {
-                    car.laps = quality(Some(laps), gs || paused);
-                    car.best_lap_s = quality(best, gs || paused);
-                    car.last_lap_s = quality(last, gs || paused);
+                    car.laps = prefer(quality(Some(laps), gs || paused), car.laps);
+                    car.best_lap_s = prefer(quality(best, gs || paused), car.best_lap_s);
+                    car.last_lap_s = prefer(quality(last, gs || paused), car.last_lap_s);
                 }
             }
         }
         let state = State {
+            source_state: vantare_domain::SourceState::Waiting,
             session,
             flags,
             cars,
@@ -440,6 +441,8 @@ impl Translator {
                 throttle: quality(fraction(f32_at(p, 4)), stale),
                 brake: quality(fraction(f32_at(p, 8)), stale),
                 clutch: quality(fraction(f32_at(p, 364)), stale),
+                // Physics.steerAngle @24: -1..1 (izquierda a derecha), no radianes.
+                steering: quality(steering(f32_at(p, 24)), stale),
                 gear: quality(
                     i32_at(p, 16)
                         .checked_sub(1)
@@ -453,23 +456,14 @@ impl Translator {
                     stale,
                 ),
             };
-            let level = f32_at(p, 12);
-            let capacity = self.pages[2]
-                .as_ref()
-                .map_or(0.0, |s| f32_at(&s.bytes, 416));
-            if level.is_finite()
-                && capacity.is_finite()
-                && capacity > 0.0
-                && (0.0..=capacity).contains(&level)
-            {
-                // Litros según lectores de ACC; la unidad física no se demuestra con jugador parado.
-                player.fuel = Fuel {
-                    level_l: quality(Some(level), stale),
-                    capacity_l: quality(Some(capacity), stale),
-                    ..Fuel::default()
-                };
-            }
         }
+        // SDK SHM: physics.fuel está documentado en kg; maxFuel no fija unidad.
+        // No asumir litros ni densidad. Graphics sí documenta fuelXLap en litros.
+        player.fuel = Fuel {
+            per_lap_l: quality(positive(f32_at(g, 1284)), gs),
+            laps_left: estimated(positive(f32_at(g, 1412)), gs),
+            ..Fuel::default()
+        };
         let delta = i32_at(g, 1360);
         let signed = f64::from(delta) / 1000.0 * if i32_at(g, 1400) == 1 { 1.0 } else { -1.0 };
         player.delta_best_s = quality(
@@ -565,6 +559,15 @@ impl Translator {
         }
         if let Some(u) = &self.session {
             let stale = now.saturating_sub(u.at) >= UDP_TTL || paused;
+            // Physics tiene más precisión; un UDP actual gana a physics obsoleta.
+            weather.air_temperature_k = prefer(
+                weather.air_temperature_k,
+                quality(Some(u.value.air_temperature_k), stale),
+            );
+            weather.track_temperature_k = prefer(
+                weather.track_temperature_k,
+                quality(Some(u.value.track_temperature_k), stale),
+            );
             // Fracciones nativas del SDK UDP; su reloj no refresca physics/graphics.
             let rain = quality(fraction(u.value.rain), stale);
             if rain.current().is_some() || weather.rain.current().is_none() {
@@ -587,31 +590,59 @@ fn player_car(
     physics: Option<(&[u8], bool)>,
     track: Option<&(i32, String, f64)>,
 ) {
-    car.position = quality(u32::try_from(i32_at(g, 136)).ok().filter(|p| *p > 0), stale);
-    car.in_pits = quality(Some(i32_at(g, 160) == 1 || i32_at(g, 1236) == 1), stale);
-    car.laps = quality(u32::try_from(i32_at(g, 132)).ok(), stale);
-    car.last_lap_s = quality(lap_ms(i32_at(g, 144)), stale);
-    car.best_lap_s = quality(lap_ms(i32_at(g, 148)), stale);
-    car.lap_elapsed_s = quality(
-        nonnegative(f64::from(i32_at(g, 140)) / 1000.0).filter(|_| i32_at(g, 140) != i32::MAX),
-        stale,
+    car.position = prefer(
+        quality(u32::try_from(i32_at(g, 136)).ok().filter(|p| *p > 0), stale),
+        car.position,
     );
-    car.current_sector = quality(u8::try_from(i32_at(g, 164)).ok().filter(|s| *s < 3), stale);
-    car.gap_ahead = quality(
-        lap_ms(i32_at(g, 1580)).map(|seconds| Gap::Time { seconds }),
-        stale,
+    car.in_pits = prefer(
+        quality(Some(i32_at(g, 160) == 1 || i32_at(g, 1236) == 1), stale),
+        car.in_pits,
     );
-    car.lap_distance_m = estimated(track.and_then(|t| distance(f32_at(g, 248), t.2)), stale);
+    car.laps = prefer(quality(u32::try_from(i32_at(g, 132)).ok(), stale), car.laps);
+    car.last_lap_s = prefer(quality(lap_ms(i32_at(g, 144)), stale), car.last_lap_s);
+    car.best_lap_s = prefer(quality(lap_ms(i32_at(g, 148)), stale), car.best_lap_s);
+    car.lap_elapsed_s = prefer(
+        quality(
+            nonnegative(f64::from(i32_at(g, 140)) / 1000.0).filter(|_| i32_at(g, 140) != i32::MAX),
+            stale,
+        ),
+        car.lap_elapsed_s,
+    );
+    car.current_sector = prefer(
+        quality(u8::try_from(i32_at(g, 164)).ok().filter(|s| *s < 3), stale),
+        car.current_sector,
+    );
+    let gap = i32_at(g, 1580);
+    car.gap_ahead = prefer(
+        quality(
+            (gap >= 0
+                && gap != i32::MAX
+                && i32_at(g, 136) > 1
+                && car.in_pits.current() == Some(&false))
+            .then(|| Gap::Time {
+                seconds: f64::from(gap) / 1000.0,
+            }),
+            stale,
+        ),
+        car.gap_ahead,
+    );
+    car.lap_distance_m = prefer(
+        estimated(track.and_then(|t| distance(f32_at(g, 248), t.2)), stale),
+        car.lap_distance_m,
+    );
     // No indexar por playerCarID: es un ID, no un hueco (especialmente online).
     let slot = (0..60).find(|slot| u32::try_from(i32_at(g, 976 + slot * 4)).ok() == Some(car.id.0));
     if let (Some(slot), Some((p, ps))) = (slot, physics) {
-        car.pose = quality(
-            pose(
-                f32_at(g, 256 + slot * 12),
-                f32_at(g, 264 + slot * 12),
-                f32_at(p, 208),
+        car.pose = prefer(
+            quality(
+                pose(
+                    f32_at(g, 256 + slot * 12),
+                    f32_at(g, 264 + slot * 12),
+                    f32_at(p, 208),
+                ),
+                stale || ps,
             ),
-            stale || ps,
+            car.pose,
         );
     }
 }
@@ -621,6 +652,18 @@ fn lap_ms(ms: i32) -> Option<f64> {
 }
 fn nonnegative(v: f64) -> Option<f64> {
     (v.is_finite() && v >= 0.0).then_some(v)
+}
+fn positive(v: f64) -> Option<f64> {
+    nonnegative(v).filter(|v| *v > 0.0)
+}
+// Preferencia por señal: SHM actual, UDP actual, SHM obsoleta, UDP obsoleta.
+fn prefer<T>(shm: Quality<T>, udp: Quality<T>) -> Quality<T> {
+    if shm.current().is_some() || (udp.current().is_none() && !matches!(shm, Quality::Unavailable))
+    {
+        shm
+    } else {
+        udp
+    }
 }
 fn fraction(v: f64) -> Option<f64> {
     (v.is_finite() && (0.0..=1.0).contains(&v)).then_some(v)
@@ -759,9 +802,19 @@ fn capabilities(s: &State) -> Capabilities {
         pit_status: capability(s.cars.iter().map(|c| c.in_pits)),
         flags: capability([s.flags.clone()]),
         spatial: capability(s.cars.iter().map(|c| c.pose)),
-        driver_inputs: capability([p.telemetry.throttle, p.telemetry.brake, p.telemetry.clutch]),
+        driver_inputs: capability([
+            p.telemetry.throttle,
+            p.telemetry.brake,
+            p.telemetry.clutch,
+            p.telemetry.steering,
+        ]),
         powertrain: capability([p.telemetry.speed_mps, p.telemetry.engine_speed_rad_s]),
-        fuel: capability([p.fuel.level_l, p.fuel.capacity_l]),
+        fuel: capability([
+            p.fuel.level_l,
+            p.fuel.capacity_l,
+            p.fuel.per_lap_l,
+            p.fuel.laps_left,
+        ]),
         delta: capability([p.delta_best_s]),
         sectors: capability(s.cars.iter().map(|c| c.current_sector)),
         lap_progress: capability(
@@ -778,5 +831,53 @@ fn capabilities(s: &State) -> Capabilities {
         ]),
         // Ninguna señal de daño tiene conversión fiable al contrato de integridad.
         damage: Capability::Unsupported,
+    }
+}
+
+fn steering(value: f64) -> Option<f64> {
+    (-1.0..=1.0).contains(&value).then_some(value)
+}
+
+#[cfg(test)]
+mod steering_tests {
+    use super::*;
+
+    #[test]
+    fn physics_steering_is_normalized_and_keeps_its_own_freshness() {
+        for (raw, expected) in [
+            (-1.0_f32, Quality::Reliable(-1.0)),
+            (-0.5, Quality::Reliable(-0.5)),
+            (0.0, Quality::Reliable(0.0)),
+            (0.5, Quality::Reliable(0.5)),
+            (1.0, Quality::Reliable(1.0)),
+            (-1.01, Quality::Unavailable),
+            (1.01, Quality::Unavailable),
+            (f32::NAN, Quality::Unavailable),
+            (f32::INFINITY, Quality::Unavailable),
+        ] {
+            let mut translator = Translator::new(SourceKind::Live);
+            let mut physics = vec![0; PAGE_SIZES[0]];
+            physics[24..28].copy_from_slice(&raw.to_le_bytes());
+            translator.pages[0] = Some(Page {
+                bytes: physics,
+                at: Duration::ZERO,
+            });
+            let graphics = vec![0; PAGE_SIZES[1]];
+            let fresh = translator.player(CarId(1), &graphics, false, Duration::ZERO);
+            assert_eq!(fresh.telemetry.steering, expected);
+            let old = translator.player(CarId(1), &graphics, false, SHM_TTL);
+            assert_eq!(
+                old.telemetry.steering,
+                match expected {
+                    Quality::Reliable(v) => Quality::Stale(v),
+                    _ => Quality::Unavailable,
+                }
+            );
+            let state = State {
+                player: Some(fresh),
+                ..State::default()
+            };
+            assert_eq!(capabilities(&state).driver_inputs, Capability::Fresh);
+        }
     }
 }

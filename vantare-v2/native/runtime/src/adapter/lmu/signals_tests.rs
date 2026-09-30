@@ -19,6 +19,55 @@ fn near(value: Quality<f64>, expected: f64) {
 }
 
 #[test]
+fn unfiltered_steering_uses_sdk_offset_and_signed_normalized_range() {
+    for (raw, expected) in [
+        (-1.0_f64, Quality::Reliable(-1.0)),
+        (-0.5, Quality::Reliable(-0.5)),
+        (0.0, Quality::Reliable(0.0)),
+        (0.5, Quality::Reliable(0.5)),
+        (1.0, Quality::Reliable(1.0)),
+        (-1.01, Quality::Unavailable),
+        (1.01, Quality::Unavailable),
+        (f64::NAN, Quality::Unavailable),
+        (f64::INFINITY, Quality::Unavailable),
+    ] {
+        let mut bytes = REAL_44.to_vec();
+        bytes[PLAYER + 404..PLAYER + 412].copy_from_slice(&raw.to_le_bytes());
+        bytes[PLAYER + 436..PLAYER + 444].copy_from_slice(&0.75_f64.to_le_bytes());
+        let obs = observe(&bytes, "1.3.0.0");
+        assert_eq!(
+            obs.state.player.expect("jugador").telemetry.steering,
+            expected
+        );
+        assert_eq!(obs.state.capabilities.driver_inputs, Capability::Fresh);
+    }
+}
+
+#[test]
+fn steering_expires_with_telemetry_even_when_scoring_advances() {
+    let mut translator = Translator::new(SourceKind::Live);
+    let mut bytes = REAL_44.to_vec();
+    bytes[PLAYER + 12..PLAYER + 20].copy_from_slice(&5.0_f64.to_le_bytes());
+    bytes[PLAYER + 404..PLAYER + 412].copy_from_slice(&(-0.5_f64).to_le_bytes());
+    bytes[1700..1708].copy_from_slice(&10.0_f64.to_le_bytes());
+    let fresh = translator
+        .observe(&bytes, "1.3.0.0", Duration::ZERO)
+        .expect("fixture");
+    assert_eq!(
+        fresh.state.player.expect("jugador").telemetry.steering,
+        Quality::Reliable(-0.5)
+    );
+    bytes[1700..1708].copy_from_slice(&11.0_f64.to_le_bytes());
+    let old = translator
+        .observe(&bytes, "1.3.0.0", Duration::from_millis(500))
+        .expect("fixture");
+    assert_eq!(
+        old.state.player.expect("jugador").telemetry.steering,
+        Quality::Stale(-0.5)
+    );
+}
+
+#[test]
 fn real_celsius_temperatures_and_remaining_rubber_are_not_damage_percentages() {
     let state = observe(REAL_44, "1.3.0.0").state;
     // Sidecar: aire 16 °C y asfalto 23,299214394865544 °C. Kelvin = °C + 273,15.

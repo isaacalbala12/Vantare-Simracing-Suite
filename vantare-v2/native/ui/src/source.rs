@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use vantare_domain::Quality::{Estimated, Reliable};
 use vantare_domain::{
@@ -21,20 +21,85 @@ use vantare_domain::{
 pub fn pipe_feed(name: &str) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
     // El pipe es solo del usuario actual (ACL del núcleo): se acepta al servidor.
     let mut subscriber = vantare_ipc::Subscriber::connect(name, |_| true)?;
-    let (tx, rx) = flume::unbounded();
+    let (tx, rx) = flume::bounded(4);
+    let oldest = rx.clone();
     thread::Builder::new()
         .name("pipe-feed".into())
         .spawn(move || {
+            let start = Instant::now();
+            let mut health = PipeHealth::default();
+            let mut activity = subscriber.activity();
             // `run` suelta el receptor al cerrarse la última ventana.
-            while !tx.is_disconnected() {
-                if let Some(snapshot) = subscriber.next(Duration::from_millis(250))
-                    && tx.send(snapshot).is_err()
-                {
-                    break;
+            // El receptor privado solo permite desalojar fotos antiguas.
+            while tx.receiver_count() > 1 {
+                let incoming = subscriber.next(Duration::from_millis(250));
+                let current_activity = subscriber.activity();
+                if current_activity != activity {
+                    health.heard(start.elapsed());
+                    activity = current_activity;
+                }
+                let next = if let Some(snapshot) = incoming {
+                    health.received(Arc::clone(&snapshot), start.elapsed());
+                    Some(snapshot)
+                } else {
+                    health.silence(start.elapsed())
+                };
+                if let Some(snapshot) = next {
+                    send_latest(&tx, &oldest, snapshot);
                 }
             }
         })?;
     Ok(rx)
+}
+
+/// Mismo plazo que el timeout de E/S del pipe; reloj local, no el del simulador.
+const PIPE_SILENCE_LIMIT: Duration = Duration::from_secs(5);
+
+#[derive(Default)]
+struct PipeHealth {
+    last: Option<Arc<Snapshot>>,
+    received_at: Duration,
+    lost: bool,
+}
+
+impl PipeHealth {
+    fn heard(&mut self, now: Duration) {
+        self.received_at = now;
+    }
+
+    fn received(&mut self, snapshot: Arc<Snapshot>, now: Duration) {
+        self.last = Some(snapshot);
+        self.received_at = now;
+        self.lost = false;
+    }
+
+    fn silence(&mut self, now: Duration) -> Option<Arc<Snapshot>> {
+        if self.lost || now.saturating_sub(self.received_at) < PIPE_SILENCE_LIMIT {
+            return None;
+        }
+        let mut snapshot = self.last.as_deref()?.clone();
+        vantare_domain::degrade(&mut snapshot.state);
+        snapshot.state.source_state = vantare_domain::SourceState::Lost;
+        self.lost = true;
+        Some(Arc::new(snapshot))
+    }
+}
+
+fn send_latest(
+    tx: &flume::Sender<Arc<Snapshot>>,
+    oldest: &flume::Receiver<Arc<Snapshot>>,
+    mut snapshot: Arc<Snapshot>,
+) {
+    loop {
+        match tx.try_send(snapshot) {
+            Ok(()) | Err(flume::TrySendError::Disconnected(_)) => return,
+            Err(flume::TrySendError::Full(value)) => {
+                snapshot = value;
+                // Si run acaba de vaciarlo, se reintenta el envío igualmente.
+                let _ = oldest.try_recv();
+            }
+        }
+    }
 }
 
 /// Instantáneas por segundo de la secuencia sintética.
@@ -107,6 +172,7 @@ pub fn fixed() -> Snapshot {
         epoch: 1,
         sequence: 1,
         state: State {
+            source_state: vantare_domain::SourceState::Live,
             capabilities: Capabilities {
                 positions: Capability::Fresh,
                 session_clock: Capability::Fresh,
@@ -230,6 +296,7 @@ fn race(tick: u64, realistic: bool) -> Snapshot {
         epoch: 1,
         sequence: tick + 1,
         state: State {
+            source_state: vantare_domain::SourceState::Live,
             capabilities: all_fresh(),
             session: Session {
                 kind: Reliable(SessionKind::Race),
@@ -249,6 +316,7 @@ fn race(tick: u64, realistic: bool) -> Snapshot {
                     throttle: Reliable((0.5 + 0.5 * wave).clamp(0.0, 1.0)),
                     brake: Reliable((-wave).clamp(0.0, 1.0)),
                     clutch: Reliable(0.0),
+                    steering: vantare_domain::Quality::Unavailable,
                     gear: Reliable(1 + (t as i64 % 6) as i8),
                     speed_mps: Reliable(45.0 + 25.0 * wave),
                     engine_speed_rad_s: Reliable(700.0 + 200.0 * wave),
@@ -285,6 +353,63 @@ pub fn local_feed() -> flume::Receiver<Arc<Snapshot>> {
 mod tests {
     use super::*;
     use vantare_domain::{format::Preferences, pedals, radar, standings};
+
+    #[test]
+    fn pipe_silence_emits_one_lost_copy_without_changing_revision() {
+        let mut health = PipeHealth::default();
+        assert!(health.silence(Duration::from_secs(10)).is_none());
+        let fresh = Arc::new(synthetic(30));
+        health.received(Arc::clone(&fresh), Duration::from_secs(10));
+        assert!(health.silence(Duration::from_millis(14_999)).is_none());
+        let lost = health
+            .silence(Duration::from_secs(15))
+            .expect("foto perdida");
+        assert_eq!(lost.state.source_state, vantare_domain::SourceState::Lost);
+        assert_eq!((lost.epoch, lost.sequence), (fresh.epoch, fresh.sequence));
+        assert_eq!(lost.origin, fresh.origin);
+        assert!(matches!(
+            lost.state.player.expect("jugador").telemetry.throttle,
+            vantare_domain::Quality::Stale(_)
+        ));
+        assert!(health.silence(Duration::from_secs(20)).is_none());
+        assert_eq!(fresh.state.source_state, vantare_domain::SourceState::Live);
+        health.received(Arc::new(synthetic(31)), Duration::from_secs(21));
+        assert!(health.silence(Duration::from_secs(25)).is_none());
+        assert_eq!(
+            health
+                .silence(Duration::from_secs(26))
+                .expect("otro silencio")
+                .sequence,
+            32
+        );
+    }
+
+    #[test]
+    fn slow_consumers_keep_the_newest_photos_and_can_stop_the_feed() {
+        let (tx, rx) = flume::bounded(4);
+        let oldest = rx.clone();
+        for tick in 0..10 {
+            send_latest(&tx, &oldest, Arc::new(synthetic(tick)));
+        }
+        assert_eq!(rx.len(), 4);
+        let sequences: Vec<_> = rx.try_iter().map(|snapshot| snapshot.sequence).collect();
+        assert_eq!(sequences, [7, 8, 9, 10]);
+        assert_eq!(tx.receiver_count(), 2);
+        drop(rx);
+        assert_eq!(tx.receiver_count(), 1, "solo queda el receptor de desalojo");
+    }
+
+    #[test]
+    fn heartbeats_without_new_photos_keep_the_pipe_alive() {
+        let mut health = PipeHealth::default();
+        health.received(Arc::new(fixed()), Duration::ZERO);
+        for seconds in 1..=20 {
+            health.heard(Duration::from_secs(seconds));
+            assert!(health.silence(Duration::from_secs(seconds)).is_none());
+        }
+        assert!(health.silence(Duration::from_secs(24)).is_none());
+        assert!(health.silence(Duration::from_secs(25)).is_some());
+    }
 
     #[test]
     fn the_fixed_scene_matches_the_reference_description() {

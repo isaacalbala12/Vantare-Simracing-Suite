@@ -86,7 +86,7 @@ mod tests {
     use super::*;
     use crate::{Capabilities, Fuel, Player, State};
 
-    fn snapshot(fuel: Fuel) -> Snapshot {
+    fn snapshot(fuel: &Fuel) -> Snapshot {
         Snapshot {
             state: State {
                 capabilities: Capabilities {
@@ -94,7 +94,7 @@ mod tests {
                     ..Capabilities::default()
                 },
                 player: Some(Player {
-                    fuel,
+                    fuel: *fuel,
                     ..Player::default()
                 }),
                 ..State::default()
@@ -110,7 +110,8 @@ mod tests {
             (0.0, 0.0, 0.0, ["0.0 L", "0.00 L", "0.0"]),
             (2.25, 0.125, 2.25, ["2.3 L", "0.13 L", "2.3"]),
         ] {
-            let mut data = snapshot(Fuel {
+            let mut data = snapshot(&Fuel {
+                history: Default::default(),
                 level_l: Quality::Reliable(level),
                 capacity_l: Quality::Reliable(100.0),
                 per_lap_l: Quality::Estimated(average),
@@ -136,7 +137,7 @@ mod tests {
             Quality::Reliable(f64::NAN),
             Quality::Estimated(f64::INFINITY),
         ] {
-            let data = snapshot(Fuel {
+            let data = snapshot(&Fuel {
                 level_l: value,
                 per_lap_l: value,
                 laps_left: value,
@@ -158,7 +159,7 @@ mod tests {
             (Capability::WithData, Some("DATOS ANTIGUOS")),
             (Capability::Fresh, None),
         ] {
-            let mut data = snapshot(Fuel::default());
+            let mut data = snapshot(&Fuel::default());
             data.state.capabilities.fuel = capability;
             assert_eq!(project(&data, Preferences::default()).status, expected);
         }
@@ -171,7 +172,7 @@ mod tests {
 
     #[test]
     fn widget_contract_keeps_liters_in_imperial_preferences() {
-        let data = snapshot(Fuel {
+        let data = snapshot(&Fuel {
             level_l: Quality::Reliable(42.0),
             ..Fuel::default()
         });

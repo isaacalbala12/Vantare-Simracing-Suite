@@ -359,3 +359,13 @@ Finished dev en 8,81 s; `cargo test --offline --workspace -j 2` PASS, código 0,
 cuatro pruebas físicas heredadas ignoradas. No se ejecutaron pruebas físicas
 LMU/ACC/OBS, DPI, teclado, watch de recompilación/reapertura ni benchmarks.
 EOF sí se comprobó con proceso real; el pipe de dos consumidores con test.
+
+## Integración local de fase 2 (2026-09-30)
+
+Se integra `vantareapp/isa-1427-fase2` en `ecfbde31f5ec83f285f3e28882819f7a1f19c9d1`, por instrucción explícita del orquestador. Incluye DTO v4, layout común, Engineer y ACC. Los conflictos combinan miembros Hub/Engineer del workspace, lock y exports/constructor de Overlay. La única exposición adicional de UI es `Overlay::configured(&Settings, Preferences)` para que Studio use el mismo renderer configurado. No se modifican widgets ni el kit.
+
+El corte Studio provisional queda sustituido por `ui::layout::Document`; el siguiente hito conecta edición transaccional, Settings tipados y conflictos por bytes. Las limitaciones históricas de DTO v3 y layout en memoria dejan de ser decisiones vigentes tras ese hito. Engineer exige revisar su contrato local antes de conectar ajustes/estado; no se crean servicios de red.
+
+Incidencia de validación del merge: el primer `cargo test --offline --workspace -j 2` falló al enlazar por disco C: lleno (`no space on device`, LNK1318/PDB). Se verificó que `native/target` era directorio local, sin enlace, dentro de este worktree; `cargo clean` retiró 15,0 GiB de artefactos propios. Repetición con `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0` solo en el entorno de los gates; no se cambian perfiles ni pruebas. fmt PASS y Clippy completo PASS (3m37s tras reconstrucción). Resultado de tests a continuación.
+
+Repetición de tests del merge: PASS, código 0, compilación 6m42s. Veinte pruebas Hub; seis omitidas heredadas (cuatro físicas y dos bloqueadas ACC/núcleo). fmt y Clippy completo PASS. Sin cambios a los tests importados ni a sus marcas ignored.

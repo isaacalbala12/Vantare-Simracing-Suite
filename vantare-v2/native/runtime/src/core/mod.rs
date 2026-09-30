@@ -19,13 +19,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{io, path::Path};
 
-use vantare_domain::{Adapter, AdapterError, Observation, Snapshot};
+use vantare_domain::{Adapter, AdapterError, Observation, Snapshot, SourceState, degrade};
 
 pub use merge::Reject;
 pub use publish::Reader;
 
-use crate::flows::{Journal, Series};
-use merge::{Trackers, degrade, merge, stale};
+use crate::flows::{Cursor, Journal, Series};
+use merge::{Trackers, merge, stale};
 use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
@@ -97,6 +97,17 @@ impl Core {
         })
     }
 
+    /// Base recuperada por el dueño I/O antes de adquisición. Sin abrir disco.
+    pub fn with_event_base(base: Cursor) -> io::Result<Self> {
+        if base.index == u64::MAX {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "base agotada"));
+        }
+        Ok(Self {
+            events: Journal::at(base),
+            ..Self::new(base.epoch)
+        })
+    }
+
     pub fn events(&self) -> &Journal {
         &self.events
     }
@@ -162,8 +173,8 @@ impl Core {
         self.stale = self.is_stale_at(origin.received_at);
         if self.stale {
             degrade(&mut snapshot.state);
+            snapshot.state.source_state = SourceState::Stale;
         }
-        self.events.observe(&self.current, &snapshot);
         self.publish(snapshot);
         Ok(())
     }
@@ -189,6 +200,7 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
+        self.events.observe(&self.current, &snapshot);
         self.series.observe(&snapshot);
         self.current = Arc::new(snapshot);
         self.publisher.publish(Arc::clone(&self.current));
@@ -274,6 +286,7 @@ mod tests {
         let mut core = Core::new(3);
         let reader = core.subscribe();
         assert_eq!(reader.latest().sequence, 0, "vacío antes de observar");
+        assert_eq!(reader.latest().state.source_state, SourceState::Waiting);
 
         let mut adapter = Script::default();
         adapter
@@ -286,6 +299,7 @@ mod tests {
         core.step(&mut adapter, ms(100)).unwrap();
 
         let snapshot = reader.wait(Duration::ZERO).unwrap();
+        assert_eq!(snapshot.state.source_state, SourceState::Live);
         assert_eq!((snapshot.epoch, snapshot.sequence), (3, 2));
 
         let table = standings::project(&snapshot, Preferences::default());
@@ -320,12 +334,15 @@ mod tests {
         car.lap_distance_m = Quality::Reliable(distance_m);
         car.lap_elapsed_s = Quality::Reliable(elapsed_s);
         obs.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(level_l);
+        obs.state.session.track_length_m = Quality::Reliable(100.0);
         obs
     }
 
     #[test]
     fn fuel_consumption_is_measured_across_photos_in_the_core() {
         let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 0, 100.0, 50.0, 0.25))
+            .unwrap();
         let reader = core.subscribe();
         let mut adapter = Script::default();
         adapter
@@ -345,6 +362,8 @@ mod tests {
     #[test]
     fn delta_backup_is_built_across_photos_in_the_core() {
         let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 0, 100.0, 100.0, 0.5))
+            .unwrap();
         let reader = core.subscribe();
         let mut adapter = Script::default();
         // Vuelta 1: 0,5 s en 100 m; la 2 llega a 50 m en 0,15 s.

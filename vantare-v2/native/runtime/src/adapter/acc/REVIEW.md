@@ -1,5 +1,91 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Fase 6 — ISA-1431 (2026-09-30)
+
+Microplan: `docs/superpowers/plans/2026-09-30-fase-6-acc-completo.md`.
+Worker Codex, revisión de diff pendiente de Opus 5.5. Base `e172eb3f`;
+solo commits locales, sin push/PR/merge. Notion indisponible con excepción
+expresa del encargo; no se declara seguimiento remoto completado.
+
+El corte de fusión mantiene UDP actual frente a SHM obsoleta o inválida del
+jugador (posición, vueltas, tiempos, boxes, sector, pose y progreso).
+`live::poll` ahora conserva el avance de recepción UDP aunque sus valores no
+cambien; antes podía declarar silencio de una fuente que seguía publicando.
+Temperaturas UDP (bytes °C +273.15) completan physics ausente/obsoleta; nunca
+refrescan viento ni las entradas del jugador. SHM tiene prioridad cuando actual.
+Gap de 0 ms válido para posición >1; Int32::MAX/negativos siguen ausentes.
+
+**Corrección de la tabla histórica de fuel de abajo:** el PDF Kunos 1.8.12
+documenta physics.fuel @12 en kg y no da unidad de static.maxFuel @416.
+Hasta resolver físicamente la discrepancia, ambos quedan `Unavailable` en el
+modelo de litros. No se usa densidad inventada ni `Estimated` para disfrazar
+una unidad desconocida. Graphics.fuelXLap @1284 sí declara litros por vuelta:
+positivo y finito → Reliable; fuelEstimatedLaps @1412 → Estimated.
+Ambos caducan con graphics (500 ms/pausa). El núcleo respeta el dato nativo y
+no deriva consumo histórico sin un nivel en litros. `numberOfLaps` @172 está
+documentado como completadas, no duración: `laps_total` sigue ausente.
+
+Regresiones: tres tests rojos antes de fusión (`acc-f6-cut1-red.log`) y uno de
+UDP sin cambios (`acc-f6-live-red.log`); 26 tests ACC pasan después.
+Workspace test PASS en corte 1; fmt workspace falla en `ui/src/app.rs:385`
+(ajeno). Primer clippy global: E0425 en UI; se comprueba tras regenerar solo
+los artefactos domain: clippy workspace PASS tras limpiar únicamente ese
+paquete del target propio, sin editar fuentes ajenas. Runtime clippy PASS.
+Logs en `C:/tmp/acc-f6-*.log`.
+El corpus real y su hash no se alteran; los nuevos vectores no son capturas.
+
+La aceptación completa sigue pendiente de capturas físicas y resolución de
+las unidades del nivel/capacidad; no se declara ACC completo en producto.
+
+### Grabadora (corte 2)
+
+Antes del arreglo, dos tests FAIL demuestran packet de blob distinto y
+renovación tras tres segundos sin feed; tras el arreglo, 17 tests PASS.
+Se exige packet antes/blob/después coincidente y se leen mappings volátiles.
+ACK fijo de nueve bytes + texto acotado sustituye el cursor propio; 0 = readonly,
+UTF-8 inválido/truncamiento/trailing se rechazan. El texto del servidor no se
+guarda ni muestra. Config UTF-16 inválida/truncada y puerto cero se rechazan.
+Registro sin commandPassword; requests conservan ID y UNREGISTER solo `[9]`,
+según el SDK. Renovación después de 10 s de silencio con retirada previa;
+reintento de handshake 2 s en el mismo puerto, envío no cuenta como recepción.
+Un nuevo ACK no cancela la suscripción recién admitida. Máximo 256 datagramas
+por vuelta y solo desde el endpoint configurado; SHM puede seguir capturándose.
+Formato del corpus intacto. El umbral 10 s es tolerancia de reconexión, no
+frescura: las señales ya caducan a 500 ms/1 s en el adaptador.
+No se afirma haber demostrado la causa de silencios periódicos de ACC ni cero
+pérdida UDP del sistema operativo. Nueva captura física >5 min pendiente.
+
+### Conformidad y límites compartidos (corte 3)
+
+Tiempo actual UDP de vuelta cero ahora es Reliable(0); tiempos históricos cero
+y MAX siguen ausentes. No publicar gap cero de clasificación del jugador en
+boxes. Vector con gap nativo de 2.5 s comprueba derivación general común,
+combustible nativo, DTO v4 completo, ámbitos y Waiting→Live→Stale por silencio.
+Ocho familias de proyección neutrales tanto en vector como en corpus real.
+Lector independiente de última graphics comprueba las dos señales de fuel.
+
+Dos tests bloqueados se ejecutaron y **fallan** (`acc-f6-core-blocked.log`):
+OFF/caducidad sin nueva recepción dan `[Live, Live]` en núcleo en vez de
+`[Waiting, Stale]`; gap de clase sigue ausente sin gap general publicado del
+líder. Permanecen ignored con motivo, dentro de `tests/acc/completion.rs`,
+para reproducir con `cargo test --offline -p vantare-runtime --lib -j 2
+completion_tests -- --ignored --nocapture`. Son deuda de aceptación, no físicos.
+El propietario del núcleo debe corregirlos y activarlos; este worker no toca
+esa frontera. No hubo extensiones del modelo ni if simulador fuera de ACC.
+
+**Estado final:** listo para revisión de los cortes locales; aceptación de
+fase 6 bloqueada por esos dos casos, unidades nivel/capacidad y capturas físicas
+detalladas en microplan. No se afirma producto ACC completo, neutralidad física,
+rendimiento ni verificación Notion/remota. La versión original de Assetto Corsa
+queda fuera: el encargo y el corpus son Competizione.
+
+Gates finales: formato de rutas tocadas PASS; fmt workspace FAIL únicamente
+por UI heredada; clippy workspace PASS; test workspace exit 0, 437 passed /
+6 ignored (4 físicos + 2 bloqueos compartidos), más 7 escenarios lifecycle PASS.
+Las reproducciones compartidas con --ignored dan exit 101, dos FAIL; no se
+declara aceptación completa. Logs `C:/tmp/acc-f6-final-*-verified.log`,
+`acc-f6-final-scope-fmt.log`, `acc-f6-core-blocked.log`. Corpus SHA inalterado.
+
 ## Clima y daños — fase 2 (ISA-1427)
 
 Alcance del worker: solo adaptador ACC y tests ACC; sin dependencias nuevas.

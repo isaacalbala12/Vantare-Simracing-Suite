@@ -133,6 +133,7 @@ mod tests {
         let mut snapshot = Snapshot::default();
         snapshot.state.player = Some(Player {
             telemetry: Telemetry {
+                steering: Quality::Unavailable,
                 clutch: Quality::Reliable(0.06),
                 brake: Quality::Reliable(0.125),
                 throttle: Quality::Reliable(0.75),

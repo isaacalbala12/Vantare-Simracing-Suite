@@ -10,7 +10,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub(crate) const VERSION: u32 = 3;
+pub(crate) const VERSION: u32 = 4;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -74,7 +74,17 @@ struct CapabilitiesDto {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum SourceStateDto {
+    Waiting,
+    Live,
+    Stale,
+    Lost,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct StateDto {
+    source_state: SourceStateDto,
     capabilities: CapabilitiesDto,
     session: SessionDto,
     flags: QualityDto<Vec<FlagDto>>,
@@ -164,6 +174,8 @@ struct CarDto {
     gap_ahead: QualityDto<GapDto>,
     gap_class_leader: QualityDto<GapDto>,
     gap_class_ahead: QualityDto<GapDto>,
+    relative_s: QualityDto<f64>,
+    relative_laps: QualityDto<i32>,
     lap_distance_m: QualityDto<f64>,
     lap_elapsed_s: QualityDto<f64>,
     current_sector: QualityDto<u8>,
@@ -191,6 +203,7 @@ struct PlayerDto {
     throttle: QualityDto<f64>,
     brake: QualityDto<f64>,
     clutch: QualityDto<f64>,
+    steering: QualityDto<f64>,
     gear: QualityDto<i8>,
     speed_mps: QualityDto<f64>,
     engine_speed_rad_s: QualityDto<f64>,
@@ -198,6 +211,7 @@ struct PlayerDto {
     fuel_capacity_l: QualityDto<f64>,
     fuel_per_lap_l: QualityDto<f64>,
     fuel_laps_left: QualityDto<f64>,
+    fuel_history: Vec<(u32, f64)>,
     delta_best_s: QualityDto<f64>,
     damage_aero: QualityDto<f64>,
     damage_body: QualityDto<f64>,
@@ -303,6 +317,8 @@ fn car(c: &d::Car) -> CarDto {
         gap_ahead: q(&c.gap_ahead, gap),
         gap_class_leader: q(&c.gap_class_leader, gap),
         gap_class_ahead: q(&c.gap_class_ahead, gap),
+        relative_s: q(&c.relative_s, copied),
+        relative_laps: q(&c.relative_laps, copied),
         lap_distance_m: q(&c.lap_distance_m, copied),
         lap_elapsed_s: q(&c.lap_elapsed_s, copied),
         current_sector: q(&c.current_sector, copied),
@@ -322,6 +338,7 @@ fn player(p: &d::Player) -> PlayerDto {
         throttle: q(&t.throttle, copied),
         brake: q(&t.brake, copied),
         clutch: q(&t.clutch, copied),
+        steering: q(&t.steering, copied),
         gear: q(&t.gear, copied),
         speed_mps: q(&t.speed_mps, copied),
         engine_speed_rad_s: q(&t.engine_speed_rad_s, copied),
@@ -329,6 +346,7 @@ fn player(p: &d::Player) -> PlayerDto {
         fuel_capacity_l: q(&p.fuel.capacity_l, copied),
         fuel_per_lap_l: q(&p.fuel.per_lap_l, copied),
         fuel_laps_left: q(&p.fuel.laps_left, copied),
+        fuel_history: p.fuel.history.iter().flatten().copied().collect(),
         delta_best_s: q(&p.delta_best_s, copied),
         damage_aero: q(&p.damage.aero, copied),
         damage_body: q(&p.damage.body, copied),
@@ -354,6 +372,12 @@ impl From<&d::Snapshot> for SnapshotDto {
                 received_at: s.origin.received_at,
             },
             state: StateDto {
+                source_state: match s.state.source_state {
+                    d::SourceState::Waiting => SourceStateDto::Waiting,
+                    d::SourceState::Live => SourceStateDto::Live,
+                    d::SourceState::Stale => SourceStateDto::Stale,
+                    d::SourceState::Lost => SourceStateDto::Lost,
+                },
                 capabilities: CapabilitiesDto {
                     session_clock: cap(c.session_clock),
                     positions: cap(c.positions),
@@ -485,6 +509,8 @@ fn ucar(c: CarDto) -> d::Car {
         gap_ahead: uq(c.gap_ahead, ugap),
         gap_class_leader: uq(c.gap_class_leader, ugap),
         gap_class_ahead: uq(c.gap_class_ahead, ugap),
+        relative_s: uq(c.relative_s, id),
+        relative_laps: uq(c.relative_laps, id),
         lap_distance_m: uq(c.lap_distance_m, id),
         lap_elapsed_s: uq(c.lap_elapsed_s, id),
         current_sector: uq(c.current_sector, id),
@@ -498,12 +524,17 @@ fn ucar(c: CarDto) -> d::Car {
 }
 
 fn uplayer(p: PlayerDto) -> d::Player {
+    let mut history = [None; 10];
+    for (slot, value) in history.iter_mut().zip(p.fuel_history) {
+        *slot = Some(value);
+    }
     d::Player {
         car: d::CarId(p.car),
         telemetry: d::Telemetry {
             throttle: uq(p.throttle, id),
             brake: uq(p.brake, id),
             clutch: uq(p.clutch, id),
+            steering: uq(p.steering, id),
             gear: uq(p.gear, id),
             speed_mps: uq(p.speed_mps, id),
             engine_speed_rad_s: uq(p.engine_speed_rad_s, id),
@@ -513,6 +544,7 @@ fn uplayer(p: PlayerDto) -> d::Player {
             capacity_l: uq(p.fuel_capacity_l, id),
             per_lap_l: uq(p.fuel_per_lap_l, id),
             laps_left: uq(p.fuel_laps_left, id),
+            history,
         },
         delta_best_s: uq(p.delta_best_s, id),
         damage: d::Damage {
@@ -532,6 +564,9 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
             return Err(Error::Version { got: dto.version });
         }
         let (o, s) = (dto.origin, dto.state);
+        if s.player.as_ref().is_some_and(|p| p.fuel_history.len() > 10) {
+            return Err(Error::Protocol("más de diez vueltas de combustible"));
+        }
         let c = s.capabilities;
         Ok(d::Snapshot {
             epoch: dto.epoch,
@@ -548,6 +583,12 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
                 received_at: o.received_at,
             },
             state: d::State {
+                source_state: match s.source_state {
+                    SourceStateDto::Waiting => d::SourceState::Waiting,
+                    SourceStateDto::Live => d::SourceState::Live,
+                    SourceStateDto::Stale => d::SourceState::Stale,
+                    SourceStateDto::Lost => d::SourceState::Lost,
+                },
                 capabilities: d::Capabilities {
                     session_clock: ucap(c.session_clock),
                     positions: ucap(c.positions),

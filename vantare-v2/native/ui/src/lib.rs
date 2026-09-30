@@ -24,6 +24,7 @@ mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
 pub mod efficiency;
+pub mod layout;
 mod overlay;
 pub mod source;
 #[cfg(feature = "paint-stats")]
@@ -32,5 +33,5 @@ pub mod workshop;
 
 include!("registry.rs");
 
-// Hub incrusta el mismo renderer productivo; no expone el despacho interno de widgets.
-pub use app::{Overlay, layout_row, run, run_placed};
+// Hub incrusta el mismo renderer productivo.
+pub use app::{Overlay, layout_row, run, run_layout, run_placed};

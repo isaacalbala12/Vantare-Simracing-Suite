@@ -4,6 +4,9 @@ use super::*;
 #[path = "weather.rs"]
 mod weather_tests;
 
+#[path = "completion.rs"]
+mod completion_tests;
+
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
 }
@@ -284,8 +287,8 @@ fn off_and_zero_physics_degrade_honestly() {
     t.shm(0, p, ms(10)).expect("pausa");
     let o = t.observe(ms(10)).expect("últimos datos");
     assert_eq!(
-        o.state.player.expect("jugador").fuel.level_l,
-        Quality::Stale(30.0)
+        o.state.player.expect("jugador").telemetry.throttle,
+        Quality::Stale(0.75)
     );
     let mut g = pages()[1].clone();
     int(&mut g, 0, 2);

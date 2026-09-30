@@ -6,11 +6,12 @@
 //! feature `parity-capture`, `vantare-overlays --parity-capture <png>` captura
 //! Standings con la escena fija.
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use vantare_domain::format::Preferences;
 
-const USAGE: &str = "uso: vantare-overlays [1|4|22] [--fuente local|pipe[:<nombre>]]";
+const USAGE: &str = "uso: vantare-overlays [1|4|22 | --layout <layout.json>] [--fuente local|pipe[:<nombre>]]; sin número vigila el layout de LOCALAPPDATA";
 
 #[derive(Debug, PartialEq)]
 enum Feed {
@@ -32,20 +33,25 @@ impl std::str::FromStr for Feed {
     }
 }
 
-/// Sin número, un widget; si no, exactamente 1, 4 o 22. La fuente es opcional.
-fn parse(args: &[String]) -> Option<(usize, Feed)> {
-    let (mut count, mut feed) = (None, Feed::Pipe(None));
+/// Un número explícito conserva la campaña; sin él se usa el documento de layout.
+fn parse(args: &[String]) -> Option<(Option<usize>, Option<PathBuf>, Feed)> {
+    let (mut count, mut layout, mut feed) = (None, None, Feed::Pipe(None));
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         if arg == "--fuente" {
             feed = args.next()?.parse().ok()?;
+        } else if arg == "--layout" && layout.is_none() {
+            layout = Some(args.next()?.into());
         } else if count.is_none() {
             count = Some(arg.parse().ok().filter(|n| matches!(n, 1 | 4 | 22))?);
         } else {
             return None;
         }
     }
-    Some((count.unwrap_or(1), feed))
+    if count.is_some() && layout.is_some() {
+        return None;
+    }
+    Some((count, layout, feed))
 }
 
 fn main() -> ExitCode {
@@ -56,7 +62,7 @@ fn main() -> ExitCode {
     {
         return vantare_ui::capture::run(path.into());
     }
-    let Some((windows, feed)) = parse(&args) else {
+    let Some((windows, layout, feed)) = parse(&args) else {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     };
@@ -74,7 +80,17 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    vantare_ui::run(windows, snapshots, Preferences::default());
+    if let Some(windows) = windows {
+        vantare_ui::run(windows, snapshots, Preferences::default());
+    } else {
+        let result = layout
+            .map_or_else(vantare_ui::layout::default_path, Ok)
+            .and_then(|path| vantare_ui::run_layout(path, snapshots, Preferences::default()));
+        if let Err(error) = result {
+            eprintln!("vantare-overlays: {error}");
+            return ExitCode::FAILURE;
+        }
+    }
     ExitCode::SUCCESS
 }
 
@@ -89,15 +105,15 @@ mod tests {
     #[test]
     fn only_the_measured_window_counts_are_accepted() {
         let pipe = || Feed::Pipe(None);
-        assert_eq!(parse(&args(&[])), Some((1, pipe())));
-        assert_eq!(parse(&args(&["4"])), Some((4, pipe())));
+        assert_eq!(parse(&args(&[])), Some((None, None, pipe())));
+        assert_eq!(parse(&args(&["4"])), Some((Some(4), None, pipe())));
         assert_eq!(
             parse(&args(&["22", "--fuente", "local"])),
-            Some((22, Feed::Local))
+            Some((Some(22), None, Feed::Local))
         );
         assert_eq!(
             parse(&args(&["--fuente", "local", "4"])),
-            Some((4, Feed::Local))
+            Some((Some(4), None, Feed::Local))
         );
         assert_eq!(parse(&args(&["3"])), None);
         assert_eq!(parse(&args(&["x"])), None);
@@ -108,7 +124,7 @@ mod tests {
 
     #[test]
     fn the_source_is_local_or_a_pipe_with_an_optional_name() {
-        let feed = |text: &str| parse(&args(&["--fuente", text])).map(|(_, feed)| feed);
+        let feed = |text: &str| parse(&args(&["--fuente", text])).map(|(_, _, feed)| feed);
         assert_eq!(feed("local"), Some(Feed::Local));
         assert_eq!(feed("pipe"), Some(Feed::Pipe(None)));
         assert_eq!(feed("pipe:mio"), Some(Feed::Pipe(Some("mio".into()))));
@@ -116,5 +132,16 @@ mod tests {
         assert_eq!(feed("local:x"), None);
         assert_eq!(feed("tcp"), None);
         assert_eq!(parse(&args(&["--fuente"])), None);
+    }
+
+    #[test]
+    fn layout_path_and_measurement_count_are_exclusive() {
+        assert_eq!(
+            parse(&args(&["--layout", "my-layout.json"])),
+            Some((None, Some("my-layout.json".into()), Feed::Pipe(None)))
+        );
+        assert_eq!(parse(&args(&["--layout"])), None);
+        assert_eq!(parse(&args(&["--layout", "a", "--layout", "b"])), None);
+        assert_eq!(parse(&args(&["4", "--layout", "a"])), None);
     }
 }

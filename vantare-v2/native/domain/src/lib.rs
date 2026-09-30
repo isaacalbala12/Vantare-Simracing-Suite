@@ -37,7 +37,7 @@ pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
     Car, CarId, Class, ClassId, Damage, Driver, DriverId, Fuel, Gap, Origin, Player, Pose,
-    SIMULATORS, Session, SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, State,
-    Telemetry, UNKNOWN_SIMULATOR, Weather,
+    SIMULATORS, Session, SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind,
+    SourceState, State, Telemetry, UNKNOWN_SIMULATOR, Weather, degrade,
 };
 pub use quality::Quality;

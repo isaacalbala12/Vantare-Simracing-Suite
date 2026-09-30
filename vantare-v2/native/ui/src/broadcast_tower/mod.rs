@@ -23,6 +23,18 @@ use vantare_domain::{
 
 const SIZE: (f32, f32) = (1920.0, 71.0);
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub driver_carousel: bool,
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        self.clone()
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
     motion: Motion,
@@ -30,7 +42,7 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: broadcast_tower::project(&Snapshot::default(), prefs),
             motion: Motion::default(),
@@ -173,23 +185,7 @@ fn paint(vm: &ViewModel, cards: &[Card], prefs: Preferences, window: &mut Window
             }
         },
     );
-    efficiency::paint_frame(window, width, height);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
-        Corners {
-            top_left: px(6.0),
-            top_right: px(6.0),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(1.0),
-            ..Edges::all(px(0.0))
-        },
-        col(0xffffff, 0.24),
-        BorderStyle::default(),
-    ));
+    efficiency::paint_highlighted_frame(window, width, height);
 }
 
 fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window, cx: &mut App) {
@@ -425,7 +421,7 @@ mod tests {
 
     #[test]
     fn sequence_only_and_invisible_rows_do_not_repaint() {
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, Preferences::default()));
         snapshot.sequence += 1;
@@ -440,7 +436,7 @@ mod tests {
     fn a_new_epoch_cancels_in_flight_movement_even_when_the_rows_are_identical() {
         let now = Instant::now();
         let prefs = Preferences::default();
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = source::synthetic(0);
         widget.ingest(&snapshot, prefs);
         snapshot.state.cars[0].position = vantare_domain::Quality::Reliable(2);
@@ -501,7 +497,7 @@ mod tests {
                 ("F. ALBUQUERQUE", "LMP", "+4.936", false),
             ]
         );
-        let mut widget = Widget::new(prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.size(), (1920.0, 71.0));
         assert_eq!(widget.frame(prefs).1, Wake::Idle);

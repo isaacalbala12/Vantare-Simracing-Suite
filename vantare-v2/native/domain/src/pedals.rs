@@ -66,6 +66,7 @@ mod tests {
             state: State {
                 player: Some(Player {
                     telemetry: Telemetry {
+                        steering: Reliable(0.0),
                         throttle: Reliable(0.734),
                         brake: Reliable(1.2),
                         clutch: Stale(0.5),

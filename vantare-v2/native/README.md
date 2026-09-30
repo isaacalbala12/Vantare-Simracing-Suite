@@ -5,12 +5,14 @@
 | `domain` | Modelo común (`Snapshot`, `State`, `Quality`, capacidades, banderas), contrato del adaptador (`Adapter`, `Observation`), ViewModels (`standings`, `radar`, `pedals`) y formateador. Puro: sin simuladores, GPUI ni I/O; `unsafe` prohibido. |
 | `runtime` | Adaptadores de simulador (módulos privados), núcleo, flujos y ciclo de vida. |
 | `ipc` | DTO versionados (serde) y transporte entre procesos. |
+| `engineer` | Consumidor de fotos/eventos y voz local bajo demanda, proceso separado. |
 | `ui` | Biblioteca visual y binarios de overlays y Hub. |
 
 ## Dependencias permitidas
 
 ```text
 runtime → domain, ipc      ipc → domain      ui → domain, ipc
+engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
@@ -70,17 +72,34 @@ escena LMU fija y la recompila al guardar (ver `ui/README.md`, «Workshop»).
 
 `vantare` (`runtime/src/bin/vantare/`) es el propietario del arranque y el
 cierre: lanza `vantare-core` y `vantare-overlays` como procesos hijos y los
-supervisa.
+supervisa. `--engineer <checkpoint>` añade `vantare-engineer` bajo demanda:
+mismo supervisor/Job, reinicios independientes y cierre antes de overlays.
+No nace sin esa opción. El checkpoint tiene un único dueño; no compartirlo
+entre instancias. Véase [`engineer/README.md`](engineer/README.md).
 
 ```powershell
-vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] [--instancia S] `
-        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]
+vantare [--core-bin R] [--overlays-bin R] [--engineer CURSOR] [--engineer-bin R] `
+        [--plazo MS] [--reinicios N] [--instancia S] `
+        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]
 vantare --parar        # pide el cierre ordenado a la instancia en marcha
 ```
 
 Los binarios hijos se buscan junto a `vantare.exe` salvo `--core-bin` /
 `--overlays-bin`. Los argumentos tras el primer `--` son del núcleo y los tras
 el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`).
+El tercer grupo es de Engineer (requiere `--engineer`). Pipe e imágenes se
+comparten automáticamente para autenticar ambos extremos del canal de eventos.
+Ejemplo sin audio, desde `native/` con los binarios compilados:
+
+```powershell
+target/debug/vantare.exe --engineer C:/tmp/vantare-cursor.json -- `
+    --replay ../testdata/lmu-fixture.bin --build 1.3.0.0 -- 4
+```
+
+`vantare-core --recording <JSONL>` activa recording al arrancar; sin opción
+no abre fichero. Foto y eventos usan pipes distintos, misma ACL/primitivos:
+`<pipe>-events` sirve cursor, hecho o hueco y ACK; su dueño I/O confirma disco
+fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
 
 - **Muerte conjunta.** El launcher se mete en un Job Object con
   `KILL_ON_JOB_CLOSE` y los hijos nacen dentro: si el launcher muere (incluso
@@ -98,7 +117,7 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
   se sale con 0.
 - **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar`: primero
-  overlays y después el núcleo. A cada hijo se le pide que termine
+  Engineer habilitado, overlays y después el núcleo. A cada hijo se le pide que termine
   (`WM_CLOSE` a sus ventanas y fin de su stdin) y, si sigue vivo pasado
   `--plazo` (3 s), se le mata. **Contrato para procesos sin ventana:** leer
   stdin hasta EOF y terminar.
@@ -106,7 +125,8 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
 Las pruebas de caída (`runtime/tests/lifecycle.rs`, procesos de verdad sobre un
 pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la
 época nueva), overlays muerto o colgado (el núcleo sigue publicando), segunda
-instancia, orden de cierre, presupuesto agotado y muerte conjunta.
+instancia, orden de cierre, presupuesto agotado y muerte conjunta, también
+para Engineer: caída aislada, presupuesto exacto, colgado y cierre por Job.
 
 ## Topología
 
@@ -119,8 +139,8 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 ```powershell
 cd vantare-v2/native
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
+cargo test --workspace --offline -j 2
 ```
 
 `runtime/tests/core_e2e.rs` arranca el binario `vantare-core` con el fixture de

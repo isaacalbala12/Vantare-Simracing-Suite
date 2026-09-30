@@ -202,13 +202,39 @@ fn paint_text_shadow(
     }
 }
 
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub text_color: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            text_color: "#000000".into(),
+        }
+    }
+}
+impl Settings {
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        let value = self.text_color.as_bytes();
+        if value.len() == 7 && value[0] == b'#' && value[1..].iter().all(u8::is_ascii_hexdigit) {
+            Self {
+                text_color: self.text_color.to_ascii_lowercase(),
+            }
+        } else {
+            Self::default()
+        }
+    }
+}
+
 pub(crate) struct Widget {
     vm: ViewModel,
     yellow_since: Option<Instant>,
 }
 
 impl Widget {
-    pub(crate) fn new(prefs: Preferences) -> Self {
+    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
             vm: racing_flags::project(&Snapshot::default(), prefs),
             yellow_since: None,
@@ -285,7 +311,7 @@ mod tests {
             assert!(matches!(pulse(elapsed), (0.0, Wake::Idle)));
         }
         assert!(matches!(pulse(Some(PULSE / 2)), (1.0, Wake::Frame)));
-        let mut widget = Widget::new(Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         let mut snapshot = Snapshot::default();
         snapshot.state.flags = Quality::Reliable(vec![Flag {
             kind: FlagKind::Yellow,

@@ -303,7 +303,7 @@ fn lost_unconfirmed_retention_cannot_be_reported_as_durable() {
 }
 
 #[test]
-fn missing_stale_estimated_or_changed_identity_never_invents_an_event() {
+fn missing_stale_estimated_or_changed_identity_never_invents_a_car_transition() {
     let mut core = Core::new(1);
     let mut consumer = Consumer::new(core.events().tail());
     core.observe(photo(1, false)).unwrap();
@@ -324,6 +324,24 @@ fn missing_stale_estimated_or_changed_identity_never_invents_an_event() {
     player.state.cars[0].id = CarId(8);
     player.state.player.as_mut().unwrap().car = CarId(8);
     core.observe(player).unwrap();
+    for kind in [
+        FactKind::SourceChanged {
+            before: vantare_domain::SourceState::Live,
+            after: vantare_domain::SourceState::Stale,
+        },
+        FactKind::SourceChanged {
+            before: vantare_domain::SourceState::Stale,
+            after: vantare_domain::SourceState::Live,
+        },
+        FactKind::SessionChanged {
+            previous: SessionId(0),
+        },
+    ] {
+        assert!(
+            matches!(consumer.poll(core.events()).unwrap(), Some(Delivery::Fact(fact)) if fact.kind == kind)
+        );
+        consumer.ack();
+    }
     assert_eq!(consumer.poll(core.events()).unwrap(), None);
 }
 
@@ -338,4 +356,116 @@ fn invalid_configuration_and_malformed_complete_records_fail_explicitly() {
         Core::with_flows(1, 1, Some(&file.0)).is_err(),
         "época creciente"
     );
+}
+
+#[test]
+fn late_recording_and_on_off_segments_recover_only_confirmed_history() {
+    let file = TestFile::new();
+    let mut core = Core::new(30);
+    let saved = core.events().tail();
+    for index in 1..=4 {
+        core.observe(photo(index, index % 2 == 0)).unwrap();
+    }
+    assert_eq!(core.events().recording_status(), RecordingStatus::Disabled);
+    assert!(!file.0.exists(), "recording off no crea un fichero");
+    core.events_mut().set_recording(Some(&file.0)).unwrap();
+    let first_base = core.events().tail();
+    assert_eq!(core.events().durable_cursor(), None, "base no es evento");
+    core.observe(photo(5, false)).unwrap();
+    core.events_mut().persist().unwrap();
+    let first_durable = core.events().tail();
+    let prefix = fs::read(&file.0).unwrap();
+    // Activar de nuevo estando activo es idempotente; no salta la cola.
+    core.observe(photo(6, true)).unwrap();
+    core.events_mut().set_recording(Some(&file.0)).unwrap();
+    core.events_mut().persist().unwrap();
+    let second_durable = core.events().tail();
+    core.events_mut().set_recording(None).unwrap();
+    let before_disabled = fs::read(&file.0).unwrap();
+    core.observe(photo(7, false)).unwrap();
+    core.observe(photo(8, true)).unwrap();
+    assert_eq!(core.events_mut().persist().unwrap(), None);
+    assert_eq!(fs::read(&file.0).unwrap(), before_disabled);
+    assert_eq!(core.events().durable_cursor(), Some(second_durable));
+    // El consumidor vivo aún recupera todos los eventos volátiles retenidos.
+    let mut alive = Consumer::new(saved);
+    for _ in 0..7 {
+        event(&mut alive, &core);
+        alive.ack();
+    }
+    core.events_mut().set_recording(Some(&file.0)).unwrap();
+    let second_base = core.events().tail();
+    core.observe(photo(9, false)).unwrap();
+    core.events_mut().persist().unwrap();
+    let third_durable = core.events().tail();
+    assert!(fs::read(&file.0).unwrap().starts_with(&prefix));
+    drop(core);
+    let core = Core::with_flows(31, 1, Some(&file.0)).unwrap();
+    let mut consumer = Consumer::new(saved);
+    assert_eq!(
+        consumer.poll(core.events()).unwrap(),
+        Some(Delivery::Gap {
+            reason: GapReason::RecordingDisabled,
+            resume_at: first_base
+        })
+    );
+    consumer.ack();
+    assert_eq!(event(&mut consumer, &core).cursor, first_durable);
+    consumer.ack();
+    assert_eq!(event(&mut consumer, &core).cursor, second_durable);
+    consumer.ack();
+    assert_eq!(
+        consumer.poll(core.events()).unwrap(),
+        Some(Delivery::Gap {
+            reason: GapReason::RecordingDisabled,
+            resume_at: second_base
+        })
+    );
+    consumer.ack();
+    assert_eq!(event(&mut consumer, &core).cursor, third_durable);
+    consumer.ack();
+    assert!(matches!(
+        consumer.poll(core.events()).unwrap(),
+        Some(Delivery::Gap {
+            reason: GapReason::CoreRestart,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn failed_activation_and_lost_pending_retention_are_explicit_degradation() {
+    let file = TestFile::new();
+    let mut core = Core::new(1);
+    assert!(
+        core.events_mut()
+            .set_recording(Some(&file.0.join("no-directory")))
+            .is_err()
+    );
+    assert!(matches!(
+        core.events().recording_status(),
+        RecordingStatus::Degraded(_)
+    ));
+    core.events_mut().set_recording(None).unwrap();
+    assert_eq!(core.events().recording_status(), RecordingStatus::Disabled);
+    let mut core = Core::with_flows(1, 1, Some(&file.0)).unwrap();
+    for index in 1..=5 {
+        core.observe(photo(index, index % 2 == 0)).unwrap();
+    }
+    assert!(core.events_mut().persist().is_err());
+    assert_eq!(
+        core.events().recording_status(),
+        RecordingStatus::Degraded(std::io::ErrorKind::InvalidData)
+    );
+    assert_eq!(core.events().durable_cursor(), None);
+    let other = TestFile::new();
+    assert!(
+        core.events_mut().set_recording(Some(&other.0)).is_err(),
+        "no perder acceso a un archivo durable al cambiar ruta"
+    );
+    core.events_mut().set_recording(Some(&file.0)).unwrap();
+    let base = core.events().tail();
+    core.observe(photo(6, true)).unwrap();
+    assert_ne!(core.events_mut().persist().unwrap(), Some(base));
+    assert_eq!(core.events().recording_status(), RecordingStatus::Active);
 }

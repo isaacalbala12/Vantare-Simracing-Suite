@@ -65,11 +65,12 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    pub(crate) fn new(kind: Kind, prefs: Preferences) -> Self {
+    pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }
 
-    fn configured(settings: &Settings, prefs: Preferences) -> Self {
+    /// Renderer compartido por Studio y overlays; posición y persistencia viven fuera.
+    pub fn configured(settings: &Settings, prefs: Preferences) -> Self {
         if let Some(limit) = settings_limit(settings) {
             eprintln!("{}: {limit}", settings.kind().name());
         }
@@ -108,7 +109,7 @@ impl Overlay {
         .detach();
     }
 
-    pub(crate) fn wanted_size(&self) -> (f32, f32) {
+    pub fn wanted_size(&self) -> (f32, f32) {
         self.widget.size()
     }
 

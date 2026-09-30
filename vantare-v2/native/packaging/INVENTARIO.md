@@ -1,5 +1,17 @@
 # Fase 7 — inventario de distribución y datos (ISA-1432)
 
+## Actualización fase 7b (2026-09-30)
+
+Base asignada `a6cd70ab8c7abdcc700c74105fee5ffa2fd36a69`; issue #1432 leída
+con `gh issue view`. El inventario inicial de abajo se conserva como historia.
+Esta base incorpora Hub, Engineer y Storage: diez binarios con el importador
+V4 de este corte; todos comparados con `cargo metadata`, empaquetados y
+verificados con sidecars individuales. Contrato y pruebas en
+[IMPORTACION-V4.md](IMPORTACION-V4.md); tamaños/evidencia de esta build en
+`FASE7B-VERIFICACION.md`. No se usan cifras de la entrega anterior.
+
+## Inventario inicial (base antigua)
+
 Inspección local del 2026-09-30, base `c9606a287672936689d6d48db1445956267c2a48`.
 Proyecto: arquitectura Rust nativa, ADR 0099. Referencia técnica:
 [#1432](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1432).

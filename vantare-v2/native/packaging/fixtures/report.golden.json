@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "conversion": "studio-v4-to-native-layout-v1",
+  "sourceMonitorIndex": 1,
+  "monitor": {
+    "x": -2560.0,
+    "y": 100.0,
+    "width": 2560.0,
+    "height": 1440.0
+  },
+  "imported": 4,
+  "notices": [
+    {
+      "path": "layouts.race",
+      "reason": "layout por sesión no importado; solo general"
+    },
+    {
+      "path": "performance",
+      "reason": "política de rendimiento Wails no importada"
+    },
+    {
+      "path": "layouts.general.widgets[standings].layout",
+      "reason": "escala/tamaño/aspectLocked no importados; tamaño intrínseco nativo, orden zIndex conservado"
+    },
+    {
+      "path": "layouts.general.widgets[delta].layout",
+      "reason": "escala/tamaño/aspectLocked no importados; tamaño intrínseco nativo, orden zIndex conservado"
+    },
+    {
+      "path": "layouts.general.widgets[delta].settings.reference",
+      "reason": "opción sin Settings nativo: no importada"
+    },
+    {
+      "path": "layouts.general.widgets[pedals].behavior.visibleWhen",
+      "reason": "visibilidad condicional no soportada: se importa oculto"
+    },
+    {
+      "path": "layouts.general.widgets[pedals].layout",
+      "reason": "escala/tamaño/aspectLocked no importados; tamaño intrínseco nativo, orden zIndex conservado"
+    },
+    {
+      "path": "layouts.general.widgets[flags].layout",
+      "reason": "escala/tamaño/aspectLocked no importados; tamaño intrínseco nativo, orden zIndex conservado"
+    },
+    {
+      "path": "layouts.general.widgets[flags].settings.textColor",
+      "reason": "valor normalizado por Settings nativo"
+    },
+    {
+      "path": "layouts.general.widgets[pedals-telemetry-compact]",
+      "reason": "tipo no portado: pedals-telemetry-compact"
+    },
+    {
+      "path": "layouts.general.widgets[race-schedule]",
+      "reason": "tipo no portado: race-schedule"
+    },
+    {
+      "path": "layouts.general.widgets[delta-advanced]",
+      "reason": "tipo no portado: delta-advanced"
+    },
+    {
+      "path": "layouts.general.widgets[engineer-radio]",
+      "reason": "tipo no portado: engineer-radio"
+    },
+    {
+      "path": "layouts.general.widgets[other-design]",
+      "reason": "diseño no Eficiencia (vantare-crystal): widget omitido"
+    }
+  ]
+}

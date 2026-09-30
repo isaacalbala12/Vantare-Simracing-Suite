@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 4,
+  "id": "sanitized-test-profile",
+  "name": "Perfil de ejemplo sin datos personales",
+  "displayMode": "racing",
+  "monitorIndex": 1,
+  "layoutViewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "defaultVisualSystemId": "vantare-functional",
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [
+        {
+          "id": "standings",
+          "type": "standings",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 0,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {
+            "showSessionHeader": false,
+            "footerFirst": "track"
+          },
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "templateId": "broadcast",
+              "showBrand": false,
+              "opacity": 0.9
+            },
+            "appearanceOverrides": {
+              "showBrand": true,
+              "opacity": 0.6
+            }
+          }
+        },
+        {
+          "id": "delta",
+          "type": "delta",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 1,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": false
+          },
+          "content": {
+            "reference": "session-best"
+          },
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "templateId": "instrument"
+            },
+            "appearanceOverrides": {
+              "templateId": "capsule"
+            }
+          }
+        },
+        {
+          "id": "pedals",
+          "type": "pedals",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 2,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true,
+            "visibleWhen": {
+              "inPit": true
+            }
+          },
+          "content": {
+            "transparentBackground": true
+          },
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "flags",
+          "type": "racing-flags",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 3,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {
+              "textColor": "#ABCDEF"
+            },
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "pedals-telemetry-compact",
+          "type": "pedals-telemetry-compact",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 4,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "race-schedule",
+          "type": "race-schedule",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 5,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "delta-advanced",
+          "type": "delta-advanced",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 6,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "engineer-radio",
+          "type": "engineer-radio",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 7,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-functional",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        },
+        {
+          "id": "other-design",
+          "type": "radar",
+          "layout": {
+            "x": 144,
+            "y": 72,
+            "w": 300,
+            "h": 180,
+            "zIndex": 8,
+            "aspectLocked": true
+          },
+          "behavior": {
+            "enabled": true
+          },
+          "content": {},
+          "visual": {
+            "systemId": "vantare-crystal",
+            "systemVersion": 1,
+            "configVersion": 1,
+            "baseSettings": {},
+            "appearanceOverrides": {}
+          }
+        }
+      ]
+    },
+    "race": {
+      "type": "race",
+      "widgets": []
+    }
+  },
+  "performance": {
+    "mode": "inherit"
+  }
+}

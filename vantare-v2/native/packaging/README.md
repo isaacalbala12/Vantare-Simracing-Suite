@@ -11,14 +11,14 @@ Desde la raíz `vantare-v2`, con checkout limpio y dependencias Cargo cacheadas:
   -Channel nightly -BuildProfile Debug -OutputDirectory native/target/phase7-build
 ```
 
-Compila los seis binarios actuales, offline/locked con `-j 2`. `Release` es el
+Compila todos los binarios del workspace (diez en esta base), offline/locked con `-j 2`. `Release` es el
 perfil por defecto; `Debug` verifica packaging sin representar rendimiento de
 producto. Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios aún no tienen versión de producto embebida.
 
 La salida conserva `payload`, `portable-tree`, el paquete, portable e instalador
-script con sus SHA-256. El manifiesto enumera exactamente los seis exe, el
+script con sus SHA-256. El manifiesto enumera exactamente los diez exe y sus sidecars SHA-256, el
 script, README, licencia Inter y catálogo Cargo con versiones/licencias/source.
 Este catálogo **no es un SBOM ni una auditoría de distribución**. No publica
 releases ni ejecuta los workflows Wails.
@@ -56,8 +56,9 @@ Arranque explícito (replay real, no fuente sintética por defecto):
 Start conserva el lock solo hasta crear el proceso launcher en consola oculta
 y devuelve su PID. PowerShell termina; el launcher nativo es el propietario de
 sus hijos. Cierre normal de overlays / `vantare --parar` usan el ciclo de vida
-existente. El nativo actual no consume un directorio de
-perfiles persistidos: packaging todavía no demuestra migración funcional.
+existente. Si existe `data/layout.json` en la generación activa y no se proporciona un
+grupo explícito de argumentos de overlays, Start pasa su ruta mediante
+`--layout`. Un grupo explícito (p. ej. `4`) mantiene la selección indicada.
 
 Actualización y rollback, con todos los procesos de esta instalación cerrados:
 
@@ -86,20 +87,27 @@ El bootstrap `candidate.ps1` instalado no se reemplaza en Update (schema=1).
 Una evolución del instalador requiere reinstalación aislada/revisión explícita;
 no ejecutar un script nuevo automáticamente desde un ZIP.
 
-Archivar un perfil Wails público elegido expresamente, sin buscar datos reales:
+Importación explícita de Studio V4 (un solo perfil y monitor elegido):
 
 ```powershell
-& native/target/phase7-install/candidate.ps1 -Operation ImportProfiles -Root native/target/phase7-install `
-  -ProfileFiles @((Resolve-Path pkg/config/testdata/profile-v2-general-layout.json).Path)
+& native/target/phase7-install/candidate.ps1 -Operation ImportLayout -Root native/target/phase7-install `
+  -ProfileFiles @((Resolve-Path native/packaging/fixtures/studio-v4.json).Path) `
+  -MonitorBounds @(-2560, 100, 2560, 1440)
 & native/target/phase7-install/candidate.ps1 -Operation Rollback -Root native/target/phase7-install
 ```
 
-ImportProfiles crea una generación con copias verificadas de binarios/datos y
-`data/legacy-profiles/<id>/` con los JSON originales y recibo `conversion=none`.
-No cambia el origen, no incluye cuentas/ajustes, no convierte esquemas ni
-activa perfiles en Studio. Sin esquema destino de fase 5, **la migración
-funcional está bloqueada**. Rollback deshace la selección del archivo importado
-conservándolo para inspección; no borra datos.
+Bounds son x/y globales y ancho/alto del monitor en las coordenadas usadas por
+GPUI. Se eligen explícitamente; no se deduce el monitor actual a partir del
+índice antiguo. Véase IMPORTACION-V4.md del repositorio para conversión,
+Settings y límites. El informe queda en
+`data/legacy-profiles/<generación>/native/report.json`, el origen copiado con
+SHA en el mismo archivo y el layout activo en `data/layout.json`. La generación
+anterior conserva exactamente el layout previo; Rollback revierte binarios y
+datos juntos, sin borrar el original ni la generación importada.
+
+`ImportProfiles` conserva su comportamiento anterior: archivo opaco explícito,
+sin conversión ni activación. Para V2/V3 usar primero la migración del producto
+Wails a V4; el CLI nativo rechaza versiones anteriores.
 
 La [matriz de servicios](PARIDAD-SERVICIOS.md) identifica qué existe en esta
 base y qué falta, incluido Testing Center. La fase completa no está aceptada.

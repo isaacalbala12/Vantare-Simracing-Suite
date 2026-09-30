@@ -192,6 +192,12 @@ impl Hub {
 
 impl Render for Hub {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.remote.read(cx).requires_access() {
+            return self
+                .remote
+                .update(cx, |remote, cx| remote.access_screen(&self.focus, cx))
+                .into_any_element();
+        }
         self.refresh_query(cx);
         let rail = self.rail(cx);
         let column = if self.section == Section::Studio {
@@ -267,6 +273,7 @@ impl Render for Hub {
             .when(self.shell.palette_open, |root| {
                 root.child(self.palette(window, cx))
             })
+            .into_any_element()
     }
 }
 

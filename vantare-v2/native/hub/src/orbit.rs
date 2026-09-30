@@ -109,6 +109,7 @@ pub const INK_2: u32 = 0x00b7_b2b2;
 pub const INK_3: u32 = 0x008a_858b;
 pub const INK_MUTED: u32 = 0x0057_545a;
 pub const CARMINE: u32 = 0x00d5_2f49;
+pub const CARMINE_DARK: u32 = 0x009a_0606;
 pub const GREEN: u32 = 0x0078_d68b;
 /// `rgba(255,255,255,.075)` y `.13`, como `0xRRGGBBAA`.
 pub const LINE: u32 = 0xffff_ff13;
@@ -473,7 +474,7 @@ pub fn toggle(id: &'static str, label: &str, on: bool, enabled: bool) -> Statefu
 }
 
 /// Botón secundario (borde fino, fondo de superficie).
-pub fn button(id: &'static str, label: &str) -> Stateful<Div> {
+fn button_base(id: &'static str, label: &str) -> Stateful<Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
@@ -489,6 +490,10 @@ pub fn button(id: &'static str, label: &str) -> Stateful<Div> {
         .border_1()
         .border_color(rgba(LINE_STRONG))
         .cursor_pointer()
+}
+
+pub fn button(id: &'static str, label: &str) -> Stateful<Div> {
+    button_base(id, label)
         .hover(|s| s.bg(rgb(SURFACE_3)))
         .focus_visible(|s| s.border_color(rgb(CARMINE)))
         .child(text(label.to_owned(), 13.0, 600, INK))
@@ -496,11 +501,27 @@ pub fn button(id: &'static str, label: &str) -> Stateful<Div> {
 
 /// Botón principal (claro sobre oscuro, `--orbit-primary-*`).
 pub fn primary_button(id: &'static str, label: &str) -> Stateful<Div> {
-    button(id, label)
+    button_base(id, label)
         .bg(rgb(0x00f3_eeee))
         .border_color(rgb(0x00f3_eeee))
         .hover(|s| s.bg(rgb(INK)))
+        .focus_visible(|s| s.border_color(rgb(CARMINE)))
+        .child(text(label.to_owned(), 13.0, 600, INK))
         .text_color(rgb(0x001c_1719))
+}
+
+/// Acción principal de acceso; conserva foco y semántica del botón Orbit.
+pub fn carmine_button(id: &'static str, label: &str) -> Stateful<Div> {
+    button_base(id, label)
+        .bg(linear_gradient(
+            135.0,
+            linear_color_stop(rgb(CARMINE), 0.0),
+            linear_color_stop(rgb(CARMINE_DARK), 1.0),
+        ))
+        .border_color(rgb(CARMINE))
+        .hover(|style| style.bg(rgb(CARMINE)))
+        .focus_visible(|style| style.border_2().border_color(rgb(INK)))
+        .child(text(label.to_owned(), 13.0, 600, INK))
 }
 
 /// Valor seleccionable con el aspecto de un `select` Orbit.

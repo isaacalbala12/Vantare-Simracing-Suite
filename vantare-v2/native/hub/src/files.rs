@@ -40,8 +40,18 @@ fn sibling(path: &Path, suffix: &str) -> PathBuf {
 /// `expected == None` solo permite crear. Un conflicto conserva ambos documentos.
 /// El lock coordina escritores Hub; una herramienta externa debe respetarlo.
 pub fn save(path: &Path, data: &[u8], expected: Option<&[u8]>) -> Result<(), String> {
+    save_with_limit(path, data, expected, MAX_DOCUMENT)
+}
+
+/// Strategy retains migration archives up to the product's 12 MiB document cap.
+pub fn save_with_limit(
+    path: &Path,
+    data: &[u8],
+    expected: Option<&[u8]>,
+    limit: u64,
+) -> Result<(), String> {
     check_path(path)?;
-    if u64::try_from(data.len()).map_err(|e| e.to_string())? > MAX_DOCUMENT {
+    if u64::try_from(data.len()).map_err(|e| e.to_string())? > limit {
         return Err("documento demasiado grande".into());
     }
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
@@ -62,7 +72,7 @@ pub fn save(path: &Path, data: &[u8], expected: Option<&[u8]>) -> Result<(), Str
     let mut created = false;
     let result = (|| {
         let current = match fs::metadata(path) {
-            Ok(_) => Some(read(path, MAX_DOCUMENT)?),
+            Ok(_) => Some(read(path, limit)?),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(format!("inspeccionar {}: {e}", path.display())),
         };

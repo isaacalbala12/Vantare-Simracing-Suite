@@ -23,6 +23,7 @@ use crate::{
     launcher::{Store as LauncherStore, view::Launcher},
     notifications::Notifications,
     orbit,
+    strategy::Strategy,
     studio::{Prepared as PreparedStudio, Studio},
     workshop::{Prepared, Workshop},
 };
@@ -49,6 +50,7 @@ struct Hub {
     launcher: Entity<Launcher>,
     engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
+    strategy: Entity<Strategy>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -57,6 +59,7 @@ struct Hub {
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
         // Studio guarda cada edición antes de confirmarla; aquí solo queda la selección Workshop.
+        self.strategy.update(cx, |strategy, _| strategy.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
@@ -154,6 +157,25 @@ impl Hub {
         nav
     }
 
+    /// Contenido de la sección activa; las que aún no existen dicen qué falta.
+    fn section_view(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        match self.section {
+            Section::Workshop => self.workshop.clone().into_any_element(),
+            Section::Studio => self.studio.clone().into_any_element(),
+            Section::Engineer => self.engineer.clone().into_any_element(),
+            Section::Calendar => self.calendar.clone().into_any_element(),
+            Section::Analysis => self.analysis.clone().into_any_element(),
+            Section::Launcher => self.launcher.clone().into_any_element(),
+            Section::Strategy => self.strategy.clone().into_any_element(),
+            Section::Notifications => self.notifications.clone().into_any_element(),
+            Section::Settings => self.settings(cx).into_any_element(),
+            Section::Testing => self.diagnostics(cx).into_any_element(),
+            Section::Home | Section::Roadmap | Section::Account | Section::Licenses => {
+                orbit::callout(self.section.pending()).into_any_element()
+            }
+        }
+    }
+
     fn diagnostics(&self, cx: &Context<Self>) -> gpui::Div {
         let scene = &self.workshop.read(cx).scene;
         let snapshot = scene.snapshot();
@@ -199,48 +221,7 @@ impl Render for Hub {
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status))
             })
-            .when(self.section == Section::Workshop, |content| {
-                content.child(self.workshop.clone())
-            })
-            .when(self.section == Section::Studio, |content| {
-                content.child(self.studio.clone())
-            })
-            .when(self.section == Section::Engineer, |content| {
-                content.child(self.engineer.clone())
-            })
-            .when(self.section == Section::Calendar, |content| {
-                content.child(self.calendar.clone())
-            })
-            .when(self.section == Section::Analysis, |content| {
-                content.child(self.analysis.clone())
-            })
-            .when(self.section == Section::Launcher, |content| {
-                content.child(self.launcher.clone())
-            })
-            .when(self.section == Section::Notifications, |content| {
-                content.child(self.notifications.clone())
-            })
-            .when(self.section == Section::Settings, |content| {
-                content.child(self.settings(cx))
-            })
-            .when(self.section == Section::Testing, |content| {
-                content.child(self.diagnostics(cx))
-            })
-            .when(
-                !matches!(
-                    self.section,
-                    Section::Engineer
-                        | Section::Workshop
-                        | Section::Studio
-                        | Section::Calendar
-                        | Section::Analysis
-                        | Section::Launcher
-                        | Section::Notifications
-                        | Section::Settings
-                        | Section::Testing
-                ),
-                |content| content.child(self.section.pending()),
-            );
+            .child(self.section_view(cx));
         let main = div()
             .flex_1()
             .flex()
@@ -441,6 +422,7 @@ struct Loaded {
     analysis: Analysis,
     launcher: LauncherStore,
     engineer: Engineer,
+    strategy_dir: PathBuf,
     subscriber: Subscriber,
 }
 
@@ -459,6 +441,7 @@ impl Hub {
             analysis: mut prepared_analysis,
             launcher: launcher_store,
             engineer,
+            strategy_dir,
             subscriber,
         } = loaded;
         start_source_poll(cx);
@@ -484,6 +467,8 @@ impl Hub {
         let launcher = cx.new(|cx| Launcher::new(launcher_store, cx));
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
+        let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
+        wire_strategy(&strategy, cx);
         cx.observe(&workshop, |this, workshop, cx| {
             let snapshot = workshop.read(cx).scene.snapshot().clone();
             this.studio
@@ -512,12 +497,24 @@ impl Hub {
             analysis,
             launcher,
             engineer,
+            strategy,
             notifications,
             status: None,
             subscriber,
             previous_source: None,
         }
     }
+}
+
+fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
+    cx.observe(strategy, |this, strategy, cx| {
+        if let Some(error) = &strategy.read(cx).error {
+            let error = error.clone();
+            this.notifications
+                .update(cx, |center, cx| center.report("hub.strategy", error, cx));
+        }
+    })
+    .detach();
 }
 
 pub fn run(options: Options) -> Result<(), String> {
@@ -528,6 +525,7 @@ pub fn run(options: Options) -> Result<(), String> {
         calendar: Calendar::load(&options.data_dir)?,
         launcher: LauncherStore::load(options.launcher_file)?,
         engineer: Engineer::load(options.engineer),
+        strategy_dir: options.data_dir.clone(),
         subscriber: subscribe(options.pipe)?,
     };
     let stop = watch_stdin(options.controlled)?;

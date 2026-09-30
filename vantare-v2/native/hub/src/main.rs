@@ -34,6 +34,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--engineer-settings" if engineer.is_none() => {
                 engineer = Some(PathBuf::from(args.next().ok_or("falta ajustes Engineer")?));
             }
+            "--strategy" if section == Section::Home => section = Section::Strategy,
             "--data-dir" if data_dir.is_none() => {
                 data_dir = Some(PathBuf::from(args.next().ok_or("falta directorio")?));
             }
@@ -90,7 +91,7 @@ fn main() -> ExitCode {
         Err(error) => {
             eprintln!(
                 "{error}
-uso: vantare-hub [--workshop|--studio|--analysis|--launcher|--engineer] [--recordings DIRECTORIO] [--launcher-file RUTA] [--engineer-settings RUTA] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
+uso: vantare-hub [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [--recordings DIRECTORIO] [--launcher-file RUTA] [--engineer-settings RUTA] [--data-dir RUTA] [--scene FOTO.snapshot.json|FOTOS.sequence.json|FOTOS.jsonl] [--layout RUTA] [--pipe NOMBRE] [--control-stdin]"
             );
             return ExitCode::from(2);
         }
@@ -137,6 +138,12 @@ mod tests {
         assert_eq!(options.pipe.as_deref(), Some("hub-test"));
         assert_eq!(options.data_dir, PathBuf::from("local"));
         assert_eq!(options.scene, Some(PathBuf::from("capture.jsonl")));
+        assert_eq!(
+            parse(&args(&["--strategy", "--data-dir", "local"]))
+                .expect("Strategy entry")
+                .section,
+            Section::Strategy
+        );
         for bad in [
             vec!["--data-dir"],
             vec!["--recordings"],
@@ -152,6 +159,8 @@ mod tests {
             vec!["--pipe", ""],
             vec!["--pipe", "a", "--pipe", "b"],
             vec!["--workshop", "--workshop"],
+            vec!["--strategy", "--strategy"],
+            vec!["--strategy", "--studio"],
             vec!["--control-stdin", "--control-stdin"],
             vec!["--scene", "a", "--scene", "b"],
             vec!["--engineer-settings"],

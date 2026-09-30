@@ -210,6 +210,7 @@ mod tests {
 
     fn vm(ids: &[u32]) -> ViewModel {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.capabilities.positions = Capability::Fresh;
         snapshot.state.cars = ids
             .iter()

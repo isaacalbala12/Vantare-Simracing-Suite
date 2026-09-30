@@ -126,7 +126,7 @@
         "unavailable"
       ],
       "steering": "unavailable",
-      "fuel_history": []
+      "fuel_history": [[14, 2.21], [15, 2.08], [16, 2.26], [17, 2.12]]
     },
     "source_state": "live"
   }

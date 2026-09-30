@@ -271,6 +271,7 @@ mod tests {
     fn repaint_tracks_drawn_values_and_language_not_snapshot_sequence() {
         let prefs = Preferences::default();
         let mut data = Snapshot::default();
+        data.state.source_state = vantare_domain::SourceState::Live;
         data.state.capabilities.damage = Capability::Fresh;
         data.state.player = Some(Player {
             damage: Damage {

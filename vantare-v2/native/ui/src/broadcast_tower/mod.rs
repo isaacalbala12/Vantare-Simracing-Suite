@@ -458,11 +458,31 @@ mod tests {
     }
 
     #[test]
+    fn current_lap_uses_the_player_and_preserves_reference_absence() {
+        let mut data = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/broadcast-tower.snapshot.json"
+        ))
+        .expect("escena DTO v4");
+        let prefs = Preferences::default();
+        assert_eq!(broadcast_tower::project(&data, prefs).lap, "—");
+        let player_id = data.state.player.expect("jugador").car;
+        data.state
+            .cars
+            .iter_mut()
+            .find(|car| car.id == player_id)
+            .expect("coche del jugador")
+            .laps = vantare_domain::Quality::Reliable(127);
+        assert_eq!(broadcast_tower::project(&data, prefs).lap, "128");
+        data.state.source_state = vantare_domain::SourceState::Lost;
+        assert_eq!(broadcast_tower::project(&data, prefs).lap, "—");
+    }
+
+    #[test]
     fn frozen_scene_decodes_and_preserves_the_product_texts_without_inventing_lap_or_gap() {
         let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/broadcast-tower.snapshot.json"
         ))
-        .expect("escena Broadcast Tower DTO v3");
+        .expect("escena Broadcast Tower DTO v4");
         let prefs = Preferences::default();
         let vm = broadcast_tower::project(&snapshot, prefs);
         assert_eq!(vm.status, Status::Ready);

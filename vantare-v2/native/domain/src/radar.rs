@@ -1,6 +1,6 @@
 //! ViewModel del radar: coches cercanos en el marco del jugador.
 
-use crate::{Capability, CarId, Snapshot};
+use crate::{Capability, CarId, Snapshot, SourceState};
 
 /// Mitad del lado del cuadrado que cubre el radar.
 pub const RANGE_M: f64 = 36.0;
@@ -13,6 +13,7 @@ const NEAR_M: f64 = 10.0;
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub capability: Capability,
+    pub available: bool,
     pub cars: Vec<Car>,
     pub overlap_left: bool,
     pub overlap_right: bool,
@@ -35,16 +36,21 @@ pub fn project(snapshot: &Snapshot) -> ViewModel {
     let state = &snapshot.state;
     let mut vm = ViewModel {
         capability: state.capabilities.spatial,
+        available: false,
         cars: Vec::new(),
         overlap_left: false,
         overlap_right: false,
     };
+    if state.source_state != SourceState::Live {
+        return vm;
+    }
     let Some(me) = state.player_car() else {
         return vm;
     };
     let Some(&origin) = me.pose.current() else {
         return vm;
     };
+    vm.available = state.capabilities.spatial >= Capability::WithData;
     let (sin, cos) = origin.yaw_rad.sin_cos();
 
     for car in state.cars.iter().filter(|car| car.id != me.id) {
@@ -108,6 +114,7 @@ mod tests {
     fn snapshot(cars: Vec<ModelCar>) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: crate::SourceState::Live,
                 cars,
                 player: Some(Player {
                     car: CarId(1),

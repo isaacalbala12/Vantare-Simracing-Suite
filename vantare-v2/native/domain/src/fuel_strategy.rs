@@ -1,11 +1,30 @@
-//! Proyección Eficiencia de `FuelStrategyFunctional.tsx`, sin derivar consumo.
-//!
-//! `Fuel.laps_left` es autonomía, no vueltas de sesión. El modelo todavía no
-//! representa `fuel.requiredFuel`, `fuel.history` ni la base de `estimatedLaps`.
-//! Se muestran guiones y se omite el historial, nunca se reconstruyen en la UI.
+//! Proyección Eficiencia: consumo e historial canónicos, requerido para la sesión.
 
 use crate::format::{self, Language, Preferences};
-use crate::{Capability, Quality, Snapshot};
+use crate::{Capability, Quality, Snapshot, SourceState};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LapsBasis {
+    Fuel,
+    Session,
+}
+
+impl LapsBasis {
+    pub fn label(self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Fuel, Language::Es) => "combustible",
+            (Self::Fuel, Language::En) => "fuel",
+            (Self::Session, Language::Es) => "sesión",
+            (Self::Session, Language::En) => "session",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HistoryRow {
+    pub lap: String,
+    pub consumed: String,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewModel {
@@ -15,17 +34,32 @@ pub struct ViewModel {
     pub average: String,
     pub laps: String,
     pub required: String,
+    pub laps_basis: Option<LapsBasis>,
+    pub finish: String,
+    /// Más reciente primero, como el renderer productivo; solo presentación.
+    pub history: Vec<HistoryRow>,
+    pub history_label: &'static str,
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let state = &snapshot.state;
     let fuel = state.player.map(|player| player.fuel).unwrap_or_default();
-    let status = if state.player.is_none() || state.capabilities.fuel < Capability::WithData {
+    let status = if state.source_state == SourceState::Lost {
+        Some(match prefs.language {
+            Language::Es => "DESCONECTADO",
+            Language::En => "DISCONNECTED",
+        })
+    } else if state.source_state == SourceState::Waiting
+        || state.player.is_none()
+        || state.capabilities.fuel < Capability::WithData
+    {
         Some(match prefs.language {
             Language::Es => "SIN DATOS",
             Language::En => "NO DATA",
         })
-    } else if state.capabilities.fuel == Capability::WithData {
+    } else if state.source_state == SourceState::Stale
+        || state.capabilities.fuel == Capability::WithData
+    {
         Some(match prefs.language {
             Language::Es => "DATOS ANTIGUOS",
             Language::En => "DATA OUT OF DATE",
@@ -43,6 +77,44 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
                 .filter(|v| v.is_finite() && *v >= 0.0)
         }
     };
+    let session_laps = state.session.laps_remaining.current().copied();
+    let (laps, laps_basis) = if let Some(laps) = current(&fuel.laps_left) {
+        (Some(laps), Some(LapsBasis::Fuel))
+    } else if let Some(laps) = session_laps.filter(|_| status.is_none()) {
+        (Some(f64::from(laps)), Some(LapsBasis::Session))
+    } else {
+        (None, None)
+    };
+    let required = liters(
+        current(&required_fuel(fuel.per_lap_l, state.session.laps_remaining)),
+        1,
+    );
+    let required_label = match prefs.language {
+        Language::Es => "NEC.",
+        Language::En => "REQ",
+    };
+    let history = if status.is_none() {
+        fuel.history
+            .into_iter()
+            .flatten()
+            .rev()
+            .take(4)
+            .filter(|(_, liters)| liters.is_finite() && *liters >= 0.0)
+            .map(|(lap, consumed)| HistoryRow {
+                lap: format!(
+                    "{} {lap}",
+                    if prefs.language == Language::Es {
+                        "VUELTA"
+                    } else {
+                        "LAP"
+                    }
+                ),
+                consumed: liters(Some(consumed), 1),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     ViewModel {
         status,
         labels: match prefs.language {
@@ -51,8 +123,46 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         },
         fuel: liters(current(&fuel.level_l), 1),
         average: liters(current(&fuel.per_lap_l), 2),
-        laps: decimal(current(&fuel.laps_left), 1),
-        required: format::PLACEHOLDER.into(),
+        laps: decimal(laps, 1),
+        laps_basis,
+        finish: if required == format::PLACEHOLDER {
+            required.clone()
+        } else {
+            format!("{required} {required_label}")
+        },
+        required,
+        history,
+        history_label: if prefs.language == Language::Es {
+            "HISTORIAL"
+        } else {
+            "HISTORY"
+        },
+    }
+}
+
+/// Conserva la peor calidad de los dos operandos; no usa la autonomía del tanque.
+fn required_fuel(per_lap: Quality<f64>, session_laps: Quality<u32>) -> Quality<f64> {
+    let (per_lap, estimated, stale) = match per_lap {
+        Quality::Reliable(v) => (v, false, false),
+        Quality::Estimated(v) => (v, true, false),
+        Quality::Stale(v) => (v, false, true),
+        Quality::Unavailable => return Quality::Unavailable,
+    };
+    let (laps, estimated_laps, stale_laps) = match session_laps {
+        Quality::Reliable(v) => (v, false, false),
+        Quality::Estimated(v) => (v, true, false),
+        Quality::Stale(v) => (v, false, true),
+        Quality::Unavailable => return Quality::Unavailable,
+    };
+    let required = per_lap * f64::from(laps);
+    if !per_lap.is_finite() || per_lap <= 0.0 || !required.is_finite() {
+        Quality::Unavailable
+    } else if stale || stale_laps {
+        Quality::Stale(required)
+    } else if estimated || estimated_laps {
+        Quality::Estimated(required)
+    } else {
+        Quality::Reliable(required)
     }
 }
 
@@ -86,9 +196,84 @@ mod tests {
     use super::*;
     use crate::{Capabilities, Fuel, Player, State};
 
+    #[test]
+    fn session_projection_is_independent_of_tank_range() {
+        let mut data = snapshot(&Fuel {
+            per_lap_l: Quality::Reliable(2.14),
+            ..Fuel::default()
+        });
+        data.state.session.laps_remaining = Quality::Reliable(79);
+        let vm = project(&data, Preferences::default());
+        assert_eq!(vm.laps, "79.0");
+        assert_eq!(vm.laps_basis, Some(LapsBasis::Session));
+        assert_eq!(vm.required, "169.1 L");
+        if let Some(player) = &mut data.state.player {
+            player.fuel.laps_left = Quality::Estimated(19.6);
+        }
+        let vm = project(&data, Preferences::default());
+        assert_eq!(vm.laps, "19.6");
+        assert_eq!(vm.laps_basis, Some(LapsBasis::Fuel));
+        assert_eq!(vm.required, "169.1 L");
+    }
+
+    #[test]
+    fn required_quality_and_history_are_not_reconstructed_from_the_tank() {
+        assert_eq!(
+            required_fuel(Quality::Reliable(2.0), Quality::Reliable(4)),
+            Quality::Reliable(8.0)
+        );
+        assert_eq!(
+            required_fuel(Quality::Estimated(2.0), Quality::Reliable(4)),
+            Quality::Estimated(8.0)
+        );
+        assert_eq!(
+            required_fuel(Quality::Reliable(2.0), Quality::Stale(4)),
+            Quality::Stale(8.0)
+        );
+        assert_eq!(
+            required_fuel(Quality::Stale(2.0), Quality::Estimated(4)),
+            Quality::Stale(8.0)
+        );
+        for per_lap in [
+            Quality::Unavailable,
+            Quality::Reliable(0.0),
+            Quality::Reliable(-1.0),
+            Quality::Reliable(f64::NAN),
+            Quality::Reliable(f64::MAX),
+        ] {
+            assert_eq!(
+                required_fuel(per_lap, Quality::Reliable(4)),
+                Quality::Unavailable
+            );
+        }
+        assert_eq!(
+            required_fuel(Quality::Reliable(2.0), Quality::Unavailable),
+            Quality::Unavailable
+        );
+        assert_eq!(
+            required_fuel(Quality::Reliable(2.0), Quality::Reliable(0)),
+            Quality::Reliable(0.0)
+        );
+        let mut fuel = Fuel::default();
+        for (index, entry) in fuel.history.iter_mut().enumerate() {
+            *entry = Some((u32::try_from(index).expect("diez filas"), 2.0));
+        }
+        let vm = project(&snapshot(&fuel), Preferences::default());
+        assert_eq!(
+            vm.history
+                .iter()
+                .map(|row| row.lap.as_str())
+                .collect::<Vec<_>>(),
+            ["VUELTA 9", "VUELTA 8", "VUELTA 7", "VUELTA 6"]
+        );
+        assert_eq!(LapsBasis::Fuel.label(Language::Es), "combustible");
+        assert_eq!(LapsBasis::Session.label(Language::Es), "sesión");
+    }
+
     fn snapshot(fuel: &Fuel) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: crate::SourceState::Live,
                 capabilities: Capabilities {
                     fuel: Capability::Fresh,
                     ..Capabilities::default()
@@ -123,7 +308,14 @@ mod tests {
                 [vm.fuel.as_str(), vm.average.as_str(), vm.laps.as_str()],
                 expected
             );
-            assert_eq!(vm.required, format::PLACEHOLDER);
+            assert_eq!(
+                vm.required,
+                if average > 0.0 {
+                    liters(Some(average * 79.0), 1)
+                } else {
+                    format::PLACEHOLDER.into()
+                }
+            );
             assert_eq!(vm.status, None);
         }
     }

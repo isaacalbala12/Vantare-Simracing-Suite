@@ -57,6 +57,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         );
     } else {
         paint_main(vm, window, cx);
+        paint_history(vm, window, cx);
     }
     paint_highlighted_frame(window, SIZE.0, SIZE.1);
 }
@@ -138,14 +139,59 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     draw(
         window,
         cx,
-        &vm.required,
-        MAIN_WIDTH - 20.0 - text::width(window, &vm.required, &required),
+        &vm.finish,
+        MAIN_WIDTH - 20.0 - text::width(window, &vm.finish, &required),
         177.0,
         &required,
     );
 }
 
 empty_settings!();
+
+fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
+    if vm.history.is_empty() {
+        return;
+    }
+    let left = MAIN_WIDTH + 21.0;
+    let width = SIZE.0 - left - 20.0;
+    paint_rect(
+        window,
+        MAIN_WIDTH,
+        0.0,
+        SIZE.0 - MAIN_WIDTH,
+        SIZE.1,
+        col(0, 0.16),
+    );
+    paint_rect(window, MAIN_WIDTH, 0.0, 1.0, SIZE.1, col(tokens::INK, 0.10));
+    let title = ink(8.0, 600.0, 0.16, col(tokens::MUTED, 1.0));
+    draw(window, cx, vm.history_label, left, 18.0, &title);
+    paint_rect(window, left, 34.0, width, 1.0, col(tokens::INK, 0.10));
+    let label = ink(8.0, 600.0, 0.10, col(tokens::MUTED, 1.0));
+    // <b> más específico que el font:650 del padre; Inter disponible W800.
+    let value = ink(12.0, 800.0, 0.0, col(tokens::INK, 1.0));
+    let rows_height = vm.history.len() as f32 * 34.0 - 2.0;
+    let top = 43.0 + (143.0 - rows_height) / 2.0;
+    for (index, row) in vm.history.iter().enumerate() {
+        let y = top + index as f32 * 34.0;
+        window.paint_quad(quad(
+            rect(left, y, width, 32.0),
+            Corners::all(px(4.0)),
+            col(0xffffff, 0.02),
+            Edges::all(px(1.0)),
+            col(0xffffff, 0.04),
+            BorderStyle::default(),
+        ));
+        draw(window, cx, &row.lap, left + 9.0, y + 13.0, &label);
+        draw(
+            window,
+            cx,
+            &row.consumed,
+            left + width - 9.0 - text::width(window, &row.consumed, &value),
+            y + 10.0,
+            &value,
+        );
+    }
+}
 
 pub(crate) struct Widget {
     vm: ViewModel,
@@ -192,7 +238,7 @@ mod tests {
         let snapshot = vantare_ipc::snapshot_from_json(include_str!(
             "../../fixtures/fuel-strategy.snapshot.json"
         ))
-        .expect("escena Workshop de combustible en DTO v3");
+        .expect("escena Workshop de combustible en DTO v4");
         let player = snapshot.state.player.expect("jugador de la escena");
         assert_eq!(snapshot.state.capabilities.fuel, Capability::Fresh);
         assert_eq!(player.fuel.level_l, Quality::Reliable(42.0));
@@ -206,8 +252,10 @@ mod tests {
             (vm.fuel.as_str(), vm.average.as_str()),
             ("42.0 L", "2.14 L")
         );
-        assert_eq!(vm.laps, vantare_domain::format::PLACEHOLDER);
-        assert_eq!(vm.required, vantare_domain::format::PLACEHOLDER);
+        assert_eq!(vm.laps, "79.0");
+        assert_eq!(vm.laps_basis, Some(fuel_strategy::LapsBasis::Session));
+        assert_eq!(vm.history.len(), 4);
+        assert_eq!(vm.required, "169.1 L");
     }
 
     #[test]
@@ -216,6 +264,7 @@ mod tests {
         let mut widget = Widget::new(&Settings, prefs);
         let mut data = Snapshot {
             state: State {
+                source_state: vantare_domain::SourceState::Live,
                 capabilities: Capabilities {
                     fuel: Capability::Fresh,
                     ..Capabilities::default()

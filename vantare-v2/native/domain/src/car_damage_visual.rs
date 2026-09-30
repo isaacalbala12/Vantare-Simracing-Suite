@@ -1,7 +1,7 @@
 //! Daño visual Eficiencia: el modelo guarda integridad, la vista muestra daño.
 
 use crate::format::{self, Language, Preferences};
-use crate::{Capability, Quality, Snapshot};
+use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
@@ -14,12 +14,23 @@ pub struct ViewModel {
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let player = snapshot.state.player;
-    let status = match (player, snapshot.state.capabilities.damage, prefs.language) {
-        (Some(_), Capability::Fresh, _) => None,
-        (Some(_), Capability::WithData, Language::Es) => Some("DATOS ANTIGUOS"),
-        (Some(_), Capability::WithData, Language::En) => Some("DATA OUT OF DATE"),
-        (_, _, Language::Es) => Some("SIN DATOS"),
-        (_, _, Language::En) => Some("NO DATA"),
+    let status = match (
+        snapshot.state.source_state,
+        player,
+        snapshot.state.capabilities.damage,
+        prefs.language,
+    ) {
+        (SourceState::Lost, _, _, Language::Es) => Some("DESCONECTADO"),
+        (SourceState::Lost, _, _, Language::En) => Some("DISCONNECTED"),
+        (SourceState::Waiting, _, _, Language::Es) => Some("SIN DATOS"),
+        (SourceState::Waiting, _, _, Language::En) => Some("NO DATA"),
+        (SourceState::Stale, _, _, Language::Es)
+        | (_, Some(_), Capability::WithData, Language::Es) => Some("DATOS ANTIGUOS"),
+        (SourceState::Stale, _, _, Language::En)
+        | (_, Some(_), Capability::WithData, Language::En) => Some("DATA OUT OF DATE"),
+        (_, Some(_), Capability::Fresh, _) => None,
+        (_, _, _, Language::Es) => Some("SIN DATOS"),
+        (_, _, _, Language::En) => Some("NO DATA"),
     };
     let damage = if status.is_none() {
         player.map_or([None; 3], |p| {
@@ -58,6 +69,7 @@ mod tests {
 
     fn snapshot(value: Quality<f64>, capability: Capability) -> Snapshot {
         let mut state = State {
+            source_state: crate::SourceState::Live,
             player: Some(Player {
                 damage: Damage {
                     aero: value,

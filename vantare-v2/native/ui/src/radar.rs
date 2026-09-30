@@ -3,7 +3,7 @@
 //! producción; escena de paridad congelada en `ui/reference/radar.geometry.json`.
 
 use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
-use vantare_domain::{Capability, radar::ViewModel};
+use vantare_domain::radar::ViewModel;
 
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_rect, rect, tokens};
@@ -41,7 +41,7 @@ fn paint_car(window: &mut Window, cx: f32, cy: f32, fill: u32, highlighted: bool
 }
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    if vm.capability < Capability::WithData {
+    if !vm.available {
         let ink = ink(11.0, 500.0, 0.0, col(0xd5d5d8, 1.0));
         let message = "Sin posición espacial";
         let x = (SIZE.0 - text::width(window, message, &ink)) / 2.0;

@@ -1,3 +1,7 @@
+> **Actualización 2026-09-30:** [entrega de continuación ISA-1427](../fuel_strategy/PARIDAD-1427.md).
+> El informe siguiente conserva el histórico del primer porte; sus señales
+> ausentes y porcentajes quedan sustituidos por esa entrega.
+
 # Pedals telemetry · ISA-1427 · fase 2
 
 Worker Codex para revisión completa del orquestador Claude Opus 5.5.

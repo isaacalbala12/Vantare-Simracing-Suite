@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use vantare_domain::format::{self, Language, PLACEHOLDER, Preferences};
-use vantare_domain::{Capability, FlagKind, standings};
+use vantare_domain::{Capability, FlagKind, SourceState, standings};
 
 pub const ROW_HEIGHT: f32 = 30.0;
 pub const SESSION_HEADER_HEIGHT: f32 = 42.0;
@@ -370,10 +370,13 @@ impl Vm {
         identity: String,
         sequence: u64,
     ) -> Self {
-        let status = match domain.capability {
-            Capability::Fresh => Status::Ready,
-            Capability::WithData => Status::Stale,
-            Capability::Supported | Capability::Unsupported => {
+        if matches!(domain.source_state, SourceState::Waiting | SourceState::Lost) {
+            return Self::unavailable(Status::Disconnected);
+        }
+        let status = match (domain.source_state, domain.capability) {
+            (SourceState::Stale, _) | (_, Capability::WithData) => Status::Stale,
+            (_, Capability::Fresh) => Status::Ready,
+            (_, Capability::Supported | Capability::Unsupported) => {
                 return Self::unavailable(Status::Disconnected);
             }
         };
@@ -633,6 +636,7 @@ mod tests {
     fn snapshot(kind: SessionKind, cars: Vec<Car>) -> Snapshot {
         Snapshot {
             state: State {
+                source_state: SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,
                     ..Capabilities::default()
@@ -714,5 +718,24 @@ mod tests {
         assert_eq!(vm_of(&snapshot, 10).status, Status::Disconnected);
         snapshot.state.capabilities.positions = Capability::WithData;
         assert_eq!(vm_of(&snapshot, 10).status, Status::Stale);
+    }
+
+    #[test]
+    fn source_status_overrides_fresh_positions() {
+        let mut snapshot = snapshot(SessionKind::Race, vec![car(1, 1, "GT3", 0.0)]);
+        for (source, expected) in [
+            (SourceState::Waiting, Status::Disconnected),
+            (SourceState::Live, Status::Ready),
+            (SourceState::Stale, Status::Stale),
+            (SourceState::Lost, Status::Disconnected),
+        ] {
+            snapshot.state.source_state = source;
+            let vm = vm_of(&snapshot, 10);
+            assert_eq!(vm.status, expected);
+            assert_eq!(
+                vm.rows.is_empty(),
+                matches!(source, SourceState::Waiting | SourceState::Lost)
+            );
+        }
     }
 }

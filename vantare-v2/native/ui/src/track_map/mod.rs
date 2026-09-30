@@ -216,7 +216,11 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings, prefs);
         let mut snapshot = Snapshot::default();
-        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        assert!(
+            widget.ingest(&snapshot, prefs),
+            "pasa de sin telemetría a pista sin mapa"
+        );
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Sebring".into());
@@ -256,6 +260,10 @@ mod tests {
     fn reference_data_never_supplies_a_fake_live_outline() {
         let snapshot = reference_snapshot();
         let mut widget = Widget::new(&Settings, Preferences::default());
+        assert!(
+            widget.ingest(&snapshot, Preferences::default()),
+            "la fuente pasa de Waiting a Live sin inventar un trazado"
+        );
         assert!(!widget.ingest(&snapshot, Preferences::default()));
         assert!(widget.vm.outline.is_empty());
         assert!(widget.vm.markers.is_empty());
@@ -265,7 +273,7 @@ mod tests {
 
     fn reference_snapshot() -> Snapshot {
         vantare_ipc::snapshot_from_json(include_str!("../../fixtures/track-map.snapshot.json"))
-            .expect("fixture DTO v3 reconstruida del frame congelado")
+            .expect("fixture DTO v4 reconstruida del frame congelado")
     }
 
     #[cfg(feature = "parity-capture")]

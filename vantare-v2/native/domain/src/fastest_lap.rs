@@ -96,7 +96,8 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         ),
         sequence: snapshot.sequence,
         // Supported sin tiempos permite observar el contador antes de la primera vuelta.
-        ready: player.is_some()
+        ready: snapshot.state.source_state == crate::SourceState::Live
+            && player.is_some()
             && matches!(
                 snapshot.state.capabilities.lap_times,
                 crate::Capability::Supported | crate::Capability::Fresh
@@ -221,6 +222,7 @@ mod tests {
             sequence,
             ..Snapshot::default()
         };
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.capabilities.lap_times = Capability::Fresh;
         snapshot.state.player = Some(Player {
             car: CarId(1),

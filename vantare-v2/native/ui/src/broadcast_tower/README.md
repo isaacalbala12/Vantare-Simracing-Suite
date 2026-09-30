@@ -1,3 +1,7 @@
+> **Actualización 2026-09-30:** [entrega de continuación ISA-1427](../fuel_strategy/PARIDAD-1427.md).
+> El informe siguiente conserva el histórico del primer porte; sus señales
+> ausentes y porcentajes quedan sustituidos por esa entrega.
+
 # Broadcast Tower Eficiencia — ISA-1427
 
 Worker local para [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427).

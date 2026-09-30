@@ -62,6 +62,17 @@ pub fn project_with_geometry(
         }
         .into(),
     };
+    if matches!(
+        snapshot.state.source_state,
+        crate::SourceState::Waiting | crate::SourceState::Lost
+    ) {
+        vm.empty_text = match prefs.language {
+            Language::Es => "SIN TELEMETRÍA",
+            Language::En => "NO TELEMETRY",
+        }
+        .into();
+        return vm;
+    }
     let name = match &snapshot.state.session.track_name {
         Quality::Reliable(name) | Quality::Estimated(name) | Quality::Stale(name) => name,
         Quality::Unavailable => return vm,
@@ -195,6 +206,7 @@ mod tests {
 
     fn snapshot() -> Snapshot {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.session.track_name = Quality::Reliable("test".into());
         snapshot
     }
@@ -334,8 +346,8 @@ mod tests {
     #[test]
     fn labels_follow_language_and_synthetic_is_explicit() {
         for (language, empty, reference) in [
-            (Language::Es, "PISTA SIN MAPA", "REFERENCIA"),
-            (Language::En, "TRACK NOT MAPPED", "REFERENCE"),
+            (Language::Es, "SIN TELEMETRÍA", "REFERENCIA"),
+            (Language::En, "NO TELEMETRY", "REFERENCE"),
         ] {
             let prefs = Preferences {
                 language,

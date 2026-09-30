@@ -117,6 +117,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         let mut s = Snapshot::default();
+        s.state.source_state = vantare_domain::SourceState::Live;
         s.state.player = Some(Player {
             delta_best_s: Quality::Reliable(0.214),
             ..Player::default()
@@ -137,6 +138,7 @@ mod tests {
         use vantare_domain::{Car, CarId, Player, Quality};
         let prefs = Preferences::default();
         let mut s = Snapshot::default();
+        s.state.source_state = vantare_domain::SourceState::Live;
         s.state.player = Some(Player {
             car: CarId(1),
             delta_best_s: Quality::Reliable(0.214),

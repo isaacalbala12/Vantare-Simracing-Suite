@@ -1,14 +1,15 @@
 //! Tira Eficiencia: clasificación, nombres abreviados y gaps a tres decimales.
-//! `player.lapNumber` no existe en `Snapshot`: no equivale a `Car::laps` (completadas).
+//! La vuelta en curso es la siguiente a `Car::laps` (completadas), con su calidad.
 
 use crate::format::{self, Language, PLACEHOLDER, Preferences};
-use crate::{Capability, CarId, FlagKind, FlagScope, Gap, Snapshot};
+use crate::{Capability, CarId, FlagKind, FlagScope, Gap, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Ready,
     Missing,
     Stale,
+    Disconnected,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,9 +45,11 @@ pub struct ViewModel {
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let state = &snapshot.state;
-    let status = match state.capabilities.positions {
-        Capability::Fresh if !state.cars.is_empty() => Status::Ready,
-        Capability::WithData => Status::Stale,
+    let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
+    let status = match (state.source_state, state.capabilities.positions) {
+        (SourceState::Waiting | SourceState::Lost, _) => Status::Disconnected,
+        (SourceState::Stale, _) | (_, Capability::WithData) => Status::Stale,
+        (_, Capability::Fresh) if !state.cars.is_empty() => Status::Ready,
         _ => Status::Missing,
     };
     let mut cars: Vec<_> = state.cars.iter().collect();
@@ -78,24 +81,42 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         })
         .collect();
     let weather = format::temperature(
-        state.session.weather.track_temperature_k.current().copied(),
+        state
+            .session
+            .weather
+            .track_temperature_k
+            .current()
+            .copied()
+            .filter(|_| available),
         prefs,
     );
     // El diseño de la tira usa solo °, manteniendo la conversión de format.
     let weather = weather.replace(" °C", "°").replace(" °F", "°");
     ViewModel {
         status,
-        session: state.session.kind.current().map_or_else(
+        session: state
+            .session
+            .kind
+            .current()
+            .filter(|_| available)
+            .map_or_else(
+                || PLACEHOLDER.into(),
+                |kind| format::session_kind(kind, prefs),
+            ),
+        lap: state.player_car().filter(|_| available).map_or_else(
             || PLACEHOLDER.into(),
-            |kind| format::session_kind(kind, prefs),
+            |car| {
+                current_lap(car.laps)
+                    .current()
+                    .map_or_else(|| PLACEHOLDER.into(), u32::to_string)
+            },
         ),
-        lap: PLACEHOLDER.into(),
         total_laps: state
             .session
             .laps_total
             .current()
             .copied()
-            .filter(|laps| *laps > 0 && *laps < 2_147_483_647),
+            .filter(|laps| available && *laps > 0 && *laps < 2_147_483_647),
         weather,
         flag: if status == Status::Ready {
             state
@@ -182,6 +203,23 @@ pub fn status_text(status: Status, language: Language) -> &'static str {
         (Status::Missing, Language::En) => "NO DATA",
         (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
         (Status::Stale, Language::En) => "DATA OUT OF DATE",
+        (Status::Disconnected, Language::Es) => "DESCONECTADO",
+        (Status::Disconnected, Language::En) => "DISCONNECTED",
+    }
+}
+
+fn current_lap(laps: Quality<u32>) -> Quality<u32> {
+    match laps {
+        Quality::Reliable(n) => n
+            .checked_add(1)
+            .map_or(Quality::Unavailable, Quality::Reliable),
+        Quality::Estimated(n) => n
+            .checked_add(1)
+            .map_or(Quality::Unavailable, Quality::Estimated),
+        Quality::Stale(n) => n
+            .checked_add(1)
+            .map_or(Quality::Unavailable, Quality::Stale),
+        Quality::Unavailable => Quality::Unavailable,
     }
 }
 
@@ -189,6 +227,36 @@ pub fn status_text(status: Status, language: Language) -> &'static str {
 mod tests {
     use super::*;
     use crate::{Car, Driver, Player, Quality, SessionKind};
+
+    #[test]
+    fn player_lap_is_the_next_completed_lap_and_never_defaults_to_one() {
+        assert_eq!(current_lap(Quality::Reliable(0)), Quality::Reliable(1));
+        assert_eq!(
+            current_lap(Quality::Estimated(127)),
+            Quality::Estimated(128)
+        );
+        assert_eq!(current_lap(Quality::Stale(127)), Quality::Stale(128));
+        let mut data = Snapshot::default();
+        data.state.source_state = crate::SourceState::Live;
+        data.state.player = Some(Player {
+            car: CarId(1),
+            ..Player::default()
+        });
+        data.state.cars.push(Car {
+            id: CarId(1),
+            ..Car::default()
+        });
+        for (quality, expected) in [
+            (Quality::Reliable(0), "1"),
+            (Quality::Estimated(127), "128"),
+            (Quality::Stale(127), "—"),
+            (Quality::Unavailable, "—"),
+            (Quality::Reliable(u32::MAX), "—"),
+        ] {
+            data.state.cars[0].laps = quality;
+            assert_eq!(project(&data, Preferences::default()).lap, expected);
+        }
+    }
 
     #[test]
     fn formats_match_the_strip() {
@@ -247,6 +315,7 @@ mod tests {
             Quality::Reliable(0),
         ] {
             let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = crate::SourceState::Live;
             snapshot.state.capabilities.positions = Capability::Fresh;
             snapshot.state.cars.push(Car {
                 id: CarId(1),
@@ -266,19 +335,21 @@ mod tests {
             (Capability::Fresh, Status::Ready),
         ] {
             let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = crate::SourceState::Live;
             snapshot.state.capabilities.positions = capability;
             snapshot.state.cars.push(Car::default());
             assert_eq!(project(&snapshot, Preferences::default()).status, status);
         }
         assert_eq!(
             project(&Snapshot::default(), Preferences::default()).status,
-            Status::Missing
+            Status::Disconnected
         );
     }
 
     #[test]
-    fn orders_and_crops_without_deriving_current_lap_from_completed_laps() {
+    fn orders_and_crops_while_projecting_the_player_current_lap() {
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.capabilities.positions = Capability::Fresh;
         snapshot.state.session.kind = Quality::Reliable(SessionKind::Race);
         snapshot.state.session.weather.track_temperature_k = Quality::Reliable(301.15);
@@ -306,7 +377,7 @@ mod tests {
         );
         assert_eq!(vm.session, "CARRERA");
         assert_eq!(vm.weather, "28°");
-        assert_eq!(vm.lap, "—");
+        assert_eq!(vm.lap, "128");
         for (laps, expected) in [(0, None), (240, Some(240)), (2_147_483_647, None)] {
             snapshot.state.session.laps_total = Quality::Reliable(laps);
             assert_eq!(
@@ -321,6 +392,7 @@ mod tests {
         use crate::format::Units;
         use crate::{Flag, Quality};
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
         snapshot.state.capabilities.positions = Capability::Fresh;
         snapshot.state.cars.push(Car::default());
         for (temperature, expected) in [

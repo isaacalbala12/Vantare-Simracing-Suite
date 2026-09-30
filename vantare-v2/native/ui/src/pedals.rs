@@ -41,9 +41,31 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         ("T", vm.throttle, &vm.throttle_text, 0x6fae7d),
     ];
     let column_w = (width - 2.0 * PAD_X - GAP * 2.0) / 3.0;
-    let track_top = PAD_TOP;
+    let status_height = if let Some(message) = vm.status_text {
+        let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        // El productivo permite envolver el aviso en la columna de 120 px.
+        let lines: Vec<_> = match message {
+            "DATOS ANTIGUOS" => vec!["DATOS", "ANTIGUOS"],
+            "DATA OUT OF DATE" => vec!["DATA OUT OF", "DATE"],
+            _ => vec![message],
+        };
+        for (index, line) in lines.iter().enumerate() {
+            text::draw(
+                window,
+                cx,
+                line,
+                12.0,
+                text::baseline(10.0 + index as f32 * 18.0, 18.0, 12.0),
+                &status_ink,
+            );
+        }
+        20.0 + lines.len() as f32 * 18.0
+    } else {
+        0.0
+    };
+    let track_top = PAD_TOP + status_height;
     // Columna: pista (flexible) + 4 + rótulo + 4 + valor.
-    let track_h = height - PAD_TOP - PAD_BOTTOM - (4.0 + LABEL_H + 4.0 + VALUE_H);
+    let track_h = height - PAD_TOP - PAD_BOTTOM - status_height - (4.0 + LABEL_H + 4.0 + VALUE_H);
     let label_ink = ink(6.0, 600.0, 0.18, col(tokens::MUTED, 0.78));
     let value_ink = ink(10.0, 700.0, 0.0, col(tokens::INK, 1.0));
     for (index, (label, value, text_value, color)) in columns.into_iter().enumerate() {

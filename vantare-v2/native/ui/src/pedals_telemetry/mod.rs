@@ -1,6 +1,5 @@
 //! `PedalsAdvancedEfficiency`, composición por defecto de 300 × 112.
-//! Steering no existe en Snapshot: volante genérico neutro, como el productivo
-//! sin señal. El SVG es su artwork estático, rasterizado por el propio GPUI.
+//! Volante genérico con steering canónico × 450°, rasterizado por GPUI.
 
 use crate::{
     app::{Paint, Wake, replace_if_changed},
@@ -14,7 +13,9 @@ use gpui::{
     App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
 };
 use std::{
-    sync::{Arc, OnceLock},
+    cell::RefCell,
+    rc::Rc,
+    sync::Arc,
     time::{Duration, Instant},
 };
 use vantare_domain::{
@@ -83,7 +84,14 @@ impl Settings {
     }
 }
 
+#[derive(Default)]
+struct WheelArtwork {
+    key: Option<(u64, bool)>,
+    image: Option<Arc<gpui::RenderImage>>,
+}
+
 pub(crate) struct Widget {
+    wheel: Rc<RefCell<WheelArtwork>>,
     vm: ViewModel,
     from: [Option<f64>; 3],
     started: Option<Instant>,
@@ -93,6 +101,7 @@ pub(crate) struct Widget {
 impl Widget {
     pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
         Self {
+            wheel: Rc::default(),
             vm: pedals_telemetry::project(&Snapshot::default(), prefs),
             from: [None; 3],
             started: None,
@@ -163,8 +172,9 @@ impl Widget {
             self.started = None;
         }
         let vm = self.vm.clone();
+        let wheel = Rc::clone(&self.wheel);
         (
-            Box::new(move |window, cx| paint(&vm, bars, window, cx)),
+            Box::new(move |window, cx| paint(&vm, bars, &wheel, window, cx)),
             if moving { Wake::Frame } else { Wake::Idle },
         )
     }
@@ -175,25 +185,35 @@ impl Widget {
     }
 }
 
-fn wheel(window: &mut Window, cx: &App, stale: bool) {
-    static NORMAL: OnceLock<Option<Arc<gpui::RenderImage>>> = OnceLock::new();
-    static STALE: OnceLock<Option<Arc<gpui::RenderImage>>> = OnceLock::new();
-    let image = if stale { &STALE } else { &NORMAL }.get_or_init(|| {
-        let svg = include_str!("wheel.svg");
-        let svg = if stale {
-            svg.replacen("<g>", "<g opacity=\".55\">", 1)
-        } else {
-            svg.into()
-        };
-        match cx.svg_renderer().render_single_frame(svg.as_bytes(), 1.0) {
+fn wheel(
+    cache: &RefCell<WheelArtwork>,
+    window: &mut Window,
+    cx: &App,
+    steering: Option<f64>,
+    stale: bool,
+) {
+    let angle = steering.unwrap_or(0.0) * 450.0;
+    let key = (angle.to_bits(), stale);
+    let mut artwork = cache.borrow_mut();
+    if artwork.key != Some(key) {
+        artwork.key = Some(key);
+        let svg = include_str!("wheel.svg").replacen(
+            "<g>",
+            &format!(
+                "<g transform=\"rotate({angle} 32 32)\" opacity=\"{}\">",
+                if stale { 0.55 } else { 1.0 }
+            ),
+            1,
+        );
+        artwork.image = match cx.svg_renderer().render_single_frame(svg.as_bytes(), 1.0) {
             Ok(image) => Some(image),
             Err(error) => {
                 eprintln!("pedals-telemetry: artwork SVG: {error}");
                 None
             }
-        }
-    });
-    if let Some(image) = image {
+        };
+    }
+    if let Some(image) = &artwork.image {
         let bounds = rect(181.0, 20.0, 72.0, 72.0);
         if let Err(error) = window.paint_image(
             bounds,
@@ -208,7 +228,13 @@ fn wheel(window: &mut Window, cx: &App, stale: bool) {
     }
 }
 
-fn paint(vm: &ViewModel, bars: [Option<f64>; 3], window: &mut Window, cx: &mut App) {
+fn paint(
+    vm: &ViewModel,
+    bars: [Option<f64>; 3],
+    wheel_cache: &RefCell<WheelArtwork>,
+    window: &mut Window,
+    cx: &mut App,
+) {
     let panel = rect(0.0, 0.0, SIZE.0, SIZE.1);
     window.paint_quad(quad(
         panel,
@@ -297,7 +323,13 @@ fn paint(vm: &ViewModel, bars: [Option<f64>; 3], window: &mut Window, cx: &mut A
             ));
         }
     }
-    wheel(window, cx, vm.status == Status::Stale);
+    wheel(
+        wheel_cache,
+        window,
+        cx,
+        vm.steering,
+        vm.status == Status::Stale,
+    );
     let status_ink = ink(9.0, 600.0, 0.06, col(0xc1121f, 1.0));
     text::draw(
         window,
@@ -324,6 +356,7 @@ mod tests {
         let vm = pedals_telemetry::project(&snapshot, prefs);
         assert_eq!(vm.status, Status::Ready);
         assert_eq!(vm.pedals, [Some(0.06), Some(0.13), Some(0.75)]);
+        assert_eq!(vm.steering, Some(0.08));
         assert_eq!(
             (
                 vm.gear.as_str(),
@@ -345,6 +378,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         let mut player = Player::default();
         player.telemetry.throttle = Quality::Reliable(0.0);
         snapshot.state.player = Some(player);
@@ -381,6 +415,10 @@ mod tests {
         widget.vm.pedals = [Some(0.0); 3];
         let mut snapshot = Snapshot {
             epoch: 1,
+            state: vantare_domain::State {
+                source_state: vantare_domain::SourceState::Live,
+                ..Default::default()
+            },
             ..Snapshot::default()
         };
         let mut player = Player::default();
@@ -402,6 +440,7 @@ mod tests {
         let now = Instant::now();
         let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
         let mut player = Player::default();
         player.telemetry.throttle = Quality::Reliable(0.0);
         snapshot.state.player = Some(player);

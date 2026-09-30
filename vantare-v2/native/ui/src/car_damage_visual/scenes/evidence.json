@@ -1,0 +1,25 @@
+{
+  "issue": 1427,
+  "widget": "car-damage-visual",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "no-aero",
+      "settings": {
+        "showAero": false
+      },
+      "capture": "evidence/no-aero.png",
+      "capture_sha256": "e53f3f1cbc560373126ed4596aebd37282d6fd32c327c2b46f2333f744d3252a",
+      "fresh_product_capture_sha256": "0213735be0bb5ec26f480e71570fb966b89052fc24be43424b5a73def078b008",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 870,
+        "total_pixels": 28650,
+        "percent": 3.0366,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

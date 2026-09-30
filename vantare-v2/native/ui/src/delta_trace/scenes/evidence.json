@@ -1,0 +1,43 @@
+{
+  "issue": 1427,
+  "widget": "delta-trace",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "window-1",
+      "settings": {
+        "windowSeconds": 1
+      },
+      "capture": "evidence/window-1.png",
+      "capture_sha256": "e0e45028d1cfb7b27ebf19a4aa5119de52c6a602d54785b98f505456125cbad0",
+      "fresh_product_capture_sha256": "d60aa310352b48a8758f2326184d355d25b5e56602926f04bf281ab9472c2e08",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1823,
+        "total_pixels": 278000,
+        "percent": 0.6558,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "window-8",
+      "settings": {
+        "windowSeconds": 8
+      },
+      "capture": "evidence/window-8.png",
+      "capture_sha256": "d99386b4e7147abe616fe0682639e76f89a0cab3ecfa7ccff7fb5c583df95cc3",
+      "fresh_product_capture_sha256": "924ed2bbdd490aa4c873efba8edcc05b60d6bc10b05a15c57c0537c729b65436",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1998,
+        "total_pixels": 278000,
+        "percent": 0.7187,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

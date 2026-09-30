@@ -90,25 +90,51 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     }
 }
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub show_tyres: bool,
+    pub format: String,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_tyres: true,
+            format: "percent".into(),
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            format: "percent".into(),
+            ..self.clone()
+        }
+    }
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        car_damage_numbers::project(snapshot, prefs, self.show_tyres)
+    }
+}
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
 }
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: car_damage_numbers::project(&Snapshot::default(), prefs, true),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs),
         }
     }
     pub(crate) fn size(&self) -> (f32, f32) {
         (SIZE.0, height(&self.vm))
     }
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(
-            &mut self.vm,
-            car_damage_numbers::project(snapshot, prefs, true),
-        )
+        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
@@ -126,6 +152,20 @@ impl Widget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn tyre_setting_projects_three_slots_instead_of_four() {
+        let snapshot = Snapshot::default();
+        let settings = Settings {
+            show_tyres: false,
+            ..Settings::default()
+        };
+        let vm = settings.project(&snapshot, Preferences::default());
+        assert!(!vm.show_tyres);
+        assert!(
+            height(&vm) < height(&Settings::default().project(&snapshot, Preferences::default()))
+        );
+    }
+
     use super::*;
     use vantare_domain::{Capability, Damage, Player, Quality};
 
@@ -139,7 +179,7 @@ mod tests {
         let vm = car_damage_numbers::project(&snapshot, prefs, true);
         assert_eq!(vm.values, ["100%", "100%", "100%", "13%"]);
         assert_eq!(vm.status_text, None);
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), SIZE);
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
@@ -150,7 +190,7 @@ mod tests {
     #[test]
     fn redraws_only_display_changes_and_never_schedules_animation() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.source_state = vantare_domain::SourceState::Live;

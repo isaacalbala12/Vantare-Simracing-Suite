@@ -92,10 +92,9 @@ fn background(colors: [u32; 4], cx: &App) -> Result<Arc<gpui::RenderImage>, Stri
 }
 
 pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
-    if vm.hidden {
-        return;
-    }
-    let colors = palette(vm.flag.as_ref());
+    // TSX omite data-flag y los hijos al ocultar: CSS más específico mantiene
+    // visible el panel gris. Reproducir el productivo; no inventar otro estado.
+    let colors = palette(if vm.hidden { None } else { vm.flag.as_ref() });
     let bounds = rect(0.0, 0.0, SIZE.0, SIZE.1);
     let corners = Corners::all(px(tokens::RADIUS));
     let painted = background(colors, cx).and_then(|image| {
@@ -121,6 +120,9 @@ pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
         ),
         BorderStyle::default(),
     ));
+    if vm.hidden {
+        return;
+    }
     let has_sectors = !vm.sectors.is_empty();
     let top = if has_sectors { 7.73 } else { 25.23 };
     let heading_ink = ink(7.0, 800.0, 0.18, col(vm.text_color, 0.82));
@@ -206,37 +208,62 @@ fn paint_text_shadow(
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub text_color: String,
+    pub show_sector_flags: bool,
+    pub hide_when_green: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
             text_color: "#000000".into(),
+            show_sector_flags: true,
+            hide_when_green: false,
         }
     }
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        racing_flags::project_with_config(
+            snapshot,
+            prefs,
+            racing_flags::Config {
+                text_color: u32::from_str_radix(self.text_color.trim_start_matches('#'), 16)
+                    .unwrap_or(0),
+                show_sector_flags: self.show_sector_flags,
+                hide_when_green: self.hide_when_green,
+            },
+        )
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
         let value = self.text_color.as_bytes();
         if value.len() == 7 && value[0] == b'#' && value[1..].iter().all(u8::is_ascii_hexdigit) {
             Self {
                 text_color: self.text_color.to_ascii_lowercase(),
+                ..self.clone()
             }
         } else {
-            Self::default()
+            Self {
+                text_color: "#000000".into(),
+                ..self.clone()
+            }
         }
     }
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
     yellow_since: Option<Instant>,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: racing_flags::project(&Snapshot::default(), prefs),
+            vm: settings.project(&Snapshot::default(), prefs),
+            settings,
             yellow_since: None,
         }
     }
@@ -247,7 +274,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let vm = racing_flags::project(snapshot, prefs);
+        let vm = self.settings.project(snapshot, prefs);
         if vm.flag != self.vm.flag {
             self.yellow_since = (vm.flag == Some(FlagKind::Yellow)).then(Instant::now);
         }
@@ -287,6 +314,72 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn variant_scenes_cover_sector_filter_and_green_hiding() {
+        let sectors = vantare_ipc::snapshot_from_json(include_str!("scenes/sectors.snapshot.json"))
+            .expect("sectores reconstruidos en DTO v4");
+        let prefs = Preferences::default();
+        let vm = Settings::default().project(&sectors, prefs);
+        assert_eq!(vm.flag, Some(FlagKind::Yellow));
+        assert_eq!(
+            vm.sectors,
+            vec![Some(FlagKind::Yellow), Some(FlagKind::Green)]
+        );
+        let settings = Settings {
+            show_sector_flags: false,
+            ..Settings::default()
+        };
+        assert!(settings.project(&sectors, prefs).sectors.is_empty());
+        let green = vantare_ipc::snapshot_from_json(include_str!("scenes/green.snapshot.json"))
+            .expect("verde reconstruido en DTO v4");
+        let settings = Settings {
+            hide_when_green: true,
+            ..Settings::default()
+        };
+        assert!(settings.project(&green, prefs).hidden);
+    }
+
+    #[test]
+    fn flags_settings_project_color_sectors_and_visibility() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.flags = vantare_domain::Quality::Reliable(vec![
+            vantare_domain::Flag {
+                kind: FlagKind::Green,
+                scope: vantare_domain::FlagScope::Session,
+            },
+            vantare_domain::Flag {
+                kind: FlagKind::Yellow,
+                scope: vantare_domain::FlagScope::Sector(0),
+            },
+        ]);
+        let settings = Settings {
+            text_color: "#123ABC".into(),
+            show_sector_flags: false,
+            hide_when_green: true,
+        }
+        .normalized();
+        let vm = settings.project(&snapshot, Preferences::default());
+        assert_eq!(vm.text_color, 0x123abc);
+        assert!(vm.hidden && vm.sectors.is_empty());
+        snapshot.state.flags = vantare_domain::Quality::Reliable(vec![vantare_domain::Flag {
+            kind: FlagKind::Black,
+            scope: vantare_domain::FlagScope::Session,
+        }]);
+        assert_eq!(
+            Settings::default()
+                .project(&snapshot, Preferences::default())
+                .text_color,
+            0xffffff
+        );
+        assert_eq!(
+            settings
+                .project(&snapshot, Preferences::default())
+                .text_color,
+            0x123abc
+        );
+    }
+
     use super::*;
     use vantare_domain::{Flag, FlagScope, Quality};
 

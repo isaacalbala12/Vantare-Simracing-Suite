@@ -19,14 +19,52 @@ const SLOT_HEIGHT: f32 = 7.0 + 2.0 + 14.390_625;
 const ROW_GAP: f32 = 8.0;
 const COLUMN_WIDTH: f32 = 101.0;
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+// Claves independientes del contrato productivo, aunque su renderer aún las ignora.
+#[allow(clippy::struct_excessive_bools)]
+pub struct Settings {
+    pub show_ambient: bool,
+    pub show_track: bool,
+    pub show_rain: bool,
+    pub show_wind: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            show_ambient: true,
+            show_track: true,
+            show_rain: true,
+            show_wind: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
+        (
+            "showAmbient",
+            "TrackWeatherFunctional no consulta este filtro",
+        ),
+        (
+            "showTrack",
+            "TrackWeatherFunctional no consulta este filtro",
+        ),
+        ("showRain", "TrackWeatherFunctional no consulta este filtro"),
+        ("showWind", "TrackWeatherFunctional no consulta este filtro"),
+    ];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        self.clone()
+    }
+}
 
 pub(crate) struct Widget {
     vm: ViewModel,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let _ = settings;
         Self {
             vm: track_weather::project(&Snapshot::default(), prefs),
         }
@@ -147,7 +185,7 @@ mod tests {
     #[test]
     fn repaint_follows_visible_values_and_preferences() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.session.weather.air_temperature_k = Quality::Reliable(295.15);
@@ -185,7 +223,7 @@ mod tests {
             Quality::Unavailable
         );
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.vm.status, Status::Ready);
         assert_eq!(

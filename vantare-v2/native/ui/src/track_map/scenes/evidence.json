@@ -1,0 +1,25 @@
+{
+  "issue": 1427,
+  "widget": "track-map",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "no-label",
+      "settings": {
+        "showTrackLabel": false
+      },
+      "capture": "evidence/no-label.png",
+      "capture_sha256": "31e821d94b738a7228fd7518c43d5e786bfe55db56a4413c0abc39a571269228",
+      "fresh_product_capture_sha256": "fa748d4690a777af71eac8248f8037bc00a868c4aa6809e56579340b62c60071",
+      "instrumented_binary_sha256": "04270AC68ABED57D567626B2C247D02ADBF65CA74E5DD9CE55814E050F1411C3",
+      "comparison": {
+        "changed_pixels": 1495,
+        "total_pixels": 79360,
+        "percent": 1.8838,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

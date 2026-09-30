@@ -1,0 +1,176 @@
+{
+  "issue": 1427,
+  "base": "63a59d0762f33b7e20455a0bc14dee073be175a6",
+  "source": "Workshop reconstruido; no runtime LMU",
+  "defaults": [
+    {
+      "widget": "car-damage-numbers",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "561abf04abccf636fe2809abbe082758c9974cfe5802f96b5475bfcf8f3bcac9",
+      "after_sha256": "561abf04abccf636fe2809abbe082758c9974cfe5802f96b5475bfcf8f3bcac9",
+      "inherited_wails_comparison": {
+        "pixels": 1259,
+        "total": 20860,
+        "percent": 6.0355,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "car-damage-visual",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "598bc0419941ca930286c2a95b714e97862cc63efc8a9437857fe4a15cc8bac2",
+      "after_sha256": "598bc0419941ca930286c2a95b714e97862cc63efc8a9437857fe4a15cc8bac2",
+      "inherited_wails_comparison": {
+        "pixels": 1132,
+        "total": 28650,
+        "percent": 3.9511,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "delta-trace",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "6add07ddf45b2236b20e4099f57ef81ceda01c1d94b959b648a64310fa15b824",
+      "after_sha256": "6add07ddf45b2236b20e4099f57ef81ceda01c1d94b959b648a64310fa15b824",
+      "inherited_wails_comparison": {
+        "pixels": 1911,
+        "total": 278000,
+        "percent": 0.6874,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "delta",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "9a69d9eccfd26019b3fd318c812e7eba50035b923e9beeb7b84cd101fb3cad7f",
+      "after_sha256": "9a69d9eccfd26019b3fd318c812e7eba50035b923e9beeb7b84cd101fb3cad7f",
+      "inherited_wails_comparison": {
+        "pixels": 1005,
+        "total": 26880,
+        "percent": 3.7388,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "fastest-lap",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "295620128980fef4bed6ed28622ec63c3922d0e68e93737f6a19dbfbe3aed7e5",
+      "after_sha256": "295620128980fef4bed6ed28622ec63c3922d0e68e93737f6a19dbfbe3aed7e5",
+      "inherited_wails_comparison": {
+        "pixels": 2347,
+        "total": 49920,
+        "percent": 4.7015,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "fuel-strategy",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "1664ba38a2ec52377cae4ad6b6ed61f91a13d32e084b6d517f6f095f0ddf62ce",
+      "after_sha256": "1664ba38a2ec52377cae4ad6b6ed61f91a13d32e084b6d517f6f095f0ddf62ce",
+      "inherited_wails_comparison": {
+        "pixels": 3336,
+        "total": 138720,
+        "percent": 2.4048,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "input-telemetry",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "b88c2495a25b5d6df5275c3d5ab73c8c0ac9152017002a7acaedb2e4c653ee39",
+      "after_sha256": "b88c2495a25b5d6df5275c3d5ab73c8c0ac9152017002a7acaedb2e4c653ee39",
+      "inherited_wails_comparison": {
+        "pixels": 1140,
+        "total": 50400,
+        "percent": 2.2619,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "pedals-telemetry",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "2f2bca628a36ad5368ff242b3411edb156083ac953c9fbeb340892eb7c5d600b",
+      "after_sha256": "2f2bca628a36ad5368ff242b3411edb156083ac953c9fbeb340892eb7c5d600b",
+      "inherited_wails_comparison": {
+        "pixels": 1182,
+        "total": 33600,
+        "percent": 3.5179,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "pedals",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "313a9466d53e40fb4140456b742715f40f6f93bbbb3f4bd2f4c36914d38f9c7b",
+      "after_sha256": "313a9466d53e40fb4140456b742715f40f6f93bbbb3f4bd2f4c36914d38f9c7b",
+      "inherited_wails_comparison": {
+        "pixels": 755,
+        "total": 19200,
+        "percent": 3.9323,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "racing-flags",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "2c875c8313e367999b19cb5c3f153bf9733a6527a186292eea12d4bf0a7cbd86",
+      "after_sha256": "2c875c8313e367999b19cb5c3f153bf9733a6527a186292eea12d4bf0a7cbd86",
+      "inherited_wails_comparison": {
+        "pixels": 868,
+        "total": 24640,
+        "percent": 3.5227,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "radar",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "6433624ba39babe9ee5e071779b674c7389406c6dfddf0dcc3f70c7ef4204b8d",
+      "after_sha256": "6433624ba39babe9ee5e071779b674c7389406c6dfddf0dcc3f70c7ef4204b8d",
+      "inherited_wails_comparison": {
+        "pixels": 1057,
+        "total": 48400,
+        "percent": 2.1839,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "track-map",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "31e821d94b738a7228fd7518c43d5e786bfe55db56a4413c0abc39a571269228",
+      "after_sha256": "31e821d94b738a7228fd7518c43d5e786bfe55db56a4413c0abc39a571269228",
+      "inherited_wails_comparison": {
+        "pixels": 1495,
+        "total": 79360,
+        "percent": 1.8838,
+        "threshold": 8
+      }
+    },
+    {
+      "widget": "track-weather",
+      "changed_pixels": 0,
+      "channel_threshold": 0,
+      "before_sha256": "04251b4042c324cf03650a44dd2b08a2cca5a2a0aaadcdf11f3a05d73b5a9d5e",
+      "after_sha256": "04251b4042c324cf03650a44dd2b08a2cca5a2a0aaadcdf11f3a05d73b5a9d5e",
+      "inherited_wails_comparison": {
+        "pixels": 1435,
+        "total": 36000,
+        "percent": 3.9861,
+        "threshold": 8
+      }
+    }
+  ]
+}

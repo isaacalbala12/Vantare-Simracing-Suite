@@ -5,6 +5,41 @@
 use crate::format::{self, Language, Preferences};
 use crate::{Quality, Snapshot, SourceState};
 
+pub const WHEELS: &[&str] = &[
+    "generic",
+    "alpine-a424",
+    "aston-martin-valkyrie",
+    "bmw-m-hybrid-v8-pre-le-mans",
+    "bmw-m-hybrid-v8",
+    "cadillac-v-series-r",
+    "ferrari-499p",
+    "genesis-gmr-001",
+    "glickenhaus-scg007",
+    "isotta-fraschini-tipo6",
+    "lamborghini-sc63",
+    "peugeot-9x8",
+    "peugeot-9x8-2024",
+    "porsche-963",
+    "toyota-gr010",
+    "toyota-tr010",
+    "vanwall-vandervell-680",
+    "aston-martin-vantage-gt3",
+    "bmw-m4-gt3",
+    "corvette-z06-gt3",
+    "ferrari-296-gt3",
+    "ford-mustang-gt3",
+    "lamborghini-huracan-gt3",
+    "lexus-rc-f-gt3",
+    "mclaren-720s-gt3",
+    "mercedes-amg-gt3",
+    "porsche-911-gt3-r",
+    "oreca-07",
+    "adess-ad25",
+    "duqueine-d09",
+    "ginetta-g61-lt-p3-evo",
+    "ligier-js-p325",
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     Ready,
@@ -15,6 +50,8 @@ pub enum Status {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
+    pub steering_wheel: &'static str,
+    pub show_clutch: bool,
     pub status: Status,
     pub status_text: &'static str,
     /// C, B, T; fracciones redondeadas a porcentaje entero. Ausencia ≠ cero.
@@ -133,6 +170,8 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         .split_once(' ')
         .unwrap_or((&formatted_speed, unit));
     ViewModel {
+        steering_wheel: "generic",
+        show_clutch: true,
         status,
         status_text,
         pedals,

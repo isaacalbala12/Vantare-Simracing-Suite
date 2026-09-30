@@ -24,6 +24,8 @@ use vantare_domain::{
     pedals_telemetry::{self, Status, ViewModel},
 };
 
+mod wheels;
+
 const SIZE: (f32, f32) = (300.0, 112.0);
 const TRANSITION: Duration = Duration::from_millis(60);
 
@@ -31,66 +33,56 @@ const TRANSITION: Duration = Duration::from_millis(60);
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub steering_wheel: String,
+    pub show_clutch: bool,
+    /// Eficiencia no dibuja posición aunque el contenido general la conserve.
+    pub show_position: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
             steering_wheel: "generic".into(),
+            show_clutch: true,
+            show_position: true,
         }
     }
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "showPosition",
+        "PedalsAdvancedEfficiency no dibuja posición",
+    )];
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = pedals_telemetry::project(snapshot, prefs);
+        vm.steering_wheel = pedals_telemetry::WHEELS
+            .iter()
+            .copied()
+            .find(|id| *id == self.steering_wheel)
+            .unwrap_or("generic");
+        vm.show_clutch = self.show_clutch;
+        vm
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
-        const WHEELS: &[&str] = &[
-            "generic",
-            "alpine-a424",
-            "aston-martin-valkyrie",
-            "bmw-m-hybrid-v8-pre-le-mans",
-            "bmw-m-hybrid-v8",
-            "cadillac-v-series-r",
-            "ferrari-499p",
-            "genesis-gmr-001",
-            "glickenhaus-scg007",
-            "isotta-fraschini-tipo6",
-            "lamborghini-sc63",
-            "peugeot-9x8",
-            "peugeot-9x8-2024",
-            "porsche-963",
-            "toyota-gr010",
-            "toyota-tr010",
-            "vanwall-vandervell-680",
-            "aston-martin-vantage-gt3",
-            "bmw-m4-gt3",
-            "corvette-z06-gt3",
-            "ferrari-296-gt3",
-            "ford-mustang-gt3",
-            "lamborghini-huracan-gt3",
-            "lexus-rc-f-gt3",
-            "mclaren-720s-gt3",
-            "mercedes-amg-gt3",
-            "porsche-911-gt3-r",
-            "oreca-07",
-            "adess-ad25",
-            "duqueine-d09",
-            "ginetta-g61-lt-p3-evo",
-            "ligier-js-p325",
-        ];
-        if WHEELS.contains(&self.steering_wheel.as_str()) {
+        if pedals_telemetry::WHEELS.contains(&self.steering_wheel.as_str()) {
             self.clone()
         } else {
-            Self::default()
+            Self {
+                steering_wheel: "generic".into(),
+                ..self.clone()
+            }
         }
     }
 }
 
 #[derive(Default)]
 struct WheelArtwork {
-    key: Option<(u64, bool)>,
+    key: Option<(u64, bool, &'static str)>,
     image: Option<Arc<gpui::RenderImage>>,
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     wheel: Rc<RefCell<WheelArtwork>>,
     vm: ViewModel,
     from: [Option<f64>; 3],
@@ -99,10 +91,12 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
             wheel: Rc::default(),
-            vm: pedals_telemetry::project(&Snapshot::default(), prefs),
+            vm: settings.project(&Snapshot::default(), prefs),
+            settings,
             from: [None; 3],
             started: None,
             epoch: 0,
@@ -119,7 +113,7 @@ impl Widget {
     }
 
     fn ingest_at(&mut self, snapshot: &Snapshot, prefs: Preferences, now: Instant) -> bool {
-        let next = pedals_telemetry::project(snapshot, prefs);
+        let next = self.settings.project(snapshot, prefs);
         let reset = self.epoch != snapshot.epoch;
         self.epoch = snapshot.epoch;
         let pedals_changed = self.vm.pedals != next.pedals;
@@ -191,13 +185,14 @@ fn wheel(
     cx: &App,
     steering: Option<f64>,
     stale: bool,
+    selected: &'static str,
 ) {
     let angle = steering.unwrap_or(0.0) * 450.0;
-    let key = (angle.to_bits(), stale);
+    let key = (angle.to_bits(), stale, selected);
     let mut artwork = cache.borrow_mut();
     if artwork.key != Some(key) {
         artwork.key = Some(key);
-        let svg = include_str!("wheel.svg").replacen(
+        let svg = wheels::svg(selected).replacen(
             "<g>",
             &format!(
                 "<g transform=\"rotate({angle} 32 32)\" opacity=\"{}\">",
@@ -295,7 +290,11 @@ fn paint(
         .zip([0xc9a15c, tokens::LOSS, 0x6fae7d])
         .enumerate()
     {
-        let x = 86.0 + i as f32 * 20.0;
+        if i == 0 && !vm.show_clutch {
+            continue;
+        }
+        let index = if vm.show_clutch { i } else { i - 1 };
+        let x = 86.0 + index as f32 * 20.0;
         window.paint_quad(quad(
             rect(x, 10.0, 14.0, 92.0),
             Corners::all(px(3.0)),
@@ -329,6 +328,7 @@ fn paint(
         cx,
         vm.steering,
         vm.status == Status::Stale,
+        vm.steering_wheel,
     );
     let status_ink = ink(9.0, 600.0, 0.06, col(0xc1121f, 1.0));
     text::draw(
@@ -343,6 +343,33 @@ fn paint(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn every_productive_wheel_projects_and_has_its_own_artwork() {
+        let snapshot = Snapshot::default();
+        for id in pedals_telemetry::WHEELS {
+            let settings = Settings {
+                steering_wheel: (*id).into(),
+                show_clutch: false,
+                ..Settings::default()
+            };
+            let vm = settings.project(&snapshot, Preferences::default());
+            assert_eq!(vm.steering_wheel, *id);
+            assert!(!vm.show_clutch);
+            assert!(wheels::svg(id).contains("<svg"));
+            if *id != "generic" {
+                assert_ne!(wheels::svg(id), wheels::svg("generic"));
+            }
+        }
+        let settings = Settings {
+            steering_wheel: "unknown".into(),
+            show_clutch: false,
+            ..Settings::default()
+        }
+        .normalized();
+        assert_eq!(settings.steering_wheel, "generic");
+        assert!(!settings.show_clutch);
+    }
+
     use super::*;
     use vantare_domain::{Player, Quality};
 

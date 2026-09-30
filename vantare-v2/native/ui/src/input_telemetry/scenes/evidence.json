@@ -1,0 +1,61 @@
+{
+  "issue": 1427,
+  "widget": "input-telemetry",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "no-clutch",
+      "settings": {
+        "showClutch": false
+      },
+      "capture": "evidence/no-clutch.png",
+      "capture_sha256": "d7c55f053f2de3bbb293a6eaa93056198c33fb90557fe288f02bafa30fed1dc6",
+      "fresh_product_capture_sha256": "c1531af772c5bf2a2e9ca12212732b165e699cd48b33fc925509e12bb4615066",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 982,
+        "total_pixels": 50400,
+        "percent": 1.9484,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "history-1",
+      "settings": {
+        "historySeconds": 1
+      },
+      "capture": "evidence/history-1.png",
+      "capture_sha256": "bc7e17011c49f5d62b6400758c55ce0eb39a9f8d6b106797bd9301732adf241e",
+      "fresh_product_capture_sha256": "d24e1072f6558902157fe07afa015430a7acc854091efc5ffa973eee290f5a5c",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 1140,
+        "total_pixels": 50400,
+        "percent": 2.2619,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "history-8",
+      "settings": {
+        "historySeconds": 8
+      },
+      "capture": "evidence/history-8.png",
+      "capture_sha256": "b88c2495a25b5d6df5275c3d5ab73c8c0ac9152017002a7acaedb2e4c653ee39",
+      "fresh_product_capture_sha256": "9af275ebe15739b944c6ca537681755b7bedf32d93592cfd69251482fc9edfd6",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 1140,
+        "total_pixels": 50400,
+        "percent": 2.2619,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

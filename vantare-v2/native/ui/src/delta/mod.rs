@@ -21,25 +21,47 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
+        (
+            "reference=session-best",
+            "Snapshot solo publica delta_best_s personal",
+        ),
+        (
+            "reference=previous-lap",
+            "Snapshot no publica una serie de la vuelta anterior",
+        ),
+    ];
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> delta::ViewModel {
+        let mut vm = delta::project(snapshot, prefs);
+        vm.capsule = self.template_id == "capsule";
+        vm
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
-        if self.template_id == "capsule" {
-            self.clone()
-        } else {
-            Self::default()
+        Self {
+            template_id: if self.template_id == "capsule" {
+                "capsule"
+            } else {
+                "instrument"
+            }
+            .into(),
         }
     }
 }
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: delta::ViewModel,
     motion: Motion,
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: delta::project(&Snapshot::default(), prefs),
+            vm: settings.project(&Snapshot::default(), prefs),
+            settings,
             motion: Motion::default(),
         }
     }
@@ -50,7 +72,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let next = delta::project(snapshot, prefs);
+        let next = self.settings.project(snapshot, prefs);
         if next == self.vm {
             return false;
         }
@@ -86,6 +108,19 @@ impl Widget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn settings_project_capsule_without_changing_delta_values() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/delta.snapshot.json"))
+                .expect("escena");
+        let settings = Settings {
+            template_id: "capsule".into(),
+        };
+        let vm = settings.project(&snapshot, Preferences::default());
+        assert!(vm.capsule);
+        assert_eq!(vm.delta_text, "+0.214");
+    }
+
     use super::*;
 
     #[test]

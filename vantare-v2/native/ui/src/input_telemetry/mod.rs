@@ -20,9 +20,44 @@ use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 const SIZE: (f32, f32) = (360.0, 140.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
-empty_settings!();
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub history_seconds: u8,
+    pub show_clutch: bool,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            history_seconds: 4,
+            show_clutch: true,
+        }
+    }
+}
+impl Settings {
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "historySeconds=4:full-window",
+        "El valor por defecto conserva 120 muestras (2,38 s a 20 ms) por compatibilidad visual",
+    )];
+    #[must_use]
+    pub fn normalized(&self) -> Self {
+        Self {
+            history_seconds: self.history_seconds.clamp(1, 8),
+            ..self.clone()
+        }
+    }
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = vantare_domain::input_telemetry::project(snapshot, prefs);
+        vm.show_clutch = self.show_clutch;
+        if !self.show_clutch {
+            vm.pedals[0] = None;
+        }
+        vm
+    }
+}
 
 pub(crate) struct Widget {
+    settings: Settings,
     vm: ViewModel,
     from: [Option<f64>; 3],
     started: Option<Instant>,
@@ -30,9 +65,11 @@ pub(crate) struct Widget {
 }
 
 impl Widget {
-    pub(crate) fn new(_settings: &Settings, prefs: Preferences) -> Self {
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
         Self {
-            vm: vantare_domain::input_telemetry::project(&Snapshot::default(), prefs),
+            settings: settings.clone(),
+            vm: settings.project(&Snapshot::default(), prefs),
             from: [None; 3],
             started: None,
             trace: Trace::default(),
@@ -45,8 +82,11 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let trace_changed = self.trace.push(snapshot);
-        let next = vantare_domain::input_telemetry::project(snapshot, prefs);
+        let trace_changed = self.trace.push_with_window(
+            snapshot,
+            Duration::from_secs(u64::from(self.settings.history_seconds)),
+        );
+        let next = self.settings.project(snapshot, prefs);
         if next.pedals != self.vm.pedals {
             let now = Instant::now();
             self.from = self.pedals_at(now);
@@ -259,9 +299,14 @@ fn paint_bars(
 ) {
     let width = SIZE.0;
     let track_h = (SIZE.1 - 10.0 - body_top - 9.0 - if has_trace { 36.0 } else { 0.0 }).max(40.0);
-    let column_w = (width - 12.0 - bars_left - 20.0) / 3.0;
+    let count = if vm.show_clutch { 3.0 } else { 2.0 };
+    let column_w = (width - 12.0 - bars_left - 10.0 * (count - 1.0)) / count;
     for (i, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
-        let middle = bars_left + i as f32 * (column_w + 10.0) + column_w / 2.0;
+        if i == 0 && !vm.show_clutch {
+            continue;
+        }
+        let index = if vm.show_clutch { i } else { i - 1 };
+        let middle = bars_left + index as f32 * (column_w + 10.0) + column_w / 2.0;
         window.paint_quad(quad(
             rect(middle - 6.0, body_top, 12.0, track_h),
             Corners::all(px(3.0)),
@@ -343,6 +388,57 @@ fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn selected_history_window_changes_the_projected_observed_trace() {
+        let snapshots = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/input-telemetry.sequence.json"
+        ))
+        .expect("secuencia Workshop DTO v4");
+        let prefs = Preferences::default();
+        let mut default = Widget::new(&Settings::default(), prefs);
+        let mut short = Widget::new(
+            &Settings {
+                history_seconds: 1,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        for (index, snapshot) in snapshots.iter().enumerate() {
+            let mut snapshot = snapshot.clone();
+            snapshot.origin.received_at = Duration::from_millis(index as u64 * 100);
+            default.ingest(&snapshot, prefs);
+            short.ingest(&snapshot, prefs);
+        }
+        assert!(short.trace.samples().len() < default.trace.samples().len());
+        assert_eq!(short.trace.samples().back(), default.trace.samples().back());
+    }
+
+    #[test]
+    fn hiding_clutch_removes_its_displayed_value_from_the_projection() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.player = Some(vantare_domain::Player {
+            telemetry: vantare_domain::Telemetry {
+                clutch: vantare_domain::Quality::Reliable(0.4),
+                ..vantare_domain::Telemetry::default()
+            },
+            ..vantare_domain::Player::default()
+        });
+        let settings = Settings {
+            show_clutch: false,
+            ..Settings::default()
+        };
+        let vm = settings.project(&snapshot, Preferences::default());
+        assert!(!vm.show_clutch);
+        assert_eq!(vm.pedals[0], None);
+        assert_eq!(
+            Settings::default()
+                .project(&snapshot, Preferences::default())
+                .pedals[0],
+            Some(40.0)
+        );
+    }
+
     use super::*;
     use vantare_domain::{Player, Quality};
 
@@ -360,7 +456,7 @@ mod tests {
             ("4", "180 KPH", "7200")
         );
         assert_eq!(vm.pedals, [Some(6.0), Some(13.0), Some(75.0)]);
-        let mut widget = Widget::new(&Settings, Preferences::default());
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
         for snapshot in &snapshots {
             widget.ingest(snapshot, Preferences::default());
         }
@@ -387,7 +483,7 @@ mod tests {
     #[test]
     fn repaint_depends_on_visible_values_and_motion_finishes() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings, prefs);
+        let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = Snapshot::default();
         snapshot.state.source_state = vantare_domain::SourceState::Live;
         snapshot.state.player = Some(Player {

@@ -4,22 +4,21 @@ Proceso de usuario bajo demanda, sin GPUI/simuladores. Cuenta Clerk OAuth y
 datos Supabase son identidades/contratos distintos; sin puente validado no se
 reenvía OAuth bearer a RPC legacy. Núcleo es autoridad de licencia, no este host.
 
-Workspace aislado porque manifests/runtime/IPC están fuera de las rutas del
-worker. El Hub comparte únicamente la fuente DTO y usa pipes existentes con
-ACL/peer/nonce privado; no añade HTTP ni dependencias. Opus integra después
-el miembro services/dependencia y copia `vantare-services.exe` junto al Hub.
-Ninguna modificación de núcleo/launcher se declara entregada por este crate.
+Miembro de `native/`, con un único `Cargo.lock`, edición y lints compartidas.
+La integración de runtime/supervisor está autorizada en el corte posterior.
+La evidencia de los cortes previos se conserva como histórica; sus workspaces
+separados ya no existen. Logs y target previo: `C:/tmp/servicios-evidence/`.
 
 Gates (máximo dos jobs, una compilación a la vez):
 
 ```powershell
-cd native/services
+cd native
 cargo fmt --check
 cargo clippy --workspace --all-targets -j 2 -- -D warnings
 cargo test --workspace -j 2
 ```
 
-Ejecutar también los tres gates en `native/`. Tests HTTP solo loopback y entropía/
+Tests HTTP solo loopback y entropía/
 firmas generadas localmente. No `.env*`, secretos ni credenciales reales.
 Dependencias propuestas en el plan: ureq/TLS, Ed25519, bindings DPAPI y utilidades
 de formato/entropía/buffers mínimas; no runtime async, DB ni bus genérico.

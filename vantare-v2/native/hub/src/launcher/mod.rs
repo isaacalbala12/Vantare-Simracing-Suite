@@ -1,7 +1,7 @@
 //! Aplicaciones del sim-rig, independientes del supervisor core/overlays.
 pub mod chain;
 pub mod discovery;
-mod input;
+pub(crate) mod input;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]

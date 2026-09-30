@@ -288,8 +288,10 @@ impl App {
             Command::AccountBegin => {
                 let url = account.begin_login()?;
                 // Only an explicit IPC login action opens the external browser.
-                std::process::Command::new("explorer.exe")
-                    .arg(url.as_str())
+                // `explorer.exe <url>` trata las URL largas con parámetros como rutas
+                // y abre el Explorador; el manejador de protocolo abre el navegador.
+                std::process::Command::new("rundll32.exe")
+                    .args(["url.dll,FileProtocolHandler", url.as_str()])
                     .spawn()
                     .map_err(|_| Error::Unsupported)?;
                 self.login_pending = true;

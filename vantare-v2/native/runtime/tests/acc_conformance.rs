@@ -252,8 +252,8 @@ fn check_player(o: &Observation) {
     assert_eq!(player.telemetry.throttle, Quality::Reliable(0.0));
     assert_eq!(player.telemetry.brake, Quality::Reliable(0.0));
     assert_eq!(player.telemetry.gear, Quality::Reliable(0));
-    assert_eq!(player.fuel.level_l, Quality::Reliable(62.0));
-    assert_eq!(player.fuel.capacity_l, Quality::Reliable(120.0));
+    assert_eq!(player.fuel.level_l, Quality::Unavailable);
+    assert_eq!(player.fuel.capacity_l, Quality::Unavailable);
     assert!(
         (player.telemetry.engine_speed_rad_s.current().expect("rpm")
             - 1982.0 * std::f64::consts::TAU / 60.0)

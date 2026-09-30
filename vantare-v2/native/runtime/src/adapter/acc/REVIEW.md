@@ -1,5 +1,42 @@
 # ACC — revisión y evidencia (ISA-1425)
 
+## Fase 6 — ISA-1431 (2026-09-30)
+
+Microplan: `docs/superpowers/plans/2026-09-30-fase-6-acc-completo.md`.
+Worker Codex, revisión de diff pendiente de Opus 5.5. Base `e172eb3f`;
+solo commits locales, sin push/PR/merge. Notion indisponible con excepción
+expresa del encargo; no se declara seguimiento remoto completado.
+
+El corte de fusión mantiene UDP actual frente a SHM obsoleta o inválida del
+jugador (posición, vueltas, tiempos, boxes, sector, pose y progreso).
+`live::poll` ahora conserva el avance de recepción UDP aunque sus valores no
+cambien; antes podía declarar silencio de una fuente que seguía publicando.
+Temperaturas UDP (bytes °C +273.15) completan physics ausente/obsoleta; nunca
+refrescan viento ni las entradas del jugador. SHM tiene prioridad cuando actual.
+Gap de 0 ms válido para posición >1; Int32::MAX/negativos siguen ausentes.
+
+**Corrección de la tabla histórica de fuel de abajo:** el PDF Kunos 1.8.12
+documenta physics.fuel @12 en kg y no da unidad de static.maxFuel @416.
+Hasta resolver físicamente la discrepancia, ambos quedan `Unavailable` en el
+modelo de litros. No se usa densidad inventada ni `Estimated` para disfrazar
+una unidad desconocida. Graphics.fuelXLap @1284 sí declara litros por vuelta:
+positivo y finito → Reliable; fuelEstimatedLaps @1412 → Estimated.
+Ambos caducan con graphics (500 ms/pausa). El núcleo respeta el dato nativo y
+no deriva consumo histórico sin un nivel en litros. `numberOfLaps` @172 está
+documentado como completadas, no duración: `laps_total` sigue ausente.
+
+Regresiones: tres tests rojos antes de fusión (`acc-f6-cut1-red.log`) y uno de
+UDP sin cambios (`acc-f6-live-red.log`); 26 tests ACC pasan después.
+Workspace test PASS en corte 1; fmt workspace falla en `ui/src/app.rs:385`
+(ajeno). Primer clippy global: E0425 en UI; se comprueba tras regenerar solo
+los artefactos domain: clippy workspace PASS tras limpiar únicamente ese
+paquete del target propio, sin editar fuentes ajenas. Runtime clippy PASS.
+Logs en `C:/tmp/acc-f6-*.log`.
+El corpus real y su hash no se alteran; los nuevos vectores no son capturas.
+
+La aceptación completa sigue pendiente de capturas físicas y resolución de
+las unidades del nivel/capacidad; no se declara ACC completo en producto.
+
 ## Clima y daños — fase 2 (ISA-1427)
 
 Alcance del worker: solo adaptador ACC y tests ACC; sin dependencias nuevas.

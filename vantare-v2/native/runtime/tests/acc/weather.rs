@@ -28,6 +28,8 @@ fn udp_weather(rain: u8, wetness: u8) -> Vec<u8> {
     // temperaturas=2, nubes=1; lluvia y humedad en los bytes siguientes.
     b[33] = rain;
     b[34] = wetness;
+    b[30] = 20;
+    b[31] = 35;
     b
 }
 
@@ -75,7 +77,7 @@ fn sdk_udp_fractions_are_validated_and_do_not_refresh_shm() {
     // 4/10 y 7/10, no categorías /5 ni porcentajes /100.
     assert_eq!(w.rain, Quality::Reliable(0.4));
     assert_eq!(w.track_wetness, Quality::Reliable(0.7));
-    assert_eq!(w.air_temperature_k, Quality::Stale(293.15));
+    assert_eq!(w.air_temperature_k, Quality::Reliable(293.15));
     assert_eq!(w.wind_speed_mps, Quality::Stale(4.5));
     let o = t.observe(ms(1600)).expect("caducidad UDP");
     assert_eq!(o.state.session.weather.rain, Quality::Stale(0.4));

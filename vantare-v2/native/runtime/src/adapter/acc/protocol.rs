@@ -45,6 +45,8 @@ pub(super) struct SessionUpdate {
     pub(super) phase: u8,
     pub(super) elapsed: f64,
     pub(super) end: f64,
+    pub(super) air_temperature_k: f64,
+    pub(super) track_temperature_k: f64,
     pub(super) rain: f64,
     pub(super) wetness: f64,
 }
@@ -195,7 +197,10 @@ fn read_session(r: &mut Reader<'_>) -> io::Result<Message> {
     if r.u8()? > 0 {
         r.take(8)?;
     } // replay clocks
-    r.take(7)?; // time of day, temperatures, clouds; temperaturas desde physics.
+    r.take(4)?; // time of day
+    let air_temperature_k = f64::from(r.u8()?) + 273.15;
+    let track_temperature_k = f64::from(r.u8()?) + 273.15;
+    r.u8()?; // clouds, sin señal común
     // SDK Kunos v4: RainLevel/Wetness = byte / 10, fracciones, no porcentajes.
     let rain = f64::from(r.u8()?) / 10.0;
     let wetness = f64::from(r.u8()?) / 10.0;
@@ -207,6 +212,8 @@ fn read_session(r: &mut Reader<'_>) -> io::Result<Message> {
         phase,
         elapsed,
         end,
+        air_temperature_k,
+        track_temperature_k,
         rain,
         wetness,
     }))

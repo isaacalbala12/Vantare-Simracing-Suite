@@ -108,6 +108,25 @@ gapAhead @1580 ms; numberOfLaps @172 vueltas completadas. Physics fuel
 
 Gates iniciales: fmt FAIL ajeno en `ui/src/app.rs:385`; clippy FAIL ajeno
 E0425 en `ui/src/standings/mod.rs:55`, falta `standings::project_player_class`.
-No se modifican archivos de otros workers. Test workspace pendiente.
+No se modifican archivos de otros workers. Test workspace inicial PASS (exit 0);
+el símbolo sí existe en HEAD: el primer E0425 no se reproduce en test y requiere
+relectura del siguiente clippy, sin atribuirlo a una edición de este worker.
 Los logs se conservan en `C:/tmp/acc-f6-*.log`;
 la evidencia resumida y límites quedarán aquí y en `adapter/acc/REVIEW.md`.
+
+### Corte 1 — fusión y señales
+
+Regresiones antes del arreglo: tres FAIL (SHM pisa posición UDP, kg publicados
+como litros, temperatura UDP omitida), `acc-f6-cut1-red.log`; UDP sin cambio de
+valor no publica nueva recepción, FAIL en `acc-f6-live-red.log`.
+Después: 26 tests ACC PASS, incluidos cuatro nuevos, en `acc-f6-cut1-acc.log`.
+Se conservan las señales UDP frescas frente a SHM ausente/obsoleta; native
+fuelXLap y autonomía usan exclusivamente el reloj graphics; physics.fuel y
+maxFuel ya no se publican como litros. Temperaturas UDP completan physics sin
+rejuvenecer viento/entradas. `numberOfLaps` no se convierte en duración.
+El corpus y el hash permanecen intactos. Gates: test workspace PASS; clippy
+workspace PASS tras `cargo clean --offline -p vantare-domain` en el target
+propio (artefacto anterior incompatible; cero cambios de fuentes ajenas).
+Fmt workspace FAIL únicamente en `ui/src/app.rs:385`, ya presente al entrar;
+rustfmt de todas las rutas Rust tocadas PASS. Logs `acc-f6-cut1-{fmt,test}.log`,
+`acc-f6-cut1-clippy-rebuilt.log`. No se declara fmt global verde.

@@ -168,18 +168,37 @@ fn paint_shadow_strip(window: &mut Window, cx: &mut App, width: f32, height: f32
 
 /// Franja de bandera (`.vf-standings::before`): 130 x 50 arriba a la derecha,
 /// `linear-gradient(131deg, ... 37%-54% a 28 %, 62%-79% a 17 %)`.
-fn paint_flag_ribbon(window: &mut Window, flag: Option<&FlagKind>, width: f32) {
-    let (bw, bh) = (130.0f32, 50.0f32);
+fn paint_flag_ribbon(window: &mut Window, flag: Option<&FlagKind>, width: f32, broadcast: bool) {
+    let (bw, bh) = if broadcast {
+        ((width - 250.0).clamp(0.0, 180.0), 46.0)
+    } else {
+        (130.0f32, 50.0f32)
+    };
     let (x0, y0) = (width - bw, 0.0f32);
     let angle = 131.0f32.to_radians();
     let (dx, dy) = (angle.sin(), -angle.cos());
     let length = (bw * angle.sin()).abs() + (bh * angle.cos()).abs();
     let (cx, cy) = (x0 + bw / 2.0, y0 + bh / 2.0);
     let base = [(x0, y0), (x0 + bw, y0), (x0 + bw, y0 + bh), (x0, y0 + bh)];
-    let rgb = flag_rgb(flag);
+    let rgb = if broadcast { 0xc1121f } else { flag_rgb(flag) };
+    if broadcast {
+        window.paint_quad(fill(
+            rect(x0, y0, bw, bh),
+            linear_gradient(
+                110.0,
+                linear_color_stop(col(rgb, 0.0), 0.55),
+                linear_color_stop(col(rgb, 0.16), 1.0),
+            ),
+        ));
+    }
     // t = ((p - centro) . dir) / L + 0.5  =>  p . dir = (t - 0.5) L + centro . dir
     let centre = cx * dx + cy * dy;
-    for (from, to, alpha) in [(0.37f32, 0.54f32, 0.28f32), (0.62, 0.79, 0.17)] {
+    let bands = if broadcast {
+        [(0.34f32, 0.48f32, 0.30f32), (0.57, 0.76, 0.23)]
+    } else {
+        [(0.37f32, 0.54f32, 0.28f32), (0.62, 0.79, 0.17)]
+    };
+    for (from, to, alpha) in bands {
         let low = (from - 0.5) * length + centre;
         let high = (to - 0.5) * length + centre;
         let poly = clip_half_plane(&base, dx, dy, low);
@@ -237,8 +256,15 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
         transparent(),
         BorderStyle::default(),
     ));
+    if plan.brand_band > 0.0 {
+        paint_rect(window, 0.0, 0.0, width, 22.0, col(0x000000, 0.10));
+        paint_rect(window, 0.0, 21.0, width, 1.0, col(tokens::INK, 0.10));
+        paint_logo_size(window, cx, 10.0, 2.0, 18.0);
+        let brand = ink(12.0, 700.0, 0.075, col(tokens::INK, 1.0));
+        text::draw(window, cx, "VANTARE", 34.0, 15.0, &brand);
+    }
     if plan.has_header {
-        paint_flag_ribbon(window, vm.flag.as_ref(), width);
+        paint_flag_ribbon(window, vm.flag.as_ref(), width, config.broadcast);
     }
 
     if matches!(vm.status, Status::Ready | Status::Stale) && !vm.rows.is_empty() {
@@ -284,7 +310,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
     }
     // Fila de cabecera (thead).
     let head_top = plan.table_top;
-    let integrated = plan.identity_span > 0 && !plan.external_header;
+    let integrated = !config.broadcast && plan.identity_span > 0 && !plan.external_header;
     let head_height = plan.head_row;
     // Fondo y borde de cada th.
     let mut x = 0.0;
@@ -322,7 +348,19 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
     }
     for &(first, span, tx, tw) in &th {
         if integrated && first == 0 && span == plan.identity_span {
-            paint_session_header(scene, labels, tx, head_top, window, cx);
+            if plan.has_header {
+                paint_session_header(scene, labels, tx, head_top, window, cx);
+            } else {
+                let font = ink(8.0, 600.0, 0.025, col(tokens::MUTED, 1.0));
+                text::draw(
+                    window,
+                    cx,
+                    labels.driver_name,
+                    tx + 8.0,
+                    head_top + 18.0,
+                    &font,
+                );
+            }
             continue;
         }
         let column = plan.columns[first];
@@ -339,8 +377,35 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
         );
     }
 
-    // Filas.
+    // Bandas del modo multiclase, fuera de las filas de pilotos.
     let body_top = head_top + head_height;
+    for (top, class) in &plan.class_bands {
+        let y = body_top + top;
+        let id = class.trim().to_uppercase();
+        let color = if id.contains("HYPER") || ["HYP", "DP"].contains(&id.as_str()) {
+            0xe63946
+        } else if id.contains("LMP") || id == "P2" {
+            0x5b8bd6
+        } else if id.contains("GTE") || id.contains("GT3") {
+            0xe2c568
+        } else {
+            tokens::MUTED
+        };
+        let alpha = if color == tokens::MUTED { 0.05 } else { 0.11 };
+        window.paint_quad(fill(
+            rect(0.0, y, width, 28.0),
+            linear_gradient(
+                180.0,
+                linear_color_stop(col(color, alpha), 0.0),
+                linear_color_stop(col(color, 0.0), 1.0),
+            ),
+        ));
+        paint_rect(window, 0.0, y, width, 1.0, col(tokens::INK, 0.10));
+        paint_rect(window, 0.0, y + 27.0, width, 1.0, col(tokens::INK, 0.10));
+        paint_rect(window, 10.0, y + 7.0, 2.0, 14.0, col(color, 1.0));
+        let font = ink(9.0, 700.0, 0.14, col(color, 1.0));
+        text::draw(window, cx, &id, 20.0, y + 18.0, &font);
+    }
     for ghost in &scene.frame.ghosts {
         // Los fantasmas guardan el top relativo al cuerpo de la tabla.
         paint_row(
@@ -357,7 +422,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
     for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
         let vis = scene.frame.row(&row.id);
         let last = index + 1 == plan.visible_rows;
-        let top = body_top + index as f32 * ROW_HEIGHT;
+        let top = body_top + plan.row_tops[index];
         paint_row(scene, row, top, &vis, last, body_top, window, cx);
     }
     let _ = width;
@@ -373,7 +438,12 @@ fn paint_session_header(
 ) {
     let Scene { vm, plan, .. } = scene;
     let mut x = left + 10.0;
-    let mid = top + model::SESSION_HEADER_HEIGHT / 2.0;
+    let mid = top
+        + if scene.config.broadcast {
+            46.0
+        } else {
+            model::SESSION_HEADER_HEIGHT
+        } / 2.0;
     if plan.brand_visible {
         paint_logo(window, cx, x, mid - 12.0);
         let brand = ink(12.0, 700.0, 0.075, col(tokens::INK, 1.0));
@@ -410,39 +480,50 @@ fn paint_session_header(
             1.0,
         ),
     );
-    let type_text = text::fit(window, &session_label, &type_ink, 68.0);
-    let clock_w = text::width(window, &vm.remaining_text, &clock_ink);
-    let type_w = text::width(window, &type_text, &type_ink);
-    let context_w = 10.0 + type_w.max(clock_w);
-    let context_h = 7.0 + 4.0 + text::css_normal_line(15.0);
-    let context_top = mid - context_h / 2.0;
-    paint_rect(
-        window,
-        x,
-        context_top,
-        1.0,
-        context_h,
-        col(tokens::INK, 0.23),
-    );
-    let text_x = x + 1.0 + 10.0;
-    text::draw(
-        window,
-        cx,
-        &type_text,
-        text_x,
-        text::baseline(context_top, 7.0, 7.0).round(),
-        &type_ink,
-    );
-    let clock_top = context_top + 7.0 + 4.0;
-    text::draw(
-        window,
-        cx,
-        &vm.remaining_text,
-        text_x,
-        text::baseline(clock_top, text::css_normal_line(15.0), 15.0).round(),
-        &clock_ink,
-    );
-    x += 1.0 + context_w + 8.0;
+    if plan.brand_visible {
+        let type_text = text::fit(window, &session_label, &type_ink, 68.0);
+        let clock_w = text::width(window, &vm.remaining_text, &clock_ink);
+        let type_w = text::width(window, &type_text, &type_ink);
+        let context_w = 10.0 + type_w.max(clock_w);
+        let context_h = 7.0 + 4.0 + text::css_normal_line(15.0);
+        let context_top = mid - context_h / 2.0;
+        paint_rect(
+            window,
+            x,
+            context_top,
+            1.0,
+            context_h,
+            col(tokens::INK, 0.23),
+        );
+        let text_x = x + 1.0 + 10.0;
+        text::draw(
+            window,
+            cx,
+            &type_text,
+            text_x,
+            text::baseline(context_top, 7.0, 7.0).round(),
+            &type_ink,
+        );
+        let clock_top = context_top + 7.0 + 4.0;
+        text::draw(
+            window,
+            cx,
+            &vm.remaining_text,
+            text_x,
+            text::baseline(clock_top, text::css_normal_line(15.0), 15.0).round(),
+            &clock_ink,
+        );
+        x += 1.0 + context_w + 8.0;
+    } else {
+        let kind = ink(10.0, 600.0, 0.09, type_ink.color);
+        let clock = ink(17.0, 700.0, -0.025, clock_ink.color);
+        let line = text::css_normal_line(17.0);
+        let base = text::baseline(mid - line / 2.0, line, 17.0).round();
+        text::draw(window, cx, &session_label, x, base, &kind);
+        x += text::width(window, &session_label, &kind) + 7.0;
+        text::draw(window, cx, &vm.remaining_text, x, base, &clock);
+        x += text::width(window, &vm.remaining_text, &clock) + 8.0;
+    }
     // Chip de clase.
     let class_text: String = vm
         .active_class
@@ -542,6 +623,10 @@ fn logo_24() -> Option<Vec<u8>> {
 }
 
 fn paint_logo(window: &mut Window, cx: &mut App, x: f32, y: f32) {
+    paint_logo_size(window, cx, x, y, 24.0);
+}
+
+fn paint_logo_size(window: &mut Window, cx: &mut App, x: f32, y: f32, size: f32) {
     static IMAGE: OnceLock<Option<Arc<gpui::RenderImage>>> = OnceLock::new();
     let image = IMAGE.get_or_init(|| {
         gpui::Image::from_bytes(gpui::ImageFormat::Png, logo_24()?)
@@ -549,7 +634,7 @@ fn paint_logo(window: &mut Window, cx: &mut App, x: f32, y: f32) {
             .ok()
     });
     if let Some(image) = image {
-        let bounds = rect(x, y, 24.0, 24.0);
+        let bounds = rect(x, y, size, size);
         let _ = window.paint_image(
             bounds,
             bounds,
@@ -575,6 +660,36 @@ fn paint_column_label(
 ) {
     let vm = &scene.vm;
     let label = labels.metric(column.metric, vm.pace_session);
+    if scene.config.broadcast {
+        paint_rect(window, tx, head_top, tw, head_height, col(0, 0.13));
+        let font = ink(8.0, 600.0, 0.025, col(0xbdbfc4, 1.0));
+        let align = match column.metric {
+            Metric::Position | Metric::DriverNumber | Metric::Gap => Align::Center,
+            Metric::DriverName => Align::Left,
+            _ => Align::Right,
+        };
+        let pad = if column.metric == Metric::DriverName {
+            24.0
+        } else {
+            8.0
+        };
+        let x = aligned_x(
+            align,
+            tx + pad,
+            tw - pad - 8.0,
+            text::width(window, label, &font),
+        );
+        let line = text::css_normal_line(8.0);
+        text::draw(
+            window,
+            cx,
+            label,
+            x,
+            text::baseline(head_top + (head_height - line) / 2.0, line, 8.0).round(),
+            &font,
+        );
+        return;
+    }
     let color = if vm.pace_session && column.metric == Metric::BestLap {
         col(tokens::INK, 1.0)
     } else {
@@ -645,7 +760,18 @@ fn paint_row(
     let paint = |window: &mut Window, cx: &mut App| {
         // Fondo de fila (jugador) y flash de subida/bajada.
         if row.is_player {
-            paint_rect(window, 0.0, top, width, ROW_HEIGHT, col(0xbfc2ca, 0.17));
+            if config.broadcast {
+                window.paint_quad(quad(
+                    rect(0.0, top, width, ROW_HEIGHT),
+                    Corners::all(px(6.0)),
+                    col(0xbfc2ca, 0.23),
+                    Edges::all(px(0.0)),
+                    transparent(),
+                    BorderStyle::default(),
+                ));
+            } else {
+                paint_rect(window, 0.0, top, width, ROW_HEIGHT, col(0xbfc2ca, 0.17));
+            }
             window.paint_quad(fill(
                 rect(0.0, top, width, ROW_HEIGHT),
                 linear_gradient(
@@ -697,7 +823,7 @@ fn paint_row(
             paint_cell(scene, row, *column, x, cw, top, vis, pace, window, cx);
             x += cw;
         }
-        if row.is_player {
+        if row.is_player && !config.broadcast {
             // Barra roja de 2 x 20 en la primera celda.
             paint_rect(
                 window,
@@ -752,21 +878,33 @@ fn paint_cell(
             };
             let i = ink(14.0, 600.0, -0.02, color);
             let w = text::width(window, &value, &i);
-            let tx = aligned_x(Align::Center, x + 4.0, cw - 8.0, w);
+            let tx = aligned_x(column.align.unwrap_or(Align::Center), x + 4.0, cw - 8.0, w);
             text::draw(window, cx, &value, tx, base_for(14.0), &i);
         }
         Metric::DriverNumber => {
             let i = ink(11.0, 600.0, -0.025, col(0xa5a5ab, 1.0));
             let w = text::width(window, &row.driver_number, &i);
-            let tx = aligned_x(Align::Center, x + 8.0, cw - 16.0, w);
+            let tx = aligned_x(column.align.unwrap_or(Align::Center), x + 8.0, cw - 16.0, w);
             text::draw(window, cx, &row.driver_number, tx, base_for(11.0), &i);
         }
         Metric::DriverName => {
             let i = ink(14.0, 700.0, -0.025, col(tokens::INK, 1.0));
-            let name = row.driver_name.to_uppercase();
-            let avail = cw - 16.0 - 19.0 - 7.0;
+            let name = vantare_domain::standings::driver_name(
+                &row.driver_name,
+                column.name_mode.as_str(),
+                column.max_chars,
+            )
+            .to_uppercase();
+            let pad = if scene.config.broadcast { 24.0 } else { 8.0 };
+            let avail = cw - pad - 8.0 - 19.0 - 7.0;
             let shown = text::fit(window, &name, &i, avail);
-            text::draw(window, cx, &shown, x + 8.0, base_for(14.0), &i);
+            let name_x = aligned_x(
+                column.align.unwrap_or(Align::Left),
+                x + pad,
+                avail,
+                text::width(window, &shown, &i),
+            );
+            text::draw(window, cx, &shown, name_x, base_for(14.0), &i);
             // Chip de cambio de posicion (+n / -n).
             if let Some((chip, alpha)) = &vis.chip {
                 let ci = ink(9.0, 700.0, -0.039, col(tokens::INK, *alpha));
@@ -836,8 +974,19 @@ fn paint_cell(
             };
             let i = ink(14.0, weight, -0.025, color);
             let w = text::width(window, &value, &i);
-            let align = column.align.unwrap_or(Align::Right);
-            let tx = aligned_x(align, x + 8.0, cw - 16.0, w);
+            let align = column
+                .align
+                .unwrap_or(if column.metric == Metric::VehicleClass {
+                    Align::Center
+                } else {
+                    Align::Right
+                });
+            let pad = if scene.config.broadcast && is_lap {
+                11.0
+            } else {
+                8.0
+            };
+            let tx = aligned_x(align, x + pad, cw - 2.0 * pad, w);
             if column.metric == Metric::BestLap {
                 // Barrido de mejora de vuelta bajo el texto y rombo de mejor de sesion.
                 if let Some((session, alpha, frac)) = vis.sweep {
@@ -848,6 +997,20 @@ fn paint_cell(
                     };
                     paint_sweep(window, x, cw, top, base, alpha, frac);
                 }
+            }
+            if scene.config.broadcast && is_lap {
+                window.paint_quad(quad(
+                    rect(x + 6.0, top + 2.0, cw - 12.0, 26.0),
+                    Corners::all(px(6.0)),
+                    linear_gradient(
+                        145.0,
+                        linear_color_stop(col(0xffffff, 0.09), 0.0),
+                        linear_color_stop(col(0xffffff, 0.03), 0.65),
+                    ),
+                    Edges::all(px(0.0)),
+                    transparent(),
+                    BorderStyle::default(),
+                ));
             }
             text::draw(window, cx, &value, tx, base_for(14.0), &i);
             if column.metric == Metric::BestLap && vis.best_marker > 0.0 {
@@ -927,6 +1090,25 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
     }
     let width = config.width;
     let height = scene.height;
+    if !config.footer_slots.is_empty()
+        || config
+            .footer_ids
+            .iter()
+            .any(|id| !["none", "track", "estimatedLaps"].contains(&id.as_str()))
+    {
+        paint_info_cells(
+            &vm.footer_cells,
+            width,
+            height,
+            config.footer_height(),
+            !config.footer_slots.is_empty(),
+            1.0,
+            width,
+            window,
+            cx,
+        );
+        return;
+    }
     // El flex del producto deja el pie en 342,06 (0,94 px solapado con la tabla).
     let top = height - 21.94;
     paint_rect(window, 0.0, top, width, 21.94, col(0x000000, 0.15));
@@ -960,6 +1142,109 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
         text::draw(window, cx, label, x, base, &label_ink);
         text::draw(window, cx, value, x + lw + 5.0, base, &value_ink);
         x += lw + 5.0 + text::width(window, value, &value_ink) + 16.0;
+    }
+}
+
+/// El mismo pie recibe celdas puras; no lee señales ni persistencia al pintar.
+pub(crate) fn paint_info_cells(
+    cells: &[vantare_domain::standings::InfoCell],
+    width: f32,
+    height: f32,
+    reserve: f32,
+    slots: bool,
+    unit: f32,
+    layout_width: f32,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let estimated = cells
+        .iter()
+        .map(|cell| {
+            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 12.0
+        })
+        .sum::<f32>()
+        + 14.0 * cells.len().saturating_sub(1) as f32;
+    let factor = if slots && cells.len() <= 5 {
+        ((layout_width - 24.0).max(80.0) * 0.97 / estimated.max(1.0)).min(1.0)
+    } else {
+        1.0
+    };
+    let label_size = if slots {
+        (width / unit * 0.02).clamp(7.0, 9.0)
+    } else {
+        7.0
+    } * factor
+        * unit;
+    let value_size = if slots {
+        (width / unit * 0.029).clamp(9.0, 11.0)
+    } else {
+        10.0
+    } * factor
+        * unit;
+    let pair_gap = if slots { 6.0 } else { 5.0 } * unit;
+    let gap = if slots { 14.0 } else { 16.0 } * unit;
+    let mut lines: Vec<Vec<(&vantare_domain::standings::InfoCell, f32)>> = vec![Vec::new()];
+    let mut used = 0.0;
+    for cell in cells {
+        let w = text::width(
+            window,
+            &cell.label,
+            &ink(
+                label_size,
+                600.0,
+                if slots { 0.1 } else { 0.055 },
+                col(tokens::MUTED, 1.0),
+            ),
+        ) + pair_gap
+            + text::width(
+                window,
+                &cell.value,
+                &ink(value_size, 650.0, -0.01, col(tokens::INK, 1.0)),
+            );
+        if slots && cells.len() > 5 && used > 0.0 && used + gap + w > width - 24.0 * unit {
+            lines.push(Vec::new());
+            used = 0.0;
+        }
+        if let Some(line) = lines.last_mut() {
+            line.push((cell, w));
+        }
+        used += w + if used > 0.0 { gap } else { 0.0 };
+    }
+    let physical_height = if slots {
+        16.0 * unit + value_size + lines.len().saturating_sub(1) as f32 * (value_size + 4.0 * unit)
+    } else {
+        reserve
+    };
+    let top = height - physical_height;
+    if !slots {
+        paint_rect(window, 0.0, top, width, physical_height, col(0, 0.15));
+    }
+    paint_rect(window, 0.0, top, width, unit, col(tokens::INK, 0.10));
+    let first_baseline = top
+        + if slots {
+            8.0 * unit + text::css_ascent(value_size)
+        } else {
+            15.0 * unit
+        };
+    for (index, line) in lines.iter().enumerate() {
+        let total =
+            line.iter().map(|(_, w)| w).sum::<f32>() + gap * line.len().saturating_sub(1) as f32;
+        let mut x = (width - total) / 2.0;
+        let y = first_baseline + index as f32 * (value_size + 4.0 * unit);
+        for (cell, w) in line {
+            let alpha = if cell.stale { 0.6 } else { 1.0 };
+            let label = ink(
+                label_size,
+                600.0,
+                if slots { 0.1 } else { 0.055 },
+                col(tokens::MUTED, alpha),
+            );
+            let value = ink(value_size, 650.0, -0.01, col(tokens::INK, alpha));
+            text::draw(window, cx, &cell.label, x, y, &label);
+            let offset = text::width(window, &cell.label, &label) + pair_gap;
+            text::draw(window, cx, &cell.value, x + offset, y, &value);
+            x += w + gap;
+        }
     }
 }
 
@@ -1053,7 +1338,7 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
     }
     for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
         let vis = scene.frame.row(&row.id);
-        let top = origin + index as f32 * ROW_HEIGHT + vis.dy;
+        let top = origin + plan.row_tops[index] + vis.dy;
         draw_one(row, top, &vis, window, cx);
     }
 }

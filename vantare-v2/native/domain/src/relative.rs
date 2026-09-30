@@ -15,6 +15,7 @@ pub enum Side {
     Behind,
 }
 
+#[allow(clippy::struct_excessive_bools)] // Calidad independiente por celda, no estados excluyentes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Row {
     pub id: CarId,
@@ -25,6 +26,8 @@ pub struct Row {
     pub class: String,
     pub gap: String,
     pub best_lap: String,
+    pub last_lap: String,
+    pub last_lap_stale: bool,
     pub position_stale: bool,
     pub best_lap_stale: bool,
     pub gap_stale: bool,
@@ -49,25 +52,46 @@ pub struct ViewModel {
 /// Ventana pura: delante lejos→cerca, jugador, detrás cerca→lejos. Un gap
 /// ausente, no finito o cero no demuestra de qué lado está un rival.
 pub fn track_window(cars: &[Car], player: CarId, range: usize) -> Vec<Option<&Car>> {
-    let mut slots = vec![None; range * 2 + 1];
+    track_window_configured(cars, player, range, range, false)
+}
+
+pub fn track_window_configured(
+    cars: &[Car],
+    player: CarId,
+    ahead_count: usize,
+    behind_count: usize,
+    same_class: bool,
+) -> Vec<Option<&Car>> {
+    let ahead_count = ahead_count.min(8);
+    let behind_count = behind_count.min(8);
+    let mut slots = vec![None; ahead_count + behind_count + 1];
     let Some(anchor) = cars.iter().find(|car| car.id == player) else {
         return slots;
     };
-    slots[range] = Some(anchor);
+    slots[ahead_count] = Some(anchor);
     for ahead in [true, false] {
         let mut neighbors: Vec<_> = cars
             .iter()
             .filter_map(|car| {
+                if same_class
+                    && car.class.as_ref().map(|c| c.id) != anchor.class.as_ref().map(|c| c.id)
+                {
+                    return None;
+                }
                 let gap = relative_seconds(car)?;
                 (car.id != player && gap != 0.0 && (gap > 0.0) == ahead).then_some((car, gap.abs()))
             })
             .collect();
         neighbors.sort_by(|(a, da), (b, db)| da.total_cmp(db).then(a.id.0.cmp(&b.id.0)));
-        for (index, (car, _)) in neighbors.into_iter().take(range).enumerate() {
+        for (index, (car, _)) in neighbors
+            .into_iter()
+            .take(if ahead { ahead_count } else { behind_count })
+            .enumerate()
+        {
             slots[if ahead {
-                range - 1 - index
+                ahead_count - 1 - index
             } else {
-                range + 1 + index
+                ahead_count + 1 + index
             }] = Some(car);
         }
     }
@@ -94,22 +118,46 @@ pub(crate) fn source_status(state: SourceState, prefs: Preferences) -> Option<St
     .map(str::to_owned)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Content {
+    pub range_ahead: usize,
+    pub range_behind: usize,
+    pub same_class: bool,
+    pub include_player: bool,
+}
+impl Default for Content {
+    fn default() -> Self {
+        Self {
+            range_ahead: RANGE,
+            range_behind: RANGE,
+            same_class: false,
+            include_player: true,
+        }
+    }
+}
+
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_content(snapshot, prefs, Content::default())
+}
+
+pub fn project_content(snapshot: &Snapshot, prefs: Preferences, content: Content) -> ViewModel {
+    let ahead = content.range_ahead.min(8);
+    let behind = content.range_behind.min(8);
     let state = &snapshot.state;
     let session = &state.session;
     let player = state.player_car();
-    let slots = if state.source_state == SourceState::Live {
+    let mut slots = if state.source_state == SourceState::Live {
         player.map_or_else(
-            || vec![None; RANGE * 2 + 1],
+            || vec![None; ahead + behind + 1],
             |car| {
-                track_window(&state.cars, car.id, RANGE)
+                track_window_configured(&state.cars, car.id, ahead, behind, content.same_class)
                     .into_iter()
                     .enumerate()
                     .map(|(index, car)| {
                         car.map(|car| {
                             row(
                                 car,
-                                match index.cmp(&RANGE) {
+                                match index.cmp(&ahead) {
                                     std::cmp::Ordering::Less => Side::Ahead,
                                     std::cmp::Ordering::Equal => Side::Player,
                                     std::cmp::Ordering::Greater => Side::Behind,
@@ -122,8 +170,11 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             },
         )
     } else {
-        vec![None; RANGE * 2 + 1]
+        vec![None; ahead + behind + 1]
     };
+    if !content.include_player {
+        slots.remove(ahead);
+    }
     let player_badge = player.map_or_else(String::new, |car| {
         let Some(position) = displayed(&car.position).filter(|p| **p > 0) else {
             return String::new();
@@ -168,6 +219,84 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     }
 }
 
+/// Footer slots reutilizan el vocabulario común; Relative no publica lapText.
+pub fn footer_slots(
+    snapshot: &Snapshot,
+    prefs: Preferences,
+    vm: &ViewModel,
+    ids: &[String],
+) -> Vec<crate::standings::InfoCell> {
+    let mut cells = crate::standings::information(snapshot, prefs, ids, true, None);
+    let player = vm
+        .slots
+        .iter()
+        .flatten()
+        .find(|row| row.side == Side::Player);
+    for cell in &mut cells {
+        if player.is_none() && ["position", "bestLap", "lastLap"].contains(&cell.id.as_str()) {
+            cell.value = PLACEHOLDER.into();
+            cell.stale = false;
+            continue;
+        }
+        match cell.id.as_str() {
+            "lap" => cell.value = PLACEHOLDER.into(),
+            "position" => {
+                if let Some(row) = player {
+                    cell.value.clone_from(&row.position);
+                    cell.stale = row.position_stale;
+                }
+            }
+            "gap" => {
+                if let Some(row) = player {
+                    cell.value.clone_from(&row.gap);
+                }
+            }
+            "bestLap" => {
+                if let Some(row) = player {
+                    cell.value.clone_from(&row.best_lap);
+                    cell.stale = row.best_lap_stale;
+                }
+            }
+            "lastLap" => {
+                if let Some(row) = player {
+                    cell.value.clone_from(&row.last_lap);
+                    cell.stale = row.last_lap_stale;
+                }
+            }
+            "time" => {
+                cell.value = if vm.remaining.is_empty() {
+                    PLACEHOLDER.into()
+                } else {
+                    vm.remaining.clone()
+                }
+            }
+            "track" => {
+                cell.value = if vm.track_temperature.is_empty() {
+                    PLACEHOLDER.into()
+                } else {
+                    vm.track_temperature.clone()
+                }
+            }
+            "ambient" => {
+                cell.value = if vm.air.is_empty() {
+                    PLACEHOLDER.into()
+                } else {
+                    vm.air.clone()
+                }
+            }
+            "wind" => {
+                cell.value = if vm.wind.is_empty() {
+                    PLACEHOLDER.into()
+                } else {
+                    vm.wind.clone()
+                }
+            }
+            _ => {}
+        }
+    }
+    cells
+}
+
 fn row(car: &Car, side: Side, race: bool) -> Row {
     Row {
         id: car.id,
@@ -187,6 +316,8 @@ fn row(car: &Car, side: Side, race: bool) -> Row {
             crate::multiclass_relative::gap_text(relative_seconds(car))
         },
         best_lap: format::lap_time(displayed(&car.best_lap_s).copied()),
+        last_lap: format::lap_time(displayed(&car.last_lap_s).copied()),
+        last_lap_stale: matches!(car.last_lap_s, Quality::Stale(_)),
         position_stale: matches!(car.position, Quality::Stale(_)),
         best_lap_stale: matches!(car.best_lap_s, Quality::Stale(_)),
         gap_stale: matches!(car.relative_s, Quality::Stale(_)),
@@ -245,6 +376,92 @@ mod tests {
             ..Car::default()
         });
         snapshot
+    }
+
+    #[test]
+    fn configured_window_projects_asymmetric_ranges_class_and_player() {
+        let mut snapshot = scene();
+        snapshot.state.cars[0].class = Some(crate::Class {
+            id: crate::ClassId(1),
+            name: "GT3".into(),
+        });
+        for (id, gap, class) in [(8, 0.2, 2), (9, 0.5, 1), (10, -0.3, 1), (11, -0.8, 2)] {
+            snapshot.state.cars.push(Car {
+                id: CarId(id),
+                relative_s: Quality::Reliable(gap),
+                class: Some(crate::Class {
+                    id: crate::ClassId(class),
+                    name: class.to_string(),
+                }),
+                ..Car::default()
+            });
+        }
+        let prefs = Preferences::default();
+        for ahead in [0, 1, 8] {
+            for behind in [0, 2, 8] {
+                for same_class in [true, false] {
+                    let content = Content {
+                        range_ahead: ahead,
+                        range_behind: behind,
+                        same_class,
+                        include_player: true,
+                    };
+                    let vm = project_content(&snapshot, prefs, content);
+                    assert_eq!(vm.slots.len(), ahead + behind + 1);
+                    assert_eq!(vm.slots[ahead].as_ref().expect("jugador").id, CarId(7));
+                    if same_class {
+                        assert!(
+                            vm.slots
+                                .iter()
+                                .flatten()
+                                .all(|row| ![CarId(8), CarId(11)].contains(&row.id))
+                        );
+                    }
+                }
+            }
+        }
+        let vm = project_content(
+            &snapshot,
+            prefs,
+            Content {
+                include_player: false,
+                ..Content::default()
+            },
+        );
+        assert_eq!(vm.slots.len(), 6);
+        assert!(
+            vm.slots
+                .iter()
+                .flatten()
+                .all(|row| row.side != Side::Player)
+        );
+        snapshot.state.cars[0].last_lap_s = Quality::Stale(92.345);
+        let vm = project(&snapshot, prefs);
+        let cells = footer_slots(
+            &snapshot,
+            prefs,
+            &vm,
+            &["lastLap".into(), "lap".into(), "gap".into()],
+        );
+        assert_eq!(cells[0].value, "1:32.345");
+        assert!(cells[0].stale);
+        assert_eq!(cells[1].value, PLACEHOLDER);
+        assert_eq!(cells[2].value, PLACEHOLDER);
+        let without_player = project_content(
+            &snapshot,
+            prefs,
+            Content {
+                include_player: false,
+                ..Content::default()
+            },
+        );
+        let hidden = footer_slots(
+            &snapshot,
+            prefs,
+            &without_player,
+            &["position".into(), "lastLap".into()],
+        );
+        assert!(hidden.iter().all(|cell| cell.value == PLACEHOLDER));
     }
 
     #[test]

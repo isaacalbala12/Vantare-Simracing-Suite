@@ -209,6 +209,8 @@ mod tests {
             gap: "—".into(),
             best_lap: "—".into(),
             lap_delta: None,
+            last_lap: "—".into(),
+            last_lap_stale: false,
             position_stale: false,
             best_lap_stale: false,
             gap_stale: false,

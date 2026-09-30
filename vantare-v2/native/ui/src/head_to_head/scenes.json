@@ -1,0 +1,20 @@
+[
+  {
+    "name": "behind",
+    "snapshot": "../../fixtures/head-to-head.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "head-to-head",
+            "target": "behind"
+          }
+        }
+      ]
+    }
+  }
+]

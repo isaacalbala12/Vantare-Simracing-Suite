@@ -176,6 +176,18 @@ fn units(index: usize) -> Option<Units> {
 }
 
 impl State {
+    pub(super) fn select_demo_page(&mut self, page: crate::demo::CaptureSettingsPage) {
+        self.page = match page {
+            crate::demo::CaptureSettingsPage::Application => Page::Application,
+            crate::demo::CaptureSettingsPage::Appearance => Page::Appearance,
+            crate::demo::CaptureSettingsPage::Performance => Page::Performance,
+            crate::demo::CaptureSettingsPage::Updates => Page::Updates,
+            crate::demo::CaptureSettingsPage::Hotkeys => Page::Hotkeys,
+            crate::demo::CaptureSettingsPage::Privacy => Page::Privacy,
+            crate::demo::CaptureSettingsPage::Diagnostics => Page::Diagnostics,
+        };
+    }
+
     fn format_controls(
         prefs: Preferences,
         window: &mut Window,

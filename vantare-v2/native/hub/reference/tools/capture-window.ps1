@@ -3,13 +3,14 @@ param(
     [Parameter(Mandatory)][int]$ProcessId,
     [Parameter(Mandatory)][string]$ExpectedExecutable,
     [Parameter(Mandatory)][string]$OutputPath,
+    [string]$RepositoryRoot,
     [int]$X = -1,
     [int]$Y = -1,
     [string]$Keys = '',
     [int]$WheelSteps = 0
 )
 $ErrorActionPreference = 'Stop'
-$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..'))
+$repo = if ($RepositoryRoot) { [IO.Path]::GetFullPath($RepositoryRoot) } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..')) }
 $output = [IO.Path]::GetFullPath($OutputPath)
 if ($output.StartsWith($repo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'La evidencia debe quedar fuera del repo'

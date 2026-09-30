@@ -3,7 +3,10 @@
 
 pub mod analysis;
 pub mod calendar;
+#[cfg(feature = "parity-capture")]
+pub mod capture;
 pub mod comparison;
+pub mod demo;
 pub mod document;
 // Un único contrato serde_json sin arrastrar engineer → runtime al Hub.
 pub mod engineer;

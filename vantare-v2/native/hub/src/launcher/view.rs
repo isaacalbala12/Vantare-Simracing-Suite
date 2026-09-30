@@ -80,9 +80,27 @@ impl Launcher {
     }
 
     pub fn new(store: Store, cx: &mut Context<Self>) -> Self {
+        Self::build(store, None, cx)
+    }
+
+    pub fn new_demo(
+        store: Store,
+        demo: &crate::demo::DemoData,
+        create_profile: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut view = Self::build(store, Some(Discovery::demo(demo)), cx);
+        if create_profile {
+            view.new_profile(None, window, cx);
+        }
+        view
+    }
+
+    fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
             store,
-            discovered: Discovery::default(),
+            discovered: discovery.unwrap_or_default(),
             scanning: false,
             last_scan: None,
             chain: None,
@@ -99,7 +117,9 @@ impl Launcher {
             status: "Sin escaneo".into(),
         };
         cx.observe(&view.query, |_, _, cx| cx.notify()).detach();
-        view.scan(cx);
+        if view.discovered.apps.is_empty() {
+            view.scan(cx);
+        }
         cx.spawn(async move |this, cx| {
             loop {
                 if this.update(cx, Self::tick).is_err() {

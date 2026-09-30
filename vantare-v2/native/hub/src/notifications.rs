@@ -113,6 +113,60 @@ pub struct Center {
     sequence: u64,
 }
 impl Center {
+    pub fn demo(
+        data: &crate::demo::DemoData,
+        at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Self, String> {
+        let mut center = Self::default();
+        for (index, notification) in data.notifications.iter().enumerate() {
+            let source = match notification.source.as_str() {
+                "updater" => Source::Updater,
+                "launcher" => Source::Launcher,
+                "system" => Source::System,
+                _ => {
+                    return Err(format!(
+                        "fuente de notificación demo inválida: {}",
+                        notification.source
+                    ));
+                }
+            };
+            let severity = match notification.severity.as_str() {
+                "info" => Severity::Info,
+                "warning" => Severity::Warning,
+                "error" => Severity::Error,
+                _ => {
+                    return Err(format!(
+                        "severidad de notificación demo inválida: {}",
+                        notification.severity
+                    ));
+                }
+            };
+            let mut params = BTreeMap::new();
+            if !notification.tag.is_empty() {
+                params.insert("tag".into(), notification.tag.clone());
+            }
+            center.publish(
+                Record {
+                    v: 1,
+                    id: String::new(),
+                    source,
+                    severity,
+                    occurred_at: 0,
+                    dedupe_key: format!("demo-{}", index + 1),
+                    title_key: notification.title_key.clone(),
+                    text_key: notification.text_key.clone(),
+                    params,
+                    concrete_cause: String::new(),
+                    action: None,
+                    unread: true,
+                },
+                at.timestamp_millis(),
+                false,
+            )?;
+        }
+        Ok(center)
+    }
+
     pub fn publish(&mut self, mut record: Record, now: i64, muted: bool) -> Result<(), String> {
         record.validate()?;
         if let Some(index) = self
@@ -257,6 +311,13 @@ fn time(occurred_at: i64) -> String {
         .unwrap_or_default()
 }
 impl Notifications {
+    pub(crate) fn from_center(center: Center) -> Self {
+        Self {
+            center,
+            ..Self::default()
+        }
+    }
+
     pub fn unread(&self) -> usize {
         self.center.unread()
     }

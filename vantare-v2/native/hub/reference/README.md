@@ -4,11 +4,13 @@ Comparación del corte `6b831395cdb013e443e6396a79615bf2ae030482`, 30/09/2026.
 La [matriz](../../../docs/analysis/2026-09-30-hub-paridad.md) distingue
 producto Wails, harnesses de demostración en WebView2 y proceso GPUI.
 
-## Ubicación de la evidencia
+## Referencias congeladas y evidencia
 
-Por la instrucción expresa del encargo, **ningún PNG, log ni hash de QA se
-versiona**. Este directorio contiene el índice y las herramientas; los PNG
-solicitados están en:
+Las 48 referencias `wails-demo/<pantalla>.png` se copian aquí para que el
+comparador funcione sin depender de otra carpeta local. Son 6.853.618 bytes en
+total y conservan los bytes de las capturas originales. No se versionan
+capturas del Hub nativo, mapas de diferencias, logs ni hashes de QA. El resto
+de las evidencias está en:
 
 ```text
 C:/tmp/isa-1430-hub-referencias-evidence/
@@ -21,6 +23,10 @@ C:/tmp/isa-1430-hub-referencias-evidence/
   cargo-*.log     salidas completas, incluidos intentos fallidos
 ```
 
+El origen de las 48 imágenes copiadas es
+`C:/tmp/isa-1430-hub-referencias-evidence/wails-demo/`. Las referencias de
+Wails real, el Hub GPUI de diagnóstico y la galería siguen fuera del repo.
+
 Área cliente: **1440 × 900**, DPI de ventana **96 (100 %)**. Los PNG omiten
 el marco del sistema operativo en ambos Hubs. No se redimensionaron imágenes
 para fingir el tamaño. CDP comprueba también `devicePixelRatio === 1`.
@@ -29,6 +35,39 @@ La galería/contact sheet contiene miniaturas; la comparación usa los PNG origi
 Los nombres de la demo están en `tools/demo-states.json`; el resultado de cada
 estado, URL, tamaño y hash queda en `wails-demo/manifest.json`. Los nombres de
 estados inaccesibles no se sustituyen por imágenes de otra pantalla.
+
+## Banco de paridad nativo
+
+En el directorio del checkout ejecuta:
+
+```powershell
+./native/hub/reference/compare.ps1 -Pantalla inicio-base
+./native/hub/reference/compare.ps1 -Todas -VerificarDeterminismo
+```
+
+El script compila `vantare-hub` con `parity-capture` y `-j 2`, captura el área
+cliente a 1440 × 900 y DPI 96 (100 %), compara RGBA con umbral 8 por canal
+mediante `native/ui/diff.py`, y deja candidatos, mapas y la tabla ordenada de
+mayor a menor diferencia en `C:/tmp/hub-banco-evidence/`. El modo
+`-VerificarDeterminismo` repite `inicio-base` y exige SHA256 idénticos.
+`--capture` usa una raíz temporal exclusiva y no carga los archivos de usuario.
+El helper espera `C:/tmp/fase2/pantalla-ocupada` antes de abrir la ventana y
+retiene `Global\VantareParityCapture` hasta cerrarla.
+
+El comparador conserva la salida textual completa de `diff.py` en `.txt` y
+normaliza el porcentaje en `.json`. No usa `diff.py --json`: en este checkout,
+esa opción falla al serializar coordenadas `numpy.int64` de las cajas de
+diferencia, aunque ya haya escrito el mapa PNG.
+
+`fixtures/demo-data.json` conserva los valores mock usados por los harnesses:
+usuario y perfil, catálogo/perfiles de Launcher, carreras y agenda, Strategy,
+mensajes de Engineer, sesiones de telemetría, notificación y canales/versiones.
+El reloj se fija en `2026-09-30T17:00:00Z`, fecha del corte Wails. El calendario
+mock vence el 1 de agosto, por lo que Inicio y Calendario muestran el estado sin
+salidas de las referencias. La identidad visible de Inicio usa `test`, derivada
+del usuario `test@example.com` que expone el mock de licencia. El fixture se carga únicamente en
+`--capture`; los stores de usuario se aíslan en una raíz temporal y Launcher
+usa estados de detección mock sin rutas ejecutables.
 
 ## Reproducción
 

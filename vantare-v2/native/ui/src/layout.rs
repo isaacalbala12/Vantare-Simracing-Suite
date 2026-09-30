@@ -168,15 +168,16 @@ impl Document {
         &self.layout
     }
 
-    /// El sondeo registra un error una vez por mtime y nunca sustituye el último válido.
+    /// Una lectura fallida se reintenta aunque conserve mtime (guardado parcial).
+    /// El host deduplica sus errores; nunca se sustituye el último layout válido.
     pub fn poll(&mut self) -> Result<bool, Error> {
         let stamp = modified(&self.path);
         if stamp == self.modified {
             return Ok(false);
         }
-        self.modified = stamp;
         let bytes = read(&self.path)?.ok_or(Error::Invalid("layout desaparecido"))?;
         let layout = Layout::from_json(&bytes)?;
+        self.modified = stamp;
         let changed = layout != self.layout;
         self.bytes = Some(bytes);
         self.layout = layout;
@@ -356,6 +357,28 @@ mod tests {
     }
 
     #[test]
+    fn completed_edit_with_the_partial_json_mtime_is_retried() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        fs::write(&path, FIXTURE).expect("fixture");
+        let mut document = Document::open(path.clone()).expect("abrir");
+        fs::write(&path, b"").expect("editor trunca antes de escribir");
+        let partial_stamp = modified(&path).expect("mtime de la escritura parcial");
+        document.modified = None;
+        assert!(document.poll().is_err());
+        fs::write(&path, b"{\"version\":1,\"instances\":[]}").expect("editor termina");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("abrir para fijar mtime")
+            .set_modified(partial_stamp)
+            .expect("misma resolución de mtime");
+        assert!(document.poll().expect("reintentar la lectura fallida"));
+        assert!(document.layout().instances.is_empty());
+        fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    #[test]
     fn polling_keeps_last_valid_document_then_recovers_without_sleep() {
         let dir = directory();
         let path = dir.join("layout.json");
@@ -367,7 +390,7 @@ mod tests {
         document.modified = None;
         assert!(document.poll().is_err());
         assert_eq!(document.layout(), &previous);
-        assert!(!document.poll().expect("error no se repite"));
+        assert!(document.poll().is_err(), "lectura fallida se reintenta");
         fs::write(&path, b"{\"version\":1,\"instances\":[]}").expect("recuperar");
         document.modified = None;
         assert!(document.poll().expect("recarga"));

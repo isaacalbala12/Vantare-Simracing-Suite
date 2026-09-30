@@ -70,7 +70,7 @@ macro_rules! widgets {
             }
 
             #[must_use]
-    pub fn normalized(&self) -> Self {
+            pub fn normalized(&self) -> Self {
                 match self { $(Self::$kind(settings) => Self::$kind(settings.normalized())),+ }
             }
         }

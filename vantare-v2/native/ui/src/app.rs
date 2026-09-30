@@ -263,15 +263,21 @@ impl Render for Screen {
             .children(self.widgets.iter().map(|placed| {
                 // Una vista cacheada se coloca y dimensiona por estilo, no por contenido.
                 let (w, h) = placed.view.read(cx).wanted_size();
-                placed.view.clone().cached(
-                    StyleRefinement::default()
-                        .absolute()
-                        .left(px(placed.at.0))
-                        .top(px(placed.at.1))
-                        .w(px(w))
-                        .h(px(h))
-                        .opacity(placed.opacity),
-                )
+                // Entity::cached usa el estilo para layout, pero no compone su
+                // opacity. Div sí la propaga al pintado bajo nivel del canvas.
+                div()
+                    .absolute()
+                    .left(px(placed.at.0))
+                    .top(px(placed.at.1))
+                    .w(px(w))
+                    .h(px(h))
+                    .opacity(placed.opacity)
+                    .child(
+                        placed
+                            .view
+                            .clone()
+                            .cached(StyleRefinement::default().w(px(w)).h(px(h))),
+                    )
             }))
     }
 }
@@ -496,6 +502,9 @@ pub fn run_layout(
         if !init(cx) {
             return;
         }
+        // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
+        // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
+        cx.set_quit_mode(gpui::QuitMode::Explicit);
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
@@ -512,16 +521,24 @@ pub fn run_layout(
         })
         .detach();
         cx.spawn(async move |cx| {
+            let mut last_error = None;
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(500))
                     .await;
                 match document.poll() {
                     Ok(true) => {
+                        last_error = None;
                         cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
                     }
-                    Ok(false) => {}
-                    Err(error) => eprintln!("layout conservado: {error}"),
+                    Ok(false) => last_error = None,
+                    Err(error) => {
+                        let message = error.to_string();
+                        if last_error.as_ref() != Some(&message) {
+                            eprintln!("layout conservado: {message}");
+                            last_error = Some(message);
+                        }
+                    }
                 }
             }
         })
@@ -664,8 +681,8 @@ mod tests {
         layout.instances.clear();
         assert_eq!(window_action(true, occupied(&layout)), WindowAction::Close);
         assert_eq!(window_action(false, occupied(&layout)), WindowAction::None);
-        // El camino run_layout no instala on_window_closed -> quit: ni siquiera
-        // quitar todas las instancias termina la vigilancia del documento.
+        // run_layout usa QuitMode::Explicit; la QA de ventana comprueba que el
+        // proceso continúa tras quitar todas las instancias y vuelve a abrirlas.
     }
 
     #[test]

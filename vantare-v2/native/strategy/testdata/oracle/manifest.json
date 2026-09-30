@@ -4,10 +4,12 @@
     "documents.json": "c5955d2c17dc36f0e7ab9e106bf2d24a511e62ee2d7b54da1e4540c0af8a8ace",
     "solver-go.json.gz": "fe23286432270625c1c1b206210b08055b0d798829924a6207a8219f9a45bcf9",
     "solver.json": "aede78c1a68101bf3b79510b6a139c75b0fe81722be9a8899037dc243cb0aa0f",
-    "sources.json": "f58e0fda0b5fba3291d6a8b3f5dff15402b3c57aa81cee595f5b62a04e2e8da6"
+    "sources.json": "f58e0fda0b5fba3291d6a8b3f5dff15402b3c57aa81cee595f5b62a04e2e8da6",
+    "solver-v2-results.json": "7519b3217b1bd7f1f2efc778a30fb8e727c46d9b5bf8911f19faec145ec7a7b4"
   },
   "goCommits": {
     "document-rules.json": "bd28ed40dd7d2079de7bcfeb9ee9f9d06950cd52",
-    "legacy-oracle-files": "a6cd70ab8c7abdcc700c74105fee5ffa2fd36a69"
+    "legacy-oracle-files": "a6cd70ab8c7abdcc700c74105fee5ffa2fd36a69",
+    "solver-v2-results.json": "bd28ed40dd7d2079de7bcfeb9ee9f9d06950cd52"
   }
 }

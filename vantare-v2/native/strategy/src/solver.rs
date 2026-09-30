@@ -233,6 +233,36 @@ pub struct ResultV2 {
     pub fuel_remaining_liters: f64,
     pub ve_remaining_percent: f64,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OptimalityStatus {
+    Proven,
+    NotProven,
+    NoSolution,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimalityCertificate {
+    pub model: &'static str,
+    pub status: OptimalityStatus,
+    pub scope: &'static str,
+    pub explored_work_items: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// Result for consumers that need an explicit search status and cost.
+/// `proven` applies only to the validated native scalar subspace.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SolverOutcome {
+    pub certificate: OptimalityCertificate,
+    pub cost_seconds: Option<f64>,
+    pub result: ResultV2,
+}
+
 #[derive(Clone)]
 struct Node {
     fuel: i64,
@@ -382,6 +412,26 @@ pub fn solve(input: &Input) -> Result<ResultV2, String> {
 /// Caller owns cancellation. This runs off the GPUI thread.
 #[allow(clippy::too_many_lines)] // Keep the bounded state-space walk in one place, rather than a search manager.
 pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
+    solve_internal(input, cancel, false).map(|outcome| outcome.result)
+}
+
+/// Solver API for UI consumers: carries the model certificate and the visible cost.
+pub fn solve_v2(input: &Input) -> Result<SolverOutcome, String> {
+    solve_v2_cancellable(input, &AtomicBool::new(false))
+}
+
+/// Returns the best complete plan found so far when the search budget expires.
+/// Cancellation and invalid inputs still fail without publishing a result.
+pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<SolverOutcome, String> {
+    solve_internal(input, cancel, true)
+}
+
+#[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
+fn solve_internal(
+    input: &Input,
+    cancel: &AtomicBool,
+    return_partial: bool,
+) -> Result<SolverOutcome, String> {
     input.validate()?;
     let fuel = Resource::new(
         input.fuel_capacity_liters.value,
@@ -397,8 +447,25 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
         &input.virtual_energy_reserve,
         input.race_laps,
     )?;
-    if let Some(result) = single_fuel_decision(input, fuel, ve, cancel)? {
-        return Ok(result);
+    match single_fuel_decision(input, fuel, ve, cancel) {
+        Ok(Some(result)) => {
+            let status = if result.feasible {
+                OptimalityStatus::Proven
+            } else {
+                OptimalityStatus::NoSolution
+            };
+            return Ok(solver_outcome(result, status, 0, None));
+        }
+        Err(error) if return_partial && error.starts_with("native_deadline_exceeded") => {
+            return Ok(solver_outcome(
+                ResultV2::default(),
+                OptimalityStatus::NotProven,
+                0,
+                Some("deadline_exceeded"),
+            ));
+        }
+        Err(error) => return Err(error),
+        Ok(None) => {}
     }
     let max_work = if input.budget.max_candidates == 0 {
         250_000
@@ -423,7 +490,8 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
     };
     frontier[0].insert((fuel.capacity, ve.capacity, 0usize, 0u16), initial);
     let mut best: Option<ResultV2> = None;
-    for lap in 0..input.race_laps {
+    let mut exhaustion_reason = None;
+    'search: for lap in 0..input.race_laps {
         let nodes = std::mem::take(&mut frontier[usize::try_from(lap).map_err(|e| e.to_string())?]);
         for node in nodes.into_values() {
             let remaining = input.race_laps - lap;
@@ -439,12 +507,20 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
             for count in 1..=limit {
                 work += 1;
                 if work > max_work || iterations > max_iterations {
+                    if return_partial {
+                        exhaustion_reason = Some("candidate_budget_exhausted");
+                        break 'search;
+                    }
                     return Err("native_budget_exhausted: no se ha demostrado el óptimo".into());
                 }
                 if cancel.load(AtomicOrdering::Relaxed) {
                     return Err("cancelled".into());
                 }
                 if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                    if return_partial {
+                        exhaustion_reason = Some("deadline_exceeded");
+                        break 'search;
+                    }
                     return Err("native_deadline_exceeded: no se ha demostrado el óptimo".into());
                 }
                 let end = lap + count;
@@ -511,6 +587,10 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
                     for v in ve.amounts(after.ve) {
                         work += 1;
                         if work > max_work {
+                            if return_partial {
+                                exhaustion_reason = Some("candidate_budget_exhausted");
+                                break 'search;
+                            }
                             return Err(
                                 "native_budget_exhausted: no se ha demostrado el óptimo".into()
                             );
@@ -520,6 +600,10 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
                                 return Err("cancelled".into());
                             }
                             if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                                if return_partial {
+                                    exhaustion_reason = Some("deadline_exceeded");
+                                    break 'search;
+                                }
                                 return Err(
                                     "native_deadline_exceeded: no se ha demostrado el óptimo"
                                         .into(),
@@ -566,7 +650,34 @@ pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2,
         result.ve_start_percent = amount(start);
         result.ve_remaining_percent = amount(remaining);
     }
-    Ok(result)
+    let status = if exhaustion_reason.is_some() {
+        OptimalityStatus::NotProven
+    } else if result.feasible {
+        OptimalityStatus::Proven
+    } else {
+        OptimalityStatus::NoSolution
+    };
+    Ok(solver_outcome(result, status, work, exhaustion_reason))
+}
+
+fn solver_outcome(
+    result: ResultV2,
+    status: OptimalityStatus,
+    explored_work_items: usize,
+    reason: Option<&str>,
+) -> SolverOutcome {
+    let cost_seconds = result.feasible.then_some(result.expected.total_seconds);
+    SolverOutcome {
+        certificate: OptimalityCertificate {
+            model: "strategy.solver.v2",
+            status,
+            scope: "supported_scalar_subspace",
+            explored_work_items,
+            reason: reason.map(str::to_owned),
+        },
+        cost_seconds,
+        result,
+    }
 }
 
 fn resource_balance(
@@ -748,6 +859,89 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn current_go_solver_v2_matches_the_scalar_fixture() {
+        let inputs: Vec<Value> =
+            serde_json::from_str(include_str!("../testdata/oracle/solver.json"))
+                .expect("Go scalar inputs");
+        let oracle: Value =
+            serde_json::from_str(include_str!("../testdata/oracle/solver-v2-results.json"))
+                .expect("current Go solver results");
+        let cases = oracle["cases"].as_array().expect("Go result cases");
+        assert_eq!(cases.len(), inputs.len());
+        assert_eq!(oracle["goCommit"].as_str().unwrap_or_default().len(), 40);
+        assert_eq!(
+            oracle["sourceHashes"].as_object().map(serde_json::Map::len),
+            Some(36)
+        );
+
+        for (input_case, go_case) in inputs.iter().zip(cases) {
+            let name = input_case["name"].as_str().expect("case name");
+            assert_eq!(go_case["name"], name, "case order");
+            let input: Input = serde_json::from_value(input_case["input"].clone())
+                .unwrap_or_else(|error| panic!("{name}: input: {error}"));
+            let actual = solve(&input);
+            if go_case["error"].as_str().is_some() {
+                assert!(actual.is_err(), "{name}: expected Go input/search error");
+                continue;
+            }
+
+            let actual = actual.unwrap_or_else(|error| panic!("{name}: Rust: {error}"));
+            assert_eq!(actual.feasible, go_case["feasible"], "{name}: feasible");
+            let go_stints = go_case.get("stints").cloned().unwrap_or_else(|| json!([]));
+            compare_fields(&json!(actual.stints), &go_stints, &format!("{name}/stints"));
+            let rust_pits = serde_json::to_value(actual.pit_stops).expect("Rust pit stops");
+            let go_pits = go_case
+                .get("pitStops")
+                .cloned()
+                .unwrap_or_else(|| json!([]));
+            compare_fields(&rust_pits, &go_pits, &format!("{name}/pitStops"));
+
+            let expected_seconds = go_case["totalSeconds"].as_f64().expect("Go totalSeconds");
+            let actual_seconds = actual.expected.total_seconds;
+            assert!(
+                (actual_seconds - expected_seconds).abs()
+                    <= actual_seconds.abs().max(expected_seconds.abs()).max(1.0) * 1e-10,
+                "{name}/totalSeconds: {actual_seconds} != {expected_seconds}"
+            );
+        }
+    }
+
+    #[test]
+    fn solver_v2_distinguishes_proven_partial_and_no_solution() {
+        let cases: Vec<Value> =
+            serde_json::from_str(include_str!("../testdata/oracle/solver.json"))
+                .expect("Go scalar inputs");
+        let mut proven_input: Input =
+            serde_json::from_value(cases[0]["input"].clone()).expect("proven input");
+        let proven = solve_v2(&proven_input).expect("complete scalar search");
+        assert_eq!(proven.certificate.model, "strategy.solver.v2");
+        assert_eq!(proven.certificate.scope, "supported_scalar_subspace");
+        assert_eq!(proven.certificate.status, OptimalityStatus::Proven);
+        assert_eq!(
+            proven.cost_seconds,
+            Some(proven.result.expected.total_seconds)
+        );
+
+        proven_input.budget.max_candidates = 1;
+        let partial = solve_v2(&proven_input).expect("budget returns a partial outcome");
+        assert_eq!(partial.certificate.status, OptimalityStatus::NotProven);
+        assert_eq!(
+            partial.certificate.reason.as_deref(),
+            Some("candidate_budget_exhausted")
+        );
+        assert_eq!(partial.cost_seconds.is_some(), partial.result.feasible);
+
+        let mut impossible: Input =
+            serde_json::from_value(cases[6]["input"].clone()).expect("no-solution input");
+        impossible.event_rules.max_pit_stops = Some(0);
+        impossible.fuel_capacity_liters.value = 2.0;
+        let no_solution = solve_v2(&impossible).expect("complete infeasible search");
+        assert_eq!(no_solution.certificate.status, OptimalityStatus::NoSolution);
+        assert!(!no_solution.result.feasible);
+        assert_eq!(no_solution.cost_seconds, None);
     }
 
     #[test]

@@ -10,12 +10,14 @@ use vantare_runtime::flows::{MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk};
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 const SCHEMA: &str = "vantare.series-db.v1";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
-pub const MAX_PAGE_CHUNKS: usize = 16;
+pub use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
 
 struct Store {
     connection: Connection,
     read_only: bool,
     watermark: u64,
+    finished: bool,
+    attempted: u64,
     analysis: SeriesAnalysis,
     failed: bool,
 }
@@ -26,16 +28,20 @@ impl Store {
         if read_only && !exists {
             return Err("DB histórica inexistente".into());
         }
-        let config = Config::default()
-            .access_mode(if read_only {
-                duckdb::AccessMode::ReadOnly
-            } else {
-                duckdb::AccessMode::ReadWrite
-            })?
-            .enable_autoload_extension(false)?
-            .enable_external_access(false)?
-            .threads(2)?
-            .max_memory("256MB")?;
+        // Inspección sin permiso de escribir antes de abrir DB existentes RW:
+        // ni el engine puede migrar/checkpointar originales Go/LMU ajenos.
+        if exists && !read_only {
+            let preview = Connection::open_with_flags(path, configuration(true)?)?;
+            let schema: String = preview.query_row(
+                "SELECT schema_version FROM series_meta WHERE singleton",
+                [],
+                |row| row.get(0),
+            )?;
+            if schema != SCHEMA {
+                return Err("versión de almacenamiento desconocida".into());
+            }
+        }
+        let config = configuration(read_only)?;
         let mut connection = Connection::open_with_flags(path, config)?;
         if !exists {
             let tx = connection.transaction()?;
@@ -47,10 +53,10 @@ impl Store {
             tx.commit()?;
         }
         // No inicializar ni migrar archivos ajenos, aunque sean DuckDB válidos.
-        let (schema, watermark): (String, u64) = connection.query_row(
-            "SELECT schema_version, watermark FROM series_meta WHERE singleton",
+        let (schema, watermark, finished, attempted): (String, u64, bool, u64) = connection.query_row(
+            "SELECT schema_version, watermark, finished, attempted FROM series_meta WHERE singleton",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?;
         if schema != SCHEMA {
             return Err("versión de almacenamiento desconocida".into());
@@ -60,7 +66,7 @@ impl Store {
             [],
             |row| row.get(0),
         )?;
-        if maximum != watermark {
+        if maximum != watermark || (finished && attempted < watermark) {
             return Err("watermark inconsistente; preservar DB para diagnóstico".into());
         }
         let analysis = SeriesAnalysis::new(1)?;
@@ -68,6 +74,8 @@ impl Store {
             connection,
             read_only,
             watermark,
+            finished,
+            attempted,
             analysis,
             failed: false,
         };
@@ -128,25 +136,64 @@ impl Store {
             }
             return Ok(self.watermark);
         }
+        if self.finished {
+            return Err("grabación ya finalizada; usar una DB nueva".into());
+        }
         self.analysis.consume(chunk)?;
         // Si SQL/COMMIT falla, el estado en memoria ya no describe la DB.
         // Fallar cerrado: solo reabrir recupera el último prefijo confirmado.
         self.failed = true;
         let tx = self.connection.transaction()?;
-        tx.execute(
-            "INSERT INTO series_chunks VALUES (?, ?)",
-            params![chunk.index, payload],
-        )?;
-        tx.execute(
-            "UPDATE series_meta SET watermark = ? WHERE singleton",
-            [chunk.index],
-        )?;
+        // Mismas dos sentencias por chunk; reutilizar el plan del binding,
+        // sin volver a preparar SQL en cada entrega (fuera de adquisición).
+        tx.prepare_cached("INSERT INTO series_chunks VALUES (?, ?)")?
+            .execute(params![chunk.index, payload])?;
+        tx.prepare_cached("UPDATE series_meta SET watermark = ? WHERE singleton")?
+            .execute([chunk.index])?;
         tx.commit()?;
         // El cliente nunca recibe watermark adelantado a un COMMIT efectivo.
         self.watermark = chunk.index;
         self.failed = false;
         Ok(self.watermark)
     }
+
+    fn finish(&mut self, attempted: u64) -> Result<()> {
+        if self.read_only
+            || self.failed
+            || attempted < self.watermark
+            || (self.finished && attempted != self.attempted)
+        {
+            return Err("cierre incompatible con estado durable".into());
+        }
+        self.failed = true;
+        let tx = self.connection.transaction()?;
+        tx.execute(
+            "UPDATE series_meta SET finished=true, attempted=? WHERE singleton",
+            [attempted],
+        )?;
+        tx.commit()?;
+        self.finished = true;
+        self.attempted = attempted;
+        self.failed = false;
+        Ok(())
+    }
+
+    fn state(&self, kind: &str) -> Value {
+        json!([kind, self.watermark, self.finished, self.attempted])
+    }
+}
+
+fn configuration(read_only: bool) -> duckdb::Result<Config> {
+    Config::default()
+        .access_mode(if read_only {
+            duckdb::AccessMode::ReadOnly
+        } else {
+            duckdb::AccessMode::ReadWrite
+        })?
+        .enable_autoload_extension(false)?
+        .enable_external_access(false)?
+        .threads(2)?
+        .max_memory("256MB")
 }
 
 /// Protocolo local de arrays JSON, un frame por línea, comandos cerrados.
@@ -158,7 +205,7 @@ pub fn serve(
     mut output: impl Write,
 ) -> Result<()> {
     let mut store = Store::open(path, read_only)?;
-    respond(&mut output, &json!(["ready", store.watermark]))?;
+    respond(&mut output, &store.state("ready"))?;
     while let Some(bytes) = read_frame(&mut input)? {
         let command: Value = serde_json::from_slice(&bytes)?;
         let fields = command.as_array().ok_or("comando inválido")?;
@@ -167,7 +214,11 @@ pub fn serve(
                 let chunk = SeriesChunk::from_bytes(&serde_json::to_vec(chunk)?)?;
                 json!(["ack", store.append(&chunk)?])
             }
-            [Value::String(name)] if name == "status" => json!(["status", store.watermark]),
+            [Value::String(name)] if name == "status" => store.state("status"),
+            [Value::String(name), attempted] if name == "finish" => {
+                store.finish(attempted.as_u64().ok_or("intentos inválidos")?)?;
+                store.state("finished")
+            }
             [Value::String(name), after, limit] if name == "page" => {
                 let after = after.as_u64().ok_or("cursor inválido")?;
                 let limit = usize::try_from(limit.as_u64().ok_or("límite inválido")?)?;

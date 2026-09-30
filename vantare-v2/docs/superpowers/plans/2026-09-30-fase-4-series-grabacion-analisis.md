@@ -7,6 +7,13 @@ Rama: `vantareapp/isa-1429-fase4-series-grabacion`.
 Base entregada: `abcf10acdbb6500eabdbb88f20e6ed568bb484e4`.
 Inventario: [rutas y contratos](2026-09-30-fase-4-inventario.md).
 
+**Estado actual tras la continuación:** cortes de datos/API terminados localmente
+para review de Opus: series largas, proceso DuckDB único, queries, live/replay,
+durabilidad y recuperación. Aceptación física journal+series+LMU+OBS bloqueada
+a Isaac. Hub/launcher y RPC existentes no se modifican por propiedad paralela:
+el orquestador conecta las APIs entregadas. No se declara la fase aceptada,
+integrada ni promocionada. Los estados de bloqueo posteriores son históricos.
+
 ## Objetivo y fronteras
 
 Entregar muestras del jugador en bloques durante la vuelta y al sellarla,
@@ -379,3 +386,120 @@ EOF/caída no inventa ese total. Una DB ajena se inspecciona primero read-only.
 
 Corte 8 gates: fmt/clippy/test exit 0; clippy 14,69 s; compilación test
 1 min 07 s (sin recompilar C++). 410 correctos, 4 live ignorados, cero fallos.
+
+## Cierre de implementación del corte 9
+
+Writer/proceso real, una conexión RW, configuración sin extensiones/acceso
+externo, inspección read-only de DB existentes antes de RW. Solo nuevas DB
+propias v1; ninguna DB Go/LMU abierta en esta entrega. Reanudar reconstruye
+prefijo por páginas, valida identidad/orden/offset/calidad y conserva gaps.
+SQL INSERT+watermark atómicos; ACK tras COMMIT. Cache del binding reutiliza
+las dos sentencias preparadas por chunk; sin nueva dependencia ni motor.
+
+API flows: SeriesWorker start/analysis/watermark/failed/finish, SeriesReader
+state/page/analyze. Pipe y Receiver de un único hilo; Child del padre permite
+terminarlo al agotar plazo. Cancelación/join cubre espera al productor, ready
+y ACK. Plazo absoluto incluye salida del hijo. Summary live latest-wins con
+arc-swap ya existente, hasta 256 resúmenes, sobre prefijo ACK. Finish entrega
+estado y resumen final; bloque/vuelta no observada nunca se fabrica.
+
+EOF/caída conserva finished=false y total final desconocido. Finish confirma
+attempted y permite ver cola final perdida sin esperar otro chunk. Reenvío
+idéntico seguro; contenido distinto o índice nuevo después de finish falla.
+La recuperación no repara/trunca filas ni ficheros ajenos. Feed desconectado
+no se reinicia automáticamente: supervisor decide nueva grabación/productor.
+Queries históricas son síncronas y se invocan fuera de adquisición/renderizado;
+recuperar un archivo grande cuesta recorrerlo, aunque la memoria sea acotada.
+
+Ocho pruebas nuevas del corte 9 (17 totales storage):
+
+- Proceso real muerto después de ACK con WAL presente, reapertura, retry
+  idéntico, continuación y paridad de resúmenes live/durable/replay.
+- Carga Core → Receiver → pipes → proceso → DuckDB → finish → reader: 6.001
+  fotos, 104 coches, 100 Hz lógicos, 6.000 muestras de vuelta y 95 chunks.
+- Cola sin drenar: Core progresa; finish conserva pérdida final conocida
+  aun sin un siguiente chunk. Sigue el test anterior de 36.000 fotos con plazo.
+- Timeout cero y Drop con productor vivo: cancelación sin propietario huérfano;
+  lectura posterior confirma prefijo, finished=false y cola final desconocida.
+- Finish incompatible/repetido y nuevas escrituras después de cierre.
+- Fallo SQL real en UPDATE después de INSERT: rollback de chunk y watermark,
+  writer latched, reapertura del prefijo. Es constraint failure, no disco lleno.
+- Watermark inconsistente y payload corrupto: error visible, sin reparación.
+- Fallo de entrega de ACK después de COMMIT: incertidumbre del cliente y retry
+  idempotente sin duplicar muestras.
+
+Últimos gates del código final, desde native (offline, siempre -j 2):
+
+```text
+cargo fmt --check                                      exit 0
+cargo clippy --offline --workspace --all-targets -j 2 -- -D warnings
+Finished dev profile target(s) in 34.24s                exit 0
+cargo test --offline --workspace -j 2                   exit 0
+Finished test profile target(s) in 1m 48s
+418 correctos, 0 fallos, 4 live ignorados; incluye 7 lifecycle sin harness
+storage: 12 unitarios + 5 proceso, todos correctos
+```
+
+Gates previos del mismo corte también pasaron; cambios posteriores limitados a
+cache de statements y plazo absoluto motivaron repetir todos. Los primeros
+lints propios (doc_markdown/collapsible_if y estilo de tests) se corrigieron,
+sin allow de producción ni dependencia bytecount. Sin unwrap/unsafe nuevos
+en producción. Go/frontend no ejecutados porque no se modificó su código.
+
+## Carga del writer real: salida y reproducción
+
+Windows x64, Ryzen 7 3700X (8/16), rustc 1.95.0, perfil test/debug, workers
+concurrentes. Generador+Core incluidos en adquisición; startup/COMMIT/cierre
+solo en total. Una pareja secuencial informativa, sin A/A ni gate de ratio.
+
+Antes de reutilizar planes SQL (mismo test, ejecución anterior, no comparación
+controlada): baseline_ms=573.741, adquisición_con_writer_ms=547.826,
+total_commit_stop_ms=26291.277, 95 chunks durables. La mejora de código evita
+preparaciones repetidas; estas dos ejecuciones no acreditan un factor causal.
+
+Salida literal del test final, aislado del resto de la suite:
+
+```text
+ISA-1429 writer real debug: frames=6001, coches=104, hz_lógicos=100, baseline_ms=576.505, adquisición_con_writer_ms=559.563, total_commit_stop_ms=4074.367, chunks_durables=95, muestras_vuelta=6000; sintético, sin LMU/OBS, sin gate de ratio
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out
+```
+
+Binario test process SHA-256:
+`290758aef41eb3b58a49f3fb62cdd460557e78057f3decc9f68e88d6b2ba44c5`.
+Ejecutable storage debug final: **61.710.848 bytes (58,85 MiB)**; sin medición
+release ni claim de instalador/portable. Costes en frío 886,605+19,474 s,
+clippy 12m37s y primer test 12m39s documentados arriba, con tres fingerprints
+C++ distintos. Artefactos bajo target ignorado, no distribuidos/versionados.
+
+Reproducción con build cache actual:
+
+```powershell
+cargo test --offline --workspace -j 2 actual_writer_preserves -- --nocapture
+cargo test --offline --workspace -j 2 --test process
+```
+
+El primero ejecuta también lifecycle por su harness propio. La ejecución focal
+citada se hizo directamente sobre process-*.exe con nombre de test --exact
+--nocapture para aislar esa medición. No confundir filtro con gates completos.
+
+## Límites y entrega al orquestador
+
+Rutas adicionales justificadas: native/Cargo.toml y Cargo.lock para incorporar
+storage; la dependencia no entra en domain, IPC, UI ni runtime. Runtime usa
+solo stdlib, serde_json/float_roundtrip y arc-swap previos. Nuevo worker bajo
+flows; ningún nuevo cambio en core/model/adaptadores/ipc. Enganche previo
+Core::series_mut de seis líneas sigue siendo el único cambio core.
+
+Implementación de datos/API lista para review; sin flag de launcher ni vista
+Hub. El orquestador integra arranque/parada con el propietario core/IPC/journal,
+evitando edición concurrente. Recording sigue opt-in. No importación/migración
+de originales, catálogo multisesión global ni consumo/clima/tyres/validez
+completa Go: faltan señales y contratos que no pertenecen a este corte.
+
+Bloqueado a Isaac: presupuesto CPU/latencia/frame time/RSS con journal+series
+activos en LMU+OBS, prueba física de juego y disco lleno/pérdida de energía.
+El rollback SQL y el kill de proceso no se presentan como esos escenarios.
+Pregunta abierta de empaquetado: runtime VC++/notices DuckDB y medidas release
+para fase 7. No acciones externas, gasto, secretos, .env, push, PR ni merge.
+Notion no accesible, excepción GitHub autorizada: seguimiento operativo queda
+al orquestador cuando vuelva acceso; no se simula actualización verificada.

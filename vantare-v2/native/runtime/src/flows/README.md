@@ -163,8 +163,8 @@ módulo. El orquestador mantiene el handoff vivo y revisa el diff completo.
 Antes de adquirir, `core.series_mut().subscribe(capacity)` devuelve un único
 `Receiver<SeriesChunk>`, con capacidad 1–256. No activa recording. Se rechaza
 otro receptor o configuración tras la primera muestra. El propietario del
-worker recibe bloques por esta API interna; no hay worker/proceso ni CLI
-productivo enganchado todavía. El accessor de seis líneas en `core/mod.rs`
+worker recibe bloques por esta API. `SeriesWorker` arranca el proceso SQL
+explícitamente; el launcher actual aún no lo configura. El accessor de seis líneas en `core/mod.rs`
 solo permite configurar este flujo y publicar parciales, sin cambiar Core.
 
 Cada 64 muestras se publica una porción inmutable de LapBlock v1; `offset`
@@ -267,3 +267,23 @@ Una vuelta de diez minutos a 100 Hz entrega exactamente 60.000 muestras y
 seal, con codec y análisis continuos; prueba de regresión sintética explícita.
 No hay techo temporal/de distancia de grabación. Desbordamiento de offset o
 contadores de análisis falla cerrado; u32 de resumen admite ~497 días a 100 Hz.
+
+## Proceso SQL y API de análisis durable
+
+`SeriesWorker::start(exe, db, receiver)` consume en un hilo, sin esperar ready
+desde adquisición. `analysis()` devuelve Arc de resúmenes del prefijo ACK,
+latest-wins con arc-swap existente, hasta 256 resúmenes; watermark y resumen
+se publican juntos. El consumidor no bloquea al escritor de esa foto. `failed()`
+hace visible una caída. Store valida con el mismo SeriesAnalysis antes de SQL.
+`finish(attempted, timeout)` devuelve estado y resumen final después del COMMIT
+de cierre y salida del hijo. Primero parar observaciones y flush; mantener Core
+vivo hasta finish. Drop/timeout cancela y une el hilo y termina el proceso propio.
+
+`SeriesReader::open(exe, db)`, `page(after, limit)` (1–16), `state()` y
+`analyze(retention)` (1–256) consultan por un proceso read-only. Son síncronas:
+usar fuera de adquisición/renderizado. El algoritmo y codec compartidos dan
+igualdad exacta live/durable/replay. La vuelta parcial y gaps no se completan.
+`state.tail_lost()` distingue cola final perdida conocida de total desconocido
+tras EOF/caída; finished es cierre de productor, nunca promesa de sesión íntegra.
+El [crate storage](../../../storage/README.md) documenta protocolo y esquema.
+No dependencia de DuckDB en runtime: solo transporte stdio, sin editar IPC.

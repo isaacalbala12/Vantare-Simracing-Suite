@@ -89,6 +89,120 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+#[test]
+fn finish_records_the_lost_tail_and_refuses_new_data_or_invented_totals() {
+    let db = Database::new();
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        store.append(&chunk(1, 0)).unwrap();
+        assert!(store.finish(0).is_err());
+        assert!(!store.finished);
+        store.finish(4).unwrap();
+        assert_eq!(
+            (store.watermark, store.finished, store.attempted),
+            (1, true, 4)
+        );
+        assert_eq!(store.append(&chunk(1, 0)).unwrap(), 1);
+        assert!(store.append(&chunk(2, 1)).is_err());
+        assert!(store.finish(5).is_err());
+    }
+    let recovered = Store::open(&db.0, true).unwrap();
+    assert_eq!(recovered.state("status"), json!(["status", 1, true, 4]));
+}
+
+#[test]
+fn sql_failure_after_insert_rolls_back_both_chunk_and_watermark() {
+    let db = Database::new();
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        store.append(&chunk(1, 0)).unwrap();
+        // Error real del engine entre INSERT y COMMIT; no simula disco lleno.
+        store.connection.execute_batch("CREATE TABLE guarded_meta AS SELECT * FROM series_meta; DROP TABLE series_meta; CREATE TABLE series_meta (singleton BOOLEAN PRIMARY KEY, schema_version VARCHAR, watermark UBIGINT CHECK(watermark <= 1), finished BOOLEAN, attempted UBIGINT); INSERT INTO series_meta SELECT * FROM guarded_meta; DROP TABLE guarded_meta;").unwrap();
+        assert!(store.append(&chunk(2, 1)).is_err());
+        assert!(store.failed);
+        assert_eq!(store.watermark, 1);
+        assert!(store.append(&chunk(3, 1)).is_err());
+        let count: u64 = store
+            .connection
+            .query_row("SELECT count(*)::UBIGINT FROM series_chunks", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 1, "el INSERT no sobrevive al rollback");
+    }
+    let recovered = Store::open(&db.0, false).unwrap();
+    assert_eq!(recovered.watermark, 1);
+    assert_eq!(recovered.analysis.active().unwrap().samples, 1);
+}
+
+#[test]
+fn inconsistent_watermark_and_corrupt_payload_fail_without_repairing_originals() {
+    let db = Database::new();
+    {
+        let mut store = Store::open(&db.0, false).unwrap();
+        store.append(&chunk(1, 0)).unwrap();
+        store
+            .connection
+            .execute_batch("UPDATE series_meta SET watermark=99")
+            .unwrap();
+    }
+    let original = std::fs::read(&db.0).unwrap();
+    assert!(Store::open(&db.0, true).is_err());
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    {
+        let connection = Connection::open(&db.0).unwrap();
+        connection
+            .execute_batch(
+                "UPDATE series_meta SET watermark=1; UPDATE series_chunks SET payload='[]'::BLOB",
+            )
+            .unwrap();
+    }
+    let store = Store::open(&db.0, true).unwrap();
+    assert!(store.page(0, 1).is_err());
+    drop(store);
+    assert!(Store::open(&db.0, false).is_err());
+}
+
+struct FailAck {
+    lines: usize,
+    bytes: Vec<u8>,
+}
+
+impl Write for FailAck {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.lines > 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "ACK no entregado",
+            ));
+        }
+        self.lines += usize::from(bytes.contains(&b'\n'));
+        self.bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn lost_ack_is_uncertain_for_the_client_but_identical_retry_is_safe() {
+    let db = Database::new();
+    let input = format!(
+        "[\"append\",{}]\n",
+        String::from_utf8(chunk(1, 0).to_bytes().unwrap()).unwrap()
+    );
+    let mut output = FailAck {
+        lines: 0,
+        bytes: Vec::new(),
+    };
+    assert!(serve(&db.0, false, input.as_bytes(), &mut output).is_err());
+    assert_eq!(output.bytes, b"[\"ready\",0,false,0]\n");
+    let mut recovered = Store::open(&db.0, false).unwrap();
+    assert_eq!(recovered.watermark, 1, "COMMIT anterior al fallo del ACK");
+    assert_eq!(recovered.append(&chunk(1, 0)).unwrap(), 1);
+}
+
 struct Database(PathBuf);
 
 impl Database {
@@ -185,7 +299,10 @@ fn protocol_confirms_only_effective_commits_and_rejects_unknown_commands() {
     );
     let mut output = Vec::new();
     serve(&db.0, false, input.as_bytes(), &mut output).unwrap();
-    assert_eq!(output, b"[\"ready\",0]\n[\"ack\",1]\n[\"status\",1]\n");
+    assert_eq!(
+        output,
+        b"[\"ready\",0,false,0]\n[\"ack\",1]\n[\"status\",1,false,0]\n"
+    );
     let mut output = Vec::new();
     assert!(
         serve(
@@ -196,7 +313,7 @@ fn protocol_confirms_only_effective_commits_and_rejects_unknown_commands() {
         )
         .is_err()
     );
-    assert_eq!(output, b"[\"ready\",1]\n");
+    assert_eq!(output, b"[\"ready\",1,false,0]\n");
 }
 
 #[test]

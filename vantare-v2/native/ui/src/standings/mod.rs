@@ -11,6 +11,7 @@ use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, standings};
 
 pub(crate) struct Widget {
+    legacy: bool,
     config: Config,
     vm: Vm,
     plan: Plan,
@@ -19,12 +20,27 @@ pub(crate) struct Widget {
 
 impl Widget {
     pub(crate) fn new(_prefs: Preferences) -> Self {
+        // Preferencia de presentación, independiente del nombre o datos de escena.
+        Self::with_layout(std::env::var_os("VANTARE_STANDINGS_LEGACY").is_some())
+    }
+
+    fn with_layout(legacy: bool) -> Self {
         let mut config = Config::reference();
-        // Tamaño inicial de una lista llena; solo cambia si hay menos coches.
+        if !legacy {
+            config.row_count = 20;
+            config.columns.retain(|column| column.metric != Metric::Pit);
+            for column in &mut config.columns {
+                if column.metric == Metric::BestLap {
+                    column.metric = Metric::LastLap;
+                }
+            }
+        }
+        // Signature reserva la capacidad del documento; el histórico ajusta filas.
         config.fit(config.row_count);
         let vm = Vm::unavailable(Status::Disconnected);
         let plan = model::plan(&config, &vm);
         Self {
+            legacy,
             config,
             vm,
             plan,
@@ -33,7 +49,11 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let domain = standings::project(snapshot, prefs);
+        let domain = if self.legacy {
+            standings::project(snapshot, prefs)
+        } else {
+            standings::project_player_class(snapshot, prefs)
+        };
         let identity = format!("{}:{}", snapshot.state.session.id.0, snapshot.epoch);
         let mut next = Vm::from_domain(
             &domain,
@@ -42,8 +62,12 @@ impl Widget {
             identity,
             snapshot.sequence,
         );
-        // Alto del widget = cabecera + filas visibles + pie (SPEC §1).
-        self.config.fit(next.rows.len());
+        // Wails reserva 20 filas aunque su filtro de clase muestre menos coches.
+        self.config.fit(if self.legacy {
+            next.rows.len()
+        } else {
+            self.config.row_count
+        });
         let plan = model::plan(&self.config, &next);
         // El número de secuencia cambia siempre y no se ve: no cuenta.
         let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
@@ -63,7 +87,12 @@ impl Widget {
 impl Widget {
     pub(crate) fn size(&self) -> (f32, f32) {
         (
-            self.config.width + model::PIT_RAIL_WIDTH,
+            self.config.width
+                + if self.plan.pit_enabled {
+                    model::PIT_RAIL_WIDTH
+                } else {
+                    0.0
+                },
             self.config.height,
         )
     }
@@ -96,10 +125,79 @@ impl Widget {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn phase_two_uses_player_class_last_lap_and_reserved_height() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+                .expect("escena fase 2");
+        let prefs = Preferences::default();
+        let mut widget = Widget::with_layout(false);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.size(), (440.0, 664.0));
+        assert!(!widget.plan.pit_enabled);
+        assert_eq!(widget.plan.visible_rows, 7);
+        assert_eq!(
+            widget
+                .vm
+                .rows
+                .iter()
+                .map(|r| r.position)
+                .collect::<Vec<_>>(),
+            [1, 4, 7, 10, 13, 16, 19]
+        );
+        assert_eq!(widget.vm.rows[0].last_lap_text, "1:49.667");
+        assert_eq!(widget.vm.rows[1].gap_text, "—");
+        assert_eq!(widget.vm.rows[3].gap_text, "+11.11s");
+        assert_eq!(widget.vm.rows[6].gap_text, "+1 V");
+        assert_eq!(widget.vm.estimated_laps, "≈79");
+        assert_eq!(
+            widget.plan.columns.last().map(|c| c.metric),
+            Some(Metric::LastLap)
+        );
+
+        let mut other_class = snapshot.clone();
+        other_class.sequence += 1;
+        other_class.state.cars[1].driver.name = "OTRO".into();
+        assert!(!widget.ingest(&other_class, prefs));
+        other_class.state.player = Some(vantare_domain::Player {
+            car: vantare_domain::CarId(2),
+            ..vantare_domain::Player::default()
+        });
+        assert!(widget.ingest(&other_class, prefs));
+        assert_eq!(widget.vm.rows.len(), 7);
+        assert_eq!(widget.vm.rows[0].position, 2);
+        assert_eq!(widget.size(), (440.0, 664.0));
+    }
+
+    #[test]
+    fn historical_scene_and_configuration_remain_reproducible() {
+        let legacy = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/standings-legacy.snapshot.json"
+        ))
+        .expect("escena histórica");
+        assert_eq!(legacy, source::fixed());
+        assert_eq!(
+            include_bytes!("../../fixtures/standings-legacy.snapshot.json"),
+            include_bytes!("../../fixtures/standings-44.snapshot.json")
+        );
+        let mut widget = Widget::with_layout(true);
+        widget.ingest(&legacy, Preferences::default());
+        assert_eq!(widget.size(), (474.0, 364.0));
+        assert!(widget.plan.pit_enabled);
+        assert_eq!(widget.plan.visible_rows, 10);
+        assert!(
+            widget
+                .plan
+                .columns
+                .iter()
+                .any(|c| c.metric == Metric::BestLap)
+        );
+    }
     #[test]
     fn standings_repaint_only_when_what_is_drawn_changes() {
         let prefs = Preferences::default();
-        let mut standings = Widget::new(Preferences::default());
+        let mut standings = Widget::with_layout(true);
         let first = source::fixed();
         assert!(standings.ingest(&first, prefs), "el primer estado se pinta");
 
@@ -126,7 +224,7 @@ mod tests {
 
     /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
     fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
-        let mut standings = Widget::new(Preferences::default());
+        let mut standings = Widget::with_layout(true);
         (0..30 * 60)
             .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
             .count()

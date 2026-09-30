@@ -53,8 +53,10 @@ Arranque explícito (replay real, no fuente sintética por defecto):
   -ApplicationArgs @('--', '--replay', (Resolve-Path testdata/lmu-fixture.bin).Path, '--build', '1.3.0.0', '--', '4')
 ```
 
-El wrapper conserva el lock mientras vive el launcher. Ctrl+C / cierre normal
-usan el ciclo de vida existente. El nativo actual no consume un directorio de
+Start conserva el lock solo hasta crear el proceso launcher en consola oculta
+y devuelve su PID. PowerShell termina; el launcher nativo es el propietario de
+sus hijos. Cierre normal de overlays / `vantare --parar` usan el ciclo de vida
+existente. El nativo actual no consume un directorio de
 perfiles persistidos: packaging todavía no demuestra migración funcional.
 
 Actualización y rollback, con todos los procesos de esta instalación cerrados:
@@ -68,7 +70,7 @@ Actualización y rollback, con todos los procesos de esta instalación cerrados:
 Update exige el mismo canal/esquema y un paquete íntegro. Copia datos a una
 generación nueva, verifica que el origen no cambió y solo entonces reemplaza
 `state.json` atómicamente. No sobrescribe exe en uso. Un lock excluye las
-operaciones y el wrapper; handles exclusivos de los exe rechazan procesos
+operaciones y el arranque; handles exclusivos de los exe rechazan procesos
 abiertos directamente durante actualización/rollback. No se mata la app.
 Rollback selecciona a la vez binarios y datos anteriores. Las escrituras hechas
 en la generación nueva permanecen allí; **no se mezclan en la anterior**.
@@ -83,6 +85,24 @@ deben adoptar el contrato antes de usarlo con sus almacenes.
 El bootstrap `candidate.ps1` instalado no se reemplaza en Update (schema=1).
 Una evolución del instalador requiere reinstalación aislada/revisión explícita;
 no ejecutar un script nuevo automáticamente desde un ZIP.
+
+Archivar un perfil Wails público elegido expresamente, sin buscar datos reales:
+
+```powershell
+& native/target/phase7-install/candidate.ps1 -Operation ImportProfiles -Root native/target/phase7-install `
+  -ProfileFiles @((Resolve-Path pkg/config/testdata/profile-v2-general-layout.json).Path)
+& native/target/phase7-install/candidate.ps1 -Operation Rollback -Root native/target/phase7-install
+```
+
+ImportProfiles crea una generación con copias verificadas de binarios/datos y
+`data/legacy-profiles/<id>/` con los JSON originales y recibo `conversion=none`.
+No cambia el origen, no incluye cuentas/ajustes, no convierte esquemas ni
+activa perfiles en Studio. Sin esquema destino de fase 5, **la migración
+funcional está bloqueada**. Rollback deshace la selección del archivo importado
+conservándolo para inspección; no borra datos.
+
+La [matriz de servicios](PARIDAD-SERVICIOS.md) identifica qué existe en esta
+base y qué falta, incluido Testing Center. La fase completa no está aceptada.
 
 No se aceptan ZIP parciales, hashes erróneos, otro esquema, paths arbitrarios,
 enlaces ni árboles con `.env*`. Las preparaciones incompletas se conservan para

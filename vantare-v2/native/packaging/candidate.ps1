@@ -1,7 +1,7 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'Status', 'Start')][string]$Operation = 'Status',
+    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'Status', 'Start')][string]$Operation = 'Status',
     [string]$Root = $PSScriptRoot,
     [string]$Archive,
     [string]$ExpectedSha256,
@@ -10,7 +10,8 @@ param(
     [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
     [string]$OutputDirectory,
     [switch]$AllowDirty,
-    [string[]]$ApplicationArgs = @()
+    [string[]]$ApplicationArgs = @(),
+    [string[]]$ProfileFiles = @()
 )
 
 Set-StrictMode -Version Latest
@@ -31,6 +32,7 @@ function Assert-NativePath([string]$Path) {
     if ([IO.DriveInfo]::new([IO.Path]::GetPathRoot($full)).DriveType -eq [IO.DriveType]::Network) { throw 'No se permiten unidades de red.' }
     $parent = $full
     while ($parent) {
+        if ([IO.Path]::GetFileName($parent) -like '.env*') { throw 'No se permiten rutas .env.' }
         if (Test-Path -LiteralPath $parent) {
             $item = Get-Item -LiteralPath $parent -Force
             if ($item.Name -like '.env*' -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Ruta .env o reparse point rechazada.' }
@@ -289,6 +291,64 @@ function Restore-NativeCandidate([string]$Directory) {
     } finally { $lock.Dispose() }
 }
 
+function Import-NativeProfiles([string]$Directory, [string[]]$Files) {
+    if (-not $Files.Count) { throw 'Indique perfiles JSON explícitos; no se descubre AppData.' }
+    $directory = Open-NativeRoot $Directory
+    $lock = Open-NativeLock $directory
+    try {
+        $state = Read-NativeState $directory
+        $source = Join-Path $directory "generations/$($state.active.generation)"
+        $handles = Open-NativeBinaryGuard $directory
+        try {
+            $id = [guid]::NewGuid().ToString('N')
+            $generation = Join-Path $directory "generations/$id"
+            foreach ($member in ($script:NativeMembers + @('manifest.json'))) {
+                $from = Join-Path $source $member; $to = Join-Path $generation $member
+                [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to)) | Out-Null
+                if ($member.StartsWith('bin/')) {
+                    # Leer a través del handle que ya mantiene bloqueada la imagen.
+                    $inputFile = $handles[[IO.Path]::GetFullPath($from)]; $inputFile.Position = 0
+                    $outputFile = [IO.File]::Open($to, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+                    try { $inputFile.CopyTo($outputFile); $outputFile.Flush($true) } finally { $outputFile.Dispose() }
+                } else { [IO.File]::Copy($from, $to) }
+            }
+            if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $state.active.manifest_sha256) { throw 'Manifiesto de origen cambió; no se importa.' }
+            $null = Read-NativeManifest $generation $state.channel
+            Copy-NativeData (Join-Path $source 'data') (Join-Path $generation 'data')
+            $import = Join-Path $generation "data/legacy-profiles/$id"
+            [IO.Directory]::CreateDirectory($import) | Out-Null
+            $records = @()
+            foreach ($file in $Files) {
+                $path = Assert-NativePath $file
+                $name = [IO.Path]::GetFileName($path)
+                if ($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$' -or $name -ceq 'import.json') { throw 'Nombre de perfil JSON no admitido.' }
+                $inputFile = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                try {
+                    if ($inputFile.Length -gt 8MB) { throw 'Perfil supera 8 MiB.' }
+                    $reader = [IO.StreamReader]::new($inputFile, [Text.Encoding]::UTF8, $true, 4096, $true)
+                    try { $profile = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+                    $fields = @($profile.PSObject.Properties.Name)
+                    if ('widgets' -notin $fields -and 'layouts' -notin $fields) { throw 'No es un perfil Wails reconocible; no se importan ajustes/cuentas.' }
+                    if ('schemaVersion' -in $fields -and $profile.schemaVersion -notin @(0, 1, 2, 3, 4)) { throw 'Versión de perfil desconocida.' }
+                    $inputFile.Position = 0
+                    $sha = [Security.Cryptography.SHA256]::Create()
+                    try { $hash = [BitConverter]::ToString($sha.ComputeHash($inputFile)).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() }
+                    $inputFile.Position = 0
+                    $dest = Join-Path $import $name
+                    $outputFile = [IO.File]::Open($dest, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+                    try { $inputFile.CopyTo($outputFile); $outputFile.Flush($true) } finally { $outputFile.Dispose() }
+                    if ((Get-NativeHash $dest) -cne $hash) { throw 'Copia de perfil no coincide.' }
+                    $records += [ordered]@{ name = $name; sha256 = $hash }
+                } finally { $inputFile.Dispose() }
+            }
+            Write-NativeJson (Join-Path $import 'import.json') ([ordered]@{ schema = 1; kind = 'wails-profile-archive'; conversion = 'none'; files = $records })
+            Invoke-NativeCheckpoint 'staged'
+            Set-NativeState $directory ([ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = @{ generation = $id; manifest_sha256 = $state.active.manifest_sha256 }; previous = $state.active })
+        } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+        Read-NativeState $directory
+    } finally { $lock.Dispose() }
+}
+
 function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty) {
     $native = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $sourceSha = (& git -C $native rev-parse HEAD).Trim()
@@ -318,6 +378,10 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     }
     Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $payload 'candidate.ps1')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination (Join-Path $payload 'README.md')
+    $matrix = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'PARIDAD-SERVICIOS.md'))
+    $readmePath = Join-Path $payload 'README.md'
+    $readme = [IO.File]::ReadAllText($readmePath).Replace('[matriz de servicios](PARIDAD-SERVICIOS.md)', 'matriz de servicios incluida abajo')
+    [IO.File]::WriteAllText($readmePath, "$readme`n`n$matrix", [Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath (Join-Path $native 'ui/assets/fonts/OFL-Inter.txt') -Destination (Join-Path $payload 'licenses/OFL-Inter.txt')
     # Catálogo de procedencia/licencias declaradas, no sustituye notices/SBOM revisado.
     $dependencies = @($metadata.packages | Sort-Object name, version | ForEach-Object { [ordered]@{ name = $_.name; version = $_.version; license = $_.license; source = $_.source } })
@@ -346,6 +410,7 @@ switch ($Operation) {
     'Install' { Install-NativeCandidate $Root $Archive $ExpectedSha256 $Channel | ConvertTo-Json -Depth 5 }
     'Update' { Update-NativeCandidate $Root $Archive $ExpectedSha256 | ConvertTo-Json -Depth 5 }
     'Rollback' { Restore-NativeCandidate $Root | ConvertTo-Json -Depth 5 }
+    'ImportProfiles' { Import-NativeProfiles $Root $ProfileFiles | ConvertTo-Json -Depth 5 }
     'Status' {
         $Root = Open-NativeRoot $Root; $lock = Open-NativeLock $Root
         try { Read-NativeState $Root | ConvertTo-Json -Depth 5 } finally { $lock.Dispose() }
@@ -356,8 +421,17 @@ switch ($Operation) {
         try {
             $state = Read-NativeState $Root
             $exe = Join-Path $Root "generations/$($state.active.generation)/bin/vantare.exe"
-            & $exe @ApplicationArgs
-            if ($LASTEXITCODE) { throw "Launcher terminó con código $LASTEXITCODE." }
+            # Quoting de argv de Windows: duplicar backslashes ante comillas y
+            # al final. El launcher recibe argv y PowerShell termina tras crearlo.
+            $quoted = @($ApplicationArgs | ForEach-Object {
+                '"' + [regex]::Replace([regex]::Replace($_, '(\\*)"', '$1$1\"'), '(\\+)$', '$1$1') + '"'
+            }) -join ' '
+            $info = [Diagnostics.ProcessStartInfo]::new()
+            $info.FileName = $exe; $info.Arguments = $quoted
+            $info.UseShellExecute = $true; $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+            $process = [Diagnostics.Process]::Start($info)
+            try { [pscustomobject]@{ launcher_pid = $process.Id; generation = $state.active.generation } | ConvertTo-Json }
+            finally { $process.Dispose() }
         } finally { $lock.Dispose() }
     }
 }

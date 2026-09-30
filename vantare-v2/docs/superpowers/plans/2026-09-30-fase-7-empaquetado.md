@@ -42,7 +42,9 @@ existente busca sus hijos junto a su exe.
    generación y cambiar un único `state.json` mediante reemplazo atómico en
    el mismo volumen. La generación anterior conserva binarios y datos. No
    sobrescribir ejecutables en uso ni lanzar actualización mientras la app
-   siga viva; el wrapper mantiene el lock durante el launcher. Verificar
+   siga viva; lock durante operaciones/creación del launcher y guard de
+   ejecutables Windows durante el cambio. PowerShell termina tras arrancar
+   el launcher, sin proceso extra durante carrera. Verificar
    también procesos abiertos directamente. Rollback explícito cambia juntos
    el puntero de binarios y datos; no fusiona escrituras posteriores.
    Probar actualización, corrupción, canal distinto, fallo antes/después del
@@ -143,3 +145,20 @@ Se actualizará por corte con checks, artefactos y límites realmente observados
   Bootstrap estable schema=1: evolucionarlo exige otro corte revisado, no
   reemplazar automáticamente el script instalado ni ejecutar código del ZIP.
 - Gates corte 4: fmt/clippy/test PASS offline (-j 2; dos físicos ignored), packaging 53 PASS y git diff --check PASS. Sin nuevas dependencias ni cambios de producto.
+- Corte 5: 74 comprobaciones packaging PASS (`corte5-tests-v4.log`) con el
+  prototipo Debug real. Importación por copia del fixture Wails V2 preserva SHA
+  de origen/destino, recibo `conversion=none`, rollback y archivo retirado.
+  Matriz `native/packaging/PARIDAD-SERVICIOS.md` registra ausencia de servicios,
+  incluido Testing Center, y bloqueos de fases 3/4/5, MSVC/ICU, firma y físicos.
+  El builder incorpora la matriz en el README del paquete, sin enlaces rotos.
+  La revisión retiró el wrapper PowerShell residente: Start entrega PID y
+  ownership al launcher nativo y termina. Prueba real con dos núcleos de replay
+  (el segundo sustituye overlays SOLO para probar lifecycle, no paridad UI):
+  PowerShell termina, launcher sigue, actualización se rechaza, señal de parada
+  aislada y cierre con código 0. Se conserva el handle al recuperar PID para
+  verificar ExitCode tras cierre; la ausencia del handle era un fallo de
+  instrumentación del test, reproducido y corregido sin cambiar producto.
+  No se toca Rust, persistencia real de usuario ni esquema de otras fases.
+  Pendiente inmediato: reconstrucción Release limpia y repetición de packaging
+  sobre los artefactos finales antes de entregar al orquestador.
+- Gates corte 5 finales: fmt/clippy/test PASS offline (-j 2; dos físicos ignored); packaging 74 PASS; diff --check PASS. Sin nuevas dependencias.

@@ -191,4 +191,102 @@ try {
     if (-not $process.HasExited) { $process.Kill(); $null = $process.WaitForExit(10000) }
     $process.Dispose()
 }
+
+# Perfil REAL versionado de Wails: se preservan bytes, no se simula conversión.
+$profileFile = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../pkg/config/testdata/profile-v2-general-layout.json'))
+$profileHash = Get-NativeHash $profileFile
+$before = Read-NativeState $install
+$state = Import-NativeProfiles $install @($profileFile)
+$importDir = Join-Path $install "generations/$($state.active.generation)/data/legacy-profiles/$($state.active.generation)"
+Assert-True ((Get-NativeHash (Join-Path $importDir ([IO.Path]::GetFileName($profileFile)))) -ceq $profileHash) 'perfil Wails real archivado byte por byte'
+Assert-True ((Get-NativeHash $profileFile) -ceq $profileHash) 'origen Wails no se modifica'
+$receipt = [IO.File]::ReadAllText((Join-Path $importDir 'import.json')) | ConvertFrom-Json
+Assert-True ($receipt.conversion -ceq 'none' -and $receipt.files[0].sha256 -ceq $profileHash) 'recibo identifica copia opaca sin conversión ni activación'
+$state = Restore-NativeCandidate $install
+Assert-True ($state.active.generation -ceq $before.active.generation -and -not (Test-Path -LiteralPath (Join-Path $install "generations/$($state.active.generation)/data/legacy-profiles"))) 'rollback deshace importación sin borrar origen ni archivo importado'
+Assert-True (Test-Path -LiteralPath $importDir) 'archivo importado se conserva en generación retirada'
+$stateHash = Get-NativeHash (Join-Path $install 'state.json')
+Assert-Rejected { Import-NativeProfiles $install @() } 'importación exige archivos explícitos'
+Assert-Rejected { Import-NativeProfiles $install @((Join-Path $script:TestRoot '.env-do-not-open.json')) } 'rechaza .env antes de abrir archivo incluso inexistente'
+$notProfile = Join-Path $script:TestRoot 'app-settings.json'
+[IO.File]::WriteAllText($notProfile, '{"language":"es"}')
+Assert-Rejected { Import-NativeProfiles $install @($notProfile) } 'no importa ajustes como perfil'
+Assert-True ((Get-NativeHash (Join-Path $install 'state.json')) -ceq $stateHash) 'importaciones rechazadas preservan estado'
+
+$malformed = New-TestArchive 'bad-files-list' { param($zip); Set-TestManifest $zip { param($m); $m.files[0].path = 'bin/../escape.exe' } }
+Assert-Rejected { Update-NativeCandidate $install $malformed (Get-NativeHash $malformed) } 'rechaza escape en lista del manifiesto'
+$link = New-TestArchive 'symlink' { param($zip); $zip.GetEntry('README.md').ExternalAttributes = -1610612736 }
+Assert-Rejected { Update-NativeCandidate $install $link (Get-NativeHash $link) } 'rechaza symlink de ZIP antes de extracción'
+
+# El launcher REAL supervisa dos núcleos de replay. El segundo ocupa el lugar
+# de overlays solo para probar lifecycle sin abrir GPUI; no prueba paridad UI.
+$launchScript = Join-Path $script:TestRoot 'launch.ps1'
+[IO.File]::WriteAllText($launchScript, @'
+param($ScriptFile, $InstallRoot, $CoreExe, $Fixture, $Instance, $PipeOne, $PipeTwo)
+& $ScriptFile -Operation Start -Root $InstallRoot -ApplicationArgs @(
+    '--core-bin', $CoreExe, '--overlays-bin', $CoreExe, '--instancia', $Instance,
+    '--', '--replay', $Fixture, '--build', '1.3.0.0', '--pipe', $PipeOne,
+    '--', '--replay', $Fixture, '--build', '1.3.0.0', '--pipe', $PipeTwo)
+'@, [Text.UTF8Encoding]::new($true))
+$state = Read-NativeState $install
+$launcherExe = Join-Path $install "generations/$($state.active.generation)/bin/vantare.exe"
+$coreExe = Join-Path $install "generations/$($state.active.generation)/bin/vantare-core.exe"
+$instance = 'phase7-' + [guid]::NewGuid().ToString('N')
+$info = [Diagnostics.ProcessStartInfo]::new()
+$info.FileName = Join-Path $PSHOME 'powershell.exe'
+$info.Arguments = "-NoProfile -File `"$launchScript`" -ScriptFile `"$(Join-Path $PSScriptRoot 'candidate.ps1')`" -InstallRoot `"$install`" -CoreExe `"$coreExe`" -Fixture `"$fixture`" -Instance $instance -PipeOne $instance-one -PipeTwo $instance-two"
+$info.UseShellExecute = $false; $info.CreateNoWindow = $true
+$info.RedirectStandardOutput = $true; $info.RedirectStandardError = $true
+$process = [Diagnostics.Process]::Start($info)
+$launcher = $null
+try {
+    if (-not $process.WaitForExit(10000)) { $process.Kill(); throw 'Herramienta de arranque no termina.' }
+    $out = $process.StandardOutput.ReadToEnd(); $err = $process.StandardError.ReadToEnd()
+    [IO.File]::WriteAllText((Join-Path $script:TestRoot 'start-handoff.log'), "$out`n$err")
+    Assert-True ($process.ExitCode -eq 0) 'herramienta temporal de arranque termina tras entregar ownership al launcher'
+    $launcher = [Diagnostics.Process]::GetProcessById(($out | ConvertFrom-Json).launcher_pid)
+    # Conservar handle antes de que muera: GetProcessById solo no retiene ExitCode.
+    $null = $launcher.Handle; $launcher.EnableRaisingEvents = $true
+    Assert-True (-not $launcher.WaitForExit(500)) 'launcher nativo sigue vivo después de terminar PowerShell'
+    $lock = Open-NativeLock $install; $lock.Dispose()
+    Assert-Rejected { Update-NativeCandidate $install $updatedArchive $updatedHash } 'exe guard protege la carrera sin un wrapper PowerShell residente'
+    $stopInfo = [Diagnostics.ProcessStartInfo]::new()
+    $stopInfo.FileName = $launcherExe; $stopInfo.Arguments = "--parar --instancia $instance"
+    $stopInfo.UseShellExecute = $false; $stopInfo.CreateNoWindow = $true
+    $stop = [Diagnostics.Process]::Start($stopInfo)
+    try { Assert-True ($stop.WaitForExit(10000) -and $stop.ExitCode -eq 0) 'señal de cierre usa solo instancia de prueba' } finally { $stop.Dispose() }
+    Assert-True ($launcher.WaitForExit(10000) -and $launcher.HasExited -and $launcher.ExitCode -eq 0) 'launcher cierra sus dos hijos de replay por ciclo de vida nativo'
+} finally {
+    if ($null -ne $launcher) {
+        if (-not $launcher.HasExited) { $launcher.Kill(); $null = $launcher.WaitForExit(10000) }
+        $launcher.Dispose()
+    }
+    $process.Dispose()
+}
+
+# Ejecutar los comandos públicos del instalador, no solo las funciones de test.
+foreach ($operation in @('Status', 'Update', 'Rollback')) {
+    $info = [Diagnostics.ProcessStartInfo]::new()
+    $info.FileName = Join-Path $PSHOME 'powershell.exe'
+    $info.Arguments = "-NoProfile -File `"$(Join-Path $PSScriptRoot 'candidate.ps1')`" -Operation $operation -Root `"$install`" -Archive `"$updatedArchive`" -ExpectedSha256 $updatedHash"
+    $info.UseShellExecute = $false; $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true; $info.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($info)
+    try {
+        if (-not $process.WaitForExit(20000)) { $process.Kill(); throw "CLI $operation excede plazo." }
+        $out = $process.StandardOutput.ReadToEnd(); $err = $process.StandardError.ReadToEnd()
+        [IO.File]::WriteAllText((Join-Path $script:TestRoot "cli-$operation.log"), "$out`n$err")
+        Assert-True ($process.ExitCode -eq 0 -and ($out | ConvertFrom-Json).active.generation -cmatch '^[0-9a-f]{32}$') "CLI pública: $operation"
+    } finally { $process.Dispose() }
+}
+
+$stateFile = Join-Path $install 'state.json'
+$originalState = [IO.File]::ReadAllBytes($stateFile)
+try {
+    $bad = [IO.File]::ReadAllText($stateFile) | ConvertFrom-Json
+    $bad.active.generation = '../escape'
+    [IO.File]::WriteAllText($stateFile, ($bad | ConvertTo-Json -Depth 5))
+    Assert-Rejected { Read-NativeState $install } 'estado manipulado no permite escapar de generations ni activa fallback'
+} finally { [IO.File]::WriteAllBytes($stateFile, $originalState) }
+Assert-True ((Read-NativeState $install).active.generation -cmatch '^[0-9a-f]{32}$') 'restauración de estado de prueba conserva instalación válida'
 Write-Output "$script:Passed comprobaciones PASS. Sin pruebas físicas ni red."

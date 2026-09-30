@@ -28,6 +28,10 @@ use crate::{
     workshop::{Prepared, Workshop},
 };
 
+#[path = "testing/mod.rs"]
+pub mod testing;
+use testing::{Testing, diagnostic::Module as TestingModule};
+
 pub struct Options {
     pub controlled: bool,
     pub data_dir: PathBuf,
@@ -51,6 +55,7 @@ struct Hub {
     engineer: Entity<Engineer>,
     notifications: Entity<Notifications>,
     strategy: Entity<Strategy>,
+    testing: Entity<Testing>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -58,13 +63,16 @@ struct Hub {
 
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
-        // Studio guarda cada edición antes de confirmarla; aquí solo queda la selección Workshop.
+        // Studio confirma cada edición; guarda también los borradores locales pendientes.
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
+        self.testing.update(cx, |testing, _| testing.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
+            self.testing
+                .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
             let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
             self.previous_source = Some(crate::lifecycle::is_live(&snapshot));
             if self.section == Section::Home {
@@ -74,6 +82,43 @@ impl Hub {
                 cx.quit();
             }
         }
+        let activity = self.subscriber.activity();
+        let errors = [
+            (TestingModule::Hub, self.status.as_deref()),
+            (
+                TestingModule::Workshop,
+                self.workshop.read(cx).scene.error.as_deref(),
+            ),
+            (
+                TestingModule::Launcher,
+                self.launcher.read(cx).error.as_deref(),
+            ),
+            (
+                TestingModule::Calendar,
+                self.calendar.read(cx).error.as_deref(),
+            ),
+            (
+                TestingModule::Strategy,
+                self.strategy.read(cx).error.as_deref(),
+            ),
+            (
+                TestingModule::Engineer,
+                self.engineer.read(cx).error.as_deref(),
+            ),
+            (
+                TestingModule::Notifications,
+                self.notifications.read(cx).error.as_deref(),
+            ),
+        ]
+        .map(|(module, error)| (module, error.map(testing::diagnostic::error_code)));
+        self.testing.update(cx, |testing, _| {
+            testing.observed.activity(activity, Instant::now());
+            for (module, error) in errors {
+                if let Some(error) = error {
+                    testing.observed.section_error(module, error);
+                }
+            }
+        });
     }
 
     fn close(&mut self, cx: &mut Context<Self>) {
@@ -172,7 +217,7 @@ impl Hub {
             Section::Strategy => self.strategy.clone().into_any_element(),
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(cx).into_any_element(),
-            Section::Testing => self.diagnostics(cx).into_any_element(),
+            Section::Testing => self.testing.clone().into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
                 Some(&self.subscriber),
@@ -195,17 +240,6 @@ impl Hub {
                 orbit::callout(self.section.pending()).into_any_element()
             }
         }
-    }
-
-    fn diagnostics(&self, cx: &Context<Self>) -> gpui::Div {
-        let scene = &self.workshop.read(cx).scene;
-        let snapshot = scene.snapshot();
-        div().flex().flex_col().gap_2()
-            .child("Contexto local del Workshop; no es diagnóstico del juego ni reporte completo.")
-            .child(format!("Fuente de la foto: {} · {:?} · época {} · revisión {} · {} coches",
-                snapshot.origin.source.simulator, snapshot.origin.source.kind, snapshot.epoch, snapshot.sequence, snapshot.state.cars.len()))
-            .child(format!("Fotos cargadas: {} · última carga sin error: {}", scene.len(), scene.error.is_none()))
-            .child("Testing Center: exportación sanitizada, logs, reports y automatización esperan contrato del worker. Sin datos de cuenta, envío ni acciones externas.")
     }
 }
 
@@ -444,6 +478,7 @@ struct Loaded {
     launcher: LauncherStore,
     engineer: Engineer,
     strategy_dir: PathBuf,
+    testing_dir: PathBuf,
     subscriber: Subscriber,
 }
 
@@ -463,6 +498,7 @@ impl Hub {
             launcher: launcher_store,
             engineer,
             strategy_dir,
+            testing_dir,
             subscriber,
         } = loaded;
         start_source_poll(cx);
@@ -489,6 +525,7 @@ impl Hub {
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let strategy = cx.new(|cx| Strategy::new(strategy_dir, cx));
+        let testing = cx.new(|cx| Testing::new(testing_dir, cx));
         wire_strategy(&strategy, cx);
         cx.observe(&workshop, |this, workshop, cx| {
             let snapshot = workshop.read(cx).scene.snapshot().clone();
@@ -519,6 +556,7 @@ impl Hub {
             launcher,
             engineer,
             strategy,
+            testing,
             notifications,
             status: None,
             subscriber,
@@ -547,6 +585,7 @@ pub fn run(options: Options) -> Result<(), String> {
         launcher: LauncherStore::load(options.launcher_file)?,
         engineer: Engineer::load(options.engineer),
         strategy_dir: options.data_dir.clone(),
+        testing_dir: options.data_dir.clone(),
         subscriber: subscribe(options.pipe)?,
     };
     let stop = watch_stdin(options.controlled)?;

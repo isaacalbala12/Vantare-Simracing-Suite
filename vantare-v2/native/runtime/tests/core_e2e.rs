@@ -80,6 +80,91 @@ fn assert_one_growing_revision(got: &[Arc<Snapshot>]) {
 }
 
 #[test]
+fn the_core_process_emits_and_persists_source_fact_outside_acquisition() {
+    use vantare_domain::SourceState;
+    use vantare_runtime::flows::{Delivery, FactKind, RecordingStatus, client::EventClient, host};
+    struct Recording(PathBuf);
+    impl Drop for Recording {
+        fn drop(&mut self) {
+            if self.0.exists() {
+                std::fs::remove_file(&self.0).unwrap();
+            }
+        }
+    }
+    let recording = Recording(
+        std::env::temp_dir().join(format!("vantare-e2e-events-{}.jsonl", std::process::id())),
+    );
+    let pipe = pipe_name("events");
+    let expected = PathBuf::from(env!("CARGO_BIN_EXE_vantare-core"));
+    let client = EventClient::connect(&host::pipe_name(&pipe), None, move |peer| {
+        peer.is_image(&expected)
+    })
+    .unwrap();
+    let image = std::env::current_exe().unwrap();
+    let mut core = CoreProcess::spawn(
+        &pipe,
+        &testdata("lmu-fixture.bin"),
+        &[
+            "--build",
+            "1.3.0.0",
+            "--velocidad",
+            "0.2",
+            "--engineer-image",
+            image.to_str().unwrap(),
+            "--recording",
+            recording.0.to_str().unwrap(),
+        ],
+    );
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let mut received = false;
+    while Instant::now() < deadline {
+        let Some(frame) = client.next(Duration::from_millis(100)).unwrap() else {
+            continue;
+        };
+        assert_eq!(frame.recording, RecordingStatus::Active);
+        let cursor = match frame.delivery {
+            Some(Delivery::Fact(fact)) => {
+                assert_eq!(
+                    fact.kind,
+                    FactKind::SourceChanged {
+                        before: SourceState::Live,
+                        after: SourceState::Stale
+                    }
+                );
+                assert_eq!(fact.sequence, frame.snapshot.sequence);
+                assert_eq!(frame.durable, Some(fact.cursor));
+                assert_eq!(frame.snapshot.state.source_state, SourceState::Stale);
+                assert_eq!(frame.snapshot.state.cars.len(), 44);
+                received = true;
+                fact.cursor
+            }
+            None => frame.tail,
+            other => panic!("entrega inesperada: {other:?}"),
+        };
+        client.ack(cursor).unwrap();
+        if received {
+            break;
+        }
+    }
+    assert!(received, "hecho productivo de fuente desde captura real");
+    drop(client);
+    drop(core.0.stdin.take());
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        if let Some(status) = core.0.try_wait().unwrap() {
+            assert!(status.success());
+            break;
+        }
+        assert!(Instant::now() < deadline, "EOF no cerró dueño I/O");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(
+        std::fs::read(&recording.0).unwrap().starts_with(b"[3,"),
+        "hecho v3 realmente confirmado"
+    );
+}
+
+#[test]
 fn the_44_car_fixture_reaches_a_subscriber_fresh_then_stale() {
     let pipe = pipe_name("fixture");
     // El suscriptor va primero: reintenta solo hasta que el núcleo abre el pipe.

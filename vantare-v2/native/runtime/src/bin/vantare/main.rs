@@ -17,7 +17,7 @@
 //!   sale con código 0 ha terminado a propósito (overlays cerrado por el
 //!   usuario, replay acabado): el launcher cierra todo y sale con 0.
 //! - **Cierre** (Ctrl+C, cierre de consola o `vantare --parar`): primero
-//!   overlays y después el núcleo; a cada uno se le pide que termine y, pasado
+//!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
 //!   el plazo, se le mata.
 
 mod win;
@@ -30,7 +30,7 @@ use std::{env, io};
 use win::{Instance, Stop};
 
 const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
-[--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]\n     vantare --parar [--instancia S]";
+[--instancia S] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
 const DEFAULT_GRACE: Duration = Duration::from_secs(3);
 const DEFAULT_RESTARTS: u32 = 5;
 /// Espera antes del primer reinicio; se duplica en cada caída seguida.
@@ -53,6 +53,7 @@ struct Program {
 struct Config {
     core: Program,
     overlays: Program,
+    engineer: Option<Program>,
     grace: Duration,
     restarts: u32,
     /// Sufijo de los nombres de los objetos del sistema, para aislar instancias (pruebas).
@@ -77,16 +78,30 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
             path: bin_dir.join("vantare-overlays.exe"),
             args: Vec::new(),
         },
+        engineer: None,
         grace: DEFAULT_GRACE,
         restarts: DEFAULT_RESTARTS,
         instance: String::new(),
         stop_only: false,
     };
     let mut args = args.iter();
+    let mut engineer_bin = bin_dir.join("vantare-engineer.exe");
+    let mut engineer_args = Vec::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--core-bin" => config.core.path = value(&mut args, arg)?.into(),
             "--overlays-bin" => config.overlays.path = value(&mut args, arg)?.into(),
+            "--engineer-bin" => engineer_bin = value(&mut args, arg)?.into(),
+            "--engineer" => {
+                config.engineer = Some(Program {
+                    path: engineer_bin.clone(),
+                    args: vec![
+                        "--pipe".into(),
+                        "--cursor".into(),
+                        value(&mut args, arg)?.clone(),
+                    ],
+                });
+            }
             "--plazo" => {
                 let ms = value(&mut args, arg)?
                     .parse()
@@ -103,12 +118,32 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
             "--" => {
                 // El resto son argumentos de los hijos: núcleo hasta el siguiente `--`.
                 let rest: Vec<String> = args.by_ref().cloned().collect();
-                let mut groups = rest.splitn(2, |a| a == "--");
+                let mut groups = rest.splitn(3, |a| a == "--");
                 config.core.args = groups.next().unwrap_or_default().to_vec();
                 config.overlays.args = groups.next().unwrap_or_default().to_vec();
+                engineer_args = groups.next().unwrap_or_default().to_vec();
             }
             other => return Err(format!("argumento desconocido: {other}")),
         }
+    }
+    if let Some(engineer) = &mut config.engineer {
+        engineer.path = engineer_bin;
+        if let Some(pipe) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
+            engineer
+                .args
+                .extend(["--pipe-name".into(), pipe[1].clone()]);
+        }
+        config.core.args.extend([
+            "--engineer-image".into(),
+            engineer.path.to_string_lossy().into_owned(),
+        ]);
+        engineer.args.extend([
+            "--core-image".into(),
+            config.core.path.to_string_lossy().into_owned(),
+        ]);
+        engineer.args.extend(engineer_args);
+    } else if !engineer_args.is_empty() {
+        return Err("argumentos Engineer requieren --engineer R".into());
     }
     Ok(config)
 }
@@ -201,7 +236,7 @@ enum Outcome {
     Exhausted(&'static str),
 }
 
-fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
+fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
     use std::os::windows::io::AsRawHandle;
     loop {
         let now = Instant::now();
@@ -252,9 +287,9 @@ fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
     }
 }
 
-/// Overlays primero, después el núcleo. A cada uno se le pide que termine y se
+/// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
-fn shutdown(services: &mut [Service; 2], grace: Duration) {
+fn shutdown(services: &mut [Service], grace: Duration) {
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
             continue;
@@ -279,10 +314,13 @@ fn run(config: Config) -> io::Result<ExitCode> {
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     win::adopt_self_in_job()?;
-    let mut services = [
+    let mut services = vec![
         Service::new("núcleo", config.core, config.restarts),
         Service::new("overlays", config.overlays, config.restarts),
     ];
+    if let Some(engineer) = config.engineer {
+        services.push(Service::new("Engineer", engineer, config.restarts));
+    }
     let outcome = supervise(&mut services, &stop);
     shutdown(&mut services, config.grace);
     Ok(match outcome? {
@@ -334,6 +372,46 @@ mod tests {
 
     fn parsed(list: &[&str]) -> Result<Config, String> {
         parse(&args(list), Path::new("bin"))
+    }
+
+    #[test]
+    fn engineer_is_opt_in_and_shares_pipe_identity_and_restart_policy() {
+        assert!(parsed(&[]).unwrap().engineer.is_none());
+        let config = parsed(&[
+            "--engineer",
+            "cursor.json",
+            "--engineer-bin",
+            "voice.exe",
+            "--",
+            "--live",
+            "--pipe",
+            "p",
+            "--",
+            "4",
+            "--",
+            "--locale",
+            "en",
+        ])
+        .unwrap();
+        let engineer = config.engineer.unwrap();
+        assert_eq!(engineer.path, Path::new("voice.exe"));
+        let core_image = Path::new("bin").join("vantare-core.exe");
+        assert_eq!(
+            engineer.args,
+            args(&[
+                "--pipe",
+                "--cursor",
+                "cursor.json",
+                "--pipe-name",
+                "p",
+                "--core-image",
+                core_image.to_str().unwrap(),
+                "--locale",
+                "en"
+            ])
+        );
+        assert_eq!(config.core.args.last().unwrap(), "voice.exe");
+        assert!(parsed(&["--", "--live", "--", "4", "--", "--locale", "en"]).is_err());
     }
 
     #[test]

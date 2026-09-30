@@ -8,7 +8,7 @@
 //! `vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión>] [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]`
 
 const USAGE: &str = "uso: vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
-                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]";
+                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>] [--recording <JSONL>] [--engineer-image <EXE>]";
 
 #[derive(Debug, PartialEq)]
 enum Input {
@@ -25,12 +25,15 @@ struct Args {
     input: Input,
     pipe: Option<String>,
     simulator: String,
+    recording: Option<std::path::PathBuf>,
+    engineer_image: Option<std::path::PathBuf>,
 }
 
 fn parse(args: &[String]) -> Result<Args, String> {
     let (mut replay, mut live) = (None, false);
     let (mut build, mut speed, mut pipe) = (None, None, None);
     let mut simulator = "lmu".to_owned();
+    let (mut recording, mut engineer_image) = (None, None);
     let mut args = args.iter();
     while let Some(flag) = args.next() {
         let mut value = || {
@@ -52,6 +55,8 @@ fn parse(args: &[String]) -> Result<Args, String> {
                 );
             }
             "--pipe" => pipe = Some(value()?),
+            "--recording" => recording = Some(value()?.into()),
+            "--engineer-image" => engineer_image = Some(value()?.into()),
             "--simulator" => simulator = value()?,
             other => return Err(format!("argumento desconocido: {other}")),
         }
@@ -76,6 +81,8 @@ fn parse(args: &[String]) -> Result<Args, String> {
         input,
         pipe,
         simulator,
+        recording,
+        engineer_image,
     })
 }
 
@@ -140,7 +147,18 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             (replay, speed)
         }
     };
-    service::run(adapter.as_mut(), &pipe, epoch, speed, stop)?;
+    let image = args
+        .engineer_image
+        .unwrap_or(std::env::current_exe()?.with_file_name("vantare-engineer.exe"));
+    service::run_with_events(
+        adapter.as_mut(),
+        &pipe,
+        epoch,
+        speed,
+        stop,
+        args.recording.as_deref(),
+        image,
+    )?;
     Ok(())
 }
 

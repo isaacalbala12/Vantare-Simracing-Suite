@@ -1,0 +1,31 @@
+   Compiling cc v1.5.1
+   Compiling serde_json v1.0.151
+   Compiling windows-sys v0.61.2
+   Compiling vswhom-sys v0.1.3
+   Compiling percent-encoding v2.3.2
+   Compiling form_urlencoded v1.2.2
+   Compiling vswhom v0.1.0
+   Compiling nu-ansi-term v0.50.3
+   Compiling half v2.7.1
+   Compiling memchr v2.8.3
+   Compiling tracing-subscriber v0.3.23
+   Compiling embed-resource v3.0.11
+   Compiling tiff v0.11.3
+   Compiling gpui v0.2.2 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling exr v1.74.2
+   Compiling serde_urlencoded v0.7.1
+   Compiling schemars v1.2.2
+   Compiling ztracing v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling perf v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling url v2.5.8
+   Compiling gpui_shared_string v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling image v0.25.10
+   Compiling http_client v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling sum_tree v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling util_macros v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling vantare-ipc v0.0.0 (C:\tmp\vw3-tc-local\vantare-v2\native\ipc)
+   Compiling gpui_windows v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling gpui_platform v0.1.0 (https://github.com/zed-industries/zed?rev=72d28c32c2ba77a579e1c02f984654518552124b#72d28c32)
+   Compiling vantare-ui v0.0.0 (C:\tmp\vw3-tc-local\vantare-v2\native\ui)
+   Compiling vantare-hub v0.0.0 (C:\tmp\vw3-tc-local\vantare-v2\native\hub)
+    Finished `dev` profile [unoptimized] target(s) in 1m 24s

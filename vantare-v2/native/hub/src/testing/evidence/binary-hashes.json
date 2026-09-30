@@ -1,0 +1,47 @@
+[
+  {
+    "name": "vantare-hub.exe",
+    "sha256": "35cbd57dfdc96393d1f41a8d3e73841c47dfacc57b39ed010fd358a4215ad3fe",
+    "matches": true
+  },
+  {
+    "name": "vantare.exe",
+    "sha256": "dc352060d326af986b552b1d929cc7b5577eb88d93f5d4895883d95a92e583ba",
+    "matches": true
+  },
+  {
+    "name": "vantare-core.exe",
+    "sha256": "f76b141f4f895052c26f65776ee16854668cc58826598bfad3fe296a2a490113",
+    "matches": true
+  },
+  {
+    "name": "vantare-overlays.exe",
+    "sha256": "7cd92470b91adcdb0f722e56280329eeff53cf275fbe0116296764414e09b6cf",
+    "matches": true
+  },
+  {
+    "name": "vantare-engineer.exe",
+    "sha256": "9c5932a28cb6d4526a00089ab185c8d2414813651fa4f135c8cc7f064c29ead4",
+    "matches": true
+  },
+  {
+    "name": "vantare-storage.exe",
+    "sha256": "6c2cdef8ff68e4e5d3f6a8e3497d2583779040e1eb1ab2f7f0c551f5ac2d6153",
+    "matches": true
+  },
+  {
+    "name": "vantare-workshop.exe",
+    "sha256": "ff557c549694d7ec755b5eefcbe007e85b27c5fde9fa8cf20726a6e9de372cfb",
+    "matches": true
+  },
+  {
+    "name": "vantare-grabar-lmu.exe",
+    "sha256": "23c7011402beaf93fbc949bb0f677ea3387d4ec57c0279e449af6e5f7bf52090",
+    "matches": true
+  },
+  {
+    "name": "vantare-grabar-acc.exe",
+    "sha256": "3513c9988d80793026bce0263422c8ffd1e17f7713f90407fd73d4e9b197353b",
+    "matches": true
+  }
+]

@@ -605,6 +605,25 @@ fn player_car(
     physics: Option<(&[u8], bool)>,
     track: Option<&(i32, String, f64)>,
 ) {
+    // Graphics 1.9: penalty @1228 es un enum, NO un contador; penaltyTime
+    // @1220 es tiempo de espera, NO cantidad. DT/SG indican al menos una
+    // sanción pendiente (Estimated(1)); no sabemos si hay varias en cola.
+    // DSQ, vuelta borrada y tiempo post-carrera no prueban servicio pendiente.
+    let penalty = match i32_at(g, 1228) {
+        0 if f32_at(g, 1220) == 0.0 => Quality::Reliable(0),
+        1..=4 | 7..=10 | 19 => Quality::Estimated(1),
+        _ => Quality::Unavailable,
+    };
+    car.pending_penalties = if stale {
+        match penalty {
+            Quality::Reliable(v) | Quality::Estimated(v) => Quality::Stale(v),
+            other => other,
+        }
+    } else {
+        penalty
+    };
+    // Broadcasting solo ofrece km/h escalar. Ni velocidad vectorial de
+    // rivales ni contador de sanciones: permanecen Unavailable.
     car.position = prefer(
         quality(u32::try_from(i32_at(g, 136)).ok().filter(|p| *p > 0), stale),
         car.position,
@@ -893,6 +912,45 @@ mod steering_tests {
                 ..State::default()
             };
             assert_eq!(capabilities(&state).driver_inputs, Capability::Fresh);
+        }
+    }
+}
+
+#[cfg(test)]
+mod second_round_tests {
+    use super::*;
+
+    #[test]
+    fn penalty_enum_is_not_a_counter_or_a_duration_and_rival_velocity_is_absent() {
+        for (code, time, expected) in [
+            (0_i32, 0.0_f32, Quality::Reliable(0)),
+            (1, 0.0, Quality::Estimated(1)),
+            (4, 30.0, Quality::Estimated(1)),
+            (7, 0.0, Quality::Estimated(1)),
+            (10, 30.0, Quality::Estimated(1)),
+            (19, 0.0, Quality::Estimated(1)),
+            (0, 5.0, Quality::Unavailable),
+            (14, 30.0, Quality::Unavailable),
+            (5, 0.0, Quality::Unavailable),
+            (6, 0.0, Quality::Unavailable),
+            (-1, 0.0, Quality::Unavailable),
+            (22, 0.0, Quality::Unavailable),
+            (99, 0.0, Quality::Unavailable),
+            (0, f32::NAN, Quality::Unavailable),
+        ] {
+            let mut g = vec![0_u8; PAGE_SIZES[1]];
+            g[1228..1232].copy_from_slice(&code.to_le_bytes());
+            g[1220..1224].copy_from_slice(&time.to_le_bytes());
+            let mut car = Car::default();
+            player_car(&mut car, &g, false, None, None);
+            assert_eq!(car.pending_penalties, expected, "enum {code}");
+            assert_eq!(car.velocity_mps, Quality::Unavailable);
+            player_car(&mut car, &g, true, None, None);
+            let stale = match expected {
+                Quality::Reliable(v) | Quality::Estimated(v) => Quality::Stale(v),
+                other => other,
+            };
+            assert_eq!(car.pending_penalties, stale);
         }
     }
 }

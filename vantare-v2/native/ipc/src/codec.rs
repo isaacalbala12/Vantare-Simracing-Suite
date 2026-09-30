@@ -155,6 +155,8 @@ pub(crate) mod tests {
                 y_m: 1e-9,
                 yaw_rad: 3.25,
             }),
+            velocity_mps: Quality::Reliable([-12.5, 40.0]),
+            pending_penalties: Quality::Estimated(2),
         }
     }
 
@@ -275,6 +277,30 @@ pub(crate) mod tests {
         let original = rich_snapshot(3, 42);
         assert_eq!(round_trip(&original), original);
         assert_eq!(round_trip(&Snapshot::default()), Snapshot::default());
+    }
+
+    #[test]
+    fn velocity_and_penalties_preserve_each_quality_and_are_required_in_v5() {
+        for (velocity, penalties) in [
+            (Quality::Reliable([-1.0, 40.0]), Quality::Reliable(0)),
+            (Quality::Estimated([1.0, 40.0]), Quality::Estimated(1)),
+            (Quality::Stale([-1.0, 40.0]), Quality::Stale(3)),
+            (Quality::Unavailable, Quality::Unavailable),
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].velocity_mps = velocity;
+            original.state.cars[0].pending_penalties = penalties;
+            assert_eq!(round_trip(&original), original);
+        }
+        for field in ["velocity_mps", "pending_penalties"] {
+            let mut value =
+                serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+            value["state"]["cars"][0]
+                .as_object_mut()
+                .expect("coche")
+                .remove(field);
+            assert!(serde_json::from_value::<SnapshotDto>(value).is_err());
+        }
     }
 
     #[test]

@@ -231,7 +231,7 @@ fn run_pipe(
     let mut output = io::stdout().lock();
     writeln!(
         output,
-        "{{\"version\":\"vantare.radio.status.v1\",\"events\":\"connecting\",\"spotter\":\"unavailable_opponent_velocity\"}}"
+        "{{\"version\":\"vantare.radio.status.v1\",\"events\":\"connecting\",\"spotter\":\"waiting_spatial\"}}"
     )?;
     output.flush()?;
     while !stop.load(Ordering::Relaxed) {

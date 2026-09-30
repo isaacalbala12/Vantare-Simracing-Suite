@@ -134,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn v4_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v5_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
@@ -145,8 +145,8 @@ mod tests {
             let mut snapshot = rich_snapshot(7, 42);
             snapshot.state.source_state = state;
             let text = snapshot_to_json(&snapshot).expect("serializa");
-            assert!(text.contains("\"version\":4"));
-            assert_eq!(snapshot_from_json(&text).expect("v4"), snapshot);
+            assert!(text.contains("\"version\":5"));
+            assert_eq!(snapshot_from_json(&text).expect("v5"), snapshot);
         }
         let mut json: serde_json::Value =
             serde_json::from_str(&snapshot_to_json(&rich_snapshot(7, 42)).expect("serializa"))
@@ -168,7 +168,7 @@ mod tests {
                 continue;
             }
             let text = std::fs::read_to_string(&path).expect("JSON de escena");
-            let snapshot = snapshot_from_json(&text).expect("escena v4");
+            let snapshot = snapshot_from_json(&text).expect("escena v5");
             assert_eq!(
                 snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
                     .expect("ida y vuelta"),

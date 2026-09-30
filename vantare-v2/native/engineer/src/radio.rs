@@ -284,6 +284,7 @@ pub struct Families {
     context: Option<(u64, SessionId, CarId)>,
     fuel_started: Option<Intent>,
     flags_started: u8,
+    spotter_started: Option<Intent>,
 }
 impl Families {
     pub fn reset(&mut self) {
@@ -296,6 +297,9 @@ impl Families {
             }
             Intent::Yellow => self.flags_started |= 1,
             Intent::Blue => self.flags_started |= 2,
+            Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => {
+                self.spotter_started = Some(message.intent);
+            }
             _ => {}
         }
     }
@@ -360,6 +364,13 @@ impl Families {
         self.flags_started &= flags;
         for (bit, intent) in [(1, Intent::Yellow), (2, Intent::Blue)] {
             if flags & bit != 0 && self.flags_started & bit == 0 {
+                intents.push(intent);
+            }
+        }
+        let spotter = crate::spotter::evaluate(snapshot, self.spotter_started);
+        if self.spotter_started != spotter {
+            self.spotter_started = None;
+            if let Some(intent) = spotter {
                 intents.push(intent);
             }
         }
@@ -450,7 +461,8 @@ fn valid_now(message: &Message, snapshot: &Snapshot) -> bool {
                     car.in_pits == Quality::Reliable(message.intent == Intent::PitEntry)
                 })
         }
-        // No activar geometría audible sin velocidad vectorial de oponentes.
-        Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => false,
+        Intent::CarLeft | Intent::CarRight | Intent::ThreeWide => {
+            crate::spotter::evaluate(snapshot, Some(message.intent)) == Some(message.intent)
+        }
     }
 }

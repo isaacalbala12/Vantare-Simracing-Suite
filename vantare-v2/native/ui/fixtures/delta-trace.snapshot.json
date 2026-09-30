@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "epoch": 1,
   "sequence": 1,
   "origin": {
@@ -92,7 +92,7 @@
         "lap_elapsed_s": "unavailable",
         "current_sector": "unavailable",
         "relative_s": "unavailable",
-        "relative_laps": "unavailable"
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
       }
     ],
     "player": {

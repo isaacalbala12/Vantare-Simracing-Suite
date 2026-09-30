@@ -8,7 +8,7 @@ Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 ## Ejecución de producto
 
 `vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`
-consume foto DTO v4 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
+consume foto DTO v5 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
 PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
 del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
 retira avisos y para clips; una reentrega no rejuvenece la foto. Ctrl+C o EOF
@@ -22,10 +22,46 @@ del pipe e imágenes de binarios (`--core-image` / `--engineer-image`).
 stdout: JSONL `vantare.radio.v1` con intent, prioridad, texto localizado,
 epoch/sequence, session/car y TTL; `vantare.radio.status.v1` con degradaciones
 y `clear:true` (retirar presentación, **no** anunciar pista despejada). El estado
-inicial declara conexión pendiente y Spotter sin velocidad de rivales.
+inicial declara conexión pendiente y Spotter esperando evidencia espacial.
 Boxes y vueltas completadas exigen hechos del journal de la revisión actual;
 fuel/flags usan estado fiable actual. SourceState distinto de Live retira voz.
 No aceptar el pipe latest-wins como sustituto del journal.
+
+### Señales de segunda ronda — #1428 / #1427
+
+Spotter usa pose, velocidad vectorial nativa del jugador y rivales, estado de
+boxes y velocidad escalar del jugador, todos `Reliable` y fuente `Live`.
+Mínimo 10 m/s (también en el vector horizontal); el filtro Go exige diferencia
+estrictamente menor de 12 m/s en cada componente del mundo al entrar al solape.
+La geometría conserva la histéresis de 5 m para un lado ya comunicado. El ACK
+de presentación deduplica una condición estable; la cola existente revalida
+la ocupación/calidad antes de reproducir. Época, sujeto, fuente y baseline
+reinician el estado. Falta de evidencia retira presentación con `clear:true`;
+no se añade un anuncio audible de pista despejada. El ajuste global `enabled`
+controla también Spotter; no se cambia el contrato de preferencias del Hub.
+
+LMU aporta vector por coche; ACC no aporta vector de rivales y por tanto no
+activa Spotter. Sin clips no hay audio: los tests solo verifican radio visual.
+No se declara paridad completa con el Spotter Go (debounce/avisos clear),
+validación acústica, ni presupuesto de CPU/latencia/frame time.
+
+Pendientes del microplan de fase 3, **sin implementar**:
+
+- Servicio de boxes y limitador: LMU `TelemInfoV01.mSpeedLimiter`,
+  `VehicleScoringInfoV01.mPitState` y estado de petición/servicio del SDK/REST;
+  ACC `physics.pitLimiterOn`, `graphics.isInPitLane/isInPit` y
+  `mandatoryPitDone`. Validar su semántica y capturas antes de anunciar
+  inicio/fin de servicio: entrar en boxes no demuestra un servicio terminado.
+- Timings: tiempos, sectores y progreso nativos de scoring LMU y
+  graphics/Broadcasting ACC. La familia requiere contrato de consultas y
+  reloj común y, para historia, hechos canónicos del núcleo; no deducirlos
+  de saltos entre fotos coalescidas. Posición/stint y vueltas históricas
+  dependen del journal y señales de identidad/servicio, según el microplan.
+- Las sanciones quedan en el DTO con calidad; no se añade aquí una familia
+  de avisos ni se infiere tipo, causa, plazo o servicio cumplido.
+
+Notion no disponible: excepción expresa del encargo del 2026-09-30. Evidencia
+local para revisión de Opus; sin actualización Notion, push, PR ni integración.
 
 ## Consumo y recuperación
 

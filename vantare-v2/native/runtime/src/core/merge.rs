@@ -163,6 +163,8 @@ fn sanitize(state: &mut State) {
             current_sector: _,
             in_pits: _,
             pose,
+            velocity_mps,
+            pending_penalties: _, // u32: no hay NaN ni contador negativo.
         } = car;
         finite(last_lap_s);
         finite(best_lap_s);
@@ -177,6 +179,9 @@ fn sanitize(state: &mut State) {
             [pose.x_m, pose.y_m, pose.yaw_rad]
                 .iter()
                 .all(|v| v.is_finite())
+        });
+        keep_if(velocity_mps, |v| {
+            v.iter().all(|component| component.is_finite())
         });
     }
     if let Some(player) = player {
@@ -285,6 +290,44 @@ mod tests {
     use vantare_domain::{Capabilities, Capability, Player, SessionId, Source};
 
     use super::*;
+
+    #[test]
+    fn velocity_is_sanitized_and_both_signals_expire() {
+        for velocity in [[f64::NAN, 1.0], [1.0, f64::INFINITY]] {
+            for quality in [
+                Quality::Reliable(velocity),
+                Quality::Estimated(velocity),
+                Quality::Stale(velocity),
+            ] {
+                let mut state = State {
+                    cars: vec![Car {
+                        velocity_mps: quality,
+                        ..Car::default()
+                    }],
+                    ..State::default()
+                };
+                sanitize(&mut state);
+                assert_eq!(state.cars[0].velocity_mps, Quality::Unavailable);
+            }
+        }
+        let mut state = State {
+            cars: vec![Car {
+                velocity_mps: Quality::Reliable([-2.0, 40.0]),
+                pending_penalties: Quality::Estimated(1),
+                ..Car::default()
+            }],
+            ..State::default()
+        };
+        sanitize(&mut state);
+        degrade(&mut state);
+        assert_eq!(state.cars[0].velocity_mps, Quality::Stale([-2.0, 40.0]));
+        assert_eq!(state.cars[0].pending_penalties, Quality::Stale(1));
+        state.cars[0].velocity_mps = Quality::Unavailable;
+        state.cars[0].pending_penalties = Quality::Unavailable;
+        degrade(&mut state);
+        assert_eq!(state.cars[0].velocity_mps, Quality::Unavailable);
+        assert_eq!(state.cars[0].pending_penalties, Quality::Unavailable);
+    }
 
     #[test]
     fn new_signals_are_sanitized_and_degraded_without_losing_history() {

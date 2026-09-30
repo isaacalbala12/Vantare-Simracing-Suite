@@ -13,7 +13,7 @@ pub struct BuildConfig {
     pub native_oauth: Option<OAuthBuild>,
 }
 
-/// Configuración pública pendiente de wiring por el owner del build. No es
+/// Configuración pública fijada al compilar. No es
 /// un secreto ni una reinterpretación de la publishable key del SDK Wails.
 pub struct OAuthBuild {
     pub issuer: Url,
@@ -30,7 +30,11 @@ impl BuildConfig {
             channel: option_env!("VANTARE_BUILD_CHANNEL"),
             clerk_publishable_key: option_env!("VITE_CLERK_PUBLISHABLE_KEY")
                 .filter(|s| !s.is_empty()),
-            native_oauth: None,
+            native_oauth: OAuthBuild::from_build_values(
+                option_env!("VANTARE_CLERK_ISSUER"),
+                option_env!("VANTARE_CLERK_CLIENT_ID"),
+                option_env!("VANTARE_CLERK_REDIRECT"),
+            ),
         }
     }
 
@@ -38,10 +42,35 @@ impl BuildConfig {
         self.supabase.is_some() && self.anon_key.is_some()
     }
 
-    /// El build actual no publica client ID/redirect/issuer OAuth nativo.
-    /// El owner del build debe integrar ese contrato; no reinterpretar otra key.
+    /// Solo activa cuenta con issuer, client ID y redirect públicos válidos.
     pub fn native_account_configured(&self) -> bool {
         self.native_oauth.is_some()
+    }
+}
+
+impl OAuthBuild {
+    fn from_build_values(
+        issuer: Option<&str>,
+        client_id: Option<&str>,
+        redirect: Option<&str>,
+    ) -> Option<Self> {
+        let issuer = remote_url(issuer?).ok()?;
+        let client_id = client_id.filter(|value| !value.trim().is_empty() && value.len() <= 256)?;
+        let redirect_uri = Url::parse(redirect?).ok()?;
+        if redirect_uri.scheme() != "http"
+            || redirect_uri.host_str() != Some("127.0.0.1")
+            || !redirect_uri.username().is_empty()
+            || redirect_uri.password().is_some()
+            || redirect_uri.query().is_some()
+            || redirect_uri.fragment().is_some()
+        {
+            return None;
+        }
+        Some(Self {
+            issuer,
+            client_id: client_id.into(),
+            redirect_uri,
+        })
     }
 }
 
@@ -74,6 +103,51 @@ mod tests {
             assert_eq!(remote_url(text), Err(Error::Unconfigured));
         }
         assert!(remote_url("https://example.invalid").is_ok());
-        assert!(!BuildConfig::load().native_account_configured());
+    }
+
+    #[test]
+    fn native_oauth_requires_all_three_public_build_values() {
+        let issuer = "https://example.invalid";
+        let client_id = "public-native-client";
+        let redirect = "http://127.0.0.1:47813/callback";
+        for present in 0..7 {
+            assert!(
+                OAuthBuild::from_build_values(
+                    (present & 1 != 0).then_some(issuer),
+                    (present & 2 != 0).then_some(client_id),
+                    (present & 4 != 0).then_some(redirect),
+                )
+                .is_none()
+            );
+        }
+        let config = OAuthBuild::from_build_values(Some(issuer), Some(client_id), Some(redirect))
+            .expect("configuración pública completa");
+        assert_eq!(config.issuer.as_str(), "https://example.invalid/");
+        assert_eq!(config.client_id, client_id);
+        assert_eq!(config.redirect_uri.as_str(), redirect);
+    }
+
+    #[test]
+    fn native_oauth_rejects_invalid_public_build_values() {
+        let issuer = Some("https://example.invalid");
+        let client_id = Some("public-native-client");
+        let redirect = Some("http://127.0.0.1:47813/callback");
+        for invalid in ["", "http://example.invalid", "https://u:p@example.invalid"] {
+            assert!(OAuthBuild::from_build_values(Some(invalid), client_id, redirect).is_none());
+        }
+        for invalid in ["", " ", &"x".repeat(257)] {
+            assert!(OAuthBuild::from_build_values(issuer, Some(invalid), redirect).is_none());
+        }
+        for invalid in [
+            "",
+            "https://127.0.0.1:47813/callback",
+            "http://localhost:47813/callback",
+            "http://example.invalid/callback",
+            "http://u:p@127.0.0.1:47813/callback",
+            "http://127.0.0.1:47813/callback?key=x",
+            "http://127.0.0.1:47813/callback#x",
+        ] {
+            assert!(OAuthBuild::from_build_values(issuer, client_id, Some(invalid)).is_none());
+        }
     }
 }

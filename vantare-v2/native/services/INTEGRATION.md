@@ -71,14 +71,27 @@ reinicio. Reset remoto exige después una acción manual y el puente configurado
 Logout es local: revocación global de sesiones Clerk todavía depende del backend.
 Una operación incierta conserva sus bytes/idempotency key y debe revisarse.
 
-## Configuración pendiente: pregunta concreta para Isaac
+## Configuración OAuth nativa de compilación
 
-**Isaac: ¿qué issuer HTTPS de Clerk debemos fijar, cuál es el `client_id` de un
-cliente OAuth público nativo con PKCE/S256 (sin client secret), y cuál es la URI
-loopback registrada exactamente — esquema, host `127.0.0.1`, puerto permitido y
-path— para Vantare?** Confirma también scopes/audience y las páginas alojadas de
-login, más los nombres públicos de compilación que debe usar el build existente
-para esos tres datos. La publishable key del SDK **no es** ese client ID.
+`BuildConfig::load` lee los tres nombres públicos de Clerk con `option_env!`.
+Solo construye `native_oauth` cuando están los tres y son válidos: issuer HTTPS
+sin credenciales/query/fragment, client ID no vacío (máximo 256 bytes) y redirect
+HTTP loopback en `127.0.0.1`, sin credenciales/query/fragment. Configuración parcial
+o inválida conserva «no configurado». Cambiar el entorno al ejecutar no cambia
+el artefacto: hay que recompilar Hub y servicios. La publishable key del SDK
+**no es** el client ID OAuth; no se usa como fallback ni se admite client secret.
+
+Registro autorizado para **Vantare / Development**, sin tocar Production:
+OAuth application `Vantare Desktop (nativo)`, cliente público y **Require PKCE**,
+redirect exacta `http://127.0.0.1:47813/callback`, scopes `openid profile` y
+`offline_access` si está disponible. Public y Require PKCE son ajustes separados
+([contrato de Clerk](https://clerk.com/docs/guides/configure/auth-strategies/oauth/how-clerk-implements-oauth)).
+Comprobar con GET la discovery del issuer
+en `/.well-known/openid-configuration`: issuer, authorization/token/userinfo
+endpoints, `S256` y `offline_access`. El cliente existente solicita ese scope
+y necesita refresh token; si falta, registrar el bloqueo, sin simular renovación.
+Los datos públicos verificados van a `C:/tmp/clerk-native.txt`, fuera de Git;
+no copiar, revelar ni guardar un secreto generado por Clerk.
 
 Falta además la URL/versión y propietario del puente explícito OAuth → datos:
 validar issuer/audience/scopes Clerk en servidor, resolver `(iss,sub)` a UUID
@@ -86,9 +99,10 @@ interno (#909) y devolver recursos o bearer RLS de datos de hasta cinco minutos.
 Nunca mapear email/metadata editable ni enviar OAuth directamente a Supabase
 como si fuera JWT de sesión Clerk. La API Vantare fina sigue siendo el destino;
 el puente compatible con los RPC actuales debe acordarse/desplegarse primero.
-No se presume despliegue de #911/#1173 ni #915/#1187. Se mantiene
-`BuildConfig::native_oauth = None` y el hook de build `App::configure_bridge`
-inactivo por defecto: no se inventaron aliases, valores ni Supabase Auth fallback.
+No se presume despliegue de #911/#1173 ni #915/#1187. El hook de build
+`App::configure_bridge` sigue inactivo por defecto: no se inventaron valores ni
+Supabase Auth fallback. El login/almacén de cuenta no exige el puente de datos;
+licencias y recursos privados sí.
 
 Variables públicas existentes de compilación (`option_env!`), nombres exactos:
 
@@ -99,11 +113,34 @@ Variables públicas existentes de compilación (`option_env!`), nombres exactos:
 | `VANTARE_LICENSE_PUBLIC_KEYS` | Trust roots `kid:base64url-sin-padding`, separados por coma. |
 | `VANTARE_BUILD_CHANNEL` | Canal del artefacto; no concede derechos. |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Nombre del SDK/frontend; no activa OAuth nativo. |
+| `VANTARE_CLERK_ISSUER` | Issuer HTTPS / Frontend API de la instancia Clerk verificada. |
+| `VANTARE_CLERK_CLIENT_ID` | Client ID público de la OAuth application nativa con PKCE/S256. |
+| `VANTARE_CLERK_REDIRECT` | URI HTTP loopback registrada exactamente en Clerk. |
 | `VANTARE_VERSION` | Versión pública de informes; si falta, versión real del crate. |
 
-Estos seis nombres **no bastan para activar Clerk/remotos privados**. Isaac debe
-fijar el contrato anterior antes del corte 6. No se piden claves privadas,
+Los tres nombres nuevos activan la configuración de cuenta, pero no los remotos
+privados: éstos necesitan el puente anterior. No se piden claves privadas,
 service_role, client secret ni tokens reales al worker ni en el repo/logs.
+
+### Bloqueo del registro y QA real (worker Clerk, 2026-09-30)
+
+El inventario de control de ordenador no expone navegadores ni aplicaciones.
+El helper Windows falla con `Computer Use native pipe is unavailable` y
+`os error 2`, también tras reintento y reset de su sesión. No se ha podido
+acceder al panel, crear/verificar el cliente ni obtener client ID/issuer reales.
+No se ha creado `clerk-native.txt` con valores supuestos. Registro, GET a la
+discovery de esa instancia y build configurado/login real siguen bloqueados.
+No hay evidencia de callback, intercambio de tokens, persistencia DPAPI de esa
+cuenta ni ausencia de tokens en logs de un login real. Los tests locales no
+sustituyen esa aceptación. Evidencia del worker fuera del repo:
+`C:/tmp/vw3-clerk-evidence/`. Siguiente paso: restaurar el helper, completar el
+registro Development y repetir QA sobre el build con los datos verificados.
+
+Validación local del wiring: `cargo fmt --check`,
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+`cargo test --workspace -j 2` pasan. Cuatro pruebas físicas LMU/ACC están omitidas.
+`cargo build -p vantare-hub -p vantare-services --bins -j 2` pasa sin las tres
+variables Clerk; hashes y logs quedan en la carpeta externa de evidencia.
 
 JWS v2/enrollment siguen siendo un destino no desplegado: Ed25519, kid compilado,
 issuer `vantare-license`, audience `vantare-native`, subject UUID, key ID de

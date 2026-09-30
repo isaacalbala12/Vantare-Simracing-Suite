@@ -158,8 +158,10 @@ Esta sección actualiza las decisiones de fase 1 anteriores; no cambia widgets.
   física. Capacidad `driver_inputs`, sin señal ni renderer propios por simulador.
 - Delta: solo una candidata abierta tras cruce observado puede ser referencia,
   y debe cerrar con otro cruce y muestras dentro del 2 % inicial/final de la
-  longitud de pista. Un inicio parcial, salto del contador sin cobertura o
-  buffer de 18 000 muestras truncado no gana. Sin longitud actual no se deriva
+  longitud de pista. Un inicio parcial, salto del contador sin cobertura,
+  reset de distancia sin cruce o buffer de 18 000 muestras truncado no gana.
+  El reset sin cruce pierde también la acreditación de apertura anterior.
+  Sin longitud actual no se deriva
   delta de respaldo. Cobertura no certifica validez deportiva ni continuidad de
   la trazada; el tiempo final sigue siendo el último punto medido (aproximación).
 - `State.source_state`: núcleo Waiting (antes de observar), Live y Stale
@@ -206,7 +208,7 @@ PR, merge, promoción ni release.
   -D warnings` y `cargo clippy -p vantare-domain --lib -j 2 -- -D warnings`:
   pasan. Son checks acotados, no un workspace verde.
 - `cargo test -p vantare-runtime -p vantare-ipc -p vantare-ui -j 2`: pasa;
-  runtime 153 unitarios, IPC 28 unitarios/8 pipe, UI 82 unitarios. Además pasan
+  runtime 154 unitarios, IPC 28 unitarios/8 pipe, UI 82 unitarios. Además pasan
   los binarios e integraciones, incluido `lmu_oracle` (5 tests), ACC (2) y LMU
   (9) de conformidad. Cuatro pruebas preexistentes requieren simulador o
   ejecución manual y siguen ignoradas; no se afirma runtime físico.
@@ -215,7 +217,9 @@ PR, merge, promoción ni release.
   con `GOMAXPROCS=2`: pasan. El oráculo congelado no exporta relative, volante
   ni historia de combustible; no se cambian sus campos, corpus ni goldens.
 - Las regresiones de combustible iniciado a mitad de vuelta y delta parcial
-  se reprodujeron antes de corregirlas (fallaban); ahora pasan.
+  se reprodujeron antes de corregirlas (fallaban); ahora pasan. La revisión
+  final reprodujo también un reset de distancia a mitad de vuelta que
+  conservaba la apertura antigua; su regresión pasa tras invalidarla.
 - Las veinte escenas mantienen todos sus valores anteriores al eliminar los
   nuevos campos y restaurar `version` para la comparación estructural.
 

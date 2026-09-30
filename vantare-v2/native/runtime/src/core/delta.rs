@@ -109,6 +109,7 @@ impl Tracker {
                         && reading.distance_m <= 0.02 * reading.length_m;
                     if !self.wrapped {
                         self.candidate.clear();
+                        self.started_at_line = false;
                     }
                     self.last = Some(reading);
                 } else if self.wrapped || reading.distance_m < last.distance_m {
@@ -296,6 +297,26 @@ mod tests {
             step(&mut tracker, &car);
         }
         assert!((tracker.reference.as_ref().expect("completa").duration_s - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_distance_reset_without_crossing_loses_the_open_lap() {
+        let mut tracker = Tracker::default();
+        for car in [
+            car(0, 990.0, 99.0, false),
+            car(1, 0.0, 0.0, false),
+            car(1, 500.0, 50.0, false),
+            car(1, 0.0, 0.0, false), // retrocede desde media vuelta, no cruza meta
+            car(1, 1.0, 0.1, false),
+            car(1, 990.0, 99.0, false),
+            car(2, 0.0, 0.0, false),
+        ] {
+            tracker.derive(&mut Player::default(), &car, Quality::Reliable(1000.0));
+        }
+        assert!(
+            tracker.reference.is_none(),
+            "el reset no acredita una apertura"
+        );
     }
 
     #[test]

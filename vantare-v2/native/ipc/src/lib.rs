@@ -31,6 +31,14 @@ pub use publisher::Publisher;
 #[cfg(windows)]
 pub use subscriber::Subscriber;
 
+/// Primitivos del mismo transporte Win32 para el flujo ordenado de eventos.
+/// ACL, identidad, E/S con plazo y cancelación compartidas con foto; el dueño
+/// del protocolo decide codec y ACK. No es otro backend ni duplica Win32.
+#[cfg(windows)]
+pub mod transport {
+    pub use crate::pipe::{Event, IO_TIMEOUT, Listener, Peer, Pipe, connect};
+}
+
 use std::fmt;
 
 use vantare_domain::Snapshot;

@@ -5,22 +5,27 @@ red ni síntesis TTS. Reutiliza `runtime::flows` para cursor, ACK y codec y
 `runtime::shutdown` para Ctrl+C/EOF; no invoca Core ni los adaptadores privados.
 Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 
-## Ejecución parcial de producto
+## Ejecución de producto
 
-`vantare-engineer --pipe [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA]`
-consume el named pipe de **fotos** ya existente. Windows, ACL de usuario,
+`vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA]`
+consume foto DTO v4 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
 PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
 del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
 retira avisos y para clips; una reentrega no rejuvenece la foto. Ctrl+C o EOF
-en stdin termina y cancela Subscriber. El launcher debe mantener stdin abierto
-durante el trabajo y cerrarlo al parar. Todavía no está registrado en launcher.
+en stdin termina y cancela el lector del pipe. El launcher mantiene stdin abierto
+y lo cierra al parar; `vantare --engineer R` habilita este tercer hijo, con el
+mismo Job Object, backoff y presupuesto de reinicios que overlays. Orden de
+cierre: Engineer, overlays, núcleo. Sin esa opción no nace Engineer. El tercer
+grupo `--` lleva sus argumentos; el launcher comparte automáticamente nombre
+del pipe e imágenes de binarios (`--core-image` / `--engineer-image`).
 
 stdout: JSONL `vantare.radio.v1` con intent, prioridad, texto localizado,
 epoch/sequence, session/car y TTL; `vantare.radio.status.v1` con degradaciones
 y `clear:true` (retirar presentación, **no** anunciar pista despejada). El estado
-inicial declara eventos no disponibles y Spotter sin velocidad de rivales.
-Este modo sirve fuel/flags por foto; boxes necesita la conexión de eventos
-pendiente. No aceptar el pipe latest-wins como sustituto del journal.
+inicial declara conexión pendiente y Spotter sin velocidad de rivales.
+Boxes y vueltas completadas exigen hechos del journal de la revisión actual;
+fuel/flags usan estado fiable actual. SourceState distinto de Live retira voz.
+No aceptar el pipe latest-wins como sustituto del journal.
 
 ## Consumo y recuperación
 
@@ -40,7 +45,7 @@ boxes de snapshots IPC. Checkpoint `[epoch,index]`, lectura máxima 128 bytes,
 sin fallback ante corrupción. Temporal exclusivo + fsync + rename antes de
 ACK; error de escritura no adelanta cursor. No se promete exactamente un audio
 ante muerte entre checkpoint y salida, ni durabilidad del rename ante corte
-eléctrico. Un solo dueño del checkpoint (launcher todavía pendiente).
+eléctrico. Un solo dueño del checkpoint: no compartir R entre instancias.
 
 ## Contrato para IPC
 
@@ -55,16 +60,30 @@ cursor = [epoch, index]
 recording = [0] | [1] | [2, "storage_full" | "permission_denied" | "not_found" | "invalid_data" | "other"]
 evento = [0, cursor, sequence, session_id, car_id, was_in_pits, in_pits]
 hueco = [1, reason, resume_at]
+hecho = [2, registro_JSONL_v3]
 reason = 0 CoreRestart | 1 Retention | 2 InvalidCursor | 3 RecordingDisabled
 ```
 
 Foto y tail comparten época; eventos no superan el corte. Foto usa el DTO
 existente de `ipc`, no ABI Rust. Codec valida forma, versión, cursores y tamaños;
-**no aporta ACL, identidad de par ni plazos**. Integrar named pipe, dueño de
-persistencia separado y launcher corresponde a
-los propietarios de esas rutas. No conectar el banco a datos reales saltando
-la frontera. `Frame::capture` puede leer disco: NO llamarlo en adquisición.
-Hace falta transferir un corte coherente al dueño del transporte.
+**no aporta ACL, identidad de par ni plazos**. `flows/host.rs` utiliza los mismos
+primitivos Win32 de IPC (sin otro backend), autentica imagen cliente y tiene
+un dueño I/O separado. Adquisición transfiere solo ArcSwap con foto y ring 256;
+el dueño replica los mismos IDs y hace append/fsync. Hasta 8 consumidores,
+8 peticiones y una entrega sin ACK por consumidor. ACK adelantado cierra el
+pipe; I/O tiene plazo 5 s y cancelación. Overflow del ring declara Retention;
+fallo de persistencia degrada recording sin parar fotos. `Frame::capture`
+puede leer disco: NO llamarlo en adquisición. Lectura histórica escanea JSONL:
+no se acredita rendimiento para historiales largos sin medición.
+
+`vantare-core --live --recording R.jsonl` activa grabación antes de adquisición;
+sin opción no abre archivo. `EventHost::set_recording` permite on/off fuera del
+hilo de adquisición; no hay todavía un control Hub para llamarlo. Restaurar
+núcleo requiere época creciente y recupera el prefijo durable; todo tramo perdido
+se declara mediante hueco. Cada observación fiable consecutiva puede emitir
+boxes/vuelta del jugador, flags con ámbito, sesión, estado de sesión/fuente.
+Primera foto, datos ausentes/estimados, saltos de vueltas o recuperación de
+fuente obsoleta no inventan transiciones.
 
 ## Radio y voz
 
@@ -80,7 +99,7 @@ fiables de sesión o jugador. No hay aviso por sector ni autonomía estimada.
 `spotter::classify_position` conserva los límites longitudinales/laterales Go
 en los ejes neutrales ahead/right, con histéresis. **Solo geometría**: faltan
 velocidades de rivales para el filtro de cierre, por tanto no emite radio.
-Penalties/laps/timings/pitstop completo también requieren señales/contratos
+Penalties/timings/pitstop completo también requieren señales/contratos
 comunes pendientes en el microplan. No es paridad de todas las familias Go.
 
 Voz opt-in mediante clips locales pregenerados Kokoro, sin red ni síntesis:

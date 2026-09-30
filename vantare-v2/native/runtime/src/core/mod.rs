@@ -24,7 +24,7 @@ use vantare_domain::{Adapter, AdapterError, Observation, Snapshot, SourceState, 
 pub use merge::Reject;
 pub use publish::Reader;
 
-use crate::flows::{Journal, Series};
+use crate::flows::{Cursor, Journal, Series};
 use merge::{Trackers, merge, stale};
 use publish::Publisher;
 
@@ -97,6 +97,17 @@ impl Core {
         })
     }
 
+    /// Base recuperada por el dueño I/O antes de adquisición. Sin abrir disco.
+    pub fn with_event_base(base: Cursor) -> io::Result<Self> {
+        if base.index == u64::MAX {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "base agotada"));
+        }
+        Ok(Self {
+            events: Journal::at(base),
+            ..Self::new(base.epoch)
+        })
+    }
+
     pub fn events(&self) -> &Journal {
         &self.events
     }
@@ -164,7 +175,6 @@ impl Core {
             degrade(&mut snapshot.state);
             snapshot.state.source_state = SourceState::Stale;
         }
-        self.events.observe(&self.current, &snapshot);
         self.publish(snapshot);
         Ok(())
     }
@@ -190,6 +200,7 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
+        self.events.observe(&self.current, &snapshot);
         self.series.observe(&snapshot);
         self.current = Arc::new(snapshot);
         self.publisher.publish(Arc::clone(&self.current));

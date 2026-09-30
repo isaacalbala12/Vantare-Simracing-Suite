@@ -22,6 +22,7 @@ fn photo() -> Snapshot {
         sequence: 10,
         ..Snapshot::default()
     };
+    snapshot.state.source_state = vantare_domain::SourceState::Live;
     snapshot.state.player = Some(Player {
         car: CarId(7),
         ..Player::default()
@@ -45,6 +46,47 @@ fn lines(bytes: &[u8]) -> Vec<serde_json::Value> {
 }
 fn intents(messages: &[Message]) -> Vec<Intent> {
     messages.iter().map(|message| message.intent).collect()
+}
+
+#[test]
+fn lap_facts_are_current_player_only_and_source_stale_clears_every_family() {
+    use vantare_runtime::flows::{Fact, FactKind};
+    let mut snapshot = photo();
+    snapshot.state.cars[0].laps = Quality::Reliable(1);
+    let applied = Applied {
+        fact: Some(Fact {
+            cursor: Cursor { epoch: 1, index: 1 },
+            sequence: 10,
+            session: snapshot.state.session.id,
+            kind: FactKind::LapCompleted {
+                car: CarId(7),
+                completed: 1,
+            },
+        }),
+        ..Applied::default()
+    };
+    let mut families = Families::default();
+    assert_eq!(
+        intents(
+            &families
+                .evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO)
+                .0
+        ),
+        [Intent::LapCompleted]
+    );
+    snapshot.sequence += 1;
+    assert!(
+        families
+            .evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO)
+            .0
+            .is_empty(),
+        "hecho histórico no se pronuncia"
+    );
+    snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
+    snapshot.state.source_state = vantare_domain::SourceState::Stale;
+    let (messages, clear) = families.evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO);
+    assert!(messages.is_empty() && clear);
+    assert!(!message(Intent::FuelOne, &snapshot).is_current(&snapshot));
 }
 
 #[test]
@@ -242,6 +284,7 @@ fn boxes_never_come_from_photo_gap_historical_event_or_other_subject() {
             baseline: true,
             gap: Some(GapReason::Retention),
             event: None,
+            fact: None,
         },
     ] {
         assert!(
@@ -463,6 +506,7 @@ fn radio_deduplicates_and_clears_at_freeze_gap_quality_and_identity() {
         gap: Some(GapReason::RecordingDisabled),
         baseline: true,
         event: None,
+        fact: None,
     };
     worker
         .ingest(&snapshot, &gap, Duration::from_millis(1200), &mut output)

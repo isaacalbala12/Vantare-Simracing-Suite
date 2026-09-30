@@ -30,8 +30,29 @@ pub fn run(
     speed: f64,
     stop: &AtomicBool,
 ) -> Result<(), Error> {
+    let image = std::env::current_exe()?.with_file_name("vantare-engineer.exe");
+    run_with_events(adapter, pipe, epoch, speed, stop, None, image)
+}
+
+/// Recording opt-in; su dueño de E/S nunca ejecuta en adquisición.
+pub fn run_with_events(
+    adapter: &mut dyn Adapter,
+    pipe: &str,
+    epoch: u64,
+    speed: f64,
+    stop: &AtomicBool,
+    recording: Option<&std::path::Path>,
+    engineer_image: std::path::PathBuf,
+) -> Result<(), Error> {
+    use crate::flows::host::{EventHost, pipe_name};
+    let mut events = EventHost::start(&pipe_name(pipe), epoch, recording, move |peer| {
+        peer.is_image(&engineer_image)
+    })?;
+    let mut core = Core::with_event_base(events.base())?;
     let mut publisher = Publisher::new(pipe, |_| true)?;
-    drive(&mut Core::new(epoch), adapter, speed, stop, |snapshot| {
+    drive_core(&mut core, adapter, speed, stop, |core| {
+        let snapshot = core.snapshot();
+        events.publish(Arc::clone(&snapshot), core.events());
         publisher.publish(snapshot)
     })
 }
@@ -49,6 +70,16 @@ pub fn drive<E>(
     stop: &AtomicBool,
     mut publish: impl FnMut(Arc<Snapshot>) -> Result<(), E>,
 ) -> Result<(), E> {
+    drive_core(core, adapter, speed, stop, |core| publish(core.snapshot()))
+}
+
+fn drive_core<E>(
+    core: &mut Core,
+    adapter: &mut dyn Adapter,
+    speed: f64,
+    stop: &AtomicBool,
+    mut publish: impl FnMut(&Core) -> Result<(), E>,
+) -> Result<(), E> {
     let start = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
     while !stop.load(Ordering::Relaxed) {
@@ -65,7 +96,7 @@ pub fn drive<E>(
         let snapshot = core.snapshot();
         if snapshot.sequence > sent {
             sent = snapshot.sequence;
-            publish(snapshot)?;
+            publish(core)?;
         } else {
             thread::sleep(IDLE);
         }

@@ -2,9 +2,10 @@ use std::collections::VecDeque;
 use std::io;
 use std::path::Path;
 
-use vantare_domain::{CarId, Quality, SessionId, Snapshot};
+use vantare_domain::{CarId, Quality, SessionId, Snapshot, SourceState};
 
 use super::recording::Recording;
+use super::{Event, Fact, FactKind, FlagSignal};
 
 const DEFAULT_RETENTION: usize = 256;
 
@@ -46,6 +47,7 @@ pub enum RecordingStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Delivery {
     Event(PitEvent),
+    Fact(Fact),
     /// Frontera declarada: no deducir hechos a través de ella. En modo
     /// volátil reconstruir desde la foto actual antes de reconocer la base.
     Gap {
@@ -85,6 +87,7 @@ impl Consumer {
         if let Some(delivery) = self.pending.take() {
             self.cursor = match delivery {
                 Delivery::Event(event) => event.cursor,
+                Delivery::Fact(event) => event.cursor,
                 Delivery::Gap { resume_at, .. } => resume_at,
             };
         }
@@ -98,14 +101,18 @@ pub struct Journal {
     /// Punto de arranque de esta época, después del prefijo recuperado.
     start: Cursor,
     retention: usize,
-    events: VecDeque<PitEvent>,
+    events: VecDeque<Event>,
     recording: Option<Recording>,
     recording_status: RecordingStatus,
+    lost_before: Option<u64>,
 }
 
 impl Journal {
     pub(crate) fn volatile(epoch: u64) -> Self {
-        let start = Cursor { epoch, index: 0 };
+        Self::at(Cursor { epoch, index: 0 })
+    }
+
+    pub(crate) fn at(start: Cursor) -> Self {
         Self {
             tail: start,
             start,
@@ -113,6 +120,7 @@ impl Journal {
             events: VecDeque::new(),
             recording: None,
             recording_status: RecordingStatus::Disabled,
+            lost_before: None,
         }
     }
 
@@ -150,6 +158,7 @@ impl Journal {
                 RecordingStatus::Disabled
             },
             recording,
+            lost_before: None,
         })
     }
 
@@ -229,21 +238,105 @@ impl Journal {
     }
 
     pub(crate) fn observe(&mut self, previous: &Snapshot, next: &Snapshot) {
-        if previous.epoch != next.epoch || previous.state.session.id != next.state.session.id {
+        if previous.sequence == 0 || previous.epoch != next.epoch {
             return;
+        }
+        if previous.state.source_state != next.state.source_state {
+            self.fact(
+                next,
+                FactKind::SourceChanged {
+                    before: previous.state.source_state,
+                    after: next.state.source_state,
+                },
+            );
+        }
+        if previous.state.session.id != next.state.session.id {
+            self.fact(
+                next,
+                FactKind::SessionChanged {
+                    previous: previous.state.session.id,
+                },
+            );
+            return;
+        }
+        if let (Quality::Reliable(before), Quality::Reliable(after)) =
+            (&previous.state.session.state, &next.state.session.state)
+            && before != after
+        {
+            self.fact(
+                next,
+                FactKind::SessionStateChanged {
+                    before: *before,
+                    after: *after,
+                },
+            );
+        }
+        if previous.state.source_state != SourceState::Live
+            || next.state.source_state != SourceState::Live
+        {
+            return;
+        }
+        if let (Quality::Reliable(before), Quality::Reliable(after)) =
+            (&previous.state.flags, &next.state.flags)
+        {
+            for (flags, other, active) in [(before, after, false), (after, before, true)] {
+                for flag in flags.iter().filter(|flag| !other.contains(flag)) {
+                    if let Some(kind) = FlagSignal::of(&flag.kind) {
+                        self.fact(
+                            next,
+                            FactKind::FlagChanged {
+                                kind,
+                                scope: flag.scope,
+                                active,
+                            },
+                        );
+                    }
+                }
+            }
         }
         let (Some(before), Some(after)) = (previous.state.player_car(), next.state.player_car())
         else {
             return;
         };
-        let (Quality::Reliable(was_in_pits), Quality::Reliable(in_pits)) =
-            (before.in_pits, after.in_pits)
-        else {
-            return;
-        };
-        if before.id != after.id || was_in_pits == in_pits {
+        if before.id != after.id {
             return;
         }
+        if let (Quality::Reliable(a), Quality::Reliable(b)) = (before.laps, after.laps)
+            && a.checked_add(1) == Some(b)
+        {
+            self.fact(
+                next,
+                FactKind::LapCompleted {
+                    car: after.id,
+                    completed: b,
+                },
+            );
+        }
+        if let (Quality::Reliable(was_in_pits), Quality::Reliable(in_pits)) =
+            (before.in_pits, after.in_pits)
+            && was_in_pits != in_pits
+        {
+            self.push(Event::Pit(PitEvent {
+                cursor: self.tail,
+                sequence: next.sequence,
+                session: next.state.session.id,
+                car: after.id,
+                was_in_pits,
+                in_pits,
+            }));
+        }
+    }
+
+    fn fact(&mut self, next: &Snapshot, kind: FactKind) {
+        self.push(Event::Fact(Fact {
+            cursor: self.tail,
+            sequence: next.sequence,
+            session: next.state.session.id,
+            kind,
+        }));
+    }
+
+    fn push(&mut self, mut event: Event) {
         let Some(index) = self
             .tail
             .index
@@ -254,17 +347,67 @@ impl Journal {
             return;
         };
         self.tail.index = index;
+        match &mut event {
+            Event::Pit(e) => e.cursor = self.tail,
+            Event::Fact(e) => e.cursor = self.tail,
+        }
         if self.events.len() == self.retention {
             self.events.pop_front();
         }
-        self.events.push_back(PitEvent {
-            cursor: self.tail,
-            sequence: next.sequence,
-            session: next.state.session.id,
-            car: after.id,
-            was_in_pits,
-            in_pits,
-        });
+        self.events.push_back(event);
+    }
+
+    /// Copia acotada para el corte inmutable del worker, solo si cambia tail.
+    pub fn retained(&self) -> Vec<Event> {
+        self.events.iter().copied().collect()
+    }
+
+    /// Replica las identidades ya asignadas por Core. No genera hechos nuevos.
+    pub(crate) fn replicate(&mut self, tail: Cursor, ring: &[Event]) -> io::Result<()> {
+        let invalid = || io::Error::new(io::ErrorKind::InvalidData, "corte de eventos discontinuo");
+        if tail.epoch != self.tail.epoch || tail.index < self.tail.index || tail.index == u64::MAX {
+            return Err(invalid());
+        }
+        if tail == self.tail {
+            return Ok(());
+        }
+        if ring.last().is_none_or(|e| e.cursor() != tail) {
+            return Err(invalid());
+        }
+        for event in ring {
+            event.validate()?;
+            if event.cursor().epoch != tail.epoch {
+                return Err(invalid());
+            }
+        }
+        if ring
+            .windows(2)
+            .any(|pair| pair[0].cursor().index.checked_add(1) != Some(pair[1].cursor().index))
+        {
+            return Err(invalid());
+        }
+        let pending: Vec<_> = ring
+            .iter()
+            .filter(|e| e.cursor().index > self.tail.index)
+            .copied()
+            .collect();
+        if let Some(first) = pending.first()
+            && self.tail.index.checked_add(1) != Some(first.cursor().index)
+        {
+            self.events.clear();
+            self.tail.index = first.cursor().index - 1;
+            self.lost_before = Some(self.tail.index);
+            if self.recording_status == RecordingStatus::Active {
+                self.recording_status = RecordingStatus::Degraded(io::ErrorKind::InvalidData);
+            }
+        }
+        for event in pending {
+            self.push(event);
+        }
+        if self.tail != tail {
+            return Err(invalid());
+        }
+        Ok(())
     }
 
     fn gap(&self, reason: GapReason) -> Delivery {
@@ -281,14 +424,14 @@ impl Journal {
             && let Some(event) = self
                 .events
                 .iter()
-                .find(|event| cursor.index.checked_add(1) == Some(event.cursor.index))
+                .find(|event| cursor.index.checked_add(1) == Some(event.cursor().index))
         {
-            return Ok(Some(Delivery::Event(*event)));
+            return Ok(Some(event.delivery()));
         }
         // Un cursor de una época anterior puede recuperar su prefijo durable.
         if let Some(recording) = &self.recording {
             match recording.read(cursor, self.start)? {
-                super::recording::Read::Event(event) => return Ok(Some(Delivery::Event(event))),
+                super::recording::Read::Event(event) => return Ok(Some(event.delivery())),
                 super::recording::Read::Boundary(reason, resume_at) => {
                     return Ok(Some(Delivery::Gap { reason, resume_at }));
                 }
@@ -315,17 +458,18 @@ impl Journal {
         if cursor.index < self.start.index || cursor.index > self.tail.index {
             return Ok(Some(self.gap(GapReason::InvalidCursor)));
         }
+        if self.lost_before.is_some_and(|lost| cursor.index < lost) {
+            return Ok(Some(self.gap(GapReason::Retention)));
+        }
         if cursor == self.tail {
             return Ok(None);
         }
         let next = self
             .events
             .iter()
-            .find(|event| event.cursor.index > cursor.index);
+            .find(|event| event.cursor().index > cursor.index);
         match next {
-            Some(event) if event.cursor.index == cursor.index + 1 => {
-                Ok(Some(Delivery::Event(*event)))
-            }
+            Some(event) if event.cursor().index == cursor.index + 1 => Ok(Some(event.delivery())),
             _ => Ok(Some(self.gap(GapReason::Retention))),
         }
     }
@@ -344,18 +488,20 @@ mod failure_tests {
         for sync in [false, true] {
             let file = TestFile::new();
             let mut journal = Journal::open(1, 2, Some(&file.0)).unwrap();
-            let before = Snapshot {
+            let mut before = Snapshot {
                 epoch: 1,
                 sequence: 1,
                 state: photo(1, false).state,
                 ..Snapshot::default()
             };
-            let after = Snapshot {
+            let mut after = Snapshot {
                 epoch: 1,
                 sequence: 2,
                 state: photo(2, true).state,
                 ..Snapshot::default()
             };
+            before.state.source_state = SourceState::Live;
+            after.state.source_state = SourceState::Live;
             journal.observe(&before, &after);
             let recording = journal.recording.as_mut().unwrap();
             if sync {

@@ -5,7 +5,7 @@ use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use vantare_engineer::{Applied, Engineer, radio::Locale, worker::RadioWorker};
+use vantare_engineer::{Engineer, radio::Locale, worker::RadioWorker};
 use vantare_runtime::flows::wire;
 
 #[derive(Default)]
@@ -15,6 +15,7 @@ struct Options {
     pipe: Option<String>,
     locale: Locale,
     clips: Option<PathBuf>,
+    core_image: Option<PathBuf>,
 }
 
 fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'static str> {
@@ -32,6 +33,9 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
             }
             Some("--clips") => {
                 options.clips = Some(arguments.next().ok_or("falta carpeta de clips")?.into());
+            }
+            Some("--core-image") => {
+                options.core_image = Some(arguments.next().ok_or("falta imagen de Core")?.into());
             }
             Some("--pipe-name") => {
                 options.pipe = Some(
@@ -59,11 +63,11 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
             }
         }
     }
-    if options.stream && (options.cursor.is_none() || options.pipe.is_some()) {
-        return Err("stream requiere cursor y no acepta nombre de pipe");
+    if options.cursor.is_none() {
+        return Err("ambos modos requieren --cursor R");
     }
-    if !options.stream && options.cursor.is_some() {
-        return Err("pipe de fotos no ofrece cursor de eventos");
+    if options.stream && (options.pipe.is_some() || options.core_image.is_some()) {
+        return Err("stream requiere cursor y no acepta nombre de pipe");
     }
     Ok(options)
 }
@@ -81,7 +85,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if options.stream {
         run_stream(options.cursor.as_deref().ok_or("falta cursor")?, radio)
     } else {
-        run_pipe(options.pipe, radio)
+        run_pipe(
+            options.pipe,
+            options.cursor.as_deref().ok_or("falta cursor")?,
+            options.core_image,
+            radio,
+        )
     }
 }
 
@@ -144,6 +153,8 @@ fn run_stream(
 #[cfg(windows)]
 fn run_pipe(
     name: Option<String>,
+    checkpoint: &std::path::Path,
+    core_image: Option<PathBuf>,
     mut radio: RadioWorker,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::{Read as _, Write as _};
@@ -167,37 +178,44 @@ fn run_pipe(
     let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
     // Paquete local: core hermano de Engineer. ipc aplica ACL y consulta PID/
     // imagen; este consumidor además fija la imagen de servidor esperada.
-    let expected = std::env::current_exe()?
-        .parent()
-        .ok_or("falta directorio del binario")?
-        .join("vantare-core.exe");
-    let mut subscriber = vantare_ipc::Subscriber::connect(&name, move |peer| {
-        peer.image
-            .to_string_lossy()
-            .eq_ignore_ascii_case(&expected.to_string_lossy())
-    })?;
+    let expected =
+        core_image.unwrap_or(std::env::current_exe()?.with_file_name("vantare-core.exe"));
+    let mut engineer = Engineer::resume(checkpoint)?;
+    let client = vantare_runtime::flows::client::EventClient::connect(
+        &vantare_runtime::flows::host::pipe_name(&name),
+        engineer.cursor(),
+        move |peer| peer.is_image(&expected),
+    )?;
     let start = Instant::now();
     let (mut last_photo, mut source_lost) = (Instant::now(), true);
+    let mut revision = None;
     let mut output = io::stdout().lock();
     writeln!(
         output,
-        "{{\"version\":\"vantare.radio.status.v1\",\"events\":\"unavailable\",\"spotter\":\"unavailable_opponent_velocity\"}}"
+        "{{\"version\":\"vantare.radio.status.v1\",\"events\":\"connecting\",\"spotter\":\"unavailable_opponent_velocity\"}}"
     )?;
     output.flush()?;
     while !stop.load(Ordering::Relaxed) {
-        if let Some(snapshot) = subscriber.next(Duration::from_millis(50)) {
-            radio.ingest(
-                &snapshot,
-                &Applied {
-                    baseline: source_lost,
-                    ..Applied::default()
-                },
-                start.elapsed(),
-                &mut output,
-            )?;
-            last_photo = Instant::now();
-            source_lost = false;
-        } else {
+        if let Some(frame) = client.next(Duration::from_millis(50))? {
+            let applied = engineer.apply(&frame, checkpoint)?;
+            radio.ingest(&frame.snapshot, &applied, start.elapsed(), &mut output)?;
+            let current = (frame.snapshot.epoch, frame.snapshot.sequence);
+            if revision != Some(current) {
+                revision = Some(current);
+                last_photo = Instant::now();
+                source_lost = false;
+            }
+            if applied.event.is_some() || applied.fact.is_some() || applied.gap.is_some() {
+                writeln!(
+                    output,
+                    "{}",
+                    serde_json::json!({"version":"vantare.radio.status.v1", "cursor":engineer.cursor().map(|c| [c.epoch,c.index]), "event":applied.event.is_some(), "fact":format!("{:?}",applied.fact.map(|f| f.kind)), "gap":format!("{:?}",applied.gap), "recording":format!("{:?}",frame.recording)})
+                )?;
+                output.flush()?;
+            }
+            client.ack(engineer.cursor().ok_or("falta cursor tras procesar")?)?;
+        }
+        {
             if !source_lost && last_photo.elapsed() >= Duration::from_millis(500) {
                 radio.clear()?;
                 source_lost = true;
@@ -215,7 +233,12 @@ fn run_pipe(
 }
 
 #[cfg(not(windows))]
-fn run_pipe(_name: Option<String>, _radio: RadioWorker) -> Result<(), Box<dyn std::error::Error>> {
+fn run_pipe(
+    _name: Option<String>,
+    _checkpoint: &std::path::Path,
+    _core_image: Option<PathBuf>,
+    _radio: RadioWorker,
+) -> Result<(), Box<dyn std::error::Error>> {
     Err("named pipe de producto requiere Windows".into())
 }
 
@@ -227,7 +250,11 @@ mod tests {
     }
     #[test]
     fn modes_locale_and_opt_in_clips_are_explicit() {
-        assert!(!parse(&[]).unwrap().stream);
+        assert!(
+            !parse(&["--pipe", "--cursor", "cursor.json"])
+                .unwrap()
+                .stream
+        );
         let parsed = parse(&[
             "--stream",
             "--cursor",
@@ -242,7 +269,7 @@ mod tests {
         assert_eq!(parsed.locale, Locale::PtBr);
         for args in [
             &["--stream"][..],
-            &["--cursor", "cursor.json"],
+            &[],
             &["--locale", "zz"],
             &["--pipe", "--stream"],
             &["--clips"],

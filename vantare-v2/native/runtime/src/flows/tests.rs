@@ -303,7 +303,7 @@ fn lost_unconfirmed_retention_cannot_be_reported_as_durable() {
 }
 
 #[test]
-fn missing_stale_estimated_or_changed_identity_never_invents_an_event() {
+fn missing_stale_estimated_or_changed_identity_never_invents_a_car_transition() {
     let mut core = Core::new(1);
     let mut consumer = Consumer::new(core.events().tail());
     core.observe(photo(1, false)).unwrap();
@@ -324,6 +324,24 @@ fn missing_stale_estimated_or_changed_identity_never_invents_an_event() {
     player.state.cars[0].id = CarId(8);
     player.state.player.as_mut().unwrap().car = CarId(8);
     core.observe(player).unwrap();
+    for kind in [
+        FactKind::SourceChanged {
+            before: vantare_domain::SourceState::Live,
+            after: vantare_domain::SourceState::Stale,
+        },
+        FactKind::SourceChanged {
+            before: vantare_domain::SourceState::Stale,
+            after: vantare_domain::SourceState::Live,
+        },
+        FactKind::SessionChanged {
+            previous: SessionId(0),
+        },
+    ] {
+        assert!(
+            matches!(consumer.poll(core.events()).unwrap(), Some(Delivery::Fact(fact)) if fact.kind == kind)
+        );
+        consumer.ack();
+    }
     assert_eq!(consumer.poll(core.events()).unwrap(), None);
 }
 

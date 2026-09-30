@@ -3,22 +3,33 @@
 #![allow(clippy::unwrap_used)]
 use std::io::{self, BufRead, BufReader, Read};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::{Arc, mpsc};
+use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use vantare_domain::{CarId, Player, Quality, Snapshot};
+use vantare_runtime::flows::host::{EventHost, pipe_name};
 
 struct Process {
     child: Child,
     input: Option<ChildStdin>,
     lines: mpsc::Receiver<io::Result<Option<serde_json::Value>>>,
     reader: Option<JoinHandle<()>>,
+    checkpoint: std::path::PathBuf,
 }
 impl Process {
     fn start(name: &str) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
-            .args(["--pipe", "--pipe-name", name])
+        Self::start_as(name, None)
+    }
+    fn start_as(name: &str, core: Option<&std::path::Path>) -> Self {
+        let checkpoint = std::env::temp_dir().join(format!("{name}-cursor.json"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"));
+        command
+            .args(["--pipe", "--pipe-name", name, "--cursor"])
+            .arg(&checkpoint);
+        if let Some(core) = core {
+            command.arg("--core-image").arg(core);
+        }
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -50,6 +61,7 @@ impl Process {
             child,
             lines,
             reader: Some(reader),
+            checkpoint,
         }
     }
     fn next(&self) -> Option<serde_json::Value> {
@@ -74,7 +86,73 @@ impl Drop for Process {
         if let Some(reader) = self.reader.take() {
             reader.join().unwrap();
         }
+        if self.checkpoint.exists() {
+            std::fs::remove_file(&self.checkpoint).unwrap();
+        }
     }
+}
+
+#[test]
+fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real_pipe() {
+    use std::sync::Arc;
+    use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
+    use vantare_runtime::{core::Core, flows::Cursor};
+    let name = format!("vantare-engineer-authorized-{}", std::process::id());
+    let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
+    let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
+        peer.is_image(&expected)
+    })
+    .unwrap();
+    let mut core = Core::with_event_base(host.base()).unwrap();
+    let observation = |tick, lap| Observation {
+        origin: vantare_domain::Origin {
+            received_at: Duration::from_millis(tick),
+            ..vantare_domain::Origin::default()
+        },
+        state: State {
+            cars: vec![Car {
+                id: CarId(7),
+                laps: Quality::Reliable(lap),
+                ..Car::default()
+            }],
+            player: Some(Player {
+                car: CarId(7),
+                ..Player::default()
+            }),
+            ..State::default()
+        },
+    };
+    core.observe(observation(1, 0)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    let mut worker = Process::start_as(&name, Some(&std::env::current_exe().unwrap()));
+    assert_eq!(worker.next().unwrap()["events"], "connecting");
+    assert_eq!(worker.next().unwrap()["clear"], true); // Base inicial, ya checkpointada.
+    assert_eq!(
+        vantare_engineer::load_cursor(&worker.checkpoint).unwrap(),
+        Some(Cursor { epoch: 1, index: 0 })
+    );
+    core.observe(observation(2, 1)).unwrap();
+    host.publish(Arc::clone(&core.snapshot()), core.events());
+    let mut lap = false;
+    for _ in 0..4 {
+        let line = worker.next().unwrap();
+        if line["intent"] == "laps.completed" {
+            lap = true;
+        }
+        if line["cursor"] == serde_json::json!([1, 1]) {
+            assert!(lap);
+            assert_eq!(
+                vantare_engineer::load_cursor(&worker.checkpoint).unwrap(),
+                Some(core.events().tail())
+            );
+            break;
+        }
+    }
+    assert!(
+        lap,
+        "hecho del núcleo llega a presentación sin inferir IPC latest-wins"
+    );
+    worker.eof();
 }
 
 #[test]
@@ -82,7 +160,7 @@ fn pipe_worker_closes_on_eof_while_core_is_absent() {
     let name = format!("vantare-engineer-absent-{}", std::process::id());
     let mut worker = Process::start(&name);
     let status = worker.next().unwrap();
-    assert_eq!(status["events"], "unavailable");
+    assert_eq!(status["events"], "connecting");
     assert_eq!(status["spotter"], "unavailable_opponent_velocity");
     worker.eof();
 }
@@ -91,24 +169,13 @@ fn pipe_worker_closes_on_eof_while_core_is_absent() {
 fn pipe_worker_rejects_the_wrong_server_image_and_still_closes() {
     let name = format!("vantare-engineer-impostor-{}", std::process::id());
     let (sender, receiver) = mpsc::sync_channel(1);
-    let mut publisher = vantare_ipc::Publisher::new(&name, move |peer| {
+    let publisher = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
         let _ = sender.try_send(peer.pid); // Notificación acotada, no frena IPC.
         true
     })
     .unwrap();
-    let mut snapshot = Snapshot {
-        epoch: 1,
-        sequence: 1,
-        ..Snapshot::default()
-    };
-    snapshot.state.player = Some(Player {
-        car: CarId(7),
-        ..Player::default()
-    });
-    snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
-    publisher.publish(Arc::new(snapshot)).unwrap();
     let mut worker = Process::start(&name);
-    assert_eq!(worker.next().unwrap()["events"], "unavailable");
+    assert_eq!(worker.next().unwrap()["events"], "connecting");
     assert_eq!(
         receiver.recv_timeout(Duration::from_secs(10)).unwrap(),
         worker.child.id()

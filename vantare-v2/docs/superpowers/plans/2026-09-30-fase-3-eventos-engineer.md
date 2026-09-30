@@ -16,18 +16,18 @@ Hitos nuevos, cada uno con gates completos y commit local:
    alcance autorizado. Clippy/test se ejecutan y se registra esta deuda explícita.
 2. Engineer miembro de `native/`, package/lints heredados, un lock. Eliminar solo
    lock y `.gitignore` propios; nada de librerías nuevas.
-3. Extender el mismo journal con hechos neutrales tipados (boxes existente,
+3. Corte vertical núcleo → Engineer: extender el mismo journal con hechos neutrales tipados (boxes existente,
    vuelta completada, bandera activada/retirada con ámbito, sesión/estado de sesión,
    estado de fuente). Cursor único y registros versionados; v1 de boxes sigue
    legible. Solo comparar fotos consecutivas fiables; primera foto es base,
    saltos de contador/calidad no fabrican vueltas ni retiradas de banderas.
-4. Transporte de eventos sobre los mismos primitivos Win32 de IPC: ACL de
+   Transporte de eventos sobre los mismos primitivos Win32 de IPC: ACL de
    usuario/PID/imagen, límite/versionado existente, ACK exacto y plazos/cancelación.
    Dueño I/O separado de adquisición: publica corte inmutable foto+ring con
    ArcSwap, reutiliza el ring hasta que cambie el tail. Si se pierde retención,
    hueco explícito; si falla persistencia, estado degradado y fotos continúan.
    Peticiones acotadas al dueño; nunca esperar ni fsync en adquisición.
-5. Launcher habilita Engineer solo mediante opción explícita con checkpoint;
+4. Launcher habilita Engineer solo mediante opción explícita con checkpoint;
    mismo Job Object, cancelación EOF, supervisión/backoff/presupuesto y orden
    de cierre. Engineer consume el pipe de eventos y checkpointa antes de ACK;
    conserva el banco `--stream`. Pruebas de procesos, pérdida/reconexión, ACK
@@ -48,6 +48,72 @@ lock padre, solo añade la entrada de paquete Engineer. Lock e ignore propios
 eliminados. Clippy completo PASS (33,92 s); tests completos 458 PASS contando
 lifecycle, 4 live ignorados (compilación 2m10s). Fmt global sigue FAIL únicamente
 en UI importada; las rutas propias cumplen formato. No dependencias nuevas.
+
+## Contratos exactos pendientes del modelo (no implementados)
+
+Cada señal necesita capability/presencia explícita y `Quality<T>`: `Reliable`
+solo con esquema admitido, lectura finita/coherente/fresca e identidad correcta;
+`Stale` al caducar una lectura anteriormente válida, `Unavailable` si el SDK,
+campo o captura no la aporta. `Estimated` nunca habilita avisos de seguridad.
+No se solicita añadir campos durante este worker; corresponde al propietario
+del dominio/adaptador y a una captura de conformidad por simulador.
+
+| Contrato solicitado / unidad | Consumidor bloqueado | LMU: fuente exacta disponible o pendiente | ACC: fuente exacta disponible o pendiente |
+|---|---|---|---|
+| `Car.velocity_mps: Quality<WorldVelocity { x_mps, y_mps }>`; m/s, mismo marco de suelo que `Pose`, jugador y rivales | Spotter: filtro de cierre vectorial | Scoring `local_velocity` +288 y orientación +336; jugador telemetry +184/+232. `adapter/lmu/frame.rs:423,461` ya transforma para alinear pose, sin publicarlo como velocidad. Conservar convención neutral, no yaw × velocidad escalar | UDP car update solo aporta velocidad escalar; no acreditar vector de deriva con heading. No hay vector rival admitido en el traductor actual: `Unavailable`, requiere SDK/capacidad y captura nuevos |
+| `Car.penalty_count: Quality<u32>`; número pendiente, cero válido | Familia Go de incremento de sanciones | Scoring `mNumPenalties`, int16 +194 (`internal/telemetry/drivers/lmu/layout.go:193`); admitir solo >=0 y por CarId | Evento UDP 6 se conserva como `Other("penalty")` (`adapter/acc/translate.rs:731`); no es contador ni sujeto suficiente. `Unavailable` hasta contrato SDK tipado |
+| `Car.pit_stop_count: Quality<u32>`; paradas completadas, cero válido | Conteo de parada/stint futuro; entrada/salida ya funciona | Scoring int16 +192 (`layout.go:192`), no publicado por modelo nativo | No contador admitido en traductor actual; `Unavailable`, no contar automáticamente cada entrada al pit lane |
+| `Player.pit_limiter_active: Quality<bool>`; booleano, falso válido | Avisos de limitador | Sin campo admitido en parser nativo actual; confirmar campo telemetry del SDK y captura antes de publicarlo, hoy `Unavailable` | Sin campo admitido en traductor actual; confirmar physics del SDK y captura antes de publicarlo, hoy `Unavailable`. `in_pits` de graphics +160/+1236 no equivale a limitador |
+| `Car.pit_service: Quality<PitServiceState>`; enum `Requested/Servicing/Completed/None`, y `remaining_s: Quality<f64>` en segundos si el SDK lo informa | Servicio de boxes completo; no necesario para entrada/salida | Extended/PitInfo histórico experimental no cableado (`docs/telemetry-core/engineer-rescue-matrix.md:26`); mensajes Extended no constituyen enum fiable ni duración. `Unavailable` hasta fuente/captura admitida | No estado/duración de servicio admitido en traductor actual; `Unavailable` hasta señal SDK tipada y captura. Pit lane/velocidad cero no demuestran servicio |
+| `Session.race_limit: Quality<RaceLimit>`; enum `Time { end_s }/Laps { total }`, segundos en reloj de sesión o vueltas | Guardia de timings equivalente a Go: distingue end time observado cero de ausencia | `adapter/lmu/frame.rs:69,176` admite `end_time_s`; debe conservar su calidad y semántica de cero. Go `internal/families/timings.go:14–30` exige esa distinción; no deducirla por `remaining_s` ausente | Traductor actual no acredita el modo de límite como contrato propio; usar solo SDK/captura que lo pruebe, hoy `Unavailable` para esta familia |
+
+No faltan campos para vuelta completada, entrada/salida, flags con ámbito o
+cambio de sesión/fuente: este corte usa `laps`, `in_pits`, `flags`, sesión y
+`source_state` del DTO v4. No solicita un segundo bus ni señales sintéticas.
+Tipo/duración de sanción (DT/SG), micrófono/wake, estrategia de parada y swaps
+quedan fuera de la paridad mínima: contador no autoriza inferir ninguna de ellas.
+
+## Integración productiva y límites comprobables
+
+Hito 3 implementado: hechos neutrales, dueño I/O, named pipe, Engineer y hook
+opt-in del launcher. Gates completos: `cargo clippy --workspace --all-targets
+--offline -j 2 -- -D warnings` PASS (13,05 s); `cargo test --workspace --offline
+-j 2` PASS, 467 tests incluyendo 7 escenarios lifecycle, 4 live ignorados
+(compilación 1m39s). `cargo fmt --check` FAIL solo por el formato importado de
+`ui/src/app.rs:385`; rutas propias formateadas, sin editar UI. No librerías
+nuevas, unsafe nuevo cero, ninguna red externa ni secretos. Hito siguiente:
+ampliar pruebas lifecycle específicamente para el tercer hijo y handoff final.
+
+Un mismo cursor identifica todos los hechos. Boxes JSONL v1 sigue legible;
+hechos v3 son enums cerrados, base de recording v2 sin cambio. La entrega de
+hechos amplía el envelope v1 con tag 2: consumidores anteriores lo rechazan
+explícitamente; desplegar núcleo/Engineer de la misma revisión y DTO v4.
+Se omiten flags `Other` del journal tipado (permanecen íntegros en foto); sin
+contrato de tipo/sujeto no se emite sanción. Vuelta completada es solo jugador,
+contador fiable +1; no se reconstruyen vueltas perdidas ni tiempos por IPC.
+
+Adquisición publica foto y ring inmutables por ArcSwap, retención 256 por lado;
+solo copia ring al cambiar tail. El dueño I/O replica IDs, lee JSONL y confirma
+append/fsync fuera de adquisición. 8 clientes, 8 peticiones, una entrega por
+ACK y canal receptor de 1. Si el dueño pierde el prefijo, Retention explícito y
+recording Degraded; no bloquear adquisición para prometer cero pérdida. Leer
+historial hace scans JSONL: queda por medir coste con archivos largos; no se
+atribuye el presupuesto físico CPU/juego a este banco.
+
+`vantare-core --recording R.jsonl` activa recording al arrancar; por defecto off.
+`EventHost::set_recording` prueba/controla on/off fuera de adquisición. No hay
+control Hub en este corte. Error al abrir un archivo solicitado falla arranque;
+error después de arrancar degrada recording sin detener fotos. Reinicio recupera
+prefijo durable y declara frontera; ACK tras checkpoint no garantiza un audio
+exactamente una vez ante muerte/corte eléctrico.
+
+Verificación automática: cambios fiables y negativos por calidad/identidad;
+recording mixto/reinicio/cursor; disco lleno y fsync fallido inyectados; named
+pipe real con imagen, reconexión, on/off, ACK adelantado, consumidor parado y
+cancelación; proceso Engineer real recibe hecho de Core y checkpointa antes del
+aviso. Fixtures sintéticas explícitas ejercitan estas fronteras; no son LMU/ACC
+físicos ni escucha acústica. Juego, assets/voces y distribución siguen siendo
+acciones de Isaac; ninguna red, descarga, secreto o gasto durante este corte.
 
 ## Histórico de los cortes 1–3 (anterior a la ampliación autorizada)
 

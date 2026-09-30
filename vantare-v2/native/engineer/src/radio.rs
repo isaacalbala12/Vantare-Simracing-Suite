@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 use crate::Applied;
-use vantare_domain::{CarId, FlagKind, FlagScope, Quality, SessionId, Snapshot};
+use vantare_domain::{CarId, FlagKind, FlagScope, Quality, SessionId, Snapshot, SourceState};
+use vantare_runtime::flows::FactKind;
 
 pub const MAX_PENDING: usize = 8;
 
@@ -47,6 +48,7 @@ impl Locale {
 pub enum Intent {
     PitEntry,
     PitExit,
+    LapCompleted,
     FuelOne,
     FuelTwo,
     FuelHalf,
@@ -61,6 +63,7 @@ impl Intent {
         match self {
             Self::PitEntry => "pitstops.entry",
             Self::PitExit => "pitstops.exit",
+            Self::LapCompleted => "laps.completed",
             Self::FuelOne => "fuel.low_1l",
             Self::FuelTwo => "fuel.low_2l",
             Self::FuelHalf => "fuel.low_half_tank",
@@ -76,7 +79,7 @@ impl Intent {
             Self::CarLeft | Self::CarRight | Self::ThreeWide => 3,
             Self::Yellow | Self::Blue => 2,
             Self::FuelOne | Self::FuelTwo | Self::FuelHalf => 1,
-            Self::PitEntry | Self::PitExit => 0,
+            Self::PitEntry | Self::PitExit | Self::LapCompleted => 0,
         }
     }
     pub fn ttl(self) -> Duration {
@@ -90,6 +93,12 @@ impl Intent {
     }
     pub fn text(self, locale: Locale) -> &'static str {
         let texts = match self {
+            Self::LapCompleted => [
+                "Vuelta completada",
+                "Lap completed",
+                "Giro completato",
+                "Volta completada",
+            ],
             Self::PitEntry => [
                 "Entrando en boxes",
                 "Entering the pits",
@@ -301,6 +310,7 @@ impl Families {
             .state
             .player
             .as_ref()
+            .filter(|_| snapshot.state.source_state == SourceState::Live)
             .map(|player| (snapshot.epoch, snapshot.state.session.id, player.car));
         let clear = applied.baseline || self.context != context;
         if clear {
@@ -308,6 +318,22 @@ impl Families {
             self.context = context;
         }
         let mut intents = Vec::new();
+        if context.is_none() {
+            return (Vec::new(), clear);
+        }
+        if let Some(fact) = applied.fact
+            && fact.cursor.epoch == snapshot.epoch
+            && fact.sequence == snapshot.sequence
+            && fact.session == snapshot.state.session.id
+            && let FactKind::LapCompleted { car, completed } = fact.kind
+            && Some(car) == snapshot.state.player.as_ref().map(|player| player.car)
+            && snapshot
+                .state
+                .player_car()
+                .is_some_and(|car| car.laps == Quality::Reliable(completed))
+        {
+            intents.push(Intent::LapCompleted);
+        }
         if let Some(event) = applied.event
             && event.cursor.epoch == snapshot.epoch
             && event.sequence == snapshot.sequence
@@ -399,6 +425,9 @@ fn active_flags(snapshot: &Snapshot) -> u8 {
 }
 
 fn valid_now(message: &Message, snapshot: &Snapshot) -> bool {
+    if snapshot.state.source_state != SourceState::Live {
+        return false;
+    }
     if snapshot
         .state
         .player
@@ -409,6 +438,7 @@ fn valid_now(message: &Message, snapshot: &Snapshot) -> bool {
         return false;
     }
     match message.intent {
+        Intent::LapCompleted => message.sequence == snapshot.sequence,
         Intent::FuelOne | Intent::FuelTwo | Intent::FuelHalf => {
             fuel_intent(snapshot) == Some(message.intent)
         }

@@ -6,7 +6,7 @@ use std::io::{self, Read, Write};
 use serde_json::{Value, json};
 use vantare_domain::{CarId, SessionId, Snapshot};
 
-use super::{Consumer, Cursor, Delivery, GapReason, Journal, PitEvent, RecordingStatus};
+use super::{Consumer, Cursor, Delivery, Event, GapReason, Journal, PitEvent, RecordingStatus};
 
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 const FRAME: &str = "vantare.events.v1";
@@ -66,6 +66,16 @@ impl Frame {
             }
             Some(Delivery::Gap { resume_at, .. }) if !within_tail(resume_at) => {
                 Err(invalid("base supera la cola"))
+            }
+            Some(Delivery::Fact(fact)) => {
+                Event::Fact(fact).validate()?;
+                if !within_tail(fact.cursor)
+                    || (fact.cursor.epoch == self.snapshot.epoch
+                        && fact.sequence > self.snapshot.sequence)
+                {
+                    return Err(invalid("hecho fuera del corte"));
+                }
+                Ok(())
             }
             _ => Ok(()),
         }
@@ -162,6 +172,7 @@ pub fn write_frame(writer: &mut impl Write, frame: &Frame) -> io::Result<()> {
         Some(Delivery::Gap { reason, resume_at }) => {
             json!([1, reason_code(reason), encode_cursor(resume_at)])
         }
+        Some(Delivery::Fact(fact)) => json!([2, Event::Fact(fact).record()]),
     };
     write_value(
         writer,
@@ -208,6 +219,12 @@ pub fn read_frame(reader: &mut impl Read) -> io::Result<Option<Frame>> {
                 reason: decode_reason(reason)?,
                 resume_at: decode_cursor(cursor)?,
             },
+            [code, record] if code.as_u64() == Some(2) => {
+                let Event::Fact(fact) = Event::decode(record)? else {
+                    return Err(invalid("se esperaba hecho v3"));
+                };
+                Delivery::Fact(fact)
+            }
             _ => return Err(invalid("entrega desconocida")),
         })
     };

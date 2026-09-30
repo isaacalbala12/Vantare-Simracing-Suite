@@ -13,11 +13,12 @@ use std::path::Path;
 
 use vantare_domain::Snapshot;
 use vantare_runtime::flows::wire::Frame;
-use vantare_runtime::flows::{Cursor, Delivery, GapReason, PitEvent};
+use vantare_runtime::flows::{Cursor, Delivery, Fact, GapReason, PitEvent};
 
 #[derive(Debug, Default)]
 pub struct Applied {
     pub event: Option<PitEvent>,
+    pub fact: Option<Fact>,
     pub gap: Option<GapReason>,
     pub baseline: bool,
 }
@@ -58,26 +59,32 @@ impl Engineer {
         }
         let mut result = Applied::default();
         let next = match frame.delivery {
-            Some(Delivery::Event(event)) => {
+            Some(Delivery::Event(_) | Delivery::Fact(_)) => {
+                let (event_cursor, pit, fact) = match frame.delivery {
+                    Some(Delivery::Event(event)) => (event.cursor, Some(event), None),
+                    Some(Delivery::Fact(event)) => (event.cursor, None, Some(event)),
+                    _ => return Err(io::Error::other("entrega incoherente")),
+                };
                 let Some(cursor) = self.cursor else {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "falta base inicial",
                     ));
                 };
-                if cursor.epoch == event.cursor.epoch && event.cursor.index <= cursor.index {
+                if cursor.epoch == event_cursor.epoch && event_cursor.index <= cursor.index {
                     cursor // Reentrega atrasada: ACK actual, nunca retroceder.
                 } else {
-                    if cursor.epoch != event.cursor.epoch
-                        || cursor.index.checked_add(1) != Some(event.cursor.index)
+                    if cursor.epoch != event_cursor.epoch
+                        || cursor.index.checked_add(1) != Some(event_cursor.index)
                     {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
                             "evento sin continuidad",
                         ));
                     }
-                    result.event = Some(event);
-                    event.cursor
+                    result.event = pit;
+                    result.fact = fact;
+                    event_cursor
                 }
             }
             Some(Delivery::Gap { reason, resume_at }) => {

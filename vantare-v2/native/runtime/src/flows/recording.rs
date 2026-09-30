@@ -5,16 +5,14 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read as _, Write};
 use std::path::{Path, PathBuf};
 
+use super::{Cursor, Event, GapReason};
 use serde_json::Value;
-use vantare_domain::{CarId, SessionId};
-
-use super::{Cursor, GapReason, PitEvent};
 
 const MAX_RECORD_BYTES: u64 = 256;
 const ABORTED: &[u8] = b"\tABORTED\n";
 
 pub(super) enum Read {
-    Event(PitEvent),
+    Event(Event),
     Boundary(GapReason, Cursor),
     End,
     Invalid,
@@ -46,7 +44,7 @@ impl Recording {
             match next(&mut reader)? {
                 Line::Event(event) => {
                     validate_order(last, event)?;
-                    last = Some(event.cursor);
+                    last = Some(event.cursor());
                     durable_event = last;
                 }
                 Line::Base(cursor) => {
@@ -120,7 +118,7 @@ impl Recording {
         result
     }
 
-    pub(super) fn persist(&mut self, events: &VecDeque<PitEvent>) -> io::Result<()> {
+    pub(super) fn persist(&mut self, events: &VecDeque<Event>) -> io::Result<()> {
         if self.failed {
             return Err(io::Error::other(
                 "recording falló; reabrir antes de escribir",
@@ -128,22 +126,12 @@ impl Recording {
         }
         let mut last = self.last;
         let confirmed = self.last.map_or(0, |c| c.index);
-        for event in events.iter().filter(|e| e.cursor.index > confirmed) {
+        for event in events.iter().filter(|e| e.cursor().index > confirmed) {
             validate_order(last, *event)?;
-            let line = serde_json::json!([
-                1,
-                event.cursor.index,
-                event.cursor.epoch,
-                event.sequence,
-                event.session.0,
-                event.car.0,
-                event.was_in_pits,
-                event.in_pits
-            ])
-            .to_string();
+            let line = event.record().to_string();
             self.append(&line)?;
             // Cada evento se confirma solo después de su propia sincronización.
-            self.last = Some(event.cursor);
+            self.last = Some(event.cursor());
             self.durable_event = self.last;
             last = self.last;
         }
@@ -171,27 +159,27 @@ impl Recording {
                     valid |= cursor == base;
                     previous = Some(base);
                 }
-                Line::Event(event) if event.cursor.index <= self.last.map_or(0, |c| c.index) => {
+                Line::Event(event) if event.cursor().index <= self.last.map_or(0, |c| c.index) => {
                     // La cola volátil pudo avanzar más allá del prefijo
                     // durable. Una nueva época se recupera desde su comienzo,
                     // incluso si reutiliza esos índices no confirmados.
-                    if event.cursor.epoch > cursor.epoch {
+                    if event.cursor().epoch > cursor.epoch {
                         return Ok(Read::Boundary(
                             GapReason::CoreRestart,
                             Cursor {
-                                epoch: event.cursor.epoch,
-                                index: event.cursor.index - 1,
+                                epoch: event.cursor().epoch,
+                                index: event.cursor().index - 1,
                             },
                         ));
                     }
-                    if event.cursor == cursor {
+                    if event.cursor() == cursor {
                         valid = true;
-                    } else if event.cursor.epoch == cursor.epoch
-                        && event.cursor.index > cursor.index
+                    } else if event.cursor().epoch == cursor.epoch
+                        && event.cursor().index > cursor.index
                     {
                         // Base virtual al empezar una época: justo antes de
                         // su primer evento, incluso entre épocas recuperadas.
-                        valid |= event.cursor.index == cursor.index + 1
+                        valid |= event.cursor().index == cursor.index + 1
                             && previous
                                 .is_none_or(|p| p.index == cursor.index && p.epoch < cursor.epoch);
                         if !valid {
@@ -199,7 +187,7 @@ impl Recording {
                         }
                         return Ok(Read::Event(event));
                     }
-                    previous = Some(event.cursor);
+                    previous = Some(event.cursor());
                 }
                 Line::Aborted => {}
                 _ => return Ok(if valid { Read::End } else { Read::Invalid }),
@@ -208,11 +196,12 @@ impl Recording {
     }
 }
 
-fn validate_order(last: Option<Cursor>, event: PitEvent) -> io::Result<()> {
+fn validate_order(last: Option<Cursor>, event: Event) -> io::Result<()> {
+    event.validate()?;
     let index = last.map_or(0, |c| c.index);
-    if Some(event.cursor.index) != index.checked_add(1)
-        || last.is_some_and(|c| event.cursor.epoch < c.epoch)
-        || event.cursor.index == u64::MAX
+    if Some(event.cursor().index) != index.checked_add(1)
+        || last.is_some_and(|c| event.cursor().epoch < c.epoch)
+        || event.cursor().index == u64::MAX
     {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -234,7 +223,7 @@ fn validate_base(last: Option<Cursor>, base: Cursor) -> io::Result<()> {
 }
 
 enum Line {
-    Event(PitEvent),
+    Event(Event),
     Base(Cursor),
     Aborted,
     Torn,
@@ -277,24 +266,7 @@ fn decode(bytes: &[u8]) -> io::Result<Line> {
             epoch: number(2)?,
         }));
     }
-    if fields.len() != 8 || fields[0].as_u64() != Some(1) {
-        return Err(invalid());
-    }
-    let event = PitEvent {
-        cursor: Cursor {
-            index: number(1)?,
-            epoch: number(2)?,
-        },
-        sequence: number(3)?,
-        session: SessionId(number(4)?),
-        car: CarId(u32::try_from(number(5)?).map_err(|_| invalid())?),
-        was_in_pits: fields[6].as_bool().ok_or_else(invalid)?,
-        in_pits: fields[7].as_bool().ok_or_else(invalid)?,
-    };
-    if event.sequence == 0 || event.was_in_pits == event.in_pits {
-        return Err(invalid());
-    }
-    Ok(Line::Event(event))
+    Event::decode(&value).map(Line::Event)
 }
 
 #[cfg(test)]
@@ -302,6 +274,8 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use super::*;
+    use crate::flows::PitEvent;
+    use vantare_domain::{CarId, SessionId};
 
     #[test]
     fn failed_append_never_confirms_durability_or_retries_an_uncertain_write() {
@@ -310,14 +284,14 @@ mod tests {
         // Un handle real de solo lectura fuerza un error de escritura sin
         // llenar el disco del usuario ni añadir una abstracción de producción.
         recording.file = File::open(&file.0).unwrap();
-        let events = VecDeque::from([PitEvent {
+        let events = VecDeque::from([Event::Pit(PitEvent {
             cursor: Cursor { epoch: 1, index: 1 },
             sequence: 2,
             session: SessionId(0),
             car: CarId(7),
             was_in_pits: false,
             in_pits: true,
-        }]);
+        })]);
         assert!(recording.persist(&events).is_err());
         assert!(recording.failed);
         assert_eq!(recording.durable_event(), None);

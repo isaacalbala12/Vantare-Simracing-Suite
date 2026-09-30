@@ -371,12 +371,21 @@ y [status de MCI](https://learn.microsoft.com/en-us/previous-versions/ms713277(v
 
 ### Actualización de caché #1428 — 2026-09-30
 
-En la caché local del producto se añadieron las voces `flags.yellow` y
-`flags.blue` para `es` (`ef_dora`) y `en` (`af_bella`; cuatro MP3). No se
-versionan: los archivos quedan fuera del repositorio. La cobertura local sube
-a 11/11 en `es` y `en`; `it` (`if_sara`) y `pt-BR` (`pf_dora`) siguen en
-9/11 porque el CLI offline no encuentra sus archivos de voz locales. No se
-descargaron modelos ni voces. El banco `voice-cache play` aceptó y detuvo una
-frase en cada locale: las banderas nuevas en `es`/`en` y clips existentes en
-`it`/`pt-BR`. La evidencia detallada de esta ejecución queda en
-`C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.
+En la caché local del producto se añadieron `flags.yellow` y `flags.blue`
+para `es` (`ef_dora`), `en` (`af_bella`), `it` (`if_sara`) y `pt-BR`
+(`pf_dora`): ocho MP3, sin versionar los clips. Kokoro CLI sintetiza offline
+a velocidad 1.0; ffmpeg convierte su WAV a MP3 mono de 24 kHz con
+`libmp3lame -q:a 2`. Se conserva la clave SHA-256 y el texto exacto del
+catálogo nativo. La cobertura local final es **11/11 por locale, 44/44**,
+con las dos banderas disponibles en los cuatro idiomas. El informe versionado
+`coverage-2026-09-30.json` conserva la medición inicial.
+
+Tras autorización expresa del orquestador se descargaron únicamente
+`voices/if_sara.pt` y `voices/pf_dora.pt` de `hexgrad/Kokoro-82M`, fijados
+a la revisión del modelo local `f3ff3571791e39611d31c381e3a41a3af07b4987`.
+El banco `voice-cache play` aceptó y detuvo las cuatro banderas nuevas de
+`it`/`pt-BR`; también se reprodujeron banderas de `es`/`en` en la primera
+ejecución. Esto acredita reproducción aceptada por Windows, sin afirmar
+escucha humana. Los 811 clips anteriores a esta continuación conservan
+sus hashes; la caché termina con 815 archivos. La evidencia detallada queda
+en `C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.

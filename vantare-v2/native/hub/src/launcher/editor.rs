@@ -234,8 +234,21 @@ impl Render for FormHost {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.0
             .update(cx, |launcher, cx| {
-                if launcher.pending_app_removal.is_some() {
-                    launcher.app_removal_confirmation(cx)
+                if launcher.pending_decision.is_some() {
+                    launcher.decision_form(cx)
+                } else if launcher.pending_app_removal.is_some()
+                    || launcher.pending_profile_removal.is_some()
+                {
+                    if let Some(id) = &launcher.pending_profile_removal {
+                        div().child(text(
+                            format!("Eliminar perfil {id}? Esta accion no se puede deshacer."),
+                            orbit::BODY,
+                            500,
+                            orbit::INK,
+                        ))
+                    } else {
+                        launcher.app_removal_confirmation(cx)
+                    }
                 } else if launcher.app_draft.is_some() {
                     launcher.app_form(cx)
                 } else {
@@ -369,7 +382,7 @@ fn number(
     })
 }
 
-// NumberControl conserva enteros no negativos acotados a 3600 (o 3 reintentos).
+// NumberControl conserva enteros u32 no negativos (o de 0 a 3 reintentos).
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn seconds(control: &Entity<NumberControl>, cx: &Context<Launcher>) -> u32 {
     control.read(cx).range.value as u32
@@ -396,7 +409,7 @@ fn draft_step(
 pub(super) fn form_button(
     button: gpui::Stateful<gpui::Div>,
     focus: &gpui::FocusHandle,
-    action: fn(&mut Launcher, &mut Window, &mut Context<Launcher>),
+    action: impl Fn(&mut Launcher, &mut Window, &mut Context<Launcher>) + Copy + 'static,
     cx: &Context<Launcher>,
 ) -> gpui::Stateful<gpui::Div> {
     button
@@ -433,12 +446,21 @@ impl Launcher {
         }
     }
     pub(super) fn form_targets(&self, cx: &Context<Self>) -> Vec<gpui::FocusHandle> {
-        if self.pending_app_removal.is_some() {
+        if let Some(decision) = &self.pending_decision {
+            return self
+                .form_actions
+                .iter()
+                .take(decision.actions.len())
+                .cloned()
+                .collect();
+        }
+        if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             return vec![self.form_actions[1].clone(), self.form_actions[2].clone()];
         }
         if let Some(draft) = &self.app_draft {
             return vec![
                 draft.name.read(cx).focus_handle(),
+                draft.executable.read(cx).focus_handle(),
                 draft.args.read(cx).focus_handle(),
                 self.form_actions[0].clone(),
                 self.form_actions[1].clone(),
@@ -451,6 +473,8 @@ impl Launcher {
         let advanced = draft.tabs.read(cx).state.selected == Some(1);
         let mut targets = vec![
             draft.name.read(cx).focus_handle(),
+            draft.description.read(cx).focus_handle(),
+            draft.notes.read(cx).focus_handle(),
             draft.tabs.read(cx).focus_handle(),
         ];
         for (index, step) in draft.steps.iter().enumerate() {
@@ -468,6 +492,11 @@ impl Launcher {
             targets.extend([
                 draft.failure.read(cx).focus_handle(),
                 draft.reuse.read(cx).focus_handle(),
+                draft.cancel.read(cx).focus_handle(),
+                draft.exit.read(cx).focus_handle(),
+                draft.retry_policy.read(cx).focus_handle(),
+                draft.hotkey.read(cx).focus_handle(),
+                draft.autostart.read(cx).focus_handle(),
                 draft.retries.read(cx).focus_handle(),
             ]);
         }
@@ -482,14 +511,18 @@ impl Launcher {
             FormHost(launcher.downgrade())
         });
         let targets = self.form_targets(cx);
-        let label = if self.pending_app_removal.is_some() {
+        let label = if self.pending_decision.is_some() {
+            "Decisión de lanzamiento"
+        } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             "Eliminar aplicación"
         } else if self.app_draft.is_some() {
             "Editar aplicación"
         } else {
             "Editar perfil"
         };
-        let footer = if self.pending_app_removal.is_some() {
+        let footer = if self.pending_decision.is_some() {
+            None
+        } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             let footer = cx.new(|cx| {
                 cx.observe(&launcher, |_, _, cx| cx.notify()).detach();
                 AppRemovalFooter(launcher.downgrade())
@@ -507,9 +540,22 @@ impl Launcher {
         let layer = cx
             .new(|cx| LauncherDrawer::new(label.into(), host.into(), footer, targets, window, cx));
         cx.subscribe(&layer, |this, _, _: &orbit::Dismissed, cx| {
+            if let Some(decision) = this.pending_decision.take() {
+                if decision.id == 0 {
+                    this.exit_cancelled = true;
+                } else if let Some(chain) = &this.chain {
+                    if decision.actions.contains(&Action::Leave) {
+                        let result = chain.answer(decision.id, Action::Leave);
+                        this.report(result, cx);
+                    } else {
+                        chain.cancel();
+                    }
+                }
+            }
             this.app_draft = None;
             this.profile_draft = None;
             this.pending_app_removal = None;
+            this.pending_profile_removal = None;
             this.form_layer = None;
             cx.notify();
         })
@@ -526,17 +572,49 @@ impl Launcher {
         self.app_draft = None;
         self.profile_draft = None;
         self.pending_app_removal = None;
+        self.pending_profile_removal = None;
         cx.notify();
     }
 
     pub(super) fn confirm_app_removal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(id) = self.pending_app_removal.clone() else {
-            return;
-        };
-        if self.edit(move |document| document.remove_app(&id), cx) {
+        if let Some(id) = self.pending_profile_removal.clone() {
+            let owned = self
+                .processes
+                .lock()
+                .map_err(|e| e.to_string())
+                .and_then(|mut p| p.has_profile(&id));
+            match owned {
+                Ok(false) if self.chain.is_none() => {
+                    if self.edit(|doc| doc.remove_profile(&id), cx) {
+                        self.close_form(window, cx);
+                    }
+                }
+                Ok(_) => self.report(
+                    Err(
+                        "termina la cadena y cierra las apps iniciadas antes de borrar el perfil"
+                            .into(),
+                    ),
+                    cx,
+                ),
+                Err(error) => self.report(Err(error), cx),
+            }
+        } else if let Some(id) = self.pending_app_removal.clone()
+            && self.edit(move |document| document.remove_app(&id), cx)
+        {
             self.close_form(window, cx);
             self.scan(cx);
         }
+    }
+    pub(super) fn request_profile_removal(
+        &mut self,
+        id: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.profile_draft = None;
+        self.app_draft = None;
+        self.pending_profile_removal = Some(id);
+        self.open_form(window, cx);
     }
 
     pub(super) fn request_app_removal(
@@ -568,7 +646,7 @@ impl Launcher {
                     cx,
                 )
             }),
-            delay: number(step.delay_seconds, 3600, "Espera del paso (s)", cx),
+            delay: number(step.delay_seconds, u32::MAX, "Espera del paso (s)", cx),
             args: input(
                 step.args_override
                     .as_deref()
@@ -585,6 +663,7 @@ impl Launcher {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let policy = profile.effective_policy();
         let apps = &self.store.document.apps;
         let steps = profile
             .steps
@@ -596,38 +675,76 @@ impl Launcher {
                 "Editor de pasos",
                 ChoiceKind::Tabs,
                 vec![OptionItem::new("Básico"), OptionItem::new("Avanzado")],
-                Some(0),
+                Some(usize::from(profile.advanced)),
                 window,
                 cx,
             )
         });
         cx.subscribe(&tabs, |_, _, _: &orbit::ChoiceChanged, cx| cx.notify())
             .detach();
-        let description = input(
-            String::new(),
-            "Descripción · pendiente de contrato nativo",
-            cx,
-        );
-        description.update(cx, |field, cx| field.set_enabled(false, cx));
-        let notes = cx
-            .new(|cx| Input::multiline(String::new(), "Notas · pendiente de contrato nativo", cx));
-        notes.update(cx, |field, cx| field.set_enabled(false, cx));
+        let description = input(profile.description.clone(), "Descripcion", cx);
+        let notes = cx.new(|cx| Input::multiline(profile.notes.clone(), "Notas", cx));
         self.profile_draft = Some(ProfileDraft {
             name: input(profile.name.clone(), "Nombre de perfil", cx),
             description,
             notes,
-            first_delay: number(profile.first_step_delay, 3600, "Espera inicial (s)", cx),
-            retries: number(u32::from(profile.max_retries), 3, "Reintentos por paso", cx),
-            failure: cx.new(|cx| {
-                orbit::Checkbox::new("Continuar ante un fallo", profile.continue_on_error, cx)
+            hotkey: input(profile.hotkey.clone(), "Atajo: ctrl+shift+1", cx),
+            autostart: cx.new(|cx| {
+                orbit::Checkbox::new("Iniciar con Windows", profile.launch_on_windows_startup, cx)
             }),
-            reuse: cx.new(|cx| {
-                orbit::Checkbox::new(
-                    "Reutilizar aplicaciones abiertas",
-                    profile.reuse_running,
-                    cx,
-                )
-            }),
+            first_delay: number(policy.first_step_delay, u32::MAX, "Espera inicial (s)", cx),
+            retries: number(u32::from(policy.max_retries), 3, "Reintentos por paso", cx),
+            failure: policy_choice(
+                "Ante un fallo",
+                &["Preguntar", "Parar", "Continuar"],
+                match policy.failure {
+                    Failure::Ask => 0,
+                    Failure::Stop => 1,
+                    Failure::Continue => 2,
+                },
+                window,
+                cx,
+            ),
+            reuse: policy_choice(
+                "Aplicación ya abierta",
+                &[
+                    "Preguntar",
+                    "Reutilizar",
+                    "Reiniciar solo si Vantare la inició",
+                ],
+                match policy.already_running {
+                    Running::Ask => 0,
+                    Running::Reuse => 1,
+                    Running::Restart => 2,
+                },
+                window,
+                cx,
+            ),
+            cancel: policy_choice(
+                "Al cancelar",
+                &["Preguntar", "Dejar abiertas", "Cerrar solo las iniciadas"],
+                close_index(policy.cancel),
+                window,
+                cx,
+            ),
+            exit: policy_choice(
+                "Al salir",
+                &["Preguntar", "Dejar abiertas", "Cerrar solo las iniciadas"],
+                close_index(policy.exit),
+                window,
+                cx,
+            ),
+            retry_policy: policy_choice(
+                "Reintentar",
+                &["Preguntar", "Pasos fallidos", "Cadena entera"],
+                match policy.retry {
+                    super::super::policy::Retry::Ask => 0,
+                    super::super::policy::Retry::Failed => 1,
+                    super::super::policy::Retry::All => 2,
+                },
+                window,
+                cx,
+            ),
             tabs,
             app_ids: apps.iter().map(|app| app.id.clone()).collect(),
             profile,
@@ -650,8 +767,14 @@ impl Launcher {
             self.report(Err("límite de perfiles alcanzado".into()), cx);
             return;
         };
-        let mut profile = source.unwrap_or_else(|| Profile::new(id.clone(), "Nuevo perfil".into()));
+        let mut profile = source.map_or_else(
+            || Profile::new(id.clone(), "Nuevo perfil".into()),
+            |profile| profile.duplicate(id.clone()),
+        );
         profile.id = id;
+        if profile.policy.is_none() {
+            profile.policy = Some(super::super::policy::Policy::default());
+        }
         self.profile_editor(profile, window, cx);
     }
 
@@ -662,11 +785,39 @@ impl Launcher {
         let result = (|| {
             let mut profile = draft.profile.clone();
             profile.name = draft.name.read(cx).value.trim().into();
+            profile
+                .description
+                .clone_from(&draft.description.read(cx).value);
+            profile.notes.clone_from(&draft.notes.read(cx).value);
+            profile.advanced = draft.tabs.read(cx).state.selected == Some(1);
+            profile.hotkey.clone_from(&draft.hotkey.read(cx).value);
+            profile.launch_on_windows_startup = draft.autostart.read(cx).checked;
             profile.first_step_delay = seconds(&draft.first_delay, cx);
             profile.max_retries = u8::try_from(seconds(&draft.retries, cx))
                 .map_err(|error| format!("reintentos inválidos: {error}"))?;
-            profile.continue_on_error = draft.failure.read(cx).checked;
-            profile.reuse_running = draft.reuse.read(cx).checked;
+            let mut policy = profile.effective_policy();
+            policy.failure = match draft.failure.read(cx).state.selected {
+                Some(1) => Failure::Stop,
+                Some(2) => Failure::Continue,
+                _ => Failure::Ask,
+            };
+            policy.already_running = match draft.reuse.read(cx).state.selected {
+                Some(1) => Running::Reuse,
+                Some(2) => Running::Restart,
+                _ => Running::Ask,
+            };
+            policy.cancel = selected_close(draft.cancel.read(cx).state.selected);
+            policy.exit = selected_close(draft.exit.read(cx).state.selected);
+            policy.retry = match draft.retry_policy.read(cx).state.selected {
+                Some(1) => super::super::policy::Retry::Failed,
+                Some(2) => super::super::policy::Retry::All,
+                _ => super::super::policy::Retry::Ask,
+            };
+            policy.first_step_delay = profile.first_step_delay;
+            policy.max_retries = profile.max_retries;
+            profile.continue_on_error = policy.failure == Failure::Continue;
+            profile.reuse_running = policy.already_running == Running::Reuse;
+            profile.policy = Some(policy);
             profile.steps = draft
                 .steps
                 .iter()
@@ -679,6 +830,7 @@ impl Launcher {
                     )
                 })
                 .collect::<Result<Vec<_>, String>>()?;
+            profile.validate_editor(&self.discovered)?;
             Ok::<_, String>(profile)
         })();
         let profile = match result {
@@ -688,17 +840,7 @@ impl Launcher {
                 return;
             }
         };
-        if self.edit(
-            move |doc| {
-                if let Some(current) = doc.profiles.iter_mut().find(|p| p.id == profile.id) {
-                    *current = profile;
-                } else {
-                    doc.profiles.push(profile);
-                }
-                Ok(())
-            },
-            cx,
-        ) {
+        if self.edit(move |doc| doc.save_profile(profile), cx) {
             self.profile_draft = None;
         }
     }
@@ -742,8 +884,8 @@ impl Launcher {
             .child(editor_field("Descripción", draft.description.clone()).mt(px(14.0)))
             .child(editor_field("Notas", draft.notes.clone()).mt(px(14.0)))
             .child(self.profile_steps_section(draft, advanced, cx))
-            .child(Self::profile_hotkey_row())
-            .child(Self::profile_autostart_row())
+            .child(Self::profile_hotkey_row(draft, cx))
+            .child(Self::profile_autostart_row(draft, cx))
             .when(advanced, |form| {
                 form.child(self.profile_advanced_section(draft, cx))
             })
@@ -901,7 +1043,7 @@ impl Launcher {
             )
     }
 
-    fn profile_hotkey_row() -> gpui::Div {
+    fn profile_hotkey_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
         div()
             .mt(px(20.0))
             .min_h(px(54.0))
@@ -938,11 +1080,15 @@ impl Launcher {
                     .font_family("Cascadia Code")
                     .text_size(px(12.0))
                     .text_color(rgb(orbit::INK_3))
-                    .child("sin asignar"),
+                    .child(if draft.hotkey.read(cx).value.is_empty() {
+                        "sin asignar".into()
+                    } else {
+                        draft.hotkey.read(cx).value.clone()
+                    }),
             )
     }
 
-    fn profile_autostart_row() -> gpui::Div {
+    fn profile_autostart_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
         div()
             .mt(px(18.0))
             .min_h(px(26.0))
@@ -953,7 +1099,7 @@ impl Launcher {
             .child(orbit::toggle(
                 "windows-start",
                 "Iniciar con Windows",
-                false,
+                draft.autostart.read(cx).checked,
                 false,
             ))
     }
@@ -965,15 +1111,23 @@ impl Launcher {
             .flex_col()
             .gap(px(12.0))
             .child(orbit::eyebrow("Políticas nativas"))
-            .child(draft.failure.clone())
-            .child(draft.reuse.clone())
+            .child(editor_field("Atajo global preparado", draft.hotkey.clone()))
+            .child(editor_field(
+                "Inicio Windows preparado",
+                draft.autostart.clone(),
+            ))
+            .child(editor_field("Ante un fallo", draft.failure.clone()))
+            .child(editor_field("Aplicación ya abierta", draft.reuse.clone()))
+            .child(editor_field("Al cancelar", draft.cancel.clone()))
+            .child(editor_field("Al salir", draft.exit.clone()))
+            .child(editor_field("Reintentar", draft.retry_policy.clone()))
             .child(orbit::setting_row(
                 "Reintentos por paso",
                 "De 0 a 3",
                 draft.retries.clone(),
             ))
             .child(orbit::callout(
-                "Atajos globales, inicio de Windows y cierre de aplicaciones no tienen contrato nativo.",
+                "Atajos globales e inicio de Windows pendientes del propietario residente nativo.",
             ))
             .when(
                 self.store
@@ -983,6 +1137,39 @@ impl Launcher {
                     .any(|profile| profile.id == draft.profile.id),
                 |advanced| advanced.child(self.profile_actions(&draft.profile, cx)),
             )
+    }
+}
+
+fn policy_choice(
+    label: &'static str,
+    labels: &[&str],
+    selected: usize,
+    window: &mut Window,
+    cx: &mut Context<Launcher>,
+) -> Entity<Choice> {
+    cx.new(|cx| {
+        Choice::new(
+            label,
+            ChoiceKind::List,
+            labels.iter().map(|label| OptionItem::new(*label)).collect(),
+            Some(selected),
+            window,
+            cx,
+        )
+    })
+}
+fn close_index(policy: Close) -> usize {
+    match policy {
+        Close::Ask => 0,
+        Close::Leave => 1,
+        Close::CloseStarted => 2,
+    }
+}
+fn selected_close(selected: Option<usize>) -> Close {
+    match selected {
+        Some(1) => Close::Leave,
+        Some(2) => Close::CloseStarted,
+        _ => Close::Ask,
     }
 }
 

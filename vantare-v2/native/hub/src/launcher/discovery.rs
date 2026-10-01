@@ -29,6 +29,7 @@ pub struct Sources {
     pub known_paths: Vec<(String, PathBuf)>,
     pub registry: Vec<(String, PathBuf)>,
     pub steam_roots: Vec<PathBuf>,
+    pub shortcuts: Vec<PathBuf>,
     pub warnings: Vec<String>,
 }
 
@@ -63,6 +64,7 @@ impl Sources {
                     result.steam_roots.push(path);
                 }
             }
+            result.shortcuts = super::shortcuts::system(&mut result.warnings);
             super::windows::registry_sources(&mut result);
             result
         }
@@ -277,69 +279,25 @@ impl Discovery {
             a.to_string_lossy()
                 .eq_ignore_ascii_case(&b.to_string_lossy())
         });
+        let mut steam_files = BTreeMap::new();
+        let mut budget = 20000;
+        for library in &libraries {
+            index(
+                &library.join("steamapps/common"),
+                4,
+                &mut steam_files,
+                &mut budget,
+                &mut result.warnings,
+            );
+        }
         for app in apps {
-            let official = CATALOG.iter().find(|entry| entry.id == app.id);
-            let mut detected = Detected {
-                id: app.id.clone(),
-                executable: None,
-                source: "catálogo",
-                availability: Availability {
-                    catalogued: official.is_some(),
-                    ..Availability::default()
-                },
-            };
-            if let Some(path) = &app.executable {
-                // Un override desaparecido conserva autoridad: nunca sustituirlo silenciosamente.
-                detected.source = "manual";
-                detected.availability.found = path.exists();
-                if is_executable(path) {
-                    detected.executable = Some(path.clone());
-                }
-            } else if let Some(official) = official {
-                for (name, root) in &sources.registry {
-                    if !official
-                        .matchers
-                        .iter()
-                        .any(|matcher| name.to_ascii_lowercase().contains(matcher))
-                    {
-                        continue;
-                    }
-                    detected.availability.found = true;
-                    detected.source = "registro";
-                    if let Some(path) = find(root, official.executables, &mut result.warnings) {
-                        detected.executable = Some(path);
-                        break;
-                    }
-                }
-                if detected.executable.is_none() {
-                    for (id, root) in &sources.known_paths {
-                        if id == &app.id
-                            && let Some(path) =
-                                find(root, official.executables, &mut result.warnings)
-                        {
-                            detected.executable = Some(path);
-                            detected.source = "ruta conocida";
-                            detected.availability.found = true;
-                            break;
-                        }
-                    }
-                }
-                detect_steam(official, &libraries, &mut detected, &mut result.warnings);
-                if detected
-                    .executable
-                    .as_ref()
-                    .and_then(|path| path.file_name())
-                    .is_some_and(|name| {
-                        app.id == "discord" && name.eq_ignore_ascii_case("Update.exe")
-                    })
-                {
-                    // Discord usa Update.exe como bootstrapper; sus argumentos no son opcionales.
-                    detected.source = "Discord updater";
-                }
-            }
-            detected.availability.installed |= detected.executable.is_some();
-            detected.availability.launchable = detected.executable.is_some();
-            result.apps.push(detected);
+            result.apps.push(detect_app(
+                app,
+                &sources,
+                &libraries,
+                &steam_files,
+                &mut result.warnings,
+            ));
         }
         result
     }
@@ -347,6 +305,103 @@ impl Discovery {
     pub fn app(&self, id: &str) -> Option<&Detected> {
         self.apps.iter().find(|app| app.id == id)
     }
+}
+
+fn detect_app(
+    app: &App,
+    sources: &Sources,
+    libraries: &[PathBuf],
+    steam_files: &BTreeMap<String, PathBuf>,
+    warnings: &mut Vec<String>,
+) -> Detected {
+    let official = CATALOG.iter().find(|entry| entry.id == app.id);
+    let mut detected = Detected {
+        id: app.id.clone(),
+        executable: None,
+        source: "catálogo",
+        availability: Availability {
+            catalogued: official.is_some(),
+            ..Availability::default()
+        },
+    };
+    if let Some(path) = &app.executable {
+        // Un override desaparecido conserva autoridad: nunca sustituirlo silenciosamente.
+        detected.source = "manual";
+        detected.availability.found = path.exists();
+        if is_executable(path) {
+            detected.executable = Some(path.clone());
+        }
+    } else if let Some(official) = official {
+        for (name, root) in &sources.registry {
+            if !official
+                .matchers
+                .iter()
+                .any(|matcher| name.to_ascii_lowercase().contains(matcher))
+            {
+                continue;
+            }
+            detected.availability.found = true;
+            detected.source = "registro";
+            if let Some(path) = find(root, official.executables, warnings) {
+                detected.executable = Some(path);
+                break;
+            }
+        }
+        if detected.executable.is_none() {
+            for (id, root) in &sources.known_paths {
+                if id == &app.id
+                    && let Some(path) = find(root, official.executables, warnings)
+                {
+                    detected.executable = Some(path);
+                    detected.source = "ruta conocida";
+                    detected.availability.found = true;
+                    break;
+                }
+            }
+        }
+        detect_steam(official, libraries, &mut detected, warnings);
+        if detected.executable.is_none() {
+            detected.executable = official
+                .executables
+                .iter()
+                .find_map(|exe| steam_files.get(&exe.to_ascii_lowercase()))
+                .cloned();
+            if detected.executable.is_some() {
+                detected.source = "Steam";
+                detected.availability.found = true;
+            }
+        }
+        if detected.executable.is_none() && official.steam_id.is_none() {
+            detected.executable = sources
+                .shortcuts
+                .iter()
+                .find(|path| {
+                    path.file_name().is_some_and(|file| {
+                        official
+                            .executables
+                            .iter()
+                            .any(|exe| file.eq_ignore_ascii_case(exe))
+                    }) && is_executable(path)
+                })
+                .cloned();
+            if detected.executable.is_some() {
+                detected.source = "acceso directo";
+                detected.availability.found = true;
+            }
+        }
+        if detected
+            .executable
+            .as_ref()
+            .and_then(|path| path.file_name())
+            .is_some_and(|name| app.id == "discord" && name.eq_ignore_ascii_case("Update.exe"))
+        {
+            // Discord usa Update.exe como bootstrapper; sus argumentos no son opcionales.
+            detected.source = "Discord updater";
+        }
+    }
+    detected.availability.installed |= detected.executable.is_some();
+    detected.availability.launchable = detected.executable.is_some();
+    detected
 }
 
 fn detect_steam(
@@ -398,13 +453,16 @@ fn detect_steam(
 }
 
 pub fn running(path: &Path) -> Result<Option<u32>, String> {
+    Ok(running_all(path)?.into_iter().next())
+}
+pub fn running_all(path: &Path) -> Result<Vec<u32>, String> {
     #[cfg(windows)]
     {
-        super::windows::running(path)
+        super::windows::running_all(path)
     }
     #[cfg(not(windows))]
     {
         let _ = path;
-        Ok(None)
+        Ok(vec![])
     }
 }

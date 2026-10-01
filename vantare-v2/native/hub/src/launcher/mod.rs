@@ -2,6 +2,11 @@
 pub mod chain;
 pub mod discovery;
 pub(crate) mod input;
+mod migration;
+pub mod policy;
+pub mod processes;
+mod shortcuts;
+pub mod triggers;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -118,6 +123,7 @@ pub struct Step {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)] // Preferencias independientes y compatibilidad de los dos flags v1.
 pub struct Profile {
     pub id: String,
     pub name: String,
@@ -127,6 +133,24 @@ pub struct Profile {
     pub continue_on_error: bool,
     pub reuse_running: bool,
     pub max_retries: u8,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub notes: String,
+    #[serde(default)]
+    pub advanced: bool,
+    #[serde(default)]
+    pub hotkey: String,
+    #[serde(default)]
+    pub launch_on_windows_startup: bool,
+    #[serde(default)]
+    pub launch_count: u64,
+    #[serde(default)]
+    pub last_launched_at: Option<String>,
+    #[serde(default)]
+    pub avg_chain_duration_ms: u64,
+    #[serde(default)]
+    pub policy: Option<policy::Policy>,
 }
 
 impl Profile {
@@ -140,7 +164,63 @@ impl Profile {
             continue_on_error: false,
             reuse_running: true,
             max_retries: 0,
+            description: String::new(),
+            notes: String::new(),
+            advanced: false,
+            hotkey: String::new(),
+            launch_on_windows_startup: false,
+            launch_count: 0,
+            last_launched_at: None,
+            avg_chain_duration_ms: 0,
+            policy: None,
         }
+    }
+}
+
+impl Profile {
+    #[must_use]
+    pub fn duplicate(&self, id: String) -> Self {
+        let mut profile = self.clone();
+        profile.id = id;
+        profile.name = format!("{} (copia)", self.name);
+        profile.favorite = false;
+        profile.hotkey.clear();
+        profile.launch_on_windows_startup = false;
+        profile.launch_count = 0;
+        profile.last_launched_at = None;
+        profile.avg_chain_duration_ms = 0;
+        profile
+    }
+    pub fn validate_editor(&self, discovered: &discovery::Discovery) -> Result<(), String> {
+        if !valid_text(&self.name) {
+            return Err("Nombre: indica entre 1 y 256 caracteres sin NUL".into());
+        }
+        if self.steps.is_empty() {
+            return Err("Pasos: anade al menos una aplicacion".into());
+        }
+        let mut apps = HashSet::new();
+        for (index, step) in self.steps.iter().enumerate() {
+            if !self.advanced && !apps.insert(&step.app_id) {
+                return Err(format!(
+                    "Paso {}: las apps repetidas requieren modo avanzado",
+                    index + 1
+                ));
+            }
+            if !discovered
+                .app(&step.app_id)
+                .is_some_and(|app| app.availability.launchable)
+            {
+                return Err(format!("Paso {}: selecciona una app disponible", index + 1));
+            }
+        }
+        if self.description.len() > 8192
+            || self.notes.len() > 32768
+            || self.description.contains('\0')
+            || self.notes.contains('\0')
+        {
+            return Err("Descripcion o notas demasiado largas o con NUL".into());
+        }
+        Ok(())
     }
 }
 
@@ -151,6 +231,8 @@ pub struct Document {
     pub apps: Vec<App>,
     pub profiles: Vec<Profile>,
     pub lmu_trigger_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wails_import: Option<migration::Import>,
 }
 
 impl Default for Document {
@@ -169,6 +251,7 @@ impl Default for Document {
                 .collect(),
             profiles: vec![],
             lmu_trigger_profile: None,
+            wails_import: None,
         }
     }
 }
@@ -189,6 +272,40 @@ pub fn validate_args(args: &[String]) -> Result<(), String> {
 }
 
 impl Document {
+    pub fn fresh_install() -> Self {
+        let mut document = Self::default();
+        for (id, name, apps) in [
+            ("creator", "Creator", &["lmu", "obs", "spotify"][..]),
+            ("pro", "Pro", &["lmu", "crewchief", "spotify", "motec"][..]),
+        ] {
+            let mut profile = Profile::new(id.into(), name.into());
+            profile.policy = Some(policy::Policy::default());
+            profile.steps = apps
+                .iter()
+                .enumerate()
+                .map(|(index, app)| Step {
+                    app_id: (*app).into(),
+                    delay_seconds: if index == 0 { 0 } else { 2 },
+                    args_override: None,
+                })
+                .collect();
+            document.profiles.push(profile);
+        }
+        document
+    }
+    pub fn remove_profile(&mut self, id: &str) -> Result<(), String> {
+        let index = self
+            .profiles
+            .iter()
+            .position(|p| p.id == id)
+            .ok_or("perfil inexistente")?;
+        self.profiles.remove(index);
+        if self.lmu_trigger_profile.as_deref() == Some(id) {
+            self.lmu_trigger_profile = None;
+        }
+        Ok(())
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         if self.version != 1 || self.apps.len() > 256 || self.profiles.len() > 128 {
             return Err("versión o tamaño de Launcher no admitidos".into());
@@ -225,13 +342,13 @@ impl Document {
                 || !profiles.insert(&profile.id)
                 || profile.steps.len() > 128
                 || profile.max_retries > 3
-                || profile.first_step_delay > 3600
+                || profile.effective_policy().max_retries > 3
             {
                 return Err("perfil inválido: identidad, pasos, delay o reintentos".into());
             }
             for step in &profile.steps {
-                if !ids.contains(&step.app_id) || step.delay_seconds > 3600 {
-                    return Err("paso sin app conocida o delay mayor de una hora".into());
+                if !ids.contains(&step.app_id) {
+                    return Err("paso sin app conocida".into());
                 }
                 if let Some(args) = &step.args_override {
                     validate_args(args)?;
@@ -303,6 +420,30 @@ pub fn default_path() -> Result<PathBuf, String> {
 }
 
 impl Store {
+    /// Importar solo al crear el store productivo, nunca al cargar fixtures/QA.
+    pub fn load_production(path: PathBuf) -> Result<Self, String> {
+        if path
+            .try_exists()
+            .map_err(|e| format!("inspeccionar Launcher: {e}"))?
+        {
+            return Self::load(path);
+        }
+        let source = migration::source()?;
+        Self::load_with_wails(path, source.as_deref())
+    }
+
+    pub fn load_with_wails(path: PathBuf, source: Option<&Path>) -> Result<Self, String> {
+        let mut store = Self::load(path)?;
+        if store.saved.is_none() {
+            let document = match source {
+                Some(source) => migration::read(source)?,
+                None => Document::fresh_install(),
+            };
+            store.replace(document)?;
+        }
+        Ok(store)
+    }
+
     pub fn load(path: PathBuf) -> Result<Self, String> {
         if path.is_absolute() && !is_local_path(&path) {
             return Err("Launcher requiere un archivo de disco local".into());
@@ -362,9 +503,11 @@ impl Store {
                     continue_on_error: profile.retry_limit > 0,
                     reuse_running: true,
                     max_retries: profile.retry_limit,
+                    ..Profile::new(profile.id.clone(), profile.name.clone())
                 })
                 .collect(),
             lmu_trigger_profile: None,
+            wails_import: None,
         };
         document.validate()?;
         Ok(Self {

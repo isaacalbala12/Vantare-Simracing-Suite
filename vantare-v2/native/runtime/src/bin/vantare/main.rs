@@ -24,6 +24,18 @@
 mod unix;
 #[cfg(windows)]
 mod win;
+// La misma fuente del motor Launcher: no enlaza GPUI ni duplica la ejecución.
+#[cfg(windows)]
+#[path = "../../../../hub/src/files.rs"]
+pub(crate) mod files;
+#[cfg(windows)]
+#[allow(dead_code)] // El motor también expone operaciones de edición usadas solo por el Hub.
+#[path = "../../../../hub/src/launcher/engine.rs"]
+mod launcher;
+#[cfg(windows)]
+mod resident;
+#[cfg(windows)]
+mod triggers_win;
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};
@@ -34,7 +46,7 @@ use std::{env, io};
 use win::{Instance, Stop};
 
 const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
-[--instancia S] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
+[--instancia S] [--launcher-file R] [--launch PERFIL] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
 const DEFAULT_GRACE: Duration = Duration::from_secs(3);
 const DEFAULT_RESTARTS: u32 = 5;
 /// Espera antes del primer reinicio; se duplica en cada caída seguida.
@@ -63,6 +75,8 @@ struct Config {
     /// Sufijo de los nombres de los objetos del sistema, para aislar instancias (pruebas).
     instance: String,
     stop_only: bool,
+    launcher_file: Option<PathBuf>,
+    launch: Option<String>,
 }
 
 fn value<'a>(
@@ -87,6 +101,8 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
         restarts: DEFAULT_RESTARTS,
         instance: String::new(),
         stop_only: false,
+        launcher_file: None,
+        launch: None,
     };
     let mut args = args.iter();
     let mut engineer_bin = bin_dir.join(binary_name("vantare-engineer"));
@@ -119,6 +135,9 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
             }
             "--instancia" => config.instance.clone_from(value(&mut args, arg)?),
             "--parar" => config.stop_only = true,
+            "--launcher-file" => config.launcher_file = Some(value(&mut args, arg)?.into()),
+            "--launch" => config.launch = Some(value(&mut args, arg)?.clone()),
+            flag if flag.starts_with("--launch=") => config.launch = Some(flag[9..].into()),
             "--" => {
                 // El resto son argumentos de los hijos: núcleo hasta el siguiente `--`.
                 let rest: Vec<String> = args.by_ref().cloned().collect();
@@ -148,6 +167,22 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
         engineer.args.extend(engineer_args);
     } else if !engineer_args.is_empty() {
         return Err("argumentos Engineer requieren --engineer R".into());
+    }
+    if let Some(id) = &config.launch {
+        if id.is_empty()
+            || id.len() > 128
+            || !id
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
+        {
+            return Err("--launch: ID de perfil inválido".into());
+        }
+        if config.stop_only {
+            return Err("--launch no se combina con --parar".into());
+        }
+        if config.core.args.is_empty() {
+            config.core.args.push("--live".into());
+        }
     }
     Ok(config)
 }
@@ -408,13 +443,51 @@ fn start_remote_services(
 }
 
 #[cfg(windows)]
+fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
+    let path = match explicit {
+        Some(path) => path,
+        None => PathBuf::from(
+            env::var_os("LOCALAPPDATA")
+                .ok_or_else(|| io::Error::other("LOCALAPPDATA no definido"))?,
+        )
+        .join("Vantare/native/launcher.json"),
+    };
+    let path = if path.is_absolute() {
+        path
+    } else {
+        env::current_dir()?.join(path)
+    };
+    if !launcher::is_local_path(&path) {
+        return Err(io::Error::other("Launcher requiere archivo local"));
+    }
+    Ok(path)
+}
+
+#[cfg(windows)]
 fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+        if let Some(profile) = config.launch {
+            let path = resident_settings(config.launcher_file)?;
+            let request = vantare_ipc::launcher::Request::Launch { profile };
+            let bytes = serde_json::to_vec(&request).map_err(io::Error::other)?;
+            launcher::files::save(&vantare_ipc::launcher::request_path(&path), &bytes, None)
+                .map_err(io::Error::other)?;
+        }
         log("ya hay una instancia en marcha");
         return Ok(ExitCode::SUCCESS);
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     win::adopt_self_in_job()?;
+    let resident = if config.instance.is_empty() || config.launcher_file.is_some() {
+        let path = resident_settings(config.launcher_file.clone())?;
+        Some(resident::Resident::start(
+            path,
+            config.launch.clone(),
+            config.instance.is_empty(),
+        )?)
+    } else {
+        None
+    };
     let remote = start_remote_services(&mut config)?;
     let mut core = Service::new("núcleo", config.core, config.restarts);
     core.bootstrap = Some(remote.1);
@@ -426,6 +499,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         services.push(Service::new("Engineer", engineer, config.restarts));
     }
     let outcome = supervise(&mut services, &stop);
+    drop(resident);
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     shutdown(&mut services, config.grace);
     Ok(match outcome? {
@@ -485,6 +559,33 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn startup_profile_uses_live_core_and_validated_profile_id() {
+        let config = parsed(&[
+            "--launcher-file",
+            "local settings.json",
+            "--launch",
+            "rig-1",
+        ])
+        .expect("inicio por perfil");
+        assert_eq!(config.launch.as_deref(), Some("rig-1"));
+        assert_eq!(config.core.args, args(&["--live"]));
+        assert_eq!(
+            config.launcher_file,
+            Some(PathBuf::from("local settings.json"))
+        );
+        assert_eq!(
+            parsed(&["--launch=rig-1"])
+                .expect("compatibilidad Wails")
+                .launch,
+            config.launch
+        );
+        for invalid in ["", "../otro", "rig con espacio", "a\"b"] {
+            assert!(parsed(&["--launch", invalid]).is_err());
+        }
+        assert!(parsed(&["--launch", "rig", "--parar"]).is_err());
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).into()).collect()

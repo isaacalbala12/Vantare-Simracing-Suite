@@ -1,9 +1,7 @@
 [profile.default]
 # `lifecycle` usa harness propio (no admite --list): se ejecuta aparte con
 # `cargo test --workspace --test lifecycle`.
-# go_physical_tyre_parity depende del reloj: falla bajo nextest y pasa con
-# `cargo test`; el gate lo ejecuta con `cargo test -p vantare-strategy` (#1438).
-default-filter = 'not binary(lifecycle) and not test(go_physical_tyre_parity)'
+default-filter = 'not binary(lifecycle)'
 
 # Intermitentes conocidos: se reintentan solos; el resto falla a la primera.
 # Quitar cada línea al cerrar su issue (#1434 lanzador, #1435 servicios).

@@ -36,6 +36,4 @@ pub mod workshop;
 include!("registry.rs");
 
 // Hub incrusta el mismo renderer productivo.
-pub use app::{
-    Overlay, layout_row, run, run_layout, run_layout_with_rights, run_placed, run_with_rights,
-};
+pub use app::{Overlay, layout_row, run_layout_with_rights, run_placed, run_with_rights};

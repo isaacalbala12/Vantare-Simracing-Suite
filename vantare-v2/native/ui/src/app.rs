@@ -508,20 +508,9 @@ impl LiveScreens {
 
 /// Vigila el documento cada 500 ms. El proceso sigue vivo incluso sin ventanas;
 /// solo cambia sus HWND cuando cambia el conjunto de monitores ocupados.
-/// El documento posee las preferencias; el último parámetro se conserva por
-/// compatibilidad de la API y no sustituye el formato persistido.
-pub fn run_layout(
-    path: PathBuf,
-    snapshots: flume::Receiver<Arc<Snapshot>>,
-    prefs: Preferences,
-) -> Result<(), crate::layout::Error> {
-    run_layout_with_rights(path, snapshots, prefs, None)
-}
-
 pub fn run_layout_with_rights(
     path: PathBuf,
     snapshots: flume::Receiver<Arc<Snapshot>>,
-    _prefs: Preferences,
     rights: Option<vantare_ipc::control::Feed>,
 ) -> Result<(), crate::layout::Error> {
     let mut document = crate::layout::Document::open(path)?;
@@ -614,12 +603,8 @@ fn origin_of(index: usize) -> (f32, f32) {
     )
 }
 
-/// Abre `windows` widgets, una ventana por monitor con widgets, y reenvía cada
-/// `Snapshot` del canal a todos. Vuelve cuando se cierra la última ventana.
-pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
-    run_with_rights(windows, snapshots, prefs, None);
-}
-
+/// Abre la cuadrícula de widgets y reenvía cada foto a todas sus ventanas.
+/// Si se pasa `rights`, instala la política de acceso en los overlays.
 pub fn run_with_rights(
     windows: usize,
     snapshots: flume::Receiver<Arc<Snapshot>>,
@@ -630,7 +615,7 @@ pub fn run_with_rights(
     run_placed_authorized(placed, snapshots, prefs, rights);
 }
 
-/// Como [`run`], con los widgets y sus posiciones (px globales de pantalla) dados.
+/// Abre los widgets y sus posiciones (px globales de pantalla) dados.
 pub fn run_placed(
     placed: Vec<(Kind, (f32, f32))>,
     snapshots: flume::Receiver<Arc<Snapshot>>,
@@ -754,8 +739,8 @@ mod tests {
         layout.instances.clear();
         assert_eq!(window_action(true, occupied(&layout)), WindowAction::Close);
         assert_eq!(window_action(false, occupied(&layout)), WindowAction::None);
-        // run_layout usa QuitMode::Explicit; la QA de ventana comprueba que el
-        // proceso continúa tras quitar todas las instancias y vuelve a abrirlas.
+        // QuitMode::Explicit permite recuperar un layout vacío sin reiniciar;
+        // la QA de ventana comprueba ese ciclo.
     }
 
     #[test]

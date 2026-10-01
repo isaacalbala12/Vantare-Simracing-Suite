@@ -538,20 +538,6 @@ impl TelemetryReference {
     }
 }
 
-fn telemetry_text(
-    content: impl Into<gpui::SharedString>,
-    size: f32,
-    weight: u16,
-    color: u32,
-) -> gpui::Div {
-    div()
-        .text_size(px(size))
-        .font_family(format!("Inter W{weight}"))
-        .font_weight(FontWeight(f32::from(weight)))
-        .text_color(rgb(color))
-        .child(content.into())
-}
-
 fn telemetry_mono(
     content: impl Into<gpui::SharedString>,
     size: f32,
@@ -596,7 +582,7 @@ fn telemetry_surface(
                 .border_b_1()
                 .border_color(rgba(0xffff_ff0d))
                 .child(
-                    telemetry_text(title.to_owned(), 15.0, 700, orbit::INK)
+                    orbit::text(title.to_owned(), 15.0, 700, orbit::INK)
                         .flex_1()
                         .min_w_0(),
                 )
@@ -614,15 +600,15 @@ fn telemetry_surface(
 }
 
 fn telemetry_empty(message: &str) -> gpui::Div {
-    telemetry_text(message.to_owned(), 12.0, 400, orbit::INK_3).line_height(px(18.6))
+    orbit::text(message.to_owned(), 12.0, 400, orbit::INK_3).line_height(px(18.6))
 }
 
 fn telemetry_note(title: Option<&str>, message: &str) -> gpui::Div {
     let mut text = div().flex().items_center().min_w_0();
     if let Some(title) = title {
-        text = text.child(telemetry_text(title.to_owned(), 12.0, 750, orbit::BRONZE));
+        text = text.child(orbit::text(title.to_owned(), 12.0, 750, orbit::BRONZE));
     }
-    text = text.child(telemetry_text(message.to_owned(), 12.0, 400, orbit::INK_3));
+    text = text.child(orbit::text(message.to_owned(), 12.0, 400, orbit::INK_3));
 
     div()
         .flex_none()
@@ -663,7 +649,7 @@ fn telemetry_stat(
             .whitespace_nowrap()
             .child(telemetry_mono(value.to_owned(), 22.0, 700, value_color));
         if let Some(unit) = unit {
-            row = row.child(telemetry_text(unit.to_owned(), 12.0, 400, orbit::INK_3));
+            row = row.child(orbit::text(unit.to_owned(), 12.0, 400, orbit::INK_3));
         }
         row
     };
@@ -677,15 +663,10 @@ fn telemetry_stat(
         .border_color(rgba(orbit::LINE))
         .rounded(px(orbit::RADIUS))
         .bg(rgba(0x10_11_14_c9))
-        .child(telemetry_text(
-            label.to_uppercase(),
-            11.0,
-            700,
-            orbit::INK_3,
-        ))
+        .child(orbit::text(label.to_uppercase(), 11.0, 700, orbit::INK_3))
         .child(value_row)
         .child(
-            telemetry_text(sub.to_owned(), 11.5, 400, orbit::INK_4)
+            orbit::text(sub.to_owned(), 11.5, 400, orbit::INK_4)
                 .mt(px(4.0))
                 .overflow_hidden()
                 .whitespace_nowrap()
@@ -829,7 +810,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
             #[allow(clippy::cast_possible_truncation)]
             {
                 map = map.child(
-                    telemetry_text(name, 9.0, 700, orbit::INK_2)
+                    orbit::text(name, 9.0, 700, orbit::INK_2)
                         .absolute()
                         .left(px(left as f32))
                         .top(px(top as f32)),
@@ -847,7 +828,7 @@ fn demo_legend_item(text: &'static str, tone: u32) -> gpui::Div {
         .items_center()
         .gap(px(6.0))
         .child(div().w(px(9.0)).h(px(3.0)).rounded(px(2.0)).bg(rgb(tone)))
-        .child(telemetry_text(text, 10.5, 400, orbit::INK_4))
+        .child(orbit::text(text, 10.5, 400, orbit::INK_4))
 }
 
 #[cfg(feature = "parity-capture")]
@@ -861,8 +842,7 @@ fn demo_map_legend() -> gpui::Div {
         .child(demo_legend_item("neutro", orbit::INK_3))
         .child(demo_legend_item("pierdes", orbit::RED))
         .child(
-            telemetry_text("clic en una curva para saltar", 10.5, 400, orbit::INK_MUTED)
-                .ml(px(1.0)),
+            orbit::text("clic en una curva para saltar", 10.5, 400, orbit::INK_MUTED).ml(px(1.0)),
         )
 }
 
@@ -908,8 +888,8 @@ fn demo_trace(
             }
         }
     };
-    let plot_title = telemetry_text(title, 10.5, 700, orbit::INK_2);
-    let plot_unit = telemetry_text(unit, 10.5, 500, orbit::INK_3).ml(px(4.0));
+    let plot_title = orbit::text(title, 10.5, 700, orbit::INK_2);
+    let plot_unit = orbit::text(unit, 10.5, 500, orbit::INK_3).ml(px(4.0));
     let mut trace = div()
         .relative()
         .w_full()
@@ -1118,7 +1098,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                         .flex()
                         .flex_col()
                         .gap(px(2.0))
-                        .child(telemetry_text(
+                        .child(orbit::text(
                             if delta > 0.025 {
                                 format!("Pierdes tiempo en {corner}")
                             } else if delta < -0.025 {
@@ -1130,7 +1110,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                             640,
                             orbit::INK,
                         ))
-                        .child(telemetry_text(why, 10.5, 400, orbit::INK_3).line_height(px(15.2))),
+                        .child(orbit::text(why, 10.5, 400, orbit::INK_3).line_height(px(15.2))),
                 )
                 .child(
                     div()
@@ -1144,7 +1124,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                             700,
                             color,
                         ))
-                        .child(telemetry_text(
+                        .child(orbit::text(
                             format!("{meters} m"),
                             10.5,
                             500,
@@ -1400,14 +1380,14 @@ impl Analysis {
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(telemetry_text("ANÁLISIS POST-SESIÓN", 11.0, 700, orbit::INK_3))
+                    .child(orbit::text("ANÁLISIS POST-SESIÓN", 11.0, 700, orbit::INK_3))
                     .child(
-                        telemetry_text(self.telemetry_title(), 34.0, 690, orbit::INK)
+                        orbit::text(self.telemetry_title(), 34.0, 690, orbit::INK)
                             .mt(px(6.0))
                             .line_height(px(39.0)),
                     )
                     .child(
-                        telemetry_text(
+                        orbit::text(
                             "Compara tu mejor vuelta con una referencia y te dice, curva a curva, dónde se va el tiempo y por qué.",
                             orbit::BODY,
                             400,

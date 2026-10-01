@@ -605,9 +605,14 @@ impl Hub {
             .demo
             .as_ref()
             .map(|demo| demo.versions.pending.as_str());
+        let (trail, title) = if self.section == Section::Strategy {
+            ("PLANIFICADOR", "Estrategia")
+        } else {
+            ("Centro operativo", self.section.label())
+        };
         orbit::topbar(
-            "Centro operativo",
-            self.section.label(),
+            trail,
+            title,
             div()
                 .flex()
                 .items_center()

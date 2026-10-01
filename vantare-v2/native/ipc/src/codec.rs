@@ -12,8 +12,7 @@ use crate::dto::{self, SnapshotDto};
 
 pub(crate) const MAX_MESSAGE: usize = 1 << 20;
 /// Versiones de DTO que este extremo sabe hablar.
-const MIN_VERSION: u32 = dto::VERSION;
-const MAX_VERSION: u32 = dto::VERSION;
+const PROTOCOL_VERSION: u32 = dto::VERSION;
 
 /// Posición de una foto en la línea de tiempo de un productor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,20 +67,19 @@ pub(crate) enum Message {
 
 /// Mayor versión común, si la hay.
 pub(crate) fn negotiate(min: u32, max: u32) -> Option<u32> {
-    let version = max.min(MAX_VERSION);
-    (version >= min.max(MIN_VERSION)).then_some(version)
+    (min <= PROTOCOL_VERSION && max >= PROTOCOL_VERSION).then_some(PROTOCOL_VERSION)
 }
 
 pub(crate) fn hello(cursor: Option<Revision>) -> Message {
     Message::Hello {
-        min_version: MIN_VERSION,
-        max_version: MAX_VERSION,
+        min_version: PROTOCOL_VERSION,
+        max_version: PROTOCOL_VERSION,
         cursor,
     }
 }
 
 pub(crate) fn supports(version: u32) -> bool {
-    (MIN_VERSION..=MAX_VERSION).contains(&version)
+    version == PROTOCOL_VERSION
 }
 
 pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {

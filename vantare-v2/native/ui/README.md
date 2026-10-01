@@ -21,29 +21,9 @@ El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 
 ## Kit Eficiencia (ISA-1427)
 
-`vantare_ui::efficiency` reúne solo primitivas con dos consumidores actuales:
+`vantare_ui::efficiency` reúne las primitivas visuales compartidas que consumen los 18 renderers del registro. Conserva Inter estática, kerning, cifras tabulares y tracking en em convertido a px; los rectángulos se ajustan a píxel después de sumar el origen del widget. GPUI se usa directamente, sin renderer alternativo ni dependencias nuevas.
 
-| API | Consumidores |
-| --- | --- |
-| `tokens::{INK, MUTED, PANEL, LOSS, RADIUS}` (de `vantare-functional/tokens.css`) | Standings y pedales; radar también usa `INK` |
-| `text` (Inter, tracking y números tabulares) | Standings, radar y pedales (origen y fuentes registrados por el host) |
-| `col`, `rect`, `paint_rect` | Standings y radar; pedales también usa `col` y `rect` |
-| `paint_panel`, `paint_frame` | Standings y pedales |
-
-El texto conserva Inter estática (pesos 400/500/600/650/700/800), kerning,
-cifras tabulares y tracking en em convertido a px. Los rectángulos se ajustan
-a píxel **después** de sumar el origen del widget. GPUI se usa directamente;
-no hay un renderer alternativo ni dependencias nuevas.
-
-Cabecera, fila, celda, pie, cola de sombra precalculada del rail y `Motion`
-(FLIP, avisos, PIT, vueltas y batalla) siguen en `standings/`: solo los usa ese
-widget. No se extraen hasta que haya un segundo consumidor real. Los pedales
-conservan fondo al 90 % y Standings al 87 % con su degradado y sombra propios;
-radar conserva el lienzo transparente. Este refactor no amplía sus diseños.
-
-Cada widget proyecta la instantánea con el `ViewModel` de `domain` y solo
-repinta cuando ese ViewModel cambia (Standings: solo lo que se dibuja; mientras
-haya animación pide fotogramas).
+Los elementos propios de Standings siguen en `standings/`. Pedales conserva su fondo al 90 % y Standings al 87 % con su degradado y sombra; radar conserva el lienzo transparente. Este refactor no amplía sus diseños.
 
 ## Paridad visual
 

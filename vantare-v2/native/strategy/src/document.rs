@@ -6,6 +6,8 @@ use chrono::DateTime;
 use serde_json::{Value, json};
 
 pub const MAX_BYTES: usize = 12 * 1024 * 1024;
+pub const SCHEMA_VERSION_V2: &str = "2.0.0";
+pub const SCHEMA_VERSION_V2_RULES: &str = "2.1.0";
 
 #[derive(Clone, Debug)]
 pub struct Document {
@@ -29,7 +31,7 @@ impl Document {
 
     pub fn empty(timestamp: &str) -> Result<Self, String> {
         let bytes = serde_json::to_vec(&json!({
-            "contractVersion":"strategy.v2", "schemaVersion":"2.0.0",
+            "contractVersion":"strategy.v2", "schemaVersion":SCHEMA_VERSION_V2_RULES,
             "generatedAt":timestamp, "events":[]
         }))
         .map_err(|e| e.to_string())?;
@@ -41,6 +43,24 @@ impl Document {
     }
     pub fn value(&self) -> &Value {
         &self.value
+    }
+
+    pub fn schema_version(&self) -> &str {
+        self.value["schemaVersion"].as_str().unwrap_or_default()
+    }
+
+    /// Explicitly upgrades a legacy 2.0 document to the schema that supports
+    /// event rules. It leaves the event data unchanged and adds no rule values.
+    pub fn migrate_rules_v2(&self) -> Result<Self, String> {
+        match self.schema_version() {
+            SCHEMA_VERSION_V2 => {
+                let mut migrated = self.clone();
+                migrated.set("/schemaVersion", &json!(SCHEMA_VERSION_V2_RULES))?;
+                Ok(migrated)
+            }
+            SCHEMA_VERSION_V2_RULES => Ok(self.clone()),
+            _ => Err("unsupported_schema_version".into()),
+        }
     }
 
     /// JSON pointer (RFC 6901). Validates the whole candidate before committing.
@@ -334,7 +354,11 @@ fn unique_ids(values: &[Value], field: &str) -> Result<BTreeSet<String>, String>
 
 pub fn validate(doc: &Value) -> Result<(), String> {
     check(doc["contractVersion"] == "strategy.v2", "contractVersion")?;
-    check(doc["schemaVersion"] == "2.0.0", "schemaVersion")?;
+    let schema_version = doc["schemaVersion"].as_str().unwrap_or_default();
+    check(
+        [SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES].contains(&schema_version),
+        "schemaVersion",
+    )?;
     timestamp(&doc["generatedAt"])?;
     check(
         doc["events"].is_array() || doc["events"].is_null(),
@@ -343,7 +367,7 @@ pub fn validate(doc: &Value) -> Result<(), String> {
     let events = array(&doc["events"]);
     let ids = unique_ids(events, "id")?;
     for event in events {
-        validate_event(event)?;
+        validate_event(event, schema_version)?;
     }
     if !doc["activeEventId"].is_null() {
         check(ids.contains(string(&doc["activeEventId"])), "activeEventId")?;
@@ -354,7 +378,10 @@ pub fn validate(doc: &Value) -> Result<(), String> {
     for archive in array(&doc["migrationArchives"]) {
         check(nonempty(&archive["journalId"]), "archive.journalId")?;
         timestamp(&archive["archivedAt"])?;
-        let archived = json!({"contractVersion":"strategy.v2","schemaVersion":"2.0.0",
+        let archived_schema = archive["schemaVersion"]
+            .as_str()
+            .unwrap_or(SCHEMA_VERSION_V2);
+        let archived = json!({"contractVersion":"strategy.v2","schemaVersion":archived_schema,
             "generatedAt":archive["generatedAt"],"events":archive["events"],"activeEventId":archive["activeEventId"]});
         validate(&archived)?;
     }
@@ -362,7 +389,14 @@ pub fn validate(doc: &Value) -> Result<(), String> {
 }
 
 #[allow(clippy::too_many_lines)] // Sequential V2 wire checks mirror Go document.Validate; no alternate domain model.
-fn validate_event(event: &Value) -> Result<(), String> {
+fn validate_event(event: &Value, schema_version: &str) -> Result<(), String> {
+    if !event["rules"].is_null() {
+        check(
+            schema_version == SCHEMA_VERSION_V2_RULES,
+            "event.rules requires schemaVersion 2.1.0",
+        )?;
+        validate_event_rules(&event["rules"])?;
+    }
     for field in ["name", "source", "track", "cls", "fillMode"] {
         text_value(&event[field]["value"])?;
     }
@@ -520,6 +554,158 @@ fn validate_event(event: &Value) -> Result<(), String> {
                 scenario["combinationId"] == event["combination"]["combinationId"],
                 "scenario.combination",
             )?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_event_rules(rules: &Value) -> Result<(), String> {
+    sourced(rules)?;
+    let value = &rules["value"];
+    check(value.is_object(), "event.rules.value")?;
+
+    let minimum = optional_nonnegative_integer(value, "minPitStops")?;
+    let maximum = optional_nonnegative_integer(value, "maxPitStops")?;
+    if let (Some(minimum), Some(maximum)) = (minimum, maximum) {
+        check(minimum <= maximum, "event.rules pit stop range")?;
+    }
+
+    if !value["requiredWindows"].is_null() {
+        let windows = value["requiredWindows"]
+            .as_array()
+            .ok_or("event.rules.requiredWindows")?;
+        check(windows.len() <= 16, "event.rules.requiredWindows")?;
+        for window in windows {
+            let from = window["fromLap"]
+                .as_u64()
+                .ok_or("event.rules.requiredWindows.fromLap")?;
+            let to = window["toLap"]
+                .as_u64()
+                .ok_or("event.rules.requiredWindows.toLap")?;
+            check(
+                from > 0 && from <= to && to < 100_000,
+                "event.rules.requiredWindows",
+            )?;
+        }
+    }
+
+    validate_compounds(value, "mandatoryCompounds", false)?;
+    if !value["allowedCompoundsByClimate"].is_null() {
+        let by_climate = value["allowedCompoundsByClimate"]
+            .as_object()
+            .ok_or("event.rules.allowedCompoundsByClimate")?;
+        for (bucket, compounds) in by_climate {
+            check(
+                ["dry", "humid", "wet"].contains(&bucket.as_str()),
+                "event.rules.allowedCompoundsByClimate bucket",
+            )?;
+            validate_compound_values(compounds, true)?;
+        }
+    }
+    validate_driver_limits(value.get("driverLimits"))
+}
+
+fn optional_nonnegative_integer(value: &Value, field: &str) -> Result<Option<u64>, String> {
+    match value.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => value
+            .as_u64()
+            .map(Some)
+            .ok_or_else(|| format!("event.rules.{field}")),
+    }
+}
+
+fn validate_compounds(value: &Value, field: &str, required: bool) -> Result<(), String> {
+    match value.get(field) {
+        None | Some(Value::Null) => {
+            if required {
+                Err(format!("event.rules.{field}"))
+            } else {
+                Ok(())
+            }
+        }
+        Some(compounds) => validate_compound_values(compounds, required),
+    }
+}
+
+fn validate_compound_values(compounds: &Value, required: bool) -> Result<(), String> {
+    let compounds = compounds
+        .as_array()
+        .ok_or("event.rules compounds must be a list")?;
+    check(!required || !compounds.is_empty(), "event.rules compounds")?;
+    let mut seen = BTreeSet::new();
+    for compound in compounds {
+        let compound = compound
+            .as_str()
+            .ok_or("event.rules compound must be a string")?;
+        check(
+            ["soft", "medium", "hard", "wet"].contains(&compound),
+            "event.rules compound",
+        )?;
+        check(seen.insert(compound), "event.rules duplicate compound")?;
+    }
+    Ok(())
+}
+
+fn validate_driver_limits(limits: Option<&Value>) -> Result<(), String> {
+    let Some(limits) = limits else {
+        return Ok(());
+    };
+    let limits = limits.as_object().ok_or("event.rules.driverLimits")?;
+    for (id, limit) in limits {
+        check(
+            !id.trim().is_empty() && limit.is_object(),
+            "event.rules.driverLimits",
+        )?;
+        let minimum = optional_nonnegative_integer(limit, "minLaps")?;
+        let maximum = optional_nonnegative_integer(limit, "maxLaps")?;
+        if let (Some(minimum), Some(maximum)) = (minimum, maximum) {
+            check(minimum <= maximum, "event.rules.driverLimits lap range")?;
+        }
+        for field in ["maxContinuousTimeSeconds", "maxTotalTimeSeconds"] {
+            if let Some(value) = limit.get(field) {
+                let seconds = value
+                    .as_f64()
+                    .ok_or_else(|| format!("event.rules.driverLimits.{field}"))?;
+                check(
+                    seconds.is_finite() && seconds > 0.0,
+                    "event.rules.driverLimits seconds",
+                )?;
+            }
+        }
+        if let Some(windows) = limit.get("unavailable") {
+            let windows = windows
+                .as_array()
+                .ok_or("event.rules.driverLimits.unavailable")?;
+            for window in windows {
+                let from = window["fromLap"]
+                    .as_u64()
+                    .ok_or("event.rules.driverLimits.unavailable.fromLap")?;
+                let to = window["toLap"]
+                    .as_u64()
+                    .ok_or("event.rules.driverLimits.unavailable.toLap")?;
+                check(
+                    from > 0 && from <= to && to < 100_000,
+                    "event.rules.driverLimits.unavailable",
+                )?;
+            }
+        }
+        if let Some(windows) = limit.get("unavailableTime") {
+            let windows = windows
+                .as_array()
+                .ok_or("event.rules.driverLimits.unavailableTime")?;
+            for window in windows {
+                let from = window["fromSeconds"]
+                    .as_f64()
+                    .ok_or("event.rules.driverLimits.unavailableTime.fromSeconds")?;
+                let to = window["toSeconds"]
+                    .as_f64()
+                    .ok_or("event.rules.driverLimits.unavailableTime.toSeconds")?;
+                check(
+                    from.is_finite() && to.is_finite() && from >= 0.0 && from < to,
+                    "event.rules.driverLimits.unavailableTime",
+                )?;
+            }
         }
     }
     Ok(())
@@ -844,5 +1030,66 @@ mod tests {
                 .is_err()
         );
         assert_eq!(doc.bytes(), before);
+    }
+
+    #[test]
+    fn go_document_rules_fixture_covers_2_1_and_legacy_schema() {
+        let oracle: Value =
+            serde_json::from_str(include_str!("../testdata/oracle/document-rules.json"))
+                .expect("Go document rules oracle");
+        let cases = array(&oracle["cases"]);
+        assert_eq!(cases.len(), 6);
+        assert_eq!(oracle["goCommit"].as_str().unwrap_or_default().len(), 40);
+        assert_eq!(
+            oracle["sourceHashes"].as_object().map(serde_json::Map::len),
+            Some(4)
+        );
+
+        for case in cases {
+            let bytes = serde_json::to_vec(&case["input"]).expect("Go fixture");
+            let parsed = Document::parse(&bytes);
+            assert_eq!(
+                parsed.is_ok(),
+                case["valid"] == true,
+                "{}: {parsed:?}",
+                case["name"]
+            );
+            if let Ok(document) = parsed {
+                assert_eq!(document.bytes(), bytes);
+                assert_eq!(
+                    document.schema_version(),
+                    case["input"]["schemaVersion"].as_str().unwrap_or_default(),
+                    "{}",
+                    case["name"]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn legacy_document_migration_is_explicit_and_does_not_add_rules() {
+        let old_bytes = serde_json::to_vec(&json!({
+            "contractVersion":"strategy.v2",
+            "schemaVersion":SCHEMA_VERSION_V2,
+            "generatedAt":"2026-09-30T00:00:00Z",
+            "events":[new_event("event", "Carrera", 60, 90.0, 30.0)]
+        }))
+        .expect("legacy fixture");
+        let old = Document::parse(&old_bytes).expect("legacy 2.0 document");
+        assert_eq!(old.schema_version(), SCHEMA_VERSION_V2);
+        assert_eq!(old.bytes(), old_bytes);
+
+        let migrated = old.migrate_rules_v2().expect("explicit migration");
+        assert_eq!(migrated.schema_version(), SCHEMA_VERSION_V2_RULES);
+        assert!(migrated.value()["events"][0]["rules"].is_null());
+        assert_eq!(old.schema_version(), SCHEMA_VERSION_V2);
+        assert_eq!(old.bytes(), old_bytes);
+        assert_eq!(
+            migrated
+                .migrate_rules_v2()
+                .expect("idempotent migration")
+                .bytes(),
+            migrated.bytes()
+        );
     }
 }

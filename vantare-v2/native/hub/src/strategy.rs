@@ -12,6 +12,7 @@ use crate::{
     files,
     orbit::{self, button},
     strategy_core::{
+        application::{self, SourceStatus},
         document::{Document, new_event},
         solver::{
             self, Budget, Discretization, Formation, Input, PitCost, ResultV2, Rules, Scalar,
@@ -641,8 +642,19 @@ impl Strategy {
         if self.running {
             return;
         }
+        if self.editor.document.is_none() {
+            self.outcome(Err("source_not_open".into()), cx);
+            return;
+        }
         let input = self.prepare_input();
         let input = match input {
+            Ok(input) => input,
+            Err(error) => {
+                self.outcome(Err(error), cx);
+                return;
+            }
+        };
+        let input = match application::prepare_manual(input) {
             Ok(input) => input,
             Err(error) => {
                 self.outcome(Err(error), cx);
@@ -660,7 +672,7 @@ impl Strategy {
         let generation = self.generation;
         let task = cx
             .background_executor()
-            .spawn(async move { solver::solve_cancellable(&input, &cancel) });
+            .spawn(async move { application::calculate(&input, SourceStatus::Open, &cancel) });
         cx.spawn(async move |this, cx| {
             let result = task.await;
             let _ = this.update(cx, |this, cx| {
@@ -669,14 +681,23 @@ impl Strategy {
                 }
                 this.running = false;
                 match result {
-                    Ok(result) => {
-                        this.status = if result.feasible {
-                            "Plan escalar óptimo dentro de las entradas manuales declaradas"
-                        } else {
-                            "No hay plan factible con estos recursos y reservas"
+                    Ok(outcome) => {
+                        this.status = match outcome.certificate.status {
+                            solver::OptimalityStatus::Proven => {
+                                "Óptima demostrada dentro del subespacio escalar declarado"
+                            }
+                            solver::OptimalityStatus::NotProven if outcome.result.feasible => {
+                                "Plan parcial; la búsqueda no demostró la óptima"
+                            }
+                            solver::OptimalityStatus::NotProven => {
+                                "Búsqueda parcial; aún no hay una solución demostrada"
+                            }
+                            solver::OptimalityStatus::NoSolution => {
+                                "No hay solución factible con estos recursos y reservas"
+                            }
                         }
                         .into();
-                        this.result = Some(result);
+                        this.result = Some(outcome.result);
                     }
                     Err(error) => this.error = Some(error),
                 }

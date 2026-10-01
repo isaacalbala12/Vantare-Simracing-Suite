@@ -35,7 +35,10 @@ puede editar `native/hub/src/`.
   y join al cerrar el Hub. Cancelar deja abiertas las apps iniciadas; ningún
   PID o nombre concede autoridad de cierre. Trigger LMU optativo por flanco,
   consultado mientras el Hub vive. Es independiente de su flanco IPC de cierre.
-- `%LOCALAPPDATA%/Vantare/native/launcher.json`, versión 1 y límite 5 MiB.
+- `<directorio de datos>/Vantare/native/launcher.json`, versión 1 y límite
+  5 MiB. El directorio base es `%LOCALAPPDATA%` en Windows, `$XDG_DATA_HOME`
+  (o `$HOME/.local/share`) en Linux y `$HOME/Library/Application Support` en
+  macOS.
   `files::save` existente: temporal, sync, lock y reemplazo, conflicto por
   bytes observados; memoria se confirma después del disco. Recargar permite
   resolver un conflicto y descarta borradores explícitamente. Datos Wails

@@ -26,6 +26,7 @@ pub mod capture;
 pub mod efficiency;
 pub mod layout;
 mod overlay;
+pub mod paths;
 mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]

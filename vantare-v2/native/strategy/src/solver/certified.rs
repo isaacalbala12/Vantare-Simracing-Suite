@@ -10,6 +10,8 @@ pub(super) fn one_pit(
     worst: &Model,
     cost: &Model,
     risk: bool,
+    cancel: &super::AtomicBool,
+    started: &std::time::Instant,
 ) -> Result<Option<Vec<ReplayResult>>, String> {
     let n = m.input.race_laps;
     let rules = &m.input.event_rules;
@@ -62,6 +64,12 @@ pub(super) fn one_pit(
     };
     let mut candidates = vec![];
     for split in 1..n {
+        if cancel.load(super::AtomicOrdering::Relaxed) {
+            return Err("cancelled".into());
+        }
+        if started.elapsed().as_millis() > u128::from(m.input.budget.p95_millis) {
+            return Ok(None);
+        }
         let decision = DecisionVector {
             stints: vec![stint(0, split), stint(1, n - split)],
             pit_stops: vec![PitDecision {
@@ -95,7 +103,9 @@ pub(super) fn one_pit(
     {
         candidates.push(replayed);
     }
-    let bound = multi_pit_bound(m)?;
+    let Some(bound) = multi_pit_bound(m, cancel, started)? else {
+        return Ok(None);
+    };
     let best = candidates
         .iter()
         .map(|c| c.evaluation.total_seconds)
@@ -103,7 +113,11 @@ pub(super) fn one_pit(
     Ok((time_cmp(best, bound) == Ordering::Less).then_some(candidates))
 }
 
-fn multi_pit_bound(m: &Model) -> Result<f64, String> {
+fn multi_pit_bound(
+    m: &Model,
+    cancel: &super::AtomicBool,
+    started: &std::time::Instant,
+) -> Result<Option<f64>, String> {
     // Free resources and service, unrestricted fresh tyres: an optimistic
     // lower bound for every partition with at least three stints.
     let n = m.input.race_laps;
@@ -119,6 +133,12 @@ fn multi_pit_bound(m: &Model) -> Result<f64, String> {
     previous[0] = 0.0;
     let mut bound = f64::INFINITY;
     for stints in 1..=n {
+        if cancel.load(super::AtomicOrdering::Relaxed) {
+            return Err("cancelled".into());
+        }
+        if started.elapsed().as_millis() > u128::from(m.input.budget.p95_millis) {
+            return Ok(None);
+        }
         let mut next = vec![f64::INFINITY; n as usize + 1];
         for used in 0..n as usize {
             for length in 1..=n as usize - used {
@@ -131,5 +151,5 @@ fn multi_pit_bound(m: &Model) -> Result<f64, String> {
         previous = next;
     }
     bound += m.input.formation.seconds.value + f64::from(n) * driver.base;
-    Ok(bound)
+    Ok(Some(bound))
 }

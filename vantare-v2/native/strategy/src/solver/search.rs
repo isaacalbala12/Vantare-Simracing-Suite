@@ -8,10 +8,14 @@ use super::{
 use serde_json::json;
 
 pub(super) fn needs_extended(input: &Input) -> bool {
-    input.extra.values().any(populated) || input.event_rules.extra.values().any(populated)
+    input.event_rules.required_windows.len() > 16
+        || input.extra.values().any(populated)
+        || input.event_rules.extra.values().any(populated)
 }
 #[derive(Clone)]
 struct State {
+    fuel_used: i64,
+    ve_used: i64,
     worst_fuel: i64,
     worst_ve: i64,
     worst_feasible: bool,
@@ -50,8 +54,17 @@ fn dominates(l: &State, r: &State, m: &Model, risk: bool) -> bool {
     {
         return false;
     }
+    if (m.input.fuel_reserve["kind"] == "percent" && l.fuel_used != r.fuel_used)
+        || (m.input.virtual_energy_reserve["kind"] == "percent" && l.ve_used != r.ve_used)
+    {
+        return false;
+    }
     let rules = &m.input.event_rules;
-    if m.dims.race_duration_seconds.is_some()
+    if (m.dims.race_duration_seconds.is_some()
+        || m.rules
+            .driver_limits
+            .values()
+            .any(|l| !l.unavailable_time.is_empty()))
         && time_cmp(l.evaluation.total_seconds, r.evaluation.total_seconds) != Ordering::Equal
     {
         return false;
@@ -102,11 +115,15 @@ pub(super) fn solve(
     if cancel.load(AtomicOrdering::Relaxed) {
         return Err("cancelled".into());
     }
+    let started = std::time::Instant::now();
+    let (effective, requested) = super::budget::effective(input);
+    let input = &effective;
     let m = Model::new(input)?;
     let worst = Model::new(&super::risk::envelope(input, true))?;
     let cost = Model::new(&super::risk::envelope(input, false))?;
     let risk = super::risk::active(&m, &worst);
-    let started = std::time::Instant::now();
+    let certified = super::certified::one_pit(&m, &worst, &cost, risk, cancel, &started)?;
+    let bound_certified = certified.is_some();
     let max_work = if input.budget.max_candidates == 0 {
         10_000_000
     } else {
@@ -117,12 +134,15 @@ pub(super) fn solve(
     } else {
         input.budget.max_iterations
     };
+    let mut pruned = 0;
     let (mut work, mut iterations) = (0usize, 0usize);
     let mut reason = None;
     let count = usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1;
     let mut frontier: Vec<Vec<State>> = vec![vec![]; count];
     for choice in m.tyres.initial() {
         frontier[0].push(State {
+            fuel_used: 0,
+            ve_used: 0,
             drivers: super::drivers::DriverState::default(),
             worst_fuel: units(
                 worst
@@ -164,7 +184,7 @@ pub(super) fn solve(
     }
     let mut completed: Vec<State> = vec![];
     let mut safe_completed: Vec<State> = vec![];
-    'search: for lap in 0..input.race_laps {
+    'search: for lap in 0..if bound_certified { 0 } else { input.race_laps } {
         let nodes = std::mem::take(&mut frontier[usize::try_from(lap).map_err(|e| e.to_string())?]);
         for node in nodes {
             for driver in &m.drivers {
@@ -230,6 +250,8 @@ pub(super) fn solve(
                         {
                             after.worst_feasible = false;
                         }
+                        after.fuel_used += f;
+                        after.ve_used += v;
                         after.fuel -= f;
                         after.ve -= v;
                         after.age += laps;
@@ -345,10 +367,33 @@ pub(super) fn solve(
                                             break;
                                         }
                                     }
+                                    if dominated {
+                                        pruned += 1;
+                                    }
                                     if !dominated {
-                                        target.retain(|existing| {
-                                            !dominates(&next, existing, &m, risk)
-                                        });
+                                        let mut retained = Vec::with_capacity(target.len() + 1);
+                                        for existing in std::mem::take(target) {
+                                            iterations += 1;
+                                            if iterations > max_iterations {
+                                                reason = Some("iteration_budget_exhausted");
+                                                break 'search;
+                                            }
+                                            if cancel.load(AtomicOrdering::Relaxed) {
+                                                return Err("cancelled".into());
+                                            }
+                                            if started.elapsed().as_millis()
+                                                > u128::from(input.budget.p95_millis)
+                                            {
+                                                reason = Some("deadline_exceeded");
+                                                break 'search;
+                                            }
+                                            if dominates(&next, &existing, &m, risk) {
+                                                pruned += 1;
+                                            } else {
+                                                retained.push(existing);
+                                            }
+                                        }
+                                        *target = retained;
                                         target.push(next);
                                     }
                                 }
@@ -377,8 +422,7 @@ pub(super) fn solve(
             candidates.push(replayed);
         }
     }
-    let certified = super::certified::one_pit(&m, &worst, &cost, risk)?;
-    let adverse_policy = risk && certified.is_some();
+    let adverse_policy = risk && bound_certified;
     if let Some(plans) = certified {
         candidates = plans;
     }
@@ -435,11 +479,30 @@ pub(super) fn solve(
             .candidate_details
             .push(super::risk::detail(replayed, &cost, &worst)?);
     }
+    if let Some(resolved) = result.resolved_inputs.as_mut() {
+        if let Some(initial) = &m.dims.initial_fuel_liters {
+            resolved["initialFuelLiters"] = json!(initial);
+        }
+        if let Some(initial) = &m.dims.initial_ve_percent {
+            resolved["initialVEPercent"] = json!(initial);
+        }
+    }
     result.variants = super::risk::variants(&result.candidate_details);
     result.worst_case = result
         .candidate_details
         .first()
         .map(|d| d.worst_case.clone());
+    if cancel.load(AtomicOrdering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    let search_completed = reason.is_none();
+    // Go ranks the bounded capacity-start search, then replays at the minimum
+    // initial load. With fuel-weight cost that can reorder or hide plans: the
+    // enumeration proves neither the automatic initial-load optimum nor the
+    // UI cost's lower bound. Publish the result without claiming that proof.
+    if search_completed && m.fuel_weight > 0.0 && m.dims.initial_fuel_liters.is_none() {
+        reason = Some("automatic_initial_load_optimality_not_proven");
+    }
     let status = if reason.is_some() {
         OptimalityStatus::NotProven
     } else if result.feasible {
@@ -453,5 +516,39 @@ pub(super) fn solve(
     } else {
         "validated_discrete_input"
     };
+    let proven = status == OptimalityStatus::Proven;
+    outcome.certificate.proof = Some(super::SearchProof {
+        algorithm: if bound_certified {
+            "combined_curve_partition_bound"
+        } else {
+            "dominance_pruned_enumeration"
+        },
+        objective: if m.dims.race_duration_seconds.is_some() {
+            "maximum_completed_laps_then_minimum_expected_time"
+        } else if adverse_policy {
+            "minimum_expected_time_among_adverse_feasible_plans"
+        } else {
+            "minimum_expected_time"
+        },
+        search_completed,
+        iterations,
+        pruned_states: pruned,
+        duration_millis: started.elapsed().as_millis(),
+        relative_time_tolerance: 1e-12,
+        discretization_degraded: requested
+            .fuel_liters
+            .total_cmp(&effective.discretization.fuel_liters)
+            .is_ne()
+            || requested
+                .ve_percent
+                .total_cmp(&effective.discretization.ve_percent)
+                .is_ne(),
+        requested_discretization: requested,
+        effective_discretization: m.input.discretization.clone(),
+        budget: input.budget.clone(),
+        incumbent_seconds: outcome.cost_seconds,
+        lower_bound_seconds: if proven { outcome.cost_seconds } else { None },
+        absolute_gap_seconds: proven.then_some(0.0),
+    });
     Ok(outcome)
 }

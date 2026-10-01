@@ -204,10 +204,13 @@ impl Model {
     pub fn new(input: &Input) -> Result<Self, String> {
         let mut dims: Dimensions = serde_json::from_value(json!(input.extra))
             .map_err(|e| format!("unsupported_native_dimension: {e}"))?;
+        if dims.base_lap_climate_bucket.as_deref() == Some("") {
+            dims.base_lap_climate_bucket = None;
+        }
         let mut scalar = input.clone();
         scalar.extra.clear();
         scalar.event_rules.extra.clear();
-        scalar.validate()?;
+        scalar.validate_scalars()?;
         for (initial, capacity) in [
             (&dims.initial_fuel_liters, scalar.fuel_capacity_liters.value),
             (&dims.initial_ve_percent, scalar.ve_capacity_percent.value),
@@ -302,6 +305,18 @@ impl Model {
                 !saving.levels.is_empty() && saving.levels.len() <= 16,
                 "savingCost.levels",
             )?;
+            let mut declared = std::collections::BTreeSet::new();
+            for level in &saving.levels {
+                require(
+                    !level.level.is_empty()
+                        && level.level != "none"
+                        && declared.insert(&level.level),
+                    "declared saving identifier",
+                )?;
+                nonnegative(level.fuel_saved_per_lap, "declared saving fuel")?;
+                nonnegative(level.ve_saved_per_lap, "declared saving VE")?;
+                nonnegative(level.time_cost_per_lap, "declared saving time")?;
+            }
             let mut seen = std::collections::BTreeSet::new();
             for level in selected_levels.as_ref().unwrap_or(&saving.levels) {
                 require(

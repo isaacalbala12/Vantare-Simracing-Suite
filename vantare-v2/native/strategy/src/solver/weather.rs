@@ -265,6 +265,7 @@ impl WeatherModel {
         (pace, degradation)
     }
 }
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // Position is bounded to 0..=4 by validated lap counts.
 pub(super) fn timeline(
     scenario: &Value,
     laps: u32,
@@ -273,16 +274,15 @@ pub(super) fn timeline(
     (1..=laps)
         .map(|lap| {
             let denominator = laps.saturating_sub(1).max(1);
-            let numerator = (lap - 1) * 4;
-            let left = numerator / denominator;
+            let position = f64::from(lap - 1) / f64::from(denominator) * 4.0;
+            let left = position.floor() as u32;
             let left_index = usize::try_from(left.min(4)).unwrap_or(4);
             let rain = |i: usize| scenario["nodes"][i]["rainChance"].as_f64().unwrap_or(0.0);
             let chance = if left >= 4 {
                 rain(4)
             } else {
                 rain(left_index)
-                    + (rain(left_index + 1) - rain(left_index)) * f64::from(numerator % denominator)
-                        / f64::from(denominator)
+                    + (rain(left_index + 1) - rain(left_index)) * (position - f64::from(left))
             };
             WeatherCondition {
                 lap,

@@ -34,23 +34,23 @@ fn semantic_decision(mut value: Value) -> Value {
             value[key] = json!([]);
         }
     }
-    if let Some(pits) = value["pitStops"].as_array_mut() {
-        for p in pits {
-            p.as_object_mut().expect("pit").remove("pitBreakdown");
-            p.as_object_mut().expect("pit").remove("pitCostInput");
-        }
-    }
     value
 }
 fn parity_cases(data: &str) {
     let cases: Vec<Value> = serde_json::from_str(data).expect("Go cases");
     let mut failed = Vec::new();
-    for case in cases {
-        let outcome = std::panic::catch_unwind(|| parity_case(&case));
+    for case in &cases {
+        let outcome = std::panic::catch_unwind(|| parity_case(case));
         if outcome.is_err() {
             failed.push(case["name"].clone());
         }
     }
+    eprintln!(
+        "ORACLE cases={} equal={} different={}",
+        cases.len(),
+        cases.len() - failed.len(),
+        failed.len()
+    );
     assert!(failed.is_empty(), "Go differences: {failed:?}");
 }
 fn parity_case(case: &Value) {
@@ -104,11 +104,30 @@ fn parity_case(case: &Value) {
             return;
         }
         let a = actual.unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert_ne!(
-            a.certificate.status,
-            OptimalityStatus::NotProven,
-            "{name}: incomplete"
-        );
+        if a.certificate.status == OptimalityStatus::NotProven {
+            assert_eq!(
+                a.certificate.reason.as_deref(),
+                Some("automatic_initial_load_optimality_not_proven"),
+                "{name}: exhausted"
+            );
+            assert!(
+                a.certificate
+                    .proof
+                    .as_ref()
+                    .expect("proof")
+                    .search_completed,
+                "{name}"
+            );
+            assert!(
+                a.certificate
+                    .proof
+                    .as_ref()
+                    .expect("proof")
+                    .lower_bound_seconds
+                    .is_none(),
+                "{name}"
+            );
+        }
         let e = &case["result"];
         assert_eq!(a.result.feasible, e["feasible"], "{name}/feasible");
         if a.result.feasible {
@@ -189,4 +208,167 @@ fn go_minimax_weather_scenarios_parity() {
 #[test]
 fn go_projection_precedence_parity() {
     parity_cases(include_str!("../../testdata/oracle/solver-projection.json"));
+}
+
+#[test]
+fn go_mixed_dimensions_and_editor_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-extended.json"));
+}
+
+fn base_extended_input() -> Input {
+    let cases: Vec<Value> =
+        serde_json::from_str(include_str!("../../testdata/oracle/solver-resources.json"))
+            .expect("fixture");
+    let mut input: Input = serde_json::from_value(cases[0]["input"].clone()).expect("input");
+    input.extra.remove("fuelWeight");
+    input
+        .extra
+        .insert("baseLapClimateBucket".into(), json!("dry"));
+    input
+}
+#[test]
+fn proof_distinguishes_exhaustion_infeasibility_and_cancellation() {
+    let mut input = base_extended_input();
+    let complete = solve_v2(&input).expect("solve");
+    assert_eq!(complete.certificate.status, OptimalityStatus::Proven);
+    let proof = complete.certificate.proof.expect("proof");
+    assert!(proof.search_completed);
+    assert_eq!(proof.lower_bound_seconds, complete.cost_seconds);
+    assert_eq!(proof.absolute_gap_seconds, Some(0.0));
+    input.budget.max_candidates = 1;
+    let partial = solve_v2(&input).expect("partial");
+    assert_eq!(partial.certificate.status, OptimalityStatus::NotProven);
+    assert_eq!(
+        partial.certificate.reason.as_deref(),
+        Some("candidate_budget_exhausted")
+    );
+    let proof = partial.certificate.proof.expect("partial proof");
+    assert!(!proof.search_completed);
+    assert!(proof.lower_bound_seconds.is_none());
+    assert!(solve(&input).is_err());
+    input.budget.max_candidates = 10_000_000;
+    input.budget.max_iterations = 1;
+    let partial = solve_v2(&input).expect("iterations");
+    assert_eq!(partial.certificate.status, OptimalityStatus::NotProven);
+    assert_eq!(
+        partial.certificate.reason.as_deref(),
+        Some("iteration_budget_exhausted")
+    );
+    input.budget.max_iterations = 100_000_000;
+    input.fuel_capacity_liters.value = 0.5;
+    input.fuel_per_lap_liters.value = 1.0;
+    let none = solve_v2(&input).expect("no solution");
+    assert_eq!(none.certificate.status, OptimalityStatus::NoSolution);
+    assert!(!none.result.feasible);
+    assert!(
+        none.certificate
+            .proof
+            .expect("infeasibility proof")
+            .search_completed
+    );
+    let cancel = AtomicBool::new(true);
+    assert_eq!(
+        solve_v2_cancellable(&input, &cancel)
+            .expect_err("cancel")
+            .as_str(),
+        "cancelled"
+    );
+}
+#[test]
+fn automatic_fuel_weight_load_never_claims_a_false_optimum() {
+    let cases: Vec<Value> =
+        serde_json::from_str(include_str!("../../testdata/oracle/solver-optimality.json"))
+            .expect("fixture");
+    let input: Input = serde_json::from_value(cases[0]["input"].clone()).expect("input");
+    let decision: DecisionVector =
+        serde_json::from_value(cases[1]["decision"].clone()).expect("decision");
+    let better = replay_decision_v2(&input, &decision).expect("fixed replay");
+    assert!(better.feasible);
+    assert!(
+        better.evaluation.total_seconds
+            < cases[0]["result"]["expected"]["totalSeconds"]
+                .as_f64()
+                .expect("Go cost")
+    );
+    let result = solve_v2(&input).expect("result");
+    assert_eq!(result.certificate.status, OptimalityStatus::NotProven);
+    assert_eq!(
+        result.certificate.reason.as_deref(),
+        Some("automatic_initial_load_optimality_not_proven")
+    );
+    let proof = result.certificate.proof.expect("proof");
+    assert!(proof.search_completed);
+    assert!(proof.lower_bound_seconds.is_none());
+    assert!(proof.absolute_gap_seconds.is_none());
+}
+#[test]
+fn service_grid_budget_matches_go_policy_without_changing_the_input() {
+    let mut input = base_extended_input();
+    input.fuel_capacity_liters.value = 100.0;
+    input.discretization.fuel_liters = 0.1;
+    input.budget.p95_millis = 10;
+    let (effective, requested) = budget::effective(&input);
+    assert!((requested.fuel_liters - 0.1).abs() < 1e-12);
+    assert!((effective.discretization.fuel_liters - 12.8).abs() < 1e-12);
+    assert!((input.discretization.fuel_liters - 0.1).abs() < 1e-12);
+    input.discretization.ve_percent = 0.0;
+    input.budget.p95_millis = 1;
+    let (effective, requested) = budget::effective(&input);
+    assert!((requested.ve_percent - 1.0).abs() < 1e-12);
+    assert!((effective.discretization.fuel_liters - 25.6).abs() < 1e-12);
+}
+
+#[test]
+fn extended_solver_oracle_has_reviewed_hashes() {
+    use sha2::{Digest, Sha256};
+    let bytes = include_bytes!("../../testdata/oracle/solver-manifest.json");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(bytes)),
+        "904bde8971bf841da81c7a28349badda8a4b0d8295290118e5e10cd5180e3b42"
+    );
+    let manifest: Value = serde_json::from_slice(bytes).expect("manifest");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/oracle");
+    for (name, entry) in manifest["files"].as_object().expect("files") {
+        let data = std::fs::read(root.join(name)).expect("fixture");
+        assert_eq!(
+            format!("{:x}", Sha256::digest(&data)),
+            entry["sha256"].as_str().expect("sha"),
+            "{name}"
+        );
+        let cases: Vec<Value> = serde_json::from_slice(&data).expect("cases");
+        assert_eq!(
+            cases.len() as u64,
+            entry["cases"].as_u64().expect("count"),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn go_optimality_counterexample_result_and_fixed_replay_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-optimality.json"));
+}
+
+#[test]
+fn go_projection_weather_and_service_boundary_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-boundaries.json"));
+}
+
+#[test]
+fn empty_base_climate_bucket_uses_go_default_dry() {
+    let cases: Vec<Value> =
+        serde_json::from_str(include_str!("../../testdata/oracle/solver-projection.json"))
+            .expect("fixture");
+    let case = cases
+        .iter()
+        .find(|c| c["name"] == "projection-base-dry")
+        .expect("dry case");
+    let mut input: Input = serde_json::from_value(case["input"].clone()).expect("input");
+    input.extra.insert("baseLapClimateBucket".into(), json!(""));
+    let actual = solve_v2(&input).expect("default bucket");
+    fields(
+        &json!(actual.result.expected),
+        &case["result"]["expected"],
+        "empty bucket",
+    );
 }

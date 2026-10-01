@@ -32,7 +32,7 @@ pub(super) fn resolve(
         p["contractVersion"] == "strategyinputprojection.v2",
         "projection.contractVersion",
     )?;
-    super::super::projection::validate(p)?;
+    validate_projection(p)?;
     validate_revisions(p)?;
     let bucket = dims.base_lap_climate_bucket.as_deref().unwrap_or("dry");
     derived(
@@ -163,6 +163,37 @@ pub(super) fn resolve(
     }
     Ok((points, tail))
 }
+// The shared document validator predates open pit intervals. Normalize only
+// a Go-valid open marker in the validation copy; never change the projection.
+fn validate_projection(p: &Value) -> Result<(), String> {
+    let mut validation = p.clone();
+    if let Some(intervals) = validation["pit"]["observedIntervals"].as_array_mut() {
+        for interval in intervals {
+            if interval["endTimestamp"].is_null()
+                && interval["durationSeconds"].as_f64().unwrap_or(0.0) == 0.0
+                && interval["ambiguous"] == true
+                && interval["ambiguityReason"] == "open_pit_lane_interval"
+                && !interval["startTimestamp"].is_null()
+            {
+                require(
+                    interval["hasFuelRise"] != true
+                        && interval["hasVERise"] != true
+                        && [
+                            "fuelAddedLiters",
+                            "veAddedPercent",
+                            "fuelRateLPerS",
+                            "veRatePPerS",
+                        ]
+                        .iter()
+                        .all(|k| interval[*k].is_null()),
+                    "open pit interval cannot publish resources",
+                )?;
+                interval["durationSeconds"] = Value::from(1.0);
+            }
+        }
+    }
+    super::super::projection::validate(&validation)
+}
 fn validate_revisions(p: &Value) -> Result<(), String> {
     if p["sourceRevisions"].is_null() {
         return Ok(());
@@ -222,6 +253,9 @@ pub(super) fn selected_levels(
     }
     provenance(&family["provenance"])?;
     projection_confidence(&family["confidence"])?;
+    if family["levels"].as_array().is_none_or(Vec::is_empty) {
+        return Ok(Some(vec![]));
+    }
     if family["provenance"]["kind"] == "derived" {
         require(
             family["manualNote"] == "derived_from_controlled_ab_protocol",

@@ -322,6 +322,12 @@ pub(super) fn replay_model(
             return Ok(failed(result, decision, "driver_sequence"));
         }
         let level = model.level(&requested.saving_level)?;
+        if !model
+            .weather
+            .allowed(&tyre.compound, lap + 1, requested.laps)
+        {
+            return Ok(failed(result, decision, "compound_not_allowed_for_climate"));
+        }
         let (used_f, used_v) = model.usage(lap + 1, requested.laps, &requested.driver, level)?;
         if used_f > f
             || used_v > v

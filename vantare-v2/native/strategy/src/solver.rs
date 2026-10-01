@@ -5,7 +5,11 @@ mod model;
 #[cfg(test)]
 mod parity_tests;
 mod replay;
+mod scenarios;
 mod search;
+pub use scenarios::*;
+mod weather;
+pub use weather::{RainThresholds, WeatherBucket, WeatherCondition, WeatherDriver, WeatherPlan};
 mod tyres;
 pub use tyres::{CompoundPace, CurvePoint, Fitment, PhysicalTyre, TyreInventory};
 

@@ -66,6 +66,7 @@ pub struct PitDecision {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Dimensions {
+    pub weather: Option<super::WeatherPlan>,
     #[serde(default)]
     pub driver_profiles: Vec<super::DriverProfile>,
     #[serde(default)]
@@ -155,6 +156,8 @@ pub struct DecisionResourceRequirements {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct ExtraRules {
     #[serde(default)]
+    pub allowed_compounds_by_climate: std::collections::BTreeMap<String, Vec<String>>,
+    #[serde(default)]
     pub driver_limits: std::collections::BTreeMap<String, super::DriverLimit>,
     #[serde(default)]
     pub mandatory_compounds: Vec<String>,
@@ -170,6 +173,7 @@ pub(super) struct Model {
     pub fuel_weight: f64,
     pub tyres: super::tyres::TyreModel,
     pub drivers: Vec<super::drivers::Driver>,
+    pub weather: super::weather::WeatherModel,
     pub rules: ExtraRules,
 }
 
@@ -340,7 +344,16 @@ impl Model {
             &rules.driver_limits,
             &levels,
         )?;
+        let weather = super::weather::WeatherModel::new(
+            &scalar,
+            dims.weather.as_ref(),
+            &drivers,
+            &tyres,
+            &rules.allowed_compounds_by_climate,
+            dims.projection.as_ref(),
+        )?;
         Ok(Self {
+            weather,
             drivers,
             input: scalar,
             dims,
@@ -361,16 +374,23 @@ impl Model {
     }
     pub fn usage(
         &self,
-        _start: u32,
+        start: u32,
         laps: u32,
         driver: &str,
         level: &SavingLevel,
     ) -> Result<(i64, i64), String> {
-        let driver = self.driver(driver)?;
-        Ok((
-            i64::from(laps) * (driver.fuel - units(level.fuel_saved_per_lap)?),
-            i64::from(laps) * (driver.ve - units(level.ve_saved_per_lap)?),
-        ))
+        let d = self.driver(driver)?;
+        let saved_f = units(level.fuel_saved_per_lap)?;
+        let saved_v = units(level.ve_saved_per_lap)?;
+        let (mut fuel, mut ve) = (0i64, 0i64);
+        for lap in start..start + laps {
+            let f = self.weather.consumption(true, lap, &d.id, d.fuel)? - saved_f;
+            let v = self.weather.consumption(false, lap, &d.id, d.ve)? - saved_v;
+            require(f >= 0 && v >= 0, "saving exceeds weather consumption")?;
+            fuel += f;
+            ve += v;
+        }
+        Ok((fuel, ve))
     }
     pub fn stint(
         &self,
@@ -396,6 +416,19 @@ impl Model {
         if let Some(cost) = self.tyres.compounds.get(compound) {
             eval.compound_seconds = count * cost.pace_delta_seconds;
             eval.degradation_seconds = (1..=laps).map(|lap| cost.delta(lap)).sum();
+        }
+        let (weather, degradation) =
+            self.weather
+                .adjustment(compound, &self.driver(driver)?.id, start, laps, &self.tyres);
+        eval.weather_seconds = weather;
+        eval.degradation_seconds += degradation;
+        if !self.weather.timeline.is_empty() {
+            eval.fuel_weight_seconds = 0.0;
+            let mut level_fuel = fuel;
+            for lap in start..start + laps {
+                eval.fuel_weight_seconds += amount(level_fuel) * self.fuel_weight;
+                level_fuel -= self.usage(lap, 1, driver, level)?.0;
+            }
         }
         eval.total();
         require(eval.total_seconds.is_finite(), "cost overflow")?;

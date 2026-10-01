@@ -148,6 +148,9 @@ pub(super) fn solve(
                             reason = Some("deadline_exceeded");
                             break 'search;
                         }
+                        if !m.weather.allowed(&node.tyre.compound, lap + 1, laps) {
+                            continue;
+                        }
                         let (f, v) = m.usage(lap + 1, laps, &driver.id, level)?;
                         if f > node.fuel
                             || v > node.ve

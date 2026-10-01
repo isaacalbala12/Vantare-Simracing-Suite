@@ -128,3 +128,38 @@ fn go_physical_tyre_parity() {
 fn go_driver_limits_and_timed_parity() {
     parity_cases(include_str!("../../testdata/oracle/solver-drivers.json"));
 }
+
+#[test]
+fn go_weather_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-weather.json"));
+}
+
+#[test]
+fn go_minimax_weather_scenarios_parity() {
+    let cases: Vec<Value> =
+        serde_json::from_str(include_str!("../../testdata/oracle/solver-scenarios.json"))
+            .expect("scenarios");
+    for case in cases {
+        let input: Input = serde_json::from_value(case["input"].clone()).expect("input");
+        let set: WeatherScenarioSet = serde_json::from_value(case["set"].clone()).expect("set");
+        let name = case["name"].as_str().expect("name");
+        let actual =
+            solve_weather_scenarios(&input, &set).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut a = serde_json::to_value(actual).expect("scenario result");
+        let mut e = case["scenarios"].clone();
+        a["robust"]["decision"] = semantic_decision(a["robust"]["decision"].clone());
+        e["robust"]["decision"] = semantic_decision(e["robust"]["decision"].clone());
+        fields(&a["robust"], &e["robust"], name);
+        fields(&a["thresholdSensitivity"], &e["thresholdSensitivity"], name);
+        let plans = e["plans"].as_array().expect("plans");
+        assert_eq!(a["plans"].as_array().map(Vec::len), Some(plans.len()));
+        for (i, plan) in plans.iter().enumerate() {
+            fields(&a["plans"][i]["timeline"], &plan["timeline"], name);
+            fields(
+                &a["plans"][i]["result"]["result"]["expected"],
+                &plan["result"]["expected"],
+                name,
+            );
+        }
+    }
+}

@@ -3,6 +3,7 @@ pub mod history;
 use crate::{
     demo::{DemoData, DemoEngineer},
     engineer_control::{self as control, Document, Settings, Status},
+    orbit,
 };
 use chrono::{DateTime, Duration, Local};
 use gpui::{
@@ -163,17 +164,8 @@ fn now_ms() -> u64 {
         })
 }
 
-fn text(value: impl Into<gpui::SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
-    div()
-        .text_size(px(size))
-        .font_family(format!("Inter W{weight}"))
-        .font_weight(FontWeight(f32::from(weight)))
-        .text_color(rgb(color))
-        .child(value.into())
-}
-
 fn paragraph(value: impl Into<gpui::SharedString>) -> gpui::Div {
-    text(value, 16.0, 400, TEXT)
+    orbit::text(value, 16.0, 400, TEXT)
         .my(px(8.0))
         .line_height(px(24.0))
 }
@@ -188,7 +180,7 @@ fn section(title: &str) -> gpui::Div {
         .border_color(rgb(CARD_BORDER))
         .rounded(px(8.0))
         .p(px(18.0))
-        .child(text(title.to_owned(), 19.0, 700, TEXT))
+        .child(orbit::text(title.to_owned(), 19.0, 700, TEXT))
         .child(div().h(px(12.0)))
 }
 
@@ -198,8 +190,8 @@ fn fact(label: &str, value: &str) -> gpui::Div {
         .flex_col()
         .flex_1()
         .min_w(px(190.0))
-        .child(text(label.to_owned(), 13.0, 400, MUTED))
-        .child(text(value.to_owned(), 16.0, 400, TEXT).mt(px(4.0)))
+        .child(orbit::text(label.to_owned(), 13.0, 400, MUTED))
+        .child(orbit::text(value.to_owned(), 16.0, 400, TEXT).mt(px(4.0)))
 }
 
 fn fact_row(items: &[(&str, &str)]) -> gpui::Div {
@@ -225,7 +217,7 @@ fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::
         .border_color(rgb(if checked { CHECK } else { CONTROL_BORDER }))
         .when(checked, |checkbox| checkbox.bg(rgb(CHECK)))
         .when(checked, |checkbox| {
-            checkbox.child(text("✓", 13.0, 700, CARD))
+            checkbox.child(orbit::text("✓", 13.0, 700, CARD))
         });
     div()
         .flex()
@@ -233,7 +225,7 @@ fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::
         .gap(px(8.0))
         .when(disabled, |view| view.opacity(0.55))
         .child(mark)
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
+        .child(orbit::text(label.to_owned(), 16.0, 400, TEXT))
         .id(format!("engineer-checkbox-{label}"))
 }
 
@@ -252,8 +244,8 @@ fn select_control(value: &str, disabled: bool) -> gpui::Div {
         .border_color(rgb(CONTROL_BORDER))
         .rounded(px(5.0))
         .when(disabled, |view| view.opacity(0.55))
-        .child(text(value.to_owned(), 16.0, 400, TEXT))
-        .child(text("⌄", 14.0, 400, MUTED))
+        .child(orbit::text(value.to_owned(), 16.0, 400, TEXT))
+        .child(orbit::text("⌄", 14.0, 400, MUTED))
 }
 
 fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {
@@ -263,7 +255,7 @@ fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {
         .flex_1()
         .min_w(px(190.0))
         .gap(px(6.0))
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
+        .child(orbit::text(label.to_owned(), 16.0, 400, TEXT))
         .child(select_control(value, disabled))
 }
 
@@ -280,7 +272,7 @@ fn action_button(label: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
         .border_color(rgb(CONTROL_BORDER))
         .rounded(px(5.0))
         .when(disabled, |button| button.opacity(0.55))
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
+        .child(orbit::text(label.to_owned(), 16.0, 400, TEXT))
         .id(format!("engineer-action-{label}"))
 }
 
@@ -418,15 +410,15 @@ impl Engineer {
             .child(self.observed_facts())
             .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido."));
         if let Some(status_error) = &self.status_error {
-            card = card.child(text(status_error.clone(), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(orbit::text(status_error.clone(), 16.0, 400, 0x00ff_8c7d));
         }
         if let Some(status) = &self.status
             && let Some(error) = &status.error
         {
-            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(orbit::text(error.clone(), 16.0, 400, 0x00ff_8c7d));
         }
         if let Some(error) = &self.demo_error {
-            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(orbit::text(error.clone(), 16.0, 400, 0x00ff_8c7d));
         }
         card
     }
@@ -444,7 +436,7 @@ impl Engineer {
                 .border_1()
                 .border_color(rgb(CONTROL_BORDER))
                 .rounded(px(5.0))
-                .child(text(locale.to_owned(), 16.0, 400, TEXT))
+                .child(orbit::text(locale.to_owned(), 16.0, 400, TEXT))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.edit(|settings| settings.locale = locale.into(), cx);
                 }));
@@ -455,7 +447,7 @@ impl Engineer {
             .flex_col()
             .gap(px(14.0))
             .mt(px(12.0))
-            .child(text(
+            .child(orbit::text(
                 "Ajustes disponibles en el contrato nativo",
                 16.0,
                 700,
@@ -520,7 +512,7 @@ impl Engineer {
                     .items_center()
                     .flex_wrap()
                     .gap(px(8.0))
-                    .child(text("Idioma de radio", 16.0, 400, TEXT))
+                    .child(orbit::text("Idioma de radio", 16.0, 400, TEXT))
                     .child(locales)
                     .child(
                         action_button("Recargar ajustes", false).on_click(cx.listener(
@@ -554,7 +546,7 @@ impl Engineer {
                     .items_center()
                     .gap(px(8.0))
                     .opacity(0.55)
-                    .child(text("Sensibilidad del spotter", 16.0, 400, TEXT))
+                    .child(orbit::text("Sensibilidad del spotter", 16.0, 400, TEXT))
                     .child(select_control("No disponible", true).w(px(154.0))),
             );
         let outputs = div()
@@ -640,7 +632,7 @@ impl Engineer {
                     .flex()
                     .flex_col()
                     .gap(px(6.0))
-                    .child(text("Ciclos", 16.0, 400, TEXT))
+                    .child(orbit::text("Ciclos", 16.0, 400, TEXT))
                     .child(
                         select_control(cycle, current_cycle_disabled)
                             .id("engineer-history-cycle")
@@ -658,7 +650,7 @@ impl Engineer {
                     .flex()
                     .flex_col()
                     .gap(px(6.0))
-                    .child(text("Categoría", 16.0, 400, TEXT))
+                    .child(orbit::text("Categoría", 16.0, 400, TEXT))
                     .child(
                         select_control(family, false)
                             .id("engineer-history-family")
@@ -694,13 +686,18 @@ impl Engineer {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(text(
+                .child(orbit::text(
                     if self.counters_open { "▾" } else { "▸" },
                     16.0,
                     400,
                     TEXT,
                 ))
-                .child(text("Contadores y tiempos internos", 16.0, 400, TEXT))
+                .child(orbit::text(
+                    "Contadores y tiempos internos",
+                    16.0,
+                    400,
+                    TEXT,
+                ))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.counters_open = !this.counters_open;
                     cx.notify();
@@ -736,7 +733,7 @@ impl Engineer {
             div()
                 .flex()
                 .flex_col()
-                .child(text("Vista previa del informe", 19.0, 700, TEXT))
+                .child(orbit::text("Vista previa del informe", 19.0, 700, TEXT))
                 .child(paragraph(
                     "JSON local congelado con el estado observado y el historial retenido.",
                 ))
@@ -780,7 +777,7 @@ impl Engineer {
         let mut card = section("Registro de entregas")
             .child(paragraph("Últimos mensajes observados desde el estado publicado. Puede haber saltos del cursor; este registro no equivale a todas las entregas de radio."));
         if self.capture_history {
-            card = card.child(text(
+            card = card.child(orbit::text(
                 "Los datos de la captura proceden del fixture compartido de paridad; los resultados de entrega no están en el contrato nativo.",
                 16.0,
                 400,
@@ -833,8 +830,8 @@ fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
             .flex()
             .flex_col()
             .gap(px(5.0))
-            .child(text(row.text, 16.0, 400, TEXT))
-            .child(text(
+            .child(orbit::text(row.text, 16.0, 400, TEXT))
+            .child(orbit::text(
                 format!("{} · {}", row.family, row.intent),
                 13.0,
                 400,
@@ -868,7 +865,7 @@ fn table_cell(label: &str, width: f32, heading: bool) -> gpui::Div {
         .py(px(12.0))
         .px(px(8.0))
         .items_start()
-        .child(text(
+        .child(orbit::text(
             label.to_owned(),
             if heading { 13.0 } else { 16.0 },
             400,
@@ -913,7 +910,7 @@ impl Render for Engineer {
                 div()
                     .flex()
                     .flex_col()
-                    .child(text("Ingeniero Vantare", 26.0, 700, TEXT).mb(px(8.0)))
+                    .child(orbit::text("Ingeniero Vantare", 26.0, 700, TEXT).mb(px(8.0)))
                     .child(paragraph(
                         "Panel de pruebas: configura el ingeniero, comprueba el sonido y revisa cada entrega.",
                     )),
@@ -923,7 +920,7 @@ impl Render for Engineer {
             .child(audio)
             .child(history);
         if let Some(error) = &self.error {
-            page = page.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            page = page.child(orbit::text(error.clone(), 16.0, 400, 0x00ff_8c7d));
         }
         div()
             .id("engineer-page-scroll")

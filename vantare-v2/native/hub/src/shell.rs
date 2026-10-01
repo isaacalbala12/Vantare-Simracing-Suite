@@ -191,7 +191,7 @@ impl Hub {
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
-                .update(cx, |remote, cx| remote.roadmap(cx))
+                .update(cx, super::services::view::Remote::roadmap)
                 .into_any_element(),
         }
     }

@@ -1,5 +1,30 @@
 # Launcher nativo del sim-rig — ISA-1430 (#1430)
 
+## Ronda de usabilidad — 2026-10-01
+
+Worker en `vantareapp/isa-1430-w-launcher-usabilidad`, base asignada
+`1aa08d5dd588cd431a50ca17e3eb3b2d492fe74c`. Excepción expresa del encargo:
+Notion no disponible; seguimiento pendiente del orquestador. Solo commits
+locales, sin push, PR, merge ni release. Evidencia externa:
+`C:/tmp/launcher-usabilidad-evidence/`.
+
+Migración de primer arranque productivo: `launcher.json` existente prevalece
+(también si está corrupto; no se sustituye). Si falta, se busca
+`app-settings.json` con el orden Wails: `configs` junto al Hub, `configs` en
+CWD, `vantare-v2/configs` en CWD, `%APPDATA%/Vantare/configs`. La primera
+carpeta existente manda, incluso si no tiene ajustes: no mezclar instalaciones.
+La importación valida y guarda atómicamente; un fallo no crea datos parciales
+ni altera Wails. Una vez creado el nativo, no se vuelve a importar. Un
+`--launcher-file` aislado y las capturas demo no importan datos del usuario.
+
+Se conservan IDs, nombres, favoritos, rutas, tokens de argumentos con el
+contrato de Go (sin shell), pasos, delays, descripción, notas, historial y
+preferencias. Las claves Launcher originales quedan archivadas en
+`wails_import`, excluyendo otros ajustes. Los delays ya no se limitan a una
+hora; siguen siendo segundos enteros no negativos. Los documentos v1 siguen
+siendo legibles. Políticas/hotkeys/autostart importados se conservan para los
+hitos siguientes; esta sección se actualiza con su ejecución real.
+
 Entrega aislada para revisión de Claude Opus 5.5. Referencia:
 [GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430),
 fase 5 de ADR 0099. Base asignada `a6cd70ab8c7abdcc700c74105fee5ffa2fd36a69`,

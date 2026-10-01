@@ -607,7 +607,13 @@ pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(
     };
     let launcher = match options.demo.as_ref() {
         Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
-        None => LauncherStore::load(options.launcher_file.clone())?,
+        None => {
+            if options.launcher_file == crate::launcher::default_path()? {
+                LauncherStore::load_production(options.launcher_file.clone())?
+            } else {
+                LauncherStore::load(options.launcher_file.clone())?
+            }
+        }
     };
     let loaded = Loaded {
         analysis: prepare_analysis(&options)?,

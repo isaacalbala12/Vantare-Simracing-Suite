@@ -391,13 +391,16 @@ fn detect_steam(
 }
 
 pub fn running(path: &Path) -> Result<Option<u32>, String> {
+    Ok(running_all(path)?.into_iter().next())
+}
+pub fn running_all(path: &Path) -> Result<Vec<u32>, String> {
     #[cfg(windows)]
     {
-        super::windows::running(path)
+        super::windows::running_all(path)
     }
     #[cfg(not(windows))]
     {
         let _ = path;
-        Ok(None)
+        Ok(vec![])
     }
 }

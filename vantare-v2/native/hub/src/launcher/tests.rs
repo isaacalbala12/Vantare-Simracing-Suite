@@ -10,6 +10,130 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn migration_imports_wails_once_without_modifying_source_or_other_settings() {
+    let tree = Tree::new();
+    let app = tree.file("herramienta.exe", b"fixture de ruta, no proceso");
+    let settings = serde_json::json!({
+        "schemaVersion": 7, "uiLocale": "es", "hotkeys": {"toggleOverlay":"ctrl+v"},
+        "launcherApps": {"custom:tool": {
+            "id":"custom:tool", "displayName":"Herramienta", "executablePath":"",
+            "userExecutablePath": app, "args": "--name \"nombre con espacios\" \"\"",
+            "isFavorite":true, "iconOverridePath":"icono.png"
+        }},
+        "launcherProfiles":[{
+            "id":"rig", "name":"Mi rig", "description":"Descripción", "notes":"Notas",
+            "isFavorite":true, "advanced":true, "hotkey":"ctrl+shift+r",
+            "launchOnWindowsStartup":true, "launchCount":7,
+            "lastLaunchedAt":"2026-09-30T12:00:00Z", "avgChainDurationMs":3000,
+            "steps":[{"appId":"custom:tool", "delay":7200, "argsOverride":"--flag"}],
+            "policy":{"alreadyRunning":"restart", "failure":"continue", "cancel":"close-started",
+                "exit":"leave", "retry":"all", "maxRetries":2, "firstStepDelay":4000}
+        }],
+        "launcherLmuTriggerEnabled":true, "launcherLmuTriggerProfileId":"rig"
+    });
+    let original = serde_json::to_vec(&settings).expect("JSON Wails");
+    let source = tree.file("configs/app-settings.json", &original);
+    let path = tree.0.join("launcher.json");
+    let imported = Store::load_with_wails(path.clone(), Some(&source)).expect("importar");
+    let profile = &imported.document.profiles[0];
+    assert_eq!(profile.name, "Mi rig");
+    assert_eq!(profile.steps[0].delay_seconds, 7200);
+    assert_eq!(profile.steps[0].args_override, Some(vec!["--flag".into()]));
+    assert_eq!(profile.first_step_delay, 4000);
+    assert_eq!(profile.notes, "Notas");
+    assert_eq!(profile.launch_count, 7);
+    assert_eq!(profile.hotkey, "ctrl+shift+r");
+    assert_eq!(
+        profile.policy.as_ref().expect("política").retry,
+        policy::Retry::All
+    );
+    let app = imported.document.apps.last().expect("app importada");
+    assert_eq!(app.args, ["--name", "nombre con espacios", ""]);
+    assert!(app.favorite);
+    assert_eq!(
+        imported.document.lmu_trigger_profile.as_deref(),
+        Some("rig")
+    );
+    let archive = &imported
+        .document
+        .wails_import
+        .as_ref()
+        .expect("archivo de migración")
+        .launcher;
+    assert!(!archive.contains_key("uiLocale"));
+    assert!(!archive.contains_key("hotkeys"));
+    assert_eq!(
+        archive["launcherApps"]["custom:tool"]["iconOverridePath"],
+        "icono.png"
+    );
+    assert_eq!(fs::read(&source).expect("original intacto"), original);
+    let saved = fs::read(&path).expect("creado atómicamente");
+    fs::write(&source, b"{").expect("Wails cambia después");
+    let reloaded = Store::load_with_wails(path.clone(), Some(&source)).expect("nativo prevalece");
+    assert_eq!(reloaded.document.profiles[0].name, "Mi rig");
+    assert_eq!(fs::read(path).expect("no reimporta"), saved);
+}
+
+#[test]
+fn migration_invalid_source_or_conflict_never_creates_partial_native_data() {
+    let tree = Tree::new();
+    let source = tree.file(
+        "app-settings.json",
+        br#"{"launcherProfiles":[{"id":"p","name":"P","steps":[{"appId":"missing","delay":0}]}]}"#,
+    );
+    let path = tree.0.join("launcher.json");
+    assert!(Store::load_with_wails(path.clone(), Some(&source)).is_err());
+    assert!(!path.exists());
+    fs::write(&source, br#"{"launcherProfiles":[],"launcherApps":{}}"#).expect("vacío explícito");
+    tree.file("launcher.json.lock", b"lock ajeno");
+    assert!(Store::load_with_wails(path.clone(), Some(&source)).is_err());
+    assert!(!path.exists());
+    fs::remove_file(tree.0.join("launcher.json.lock")).expect("retirar lock propio");
+    let store = Store::load_with_wails(path, Some(&source)).expect("vacío conservado");
+    assert!(store.document.profiles.is_empty());
+}
+
+#[test]
+fn migration_uses_wails_directory_priority_and_does_not_mix_installations() {
+    let tree = Tree::new();
+    let portable = tree.0.join("portable/configs");
+    let installed = tree.0.join("roaming/configs");
+    tree.file("roaming/configs/app-settings.json", b"{}");
+    assert_eq!(
+        migration::source_in(&[portable.clone(), installed.clone()]).expect("fuente"),
+        Some(installed.join("app-settings.json"))
+    );
+    fs::create_dir_all(&portable).expect("portable sin ajustes");
+    assert!(
+        migration::source_in(&[portable.clone(), installed.clone()])
+            .expect("sin mezcla")
+            .is_none()
+    );
+    tree.file("portable/configs/app-settings.json", b"{}");
+    assert_eq!(
+        migration::source_in(&[portable.clone(), installed]).expect("portable"),
+        Some(portable.join("app-settings.json"))
+    );
+}
+
+#[test]
+fn migration_arguments_follow_wails_without_shell_execution() {
+    for (raw, expected) in [
+        (
+            r#"--name "dos palabras" """#,
+            vec!["--name", "dos palabras", ""],
+        ),
+        (r"--path C:\rig\app", vec!["--path", r"C:\rig\app"]),
+        (r#"--name \"quoted\""#, vec!["--name", "\"quoted\""]),
+        ("a & b", vec!["a", "&", "b"]),
+    ] {
+        assert_eq!(migration::parse_args(raw).expect("tokens"), expected);
+    }
+    assert!(migration::parse_args("a\0b").is_err());
+    assert!(migration::parse_args("\"abierta").is_err());
+}
+
+#[test]
 fn launcher_demo_loads_wails_catalog_without_machine_discovery_or_launch_paths() {
     let demo = crate::demo::DemoData::load().expect("fixture Wails");
     let store =
@@ -445,9 +569,11 @@ fn reuse_observes_a_real_existing_process_and_does_not_spawn_another() {
 #[test]
 fn win32_reads_actual_process_identity_and_registry_without_writing_them() {
     let executable = std::env::current_exe().expect("binario de tests");
-    assert_eq!(
-        discovery::running(&executable).expect("Win32"),
-        Some(std::process::id())
+    // Nextest ejecuta varios procesos del mismo binario: comprobar el nuestro entre todos.
+    assert!(
+        discovery::running_all(&executable)
+            .expect("Win32")
+            .contains(&std::process::id())
     );
     let sources = Sources::system();
     assert!(sources.steam_roots.iter().all(|path| path.is_absolute()));

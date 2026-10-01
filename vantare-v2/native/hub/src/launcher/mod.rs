@@ -2,6 +2,8 @@
 pub mod chain;
 pub mod discovery;
 pub(crate) mod input;
+mod migration;
+pub mod policy;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -118,6 +120,7 @@ pub struct Step {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)] // Preferencias independientes y compatibilidad de los dos flags v1.
 pub struct Profile {
     pub id: String,
     pub name: String,
@@ -127,6 +130,24 @@ pub struct Profile {
     pub continue_on_error: bool,
     pub reuse_running: bool,
     pub max_retries: u8,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub notes: String,
+    #[serde(default)]
+    pub advanced: bool,
+    #[serde(default)]
+    pub hotkey: String,
+    #[serde(default)]
+    pub launch_on_windows_startup: bool,
+    #[serde(default)]
+    pub launch_count: u64,
+    #[serde(default)]
+    pub last_launched_at: Option<String>,
+    #[serde(default)]
+    pub avg_chain_duration_ms: u64,
+    #[serde(default)]
+    pub policy: Option<policy::Policy>,
 }
 
 impl Profile {
@@ -140,6 +161,15 @@ impl Profile {
             continue_on_error: false,
             reuse_running: true,
             max_retries: 0,
+            description: String::new(),
+            notes: String::new(),
+            advanced: false,
+            hotkey: String::new(),
+            launch_on_windows_startup: false,
+            launch_count: 0,
+            last_launched_at: None,
+            avg_chain_duration_ms: 0,
+            policy: None,
         }
     }
 }
@@ -151,6 +181,8 @@ pub struct Document {
     pub apps: Vec<App>,
     pub profiles: Vec<Profile>,
     pub lmu_trigger_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wails_import: Option<migration::Import>,
 }
 
 impl Default for Document {
@@ -169,6 +201,7 @@ impl Default for Document {
                 .collect(),
             profiles: vec![],
             lmu_trigger_profile: None,
+            wails_import: None,
         }
     }
 }
@@ -225,13 +258,12 @@ impl Document {
                 || !profiles.insert(&profile.id)
                 || profile.steps.len() > 128
                 || profile.max_retries > 3
-                || profile.first_step_delay > 3600
             {
                 return Err("perfil inválido: identidad, pasos, delay o reintentos".into());
             }
             for step in &profile.steps {
-                if !ids.contains(&step.app_id) || step.delay_seconds > 3600 {
-                    return Err("paso sin app conocida o delay mayor de una hora".into());
+                if !ids.contains(&step.app_id) {
+                    return Err("paso sin app conocida".into());
                 }
                 if let Some(args) = &step.args_override {
                     validate_args(args)?;
@@ -306,6 +338,29 @@ pub fn default_path() -> Result<PathBuf, String> {
 }
 
 impl Store {
+    /// Importar solo al crear el store productivo, nunca al cargar fixtures/QA.
+    pub fn load_production(path: PathBuf) -> Result<Self, String> {
+        if path
+            .try_exists()
+            .map_err(|e| format!("inspeccionar Launcher: {e}"))?
+        {
+            return Self::load(path);
+        }
+        let source = migration::source()?;
+        Self::load_with_wails(path, source.as_deref())
+    }
+
+    pub fn load_with_wails(path: PathBuf, source: Option<&Path>) -> Result<Self, String> {
+        let mut store = Self::load(path)?;
+        if store.saved.is_none()
+            && let Some(source) = source
+        {
+            let document = migration::read(source)?;
+            store.replace(document)?;
+        }
+        Ok(store)
+    }
+
     pub fn load(path: PathBuf) -> Result<Self, String> {
         if path.is_absolute() && !is_local_path(&path) {
             return Err("Launcher requiere un archivo de disco local".into());
@@ -365,9 +420,11 @@ impl Store {
                     continue_on_error: profile.retry_limit > 0,
                     reuse_running: true,
                     max_retries: profile.retry_limit,
+                    ..Profile::new(profile.id.clone(), profile.name.clone())
                 })
                 .collect(),
             lmu_trigger_profile: None,
+            wails_import: None,
         };
         document.validate()?;
         Ok(Self {

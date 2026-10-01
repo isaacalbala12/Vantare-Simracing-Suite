@@ -398,10 +398,16 @@ mod tests {
 
     #[test]
     fn demo_opens_the_hub_with_fixture_data_without_capture_mode() {
-        let options = parse(&["--demo".into()]).expect("modo demo");
+        let options = parse(&[
+            "--demo".into(),
+            "--pipe".into(),
+            "vantare-1437-smoke".into(),
+        ])
+        .expect("modo demo conectado por IPC");
         assert!(options.demo.is_some());
         assert!(options.capture.is_none());
         assert_eq!(options.section, Section::Home);
+        assert_eq!(options.pipe.as_deref(), Some("vantare-1437-smoke"));
     }
 
     #[test]

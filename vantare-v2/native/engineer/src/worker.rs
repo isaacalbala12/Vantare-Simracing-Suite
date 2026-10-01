@@ -184,6 +184,8 @@ impl RadioWorker {
                     self.voice_error = Some(format!("voz {}: {error}", message.intent.key()));
                     presentation["voice"] = if error.kind() == io::ErrorKind::NotFound {
                         "missing"
+                    } else if cfg!(unix) && error.kind() == io::ErrorKind::Unsupported {
+                        "unavailable"
                     } else {
                         "failed"
                     }

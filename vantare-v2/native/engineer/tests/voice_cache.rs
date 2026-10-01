@@ -1,4 +1,4 @@
-#![cfg(windows)]
+#![cfg(any(windows, unix))]
 use std::{fs, io, path::PathBuf, time::Duration};
 use vantare_engineer::{
     radio::{Intent, Locale},
@@ -8,7 +8,7 @@ use vantare_engineer::{
 #[test]
 fn keys_match_frozen_go_cache_key_vectors_including_utf8() {
     // Obtenidos 2026-09-30 con go run, importando internal/tts y llamando
-    // (&tts.Cache{}).Key(locale, voice, text); no hash Rust como oráculo.
+    // (&tts.Cache{}).Key(locale, voice, text); vector externo congelado.
     for (locale, voice, text, expected) in [
         (
             "es",
@@ -35,7 +35,7 @@ fn keys_match_frozen_go_cache_key_vectors_including_utf8() {
             "5c0e9db2fa68bec0bd4d8c23a1807b31f6a53aa0e4737a2846f400fff6da038a",
         ),
     ] {
-        assert_eq!(cache_key(locale, voice, text).expect("CNG"), expected);
+        assert_eq!(cache_key(locale, voice, text).expect("SHA-256"), expected);
         assert_eq!(Locale::parse(locale).expect("locale").voice(), voice);
     }
     assert_eq!(Intent::LapCompleted.text(Locale::PtBr), "Volta concluída");

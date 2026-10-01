@@ -176,9 +176,38 @@ impl Status {
 }
 
 pub fn default_path() -> io::Result<PathBuf> {
-    std::env::var_os("LOCALAPPDATA")
-        .map(|root| PathBuf::from(root).join("Vantare/native/engineer.json"))
-        .ok_or_else(|| invalid("LOCALAPPDATA no está definido"))
+    #[cfg(windows)]
+    {
+        std::env::var_os("LOCALAPPDATA")
+            .map(|root| PathBuf::from(root).join("Vantare/native/engineer.json"))
+            .ok_or_else(|| invalid("LOCALAPPDATA no está definido"))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let root = match std::env::var_os("XDG_CONFIG_HOME") {
+            Some(root) if PathBuf::from(&root).is_absolute() => PathBuf::from(root),
+            Some(_) => return Err(invalid("XDG_CONFIG_HOME debe ser absoluto")),
+            None => home()?.join(".config"),
+        };
+        Ok(root.join("Vantare/native/engineer.json"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Ok(home()?.join("Library/Application Support/Vantare/native/engineer.json"))
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    {
+        Err(invalid("plataforma sin ruta de configuración"))
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn home() -> io::Result<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
+        .ok_or_else(|| invalid("HOME no está definido"))
 }
 pub fn status_path(settings: &Path) -> PathBuf {
     settings.with_file_name("engineer-status.json")

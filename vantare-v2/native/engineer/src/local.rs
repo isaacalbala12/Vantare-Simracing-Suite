@@ -11,16 +11,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-const SPOKEN: &[Intent] = &[
-    Intent::PitEntry,
-    Intent::PitExit,
-    Intent::LapCompleted,
-    Intent::FuelOne,
-    Intent::FuelTwo,
-    Intent::FuelHalf,
-    Intent::Yellow,
-    Intent::Blue,
-];
+const SPOKEN: &[Intent] = &Intent::ALL;
 
 pub struct Local {
     document: Document,
@@ -32,6 +23,8 @@ pub struct Local {
     status: Status,
     settings_error: Option<String>,
     publish_error: Option<String>,
+    heartbeat_at: Option<Instant>,
+    heartbeat_ms: u64,
 }
 impl Local {
     pub fn new(path: PathBuf, settings: Settings, clips: Option<PathBuf>) -> Self {
@@ -57,6 +50,8 @@ impl Local {
             },
             settings_error: None,
             publish_error: None,
+            heartbeat_at: None,
+            heartbeat_ms: 0,
         }
     }
     /// Aplicación y confirmación en el mismo hilo que selecciona la radio.
@@ -132,7 +127,23 @@ impl Local {
             Some(errors.join(" · "))
         };
         let result = (|| -> io::Result<()> {
-            let bytes = serde_json::to_vec_pretty(&self.status.json()).map_err(io::Error::other)?;
+            if self
+                .heartbeat_at
+                .is_none_or(|at| at.elapsed() >= Duration::from_secs(1))
+            {
+                self.heartbeat_ms = control::runtime::now_ms();
+                self.heartbeat_at = Some(Instant::now());
+            }
+            let mut runtime = radio.runtime_status(self.heartbeat_ms, &self.status.assets);
+            if !active {
+                runtime.connection = control::runtime::Connection::Disconnected;
+                runtime.player_available = false;
+            }
+            let report = control::runtime::Report {
+                status: self.status.clone(),
+                runtime: Some(runtime),
+            };
+            let bytes = serde_json::to_vec_pretty(&report.json()).map_err(io::Error::other)?;
             if self.published.as_ref() == Some(&bytes) {
                 return Ok(());
             }

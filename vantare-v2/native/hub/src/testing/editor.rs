@@ -26,7 +26,8 @@ pub struct Editor {
 }
 impl Editor {
     fn field_label(label: &str) -> gpui::Div {
-        orbit::text(label.to_uppercase(), 11.0, 800, orbit::INK_4).line_height(px(16.5))
+        orbit::tracked_text(label.to_uppercase(), 11.0, 800, orbit::INK_4, 1.1)
+            .line_height(px(16.5))
     }
 
     pub(super) fn clear_approval(&mut self) {
@@ -158,11 +159,31 @@ impl Editor {
             .child(
                 div()
                     .h(px(78.0))
+                    .relative()
                     .min_h(px(0.0))
                     .flex()
                     .flex_col()
                     .overflow_hidden()
-                    .child(self.inputs[index].clone()),
+                    .child(self.inputs[index].clone())
+                    // El kit fija la altura del Input. El trazo conserva el detalle
+                    // visual de Wails; redimensionar requiere soporte del kit común.
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .size(px(13.0))
+                            .children((0_u8..3).flat_map(|line| {
+                                (0..=line).map(move |offset| {
+                                    div()
+                                        .absolute()
+                                        .right(px(2.0 + f32::from(offset) * 3.0))
+                                        .bottom(px(2.0 + f32::from(line - offset) * 3.0))
+                                        .size(px(1.0))
+                                        .bg(rgb(orbit::INK_3))
+                                })
+                            })),
+                    ),
             )
             .when(self.show_errors, |view| {
                 view.when_some(field_errors(&self.fields(cx))[index], |view, error| {
@@ -579,8 +600,20 @@ impl Editor {
                     .flex()
                     .items_start()
                     .gap(px(21.0))
-                    .child(orbit::card("").flex_1().min_w_0().child(form))
-                    .child(orbit::card("").w(px(280.0)).flex_none().child(consent)),
+                    .child(
+                        orbit::card("")
+                            .bg(orbit::tint(0x0010_1114, 0.79))
+                            .flex_1()
+                            .min_w_0()
+                            .child(form),
+                    )
+                    .child(
+                        orbit::card("")
+                            .bg(orbit::tint(0x0010_1114, 0.79))
+                            .w(px(280.0))
+                            .flex_none()
+                            .child(consent),
+                    ),
             );
         if let Some(preview) = &self.preview {
             page = page.child(

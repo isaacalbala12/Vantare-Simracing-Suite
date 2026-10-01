@@ -6,11 +6,12 @@ use crate::orbit::{self, Input};
 use crate::services::{protocol::Command, view::Remote};
 use gpui::{
     Context, Entity, IntoElement, Render, Window, div, linear_color_stop, linear_gradient,
-    prelude::*, px, rgba,
+    prelude::*, px, rgb, rgba,
 };
 #[cfg(any(feature = "parity-capture", test))]
 use std::path::Path;
 use std::{path::PathBuf, time::Instant};
+use vantare_ui::efficiency::text as typography;
 
 pub struct Testing {
     remote: Entity<Remote>,
@@ -26,6 +27,7 @@ pub struct Testing {
     diagnostic_tab: bool,
     status: String,
     error: Option<String>,
+    channel_label: String,
 }
 impl Testing {
     pub fn new(
@@ -38,6 +40,12 @@ impl Testing {
         let selected_tab = selected_capture_tab(&data).unwrap_or(0);
         #[cfg(not(feature = "parity-capture"))]
         let selected_tab = 0;
+        #[cfg(feature = "parity-capture")]
+        let capture = selected_capture_tab(&data).is_some();
+        #[cfg(not(feature = "parity-capture"))]
+        let capture = false;
+        let channel_label =
+            super::model::channel_label(option_env!("VANTARE_BUILD_CHANNEL"), capture);
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
                 "Vistas de Testing Center",
@@ -100,6 +108,7 @@ impl Testing {
             diagnostic_tab: false,
             status: "Borrador privado local. Guarda para continuar más tarde.".into(),
             error,
+            channel_label,
         }
     }
     pub fn persist(&mut self) -> Result<(), String> {
@@ -406,8 +415,31 @@ fn disabled_refresh() -> gpui::Stateful<gpui::Div> {
         ))
 }
 
+fn testing_title() -> gpui::Div {
+    // La primitiva común modela kerning y tracking negativo; un gap de flex no.
+    div().h(px(51.0)).child(
+        gpui::canvas(
+            |_, _, _| (),
+            |bounds, (), window, cx| {
+                let ink = typography::ink(36.0, 700.0, -0.035, rgb(orbit::INK).into());
+                typography::draw(
+                    window,
+                    cx,
+                    "Testing Center",
+                    bounds.origin.x.into(),
+                    typography::baseline(bounds.origin.y.into(), 51.0, 36.0),
+                    &ink,
+                );
+            },
+        )
+        .w_full()
+        .h_full(),
+    )
+}
+
 fn validation_panel() -> gpui::Div {
     orbit::card("")
+        .bg(orbit::tint(0x0010_1114, 0.79))
         .w_full()
         .child(panel_header(
             "Correcciones pendientes",
@@ -435,6 +467,7 @@ fn validation_panel() -> gpui::Div {
 
 fn reports_panel() -> gpui::Div {
     orbit::card("")
+        .bg(orbit::tint(0x0010_1114, 0.79))
         .w_full()
         .child(panel_header("Mis reportes", "solo esta sesión", None))
         .child(
@@ -445,8 +478,6 @@ fn reports_panel() -> gpui::Div {
                 .py(px(21.0))
                 .child(
                     div()
-                        .flex()
-                        .items_start()
                         .mt(px(12.0))
                         .bg(linear_gradient(
                             110.0,
@@ -458,18 +489,17 @@ fn reports_panel() -> gpui::Div {
                         .border_1()
                         .border_color(rgba(0xff9b_5721))
                         .rounded(px(14.0))
-                        .child(orbit::text(
-                            "Sin historial",
-                            orbit::SECONDARY,
-                            750,
-                            orbit::BRONZE,
-                        ).line_height(px(18.0)))
-                        .child(orbit::text(
-                            " El servicio de Testing Center no publica el historial de reportes: solo abre, guarda y descarta el borrador en curso. Aquí aparece lo que envíes durante esta sesión.",
-                            orbit::SECONDARY,
-                            400,
-                            orbit::INK_3,
-                        ).line_height(px(18.0)).flex_1().min_w_0()),
+                        .font_family("Inter W400")
+                        .text_size(px(orbit::SECONDARY))
+                        .text_color(rgb(orbit::INK_3))
+                        .line_height(px(18.0))
+                        .child(gpui::StyledText::new(
+                            "Sin historial El servicio de Testing Center no publica el historial de reportes: solo abre, guarda y descarta el borrador en curso. Aquí aparece lo que envíes durante esta sesión.",
+                        ).with_highlights([(0.."Sin historial".len(), gpui::HighlightStyle {
+                            color: Some(rgb(orbit::BRONZE).into()),
+                            font_weight: Some(gpui::FontWeight(750.0)),
+                            ..Default::default()
+                        })])),
                 ),
         )
 }
@@ -490,60 +520,71 @@ impl Render for Testing {
         } else {
             "Borrador local"
         };
-        let status = orbit::chip(
-            status_label,
-            if dirty {
-                orbit::Tone::Warning
+        let status_color = if dirty { orbit::EMBER } else { orbit::GREEN };
+        let status = div()
+            .h(px(30.0))
+            .px(px(13.0))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_full()
+            .border_1()
+            .border_color(orbit::tint(status_color, 0.22))
+            .child(orbit::tracked_text(
+                status_label.to_uppercase(),
+                10.0,
+                800,
+                status_color,
+                0.3,
+            ))
+            .id("testing-draft-status")
+            .role(gpui::Role::Button)
+            .aria_label(if dirty {
+                "Guardar borrador"
             } else {
-                orbit::Tone::Success
-            },
-        )
-        .id("testing-draft-status")
-        .role(gpui::Role::Button)
-        .aria_label(if dirty {
-            "Guardar borrador"
-        } else {
-            "Abrir herramientas de Testing Center"
-        })
-        .tab_stop(true)
-        .cursor_pointer()
-        .on_click(cx.listener(|this, _, _, cx| {
-            if this.remote.read(cx).editor.dirty {
-                this.remote.update(cx, |remote, cx| {
-                    let fields = remote.editor.fields(cx);
-                    remote.report_action(Command::DraftSave { fields }, cx);
-                });
-            } else {
-                this.local_open = !this.local_open;
-                cx.notify();
-            }
-        }));
+                "Abrir herramientas de Testing Center"
+            })
+            .tab_stop(true)
+            .cursor_pointer()
+            .on_click(cx.listener(|this, _, _, cx| {
+                if this.remote.read(cx).editor.dirty {
+                    this.remote.update(cx, |remote, cx| {
+                        let fields = remote.editor.fields(cx);
+                        remote.report_action(Command::DraftSave { fields }, cx);
+                    });
+                } else {
+                    this.local_open = !this.local_open;
+                    cx.notify();
+                }
+            }));
         let mut page = div()
             .id("testing-center")
             .w_full()
             .flex()
             .flex_col()
             .min_w_0()
-            .gap(px(16.0))
             .child(
                 div()
                     .flex()
-                    .items_center()
+                    .items_end()
                     .justify_between()
-                    .child(orbit::text(
-                        "Reporta un comportamiento reproducible o valida una corrección asignada.",
-                        orbit::BODY,
-                        400,
-                        orbit::INK_2,
-                    ))
+                    .gap(px(21.0))
+                    .child(div().flex_1().min_w_0().flex().flex_col()
+                        .child(orbit::eyebrow(self.channel_label.clone()).line_height(px(16.5)))
+                        .child(testing_title().mt(px(6.0)))
+                        .child(orbit::text(
+                            "Reporta un comportamiento reproducible o valida una corrección asignada.",
+                            orbit::BODY, 400, orbit::INK_2,
+                        ).mt(px(7.0)).line_height(px(20.925))))
                     .child(status),
             )
-            .child(self.tabs.clone())
-            .child(div().w_full().mt(px(2.0)).child(content));
+            .child(div().mt(px(16.0)).child(self.tabs.clone()))
+            .child(div().w_full().mt(px(18.0)).child(content));
         if tab != 0 || !self.local_open {
             return page;
         }
-        page = page.child(self.local_tools(cx));
+        page = page.child(div().mt(px(16.0)).child(self.local_tools(cx)));
         page
     }
 }

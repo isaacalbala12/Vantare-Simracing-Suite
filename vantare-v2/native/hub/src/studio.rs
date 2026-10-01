@@ -8,22 +8,174 @@ use crate::{
     },
 };
 use gpui::{
-    Context, Entity, EventEmitter, FocusHandle, IntoElement, MouseButton, MouseMoveEvent, Pixels,
-    Point, Render, Window, div, prelude::*, px, rgb,
+    Context, Entity, EventEmitter, FocusHandle, IntoElement, MouseButton, MouseMoveEvent,
+    PathBuilder, Pixels, Point, Render, Window, div, linear_color_stop, linear_gradient,
+    prelude::*, px, rgb,
 };
 use std::path::PathBuf;
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
+
+const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
+const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
+const SHELL_HEADER_OVERLAP: f32 = 166.0;
+
+fn stage_highlight() -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        |bounds, (), window, _| {
+            // Elipse radial de `overlay-studio-v3.css`: GPUI solo ofrece gradientes lineales.
+            const STEPS: u16 = 48;
+            const KAPPA: f32 = 0.552_284_8;
+            let width = f32::from(bounds.size.width);
+            let height = f32::from(bounds.size.height);
+            let radius_x = width * 0.85 * 0.70;
+            let radius_y = height * 0.75 * 0.70;
+            let center_x = width * 0.14;
+            let center_y = height * 0.13;
+            let mut accumulated_opacity = 0.0;
+            for step in (1..=STEPS).rev() {
+                let fraction = f32::from(step) / f32::from(STEPS);
+                let target_opacity = 0.23 * (1.0 - fraction);
+                let layer_opacity =
+                    (target_opacity - accumulated_opacity) / (1.0 - accumulated_opacity);
+                let rx = radius_x * fraction;
+                let ry = radius_y * fraction;
+                let mut ellipse = PathBuilder::fill();
+                ellipse.move_to(gpui::point(
+                    bounds.origin.x + px(center_x + rx),
+                    bounds.origin.y + px(center_y),
+                ));
+                ellipse.cubic_bezier_to(
+                    gpui::point(
+                        bounds.origin.x + px(center_x),
+                        bounds.origin.y + px(center_y + ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x + rx),
+                        bounds.origin.y + px(center_y + KAPPA * ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x + KAPPA * rx),
+                        bounds.origin.y + px(center_y + ry),
+                    ),
+                );
+                ellipse.cubic_bezier_to(
+                    gpui::point(
+                        bounds.origin.x + px(center_x - rx),
+                        bounds.origin.y + px(center_y),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x - KAPPA * rx),
+                        bounds.origin.y + px(center_y + ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x - rx),
+                        bounds.origin.y + px(center_y + KAPPA * ry),
+                    ),
+                );
+                ellipse.cubic_bezier_to(
+                    gpui::point(
+                        bounds.origin.x + px(center_x),
+                        bounds.origin.y + px(center_y - ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x - rx),
+                        bounds.origin.y + px(center_y - KAPPA * ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x - KAPPA * rx),
+                        bounds.origin.y + px(center_y - ry),
+                    ),
+                );
+                ellipse.cubic_bezier_to(
+                    gpui::point(
+                        bounds.origin.x + px(center_x + rx),
+                        bounds.origin.y + px(center_y),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x + KAPPA * rx),
+                        bounds.origin.y + px(center_y - ry),
+                    ),
+                    gpui::point(
+                        bounds.origin.x + px(center_x + rx),
+                        bounds.origin.y + px(center_y - KAPPA * ry),
+                    ),
+                );
+                ellipse.close();
+                if let Ok(ellipse) = ellipse.build() {
+                    window.paint_path(ellipse, rgb(orbit::CARMINE).opacity(layer_opacity));
+                }
+                accumulated_opacity = target_opacity;
+            }
+        },
+    )
+    .absolute()
+    .top_0()
+    .right_0()
+    .bottom_0()
+    .left_0()
+}
+
+fn disabled_toolbar_control(
+    id: &'static str,
+    label: &'static str,
+    width: f32,
+) -> gpui::Stateful<gpui::Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .tab_stop(false)
+        .w(px(width))
+        .h(px(32.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(8.0))
+        .border_1()
+        .border_color(gpui::rgba(orbit::LINE))
+        .bg(rgb(orbit::SURFACE_2))
+        .opacity(orbit::DISABLED)
+        .child(orbit::text(label, 13.0, 500, orbit::INK_2))
+}
 
 pub struct Prepared {
     editor: Editor,
 }
 impl Prepared {
     pub fn load(path: PathBuf) -> Result<Self, String> {
-        Ok(Self {
-            editor: Editor::open(path)?,
-        })
+        #[cfg(feature = "parity-capture")]
+        let mut editor = Editor::open(path)?;
+        #[cfg(not(feature = "parity-capture"))]
+        let editor = Editor::open(path)?;
+        #[cfg(feature = "parity-capture")]
+        if studio_demo_capture() && editor.layout().instances.is_empty() {
+            // Mismo documento por defecto que `hub-profile-mock-state.ts`; usa los Settings y Overlay nativos.
+            for (kind, x, y) in [
+                (Kind::Delta, 760.0, 40.0),
+                (Kind::Relative, 40.0, 600.0),
+                (Kind::Standings, 1560.0, 40.0),
+            ] {
+                editor.add(kind)?;
+                editor.edit_selected(|item| {
+                    item.x = x;
+                    item.y = y;
+                })?;
+            }
+            editor.selected = None;
+        }
+        Ok(Self { editor })
     }
+}
+
+#[cfg(feature = "parity-capture")]
+fn studio_demo_capture() -> bool {
+    let args: Vec<_> = std::env::args().collect();
+    args.iter().any(|arg| arg == "--demo")
+        && args
+            .windows(2)
+            .any(|pair| pair[0] == "--capture" && pair[1] == "studio-base")
 }
 pub struct Studio {
     editor: Editor,
@@ -70,15 +222,22 @@ struct Drag {
     pointer: (f32, f32),
     origin: (f32, f32),
     preview: (f32, f32),
+    scale: f32,
 }
 impl Drag {
     fn update(&mut self, pointer: (f32, f32)) -> bool {
-        if !pointer.0.is_finite() || !pointer.1.is_finite() {
+        if !pointer.0.is_finite()
+            || !pointer.1.is_finite()
+            || !self.scale.is_finite()
+            || self.scale <= 0.0
+        {
             return false;
         }
         self.preview = (
-            (self.origin.0 + pointer.0 - self.pointer.0).clamp(-100_000.0, 100_000.0),
-            (self.origin.1 + pointer.1 - self.pointer.1).clamp(-100_000.0, 100_000.0),
+            (self.origin.0 + (pointer.0 - self.pointer.0) / self.scale)
+                .clamp(-100_000.0, 100_000.0),
+            (self.origin.1 + (pointer.1 - self.pointer.1) / self.scale)
+                .clamp(-100_000.0, 100_000.0),
         );
         true
     }
@@ -89,6 +248,7 @@ struct Started(Point<Pixels>);
 struct CanvasFrame {
     item: Instance,
     renderer: Entity<Overlay>,
+    preview_scale: f32,
     selected: bool,
     focus: FocusHandle,
     drag: Option<Drag>,
@@ -104,10 +264,11 @@ impl Render for CanvasFrame {
         div()
             .id("widget-frame")
             .absolute()
-            .left(px(x))
-            .top(px(y))
-            .w(px(dimensions.0))
-            .h(px(dimensions.1))
+            .left(px(x * self.preview_scale))
+            .top(px(y * self.preview_scale))
+            .w(px(dimensions.0 * self.preview_scale))
+            .h(px(dimensions.1 * self.preview_scale))
+            .overflow_hidden()
             .opacity(self.item.opacity)
             .when(self.selected, |s| {
                 s.border_1().border_color(rgb(orbit::CARMINE))
@@ -185,6 +346,7 @@ impl Studio {
             let frame = cx.new(|_| CanvasFrame {
                 item: item.clone(),
                 renderer,
+                preview_scale: STUDIO_PREVIEW_SCALE,
                 focus: self.focus.clone(),
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
@@ -197,6 +359,7 @@ impl Studio {
                         pointer: (event.0.x.into(), event.0.y.into()),
                         origin: (frame.item.x, frame.item.y),
                         preview: (frame.item.x, frame.item.y),
+                        scale: frame.preview_scale,
                     });
                     cx.notify();
                 });
@@ -599,39 +762,136 @@ impl Studio {
                 })),
             )
     }
-    fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn toolbar_background_control() -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("studio-background")
+            .role(gpui::Role::Button)
+            .aria_label("Tema actual · pendiente")
+            .tab_stop(false)
+            .h(px(32.0))
+            .w(px(158.0))
+            .px(px(10.0))
+            .flex()
+            .items_center()
+            .justify_between()
+            .rounded(px(8.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .bg(rgb(orbit::SURFACE_2))
+            .opacity(orbit::DISABLED)
+            .child(orbit::text("Tema actual", 13.0, 500, orbit::INK_2))
+            .child(orbit::text("⌄", 12.0, 500, orbit::INK_3))
+    }
+
+    fn toolbar_preview_mode() -> gpui::Div {
         div()
             .flex()
-            .flex_wrap()
             .items_center()
-            .gap(px(orbit::RADIUS_CHIP))
+            .gap(px(2.0))
+            .p(px(4.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .bg(rgb(orbit::SURFACE_1))
             .child(
-                button("undo", "Deshacer")
-                    .tab_stop(self.editor.can_undo())
-                    .when(!self.editor.can_undo(), |s| s.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| this.history(false, cx))),
+                div()
+                    .h(px(32.0))
+                    .px(px(12.0))
+                    .flex()
+                    .items_center()
+                    .rounded(px(8.0))
+                    .bg(rgb(0x0033_171c))
+                    .border_1()
+                    .border_color(rgb(orbit::CARMINE_DARK))
+                    .child(orbit::text("Mock", 12.0, 500, orbit::INK)),
             )
             .child(
-                button("redo", "Rehacer")
-                    .tab_stop(self.editor.can_redo())
-                    .when(!self.editor.can_redo(), |s| s.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| this.history(true, cx))),
+                div()
+                    .h(px(32.0))
+                    .px(px(12.0))
+                    .flex()
+                    .items_center()
+                    .opacity(orbit::DISABLED)
+                    .child(orbit::text("Live", 12.0, 500, orbit::INK_3)),
             )
+    }
+
+    fn toolbar_inspector_button(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("studio-inspector")
+            .role(gpui::Role::Button)
+            .aria_label("Inspector")
+            .aria_selected(self.inspector_open)
+            .tab_stop(false)
+            .h(px(32.0))
+            .w(px(32.0))
+            .px(px(0.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(8.0))
+            .when(self.inspector_open, |button| {
+                button
+                    .bg(rgb(0x0030_171b))
+                    .border_1()
+                    .border_color(rgb(orbit::CARMINE_DARK))
+            })
+            .child(orbit::text("▣", 14.0, 500, orbit::INK))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.inspector_open = !this.inspector_open;
+                cx.notify();
+            }))
+    }
+
+    fn toolbar_zoom_out_control() -> gpui::Div {
+        div()
+            .size(px(28.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .opacity(orbit::DISABLED)
+            .child(orbit::text("−", 14.0, 500, orbit::INK_3))
+    }
+
+    fn toolbar_zoom_label() -> gpui::Div {
+        orbit::text("Ajustar", 11.0, 500, orbit::INK_3).w(px(60.0))
+    }
+
+    fn toolbar_zoom_in_control() -> gpui::Div {
+        div()
+            .size(px(28.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .opacity(orbit::DISABLED)
+            .child(orbit::text("+", 14.0, 500, orbit::INK_3))
+    }
+
+    fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .h(px(60.0))
+            .flex_none()
+            .px(px(12.0))
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .border_b_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .child(Self::toolbar_background_control())
             .child(
-                button("studio-reload", "Recargar").on_click(cx.listener(|this, _, _, cx| {
-                    this.reset_fields();
-                    this.edit(Editor::reload, cx);
-                })),
+                disabled_toolbar_control("studio-background-image", "▧", 32.0)
+                    .aria_label("Imagen de fondo · pendiente"),
             )
+            .child(Self::toolbar_preview_mode())
             .child(
-                button("studio-inspector", "Inspector")
-                    .aria_selected(self.inspector_open)
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.inspector_open = !this.inspector_open;
-                        cx.notify();
-                    })),
+                disabled_toolbar_control("studio-fullscreen", "⛶", 32.0)
+                    .aria_label("Pantalla completa · pendiente"),
             )
-            .child(orbit::chip("Ajustar · pendiente", orbit::Tone::Neutral))
+            .child(self.toolbar_inspector_button(cx))
+            .child(div().flex_1())
+            .child(Self::toolbar_zoom_out_control())
+            .child(Self::toolbar_zoom_label())
+            .child(Self::toolbar_zoom_in_control())
     }
     fn color_settings(&self, mut panel: gpui::Div, cx: &mut Context<Self>) -> gpui::Div {
         if self.active_tab == Tab::Appearance
@@ -786,7 +1046,12 @@ impl Studio {
         panel
     }
     fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut panel = orbit::card_body();
+        let mut panel = div()
+            .flex()
+            .flex_col()
+            .gap(px(16.0))
+            .px(px(16.0))
+            .py(px(20.0));
         if let Some(item) = self.editor.selected() {
             panel = panel
                 .child(orbit::eyebrow(format!(
@@ -823,37 +1088,180 @@ impl Studio {
                     },
                 )));
         } else {
-            panel = panel.child(orbit::empty_state(
-                "Selecciona un widget",
+            panel = panel.child(orbit::text(
                 "Selecciona un widget para editar sus propiedades.",
+                13.0,
+                400,
+                orbit::INK_3,
             ));
         }
         panel.child(orbit::eyebrow("OBS"))
             .child(orbit::text("Pega esta URL en una fuente «Navegador» de OBS Studio para emitir el overlay que estás editando.", orbit::SECONDARY, 400, orbit::INK_3))
-            .child(orbit::list_row("obs-pending", "Copiar URL · pendiente", "El servicio de salida OBS no tiene contrato nativo.", false, false))
+            .child(
+                div()
+                    .h(px(39.0))
+                    .px(px(12.0))
+                    .flex()
+                    .items_center()
+                    .rounded(px(orbit::RADIUS_CONTROL))
+                    .border_1()
+                    .border_color(gpui::rgba(orbit::LINE))
+                    .bg(rgb(orbit::SURFACE_2))
+                    .opacity(orbit::DISABLED),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::primary_button("copy-obs-url", "Copiar URL")
+                            .h(px(35.0))
+                            .px(px(12.0))
+                            .tab_stop(false)
+                            .opacity(orbit::DISABLED),
+                    )
+                    .child(
+                        button("copy-obs-instructions", "Copiar instrucciones")
+                            .h(px(35.0))
+                            .px(px(12.0))
+                            .tab_stop(false)
+                            .opacity(orbit::DISABLED),
+                    ),
+            )
     }
 }
-impl Render for Studio {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.init_controls(window, cx);
+impl Studio {
+    fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut stage = div()
             .relative()
-            .w(px(1920.0))
-            .h(px(1080.0))
-            .bg(rgb(orbit::CANVAS));
+            .w(px(700.0))
+            .h(px(395.0))
+            .flex_none()
+            .overflow_hidden()
+            .rounded(px(16.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE_STRONG))
+            .bg(linear_gradient(
+                140.0,
+                linear_color_stop(rgb(orbit::SURFACE_2), 0.0),
+                linear_color_stop(rgb(orbit::CANVAS), 1.0),
+            ));
+        stage = stage.child(stage_highlight());
         for (_, frame) in &self.frames {
             if frame.read(cx).item.visible {
                 stage = stage.child(frame.clone());
             }
         }
+        stage.child(
+            orbit::text("1920 × 1080", 10.0, 500, orbit::INK_3)
+                .absolute()
+                .top(px(14.0))
+                .right(px(14.0)),
+        )
+    }
+
+    fn preview_footer(&self) -> gpui::Div {
+        let count = self.editor.layout().instances.len();
+        div()
+            .h(px(40.0))
+            .flex_none()
+            .px(px(42.0))
+            .flex()
+            .items_center()
+            .justify_between()
+            .border_t_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .child(
+                orbit::text("Lienzo · 1920×1080", 11.0, 500, orbit::INK_3)
+                    .font_family("Cascadia Code"),
+            )
+            .child(
+                orbit::text(
+                    format!(
+                        "{count} widgets · {} seleccionado",
+                        usize::from(self.editor.selected().is_some())
+                    ),
+                    11.0,
+                    500,
+                    orbit::INK_3,
+                )
+                .font_family("Cascadia Code"),
+            )
+    }
+
+    fn editor_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.init_controls(window, cx);
+        let stage = self.preview_stage(cx);
+        let canvas = div()
+            .id("studio-canvas")
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .overflow_hidden()
+            .bg(rgb(0x000b_0c0f))
+            .child(stage);
+        let left = div()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .child(self.toolbar(cx))
+            .child(canvas)
+            .child(self.preview_footer());
+        let mut workspace = div()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .flex()
+            .bg(rgb(orbit::CANVAS))
+            .child(left);
+        if self.inspector_open {
+            workspace = workspace.child(
+                div()
+                    .w(px(320.0))
+                    .h_full()
+                    .flex_none()
+                    .flex()
+                    .flex_col()
+                    .bg(rgb(orbit::SURFACE_1))
+                    .border_l_1()
+                    .border_color(gpui::rgba(orbit::LINE))
+                    .child(
+                        div()
+                            .id("studio-inspector-scroll")
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_y_scroll()
+                            .child(self.inspector(cx)),
+                    ),
+            );
+        }
+        workspace
+    }
+}
+
+impl Render for Studio {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let workspace = self.editor_workspace(window, cx);
         div()
             .id("studio")
+            .min_h(px(HUB_CONTENT_MIN_HEIGHT))
+            .mt(px(-SHELL_HEADER_OVERLAP))
+            .mx(px(-32.0))
+            .flex_1()
             .track_focus(&self.focus)
             .tab_group()
             .min_w_0()
             .flex()
             .flex_col()
-            .gap(px(orbit::RADIUS_CHIP))
+            .overflow_hidden()
+            .bg(rgb(orbit::CANVAS))
             .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(
                 MouseButton::Left,
@@ -868,66 +1276,21 @@ impl Render for Studio {
                 }),
             )
             .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
-                if event.keystroke.key == "escape" && this.drag.is_some() {
+                let key = &event.keystroke;
+                if key.key == "escape" && this.drag.is_some() {
                     this.cancel_drag(cx);
                     cx.stop_propagation();
+                } else if key.modifiers.control || key.modifiers.platform {
+                    if key.key.eq_ignore_ascii_case("z") {
+                        this.history(key.modifiers.shift, cx);
+                        cx.stop_propagation();
+                    } else if key.key.eq_ignore_ascii_case("y") {
+                        this.history(true, cx);
+                        cx.stop_propagation();
+                    }
                 }
             }))
-            .child(self.toolbar(cx))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(orbit::RADIUS_CHIP))
-                    .child(orbit::chip(&self.status, orbit::Tone::Neutral))
-                    .child(orbit::chip("Mock / Live · pendiente", orbit::Tone::Neutral)),
-            )
-            .child(
-                div()
-                    .flex()
-                    .min_w_0()
-                    .gap(px(orbit::RADIUS_CHIP))
-                    .child(
-                        orbit::card("Lienzo · 1920×1080")
-                            .flex_1()
-                            .min_w_0()
-                            .child(
-                                div()
-                                    .id("studio-canvas")
-                                    .h(px(470.0))
-                                    .overflow_scroll()
-                                    .child(stage),
-                            )
-                            .child(orbit::card_body().child(orbit::text(
-                                format!(
-                                    "{} widgets · {} seleccionado",
-                                    self.editor.layout().instances.len(),
-                                    usize::from(self.editor.selected().is_some())
-                                ),
-                                orbit::SECONDARY,
-                                400,
-                                orbit::INK_3,
-                            ))),
-                    )
-                    .when(self.inspector_open, |body| {
-                        body.child(
-                            orbit::card("Inspector")
-                                .w(px(if self.editor.selected().is_some() {
-                                    orbit::COLUMN_W + orbit::FIELD_W
-                                } else {
-                                    orbit::COLUMN_W
-                                }))
-                                .flex_shrink_0()
-                                .child(
-                                    div()
-                                        .id("studio-inspector-scroll")
-                                        .h(px(540.0))
-                                        .overflow_y_scroll()
-                                        .child(self.inspector(cx)),
-                                ),
-                        )
-                    }),
-            )
+            .child(workspace)
     }
 }
 #[cfg(test)]
@@ -943,6 +1306,7 @@ mod tests {
             pointer: (100.0, 200.0),
             origin: (20.0, 20.0),
             preview: (20.0, 20.0),
+            scale: 1.0,
         };
         assert!(drag.update((100.0, 200.0)));
         assert_eq!(drag.preview, (20.0, 20.0));
@@ -968,6 +1332,7 @@ mod tests {
             pointer: (12.0, 8.0),
             origin: (-200.0, 20.0),
             preview: (-200.0, 20.0),
+            scale: 1.0,
         };
         assert!(drag.update((-20.0, 40.0)));
         assert_eq!(drag.preview, (-232.0, 52.0));
@@ -977,5 +1342,17 @@ mod tests {
         assert_eq!(drag.preview, valid);
         assert!(drag.update((1_000_000.0, -1_000_000.0)));
         assert_eq!(drag.preview, (100_000.0, -100_000.0));
+    }
+
+    #[test]
+    fn fitted_canvas_drag_maps_pointer_deltas_to_document_space() {
+        let mut drag = Drag {
+            pointer: (20.0, 20.0),
+            origin: (760.0, 40.0),
+            preview: (760.0, 40.0),
+            scale: 0.5,
+        };
+        assert!(drag.update((30.0, 25.0)));
+        assert_eq!(drag.preview, (780.0, 50.0));
     }
 }

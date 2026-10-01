@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for snapshot in snapshots {
         sender.send(Arc::new(snapshot))?;
     }
-    vantare_ui::run_layout(layout, receiver, Default::default())?;
+    vantare_ui::run_layout_with_rights(layout, receiver, None)?;
     drop(sender);
     Ok(())
 }

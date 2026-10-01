@@ -88,7 +88,7 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
 }
 
 #[cfg(windows)]
-pub(super) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
+pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     use std::{
         io::{BufReader, Read},
         os::windows::process::CommandExt,
@@ -170,6 +170,6 @@ pub(super) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 #[cfg(not(windows))]
-pub(super) fn resolve(_links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
+pub(crate) fn resolve(_links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     Ok(Vec::new())
 }

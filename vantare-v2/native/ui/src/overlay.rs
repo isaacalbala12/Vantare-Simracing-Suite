@@ -9,6 +9,7 @@ use gpui::Window;
 
 pub(crate) type Hwnd = isize;
 
+#[cfg(windows)]
 pub(crate) mod ffi {
     use super::Hwnd;
 
@@ -58,6 +59,7 @@ pub(crate) mod ffi {
 }
 
 /// HWND de la ventana GPUI.
+#[cfg(windows)]
 pub fn hwnd_of(window: &Window) -> Option<Hwnd> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     match HasWindowHandle::window_handle(window).ok()?.as_raw() {
@@ -71,6 +73,7 @@ pub fn hwnd_of(window: &Window) -> Option<Hwnd> {
 /// deja el área cliente 4 px por encima de lo pedido, así que se fija aquí. Los
 /// fallos de las llamadas Win32 no se propagan: el overlay sigue siendo usable
 /// (solo perdería una de las propiedades).
+#[cfg(windows)]
 pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
     const GWL_STYLE: i32 = -16;
     const GWL_EXSTYLE: i32 = -20;
@@ -131,3 +134,12 @@ pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, (&raw const no_border).cast(), 4);
     }
 }
+
+// En Unix son ventanas de desarrollo normales: no prometemos overlays sobre
+// juegos/OBS ni reproducimos las propiedades Win32.
+#[cfg(unix)]
+pub fn hwnd_of(_window: &Window) -> Option<Hwnd> {
+    None
+}
+#[cfg(unix)]
+pub fn apply(_hwnd: Hwnd, _origin: (i32, i32)) {}

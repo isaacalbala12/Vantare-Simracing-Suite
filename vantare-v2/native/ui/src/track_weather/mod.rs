@@ -174,6 +174,14 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::Weather;
+        crate::demand::signals(500, &[Weather])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -217,7 +217,7 @@ impl Hub {
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
-                .update(cx, |remote, cx| remote.roadmap(cx))
+                .update(cx, super::services::view::Remote::roadmap)
                 .into_any_element(),
         }
     }
@@ -432,7 +432,7 @@ fn prepare_analysis(options: &Options) -> Result<Analysis, String> {
         .unwrap_or_else(|| options.data_dir.join("recordings"));
     let storage_exe = std::env::current_exe()
         .map_err(|error| format!("ruta del Hub: {error}"))?
-        .with_file_name("vantare-storage.exe");
+        .with_file_name(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
     Ok(Analysis::new(recordings, storage_exe))
 }
 

@@ -1,10 +1,13 @@
 use super::*;
+#[cfg(windows)]
 use chain::{Chain, Status};
 use discovery::{Discovery, Sources};
+#[cfg(windows)]
+use std::time::{Duration, Instant};
 use std::{
     fs,
+    path::Path,
     sync::atomic::{AtomicU64, Ordering},
-    time::{Duration, Instant},
 };
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -633,6 +636,16 @@ fn collect(chain: &Chain) -> Vec<chain::Progress> {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn system_discovery_is_empty_on_unix() {
+    let sources = Sources::system();
+    assert!(sources.known_paths.is_empty());
+    assert!(sources.registry.is_empty());
+    assert!(sources.steam_roots.is_empty());
+    assert!(sources.warnings.is_empty());
+}
+
 #[cfg(windows)]
 #[test]
 fn retry_policies_distinguish_failed_steps_whole_chain_and_ask() {
@@ -799,7 +812,7 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
     }
     for close in [
         policy::Close::Leave,
-        policy::Close::CloseStarted,
+        policy::Close::Started,
         policy::Close::Ask,
     ] {
         let tree = Tree::new();
@@ -889,7 +902,7 @@ fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child()
     document.apps.last_mut().expect("app").args = args.iter().map(|v| (*v).into()).collect();
     profile.policy = Some(policy::Policy {
         already_running: policy::Running::Restart,
-        cancel: policy::Close::CloseStarted,
+        cancel: policy::Close::Started,
         ..Default::default()
     });
     let mut chain = Chain::start_with_processes(document, profile, found, shared.clone())

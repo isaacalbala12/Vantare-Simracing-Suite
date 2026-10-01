@@ -80,6 +80,7 @@ impl Translator {
 
     /// El estado publicado dejaría de coincidir con la realidad aunque el
     /// frame no cambie (el reloj del simulador se ha parado o ha vuelto).
+    #[cfg(any(windows, test))]
     pub(super) fn needs_refresh(&self, now: Duration) -> bool {
         self.gate.is_stale_at(now) != self.emitted_stale
             || (self.last_inputs.is_some()

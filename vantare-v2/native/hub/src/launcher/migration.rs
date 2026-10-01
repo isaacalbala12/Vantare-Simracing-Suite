@@ -1,6 +1,6 @@
 //! Lectura Wails acotada; solo se archivan claves Launcher, nunca otros ajustes.
+use super::files;
 use super::{App, CATALOG, Document, Profile, Step, is_local_path, policy::Policy};
-use crate::files;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -69,7 +69,7 @@ pub fn source() -> Result<Option<PathBuf>, String> {
     source_in(&directories)
 }
 
-pub(super) fn source_in(directories: &[PathBuf]) -> Result<Option<PathBuf>, String> {
+pub(crate) fn source_in(directories: &[PathBuf]) -> Result<Option<PathBuf>, String> {
     for directory in directories {
         if !is_local_path(directory) {
             return Err("la configuración Wails debe estar en disco local".into());
@@ -223,7 +223,7 @@ fn import_profiles(
 }
 
 /// Tokenización del contrato Go parseWindowsArgs; nunca se invoca un shell.
-pub(super) fn parse_args(raw: &str) -> Result<Vec<String>, String> {
+pub(crate) fn parse_args(raw: &str) -> Result<Vec<String>, String> {
     if raw.contains('\0') {
         return Err("argumentos Wails con NUL".into());
     }

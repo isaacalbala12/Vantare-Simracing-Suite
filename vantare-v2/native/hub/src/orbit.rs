@@ -119,6 +119,7 @@ pub const LINE_ROW: u32 = 0xffff_ff0b;
 pub const COLUMN_W: f32 = 296.0;
 pub const TOPBAR_H: f32 = 70.0;
 pub const GUTTER: f32 = 32.0;
+pub const TOPBAR_GUTTER: f32 = 26.0;
 pub const RADIUS: f32 = 18.0;
 pub const RADIUS_CONTROL: f32 = 12.0;
 pub const CONTROL_H: f32 = 39.0;
@@ -144,12 +145,12 @@ pub fn palette_item(index: usize, active: bool) -> Stateful<Div> {
         .role(gpui::Role::ListBoxOption)
         .tab_stop(false)
         .aria_selected(active)
-        .mx(px(8.0))
+        .mx(px(0.0))
         .px(px(12.0))
-        .h(px(49.0))
+        .py(px(9.0))
         .flex()
         .items_center()
-        .gap(px(12.0))
+        .gap(px(13.0))
         .rounded(px(RADIUS_CONTROL))
         .cursor_pointer()
         .when(active, |row| {
@@ -204,13 +205,13 @@ pub fn rail_button(
         })
         .child(icon(
             name,
-            23.0,
+            if id == "notifications" { 16.0 } else { 23.0 },
             if locked.is_some() {
                 INK_MUTED
             } else if active {
                 INK
             } else {
-                INK_3
+                INK_4
             },
         ))
         .when(locked.is_some(), |s| {
@@ -249,7 +250,7 @@ pub fn column_width(viewport: f32) -> f32 {
 }
 
 /// Respaldo de avatar de Wails para una cuenta sin nombre/foto: punto medio.
-pub fn avatar(active: bool) -> Stateful<Div> {
+pub fn avatar(active: bool, initial: &str) -> Stateful<Div> {
     div()
         .id("account")
         .role(gpui::Role::Button)
@@ -265,7 +266,14 @@ pub fn avatar(active: bool) -> Stateful<Div> {
         .cursor_pointer()
         .hover(|s| s.bg(rgb(SURFACE_2)))
         .focus_visible(|s| s.border_1().border_color(rgb(CARMINE)))
-        .child(text("·", 12.0, 800, INK))
+        .shadow(vec![gpui::BoxShadow {
+            color: rgba(0x0000_0059).into(),
+            offset: gpui::point(px(0.0), px(9.0)),
+            blur_radius: px(23.0),
+            spread_radius: px(0.0),
+            inset: false,
+        }])
+        .child(text(initial.to_owned(), 12.0, 850, WHITE))
         .tooltip(|_, cx| cx.new(|_| Tooltip("Cuenta · sin sesión".into())).into())
 }
 
@@ -273,7 +281,7 @@ fn weight(w: u16) -> SharedString {
     format!("Inter W{w}").into()
 }
 
-fn tint(color: u32, alpha: f32) -> Hsla {
+pub fn tint(color: u32, alpha: f32) -> Hsla {
     let mut c: Hsla = rgb(color).into();
     c.a = alpha;
     c
@@ -289,41 +297,77 @@ pub fn text(content: impl Into<SharedString>, size: f32, w: u16, color: u32) -> 
         .child(content.into())
 }
 
+pub fn tracked_text(
+    content: impl Into<SharedString>,
+    size: f32,
+    w: u16,
+    color: u32,
+    tracking: f32,
+) -> Div {
+    let content: SharedString = content.into();
+    div().flex().gap(px(tracking)).children(
+        content
+            .chars()
+            .map(|character| text(character.to_string(), size, w, color).flex_none()),
+    )
+}
+
+pub fn mono_text(content: impl Into<SharedString>, size: f32, color: u32) -> Div {
+    div()
+        .text_size(px(size))
+        .font_family("Cascadia Code")
+        .font_weight(FontWeight(400.0))
+        .text_color(rgb(color))
+        .child(content.into())
+}
+
 /// Rótulo en mayúsculas espaciadas (`--orbit-fs-eyebrow`).
 pub fn eyebrow(content: impl Into<SharedString>) -> Div {
     let upper: SharedString = content.into().to_uppercase().into();
-    text(upper, 11.0, 700, INK_3)
+    tracked_text(upper, 11.0, 800, INK_3, 0.99)
 }
 
 /// Columna de contexto: título con versión y lista de secciones.
 pub fn column(title: &str, version: &str) -> Div {
+    column_with_collapse(
+        title,
+        version,
+        div()
+            .size(px(26.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(text("‹", 20.0, 400, INK_3)),
+    )
+}
+
+pub fn column_with_collapse(title: &str, version: &str, collapse: impl IntoElement) -> Div {
     div()
         .w(px(COLUMN_W))
         .h_full()
         .flex_none()
         .flex()
         .flex_col()
+        .pt(px(18.0))
+        .px(px(14.0))
+        .pb(px(16.0))
         .bg(rgb(COLUMN_BG))
         .border_r_1()
         .border_color(rgba(LINE))
         .child(
             div()
-                .h(px(TOPBAR_H))
-                .px(px(24.0))
+                .h(px(49.0))
+                .flex_none()
+                .px(px(9.0))
+                .pb(px(16.0))
                 .flex()
                 .items_center()
-                .justify_between()
+                .gap(px(12.0))
                 .border_b_1()
-                .border_color(rgba(LINE))
-                .child(text(title.to_owned(), 15.0, 700, INK))
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(div().size(px(6.0)).rounded_full().bg(rgb(GREEN)))
-                        .child(text(version.to_owned(), 11.0, 500, INK_3)),
-                ),
+                .border_color(rgba(LINE_ROW))
+                .child(text(title.to_owned(), 14.0, 700, INK).flex_1().min_w_0())
+                .child(mono_text(version.to_owned(), 11.0, INK_4))
+                .child(collapse),
         )
 }
 
@@ -364,7 +408,7 @@ pub fn topbar(trail: &str, title: &str, action: impl IntoElement) -> Div {
     div()
         .h(px(TOPBAR_H))
         .flex_none()
-        .px(px(GUTTER))
+        .px(px(TOPBAR_GUTTER))
         .flex()
         .items_center()
         .justify_between()
@@ -375,9 +419,9 @@ pub fn topbar(trail: &str, title: &str, action: impl IntoElement) -> Div {
                 .flex()
                 .items_center()
                 .gap(px(10.0))
-                .child(eyebrow(trail.to_owned()))
+                .child(tracked_text(trail.to_uppercase(), 10.5, 800, INK_4, 1.155))
                 .child(text("/", 12.0, 400, INK_MUTED))
-                .child(text(title.to_owned(), 16.0, 700, INK)),
+                .child(text(title.to_owned(), 16.0, 650, INK)),
         )
         .child(action)
 }

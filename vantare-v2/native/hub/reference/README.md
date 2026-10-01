@@ -48,7 +48,8 @@ En el directorio del checkout ejecuta:
 El script compila `vantare-hub` con `parity-capture` y `-j 2`, captura el área
 cliente a 1440 × 900 y DPI 96 (100 %), compara RGBA con umbral 8 por canal
 mediante `native/ui/diff.py`, y deja candidatos, mapas y la tabla ordenada de
-mayor a menor diferencia en `C:/tmp/hub-banco-evidence/`. El modo
+mayor a menor diferencia en `C:/tmp/hub-banco-evidence/` (o en
+`$env:VANTARE_PARITY_OUT` si está definida, para ejecuciones simultáneas). El modo
 `-VerificarDeterminismo` repite `inicio-base` y exige SHA256 idénticos.
 `--capture` usa una raíz temporal exclusiva y no carga los archivos de usuario.
 El helper espera `C:/tmp/fase2/pantalla-ocupada` antes de abrir la ventana y

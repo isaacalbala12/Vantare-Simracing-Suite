@@ -5,6 +5,24 @@ use serde::{Deserialize, Serialize};
 
 use super::solver::{self, Input, SolverOutcome};
 
+mod automatic;
+mod corrections;
+mod editing;
+pub mod repository;
+pub use automatic::{
+    AutomaticPreparation, AutomaticPreparationStatus, ClimateBucket, ProjectionFamily,
+    ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,
+};
+pub use corrections::{
+    AnalysisConfidence, AnalysisProvenance, AnalysisValidity, ContinuousCoverage, CorrectionFamily,
+    CorrectionSource, CoverageGap, FamilyCorrectionRequest, FamilyCorrectionTarget, FamilyUse,
+    GoTimestamp, LapExclusionReason, PreparedFamilyCorrection, SourceAnalysisRef,
+    TemporalLapBoundary, TemporalSegmentsV1, TemporalStintBoundary, TemporalTrackLocation,
+    ValidityLap, apply_family_corrections, continue_with_analysis_revision,
+    prepare_family_corrections,
+};
+pub use editing::{EditedPlan, recalculate_edited_plan};
+
 #[derive(Clone, Debug)]
 pub struct PreparedCalculation {
     input: Input,

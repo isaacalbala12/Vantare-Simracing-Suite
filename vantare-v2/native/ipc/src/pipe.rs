@@ -170,7 +170,7 @@ impl Pipe {
     }
 
     #[cfg(test)]
-    pub fn set_timeout(&mut self, timeout: Duration) {
+    fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }
 

@@ -4,11 +4,14 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 use gpui::{
-    Context, Entity, IntoElement, Render, RenderImage, Window, div, img, prelude::*, px, rgb,
+    Context, Entity, IntoElement, Render, RenderImage, Window, div, img, prelude::*, px, rgb, rgba,
 };
 use serde::{Deserialize, Serialize};
 use vantare_domain::format::Preferences;
-use vantare_ui::{Kind, Overlay};
+use vantare_ui::{
+    Kind, Overlay, Settings as WidgetSettings,
+    standings::{model::PIT_RAIL_WIDTH, options::ColumnSetting},
+};
 
 use crate::{
     comparison::{self, Comparison},
@@ -78,6 +81,30 @@ fn restarts_renderer(previous: (u64, u64), next: (u64, u64)) -> bool {
     previous.0 != next.0 || next.1 < previous.1
 }
 
+fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
+    let mut settings = WidgetSettings::default_for(kind);
+    if let WidgetSettings::Standings(standings) = &mut settings {
+        let column = |id: &str, metric_id: &str, width_preset: &str| ColumnSetting {
+            id: id.into(),
+            metric_id: metric_id.into(),
+            width_preset: width_preset.into(),
+            ..ColumnSetting::default()
+        };
+        // El golden Wails muestra siete filas y esta misma selección de columnas.
+        standings.row_count = 7;
+        standings.class_scope = "all-classes".into();
+        standings.classification_mode = "normal".into();
+        standings.columns = Some(vec![
+            column("position", "position", "sm"),
+            column("driverName", "driverName", "lg"),
+            column("gap", "gap", "md"),
+            column("lastLap", "lastLap", "lg"),
+            column("pit", "pit", "auto"),
+        ]);
+    }
+    Overlay::configured(&settings, prefs)
+}
+
 pub struct Prepared {
     scene: Scene,
     kind: Kind,
@@ -113,7 +140,8 @@ impl Prepared {
         let explicit_scene = initial.is_some();
         let path = initial
             .or_else(|| selection.as_ref().map(|s| s.scene.clone()))
-            .unwrap_or_else(|| Path::new(scene::FIXTURES).join("lmu47.snapshot.json"));
+            // El estudio Wails abre Standings por defecto; usar su fixture nativo.
+            .unwrap_or_else(|| Path::new(scene::FIXTURES).join("standings.snapshot.json"));
         let mut scene = Scene::open(path)?;
         if let Some(selection) = &selection {
             if !explicit_scene {
@@ -164,7 +192,7 @@ impl Workshop {
             background,
         } = prepared;
         let overlay = cx.new(|cx| {
-            let mut overlay = Overlay::new(kind, prefs);
+            let mut overlay = workshop_overlay(kind, prefs);
             overlay.ingest(scene.snapshot(), cx);
             overlay
         });
@@ -218,7 +246,7 @@ impl Workshop {
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.rendered_photo = (self.scene.snapshot().epoch, self.scene.snapshot().sequence);
         self.overlay = cx.new(|cx| {
-            let mut overlay = Overlay::new(self.kind, self.prefs);
+            let mut overlay = workshop_overlay(self.kind, self.prefs);
             overlay.ingest(self.scene.snapshot(), cx);
             overlay
         });
@@ -628,24 +656,136 @@ impl Workshop {
             }
         }
     }
+
+    /// Panel lateral para la integración del shell; la vista central queda
+    /// reservada al escenario de autoría.
+    pub fn context_column(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let backgrounds = [orbit::CANVAS, orbit::SURFACE_3, orbit::INK];
+        div()
+            .id("workshop-context")
+            .flex()
+            .flex_col()
+            .gap(px(orbit::RADIUS))
+            .w(px(orbit::COLUMN_W))
+            .h_full()
+            .overflow_y_scroll()
+            .child(self.toolbar(cx))
+            .child(self.playback(cx))
+            .child(orbit::callout(
+                self.scene.error.clone().unwrap_or_else(|| self.status.clone()),
+            ))
+            .child(self.catalog(cx))
+            .child(
+                orbit::card("Vista previa · renderer productivo")
+                    .child(orbit::card_body().child(orbit::text(
+                        format!("Vista actual: {:?} / {:?}", self.prefs.language, self.prefs.units),
+                        12.0,
+                        400,
+                        orbit::INK_3,
+                    ))
+                    .when_some(self.comparison.as_ref(), |content, comparison| {
+                        content.child(orbit::text(
+                            format!(
+                                "{:.4} % de píxeles distintos · ES/métrico · umbral 8 RGBA premultiplicado",
+                                comparison.percent
+                            ),
+                            12.0,
+                            400,
+                            orbit::INK_2,
+                        ))
+                    }))
+                    .child(
+                        div()
+                            .id("workshop-preview")
+                            .h(px(orbit::COLUMN_W))
+                            .overflow_scroll()
+                            .bg(rgb(backgrounds[self.background]))
+                            .child(self.preview(cx)),
+                    ),
+            )
+            .child(orbit::callout("Escena local: lmu47 procede del corpus; las demás son fixtures de paridad. La referencia PNG está congelada. Comparar abre una ventana temporal de vantare-workshop con parity-capture; el fondo no forma parte del widget."))
+            .into_any_element()
+    }
+
+    fn stage(&self, window: &Window, cx: &Context<Self>) -> gpui::Div {
+        const CONTENT_LEFT: f32 = 376.0;
+        const TOPBAR_HEIGHT: f32 = 70.0;
+        const GRID_SIZE: f32 = 32.0;
+        const GRID_COLOR: u32 = 0x6e_79_96_14;
+
+        let viewport = window.viewport_size();
+        let viewport_width = f32::from(viewport.width);
+        let viewport_height = f32::from(viewport.height);
+        let stage_width = (viewport_width - CONTENT_LEFT).max(0.0);
+        let stage_height = (viewport_height - TOPBAR_HEIGHT).max(0.0);
+        let (widget_width, widget_height) = self.overlay.read(cx).wanted_size();
+        let centered_width = if self.kind == Kind::Standings {
+            (widget_width - PIT_RAIL_WIDTH).max(0.0)
+        } else {
+            widget_width
+        };
+        // La referencia Wails centra el escenario en su columna tras el panel
+        // de 248 px; al recortar desde x=376, su centro queda en viewport/2-252.
+        let widget_left = (viewport_width / 2.0 - 252.0 - centered_width / 2.0).max(0.0);
+        let widget_top = (viewport_height / 2.0 - TOPBAR_HEIGHT - widget_height / 2.0).max(0.0);
+
+        let mut stage = div()
+            .absolute()
+            // El origen visible de contenido nativo queda 1 px a la derecha
+            // del Wails; extender el escenario conserva el origen x=376.
+            .left(px(-1.0))
+            .top_0()
+            .w(px(stage_width + 1.0))
+            .h(px(stage_height))
+            .overflow_hidden()
+            .bg(rgb(0x0015_1516));
+
+        // Wails usa dos gradientes de 1 px sobre una cuadrícula de 32 px.
+        // El área comienza en y=70, seis px después de una línea horizontal.
+        let first_horizontal = GRID_SIZE - TOPBAR_HEIGHT % GRID_SIZE;
+        let mut y = first_horizontal;
+        while y < stage_height {
+            stage = stage.child(
+                div()
+                    .absolute()
+                    .top(px(y))
+                    .left_0()
+                    .w_full()
+                    .h(px(1.0))
+                    .bg(rgba(GRID_COLOR)),
+            );
+            y += GRID_SIZE;
+        }
+        let mut x = 0.0;
+        while x < stage_width {
+            stage = stage.child(
+                div()
+                    .absolute()
+                    .left(px(x))
+                    .top_0()
+                    .w(px(1.0))
+                    .h_full()
+                    .bg(rgba(GRID_COLOR)),
+            );
+            x += GRID_SIZE;
+        }
+
+        stage.child(
+            div()
+                .absolute()
+                .left(px(widget_left + 0.5))
+                .top(px(widget_top))
+                .w(px(widget_width))
+                .h(px(widget_height))
+                .overflow_hidden()
+                .child(self.overlay.clone()),
+        )
+    }
 }
 
 impl Render for Workshop {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let backgrounds = [orbit::CANVAS, orbit::SURFACE_3, orbit::INK];
-        div().flex().flex_col().gap(px(orbit::RADIUS))
-            .child(div().flex().flex_wrap().items_start().gap(px(orbit::RADIUS))
-                .child(self.toolbar(cx).flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER)))
-                .child(self.playback(cx).flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))))
-            .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone())))
-            .child(div().flex().flex_wrap().items_start().gap(px(orbit::RADIUS))
-                .child(self.catalog(cx))
-                .child(orbit::card("Vista previa · renderer productivo").flex_1().min_w(px(orbit::COLUMN_W + orbit::GUTTER))
-                    .child(orbit::card_body()
-                        .child(orbit::text(format!("Vista actual: {:?} / {:?}", self.prefs.language, self.prefs.units), 12.0, 400, orbit::INK_3))
-                        .when_some(self.comparison.as_ref(), |content, comparison| content.child(orbit::text(format!("{:.4} % de píxeles distintos · ES/métrico · umbral 8 RGBA premultiplicado", comparison.percent), 12.0, 400, orbit::INK_2))))
-                    .child(div().id("workshop-preview").h(px(orbit::COLUMN_W)).overflow_scroll().bg(rgb(backgrounds[self.background])).child(self.preview(cx)))))
-            .child(orbit::callout("Escena local: lmu47 procede del corpus; las demás son fixtures de paridad. La referencia PNG está congelada. Comparar abre una ventana temporal de vantare-workshop con parity-capture; el fondo no forma parte del widget."))
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.stage(window, cx)
     }
 }
 
@@ -745,6 +885,25 @@ mod tests {
         );
         std::fs::remove_file(path).expect("limpiar");
         std::fs::remove_file(scene).expect("limpiar escena propia");
+        std::fs::remove_dir(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn default_scene_matches_the_workshop_standings_fixture() {
+        let dir =
+            std::env::temp_dir().join(format!("vantare-workshop-default-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("directorio propio");
+
+        let prepared = Prepared::load(&dir, None).expect("escena predeterminada");
+        assert_eq!(
+            prepared
+                .scene
+                .path
+                .file_name()
+                .and_then(|name| name.to_str()),
+            Some("standings.snapshot.json")
+        );
+
         std::fs::remove_dir(dir).expect("limpiar");
     }
 }

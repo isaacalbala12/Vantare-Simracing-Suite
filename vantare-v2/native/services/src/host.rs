@@ -71,7 +71,59 @@ pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Res
     Ok(())
 }
 
-#[cfg(not(windows))]
+#[cfg(unix)]
+pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Result<()> {
+    use std::io::{Read, Write};
+    use std::sync::Arc;
+    use std::time::Duration;
+    use vantare_ipc::transport::{Event, Listener};
+
+    let stop = Arc::new(Event::new().map_err(|_| Error::Protocol)?);
+    let mut listener = Listener::new(&options.pipe, Arc::clone(&stop), Duration::from_mins(5))
+        .map_err(|_| Error::Protocol)?;
+    let mut pipe = listener.instance().map_err(|_| Error::Protocol)?;
+    let nonce = crate::random_id()?;
+    // El nonce solo cruza stdout heredado, que no se expone a logs ni CLI.
+    writeln!(std::io::stdout(), "{nonce}").map_err(|_| Error::Protocol)?;
+    std::io::stdout().flush().map_err(|_| Error::Protocol)?;
+    let cancel = Arc::clone(&stop);
+    std::thread::Builder::new()
+        .name("services-parent-watch".into())
+        .spawn(move || {
+            let mut byte = [0_u8; 1];
+            let _read_result = std::io::stdin().read(&mut byte);
+            cancel.set();
+        })
+        .map_err(|_| Error::Protocol)?;
+    pipe.accept().map_err(|_| Error::Protocol)?;
+    let peer = pipe.client_peer().map_err(|_| Error::Protocol)?;
+    if peer.pid != options.parent_pid || !peer.is_image(&options.parent_image) {
+        return Err(Error::Denied);
+    }
+    let mut sequence = 0;
+    while !stop.is_set() {
+        let request: Request = match protocol::read(&mut pipe) {
+            Ok(request) => request,
+            Err(_) if stop.is_set() => return Ok(()),
+            Err(_) => return Err(Error::Protocol),
+        };
+        validate(&request, &nonce, sequence)?;
+        sequence = request.sequence;
+        let closed = matches!(request.command, Command::Shutdown);
+        let response = Response {
+            version: protocol::VERSION,
+            sequence,
+            reply: handle(request.command),
+        };
+        protocol::write(&mut pipe, &response).map_err(|_| Error::Protocol)?;
+        if closed {
+            break;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(any(windows, unix)))]
 pub fn serve(_: &Options, _: impl FnMut(Command) -> Reply) -> Result<()> {
     Err(Error::Unsupported)
 }

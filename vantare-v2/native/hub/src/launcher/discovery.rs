@@ -1,6 +1,6 @@
 //! Discovery acotado: hechos locales, sin persistir detecciones ni consultar red.
+use super::files;
 use super::{App, CATALOG, is_executable};
-use crate::files;
 use std::{
     collections::BTreeMap,
     fs,
@@ -40,6 +40,7 @@ pub struct Discovery {
     pub warnings: Vec<String>,
 }
 
+#[cfg(windows)]
 fn expand(template: &str) -> Option<PathBuf> {
     let end = template.strip_prefix('%')?.find('%')? + 1;
     let value = std::env::var_os(&template[1..end])?;
@@ -48,23 +49,29 @@ fn expand(template: &str) -> Option<PathBuf> {
 
 impl Sources {
     pub fn system() -> Self {
-        let mut result = Self::default();
-        for app in CATALOG {
-            for template in app.paths {
-                if let Some(path) = expand(template) {
-                    result.known_paths.push((app.id.into(), path));
+        #[cfg(windows)]
+        {
+            let mut result = Self::default();
+            for app in CATALOG {
+                for template in app.paths {
+                    if let Some(path) = expand(template) {
+                        result.known_paths.push((app.id.into(), path));
+                    }
                 }
             }
-        }
-        for template in [r"%PROGRAMFILES(X86)%\Steam", r"%PROGRAMFILES%\Steam"] {
-            if let Some(path) = expand(template) {
-                result.steam_roots.push(path);
+            for template in [r"%PROGRAMFILES(X86)%\Steam", r"%PROGRAMFILES%\Steam"] {
+                if let Some(path) = expand(template) {
+                    result.steam_roots.push(path);
+                }
             }
+            result.shortcuts = super::shortcuts::system(&mut result.warnings);
+            super::windows::registry_sources(&mut result);
+            result
         }
-        result.shortcuts = super::shortcuts::system(&mut result.warnings);
-        #[cfg(windows)]
-        super::windows::registry_sources(&mut result);
-        result
+        #[cfg(not(windows))]
+        {
+            Self::default()
+        }
     }
 }
 
@@ -217,28 +224,6 @@ fn read_vdf(path: &Path, warnings: &mut Vec<String>) -> Option<String> {
 }
 
 impl Discovery {
-    pub fn demo(data: &crate::demo::DemoData) -> Self {
-        Self {
-            apps: data
-                .launcher
-                .apps
-                .iter()
-                .map(|app| Detected {
-                    id: app.id.clone(),
-                    executable: None,
-                    source: "fixture demo Wails",
-                    availability: Availability {
-                        catalogued: true,
-                        found: app.found,
-                        installed: app.installed,
-                        launchable: false,
-                    },
-                })
-                .collect(),
-            ..Self::default()
-        }
-    }
-
     pub fn scan(apps: &[App], mut sources: Sources) -> Self {
         let mut result = Self {
             warnings: std::mem::take(&mut sources.warnings),

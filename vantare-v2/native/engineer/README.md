@@ -2,15 +2,17 @@
 
 Proceso bajo demanda: solo foto y eventos neutrales, sin UI, lectura del juego,
 red ni síntesis TTS. Reutiliza `runtime::flows` para cursor, ACK y codec y
-`runtime::shutdown` para Ctrl+C/EOF; no invoca Core ni los adaptadores privados.
+`runtime::shutdown` en Windows. No invoca Core ni los adaptadores privados.
 Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 
 ## Ejecución de producto
 
 `vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`
-consume foto DTO v6 y journal por `<pipe-de-fotos>-events`. Windows, ACL de usuario,
-PID/imagen del transporte y filtro del consumidor a `vantare-core.exe` hermano
-del binario. Reconecta sin inventar fotos. La revisión congelada durante 500 ms
+consume foto DTO v6 y journal por `<pipe-de-fotos>-events`. Windows usa pipes
+con ACL y filtra la imagen de Core esperada. Aunque `vantare-ipc` ya tiene
+sockets Unix, `runtime::flows::host` y `client` siguen exportados solo en Windows;
+por eso el modo `--pipe` de producto aún no está disponible en Linux/macOS.
+La revisión congelada durante 500 ms
 retira avisos y para clips; una reentrega no rejuvenece la foto. Ctrl+C o EOF
 en stdin termina y cancela el lector del pipe. El launcher mantiene stdin abierto
 y lo cierra al parar; `vantare --engineer R` habilita este tercer hijo, con el
@@ -195,7 +197,9 @@ Penalties/timings/pitstop completo también requieren señales/contratos
 comunes pendientes en el microplan. No es paridad de todas las familias Go.
 
 Voz opt-in mediante la caché Kokoro ya generada por el producto Go. Por
-defecto se lee `%APPDATA%/Vantare/Ingeniero/tts-cache/kokoro`; `--clips CARPETA`
+defecto se lee `%APPDATA%/Vantare/Ingeniero/tts-cache/kokoro` en Windows,
+`$XDG_CACHE_HOME/Vantare/Ingeniero/tts-cache/kokoro` en Linux y
+`~/Library/Caches/Vantare/Ingeniero/tts-cache/kokoro` en macOS; `--clips CARPETA`
 cambia esa raíz y activa voz en los ajustes iniciales. Con ajustes locales,
 `voice:true` activa la raíz por defecto sin necesitar `--clips`. Una carpeta
 ausente no impide consumir eventos: conserva texto y publica `voice:missing`.
@@ -216,7 +220,7 @@ irregular, corrupto o inaccesible, se informa el error sin probar otro medio.
 Ruta canonical dentro de la raíz, archivo regular, máximo 4 MiB y 8 s.
 WAV conserva la validación RIFF PCM16 mono/estéreo de 16–48 kHz y cabecera
 canónica de 44 bytes; no se normaliza ni convierte ningún archivo.
-WAV usa `PlaySoundW` asíncrono con `SND_NODEFAULT`; MP3 usa
+Windows reproduce WAV con `PlaySoundW` asíncrono y MP3 con
 `mciSendStringW` (open/set/status/play/stop/close), alias exclusivo por clip
 y cierre RAII también ante errores. Windows mide su duración sin reproducir
 durante la inspección. SHA-256 usa `BCryptHash` de CNG (Windows 10+).
@@ -226,8 +230,8 @@ Unsafe queda en `voice/win.rs`, con comentarios SAFETY.
 La misma cola/TTL controla ambas APIs: preempción, hueco, cambio de identidad,
 ajustes, pérdida de calidad, foto congelada y cierre paran el medio. La espera
 de apertura/inspección no recorta la duración del audio recién iniciado; TTL
-sigue acotándolo. `voice` es `disabled`, `missing`, `failed` o `started`;
-este último acredita que Windows aceptó el inicio, no escucha humana.
+sigue acotándolo. `voice` es `disabled`, `missing`, `failed`, `unavailable` o
+`started`; este último acredita que Windows aceptó el inicio, no escucha humana.
 Aviso visual permanece ante ausencia/error de clip. Duración más tick de 50 ms,
 sin promesa de plazo acústico estricto bajo I/O bloqueado. Lectura local en
 Engineer, nunca en adquisición. Sin wake/PTT/STT ni ajuste de dispositivo.
@@ -253,7 +257,9 @@ total (incluye I/O y cierre); no habilita Spotter en la radio productiva.
 
 ## Control local desde Hub — ISA-1428 / ISA-1430
 
-El Hub escribe `%LOCALAPPDATA%/Vantare/native/engineer.json`; Engineer lo
+El Hub escribe `%LOCALAPPDATA%/Vantare/native/engineer.json` en Windows,
+`$XDG_CONFIG_HOME/Vantare/native/engineer.json` (o `~/.config`) en Linux y
+`~/Library/Application Support/Vantare/native/engineer.json` en macOS; Engineer lo
 sondea cada turno (espera de hasta 50 ms, sin promesa bajo I/O bloqueado) y
 confirma sus ajustes efectivos en `engineer-status.json` del mismo directorio.
 Un archivo de ajustes ausente inicialmente usa `--locale` y voz opt-in por `--clips`;
@@ -332,13 +338,15 @@ dedup, todos los confirmados, hueco volátil, retención, escritura fallida,
 corrupción y EOF con plazo. `tests/radio.rs` verifica las reglas, TTL, cola,
 calidad, fotos congeladas, locales y WAV sin reproducir. `tests/voice_cache.rs` verifica SHA-256 contra
 vectores congelados obtenidos invocando el Go, paridad de catálogo/voz,
-resolución exacta y solo lectura, ausencia, medios corruptos/irregulares y cobertura. `tests/lifecycle.rs`
-ejercita EOF sin Core y rechazo de publicador con imagen distinta mediante
-named pipe real (datos sintéticos); no sustituye prueba con Core empaquetado.
-No demuestra LMU/OBS, acústica ni rendimiento.
-Notion pendiente de restablecer acceso; no hay push, PR o merge.
+resolución exacta y solo lectura, ausencia, medios corruptos/irregulares y cobertura.
+`tests/lifecycle.rs` cubre EOF sin Core y rechazo de publicador con imagen
+distinta mediante named pipe real en Windows. No corre en Unix mientras el host
+y cliente del journal sigan limitados a Windows. `services/tests/process.rs` sí
+ejercita el proceso de servicios sobre IPC Unix. Ninguna prueba sustituye Core
+empaquetado ni demuestra LMU/OBS, acústica o rendimiento.
+Notion no disponible en este encargo; no hay push, PR o merge.
 
-Verificación de este diff, 2026-09-30, con los comandos anteriores:
+Verificación previa de Windows (#1428), 2026-09-30, con los comandos anteriores:
 
 - `cargo fmt --check`: código 0, sin salida.
 - Clippy workspace/all-targets con `-D warnings`: código 0,
@@ -358,6 +366,36 @@ Otro intento falló en el test ajeno
 el cierre puede adelantarse al lector durante sus dos esperas de 20 ms, sin
 sincronización de recepción. Pasó aislado y en la repetición global final;
 queda documentado para el orquestador, sin editar IPC ni ocultar el fallo previo.
+
+### Verificación Unix — #1437 — 2026-10-01
+
+Desde `native/`:
+
+```sh
+cargo fmt --all -- --check
+cargo check --workspace --all-targets -j 4
+cargo clippy --workspace --all-targets -j 4 -- -D warnings
+cargo test --workspace -j 4
+```
+
+- Formato y `git diff --check`: código 0.
+- `cargo test -p vantare-services -p vantare-engineer -j 4`: código 0,
+  **53 pasados, 0 fallidos**. Incluye el proceso Unix de Services; el test de
+  ciclo de vida de Engineer sigue compilado solo en Windows y reporta 0 tests.
+- Clippy de ambos crates con `--no-deps --all-targets -- -D warnings`: código 0.
+  El runtime como dependencia aún emite 19 avisos preexistentes en Linux.
+- Los gates de workspace no pasan por código Windows sin `cfg` en
+  `runtime/src/bin/vantare`: `cargo check` encontró 12 errores de `windows_sys`,
+  `services` y `as_raw_handle`; Clippy eleva avisos de `runtime` a error.
+  `cargo test --workspace` encontró el mismo fallo de compilación y se
+  interrumpió después para liberar CPU del PC compartido (código 130).
+- El check cruzado `aarch64-apple-darwin` no llegó a estos crates: el `cc` de
+  Linux rechazó `-arch` y `-mmacosx-version-min` al compilar `ring`. macOS no
+  queda verificado en una máquina nativa.
+- `vantare-engineer --pipe` y `tests/lifecycle.rs` siguen limitados a Windows
+  porque `runtime::flows::{host,client}` continúa exportado solo bajo
+  `cfg(windows)`; queda señalado para la integración del runtime.
+- Logs: `$HOME/evidence/plataforma-services/`. Sin push, PR, merge o release.
 
 ## Evidencia de caché y voz — worker de #1428, 2026-09-30
 
@@ -443,3 +481,58 @@ ejecución. Esto acredita reproducción aceptada por Windows, sin afirmar
 escucha humana. Los 811 clips anteriores a esta continuación conservan
 sus hashes; la caché termina con 815 archivos. La evidencia detallada queda
 en `C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.
+
+## Estado local v2 — #1430, fase 5
+
+`Local` publica `engineer-status.json` junto a `engineer.json`, con escritura
+atómica y heartbeat cada segundo. `control::runtime::Report` conserva los
+campos v1 y añade `runtime` (versión local **2**). `Status::parse` sigue leyendo
+v1/v2 para las vistas anteriores; `Report::parse` expone la extensión tipada.
+`Status::json` exporta el subconjunto v1 válido; `Report::json` conserva v2.
+Un v1 no acredita frescura ni diagnósticos: `runtime=None`. La versión del DTO
+de fotos y las escenas permanecen intactas: este archivo no es el DTO IPC.
+
+El runtime publica conexión a observaciones aceptadas (`waiting`, `live`,
+`stale`, `disconnected`), época, presencia del jugador de telemetría
+(`telemetry_player_available`), disponibilidad de Spotter, motor de clips
+WinMM (no disponible fuera de Windows), preset de voz
+por locale y packs completos validados de los 13 intents nativos. Packs no
+acreditan reproducción. La falta de poses/vectores del jugador se declara
+`unavailable_spatial`; `ready` permite evaluar, no acredita solape, cobertura
+completa de rivales ni pista despejada. Los rivales sin evidencia se omiten
+como en el productor existente. El ajuste global gobierna Spotter; no existe ajuste propio.
+Con política denegada no llegan observaciones aceptadas al worker: no se
+anuncia conexión ni disponibilidad basándose solo en el transporte del Core.
+
+`delivery` publica longitud de pendientes, audio en curso, preferencias
+texto/voz y hasta **64** entregas seleccionadas (más contador de expulsadas).
+Cada entrega tiene ID creciente **por instancia**, foto/intent/texto/locale,
+hora de selección, `text_emitted` y resultado de audio: `disabled`, `started`,
+`finished`, `cancelled`, `missing`, `unavailable` o `failed`. `finished` refleja
+el cierre por el temporizador de reproducción; no acredita escucha humana.
+`text_emitted` acredita escritura y flush de JSONL, no subtítulos mostrados.
+Los cambios de resultado de audio actualizan la misma entrega.
+
+`instance_ms` + PID + ID distinguen entregas, también varios avisos de una
+misma foto. El reloj de pared se usa para diagnósticos/heartbeat; la caducidad
+de mensajes conserva su reloj monotónico anterior. No se usa un cursor de
+foto para inferir número de avisos perdidos. No hay persistencia del historial
+ni journal de entregas: el Hub puede perder entregas si pasa más de la
+retención del worker sin leerlo.
+
+El modelo nuevo del Hub está en `engineer::history::model::Model` (incluido
+por `history.rs` para mantener intacta la vista de otro worker). Recibe la
+ruta de ajustes, hace `poll(now_ms)`, expone `view(now_ms)`, filtra historial y
+congela exportación. Un heartbeat de **3 s** o mayor, reloj retrocedido,
+archivo retirado/ilegible/corrupto o cierre explícito implica desconectado.
+`poll` notifica también cambios de salud sin cambios de archivo. La UI debe
+usar ese modelo para obtener estos estados; la vista anterior sigue leyendo
+solo el subconjunto v1. No se modifica el arranque de procesos ni Win32.
+
+No disponibles explícitos: síntesis TTS y entrada de voz (en el JSON),
+catálogo TTS, disponibilidad del dispositivo de audio, voces independientes
+por canal, modos por familia, ACK de vista, prueba de audio Hub, contadores de
+policy/percentiles e historial durable
+(en `model::UNAVAILABLE` y exportación). No se fabrica paridad con esas
+funciones Wails. La integración visual y los gates acústicos/IPC de producto
+en Windows corresponden al orquestador.

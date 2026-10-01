@@ -8,3 +8,9 @@ default-filter = 'not binary(lifecycle)'
 [[profile.default.overrides]]
 filter = 'test(chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step) | test(actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce)'
 retries = 2
+
+# Busca procesos con la imagen del binario de tests: con nextest cada test es un
+# proceso de ese binario, así que debe correr solo para encontrar el suyo.
+[[profile.default.overrides]]
+filter = 'test(win32_reads_actual_process_identity_and_registry_without_writing_them)'
+threads-required = 'num-test-threads'

@@ -12,8 +12,7 @@ use crate::dto::{self, SnapshotDto};
 
 pub(crate) const MAX_MESSAGE: usize = 1 << 20;
 /// Versiones de DTO que este extremo sabe hablar.
-const MIN_VERSION: u32 = dto::VERSION;
-const MAX_VERSION: u32 = dto::VERSION;
+const PROTOCOL_VERSION: u32 = dto::VERSION;
 
 /// Posición de una foto en la línea de tiempo de un productor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +52,8 @@ pub(crate) enum Message {
         min_version: u32,
         max_version: u32,
         cursor: Option<Revision>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        demand: Option<crate::Demand>,
     },
     /// Productor → suscriptor: versión elegida.
     Welcome {
@@ -64,24 +65,38 @@ pub(crate) enum Message {
     /// Latido del productor para detectar pares muertos y silencios.
     Ping,
     Snapshot(SnapshotDto),
+    DemandSnapshot {
+        snapshot: SnapshotDto,
+        requested: crate::Demand,
+        delivered: crate::Demand,
+    },
 }
 
 /// Mayor versión común, si la hay.
 pub(crate) fn negotiate(min: u32, max: u32) -> Option<u32> {
-    let version = max.min(MAX_VERSION);
-    (version >= min.max(MIN_VERSION)).then_some(version)
+    (min <= PROTOCOL_VERSION && max >= PROTOCOL_VERSION).then_some(PROTOCOL_VERSION)
 }
 
 pub(crate) fn hello(cursor: Option<Revision>) -> Message {
     Message::Hello {
-        min_version: MIN_VERSION,
-        max_version: MAX_VERSION,
+        min_version: PROTOCOL_VERSION,
+        max_version: PROTOCOL_VERSION,
         cursor,
+        demand: None,
+    }
+}
+
+pub(crate) fn hello_requested(cursor: Option<Revision>, demand: crate::Demand) -> Message {
+    Message::Hello {
+        min_version: PROTOCOL_VERSION,
+        max_version: PROTOCOL_VERSION,
+        cursor,
+        demand: Some(demand),
     }
 }
 
 pub(crate) fn supports(version: u32) -> bool {
-    (MIN_VERSION..=MAX_VERSION).contains(&version)
+    version == PROTOCOL_VERSION
 }
 
 pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {
@@ -283,7 +298,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn pit_and_estimated_time_signals_preserve_all_qualities_and_are_required_in_v6() {
+    fn pit_and_estimated_time_signals_preserve_all_qualities_and_are_required_in_v7_full_photos() {
         for (time, limiter, stopped) in [
             (
                 Quality::Reliable(90.0),
@@ -326,12 +341,12 @@ pub(crate) mod tests {
                 &mut value["state"][section]
             };
             object.as_object_mut().expect("sección").remove(field);
-            assert!(serde_json::from_value::<SnapshotDto>(value).is_err());
+            assert!(crate::snapshot_from_json(&value.to_string()).is_err());
         }
     }
 
     #[test]
-    fn velocity_and_penalties_preserve_each_quality_and_are_required_in_v5() {
+    fn velocity_and_penalties_preserve_each_quality_and_are_required_in_v7_full_photos() {
         for (velocity, penalties) in [
             (Quality::Reliable([-1.0, 40.0]), Quality::Reliable(0)),
             (Quality::Estimated([1.0, 40.0]), Quality::Estimated(1)),
@@ -350,7 +365,7 @@ pub(crate) mod tests {
                 .as_object_mut()
                 .expect("coche")
                 .remove(field);
-            assert!(serde_json::from_value::<SnapshotDto>(value).is_err());
+            assert!(crate::snapshot_from_json(&value.to_string()).is_err());
         }
     }
 
@@ -388,7 +403,7 @@ pub(crate) mod tests {
                     .unwrap()
                     .remove(*field);
                 assert!(
-                    serde_json::from_value::<SnapshotDto>(missing).is_err(),
+                    crate::snapshot_from_json(&missing.to_string()).is_err(),
                     "{field}"
                 );
             }

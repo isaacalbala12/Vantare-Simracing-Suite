@@ -1002,7 +1002,7 @@ impl Launcher {
                 match policy.exit {
                     Close::Ask => "AL SALIR · PREGUNTAR",
                     Close::Leave => "AL SALIR · DEJAR ABIERTAS",
-                    Close::CloseStarted => "AL SALIR · CERRAR INICIADAS",
+                    Close::Started => "AL SALIR · CERRAR INICIADAS",
                 },
                 Tone::Neutral,
             ))

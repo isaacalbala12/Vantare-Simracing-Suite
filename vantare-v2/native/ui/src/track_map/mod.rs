@@ -239,6 +239,14 @@ fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
     ));
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Spatial, TrackName};
+        crate::demand::signals(33, &[Spatial, TrackName])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

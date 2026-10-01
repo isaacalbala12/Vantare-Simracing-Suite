@@ -7,6 +7,11 @@ use serde::{Serialize, de::DeserializeOwned};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
+#[cfg(unix)]
+use std::fs::File;
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
 use crate::{Error, Result};
 
 #[cfg(windows)]
@@ -19,6 +24,8 @@ pub struct Store {
     context: String,
     #[cfg(windows)]
     _lock: std::os::windows::io::OwnedHandle,
+    #[cfg(unix)]
+    _lock: File,
 }
 
 impl Store {
@@ -29,11 +36,8 @@ impl Store {
         let namespace = format!("{:x}", Sha256::digest(context.as_bytes()));
         let root = root.join(namespace);
         fs::create_dir_all(&root).map_err(|_| Error::Storage)?;
-        if fs::symlink_metadata(&root)
-            .map_err(|_| Error::Storage)?
-            .file_type()
-            .is_symlink()
-        {
+        let metadata = fs::symlink_metadata(&root).map_err(|_| Error::Storage)?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
             return Err(Error::Storage);
         }
         #[cfg(windows)]
@@ -46,7 +50,32 @@ impl Store {
                 _lock: lock,
             })
         }
-        #[cfg(not(windows))]
+        #[cfg(unix)]
+        {
+            fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
+                .map_err(|_| Error::Storage)?;
+            let lock_path = root.join("owner.lock");
+            let lock = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .mode(0o600)
+                .open(lock_path)
+                .map_err(|_| Error::Storage)?;
+            lock.set_permissions(fs::Permissions::from_mode(0o600))
+                .map_err(|_| Error::Storage)?;
+            lock.try_lock().map_err(|error| match error {
+                std::fs::TryLockError::WouldBlock => Error::Busy,
+                std::fs::TryLockError::Error(_) => Error::Storage,
+            })?;
+            Ok(Self {
+                root,
+                context: context.into(),
+                _lock: lock,
+            })
+        }
+        #[cfg(not(any(windows, unix)))]
         Err(Error::Unsupported)
     }
 
@@ -57,7 +86,13 @@ impl Store {
         {
             return Err(Error::Storage);
         }
-        Ok(self.root.join(format!("{name}.dpapi")))
+        #[cfg(windows)]
+        let extension = "dpapi";
+        #[cfg(unix)]
+        let extension = "json";
+        #[cfg(not(any(windows, unix)))]
+        let extension = "data";
+        Ok(self.root.join(format!("{name}.{extension}")))
     }
 
     pub fn load<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
@@ -69,7 +104,15 @@ impl Store {
                 Error::Storage
             }
         })?;
-        if !info.is_file() || info.file_type().is_symlink() || info.len() > MAX_BLOB {
+        #[cfg(unix)]
+        let private_permissions = info.permissions().mode() & 0o777 == 0o600;
+        #[cfg(not(unix))]
+        let private_permissions = true;
+        if !info.is_file()
+            || info.file_type().is_symlink()
+            || info.len() > MAX_BLOB
+            || !private_permissions
+        {
             return Err(Error::Storage);
         }
         let mut blob = Vec::new();
@@ -91,21 +134,29 @@ impl Store {
         if bytes.len() as u64 > MAX_BLOB / 2 {
             return Err(Error::TooLarge);
         }
-        let encrypted = protect(&bytes, &self.context)?;
+        let stored = Zeroizing::new(protect(&bytes, &self.context)?);
         let temporary = self.root.join(format!("{}.tmp", crate::random_id()?));
         let result = (|| {
-            let mut file = OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(&temporary)
+            let mut options = OpenOptions::new();
+            options.create_new(true).write(true);
+            #[cfg(unix)]
+            options.mode(0o600);
+            let mut file = options.open(&temporary).map_err(|_| Error::Storage)?;
+            #[cfg(unix)]
+            file.set_permissions(fs::Permissions::from_mode(0o600))
                 .map_err(|_| Error::Storage)?;
-            file.write_all(&encrypted).map_err(|_| Error::Storage)?;
+            file.write_all(&stored).map_err(|_| Error::Storage)?;
             file.sync_all().map_err(|_| Error::Storage)?;
             drop(file);
             #[cfg(windows)]
             windows::replace(&temporary, &path)?;
-            #[cfg(not(windows))]
-            return Err(Error::Unsupported);
+            #[cfg(unix)]
+            {
+                fs::rename(&temporary, &path).map_err(|_| Error::Storage)?;
+                File::open(&self.root)
+                    .and_then(|directory| directory.sync_all())
+                    .map_err(|_| Error::Storage)?;
+            }
             Ok(())
         })();
         if result.is_err() && fs::remove_file(&temporary).is_err() {
@@ -126,13 +177,22 @@ impl Store {
 
 #[cfg(windows)]
 pub use windows::{protect, unprotect};
-#[cfg(not(windows))]
+#[cfg(not(any(windows, unix)))]
 pub fn protect(_: &[u8], _: &str) -> Result<Vec<u8>> {
     Err(Error::Unsupported)
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, unix)))]
 pub fn unprotect(_: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
     Err(Error::Unsupported)
+}
+
+#[cfg(unix)]
+pub fn protect(bytes: &[u8], _: &str) -> Result<Vec<u8>> {
+    Ok(bytes.to_vec())
+}
+#[cfg(unix)]
+pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
+    Ok(Zeroizing::new(bytes.to_vec()))
 }
 
 #[cfg(all(test, windows))]
@@ -195,5 +255,44 @@ mod tests {
         fs::remove_file(namespace.join("owner.lock")).expect("lock test");
         fs::remove_dir(namespace).expect("namespace test");
         fs::remove_dir(root).expect("root test");
+    }
+}
+
+#[cfg(all(test, unix))]
+mod unix_tests {
+    use super::*;
+
+    #[test]
+    fn session_files_are_private_atomic_and_single_owner() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-services-test-{}",
+            crate::random_id().expect("test entropy")
+        ));
+        let value = crate::random_id().expect("test value");
+        let store = Store::open(&root, "storage-test").expect("store");
+        assert!(matches!(
+            Store::open(&root, "storage-test"),
+            Err(Error::Busy)
+        ));
+        store.save("session", &value).expect("guardar");
+        store.save("session", &value).expect("reemplazar");
+        let path = store.path("session").expect("ruta");
+        let info = fs::symlink_metadata(&path).expect("fichero");
+        assert_eq!(info.permissions().mode() & 0o777, 0o600);
+        assert_eq!(
+            fs::read_to_string(&path).expect("JSON plano"),
+            format!("\"{value}\"")
+        );
+        drop(store);
+
+        let store = Store::open(&root, "storage-test").expect("reabrir");
+        assert_eq!(store.load::<String>("session").expect("restaurar"), value);
+        store.remove("session").expect("borrar");
+        assert!(matches!(
+            store.load::<String>("session"),
+            Err(Error::NotFound)
+        ));
+        drop(store);
+        fs::remove_dir_all(root).expect("limpiar");
     }
 }

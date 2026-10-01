@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use super::solver::{self, Input, SolverOutcome};
 
+mod automatic;
+pub use automatic::{
+    AutomaticPreparation, AutomaticPreparationStatus, ClimateBucket, ProjectionFamily,
+    ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,
+};
+
 #[derive(Clone, Debug)]
 pub struct PreparedCalculation {
     input: Input,

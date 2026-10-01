@@ -419,6 +419,24 @@ impl Hub {
         self.context_column_with_content("Estrategia", "", 255.0, Some(content), cx)
     }
 
+    pub(super) fn analysis_context_column(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let content = crate::analysis::Analysis::context_sidebar(
+            self.demo.as_ref(),
+            self.capture.as_ref().map(|capture| capture.name.as_str()),
+        );
+        let version = self
+            .demo
+            .as_ref()
+            .map(|demo| demo.versions.hub.as_str())
+            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let width = orbit::column_width(f32::from(window.viewport_size().width));
+        self.context_column_with_content("Telemetría", version, width, Some(content), cx)
+    }
+
     fn context_column_with_content(
         &self,
         title: &str,

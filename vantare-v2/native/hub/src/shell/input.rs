@@ -3,7 +3,7 @@
 use crate::orbit;
 use gpui::{
     Bounds, Context, ElementInputHandler, EntityInputHandler, FocusHandle, IntoElement, Pixels,
-    Point, Render, UTF16Selection, Window, canvas, div, prelude::*, px, rgb, rgba,
+    Point, Render, UTF16Selection, Window, canvas, div, prelude::*, px, rgba,
 };
 use std::ops::Range;
 
@@ -265,29 +265,23 @@ impl Render for Input {
             .aria_placeholder(self.label)
             .track_focus(&self.focus)
             .tab_index(0)
+            .flex_1()
             .w_full()
             .min_w_0()
-            .h(px(orbit::CONTROL_H))
-            .px(px(12.0))
+            .h(px(75.0))
             .flex()
             .items_center()
             .relative()
-            .rounded(px(orbit::RADIUS_CONTROL))
-            .bg(rgb(orbit::SURFACE_2))
-            .border_1()
-            .border_color(rgba(orbit::LINE_STRONG))
+            .bg(rgba(0x0000_0000))
+            .border_0()
             .cursor(gpui::CursorStyle::IBeam)
             .overflow_hidden()
-            .when(focused, |s| s.border_color(rgb(orbit::CARMINE)))
-            .when(focused && !self.selected.is_empty(), |s| {
-                s.bg(rgb(orbit::SURFACE_3))
-            })
             .child(orbit::text(
                 display,
-                13.0,
+                17.0,
                 400,
                 if self.value.is_empty() {
-                    orbit::INK_3
+                    orbit::INK_4
                 } else {
                     orbit::INK
                 },

@@ -481,3 +481,58 @@ ejecución. Esto acredita reproducción aceptada por Windows, sin afirmar
 escucha humana. Los 811 clips anteriores a esta continuación conservan
 sus hashes; la caché termina con 815 archivos. La evidencia detallada queda
 en `C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.
+
+## Estado local v2 — #1430, fase 5
+
+`Local` publica `engineer-status.json` junto a `engineer.json`, con escritura
+atómica y heartbeat cada segundo. `control::runtime::Report` conserva los
+campos v1 y añade `runtime` (versión local **2**). `Status::parse` sigue leyendo
+v1/v2 para las vistas anteriores; `Report::parse` expone la extensión tipada.
+`Status::json` exporta el subconjunto v1 válido; `Report::json` conserva v2.
+Un v1 no acredita frescura ni diagnósticos: `runtime=None`. La versión del DTO
+de fotos y las escenas permanecen intactas: este archivo no es el DTO IPC.
+
+El runtime publica conexión a observaciones aceptadas (`waiting`, `live`,
+`stale`, `disconnected`), época, presencia del jugador de telemetría
+(`telemetry_player_available`), disponibilidad de Spotter, motor de clips
+WinMM (no disponible fuera de Windows), preset de voz
+por locale y packs completos validados de los 13 intents nativos. Packs no
+acreditan reproducción. La falta de poses/vectores del jugador se declara
+`unavailable_spatial`; `ready` permite evaluar, no acredita solape, cobertura
+completa de rivales ni pista despejada. Los rivales sin evidencia se omiten
+como en el productor existente. El ajuste global gobierna Spotter; no existe ajuste propio.
+Con política denegada no llegan observaciones aceptadas al worker: no se
+anuncia conexión ni disponibilidad basándose solo en el transporte del Core.
+
+`delivery` publica longitud de pendientes, audio en curso, preferencias
+texto/voz y hasta **64** entregas seleccionadas (más contador de expulsadas).
+Cada entrega tiene ID creciente **por instancia**, foto/intent/texto/locale,
+hora de selección, `text_emitted` y resultado de audio: `disabled`, `started`,
+`finished`, `cancelled`, `missing`, `unavailable` o `failed`. `finished` refleja
+el cierre por el temporizador de reproducción; no acredita escucha humana.
+`text_emitted` acredita escritura y flush de JSONL, no subtítulos mostrados.
+Los cambios de resultado de audio actualizan la misma entrega.
+
+`instance_ms` + PID + ID distinguen entregas, también varios avisos de una
+misma foto. El reloj de pared se usa para diagnósticos/heartbeat; la caducidad
+de mensajes conserva su reloj monotónico anterior. No se usa un cursor de
+foto para inferir número de avisos perdidos. No hay persistencia del historial
+ni journal de entregas: el Hub puede perder entregas si pasa más de la
+retención del worker sin leerlo.
+
+El modelo nuevo del Hub está en `engineer::history::model::Model` (incluido
+por `history.rs` para mantener intacta la vista de otro worker). Recibe la
+ruta de ajustes, hace `poll(now_ms)`, expone `view(now_ms)`, filtra historial y
+congela exportación. Un heartbeat de **3 s** o mayor, reloj retrocedido,
+archivo retirado/ilegible/corrupto o cierre explícito implica desconectado.
+`poll` notifica también cambios de salud sin cambios de archivo. La UI debe
+usar ese modelo para obtener estos estados; la vista anterior sigue leyendo
+solo el subconjunto v1. No se modifica el arranque de procesos ni Win32.
+
+No disponibles explícitos: síntesis TTS y entrada de voz (en el JSON),
+catálogo TTS, disponibilidad del dispositivo de audio, voces independientes
+por canal, modos por familia, ACK de vista, prueba de audio Hub, contadores de
+policy/percentiles e historial durable
+(en `model::UNAVAILABLE` y exportación). No se fabrica paridad con esas
+funciones Wails. La integración visual y los gates acústicos/IPC de producto
+en Windows corresponden al orquestador.

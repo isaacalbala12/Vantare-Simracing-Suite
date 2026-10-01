@@ -7,14 +7,14 @@ fn frozen_files_and_manifest_have_their_reviewed_hashes() {
     let bytes = std::fs::read(root.join("manifest.json")).expect("mandatory manifest");
     assert_eq!(
         format!("{:x}", Sha256::digest(&bytes)),
-        "a86f19df3d59f03466650c14940636d57c61280936600a68843a41ee4d47a2b1"
+        "7606a0777b4af763e7ce21ad680ece9978ba657494296c9b102f45579932519d"
     );
     let manifest: Value = serde_json::from_slice(&bytes).expect("manifest");
     let files = manifest["files"].as_object().expect("files");
     assert_eq!(
         files.len(),
-        11,
-        "Go document, correction, projection, repository, and solver fixtures"
+        12,
+        "Go document, correction, edited-plan, projection, repository, and solver fixtures"
     );
     for (name, expected) in files {
         let bytes = std::fs::read(root.join(name)).expect("mandatory fixture");

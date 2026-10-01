@@ -395,11 +395,10 @@ fn prepare_one(
             exclusion_reasons: None,
         }
     } else {
-        let mut reasons = request
-            .expected
-            .exclusion_reasons
-            .clone()
-            .unwrap_or_default();
+        let mut reasons = match &request.expected.exclusion_reasons {
+            Some(reasons) => reasons.clone(),
+            None => Vec::new(),
+        };
         if !reasons
             .iter()
             .any(|reason| reason.as_str() == "manual_exclusion")

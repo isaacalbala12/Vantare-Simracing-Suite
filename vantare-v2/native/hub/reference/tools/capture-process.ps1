@@ -36,7 +36,7 @@ try {
     } while ([DateTime]::UtcNow -lt $deadline)
     if ($target.MainWindowHandle -eq 0) { throw 'La ventana Hub no apareció en 2 minutos' }
 
-    & $CaptureScript -ProcessId $ProcessId -ExpectedExecutable $ExpectedExecutable -OutputPath $OutputPath -RepositoryRoot $RepositoryRoot
+    & $CaptureScript -ProcessId $ProcessId -ExpectedExecutable $ExpectedExecutable -OutputPath $OutputPath -Screen $Screen -RepositoryRoot $RepositoryRoot
 } finally {
     try {
         if ($target) {

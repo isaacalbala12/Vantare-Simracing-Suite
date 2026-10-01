@@ -51,11 +51,7 @@ pub struct ViewModel {
 
 /// Ventana pura: delante lejos→cerca, jugador, detrás cerca→lejos. Un gap
 /// ausente, no finito o cero no demuestra de qué lado está un rival.
-pub fn track_window(cars: &[Car], player: CarId, range: usize) -> Vec<Option<&Car>> {
-    track_window_configured(cars, player, range, range, false)
-}
-
-pub fn track_window_configured(
+fn track_window_configured(
     cars: &[Car],
     player: CarId,
     ahead_count: usize,
@@ -514,7 +510,7 @@ mod tests {
                 ..Car::default()
             }),
         );
-        let window = track_window(&snapshot.state.cars, CarId(7), 1);
+        let window = track_window_configured(&snapshot.state.cars, CarId(7), 1, 1, false);
         assert_eq!(
             window
                 .iter()
@@ -523,9 +519,12 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![8, 7, 10]
         );
-        assert_eq!(track_window(&snapshot.state.cars, CarId(7), 0).len(), 1);
+        assert_eq!(
+            track_window_configured(&snapshot.state.cars, CarId(7), 0, 0, false).len(),
+            1
+        );
         assert!(
-            track_window(&snapshot.state.cars, CarId(99), 3)
+            track_window_configured(&snapshot.state.cars, CarId(99), 3, 3, false)
                 .iter()
                 .all(Option::is_none)
         );

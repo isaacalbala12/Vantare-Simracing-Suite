@@ -226,6 +226,14 @@ impl Widget {
     }
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{ClassGaps, Gaps, LapTimes, Positions, Sectors};
+        crate::demand::signals(33, &[Positions, Gaps, ClassGaps, LapTimes, Sectors])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

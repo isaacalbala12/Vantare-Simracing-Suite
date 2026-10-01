@@ -2,9 +2,10 @@
 //! ([`pipe_feed`]) o una carrera sintética local ([`local_feed`]), para probar
 //! los widgets sin núcleo.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
+use vantare_ipc::{Demand, Photo};
 
 use vantare_domain::Quality::{Estimated, Reliable};
 use vantare_domain::{
@@ -18,9 +19,57 @@ use vantare_domain::{
 ///
 /// # Errors
 /// Si el sistema no puede crear la conexión o el hilo.
+#[derive(Clone)]
+pub struct DemandHandle(Arc<Mutex<Demand>>);
+impl DemandHandle {
+    pub fn new(demand: Demand) -> Self {
+        Self(Arc::new(Mutex::new(demand)))
+    }
+    pub fn set(&self, demand: Demand) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = demand;
+    }
+    fn current(&self) -> Demand {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+}
+
 pub fn pipe_feed(name: &str) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
-    // El pipe es solo del usuario actual (ACL del núcleo): se acepta al servidor.
-    let mut subscriber = vantare_ipc::Subscriber::connect(name, |_| true)?;
+    start_feed(name, None, |photo| photo.snapshot)
+}
+
+pub fn pipe_feed_requested(
+    name: &str,
+    demand: Demand,
+) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
+    start_feed(name, Some(DemandHandle::new(demand)), |photo| {
+        photo.snapshot
+    })
+}
+
+pub fn layout_feed(
+    name: &str,
+    handle: DemandHandle,
+) -> Result<flume::Receiver<Photo>, vantare_ipc::Error> {
+    start_feed(name, Some(handle), std::convert::identity)
+}
+
+fn start_feed<T: Send + 'static>(
+    name: &str,
+    handle: Option<DemandHandle>,
+    convert: impl Fn(Photo) -> T + Send + 'static,
+) -> Result<flume::Receiver<T>, vantare_ipc::Error> {
+    let mut requested = handle
+        .as_ref()
+        .map_or_else(Demand::all, DemandHandle::current);
+    // El pipe es solo del usuario actual (ACL del núcleo).
+    let mut subscriber = if handle.is_some() {
+        vantare_ipc::Subscriber::connect_requested(name, requested.clone(), |_| true)?
+    } else {
+        vantare_ipc::Subscriber::connect(name, |_| true)?
+    };
     let (tx, rx) = flume::bounded(4);
     let oldest = rx.clone();
     thread::Builder::new()
@@ -29,23 +78,36 @@ pub fn pipe_feed(name: &str) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_i
             let start = Instant::now();
             let mut health = PipeHealth::default();
             let mut activity = subscriber.activity();
-            // `run` suelta el receptor al cerrarse la última ventana.
-            // El receptor privado solo permite desalojar fotos antiguas.
             while tx.receiver_count() > 1 {
-                let incoming = subscriber.next(Duration::from_millis(250));
+                if let Some(handle) = &handle {
+                    let next = handle.current();
+                    if next != requested {
+                        if let Err(error) = subscriber.set_demand(next.clone()) {
+                            eprintln!("actualizar demanda: {error}");
+                            thread::sleep(Duration::from_millis(50));
+                            continue;
+                        }
+                        requested = next;
+                        health = PipeHealth::default();
+                    }
+                }
+                let incoming = subscriber.next_photo(Duration::from_millis(50));
                 let current_activity = subscriber.activity();
                 if current_activity != activity {
                     health.heard(start.elapsed());
                     activity = current_activity;
                 }
-                let next = if let Some(snapshot) = incoming {
-                    health.received(Arc::clone(&snapshot), start.elapsed());
-                    Some(snapshot)
+                let next = if let Some(photo) = incoming {
+                    health.received(Arc::clone(&photo.snapshot), start.elapsed());
+                    Some(photo)
                 } else {
-                    health.silence(start.elapsed())
+                    health.silence(start.elapsed()).map(|snapshot| Photo {
+                        snapshot,
+                        demand: requested.clone(),
+                    })
                 };
-                if let Some(snapshot) = next {
-                    send_latest(&tx, &oldest, snapshot);
+                if let Some(photo) = next {
+                    send_latest(&tx, &oldest, convert(photo));
                 }
             }
         })?;
@@ -85,11 +147,7 @@ impl PipeHealth {
     }
 }
 
-fn send_latest(
-    tx: &flume::Sender<Arc<Snapshot>>,
-    oldest: &flume::Receiver<Arc<Snapshot>>,
-    mut snapshot: Arc<Snapshot>,
-) {
+fn send_latest<T>(tx: &flume::Sender<T>, oldest: &flume::Receiver<T>, mut snapshot: T) {
     loop {
         match tx.try_send(snapshot) {
             Ok(()) | Err(flume::TrySendError::Disconnected(_)) => return,

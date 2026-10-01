@@ -8,7 +8,7 @@ use vantare_domain::{
     Snapshot, SourceState, State, Telemetry, Weather, degrade,
 };
 
-use super::derive::derive;
+use super::derive::derive_requested;
 use super::{delta, fuel};
 
 /// Observación que el núcleo no admite: no se publica y la revisión no avanza.
@@ -35,11 +35,28 @@ impl std::error::Error for Reject {}
 /// Fusión mínima: no arrastra valores del snapshot previo. Cada observación es
 /// el estado completo que declara el adaptador, así que un cambio de
 /// `session.id` (sesión nueva del mismo productor) no puede heredar nada.
+#[cfg(test)]
 pub(super) fn merge(
     previous: Option<&Snapshot>,
     observation: Observation,
     epoch: u64,
     trackers: &mut Trackers,
+) -> Result<Snapshot, Reject> {
+    merge_requested(
+        previous,
+        observation,
+        epoch,
+        trackers,
+        &vantare_ipc::Demand::all(),
+    )
+}
+
+pub(super) fn merge_requested(
+    previous: Option<&Snapshot>,
+    observation: Observation,
+    epoch: u64,
+    trackers: &mut Trackers,
+    demand: &vantare_ipc::Demand,
 ) -> Result<Snapshot, Reject> {
     let Observation { origin, mut state } = observation;
     let mut seen = HashSet::with_capacity(state.cars.len());
@@ -47,8 +64,8 @@ pub(super) fn merge(
         return Err(Reject::DuplicateCar(car.id));
     }
     sanitize(&mut state);
-    derive(&mut state);
-    trackers.derive(&mut state);
+    derive_requested(&mut state, demand);
+    trackers.derive(&mut state, demand);
     let sequence = match previous {
         Some(previous) if previous.epoch == epoch => previous.sequence + 1,
         _ => 1,
@@ -73,7 +90,17 @@ pub(super) struct Trackers {
 }
 
 impl Trackers {
-    fn derive(&mut self, state: &mut State) {
+    pub(super) fn demand_changed(&mut self, demand: &vantare_ipc::Demand) {
+        // No deducir consumos ni vueltas de referencia a través de un hueco sin demanda.
+        if !demand.contains(vantare_ipc::Signal::FuelEstimate) {
+            self.fuel.reset();
+        }
+        if !demand.contains(vantare_ipc::Signal::Delta) {
+            self.delta.reset();
+        }
+    }
+
+    pub(super) fn derive(&mut self, state: &mut State, demand: &vantare_ipc::Demand) {
         let identity = state
             .player
             .as_ref()
@@ -97,8 +124,12 @@ impl Trackers {
             self.delta.invalidate();
             return;
         };
-        self.fuel.derive(player, car);
-        self.delta.derive(player, car, state.session.track_length_m);
+        if demand.contains(vantare_ipc::Signal::FuelEstimate) {
+            self.fuel.derive(player, car);
+        }
+        if demand.contains(vantare_ipc::Signal::Delta) {
+            self.delta.derive(player, car, state.session.track_length_m);
+        }
     }
 }
 

@@ -112,6 +112,14 @@ const fn opaque() -> f32 {
 }
 
 impl Layout {
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        let mut demand = vantare_ipc::Demand::default();
+        for instance in self.instances.iter().filter(|instance| instance.visible) {
+            demand.union(&instance.settings.demand());
+        }
+        demand
+    }
+
     /// Acota entradas del editor sin guardar tamaños calculados por los widgets.
     pub fn normalized(mut self) -> Result<Self, Error> {
         if self.version != VERSION {

@@ -1,8 +1,9 @@
 # Modelo de estados Engineer — #1430
 
-Importar `crate::engineer::history::model::{Model, Health, UNAVAILABLE}`.
-`history.rs` incluye el módulo para no tocar la vista `engineer.rs` de otro
-worker. Se puede reexportar desde esa vista sin duplicar implementación.
+Importar `crate::engineer::model::{Model, Health, UNAVAILABLE}`.
+`engineer.rs` declara el módulo y consume su estado actual, entregas e informe.
+El modo captura carga el fixture compartido mediante `Model::capture`, a través
+del mismo parser v2 y reloj congelado. No escribe estados de usuario.
 
 ```rust,ignore
 let mut model = Model::new(&settings_path);
@@ -34,10 +35,11 @@ se retira/rompe el archivo o el proceso publica active=false. No hace falta
 consultar PID ni lanzar procesos. V1 sigue parseable; sus diagnósticos y
 frescura se muestran no disponibles.
 
-La vista anterior `Engineer::poll/status/history` conserva su comportamiento
-v1. Para completar la pantalla visual, su propietario debe guardar un Model
-y consumir view/history/prepare_export en lugar de deducir conexión de active
-o de usar exclusivamente last_message. Este worker no modifica esa vista.
+La vista consume `view/history/prepare_export`; `status()` conserva la proyección
+v1 para compatibilidad, pero no acredita conexión o frescura. Un v1 se muestra
+como no disponible. Texto emitido no se presenta como ACK visual; la duración
+real sigue no disponible. Solo el fixture de captura tiene resultados Wails
+congelados (Publicado, Completado, 25 ms).
 
 No disponibles en `UNAVAILABLE`: síntesis, micrófono/PTT, catálogo TTS,
 dispositivo de audio, voz separada por canal, modo por familia, ACK de subtítulos, test de audio,

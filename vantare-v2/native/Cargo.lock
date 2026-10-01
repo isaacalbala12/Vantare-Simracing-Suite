@@ -6295,6 +6295,7 @@ dependencies = [
  "gpui_platform",
  "serde",
  "serde_json",
+ "sha2",
  "vantare-domain",
  "vantare-ipc",
  "vantare-ui",

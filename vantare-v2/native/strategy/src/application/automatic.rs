@@ -91,7 +91,7 @@ pub fn prepare_automatic(
     {
         return Err("invalid_analysis_projection".into());
     }
-    crate::projection::validate(&projection)?;
+    super::super::projection::validate(&projection)?;
     validate_projection_selection(selected_sessions, source_revisions, &projection)?;
 
     let mut coverage = BTreeMap::new();

@@ -1,5 +1,30 @@
 # Launcher nativo del sim-rig — ISA-1430 (#1430)
 
+## Ronda de usabilidad — 2026-10-01
+
+Worker en `vantareapp/isa-1430-w-launcher-usabilidad`, base asignada
+`1aa08d5dd588cd431a50ca17e3eb3b2d492fe74c`. Excepción expresa del encargo:
+Notion no disponible; seguimiento pendiente del orquestador. Solo commits
+locales, sin push, PR, merge ni release. Evidencia externa:
+`C:/tmp/launcher-usabilidad-evidence/`.
+
+Migración de primer arranque productivo: `launcher.json` existente prevalece
+(también si está corrupto; no se sustituye). Si falta, se busca
+`app-settings.json` con el orden Wails: `configs` junto al Hub, `configs` en
+CWD, `vantare-v2/configs` en CWD, `%APPDATA%/Vantare/configs`. La primera
+carpeta existente manda, incluso si no tiene ajustes: no mezclar instalaciones.
+La importación valida y guarda atómicamente; un fallo no crea datos parciales
+ni altera Wails. Una vez creado el nativo, no se vuelve a importar. Un
+`--launcher-file` aislado y las capturas demo no importan datos del usuario.
+
+Se conservan IDs, nombres, favoritos, rutas, tokens de argumentos con el
+contrato de Go (sin shell), pasos, delays, descripción, notas, historial y
+preferencias. Las claves Launcher originales quedan archivadas en
+`wails_import`, excluyendo otros ajustes. Los delays ya no se limitan a una
+hora; siguen siendo segundos enteros no negativos. Los documentos v1 siguen
+siendo legibles. Políticas/hotkeys/autostart importados se conservan para los
+hitos siguientes; esta sección se actualiza con su ejecución real.
+
 Entrega aislada para revisión de Claude Opus 5.5. Referencia:
 [GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430),
 fase 5 de ADR 0099. Base asignada `a6cd70ab8c7abdcc700c74105fee5ffa2fd36a69`,
@@ -266,3 +291,84 @@ se certifica click de selección en esa lista, IME, DPI mixto, otras
 resoluciones, paridad por píxeles, fase 5 completa, LMU/ACC/Steam/OBS físicos,
 ni rendimiento. Notion no estaba disponible; no se actualizó ni se afirma
 haber completado su seguimiento. No hubo push, PR, merge ni release.
+
+## Hito 2 — políticas
+Las políticas importadas ya gobiernan app abierta, fallo y cancelación. La salida
+manual espera la decisión antes de cerrar el Hub. Respuestas con ID antiguo o
+acción no ofrecida no resuelven la decisión; cancelar despierta esperas y sondeos.
+Solo los hijos directos guardados con su handle original pueden cerrarse/reiniciarse.
+Reutilizar una app externa no concede propiedad. Steam conserva observación sin
+permiso de cierre sobre el juego. El cierre de hijos es forzado (Child::kill), no
+un cierre de ventana con guardado de documentos: revisar UX con apps reales antes
+de promocionar. La salida automática a Live conserva las apps con política Ask;
+no abre un diálogo que impida el handoff automático al juego.
+
+## Hito 3 — entradas de lanzamiento
+La fila del perfil y su botón lanzan la misma cadena. Inicio lanza el primer
+favorito (desempate por nombre); sin perfiles abre Launcher. La paleta contiene
+acciones `Lanzar <nombre>` con el ID persistido, filtrado y permisos del Hub.
+Las demás columnas de contexto incluyen los perfiles guardados. Todas las entradas
+rechazan un lanzamiento si hay cadena/escaneo activo o pasos no disponibles.
+
+## Hito 4 — cancelar y reintentar
+El progreso ofrece cancelar la cadena en curso. Al terminar permite repetir los
+pasos fallidos (con los índices originales) o la cadena entera. Reintentar en modo
+Preguntar no dispara intentos automáticos; Fallidos limita reintentos por paso y
+Entera limita el número de pasadas completas. El máximo continúa siendo 3.
+
+## Hito 5 — editor e instalación
+Instalación productiva nueva: Creator y Pro con los pasos Wails; guardado atómico
+para no volver a sembrar perfiles borrados por el usuario. Un array Wails vacío
+se conserva vacío. El editor valida nombre, pasos, apps disponibles y duplicados
+(solo avanzados); conserva descripciones, notas, modo y retardos largos importados.
+Duplicar crea borrador independiente sin favorito, atajo, autostart ni historial.
+Borrar perfil exige confirmar y limpia su trigger LMU; se bloquea si quedan cadena
+o hijos propios asociados. La ruta de app se puede escribir/pegar o seleccionar.
+El selector de pasos usa Choice::List dentro del drawer para evitar el popup
+Dropdown que quedaba detrás del modal; no se certifica paridad de ese selector.
+Las exclusiones de las notas históricas siguientes quedan sustituidas por estos
+hitos. Atajos y arranque siguen pendientes de registro en el propietario residente.
+
+## Hito 6 — detección
+Steam: un índice acotado por biblioteca también encuentra ejecutables de apps del
+catálogo que no son juegos; se mantienen validación de manifests y ruta manual.
+Accesos directos: Desktop del usuario/público (sin descender), Start Menu de usuario
+y sistema (dos niveles), filtros Wails por nombre y destino conocido; se excluye
+LMU/Steam URI. Hasta 20.000 entradas y 128 enlaces; resolver en grupos de 16, helper
+oculto de PowerShell/WScript.Shell del propio Windows, salida hasta 128 KiB y
+20 segundos por grupo. No se instala una dependencia ni se ejecuta/guarda el `.lnk`.
+Los tests crean un acceso directo real y comprueban bytes intactos y no ejecución;
+los árboles Steam son fixtures de rutas, no prueba de una instalación de Steam real.
+
+## Hito 7 — preferencias de disparadores (registro pendiente)
+El editor avanzado permite preparar el atajo y el perfil de arranque. Valida
+modificadores/tecla, normaliza flags y VK Win32, rechaza reservados y conflictos
+entre perfiles; al elegir otro autostart desmarca el anterior de forma atómica.
+La vista básica conserva indicadores, sin fingir que están registrados. La
+interfaz avanzada explica que falta el propietario residente.
+
+**Pendiente explícito autorizado por la tarea:** el núcleo no ofrece un dueño
+residente de perfiles Launcher ni bucle WM_HOTKEY/ruta CLI de lanzamiento. El Hub
+se cierra al entrar en Live. No registrar aquí RegisterHotKey ni escribir HKCU Run
+contra un comando inexistente. El siguiente corte debe conectar el propietario
+residente con el store y las políticas existentes, desregistrar/revocar al salir,
+y verificar tecla real, conflicto con otras apps, inicio de sesión Windows y
+comportamiento durante Live. No hay cambios de registro ni atajos globales activos.
+
+## Verificación manual pendiente del orquestador
+1. Importar una copia de configuración Wails con perfiles y apps, comprobar datos
+   y bytes originales, reiniciar y confirmar que no reimporta; probar nativo vacío.
+2. Con apps reales: reutilizar externa, reiniciar propia, fallo/continuar/parar,
+   cancelar en espera/sondeo, cerrar solo hijas propias y decidir al salir.
+3. Lanzar por fila, Inicio y Ctrl+K; retry selectivo y entero; validaciones, copiar,
+   borrar confirmado y pegar ruta. Verificar mouse/teclado dentro del drawer.
+4. Detectar Steam y .lnk reales de usuario con permisos/rutas portables; comprobar
+   Steam/Discord bootstrappers y que no se cierra un proceso observado sin propiedad.
+5. DPI/IME/OBS y otros GPU no están certificados por los tests ni las dos capturas.
+
+Límites: cierre forzado de hijos directos; no autoridad sobre descendientes de
+bootstrappers/Steam; salida automática Live no pregunta; no registro efectivo de
+hotkey/autostart, extracción de iconos ni actualización de estadísticas históricas.
+El banco usa fixtures demo Wails; no acredita estos flujos productivos por sí solo.
+Notion sigue sin acceso por excepción expresa; el orquestador debe reconciliar allí
+la entrega y la base asignada con nightly antes de integrar. Sin push, PR ni merge.

@@ -1,5 +1,5 @@
 //! Resultado Strategy: estado, certificado y revisiones exactas del solver.
-use gpui::{Context, Div, ParentElement, Styled, div, prelude::*, px, rgba};
+use gpui::{Context, Div, ParentElement, Styled, div, prelude::*, px, rgb, rgba};
 
 use super::{Page, Strategy, orbit};
 use std::sync::{Arc, atomic::AtomicBool};
@@ -244,105 +244,272 @@ impl Strategy {
             .flex_col()
             .w_full()
             .min_w_0()
-            .gap(px(orbit::RADIUS_CONTROL))
-            .child(orbit::eyebrow("Plan"))
-            .child(orbit::text(state.title(), 34.0, 600, orbit::INK))
-            .child(self.plan_status(state, source_open))
-            .child(self.plan_results(cx))
-            .child(self.calculation_footer(cx))
+            .min_h(px(0.0))
+            .px(px(12.0))
+            .pt(px(10.0))
+            .gap(px(14.0))
+            .child(self.plan_header(state))
+            .child(self.plan_status(state, source_open, cx).when(
+                matches!(
+                    state,
+                    PlanState::Loading | PlanState::Partial | PlanState::Error
+                ),
+                |card| card.mt(px(18.0)),
+            ))
+            .when(
+                matches!(state, PlanState::Calculated | PlanState::Editing),
+                |page| {
+                    page.child(self.plan_results(cx))
+                        .child(self.calculation_footer(cx))
+                },
+            )
+            .when(state == PlanState::Idle, |page| {
+                page.child(self.calculation_footer(cx))
+            })
             .into_any_element()
     }
 
-    fn plan_status(&self, state: PlanState, source_open: bool) -> Div {
+    fn plan_header(&self, state: PlanState) -> Div {
+        div()
+            .flex()
+            .items_end()
+            .justify_between()
+            .border_b_1()
+            .border_color(rgba(orbit::LINE))
+            .pb(px(22.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(12.0))
+                    .child(orbit::tracked_text("PLAN", 11.0, 700, orbit::RED, 1.0))
+                    .child(
+                        super::datos::tight_title(state.title(), 44.0, 400, 2.8)
+                            .line_height(px(52.8)),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(16.0))
+                    .child(
+                        orbit::text(
+                            "Condición del
+cálculo",
+                            13.0,
+                            400,
+                            orbit::INK_2,
+                        )
+                        .line_height(px(20.0)),
+                    )
+                    .child(
+                        super::datos::select_value(if self.fields[8] == "wet" {
+                            "Mojado"
+                        } else {
+                            "Seco"
+                        })
+                        .w(px(145.0))
+                        .h(px(44.0)),
+                    ),
+            )
+    }
+
+    fn plan_status(&self, state: PlanState, source_open: bool, cx: &mut Context<Self>) -> Div {
         match state {
-            PlanState::Idle => orbit::card("Pendiente de validar").child(
-                orbit::card_body()
-                    .gap(px(orbit::RADIUS_CONTROL))
-                    .child(orbit::text(
-                        if source_open {
-                            "El cálculo estará disponible al confirmar las entradas de carrera."
-                        } else {
-                            "Abre o crea un borrador de estrategia antes de calcular. No se conserva un resultado parcial."
-                        },
-                        14.0,
-                        650,
-                        orbit::INK,
-                    ))
-                    .child(orbit::text(
-                        "El resultado del solver usa las entradas manuales confirmadas; las revisiones de Analysis se muestran aparte.",
-                        12.5,
-                        400,
-                        orbit::INK_2,
-                    )),
-            ),
-            PlanState::Loading => orbit::card("Calculando").child(
-                orbit::card_body()
-                    .child(orbit::text(
-                        "El solver nativo está calculando stints, recursos y paradas.",
-                        14.0,
-                        650,
-                        orbit::INK,
-                    )),
-            ),
-            PlanState::Partial => orbit::card("Estrategia óptima no demostrada").child(
-                orbit::card_body()
-                    .gap(px(orbit::RADIUS_CONTROL))
-                    .child(orbit::text(
-                        if self
-                            .result
-                            .as_ref()
-                            .is_some_and(|outcome| outcome.result.feasible)
-                        {
-                            "El plan factible no tiene certificado de optimalidad completa."
-                        } else {
-                            "El presupuesto de búsqueda terminó antes de demostrar optimalidad o encontrar un plan factible."
-                        },
-                        14.0,
-                        650,
-                        orbit::INK,
-                    )),
-            ),
-            PlanState::Error => orbit::card("Revisa las reglas y la fuente").child(
-                orbit::card_body()
-                    .gap(px(orbit::RADIUS_CONTROL))
-                    .child(orbit::text(
-                        self.error.clone().unwrap_or_else(|| {
-                            "No existe una solución factible con las reglas y recursos actuales.".into()
-                        }),
-                        13.0,
-                        400,
-                        orbit::INK_2,
-                    )),
-            ),
-            PlanState::Calculated => certificate_card(
-                self.result
-                    .as_ref()
-                    .map(|outcome| &outcome.certificate),
-            ),
-            PlanState::Editing => orbit::card("Calendario pendiente").child(
-                orbit::card_body().child(orbit::text(
-                    "El calendario ha cambiado. Las métricas y el certificado se actualizan al recalcular.",
-                    14.0,
-                    600,
-                    orbit::INK_2,
-                )),
-            ),
+            PlanState::Idle => self.preflight_card(source_open),
+            PlanState::Loading | PlanState::Error => self.pending_plan_card(state,cx),
+            PlanState::Partial if self.capture_demo.is_some() => self.partial_capture_card(cx),
+            PlanState::Partial => plan_card().p(px(16.0))
+                .child(orbit::text("Estrategia óptima no demostrada",16.0,700,orbit::INK))
+                .child(orbit::text("La búsqueda terminó sin demostrar optimalidad completa.",16.0,400,orbit::INK_2).mt(px(8.0))),
+            PlanState::Calculated => certificate_card(self.result.as_ref().map(|outcome| &outcome.certificate)),
+            PlanState::Editing => plan_card().p(px(16.0)).child(orbit::text("El calendario ha cambiado. Recalcula para actualizar las métricas y el certificado.",16.0,400,orbit::INK_2)),
         }
     }
 
-    fn plan_results(&self, cx: &mut Context<Self>) -> Div {
-        let mut details = div()
+    fn preflight_card(&self, source_open: bool) -> Div {
+        let laps = if self.capture_demo.is_some() {
+            "69".into()
+        } else {
+            self.last_input.as_ref().map_or_else(
+                || self.fields[9].clone(),
+                |input| input.race_laps.to_string(),
+            )
+        };
+        let drivers = self
+            .current_event()
+            .and_then(|event| event["drivers"].as_array());
+        let names = drivers.map_or_else(String::new, |drivers| {
+            drivers
+                .iter()
+                .map(|driver| super::display(&driver["name"]["value"]))
+                .collect::<Vec<_>>()
+                .join(" · ")
+        });
+        let values = [
+            ("Evento", format!("{laps} vueltas")),
+            (
+                "Combustible y energía virtual",
+                format!(
+                    "Capacidad · {} L",
+                    self.capture_demo.as_ref().map_or_else(
+                        || self.fields[2].clone(),
+                        |demo| decimal(demo.capacity_liters, 0)
+                    )
+                ),
+            ),
+            (
+                "Fuente de datos",
+                format!(
+                    "{} sesión seleccionada",
+                    self.data.selected_revisions().len()
+                ),
+            ),
+            (
+                "Prepara tu equipo",
+                format!("{} pilotos", drivers.map_or(0, Vec::len)),
+            ),
+        ];
+        plan_card().p(px(28.0))
+            .child(orbit::tracked_text("PENDIENTE DE VALIDAR",11.0,700,orbit::RED,0.9))
+            .child(orbit::text(if source_open {"El cálculo estará disponible al completar y validar las entradas de carrera."} else {"Abre o crea un borrador de estrategia antes de calcular."},18.0,700,orbit::INK).line_height(px(22.0)).mt(px(8.0)))
+            .child(div().flex().gap(px(10.0)).mt(px(26.0)).children(values.into_iter().enumerate().map(|(index,(label,value))|
+                metric_card(label,value).h(px(115.0)).when(index==3,|card|card.child(orbit::text(names.clone(),12.0,400,orbit::INK_2).mt(px(8.0)))))))
+            .child(stage_strip(false,false).mt(px(32.0)).child(div()))
+    }
+
+    fn pending_plan_card(&self, state: PlanState, cx: &mut Context<Self>) -> Div {
+        let loading = state == PlanState::Loading;
+        let mut header = div()
             .flex()
-            .flex_col()
-            .w_full()
-            .min_w_0()
-            .gap(px(orbit::RADIUS_CONTROL));
+            .items_center()
+            .gap(px(22.0))
+            .px(px(28.0))
+            .h(px(124.0));
+        if loading {
+            header = header.child(
+                div()
+                    .size(px(54.0))
+                    .rounded_full()
+                    .border_2()
+                    .border_color(rgba(orbit::LINE_STRONG))
+                    .relative()
+                    .child(
+                        div()
+                            .absolute()
+                            .top(px(-1.0))
+                            .left(px(18.0))
+                            .w(px(18.0))
+                            .h(px(2.0))
+                            .bg(rgb(orbit::RED)),
+                    ),
+            );
+        }
+        header=header.child(div().flex().flex_col().flex_1().gap(px(12.0))
+            .child(orbit::text(if loading {"Calculando estrategia"} else {"Revisa las reglas y la telemetría antes de calcular."},if loading {16.0} else {20.0},700,orbit::INK))
+            .child(orbit::text(if loading {"El motor nativo está calculando vueltas, stints y combustible.".to_owned()} else {self.error.clone().unwrap_or_else(||"No existe una estrategia que complete la carrera con estas reglas y recursos.".into())},16.0,400,orbit::INK_2).line_height(px(24.0))));
+        if loading {
+            let laps = self.last_input.as_ref().map_or_else(
+                || {
+                    if self.capture_demo.is_some() {
+                        "69".into()
+                    } else {
+                        self.fields[9].clone()
+                    }
+                },
+                |input| input.race_laps.to_string(),
+            );
+            header = header.child(
+                div().flex().children(
+                    [
+                        ("Evento", format!("{laps} vueltas")),
+                        (
+                            "Fuente de datos",
+                            self.data.selected_revisions().len().to_string(),
+                        ),
+                        (
+                            "Prepara tu equipo",
+                            self.current_event()
+                                .and_then(|event| event["drivers"].as_array())
+                                .map_or(0, Vec::len)
+                                .to_string(),
+                        ),
+                    ]
+                    .into_iter()
+                    .map(|(label, value)| compact_summary(label, value)),
+                ),
+            );
+        }
+        plan_card()
+            .child(header)
+            .child(stage_strip(loading, loading))
+            .child(self.state_footer(loading, cx))
+    }
+
+    fn partial_capture_card(&self, cx: &mut Context<Self>) -> Div {
+        let Some(demo) = &self.capture_demo else {
+            return div();
+        };
+        plan_card().child(div().flex().flex_col().p(px(16.0))
+            .child(orbit::text("La telemetría permite mostrar estas magnitudes, pero todavía no respalda una estrategia completa.",16.0,600,orbit::INK))
+            .child(div().flex().gap(px(10.0)).mt(px(22.0))
+                .child(metric_card("Fuel por vuelta",format!("{} L",decimal(demo.fuel_per_lap,2))).h(px(79.0)))
+                .child(metric_card("Energía virtual por vuelta",format!("{}%",decimal(demo.ve_per_lap,2))).h(px(79.0)))
+                .child(plan_card().w(px(368.0)).flex_none().p(px(18.0)).border_color(orbit::tint(orbit::CARMINE,0.5)).bg(orbit::tint(orbit::CARMINE,0.08))
+                    .child(orbit::text("Falta ritmo válido para la condición elegida",16.0,700,orbit::INK).line_height(px(24.0))))))
+            .child(stage_strip(false,false)).child(self.state_footer(false,cx))
+    }
+
+    fn state_footer(&self, loading: bool, cx: &mut Context<Self>) -> Div {
+        let action = if loading {
+            orbit::button("strategy-plan-retry", "Cancelar")
+        } else {
+            super::datos::primary_action("strategy-plan-retry", "Reintentar cálculo")
+        };
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .px(px(18.0))
+            .h(px(72.0))
+            .border_t_1()
+            .border_color(rgba(orbit::LINE))
+            .child(orbit::text(
+                "Guardar configuración y aceptar propuesta son acciones independientes.",
+                12.0,
+                400,
+                orbit::INK_2,
+            ))
+            .child(
+                action
+                    .h(px(40.0))
+                    .when(
+                        !loading
+                            && !can_calculate(
+                                self.manual_source_status,
+                                self.editor.document.is_some(),
+                                self.running,
+                                self.edit_dirty,
+                            ),
+                        |button| button.opacity(orbit::DISABLED),
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if loading {
+                            this.invalidate();
+                            cx.notify();
+                        } else {
+                            this.calculate(cx);
+                        }
+                    })),
+            )
+    }
+
+    fn plan_results(&self, cx: &mut Context<Self>) -> Div {
+        let mut details = div().flex().flex_col().w_full().min_w_0().gap(px(14.0));
         if let Some(outcome) = &self.result {
             if outcome.result.feasible && !self.edit_dirty {
-                details = details.child(metrics(
-                    outcome,
-                    self.last_input.as_ref().map(|input| input.race_laps),
-                ));
+                details = details.child(self.metrics(outcome));
             }
             if outcome.result.feasible || self.edited_plan.is_some() {
                 details = details
@@ -350,12 +517,15 @@ impl Strategy {
                         div()
                             .flex()
                             .w_full()
-                            .gap(px(orbit::RADIUS_CONTROL))
+                            .gap(px(12.0))
                             .child(
                                 orbit::button("strategy-edit-stints", "Ajustar stints")
                                     .flex_1()
+                                    .h(px(52.0))
                                     .min_w_0()
                                     .justify_start()
+                                    .rounded(px(10.0))
+                                    .bg(rgb(0x0009_0c0d))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.begin_plan_edit(cx);
                                         this.page = Page::Stints;
@@ -365,8 +535,11 @@ impl Strategy {
                             .child(
                                 orbit::button("strategy-edit-pits", "Ajustar paradas")
                                     .flex_1()
+                                    .h(px(52.0))
                                     .min_w_0()
                                     .justify_start()
+                                    .rounded(px(10.0))
+                                    .bg(rgb(0x0009_0c0d))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.begin_plan_edit(cx);
                                         this.page = Page::Stops;
@@ -376,27 +549,72 @@ impl Strategy {
                     )
                     .child(self.timeline(outcome));
             }
-            if !self.edit_dirty {
+            details = details.child(self.exact_revisions());
+            if self.capture_demo.is_none() {
                 details = details.child(plan_condition(outcome));
             }
-            details = details.child(self.exact_revisions());
         }
         if let Some(cost) = self.edit_cost_seconds {
             details = details.child(orbit::callout(format!(
-                "Recálculo completado · coste del plan editado: {}",
+                "Recálculo completado · coste: {}",
                 duration(cost)
             )));
         }
         if let Some(error) = &self.edit_error {
             details = details.child(orbit::callout(error.clone()));
         }
-
-        if !self.source_revisions.is_empty() {
-            details = details.child(orbit::callout(
-                "La preparación automática valida cobertura y revisiones de Analysis. El solver disponible calcula con entradas manuales y no convierte esa proyección en un plan.",
-            ));
-        }
         details
+    }
+
+    fn metrics(&self, outcome: &SolverOutcome) -> Div {
+        let plan = &outcome.result;
+        let reserve = plan.reserve.as_ref().map_or_else(
+            || "Sin dato".into(),
+            |reserve| {
+                if !reserve.fuel.active && !reserve.virtual_energy.active {
+                    "Sin reserva solicitada".into()
+                } else {
+                    format!(
+                        "{} / {}",
+                        decimal(reserve.effective_laps, 2),
+                        decimal(
+                            reserve
+                                .fuel
+                                .requested_laps
+                                .max(reserve.virtual_energy.requested_laps),
+                            0
+                        )
+                    )
+                }
+            },
+        );
+        let (seconds, reserve) =
+            self.capture_demo
+                .as_ref()
+                .map_or((plan.expected.total_seconds, reserve), |demo| {
+                    (
+                        demo.total_seconds,
+                        format!(
+                            "{} / {}",
+                            decimal(demo.reserve_laps, 2),
+                            decimal(demo.required_laps, 0)
+                        ),
+                    )
+                });
+        let laps = self
+            .last_input
+            .as_ref()
+            .map_or_else(|| "Sin dato".into(), |input| input.race_laps.to_string());
+        div().flex().w_full().min_w_0().gap(px(10.0)).children(
+            [
+                ("Duración", duration(seconds)),
+                ("Vueltas", laps),
+                ("Paradas", plan.pit_stops.len().to_string()),
+                ("Reserva real / exigida", reserve),
+            ]
+            .into_iter()
+            .map(|(label, value)| metric_card(label, value).h(px(80.0))),
+        )
     }
 
     fn calculation_footer(&self, cx: &mut Context<Self>) -> Div {
@@ -408,32 +626,56 @@ impl Strategy {
             .items_center()
             .border_t_1()
             .border_color(rgba(orbit::LINE))
-            .pt(px(orbit::RADIUS_CONTROL))
+            .pt(px(18.0))
             .child(orbit::text(
-                "Guardar la configuración y aceptar una propuesta son acciones distintas.",
-                12.5,
+                "Guardar configuración y aceptar propuesta son acciones independientes.",
+                12.0,
                 400,
                 orbit::INK_2,
             ))
             .child(
-                orbit::button(
-                    "strategy-calculate-plan",
-                    if self.running {
-                        "Calculando…"
-                    } else {
-                        "Calcular estrategia"
-                    },
-                )
-                .when(
-                    !can_calculate(
-                        self.manual_source_status,
-                        self.editor.document.is_some(),
-                        self.running,
-                        self.edit_dirty,
+                div()
+                    .flex()
+                    .gap(px(12.0))
+                    .child(
+                        orbit::button("strategy-calculate-plan", "Calcular estrategia")
+                            .h(px(40.0))
+                            .when(
+                                !can_calculate(
+                                    self.manual_source_status,
+                                    self.editor.document.is_some(),
+                                    self.running,
+                                    self.edit_dirty,
+                                ) || self.capture_demo.is_some(),
+                                |button| button.opacity(orbit::DISABLED),
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))),
+                    )
+                    .when(
+                        self.result
+                            .as_ref()
+                            .is_some_and(|outcome| outcome.result.feasible),
+                        |actions| {
+                            actions.child(
+                                super::datos::primary_action(
+                                    "strategy-accept-plan",
+                                    "Aceptar propuesta",
+                                )
+                                .h(px(40.0))
+                                .when(self.capture_demo.is_none(), |button| {
+                                    button.opacity(orbit::DISABLED)
+                                })
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
+                                        if this.capture_demo.is_some() {
+                                            this.status = "Propuesta demo aceptada".into();
+                                            cx.notify();
+                                        }
+                                    },
+                                )),
+                            )
+                        },
                     ),
-                    |button| button.opacity(orbit::DISABLED),
-                )
-                .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))),
             )
     }
 
@@ -491,58 +733,109 @@ impl Strategy {
     fn timeline(&self, outcome: &SolverOutcome) -> Div {
         let plan = &outcome.result;
         let use_solver_schedule = plan.feasible && !self.edit_dirty;
-        let edited = self.edited_plan.as_ref();
         let stints = if use_solver_schedule {
             plan.stints.as_slice()
         } else {
-            edited.map_or(plan.stints.as_slice(), |edited| edited.stints.as_slice())
+            self.edited_plan
+                .as_ref()
+                .map_or(plan.stints.as_slice(), |edited| edited.stints.as_slice())
         };
-        let mut timeline = div()
-            .flex()
-            .w_full()
-            .min_w_0()
-            .items_stretch()
-            .gap(px(orbit::RADIUS_CONTROL));
-        let mut lap_start = 1_u32;
-        for (index, laps) in stints.iter().enumerate() {
-            let lap_end = lap_start.saturating_add(*laps).saturating_sub(1);
-            timeline = timeline.child(self.stint_card(index, lap_start, lap_end));
-            lap_start = lap_end.saturating_add(1);
+        let mut timeline = div().flex().w_full().min_w_0().items_start().gap(px(12.0));
+        let mut first = 1_u32;
+        for (index, &laps) in stints.iter().enumerate() {
+            let last = first.saturating_add(laps).saturating_sub(1);
+            timeline = timeline.child(timeline_item(
+                self.stint_card(index, first, last),
+                index * 2,
+            ));
+            first = last.saturating_add(1);
             if let Some(card) = self.stop_card(outcome, index, use_solver_schedule) {
-                timeline = timeline.child(card);
+                timeline = timeline.child(timeline_item(card, index * 2 + 1));
             }
         }
-        orbit::card("Stints y paradas")
-            .w_full()
-            .min_w_0()
-            .child(orbit::card_body().w_full().child(timeline))
+        timeline
     }
 
-    fn stint_card(&self, index: usize, lap_start: u32, lap_end: u32) -> Div {
-        orbit::card("").flex_1().min_w_0().child(
-            orbit::card_body()
-                .gap(px(8.0))
-                .child(orbit::eyebrow(format!("Stint {}", index + 1)))
-                .child(orbit::text(
-                    format!("Vueltas {lap_start}–{lap_end}"),
-                    14.0,
-                    700,
-                    orbit::INK,
-                ))
-                .child(orbit::setting_row(
-                    "Ritmo base",
-                    "Entrada usada por el solver",
-                    orbit::text(
-                        self.last_input.as_ref().map_or_else(
-                            || "Sin dato".into(),
-                            |input| format!("{:.2} s/v", input.base_lap_seconds.value),
-                        ),
-                        12.0,
-                        600,
-                        orbit::INK_2,
-                    ),
-                )),
-        )
+    pub(super) fn stint_values(&self, index: usize) -> [String; 4] {
+        if let Some(stint) = self
+            .capture_demo
+            .as_ref()
+            .and_then(|demo| demo.stints.get(index))
+        {
+            return [
+                stint.driver.clone(),
+                duration(stint.pace_seconds),
+                format!("{} L", decimal(stint.fuel_liters, 1)),
+                format!("{}%", decimal(stint.ve_percent, 1)),
+            ];
+        }
+        let outcome = self.result.as_ref();
+        let driver = outcome
+            .and_then(|outcome| outcome.result.best.as_ref())
+            .and_then(|best| best.stints.get(index))
+            .map(|stint| stint.driver.as_str());
+        let name = driver
+            .and_then(|id| {
+                self.current_event()
+                    .and_then(|event| event["drivers"].as_array())
+                    .and_then(|drivers| {
+                        drivers
+                            .iter()
+                            .find(|driver| driver["id"].as_str() == Some(id))
+                    })
+                    .map(|driver| super::display(&driver["name"]["value"]))
+            })
+            .unwrap_or_else(|| "Sin piloto".into());
+        let pace = self.last_input.as_ref().map_or_else(
+            || "Sin dato".into(),
+            |input| duration(input.base_lap_seconds.value),
+        );
+        let fuel = outcome.filter(|_| index == 0).map_or_else(
+            || "Sin dato".into(),
+            |outcome| format!("{} L", decimal(outcome.result.fuel_start_liters, 1)),
+        );
+        let energy = outcome.filter(|_| index == 0).map_or_else(
+            || "Sin dato".into(),
+            |outcome| format!("{}%", decimal(outcome.result.ve_start_percent, 1)),
+        );
+        [name, pace, fuel, energy]
+    }
+
+    fn stint_card(&self, index: usize, first: u32, last: u32) -> Div {
+        let [driver, pace, fuel, energy] = self.stint_values(index);
+        plan_card()
+            .p(px(16.0))
+            .h(px(166.0))
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .gap(px(8.0))
+                    .child(orbit::tracked_text(
+                        format!("STINT {}", index + 1),
+                        11.0,
+                        700,
+                        orbit::RED,
+                        0.8,
+                    ))
+                    .child(orbit::text(driver, 16.0, 700, orbit::INK)),
+            )
+            .child(
+                div()
+                    .flex()
+                    .gap(px(16.0))
+                    .mt(px(14.0))
+                    .child(fact("Vueltas", format!("{first}–{last}")))
+                    .child(fact("Ritmo base", pace)),
+            )
+            .child(
+                div()
+                    .flex()
+                    .gap(px(16.0))
+                    .mt(px(14.0))
+                    .child(fact("Fuel", fuel))
+                    .child(fact("Energía virtual", energy)),
+            )
     }
 
     fn stop_card(
@@ -551,90 +844,127 @@ impl Strategy {
         index: usize,
         use_solver_schedule: bool,
     ) -> Option<Div> {
-        let plan = &outcome.result;
-        let edited = self.edited_plan.as_ref();
-        let stop_lap = if use_solver_schedule {
-            plan.pit_stops.get(index).map(|stop| stop.lap)
+        let stop = outcome.result.pit_stops.get(index);
+        let lap = if use_solver_schedule {
+            stop.map(|stop| stop.lap)
         } else {
-            edited.and_then(|edited| edited.pit_stop_laps.get(index).copied())
+            self.edited_plan
+                .as_ref()
+                .and_then(|edited| edited.pit_stop_laps.get(index).copied())
         }?;
-        let mut body = orbit::card_body()
-            .gap(px(8.0))
-            .child(orbit::eyebrow(format!("Parada {}", index + 1)))
-            .child(orbit::text(
-                format!("Vuelta {stop_lap}"),
-                14.0,
-                700,
-                orbit::INK,
-            ));
-        if use_solver_schedule && let Some(stop) = plan.pit_stops.get(index) {
-            body = body
-                .child(orbit::text(
-                    format!(
-                        "Fuel +{:.1} L · Energía virtual +{:.1}%",
-                        stop.fuel_liters, stop.ve_percent
-                    ),
-                    12.0,
-                    400,
-                    orbit::INK_2,
-                ))
-                .child(orbit::text(
-                    if stop.change_tyres {
-                        format!("Cambio de neumáticos · {}", stop.service_mode)
-                    } else {
-                        format!("Sin cambio de neumáticos · {}", stop.service_mode)
-                    },
-                    11.5,
-                    400,
-                    orbit::INK_3,
-                ));
-        } else {
-            body = body.child(orbit::text(
-                if self.edit_dirty {
-                    "Pendiente de recálculo"
-                } else {
-                    "Sin decisión factible de recursos"
-                },
-                11.5,
-                400,
-                orbit::INK_3,
+        let mut card = plan_card()
+            .p(px(16.0))
+            .border_color(orbit::tint(orbit::CARMINE, 0.42))
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .gap(px(8.0))
+                    .child(orbit::tracked_text(
+                        format!("PARADA {}", index + 1),
+                        11.0,
+                        700,
+                        orbit::RED,
+                        0.8,
+                    ))
+                    .child(orbit::text(format!("Vuelta {lap}"), 16.0, 700, orbit::INK)),
+            );
+        if self.edit_dirty {
+            return Some(card.child(
+                orbit::text("Pendiente de recálculo", 12.0, 400, orbit::INK_2).mt(px(14.0)),
             ));
         }
-        Some(
-            orbit::card("")
-                .flex_1()
-                .min_w_0()
-                .border_color(orbit::tint(orbit::CARMINE, 0.42))
-                .child(body),
-        )
+        let rows = if let Some(demo) = self
+            .capture_demo
+            .as_ref()
+            .and_then(|demo| demo.stops.get(index))
+        {
+            vec![
+                format!("Tiempo de pit: {}", duration(demo.total_seconds)),
+                format!(
+                    "Fuel: {} → {} L",
+                    decimal(demo.fuel_in, 1),
+                    decimal(demo.fuel_out, 1)
+                ),
+                format!(
+                    "Energía virtual: {} → {}%",
+                    decimal(demo.ve_in, 0),
+                    decimal(demo.ve_out, 0)
+                ),
+            ]
+        } else if let Some(stop) = stop {
+            vec![
+                format!("Fuel añadido: {} L", decimal(stop.fuel_liters, 1)),
+                format!("Energía virtual añadida: {}%", decimal(stop.ve_percent, 1)),
+                if stop.change_tyres {
+                    "Cambio de neumáticos".into()
+                } else {
+                    "Sin cambio de neumáticos".into()
+                },
+            ]
+        } else {
+            vec!["Sin decisión factible de recursos".into()]
+        };
+        card = card.child(
+            div().flex().flex_col().gap(px(6.0)).mt(px(14.0)).children(
+                rows.into_iter()
+                    .map(|row| orbit::text(row, 12.0, 400, orbit::INK_2)),
+            ),
+        );
+        Some(card)
     }
 
     fn exact_revisions(&self) -> Div {
-        let body = if self.source_revisions.is_empty() {
-            orbit::card_body().child(orbit::text(
-                "No hay revisiones de Analysis seleccionadas. El resultado usa entradas manuales.",
+        let mut rows = div().flex().gap(px(8.0));
+        for revision in &self.source_revisions {
+            rows = rows.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .p(px(12.0))
+                    .rounded(px(8.0))
+                    .bg(rgb(0x0011_1416))
+                    .child(orbit::text(
+                        revision.session_id.clone(),
+                        16.0,
+                        700,
+                        orbit::INK,
+                    ))
+                    .child(orbit::mono_text(
+                        short_digest(&revision.revision_id),
+                        11.0,
+                        orbit::INK_2,
+                    )),
+            );
+        }
+        if self.source_revisions.is_empty() {
+            rows = rows.child(orbit::text(
+                "El resultado usa entradas manuales; no utiliza revisiones de Analysis.",
                 12.0,
                 400,
-                orbit::INK_3,
+                orbit::INK_2,
+            ));
+        }
+        div()
+            .flex()
+            .flex_col()
+            .border_t_1()
+            .border_color(rgba(orbit::LINE))
+            .pt(px(12.0))
+            .gap(px(6.0))
+            .child(orbit::tracked_text(
+                if self.capture_demo.is_some() {
+                    "REVISIONES EXACTAS UTILIZADAS"
+                } else {
+                    "REVISIONES EXACTAS SELECCIONADAS"
+                },
+                11.0,
+                600,
+                orbit::INK,
+                0.7,
             ))
-        } else {
-            let rows = self.source_revisions.iter().map(|revision| {
-                orbit::setting_row(
-                    &revision.session_id,
-                    &format!(
-                        "base {} · snapshot {}",
-                        short_digest(&revision.base_digest),
-                        short_digest(&revision.snapshot_id)
-                    ),
-                    orbit::mono_text(short_digest(&revision.revision_id), 11.0, orbit::INK_2),
-                )
-            });
-            orbit::card_body().children(rows)
-        };
-        orbit::card("Revisiones exactas seleccionadas")
-            .w_full()
-            .min_w_0()
-            .child(body)
+            .child(rows)
     }
 
     pub(super) fn stint_editor_page(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
@@ -646,89 +976,167 @@ impl Strategy {
     }
 }
 
+fn compact_summary(label: &str, value: String) -> Div {
+    div()
+        .w(px(155.0))
+        .h(px(62.0))
+        .flex()
+        .flex_col()
+        .px(px(14.0))
+        .justify_center()
+        .gap(px(8.0))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .child(
+            orbit::tracked_text(label.to_uppercase(), 11.0, 400, orbit::INK_2, 0.2)
+                .line_height(px(16.5)),
+        )
+        .child(orbit::text(value, 15.0, 700, orbit::INK).line_height(px(22.0)))
+}
+
+pub(super) fn plan_card() -> Div {
+    orbit::card("")
+        .flex_none()
+        .rounded(px(10.0))
+        .bg(rgb(0x000b_0e0f))
+        .border_color(rgba(orbit::LINE))
+}
+
+pub(super) fn decimal(value: f64, digits: usize) -> String {
+    if !value.is_finite() {
+        return "Sin dato".into();
+    }
+    format!("{value:.digits$}").replace('.', ",")
+}
+
+pub(super) fn fact(label: &str, value: String) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .flex_1()
+        .min_w_0()
+        .gap(px(8.0))
+        .child(
+            orbit::tracked_text(label.to_uppercase(), 11.0, 400, orbit::INK_2, 0.2)
+                .line_height(px(16.5)),
+        )
+        .child(orbit::text(value, 15.0, 700, orbit::INK).line_height(px(22.0)))
+}
+
+fn metric_card(label: &str, value: String) -> Div {
+    plan_card()
+        .flex_1()
+        .min_w_0()
+        .p(px(16.0))
+        .flex()
+        .flex_col()
+        .gap(px(8.0))
+        .child(
+            orbit::tracked_text(label.to_uppercase(), 11.0, 400, orbit::INK_2, 0.2)
+                .line_height(px(16.5)),
+        )
+        .child(orbit::text(value, 20.0, 700, orbit::INK).line_height(px(24.0)))
+}
+
+fn timeline_item(card: Div, index: usize) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .flex_1()
+        .min_w_0()
+        .relative()
+        .pt(px(17.0))
+        .child(card)
+        .child(
+            div()
+                .absolute()
+                .left(px(8.0))
+                .top(px(4.0))
+                .w_full()
+                .h(px(1.0))
+                .bg(orbit::tint(orbit::CARMINE, 0.5))
+                .when(index == 4, |line| line.w(px(0.0))),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(4.0))
+                .top(px(0.0))
+                .size(px(8.0))
+                .rounded_full()
+                .border_2()
+                .border_color(rgb(orbit::RED))
+                .bg(rgb(0x0008_090b)),
+        )
+}
+
+fn stage_strip(first_complete: bool, second_active: bool) -> Div {
+    div()
+        .flex()
+        .border_y_1()
+        .border_color(rgba(orbit::LINE))
+        .h(px(70.0))
+        .children(
+            ["Fuente de datos", "Pendiente de validar", "Plan de carrera"]
+                .into_iter()
+                .enumerate()
+                .map(|(index, label)| {
+                    let active = second_active && index == 1;
+                    let complete = first_complete && index == 0;
+                    div()
+                        .flex()
+                        .items_center()
+                        .flex_1()
+                        .gap(px(12.0))
+                        .px(px(18.0))
+                        .border_r_1()
+                        .border_color(rgba(orbit::LINE))
+                        .child(
+                            div()
+                                .size(px(32.0))
+                                .rounded_full()
+                                .border_1()
+                                .border_color(if complete {
+                                    rgb(orbit::GREEN)
+                                } else if active {
+                                    rgb(orbit::RED)
+                                } else {
+                                    rgba(orbit::LINE_STRONG)
+                                })
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(orbit::text(
+                                    if complete {
+                                        "✓".into()
+                                    } else {
+                                        (index + 1).to_string()
+                                    },
+                                    16.0,
+                                    400,
+                                    if complete {
+                                        orbit::GREEN
+                                    } else if active {
+                                        orbit::RED
+                                    } else {
+                                        orbit::INK_2
+                                    },
+                                )),
+                        )
+                        .child(orbit::text(label, 13.0, 700, orbit::INK))
+                }),
+        )
+}
+
 fn certificate_card(certificate: Option<&vantare_strategy::solver::OptimalityCertificate>) -> Div {
     let Some(certificate) = certificate else {
         return orbit::callout("El solver no devolvió un certificado.");
     };
     let proven = certificate.status == OptimalityStatus::Proven;
-    orbit::card("")
-        .w_full()
-        .border_color(orbit::tint(
-            if proven { orbit::GREEN } else { orbit::CORAL },
-            0.65,
-        ))
-        .child(
-            orbit::card_body()
-                .child(orbit::text(
-                    if proven {
-                        "Estrategia óptima demostrada"
-                    } else {
-                        "Estrategia óptima no demostrada"
-                    },
-                    15.0,
-                    700,
-                    orbit::INK,
-                ))
-                .child(orbit::text(
-                    if proven {
-                        "La decisión final coincide con el mejor resultado de la búsqueda completa del modelo."
-                    } else {
-                        "La búsqueda no demostró optimalidad completa para este resultado."
-                    },
-                    13.0,
-                    400,
-                    orbit::INK_2,
-                ))
-                .child(orbit::text(
-                    format!(
-                        "Modelo: {} · alcance: {}",
-                        certificate.model, certificate.scope
-                    ),
-                    12.0,
-                    400,
-                    orbit::INK_2,
-                )),
-        )
-}
-
-fn metrics(outcome: &SolverOutcome, laps: Option<u32>) -> Div {
-    let plan = &outcome.result;
-    let reserve = plan.reserve.as_ref().map_or_else(
-        || "Sin reserva solicitada".into(),
-        |reserve| {
-            format!(
-                "Fuel {:.1}/{:.1} L · VE {:.1}/{:.1}%",
-                reserve.fuel.remaining_amount,
-                reserve.fuel.required_amount,
-                reserve.virtual_energy.remaining_amount,
-                reserve.virtual_energy.required_amount,
-            )
-        },
-    );
-    let values = [
-        ("Duración", duration(plan.expected.total_seconds)),
-        (
-            "Vueltas",
-            laps.map_or_else(|| "Sin dato".into(), |laps| laps.to_string()),
-        ),
-        ("Paradas", plan.pit_stops.len().to_string()),
-        ("Reserva real / exigida", reserve),
-    ];
-    let cards = values.into_iter().map(|(title, value)| {
-        orbit::card("").flex_1().min_w_0().child(
-            orbit::card_body()
-                .gap(px(6.0))
-                .child(orbit::eyebrow(title))
-                .child(orbit::text(value, 17.0, 700, orbit::INK)),
-        )
-    });
-    div()
-        .flex()
-        .w_full()
-        .min_w_0()
-        .flex_wrap()
-        .gap(px(orbit::RADIUS_CONTROL))
-        .children(cards)
+    plan_card().h(px(102.0)).flex_none().bg(rgb(0x0010_1113)).relative().overflow_hidden().child(div().absolute().left(px(0.0)).top(px(0.0)).bottom(px(0.0)).w(px(3.0)).bg(rgb(if proven {orbit::GREEN} else {orbit::CORAL}))).p(px(16.0)).flex().flex_col().gap(px(8.0))
+        .child(orbit::text(if proven {"Estrategia óptima demostrada"} else {"Estrategia óptima no demostrada"},16.0,700,orbit::INK).line_height(px(19.2)))
+        .child(orbit::text(if proven {"La decisión final coincide con el mejor resultado de la búsqueda completa del modelo."} else {"La búsqueda no demostró optimalidad completa para este resultado."},16.0,400,orbit::INK_2).line_height(px(24.0)))
+        .child(orbit::text(format!("Modelo: {} · menor tiempo total",certificate.model),12.0,400,orbit::INK).line_height(px(18.0)))
 }
 
 pub(super) fn duration(seconds: f64) -> String {

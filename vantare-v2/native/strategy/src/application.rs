@@ -14,10 +14,12 @@ pub use automatic::{
     ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,
 };
 pub use corrections::{
-    AnalysisValidity, ContinuousCoverage, CorrectionFamily, CorrectionSource, CoverageGap,
-    FamilyCorrectionRequest, FamilyCorrectionTarget, FamilyUse, LapExclusionReason,
-    PreparedFamilyCorrection, SourceAnalysisRef, ValidityLap, apply_family_corrections,
-    continue_with_analysis_revision, prepare_family_corrections,
+    AnalysisConfidence, AnalysisProvenance, AnalysisValidity, ContinuousCoverage, CorrectionFamily,
+    CorrectionSource, CoverageGap, FamilyCorrectionRequest, FamilyCorrectionTarget, FamilyUse,
+    GoTimestamp, LapExclusionReason, PreparedFamilyCorrection, SourceAnalysisRef,
+    TemporalLapBoundary, TemporalSegmentsV1, TemporalStintBoundary, TemporalTrackLocation,
+    ValidityLap, apply_family_corrections, continue_with_analysis_revision,
+    prepare_family_corrections,
 };
 pub use editing::{EditedPlan, recalculate_edited_plan};
 

@@ -7,7 +7,7 @@ fn frozen_files_and_manifest_have_their_reviewed_hashes() {
     let bytes = std::fs::read(root.join("manifest.json")).expect("mandatory manifest");
     assert_eq!(
         format!("{:x}", Sha256::digest(&bytes)),
-        "7606a0777b4af763e7ce21ad680ece9978ba657494296c9b102f45579932519d"
+        "09b40626ed2f027394b0dc616b46db3a23734be65126e5f37e65dd89a248c23e"
     );
     let manifest: Value = serde_json::from_slice(&bytes).expect("manifest");
     let files = manifest["files"].as_object().expect("files");

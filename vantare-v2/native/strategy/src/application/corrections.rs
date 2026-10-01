@@ -1,5 +1,6 @@
 //! Exact, local preparation of Analysis-owned per-family corrections.
 use chrono::{DateTime, SecondsFormat, Utc};
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -113,35 +114,135 @@ pub struct ValidityLap {
     pub family_use: Vec<FamilyUse>,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct GoTimestamp(String);
+
+impl GoTimestamp {
+    pub fn new(value: impl Into<String>) -> Result<Self, String> {
+        let value = value.into();
+        parse_time(&value)?;
+        Ok(Self(value))
+    }
+
+    fn as_utc(&self) -> Result<DateTime<Utc>, String> {
+        parse_time(&self.0)
+    }
+}
+
+impl Serialize for GoTimestamp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let timestamp = DateTime::parse_from_rfc3339(&self.0)
+            .map_err(serde::ser::Error::custom)?
+            .to_rfc3339_opts(SecondsFormat::AutoSi, true);
+        serializer.serialize_str(&timestamp)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AnalysisProvenance {
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_at: Option<GoTimestamp>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AnalysisConfidence {
+    pub sample_size: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub range_lower: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub range_upper: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variance: Option<f64>,
+    pub computation_version: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ContinuousCoverage {
-    pub start: String,
-    pub end: String,
+    pub segment_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_start: Option<GoTimestamp>,
+    pub session_start_ts: GoTimestamp,
+    pub session_end_ts: GoTimestamp,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub driver_id: Option<String>,
+    pub reason: String,
+    pub presence: String,
+    pub provenance: AnalysisProvenance,
+    pub confidence: AnalysisConfidence,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CoverageGap {
+    pub gap_id: String,
+    pub start_ts: GoTimestamp,
+    pub end_ts: GoTimestamp,
+    pub reason: String,
+    pub presence: String,
+    pub provenance: AnalysisProvenance,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TemporalTrackLocation {
+    pub normalized_distance: f64,
     pub presence: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CoverageGap {
-    pub start: String,
-    pub end: String,
+pub struct TemporalLapBoundary {
+    pub lap_number: i64,
+    pub timestamp: GoTimestamp,
+    pub source: String,
+    pub quality: String,
+    pub provenance: AnalysisProvenance,
+    pub confidence: AnalysisConfidence,
+    pub location: TemporalTrackLocation,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TemporalStintBoundary {
+    pub stint_number: i64,
+    pub timestamp: GoTimestamp,
+    pub cause: String,
+    pub presence: String,
+    pub provenance: AnalysisProvenance,
+    pub confidence: AnalysisConfidence,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TemporalSegmentsV1 {
+    pub contract_version: String,
+    pub segments: Option<Vec<ContinuousCoverage>>,
+    pub gaps: Option<Vec<CoverageGap>>,
+    pub lap_boundaries: Option<Vec<TemporalLapBoundary>>,
+    pub stint_boundaries: Option<Vec<TemporalStintBoundary>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AnalysisValidity {
     pub session_id: String,
     pub computation_version: String,
-    pub temporal_contract_version: String,
-    pub segmentation_digest: String,
+    pub temporal: TemporalSegmentsV1,
     pub laps: Vec<ValidityLap>,
-    pub segments: Vec<ContinuousCoverage>,
-    pub gaps: Vec<CoverageGap>,
 }
 
 /// Exact Analysis inputs used to prepare a family correction.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CorrectionSource {
     pub base: SourceAnalysisRef,
@@ -306,8 +407,14 @@ fn validate_correction_source(
         || source.revision.base_digest != base_id
         || source.validity.session_id != source.base.session_id
         || source.validity.computation_version != source.base.analysis_version
-        || source.validity.temporal_contract_version != TEMPORAL_CONTRACT_V1
-        || source.validity.segmentation_digest != source.base.segmentation_digest
+        || source.validity.temporal.contract_version != TEMPORAL_CONTRACT_V1
+    {
+        return Err("analysis_interpretation_changed".into());
+    }
+    if digest_json(
+        "analysis.correction-segmentation.v1",
+        &source.validity.temporal,
+    )? != source.base.segmentation_digest
     {
         return Err("analysis_interpretation_changed".into());
     }
@@ -315,6 +422,11 @@ fn validate_correction_source(
         std::slice::from_ref(&source.base.session_id),
         std::slice::from_ref(&source.revision),
     )?;
+    let selected_sessions = selected_revisions
+        .iter()
+        .map(|revision| revision.session_id.clone())
+        .collect::<Vec<_>>();
+    validate_analysis_revisions(&selected_sessions, selected_revisions)?;
     let selected_for_session = selected_revisions
         .iter()
         .filter(|revision| revision.session_id == source.base.session_id)
@@ -427,22 +539,28 @@ fn validate_inclusion(validity: &AnalysisValidity, lap: &ValidityLap) -> Result<
     }
     let start = parse_time(&lap.start)?;
     let end = parse_time(&lap.end)?;
-    for gap in &validity.gaps {
-        if start < parse_time(&gap.end)? && end > parse_time(&gap.start)? {
+    for gap in validity.temporal.gaps.as_deref().into_iter().flatten() {
+        if start < gap.end_ts.as_utc()? && end > gap.start_ts.as_utc()? {
             return Err("incompatible_correction_value".into());
         }
     }
-    let covered = validity.segments.iter().any(|segment| {
-        let Ok(segment_start) = parse_time(&segment.start) else {
-            return false;
-        };
-        let Ok(segment_end) = parse_time(&segment.end) else {
-            return false;
-        };
-        start >= segment_start
-            && end <= segment_end
-            && matches!(segment.presence.as_str(), "valid" | "stale")
-    });
+    let covered = validity
+        .temporal
+        .segments
+        .as_deref()
+        .into_iter()
+        .flatten()
+        .any(|segment| {
+            let Ok(segment_start) = segment.session_start_ts.as_utc() else {
+                return false;
+            };
+            let Ok(segment_end) = segment.session_end_ts.as_utc() else {
+                return false;
+            };
+            start >= segment_start
+                && end <= segment_end
+                && matches!(segment.presence.as_str(), "valid" | "stale")
+        });
     if !covered {
         return Err("incompatible_correction_value".into());
     }
@@ -499,11 +617,68 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
+    fn example_temporal(start: &str, end: &str) -> TemporalSegmentsV1 {
+        let range_lower = 0.1;
+        let range_upper = 0.9;
+        let variance = 0.123;
+        TemporalSegmentsV1 {
+            contract_version: TEMPORAL_CONTRACT_V1.into(),
+            segments: Some(vec![ContinuousCoverage {
+                segment_id: "coverage-1".into(),
+                source_start: None,
+                session_start_ts: GoTimestamp::new(start).expect("valid start"),
+                session_end_ts: GoTimestamp::new(end).expect("valid end"),
+                driver_id: None,
+                reason: "observed".into(),
+                presence: "valid".into(),
+                provenance: AnalysisProvenance {
+                    kind: "unknown".into(),
+                    source_id: None,
+                    observed_at: None,
+                },
+                confidence: AnalysisConfidence {
+                    sample_size: 1,
+                    range_lower: None,
+                    range_upper: None,
+                    variance: None,
+                    computation_version: "analysis-v1".into(),
+                },
+            }]),
+            gaps: None,
+            lap_boundaries: Some(vec![TemporalLapBoundary {
+                lap_number: 2,
+                timestamp: GoTimestamp::new(end).expect("valid boundary time"),
+                source: "reconciled".into(),
+                quality: "valid".into(),
+                provenance: AnalysisProvenance {
+                    kind: "observed".into(),
+                    source_id: Some("analysis:lap".into()),
+                    observed_at: None,
+                },
+                confidence: AnalysisConfidence {
+                    sample_size: 1,
+                    range_lower: Some(range_lower),
+                    range_upper: Some(range_upper),
+                    variance: Some(variance),
+                    computation_version: "analysis-v1".into(),
+                },
+                location: TemporalTrackLocation {
+                    normalized_distance: 0.25,
+                    presence: "valid".into(),
+                },
+            }]),
+            stint_boundaries: None,
+        }
+    }
+
     fn example() -> (
         CorrectionSource,
         Vec<AnalysisRevisionRef>,
         FamilyCorrectionRequest,
     ) {
+        let start = "2026-09-10T12:00:00Z";
+        let end = "2026-09-10T12:01:30Z";
+        let temporal = example_temporal(start, end);
         let base = SourceAnalysisRef {
             session_id: "session-1".into(),
             content_sha256: "a".repeat(64),
@@ -512,8 +687,8 @@ mod tests {
             parser_version: "1".into(),
             schema_fingerprint: "schema".into(),
             analysis_version: "analysis-v1".into(),
-            segmentation_digest: "b7f2e7a8f6d3c1a0b7f2e7a8f6d3c1a0b7f2e7a8f6d3c1a0b7f2e7a8f6d3c1a0"
-                .into(),
+            segmentation_digest: digest_json("analysis.correction-segmentation.v1", &temporal)
+                .expect("Go-compatible temporal digest"),
         };
         let base_id = base.digest().expect("valid Go-compatible source digest");
         let revision = AnalysisRevisionRef {
@@ -522,8 +697,6 @@ mod tests {
             revision_id: "c".repeat(64),
             snapshot_id: "d".repeat(64),
         };
-        let start = "2026-09-10T12:00:00Z";
-        let end = "2026-09-10T12:01:30Z";
         let original = FamilyUse {
             correction_id: None,
             family: CorrectionFamily::CombinedStintPaceCurve,
@@ -533,8 +706,7 @@ mod tests {
         let validity = AnalysisValidity {
             session_id: base.session_id.clone(),
             computation_version: base.analysis_version.clone(),
-            temporal_contract_version: TEMPORAL_CONTRACT_V1.into(),
-            segmentation_digest: base.segmentation_digest.clone(),
+            temporal,
             laps: vec![ValidityLap {
                 number: 2,
                 start: start.into(),
@@ -542,12 +714,6 @@ mod tests {
                 complete: true,
                 family_use: vec![original.clone()],
             }],
-            segments: vec![ContinuousCoverage {
-                start: start.into(),
-                end: end.into(),
-                presence: "valid".into(),
-            }],
-            gaps: Vec::new(),
         };
         let source = CorrectionSource {
             base: base.clone(),
@@ -567,6 +733,26 @@ mod tests {
             reason: "Reviewed lap: exclude pace only".into(),
         };
         (source, vec![revision], request)
+    }
+
+    fn refresh_source_revision(
+        source: &mut CorrectionSource,
+        selected: &mut [AnalysisRevisionRef],
+        request: &mut FamilyCorrectionRequest,
+    ) {
+        source.base.segmentation_digest = digest_json(
+            "analysis.correction-segmentation.v1",
+            &source.validity.temporal,
+        )
+        .expect("updated Go-compatible temporal digest");
+        let base_id = source.base.digest().expect("updated source digest");
+        source.revision.base_digest = base_id.clone();
+        for revision in selected {
+            if revision.session_id == source.base.session_id {
+                revision.base_digest.clone_from(&base_id);
+            }
+        }
+        request.base.clone_from(&source.base);
     }
 
     #[test]
@@ -593,7 +779,7 @@ mod tests {
             CorrectionFamily::TyreDegradation,
             CorrectionFamily::SavingCost,
         ] {
-            let (mut source, selected, mut request) = example();
+            let (mut source, mut selected, mut request) = example();
             source.validity.laps[0].family_use[0].family = family;
             request.family = family;
             request.expected.family = family;
@@ -603,8 +789,10 @@ mod tests {
             substituted[0].snapshot_id = "e".repeat(64);
             assert!(prepare_family_corrections(&source, &substituted, &[request.clone()]).is_err());
 
-            source.validity.segments[0].presence = "missing".into();
+            source.validity.temporal.segments.as_mut().expect("segment")[0].presence =
+                "missing".into();
             request.included = true;
+            refresh_source_revision(&mut source, &mut selected, &mut request);
             assert!(prepare_family_corrections(&source, &selected, &[request]).is_err());
         }
     }
@@ -672,5 +860,52 @@ mod tests {
         let (source, selected, mut request) = example();
         request.reason = " \n".into();
         assert!(prepare_family_corrections(&source, &selected, &[request]).is_err());
+    }
+
+    #[test]
+    fn segmentation_digest_binds_the_coverage_used_for_inclusion() {
+        let (mut source, mut selected, mut request) = example();
+        request.included = true;
+        source.validity.temporal.segments.as_mut().expect("segment")[0].presence = "missing".into();
+        assert_eq!(
+            prepare_family_corrections(&source, &selected, &[request.clone()])
+                .expect_err("changed temporal model"),
+            "analysis_interpretation_changed"
+        );
+
+        refresh_source_revision(&mut source, &mut selected, &mut request);
+        assert_eq!(
+            prepare_family_corrections(&source, &selected, &[request])
+                .expect_err("manual inclusion cannot create coverage"),
+            "incompatible_correction_value"
+        );
+    }
+
+    #[test]
+    fn inclusion_accepts_stale_coverage_but_rejects_an_overlapping_gap() {
+        let (mut source, mut selected, mut request) = example();
+        request.included = true;
+        source.validity.temporal.segments.as_mut().expect("segment")[0].presence = "stale".into();
+        refresh_source_revision(&mut source, &mut selected, &mut request);
+        assert!(prepare_family_corrections(&source, &selected, &[request.clone()]).is_ok());
+
+        source.validity.temporal.gaps = Some(vec![CoverageGap {
+            gap_id: "gap-1".into(),
+            start_ts: GoTimestamp::new("2026-09-10T12:00:30Z").expect("gap start"),
+            end_ts: GoTimestamp::new("2026-09-10T12:00:40Z").expect("gap end"),
+            reason: "no_coverage".into(),
+            presence: "missing".into(),
+            provenance: AnalysisProvenance {
+                kind: "unknown".into(),
+                source_id: None,
+                observed_at: None,
+            },
+        }]);
+        refresh_source_revision(&mut source, &mut selected, &mut request);
+        assert_eq!(
+            prepare_family_corrections(&source, &selected, &[request])
+                .expect_err("manual inclusion cannot cross a gap"),
+            "incompatible_correction_value"
+        );
     }
 }

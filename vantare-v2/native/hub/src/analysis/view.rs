@@ -1855,8 +1855,6 @@ impl Render for Analysis {
             .h_full()
             .max_w(px(1508.0))
             .mx_auto()
-            .px(px(31.0))
-            .pt(px(24.0))
             .pb(px(20.0))
             .flex()
             .flex_col()

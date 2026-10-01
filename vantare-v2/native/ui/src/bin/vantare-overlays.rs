@@ -86,12 +86,47 @@ fn main() -> ExitCode {
             }
         }
     };
+    if windows.is_none()
+        && let Feed::Pipe(name) = &feed
+    {
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            let path = layout
+                .clone()
+                .map_or_else(vantare_ui::layout::default_path, Ok)?;
+            let document = vantare_ui::layout::Document::open(path.clone())?;
+            let handle = vantare_ui::source::DemandHandle::new(document.layout().demand());
+            let name = name
+                .clone()
+                .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+            let photos = vantare_ui::source::layout_feed(&name, handle.clone())?;
+            vantare_ui::run_layout_requested(path, photos, rights, handle)?;
+            Ok(())
+        })();
+        return match result {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("vantare-overlays: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let snapshots = match feed {
         Feed::Local => Ok(vantare_ui::source::local_feed()),
         Feed::Pipe(name) => name
             .map_or_else(vantare_ipc::default_pipe_name, Ok)
             .map_err(Into::into)
-            .and_then(|name| vantare_ui::source::pipe_feed(&name)),
+            .and_then(|name| {
+                let mut demand = vantare_ipc::Demand::default();
+                for index in 0..windows.unwrap_or(0) {
+                    let kind = [
+                        vantare_ui::Kind::Standings,
+                        vantare_ui::Kind::Radar,
+                        vantare_ui::Kind::Pedals,
+                    ][index % 3];
+                    demand.union(&vantare_ui::Settings::default_for(kind).demand());
+                }
+                vantare_ui::source::pipe_feed_requested(&name, demand)
+            }),
     };
     let snapshots = match snapshots {
         Ok(snapshots) => snapshots,

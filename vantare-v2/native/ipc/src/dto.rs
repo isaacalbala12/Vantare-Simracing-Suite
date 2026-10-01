@@ -1,6 +1,7 @@
 //! DTO explícito del `Snapshot`: es el formato del cable, no los tipos de
 //! `domain` (que no son ABI). Añadir una señal al modelo exige añadirla aquí a
-//! propósito; un campo que sobra en el cable se ignora, uno que falta es error.
+//! propósito. En fotos completas o señales declaradas entregadas, un campo de
+//! calidad que falta es error; la foto parcial omite únicamente lo no entregado.
 
 use std::time::Duration;
 
@@ -10,9 +11,9 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
     pub version: u32,
     pub epoch: u64,
@@ -21,16 +22,18 @@ pub(crate) struct SnapshotDto {
     state: StateDto,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum QualityDto<T> {
+    #[default]
+    NotRequested,
     Reliable(T),
     Estimated(T),
     Stale(T),
     Unavailable,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct OriginDto {
     simulator: String,
     kind: SourceKindDto,
@@ -38,7 +41,7 @@ struct OriginDto {
     received_at: Duration,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum SourceKindDto {
     Live,
@@ -54,7 +57,7 @@ enum CapabilityDto {
     Fresh,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct CapabilitiesDto {
     session_clock: CapabilityDto,
     positions: CapabilityDto,
@@ -73,7 +76,7 @@ struct CapabilitiesDto {
     damage: CapabilityDto,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum SourceStateDto {
     Waiting,
@@ -82,37 +85,55 @@ enum SourceStateDto {
     Lost,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct StateDto {
     source_state: SourceStateDto,
     capabilities: CapabilitiesDto,
     session: SessionDto,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     flags: QualityDto<Vec<FlagDto>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     cars: Vec<CarDto>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     player: Option<PlayerDto>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct SessionDto {
     id: u64,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     kind: QualityDto<SessionKindDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     state: QualityDto<SessionStateDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     elapsed_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     remaining_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     track_name: QualityDto<String>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     laps_remaining: QualityDto<u32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     laps_total: QualityDto<u32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     track_length_m: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_air_temperature_k: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_track_temperature_k: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_wind_speed_mps: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_wind_direction_rad: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_rain: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_track_wetness: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_pressure_pa: QualityDto<f64>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum SessionKindDto {
     Practice,
@@ -121,7 +142,7 @@ enum SessionKindDto {
     Other(String),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum SessionStateDto {
     Preparing,
@@ -130,13 +151,13 @@ enum SessionStateDto {
     Finished,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct FlagDto {
     kind: FlagKindDto,
     scope: FlagScopeDto,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum FlagKindDto {
     Green,
@@ -149,7 +170,7 @@ enum FlagKindDto {
     Other(String),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum FlagScopeDto {
     Session,
@@ -157,32 +178,56 @@ enum FlagScopeDto {
     Car(u32),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct CarDto {
     id: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     number: String,
+    #[serde(default, skip_serializing_if = "zero")]
     driver_id: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     driver_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     class: Option<(u32, String)>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     position: QualityDto<u32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     class_position: QualityDto<u32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     laps: QualityDto<u32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     last_lap_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     best_lap_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     estimated_lap_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     last_sectors_s: Vec<QualityDto<f64>>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     gap_leader: QualityDto<GapDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     gap_ahead: QualityDto<GapDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     gap_class_leader: QualityDto<GapDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     gap_class_ahead: QualityDto<GapDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     relative_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     relative_laps: QualityDto<i32>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     lap_distance_m: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     lap_elapsed_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     current_sector: QualityDto<u8>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     in_pits: QualityDto<bool>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pose: QualityDto<PoseDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     velocity_mps: QualityDto<[f64; 2]>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pending_penalties: QualityDto<u32>,
 }
 
@@ -193,34 +238,53 @@ enum GapDto {
     Laps { count: u32 },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct PoseDto {
     x_m: f64,
     y_m: f64,
     yaw_rad: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct PlayerDto {
     car: u32,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     throttle: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     brake: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     clutch: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     steering: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     gear: QualityDto<i8>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     speed_mps: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     engine_speed_rad_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     fuel_level_l: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     fuel_capacity_l: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     fuel_per_lap_l: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     fuel_laps_left: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     fuel_history: Vec<(u32, f64)>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     delta_best_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pit_limiter_active: QualityDto<bool>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pit_stop_stopped: QualityDto<bool>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     damage_aero: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     damage_body: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     damage_suspension: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "unrequested_tyres")]
     damage_tyre_wear: [QualityDto<f64>; 4],
 }
 
@@ -367,6 +431,19 @@ fn player(p: &d::Player) -> PlayerDto {
 
 impl From<&d::Snapshot> for SnapshotDto {
     fn from(s: &d::Snapshot) -> Self {
+        Self::encode(s, true, true)
+    }
+}
+
+impl SnapshotDto {
+    pub(crate) fn selected(s: &d::Snapshot, delivered: &crate::Demand) -> Result<Self, Error> {
+        // No construir y borrar 47 filas cuando solo vencen los pedales o el reloj.
+        let mut dto = Self::encode(s, delivered.car_data(), delivered.player_data());
+        dto.filter(delivered)?;
+        Ok(dto)
+    }
+
+    fn encode(s: &d::Snapshot, cars: bool, has_player: bool) -> Self {
         let c = &s.state.capabilities;
         SnapshotDto {
             version: VERSION,
@@ -407,8 +484,16 @@ impl From<&d::Snapshot> for SnapshotDto {
                 },
                 session: session(&s.state.session),
                 flags: q(&s.state.flags, |fs| fs.iter().map(flag).collect()),
-                cars: s.state.cars.iter().map(car).collect(),
-                player: s.state.player.as_ref().map(player),
+                cars: if cars {
+                    s.state.cars.iter().map(car).collect()
+                } else {
+                    Vec::new()
+                },
+                player: if has_player {
+                    s.state.player.as_ref().map(player)
+                } else {
+                    None
+                },
             },
         }
     }
@@ -421,7 +506,7 @@ fn uq<T, U>(quality: QualityDto<T>, f: impl FnOnce(T) -> U) -> d::Quality<U> {
         QualityDto::Reliable(v) => d::Quality::Reliable(f(v)),
         QualityDto::Estimated(v) => d::Quality::Estimated(f(v)),
         QualityDto::Stale(v) => d::Quality::Stale(f(v)),
-        QualityDto::Unavailable => d::Quality::Unavailable,
+        QualityDto::Unavailable | QualityDto::NotRequested => d::Quality::Unavailable,
     }
 }
 
@@ -627,5 +712,224 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
                 player: s.player.map(uplayer),
             },
         })
+    }
+}
+
+impl<T> QualityDto<T> {
+    fn not_requested(&self) -> bool {
+        matches!(self, Self::NotRequested)
+    }
+}
+fn unrequested_tyres(values: &[QualityDto<f64>; 4]) -> bool {
+    values.iter().all(QualityDto::not_requested)
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde skip_serializing_if.
+fn zero(value: &u32) -> bool {
+    *value == 0
+}
+
+trait DeliveryField {
+    fn omitted(&self) -> bool;
+}
+impl<T> DeliveryField for QualityDto<T> {
+    fn omitted(&self) -> bool {
+        self.not_requested()
+    }
+}
+impl DeliveryField for String {
+    fn omitted(&self) -> bool {
+        false
+    }
+}
+impl DeliveryField for u32 {
+    fn omitted(&self) -> bool {
+        false
+    }
+}
+impl<T> DeliveryField for Option<T> {
+    fn omitted(&self) -> bool {
+        false
+    }
+}
+impl<T> DeliveryField for Vec<T> {
+    fn omitted(&self) -> bool {
+        false
+    }
+}
+impl<T, const N: usize> DeliveryField for [QualityDto<T>; N] {
+    fn omitted(&self) -> bool {
+        self.iter().any(QualityDto::not_requested)
+    }
+}
+
+impl SnapshotDto {
+    pub(crate) fn same_scope(&self, old: &Self, delivered: &crate::Demand) -> bool {
+        self.epoch == old.epoch
+            && self.state.session.id == old.state.session.id
+            && self.state.source_state == old.state.source_state
+            && (!delivered.player_data()
+                || self.state.player.as_ref().map(|p| p.car)
+                    == old.state.player.as_ref().map(|p| p.car))
+            && (!delivered.car_data()
+                || (self.state.cars.len() == old.state.cars.len()
+                    && self
+                        .state
+                        .cars
+                        .iter()
+                        .all(|car| old.state.cars.iter().any(|other| other.id == car.id))))
+    }
+
+    pub(crate) fn filter(&mut self, delivered: &crate::Demand) -> Result<(), Error> {
+        self.restore(None, &crate::Demand::default(), delivered)?;
+        if !delivered.car_data() {
+            self.state.cars.clear();
+        }
+        if !delivered.player_data() {
+            self.state.player = None;
+        }
+        Ok(())
+    }
+
+    /// Restaura solo lo pedido y no entregado por cadencia. La identidad de
+    /// coches se busca por ID; nunca por índice tras reordenar la clasificación.
+    pub(crate) fn restore(
+        &mut self,
+        previous: Option<&Self>,
+        requested: &crate::Demand,
+        delivered: &crate::Demand,
+    ) -> Result<(), Error> {
+        use crate::Signal;
+        fn retain<T: Clone + Default>(target: &mut T, old: Option<&T>, wanted: bool) {
+            *target = if wanted {
+                old.cloned().unwrap_or_default()
+            } else {
+                T::default()
+            };
+        }
+        macro_rules! fields {
+            ($target:expr, $old:expr, $wanted:expr, $sent:expr; $($signal:ident => [$($field:ident),+]),+ $(,)?) => {
+                $(if $sent & Signal::$signal.bit() != 0 {
+                    $(if $target.$field.omitted() { return Err(Error::Protocol("señal entregada marcada como no pedida")); })+
+                } else {
+                    $(retain(&mut $target.$field, $old.map(|old| &old.$field), $wanted & Signal::$signal.bit() != 0);)+
+                })+
+            };
+        }
+        let requested_mask = requested.mask();
+        let delivered_mask = delivered.mask();
+        if requested.car_data() && !delivered.car_data() {
+            self.state.cars = previous.map_or_else(Vec::new, |old| old.state.cars.clone());
+        }
+        if requested.player_data() && !delivered.player_data() {
+            self.state.player = previous.and_then(|old| old.state.player.clone());
+        }
+        fields!(self.state, previous.map(|old| &old.state), requested_mask, delivered_mask; Flags => [flags]);
+        fields!(self.state.session, previous.map(|old| &old.state.session), requested_mask, delivered_mask;
+            SessionInfo => [kind, state, laps_total], SessionClock => [elapsed_s, remaining_s],
+            TrackName => [track_name], TrackLength => [track_length_m], LapsRemaining => [laps_remaining],
+            Weather => [weather_air_temperature_k, weather_track_temperature_k, weather_wind_speed_mps,
+                weather_wind_direction_rad, weather_rain, weather_track_wetness, weather_pressure_pa]);
+        for car in &mut self.state.cars {
+            let old = previous.and_then(|old| old.state.cars.iter().find(|old| old.id == car.id));
+            fields!(car, old, requested_mask, delivered_mask;
+                Cars => [number, driver_id, driver_name, class],
+                Positions => [position, class_position], LapCount => [laps],
+                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s], Sectors => [last_sectors_s, current_sector],
+                Gaps => [gap_leader, gap_ahead], ClassGaps => [gap_class_leader, gap_class_ahead],
+                Relative => [relative_s, relative_laps], LapProgress => [lap_distance_m, lap_elapsed_s],
+                PitStatus => [in_pits], Spatial => [pose], Velocity => [velocity_mps], Penalties => [pending_penalties]);
+        }
+        if let Some(player) = &mut self.state.player {
+            let old = previous
+                .and_then(|old| old.state.player.as_ref())
+                .filter(|old| old.car == player.car);
+            fields!(player, old, requested_mask, delivered_mask;
+                Pedals => [throttle, brake], Clutch => [clutch], Steering => [steering],
+                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l],
+                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history], Delta => [delta_best_s],
+                PitStatus => [pit_limiter_active, pit_stop_stopped],
+                Damage => [damage_aero, damage_body, damage_suspension, damage_tyre_wear]);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod demand_tests {
+    use super::*;
+    use crate::{Demand, Signal};
+
+    #[test]
+    fn sparse_wire_distinguishes_unrequested_from_unavailable_and_restores_held_values() {
+        let source = crate::codec::tests::rich_snapshot(1, 1);
+        let mut requested = Demand::default();
+        requested.request(Signal::Pedals, 16);
+        requested.request(Signal::Weather, 500);
+        let mut first = SnapshotDto::from(&source);
+        first.filter(&requested).expect("selección");
+        let json = serde_json::to_string(&first).expect("JSON");
+        assert!(!json.contains("gap_leader"));
+        assert!(!json.contains("fuel_history"));
+        assert!(json.contains("weather_rain"));
+        let mut next = SnapshotDto::from(&source);
+        next.sequence = 2;
+        let mut due = Demand::default();
+        due.request(Signal::Pedals, 16);
+        next.filter(&due).expect("selección");
+        next.restore(Some(&first), &requested, &due)
+            .expect("restauración");
+        let restored = d::Snapshot::try_from(next).expect("foto parcial hidratada");
+        assert_eq!(restored.state.session.weather, source.state.session.weather);
+        assert!(restored.state.cars.is_empty());
+        assert_eq!(
+            restored.state.player.expect("jugador").telemetry.throttle,
+            source.state.player.expect("jugador").telemetry.throttle
+        );
+        assert!(
+            serde_json::to_string(&SnapshotDto::from(&source))
+                .expect("JSON completo")
+                .len()
+                > json.len()
+        );
+    }
+
+    #[test]
+    fn held_values_follow_car_ids_and_are_cleared_when_a_signal_is_no_longer_requested() {
+        let source = crate::codec::tests::rich_snapshot(1, 1);
+        let previous = SnapshotDto::from(&source);
+        let mut next = SnapshotDto::from(&source);
+        next.state.cars.reverse();
+        let mut requested = Demand::default();
+        requested.request(Signal::Gaps, 250);
+        let mut delivered = Demand::default();
+        delivered.request(Signal::Cars, 250);
+        next.filter(&delivered).expect("selección");
+        next.restore(Some(&previous), &requested, &delivered)
+            .expect("restauración");
+        let decoded = d::Snapshot::try_from(next).expect("orden diferente");
+        assert_eq!(
+            decoded.state.cars[0].gap_leader,
+            source.state.cars.last().expect("coche").gap_leader
+        );
+        assert_eq!(decoded.state.cars[0].best_lap_s, d::Quality::Unavailable);
+        let mut changed = SnapshotDto::from(&source);
+        changed.state.session.id ^= 1;
+        assert!(
+            !changed.same_scope(&previous, &Demand::all()),
+            "sesión nueva no hereda valores"
+        );
+    }
+    #[test]
+    fn an_omitted_signal_cannot_be_claimed_as_delivered_unavailable() {
+        let source = crate::codec::tests::rich_snapshot(1, 1);
+        let mut dto = SnapshotDto::from(&source);
+        dto.filter(&Demand::default()).expect("sin señales");
+        let mut demand = Demand::default();
+        demand.request(Signal::Weather, 500);
+        assert!(matches!(
+            dto.restore(None, &demand, &demand),
+            Err(Error::Protocol(_))
+        ));
     }
 }

@@ -386,6 +386,15 @@ fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut
     }
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
+        // La traza necesita observar cada revisión para detectar pérdidas reales.
+        crate::demand::signals(0, &[Pedals, Clutch, Powertrain])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

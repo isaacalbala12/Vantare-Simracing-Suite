@@ -396,11 +396,14 @@ struct LiveScreens {
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     prefs: Preferences,
     last: Option<Arc<Snapshot>>,
+    last_demand: vantare_ipc::Demand,
+    required: vantare_ipc::Demand,
 }
 
 impl LiveScreens {
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
         self.prefs = layout.preferences;
+        self.required = layout.demand();
         let displays = cx.displays();
         let bounds: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
         // Una instancia oculta conserva la ocupación de su monitor y su HWND.
@@ -443,7 +446,13 @@ impl LiveScreens {
                 .filter(|(instance, _)| instance.visible)
                 .map(|(instance, at)| {
                     let view = cx.new(|_| {
-                        Overlay::with_snapshot(&instance.settings, self.prefs, self.last.as_deref())
+                        Overlay::with_snapshot(
+                            &instance.settings,
+                            self.prefs,
+                            self.last
+                                .as_deref()
+                                .filter(|_| self.last_demand.covers(&instance.settings.demand())),
+                        )
                     });
                     PlacedOverlay {
                         view,
@@ -490,7 +499,12 @@ impl LiveScreens {
         );
     }
 
-    fn ingest(&mut self, snapshot: Arc<Snapshot>, cx: &mut App) {
+    fn ingest(&mut self, photo: vantare_ipc::Photo, cx: &mut App) {
+        if !photo.demand.covers(&self.required) {
+            return;
+        }
+        let snapshot = photo.snapshot;
+        self.last_demand = photo.demand;
         for (_, handle) in &self.screens {
             if let Err(error) = handle.update(cx, |screen, _, cx| {
                 for placed in &screen.widgets {
@@ -513,6 +527,25 @@ pub fn run_layout_with_rights(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     rights: Option<vantare_ipc::control::Feed>,
 ) -> Result<(), crate::layout::Error> {
+    run_layout_feed(path, snapshots, rights, vantare_ipc::Photo::full, None)
+}
+
+pub fn run_layout_requested(
+    path: PathBuf,
+    photos: flume::Receiver<vantare_ipc::Photo>,
+    rights: Option<vantare_ipc::control::Feed>,
+    demand: crate::source::DemandHandle,
+) -> Result<(), crate::layout::Error> {
+    run_layout_feed(path, photos, rights, std::convert::identity, Some(demand))
+}
+
+fn run_layout_feed<T: Send + 'static>(
+    path: PathBuf,
+    snapshots: flume::Receiver<T>,
+    rights: Option<vantare_ipc::control::Feed>,
+    decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
+    demand: Option<crate::source::DemandHandle>,
+) -> Result<(), crate::layout::Error> {
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
@@ -528,12 +561,17 @@ pub fn run_layout_with_rights(
             screens: Vec::new(),
             prefs: document.layout().preferences,
             last: None,
+            last_demand: vantare_ipc::Demand::default(),
+            required: document.layout().demand(),
         }));
+        if let Some(demand) = &demand {
+            demand.set(document.layout().demand());
+        }
         screens.borrow_mut().apply(document.layout(), cx);
         let feed_screens = screens.clone();
         cx.spawn(async move |cx| {
             while let Ok(snapshot) = snapshots.recv_async().await {
-                cx.update(|cx| feed_screens.borrow_mut().ingest(snapshot, cx));
+                cx.update(|cx| feed_screens.borrow_mut().ingest(decode(snapshot), cx));
             }
         })
         .detach();
@@ -546,6 +584,9 @@ pub fn run_layout_with_rights(
                 match document.poll() {
                     Ok(true) => {
                         last_error = None;
+                        if let Some(demand) = &demand {
+                            demand.set(document.layout().demand());
+                        }
                         cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
                     }
                     Ok(false) => last_error = None,

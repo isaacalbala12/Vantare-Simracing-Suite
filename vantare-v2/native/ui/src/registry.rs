@@ -61,6 +61,10 @@ macro_rules! widgets {
         pub enum Settings { $($kind($module::Settings)),+ }
 
         impl Settings {
+            pub fn demand(&self) -> vantare_ipc::Demand {
+                match self { $(Self::$kind(settings) => settings.demand()),+ }
+            }
+
             pub fn kind(&self) -> Kind {
                 match self { $(Self::$kind(_) => Kind::$kind),+ }
             }

@@ -290,3 +290,36 @@ fn the_service_shuts_down_in_order_when_asked() {
     stop.store(true, Ordering::SeqCst);
     service::run(&mut replay, &pipe, 2, 1.0, &stop).unwrap();
 }
+
+#[test]
+fn an_added_widget_is_hydrated_even_after_replay_stops_producing_observations() {
+    use vantare_ipc::{Demand, Signal, SignalState};
+    let pipe = pipe_name("layout-demand");
+    let mut wanted = Demand::default();
+    wanted.request(Signal::Pedals, 16);
+    let mut subscriber = Subscriber::connect_requested(&pipe, wanted.clone(), |_| true).unwrap();
+    let _core = CoreProcess::spawn(&pipe, &testdata("lmu-fixture.bin"), &["--build", "1.3.0.0"]);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let stale = loop {
+        assert!(
+            Instant::now() < deadline,
+            "el replay no alcanzó estado obsoleto"
+        );
+        if let Some(photo) = subscriber.next_photo(Duration::from_millis(100))
+            && photo.snapshot.state.source_state == vantare_domain::SourceState::Stale
+        {
+            break photo;
+        }
+    };
+    wanted.request(Signal::Weather, 500);
+    wanted.request(Signal::ClassGaps, 250);
+    subscriber.set_demand(wanted.clone()).unwrap();
+    let photo = subscriber
+        .next_photo(Duration::from_secs(2))
+        .expect("nuevo widget sin adquisición nueva");
+    assert_eq!(photo.demand, wanted);
+    assert_eq!(photo.signal_state(Signal::Weather), SignalState::Requested);
+    assert_eq!(photo.signal_state(Signal::Delta), SignalState::NotRequested);
+    assert_eq!(photo.snapshot.origin, stale.snapshot.origin);
+    assert!(photo.snapshot.sequence > stale.snapshot.sequence);
+}

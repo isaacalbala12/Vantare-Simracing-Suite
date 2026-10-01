@@ -25,7 +25,7 @@ pub use merge::Reject;
 pub use publish::Reader;
 
 use crate::flows::{Cursor, Journal, Series};
-use merge::{Trackers, merge, stale};
+use merge::{Trackers, merge_requested, stale};
 use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
@@ -51,6 +51,8 @@ impl std::error::Error for Error {}
 
 pub struct Core {
     epoch: u64,
+    demand: vantare_ipc::Demand,
+    demand_pending: bool,
     current: Arc<Snapshot>,
     publisher: Publisher,
     /// `received_at` de la última observación en que el reloj de la fuente
@@ -76,6 +78,8 @@ impl Core {
         });
         Self {
             epoch,
+            demand: vantare_ipc::Demand::all(),
+            demand_pending: false,
             publisher: Publisher::new(Arc::clone(&current)),
             current,
             last_advance: Duration::ZERO,
@@ -136,6 +140,39 @@ impl Core {
         self.publisher.subscribe()
     }
 
+    /// La demanda aceptada se deriva en el siguiente tick. Los datos nativos
+    /// siguen disponibles para journal/series, aunque no salgan por el IPC visual.
+    pub fn set_demand(&mut self, demand: vantare_ipc::Demand) {
+        if self.demand != demand {
+            self.trackers.demand_changed(&demand);
+            self.demand = demand;
+            self.demand_pending = true;
+        }
+    }
+
+    /// Evita reservar un mapa de demanda en cada vuelta del bucle de adquisición.
+    pub fn set_demand_mask(&mut self, mask: u64) {
+        if self.demand.mask() != mask {
+            self.set_demand(vantare_ipc::Demand::from_mask(mask));
+        }
+        // También una reconexión con la misma unión necesita una primera foto.
+        self.demand_pending = true;
+    }
+
+    fn refresh_demand(&mut self) {
+        if !self.demand_pending || self.current.sequence == 0 {
+            return;
+        }
+        self.demand_pending = false;
+        let mut snapshot = (*self.current).clone();
+        derive::derive_requested(&mut snapshot.state, &self.demand);
+        self.trackers.derive(&mut snapshot.state, &self.demand);
+        snapshot.sequence += 1;
+        // Reproyectar no es una adquisición: no añade muestras a series ni hechos.
+        self.current = Arc::new(snapshot);
+        self.publisher.publish(Arc::clone(&self.current));
+    }
+
     /// Un ciclo del bucle del propietario: lee el adaptador, publica y vigila el
     /// silencio de la fuente. `Disconnected` degrada lo publicado a obsoleto al
     /// instante; un error o un rechazo dejan lo publicado como está (caducará
@@ -155,6 +192,7 @@ impl Core {
             }
         };
         self.tick(now);
+        self.refresh_demand();
         result
     }
 
@@ -164,12 +202,14 @@ impl Core {
     /// [`Reject`] si no se admite; entonces no se publica nada ni cambia la revisión.
     pub fn observe(&mut self, observation: Observation) -> Result<(), Reject> {
         let origin = observation.origin;
-        let mut snapshot = merge(
+        let mut snapshot = merge_requested(
             Some(&self.current),
             observation,
             self.epoch,
             &mut self.trackers,
+            &self.demand,
         )?;
+        self.demand_pending = false;
         if origin.source_time.is_none() || origin.source_time != self.last_source_time {
             self.last_advance = origin.received_at;
         }
@@ -493,5 +533,86 @@ mod tests {
         let old = reader.latest();
         assert_eq!(old.sequence, 2);
         assert_eq!(old.state.cars[0].position, Quality::Stale(1));
+    }
+    #[test]
+    fn demand_skips_derivations_and_a_new_widget_is_hydrated_on_the_next_tick() {
+        use vantare_ipc::{Demand, Signal};
+        let mut core = Core::new(1);
+        core.set_demand(Demand::default());
+        core.observe(observation(ms(0), ms(0), 0.5))
+            .expect("observación");
+        assert_eq!(
+            core.snapshot().state.cars[1].gap_ahead,
+            Quality::Unavailable
+        );
+        let mut wanted = Demand::default();
+        wanted.request(Signal::Gaps, 250);
+        core.set_demand(wanted);
+        let mut adapter = Script::default();
+        core.step(&mut adapter, ms(10))
+            .expect("tick sin adquisición nueva");
+        assert_eq!(
+            core.snapshot().state.cars[1].gap_ahead,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert_eq!(core.snapshot().sequence, 2);
+        core.set_demand(Demand::default());
+        core.observe(observation(ms(20), ms(20), 0.5))
+            .expect("nuevo layout");
+        assert_eq!(
+            core.snapshot().state.cars[1].gap_ahead,
+            Quality::Unavailable
+        );
+        assert_eq!(
+            core.snapshot()
+                .state
+                .player
+                .expect("jugador")
+                .telemetry
+                .throttle,
+            Quality::Reliable(0.5)
+        );
+    }
+
+    #[test]
+    fn turning_fuel_demand_off_does_not_infer_consumption_across_the_gap() {
+        use vantare_ipc::{Demand, Signal};
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 0, 100.0, 50.0, 0.25))
+            .expect("inicio");
+        core.observe(lap_photo(ms(100), 1, 100.0, 0.0, 0.0))
+            .expect("meta");
+        core.set_demand(Demand::default());
+        core.observe(lap_photo(ms(200), 2, 90.0, 0.0, 0.0))
+            .expect("sin demanda");
+        let mut wanted = Demand::default();
+        wanted.request(Signal::FuelEstimate, 500);
+        core.set_demand(wanted);
+        core.observe(lap_photo(ms(300), 3, 80.0, 0.0, 0.0))
+            .expect("reactivar");
+        assert_eq!(
+            core.snapshot()
+                .state
+                .player
+                .expect("jugador")
+                .fuel
+                .per_lap_l,
+            Quality::Unavailable
+        );
+    }
+    #[test]
+    fn reconnecting_the_same_demand_refreshes_photo_without_fabricating_series_samples() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
+            .expect("foto");
+        let samples = core.series().active().expect("vuelta").samples.len();
+        core.set_demand_mask(vantare_ipc::Demand::all().mask());
+        core.step(&mut Script::default(), ms(10))
+            .expect("siguiente tick");
+        assert_eq!(core.snapshot().sequence, 2);
+        assert_eq!(
+            core.series().active().expect("vuelta").samples.len(),
+            samples
+        );
     }
 }

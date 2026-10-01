@@ -830,6 +830,38 @@ fn cell(
     text::draw(window, cx, &fitted, x, baseline, font);
 }
 
+impl Settings {
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,
+        };
+        let settings = self.normalized();
+        let mut demand = crate::demand::signals(
+            33,
+            &[Relative, Positions, PitStatus, SessionInfo, TrackName],
+        );
+        if settings.columns.as_ref().is_none_or(|cols| {
+            cols.iter()
+                .any(|c| c.enabled && matches!(c.metric_id.as_str(), "bestLap" | "lastLap"))
+        }) {
+            demand.request(LapTimes, 250);
+        }
+        // Sin huecos configurados, el pie productivo conserva reloj y clima.
+        if settings.footer_slots.iter().all(|id| id == "none") {
+            demand.request(SessionClock, 250);
+            demand.request(Weather, 500);
+        }
+        for id in &settings.footer_slots {
+            if id == "track" {
+                demand.request(TrackName, 500);
+            } else {
+                crate::demand::information(&mut demand, id, true);
+            }
+        }
+        demand
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

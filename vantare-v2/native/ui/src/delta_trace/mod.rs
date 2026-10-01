@@ -260,6 +260,15 @@ impl Widget {
     }
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Delta, LapCount, LapTimes};
+        // La historia distingue pérdida real de fotos; no introducir huecos por cadencia.
+        crate::demand::signals(0, &[Delta, LapTimes, LapCount])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

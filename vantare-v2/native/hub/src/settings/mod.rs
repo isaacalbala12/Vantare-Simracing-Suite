@@ -5,9 +5,7 @@ use crate::{
     testing::diagnostic::{Diagnostic, Module, Observed, SectionError},
 };
 use gpui::{Context, Entity, FocusHandle, Window, prelude::*};
-use orbit::{
-    Choice, ChoiceChanged, ChoiceKind, Input, NumberControl, NumberKind, NumberRange, OptionItem,
-};
+use orbit::{Choice, ChoiceChanged, ChoiceKind, Input, OptionItem};
 use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
@@ -29,7 +27,6 @@ enum Page {
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Action {
-    RefreshUpdate,
     PrepareDiagnostic,
     CopyDiagnostic,
 }
@@ -111,8 +108,9 @@ impl Page {
 pub(super) struct State {
     page: Page,
     pub(super) scroll: gpui::ScrollHandle,
+    pub(super) panel_scroll: gpui::ScrollHandle,
     nav_focus: Vec<FocusHandle>,
-    action_focus: [FocusHandle; 3],
+    action_focus: [FocusHandle; 2],
     query: Entity<Input>,
     language: Entity<Choice>,
     units: Entity<Choice>,
@@ -121,9 +119,6 @@ pub(super) struct State {
     scheme: Entity<Choice>,
     font: Entity<Choice>,
     mono: Entity<Choice>,
-    zoom: Entity<NumberControl>,
-    contrast: Entity<NumberControl>,
-    opacity: Entity<NumberControl>,
     event_filter: Entity<Choice>,
     event_query: Entity<Input>,
     data: PathBuf,
@@ -154,18 +149,6 @@ fn choice(
         );
         choice.set_enabled(enabled, cx);
         choice
-    })
-}
-fn number(
-    label: &'static str,
-    kind: NumberKind,
-    range: NumberRange,
-    cx: &mut Context<Hub>,
-) -> Entity<NumberControl> {
-    cx.new(|cx| {
-        let mut control = NumberControl::new(label, kind, range, cx);
-        control.enabled = false;
-        control
     })
 }
 fn language(index: usize) -> Option<Language> {
@@ -261,13 +244,14 @@ impl State {
         Self {
             page: Page::default(),
             scroll: gpui::ScrollHandle::new(),
+            panel_scroll: gpui::ScrollHandle::new(),
             nav_focus: (0..9).map(|_| cx.focus_handle()).collect(),
             action_focus: std::array::from_fn(|_| cx.focus_handle()),
             query,
             language,
             units,
             hub_language: choice(
-                "Idioma del Hub · pendiente",
+                "Idioma",
                 ChoiceKind::Dropdown,
                 &["Español", "English"],
                 Some(0),
@@ -276,7 +260,7 @@ impl State {
                 cx,
             ),
             density: choice(
-                "Densidad · pendiente",
+                "Densidad",
                 ChoiceKind::Dropdown,
                 &["Compacta", "Equilibrada", "Cómoda"],
                 Some(1),
@@ -285,7 +269,7 @@ impl State {
                 cx,
             ),
             scheme: choice(
-                "Apariencia · pendiente",
+                "Apariencia",
                 ChoiceKind::Segmented,
                 &["Sistema", "Claro", "Oscuro"],
                 Some(2),
@@ -294,7 +278,7 @@ impl State {
                 cx,
             ),
             font: choice(
-                "Fuente de interfaz · pendiente",
+                "Fuente de interfaz",
                 ChoiceKind::Dropdown,
                 &["Inter", "Segoe UI", "Arial"],
                 Some(0),
@@ -303,45 +287,12 @@ impl State {
                 cx,
             ),
             mono: choice(
-                "Fuente monoespaciada · pendiente",
+                "Fuente monoespaciada",
                 ChoiceKind::Dropdown,
                 &["Cascadia Code", "Consolas", "Courier New"],
-                None,
+                Some(0),
                 false,
                 window,
-                cx,
-            ),
-            zoom: number(
-                "Zoom · pendiente",
-                NumberKind::Stepper,
-                NumberRange {
-                    min: 75.0,
-                    max: 200.0,
-                    step: 5.0,
-                    value: 100.0,
-                },
-                cx,
-            ),
-            contrast: number(
-                "Contraste · pendiente",
-                NumberKind::Slider,
-                NumberRange {
-                    min: 80.0,
-                    max: 120.0,
-                    step: 1.0,
-                    value: 100.0,
-                },
-                cx,
-            ),
-            opacity: number(
-                "Opacidad del cristal · pendiente",
-                NumberKind::Slider,
-                NumberRange {
-                    min: 50.0,
-                    max: 100.0,
-                    step: 1.0,
-                    value: 80.0,
-                },
                 cx,
             ),
             event_filter,
@@ -382,7 +333,6 @@ fn search_text(value: &str) -> String {
 impl Hub {
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
-            Action::RefreshUpdate => self.refresh_settings_update(cx),
             Action::PrepareDiagnostic => self.prepare_settings_diagnostic(cx),
             Action::CopyDiagnostic => {
                 if let Some(diagnostic) = &self.settings.diagnostic {
@@ -494,6 +444,7 @@ impl Hub {
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
         self.settings.page = page;
         self.settings.scroll = gpui::ScrollHandle::new();
+        self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;
         if page == Page::Updates {
             self.refresh_settings_update(cx);

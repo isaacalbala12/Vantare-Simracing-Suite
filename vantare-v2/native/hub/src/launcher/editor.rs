@@ -127,7 +127,7 @@ impl LauncherDrawer {
             .border_b_1()
             .border_color(rgba(orbit::LINE))
             .child(
-                text(self.label.clone(), 16.0, 650, orbit::INK)
+                tracked_text(self.label.clone(), 16.0, 650, orbit::INK, -0.24)
                     .flex_1()
                     .min_w_0(),
             )

@@ -37,15 +37,15 @@ impl Strategy {
             .map(|_| ())
     }
 
-    #[allow(clippy::too_many_lines)] // Mantiene juntas las dos fuentes de revisión de la pestaña.
+    #[allow(clippy::too_many_lines)] // Mantiene juntas las dos columnas de la pestaña.
     pub(super) fn revisions_page(&self) -> gpui::Div {
         let repository = application::repository::LocalRepository::open(&self.directory)
             .and_then(|repository| repository.load());
         match repository {
             Ok(snapshot) => {
-                let mut rows = orbit::card_body().gap(px(8.0));
+                let mut revision_rows = div().flex().flex_col().gap(px(8.0));
                 for (index, document) in snapshot.revisions.iter().enumerate() {
-                    rows = rows.child(
+                    revision_rows = revision_rows.child(
                         orbit::list_row(
                             "strategy-revision",
                             &revision_title(document, index),
@@ -56,122 +56,302 @@ impl Strategy {
                         .id(("strategy-revision", index)),
                     );
                 }
-                if snapshot.revisions.is_empty() {
-                    rows = rows.child(orbit::empty_state(
-                        "Sin revisiones guardadas",
-                        "Las revisiones solo aparecen cuando el repositorio nativo las contiene.",
-                    ));
-                }
-                let exact = self.exact_projection_revisions();
-                let exact_rows = match exact {
-                    Ok(Some(revisions)) => {
-                        let mut exact_rows = orbit::card_body().gap(px(8.0));
-                        for revision in revisions {
-                            exact_rows = exact_rows.child(orbit::setting_row(
-                                &revision.session_id,
-                                &format!("Snapshot {}", revision.snapshot_id),
-                                orbit::text(
-                                    format!("Revisión {}", revision.revision_id),
+                let history = if snapshot.revisions.is_empty() {
+                    div()
+                        .flex()
+                        .items_start()
+                        .gap(px(14.0))
+                        .h(px(145.0))
+                        .flex_none()
+                        .mt(px(19.0))
+                        .p(px(16.0))
+                        .rounded(px(10.0))
+                        .border_1()
+                        .border_color(gpui::rgba(orbit::LINE))
+                        .bg(gpui::rgba(0x1010_12e8))
+                        .child(orbit::icon("i-lock", 19.0, orbit::CARMINE))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap(px(8.0))
+                                .child(orbit::text(
+                                    "Sin revisiones guardadas",
+                                    16.0,
+                                    600,
+                                    orbit::INK,
+                                ))
+                                .child(orbit::text(
+                                    "El repositorio local todavía no contiene una revisión de esta carrera.",
                                     orbit::SECONDARY,
                                     400,
                                     orbit::INK_2,
-                                ),
-                            ));
-                        }
-                        exact_rows
+                                )),
+                        )
+                } else {
+                    revision_rows.mt(px(19.0))
+                };
+                let exact_summary = match self.exact_projection_revisions() {
+                    Ok(Some(revisions)) => format!(
+                        "{} referencias exactas de sesión vinculadas a esta carrera.",
+                        revisions.len()
+                    ),
+                    Ok(None) => {
+                        "No hay referencias exactas de sesión vinculadas a esta carrera.".to_owned()
                     }
-                    Ok(None) => orbit::card_body().child(orbit::empty_state(
-                        "Sin proyección vinculada",
-                        "No hay revisiones de sesión para validar en la carrera seleccionada.",
-                    )),
-                    Err(error) => orbit::card_body().child(orbit::callout(error)),
+                    Err(error) => error,
                 };
                 let plan_state = if self.result.is_some() {
                     "El resultado del solver se conserva en memoria para esta sesión.".to_owned()
                 } else {
                     "Sin calcular. Guardar la configuración no acepta un resultado.".to_owned()
                 };
-                div()
+                let information_card =
+                    |icon: &'static str, title: &str, description: &str, height: f32| {
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(18.0))
+                            .min_h(px(height))
+                            .px(px(16.0))
+                            .rounded(px(10.0))
+                            .border_1()
+                            .border_color(gpui::rgba(orbit::LINE))
+                            .bg(gpui::rgba(0x1012_14e8))
+                            .child(orbit::icon(icon, 22.0, orbit::INK_2))
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .min_w_0()
+                                    .gap(px(8.0))
+                                    .child(orbit::text(title.to_owned(), 16.0, 600, orbit::INK))
+                                    .child(orbit::text(
+                                        description.to_owned(),
+                                        13.0,
+                                        400,
+                                        orbit::INK_2,
+                                    )),
+                            )
+                    };
+                let source_control = div()
                     .flex()
-                    .flex_col()
-                    .gap(px(14.0))
-                    .child(orbit::text("Revisiones", 32.0, 700, orbit::INK))
+                    .items_center()
+                    .justify_between()
+                    .flex_1()
+                    .min_w_0()
+                    .h(px(42.0))
+                    .px(px(12.0))
+                    .rounded(px(8.0))
+                    .border_1()
+                    .border_color(gpui::rgba(orbit::LINE_STRONG))
+                    .bg(gpui::rgba(0x0809_0bf0))
                     .child(orbit::text(
-                        "Consulta los cambios y confirma qué revisión respalda la carrera.",
-                        orbit::BODY,
+                        "Sin fuentes de datos conectadas",
+                        13.0,
                         400,
                         orbit::INK_2,
                     ))
+                    .child(orbit::icon("i-chevron", 14.0, orbit::INK_3));
+                let source_actions = div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .mt(px(11.0))
+                    .children(
+                        [
+                            "Revisión anterior",
+                            "Revisar última revisión",
+                            "Ver datos de la carrera",
+                        ]
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, label)| {
+                            orbit::button(
+                                match index {
+                                    0 => "strategy-revision-previous",
+                                    1 => "strategy-revision-latest",
+                                    _ => "strategy-revision-career-data",
+                                },
+                                label,
+                            )
+                            .tab_stop(false)
+                            .opacity(orbit::DISABLED)
+                            .cursor(gpui::CursorStyle::Arrow)
+                            .h(px(40.0))
+                        }),
+                    );
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(0.0))
+                    .child(
+                        orbit::text("Revisiones", 42.0, 700, orbit::INK)
+                            .mt(px(4.0))
+                            .ml(px(12.0)),
+                    )
+                    .child(
+                        orbit::text(
+                            "Consulta los cambios y decide qué revisión usa tu carrera.",
+                            orbit::BODY,
+                            400,
+                            orbit::INK_2,
+                        )
+                        .ml(px(12.0)),
+                    )
                     .child(
                         div()
                             .flex()
                             .items_start()
-                            .gap(px(14.0))
+                            .gap(px(16.0))
+                            .mt(px(19.0))
                             .child(
-                                orbit::card("Fuente del historial")
+                                div()
                                     .flex_1()
                                     .min_w_0()
+                                    .h(px(466.0))
+                                    .p(px(22.0))
+                                    .pt(px(36.0))
+                                    .rounded(px(orbit::RADIUS))
+                                    .border_1()
+                                    .border_color(gpui::rgba(orbit::LINE))
+                                    .bg(gpui::rgba(0x0b0d_0fe8))
+                                    .child(orbit::text(
+                                        "Fuente del historial",
+                                        14.0,
+                                        500,
+                                        orbit::INK_2,
+                                    ))
                                     .child(
-                                        orbit::card_body()
+                                        div()
+                                            .flex()
+                                            .items_center()
                                             .gap(px(12.0))
-                                            .child(orbit::text(
-                                                format!(
-                                                    "{} borradores · {} revisiones · generación {}",
-                                                    snapshot.drafts.len(),
-                                                    snapshot.revisions.len(),
-                                                    snapshot.generation
-                                                ),
-                                                orbit::SECONDARY,
-                                                400,
-                                                orbit::INK_3,
-                                            ))
-                                            .child(orbit::text(
-                                                "Historial local de Strategy",
-                                                orbit::BODY,
-                                                600,
-                                                orbit::INK,
-                                            ))
-                                            .child(rows)
-                                            .child(orbit::text(
-                                                "Revisiones exactas de las sesiones seleccionadas",
-                                                orbit::BODY,
-                                                600,
-                                                orbit::INK,
-                                            ))
-                                            .child(exact_rows),
+                                            .mt(px(7.0))
+                                            .child(source_control)
+                                            .child(
+                                                orbit::button(
+                                                    "strategy-manage-sources",
+                                                    "Gestionar fuentes",
+                                                )
+                                                .tab_stop(false)
+                                                .opacity(orbit::DISABLED)
+                                                .cursor(gpui::CursorStyle::Arrow)
+                                                .w(px(136.0))
+                                                .h(px(42.0)),
+                                            ),
+                                    )
+                                    .child(
+                                        orbit::text("Historial de datos", 20.0, 600, orbit::INK)
+                                            .mt(px(20.0)),
+                                    )
+                                    .child(source_actions)
+                                    .child(history)
+                                    .child(
+                                        orbit::text(exact_summary, 12.0, 400, orbit::INK_2)
+                                            .mt(px(14.0)),
+                                    )
+                                    .child(
+                                        orbit::text(
+                                            format!(
+                                                "{} borradores · {} revisiones · generación {}",
+                                                snapshot.drafts.len(),
+                                                snapshot.revisions.len(),
+                                                snapshot.generation
+                                            ),
+                                            12.0,
+                                            400,
+                                            orbit::INK_3,
+                                        )
+                                        .mt(px(8.0)),
                                     ),
                             )
                             .child(
-                                orbit::card("Qué conserva tu carrera")
-                                    .w(px(430.0))
+                                div()
+                                    .w(px(668.0))
+                                    .h(px(520.0))
                                     .flex_none()
+                                    .p(px(22.0))
+                                    .pt(px(36.0))
+                                    .rounded(px(orbit::RADIUS))
+                                    .border_1()
+                                    .border_color(gpui::rgba(orbit::LINE))
+                                    .bg(gpui::rgba(0x0b0d_0fe8))
+                                    .child(orbit::text(
+                                        "Qué conserva tu carrera",
+                                        20.0,
+                                        500,
+                                        orbit::INK,
+                                    ))
                                     .child(
-                                        orbit::card_body()
-                                            .gap(px(12.0))
-                                            .child(orbit::card("Configuración guardada").child(
-                                                orbit::card_body().child(orbit::text(
-                                                    "Combinación, reglas, pilotos y referencias exactas del documento.",
-                                                    orbit::SECONDARY,
-                                                    400,
-                                                    orbit::INK_2,
-                                                )),
-                                            ))
-                                            .child(orbit::card("Estado del plan").child(
-                                                orbit::card_body().child(orbit::text(
-                                                    plan_state,
-                                                    orbit::SECONDARY,
-                                                    400,
-                                                    orbit::INK_2,
-                                                )),
-                                            ))
-                                            .child(orbit::text(
-                                                "Consultar el historial no cambia la carrera ni los datos originales.",
-                                                orbit::SECONDARY,
-                                                400,
-                                                orbit::INK_3,
-                                            )),
+                                        information_card(
+                                            "i-ajustes",
+                                            "Configuración guardada",
+                                            "Combinación, reglas, pilotos y referencias exactas del documento.",
+                                            98.0,
+                                        )
+                                        .mt(px(20.0)),
+                                    )
+                                    .child(
+                                        information_card(
+                                            "i-estrategia",
+                                            if self.result.is_some() {
+                                                "Calculado"
+                                            } else {
+                                                "Sin calcular"
+                                            },
+                                            &plan_state,
+                                            118.0,
+                                        )
+                                        .mt(px(18.0)),
+                                    )
+                                    .child(
+                                        div()
+                                            .h(px(1.0))
+                                            .bg(gpui::rgba(orbit::LINE))
+                                            .mt(px(20.0)),
+                                    )
+                                    .child(
+                                        orbit::text("Recuperar esta revisión", 16.0, 600, orbit::INK)
+                                            .mt(px(16.0)),
+                                    )
+                                    .child(
+                                        orbit::text(
+                                            "Una revisión local válida puede restaurarse sin modificar los datos de origen.",
+                                            13.0,
+                                            400,
+                                            orbit::INK_2,
+                                        )
+                                        .mt(px(10.0)),
+                                    )
+                                    .child(
+                                        orbit::button(
+                                            "strategy-restore-revision",
+                                            "Preparar revisión",
+                                        )
+                                        .tab_stop(false)
+                                        .opacity(orbit::DISABLED)
+                                        .cursor(gpui::CursorStyle::Arrow)
+                                        .w(px(132.0))
+                                        .h(px(40.0))
+                                        .mt(px(6.0)),
                                     ),
                             ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(10.0))
+                            .mt(px(16.0))
+                            .ml(px(4.0))
+                            .child(orbit::icon("i-lock", 16.0, orbit::INK_3))
+                            .child(orbit::text(
+                                "Originales intactos",
+                                orbit::SECONDARY,
+                                500,
+                                orbit::INK_2,
+                            )),
                     )
             }
             Err(error) => orbit::card("Revisiones locales")

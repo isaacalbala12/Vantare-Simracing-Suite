@@ -8,27 +8,42 @@ use vantare_ui::efficiency::text as typography;
 struct TrackedLabel {
     content: gpui::SharedString,
     ink: typography::Ink,
+    height: f32,
 }
 
 impl gpui::RenderOnce for TrackedLabel {
     fn render(self, window: &mut Window, _: &mut gpui::App) -> impl IntoElement {
-        let height = self.ink.size * 1.5;
+        let height = self.height;
         let width = typography::width(window, &self.content, &self.ink);
         let baseline = typography::baseline(0.0, height, self.ink.size);
-        div().w(px(width)).h(px(height)).flex_none().child(
-            gpui::canvas(
-                |_, _, _| (),
-                move |bounds, (), window, cx| {
-                    typography::with_origin(
-                        (f32::from(bounds.origin.x), f32::from(bounds.origin.y)),
-                        || {
-                            typography::draw(window, cx, &self.content, 0.0, baseline, &self.ink);
-                        },
-                    );
-                },
+        div()
+            .id(self.content.clone())
+            .role(gpui::Role::Label)
+            .aria_label(self.content.clone())
+            .w(px(width))
+            .h(px(height))
+            .flex_none()
+            .child(
+                gpui::canvas(
+                    |_, _, _| (),
+                    move |bounds, (), window, cx| {
+                        typography::with_origin(
+                            (f32::from(bounds.origin.x), f32::from(bounds.origin.y)),
+                            || {
+                                typography::draw(
+                                    window,
+                                    cx,
+                                    &self.content,
+                                    0.0,
+                                    baseline,
+                                    &self.ink,
+                                );
+                            },
+                        );
+                    },
+                )
+                .size_full(),
             )
-            .size_full(),
-        )
     }
 }
 
@@ -51,11 +66,23 @@ pub(super) fn tracked_text(
     color: u32,
     spacing: f32,
 ) -> gpui::Div {
+    tracked_line(content, size, weight, color, spacing, size * 1.5)
+}
+
+fn tracked_line(
+    content: impl Into<gpui::SharedString>,
+    size: f32,
+    weight: u16,
+    color: u32,
+    spacing: f32,
+    height: f32,
+) -> gpui::Div {
     // El kit mide la línea completa: una caja por carácter redondea su ancho
     // y acumula errores de tracking, sobre todo en las políticas del perfil.
     div().flex().child(TrackedLabel {
         content: content.into(),
         ink: typography::ink(size, f32::from(weight), spacing / size, rgb(color).into()),
+        height,
     })
 }
 
@@ -82,15 +109,49 @@ fn chip(label: &str, tone: Tone) -> gpui::Div {
         ))
 }
 
-fn svg_mark(svg: &str, size: f32) -> gpui::Img {
-    gpui::img(std::sync::Arc::new(gpui::Image::from_bytes(
-        gpui::ImageFormat::Svg,
-        svg.as_bytes().to_vec(),
-    )))
-    .size(px(size))
+#[derive(gpui::IntoElement)]
+struct SvgMark {
+    data: gpui::SharedString,
+    size: f32,
 }
 
-fn pencil_mark() -> gpui::Img {
+impl gpui::RenderOnce for SvgMark {
+    fn render(self, window: &mut Window, cx: &mut gpui::App) -> impl IntoElement {
+        use std::hash::{Hash, Hasher};
+        let mut hash = std::collections::hash_map::DefaultHasher::new();
+        self.data.hash(&mut hash);
+        self.size.to_bits().hash(&mut hash);
+        let key = hash.finish();
+        // El renderer de GPUI prepara el SVG una vez por elemento. La primera
+        // imagen ya contiene la marca, sin esperar al cargador asíncrono de Img.
+        let image = window.use_keyed_state(("launcher-svg", key), cx, |_, cx| {
+            cx.svg_renderer()
+                .render_single_frame(self.data.as_bytes(), 1.0)
+                .map_err(|error| format!("SVG Launcher: {error}"))
+        });
+        match image.read(cx) {
+            Ok(image) => gpui::img(image.clone())
+                .size(px(self.size))
+                .into_any_element(),
+            Err(error) => div()
+                .id(("launcher-svg-error", key))
+                .role(gpui::Role::Label)
+                .aria_label(error.clone())
+                .size(px(self.size))
+                .child("!")
+                .into_any_element(),
+        }
+    }
+}
+
+fn svg_mark(svg: &str, size: f32) -> SvgMark {
+    SvgMark {
+        data: svg.to_owned().into(),
+        size,
+    }
+}
+
+fn pencil_mark() -> SvgMark {
     // Geometría productiva de LauncherOrbitPage.tsx.
     svg_mark(
         r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#8a858b" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5l2 2L6 12H4v-2z"/></svg>"##,
@@ -98,7 +159,7 @@ fn pencil_mark() -> gpui::Img {
     )
 }
 
-fn star_mark(filled: bool) -> gpui::Img {
+fn star_mark(filled: bool) -> SvgMark {
     let fill = if filled { "#f04755" } else { "none" };
     let stroke = if filled { "#f04755" } else { "#8a858b" };
     svg_mark(
@@ -157,13 +218,17 @@ fn context_block() -> gpui::Div {
 }
 
 fn context_heading(label: &str, value: String) -> gpui::Div {
+    context_heading_action(label, orbit::mono_text(value, 10.5, orbit::INK_3))
+}
+
+fn context_heading_action(label: &str, value: impl IntoElement) -> gpui::Div {
     div()
         .flex()
         .items_center()
         .justify_between()
         .px(px(7.0))
         .child(eyebrow(label))
-        .child(orbit::mono_text(value, 10.5, orbit::INK_3))
+        .child(value)
 }
 
 fn launch_button(featured: bool) -> gpui::Stateful<gpui::Div> {
@@ -284,13 +349,7 @@ fn app_mark(app: &App, size: f32) -> gpui::Div {
             .flex()
             .items_center()
             .justify_center()
-            .child(
-                gpui::img(std::sync::Arc::new(gpui::Image::from_bytes(
-                    gpui::ImageFormat::Svg,
-                    include_bytes!("motec.svg").to_vec(),
-                )))
-                .size(px(size * 0.74)),
-            );
+            .child(svg_mark(include_str!("motec.svg"), size * 0.74));
     }
     let abbreviation = match app.id.as_str() {
         "crewchief" => "CC".to_owned(),
@@ -388,7 +447,7 @@ fn icon_button(
         .child(mark)
 }
 
-fn trash_mark() -> gpui::Img {
+fn trash_mark() -> SvgMark {
     svg_mark(
         r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#8a858b" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.3h10.4M6.4 4.3V2.9h3.2v1.4M4.3 4.3l.6 8.2h6.2l.6-8.2M6.7 6.7v3.6M9.3 6.7v3.6"/></svg>"##,
         15.0,
@@ -427,11 +486,7 @@ fn stat_tile(
         .p(px(14.0))
         .px(px(18.0))
         .rounded(px(18.0))
-        .child(
-            text(label.to_uppercase(), 11.0, 700, orbit::INK_3)
-                .line_height(px(16.5))
-                .flex_none(),
-        )
+        .child(tracked_text(label.to_uppercase(), 11.0, 700, orbit::INK_3, 0.44).flex_none())
         .child(value_line)
         .when_some(sub, |tile, sub| {
             tile.child(
@@ -621,7 +676,18 @@ impl Launcher {
     }
 
     /// La shell monta esta búsqueda en su ranura de acciones de Launcher.
-    pub fn topbar_actions(&self, cx: &Context<Self>) -> gpui::Div {
+    pub fn topbar_actions(&self, available_width: f32, cx: &Context<Self>) -> gpui::Div {
+        // La ranura queda junto a las migas; este espacio centra el campo
+        // en la barra disponible sin alterar los controles comunes del marco.
+        div()
+            .w(px((available_width / 2.0 - orbit::TOPBAR_GUTTER).max(260.0)))
+            .min_w_0()
+            .flex()
+            .justify_end()
+            .child(self.application_search(cx))
+    }
+
+    fn application_search(&self, cx: &Context<Self>) -> gpui::Div {
         div()
             .relative()
             .w(px(260.0))
@@ -739,7 +805,10 @@ impl Launcher {
         )
         .child(
             context_block()
-                .child(context_heading("Próximas carreras", "Ver todas".into()))
+                .child(context_heading_action(
+                    "Próximas carreras",
+                    text("Ver todas", 11.5, 400, orbit::INK_3),
+                ))
                 .child(
                     text(
                         if demo {
@@ -759,9 +828,9 @@ impl Launcher {
             context_block()
                 .pt(px(16.0))
                 .mt(px(10.0))
-                .child(context_heading(
+                .child(context_heading_action(
                     "Perfil de overlay",
-                    if demo { "DETENIDO" } else { "—" }.into(),
+                    chip(if demo { "DETENIDO" } else { "—" }, Tone::Neutral),
                 ))
                 .child(
                     text(
@@ -1613,7 +1682,7 @@ impl Launcher {
                     .flex()
                     .flex_col()
                     .child(eyebrow("Aplicaciones y cadenas").h(px(24.0)).items_center())
-                    .child(text("Launcher", 36.0, 700, orbit::INK).line_height(px(51.0)).mt(px(6.0)))
+                    .child(tracked_line("Launcher", 36.0, 700, orbit::INK, -1.26, 51.0).mt(px(6.0)))
                     .child(
                         text(
                             "Detecta aplicaciones compatibles, organiza perfiles y ejecuta sus pasos en orden.",
@@ -1626,13 +1695,13 @@ impl Launcher {
             )
             .child(div().h(px(29.0)).px(px(12.0)).flex().items_center().rounded(px(15.0))
                 .border_1().border_color(rgba(if detection_ran { 0x66d9_8740 } else { orbit::LINE_STRONG }))
-                .child(text(
+                .child(tracked_text(
                 if self.scanning {
                     "DETECTANDO…"
                 } else {
                     detection_label
                 },
-                10.0, 800, if detection_ran { orbit::GREEN } else { orbit::INK_3 },
+                10.0, 750, if detection_ran { orbit::GREEN } else { orbit::INK_3 }, 0.6,
             )))
     }
 
@@ -1668,7 +1737,7 @@ impl Launcher {
 }
 
 impl Render for Launcher {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if let Some(layer) = &self.form_layer {
             let targets = self.form_targets(cx);
             layer.update(cx, |layer, _| layer.set_targets(targets));
@@ -1697,6 +1766,9 @@ impl Render for Launcher {
         let mut page = div()
             .id("launcher")
             .size_full()
+            .h(px(
+                f32::from(window.viewport_size().height) - orbit::TOPBAR_H
+            ))
             .flex_1()
             .min_h_0()
             .flex()

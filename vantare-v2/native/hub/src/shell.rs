@@ -258,6 +258,33 @@ impl Hub {
             .child(self.section_view(cx))
             .into_any_element()
     }
+
+    /// Columna contextual de la sección activa; Strategy la oculta si su vista no la usa.
+    fn section_column(
+        &mut self,
+        window: &mut Window,
+        strategy_context_visible: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        if self.section == Section::Studio {
+            self.studio.read(cx).context_column().into_any_element()
+        } else if matches!(
+            self.section,
+            Section::Settings | Section::Account | Section::Licenses
+        ) {
+            self.settings_column(window, cx).into_any_element()
+        } else if self.section == Section::Launcher {
+            self.launcher
+                .update(cx, |launcher, cx| launcher.context_column(window, cx))
+                .into_any_element()
+        } else if strategy_context_visible {
+            self.strategy_context_column(cx).into_any_element()
+        } else if self.section == Section::Strategy {
+            div().into_any_element()
+        } else {
+            self.context_column(window, cx).into_any_element()
+        }
+    }
 }
 
 impl Render for Hub {
@@ -271,8 +298,17 @@ impl Render for Hub {
         self.refresh_query(cx);
         let rail = self.rail(cx);
         let section_actions = (self.section == Section::Launcher).then(|| {
+            let available_width = f32::from(window.viewport_size().width)
+                - orbit::RAIL_W
+                - if self.shell.column_open {
+                    orbit::COLUMN_W
+                } else {
+                    0.0
+                };
             self.launcher.update(cx, |launcher, cx| {
-                launcher.topbar_actions(cx).into_any_element()
+                launcher
+                    .topbar_actions(available_width, cx)
+                    .into_any_element()
             })
         });
         let topbar = self.topbar(window, section_actions, cx);
@@ -286,24 +322,12 @@ impl Render for Hub {
             self.notifications
                 .update(cx, |center, cx| center.toggle_popover(window, cx));
         }
-        let column = if self.section == Section::Studio {
-            self.studio.read(cx).context_column().into_any_element()
-        } else if matches!(
-            self.section,
-            Section::Settings | Section::Account | Section::Licenses
-        ) {
-            self.settings_column(window, cx).into_any_element()
-        } else if self.section == Section::Launcher {
-            self.launcher
-                .update(cx, |launcher, cx| launcher.context_column(window, cx))
-                .into_any_element()
-        } else if self.section == Section::Strategy {
-            self.strategy_context_column(cx).into_any_element()
-        } else {
-            self.context_column(window, cx).into_any_element()
-        };
+        let strategy_context_visible =
+            self.section == Section::Strategy && self.strategy.read(cx).context_sidebar_visible();
+        let column = self.section_column(window, strategy_context_visible, cx);
         let content = self.render_content(cx);
         let main = div()
+            .relative()
             .flex_1()
             .flex()
             .flex_col()
@@ -333,8 +357,22 @@ impl Render for Hub {
             .bg(gpui::rgb(orbit::CANVAS))
             .text_color(gpui::rgb(orbit::INK))
             .font_family("Inter W400")
+            .when_some(
+                (self.section == Section::Strategy)
+                    .then(|| {
+                        self.strategy
+                            .read(cx)
+                            .garage_background(f32::from(window.viewport_size().width))
+                    })
+                    .flatten(),
+                gpui::ParentElement::child,
+            )
             .child(rail)
-            .when(self.shell.column_open, |root| root.child(column))
+            .when(
+                self.shell.column_open
+                    && (self.section != Section::Strategy || strategy_context_visible),
+                |root| root.child(column),
+            )
             .child(main)
             .when(self.section == Section::Launcher, |root| {
                 root.when_some(

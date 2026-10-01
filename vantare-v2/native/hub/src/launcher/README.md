@@ -498,3 +498,47 @@ x>376, y>70, umbral 8. No declara el objetivo de 5 % cumplido. La tipografía
 posterior se verificará tras incorporar `bef4a971`, según las notas del
 orquestador. El editor conserva el oscurecimiento; el desenfoque de fondo
 Wails necesita soporte compartido fuera del alcance de estas vistas.
+
+## Cierre visual con marco vigente — segunda pasada (#1430)
+
+Se incorpora también `bef4a971` por las notas del orquestador. Los cambios de
+Strategy y del marco proceden de esa integración; los ajustes propios siguen
+en las vistas Launcher y en su conexión mínima con `shell.rs`.
+
+Aplicadas las notas completas, incluidas las de las 00:05: búsqueda en la barra
+superior centrada en el espacio disponible, «Ver todas» en Inter y «DETENIDO»
+como chip. El campo mantiene la entidad/filtro existentes. Se reserva el alto
+real bajo la barra para que catálogo y perfiles terminen antes del margen
+inferior. Los nombres editables conservan el renderizado y ajuste de texto.
+
+Los SVG se preparan con el renderer GPUI y se conservan por elemento, evitando
+que MoTeC falte en el primer fotograma. Los rótulos con tracking conservan su
+nombre accesible. No se añaden dependencias, estado global ni lógica de motor.
+
+Resultado del banco a 1440×900, DPI 100 %, umbral 8, región x>376,y>70:
+
+| Pantalla | Antes | Después | Objetivo ≤5 % |
+|---|---:|---:|---|
+| launcher-base | 25,2864 % | 6,9593 % | No |
+| launcher-nuevo-perfil | 12,1321 % | 10,3032 % | No |
+
+Ventana completa: 7,1412 % y 9,9294 %. Dos capturas nuevas por pantalla tienen
+hashes idénticos; se miraron referencia, captura, mapa y ampliaciones del
+buscador, pie contextual, MoTeC y formulario. Evidencia y tabla comparables:
+`C:/tmp/launcher-2-evidence/banco/` y `tabla-antes-despues.*`, fuera del repo.
+
+La estructura está cubierta; la aceptación estricta sigue pendiente. En el
+editor, el drawer aporta 3,172 % en su región propia, pero el fondo sin blur
+se incluye en la medida exigida. Persisten diferencias de rasterizado,
+baselines, pesos, controles del kit y algunos píxeles de iconos/bordes. El
+objetivo completo requiere continuar esa revisión; no se ocultan zonas ni se
+sustituye el fondo productivo por imágenes de referencia. No se verifica aquí
+el lanzamiento real por ▶ en demo, hotkey, autostart, LMU/OBS o DPI mixto.
+
+Gates del cierre, desde `native/`, con compilación `-j 2`:
+`cargo fmt --check` y `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+PASS; `cargo nextest run --workspace --build-jobs 2 -j 2`: 914 PASS,
+4 omitidos según el perfil existente; `cargo test --workspace --test lifecycle
+-j 2`: 5 Engineer y 11 Launcher, 0 fallos. `git diff --check`: PASS.
+Los logs y hashes están fuera del repo. Sin push, PR, CI remoto, merge remoto,
+promoción ni release; los merges locales fueron solicitados expresamente.

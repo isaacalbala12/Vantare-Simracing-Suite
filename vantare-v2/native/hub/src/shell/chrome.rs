@@ -287,7 +287,11 @@ impl Hub {
             );
         }
         div()
-            .w(px(orbit::RAIL_W))
+            .w(px(if self.section == Section::Strategy {
+                72.0
+            } else {
+                orbit::RAIL_W
+            }))
             .h_full()
             .flex_none()
             .flex()
@@ -412,7 +416,7 @@ impl Hub {
         let content = self
             .strategy
             .update(cx, |strategy, cx| strategy.context_sidebar(cx));
-        self.context_column_with_content("Estrategia", "", 246.0, Some(content), cx)
+        self.context_column_with_content("Estrategia", "", 255.0, Some(content), cx)
     }
 
     fn context_column_with_content(
@@ -762,13 +766,13 @@ impl Hub {
     }
 
     /// `section_actions` pertenece a la sección; la campana y la versión son comunes.
+    /// Strategy v5 no muestra campana ni versión y usa una barra más baja.
     pub(super) fn topbar(
         &mut self,
         window: &Window,
         section_actions: Option<gpui::AnyElement>,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
-        let bell = self.notification_bell(cx);
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
         let pending = self
             .demo
@@ -783,16 +787,16 @@ impl Hub {
                             ))
                 })
             })
-            .map(|demo| demo.versions.pending.as_str());
+            .map(|demo| demo.versions.pending.clone());
         let breadcrumb = if matches!(self.section, Section::Account | Section::Licenses) {
             Section::Settings
         } else {
             self.section
         };
-        orbit::topbar_with_actions(
-            navigation::trail(breadcrumb),
-            navigation::title(breadcrumb),
-            section_actions,
+        let action = if self.section == Section::Strategy {
+            div().into_any_element()
+        } else {
+            let bell = self.notification_bell(cx);
             div()
                 .flex()
                 .items_center()
@@ -819,9 +823,19 @@ impl Hub {
                             )
                             .child(orbit::text(version, 12.0, 400, orbit::INK_3)),
                     )
-                }),
+                })
+                .into_any_element()
+        };
+        orbit::topbar_with_actions(
+            navigation::trail(breadcrumb),
+            navigation::title(breadcrumb),
+            section_actions,
+            action,
         )
         .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
+        .when(self.section == Section::Strategy, |bar| {
+            bar.h(px(orbit::STRATEGY_TOPBAR_H))
+        })
     }
 
     fn palette_rows(

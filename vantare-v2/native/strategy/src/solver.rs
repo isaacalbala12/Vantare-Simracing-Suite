@@ -1,4 +1,6 @@
 //! Deterministic Strategy solver, with shared search and fixed-plan replay models.
+mod drivers;
+pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
 mod model;
 #[cfg(test)]
 mod parity_tests;

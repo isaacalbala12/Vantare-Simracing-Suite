@@ -123,3 +123,8 @@ fn go_resource_and_replay_parity() {
 fn go_physical_tyre_parity() {
     parity_cases(include_str!("../../testdata/oracle/solver-tyres.json"));
 }
+
+#[test]
+fn go_driver_limits_and_timed_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-drivers.json"));
+}

@@ -257,7 +257,17 @@ pub(super) fn replay(
 ) -> Result<ReplayResult, String> {
     let model = Model::new(input)?;
     validate_shape(input, decision)?;
-    let req = requirements(&model, decision)?;
+    replay_model(&model, decision, initial, complete)
+}
+
+#[allow(clippy::too_many_lines, clippy::float_cmp)] // Shared fixed-plan walk with an already validated immutable model.
+pub(super) fn replay_model(
+    model: &Model,
+    decision: &DecisionVector,
+    initial: Option<(f64, f64)>,
+    complete: bool,
+) -> Result<ReplayResult, String> {
+    let req = requirements(model, decision)?;
     let (fuel, ve) = initial.unwrap_or((req.initial.fuel_liters, req.initial.ve_percent));
     require(
         model
@@ -304,8 +314,13 @@ pub(super) fn replay(
     else {
         return Ok(failed(result, decision, "tyre_inventory_insufficient"));
     };
+    let mut driver_state = super::drivers::DriverState::default();
     let mut tyre_usage = std::collections::BTreeMap::new();
     for (index, requested) in decision.stints.iter().enumerate() {
+        let driver = model.driver(&requested.driver)?;
+        if !model.sequence_allows(index, &driver.id) {
+            return Ok(failed(result, decision, "driver_sequence"));
+        }
         let level = model.level(&requested.saving_level)?;
         let (used_f, used_v) = model.usage(lap + 1, requested.laps, &requested.driver, level)?;
         if used_f > f
@@ -339,7 +354,18 @@ pub(super) fn replay(
                     .total_seconds;
             }
         }
+        let before = result.evaluation.clone();
         result.evaluation.add(&eval);
+        if let Some(code) = model.apply_driver(
+            &mut driver_state,
+            &driver.id,
+            lap + 1,
+            requested.laps,
+            &before,
+            &result.evaluation,
+        ) {
+            return Ok(failed(result, decision, code));
+        }
         if index == 0 {
             eval.formation_seconds = model.input.formation.seconds.value;
             eval.total();
@@ -352,6 +378,7 @@ pub(super) fn replay(
         result.decision.stints.push(StintDecision {
             index,
             laps: requested.laps,
+            driver: driver.id.clone(),
             compound: tyre.compound.clone(),
             tyre_fitment: tyre.fitment.clone(),
             saving_level: level.level.clone(),
@@ -359,10 +386,9 @@ pub(super) fn replay(
             ve_saved_per_lap: level.ve_saved_per_lap,
             time_cost_per_lap: level.time_cost_per_lap,
             saving_cost_seconds: level.time_cost_per_lap * f64::from(requested.laps),
-            ..requested.clone()
         });
         if let Some(pit) = result.decision.pit_stops.last_mut() {
-            pit.driver.clone_from(&requested.driver);
+            pit.driver.clone_from(&driver.id);
             pit.saving_level.clone_from(&level.level);
         }
         f -= used_f;
@@ -404,12 +430,12 @@ pub(super) fn replay(
             }
         }
     }
-    result.reserve = reserve_status(&model, &result.decision, f, v)?;
+    result.reserve = reserve_status(model, &result.decision, f, v)?;
     if complete {
         if !result.reserve.satisfied {
             return Ok(failed(result, decision, "reserve_not_met"));
         }
-        if let Some(reason) = completed_reason(&model, &result.decision) {
+        if let Some(reason) = completed_reason(model, &result.decision) {
             return Ok(failed(result, decision, &reason));
         }
         if let Some(duration) = model.dims.race_duration_seconds
@@ -424,6 +450,26 @@ pub(super) fn replay(
 }
 pub(super) fn completed_reason(model: &Model, d: &DecisionVector) -> Option<String> {
     let rules = &model.input.event_rules;
+    if !model.dims.driver_sequence.is_empty()
+        && (d.stints.len() < model.dims.driver_sequence.len()
+            || d.stints
+                .iter()
+                .enumerate()
+                .any(|(i, s)| !model.sequence_allows(i, &s.driver)))
+    {
+        return Some("driver_sequence".into());
+    }
+    for (id, limit) in &model.rules.driver_limits {
+        let laps: u32 = d
+            .stints
+            .iter()
+            .filter(|s| &s.driver == id)
+            .map(|s| s.laps)
+            .sum();
+        if limit.min_laps.is_some_and(|n| laps < n) {
+            return Some("driver_minimum_laps".into());
+        }
+    }
     if rules.min_pit_stops.is_some_and(|n| d.pit_stops.len() < n) {
         return Some("minimum_pit_stops".into());
     }

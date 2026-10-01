@@ -66,6 +66,10 @@ pub struct PitDecision {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Dimensions {
+    #[serde(default)]
+    pub driver_profiles: Vec<super::DriverProfile>,
+    #[serde(default)]
+    pub driver_sequence: Vec<String>,
     pub tyre_inventory: Option<super::TyreInventory>,
     #[serde(default)]
     pub compound_pace: Vec<super::CompoundPace>,
@@ -151,6 +155,8 @@ pub struct DecisionResourceRequirements {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct ExtraRules {
     #[serde(default)]
+    pub driver_limits: std::collections::BTreeMap<String, super::DriverLimit>,
+    #[serde(default)]
     pub mandatory_compounds: Vec<String>,
 }
 
@@ -163,6 +169,7 @@ pub(super) struct Model {
     pub levels: Vec<SavingLevel>,
     pub fuel_weight: f64,
     pub tyres: super::tyres::TyreModel,
+    pub drivers: Vec<super::drivers::Driver>,
     pub rules: ExtraRules,
 }
 
@@ -222,20 +229,36 @@ impl Model {
                 "raceDurationSeconds",
             )?;
         }
-        let fuel = Resource::new(
+        let mut fuel = Resource::new(
             scalar.fuel_capacity_liters.value,
-            scalar.fuel_per_lap_liters.value,
+            if !dims.driver_profiles.is_empty()
+                && scalar.fuel_per_lap_liters.value == 0.0
+                && scalar.fuel_capacity_liters.value > 0.0
+            {
+                1.0
+            } else {
+                scalar.fuel_per_lap_liters.value
+            },
             scalar.discretization.fuel_liters,
             &Value::Null,
             scalar.race_laps,
         )?;
-        let ve = Resource::new(
+        let mut ve = Resource::new(
             scalar.ve_capacity_percent.value,
-            scalar.ve_per_lap_percent.value,
+            if !dims.driver_profiles.is_empty()
+                && scalar.ve_per_lap_percent.value == 0.0
+                && scalar.ve_capacity_percent.value > 0.0
+            {
+                1.0
+            } else {
+                scalar.ve_per_lap_percent.value
+            },
             scalar.discretization.ve_percent,
             &Value::Null,
             scalar.race_laps,
         )?;
+        fuel.per_lap = units(scalar.fuel_per_lap_liters.value)?;
+        ve.per_lap = units(scalar.ve_per_lap_percent.value)?;
         // Validate reserves even when no complete candidate is found.
         reserve_amount(
             &input.fuel_reserve,
@@ -283,8 +306,9 @@ impl Model {
                 nonnegative(level.ve_saved_per_lap, "saving VE")?;
                 nonnegative(level.time_cost_per_lap, "saving time")?;
                 require(
-                    units(level.fuel_saved_per_lap)? <= fuel.per_lap
-                        && units(level.ve_saved_per_lap)? <= ve.per_lap,
+                    !dims.driver_profiles.is_empty()
+                        || (units(level.fuel_saved_per_lap)? <= fuel.per_lap
+                            && units(level.ve_saved_per_lap)? <= ve.per_lap),
                     "saving exceeds consumption",
                 )?;
                 if level.fuel_saved_per_lap != 0.0
@@ -309,7 +333,15 @@ impl Model {
                 "mandatory compound absent or duplicate",
             )?;
         }
+        let drivers = super::drivers::drivers(
+            &scalar,
+            &dims.driver_profiles,
+            &dims.driver_sequence,
+            &rules.driver_limits,
+            &levels,
+        )?;
         Ok(Self {
+            drivers,
             input: scalar,
             dims,
             fuel,
@@ -331,12 +363,13 @@ impl Model {
         &self,
         _start: u32,
         laps: u32,
-        _driver: &str,
+        driver: &str,
         level: &SavingLevel,
     ) -> Result<(i64, i64), String> {
+        let driver = self.driver(driver)?;
         Ok((
-            i64::from(laps) * (self.fuel.per_lap - units(level.fuel_saved_per_lap)?),
-            i64::from(laps) * (self.ve.per_lap - units(level.ve_saved_per_lap)?),
+            i64::from(laps) * (driver.fuel - units(level.fuel_saved_per_lap)?),
+            i64::from(laps) * (driver.ve - units(level.ve_saved_per_lap)?),
         ))
     }
     pub fn stint(
@@ -351,7 +384,7 @@ impl Model {
         let (used, _) = self.usage(start, 1, driver, level)?;
         let count = f64::from(laps);
         let mut eval = Evaluation {
-            green_seconds: count * self.input.base_lap_seconds.value,
+            green_seconds: count * self.driver(driver)?.base,
             degradation_seconds: count * (count - 1.0) / 2.0
                 * self.input.degradation_per_lap_seconds.value,
             fuel_weight_seconds: (count * amount(fuel)

@@ -241,7 +241,7 @@ pub fn registry_sources(result: &mut Sources) {
     }
 }
 
-pub fn running(path: &Path) -> Result<Option<u32>, String> {
+pub fn running_all(path: &Path) -> Result<Vec<u32>, String> {
     let expected =
         std::fs::canonicalize(path).map_err(|e| format!("identidad del ejecutable: {e}"))?;
     // SAFETY: TH32CS_SNAPPROCESS; función sin punteros prestados.
@@ -269,6 +269,7 @@ pub fn running(path: &Path) -> Result<Option<u32>, String> {
     // SAFETY: estructura repr(C) con dwSize inicializado y snapshot vivo.
     let mut has_entry = unsafe { process_first(snapshot.as_raw_handle(), &raw mut entry) } != 0;
     let mut buffer = vec![0_u16; 32768];
+    let mut result = Vec::new();
     while has_entry {
         // SAFETY: solo consulta; un proceso inaccesible se omite sin adquirir autoridad sobre él.
         let process = unsafe { open_process(0x1000, 0, entry.pid) };
@@ -301,7 +302,7 @@ pub fn running(path: &Path) -> Result<Option<u32>, String> {
                     ));
                 }
                 if code == 259 {
-                    return Ok(Some(entry.pid));
+                    result.push(entry.pid);
                 }
             }
         }
@@ -312,5 +313,6 @@ pub fn running(path: &Path) -> Result<Option<u32>, String> {
     if error.raw_os_error() != Some(18) {
         return Err(format!("enumerar procesos: {error}"));
     }
-    Ok(None)
+    result.sort_unstable();
+    Ok(result)
 }

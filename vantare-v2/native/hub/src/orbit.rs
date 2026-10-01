@@ -12,6 +12,7 @@ mod input;
 mod layer;
 mod specimen;
 mod state;
+pub mod theme;
 pub use controls::*;
 pub use input::Input;
 pub use layer::{Dismissed, Layer, LayerKind};

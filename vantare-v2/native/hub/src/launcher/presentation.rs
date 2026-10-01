@@ -273,7 +273,7 @@ fn availability(app: Option<&discovery::Detected>, scanning: bool) -> (&'static 
     }
 }
 
-fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) -> bool {
+pub(super) fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) -> bool {
     !busy
         && !profile.steps.is_empty()
         && profile.steps.iter().all(|step| {
@@ -333,7 +333,7 @@ impl Launcher {
             .filter(|profile| self.profile_matches(profile, query))
             .collect();
         for (index, profile) in visible.iter().enumerate() {
-            let edit = (*profile).clone();
+            let row_launch = (*profile).clone();
             let launch = (*profile).clone();
             let can_launch = launchable(
                 profile,
@@ -365,11 +365,14 @@ impl Launcher {
                         )
                         .flex_1()
                         .min_w_0()
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.profile_editor(edit.clone(), window, cx);
-                            },
-                        )),
+                        .when(can_launch, |row| {
+                            row.on_click(cx.listener(move |this, _, _, cx| {
+                                this.start(row_launch.clone(), cx);
+                            }))
+                        })
+                        .when(!can_launch, |row| {
+                            row.tab_stop(false).opacity(orbit::DISABLED)
+                        }),
                     )
                     .child(
                         button("context-launch", "▶")
@@ -392,6 +395,10 @@ impl Launcher {
             ));
         }
         profiles
+    }
+
+    pub fn quick_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
+        self.context_profiles(query, cx)
     }
 
     pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
@@ -442,7 +449,7 @@ impl Launcher {
             .child(div().id("launcher-context").flex_1().min_h_0().overflow_y_scroll()
                 .child(profiles).child(favorites)
                 .child(orbit::card_body().child(orbit::eyebrow(format!("Catálogo · {} · {detected} detectadas", self.store.document.apps.len())))
-                    .child(text("La detección busca en el registro y Steam. Accesos directos: pendiente.", orbit::SECONDARY, 400, orbit::INK_3))))
+                    .child(text("La detección busca en el registro, Steam y accesos directos locales.", orbit::SECONDARY, 400, orbit::INK_3))))
             .child(orbit::card_body()
                 .child(orbit::eyebrow("Próximas carreras"))
                 .child(chip("pendiente · contexto de calendario", Tone::Neutral))
@@ -819,7 +826,11 @@ impl Launcher {
             &self.discovered,
             self.scanning || self.chain.is_some(),
         );
-        let description = self.demo_descriptions.get(&profile.id).cloned();
+        let description = self
+            .demo_descriptions
+            .get(&profile.id)
+            .cloned()
+            .or_else(|| (!profile.description.is_empty()).then(|| profile.description.clone()));
         div()
             .flex()
             .items_start()
@@ -962,31 +973,39 @@ impl Launcher {
         chain.mt(px(18.0))
     }
     fn policy_chips(profile: &Profile) -> gpui::Div {
+        let policy = profile.effective_policy();
         div()
             .flex()
             .flex_wrap()
             .gap(px(6.0))
             .child(chip(
-                if profile.reuse_running {
-                    "YA ABIERTA · REUTILIZAR"
-                } else {
-                    "YA ABIERTA · ABRIR"
+                match policy.already_running {
+                    Running::Ask => "YA ABIERTA · PREGUNTAR",
+                    Running::Reuse => "YA ABIERTA · REUTILIZAR",
+                    Running::Restart => "YA ABIERTA · REINICIAR",
                 },
                 Tone::Neutral,
             ))
             .child(chip(
-                if profile.continue_on_error {
-                    "FALLO · CONTINUAR"
-                } else {
-                    "FALLO · DETENER"
+                match policy.failure {
+                    Failure::Ask => "FALLO · PREGUNTAR",
+                    Failure::Stop => "FALLO · DETENER",
+                    Failure::Continue => "FALLO · CONTINUAR",
                 },
                 Tone::Neutral,
             ))
             .child(chip(
-                &format!("FALLO · REINTENTAR ×{}", profile.max_retries),
+                &format!("FALLO · REINTENTAR ×{}", policy.max_retries),
                 Tone::Neutral,
             ))
-            .child(chip("AL SALIR · DEJAR ABIERTAS", Tone::Neutral))
+            .child(chip(
+                match policy.exit {
+                    Close::Ask => "AL SALIR · PREGUNTAR",
+                    Close::Leave => "AL SALIR · DEJAR ABIERTAS",
+                    Close::CloseStarted => "AL SALIR · CERRAR INICIADAS",
+                },
+                Tone::Neutral,
+            ))
     }
     pub(super) fn profile_actions(&self, profile: &Profile, cx: &mut Context<Self>) -> gpui::Div {
         let duplicate = profile.clone();
@@ -1030,17 +1049,8 @@ impl Launcher {
                 )),
             )
             .child(button("delete-profile", "Eliminar").on_click(cx.listener(
-                move |this, _, _, cx| {
-                    this.edit(
-                        |doc| {
-                            doc.profiles.retain(|profile| profile.id != remove);
-                            if doc.lmu_trigger_profile.as_deref() == Some(&remove) {
-                                doc.lmu_trigger_profile = None;
-                            }
-                            Ok(())
-                        },
-                        cx,
-                    );
+                move |this, _, window, cx| {
+                    this.request_profile_removal(remove.clone(), window, cx);
                 },
             )))
             .child(
@@ -1122,7 +1132,7 @@ impl Launcher {
                 false,
             ))
     }
-    fn progress_panel(&self) -> gpui::Div {
+    fn progress_panel(&self, cx: &Context<Self>) -> gpui::Div {
         let mut progress = orbit::card_body();
         for (index, event) in self.progress.iter().enumerate() {
             progress = progress.child(orbit::list_row(
@@ -1143,7 +1153,45 @@ impl Launcher {
                 false,
             ));
         }
-        orbit::card("Progreso de la cadena").child(progress)
+        let controls = if self.chain.is_some() {
+            div().child(
+                button("cancel-chain", "Cancelar cadena").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        if let Some(chain) = &this.chain {
+                            chain.cancel();
+                        }
+                        cx.notify();
+                    },
+                )),
+            )
+        } else {
+            let failed = self.last_profile.as_ref().is_some_and(|profile| {
+                !super::super::chain::retry_steps(
+                    profile,
+                    &self.progress,
+                    super::super::chain::RetryScope::Failed,
+                )
+                .is_empty()
+            });
+            div()
+                .flex()
+                .gap_2()
+                .when(failed, |row| {
+                    row.child(
+                        button("retry-failed", "Reintentar pasos fallidos").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.retry(super::super::chain::RetryScope::Failed, cx);
+                            },
+                        )),
+                    )
+                })
+                .child(
+                    button("retry-all", "Reintentar cadena entera").on_click(cx.listener(
+                        |this, _, _, cx| this.retry(super::super::chain::RetryScope::All, cx),
+                    )),
+                )
+        };
+        orbit::card("Progreso de la cadena").child(progress.child(controls))
     }
 
     fn launcher_heading(&self, detection_label: &str, detection_ran: bool) -> gpui::Div {
@@ -1253,7 +1301,7 @@ impl Render for Launcher {
                 page.child(error_panel(error, cx))
             })
             .when(!self.progress.is_empty(), |page| {
-                page.child(self.progress_panel())
+                page.child(self.progress_panel(cx))
             })
             .child(self.launcher_columns(cx));
         for warning in &self.discovered.warnings {

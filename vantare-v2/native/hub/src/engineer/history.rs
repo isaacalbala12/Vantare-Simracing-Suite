@@ -4,10 +4,6 @@ use crate::engineer_control::{Message, Status};
 use serde_json::{Value, json};
 use std::collections::VecDeque;
 
-// Punto de entrada sin editar engineer.rs (vista propiedad de otro worker).
-#[path = "model.rs"]
-pub mod model;
-
 pub const MAX_MESSAGES: usize = 1000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -57,6 +57,7 @@ pub struct DemoProfile {
     pub widgets: usize,
     pub width: u32,
     pub height: u32,
+    pub obs_browser_source_url: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -496,6 +497,10 @@ mod tests {
         assert_eq!(first.user.full_name, "Isaac Albalá");
         assert_eq!(first.captured_at, "2026-09-30T17:00:00Z");
         assert_eq!(first.profile.name, "Clean Overlay");
+        assert_eq!(
+            first.profile.obs_browser_source_url,
+            "http://127.0.0.1:39261/overlay?profile=custom-clean-overlay.json"
+        );
         assert_eq!(first.launcher.profiles[0].name, "Creador de Contenido");
         assert_eq!(first.launcher.apps[1].display_name, "OBS Studio");
         assert_eq!(first.home_races[0].name, "LMGT3 Fixed");

@@ -11,10 +11,26 @@ use std::time::Duration;
 use vantare_ipc::transport::{Event, connect};
 use vantare_services::protocol::{self, Command as RequestCommand, Request};
 
+fn isolated_core() -> vantare_ipc::control::CoreLink {
+    let id = vantare_services::random_id().expect("instancia test");
+    #[cfg(windows)]
+    let photo = format!("vantare-services-test-{id}");
+    #[cfg(unix)]
+    let photo = format!("vs-{}", &id[..12]);
+    // Status no consulta el núcleo: el enlace solo aísla el endpoint del auxiliar
+    // y ejercita el mismo bootstrap privado que utiliza el supervisor.
+    vantare_ipc::control::CoreLink {
+        pipe: vantare_ipc::control::pipe_name(&photo),
+        image: std::env::current_exe().expect("imagen test"),
+        nonce: vantare_services::random_id().expect("bootstrap test"),
+    }
+}
+
 #[test]
 fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
     let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
-    let mut client = hub_client::Client::start(binary).expect("servicio propio");
+    let mut client =
+        hub_client::Client::start_managed(binary, None, &isolated_core()).expect("servicio propio");
     assert!(matches!(
         client.request(protocol::Command::Status).expect("status"),
         protocol::Reply::Status {
@@ -47,20 +63,51 @@ fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
             .expect("bootstrap");
         assert_eq!(nonce.trim().len(), 64);
         let stop = Arc::new(Event::new().expect("event"));
-        let mut pipe = connect(&name, stop, Duration::from_secs(2)).expect("pipe test");
-        let sent = protocol::write(
-            &mut pipe,
-            &Request {
-                version: protocol::VERSION,
-                sequence: 1,
-                nonce: "wrong-bootstrap".into(),
-                command: RequestCommand::Status,
-            },
-        );
-        if !wrong_peer {
-            sent.expect("request test");
+        match connect(&name, stop, Duration::from_secs(2)) {
+            Ok(mut pipe) => {
+                let sent = protocol::write(
+                    &mut pipe,
+                    &Request {
+                        version: protocol::VERSION,
+                        sequence: 1,
+                        nonce: "wrong-bootstrap".into(),
+                        command: RequestCommand::Status,
+                    },
+                );
+                if !wrong_peer {
+                    sent.expect("request test");
+                }
+                assert!(protocol::read::<vantare_services::protocol::Response>(&mut pipe).is_err());
+            }
+            // El hijo puede rechazar al padre y salir antes de que connect
+            // identifique su imagen (/proc/<pid>/exe en Linux).
+            Err(error) if wrong_peer && error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("pipe test: {error}"),
         }
-        assert!(protocol::read::<vantare_services::protocol::Response>(&mut pipe).is_err());
         assert!(!child.wait().expect("servicio rechaza par").success());
     }
+}
+
+#[test]
+fn occupied_endpoint_rejects_second_child_and_keeps_owner_usable() {
+    let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
+    let core = isolated_core();
+    let mut owner =
+        hub_client::Client::start_managed(binary, None, &core).expect("servicio propio");
+    assert!(hub_client::Client::start_managed(binary, None, &core).is_err());
+    assert!(matches!(
+        owner
+            .request(RequestCommand::Status)
+            .expect("dueño intacto"),
+        protocol::Reply::Status { .. }
+    ));
+    drop(owner);
+    let mut replacement =
+        hub_client::Client::start_managed(binary, None, &core).expect("endpoint recuperado");
+    assert!(matches!(
+        replacement
+            .request(RequestCommand::Status)
+            .expect("nuevo dueño"),
+        protocol::Reply::Status { .. }
+    ));
 }

@@ -1,6 +1,5 @@
 //! Modelo consumible por la vista; sin GPUI ni dependencia del proceso Engineer.
-//! Entrada actual: `engineer::history::model`; la vista puede reexportarlo como model.
-use super::{Filter, MAX_MESSAGES};
+use super::history::{Filter, MAX_MESSAGES};
 use crate::engineer_control::{
     self as control,
     runtime::{Connection, Delivery, Report, RuntimeStatus, Spotter},
@@ -69,6 +68,7 @@ pub struct Model {
     pub evicted: u64,
     pub current_epoch: Option<u64>,
     last_health: Health,
+    capture_time: Option<u64>,
 }
 impl Model {
     pub fn new(settings_path: &std::path::Path) -> Self {
@@ -80,10 +80,115 @@ impl Model {
             evicted: 0,
             current_epoch: None,
             last_health: Health::Missing,
+            capture_time: None,
         }
     }
     pub fn report(&self) -> Option<&Report> {
         self.report.as_ref()
+    }
+    pub fn now(&self) -> u64 {
+        self.capture_time.unwrap_or_else(control::runtime::now_ms)
+    }
+    /// Modos del harness Wails congelado. El runtime no publica modos por familia.
+    pub fn capture_output(&self, family: &str) -> Option<&'static str> {
+        self.capture_time.map(|_| match family {
+            "laps" => "Solo visual",
+            "timings" => "Solo audio",
+            _ => "Audio y visual",
+        })
+    }
+    pub fn capture_duration_ms(&self) -> Option<u64> {
+        self.capture_time.map(|_| 25)
+    }
+    /// El fixture Wails entra por el mismo contrato que el proceso. Nunca se
+    /// llama fuera de la ruta aislada de captura, ni escribe archivos de usuario.
+    pub fn capture(&mut self, demo: &crate::demo::DemoEngineer) -> Result<(), String> {
+        use control::runtime::{
+            AudioOutcome, CachedVoice, DeliveryStatus, VoiceEngine, VoiceStatus,
+        };
+        let captured = chrono::DateTime::parse_from_rfc3339(&demo.captured_at)
+            .map_err(|error| format!("fecha del fixture: {error}"))?;
+        let now = u64::try_from(captured.timestamp_millis())
+            .map_err(|error| format!("fecha negativa del fixture: {error}"))?;
+        let settings = control::Settings {
+            voice: true,
+            ..control::Settings::default()
+        };
+        let history = demo
+            .messages
+            .iter()
+            .enumerate()
+            .rev()
+            .enumerate()
+            .map(|(order, (index, message))| Delivery {
+                id: order as u64 + 1,
+                message: control::Message {
+                    epoch: if index == 0 { 2 } else { 3 },
+                    sequence: index as u64,
+                    intent: message.intent.clone(),
+                    locale: settings.locale.clone(),
+                    text: message.text.clone(),
+                },
+                text_emitted: index % 3 != 0,
+                audio: if index % 3 == 0 {
+                    AudioOutcome::Finished
+                } else {
+                    AudioOutcome::Missing
+                },
+                selected_at_ms: now.saturating_sub(u64::from(message.seconds_ago) * 1_000),
+            })
+            .collect::<Vec<_>>();
+        let report = Report {
+            status: control::Status {
+                version: control::runtime::STATUS_VERSION,
+                pid: 1, // Identificador sintético del harness, no consulta ni arranca un PID.
+                active: true,
+                settings,
+                assets: control::LOCALES
+                    .iter()
+                    .map(|locale| ((*locale).into(), true))
+                    .collect(),
+                last_message: history.last().map(|delivery| delivery.message.clone()),
+                error: None,
+            },
+            runtime: Some(RuntimeStatus {
+                instance_ms: now,
+                heartbeat_ms: now,
+                connection: Connection::Live,
+                epoch: Some(3),
+                telemetry_player_available: true,
+                spotter: Spotter::Ready,
+                voice: VoiceStatus {
+                    engine: VoiceEngine::CachedClipsWinmm,
+                    clips_configured: true,
+                    selected_voice: "ef_dora".into(),
+                    cached_voices: control::LOCALES
+                        .iter()
+                        .map(|locale| CachedVoice {
+                            locale: (*locale).into(),
+                            voice: "ef_dora".into(),
+                            clips_available: true,
+                        })
+                        .collect(),
+                    error: None,
+                },
+                delivery: DeliveryStatus {
+                    pending: 0,
+                    speaking: false,
+                    text_enabled: true,
+                    voice_requested: true,
+                    history,
+                    evicted: 0,
+                },
+            }),
+        };
+        let bytes = serde_json::to_vec(&report.json()).map_err(|error| error.to_string())?;
+        self.observe(Some(&bytes), now);
+        if let Some(error) = &self.error {
+            return Err(error.clone());
+        }
+        self.capture_time = Some(now);
+        Ok(())
     }
     /// Leer cada poll también detecta retirada/corrupción; evaluar view cada poll
     /// permite expirar un heartbeat aunque el archivo conserve bytes y mtime.

@@ -297,12 +297,9 @@ pub struct Store {
 }
 
 pub fn default_path() -> Result<PathBuf, String> {
-    Ok(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA no disponible")?)
-            .join("Vantare")
-            .join("native")
-            .join("launcher.json"),
-    )
+    vantare_ui::paths::default_data_dir()
+        .map(|root| root.join("Vantare/native/launcher.json"))
+        .map_err(str::to_owned)
 }
 
 impl Store {

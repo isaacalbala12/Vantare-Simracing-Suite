@@ -1,4 +1,4 @@
-#![cfg(all(windows, feature = "network"))]
+#![cfg(all(any(windows, unix), feature = "network"))]
 
 // Cliente del supervisor: el Hub ya no posee ni arranca hijos.
 use vantare_services::process as hub_client;
@@ -25,10 +25,11 @@ fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
     drop(client);
 
     for wrong_peer in [true, false] {
-        let name = format!(
-            "vantare-services-test-{}",
-            vantare_services::random_id().expect("test")
-        );
+        let id = vantare_services::random_id().expect("test");
+        #[cfg(windows)]
+        let name = format!("vantare-services-test-{id}");
+        #[cfg(unix)]
+        let name = format!("vs-{}", &id[..12]);
         let parent = std::env::current_exe().expect("imagen test");
         let parent_pid = if wrong_peer { 0 } else { std::process::id() };
         let mut child = Command::new(binary)

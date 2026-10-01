@@ -39,7 +39,6 @@ impl Client {
         root: Option<&Path>,
         core: Option<&vantare_ipc::control::CoreLink>,
     ) -> Result<Self, &'static str> {
-        use std::os::windows::process::CommandExt;
         let parent = std::env::current_exe().map_err(|_| "supervisor no identificado")?;
         let photo = match core {
             Some(core) => core
@@ -57,8 +56,12 @@ impl Client {
             .arg(&parent)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .creation_flags(0x0800_0000); // CREATE_NO_WINDOW; helper sin ventana.
+            .stderr(Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            process.creation_flags(0x0800_0000); // CREATE_NO_WINDOW; helper sin ventana.
+        }
         if let Some(root) = root {
             process.arg(root);
         }

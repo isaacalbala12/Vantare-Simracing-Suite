@@ -177,9 +177,8 @@ impl From<io::Error> for Error {
 }
 
 pub fn default_path() -> Result<PathBuf, Error> {
-    std::env::var_os("LOCALAPPDATA")
-        .map(|root| PathBuf::from(root).join("Vantare/native/layout.json"))
-        .ok_or(Error::Invalid("LOCALAPPDATA no está definido"))
+    let root = crate::paths::default_data_dir().map_err(Error::Invalid)?;
+    Ok(root.join("Vantare/native/layout.json"))
 }
 
 fn read(path: &Path) -> Result<Option<Vec<u8>>, Error> {

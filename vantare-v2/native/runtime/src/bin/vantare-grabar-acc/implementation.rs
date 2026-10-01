@@ -54,8 +54,6 @@
 //! fecha UTC de inicio, la duración, el número de eventos por tipo y el
 //! SHA-256 de cada fichero.
 
-#![cfg_attr(not(windows), allow(dead_code))]
-
 use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
@@ -1415,7 +1413,7 @@ fn grabar(args: &Args) -> Result<(), Box<dyn std::error::Error>> {
 // ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-fn main() -> std::process::ExitCode {
+pub(super) fn run_cli() -> std::process::ExitCode {
     use std::process::ExitCode;
 
     let args: Vec<String> = std::env::args().skip(1).collect();

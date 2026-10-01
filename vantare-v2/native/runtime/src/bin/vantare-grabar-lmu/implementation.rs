@@ -17,8 +17,6 @@
 //! completas y SHM, pero necesita ampliarse para reproducir fallos/desconexiones
 //! y capturas sin SHM o que crucen medianoche. Aquí no se inventan datos para ello.
 
-#![cfg_attr(not(windows), allow(dead_code))]
-
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
@@ -32,11 +30,11 @@ use sha2::{Digest, Sha256};
 // pub(super) sin ampliar la API del runtime ni duplicar el acceso a LMU_Data.
 #[cfg(windows)]
 #[allow(dead_code)]
-#[path = "../adapter/lmu/frame.rs"]
+#[path = "../../adapter/lmu/frame.rs"]
 mod frame;
 #[cfg(windows)]
 #[allow(dead_code)]
-#[path = "../adapter/lmu/shm.rs"]
+#[path = "../../adapter/lmu/shm.rs"]
 mod shm;
 
 const USAGE: &str =
@@ -525,7 +523,7 @@ fn run(args: Args) -> io::Result<()> {
     result
 }
 
-fn main() {
+pub(super) fn run_cli() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{USAGE}");
@@ -702,7 +700,7 @@ mod tests {
     fn packaged_capture_replays_real_frames_and_keeps_every_file_hash() {
         use vantare_domain::Adapter;
         let (mut capture, _temp) = capture();
-        let frame = include_bytes!("../../../../testdata/lmu-fixture.bin");
+        let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
         capture.build = Some("1.3.0.0".into());
         capture.shm(0, frame).unwrap();
         capture

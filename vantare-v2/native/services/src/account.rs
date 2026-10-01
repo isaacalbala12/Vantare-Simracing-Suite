@@ -458,10 +458,10 @@ impl Account {
     }
 }
 
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 mod tests;
 
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 pub(crate) fn fixture(issuer: &Url, store: &Store) -> Account {
     let oauth = OAuth {
         authorization: issuer.join("authorize").expect("test"),

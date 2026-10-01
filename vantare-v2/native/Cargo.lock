@@ -6304,6 +6304,7 @@ dependencies = [
 name = "vantare-ipc"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "serde",
  "serde_json",
  "vantare-domain",

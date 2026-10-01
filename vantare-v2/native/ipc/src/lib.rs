@@ -1,7 +1,8 @@
 //! Transporte entre el núcleo y el proceso de overlays (ADR 0099 §4).
 //!
 //! Un [`Publisher`] (núcleo) ofrece la última foto por un named pipe de
-//! Windows; un [`Subscriber`] (overlays, Hub) la recibe. Los tipos de `domain`
+//! Windows o un socket Unix local; un [`Subscriber`] (overlays, Hub) la recibe.
+//! Los tipos de `domain`
 //! no son ABI: el cable es un DTO versionado ([`dto`]) en JSON con marcos de
 //! longitud. Un consumidor lento nunca frena al publicador: entre ambos hay
 //! casillas latest-wins, y lo intermedio se pierde.
@@ -22,22 +23,25 @@ pub use dto::VERSION as DTO_VERSION;
 mod latest;
 #[cfg(windows)]
 mod pipe;
-#[cfg(windows)]
+#[cfg(unix)]
+#[path = "unix.rs"]
+mod pipe;
+#[cfg(any(windows, unix))]
 mod publisher;
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 mod subscriber;
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub use pipe::{Peer, default_pipe_name};
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub use publisher::Publisher;
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub use subscriber::Subscriber;
 
-/// Primitivos del mismo transporte Win32 para el flujo ordenado de eventos.
-/// ACL, identidad, E/S con plazo y cancelación compartidas con foto; el dueño
-/// del protocolo decide codec y ACK. No es otro backend ni duplica Win32.
-#[cfg(windows)]
+/// Primitivos del transporte local para el flujo ordenado de eventos.
+/// Permisos, identidad, E/S con plazo y cancelación compartidas con foto; el
+/// dueño del protocolo decide codec y ACK.
+#[cfg(any(windows, unix))]
 pub mod transport {
     pub use crate::pipe::{Event, IO_TIMEOUT, Listener, Peer, Pipe, connect};
 }

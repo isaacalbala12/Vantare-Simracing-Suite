@@ -305,6 +305,8 @@ impl Hub {
             self.launcher
                 .update(cx, |launcher, cx| launcher.context_column(window, cx))
                 .into_any_element()
+        } else if self.section == Section::Analysis {
+            self.analysis_context_column(window, cx).into_any_element()
         } else if strategy_context_visible {
             self.strategy_context_column(cx).into_any_element()
         } else if self.section == Section::Strategy {

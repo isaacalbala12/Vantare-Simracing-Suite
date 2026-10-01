@@ -13,6 +13,7 @@ function Capture([string]$Name, [int]$X = -1, [int]$Y = -1, [int]$Wheel = 0, [st
 $sections = @('inicio','workshop','studio','launcher','calendario','strategy','engineer',
     'telemetria','testing-center','roadmap','cuenta','licencias','notificaciones','ajustes')
 for ($i = 0; $i -lt $sections.Count; $i++) {
+    if ($sections[$i] -eq 'strategy') { continue } # Strategy v5 se captura con compare.ps1.
     Capture "$($sections[$i])-base" 100 (121+57*$i)
 }
 Capture 'inicio-sin-paleta' 100 121 0 '^k'
@@ -23,8 +24,6 @@ Capture 'workshop-detalle' 100 178
 Capture 'workshop-catalogo' 1000 780 8
 Capture 'launcher-base' 100 292
 Capture 'launcher-nuevo-perfil' 555 458
-Capture 'strategy-base' 100 406
-Capture 'strategy-detalle' 1000 780 8
 Capture 'engineer-base' 100 463
 Capture 'engineer-detalle' 1000 780 8
 Capture 'testing-center-informe' 100 577

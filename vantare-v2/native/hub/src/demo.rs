@@ -6,12 +6,6 @@ use serde::{Deserialize, Serialize};
 const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
 const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
-    "strategy-asistente-combinacion",
-    "strategy-asistente-reglas",
-    "strategy-asistente-pilotos",
-    "strategy-asistente-sesiones",
-    "strategy-editor-carrera",
-    "strategy-revisiones",
     "strategy-v5-asistente-inicio",
     "strategy-v5-asistente-combinacion",
     "strategy-v5-asistente-reglas",
@@ -347,8 +341,6 @@ pub enum CaptureSettingsPage {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureStrategyPage {
-    Collection,
-    Create,
     AssistantInicio,
     AssistantCombinacion,
     AssistantReglas,
@@ -360,27 +352,13 @@ pub enum CaptureStrategyPage {
 
 fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
     match name {
-        "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
-        "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
-        "strategy-asistente-origen"
-        | "strategy-asistente-inicio"
-        | "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
-        "strategy-asistente-equipo"
-        | "strategy-asistente-combinacion"
-        | "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
-        "strategy-asistente-reglas" | "strategy-v5-asistente-reglas" => {
-            Some(CaptureStrategyPage::AssistantReglas)
-        }
-        "strategy-asistente-pilotos" | "strategy-v5-asistente-pilotos" => {
-            Some(CaptureStrategyPage::AssistantPilotos)
-        }
-        "strategy-asistente-sesiones" | "strategy-v5-asistente-sesiones" => {
-            Some(CaptureStrategyPage::AssistantSesiones)
-        }
-        "strategy-continuar" | "strategy-editor-carrera" | "strategy-v5-carrera" => {
-            Some(CaptureStrategyPage::Career)
-        }
-        "strategy-revisiones" | "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
+        "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
+        "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
+        "strategy-v5-asistente-reglas" => Some(CaptureStrategyPage::AssistantReglas),
+        "strategy-v5-asistente-pilotos" => Some(CaptureStrategyPage::AssistantPilotos),
+        "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
+        "strategy-v5-carrera" => Some(CaptureStrategyPage::Career),
+        "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
         _ => None,
     }
 }
@@ -406,20 +384,7 @@ impl CaptureState {
             | "calendario-semana"
             | "calendario-mes"
             | "calendario-timeline" => Section::Calendar,
-            "strategy-base"
-            | "strategy-lista"
-            | "strategy-continuar"
-            | "strategy-asistente-origen"
-            | "strategy-asistente-equipo"
-            | "strategy-asistente-inicio"
-            | "strategy-nuevo-evento"
-            | "strategy-asistente-combinacion"
-            | "strategy-asistente-reglas"
-            | "strategy-asistente-pilotos"
-            | "strategy-asistente-sesiones"
-            | "strategy-editor-carrera"
-            | "strategy-revisiones"
-            | "strategy-v5-asistente-inicio"
+            "strategy-v5-asistente-inicio"
             | "strategy-v5-asistente-combinacion"
             | "strategy-v5-asistente-reglas"
             | "strategy-v5-asistente-pilotos"
@@ -525,7 +490,7 @@ mod tests {
     #[test]
     fn every_wails_reference_has_a_native_capture_target() {
         let screens: Vec<serde_json::Value> = serde_json::from_str(SCREENS).expect("referencias");
-        assert_eq!(screens.len(), 48);
+        assert_eq!(screens.len(), 41);
         for screen in screens {
             let name = screen["name"].as_str().expect("nombre");
             assert!(CaptureState::parse(name).is_ok(), "{name}");
@@ -548,7 +513,7 @@ mod tests {
                 .launcher_new_profile
         );
         assert_eq!(
-            CaptureState::parse("strategy-asistente-equipo")
+            CaptureState::parse("strategy-v5-asistente-combinacion")
                 .expect("Strategy")
                 .strategy_page,
             Some(CaptureStrategyPage::AssistantCombinacion)
@@ -557,12 +522,33 @@ mod tests {
             assert!(CaptureState::parse(name).is_ok(), "{name}");
         }
         assert_eq!(
-            CaptureState::parse("strategy-asistente-inicio")
+            CaptureState::parse("strategy-v5-asistente-inicio")
                 .expect("inicio del asistente")
                 .strategy_page,
             Some(CaptureStrategyPage::AssistantInicio)
         );
         assert!(CaptureState::parse("ajustes-desconocidos").is_err());
+    }
+
+    #[test]
+    fn retired_strategy_scenes_are_not_capture_targets() {
+        for name in [
+            "strategy-base",
+            "strategy-lista",
+            "strategy-continuar",
+            "strategy-asistente-origen",
+            "strategy-asistente-equipo",
+            "strategy-asistente-inicio",
+            "strategy-nuevo-evento",
+            "strategy-asistente-combinacion",
+            "strategy-asistente-reglas",
+            "strategy-asistente-pilotos",
+            "strategy-asistente-sesiones",
+            "strategy-editor-carrera",
+            "strategy-revisiones",
+        ] {
+            assert!(CaptureState::parse(name).is_err(), "{name}");
+        }
     }
 
     #[test]

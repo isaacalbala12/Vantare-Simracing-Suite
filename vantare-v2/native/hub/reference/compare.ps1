@@ -96,8 +96,8 @@ function Compare-Screen([string]$Name) {
 }
 
 $allNames = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json | ForEach-Object { $_.name })
-if ($allNames.Count -ne 48 -or ($allNames | Select-Object -Unique).Count -ne 48) {
-    throw "El manifiesto debe contener 48 pantallas únicas; contiene $($allNames.Count)"
+if ($allNames.Count -ne 41 -or ($allNames | Select-Object -Unique).Count -ne 41) {
+    throw "El manifiesto debe contener 41 pantallas únicas; contiene $($allNames.Count)"
 }
 $strategyV5Names = @(
     Get-ChildItem -LiteralPath $references -Filter 'strategy-v5-*.png' -File |
@@ -112,7 +112,7 @@ $strategyV5ANames = @(
     'strategy-v5-carrera'
     'strategy-v5-revisiones'
 )
-$names = if ($Todas) { $allNames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
+$names = if ($Todas) { @($allNames + $strategyV5ANames) } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
 if (-not $names) { throw 'Indica -Pantalla nombre o -Todas' }
 $unknown = @($names | Where-Object { $_ -notin $allNames -and $_ -notin $strategyV5Names })
 if ($unknown.Count -gt 0) { throw "Pantalla fuera del manifiesto Wails: $($unknown -join ', ')" }

@@ -171,16 +171,6 @@ impl Strategy {
         self.error = None;
         cx.notify();
     }
-    pub(super) fn start_form(&mut self, cx: &mut Context<Self>) {
-        self.fields.fill(String::new());
-        self.form_dirty = false;
-        self.scalar_dirty = false;
-        self.duration = None;
-        self.invalidate();
-        self.sync_inputs(cx);
-        self.page = Page::Create;
-        cx.notify();
-    }
     fn cancel_form(&mut self, cx: &mut Context<Self>) {
         self.load_fields(cx);
         self.page = Page::Assistant(AssistantStep::Reglas);

@@ -187,8 +187,6 @@ impl Strategy {
             return strategy;
         };
         strategy.page = match page {
-            crate::demo::CaptureStrategyPage::Collection => Page::Collection,
-            crate::demo::CaptureStrategyPage::Create => Page::Create,
             crate::demo::CaptureStrategyPage::AssistantInicio => {
                 Page::Assistant(AssistantStep::Inicio)
             }
@@ -208,16 +206,11 @@ impl Strategy {
             crate::demo::CaptureStrategyPage::Revisions => Page::Editor(EditorTab::Revisiones),
         };
         strategy.automatic = false;
-        if page != crate::demo::CaptureStrategyPage::Create
-            && let Err(error) = strategy.seed_capture_demo(cx)
-        {
+        if let Err(error) = strategy.seed_capture_demo(cx) {
             strategy.error = Some(error);
         }
         if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
             strategy.automatic = true;
-        }
-        if page == crate::demo::CaptureStrategyPage::Create {
-            strategy.start_form(cx);
         }
         strategy
     }

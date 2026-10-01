@@ -1,5 +1,6 @@
 use super::*;
 use ed25519_dalek::{Signer, SigningKey};
+#[cfg(any(windows, unix))]
 use std::time::Duration;
 
 const SUBJECT: &str = "550e8400-e29b-41d4-a716-446655440000";
@@ -170,7 +171,7 @@ fn v1_signing_payload_matches_go_html_escaping_without_real_keys() {
     assert!(!payload.contains("signature"));
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 fn game_identity() -> authority::SessionIdentity {
     authority::SessionIdentity {
         simulator: "test-simulator".into(),
@@ -180,7 +181,7 @@ fn game_identity() -> authority::SessionIdentity {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 #[test]
 fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logout() {
     use authority::Authority;
@@ -285,7 +286,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
     crate::cleanup_store(&root, "core-policy", &["authority"]);
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 #[test]
 fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     use authority::Authority;
@@ -323,7 +324,7 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     crate::cleanup_store(&root, "no-grace", &["authority"]);
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 #[test]
 fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
     use authority::Authority;
@@ -367,9 +368,9 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
     crate::cleanup_store(&root, "recycled-session", &["authority"]);
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 #[test]
-fn installation_key_is_stable_protected_and_signs_only_enrollment_domain() {
+fn installation_key_is_stable_and_signs_only_enrollment_domain() {
     use installation::Installation;
     let (root, store) = crate::test_store("installation-test");
     let installation = Installation::load_or_create(&store).expect("installation");
@@ -400,4 +401,32 @@ fn installation_key_is_stable_protected_and_signs_only_enrollment_domain() {
     assert!(installation.enrollment_proof(b"short").is_err());
     drop(store);
     crate::cleanup_store(&root, "installation-test", &["installation"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn legacy_fingerprint_is_stable_and_hashed() {
+    use sha2::{Digest, Sha256};
+    use std::os::unix::ffi::OsStrExt;
+
+    let first = installation::legacy_fingerprint().expect("identidad local");
+    assert_eq!(first.len(), 64);
+    assert!(first.bytes().all(|byte| byte.is_ascii_hexdigit()));
+    let goos = if cfg!(target_os = "macos") {
+        "darwin"
+    } else {
+        std::env::consts::OS
+    };
+    let mut input = std::env::var_os("HOME")
+        .expect("HOME")
+        .as_os_str()
+        .as_bytes()
+        .to_vec();
+    input.extend_from_slice(format!("|{goos}").as_bytes());
+    let expected = format!("{:x}", Sha256::digest(input));
+    assert_eq!(first, expected);
+    assert_eq!(
+        installation::legacy_fingerprint().expect("misma identidad"),
+        first
+    );
 }

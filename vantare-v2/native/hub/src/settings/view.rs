@@ -754,6 +754,10 @@ fn hotkey_keycaps(keys: [&str; 3]) -> Div {
     }
     keycaps
 }
+fn aligned_navigation(page: Page) -> bool {
+    matches!(page, Page::Diagnostics | Page::Hotkeys | Page::Privacy)
+}
+
 impl Hub {
     fn settings_button(
         &self,
@@ -804,7 +808,7 @@ impl Hub {
         ))
     }
     fn settings_search(&self, cx: &Context<Self>) -> Div {
-        let aligned = matches!(self.settings.page, Page::Diagnostics | Page::Hotkeys);
+        let aligned = aligned_navigation(self.settings.page);
         div()
             .px(px(if aligned { 0.0 } else { 14.0 }))
             .pt(px(if aligned { 20.0 } else { 18.0 }))
@@ -827,7 +831,7 @@ impl Hub {
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let aligned = matches!(self.settings.page, Page::Diagnostics | Page::Hotkeys);
+        let aligned = aligned_navigation(self.settings.page);
         let mut rows = stack()
             .gap(px(if aligned { 2.0 } else { 4.0 }))
             .when(aligned, |rows| rows.px(px(2.0)));

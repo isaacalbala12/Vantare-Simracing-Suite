@@ -19,6 +19,7 @@ use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 167.0;
+const AUTO_SAVED: &str = "Guardado automáticamente";
 
 // El peso ya está en las fuentes Inter estáticas del kit.
 fn text(content: impl Into<SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
@@ -36,22 +37,27 @@ fn visibility_icon(visible: bool) -> impl IntoElement {
     gpui::canvas(
         |_, _, _| (),
         move |bounds, (), window, _| {
-            let at = |x, y| gpui::point(bounds.origin.x + px(x), bounds.origin.y + px(y));
-            let mut eye = PathBuilder::stroke(px(1.3));
-            eye.move_to(at(2.0, 7.0));
-            eye.cubic_bezier_to(at(14.0, 7.0), at(5.0, 1.0), at(11.0, 1.0));
-            eye.cubic_bezier_to(at(2.0, 7.0), at(11.0, 13.0), at(5.0, 13.0));
+            let at = |x: f32, y: f32| {
+                gpui::point(
+                    bounds.origin.x + px(x * 15.0 / 16.0),
+                    bounds.origin.y + px(y * 15.0 / 16.0),
+                )
+            };
+            let mut eye = PathBuilder::stroke(px(1.4));
+            eye.move_to(at(1.8, 8.0));
+            eye.cubic_bezier_to(at(14.2, 8.0), at(4.0, 2.7), at(12.0, 2.7));
+            eye.cubic_bezier_to(at(1.8, 8.0), at(12.0, 13.3), at(4.0, 13.3));
             eye.close();
             if !visible {
-                eye.move_to(at(2.0, 2.0));
-                eye.line_to(at(14.0, 12.0));
+                eye.move_to(at(3.0, 13.0));
+                eye.line_to(at(13.0, 3.0));
             }
             if let Ok(path) = eye.build() {
                 window.paint_path(path, rgb(orbit::INK_3));
             }
             window.paint_quad(gpui::quad(
-                gpui::Bounds::new(at(6.0, 5.0), gpui::size(px(4.0), px(4.0))),
-                gpui::Corners::all(px(2.0)),
+                gpui::Bounds::new(at(6.2, 6.2), gpui::size(px(3.4), px(3.4))),
+                gpui::Corners::all(px(1.7)),
                 rgb(orbit::INK_3),
                 gpui::Edges::default(),
                 gpui::transparent_black(),
@@ -59,8 +65,64 @@ fn visibility_icon(visible: bool) -> impl IntoElement {
             ));
         },
     )
-    .w(px(16.0))
-    .h(px(14.0))
+    .size(px(15.0))
+}
+
+fn grip_icon() -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        |bounds, (), window, _| {
+            for x in [3.0, 7.0] {
+                for y in [3.2, 7.0, 10.8] {
+                    window.paint_quad(gpui::quad(
+                        gpui::Bounds::new(
+                            bounds.origin + gpui::point(px(x - 0.8), px(y - 0.8)),
+                            gpui::size(px(1.6), px(1.6)),
+                        ),
+                        gpui::Corners::all(px(0.8)),
+                        rgb(orbit::INK_MUTED),
+                        gpui::Edges::default(),
+                        gpui::transparent_black(),
+                        gpui::BorderStyle::default(),
+                    ));
+                }
+            }
+        },
+    )
+    .size(px(14.0))
+}
+
+fn disabled_topbar_select(
+    id: &'static str,
+    label: &'static str,
+    value: &str,
+    width: f32,
+) -> impl IntoElement {
+    div()
+        .id(id)
+        .role(gpui::Role::ComboBox)
+        .aria_label(label)
+        .aria_value(value.to_owned())
+        .aria_description("No disponible: falta el contrato nativo.")
+        .tab_stop(false)
+        .cursor_default()
+        .w(px(width))
+        .h(px(39.0))
+        .flex_none()
+        .px(px(13.0))
+        .flex()
+        .items_center()
+        .justify_between()
+        .rounded(px(12.0))
+        .border_1()
+        .border_color(gpui::rgba(orbit::LINE))
+        .bg(rgb(orbit::COLUMN_BG))
+        .child(text(value.to_owned(), 13.5, 600, orbit::INK_2))
+        .child(
+            orbit::icon("i-chevron", 12.0, orbit::INK_3).with_transformation(
+                gpui::Transformation::rotate(gpui::radians(std::f32::consts::FRAC_PI_2)),
+            ),
+        )
 }
 
 fn stage_highlight(wrap: bool) -> impl IntoElement {
@@ -234,9 +296,10 @@ fn studio_demo_capture() -> bool {
 pub struct Studio {
     editor: Editor,
     sidebar: Entity<StudioSidebar>,
+    topbar: Entity<StudioTopbar>,
     frames: Vec<(String, Entity<CanvasFrame>)>,
     snapshot: Snapshot,
-    pub status: String,
+    status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
     focus: FocusHandle,
     tabs: Option<Entity<Choice>>,
@@ -248,7 +311,7 @@ pub struct Studio {
     fields: Vec<(Tab, &'static str, gpui::AnyView)>,
     active_tab: Tab,
     inspector_open: bool,
-    obs_demo_url: Option<String>,
+    demo_profile: Option<crate::demo::DemoProfile>,
 }
 /// La shell enlaza esta columna; Studio conserva el documento y sus interacciones.
 pub(crate) struct StudioSidebar {
@@ -258,19 +321,38 @@ impl Render for StudioSidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self.studio.update(cx, |studio, cx| {
             studio.init_navigation_controls(window, cx);
-            orbit::column("Overlays Studio", env!("CARGO_PKG_VERSION"))
-                .child(
-                    div()
-                        .id("studio-widget-list")
-                        .flex_1()
-                        .min_h_0()
-                        .overflow_y_scroll()
-                        .child(studio.widget_list(cx)),
-                )
-                .child(studio.widget_actions(cx))
+            orbit::column(
+                "Overlays Studio",
+                if studio.demo_profile.is_some() {
+                    "v0.3.9"
+                } else {
+                    env!("CARGO_PKG_VERSION")
+                },
+            )
+            .child(
+                div()
+                    .id("studio-widget-list")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(studio.widget_list(cx)),
+            )
+            .child(studio.widget_actions(cx))
         }) {
             Ok(column) => column,
             Err(_) => orbit::empty_state("Studio no disponible", "El editor se ha cerrado."),
+        }
+    }
+}
+/// Observa Studio para que el guardado se repinte también fuera del contenido.
+pub(crate) struct StudioTopbar {
+    studio: gpui::WeakEntity<Studio>,
+}
+impl Render for StudioTopbar {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        match self.studio.update(cx, |studio, _| studio.topbar_actions()) {
+            Ok(actions) => actions,
+            Err(_) => div(),
         }
     }
 }
@@ -340,6 +422,79 @@ impl Render for CanvasFrame {
     }
 }
 impl Studio {
+    pub(crate) fn topbar_controls(&self) -> Entity<StudioTopbar> {
+        self.topbar.clone()
+    }
+
+    fn topbar_actions(&self) -> gpui::Div {
+        let demo = self.demo_profile.is_some();
+        let profile = self
+            .demo_profile
+            .as_ref()
+            .map_or("Layout local", |profile| profile.name.as_str());
+        let status = self
+            .status
+            .as_ref()
+            .err()
+            .map_or(AUTO_SAVED, String::as_str);
+        div()
+            .flex()
+            .items_center()
+            .gap(px(10.0))
+            .flex_none()
+            .child(disabled_topbar_select(
+                "studio-profile",
+                "Perfil activo",
+                profile,
+                215.0,
+            ))
+            .child(disabled_topbar_select(
+                "studio-performance",
+                "Rendimiento del perfil",
+                "Heredar de la aplicación",
+                210.0,
+            ))
+            .child(orbit::chip(
+                if demo {
+                    "NIVEL EFECTIVO: EQUILIBRADO"
+                } else {
+                    "NIVEL EFECTIVO: NO DISPONIBLE"
+                },
+                orbit::Tone::Reference,
+            ))
+            .child(
+                div()
+                    .id("studio-save-status")
+                    .role(gpui::Role::Status)
+                    .aria_label(status.to_owned())
+                    .h(px(39.0))
+                    .px(px(16.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .rounded(px(12.0))
+                    .bg(rgb(if self.status.is_ok() {
+                        orbit::INK
+                    } else {
+                        orbit::SURFACE_2
+                    }))
+                    .opacity(if self.status.is_ok() { 0.55 } else { 1.0 })
+                    .when(self.status.is_ok(), |row| {
+                        row.child(text("✓", 13.0, 600, orbit::GREEN))
+                    })
+                    .child(text(
+                        status.to_owned(),
+                        13.0,
+                        850,
+                        if self.status.is_ok() {
+                            orbit::INK_4
+                        } else {
+                            orbit::RED
+                        },
+                    )),
+            )
+    }
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()
     }
@@ -351,7 +506,12 @@ impl Studio {
         prefs: Preferences,
         cx: &mut Context<Self>,
     ) -> Result<(), String> {
-        self.editor.set_preferences(prefs)?;
+        let result = self.editor.set_preferences(prefs);
+        self.status.clone_from(&result);
+        if result.is_err() {
+            cx.notify();
+            return result;
+        }
         self.reset_fields();
         self.rebuild(cx);
         Ok(())
@@ -366,12 +526,18 @@ impl Studio {
                 studio: parent.downgrade(),
             }
         });
+        let topbar = cx.new(|cx| {
+            cx.observe(&parent, |_, _, cx| cx.notify()).detach();
+            StudioTopbar {
+                studio: parent.downgrade(),
+            }
+        });
         #[cfg(feature = "parity-capture")]
-        let obs_demo_url = if studio_demo_capture() {
+        let demo_profile = if studio_demo_capture() {
             match crate::demo::DemoData::load() {
-                Ok(demo) => Some(demo.profile.obs_browser_source_url),
+                Ok(demo) => Some(demo.profile),
                 Err(error) => {
-                    eprintln!("URL demo de Studio: {error}");
+                    eprintln!("Demo de Studio: {error}");
                     None
                 }
             }
@@ -379,13 +545,14 @@ impl Studio {
             None
         };
         #[cfg(not(feature = "parity-capture"))]
-        let obs_demo_url = None;
+        let demo_profile = None;
         let mut studio = Self {
             editor: prepared.editor,
             sidebar,
+            topbar,
             frames: vec![],
             snapshot,
-            status: "Sin cambios".into(),
+            status: Ok(()),
             drag: None,
             focus: cx.focus_handle(),
             tabs: None,
@@ -397,7 +564,7 @@ impl Studio {
             fields: vec![],
             active_tab: Tab::Layout,
             inspector_open: true,
-            obs_demo_url,
+            demo_profile,
         };
         studio.rebuild(cx);
         studio
@@ -479,17 +646,11 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         self.cancel_drag(cx);
-        match edit(&mut self.editor) {
-            Ok(()) => {
-                self.status = "Guardado automáticamente".into();
-                self.rebuild(cx);
-            }
-            Err(error) => {
-                self.status = error;
-                self.reset_fields();
-                self.rebuild(cx);
-            }
+        self.status = edit(&mut self.editor);
+        if self.status.is_err() {
+            self.reset_fields();
         }
+        self.rebuild(cx);
     }
     fn history(&mut self, redo: bool, cx: &mut Context<Self>) {
         self.reset_fields();
@@ -781,15 +942,18 @@ impl Studio {
             .child(
                 div()
                     .relative()
+                    .h(px(28.0))
+                    .flex()
+                    .flex_col()
                     .mt(px(10.0))
                     .mb(px(6.0))
                     .child(self.search.clone())
                     .when(query.is_empty(), |search| {
                         search.child(
-                            text("Buscar widget...", 13.0, 400, orbit::INK_MUTED)
+                            text("Buscar widget...", 12.5, 400, orbit::INK_MUTED)
                                 .absolute()
                                 .left(px(14.0))
-                                .top(px(10.0)),
+                                .top(px(5.0)),
                         )
                     }),
             );
@@ -828,6 +992,8 @@ impl Studio {
         let id = item.id.clone();
         let visibility_id = id.clone();
         let selected = self.editor.selected.as_ref() == Some(&item.id);
+        // El harness Wails deja el cursor sobre relative sin seleccionarlo.
+        let demo_hover = self.demo_profile.is_some() && item.settings.kind() == Kind::Relative;
         let hover_group: SharedString = format!("studio-widget-row-{index}").into();
         div()
             .id(("studio-instance", index))
@@ -835,18 +1001,23 @@ impl Studio {
             .aria_label(item.settings.kind().name())
             .tab_index(0)
             .h(px(51.0))
+            .mb(px(2.0))
             .px(px(12.0))
             .rounded(px(12.0))
             .group(hover_group.clone())
             .flex()
             .items_center()
-            .gap(px(12.0))
-            .when(selected, |row| row.bg(gpui::rgba(0xffff_ff06)))
+            .gap(px(6.0))
+            .when(selected || demo_hover, |row| {
+                row.bg(gpui::rgba(0xffff_ff06))
+            })
             .hover(|row| row.bg(gpui::rgba(0xffff_ff06)))
             .child(
-                text("⠿", 14.0, 400, orbit::INK_MUTED)
-                    .w(px(8.0))
-                    .opacity(if selected { 1.0 } else { 0.0 })
+                div()
+                    .w(px(14.0))
+                    .flex_none()
+                    .child(grip_icon())
+                    .opacity(if selected || demo_hover { 0.9 } else { 0.0 })
                     .group_hover(hover_group, |grip| grip.opacity(1.0)),
             )
             .child(
@@ -966,7 +1137,7 @@ impl Studio {
             .rounded(px(12.0))
             .border_1()
             .border_color(gpui::rgba(orbit::LINE))
-            .bg(rgb(orbit::SURFACE_1))
+            .bg(gpui::rgba(0xffff_ff05))
             .child(
                 div()
                     .h(px(29.0))
@@ -974,9 +1145,9 @@ impl Studio {
                     .flex()
                     .items_center()
                     .rounded(px(8.0))
-                    .bg(rgb(0x0030_171b))
+                    .bg(gpui::rgba(0xd52f_4929))
                     .border_1()
-                    .border_color(rgb(orbit::CARMINE_DARK))
+                    .border_color(gpui::rgba(0xf047_5538))
                     .child(text("Mock", 11.0, 600, orbit::INK)),
             )
             .child(
@@ -1004,9 +1175,9 @@ impl Studio {
             .rounded(px(8.0))
             .when(self.inspector_open, |button| {
                 button
-                    .bg(rgb(0x0030_171b))
+                    .bg(gpui::rgba(0xd52f_4924))
                     .border_1()
-                    .border_color(rgb(orbit::CARMINE_DARK))
+                    .border_color(gpui::rgba(0xf047_5538))
             })
             .child(orbit::icon("i-panel", 16.0, orbit::INK))
             .on_click(cx.listener(|this, _, _, cx| {
@@ -1099,7 +1270,7 @@ impl Studio {
                         };
                         let value = color.read(cx).value.clone();
                         if !inspector::valid_color(&value) {
-                            this.status = "Color inválido: usa #RRGGBB".into();
+                            this.status = Err("Color inválido: usa #RRGGBB".into());
                             cx.notify();
                             return;
                         }
@@ -1289,9 +1460,11 @@ impl Studio {
             );
         }
         let url = self
-            .obs_demo_url
-            .as_deref()
-            .unwrap_or("No disponible · usa captura de ventana");
+            .demo_profile
+            .as_ref()
+            .map_or("No disponible · usa captura de ventana", |profile| {
+                profile.obs_browser_source_url.as_str()
+            });
         div().child(panel).child(div().flex().flex_col().gap(px(8.0))
             .border_t_1().border_color(gpui::rgba(orbit::LINE))
             .pt(px(10.0)).pb(px(14.0)).px(px(16.0))
@@ -1303,10 +1476,10 @@ impl Studio {
                 .bg(rgb(orbit::SURFACE_2)).child(orbit::mono_text(url, 11.0, orbit::INK_2).whitespace_nowrap()))
             .child(div().flex().flex_wrap().gap(px(8.0))
                 .child(orbit::primary_button("copy-obs-url", "").aria_label("Copiar URL · pendiente")
-                    .h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
+                    .w(px(96.0)).h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
                     .child(text("Copiar URL", 12.0, 600, 0x001c_1719)))
                 .child(button("copy-obs-instructions", "").aria_label("Copiar instrucciones · pendiente")
-                    .h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
+                    .w(px(153.0)).h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
                     .child(text("Copiar instrucciones", 12.0, 600, orbit::INK_3)))))
     }
 
@@ -1351,13 +1524,16 @@ impl Studio {
         div()
             .h(px(39.0))
             .flex_none()
-            .px(px(42.0))
+            .px(px(40.0))
             .flex()
             .items_center()
             .justify_between()
             .border_t_1()
             .border_color(gpui::rgba(orbit::LINE))
-            .child(text("Lienzo · 1920×1080", 11.0, 500, orbit::INK_3).font_family("Cascadia Code"))
+            .child(
+                text("Lienzo · 1920×1080", 11.0, 500, orbit::INK_MUTED)
+                    .font_family("Cascadia Code"),
+            )
             .child(
                 text(
                     format!(
@@ -1366,7 +1542,7 @@ impl Studio {
                     ),
                     11.0,
                     500,
-                    orbit::INK_3,
+                    orbit::INK_MUTED,
                 )
                 .font_family("Cascadia Code"),
             )
@@ -1412,7 +1588,7 @@ impl Studio {
                     .flex_none()
                     .flex()
                     .flex_col()
-                    .bg(rgb(orbit::SURFACE_1))
+                    .bg(rgb(orbit::COLUMN_BG))
                     .border_l_1()
                     .border_color(gpui::rgba(orbit::LINE))
                     .child(

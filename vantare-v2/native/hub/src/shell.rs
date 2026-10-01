@@ -294,9 +294,9 @@ impl Render for Hub {
         }
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        // La sección aporta aquí sus controles con `.into_any_element()`;
-        // None conserva la barra común hasta conectar su API (ver shell/README.md).
-        let topbar = self.topbar(window, None, cx);
+        let section_actions = (self.section == Section::Studio)
+            .then(|| self.studio.read(cx).topbar_controls().into_any_element());
+        let topbar = self.topbar(window, section_actions, cx);
         if self
             .capture
             .as_ref()

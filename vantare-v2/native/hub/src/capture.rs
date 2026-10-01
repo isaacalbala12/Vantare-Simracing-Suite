@@ -45,8 +45,20 @@ impl Drop for HelperScripts {
 pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(), String> {
     let pid = std::process::id();
     let scripts = HelperScripts::new()?;
-    fs::write(&scripts.runner, CAPTURE_PROCESS)
-        .map_err(|error| format!("escribir capturador: {error}"))?;
+    // Punto en el gutter del workspace: evita desplazar el panel de trazas.
+    // El helper existente verifica PID, foco y mutex antes de mover la rueda.
+    let runner = if state.scroll_workspace_to_end() {
+        if !CAPTURE_PROCESS.contains("-RepositoryRoot $RepositoryRoot") {
+            return Err("el helper de captura no contiene la llamada al workspace".into());
+        }
+        CAPTURE_PROCESS.replace(
+            "-RepositoryRoot $RepositoryRoot",
+            "-RepositoryRoot $RepositoryRoot -X 400 -Y 500 -WheelSteps 16",
+        )
+    } else {
+        CAPTURE_PROCESS.to_owned()
+    };
+    fs::write(&scripts.runner, runner).map_err(|error| format!("escribir capturador: {error}"))?;
     fs::write(&scripts.window, CAPTURE_WINDOW)
         .map_err(|error| format!("escribir captura de ventana: {error}"))?;
     let executable = std::env::current_exe().map_err(|error| format!("ruta del Hub: {error}"))?;

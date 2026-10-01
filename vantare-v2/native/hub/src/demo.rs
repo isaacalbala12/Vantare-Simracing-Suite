@@ -316,6 +316,11 @@ pub enum CaptureStrategyPage {
 }
 
 impl CaptureState {
+    /// La referencia «trazas» desplaza el workspace, no cambia la sesión ni el eje.
+    pub fn scroll_workspace_to_end(&self) -> bool {
+        self.name == "telemetria-trazas"
+    }
+
     pub fn parse(name: &str) -> Result<Self, String> {
         #[derive(Deserialize)]
         struct Screen {
@@ -403,6 +408,23 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn telemetry_traces_capture_applies_the_workspace_scroll_only() {
+        let demo = CaptureState::parse("telemetria-demo").expect("demo");
+        let traces = CaptureState::parse("telemetria-trazas").expect("trazas");
+        let base = CaptureState::parse("telemetria-base").expect("base");
+        assert_eq!(demo.section, traces.section);
+        assert!(traces.scroll_workspace_to_end());
+        assert!(!demo.scroll_workspace_to_end());
+        assert!(!base.scroll_workspace_to_end());
+        // El adaptador --capture añade la rueda a esta única llamada al helper.
+        let runner = include_str!("../reference/tools/capture-process.ps1");
+        let window = include_str!("../reference/tools/capture-window.ps1");
+        assert_eq!(runner.matches("-RepositoryRoot $RepositoryRoot").count(), 1);
+        assert!(window.contains("[int]$WheelSteps = 0"));
+        assert!(window.contains("-120*$WheelSteps"));
+    }
 
     #[test]
     fn loads_the_wails_demo_snapshot_and_fixed_clock_deterministically() {

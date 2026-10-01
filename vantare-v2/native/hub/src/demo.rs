@@ -5,6 +5,21 @@ use serde::{Deserialize, Serialize};
 
 const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
+const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
+    "strategy-asistente-combinacion",
+    "strategy-asistente-reglas",
+    "strategy-asistente-pilotos",
+    "strategy-asistente-sesiones",
+    "strategy-editor-carrera",
+    "strategy-revisiones",
+    "strategy-v5-asistente-inicio",
+    "strategy-v5-asistente-combinacion",
+    "strategy-v5-asistente-reglas",
+    "strategy-v5-asistente-pilotos",
+    "strategy-v5-asistente-sesiones",
+    "strategy-v5-carrera",
+    "strategy-v5-revisiones",
+];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -146,6 +161,8 @@ pub struct DemoStrategyEvent {
     pub name: String,
     pub subtitle: String,
     pub vehicle_class: String,
+    pub car: String,
+    pub track: String,
     pub team: String,
     pub day_label: String,
 }
@@ -308,11 +325,41 @@ pub enum CaptureSettingsPage {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureStrategyPage {
     Collection,
-    Continue,
-    Origin,
-    Team,
-    Start,
     Create,
+    AssistantInicio,
+    AssistantCombinacion,
+    AssistantReglas,
+    AssistantPilotos,
+    AssistantSesiones,
+    Career,
+    Revisions,
+}
+
+fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
+    match name {
+        "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
+        "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
+        "strategy-asistente-origen"
+        | "strategy-asistente-inicio"
+        | "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
+        "strategy-asistente-equipo"
+        | "strategy-asistente-combinacion"
+        | "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
+        "strategy-asistente-reglas" | "strategy-v5-asistente-reglas" => {
+            Some(CaptureStrategyPage::AssistantReglas)
+        }
+        "strategy-asistente-pilotos" | "strategy-v5-asistente-pilotos" => {
+            Some(CaptureStrategyPage::AssistantPilotos)
+        }
+        "strategy-asistente-sesiones" | "strategy-v5-asistente-sesiones" => {
+            Some(CaptureStrategyPage::AssistantSesiones)
+        }
+        "strategy-continuar" | "strategy-editor-carrera" | "strategy-v5-carrera" => {
+            Some(CaptureStrategyPage::Career)
+        }
+        "strategy-revisiones" | "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
+        _ => None,
+    }
 }
 
 impl CaptureState {
@@ -323,7 +370,9 @@ impl CaptureState {
         }
         let screens: Vec<Screen> =
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
-        if !screens.iter().any(|screen| screen.name == name) {
+        if !screens.iter().any(|screen| screen.name == name)
+            && !EXTRA_STRATEGY_CAPTURES.contains(&name)
+        {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
@@ -340,7 +389,20 @@ impl CaptureState {
             | "strategy-asistente-origen"
             | "strategy-asistente-equipo"
             | "strategy-asistente-inicio"
-            | "strategy-nuevo-evento" => Section::Strategy,
+            | "strategy-nuevo-evento"
+            | "strategy-asistente-combinacion"
+            | "strategy-asistente-reglas"
+            | "strategy-asistente-pilotos"
+            | "strategy-asistente-sesiones"
+            | "strategy-editor-carrera"
+            | "strategy-revisiones"
+            | "strategy-v5-asistente-inicio"
+            | "strategy-v5-asistente-combinacion"
+            | "strategy-v5-asistente-reglas"
+            | "strategy-v5-asistente-pilotos"
+            | "strategy-v5-asistente-sesiones"
+            | "strategy-v5-carrera"
+            | "strategy-v5-revisiones" => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-informe"
@@ -378,15 +440,7 @@ impl CaptureState {
             name if name.starts_with("ajustes-") => Some(CaptureSettingsPage::Application),
             _ => None,
         };
-        let strategy_page = match name {
-            "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
-            "strategy-continuar" => Some(CaptureStrategyPage::Continue),
-            "strategy-asistente-origen" => Some(CaptureStrategyPage::Origin),
-            "strategy-asistente-equipo" => Some(CaptureStrategyPage::Team),
-            "strategy-asistente-inicio" => Some(CaptureStrategyPage::Start),
-            "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
-            _ => None,
-        };
+        let strategy_page = strategy_capture_page(name);
         Ok(Self {
             name: name.into(),
             section,
@@ -425,6 +479,8 @@ mod tests {
         assert_eq!(first.home_races[0].name, "LMGT3 Fixed");
         assert_eq!(first.calendar.series.len(), 10);
         assert_eq!(first.strategy.event.name, "4 Horas de Imola");
+        assert_eq!(first.strategy.event.car, "Ford Mustang GT3");
+        assert_eq!(first.strategy.event.track, "Imola");
         assert_eq!(first.strategy.plans[1].name, "Estrategia #2");
         assert_eq!(first.engineer.messages.len(), 20);
         assert_eq!(first.telemetry.sessions[0].best, "2:04.512");
@@ -462,7 +518,16 @@ mod tests {
             CaptureState::parse("strategy-asistente-equipo")
                 .expect("Strategy")
                 .strategy_page,
-            Some(CaptureStrategyPage::Team)
+            Some(CaptureStrategyPage::AssistantCombinacion)
+        );
+        for name in EXTRA_STRATEGY_CAPTURES {
+            assert!(CaptureState::parse(name).is_ok(), "{name}");
+        }
+        assert_eq!(
+            CaptureState::parse("strategy-asistente-inicio")
+                .expect("inicio del asistente")
+                .strategy_page,
+            Some(CaptureStrategyPage::AssistantInicio)
         );
         assert!(CaptureState::parse("ajustes-desconocidos").is_err());
     }

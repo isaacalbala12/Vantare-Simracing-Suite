@@ -1,36 +1,17 @@
 //! Strategy composes Orbit controls; persistence and calculation stay in its owner.
+use super::assistant::AssistantStep;
+use super::editor_view::EditorTab;
 use super::*;
-use gpui::{AnyElement, px};
+use gpui::{AnyElement, px, rgb, rgba};
 use orbit::{Choice, ChoiceChanged, ChoiceKind, OptionItem, Tone};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) enum Page {
     #[default]
     Collection,
-    Origin,
-    Team,
-    Start,
+    Assistant(AssistantStep),
     Create,
-    Continue,
-    Workspace,
-}
-impl Page {
-    fn back(self) -> Self {
-        match self {
-            Self::Team => Self::Origin,
-            Self::Start => Self::Team,
-            Self::Create => Self::Start,
-            _ => Self::Collection,
-        }
-    }
-    fn step(self) -> Option<usize> {
-        match self {
-            Self::Origin => Some(0),
-            Self::Team => Some(1),
-            Self::Start => Some(2),
-            _ => None,
-        }
-    }
+    Editor(EditorTab),
 }
 
 fn pending(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
@@ -79,7 +60,7 @@ fn summary(event: &Value) -> String {
 }
 
 impl Strategy {
-    fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
+    pub(super) fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
         if let Err(error) = self.ensure_clean_form() {
             self.outcome(Err(error), cx);
             return;
@@ -100,7 +81,7 @@ impl Strategy {
     }
     fn cancel_form(&mut self, cx: &mut Context<Self>) {
         self.load_fields(cx);
-        self.page = Page::Start;
+        self.page = Page::Assistant(AssistantStep::Reglas);
         self.error = None;
         cx.notify();
     }
@@ -109,8 +90,9 @@ impl Strategy {
             option(
                 &display(&event["name"]["value"]),
                 &summary(event),
-                button("strategy-continue", "Continuar")
-                    .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Continue, cx))),
+                button("strategy-continue", "Continuar").on_click(cx.listener(|this, _, _, cx| {
+                    this.navigate(Page::Editor(EditorTab::Carrera), cx);
+                })),
             )
         } else {
             option(
@@ -148,7 +130,7 @@ impl Strategy {
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.choose(index, variant, cx);
                         if this.error.is_none() {
-                            this.page = Page::Continue;
+                            this.page = Page::Editor(EditorTab::Carrera);
                         }
                     })),
                 );
@@ -160,15 +142,41 @@ impl Strategy {
             ));
         }
         column()
-            .child(orbit::card("Estrategia").child(orbit::card_body().gap(px(orbit::RADIUS_CONTROL))
-                .child(orbit::text("Retoma la estrategia que tenías entre manos o arranca una nueva con el asistente. Todo lo que guardas se queda en este equipo.", orbit::BODY, 400, orbit::INK_2))
-                .child(row().child(column().child(continue_action)).child(column().child(option(
-                    "Nueva estrategia", "Tres pasos: de dónde salen los datos, si corres solo o con equipo y de qué partes.",
-                    button("strategy-new", "Nueva estrategia")
-                        .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Origin, cx)))))))))
-            .child(orbit::card("Carreras de Le Mans Ultimate").child(orbit::card_body()
-                .child(orbit::empty_state("Calendario · pendiente", "La selección de carreras todavía no tiene contrato nativo en Strategy."))
-                .child(pending("strategy-calendar", "Ver carreras"))))
+            .child(orbit::card("Estrategia").child(
+                orbit::card_body()
+                    .gap(px(orbit::RADIUS_CONTROL))
+                    .child(orbit::text(
+                        "Retoma la estrategia que tenías entre manos o arranca una nueva con el asistente.",
+                        orbit::BODY,
+                        400,
+                        orbit::INK_2,
+                    ))
+                    .child(
+                        row()
+                            .child(column().child(continue_action))
+                            .child(column().child(option(
+                                "Nueva estrategia",
+                                "Prepara la carrera con el asistente de cinco pasos.",
+                                button("strategy-new", "Nueva estrategia").on_click(cx.listener(
+                                    |this, _, _, cx| {
+                                        this.automatic = false;
+                                        this.navigate(
+                                            Page::Assistant(AssistantStep::Inicio),
+                                            cx,
+                                        );
+                                    },
+                                )),
+                            ))),
+                    ),
+            ))
+            .child(orbit::card("Carreras de Le Mans Ultimate").child(
+                orbit::card_body()
+                    .child(orbit::empty_state(
+                        "Calendario · pendiente",
+                        "La selección de carreras todavía no tiene contrato nativo en Strategy.",
+                    ))
+                    .child(pending("strategy-calendar", "Ver carreras")),
+            ))
             .child(orbit::card("Guardadas").child(saved))
             .child(Self::document_actions(cx))
     }
@@ -193,128 +201,7 @@ impl Strategy {
             )
             .child(pending("strategy-migrate", "Migrar datos antiguos"))
     }
-    fn wizard(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let step = self.page.step().unwrap_or(0);
-        let mut steps = row();
-        for (index, label) in ["1 DATOS", "2 PILOTOS", "3 PUNTO DE PARTIDA"]
-            .iter()
-            .enumerate()
-        {
-            steps = steps.child(orbit::chip(
-                label,
-                if index == step {
-                    Tone::Accent
-                } else {
-                    Tone::Neutral
-                },
-            ));
-        }
-        let (lead, choices) = self.wizard_choices(cx);
-        orbit::card("Nueva estrategia").child(
-            orbit::card_body()
-                .gap(px(orbit::RADIUS_CONTROL))
-                .child(orbit::text(
-                    format!("paso {} de 3", step + 1),
-                    orbit::SECONDARY,
-                    400,
-                    orbit::INK_3,
-                ))
-                .child(steps)
-                .child(orbit::text(lead, orbit::BODY, 400, orbit::INK_2))
-                .child(choices)
-                .when(self.page == Page::Start, |body| {
-                    body.child(orbit::eyebrow("Del calendario"))
-                        .child(orbit::callout(
-                            "Calendario · pendiente. Crea tu propio evento arriba.",
-                        ))
-                })
-                .child(
-                    button(
-                        "strategy-back",
-                        if step == 0 { "Cancelar" } else { "Atrás" },
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| this.navigate(this.page.back(), cx))),
-                ),
-        )
-    }
-    fn wizard_choices(&self, cx: &mut Context<Self>) -> (&'static str, gpui::Div) {
-        let (lead, paths) = match self.page {
-            Page::Origin => (
-                "¿De dónde salen los ritmos y los consumos de esta estrategia?",
-                [
-                    (
-                        "strategy-manual",
-                        "Manual",
-                        "Tú escribes ritmo, consumo, depósito y parada. Es lo que hay hoy y funciona.",
-                        Some(Page::Team),
-                    ),
-                    (
-                        "strategy-automatic",
-                        "Automática con telemetría",
-                        "Usa ritmos y consumos reales de tus sesiones grabadas, sin escribir un número.",
-                        None,
-                    ),
-                ],
-            ),
-            Page::Team => (
-                "¿Corres esta carrera tú solo o repartiendo turnos?",
-                [
-                    (
-                        "strategy-solo",
-                        "Solo",
-                        "Un único piloto: sin reparto de turnos ni tablero de disponibilidad.",
-                        Some(Page::Start),
-                    ),
-                    (
-                        "strategy-team",
-                        "Con equipo",
-                        "Varios pilotos, con su orden de relevos y su disponibilidad.",
-                        None,
-                    ),
-                ],
-            ),
-            _ => (
-                "Y por último, ¿de qué partimos?",
-                [
-                    (
-                        "strategy-own",
-                        "Crear mi estrategia",
-                        "Tú pones el circuito, la duración, el depósito y los pilotos.",
-                        Some(Page::Create),
-                    ),
-                    (
-                        "strategy-from-calendar",
-                        "Desde un evento",
-                        "Elige una serie del calendario y la salida, la duración y la clase ya vienen puestas.",
-                        None,
-                    ),
-                ],
-            ),
-        };
-        let choices = row().children(paths.map(|(id, title, help, destination)| {
-            let detail = if destination.is_some() {
-                help.to_owned()
-            } else {
-                format!("{help} · pendiente")
-            };
-            column().child(orbit::card("").child(orbit::card_body().child(
-                orbit::list_row(id, title, &detail, false, destination.is_some()).when_some(
-                    destination,
-                    |control, page| {
-                        control.on_click(cx.listener(move |this, _, _, cx| {
-                            if page == Page::Create {
-                                this.start_form(cx);
-                            } else {
-                                this.navigate(page, cx);
-                            }
-                        }))
-                    },
-                ),
-            )))
-        }));
-        (lead, choices)
-    }
-    fn field(&self, index: usize) -> gpui::Div {
+    pub(super) fn field(&self, index: usize) -> gpui::Div {
         column()
             .child(orbit::eyebrow(FIELDS[index].0))
             .child(self.inputs[index].clone())
@@ -406,13 +293,6 @@ impl Strategy {
                 ),
         )
     }
-    fn continuation(cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card("¿De qué combinación es este evento?").child(orbit::card_body().gap(px(orbit::RADIUS_CONTROL))
-            .child(orbit::text("opcional · puedes seguir en manual", orbit::SECONDARY, 400, orbit::INK_3))
-            .child(orbit::text("Conecta una combinación detectada para usar sus sesiones. Saltar mantiene el modo manual puro.", orbit::BODY, 400, orbit::INK_2))
-            .child(orbit::empty_state("Combinaciones · pendiente", "La conexión de sesiones grabadas con Strategy aún no tiene contrato nativo."))
-            .child(button("strategy-continue-manual", "Seguir en manual").on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Workspace, cx)))))
-    }
     fn variants(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut body = orbit::card_body();
         if let Some(event) = self.current_event() {
@@ -445,7 +325,7 @@ impl Strategy {
                 .children(range.map(|index| self.field(index))),
         )
     }
-    fn workspace(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn workspace(&self, cx: &mut Context<Self>) -> gpui::Div {
         column().child(self.variants(cx))
             .child(orbit::callout("Cálculo manual escalar. Telemetría, forecast, pilotos múltiples, inventario, ahorro e incertidumbre · pendiente. Escribe todos los números; 0 desactiva VE/vida/reserva."))
             .child(row().child(column().child(self.field_group("Evento", 0..6)).child(self.field_group("Variante", 6..9)))
@@ -461,6 +341,67 @@ impl Strategy {
                 }))))
             .child(self.result_card()).child(Self::document_actions(cx))
     }
+    pub(super) fn strategy_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let (simulator, class, circuit) = self.current_event().map_or_else(
+            || (String::new(), String::new(), String::new()),
+            |event| {
+                (
+                    "Le Mans Ultimate".to_owned(),
+                    display(&event["cls"]["value"]),
+                    display(&event["track"]["value"]),
+                )
+            },
+        );
+        let class = self.demo_car.clone().unwrap_or(class);
+        column()
+            .w(px(246.0))
+            .h_full()
+            .flex_none()
+            .gap(px(12.0))
+            .border_r_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgb(0x0010_1114))
+            .px(px(14.0))
+            .py(px(16.0))
+            .child(orbit::text("Estrategia", orbit::BODY, 700, orbit::INK))
+            .child(orbit::eyebrow("ESTRATEGIA"))
+            .child(
+                button("strategy-context-new", "Nueva estrategia").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        if let Err(error) = this.ensure_clean_form() {
+                            this.error = Some(error);
+                        } else {
+                            this.automatic = false;
+                            this.automatic_preparation = None;
+                            this.page = Page::Assistant(AssistantStep::Inicio);
+                            this.error = None;
+                        }
+                        cx.notify();
+                    },
+                )),
+            )
+            .child(
+                button("strategy-context-saved", "Guardadas")
+                    .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx))),
+            )
+            .child(orbit::eyebrow("TU CARRERA"))
+            .child(orbit::setting_row(
+                "Simulador",
+                "Le Mans Ultimate",
+                orbit::text(simulator, orbit::SECONDARY, 500, orbit::INK),
+            ))
+            .child(orbit::setting_row(
+                "Categoría / coche",
+                "",
+                orbit::text(class, orbit::SECONDARY, 500, orbit::INK),
+            ))
+            .child(orbit::setting_row(
+                "Circuito / trazado",
+                "",
+                orbit::text(circuit, orbit::SECONDARY, 500, orbit::INK),
+            ))
+    }
+
     pub(super) fn render_page(
         &mut self,
         window: &mut Window,
@@ -468,48 +409,34 @@ impl Strategy {
     ) -> AnyElement {
         let content = match self.page {
             Page::Collection => self.collection(cx),
-            Page::Origin | Page::Team | Page::Start => self.wizard(cx),
+            Page::Assistant(step) => self.assistant_page(step, cx),
             Page::Create => self.event_form(window, cx),
-            Page::Continue => Self::continuation(cx),
-            Page::Workspace => self.workspace(cx),
+            Page::Editor(tab) => self.editor_page(tab, cx),
         };
         column()
             .id("strategy")
-            .when(self.page != Page::Collection, |page| {
-                page.child(button("strategy-collection", "← Mis estrategias").on_click(
-                    cx.listener(|this, _, _, cx| {
-                        if this.page == Page::Create {
-                            this.cancel_form(cx);
-                        }
-                        this.navigate(Page::Collection, cx);
-                    }),
-                ))
-            })
             .child(content)
             .when_some(self.error.clone(), |page, error| {
                 page.child(orbit::callout(error))
             })
-            .when(
-                matches!(self.page, Page::Collection | Page::Workspace),
-                |page| {
-                    page.child(orbit::text(
-                        self.status.clone(),
-                        orbit::SECONDARY,
-                        400,
-                        orbit::INK_3,
-                    ))
-                    .child(orbit::text(
-                        if self.editor.dirty() || self.form_dirty {
-                            "Cambios pendientes"
-                        } else {
-                            "Sin cambios pendientes"
-                        },
-                        orbit::SECONDARY,
-                        400,
-                        orbit::INK_3,
-                    ))
-                },
-            )
+            .when(matches!(self.page, Page::Collection), |page| {
+                page.child(orbit::text(
+                    self.status.clone(),
+                    orbit::SECONDARY,
+                    400,
+                    orbit::INK_3,
+                ))
+                .child(orbit::text(
+                    if self.editor.dirty() || self.form_dirty {
+                        "Cambios pendientes"
+                    } else {
+                        "Sin cambios pendientes"
+                    },
+                    orbit::SECONDARY,
+                    400,
+                    orbit::INK_3,
+                ))
+            })
             .into_any_element()
     }
 }
@@ -518,11 +445,16 @@ impl Strategy {
 mod tests {
     use super::*;
     #[test]
-    fn wizard_back_preserves_the_three_steps_and_cancel_returns_to_collection() {
-        assert_eq!(Page::Origin.step(), Some(0));
-        assert_eq!(Page::Team.back(), Page::Origin);
-        assert_eq!(Page::Start.back(), Page::Team);
-        assert_eq!(Page::Create.back(), Page::Start);
-        assert_eq!(Page::Origin.back(), Page::Collection);
+    fn assistant_and_editor_routes_have_explicit_tabs() {
+        assert_eq!(AssistantStep::ALL.len(), 5);
+        assert_eq!(EditorTab::ALL.len(), 4);
+        assert_eq!(
+            Page::Assistant(AssistantStep::Pilotos),
+            Page::Assistant(AssistantStep::Pilotos)
+        );
+        assert_ne!(
+            Page::Editor(EditorTab::Carrera),
+            Page::Editor(EditorTab::Revisiones)
+        );
     }
 }

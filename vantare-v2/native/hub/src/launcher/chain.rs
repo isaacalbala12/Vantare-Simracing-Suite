@@ -73,6 +73,7 @@ struct RunContext {
     answers: Receiver<(u64, Action)>,
     processes: processes::Shared,
     next_decision: AtomicU64,
+    selected: Vec<usize>,
 }
 impl RunContext {
     fn ask(
@@ -158,6 +159,30 @@ impl Cancellation {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RetryScope {
+    Failed,
+    All,
+}
+pub fn retry_steps(profile: &Profile, progress: &[Progress], scope: RetryScope) -> Vec<usize> {
+    (0..profile.steps.len())
+        .filter(|index| {
+            scope == RetryScope::All
+                || progress
+                    .iter()
+                    .rev()
+                    .find(|event| {
+                        event.step == Some(*index)
+                            && matches!(
+                                event.status,
+                                Status::Ready | Status::Failed | Status::Cancelled
+                            )
+                    })
+                    .is_some_and(|event| event.status == Status::Failed)
+        })
+        .collect()
+}
+
 pub struct Chain {
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
@@ -183,6 +208,22 @@ impl Chain {
         discovery: Discovery,
         processes: processes::Shared,
     ) -> Result<Self, String> {
+        let selected = (0..profile.steps.len()).collect();
+        Self::start_selected(document, profile, discovery, processes, selected)
+    }
+    pub fn start_selected(
+        document: Document,
+        profile: Profile,
+        discovery: Discovery,
+        processes: processes::Shared,
+        selected: Vec<usize>,
+    ) -> Result<Self, String> {
+        if selected.is_empty()
+            || selected.iter().any(|&index| index >= profile.steps.len())
+            || selected.windows(2).any(|pair| pair[0] >= pair[1])
+        {
+            return Err("seleccion de reintento vacia o invalida".into());
+        }
         document.validate()?;
         // Valida también el perfil temporal del lanzamiento de una sola app.
         let mut checked = document.clone();
@@ -201,6 +242,7 @@ impl Chain {
             answers: replies,
             processes,
             next_decision: AtomicU64::new(1),
+            selected,
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
@@ -462,11 +504,41 @@ fn probe(
 }
 
 fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &RunContext) {
+    let policy = profile.effective_policy();
+    let retries = if policy.retry == super::policy::Retry::All {
+        policy.max_retries
+    } else {
+        0
+    };
+    let mut success = false;
+    for attempt in 0..=retries {
+        success = run_pass(document, profile, discovery, context);
+        if success || context.cancel.cancelled() || attempt == retries {
+            break;
+        }
+        if context.cancel.wait(Duration::from_millis(250)) {
+            break;
+        }
+    }
+    finish(profile, context, success);
+}
+
+fn run_pass(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+) -> bool {
     let cancel = &context.cancel;
     let sender = &context.sender;
     let policy = profile.effective_policy();
     let mut success = true;
-    for (index, step) in profile.steps.iter().enumerate() {
+    for (index, step) in profile
+        .steps
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| context.selected.contains(index))
+    {
         let delay = if index == 0 {
             policy.first_step_delay
         } else {
@@ -480,7 +552,7 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
             format!("{} · espera {delay} s", step.app_id),
             false,
         ) {
-            return;
+            return false;
         }
         if cancel.wait(Duration::from_secs(u64::from(delay))) {
             success = false;
@@ -491,7 +563,12 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
             break;
         };
         let mut result = Err("paso no ejecutado".into());
-        for attempt in 0..=policy.max_retries {
+        let retries = if policy.retry == super::policy::Retry::Failed {
+            policy.max_retries
+        } else {
+            0
+        };
+        for attempt in 0..=retries {
             if cancel.cancelled() {
                 break;
             }
@@ -499,7 +576,7 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
             if result.is_ok() || cancel.cancelled() {
                 break;
             }
-            if attempt < policy.max_retries && cancel.wait(Duration::from_millis(250)) {
+            if attempt < retries && cancel.wait(Duration::from_millis(250)) {
                 break;
             }
         }
@@ -513,7 +590,7 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
                     app.name.clone(),
                     true,
                 ) {
-                    return;
+                    return false;
                 }
             }
             Err(message) => {
@@ -530,7 +607,7 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
                     message,
                     false,
                 ) {
-                    return;
+                    return false;
                 }
                 if cancel.cancelled() {
                     break;
@@ -542,7 +619,7 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
             }
         }
     }
-    finish(profile, context, success);
+    success
 }
 
 fn finish(profile: &Profile, context: &RunContext, success: bool) {

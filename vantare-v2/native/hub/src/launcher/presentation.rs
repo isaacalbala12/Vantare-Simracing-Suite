@@ -1137,7 +1137,7 @@ impl Launcher {
                 false,
             ))
     }
-    fn progress_panel(&self) -> gpui::Div {
+    fn progress_panel(&self, cx: &Context<Self>) -> gpui::Div {
         let mut progress = orbit::card_body();
         for (index, event) in self.progress.iter().enumerate() {
             progress = progress.child(orbit::list_row(
@@ -1158,7 +1158,45 @@ impl Launcher {
                 false,
             ));
         }
-        orbit::card("Progreso de la cadena").child(progress)
+        let controls = if self.chain.is_some() {
+            div().child(
+                button("cancel-chain", "Cancelar cadena").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        if let Some(chain) = &this.chain {
+                            chain.cancel();
+                        }
+                        cx.notify();
+                    },
+                )),
+            )
+        } else {
+            let failed = self.last_profile.as_ref().is_some_and(|profile| {
+                !super::super::chain::retry_steps(
+                    profile,
+                    &self.progress,
+                    super::super::chain::RetryScope::Failed,
+                )
+                .is_empty()
+            });
+            div()
+                .flex()
+                .gap_2()
+                .when(failed, |row| {
+                    row.child(
+                        button("retry-failed", "Reintentar pasos fallidos").on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.retry(super::super::chain::RetryScope::Failed, cx);
+                            },
+                        )),
+                    )
+                })
+                .child(
+                    button("retry-all", "Reintentar cadena entera").on_click(cx.listener(
+                        |this, _, _, cx| this.retry(super::super::chain::RetryScope::All, cx),
+                    )),
+                )
+        };
+        orbit::card("Progreso de la cadena").child(progress.child(controls))
     }
 
     fn launcher_heading(&self, detection_label: &str, detection_ran: bool) -> gpui::Div {
@@ -1268,7 +1306,7 @@ impl Render for Launcher {
                 page.child(error_panel(error, cx))
             })
             .when(!self.progress.is_empty(), |page| {
-                page.child(self.progress_panel())
+                page.child(self.progress_panel(cx))
             })
             .child(self.launcher_columns(cx));
         for warning in &self.discovered.warnings {

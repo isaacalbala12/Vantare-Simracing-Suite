@@ -480,6 +480,7 @@ impl Launcher {
                 draft.reuse.read(cx).focus_handle(),
                 draft.cancel.read(cx).focus_handle(),
                 draft.exit.read(cx).focus_handle(),
+                draft.retry_policy.read(cx).focus_handle(),
                 draft.retries.read(cx).focus_handle(),
             ]);
         }
@@ -687,6 +688,17 @@ impl Launcher {
                 window,
                 cx,
             ),
+            retry_policy: policy_choice(
+                "Reintentar",
+                &["Preguntar", "Pasos fallidos", "Cadena entera"],
+                match policy.retry {
+                    super::super::policy::Retry::Ask => 0,
+                    super::super::policy::Retry::Failed => 1,
+                    super::super::policy::Retry::All => 2,
+                },
+                window,
+                cx,
+            ),
             tabs,
             app_ids: apps.iter().map(|app| app.id.clone()).collect(),
             profile,
@@ -737,6 +749,11 @@ impl Launcher {
             };
             policy.cancel = selected_close(draft.cancel.read(cx).state.selected);
             policy.exit = selected_close(draft.exit.read(cx).state.selected);
+            policy.retry = match draft.retry_policy.read(cx).state.selected {
+                Some(1) => super::super::policy::Retry::Failed,
+                Some(2) => super::super::policy::Retry::All,
+                _ => super::super::policy::Retry::Ask,
+            };
             policy.first_step_delay = profile.first_step_delay;
             policy.max_retries = profile.max_retries;
             profile.continue_on_error = policy.failure == Failure::Continue;
@@ -1044,6 +1061,7 @@ impl Launcher {
             .child(editor_field("Aplicación ya abierta", draft.reuse.clone()))
             .child(editor_field("Al cancelar", draft.cancel.clone()))
             .child(editor_field("Al salir", draft.exit.clone()))
+            .child(editor_field("Reintentar", draft.retry_policy.clone()))
             .child(orbit::setting_row(
                 "Reintentos por paso",
                 "De 0 a 3",

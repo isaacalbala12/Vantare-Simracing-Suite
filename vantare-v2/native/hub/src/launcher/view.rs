@@ -39,6 +39,7 @@ struct ProfileDraft {
     reuse: Entity<orbit::Choice>,
     cancel: Entity<orbit::Choice>,
     exit: Entity<orbit::Choice>,
+    retry_policy: Entity<orbit::Choice>,
     tabs: Entity<orbit::Choice>,
     app_ids: Vec<String>,
     steps: Vec<StepDraft>,
@@ -55,6 +56,7 @@ pub struct Launcher {
     last_scan: Option<chrono::DateTime<chrono::Local>>,
     chain: Option<Chain>,
     progress: Vec<Progress>,
+    last_profile: Option<Profile>,
     app_draft: Option<AppDraft>,
     profile_draft: Option<ProfileDraft>,
     pending_app_removal: Option<String>,
@@ -133,6 +135,7 @@ impl Launcher {
             last_scan: None,
             chain: None,
             progress: vec![],
+            last_profile: None,
             app_draft: None,
             profile_draft: None,
             pending_app_removal: None,
@@ -486,13 +489,26 @@ impl Launcher {
             steam_executable: self.discovered.steam_executable.clone(),
             warnings: vec![],
         };
-        match Chain::start_with_processes(
+        let selected = (0..profile.steps.len()).collect();
+        self.start_selection(profile, found, selected, cx);
+    }
+
+    fn start_selection(
+        &mut self,
+        profile: Profile,
+        found: Discovery,
+        selected: Vec<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        match Chain::start_selected(
             self.store.document.clone(),
-            profile,
+            profile.clone(),
             found,
             self.processes.clone(),
+            selected,
         ) {
             Ok(chain) => {
+                self.last_profile = Some(profile);
                 self.chain = Some(chain);
                 self.progress.clear();
                 self.exit_answer = None;
@@ -502,6 +518,22 @@ impl Launcher {
             }
             Err(error) => self.report(Err(error), cx),
         }
+    }
+
+    fn retry(&mut self, scope: super::chain::RetryScope, cx: &mut Context<Self>) {
+        if self.chain.is_some() || self.scanning {
+            return;
+        }
+        let Some(profile) = self.last_profile.clone() else {
+            return;
+        };
+        let selected = super::chain::retry_steps(&profile, &self.progress, scope);
+        let found = Discovery {
+            apps: self.discovered.apps.clone(),
+            steam_executable: self.discovered.steam_executable.clone(),
+            warnings: vec![],
+        };
+        self.start_selection(profile, found, selected, cx);
     }
 
     fn app_editor(&mut self, app: Option<App>, window: &mut Window, cx: &mut Context<Self>) {

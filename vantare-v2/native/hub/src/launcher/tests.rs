@@ -375,6 +375,74 @@ fn collect(chain: &Chain) -> Vec<chain::Progress> {
 
 #[cfg(windows)]
 #[test]
+fn retry_policies_distinguish_failed_steps_whole_chain_and_ask() {
+    for (retry, first_count, second_count) in [
+        (policy::Retry::Failed, 1, 3),
+        (policy::Retry::All, 3, 3),
+        (policy::Retry::Ask, 1, 1),
+    ] {
+        let tree = Tree::new();
+        let (document, mut profile, found) = process_fixture(&tree, 0);
+        let mut second = profile.steps[0].clone();
+        second.args_override = Some(vec!["/d".into(), "/c".into(), "exit 5".into()]);
+        profile.steps.push(second);
+        profile.policy = Some(policy::Policy {
+            retry,
+            max_retries: 2,
+            failure: policy::Failure::Continue,
+            already_running: policy::Running::Reuse,
+            ..Default::default()
+        });
+        let mut chain = Chain::start(document, profile, found).expect("chain");
+        let events = collect(&chain);
+        chain.shutdown().expect("join");
+        for (step, expected) in [(0, first_count), (1, second_count)] {
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|e| e.step == Some(step) && e.status == Status::Launching)
+                    .count(),
+                expected
+            );
+        }
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn selected_retry_keeps_original_indices_and_does_not_repeat_ready_steps() {
+    let tree = Tree::new();
+    let (document, mut profile, found) = process_fixture(&tree, 0);
+    let mut second = profile.steps[0].clone();
+    second.args_override = Some(vec!["/d".into(), "/c".into(), "exit 5".into()]);
+    profile.steps.push(second);
+    let mut initial = Chain::start(document.clone(), profile.clone(), found).expect("chain");
+    let events = collect(&initial);
+    initial.shutdown().expect("join");
+    let selected = chain::retry_steps(&profile, &events, chain::RetryScope::Failed);
+    assert_eq!(selected, [1]);
+    assert_eq!(
+        chain::retry_steps(&profile, &events, chain::RetryScope::All),
+        [0, 1]
+    );
+    profile.steps[1].args_override = Some(vec!["/d".into(), "/c".into(), "exit 0".into()]);
+    let found = Discovery::scan(&document.apps, Sources::default());
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
+    let mut retried =
+        Chain::start_selected(document, profile, found, shared, selected).expect("retry");
+    let events = collect(&retried);
+    retried.shutdown().expect("join");
+    assert!(!events.iter().any(|e| e.step == Some(0)));
+    assert!(
+        events
+            .iter()
+            .any(|e| e.step == Some(1) && e.status == Status::Ready)
+    );
+    assert!(events.last().expect("done").success);
+}
+
+#[cfg(windows)]
+#[test]
 fn running_ask_rejects_stale_answers_and_never_grants_external_ownership() {
     let tree = Tree::new();
     let (document, mut profile, found) = process_fixture(&tree, 0);

@@ -306,3 +306,9 @@ favorito (desempate por nombre); sin perfiles abre Launcher. La paleta contiene
 acciones `Lanzar <nombre>` con el ID persistido, filtrado y permisos del Hub.
 Las demás columnas de contexto incluyen los perfiles guardados. Todas las entradas
 rechazan un lanzamiento si hay cadena/escaneo activo o pasos no disponibles.
+
+## Hito 4 — cancelar y reintentar
+El progreso ofrece cancelar la cadena en curso. Al terminar permite repetir los
+pasos fallidos (con los índices originales) o la cadena entera. Reintentar en modo
+Preguntar no dispara intentos automáticos; Fallidos limita reintentos por paso y
+Entera limita el número de pasadas completas. El máximo continúa siendo 3.

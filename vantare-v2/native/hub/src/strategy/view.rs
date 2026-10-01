@@ -12,6 +12,8 @@ pub(super) enum Page {
     Assistant(AssistantStep),
     Create,
     Editor(EditorTab),
+    Stints,
+    Stops,
 }
 
 fn pending(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
@@ -54,11 +56,11 @@ enum GarageBackground {
 }
 fn garage_background_kind(page: Page) -> Option<GarageBackground> {
     match page {
-        Page::Editor(EditorTab::Revisiones) => Some(GarageBackground::Detail),
+        Page::Editor(EditorTab::Datos | EditorTab::Plan | EditorTab::Revisiones)
+        | Page::Stints
+        | Page::Stops => Some(GarageBackground::Detail),
         Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
-        Page::Assistant(_) | Page::Editor(EditorTab::Datos | EditorTab::Plan) => {
-            Some(GarageBackground::Standard)
-        }
+        Page::Assistant(_) => Some(GarageBackground::Standard),
         _ => None,
     }
 }
@@ -169,16 +171,6 @@ impl Strategy {
         }
         self.page = page;
         self.error = None;
-        cx.notify();
-    }
-    pub(super) fn start_form(&mut self, cx: &mut Context<Self>) {
-        self.fields.fill(String::new());
-        self.form_dirty = false;
-        self.scalar_dirty = false;
-        self.duration = None;
-        self.invalidate();
-        self.sync_inputs(cx);
-        self.page = Page::Create;
         cx.notify();
     }
     fn cancel_form(&mut self, cx: &mut Context<Self>) {
@@ -326,7 +318,7 @@ impl Strategy {
             cx.subscribe(&duration, |this, _, event: &ChoiceChanged, cx| {
                 if let Some(minutes) = DURATIONS.get(event.0) {
                     this.fields[1] = minutes.to_string();
-                    this.form_dirty = true;
+                    this.form.dirty = true;
                     this.sync_inputs(cx);
                 }
                 cx.notify();
@@ -576,6 +568,16 @@ impl Strategy {
                 self.assistant_page(step, f32::from(window.viewport_size().height), cx)
             }
             Page::Create => self.event_form(window, cx),
+            Page::Stints | Page::Stops => self.editor_page(
+                EditorTab::Plan,
+                f32::from(window.viewport_size().height),
+                cx,
+            ),
+            Page::Editor(EditorTab::Datos)
+                if self.data.sources_open() && self.capture_demo.is_some() =>
+            {
+                self.capture_sources_page(f32::from(window.viewport_size().height), cx)
+            }
             Page::Editor(tab) => {
                 self.editor_page(tab, f32::from(window.viewport_size().height), cx)
             }
@@ -583,7 +585,10 @@ impl Strategy {
         column()
             .id("strategy")
             .when(
-                matches!(self.page, Page::Assistant(_) | Page::Editor(_)),
+                matches!(
+                    self.page,
+                    Page::Assistant(_) | Page::Editor(_) | Page::Stints | Page::Stops
+                ),
                 |page| page.h_full().min_h(px(0.0)),
             )
             .child(content)
@@ -598,7 +603,7 @@ impl Strategy {
                     orbit::INK_3,
                 ))
                 .child(orbit::text(
-                    if self.editor.dirty() || self.form_dirty {
+                    if self.editor.dirty() || self.form.dirty {
                         "Cambios pendientes"
                     } else {
                         "Sin cambios pendientes"

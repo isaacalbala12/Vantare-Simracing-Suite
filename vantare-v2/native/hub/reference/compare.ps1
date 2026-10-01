@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory, ParameterSetName = 'Pantalla')][string]$Pantalla,
+    [Parameter(Mandatory, ParameterSetName = 'Pantalla')][string[]]$Pantalla,
     [Parameter(Mandatory, ParameterSetName = 'Todas')][switch]$Todas,
     [Parameter(Mandatory, ParameterSetName = 'StrategyV5A')][switch]$StrategyV5A,
     [switch]$VerificarDeterminismo
@@ -10,7 +10,11 @@ if ($LASTEXITCODE -ne 0 -or -not $repo) { throw 'No se pudo localizar la raíz G
 $project = Join-Path $repo 'vantare-v2'
 $tool = Join-Path $project 'native\ui\diff.py'
 $manifest = Join-Path $PSScriptRoot 'tools\demo-states.json'
-$references = Join-Path $PSScriptRoot 'wails'
+$references = if ($env:VANTARE_PARITY_REFERENCE_DIR) {
+    [IO.Path]::GetFullPath($env:VANTARE_PARITY_REFERENCE_DIR)
+} else {
+    Join-Path $PSScriptRoot 'wails'
+}
 $evidence = if ($env:VANTARE_PARITY_OUT) { $env:VANTARE_PARITY_OUT } else { 'C:\tmp\hub-banco-evidence' }
 $null = New-Item -ItemType Directory -Path $evidence -Force
 
@@ -23,7 +27,7 @@ $metadataPath = Join-Path $evidence 'cargo-metadata.json'
 $metadataError = Join-Path $evidence 'cargo-metadata.stderr.log'
 Push-Location (Join-Path $project 'native')
 try {
-    cargo metadata --no-deps --format-version 1 1> $metadataPath 2> $metadataError
+    & (Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe') metadata --no-deps --format-version 1 1> $metadataPath 2> $metadataError
     if ($LASTEXITCODE -ne 0) { throw "No se pudo leer target_directory de Cargo; log: $metadataError" }
 } finally {
     Pop-Location
@@ -34,7 +38,7 @@ $hub = Join-Path $targetDirectory 'debug\vantare-hub.exe'
 $buildLog = Join-Path $evidence 'cargo-build-parity-capture.log'
 Push-Location (Join-Path $project 'native')
 try {
-    cargo build -p vantare-hub --features parity-capture -j 2 *> $buildLog
+    cargo build --workspace --features vantare-hub/parity-capture -j 2 *> $buildLog
     if ($LASTEXITCODE -ne 0) {
         Get-Content -LiteralPath $buildLog -Tail 80
         throw "No se pudo compilar vantare-hub; log: $buildLog"
@@ -43,6 +47,12 @@ try {
     Pop-Location
 }
 if (-not (Test-Path -LiteralPath $hub -PathType Leaf)) { throw "No existe el ejecutable: $hub" }
+# Conserva el ejecutable medido: otro gate puede reconstruir el target sin parity-capture.
+$measuredHub = Join-Path $evidence 'vantare-hub-capture.exe'
+Copy-Item -LiteralPath $hub -Destination $measuredHub -Force
+$hub = $measuredHub
+(Get-FileHash -LiteralPath $hub -Algorithm SHA256).Hash |
+    Set-Content -LiteralPath (Join-Path $evidence 'hub.sha256')
 
 function Invoke-NativeCapture([string]$Name, [string]$Label) {
     $png = Join-Path $evidence "$Label-$Name.png"
@@ -57,11 +67,17 @@ function Invoke-NativeCapture([string]$Name, [string]$Label) {
 }
 
 function Compare-Screen([string]$Name) {
+    $screen = $screenStates | Where-Object { $_.name -eq $Name } | Select-Object -First 1
+    $referenceName = if ($env:VANTARE_PARITY_REFERENCE_DIR -and $screen.reference) {
+        $screen.reference
+    } else {
+        "$Name.png"
+    }
+    $reference = Join-Path $references $referenceName
+    if (-not (Test-Path -LiteralPath $reference -PathType Leaf)) { throw "Falta la referencia de paridad: $reference" }
     $strategyV5 = $Name.StartsWith('strategy-v5-', [StringComparison]::Ordinal)
     $width = if ($strategyV5) { 1672 } else { 1440 }
     $height = if ($strategyV5) { 941 } else { 900 }
-    $reference = Join-Path $references "$Name.png"
-    if (-not (Test-Path -LiteralPath $reference -PathType Leaf)) { throw "Falta la referencia Wails: $reference" }
     $candidate = Invoke-NativeCapture $Name 'native'
     $diff = Join-Path $evidence "diff-$Name.png"
     $report = Join-Path $evidence "diff-$Name.txt"
@@ -95,9 +111,10 @@ function Compare-Screen([string]$Name) {
     }
 }
 
-$allNames = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json | ForEach-Object { $_.name })
-if ($allNames.Count -ne 48 -or ($allNames | Select-Object -Unique).Count -ne 48) {
-    throw "El manifiesto debe contener 48 pantallas únicas; contiene $($allNames.Count)"
+$screenStates = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json)
+$allNames = @($screenStates | ForEach-Object { $_.name })
+if ($allNames.Count -eq 0 -or ($allNames | Select-Object -Unique).Count -ne $allNames.Count) {
+    throw "El manifiesto debe contener pantallas únicas; contiene $($allNames.Count)"
 }
 $strategyV5Names = @(
     Get-ChildItem -LiteralPath $references -Filter 'strategy-v5-*.png' -File |
@@ -112,7 +129,7 @@ $strategyV5ANames = @(
     'strategy-v5-carrera'
     'strategy-v5-revisiones'
 )
-$names = if ($Todas) { $allNames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
+$names = if ($Todas) { @($allNames | Where-Object { -not $_.StartsWith("strategy-") }) + $strategyV5ANames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
 if (-not $names) { throw 'Indica -Pantalla nombre o -Todas' }
 $unknown = @($names | Where-Object { $_ -notin $allNames -and $_ -notin $strategyV5Names })
 if ($unknown.Count -gt 0) { throw "Pantalla fuera del manifiesto Wails: $($unknown -join ', ')" }
@@ -126,6 +143,13 @@ $sorted | Export-Csv -LiteralPath $csv -NoTypeInformation -Encoding utf8
 $sorted | Select-Object Pantalla, PorcentajeDistinto | Format-Table -AutoSize | Out-String -Width 160 | Set-Content -LiteralPath $table -Encoding utf8
 Get-Content -LiteralPath $table
 Write-Output "Capturas, mapas y salidas: $evidence"
+
+$strategyResults = @($results | Where-Object { $_.Pantalla -match '^strategy-(v5-)?(datos|plan-|editor-)' })
+$overLimit = @($strategyResults | Where-Object { $_.PorcentajeDistinto -gt 5.0 })
+if ($overLimit.Count -gt 0) {
+    $screens = ($overLimit | ForEach-Object { "$($_.Pantalla)=$($_.PorcentajeDistinto)%" }) -join ', '
+    throw "La paridad Strategy supera el límite del 5 %: $screens"
+}
 
 if ($VerificarDeterminismo) {
     $determinismScreen = if ($Todas) { 'inicio-base' } elseif ($StrategyV5A) { $strategyV5ANames[0] } else { $Pantalla }

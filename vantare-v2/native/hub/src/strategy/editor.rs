@@ -143,18 +143,12 @@ impl Strategy {
         let content = match tab {
             EditorTab::Carrera if self.edit_mode => self.edit_workspace(cx),
             EditorTab::Carrera => self.career_overview(cx),
-            EditorTab::Datos => {
-                orbit::card("Datos").child(orbit::card_body().child(orbit::empty_state(
-                    "Sin fuentes o vueltas revisadas",
-                    "El documento todavía no tiene datos de sesión seleccionados.",
-                )))
-            }
-            EditorTab::Plan => {
-                orbit::card("Plan de carrera").child(orbit::card_body().child(orbit::empty_state(
-                    "Plan pendiente",
-                    "El documento no tiene un cálculo confirmado.",
-                )))
-            }
+            EditorTab::Datos => div().flex().flex_col().child(self.data_page(cx)),
+            EditorTab::Plan => div().flex().flex_col().child(match self.page {
+                Page::Stints => self.stint_editor_page(cx),
+                Page::Stops => self.pit_editor_page(cx),
+                _ => self.plan_page(cx),
+            }),
             EditorTab::Revisiones => self.revisions_page(),
         };
         let mut tabs = div()
@@ -239,7 +233,7 @@ impl Strategy {
                     )
                     .child(tabs)
                     .child(content.flex_1().min_h(px(0.0)))
-                    .when(tab != EditorTab::Revisiones, |page| {
+                    .when(tab == EditorTab::Carrera, |page| {
                         page.child(Self::editor_footer(cx))
                     }),
             )
@@ -420,11 +414,11 @@ impl Strategy {
             note
         };
         let plan_summary = if let Some(result) = &self.result {
-            if result.feasible {
+            if result.result.feasible {
                 format!(
                     "{} stints · {:.3} s",
-                    result.stints.len(),
-                    result.expected.total_seconds
+                    result.result.stints.len(),
+                    result.result.expected.total_seconds
                 )
             } else {
                 "Sin plan factible".to_owned()

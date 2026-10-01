@@ -16,17 +16,26 @@ use crate::{
     orbit::{self, button},
 };
 use vantare_strategy::{
-    application::{self, SourceStatus},
+    application::{
+        self, AnalysisRevisionRef, CorrectionSource, EditedPlan, PreparedFamilyCorrection,
+        SourceStatus,
+    },
     document::{Document, new_event},
-    solver::{self, Budget, Discretization, Formation, Input, PitCost, ResultV2, Rules, Scalar},
+    solver::{
+        self, Budget, Discretization, Formation, Input, PitCost, Rules, Scalar, SolverOutcome,
+    },
 };
 
 #[path = "strategy/asistente.rs"]
 mod assistant;
+mod datos;
 #[path = "strategy/editor.rs"]
 mod editor_view;
+mod parada;
+mod plan;
 #[path = "strategy/revisiones.rs"]
 mod revisions_view;
+mod stint;
 #[path = "strategy/view.rs"]
 mod view;
 use assistant::AssistantStep;
@@ -119,6 +128,12 @@ impl Editor {
     }
 }
 
+#[derive(Default)]
+struct FormState {
+    dirty: bool,
+    scalar_dirty: bool,
+}
+
 const FIELDS: &[(&str, &str)] = &[
     ("Nombre de la carrera", "name"),
     ("Duración (min)", "durationMin"),
@@ -163,19 +178,57 @@ pub struct Strategy {
     garage: Option<Arc<RenderImage>>,
     garage_detail: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
+    capture_demo: Option<crate::demo::StrategyCaptureDemo>,
     automatic_preparation: Option<application::AutomaticPreparation>,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
-    form_dirty: bool,
-    scalar_dirty: bool,
+    form: FormState,
     pub status: String,
     pub error: Option<String>,
-    result: Option<ResultV2>,
+    result: Option<SolverOutcome>,
+    last_input: Option<Input>,
+    manual_source_status: SourceStatus,
+    source_revisions: Vec<AnalysisRevisionRef>,
+    data: datos::State,
+    correction_reason: Entity<orbit::Input>,
+    edited_plan: Option<EditedPlan>,
+    baseline_edited_plan: Option<EditedPlan>,
+    baseline_result: Option<SolverOutcome>,
+    edit_dirty: bool,
+    plan_editor: stint::EditorState,
+    edit_cost_seconds: Option<f64>,
+    edit_error: Option<String>,
     running: bool,
     cancellation: Arc<AtomicBool>,
     generation: u64,
 }
+fn open_editor(directory: &std::path::Path) -> (Editor, Option<String>) {
+    let mut editor = Editor::default();
+    let path = directory.join("strategy-v2.json");
+    let error =
+        if path.exists() {
+            editor.open(path).err()
+        } else {
+            match application::repository::LocalRepository::open(directory)
+                .and_then(|repository| repository.load())
+            {
+                Ok(snapshot) => snapshot.drafts.last().and_then(|draft| {
+                    match Document::parse(draft.as_bytes()) {
+                        Ok(document) => {
+                            editor.document = Some(document);
+                            editor.saved = Some(draft.as_bytes().to_vec());
+                            None
+                        }
+                        Err(error) => Some(error),
+                    }
+                }),
+                Err(error) => Some(error),
+            }
+        };
+    (editor, error)
+}
+
 impl Strategy {
     pub fn new_demo(
         directory: PathBuf,
@@ -187,8 +240,17 @@ impl Strategy {
             return strategy;
         };
         strategy.page = match page {
-            crate::demo::CaptureStrategyPage::Collection => Page::Collection,
-            crate::demo::CaptureStrategyPage::Create => Page::Create,
+            crate::demo::CaptureStrategyPage::DataEmpty
+            | crate::demo::CaptureStrategyPage::DataSources
+            | crate::demo::CaptureStrategyPage::DataLaps
+            | crate::demo::CaptureStrategyPage::DataAdvanced => Page::Editor(EditorTab::Datos),
+            crate::demo::CaptureStrategyPage::PlanIdle
+            | crate::demo::CaptureStrategyPage::PlanLoading
+            | crate::demo::CaptureStrategyPage::PlanPartial
+            | crate::demo::CaptureStrategyPage::PlanError
+            | crate::demo::CaptureStrategyPage::PlanCalculated => Page::Editor(EditorTab::Plan),
+            crate::demo::CaptureStrategyPage::Stints => Page::Stints,
+            crate::demo::CaptureStrategyPage::Stops => Page::Stops,
             crate::demo::CaptureStrategyPage::AssistantInicio => {
                 Page::Assistant(AssistantStep::Inicio)
             }
@@ -207,43 +269,105 @@ impl Strategy {
             crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
             crate::demo::CaptureStrategyPage::Revisions => Page::Editor(EditorTab::Revisiones),
         };
+        match crate::demo::StrategyCaptureDemo::load() {
+            Ok(demo) => strategy.capture_demo = Some(demo),
+            Err(error) => strategy.error = Some(error),
+        }
+        strategy.manual_source_status = SourceStatus::Open;
         strategy.automatic = false;
-        if page != crate::demo::CaptureStrategyPage::Create
-            && let Err(error) = strategy.seed_capture_demo(cx)
-        {
+        if let Err(error) = strategy.seed_capture_demo(cx) {
             strategy.error = Some(error);
         }
         if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
             strategy.automatic = true;
         }
-        if page == crate::demo::CaptureStrategyPage::Create {
-            strategy.start_form(cx);
+        if matches!(
+            page,
+            crate::demo::CaptureStrategyPage::DataSources
+                | crate::demo::CaptureStrategyPage::DataLaps
+                | crate::demo::CaptureStrategyPage::DataAdvanced
+                | crate::demo::CaptureStrategyPage::PlanIdle
+                | crate::demo::CaptureStrategyPage::PlanLoading
+                | crate::demo::CaptureStrategyPage::PlanPartial
+                | crate::demo::CaptureStrategyPage::PlanError
+                | crate::demo::CaptureStrategyPage::PlanCalculated
+                | crate::demo::CaptureStrategyPage::Stints
+                | crate::demo::CaptureStrategyPage::Stops
+        ) && let Err(error) = strategy.load_capture_review(page)
+        {
+            strategy.error = Some(error);
+        }
+        if matches!(
+            page,
+            crate::demo::CaptureStrategyPage::PlanLoading
+                | crate::demo::CaptureStrategyPage::PlanPartial
+                | crate::demo::CaptureStrategyPage::PlanError
+                | crate::demo::CaptureStrategyPage::PlanCalculated
+                | crate::demo::CaptureStrategyPage::Stints
+                | crate::demo::CaptureStrategyPage::Stops
+        ) && let Err(error) = strategy.load_capture_plan(page)
+        {
+            strategy.error = Some(error);
         }
         strategy
     }
 
-    pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
-        let mut editor = Editor::default();
-        let path = directory.join("strategy-v2.json");
-        let error = if path.exists() {
-            editor.open(path).err()
-        } else {
-            match application::repository::LocalRepository::open(&directory)
-                .and_then(|repository| repository.load())
-            {
-                Ok(snapshot) => snapshot.drafts.last().and_then(|draft| {
-                    match Document::parse(draft.as_bytes()) {
-                        Ok(document) => {
-                            editor.document = Some(document);
-                            editor.saved = Some(draft.as_bytes().to_vec());
-                            None
-                        }
-                        Err(error) => Some(error),
-                    }
-                }),
-                Err(error) => Some(error),
-            }
+    fn load_capture_review(
+        &mut self,
+        page: crate::demo::CaptureStrategyPage,
+    ) -> Result<(), String> {
+        let mut demo = crate::demo::strategy_review_demo()?;
+        demo.source.validity.laps.truncate(5);
+        let revisions = vec![demo.source.revision.clone()];
+        self.set_review_source(demo.label, demo.source, revisions, &[])?;
+        let (selected_lap, advanced, sources_open) = match page {
+            crate::demo::CaptureStrategyPage::DataSources => (None, false, true),
+            crate::demo::CaptureStrategyPage::DataAdvanced => (None, true, false),
+            _ => (None, false, false),
         };
+        self.data
+            .set_capture_view(0, selected_lap, advanced, sources_open);
+        Ok(())
+    }
+
+    fn load_capture_plan(&mut self, page: crate::demo::CaptureStrategyPage) -> Result<(), String> {
+        let input = capture_solver_input(page)?;
+        self.manual_source_status = SourceStatus::Open;
+
+        if page == crate::demo::CaptureStrategyPage::PlanLoading {
+            self.running = true;
+            self.status = "Calculando la estrategia demo…".into();
+            return Ok(());
+        }
+
+        let prepared = application::prepare_manual(input.clone())?;
+        let outcome = application::calculate(
+            &prepared,
+            self.manual_source_status,
+            &AtomicBool::new(false),
+        )?;
+        self.last_input = Some(input);
+        self.result = Some(outcome.clone());
+        self.status = match outcome.certificate.status {
+            solver::OptimalityStatus::Proven => "Cálculo demo completado.".into(),
+            solver::OptimalityStatus::NotProven => "Búsqueda demo parcial.".into(),
+            solver::OptimalityStatus::NoSolution => "La demo no tiene plan factible.".into(),
+        };
+
+        if matches!(
+            page,
+            crate::demo::CaptureStrategyPage::Stints | crate::demo::CaptureStrategyPage::Stops
+        ) {
+            let edited = stint::schedule_from_outcome(&outcome)?;
+            self.baseline_result = Some(outcome);
+            self.baseline_edited_plan = Some(edited.clone());
+            self.edited_plan = Some(edited);
+        }
+        Ok(())
+    }
+
+    pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
+        let (editor, error) = open_editor(&directory);
         let (garage, garage_error) = load_strategy_image(
             include_bytes!("../assets/strategy-garage.png"),
             "fondo de Strategy",
@@ -252,6 +376,12 @@ impl Strategy {
             include_bytes!("../assets/strategy-garage-detail.png"),
             "fondo detallado de Strategy",
         );
+
+        let manual_source_status = if editor.document.is_some() {
+            SourceStatus::Open
+        } else {
+            SourceStatus::Closed
+        };
         let inputs = FIELDS
             .iter()
             .enumerate()
@@ -261,8 +391,8 @@ impl Strategy {
                     let value = input.read(cx).value.clone();
                     if this.fields[index] != value {
                         this.fields[index] = value;
-                        this.form_dirty = true;
-                        this.scalar_dirty |= (9..24).contains(&index);
+                        this.form.dirty = true;
+                        this.form.scalar_dirty |= (9..24).contains(&index);
                         if index == 1
                             && this.page == Page::Create
                             && let Some(duration) = &this.duration
@@ -283,6 +413,10 @@ impl Strategy {
                 input
             })
             .collect();
+        let correction_reason =
+            cx.new(|cx| orbit::Input::multiline(String::new(), "Motivo de corrección", cx));
+        cx.observe(&correction_reason, |_, _, cx| cx.notify())
+            .detach();
         let mut this = Self {
             editor,
             directory,
@@ -295,17 +429,29 @@ impl Strategy {
             garage,
             garage_detail,
             demo_car: None,
+            capture_demo: None,
             automatic_preparation: None,
             duration: None,
             event: 0,
             variant: 0,
-            form_dirty: false,
-            scalar_dirty: false,
+            form: FormState::default(),
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
             error: error.or(garage_error).or(garage_detail_error),
             result: None,
+            last_input: None,
+            manual_source_status,
+            source_revisions: Vec::new(),
+            data: datos::State::default(),
+            correction_reason,
+            edited_plan: None,
+            baseline_edited_plan: None,
+            baseline_result: None,
+            edit_dirty: false,
+            plan_editor: stint::EditorState::new(cx),
+            edit_cost_seconds: None,
+            edit_error: None,
             running: false,
             cancellation: Arc::new(AtomicBool::new(false)),
             generation: 0,
@@ -323,10 +469,32 @@ impl Strategy {
         self.generation = self.generation.wrapping_add(1);
         self.running = false;
         self.result = None;
+        self.last_input = None;
+        self.edited_plan = None;
+        self.baseline_edited_plan = None;
+        self.baseline_result = None;
+        self.edit_dirty = false;
+        self.edit_cost_seconds = None;
+        self.edit_error = None;
         self.automatic_preparation = None;
     }
+
+    pub(super) fn set_review_source(
+        &mut self,
+        label: String,
+        source: CorrectionSource,
+        selected_revisions: Vec<AnalysisRevisionRef>,
+        saved: &[PreparedFamilyCorrection],
+    ) -> Result<(), String> {
+        self.data.load(label, source, selected_revisions, saved)?;
+        self.invalidate();
+        self.error = None;
+        self.source_revisions = self.data.selected_revisions().to_vec();
+        Ok(())
+    }
+
     fn ensure_clean_form(&self) -> Result<(), String> {
-        if self.form_dirty {
+        if self.form.dirty {
             return Err("Confirma los cambios pendientes o descártalos antes de continuar".into());
         }
         Ok(())
@@ -337,8 +505,8 @@ impl Strategy {
     }
     fn load_fields(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
-        self.form_dirty = false;
-        self.scalar_dirty = false;
+        self.form.dirty = false;
+        self.form.scalar_dirty = false;
         let Some(doc) = &self.editor.document else {
             self.sync_inputs(cx);
             return;
@@ -417,6 +585,11 @@ impl Strategy {
         if result.is_ok() {
             self.event = 0;
             self.variant = 0;
+            self.manual_source_status = if self.editor.document.is_some() {
+                SourceStatus::Open
+            } else {
+                SourceStatus::Closed
+            };
             self.invalidate();
             self.load_fields(cx);
             self.page = Page::Collection;
@@ -457,6 +630,7 @@ impl Strategy {
                     _ => Err("No se pudo abrir el selector de archivos".into()),
                 };
                 if result.is_ok() {
+                    this.manual_source_status = SourceStatus::Open;
                     this.restore_selection();
                     this.invalidate();
                     this.load_fields(cx);
@@ -534,7 +708,7 @@ impl Strategy {
             .ok_or_else(|| "Documento ausente".into())
             .and_then(|doc| confirm_metadata(doc, self.event, self.variant, &self.fields));
         if result.is_ok() {
-            self.form_dirty = self.scalar_dirty;
+            self.form.dirty = self.form.scalar_dirty;
             self.status =
                 "Evento y variante confirmados; las entradas de cálculo se confirman al calcular."
                     .into();
@@ -558,6 +732,7 @@ impl Strategy {
             };
             let index = append_manual_event(&mut next, &self.fields)?;
             self.editor.document = Some(next);
+            self.manual_source_status = SourceStatus::Open;
             self.event = index;
             self.variant = 0;
             self.invalidate();
@@ -728,7 +903,14 @@ impl Strategy {
         if self.running {
             return;
         }
-        if self.editor.document.is_none() {
+        if self.edit_dirty {
+            self.status =
+                "Recalcula o restablece el calendario editado antes de iniciar otro cálculo."
+                    .into();
+            cx.notify();
+            return;
+        }
+        if self.manual_source_status != SourceStatus::Open || self.editor.document.is_none() {
             self.outcome(Err("source_not_open".into()), cx);
             return;
         }
@@ -747,9 +929,11 @@ impl Strategy {
                 return;
             }
         };
+        let solver_input = input.input().clone();
         self.invalidate();
-        self.form_dirty = false;
-        self.scalar_dirty = false;
+        self.last_input = Some(solver_input);
+        self.form.dirty = false;
+        self.form.scalar_dirty = false;
         self.running = true;
         self.error = None;
         self.status = "Calculando el espacio escalar con entradas manuales confirmadas…".into();
@@ -783,7 +967,7 @@ impl Strategy {
                             }
                         }
                         .into();
-                        this.result = Some(outcome.result);
+                        this.result = Some(outcome);
                     }
                     Err(error) => this.error = Some(error),
                 }
@@ -793,6 +977,22 @@ impl Strategy {
         .detach();
         cx.notify();
     }
+}
+
+fn capture_solver_input(page: crate::demo::CaptureStrategyPage) -> Result<Input, String> {
+    let mut input: Input = serde_json::from_str(include_str!(
+        "../reference/fixtures/strategy-solver-demo.json"
+    ))
+    .map_err(|error| format!("fixture demo solver: {error}"))?;
+    match page {
+        crate::demo::CaptureStrategyPage::PlanPartial => input.budget.max_candidates = 1,
+        crate::demo::CaptureStrategyPage::PlanError => {
+            input.event_rules.min_pit_stops = None;
+            input.event_rules.max_pit_stops = Some(0);
+        }
+        _ => {}
+    }
+    Ok(input)
 }
 impl Drop for Strategy {
     fn drop(&mut self) {
@@ -937,7 +1137,8 @@ fn confirm_metadata(
 impl Strategy {
     fn result_card(&self) -> gpui::Div {
         let mut result = orbit::card_body();
-        if let Some(plan) = &self.result {
+        if let Some(outcome) = &self.result {
+            let plan = &outcome.result;
             if plan.feasible {
                 result = result
                     .child(orbit::setting_row(
@@ -1033,6 +1234,54 @@ mod tests {
         assert_eq!(duration_selection("060"), Some(0));
         assert_eq!(duration_selection("130"), Some(4));
         assert_eq!(duration_selection("invalid"), Some(4));
+    }
+
+    #[test]
+    fn capture_plan_states_are_native_solver_outcomes() {
+        let calculated = capture_solver_input(crate::demo::CaptureStrategyPage::PlanCalculated)
+            .expect("fixture de cálculo");
+        let prepared = application::prepare_manual(calculated).expect("entrada manual válida");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo calculado");
+        assert!(outcome.result.feasible);
+        assert_eq!(outcome.certificate.status, solver::OptimalityStatus::Proven);
+        assert_eq!(outcome.result.stints, [23, 23, 23]);
+        assert_eq!(
+            outcome
+                .result
+                .pit_stops
+                .iter()
+                .map(|stop| stop.lap)
+                .collect::<Vec<_>>(),
+            [23, 46]
+        );
+
+        let partial = capture_solver_input(crate::demo::CaptureStrategyPage::PlanPartial)
+            .expect("fixture parcial");
+        assert_eq!(partial.budget.max_candidates, 1);
+        let prepared = application::prepare_manual(partial).expect("entrada parcial válida");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo parcial");
+        assert_eq!(
+            outcome.certificate.status,
+            solver::OptimalityStatus::NotProven
+        );
+
+        let impossible = capture_solver_input(crate::demo::CaptureStrategyPage::PlanError)
+            .expect("fixture sin solución");
+        assert_eq!(impossible.event_rules.max_pit_stops, Some(0));
+        let prepared =
+            application::prepare_manual(impossible).expect("entrada sin solución válida");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo sin solución");
+        assert!(!outcome.result.feasible);
+        assert_eq!(
+            outcome.certificate.status,
+            solver::OptimalityStatus::NoSolution
+        );
     }
     fn event_fields() -> Vec<String> {
         let mut fields = vec![String::new(); FIELDS.len()];

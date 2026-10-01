@@ -6,9 +6,10 @@ producto Wails, harnesses de demostración en WebView2 y proceso GPUI.
 
 ## Referencias congeladas y evidencia
 
-Las 48 referencias `wails-demo/<pantalla>.png` se copian aquí para que el
-comparador funcione sin depender de otra carpeta local. Son 6.853.618 bytes en
-total y conservan los bytes de las capturas originales. No se versionan
+El banco inicial copió 48 referencias `wails-demo/<pantalla>.png` para que el
+comparador funcionase sin depender de otra carpeta local. Tras retirar las
+siete de Strategy antigua, conserva 41 y añade las referencias v5 descritas
+abajo. Todas conservan los bytes de las capturas originales. No se versionan
 capturas del Hub nativo, mapas de diferencias, logs ni hashes de QA. El resto
 de las evidencias está en:
 
@@ -35,6 +36,16 @@ La galería/contact sheet contiene miniaturas; la comparación usa los PNG origi
 Los nombres de la demo están en `tools/demo-states.json`; el resultado de cada
 estado, URL, tamaño y hash queda en `wails-demo/manifest.json`. Los nombres de
 estados inaccesibles no se sustituyen por imágenes de otra pantalla.
+
+## Strategy v5 · #1393
+
+Las siete referencias de Strategy anteriores a v5 y sus escenas se retiraron.
+`tools/demo-states.json` conserva 41 escenas de las otras secciones. Las 19
+referencias `wails/strategy-v5-*.png` son las capturas aprobadas por Isaac de
+`pass-27-runtime-source-screen`, a **1672 × 941**, sin redimensionarlas.
+`compare.ps1 -StrategyV5A` mide Inicio, Combinación, Reglas, Pilotos, Sesiones,
+Carrera y Revisiones; `-Todas` incluye esas siete pantallas v5 junto al banco
+de las otras secciones. Los antiguos alias `strategy-*` sin `v5` se rechazan.
 
 ## Banco de paridad nativo
 

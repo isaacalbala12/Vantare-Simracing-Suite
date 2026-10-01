@@ -10,6 +10,7 @@ use gpui::{
     Context, Entity, IntoElement, PathPromptOptions, Render, WeakEntity, Window, div, prelude::*,
 };
 use std::{
+    collections::HashMap,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -48,7 +49,9 @@ pub struct Launcher {
     progress: Vec<Progress>,
     app_draft: Option<AppDraft>,
     profile_draft: Option<ProfileDraft>,
-    form_layer: Option<Entity<orbit::Layer>>,
+    pending_app_removal: Option<String>,
+    form_layer: Option<Entity<editor::LauncherDrawer>>,
+    demo_descriptions: HashMap<String, String>,
     form_actions: [gpui::FocusHandle; 3],
     query: Entity<Input>,
     trigger: LmuTrigger,
@@ -75,8 +78,8 @@ mod editor;
 mod presentation;
 
 impl Launcher {
-    pub fn form_layer(&self) -> Option<Entity<orbit::Layer>> {
-        self.form_layer.clone()
+    pub fn form_layer(&self) -> Option<gpui::AnyView> {
+        self.form_layer.clone().map(Into::into)
     }
 
     pub fn new(store: Store, cx: &mut Context<Self>) -> Self {
@@ -91,6 +94,12 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> Self {
         let mut view = Self::build(store, Some(Discovery::demo(demo)), cx);
+        view.demo_descriptions = demo
+            .launcher
+            .profiles
+            .iter()
+            .map(|profile| (profile.id.clone(), profile.description.clone()))
+            .collect();
         if create_profile {
             view.new_profile(None, window, cx);
         }
@@ -107,7 +116,9 @@ impl Launcher {
             progress: vec![],
             app_draft: None,
             profile_draft: None,
+            pending_app_removal: None,
             form_layer: None,
+            demo_descriptions: HashMap::new(),
             form_actions: [cx.focus_handle(), cx.focus_handle(), cx.focus_handle()],
             query: input(String::new(), "Buscar aplicaciones y perfiles", cx),
             trigger: LmuTrigger::default(),
@@ -137,6 +148,19 @@ impl Launcher {
     fn report(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
         self.error = result.err();
         cx.notify();
+    }
+
+    pub(super) fn reload(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match Store::load(self.store.path.clone()) {
+            Ok(store) => {
+                self.close_form(window, cx);
+                self.store = store;
+                self.trigger = LmuTrigger::default();
+                self.error = None;
+                self.scan(cx);
+            }
+            Err(error) => self.report(Err(error), cx),
+        }
     }
 
     fn edit(
@@ -180,20 +204,6 @@ impl Launcher {
         })
         .detach();
         cx.notify();
-    }
-
-    fn reload(&mut self, cx: &mut Context<Self>) {
-        match Store::load(self.store.path.clone()) {
-            Ok(store) => {
-                self.store = store;
-                self.app_draft = None;
-                self.profile_draft = None;
-                self.trigger = LmuTrigger::default();
-                self.error = None;
-                self.scan(cx);
-            }
-            Err(error) => self.report(Err(error), cx),
-        }
     }
 
     pub fn shutdown(&mut self) -> Result<(), String> {
@@ -304,16 +314,6 @@ impl Launcher {
             }
             Err(error) => self.report(Err(error), cx),
         }
-    }
-
-    fn launch_app(&mut self, id: &str, cx: &mut Context<Self>) {
-        let mut profile = Profile::new("single-app".into(), "Lanzamiento individual".into());
-        profile.steps.push(Step {
-            app_id: id.into(),
-            delay_seconds: 0,
-            args_override: None,
-        });
-        self.start(profile, cx);
     }
 
     fn app_editor(&mut self, app: Option<App>, window: &mut Window, cx: &mut Context<Self>) {
@@ -431,7 +431,7 @@ impl Launcher {
         orbit::card("Aplicación · borrador sin guardar").child(
             orbit::card_body()
                 .when_some(self.error.clone(), |body, error| {
-                    body.child(orbit::callout(error))
+                    body.child(presentation::error_panel(error, cx))
                 })
                 .child(orbit::setting_row(
                     "Nombre",

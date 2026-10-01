@@ -33,6 +33,8 @@ pub struct StintDecision {
     pub time_cost_per_lap: f64,
     #[serde(default)]
     pub saving_cost_seconds: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tyre_fitment: Option<super::Fitment>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
@@ -57,11 +59,16 @@ pub struct PitDecision {
     pub pit_cost_input: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pit_breakdown: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tyre_fitment: Option<super::Fitment>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Dimensions {
+    pub tyre_inventory: Option<super::TyreInventory>,
+    #[serde(default)]
+    pub compound_pace: Vec<super::CompoundPace>,
     pub initial_fuel_liters: Option<Scalar>,
     #[serde(rename = "initialVEPercent")]
     pub initial_ve_percent: Option<Scalar>,
@@ -140,6 +147,13 @@ pub struct DecisionResourceRequirements {
     pub finish: ResourceRequirement,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct ExtraRules {
+    #[serde(default)]
+    pub mandatory_compounds: Vec<String>,
+}
+
 #[derive(Clone)]
 pub(super) struct Model {
     pub input: Input,
@@ -148,6 +162,8 @@ pub(super) struct Model {
     pub ve: Resource,
     pub levels: Vec<SavingLevel>,
     pub fuel_weight: f64,
+    pub tyres: super::tyres::TyreModel,
+    pub rules: ExtraRules,
 }
 
 pub(super) fn require(condition: bool, field: &str) -> Result<(), String> {
@@ -176,6 +192,7 @@ impl Model {
             .map_err(|e| format!("unsupported_native_dimension: {e}"))?;
         let mut scalar = input.clone();
         scalar.extra.clear();
+        scalar.event_rules.extra.clear();
         scalar.validate()?;
         for (initial, capacity) in [
             (&dims.initial_fuel_liters, scalar.fuel_capacity_liters.value),
@@ -278,6 +295,20 @@ impl Model {
                 }
             }
         }
+        let tyres = super::tyres::TyreModel::new(
+            &scalar,
+            dims.tyre_inventory.as_ref(),
+            &dims.compound_pace,
+        )?;
+        let rules: ExtraRules = serde_json::from_value(json!(input.event_rules.extra))
+            .map_err(|e| format!("invalid_input: eventRules: {e}"))?;
+        let mut mandatory = std::collections::BTreeSet::new();
+        for compound in &rules.mandatory_compounds {
+            require(
+                tyres.compounds.contains_key(compound) && mandatory.insert(compound),
+                "mandatory compound absent or duplicate",
+            )?;
+        }
         Ok(Self {
             input: scalar,
             dims,
@@ -285,6 +316,8 @@ impl Model {
             ve,
             levels,
             fuel_weight,
+            tyres,
+            rules,
         })
     }
     pub fn level(&self, id: &str) -> Result<&SavingLevel, String> {
@@ -313,6 +346,7 @@ impl Model {
         fuel: i64,
         driver: &str,
         level: &SavingLevel,
+        compound: &str,
     ) -> Result<Evaluation, String> {
         let (used, _) = self.usage(start, 1, driver, level)?;
         let count = f64::from(laps);
@@ -326,6 +360,10 @@ impl Model {
             saving_seconds: count * level.time_cost_per_lap,
             ..Evaluation::default()
         };
+        if let Some(cost) = self.tyres.compounds.get(compound) {
+            eval.compound_seconds = count * cost.pace_delta_seconds;
+            eval.degradation_seconds = (1..=laps).map(|lap| cost.delta(lap)).sum();
+        }
         eval.total();
         require(eval.total_seconds.is_finite(), "cost overflow")?;
         Ok(eval)

@@ -296,22 +296,46 @@ pub(super) fn replay(
     result.evaluation.total();
     let mut lap = 0;
     let mut tyre_age = 0;
+    let first = &decision.stints[0];
+    let Some(mut tyre) =
+        model
+            .tyres
+            .resolve(&first.compound, first.tyre_fitment.as_ref(), None, true)
+    else {
+        return Ok(failed(result, decision, "tyre_inventory_insufficient"));
+    };
+    let mut tyre_usage = std::collections::BTreeMap::new();
     for (index, requested) in decision.stints.iter().enumerate() {
         let level = model.level(&requested.saving_level)?;
         let (used_f, used_v) = model.usage(lap + 1, requested.laps, &requested.driver, level)?;
         if used_f > f
             || used_v > v
             || (model.input.tyre_life_laps.value > 0.0
-                && f64::from(tyre_age + requested.laps) > model.input.tyre_life_laps.value)
+                && f64::from(super::tyres::age(&tyre, &tyre_usage, tyre_age) + requested.laps)
+                    > model.input.tyre_life_laps.value)
         {
             return Ok(failed(result, decision, "resource_exhausted"));
         }
-        let mut eval = model.stint(lap + 1, requested.laps, f, &requested.driver, level)?;
+        let mut eval = model.stint(
+            lap + 1,
+            requested.laps,
+            f,
+            &requested.driver,
+            level,
+            &tyre.compound,
+        )?;
         if index + 1 == decision.stints.len() {
             result.final_lap_start_seconds = result.evaluation.total_seconds;
             if requested.laps > 1 {
                 result.final_lap_start_seconds += model
-                    .stint(lap + 1, requested.laps - 1, f, &requested.driver, level)?
+                    .stint(
+                        lap + 1,
+                        requested.laps - 1,
+                        f,
+                        &requested.driver,
+                        level,
+                        &tyre.compound,
+                    )?
                     .total_seconds;
             }
         }
@@ -328,6 +352,8 @@ pub(super) fn replay(
         result.decision.stints.push(StintDecision {
             index,
             laps: requested.laps,
+            compound: tyre.compound.clone(),
+            tyre_fitment: tyre.fitment.clone(),
             saving_level: level.level.clone(),
             fuel_saved_per_lap: level.fuel_saved_per_lap,
             ve_saved_per_lap: level.ve_saved_per_lap,
@@ -343,6 +369,7 @@ pub(super) fn replay(
         v -= used_v;
         lap += requested.laps;
         tyre_age += requested.laps;
+        super::tyres::use_fitment(&tyre, &mut tyre_usage, requested.laps);
         if let Some(requested_pit) = decision.pit_stops.get(index) {
             let pf = units(requested_pit.fuel_liters)?;
             let pv = units(requested_pit.ve_percent)?;
@@ -350,7 +377,20 @@ pub(super) fn replay(
                 pf <= model.fuel.capacity - f && pv <= model.ve.capacity - v,
                 "pit service exceeds capacity",
             )?;
-            let (pit, seconds) = model.pit(requested_pit);
+            let following = &decision.stints[index + 1];
+            let Some(next_tyre) = model.tyres.resolve(
+                &following.compound,
+                following.tyre_fitment.as_ref(),
+                Some(&tyre),
+                requested_pit.change_tyres,
+            ) else {
+                return Ok(failed(result, decision, "tyre_choice_invalid"));
+            };
+            let mut pit_request = requested_pit.clone();
+            pit_request.compound.clone_from(&next_tyre.compound);
+            pit_request.tyre_fitment.clone_from(&next_tyre.fitment);
+            let (pit, seconds) = model.pit(&pit_request);
+            tyre = next_tyre;
             result.decision.pit_stops.push(pit);
             result.evaluation.pit_seconds += seconds;
             result.evaluation.total();
@@ -396,6 +436,14 @@ pub(super) fn completed_reason(model: &Model, d: &DecisionVector) -> Option<Stri
             .any(|p| p.lap >= w.from_lap && p.lap <= w.to_lap)
     }) {
         return Some("required_pit_window".into());
+    }
+    if model
+        .rules
+        .mandatory_compounds
+        .iter()
+        .any(|c| !d.stints.iter().any(|s| &s.compound == c))
+    {
+        return Some("mandatory_compound".into());
     }
     None
 }

@@ -14,6 +14,8 @@ struct State {
     fuel: i64,
     ve: i64,
     age: u32,
+    tyre: super::tyres::Choice,
+    tyre_usage: std::collections::BTreeMap<String, u32>,
     decision: DecisionVector,
     evaluation: Evaluation,
 }
@@ -53,7 +55,7 @@ fn dominates(l: &State, r: &State, m: &Model) -> bool {
     {
         return false;
     }
-    if l.age != r.age {
+    if l.tyre != r.tyre || l.tyre_usage != r.tyre_usage || l.age != r.age {
         return false;
     }
     for w in &rules.required_windows {
@@ -63,6 +65,12 @@ fn dominates(l: &State, r: &State, m: &Model) -> bool {
                 .any(|p| p.lap >= w.from_lap && p.lap <= w.to_lap)
         };
         if covered(&l.decision) != covered(&r.decision) {
+            return false;
+        }
+    }
+    for compound in &m.rules.mandatory_compounds {
+        let used = |d: &DecisionVector| d.stints.iter().any(|s| &s.compound == compound);
+        if used(&l.decision) != used(&r.decision) {
             return false;
         }
     }
@@ -91,27 +99,31 @@ pub(super) fn solve(
     let mut reason = None;
     let count = usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1;
     let mut frontier: Vec<Vec<State>> = vec![vec![]; count];
-    frontier[0].push(State {
-        fuel: units(
-            m.dims
-                .initial_fuel_liters
-                .as_ref()
-                .map_or(amount(m.fuel.capacity), |s| s.value),
-        )?,
-        ve: units(
-            m.dims
-                .initial_ve_percent
-                .as_ref()
-                .map_or(amount(m.ve.capacity), |s| s.value),
-        )?,
-        age: 0,
-        decision: DecisionVector::default(),
-        evaluation: Evaluation {
-            formation_seconds: input.formation.seconds.value,
-            total_seconds: input.formation.seconds.value,
-            ..Evaluation::default()
-        },
-    });
+    for choice in m.tyres.initial() {
+        frontier[0].push(State {
+            tyre: choice,
+            tyre_usage: std::collections::BTreeMap::new(),
+            fuel: units(
+                m.dims
+                    .initial_fuel_liters
+                    .as_ref()
+                    .map_or(amount(m.fuel.capacity), |s| s.value),
+            )?,
+            ve: units(
+                m.dims
+                    .initial_ve_percent
+                    .as_ref()
+                    .map_or(amount(m.ve.capacity), |s| s.value),
+            )?,
+            age: 0,
+            decision: DecisionVector::default(),
+            evaluation: Evaluation {
+                formation_seconds: input.formation.seconds.value,
+                total_seconds: input.formation.seconds.value,
+                ..Evaluation::default()
+            },
+        });
+    }
     let mut completed: Vec<State> = vec![];
     'search: for lap in 0..input.race_laps {
         let nodes = std::mem::take(&mut frontier[usize::try_from(lap).map_err(|e| e.to_string())?]);
@@ -129,17 +141,22 @@ pub(super) fn solve(
                     if f > node.fuel
                         || v > node.ve
                         || (input.tyre_life_laps.value > 0.0
-                            && f64::from(node.age + laps) > input.tyre_life_laps.value)
+                            && f64::from(
+                                super::tyres::age(&node.tyre, &node.tyre_usage, node.age) + laps,
+                            ) > input.tyre_life_laps.value)
                     {
                         break;
                     }
                     let mut after = node.clone();
-                    let eval = m.stint(lap + 1, laps, node.fuel, "", level)?;
+                    let eval = m.stint(lap + 1, laps, node.fuel, "", level, &node.tyre.compound)?;
                     after.evaluation.add(&eval);
                     after.fuel -= f;
                     after.ve -= v;
                     after.age += laps;
+                    super::tyres::use_fitment(&node.tyre, &mut after.tyre_usage, laps);
                     after.decision.stints.push(StintDecision {
+                        compound: node.tyre.compound.clone(),
+                        tyre_fitment: node.tyre.fitment.clone(),
                         index: after.decision.stints.len(),
                         laps,
                         saving_level: level.level.clone(),
@@ -183,54 +200,61 @@ pub(super) fn solve(
                     {
                         continue;
                     }
-                    for f in m.fuel.amounts(after.fuel) {
-                        for v in m.ve.amounts(after.ve) {
-                            work += 1;
-                            if work > max_work {
-                                reason = Some("candidate_budget_exhausted");
-                                break 'search;
-                            }
-                            let mut next = after.clone();
-                            let (pit, seconds) = m.pit(&PitDecision {
-                                lap: end,
-                                fuel_liters: amount(f),
-                                ve_percent: amount(v),
-                                change_tyres: true,
-                                saving_level: "none".into(),
-                                ..PitDecision::default()
-                            });
-                            next.fuel += f;
-                            next.ve += v;
-                            next.age = 0;
-                            next.evaluation.pit_seconds += seconds;
-                            next.evaluation.total();
-                            next.decision.pit_stops.push(pit);
-                            let target =
-                                &mut frontier[usize::try_from(end).map_err(|e| e.to_string())?];
-                            let mut dominated = false;
-                            for existing in target.iter() {
-                                iterations += 1;
-                                if iterations > max_iterations {
-                                    reason = Some("iteration_budget_exhausted");
+                    for (next_tyre, change_tyres) in m.tyres.next(&after.tyre) {
+                        for f in m.fuel.amounts(after.fuel) {
+                            for v in m.ve.amounts(after.ve) {
+                                work += 1;
+                                if work > max_work {
+                                    reason = Some("candidate_budget_exhausted");
                                     break 'search;
                                 }
-                                if cancel.load(AtomicOrdering::Relaxed) {
-                                    return Err("cancelled".into());
+                                let mut next = after.clone();
+                                let (pit, seconds) = m.pit(&PitDecision {
+                                    lap: end,
+                                    fuel_liters: amount(f),
+                                    ve_percent: amount(v),
+                                    compound: next_tyre.compound.clone(),
+                                    tyre_fitment: next_tyre.fitment.clone(),
+                                    change_tyres,
+                                    saving_level: "none".into(),
+                                    ..PitDecision::default()
+                                });
+                                next.fuel += f;
+                                next.ve += v;
+                                next.tyre = next_tyre.clone();
+                                if change_tyres {
+                                    next.age = 0;
                                 }
-                                if started.elapsed().as_millis()
-                                    > u128::from(input.budget.p95_millis)
-                                {
-                                    reason = Some("deadline_exceeded");
-                                    break 'search;
+                                next.evaluation.pit_seconds += seconds;
+                                next.evaluation.total();
+                                next.decision.pit_stops.push(pit);
+                                let target = &mut frontier
+                                    [usize::try_from(end).map_err(|e| e.to_string())?];
+                                let mut dominated = false;
+                                for existing in target.iter() {
+                                    iterations += 1;
+                                    if iterations > max_iterations {
+                                        reason = Some("iteration_budget_exhausted");
+                                        break 'search;
+                                    }
+                                    if cancel.load(AtomicOrdering::Relaxed) {
+                                        return Err("cancelled".into());
+                                    }
+                                    if started.elapsed().as_millis()
+                                        > u128::from(input.budget.p95_millis)
+                                    {
+                                        reason = Some("deadline_exceeded");
+                                        break 'search;
+                                    }
+                                    if dominates(existing, &next, &m) {
+                                        dominated = true;
+                                        break;
+                                    }
                                 }
-                                if dominates(existing, &next, &m) {
-                                    dominated = true;
-                                    break;
+                                if !dominated {
+                                    target.retain(|existing| !dominates(&next, existing, &m));
+                                    target.push(next);
                                 }
-                            }
-                            if !dominated {
-                                target.retain(|existing| !dominates(&next, existing, &m));
-                                target.push(next);
                             }
                         }
                     }

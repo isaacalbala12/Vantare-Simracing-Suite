@@ -118,3 +118,8 @@ fn parity_cases(data: &str) {
 fn go_resource_and_replay_parity() {
     parity_cases(include_str!("../../testdata/oracle/solver-resources.json"));
 }
+
+#[test]
+fn go_physical_tyre_parity() {
+    parity_cases(include_str!("../../testdata/oracle/solver-tyres.json"));
+}

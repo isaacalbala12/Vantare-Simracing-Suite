@@ -4,6 +4,8 @@ mod model;
 mod parity_tests;
 mod replay;
 mod search;
+mod tyres;
+pub use tyres::{CompoundPace, CurvePoint, Fitment, PhysicalTyre, TyreInventory};
 
 pub use model::*;
 pub use replay::{

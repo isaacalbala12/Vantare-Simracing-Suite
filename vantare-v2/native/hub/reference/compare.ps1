@@ -27,7 +27,7 @@ $metadataPath = Join-Path $evidence 'cargo-metadata.json'
 $metadataError = Join-Path $evidence 'cargo-metadata.stderr.log'
 Push-Location (Join-Path $project 'native')
 try {
-    cargo metadata --no-deps --format-version 1 1> $metadataPath 2> $metadataError
+    & (Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe') metadata --no-deps --format-version 1 1> $metadataPath 2> $metadataError
     if ($LASTEXITCODE -ne 0) { throw "No se pudo leer target_directory de Cargo; log: $metadataError" }
 } finally {
     Pop-Location
@@ -38,7 +38,7 @@ $hub = Join-Path $targetDirectory 'debug\vantare-hub.exe'
 $buildLog = Join-Path $evidence 'cargo-build-parity-capture.log'
 Push-Location (Join-Path $project 'native')
 try {
-    cargo build -p vantare-hub --features parity-capture -j 2 *> $buildLog
+    cargo build --workspace --features vantare-hub/parity-capture -j 2 *> $buildLog
     if ($LASTEXITCODE -ne 0) {
         Get-Content -LiteralPath $buildLog -Tail 80
         throw "No se pudo compilar vantare-hub; log: $buildLog"
@@ -47,6 +47,12 @@ try {
     Pop-Location
 }
 if (-not (Test-Path -LiteralPath $hub -PathType Leaf)) { throw "No existe el ejecutable: $hub" }
+# Conserva el ejecutable medido: otro gate puede reconstruir el target sin parity-capture.
+$measuredHub = Join-Path $evidence 'vantare-hub-capture.exe'
+Copy-Item -LiteralPath $hub -Destination $measuredHub -Force
+$hub = $measuredHub
+(Get-FileHash -LiteralPath $hub -Algorithm SHA256).Hash |
+    Set-Content -LiteralPath (Join-Path $evidence 'hub.sha256')
 
 function Invoke-NativeCapture([string]$Name, [string]$Label) {
     $png = Join-Path $evidence "$Label-$Name.png"
@@ -123,7 +129,7 @@ $strategyV5ANames = @(
     'strategy-v5-carrera'
     'strategy-v5-revisiones'
 )
-$names = if ($Todas) { $allNames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
+$names = if ($Todas) { @($allNames | Where-Object { -not $_.StartsWith("strategy-") }) + $strategyV5ANames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
 if (-not $names) { throw 'Indica -Pantalla nombre o -Todas' }
 $unknown = @($names | Where-Object { $_ -notin $allNames -and $_ -notin $strategyV5Names })
 if ($unknown.Count -gt 0) { throw "Pantalla fuera del manifiesto Wails: $($unknown -join ', ')" }
@@ -138,7 +144,7 @@ $sorted | Select-Object Pantalla, PorcentajeDistinto | Format-Table -AutoSize | 
 Get-Content -LiteralPath $table
 Write-Output "Capturas, mapas y salidas: $evidence"
 
-$strategyResults = @($results | Where-Object { $_.Pantalla -match '^strategy-(datos|plan-|editor-)' })
+$strategyResults = @($results | Where-Object { $_.Pantalla -match '^strategy-(v5-)?(datos|plan-|editor-)' })
 $overLimit = @($strategyResults | Where-Object { $_.PorcentajeDistinto -gt 5.0 })
 if ($overLimit.Count -gt 0) {
     $screens = ($overLimit | ForEach-Object { "$($_.Pantalla)=$($_.PorcentajeDistinto)%" }) -join ', '

@@ -233,7 +233,7 @@ impl Strategy {
                     )
                     .child(tabs)
                     .child(content.flex_1().min_h(px(0.0)))
-                    .when(tab != EditorTab::Revisiones, |page| {
+                    .when(tab == EditorTab::Carrera, |page| {
                         page.child(Self::editor_footer(cx))
                     }),
             )

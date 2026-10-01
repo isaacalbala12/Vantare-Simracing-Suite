@@ -173,16 +173,6 @@ impl Strategy {
         self.error = None;
         cx.notify();
     }
-    pub(super) fn start_form(&mut self, cx: &mut Context<Self>) {
-        self.fields.fill(String::new());
-        self.form.dirty = false;
-        self.form.scalar_dirty = false;
-        self.duration = None;
-        self.invalidate();
-        self.sync_inputs(cx);
-        self.page = Page::Create;
-        cx.notify();
-    }
     fn cancel_form(&mut self, cx: &mut Context<Self>) {
         self.load_fields(cx);
         self.page = Page::Assistant(AssistantStep::Reglas);
@@ -583,6 +573,11 @@ impl Strategy {
                 f32::from(window.viewport_size().height),
                 cx,
             ),
+            Page::Editor(EditorTab::Datos)
+                if self.data.sources_open() && self.capture_demo.is_some() =>
+            {
+                self.capture_sources_page(f32::from(window.viewport_size().height), cx)
+            }
             Page::Editor(tab) => {
                 self.editor_page(tab, f32::from(window.viewport_size().height), cx)
             }

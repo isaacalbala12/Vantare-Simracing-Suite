@@ -19,12 +19,6 @@ const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
     "strategy-v5-plan-calculado",
     "strategy-v5-editor-stint",
     "strategy-v5-editor-parada",
-    "strategy-asistente-combinacion",
-    "strategy-asistente-reglas",
-    "strategy-asistente-pilotos",
-    "strategy-asistente-sesiones",
-    "strategy-editor-carrera",
-    "strategy-revisiones",
     "strategy-v5-asistente-inicio",
     "strategy-v5-asistente-combinacion",
     "strategy-v5-asistente-reglas",
@@ -361,6 +355,69 @@ pub fn strategy_review_demo() -> Result<StrategyReviewDemo, String> {
     Ok(demo)
 }
 
+// Escena de pass-27: mismos valores que recorded-strategy-harness y wails-runtime-mock.
+// Solo new_demo carga este DTO; la aplicación normal conserva la salida del solver.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct StrategyCaptureDemo {
+    pub total_seconds: f64,
+    pub reserve_laps: f64,
+    pub required_laps: f64,
+    pub capacity_liters: f64,
+    pub fuel_per_lap: f64,
+    pub ve_per_lap: f64,
+    pub stints: Vec<CaptureStint>,
+    pub stops: Vec<CaptureStop>,
+    pub samples: Vec<CaptureSample>,
+    pub files: Vec<CaptureSourceFile>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct CaptureStint {
+    pub driver: String,
+    pub pace_seconds: f64,
+    pub fuel_liters: f64,
+    pub ve_percent: f64,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct CaptureStop {
+    pub lap: u32,
+    pub fuel_in: f64,
+    pub fuel_out: f64,
+    pub ve_in: f64,
+    pub ve_out: f64,
+    pub fuel_added: f64,
+    pub ve_added: f64,
+    pub transit_seconds: f64,
+    pub service_seconds: f64,
+    pub overlap_seconds: f64,
+    pub total_seconds: f64,
+    pub compound: String,
+    pub change_tyres: bool,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct CaptureSourceFile {
+    pub name: String,
+    pub details: String,
+    pub ready: bool,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct CaptureSample {
+    pub value: f64,
+    pub quality: String,
+}
+impl StrategyCaptureDemo {
+    pub fn load() -> Result<Self, String> {
+        serde_json::from_str(include_str!(
+            "../reference/fixtures/strategy-capture-demo.json"
+        ))
+        .map_err(|error| format!("escena pass-27 Strategy: {error}"))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {
     Application,
@@ -374,8 +431,6 @@ pub enum CaptureSettingsPage {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureStrategyPage {
-    Collection,
-    Create,
     DataEmpty,
     DataSources,
     DataLaps,
@@ -398,27 +453,17 @@ pub enum CaptureStrategyPage {
 
 fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
     match name {
-        "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
-        "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
-        "strategy-asistente-origen"
-        | "strategy-asistente-inicio"
-        | "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
-        "strategy-asistente-equipo"
-        | "strategy-asistente-combinacion"
-        | "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
-        "strategy-asistente-reglas" | "strategy-v5-asistente-reglas" => {
-            Some(CaptureStrategyPage::AssistantReglas)
+        "strategy-asistente-origen" | "strategy-v5-asistente-inicio" => {
+            Some(CaptureStrategyPage::AssistantInicio)
         }
-        "strategy-asistente-pilotos" | "strategy-v5-asistente-pilotos" => {
-            Some(CaptureStrategyPage::AssistantPilotos)
+        "strategy-asistente-equipo" | "strategy-v5-asistente-combinacion" => {
+            Some(CaptureStrategyPage::AssistantCombinacion)
         }
-        "strategy-asistente-sesiones" | "strategy-v5-asistente-sesiones" => {
-            Some(CaptureStrategyPage::AssistantSesiones)
-        }
-        "strategy-continuar" | "strategy-editor-carrera" | "strategy-v5-carrera" => {
-            Some(CaptureStrategyPage::Career)
-        }
-        "strategy-revisiones" | "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
+        "strategy-v5-asistente-reglas" => Some(CaptureStrategyPage::AssistantReglas),
+        "strategy-v5-asistente-pilotos" => Some(CaptureStrategyPage::AssistantPilotos),
+        "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
+        "strategy-v5-carrera" => Some(CaptureStrategyPage::Career),
+        "strategy-v5-revisiones" => Some(CaptureStrategyPage::Revisions),
         "strategy-datos-vacio" | "strategy-v5-datos-vacio" => Some(CaptureStrategyPage::DataEmpty),
         "strategy-datos-fuentes" | "strategy-v5-datos-fuentes" => {
             Some(CaptureStrategyPage::DataSources)
@@ -467,26 +512,7 @@ impl CaptureState {
             | "calendario-semana"
             | "calendario-mes"
             | "calendario-timeline" => Section::Calendar,
-            "strategy-base"
-            | "strategy-lista"
-            | "strategy-continuar"
-            | "strategy-asistente-origen"
-            | "strategy-asistente-equipo"
-            | "strategy-asistente-inicio"
-            | "strategy-nuevo-evento"
-            | "strategy-asistente-combinacion"
-            | "strategy-asistente-reglas"
-            | "strategy-asistente-pilotos"
-            | "strategy-asistente-sesiones"
-            | "strategy-editor-carrera"
-            | "strategy-revisiones"
-            | "strategy-v5-asistente-inicio"
-            | "strategy-v5-asistente-combinacion"
-            | "strategy-v5-asistente-reglas"
-            | "strategy-v5-asistente-pilotos"
-            | "strategy-v5-asistente-sesiones"
-            | "strategy-v5-carrera"
-            | "strategy-v5-revisiones" => Section::Strategy,
+
             name if strategy_capture_page(name).is_some() => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
@@ -587,7 +613,7 @@ mod tests {
     #[test]
     fn every_wails_reference_has_a_native_capture_target() {
         let screens: Vec<serde_json::Value> = serde_json::from_str(SCREENS).expect("referencias");
-        assert!(screens.len() >= 48);
+        assert!(screens.len() >= 41);
         let mut names = std::collections::BTreeSet::new();
         for screen in screens {
             let name = screen["name"].as_str().expect("nombre").to_owned();
@@ -612,7 +638,7 @@ mod tests {
                 .launcher_new_profile
         );
         assert_eq!(
-            CaptureState::parse("strategy-asistente-equipo")
+            CaptureState::parse("strategy-v5-asistente-combinacion")
                 .expect("Strategy")
                 .strategy_page,
             Some(CaptureStrategyPage::AssistantCombinacion)
@@ -621,7 +647,7 @@ mod tests {
             assert!(CaptureState::parse(name).is_ok(), "{name}");
         }
         assert_eq!(
-            CaptureState::parse("strategy-asistente-inicio")
+            CaptureState::parse("strategy-v5-asistente-inicio")
                 .expect("inicio del asistente")
                 .strategy_page,
             Some(CaptureStrategyPage::AssistantInicio)
@@ -645,6 +671,42 @@ mod tests {
             assert_eq!(CaptureState::parse(name).unwrap().strategy_page, Some(page));
         }
         assert!(CaptureState::parse("ajustes-desconocidos").is_err());
+    }
+
+    #[test]
+    fn retired_strategy_scenes_are_not_capture_targets() {
+        for name in [
+            "strategy-base",
+            "strategy-lista",
+            "strategy-continuar",
+            "strategy-asistente-origen",
+            "strategy-asistente-equipo",
+            "strategy-asistente-inicio",
+            "strategy-nuevo-evento",
+            "strategy-asistente-combinacion",
+            "strategy-asistente-reglas",
+            "strategy-asistente-pilotos",
+            "strategy-asistente-sesiones",
+            "strategy-editor-carrera",
+            "strategy-revisiones",
+        ] {
+            assert!(CaptureState::parse(name).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn strategy_capture_keeps_pass_27_values_separate_from_solver_inputs() {
+        let demo = StrategyCaptureDemo::load().expect("mock pass-27");
+        assert_eq!(demo.samples.len(), 12);
+        assert_eq!(demo.samples[7].quality, "Desconocida");
+        assert_eq!(demo.stints.len(), 3);
+        assert_eq!(demo.stints[0].driver, "Isaac Albalá");
+        assert_eq!(
+            demo.stops.iter().map(|stop| stop.lap).collect::<Vec<_>>(),
+            [23, 46]
+        );
+        assert!((demo.total_seconds - 7357.57).abs() < 0.001);
+        assert!((demo.reserve_laps - 1.14).abs() < 0.001);
     }
 
     #[test]

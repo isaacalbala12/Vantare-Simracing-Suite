@@ -2,7 +2,7 @@
   "label": "2026-09-15 · Imola Race",
   "source": {
     "base": {
-      "sessionId": "demo-imola-2026-09-15",
+      "sessionId": "imola-race",
       "contentSha256": "76bdfae6653a7dc7574fbea50de484df5ea9294ed315585eae9889a11bd11f7a",
       "sizeBytes": 4096,
       "parserId": "vantare-demo-recording",
@@ -12,13 +12,13 @@
       "segmentationDigest": "1a47ec0cbbde16e4c6ba0057de0f6d849a8c51f49ad7d68eda450b6c93fcd955"
     },
     "revision": {
-      "sessionId": "demo-imola-2026-09-15",
+      "sessionId": "imola-race",
       "baseDigest": "0000000000000000000000000000000000000000000000000000000000000000",
-      "revisionId": "8ac57beb83e6d801fba8e7ef3ff656877e9733927445924fa42486fab1ac4161",
-      "snapshotId": "7ad36bf6c5464aa80d85d063e78abd9e3317308ac88843265c049edf9818ebdc"
+      "revisionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "snapshotId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     "validity": {
-      "sessionId": "demo-imola-2026-09-15",
+      "sessionId": "imola-race",
       "computationVersion": "analysis.v1",
       "temporal": {
         "contractVersion": "temporalsegments.v1",

@@ -1,0 +1,127 @@
+{
+  "totalSeconds": 7357.57,
+  "reserveLaps": 1.14,
+  "requiredLaps": 1.0,
+  "capacityLiters": 110.0,
+  "fuelPerLap": 2.71,
+  "vePerLap": 3.45,
+  "stints": [
+    {
+      "driver": "Isaac Albalá",
+      "paceSeconds": 104.38,
+      "fuelLiters": 64.53,
+      "vePercent": 83.35
+    },
+    {
+      "driver": "Sol Martín",
+      "paceSeconds": 104.65,
+      "fuelLiters": 64.53,
+      "vePercent": 83.35
+    },
+    {
+      "driver": "Diego Ferrer",
+      "paceSeconds": 104.92,
+      "fuelLiters": 64.53,
+      "vePercent": 83.35
+    }
+  ],
+  "stops": [
+    {
+      "lap": 23,
+      "fuelIn": 2.2,
+      "fuelOut": 64.6,
+      "veIn": 4.0,
+      "veOut": 82.0,
+      "fuelAdded": 62.4,
+      "veAdded": 78.0,
+      "transitSeconds": 22.4,
+      "serviceSeconds": 24.96,
+      "overlapSeconds": 31.33,
+      "totalSeconds": 47.36,
+      "compound": "Medio",
+      "changeTyres": true
+    },
+    {
+      "lap": 46,
+      "fuelIn": 2.2,
+      "fuelOut": 64.6,
+      "veIn": 4.0,
+      "veOut": 82.0,
+      "fuelAdded": 62.4,
+      "veAdded": 78.0,
+      "transitSeconds": 22.4,
+      "serviceSeconds": 24.96,
+      "overlapSeconds": 31.33,
+      "totalSeconds": 47.36,
+      "compound": "Medio",
+      "changeTyres": true
+    }
+  ],
+  "samples": [
+    {
+      "value": 106.0,
+      "quality": "Válida"
+    },
+    {
+      "value": 103.3,
+      "quality": "Válida"
+    },
+    {
+      "value": 100.6,
+      "quality": "Válida"
+    },
+    {
+      "value": 97.9,
+      "quality": "Válida"
+    },
+    {
+      "value": 95.2,
+      "quality": "Válida"
+    },
+    {
+      "value": 92.5,
+      "quality": "Válida"
+    },
+    {
+      "value": 89.8,
+      "quality": "Válida"
+    },
+    {
+      "value": 87.1,
+      "quality": "Desconocida"
+    },
+    {
+      "value": 84.4,
+      "quality": "Válida"
+    },
+    {
+      "value": 81.7,
+      "quality": "Válida"
+    },
+    {
+      "value": 79.0,
+      "quality": "Válida"
+    },
+    {
+      "value": 76.3,
+      "quality": "Válida"
+    }
+  ],
+  "files": [
+    {
+      "name": "2026-09-15_Imola_Active.duckdb",
+      "details": "15/9/2026, 14:01:00 · 20.4 MB",
+      "ready": false
+    },
+    {
+      "name": "2026-09-15_Imola_Race.duckdb",
+      "details": "15/9/2026, 12:32:00 · 175.8 MB",
+      "ready": true
+    },
+    {
+      "name": "2026-09-14_Imola_Practice.duckdb",
+      "details": "14/9/2026, 21:10:00 · 91.7 MB",
+      "ready": true
+    }
+  ]
+}

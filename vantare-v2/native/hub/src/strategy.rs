@@ -178,6 +178,7 @@ pub struct Strategy {
     garage: Option<Arc<RenderImage>>,
     garage_detail: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
+    capture_demo: Option<crate::demo::StrategyCaptureDemo>,
     automatic_preparation: Option<application::AutomaticPreparation>,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
@@ -238,8 +239,6 @@ impl Strategy {
             return strategy;
         };
         strategy.page = match page {
-            crate::demo::CaptureStrategyPage::Collection => Page::Collection,
-            crate::demo::CaptureStrategyPage::Create => Page::Create,
             crate::demo::CaptureStrategyPage::DataEmpty
             | crate::demo::CaptureStrategyPage::DataSources
             | crate::demo::CaptureStrategyPage::DataLaps
@@ -269,23 +268,30 @@ impl Strategy {
             crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
             crate::demo::CaptureStrategyPage::Revisions => Page::Editor(EditorTab::Revisiones),
         };
+        match crate::demo::StrategyCaptureDemo::load() {
+            Ok(demo) => strategy.capture_demo = Some(demo),
+            Err(error) => strategy.error = Some(error),
+        }
+        strategy.manual_source_status = SourceStatus::Open;
         strategy.automatic = false;
-        if page != crate::demo::CaptureStrategyPage::Create
-            && let Err(error) = strategy.seed_capture_demo(cx)
-        {
+        if let Err(error) = strategy.seed_capture_demo(cx) {
             strategy.error = Some(error);
         }
         if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
             strategy.automatic = true;
-        }
-        if page == crate::demo::CaptureStrategyPage::Create {
-            strategy.start_form(cx);
         }
         if matches!(
             page,
             crate::demo::CaptureStrategyPage::DataSources
                 | crate::demo::CaptureStrategyPage::DataLaps
                 | crate::demo::CaptureStrategyPage::DataAdvanced
+                | crate::demo::CaptureStrategyPage::PlanIdle
+                | crate::demo::CaptureStrategyPage::PlanLoading
+                | crate::demo::CaptureStrategyPage::PlanPartial
+                | crate::demo::CaptureStrategyPage::PlanError
+                | crate::demo::CaptureStrategyPage::PlanCalculated
+                | crate::demo::CaptureStrategyPage::Stints
+                | crate::demo::CaptureStrategyPage::Stops
         ) && let Err(error) = strategy.load_capture_review(page)
         {
             strategy.error = Some(error);
@@ -309,7 +315,8 @@ impl Strategy {
         &mut self,
         page: crate::demo::CaptureStrategyPage,
     ) -> Result<(), String> {
-        let demo = crate::demo::strategy_review_demo()?;
+        let mut demo = crate::demo::strategy_review_demo()?;
+        demo.source.validity.laps.truncate(5);
         let revisions = vec![demo.source.revision.clone()];
         self.set_review_source(demo.label, demo.source, revisions, &[])?;
         let (selected_lap, advanced, sources_open) = match page {
@@ -324,9 +331,6 @@ impl Strategy {
 
     fn load_capture_plan(&mut self, page: crate::demo::CaptureStrategyPage) -> Result<(), String> {
         let input = capture_solver_input(page)?;
-        let document = Document::empty("2026-09-15T12:00:00Z")?;
-        self.editor.saved = Some(document.bytes().to_vec());
-        self.editor.document = Some(document);
         self.manual_source_status = SourceStatus::Open;
 
         if page == crate::demo::CaptureStrategyPage::PlanLoading {
@@ -424,6 +428,7 @@ impl Strategy {
             garage,
             garage_detail,
             demo_car: None,
+            capture_demo: None,
             automatic_preparation: None,
             duration: None,
             event: 0,

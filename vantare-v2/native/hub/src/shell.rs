@@ -331,6 +331,13 @@ impl Render for Hub {
                     })
                     .child(content),
             );
+        let background = if self.section == Section::Strategy {
+            self.strategy
+                .read(cx)
+                .garage_background(f32::from(window.viewport_size().width))
+        } else {
+            None
+        };
         div()
             .id("hub")
             .track_focus(&self.focus)
@@ -343,16 +350,7 @@ impl Render for Hub {
             .bg(gpui::rgb(orbit::CANVAS))
             .text_color(gpui::rgb(orbit::INK))
             .font_family("Inter W400")
-            .when_some(
-                (self.section == Section::Strategy)
-                    .then(|| {
-                        self.strategy
-                            .read(cx)
-                            .garage_background(f32::from(window.viewport_size().width))
-                    })
-                    .flatten(),
-                gpui::ParentElement::child,
-            )
+            .when_some(background, gpui::ParentElement::child)
             .child(rail)
             .when(
                 self.shell.column_open

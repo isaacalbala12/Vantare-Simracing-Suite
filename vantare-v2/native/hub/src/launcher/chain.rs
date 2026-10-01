@@ -74,6 +74,7 @@ struct RunContext {
     processes: processes::Shared,
     next_decision: AtomicU64,
     selected: Vec<usize>,
+    detached: bool,
 }
 impl RunContext {
     fn ask(
@@ -218,6 +219,26 @@ impl Chain {
         processes: processes::Shared,
         selected: Vec<usize>,
     ) -> Result<Self, String> {
+        Self::start_mode(document, profile, discovery, processes, selected, false)
+    }
+    /// Apps del sim-rig fuera del Job del supervisor; su política Leave sigue siendo real.
+    pub fn start_detached(
+        document: Document,
+        profile: Profile,
+        discovery: Discovery,
+        processes: processes::Shared,
+    ) -> Result<Self, String> {
+        let selected = (0..profile.steps.len()).collect();
+        Self::start_mode(document, profile, discovery, processes, selected, true)
+    }
+    fn start_mode(
+        document: Document,
+        profile: Profile,
+        discovery: Discovery,
+        processes: processes::Shared,
+        selected: Vec<usize>,
+        detached: bool,
+    ) -> Result<Self, String> {
         if selected.is_empty()
             || selected.iter().any(|&index| index >= profile.steps.len())
             || selected.windows(2).any(|pair| pair[0] >= pair[1])
@@ -243,6 +264,7 @@ impl Chain {
             processes,
             next_decision: AtomicU64::new(1),
             selected,
+            detached,
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
@@ -308,7 +330,7 @@ fn emit(
         .is_ok()
 }
 
-fn command(executable: &std::path::Path, args: &[String]) -> Result<Child, String> {
+fn command(executable: &std::path::Path, args: &[String], detached: bool) -> Result<Child, String> {
     if !is_executable(executable) {
         return Err(format!("ejecutable ausente: {}", executable.display()));
     }
@@ -322,8 +344,10 @@ fn command(executable: &std::path::Path, args: &[String]) -> Result<Child, Strin
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: no consola para helpers.
+        command.creation_flags(0x0800_0000 | if detached { 0x0100_0000 } else { 0 }); // CREATE_NO_WINDOW: no consola para helpers.
     }
+    #[cfg(not(windows))]
+    let _ = detached;
     command
         .spawn()
         .map_err(|e| format!("arrancar {}: {e}", executable.display()))
@@ -421,9 +445,9 @@ fn launch(
             .ok_or("Steam no encontrado; no se puede lanzar el juego")?;
         let mut steam_args = vec!["-applaunch".into(), steam_id.to_string()];
         steam_args.extend(args);
-        command(steam, &steam_args)?
+        command(steam, &steam_args, context.detached)?
     } else {
-        command(executable, &args)?
+        command(executable, &args, context.detached)?
     };
     let pid = child.id();
     let dispatcher = if steam_id.is_some() {
@@ -693,7 +717,7 @@ fn close_cancelled(
     }
     let action = match policy.cancel {
         Close::Leave => Action::Leave,
-        Close::CloseStarted => Action::CloseStarted,
+        Close::Started => Action::CloseStarted,
         Close::Ask => context.ask(
             None,
             format!("¿Cerrar las aplicaciones iniciadas por {}?", profile.name),

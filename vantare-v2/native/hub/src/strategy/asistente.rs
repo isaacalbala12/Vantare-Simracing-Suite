@@ -108,13 +108,19 @@ impl Strategy {
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene unida la composición de un paso del asistente.
-    pub(super) fn assistant_page(&self, step: AssistantStep, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn assistant_page(
+        &self,
+        step: AssistantStep,
+        viewport_height: f32,
+        cx: &mut Context<Self>,
+    ) -> gpui::Div {
         let main = div()
             .id("strategy-assistant")
             .relative()
             .flex()
             .flex_col()
             .flex_1()
+            .h(px((viewport_height - orbit::TOPBAR_H).max(0.0)))
             .min_w_0()
             .overflow_hidden()
             .bg(rgb(0x0010_1114));
@@ -226,29 +232,39 @@ impl Strategy {
             .flex()
             .items_center()
             .justify_between()
+            .h(px(112.0))
+            .flex_none()
             .border_t_1()
-            .border_color(rgba(orbit::LINE))
+            .border_color(rgba(orbit::LINE_STRONG))
             .bg(rgba(0x0809_0bf0))
-            .px(px(24.0))
-            .py(px(14.0))
-            .child(orbit::text(
-                "✓  Originales intactos",
-                orbit::BODY,
-                500,
-                orbit::INK_2,
-            ))
+            .px(px(32.0))
             .child(
                 gpui::div()
                     .flex()
-                    .gap(px(10.0))
+                    .items_center()
+                    .gap(px(14.0))
                     .child(
-                        button(
+                        gpui::div()
+                            .size(px(22.0))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .rounded_full()
+                            .border_1()
+                            .border_color(rgba(orbit::LINE_STRONG))
+                            .child(orbit::text("✓", 12.0, 600, orbit::INK_2)),
+                    )
+                    .child(orbit::text("Originales intactos", 14.0, 500, orbit::INK_2)),
+            )
+            .child(
+                gpui::div()
+                    .flex()
+                    .gap(px(18.0))
+                    .child(
+                        Self::assistant_footer_button(
                             "strategy-assistant-back",
-                            if step.previous().is_some() {
-                                "← Atrás"
-                            } else {
-                                "Cancelar"
-                            },
+                            "← Atrás",
+                            false,
                         )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(previous) = step.previous() {
@@ -262,7 +278,7 @@ impl Strategy {
                         })),
                     )
                     .child(
-                        button(
+                        Self::assistant_footer_button(
                             "strategy-assistant-next",
                             if step == AssistantStep::Sesiones {
                                 if self.automatic {
@@ -273,6 +289,7 @@ impl Strategy {
                             } else {
                                 "Continuar →"
                             },
+                            true,
                         )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(next) = step.next() {
@@ -340,6 +357,44 @@ impl Strategy {
                     .child(footer),
             );
         div().flex().flex_1().min_w_0().min_h(px(0.0)).child(main)
+    }
+
+    fn assistant_footer_button(
+        id: &'static str,
+        label: &str,
+        primary: bool,
+    ) -> gpui::Stateful<gpui::Div> {
+        gpui::div()
+            .id(id)
+            .role(gpui::Role::Button)
+            .aria_label(label.to_owned())
+            .tab_index(0)
+            .flex()
+            .items_center()
+            .justify_center()
+            .h(px(56.0))
+            .w(px(150.0))
+            .rounded(px(12.0))
+            .bg(rgb(if primary {
+                orbit::PRIMARY_BG
+            } else {
+                orbit::SURFACE_2
+            }))
+            .border_1()
+            .border_color(if primary {
+                rgb(orbit::PRIMARY_BG)
+            } else {
+                rgba(orbit::LINE_STRONG)
+            })
+            .cursor_pointer()
+            .hover(|style| style.bg(rgb(orbit::SURFACE_3)))
+            .focus_visible(|style| style.border_color(rgb(orbit::CARMINE)))
+            .child(orbit::text(
+                label.to_owned(),
+                15.0,
+                600,
+                if primary { 0x001c_1719 } else { orbit::INK },
+            ))
     }
 
     fn start_choices(&self, cx: &mut Context<Self>) -> gpui::Div {

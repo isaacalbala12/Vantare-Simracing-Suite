@@ -470,12 +470,17 @@ impl Strategy {
     ) -> AnyElement {
         let content = match self.page {
             Page::Collection => self.collection(cx),
-            Page::Assistant(step) => self.assistant_page(step, cx),
+            Page::Assistant(step) => {
+                self.assistant_page(step, f32::from(window.viewport_size().height), cx)
+            }
             Page::Create => self.event_form(window, cx),
             Page::Editor(tab) => self.editor_page(tab, cx),
         };
         column()
             .id("strategy")
+            .when(matches!(self.page, Page::Assistant(_)), |page| {
+                page.h_full().min_h(px(0.0))
+            })
             .child(content)
             .when_some(self.error.clone(), |page, error| {
                 page.child(orbit::callout(error))

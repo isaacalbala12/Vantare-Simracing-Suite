@@ -382,7 +382,7 @@ fn number(
     })
 }
 
-// NumberControl conserva enteros no negativos acotados a 3600 (o 3 reintentos).
+// NumberControl conserva enteros u32 no negativos (o de 0 a 3 reintentos).
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn seconds(control: &Entity<NumberControl>, cx: &Context<Launcher>) -> u32 {
     control.read(cx).range.value as u32
@@ -472,9 +472,9 @@ impl Launcher {
         };
         let advanced = draft.tabs.read(cx).state.selected == Some(1);
         let mut targets = vec![
+            draft.name.read(cx).focus_handle(),
             draft.description.read(cx).focus_handle(),
             draft.notes.read(cx).focus_handle(),
-            draft.name.read(cx).focus_handle(),
             draft.tabs.read(cx).focus_handle(),
         ];
         for (index, step) in draft.steps.iter().enumerate() {
@@ -495,6 +495,8 @@ impl Launcher {
                 draft.cancel.read(cx).focus_handle(),
                 draft.exit.read(cx).focus_handle(),
                 draft.retry_policy.read(cx).focus_handle(),
+                draft.hotkey.read(cx).focus_handle(),
+                draft.autostart.read(cx).focus_handle(),
                 draft.retries.read(cx).focus_handle(),
             ]);
         }
@@ -686,6 +688,10 @@ impl Launcher {
             name: input(profile.name.clone(), "Nombre de perfil", cx),
             description,
             notes,
+            hotkey: input(profile.hotkey.clone(), "Atajo: ctrl+shift+1", cx),
+            autostart: cx.new(|cx| {
+                orbit::Checkbox::new("Iniciar con Windows", profile.launch_on_windows_startup, cx)
+            }),
             first_delay: number(policy.first_step_delay, u32::MAX, "Espera inicial (s)", cx),
             retries: number(u32::from(policy.max_retries), 3, "Reintentos por paso", cx),
             failure: policy_choice(
@@ -784,6 +790,8 @@ impl Launcher {
                 .clone_from(&draft.description.read(cx).value);
             profile.notes.clone_from(&draft.notes.read(cx).value);
             profile.advanced = draft.tabs.read(cx).state.selected == Some(1);
+            profile.hotkey.clone_from(&draft.hotkey.read(cx).value);
+            profile.launch_on_windows_startup = draft.autostart.read(cx).checked;
             profile.first_step_delay = seconds(&draft.first_delay, cx);
             profile.max_retries = u8::try_from(seconds(&draft.retries, cx))
                 .map_err(|error| format!("reintentos inválidos: {error}"))?;
@@ -832,17 +840,7 @@ impl Launcher {
                 return;
             }
         };
-        if self.edit(
-            move |doc| {
-                if let Some(current) = doc.profiles.iter_mut().find(|p| p.id == profile.id) {
-                    *current = profile;
-                } else {
-                    doc.profiles.push(profile);
-                }
-                Ok(())
-            },
-            cx,
-        ) {
+        if self.edit(move |doc| doc.save_profile(profile), cx) {
             self.profile_draft = None;
         }
     }
@@ -886,8 +884,8 @@ impl Launcher {
             .child(editor_field("Descripción", draft.description.clone()).mt(px(14.0)))
             .child(editor_field("Notas", draft.notes.clone()).mt(px(14.0)))
             .child(self.profile_steps_section(draft, advanced, cx))
-            .child(Self::profile_hotkey_row())
-            .child(Self::profile_autostart_row())
+            .child(Self::profile_hotkey_row(draft, cx))
+            .child(Self::profile_autostart_row(draft, cx))
             .when(advanced, |form| {
                 form.child(self.profile_advanced_section(draft, cx))
             })
@@ -1045,7 +1043,7 @@ impl Launcher {
             )
     }
 
-    fn profile_hotkey_row() -> gpui::Div {
+    fn profile_hotkey_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
         div()
             .mt(px(20.0))
             .min_h(px(54.0))
@@ -1082,11 +1080,15 @@ impl Launcher {
                     .font_family("Cascadia Code")
                     .text_size(px(12.0))
                     .text_color(rgb(orbit::INK_3))
-                    .child("sin asignar"),
+                    .child(if draft.hotkey.read(cx).value.is_empty() {
+                        "sin asignar".into()
+                    } else {
+                        draft.hotkey.read(cx).value.clone()
+                    }),
             )
     }
 
-    fn profile_autostart_row() -> gpui::Div {
+    fn profile_autostart_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
         div()
             .mt(px(18.0))
             .min_h(px(26.0))
@@ -1097,7 +1099,7 @@ impl Launcher {
             .child(orbit::toggle(
                 "windows-start",
                 "Iniciar con Windows",
-                false,
+                draft.autostart.read(cx).checked,
                 false,
             ))
     }
@@ -1109,6 +1111,11 @@ impl Launcher {
             .flex_col()
             .gap(px(12.0))
             .child(orbit::eyebrow("Políticas nativas"))
+            .child(editor_field("Atajo global preparado", draft.hotkey.clone()))
+            .child(editor_field(
+                "Inicio Windows preparado",
+                draft.autostart.clone(),
+            ))
             .child(editor_field("Ante un fallo", draft.failure.clone()))
             .child(editor_field("Aplicación ya abierta", draft.reuse.clone()))
             .child(editor_field("Al cancelar", draft.cancel.clone()))

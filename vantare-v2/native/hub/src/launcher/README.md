@@ -336,3 +336,36 @@ oculto de PowerShell/WScript.Shell del propio Windows, salida hasta 128 KiB y
 20 segundos por grupo. No se instala una dependencia ni se ejecuta/guarda el `.lnk`.
 Los tests crean un acceso directo real y comprueban bytes intactos y no ejecución;
 los árboles Steam son fixtures de rutas, no prueba de una instalación de Steam real.
+
+## Hito 7 — preferencias de disparadores (registro pendiente)
+El editor avanzado permite preparar el atajo y el perfil de arranque. Valida
+modificadores/tecla, normaliza flags y VK Win32, rechaza reservados y conflictos
+entre perfiles; al elegir otro autostart desmarca el anterior de forma atómica.
+La vista básica conserva indicadores, sin fingir que están registrados. La
+interfaz avanzada explica que falta el propietario residente.
+
+**Pendiente explícito autorizado por la tarea:** el núcleo no ofrece un dueño
+residente de perfiles Launcher ni bucle WM_HOTKEY/ruta CLI de lanzamiento. El Hub
+se cierra al entrar en Live. No registrar aquí RegisterHotKey ni escribir HKCU Run
+contra un comando inexistente. El siguiente corte debe conectar el propietario
+residente con el store y las políticas existentes, desregistrar/revocar al salir,
+y verificar tecla real, conflicto con otras apps, inicio de sesión Windows y
+comportamiento durante Live. No hay cambios de registro ni atajos globales activos.
+
+## Verificación manual pendiente del orquestador
+1. Importar una copia de configuración Wails con perfiles y apps, comprobar datos
+   y bytes originales, reiniciar y confirmar que no reimporta; probar nativo vacío.
+2. Con apps reales: reutilizar externa, reiniciar propia, fallo/continuar/parar,
+   cancelar en espera/sondeo, cerrar solo hijas propias y decidir al salir.
+3. Lanzar por fila, Inicio y Ctrl+K; retry selectivo y entero; validaciones, copiar,
+   borrar confirmado y pegar ruta. Verificar mouse/teclado dentro del drawer.
+4. Detectar Steam y .lnk reales de usuario con permisos/rutas portables; comprobar
+   Steam/Discord bootstrappers y que no se cierra un proceso observado sin propiedad.
+5. DPI/IME/OBS y otros GPU no están certificados por los tests ni las dos capturas.
+
+Límites: cierre forzado de hijos directos; no autoridad sobre descendientes de
+bootstrappers/Steam; salida automática Live no pregunta; no registro efectivo de
+hotkey/autostart, extracción de iconos ni actualización de estadísticas históricas.
+El banco usa fixtures demo Wails; no acredita estos flujos productivos por sí solo.
+Notion sigue sin acceso por excepción expresa; el orquestador debe reconciliar allí
+la entrega y la base asignada con nightly antes de integrar. Sin push, PR ni merge.

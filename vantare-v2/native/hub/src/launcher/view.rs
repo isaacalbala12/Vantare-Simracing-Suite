@@ -33,6 +33,8 @@ struct ProfileDraft {
     name: Entity<Input>,
     description: Entity<Input>,
     notes: Entity<Input>,
+    hotkey: Entity<Input>,
+    autostart: Entity<orbit::Checkbox>,
     first_delay: Entity<orbit::NumberControl>,
     retries: Entity<orbit::NumberControl>,
     failure: Entity<orbit::Choice>,

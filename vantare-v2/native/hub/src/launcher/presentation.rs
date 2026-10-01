@@ -449,7 +449,7 @@ impl Launcher {
             .child(div().id("launcher-context").flex_1().min_h_0().overflow_y_scroll()
                 .child(profiles).child(favorites)
                 .child(orbit::card_body().child(orbit::eyebrow(format!("Catálogo · {} · {detected} detectadas", self.store.document.apps.len())))
-                    .child(text("La detección busca en el registro y Steam. Accesos directos: pendiente.", orbit::SECONDARY, 400, orbit::INK_3))))
+                    .child(text("La detección busca en el registro, Steam y accesos directos locales.", orbit::SECONDARY, 400, orbit::INK_3))))
             .child(orbit::card_body()
                 .child(orbit::eyebrow("Próximas carreras"))
                 .child(chip("pendiente · contexto de calendario", Tone::Neutral))

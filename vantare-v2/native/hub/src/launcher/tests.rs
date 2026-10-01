@@ -10,6 +10,55 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn hotkeys_normalize_win32_codes_and_reject_reserved_unknown_or_duplicate_modifiers() {
+    let key = triggers::Hotkey::parse(" SHIFT + Ctrl + 1 ")
+        .expect("parse")
+        .expect("assigned");
+    assert_eq!(key.modifiers, 6);
+    assert_eq!(key.virtual_key, u32::from(b'1'));
+    assert_eq!(key.display(), "ctrl+shift+1");
+    assert!(triggers::Hotkey::parse(" ").expect("unassigned").is_none());
+    for invalid in [
+        "ctrl+c",
+        "win+l",
+        "alt+f4",
+        "alt+tab",
+        "ctrl+ctrl+1",
+        "meta+1",
+        "a",
+        "ctrl+enter",
+        "ctrl+🙂",
+    ] {
+        assert!(triggers::Hotkey::parse(invalid).is_err(), "{invalid}");
+    }
+}
+
+#[test]
+fn trigger_preferences_save_atomically_allow_one_startup_profile_and_detect_hotkey_conflicts() {
+    let mut document = Document::fresh_install();
+    let mut creator = document.profiles[0].clone();
+    creator.hotkey = "shift+ctrl+1".into();
+    creator.launch_on_windows_startup = true;
+    document.save_profile(creator).expect("first preference");
+    let mut pro = document.profiles[1].clone();
+    pro.hotkey = "ctrl+shift+1".into();
+    pro.launch_on_windows_startup = true;
+    assert!(document.save_profile(pro.clone()).is_err());
+    assert!(document.profiles[0].launch_on_windows_startup);
+    assert!(!document.profiles[1].launch_on_windows_startup);
+    pro.hotkey = "ctrl+shift+2".into();
+    document
+        .save_profile(pro.clone())
+        .expect("transfer startup preference");
+    assert!(!document.profiles[0].launch_on_windows_startup);
+    assert!(document.profiles[1].launch_on_windows_startup);
+    assert_eq!(document.profiles[0].hotkey, "ctrl+shift+1");
+    pro.steps.clear();
+    assert!(document.save_profile(pro).is_err());
+    assert_eq!(document.profiles[1].steps.len(), 4);
+}
+
+#[test]
 fn steam_common_detects_non_game_catalog_apps_and_shortcuts_never_override_manual_paths() {
     let tree = Tree::new();
     let steam = tree.0.join("Steam");

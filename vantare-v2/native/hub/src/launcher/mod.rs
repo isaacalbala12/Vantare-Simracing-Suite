@@ -6,6 +6,7 @@ mod migration;
 pub mod policy;
 pub mod processes;
 mod shortcuts;
+pub mod triggers;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]

@@ -333,6 +333,11 @@ pub enum CaptureStrategyPage {
     DataSources,
     DataLaps,
     DataAdvanced,
+    PlanIdle,
+    PlanLoading,
+    PlanPartial,
+    PlanError,
+    PlanCalculated,
 }
 
 impl CaptureState {
@@ -364,7 +369,12 @@ impl CaptureState {
             | "strategy-datos-vacio"
             | "strategy-datos-fuentes"
             | "strategy-datos-vueltas"
-            | "strategy-datos-avanzado" => Section::Strategy,
+            | "strategy-datos-avanzado"
+            | "strategy-plan-reposo"
+            | "strategy-plan-cargando"
+            | "strategy-plan-parcial"
+            | "strategy-plan-error"
+            | "strategy-plan-calculado" => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-informe"
@@ -413,6 +423,11 @@ impl CaptureState {
             "strategy-datos-fuentes" => Some(CaptureStrategyPage::DataSources),
             "strategy-datos-vueltas" => Some(CaptureStrategyPage::DataLaps),
             "strategy-datos-avanzado" => Some(CaptureStrategyPage::DataAdvanced),
+            "strategy-plan-reposo" => Some(CaptureStrategyPage::PlanIdle),
+            "strategy-plan-cargando" => Some(CaptureStrategyPage::PlanLoading),
+            "strategy-plan-parcial" => Some(CaptureStrategyPage::PlanPartial),
+            "strategy-plan-error" => Some(CaptureStrategyPage::PlanError),
+            "strategy-plan-calculado" => Some(CaptureStrategyPage::PlanCalculated),
             _ => None,
         };
         Ok(Self {
@@ -499,6 +514,14 @@ mod tests {
             ("strategy-datos-fuentes", CaptureStrategyPage::DataSources),
             ("strategy-datos-vueltas", CaptureStrategyPage::DataLaps),
             ("strategy-datos-avanzado", CaptureStrategyPage::DataAdvanced),
+            ("strategy-plan-reposo", CaptureStrategyPage::PlanIdle),
+            ("strategy-plan-cargando", CaptureStrategyPage::PlanLoading),
+            ("strategy-plan-parcial", CaptureStrategyPage::PlanPartial),
+            ("strategy-plan-error", CaptureStrategyPage::PlanError),
+            (
+                "strategy-plan-calculado",
+                CaptureStrategyPage::PlanCalculated,
+            ),
         ] {
             assert_eq!(CaptureState::parse(name).unwrap().strategy_page, Some(page));
         }

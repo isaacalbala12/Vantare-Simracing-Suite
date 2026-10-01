@@ -14,6 +14,7 @@ pub(super) enum Page {
     Continue,
     Workspace,
     Data,
+    Plan,
 }
 impl Page {
     fn back(self) -> Self {
@@ -474,22 +475,24 @@ impl Strategy {
             Page::Continue => Self::continuation(cx).into_any_element(),
             Page::Workspace => self.workspace(cx).into_any_element(),
             Page::Data => self.data_page(cx),
+            Page::Plan => self.plan_page(cx),
         };
-        let tabs = matches!(self.page, Page::Workspace | Page::Data).then(|| self.section_tabs(cx));
+        let tabs = matches!(self.page, Page::Workspace | Page::Data | Page::Plan)
+            .then(|| self.section_tabs(cx));
         column()
             .id("strategy")
             .when(self.page != Page::Collection, |page| {
                 page.child(
                     button(
                         "strategy-collection",
-                        if self.page == Page::Data {
+                        if matches!(self.page, Page::Data | Page::Plan) {
                             "← Volver al asistente"
                         } else {
                             "← Mis estrategias"
                         },
                     )
                     .on_click(cx.listener(|this, _, _, cx| {
-                        if this.page == Page::Data {
+                        if matches!(this.page, Page::Data | Page::Plan) {
                             this.page = Page::Start;
                             cx.notify();
                         } else {
@@ -507,7 +510,10 @@ impl Strategy {
                 page.child(orbit::callout(error))
             })
             .when(
-                matches!(self.page, Page::Collection | Page::Workspace | Page::Data),
+                matches!(
+                    self.page,
+                    Page::Collection | Page::Workspace | Page::Data | Page::Plan
+                ),
                 |page| {
                     page.child(orbit::text(
                         self.status.clone(),
@@ -531,11 +537,11 @@ impl Strategy {
     }
 
     fn section_tabs(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let selected = self.page == Page::Data;
+        let selected = self.page;
         row()
             .child(
                 button("strategy-tab-race", "Carrera")
-                    .when(!selected, |tab| {
+                    .when(selected == Page::Workspace, |tab| {
                         tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
                     })
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -545,11 +551,21 @@ impl Strategy {
             )
             .child(
                 button("strategy-tab-data", "Datos")
-                    .when(selected, |tab| {
+                    .when(selected == Page::Data, |tab| {
                         tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
                     })
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.page = Page::Data;
+                        cx.notify();
+                    })),
+            )
+            .child(
+                button("strategy-tab-plan", "Plan")
+                    .when(selected == Page::Plan, |tab| {
+                        tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.page = Page::Plan;
                         cx.notify();
                     })),
             )

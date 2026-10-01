@@ -85,6 +85,10 @@ impl State {
         Ok(())
     }
 
+    pub(super) fn selected_revisions(&self) -> &[AnalysisRevisionRef] {
+        &self.selected_revisions
+    }
+
     pub(super) fn set_capture_view(
         &mut self,
         page: usize,

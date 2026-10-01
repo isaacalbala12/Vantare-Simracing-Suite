@@ -442,9 +442,32 @@ impl Hub {
                 this.shell.column_open = false;
                 cx.notify();
             }));
-        let column = orbit::column_with_collapse(title, version, collapse)
-            .w(px(width))
-            .id("hub-context-column");
+        let column = if section_content.is_some() {
+            div()
+                .h_full()
+                .flex_none()
+                .flex()
+                .flex_col()
+                .px(px(10.0))
+                .bg(rgb(orbit::COLUMN_BG))
+                .border_r_1()
+                .border_color(rgba(orbit::LINE))
+                .child(
+                    div()
+                        .h(px(60.0))
+                        .flex_none()
+                        .flex()
+                        .items_center()
+                        .border_b_1()
+                        .border_color(rgba(orbit::LINE_ROW))
+                        .child(orbit::text(title.to_owned(), 12.0, 700, orbit::INK).flex_1())
+                        .child(collapse),
+                )
+        } else {
+            orbit::column_with_collapse(title, version, collapse)
+        }
+        .w(px(width))
+        .id("hub-context-column");
         self.context_blocks(column, section_content, cx)
             .w(px(width))
     }
@@ -455,11 +478,18 @@ impl Hub {
         section_content: Option<gpui::Div>,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
+        let strategy = section_content.is_some();
         let races = div()
             .flex()
             .flex_col()
-            .child(Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas"))
-            .child(Self::context_row("Sin salidas próximas", "", None));
+            .child(
+                Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas", strategy)
+                    .when(strategy, |heading| heading.pb(px(9.0))),
+            )
+            .child(
+                Self::context_row("Sin salidas próximas", "", None)
+                    .when(strategy, |row| row.relative().left(px(1.0)).top(px(-2.0))),
+            );
         let overlay = self.overlay_context(cx);
         let launcher = self.launcher_context(cx);
         let mut blocks = div()
@@ -469,15 +499,21 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(6.0))
-            .pt(px(6.0))
+            .pt(px(if section_content.is_some() { 10.0 } else { 6.0 }))
             .overflow_y_scroll();
         if let Some(content) = section_content {
             blocks = blocks.child(content);
         }
         column.child(
             blocks
-                .child(Self::context_block("races", races))
-                .child(Self::context_block("overlay", overlay))
+                .child(
+                    Self::context_block("races", races)
+                        .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
+                )
+                .child(
+                    Self::context_block("overlay", overlay)
+                        .when(strategy, |block| block.h(px(82.0)).pt(px(15.0)).pb(px(0.0))),
+                )
                 .when(
                     !matches!(
                         self.section,
@@ -493,13 +529,21 @@ impl Hub {
     }
 
     fn overlay_context(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let heading = Self::context_heading("PERFIL DE OVERLAY", "DETENIDO");
+        let heading = Self::context_heading(
+            "PERFIL DE OVERLAY",
+            "DETENIDO",
+            self.section == Section::Strategy,
+        )
+        .when(self.section == Section::Strategy, |heading| {
+            heading.pb(px(13.0))
+        });
         let Some(profile) = self.demo.as_ref().and_then(|demo| demo.overlay_profile()) else {
-            return div()
-                .flex()
-                .flex_col()
-                .child(heading)
-                .child(Self::context_row("Sin perfiles todavía", "", None));
+            return div().flex().flex_col().child(heading).child(
+                Self::context_row("Sin perfiles todavía", "", None)
+                    .when(self.section == Section::Strategy, |row| {
+                        row.relative().left(px(1.0))
+                    }),
+            );
         };
         let row = div()
             .id("context-overlay-profile")
@@ -549,8 +593,16 @@ impl Hub {
     }
 
     fn launcher_context(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let heading = Self::context_heading("LAUNCHER", "Gestionar");
-        let mut profiles = div().flex().flex_col().px(px(2.0)).gap(px(2.0));
+        let heading =
+            Self::context_heading("LAUNCHER", "Gestionar", self.section == Section::Strategy);
+        let mut profiles = div()
+            .flex()
+            .flex_col()
+            .px(px(2.0))
+            .gap(px(2.0))
+            .when(self.section == Section::Strategy, |profiles| {
+                profiles.relative().top(px(-2.0))
+            });
         if let Some(demo) = &self.demo {
             for (index, profile) in demo.launcher.profiles.iter().enumerate() {
                 let profile = profile.clone();
@@ -581,11 +633,19 @@ impl Hub {
                             .min_w_0()
                             .flex()
                             .flex_col()
-                            .gap(px(2.0))
+                            .gap(px(if self.section == Section::Strategy {
+                                0.0
+                            } else {
+                                2.0
+                            }))
                             .child(
                                 orbit::text(profile.name.as_str(), 13.0, 650, orbit::INK)
                                     .font_weight(gpui::FontWeight::NORMAL)
-                                    .line_height(px(19.5)),
+                                    .line_height(px(if self.section == Section::Strategy {
+                                        18.0
+                                    } else {
+                                        19.5
+                                    })),
                             )
                             .child(
                                 orbit::text(
@@ -626,7 +686,7 @@ impl Hub {
         div().flex().flex_col().child(heading).child(profiles)
     }
 
-    fn context_heading(title: &str, action: &str) -> gpui::Div {
+    fn context_heading(title: &str, action: &str, strategy: bool) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -635,7 +695,11 @@ impl Hub {
             .px(px(9.0))
             .pt(px(2.5))
             .pb(px(if title == "LAUNCHER" { 11.0 } else { 7.0 }))
-            .child(orbit::eyebrow(title))
+            .child(if strategy {
+                orbit::tracked_text(title, 10.0, 750, orbit::INK_3, 0.8)
+            } else {
+                orbit::eyebrow(title)
+            })
             .child(if action == "DETENIDO" {
                 div()
                     .px(px(8.0))

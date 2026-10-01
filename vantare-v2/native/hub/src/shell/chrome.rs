@@ -684,7 +684,7 @@ impl Hub {
                             .child(orbit::icon(item.icon, 14.0, orbit::CORAL)),
                     )
                     .child(
-                        orbit::text(item.label, 16.0, 400, orbit::INK)
+                        orbit::text(item.label.clone(), 16.0, 400, orbit::INK)
                             .flex_1()
                             .min_w_0(),
                     )

@@ -487,6 +487,33 @@ fn polygon(window: &mut Window, poly: &[(f32, f32)], rgb: u32, alpha: f32) {
     }
 }
 
+impl Settings {
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
+            SessionInfo, Weather,
+        };
+        let mut demand = crate::demand::signals(
+            250,
+            &[
+                SessionInfo,
+                SessionClock,
+                Positions,
+                LapTimes,
+                Gaps,
+                ClassGaps,
+                PitStatus,
+                Flags,
+                LapCount,
+            ],
+        );
+        if self.show_weather {
+            demand.request(Weather, 500);
+        }
+        demand
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

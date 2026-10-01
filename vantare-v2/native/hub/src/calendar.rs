@@ -1,12 +1,14 @@
 //! Lectura local del catálogo oficial UTC; sin publicación, Discord ni recordatorios.
-use crate::{files, orbit};
+use crate::files;
 pub mod views;
 
 // Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
 #[path = "home.rs"]
 pub mod home;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
-use gpui::{Context, IntoElement, Render, Window, div, prelude::*};
+#[cfg(feature = "parity-capture")]
+use chrono::{Local, Timelike};
+use gpui::{Context, IntoElement, Render, Window};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -192,9 +194,64 @@ pub struct Calendar {
     following: Following,
     saved: Option<Vec<u8>>,
     demo_now: Option<DateTime<Utc>>,
+    view: CalendarView,
     pub error: Option<String>,
     pub status: String,
 }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum CalendarView {
+    #[default]
+    Upcoming,
+    Day,
+    Week,
+    Month,
+    Timeline,
+}
+
+impl CalendarView {
+    #[cfg(feature = "parity-capture")]
+    fn from_capture_name(name: &str) -> Option<Self> {
+        match name {
+            "calendario-base" => Some(Self::Upcoming),
+            "calendario-dia" => Some(Self::Day),
+            "calendario-semana" => Some(Self::Week),
+            "calendario-mes" => Some(Self::Month),
+            "calendario-timeline" => Some(Self::Timeline),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "parity-capture")]
+fn capture_view() -> CalendarView {
+    let args: Vec<_> = std::env::args().collect();
+    for pair in args.windows(2) {
+        if pair[0] == "--capture"
+            && let Some(view) = CalendarView::from_capture_name(&pair[1])
+        {
+            return view;
+        }
+    }
+    CalendarView::Upcoming
+}
+
+#[cfg(feature = "parity-capture")]
+fn capture_clock(now: DateTime<Utc>) -> DateTime<Utc> {
+    let local = now.with_timezone(&Local);
+    match local
+        .with_hour(16)
+        .and_then(|time| time.with_minute(0))
+        .and_then(|time| time.with_second(0))
+        .and_then(|time| time.with_nanosecond(0))
+    {
+        Some(local) => local.with_timezone(&Utc),
+        None => now,
+    }
+}
+
+mod presentation;
+
 impl Calendar {
     pub fn load(data_dir: &Path) -> Result<Self, String> {
         let schedule = Schedule::parse(SEED.as_bytes())?;
@@ -225,18 +282,28 @@ impl Calendar {
             following,
             saved,
             demo_now: None,
+            view: CalendarView::default(),
             error: None,
             status: "Catálogo local empaquetado; sin consultar servicios".into(),
         })
     }
     pub fn load_demo(data_dir: &Path, demo: &crate::demo::DemoData) -> Result<Self, String> {
         let mut calendar = Self::load(data_dir)?;
-        calendar.schedule = Schedule::parse(&demo.calendar_json()?)?;
-        calendar.demo_now = Some(demo.fixed_now()?);
+        // Las capturas comparan el calendario visual con el seed oficial compartido.
+        calendar.schedule = Schedule::parse(SEED.as_bytes())?;
+        let now = demo.fixed_now()?;
+        #[cfg(feature = "parity-capture")]
+        let now = capture_clock(now);
+        calendar.demo_now = Some(now);
         calendar.status = "Fixture Wails de demostración · solo captura".into();
+        #[cfg(feature = "parity-capture")]
+        {
+            calendar.view = capture_view();
+        }
         Ok(calendar)
     }
-    fn follow(&mut self, id: String) -> Result<(), String> {
+    /// Sigue una serie usando el estado local existente del calendario.
+    pub fn follow(&mut self, id: String) -> Result<(), String> {
         let mut next = self.following.series_ids.clone();
         if next.contains(&id) {
             next.retain(|item| item != &id);
@@ -253,7 +320,7 @@ impl Calendar {
         self.saved = Some(data);
         Ok(())
     }
-    fn reload(&mut self) -> Result<(), String> {
+    pub fn reload(&mut self) -> Result<(), String> {
         let path = self.path.with_file_name("official-schedule.json");
         let schedule = Schedule::parse(&files::read(&path, 1024 * 1024)?)?;
         self.schedule = schedule;
@@ -265,7 +332,7 @@ impl Calendar {
     fn upcoming(&self, now: DateTime<Utc>) -> (Vec<(DateTime<Utc>, String)>, Option<String>) {
         let mut starts = vec![];
         let mut error = None;
-        if self.schedule.is_current(now).unwrap_or(false) {
+        if matches!(self.schedule.is_current(now), Ok(true)) {
             for series in &self.schedule.series {
                 if self.following.series_ids.contains(&series.id) {
                     match self.schedule.starts(series, now, now + Duration::days(1)) {
@@ -282,85 +349,33 @@ impl Calendar {
         starts.truncate(20);
         (starts, error)
     }
-
-    fn agenda(
-        &self,
-        now: DateTime<Utc>,
-        starts: &[(DateTime<Utc>, String)],
-        limit: usize,
-    ) -> gpui::Div {
-        let mut body = orbit::card_body();
-        if starts.is_empty() {
-            body = body.child(orbit::callout(if self.schedule.is_current(now).unwrap_or(false) {
-                "No hay salidas próximas de las series seguidas. Sigue una serie para ver sus próximas 24 horas."
-            } else {
-                "Catálogo histórico o aún no vigente; no se ofrecen próximas carreras."
-            }));
-        }
-        for (time, name) in starts.iter().take(limit) {
-            body = body.child(orbit::setting_row(
-                name,
-                "Serie seguida · calendario local",
-                orbit::text(
-                    time.format("%Y-%m-%d %H:%M UTC").to_string(),
-                    13.5,
-                    600,
-                    orbit::INK_2,
-                ),
-            ));
-        }
-        body
-    }
 }
 
 impl Render for Calendar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let now = self.demo_now.unwrap_or_else(Utc::now);
-        let current = self.schedule.is_current(now).unwrap_or(false);
-        let (starts, error) = self.upcoming(now);
-        if let Some(error) = error {
-            self.error = Some(error);
-        }
-        let mut rows = orbit::card_body();
-        for (index, series) in self.schedule.series.iter().enumerate() {
-            let id = series.id.clone();
-            let followed = self.following.series_ids.contains(&id);
-            rows = rows.child(orbit::setting_row(
-                &series.name,
-                &format!(
-                    "{} · {} · {}",
-                    series.track, series.vehicle_class, series.license_label
-                ),
-                orbit::toggle("follow", &format!("Seguir {}", series.name), followed, true)
-                    .id(("follow", index))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        match this.follow(id.clone()) {
-                            Ok(()) => this.error = None,
-                            Err(error) => this.error = Some(error),
-                        }
-                        cx.notify();
-                    })),
-            ));
-        }
-        div().id("calendar").flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0))
-            .child(orbit::card("Catálogo local").child(orbit::card_body()
-                .child(orbit::setting_row("Vigencia", &format!("Ventana {} → {}", self.schedule.valid_from, self.schedule.valid_until),
-                    orbit::text(if current { "Vigente · UTC" } else { "Fuera de vigencia" }, 13.5, 600, orbit::INK_2)))
-                .child(orbit::setting_row("Publicación", &self.status,
-                    orbit::button("reload-calendar", "Cargar agenda local").on_click(cx.listener(|this, _, _, cx| {
-                        match this.reload() { Ok(()) => this.error = None, Err(error) => this.error = Some(error) }
-                        cx.notify();
-                    }))))))
-            .when_some(self.error.clone(), |view, error| view.child(orbit::callout(error)))
-            .child(div().flex().flex_wrap().gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(orbit::card("Series · seguimiento").flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(rows))
-                .child(orbit::card("Próximas carreras · 24 h").flex_1().min_w(gpui::px(orbit::COLUMN_W)).child(self.agenda(now, &starts, 20))))
-            .child(orbit::callout("Seguimiento local. Carga official-schedule.json desde el directorio del Hub. Hasta 20 salidas UTC; sin recordatorios, eventos manuales, inbox Discord ni publicación Owner."))
+        presentation::render(self, cx)
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn capture_names_select_the_five_calendar_views() {
+        for (name, expected) in [
+            ("calendario-base", CalendarView::Upcoming),
+            ("calendario-dia", CalendarView::Day),
+            ("calendario-semana", CalendarView::Week),
+            ("calendario-mes", CalendarView::Month),
+            ("calendario-timeline", CalendarView::Timeline),
+        ] {
+            assert_eq!(CalendarView::from_capture_name(name), Some(expected));
+        }
+        assert_eq!(CalendarView::from_capture_name("inicio-base"), None);
+        assert_eq!(CalendarView::default(), CalendarView::Upcoming);
+    }
+
     #[test]
     fn upcoming_only_includes_followed_current_series_in_order_and_is_bounded() {
         let mut calendar = Calendar {
@@ -369,6 +384,7 @@ mod tests {
             following: Following::default(),
             saved: None,
             demo_now: None,
+            view: CalendarView::Upcoming,
             error: None,
             status: String::new(),
         };

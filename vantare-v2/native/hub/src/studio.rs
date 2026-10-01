@@ -8,22 +8,228 @@ use crate::{
     },
 };
 use gpui::{
-    Context, Entity, EventEmitter, FocusHandle, IntoElement, MouseButton, MouseMoveEvent, Pixels,
-    Point, Render, Window, div, prelude::*, px, rgb,
+    Context, Entity, EventEmitter, FocusHandle, FontWeight, IntoElement, MouseButton,
+    MouseMoveEvent, PathBuilder, Pixels, Point, Render, SharedString, Window, div,
+    linear_color_stop, linear_gradient, prelude::*, px, rgb,
 };
 use std::path::PathBuf;
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
+
+const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
+const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
+const SHELL_HEADER_OVERLAP: f32 = 167.0;
+
+// El peso ya está en las fuentes Inter estáticas del kit.
+fn text(content: impl Into<SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
+    orbit::text(content, size, weight, color).font_weight(FontWeight::NORMAL)
+}
+
+fn toggle_visibility(editor: &mut Editor, id: &str) -> Result<(), String> {
+    let selected = editor.selected.replace(id.to_owned());
+    let result = editor.edit_selected(|item| item.visible = !item.visible);
+    editor.selected = selected;
+    result
+}
+
+fn visibility_icon(visible: bool) -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        move |bounds, (), window, _| {
+            let at = |x, y| gpui::point(bounds.origin.x + px(x), bounds.origin.y + px(y));
+            let mut eye = PathBuilder::stroke(px(1.3));
+            eye.move_to(at(2.0, 7.0));
+            eye.cubic_bezier_to(at(14.0, 7.0), at(5.0, 1.0), at(11.0, 1.0));
+            eye.cubic_bezier_to(at(2.0, 7.0), at(11.0, 13.0), at(5.0, 13.0));
+            eye.close();
+            if !visible {
+                eye.move_to(at(2.0, 2.0));
+                eye.line_to(at(14.0, 12.0));
+            }
+            if let Ok(path) = eye.build() {
+                window.paint_path(path, rgb(orbit::INK_3));
+            }
+            window.paint_quad(gpui::quad(
+                gpui::Bounds::new(at(6.0, 5.0), gpui::size(px(4.0), px(4.0))),
+                gpui::Corners::all(px(2.0)),
+                rgb(orbit::INK_3),
+                gpui::Edges::default(),
+                gpui::transparent_black(),
+                gpui::BorderStyle::default(),
+            ));
+        },
+    )
+    .w(px(16.0))
+    .h(px(14.0))
+}
+
+fn stage_highlight(wrap: bool) -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        move |bounds, (), window, _| {
+            // Elipse radial de `overlay-studio-v3.css`: GPUI solo ofrece gradientes lineales.
+            const STEPS: u16 = 48;
+            const KAPPA: f32 = 0.552_284_8;
+            let width = f32::from(bounds.size.width);
+            let height = f32::from(bounds.size.height);
+            let (radius_x, radius_y, center_x, center_y, opacity) = if wrap {
+                // orbit-studio.css: circle at 50% -10%, carmín .1, transparente al 40%.
+                let radius = (width * 0.5).hypot(height * 1.1) * 0.4;
+                (radius, radius, width * 0.5, -height * 0.1, 0.1)
+            } else {
+                (
+                    width * 0.85 * 0.70,
+                    height * 0.75 * 0.70,
+                    width * 0.14,
+                    height * 0.13,
+                    0.23,
+                )
+            };
+            // Bandas sin superposición: el alfa pequeño de 48 elipses apiladas se
+            // cuantiza en el atlas de GPUI y altera el color de la referencia CSS.
+            for step in 1..=STEPS {
+                let outer = f32::from(step) / f32::from(STEPS);
+                let inner = f32::from(step - 1) / f32::from(STEPS);
+                let alpha = opacity * (1.0 - (outer + inner) * 0.5);
+                let mut ring = PathBuilder::fill();
+                ring.style = gpui::PathStyle::Fill(
+                    gpui::FillOptions::default().with_fill_rule(gpui::FillRule::EvenOdd),
+                );
+                for fraction in [outer, inner] {
+                    if fraction == 0.0 {
+                        continue;
+                    }
+                    let rx = radius_x * fraction;
+                    let ry = radius_y * fraction;
+                    let at = |x, y| {
+                        gpui::point(
+                            bounds.origin.x + px(center_x + x),
+                            bounds.origin.y + px(center_y + y),
+                        )
+                    };
+                    ring.move_to(at(rx, 0.0));
+                    ring.cubic_bezier_to(at(0.0, ry), at(rx, KAPPA * ry), at(KAPPA * rx, ry));
+                    ring.cubic_bezier_to(at(-rx, 0.0), at(-KAPPA * rx, ry), at(-rx, KAPPA * ry));
+                    ring.cubic_bezier_to(at(0.0, -ry), at(-rx, -KAPPA * ry), at(-KAPPA * rx, -ry));
+                    ring.cubic_bezier_to(at(rx, 0.0), at(KAPPA * rx, -ry), at(rx, -KAPPA * ry));
+                    ring.close();
+                }
+                if let Ok(ring) = ring.build() {
+                    window.paint_path(ring, rgb(orbit::CARMINE).opacity(alpha));
+                }
+            }
+        },
+    )
+    .absolute()
+    .size_full()
+    .top_0()
+    .right_0()
+    .bottom_0()
+    .left_0()
+}
+
+// Trazos locales de los SVG de StudioOrbitToolbar y StudioWallpaperPicker.
+fn disabled_toolbar_control(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
+    let icon = gpui::canvas(
+        |_, _, _| (),
+        move |bounds, (), window, _| {
+            let at = |x, y| gpui::point(bounds.origin.x + px(x), bounds.origin.y + px(y));
+            let mut path = PathBuilder::stroke(px(1.4));
+            if id == "studio-fullscreen" {
+                for (x, y, dx, dy) in [
+                    (2.5, 2.5, 1.0, 1.0),
+                    (13.5, 2.5, -1.0, 1.0),
+                    (13.5, 13.5, -1.0, -1.0),
+                    (2.5, 13.5, 1.0, -1.0),
+                ] {
+                    path.move_to(at(x, y + dy * 2.5));
+                    path.line_to(at(x, y + dy));
+                    path.curve_to(at(x + dx, y), at(x, y));
+                    path.line_to(at(x + dx * 2.5, y));
+                }
+            } else {
+                window.paint_quad(gpui::quad(
+                    gpui::Bounds::new(at(1.8, 3.0), gpui::size(px(12.4), px(10.0))),
+                    gpui::Corners::all(px(1.6)),
+                    gpui::transparent_black(),
+                    gpui::Edges::all(px(1.4)),
+                    rgb(orbit::INK_4),
+                    gpui::BorderStyle::default(),
+                ));
+                if id == "studio-background-image" {
+                    path.move_to(at(1.8, 10.4));
+                    for (x, y) in [(5.3, 7.3), (7.9, 9.6), (10.2, 7.7), (14.2, 11.0)] {
+                        path.line_to(at(x, y));
+                    }
+                    window.paint_quad(gpui::quad(
+                        gpui::Bounds::new(at(4.6, 5.0), gpui::size(px(2.0), px(2.0))),
+                        gpui::Corners::all(px(1.0)),
+                        rgb(orbit::INK_4),
+                        gpui::Edges::default(),
+                        gpui::transparent_black(),
+                        gpui::BorderStyle::default(),
+                    ));
+                } else {
+                    path.move_to(at(1.8, 6.0));
+                    path.line_to(at(14.2, 6.0));
+                }
+            }
+            if let Ok(path) = path.build() {
+                window.paint_path(path, rgb(orbit::INK_4));
+            }
+        },
+    )
+    .size(px(16.0));
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .tab_stop(false)
+        .size(px(39.0))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(10.0))
+        .child(icon)
+}
 
 pub struct Prepared {
     editor: Editor,
 }
 impl Prepared {
     pub fn load(path: PathBuf) -> Result<Self, String> {
-        Ok(Self {
-            editor: Editor::open(path)?,
-        })
+        #[cfg(feature = "parity-capture")]
+        let mut editor = Editor::open(path)?;
+        #[cfg(not(feature = "parity-capture"))]
+        let editor = Editor::open(path)?;
+        #[cfg(feature = "parity-capture")]
+        if studio_demo_capture() && editor.layout().instances.is_empty() {
+            // Mismo documento por defecto que `hub-profile-mock-state.ts`; usa los Settings y Overlay nativos.
+            for (kind, x, y) in [
+                (Kind::Delta, 760.0, 40.0),
+                (Kind::Relative, 40.0, 600.0),
+                (Kind::Standings, 1560.0, 40.0),
+            ] {
+                editor.add(kind)?;
+                editor.edit_selected(|item| {
+                    item.x = x;
+                    item.y = y;
+                })?;
+            }
+            editor.selected = None;
+        }
+        Ok(Self { editor })
     }
+}
+
+#[cfg(feature = "parity-capture")]
+fn studio_demo_capture() -> bool {
+    let args: Vec<_> = std::env::args().collect();
+    args.iter().any(|arg| arg == "--demo")
+        && args
+            .windows(2)
+            .any(|pair| pair[0] == "--capture" && pair[1] == "studio-base")
 }
 pub struct Studio {
     editor: Editor,
@@ -35,12 +241,14 @@ pub struct Studio {
     focus: FocusHandle,
     tabs: Option<Entity<Choice>>,
     catalog: Option<Entity<Choice>>,
+    catalog_open: bool,
     search: Entity<orbit::Input>,
     color: Option<Entity<orbit::Input>>,
     inspector_selection: Option<String>,
     fields: Vec<(Tab, &'static str, gpui::AnyView)>,
     active_tab: Tab,
     inspector_open: bool,
+    obs_demo_url: Option<String>,
 }
 /// La shell enlaza esta columna; Studio conserva el documento y sus interacciones.
 pub(crate) struct StudioSidebar {
@@ -70,15 +278,22 @@ struct Drag {
     pointer: (f32, f32),
     origin: (f32, f32),
     preview: (f32, f32),
+    scale: f32,
 }
 impl Drag {
     fn update(&mut self, pointer: (f32, f32)) -> bool {
-        if !pointer.0.is_finite() || !pointer.1.is_finite() {
+        if !pointer.0.is_finite()
+            || !pointer.1.is_finite()
+            || !self.scale.is_finite()
+            || self.scale <= 0.0
+        {
             return false;
         }
         self.preview = (
-            (self.origin.0 + pointer.0 - self.pointer.0).clamp(-100_000.0, 100_000.0),
-            (self.origin.1 + pointer.1 - self.pointer.1).clamp(-100_000.0, 100_000.0),
+            (self.origin.0 + (pointer.0 - self.pointer.0) / self.scale)
+                .clamp(-100_000.0, 100_000.0),
+            (self.origin.1 + (pointer.1 - self.pointer.1) / self.scale)
+                .clamp(-100_000.0, 100_000.0),
         );
         true
     }
@@ -89,6 +304,7 @@ struct Started(Point<Pixels>);
 struct CanvasFrame {
     item: Instance,
     renderer: Entity<Overlay>,
+    preview_scale: f32,
     selected: bool,
     focus: FocusHandle,
     drag: Option<Drag>,
@@ -104,10 +320,11 @@ impl Render for CanvasFrame {
         div()
             .id("widget-frame")
             .absolute()
-            .left(px(x))
-            .top(px(y))
-            .w(px(dimensions.0))
-            .h(px(dimensions.1))
+            .left(px(x * self.preview_scale))
+            .top(px(y * self.preview_scale))
+            .w(px(dimensions.0 * self.preview_scale))
+            .h(px(dimensions.1 * self.preview_scale))
+            .overflow_hidden()
             .opacity(self.item.opacity)
             .when(self.selected, |s| {
                 s.border_1().border_color(rgb(orbit::CARMINE))
@@ -149,6 +366,20 @@ impl Studio {
                 studio: parent.downgrade(),
             }
         });
+        #[cfg(feature = "parity-capture")]
+        let obs_demo_url = if studio_demo_capture() {
+            match crate::demo::DemoData::load() {
+                Ok(demo) => Some(demo.profile.obs_browser_source_url),
+                Err(error) => {
+                    eprintln!("URL demo de Studio: {error}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        #[cfg(not(feature = "parity-capture"))]
+        let obs_demo_url = None;
         let mut studio = Self {
             editor: prepared.editor,
             sidebar,
@@ -159,12 +390,14 @@ impl Studio {
             focus: cx.focus_handle(),
             tabs: None,
             catalog: None,
+            catalog_open: false,
             search,
             color: None,
             inspector_selection: None,
             fields: vec![],
             active_tab: Tab::Layout,
             inspector_open: true,
+            obs_demo_url,
         };
         studio.rebuild(cx);
         studio
@@ -185,6 +418,7 @@ impl Studio {
             let frame = cx.new(|_| CanvasFrame {
                 item: item.clone(),
                 renderer,
+                preview_scale: STUDIO_PREVIEW_SCALE,
                 focus: self.focus.clone(),
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
@@ -197,6 +431,7 @@ impl Studio {
                         pointer: (event.0.x.into(), event.0.y.into()),
                         origin: (frame.item.x, frame.item.y),
                         preview: (frame.item.x, frame.item.y),
+                        scale: frame.preview_scale,
                     });
                     cx.notify();
                 });
@@ -535,12 +770,29 @@ impl Studio {
     fn widget_list(&self, cx: &mut Context<Self>) -> gpui::Div {
         let query = self.search.read(cx).value.to_lowercase();
         let mut matches = 0;
-        let mut list = orbit::card_body()
-            .child(orbit::eyebrow(format!(
-                "Widgets · {}",
-                self.editor.layout().instances.len()
-            )))
-            .child(self.search.clone());
+        let mut list = div()
+            .flex()
+            .flex_col()
+            .py(px(12.0))
+            .child(
+                orbit::eyebrow(format!("Widgets  {}", self.editor.layout().instances.len()))
+                    .pl(px(4.0)),
+            )
+            .child(
+                div()
+                    .relative()
+                    .mt(px(10.0))
+                    .mb(px(6.0))
+                    .child(self.search.clone())
+                    .when(query.is_empty(), |search| {
+                        search.child(
+                            text("Buscar widget...", 13.0, 400, orbit::INK_MUTED)
+                                .absolute()
+                                .left(px(14.0))
+                                .top(px(10.0)),
+                        )
+                    }),
+            );
         for (index, item) in self.editor.layout().instances.iter().enumerate() {
             if !format!("{} {}", item.id, item.settings.kind().name())
                 .to_lowercase()
@@ -549,21 +801,7 @@ impl Studio {
                 continue;
             }
             matches += 1;
-            let id = item.id.clone();
-            list = list.child(
-                orbit::list_row(
-                    ("studio-instance", index),
-                    item.settings.kind().name(),
-                    &format!(
-                        "{} · {} · Eficiencia",
-                        item.id,
-                        if item.visible { "activo" } else { "oculto" }
-                    ),
-                    self.editor.selected.as_ref() == Some(&item.id),
-                    true,
-                )
-                .on_click(cx.listener(move |this, _, _, cx| this.select(id.clone(), cx))),
-            );
+            list = list.child(self.widget_row(index, item, cx));
         }
         if matches == 0 {
             list = list.child(orbit::empty_state(
@@ -581,57 +819,267 @@ impl Studio {
         }
         list
     }
-    fn widget_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card_body()
-            .when_some(self.catalog.clone(), gpui::ParentElement::child)
-            .child(
-                button("add-widget", "Añadir widget").on_click(cx.listener(|this, _, _, cx| {
-                    let kind = this
-                        .catalog
-                        .as_ref()
-                        .and_then(|catalog| catalog.read(cx).state.selected)
-                        .and_then(|index| Kind::ALL.get(index))
-                        .copied();
-                    if let Some(kind) = kind {
-                        this.reset_fields();
-                        this.edit(|editor| editor.add(kind), cx);
-                    }
-                })),
-            )
-    }
-    fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn widget_row(
+        &self,
+        index: usize,
+        item: &Instance,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let id = item.id.clone();
+        let visibility_id = id.clone();
+        let selected = self.editor.selected.as_ref() == Some(&item.id);
+        let hover_group: SharedString = format!("studio-widget-row-{index}").into();
         div()
+            .id(("studio-instance", index))
+            .role(gpui::Role::Button)
+            .aria_label(item.settings.kind().name())
+            .tab_index(0)
+            .h(px(51.0))
+            .px(px(12.0))
+            .rounded(px(12.0))
+            .group(hover_group.clone())
             .flex()
-            .flex_wrap()
             .items_center()
-            .gap(px(orbit::RADIUS_CHIP))
+            .gap(px(12.0))
+            .when(selected, |row| row.bg(gpui::rgba(0xffff_ff06)))
+            .hover(|row| row.bg(gpui::rgba(0xffff_ff06)))
             .child(
-                button("undo", "Deshacer")
-                    .tab_stop(self.editor.can_undo())
-                    .when(!self.editor.can_undo(), |s| s.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| this.history(false, cx))),
+                text("⠿", 14.0, 400, orbit::INK_MUTED)
+                    .w(px(8.0))
+                    .opacity(if selected { 1.0 } else { 0.0 })
+                    .group_hover(hover_group, |grip| grip.opacity(1.0)),
             )
             .child(
-                button("redo", "Rehacer")
-                    .tab_stop(self.editor.can_redo())
-                    .when(!self.editor.can_redo(), |s| s.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| this.history(true, cx))),
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(text(item.settings.kind().name(), 13.0, 650, orbit::INK))
+                    .child(
+                        text(
+                            format!(
+                                "{} · Eficiencia",
+                                if item.visible { "activo" } else { "oculto" }
+                            ),
+                            11.0,
+                            400,
+                            orbit::INK_3,
+                        )
+                        .mt(px(3.0)),
+                    ),
             )
             .child(
-                button("studio-reload", "Recargar").on_click(cx.listener(|this, _, _, cx| {
-                    this.reset_fields();
-                    this.edit(Editor::reload, cx);
-                })),
-            )
-            .child(
-                button("studio-inspector", "Inspector")
-                    .aria_selected(self.inspector_open)
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.inspector_open = !this.inspector_open;
-                        cx.notify();
+                div()
+                    .id(("studio-visibility", index))
+                    .role(gpui::Role::Button)
+                    .aria_label(if item.visible {
+                        "Ocultar widget"
+                    } else {
+                        "Mostrar widget"
+                    })
+                    .tab_index(0)
+                    .child(visibility_icon(item.visible))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.edit(|editor| toggle_visibility(editor, &visibility_id), cx);
+                        cx.stop_propagation();
                     })),
             )
-            .child(orbit::chip("Ajustar · pendiente", orbit::Tone::Neutral))
+            .on_click(cx.listener(move |this, _, _, cx| this.select(id.clone(), cx)))
+    }
+    fn widget_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .flex()
+            .flex_col()
+            .pt(px(13.0))
+            .pb(px(2.0))
+            .border_t_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .when(self.catalog_open, |body| {
+                body.when_some(self.catalog.clone(), gpui::ParentElement::child)
+            })
+            .child(
+                button("add-widget", "")
+                    .w_full()
+                    .child(text("+  Añadir widget", 12.0, 600, orbit::INK_3))
+                    .aria_label("Añadir widget")
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if !this.catalog_open {
+                            this.catalog_open = true;
+                            cx.notify();
+                            return;
+                        }
+                        let kind = this
+                            .catalog
+                            .as_ref()
+                            .and_then(|catalog| catalog.read(cx).state.selected)
+                            .and_then(|index| Kind::ALL.get(index))
+                            .copied();
+                        if let Some(kind) = kind {
+                            this.catalog_open = false;
+                            this.reset_fields();
+                            this.edit(|editor| editor.add(kind), cx);
+                        }
+                    })),
+            )
+    }
+    fn toolbar_background_control() -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("studio-background")
+            .role(gpui::Role::Button)
+            .aria_label("Tema actual · pendiente")
+            .tab_stop(false)
+            .h(px(32.0))
+            .w(px(158.0))
+            .px(px(10.0))
+            .flex()
+            .items_center()
+            .justify_between()
+            .rounded(px(10.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE_STRONG))
+            .bg(rgb(orbit::SURFACE_2))
+            .child(text("Tema actual", 12.0, 500, orbit::INK))
+            .child(
+                gpui::canvas(
+                    |_, _, _| (),
+                    |bounds, (), window, _| {
+                        let at =
+                            |x, y| gpui::point(bounds.origin.x + px(x), bounds.origin.y + px(y));
+                        let mut chevron = PathBuilder::stroke(px(1.4));
+                        chevron.move_to(at(3.0, 5.0));
+                        chevron.line_to(at(7.0, 9.0));
+                        chevron.line_to(at(11.0, 5.0));
+                        if let Ok(path) = chevron.build() {
+                            window.paint_path(path, rgb(orbit::INK_2));
+                        }
+                    },
+                )
+                .size(px(14.0)),
+            )
+    }
+
+    fn toolbar_preview_mode() -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(2.5))
+            .p(px(4.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .bg(rgb(orbit::SURFACE_1))
+            .child(
+                div()
+                    .h(px(29.0))
+                    .px(px(10.0))
+                    .flex()
+                    .items_center()
+                    .rounded(px(8.0))
+                    .bg(rgb(0x0030_171b))
+                    .border_1()
+                    .border_color(rgb(orbit::CARMINE_DARK))
+                    .child(text("Mock", 11.0, 600, orbit::INK)),
+            )
+            .child(
+                div()
+                    .h(px(29.0))
+                    .px(px(10.0))
+                    .flex()
+                    .items_center()
+                    .child(text("Live", 11.0, 600, orbit::INK_3)),
+            )
+    }
+
+    fn toolbar_inspector_button(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("studio-inspector")
+            .role(gpui::Role::Button)
+            .aria_label("Inspector")
+            .aria_selected(self.inspector_open)
+            .tab_stop(false)
+            .size(px(39.0))
+            .px(px(0.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(8.0))
+            .when(self.inspector_open, |button| {
+                button
+                    .bg(rgb(0x0030_171b))
+                    .border_1()
+                    .border_color(rgb(orbit::CARMINE_DARK))
+            })
+            .child(orbit::icon("i-panel", 16.0, orbit::INK))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.inspector_open = !this.inspector_open;
+                cx.notify();
+            }))
+    }
+
+    fn toolbar_zoom_out_control() -> gpui::Div {
+        div()
+            .size(px(39.0))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(text("−", 14.0, 500, orbit::INK_3))
+    }
+
+    fn toolbar_zoom_label() -> gpui::Div {
+        orbit::mono_text("Ajustar", 12.0, orbit::INK_3)
+            .w(px(60.0))
+            .text_center()
+    }
+
+    fn toolbar_zoom_in_control() -> gpui::Div {
+        div()
+            .size(px(39.0))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(text("+", 14.0, 500, orbit::INK_3))
+    }
+
+    fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .h(px(60.0))
+            .flex_none()
+            .px(px(12.0))
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .border_b_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .child(Self::toolbar_background_control())
+            .child(disabled_toolbar_control(
+                "studio-background-image",
+                "Imagen de fondo · pendiente",
+            ))
+            .child(Self::toolbar_preview_mode())
+            .child(disabled_toolbar_control(
+                "studio-fullscreen",
+                "Pantalla completa · pendiente",
+            ))
+            .child(
+                disabled_toolbar_control("studio-view", "Vista · pendiente")
+                    .w(px(34.0))
+                    .h(px(31.0))
+                    .border_1()
+                    .border_color(gpui::rgba(orbit::LINE))
+                    .bg(gpui::rgba(0xffff_ff06)),
+            )
+            .child(div().flex_1())
+            .child(self.toolbar_inspector_button(cx))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(2.5))
+                    .child(Self::toolbar_zoom_out_control())
+                    .child(Self::toolbar_zoom_label())
+                    .child(Self::toolbar_zoom_in_control()),
+            )
     }
     fn color_settings(&self, mut panel: gpui::Div, cx: &mut Context<Self>) -> gpui::Div {
         if self.active_tab == Tab::Appearance
@@ -725,7 +1173,7 @@ impl Studio {
                     .find(|(id, _)| *id == item.id)
                     .map(|(_, frame)| frame.read(cx).renderer.read(cx).wanted_size());
                 if let Some((w, h)) = size {
-                    panel = panel.child(orbit::text(
+                    panel = panel.child(text(
                         format!("Ancho {w:.0} · Alto {h:.0}"),
                         orbit::SECONDARY,
                         400,
@@ -786,7 +1234,12 @@ impl Studio {
         panel
     }
     fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut panel = orbit::card_body();
+        let mut panel = div()
+            .flex()
+            .flex_col()
+            .gap(px(16.0))
+            .px(px(16.0))
+            .py(px(20.0));
         if let Some(item) = self.editor.selected() {
             panel = panel
                 .child(orbit::eyebrow(format!(
@@ -823,37 +1276,175 @@ impl Studio {
                     },
                 )));
         } else {
-            panel = panel.child(orbit::empty_state(
-                "Selecciona un widget",
-                "Selecciona un widget para editar sus propiedades.",
-            ));
+            panel = div().h(px(77.0)).p(px(18.0)).child(
+                text(
+                    "Selecciona un widget para editar sus propiedades.",
+                    13.5,
+                    400,
+                    orbit::INK_4,
+                )
+                .line_height(px(20.25))
+                .relative()
+                .top(px(-2.0)),
+            );
         }
-        panel.child(orbit::eyebrow("OBS"))
-            .child(orbit::text("Pega esta URL en una fuente «Navegador» de OBS Studio para emitir el overlay que estás editando.", orbit::SECONDARY, 400, orbit::INK_3))
-            .child(orbit::list_row("obs-pending", "Copiar URL · pendiente", "El servicio de salida OBS no tiene contrato nativo.", false, false))
+        let url = self
+            .obs_demo_url
+            .as_deref()
+            .unwrap_or("No disponible · usa captura de ventana");
+        div().child(panel).child(div().flex().flex_col().gap(px(8.0))
+            .border_t_1().border_color(gpui::rgba(orbit::LINE))
+            .pt(px(10.0)).pb(px(14.0)).px(px(16.0))
+            .child(orbit::eyebrow("OBS"))
+            .child(text("Pega esta URL en una fuente «Navegador» de OBS Studio para emitir el overlay que estás editando.",
+                11.5, 400, orbit::INK_4).line_height(px(16.1)))
+            .child(div().h(px(39.0)).px(px(12.0)).flex().items_center().overflow_hidden()
+                .rounded(px(orbit::RADIUS_CONTROL)).border_1().border_color(gpui::rgba(orbit::LINE))
+                .bg(rgb(orbit::SURFACE_2)).child(orbit::mono_text(url, 11.0, orbit::INK_2).whitespace_nowrap()))
+            .child(div().flex().flex_wrap().gap(px(8.0))
+                .child(orbit::primary_button("copy-obs-url", "").aria_label("Copiar URL · pendiente")
+                    .h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
+                    .child(text("Copiar URL", 12.0, 600, 0x001c_1719)))
+                .child(button("copy-obs-instructions", "").aria_label("Copiar instrucciones · pendiente")
+                    .h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
+                    .child(text("Copiar instrucciones", 12.0, 600, orbit::INK_3)))))
     }
-}
-impl Render for Studio {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.init_controls(window, cx);
+
+    fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut stage = div()
             .relative()
-            .w(px(1920.0))
-            .h(px(1080.0))
-            .bg(rgb(orbit::CANVAS));
+            .w(px(700.0))
+            .h(px(395.0))
+            .flex_none()
+            .overflow_hidden()
+            .rounded(px(16.0))
+            .border_1()
+            .border_color(gpui::rgba(orbit::LINE_STRONG))
+            .shadow(vec![gpui::BoxShadow {
+                color: gpui::rgba(0x0000_008c).into(),
+                offset: gpui::point(px(0.0), px(39.0)),
+                blur_radius: px(117.0),
+                spread_radius: px(0.0),
+                inset: false,
+            }])
+            .bg(linear_gradient(
+                140.0,
+                linear_color_stop(rgb(orbit::SURFACE_2), 0.0),
+                linear_color_stop(rgb(orbit::CANVAS), 1.0),
+            ));
+        stage = stage.child(stage_highlight(false));
         for (_, frame) in &self.frames {
             if frame.read(cx).item.visible {
                 stage = stage.child(frame.clone());
             }
         }
+        stage.child(
+            text("1920 × 1080", 10.0, 500, orbit::INK_3)
+                .absolute()
+                .top(px(14.0))
+                .right(px(14.0)),
+        )
+    }
+
+    fn preview_footer(&self) -> gpui::Div {
+        let count = self.editor.layout().instances.len();
+        div()
+            .h(px(39.0))
+            .flex_none()
+            .px(px(42.0))
+            .flex()
+            .items_center()
+            .justify_between()
+            .border_t_1()
+            .border_color(gpui::rgba(orbit::LINE))
+            .child(text("Lienzo · 1920×1080", 11.0, 500, orbit::INK_3).font_family("Cascadia Code"))
+            .child(
+                text(
+                    format!(
+                        "{count} widgets · {} seleccionado",
+                        usize::from(self.editor.selected().is_some())
+                    ),
+                    11.0,
+                    500,
+                    orbit::INK_3,
+                )
+                .font_family("Cascadia Code"),
+            )
+    }
+
+    fn editor_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.init_controls(window, cx);
+        let stage = self.preview_stage(cx);
+        let canvas = div()
+            .id("studio-canvas")
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .overflow_hidden()
+            .bg(rgb(orbit::CANVAS))
+            .child(stage_highlight(true))
+            .child(stage);
+        let left = div()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .child(self.toolbar(cx))
+            .child(canvas)
+            .child(self.preview_footer());
+        let mut workspace = div()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .flex()
+            .bg(rgb(orbit::CANVAS))
+            .child(left);
+        if self.inspector_open {
+            workspace = workspace.child(
+                div()
+                    .w(px(320.0))
+                    .h_full()
+                    .flex_none()
+                    .flex()
+                    .flex_col()
+                    .bg(rgb(orbit::SURFACE_1))
+                    .border_l_1()
+                    .border_color(gpui::rgba(orbit::LINE))
+                    .child(
+                        div()
+                            .id("studio-inspector-scroll")
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_y_scroll()
+                            .child(self.inspector(cx)),
+                    ),
+            );
+        }
+        workspace
+    }
+}
+
+impl Render for Studio {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let workspace = self.editor_workspace(window, cx);
         div()
             .id("studio")
+            .min_h(px(HUB_CONTENT_MIN_HEIGHT))
+            .mt(px(-SHELL_HEADER_OVERLAP))
+            .mx(px(-32.0))
+            .flex_1()
             .track_focus(&self.focus)
             .tab_group()
             .min_w_0()
             .flex()
             .flex_col()
-            .gap(px(orbit::RADIUS_CHIP))
+            .overflow_hidden()
+            .bg(rgb(orbit::CANVAS))
             .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(
                 MouseButton::Left,
@@ -868,71 +1459,52 @@ impl Render for Studio {
                 }),
             )
             .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
-                if event.keystroke.key == "escape" && this.drag.is_some() {
+                let key = &event.keystroke;
+                if key.key == "escape" && this.drag.is_some() {
                     this.cancel_drag(cx);
                     cx.stop_propagation();
+                } else if key.modifiers.control || key.modifiers.platform {
+                    if key.key.eq_ignore_ascii_case("z") {
+                        this.history(key.modifiers.shift, cx);
+                        cx.stop_propagation();
+                    } else if key.key.eq_ignore_ascii_case("y") {
+                        this.history(true, cx);
+                        cx.stop_propagation();
+                    }
                 }
             }))
-            .child(self.toolbar(cx))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(orbit::RADIUS_CHIP))
-                    .child(orbit::chip(&self.status, orbit::Tone::Neutral))
-                    .child(orbit::chip("Mock / Live · pendiente", orbit::Tone::Neutral)),
-            )
-            .child(
-                div()
-                    .flex()
-                    .min_w_0()
-                    .gap(px(orbit::RADIUS_CHIP))
-                    .child(
-                        orbit::card("Lienzo · 1920×1080")
-                            .flex_1()
-                            .min_w_0()
-                            .child(
-                                div()
-                                    .id("studio-canvas")
-                                    .h(px(470.0))
-                                    .overflow_scroll()
-                                    .child(stage),
-                            )
-                            .child(orbit::card_body().child(orbit::text(
-                                format!(
-                                    "{} widgets · {} seleccionado",
-                                    self.editor.layout().instances.len(),
-                                    usize::from(self.editor.selected().is_some())
-                                ),
-                                orbit::SECONDARY,
-                                400,
-                                orbit::INK_3,
-                            ))),
-                    )
-                    .when(self.inspector_open, |body| {
-                        body.child(
-                            orbit::card("Inspector")
-                                .w(px(if self.editor.selected().is_some() {
-                                    orbit::COLUMN_W + orbit::FIELD_W
-                                } else {
-                                    orbit::COLUMN_W
-                                }))
-                                .flex_shrink_0()
-                                .child(
-                                    div()
-                                        .id("studio-inspector-scroll")
-                                        .h(px(540.0))
-                                        .overflow_y_scroll()
-                                        .child(self.inspector(cx)),
-                                ),
-                        )
-                    }),
-            )
+            .child(workspace)
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn visibility_is_persisted_and_undoable_without_changing_selection() {
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::Radar).expect("radar");
+        let selected = editor.selected.clone();
+        editor.add(Kind::Standings).expect("standings");
+        let id = editor.selected.clone().expect("instancia añadida");
+        editor.selected = selected.clone();
+        let previous = editor.layout().clone();
+        toggle_visibility(&mut editor, &id).expect("ocultar");
+        assert_eq!(editor.selected, selected);
+        let reopened = Editor::open(file.path.clone()).expect("reabrir");
+        assert!(
+            reopened
+                .layout()
+                .instances
+                .iter()
+                .any(|item| item.id == id && !item.visible)
+        );
+        assert!(toggle_visibility(&mut editor, "inexistente").is_err());
+        assert_eq!(editor.selected, selected);
+        editor.undo().expect("deshacer visibilidad");
+        assert_eq!(editor.layout(), &previous);
+    }
+
     #[test]
     fn drag_preview_does_not_jump_and_commit_is_one_undoable_edit() {
         let file = crate::document::tests::File::new();
@@ -943,6 +1515,7 @@ mod tests {
             pointer: (100.0, 200.0),
             origin: (20.0, 20.0),
             preview: (20.0, 20.0),
+            scale: 1.0,
         };
         assert!(drag.update((100.0, 200.0)));
         assert_eq!(drag.preview, (20.0, 20.0));
@@ -968,6 +1541,7 @@ mod tests {
             pointer: (12.0, 8.0),
             origin: (-200.0, 20.0),
             preview: (-200.0, 20.0),
+            scale: 1.0,
         };
         assert!(drag.update((-20.0, 40.0)));
         assert_eq!(drag.preview, (-232.0, 52.0));
@@ -977,5 +1551,17 @@ mod tests {
         assert_eq!(drag.preview, valid);
         assert!(drag.update((1_000_000.0, -1_000_000.0)));
         assert_eq!(drag.preview, (100_000.0, -100_000.0));
+    }
+
+    #[test]
+    fn fitted_canvas_drag_maps_pointer_deltas_to_document_space() {
+        let mut drag = Drag {
+            pointer: (20.0, 20.0),
+            origin: (760.0, 40.0),
+            preview: (760.0, 40.0),
+            scale: 0.5,
+        };
+        assert!(drag.update((30.0, 25.0)));
+        assert_eq!(drag.preview, (780.0, 50.0));
     }
 }

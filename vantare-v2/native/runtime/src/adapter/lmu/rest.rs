@@ -2,7 +2,9 @@
 //! lo que la memoria compartida no trae (número de carrera, bandera global) o
 //! un respaldo del circuito y del tipo de sesión; nunca crea un coche.
 
+#[cfg(windows)]
 mod http;
+#[cfg(windows)]
 mod poller;
 
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ use serde_json::{Map, Value};
 
 use super::frame::Kind;
 
+#[cfg(windows)]
 pub(super) use poller::Poller;
 
 pub(super) const MAX_RESPONSE_BYTES: usize = 4 << 20;

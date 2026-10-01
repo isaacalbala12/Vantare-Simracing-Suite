@@ -23,9 +23,11 @@
 mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
+mod demand;
 pub mod efficiency;
 pub mod layout;
 mod overlay;
+pub mod paths;
 mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]
@@ -36,5 +38,5 @@ include!("registry.rs");
 
 // Hub incrusta el mismo renderer productivo.
 pub use app::{
-    Overlay, layout_row, run, run_layout, run_layout_with_rights, run_placed, run_with_rights,
+    Overlay, layout_row, run_layout_requested, run_layout_with_rights, run_placed, run_with_rights,
 };

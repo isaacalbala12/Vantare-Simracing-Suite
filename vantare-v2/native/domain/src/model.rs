@@ -226,7 +226,7 @@ pub struct Source {
 }
 
 /// Simuladores conocidos. Añadir uno es añadir su nombre aquí y su adaptador.
-pub const SIMULATORS: &[&str] = &["lmu", "acc", UNKNOWN_SIMULATOR];
+const SIMULATORS: &[&str] = &["lmu", "acc", UNKNOWN_SIMULATOR];
 
 /// Nombre de cualquier simulador que no esté en [`SIMULATORS`].
 pub const UNKNOWN_SIMULATOR: &str = "unknown";

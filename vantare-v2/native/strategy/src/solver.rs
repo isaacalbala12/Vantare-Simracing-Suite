@@ -482,7 +482,8 @@ pub fn solve(input: &Input) -> Result<ResultV2, String> {
 /// Caller owns cancellation. This runs off the GPUI thread.
 #[allow(clippy::too_many_lines)] // Keep the bounded state-space walk in one place, rather than a search manager.
 pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
-    solve_internal(input, cancel, false).map(|outcome| outcome.result)
+    solve_internal(input, cancel, false, Some(input.budget.p95_millis))
+        .map(|outcome| outcome.result)
 }
 
 /// Solver API for UI consumers: carries the model certificate and the visible cost.
@@ -493,7 +494,12 @@ pub fn solve_v2(input: &Input) -> Result<SolverOutcome, String> {
 /// Returns the best complete plan found so far when the search budget expires.
 /// Cancellation and invalid inputs still fail without publishing a result.
 pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<SolverOutcome, String> {
-    solve_internal(input, cancel, true)
+    solve_internal(input, cancel, true, Some(input.budget.p95_millis))
+}
+
+#[cfg(test)]
+fn solve_v2_without_deadline(input: &Input) -> Result<SolverOutcome, String> {
+    solve_internal(input, &AtomicBool::new(false), true, None)
 }
 
 #[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
@@ -501,6 +507,7 @@ fn solve_internal(
     input: &Input,
     cancel: &AtomicBool,
     return_partial: bool,
+    deadline_millis: Option<u64>,
 ) -> Result<SolverOutcome, String> {
     let (effective, requested) = budget::effective(input);
     let degraded = effective
@@ -514,7 +521,7 @@ fn solve_internal(
             .total_cmp(&requested.ve_percent)
             .is_ne();
     if search::needs_extended(input) || degraded {
-        return search::solve(input, cancel, return_partial);
+        return search::solve(input, cancel, return_partial, deadline_millis);
     }
     input.validate()?;
     let fuel = Resource::new(
@@ -531,7 +538,7 @@ fn solve_internal(
         &input.virtual_energy_reserve,
         input.race_laps,
     )?;
-    match single_fuel_decision(input, fuel, ve, cancel) {
+    match single_fuel_decision(input, fuel, ve, cancel, deadline_millis) {
         Ok(Some(result)) => {
             let status = if result.feasible {
                 OptimalityStatus::Proven
@@ -600,7 +607,7 @@ fn solve_internal(
                 if cancel.load(AtomicOrdering::Relaxed) {
                     return Err("cancelled".into());
                 }
-                if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                if deadline_exceeded(&started, deadline_millis) {
                     if return_partial {
                         exhaustion_reason = Some("deadline_exceeded");
                         break 'search;
@@ -683,7 +690,7 @@ fn solve_internal(
                             if cancel.load(AtomicOrdering::Relaxed) {
                                 return Err("cancelled".into());
                             }
-                            if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                            if deadline_exceeded(&started, deadline_millis) {
                                 if return_partial {
                                     exhaustion_reason = Some("deadline_exceeded");
                                     break 'search;
@@ -765,6 +772,10 @@ fn solver_outcome(
     }
 }
 
+fn deadline_exceeded(started: &std::time::Instant, deadline_millis: Option<u64>) -> bool {
+    deadline_millis.is_some_and(|limit| started.elapsed().as_millis() > u128::from(limit))
+}
+
 fn resource_balance(
     result: &ResultV2,
     resource: Resource,
@@ -795,6 +806,7 @@ fn single_fuel_decision(
     fuel: Resource,
     ve: Resource,
     cancel: &AtomicBool,
+    deadline_millis: Option<u64>,
 ) -> Result<Option<ResultV2>, String> {
     if fuel.capacity == 0
         || ve.capacity != 0
@@ -837,7 +849,7 @@ fn single_fuel_decision(
         if cancel.load(AtomicOrdering::Relaxed) {
             return Err("cancelled".into());
         }
-        if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+        if deadline_exceeded(&started, deadline_millis) {
             return Err("native_deadline_exceeded: no se ha demostrado el óptimo".into());
         }
         let after = stint_count - index - 1;

@@ -348,6 +348,14 @@ fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
     }
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{LapCount, LapTimes, TrackName};
+        crate::demand::signals(250, &[LapTimes, LapCount, TrackName])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

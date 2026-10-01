@@ -1,12 +1,12 @@
 //! Fronteras mínimas de eventos y series de la ADR 0099, sin tipos de simulador.
 
 mod analysis;
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub mod client;
 mod event;
 #[cfg(test)]
 mod facts_tests;
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub mod host;
 mod journal;
 mod recording;
@@ -14,7 +14,7 @@ mod series;
 mod series_codec;
 mod series_feed;
 mod series_worker;
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 mod transport_tests;
 pub mod wire;
 

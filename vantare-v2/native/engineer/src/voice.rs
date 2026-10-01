@@ -54,7 +54,10 @@ impl Voice {
         #[cfg(not(windows))]
         {
             let _ = (path, duration, now);
-            return Err(io::Error::from(io::ErrorKind::Unsupported));
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "reproducción de audio no disponible en esta plataforma",
+            ))
         }
         #[cfg(windows)]
         {
@@ -92,9 +95,37 @@ impl Voice {
 }
 
 pub fn default_cache_root() -> Option<PathBuf> {
-    std::env::var_os("APPDATA")
-        .filter(|value| !value.is_empty())
-        .map(|root| PathBuf::from(root).join("Vantare/Ingeniero/tts-cache/kokoro"))
+    #[cfg(windows)]
+    {
+        std::env::var_os("APPDATA")
+            .filter(|value| !value.is_empty())
+            .map(|root| PathBuf::from(root).join("Vantare/Ingeniero/tts-cache/kokoro"))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let root = match std::env::var_os("XDG_CACHE_HOME") {
+            Some(root) if PathBuf::from(&root).is_absolute() => PathBuf::from(root),
+            Some(_) => return None,
+            None => user_home()?.join(".cache"),
+        };
+        Some(root.join("Vantare/Ingeniero/tts-cache/kokoro"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Some(user_home()?.join("Library/Caches/Vantare/Ingeniero/tts-cache/kokoro"))
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn user_home() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
 }
 
 /// SHA-256(locale NUL voz NUL texto UTF-8), exactamente Cache.Key del Go.
@@ -106,8 +137,16 @@ pub fn cache_key(locale: &str, voice: &str, text: &str) -> io::Result<String> {
     }
     #[cfg(not(windows))]
     {
-        let _ = input;
-        Err(io::ErrorKind::Unsupported.into())
+        #[cfg(unix)]
+        {
+            use sha2::{Digest, Sha256};
+            Ok(format!("{:x}", Sha256::digest(input.as_bytes())))
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = input;
+            Err(io::ErrorKind::Unsupported.into())
+        }
     }
 }
 

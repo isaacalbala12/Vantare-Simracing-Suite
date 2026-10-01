@@ -4,7 +4,7 @@ use super::{
     protocol::{Command, Reply},
 };
 use crate::orbit;
-use gpui::{Context, prelude::*};
+use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -13,6 +13,73 @@ use std::sync::{
 use vantare_ipc::transport::Event;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
+
+fn account_surface(title: &str, meta: &str, body: gpui::Div) -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .min_w_0()
+        .overflow_hidden()
+        .rounded(px(orbit::RADIUS))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .bg(rgb(orbit::SURFACE_1))
+        .child(
+            div()
+                .min_h(px(60.0))
+                .px(px(20.0))
+                .py(px(13.0))
+                .flex()
+                .items_center()
+                .gap(px(12.0))
+                .border_b_1()
+                .border_color(rgba(0xffff_ff0d))
+                .child(orbit::text(title, 15.0, 700, orbit::INK))
+                .child(div().flex_1())
+                .child(orbit::text(meta, 12.0, 500, orbit::INK_3)),
+        )
+        .child(body)
+}
+
+fn account_body() -> gpui::Div {
+    div().flex().flex_col().px(px(21.0)).py(px(21.0))
+}
+
+fn account_value(label: &str, value: &str, active: bool) -> gpui::Div {
+    div()
+        .min_h(px(42.0))
+        .flex()
+        .items_center()
+        .gap(px(10.0))
+        .border_b_1()
+        .border_color(rgba(orbit::LINE_ROW))
+        .child(
+            div()
+                .w(px(150.0))
+                .flex_none()
+                .child(orbit::text(label, 12.5, 500, orbit::INK_3)),
+        )
+        .child(
+            div()
+                .flex()
+                .min_w_0()
+                .items_center()
+                .gap(px(7.0))
+                .child(div().size(px(6.0)).rounded_full().bg(rgb(if active {
+                    orbit::GREEN
+                } else {
+                    orbit::INK_MUTED
+                })))
+                .child(orbit::text(value, 12.5, 500, orbit::INK_2)),
+        )
+}
+
+fn account_button(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
+    orbit::button(id, label)
+        .h(px(30.0))
+        .px(px(12.0))
+        .rounded(px(10.0))
+}
 
 #[path = "access.rs"]
 mod access;
@@ -46,8 +113,12 @@ pub struct Remote {
     pub(crate) editor: crate::testing::Editor,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
+    roadmap_requested: bool,
     stale: bool,
 }
+
+const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
+const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
 impl Remote {
     pub fn new(pipe: String, cx: &mut Context<Self>) -> Self {
@@ -71,6 +142,7 @@ impl Remote {
             editor: crate::testing::Editor::new(crate::testing::empty_fields(), cx),
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
+            roadmap_requested: false,
             stale: true,
         };
         remote.request(Command::Status, cx);
@@ -281,41 +353,296 @@ impl Remote {
         .detach();
     }
 
-    pub fn account(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card("Cuenta Clerk").child(
-            orbit::card_body()
-                .child(orbit::callout(self.message.clone()))
-                .child(orbit::setting_row(
-                    "Sesión",
-                    if self.account.signed_in {
-                        "Conectada en este dispositivo"
+    fn account_identity_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let signed_in = self.account.signed_in;
+        let can_start = self.requires_access();
+        div()
+            .flex()
+            .flex_none()
+            .flex_col()
+            .gap(px(6.0))
+            .child(
+                account_button(
+                    "services-account-check",
+                    if self.busy {
+                        "Comprobando…"
                     } else {
-                        "Inicie sesión en su navegador"
+                        "Comprobar acceso"
                     },
-                    orbit::button("services-login", "Iniciar sesión").on_click(
-                        cx.listener(|this, _, _, cx| this.request(Command::AccountBegin, cx)),
+                )
+                .tab_stop(!self.busy)
+                .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    if !this.busy {
+                        this.request(Command::LicenseStatus, cx);
+                    }
+                })),
+            )
+            .child(if signed_in {
+                account_button("services-sign-out", "Cerrar sesión")
+                    .tab_stop(!self.busy)
+                    .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if !this.busy {
+                            this.request(Command::Logout, cx);
+                        }
+                    }))
+            } else {
+                account_button(
+                    "services-login",
+                    if self.account.pending {
+                        "Esperando…"
+                    } else {
+                        "Iniciar sesión"
+                    },
+                )
+                .tab_stop(can_start && !self.busy)
+                .when(!can_start || self.busy, |button| {
+                    button
+                        .opacity(orbit::DISABLED)
+                        .aria_description("El servicio de cuenta no está configurado")
+                })
+                .on_click(cx.listener(|this, _, _, cx| {
+                    if this.requires_access() && !this.busy {
+                        this.request(Command::AccountBegin, cx);
+                    }
+                }))
+            })
+    }
+    fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let signed_in = self.account.signed_in;
+        let identity_actions = self.account_identity_actions(cx);
+        div()
+            .flex_1()
+            .flex_basis(gpui::relative(1.3 / 2.3))
+            .min_w_0()
+            .min_h(px(144.0))
+            .p(px(20.0))
+            .flex()
+            .items_center()
+            .gap(px(16.0))
+            .rounded(px(orbit::RADIUS))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgb(orbit::SURFACE_1))
+            .child(
+                div()
+                    .size(px(64.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(18.0))
+                    .bg(linear_gradient(
+                        160.0,
+                        linear_color_stop(rgb(orbit::SURFACE_3), 0.0),
+                        linear_color_stop(rgb(orbit::SURFACE_1), 1.0),
+                    ))
+                    .child(orbit::text("·", 26.0, 750, orbit::INK)),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.0))
+                    .child(orbit::text(
+                        if signed_in {
+                            "Cuenta conectada"
+                        } else {
+                            "Sin sesión"
+                        },
+                        18.0,
+                        700,
+                        orbit::INK,
+                    ))
+                    .child(orbit::text(
+                        "Sin correo en la credencial local",
+                        12.5,
+                        400,
+                        orbit::INK_3,
+                    ))
+                    .child(
+                        div()
+                            .mt(px(8.0))
+                            .flex()
+                            .flex_wrap()
+                            .gap(px(6.0))
+                            .child(orbit::chip("Plan no disponible", orbit::Tone::Neutral))
+                            .child(orbit::chip("Canal no disponible", orbit::Tone::Neutral))
+                            .child(orbit::chip(
+                                "Dispositivo sin verificar",
+                                orbit::Tone::Neutral,
+                            )),
                     ),
+            )
+            .child(identity_actions)
+    }
+    fn account_plan() -> gpui::Div {
+        let module_names = [
+            ("i-studio", "Overlays Studio", false),
+            ("i-launcher", "Launcher", false),
+            ("i-carreras", "Carreras y recordatorios", false),
+            ("i-estrategia", "Estrategia", false),
+            ("i-ingeniero", "Ingeniero", false),
+            ("i-telemetria", "Telemetría", true),
+        ];
+        let mut modules = div()
+            .relative()
+            .mt(px(14.0))
+            .flex()
+            .flex_wrap()
+            .gap(px(6.0));
+        for (icon, label, soon) in module_names {
+            modules = modules.child(
+                div()
+                    .w(px(184.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .opacity(orbit::DISABLED)
+                    .child(orbit::icon(icon, 15.0, orbit::INK_3))
+                    .child(orbit::text(label, 12.0, 500, orbit::INK_2))
+                    .when(soon, |module| {
+                        module.child(orbit::text("· próximamente", 10.5, 500, orbit::INK_3))
+                    }),
+            );
+        }
+        div()
+            .relative()
+            .flex_1()
+            .flex_basis(gpui::relative(1.0 / 2.3))
+            .min_w_0()
+            .min_h(px(144.0))
+            .overflow_hidden()
+            .p(px(20.0))
+            .rounded(px(orbit::RADIUS))
+            .border_1()
+            .border_color(rgba(0xf047_5533))
+            .bg(linear_gradient(
+                135.0,
+                linear_color_stop(rgba(0xd52f_4924), 0.0),
+                linear_color_stop(rgba(0xff9b_570a), 1.0),
+            ))
+            .child(orbit::eyebrow("Plan activo"))
+            .child(orbit::text("No disponible", 26.0, 750, orbit::INK).mt(px(4.0)))
+            .child(orbit::text("— de 6 módulos incluidos", 12.0, 400, orbit::INK_2).mt(px(3.0)))
+            .child(modules)
+    }
+    fn account_session(&self) -> gpui::Div {
+        let signed_in = self.account.signed_in;
+        account_surface(
+            "Sesión",
+            "credencial local",
+            account_body()
+                .child(account_value(
+                    "Estado",
+                    if signed_in {
+                        "Conectada"
+                    } else {
+                        "Sin sesión"
+                    },
+                    signed_in,
+                ))
+                .child(account_value(
+                    "Último acceso",
+                    "La credencial no lo declara",
+                    false,
+                ))
+                .child(account_value(
+                    "Caducidad offline",
+                    "La credencial no lo declara",
+                    false,
+                ))
+                .child(account_value("Canales disponibles", "—", false).border_b_0()),
+        )
+        .flex_1()
+    }
+    fn account_devices(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let device = div()
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .child(
+                div()
+                    .size(px(34.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(9.0))
+                    .bg(rgb(orbit::SURFACE_2))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .child(orbit::text("PC", 10.5, 700, orbit::INK_3)),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(3.0))
+                    .child(orbit::text("Este dispositivo", 13.0, 650, orbit::INK))
+                    .child(orbit::text(
+                        "estado no disponible en esta sesión",
+                        12.0,
+                        400,
+                        orbit::INK_3,
+                    )),
+            )
+            .child(div().size(px(6.0)).rounded_full().bg(rgb(orbit::INK_MUTED)));
+        account_surface(
+            "Dispositivos",
+            "—",
+            account_body()
+                .gap(px(14.0))
+                .child(device)
+                .child(orbit::callout(
+                    "El servicio de licencias solo declara si este equipo está verificado; no publica la lista de dispositivos, así que aquí no se inventa ninguno. «Restablecer dispositivo» libera el equipo activo (1 vez cada 24 h).",
                 ))
                 .child(
-                    orbit::button("services-refresh", "Renovar sesión").on_click(
-                        cx.listener(|this, _, _, cx| this.request(Command::AccountRenew, cx)),
-                    ),
-                )
-                .child(
-                    orbit::button("services-logout", "Cerrar sesión")
-                        .on_click(cx.listener(|this, _, _, cx| this.request(Command::Logout, cx))),
-                )
-                .child(orbit::text(
-                    if self.busy {
-                        "Esperando respuesta…"
-                    } else {
-                        "La aplicación conserva la sesión protegida en este dispositivo."
-                    },
-                    12.0,
-                    400,
-                    orbit::INK_3,
-                )),
+                    account_button("services-device-reset", "Restablecer dispositivo")
+                        .tab_stop(!self.busy)
+                        .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if !this.busy {
+                                this.request(Command::DeviceReset, cx);
+                            }
+                        })),
+                ),
         )
+        .flex_1()
+    }
+    fn account_page(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let hero = div()
+            .flex()
+            .w_full()
+            .gap(px(21.0))
+            .items_stretch()
+            .child(self.account_identity(cx))
+            .child(Self::account_plan());
+        let details = div()
+            .flex()
+            .w_full()
+            .gap(px(21.0))
+            .items_start()
+            .child(self.account_session())
+            .child(self.account_devices(cx));
+        div()
+            .flex()
+            .flex_col()
+            .w_full()
+            .min_w_0()
+            .gap(px(21.0))
+            .child(hero)
+            .child(details)
+            .child(orbit::callout(self.message.clone()))
+    }
+
+    pub fn account(&self, cx: &mut Context<Self>) -> gpui::Div {
+        self.account_page(cx)
     }
 
     pub fn report_action(&mut self, command: Command, cx: &mut Context<Self>) {
@@ -332,19 +659,12 @@ impl Remote {
         self.editor.render(cx)
     }
 
-    pub fn roadmap(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut body = orbit::card_body()
-            .child(orbit::callout(self.roadmap_message.clone()))
-            .child(
-                orbit::button("services-roadmap-cache", "Ver publicación guardada").on_click(
-                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapCached, cx)),
-                ),
-            )
-            .child(
-                orbit::button("services-roadmap-refresh", "Actualizar roadmap").on_click(
-                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapRefresh, cx)),
-                ),
-            );
+    pub fn roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        if !self.roadmap_requested && !self.busy {
+            self.roadmap_requested = true;
+            self.request(Command::RoadmapCached, cx);
+        }
+        let mut body = div().flex().flex_col().flex_1().min_h_0().gap(px(16.0));
         if let Some(publication) = &self.publication {
             body = body.child(orbit::text(
                 format!(
@@ -381,17 +701,47 @@ impl Remote {
                         .child(orbit::text(item.body.es.clone(), 13.5, 400, orbit::INK_2));
                 }
             }
+        } else if self.busy {
+            body = body.child(orbit::text("Cargando roadmap...", 13.5, 400, orbit::INK_3));
+        } else {
+            body = body.child(orbit::text(&self.roadmap_message, 13.5, 400, orbit::INK_3));
         }
-        orbit::card("Roadmap público").child(body)
+        div()
+            .id("roadmap")
+            .w_full()
+            .min_h(px(HUB_CONTENT_MIN_HEIGHT))
+            .mt(px(-SHELL_HEADER_OVERLAP))
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(15.0))
+            .pt(px(24.0))
+            .pb(px(20.0))
+            .bg(rgb(orbit::CANVAS))
+            .child(orbit::page_header(
+                "Dirección del producto",
+                "Roadmap",
+                "Explora los hitos en una línea temporal, por estado o como gráfico de distribución.",
+            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h_0()
+                    .px(px(20.0))
+                    .py(px(24.0))
+                    .bg(rgb(orbit::SURFACE_1))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .rounded(px(orbit::RADIUS))
+                    .child(body),
+            )
     }
 
     pub fn licenses(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card("Licencias y dispositivos").child(orbit::card_body()
-            .child(orbit::callout(self.message.clone()))
-            .child(orbit::text("El núcleo determina los derechos y mantiene la hora de margen si la licencia caduca durante el juego.",13.5,400,orbit::INK_2))
-            .child(orbit::button("services-policy","Consultar derechos").on_click(cx.listener(|this,_,_,cx| this.request(Command::LicenseStatus,cx))))
-            .child(orbit::button("services-license","Renovar licencia").on_click(cx.listener(|this,_,_,cx| this.request(Command::LicenseRenew,cx))))
-            .child(orbit::text("La credencial local y el reset de dispositivo estarán disponibles al conectar el puente y la autoridad del núcleo.",12.0,400,orbit::INK_3)))
+        self.account_page(cx)
     }
 }
 

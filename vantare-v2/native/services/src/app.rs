@@ -290,10 +290,7 @@ impl App {
                 // Only an explicit IPC login action opens the external browser.
                 // `explorer.exe <url>` trata las URL largas con parámetros como rutas
                 // y abre el Explorador; el manejador de protocolo abre el navegador.
-                std::process::Command::new("rundll32.exe")
-                    .args(["url.dll,FileProtocolHandler", url.as_str()])
-                    .spawn()
-                    .map_err(|_| Error::Unsupported)?;
+                open_login(&url)?;
                 self.login_pending = true;
             }
             Command::AccountPoll if self.login_pending => {
@@ -470,7 +467,58 @@ pub fn now() -> Result<u64> {
 }
 
 pub fn default_root() -> Result<PathBuf> {
-    std::env::var_os("LOCALAPPDATA")
-        .map(|path| PathBuf::from(path).join("Vantare/native/services"))
+    #[cfg(windows)]
+    {
+        std::env::var_os("LOCALAPPDATA")
+            .map(|path| PathBuf::from(path).join("Vantare/native/services"))
+            .ok_or(Error::Storage)
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let root = match std::env::var_os("XDG_CONFIG_HOME") {
+            Some(path) if PathBuf::from(&path).is_absolute() => PathBuf::from(path),
+            Some(_) => return Err(Error::Storage),
+            None => home()?.join(".config"),
+        };
+        Ok(root.join("Vantare/native/services"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Ok(home()?.join("Library/Application Support/Vantare/native/services"))
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    {
+        Err(Error::Unsupported)
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn home() -> Result<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
         .ok_or(Error::Storage)
+}
+
+fn open_login(url: &url::Url) -> Result<()> {
+    #[cfg(windows)]
+    let mut command = {
+        let mut command = std::process::Command::new("rundll32.exe");
+        command.args(["url.dll,FileProtocolHandler", url.as_str()]);
+        command
+    };
+    #[cfg(target_os = "linux")]
+    let mut command = {
+        let mut command = std::process::Command::new("xdg-open");
+        command.arg(url.as_str());
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = std::process::Command::new("open");
+        command.arg(url.as_str());
+        command
+    };
+    command.spawn().map(|_| ()).map_err(|_| Error::Unsupported)
 }

@@ -4,7 +4,7 @@ use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::{AnalysisRevisionRef, validate_analysis_revisions};
+use super::{AnalysisRevisionRef, is_digest, validate_analysis_revisions};
 
 const MAX_FAMILY_CORRECTIONS: usize = 256;
 const TEMPORAL_CONTRACT_V1: &str = "temporalsegments.v1";
@@ -603,13 +603,6 @@ fn digest_json<T: Serialize>(domain: &str, value: &T) -> Result<String, String> 
 
 fn valid_text(value: &str, maximum_bytes: usize) -> bool {
     value.len() <= maximum_bytes && !value.trim().is_empty()
-}
-
-fn is_digest(value: &str) -> bool {
-    value.len() == 64
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 #[cfg(test)]

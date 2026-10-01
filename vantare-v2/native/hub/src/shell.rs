@@ -69,6 +69,7 @@ struct Hub {
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
+    close_requested: bool,
 }
 
 impl Hub {
@@ -80,6 +81,16 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        if self
+            .launcher
+            .update(cx, |launcher, _| launcher.take_exit_cancelled())
+        {
+            self.close_requested = false;
+        }
+        if self.close_requested && self.can_close(cx) {
+            cx.quit();
+            return;
+        }
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
@@ -140,6 +151,10 @@ impl Hub {
     }
 
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        self.close_requested = true;
+        if !self.launcher.update(cx, Launcher::can_close) {
+            return false;
+        }
         match self.save(cx) {
             Ok(()) => true,
             Err(error) => {
@@ -147,6 +162,7 @@ impl Hub {
                     center.report("hub.save", error.clone(), cx);
                 });
                 self.status = Some(error);
+                self.close_requested = false;
                 cx.notify();
                 false
             }
@@ -177,7 +193,17 @@ impl Hub {
                 self.calendar.read(cx),
                 self.demo.as_ref(),
                 |control, section| {
-                    control.on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx)))
+                    control.on_click(cx.listener(move |this, _, _, cx| {
+                        if section == Section::Launcher {
+                            if let Some(id) = this.launcher.read(cx).default_profile_id() {
+                                this.launch_profile(&id, cx);
+                            } else {
+                                this.navigate(section, cx);
+                            }
+                        } else {
+                            this.navigate(section, cx);
+                        }
+                    }))
                 },
             )
             .into_any_element(),
@@ -191,7 +217,7 @@ impl Hub {
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
-                .update(cx, |remote, cx| remote.roadmap(cx))
+                .update(cx, super::services::view::Remote::roadmap)
                 .into_any_element(),
         }
     }
@@ -202,22 +228,24 @@ impl Hub {
             .flex()
             .flex_col()
             .when(self.section != Section::Strategy, |content| {
-                content.gap(gpui::px(24.0)).p(gpui::px(orbit::GUTTER))
+                // Estos consumidores aun restan el espacio de la antigua cabecera.
+                // Conservamos su geometria hasta que sus propietarios retiren ese margen.
+                let inset = if matches!(
+                    self.section,
+                    Section::Calendar | Section::Studio | Section::Roadmap
+                ) {
+                    135.0
+                } else {
+                    0.0
+                };
+                content
+                    .gap(gpui::px(24.0))
+                    .p(gpui::px(orbit::GUTTER))
+                    .pt(gpui::px(orbit::GUTTER + inset))
             })
-            .when(
-                self.section != Section::Home && self.section != Section::Strategy,
-                |content| {
-                    content.child(if self.section == Section::Settings {
-                        self.settings_header()
-                    } else {
-                        orbit::page_header(
-                            "Hub nativo",
-                            self.section.label(),
-                            self.section.subtitle(),
-                        )
-                    })
-                },
-            )
+            .when(self.section == Section::Settings, |content| {
+                content.child(self.settings_header())
+            })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status))
             })
@@ -230,6 +258,7 @@ impl Hub {
 }
 
 impl Render for Hub {
+    #[allow(clippy::too_many_lines)] // Compone el marco común y la visibilidad del editor Strategy en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.remote.read(cx).requires_access() {
             return self
@@ -239,7 +268,9 @@ impl Render for Hub {
         }
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        let topbar = self.topbar(window, cx);
+        // La sección aporta aquí sus controles con `.into_any_element()`;
+        // None conserva la barra común hasta conectar su API (ver shell/README.md).
+        let topbar = self.topbar(window, None, cx);
         if self
             .capture
             .as_ref()
@@ -254,7 +285,10 @@ impl Render for Hub {
             self.section == Section::Strategy && self.strategy.read(cx).context_sidebar_visible();
         let column = if self.section == Section::Studio {
             self.studio.read(cx).context_column().into_any_element()
-        } else if self.section == Section::Settings {
+        } else if matches!(
+            self.section,
+            Section::Settings | Section::Account | Section::Licenses
+        ) {
             self.settings_column(window, cx).into_any_element()
         } else if self.section == Section::Launcher {
             self.launcher
@@ -318,12 +352,16 @@ impl Render for Hub {
             .child(main)
             .when(self.section == Section::Launcher, |root| {
                 root.when_some(
-                    self.launcher.read(cx).form_layer(),
+                    self.launcher
+                        .update(cx, |launcher, cx| launcher.form_layer(window, cx)),
                     gpui::ParentElement::child,
                 )
             })
             .when(self.shell.palette_open, |root| {
                 root.child(self.palette(window, cx))
+            })
+            .when_some(self.notifications.read(cx).popover(), |root, layer| {
+                root.child(div().absolute().inset_0().size_full().child(layer))
             })
             .into_any_element()
     }
@@ -439,7 +477,7 @@ fn prepare_analysis(options: &Options) -> Result<Analysis, String> {
         .unwrap_or_else(|| options.data_dir.join("recordings"));
     let storage_exe = std::env::current_exe()
         .map_err(|error| format!("ruta del Hub: {error}"))?
-        .with_file_name("vantare-storage.exe");
+        .with_file_name(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
     Ok(Analysis::new(recordings, storage_exe))
 }
 
@@ -549,18 +587,7 @@ impl Hub {
             prepared_analysis.refresh(cx);
             prepared_analysis
         });
-        let launcher = cx.new(|cx| match &demo {
-            Some(demo) => Launcher::new_demo(
-                launcher_store,
-                demo,
-                capture
-                    .as_ref()
-                    .is_some_and(|capture| capture.launcher_new_profile),
-                window,
-                cx,
-            ),
-            None => Launcher::new(launcher_store, cx),
-        });
+        let launcher = create_launcher(launcher_store, demo.as_ref(), capture.as_ref(), window, cx);
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
@@ -613,8 +640,30 @@ impl Hub {
             status: None,
             subscriber,
             previous_source: None,
+            close_requested: false,
         }
     }
+}
+
+fn create_launcher(
+    store: LauncherStore,
+    demo: Option<&crate::demo::DemoData>,
+    capture: Option<&crate::demo::CaptureState>,
+    window: &mut Window,
+    cx: &mut Context<Hub>,
+) -> Entity<Launcher> {
+    cx.new(|cx| match demo {
+        Some(demo) => Launcher::new_demo(
+            store,
+            demo,
+            capture
+                .as_ref()
+                .is_some_and(|capture| capture.launcher_new_profile),
+            window,
+            cx,
+        ),
+        None => Launcher::new(store, cx),
+    })
 }
 
 fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
@@ -634,14 +683,23 @@ pub fn run(options: Options) -> Result<(), String> {
 
 /// La integración de cuenta entrega derechos ya resueltos. Esta shell no
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
-pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(), String> {
+pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+    if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
+        demo.apply_capture(capture);
+    }
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
     };
     let launcher = match options.demo.as_ref() {
         Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
-        None => LauncherStore::load(options.launcher_file.clone())?,
+        None => {
+            if options.launcher_file == crate::launcher::default_path()? {
+                LauncherStore::load_production(options.launcher_file.clone())?
+            } else {
+                LauncherStore::load(options.launcher_file.clone())?
+            }
+        }
     };
     let loaded = Loaded {
         analysis: prepare_analysis(&options)?,

@@ -11,7 +11,7 @@ mod inspection;
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 const SCHEMA: &str = "vantare.series-db.v1";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
-pub use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
+use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
 
 struct Store {
     connection: Connection,

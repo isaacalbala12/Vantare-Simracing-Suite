@@ -26,7 +26,7 @@ $Out = (Resolve-Path -LiteralPath $Out).Path
 $candidate = Join-Path $Out "$Widget.png"
 Push-Location (Split-Path $PSScriptRoot)
 try {
-    cargo build -q -p vantare-ui --features parity-capture --bin vantare-workshop -j 4
+    cargo build -q -p vantare-ui --features parity-capture --bin vantare-workshop -j 2
     if ($LASTEXITCODE -ne 0) { throw 'la compilación falló' }
     $targetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path (Get-Location) 'target' }
     $exe = Join-Path $targetDir 'debug/vantare-workshop.exe'

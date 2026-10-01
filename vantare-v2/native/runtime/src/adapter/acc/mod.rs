@@ -10,6 +10,7 @@ mod replay;
 #[allow(unsafe_code)]
 mod shm;
 mod translate;
+#[cfg(windows)]
 mod udp;
 mod velocity;
 

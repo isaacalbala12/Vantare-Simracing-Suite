@@ -221,6 +221,40 @@ impl Hub {
                 .into_any_element(),
         }
     }
+
+    fn render_content(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        div()
+            .flex_1()
+            .flex()
+            .flex_col()
+            .when(self.section != Section::Strategy, |content| {
+                // Estos consumidores aun restan el espacio de la antigua cabecera.
+                // Conservamos su geometria hasta que sus propietarios retiren ese margen.
+                let inset = if matches!(
+                    self.section,
+                    Section::Calendar | Section::Studio | Section::Roadmap
+                ) {
+                    135.0
+                } else {
+                    0.0
+                };
+                content
+                    .gap(gpui::px(24.0))
+                    .p(gpui::px(orbit::GUTTER))
+                    .pt(gpui::px(orbit::GUTTER + inset))
+            })
+            .when(self.section == Section::Settings, |content| {
+                content.child(self.settings_header())
+            })
+            .when_some(self.status.clone(), |content, status| {
+                content.child(orbit::callout(status))
+            })
+            .when_some(self.shell.navigation_notice.clone(), |content, notice| {
+                content.child(orbit::callout(notice))
+            })
+            .child(self.section_view(cx))
+            .into_any_element()
+    }
 }
 
 impl Render for Hub {
@@ -233,7 +267,9 @@ impl Render for Hub {
         }
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        let topbar = self.topbar(window, cx);
+        // La sección aporta aquí sus controles con `.into_any_element()`;
+        // None conserva la barra común hasta conectar su API (ver shell/README.md).
+        let topbar = self.topbar(window, None, cx);
         if self
             .capture
             .as_ref()
@@ -246,35 +282,21 @@ impl Render for Hub {
         }
         let column = if self.section == Section::Studio {
             self.studio.read(cx).context_column().into_any_element()
-        } else if self.section == Section::Settings {
+        } else if matches!(
+            self.section,
+            Section::Settings | Section::Account | Section::Licenses
+        ) {
             self.settings_column(window, cx).into_any_element()
         } else if self.section == Section::Launcher {
             self.launcher
                 .update(cx, |launcher, cx| launcher.context_column(window, cx))
                 .into_any_element()
+        } else if self.section == Section::Strategy {
+            self.strategy_context_column(cx).into_any_element()
         } else {
             self.context_column(window, cx).into_any_element()
         };
-        let content = div()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .gap(gpui::px(24.0))
-            .p(gpui::px(orbit::GUTTER))
-            .when(self.section != Section::Home, |content| {
-                content.child(if self.section == Section::Settings {
-                    self.settings_header()
-                } else {
-                    orbit::page_header("Hub nativo", self.section.label(), self.section.subtitle())
-                })
-            })
-            .when_some(self.status.clone(), |content, status| {
-                content.child(orbit::callout(status))
-            })
-            .when_some(self.shell.navigation_notice.clone(), |content, notice| {
-                content.child(orbit::callout(notice))
-            })
-            .child(self.section_view(cx));
+        let content = self.render_content(cx);
         let main = div()
             .flex_1()
             .flex()
@@ -317,6 +339,9 @@ impl Render for Hub {
             })
             .when(self.shell.palette_open, |root| {
                 root.child(self.palette(window, cx))
+            })
+            .when_some(self.notifications.read(cx).popover(), |root, layer| {
+                root.child(div().absolute().inset_0().size_full().child(layer))
             })
             .into_any_element()
     }
@@ -638,7 +663,10 @@ pub fn run(options: Options) -> Result<(), String> {
 
 /// La integración de cuenta entrega derechos ya resueltos. Esta shell no
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
-pub fn run_with_access(options: Options, access: navigation::Access) -> Result<(), String> {
+pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+    if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
+        demo.apply_capture(capture);
+    }
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),

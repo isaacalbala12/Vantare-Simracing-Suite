@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory, ParameterSetName = 'Pantalla')][string]$Pantalla,
     [Parameter(Mandatory, ParameterSetName = 'Todas')][switch]$Todas,
+    [Parameter(Mandatory, ParameterSetName = 'StrategyV5A')][switch]$StrategyV5A,
     [switch]$VerificarDeterminismo
 )
 $ErrorActionPreference = 'Stop'
@@ -56,6 +57,9 @@ function Invoke-NativeCapture([string]$Name, [string]$Label) {
 }
 
 function Compare-Screen([string]$Name) {
+    $strategyV5 = $Name.StartsWith('strategy-v5-', [StringComparison]::Ordinal)
+    $width = if ($strategyV5) { 1672 } else { 1440 }
+    $height = if ($strategyV5) { 941 } else { 900 }
     $reference = Join-Path $references "$Name.png"
     if (-not (Test-Path -LiteralPath $reference -PathType Leaf)) { throw "Falta la referencia Wails: $reference" }
     $candidate = Invoke-NativeCapture $Name 'native'
@@ -75,8 +79,8 @@ function Compare-Screen([string]$Name) {
     $percent = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture)
     [pscustomobject]@{
         pantalla = $Name
-        width = 1440
-        height = 900
+        width = $width
+        height = $height
         threshold = 8
         different_percent = $percent
         diff_png = $diff
@@ -95,9 +99,22 @@ $allNames = @(Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json | ForEa
 if ($allNames.Count -ne 48 -or ($allNames | Select-Object -Unique).Count -ne 48) {
     throw "El manifiesto debe contener 48 pantallas únicas; contiene $($allNames.Count)"
 }
-$names = if ($Todas) { $allNames } else { @($Pantalla) }
+$strategyV5Names = @(
+    Get-ChildItem -LiteralPath $references -Filter 'strategy-v5-*.png' -File |
+        ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Name) }
+)
+$strategyV5ANames = @(
+    'strategy-v5-asistente-inicio'
+    'strategy-v5-asistente-combinacion'
+    'strategy-v5-asistente-reglas'
+    'strategy-v5-asistente-pilotos'
+    'strategy-v5-asistente-sesiones'
+    'strategy-v5-carrera'
+    'strategy-v5-revisiones'
+)
+$names = if ($Todas) { $allNames } elseif ($StrategyV5A) { $strategyV5ANames } else { @($Pantalla) }
 if (-not $names) { throw 'Indica -Pantalla nombre o -Todas' }
-$unknown = @($names | Where-Object { $_ -notin $allNames })
+$unknown = @($names | Where-Object { $_ -notin $allNames -and $_ -notin $strategyV5Names })
 if ($unknown.Count -gt 0) { throw "Pantalla fuera del manifiesto Wails: $($unknown -join ', ')" }
 
 $results = @()
@@ -111,7 +128,7 @@ Get-Content -LiteralPath $table
 Write-Output "Capturas, mapas y salidas: $evidence"
 
 if ($VerificarDeterminismo) {
-    $determinismScreen = if ($Todas) { 'inicio-base' } else { $Pantalla }
+    $determinismScreen = if ($Todas) { 'inicio-base' } elseif ($StrategyV5A) { $strategyV5ANames[0] } else { $Pantalla }
     $first = Invoke-NativeCapture $determinismScreen 'determinismo-a'
     $second = Invoke-NativeCapture $determinismScreen 'determinismo-b'
     $hashA = (Get-FileHash -LiteralPath $first -Algorithm SHA256).Hash

@@ -804,7 +804,7 @@ impl Hub {
         ))
     }
     fn settings_search(&self, cx: &Context<Self>) -> Div {
-        let aligned = self.settings.page == Page::Diagnostics;
+        let aligned = matches!(self.settings.page, Page::Diagnostics | Page::Hotkeys);
         div()
             .px(px(if aligned { 0.0 } else { 14.0 }))
             .pt(px(if aligned { 20.0 } else { 18.0 }))
@@ -827,7 +827,7 @@ impl Hub {
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let aligned = self.settings.page == Page::Diagnostics;
+        let aligned = matches!(self.settings.page, Page::Diagnostics | Page::Hotkeys);
         let mut rows = stack()
             .gap(px(if aligned { 2.0 } else { 4.0 }))
             .when(aligned, |rows| rows.px(px(2.0)));
@@ -1690,6 +1690,8 @@ impl Hub {
                             .flex()
                             .items_center()
                             .gap(px(10.0))
+                            .relative()
+                            .top(px(-7.0))
                             .child(disabled_button(
                                 "settings-hotkeys-reset",
                                 "Restablecer todos",

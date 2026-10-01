@@ -126,7 +126,7 @@ impl LauncherDrawer {
             .border_b_1()
             .border_color(rgba(orbit::LINE))
             .child(
-                text(self.label.clone(), 16.0, 690, orbit::INK)
+                text(self.label.clone(), 16.0, 650, orbit::INK)
                     .flex_1()
                     .min_w_0(),
             )
@@ -268,9 +268,9 @@ fn drawer_action_button(
     primary: bool,
 ) -> gpui::Stateful<gpui::Div> {
     let (background, foreground, border, weight) = if primary {
-        (rgb(0x00f3_eeee), 0x001c_1719, rgb(0x00f3_eeee), 850)
+        (rgb(0x00f3_eeee), 0x001c_1719, rgb(0x00f3_eeee), 650)
     } else {
-        (rgba(0xffff_ff06), orbit::INK_3, rgba(0xffff_ff12), 750)
+        (rgba(0xffff_ff06), orbit::INK_3, rgba(0xffff_ff12), 400)
     };
     div()
         .id(id)
@@ -430,7 +430,10 @@ fn editor_field(label: &str, control: impl IntoElement) -> gpui::Div {
         .flex()
         .flex_col()
         .gap(px(9.0))
-        .child(text(label.to_uppercase(), 10.0, 700, orbit::INK_3))
+        .child(
+            orbit::tracked_text(label.to_uppercase(), 11.0, 700, orbit::INK_3, 0.77)
+                .line_height(px(16.0)),
+        )
         .child(div().w_full().child(control))
 }
 
@@ -911,7 +914,7 @@ impl Launcher {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(orbit::eyebrow("Pasos").text_size(px(10.0)))
+                    .child(orbit::tracked_text("PASOS", 11.0, 700, orbit::INK_3, 0.77))
                     .child(
                         div()
                             .id("launcher-editor-mode")
@@ -921,10 +924,13 @@ impl Launcher {
                             .tab_index(0)
                             .tab_stop(false)
                             .cursor_pointer()
-                            .child(
-                                orbit::eyebrow(if advanced { "Básico" } else { "Avanzado" })
-                                    .text_size(px(10.0)),
-                            )
+                            .child(orbit::tracked_text(
+                                if advanced { "BÁSICO" } else { "AVANZADO" },
+                                10.0,
+                                700,
+                                orbit::INK_3,
+                                1.8,
+                            ))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 let Some(draft) = &mut this.profile_draft else {
                                     return;
@@ -943,7 +949,7 @@ impl Launcher {
         section.child(form_button(
             div()
                 .id("append-step")
-                .mt(px(2.0))
+                .mt(px(0.0))
                 .role(gpui::Role::Button)
                 .aria_label("Añadir paso")
                 .tab_index(0)
@@ -953,7 +959,7 @@ impl Launcher {
                 .items_center()
                 .justify_center()
                 .self_start()
-                .rounded(px(8.0))
+                .rounded(px(12.0))
                 .border_1()
                 .border_dashed()
                 .border_color(rgba(orbit::LINE_STRONG))
@@ -1061,7 +1067,7 @@ impl Launcher {
                     .min_w_0()
                     .child(text("Atajo global", 13.5, 650, orbit::INK))
                     .child(text(
-                        "Lanza este perfil desde cualquier sitio",
+                        "Lanza este perfil desde cualquier sitio.",
                         11.5,
                         400,
                         orbit::INK_3,
@@ -1090,12 +1096,12 @@ impl Launcher {
 
     fn profile_autostart_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
         div()
-            .mt(px(18.0))
+            .mt(px(30.0))
             .min_h(px(26.0))
             .flex()
             .items_center()
             .justify_between()
-            .child(text("Iniciar con Windows", 13.5, 650, orbit::INK_2))
+            .child(text("Iniciar con Windows", 13.5, 400, orbit::INK_2))
             .child(orbit::toggle(
                 "windows-start",
                 "Iniciar con Windows",

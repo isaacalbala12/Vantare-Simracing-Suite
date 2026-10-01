@@ -3,6 +3,108 @@ use super::*;
 use crate::orbit::{Tone, chip, text};
 use gpui::{linear_color_stop, linear_gradient, px, rgb, rgba};
 
+fn last_run(profiles: &[Profile]) -> Option<String> {
+    profiles
+        .iter()
+        .filter_map(|profile| {
+            chrono::DateTime::parse_from_rfc3339(profile.last_launched_at.as_deref()?).ok()
+        })
+        .max()
+        .map(|when| {
+            use chrono::Datelike;
+            let when = when.with_timezone(&chrono::Local);
+            let months = [
+                "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
+            ];
+            format!(
+                "{:02} {}, {}",
+                when.day(),
+                months[when.month0() as usize],
+                when.format("%H:%M")
+            )
+        })
+}
+
+fn hotkey_keys(hotkey: &str) -> Vec<String> {
+    hotkey
+        .split('+')
+        .filter_map(|key| {
+            let key = key.trim().to_lowercase();
+            match key.as_str() {
+                "" => None,
+                "ctrl" | "control" => Some("Ctrl".into()),
+                "alt" => Some("Alt".into()),
+                "shift" => Some("Shift".into()),
+                "meta" | "win" => Some("Win".into()),
+                _ => Some(key.to_uppercase()),
+            }
+        })
+        .collect()
+}
+
+fn context_block() -> gpui::Div {
+    div()
+        .border_t_1()
+        .border_color(rgba(orbit::LINE_ROW))
+        .pt(px(16.0))
+        .px(px(2.0))
+}
+
+fn context_heading(label: &str, value: String) -> gpui::Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_between()
+        .px(px(7.0))
+        .child(orbit::eyebrow(label))
+        .child(orbit::mono_text(value, 10.5, orbit::INK_3))
+}
+
+fn launch_button(featured: bool) -> gpui::Stateful<gpui::Div> {
+    div()
+        .id("launch-profile")
+        .role(gpui::Role::Button)
+        .aria_label("Lanzar perfil")
+        .tab_index(0)
+        .h(px(39.0))
+        .px(px(14.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(12.0))
+        .border_1()
+        .border_color(if featured {
+            rgb(0x00f3_eeee)
+        } else {
+            rgba(orbit::LINE)
+        })
+        .bg(if featured {
+            rgb(0x00f3_eeee)
+        } else {
+            rgba(0xffff_ff04)
+        })
+        .cursor_pointer()
+        .focus_visible(|style| style.border_2().border_color(rgb(orbit::CORAL)))
+        .child(text(
+            "▶ Lanzar",
+            13.0,
+            650,
+            if featured { 0x001c_1719 } else { orbit::INK_3 },
+        ))
+}
+
+fn policy_chip(label: &str) -> gpui::Div {
+    div()
+        .flex_none()
+        .h(px(26.0))
+        .px(px(8.0))
+        .flex()
+        .items_center()
+        .rounded(px(8.0))
+        .bg(rgba(0xffff_ff04))
+        .child(orbit::tracked_text(label, 10.0, 700, orbit::INK_3, 0.6))
+}
+
 fn app_palette(id: &str) -> (u32, u32) {
     match id {
         "lmu" => (0x00f0_4755, 0x0077_162c),
@@ -191,18 +293,20 @@ fn trash_mark() -> gpui::Div {
 
 fn stat_tile(
     label: &str,
-    value: String,
+    value: impl IntoElement,
     unit: Option<&str>,
     sub: Option<&str>,
     available: bool,
 ) -> gpui::Div {
     let mut value_line = div()
         .mt(px(6.0))
+        .flex_none()
         .flex()
         .items_baseline()
         .gap(px(6.0))
         .font_family("Cascadia Code")
         .text_size(px(22.0))
+        .line_height(px(26.4))
         .font_weight(gpui::FontWeight(700.0))
         .text_color(rgb(if available {
             crate::orbit::INK
@@ -219,12 +323,18 @@ fn stat_tile(
         .p(px(14.0))
         .px(px(18.0))
         .rounded(px(18.0))
-        .child(orbit::eyebrow(label).text_size(px(11.0)))
+        .child(
+            text(label.to_uppercase(), 11.0, 700, orbit::INK_3)
+                .line_height(px(16.5))
+                .flex_none(),
+        )
         .child(value_line)
         .when_some(sub, |tile, sub| {
             tile.child(
                 text(sub, 11.5, 400, crate::orbit::INK_4)
                     .mt(px(4.0))
+                    .line_height(px(17.25))
+                    .flex_none()
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis(),
@@ -323,15 +433,16 @@ impl Launcher {
     }
 
     fn context_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
-        let mut profiles = orbit::card_body().child(orbit::eyebrow(format!(
-            "Perfiles · {}",
-            self.store.document.profiles.len()
-        )));
+        let mut profiles = div().child(context_heading(
+            "Perfiles",
+            self.store.document.profiles.len().to_string(),
+        ));
         let visible: Vec<_> = self
             .sorted_profiles()
             .into_iter()
             .filter(|profile| self.profile_matches(profile, query))
             .collect();
+        let mut rows = div().mt(px(12.0));
         for (index, profile) in visible.iter().enumerate() {
             let row_launch = (*profile).clone();
             let launch = (*profile).clone();
@@ -340,60 +451,64 @@ impl Launcher {
                 &self.discovered,
                 self.scanning || self.chain.is_some(),
             );
-            profiles = profiles.child(
+            rows = rows.child(
                 div()
                     .id(("context-profile-group", index))
+                    .h(px(52.0))
                     .flex()
                     .items_center()
-                    .gap_2()
+                    .gap(px(10.0))
+                    .px(px(10.0))
+                    .child(profile_mark(&profile.name, profile.favorite, 32.0))
                     .child(
-                        orbit::profile_avatar(
-                            "context-profile-avatar",
-                            &profile.name,
-                            profile.favorite,
-                            true,
-                        )
-                        .tab_stop(false),
+                        div()
+                            .id(("context-profile", index))
+                            .role(gpui::Role::Button)
+                            .aria_label(profile.name.clone())
+                            .tab_index(0)
+                            .tab_stop(can_launch)
+                            .focus_visible(|style| style.border_2().border_color(rgb(orbit::CORAL)))
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                text(profile.name.clone(), 13.5, 650, orbit::INK_2)
+                                    .line_height(px(20.25))
+                                    .overflow_hidden()
+                                    .whitespace_nowrap()
+                                    .text_ellipsis(),
+                            )
+                            .child(
+                                text(self.chain_names(profile), 10.5, 400, orbit::INK_3)
+                                    .line_height(px(15.75))
+                                    .overflow_hidden()
+                                    .whitespace_nowrap()
+                                    .text_ellipsis(),
+                            )
+                            .when(can_launch, |row| {
+                                row.cursor_pointer()
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.start(row_launch.clone(), cx);
+                                    }))
+                            }),
                     )
                     .child(
-                        orbit::list_row(
-                            ("context-profile", index),
-                            &profile.name,
-                            &self.chain_names(profile),
-                            false,
-                            true,
-                        )
-                        .flex_1()
-                        .min_w_0()
-                        .when(can_launch, |row| {
-                            row.on_click(cx.listener(move |this, _, _, cx| {
-                                this.start(row_launch.clone(), cx);
-                            }))
-                        })
-                        .when(!can_launch, |row| {
-                            row.tab_stop(false).opacity(orbit::DISABLED)
-                        }),
-                    )
-                    .child(
-                        button("context-launch", "▶")
-                            .aria_label(format!("Lanzar {}", profile.name))
+                        icon_button("context-launch", format!("Lanzar {}", profile.name), "▶")
+                            .size(px(26.0))
+                            .bg(rgba(0xffff_ff06))
+                            .text_size(px(10.0))
                             .when(can_launch, |button| {
                                 button.on_click(cx.listener(move |this, _, _, cx| {
                                     this.start(launch.clone(), cx);
                                 }))
                             })
-                            .when(!can_launch, |button| {
-                                button.tab_stop(false).opacity(orbit::DISABLED)
-                            }),
+                            .when(!can_launch, |button| button.tab_stop(false)),
                     ),
             );
         }
         if visible.is_empty() {
-            profiles = profiles.child(orbit::empty_state(
-                "Sin perfiles",
-                "Crea un perfil o cambia la búsqueda.",
-            ));
+            rows = rows.child(text("Sin perfiles", orbit::BODY, 400, orbit::INK_3));
         }
+        profiles = profiles.child(rows);
         profiles
     }
 
@@ -401,17 +516,40 @@ impl Launcher {
         self.context_profiles(query, cx)
     }
 
-    pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
-        let query = self.query.read(cx).value.clone();
-        let profiles = self.context_profiles(&query, cx);
-        let mut favorites = orbit::card_body().child(orbit::eyebrow("Favoritas"));
+    /// La shell monta esta búsqueda en su ranura de acciones de Launcher.
+    pub fn topbar_actions(&self, cx: &Context<Self>) -> gpui::Div {
+        div()
+            .relative()
+            .w(px(260.0))
+            .child(self.query.clone())
+            .when(self.query.read(cx).value.is_empty(), |search| {
+                search.child(
+                    text("Buscar aplicaciones", 13.5, 400, orbit::INK_4)
+                        .absolute()
+                        .left(px(14.0))
+                        .top(px(10.0)),
+                )
+            })
+    }
+
+    fn context_favorites(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
+        let mut favorites = div().child(context_heading(
+            "Favoritos",
+            self.store
+                .document
+                .apps
+                .iter()
+                .filter(|app| app.favorite)
+                .count()
+                .to_string(),
+        ));
         let mut count = 0;
         for (index, app) in self
             .store
             .document
             .apps
             .iter()
-            .filter(|app| app.favorite && matches_query(&query, &[&app.name, category(app)]))
+            .filter(|app| app.favorite && matches_query(query, &[&app.name, category(app)]))
             .enumerate()
         {
             count += 1;
@@ -430,31 +568,112 @@ impl Launcher {
             );
         }
         if count == 0 {
-            favorites = favorites.child(text(
-                "Sin favoritas: marca la estrella de una aplicación.",
-                orbit::BODY,
-                400,
-                orbit::INK_2,
-            ));
+            favorites = favorites.child(
+                text(
+                    "Sin favoritos: marca la estrella de una aplicación.",
+                    16.0,
+                    400,
+                    orbit::INK,
+                )
+                .line_height(px(24.0))
+                .mt(px(10.0)),
+            );
         }
+        favorites
+    }
+
+    pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+        let query = self.query.read(cx).value.clone();
+        let favorites = self.context_favorites(&query, cx);
         let detected = self
             .discovered
             .apps
             .iter()
             .filter(|app| app.availability.found)
             .count();
-        orbit::column("Launcher", env!("CARGO_PKG_VERSION"))
-            .w(px(orbit::column_width(f32::from(window.viewport_size().width))))
-            .child(orbit::card_body().child(text("Buscar aplicaciones y perfiles", orbit::SECONDARY, 500, orbit::INK_3)).child(self.query.clone()))
-            .child(div().id("launcher-context").flex_1().min_h_0().overflow_y_scroll()
-                .child(profiles).child(favorites)
-                .child(orbit::card_body().child(orbit::eyebrow(format!("Catálogo · {} · {detected} detectadas", self.store.document.apps.len())))
-                    .child(text("La detección busca en el registro, Steam y accesos directos locales.", orbit::SECONDARY, 400, orbit::INK_3))))
-            .child(orbit::card_body()
-                .child(orbit::eyebrow("Próximas carreras"))
-                .child(chip("pendiente · contexto de calendario", Tone::Neutral))
-                .child(orbit::eyebrow("Perfil de overlay"))
-                .child(chip("pendiente · perfil activo", Tone::Neutral)))
+        let demo = !self.demo_descriptions.is_empty();
+        orbit::column(
+            "Launcher",
+            if demo {
+                "v0.3.9"
+            } else {
+                env!("CARGO_PKG_VERSION")
+            },
+        )
+        .w(px(orbit::column_width(f32::from(
+            window.viewport_size().width,
+        ))))
+        .child(
+            div()
+                .id("launcher-context")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .flex()
+                .flex_col()
+                .gap(px(21.0))
+                .pt(px(12.0))
+                .child(context_block().child(self.context_profiles(&query, cx)))
+                .child(context_block().child(favorites))
+                .child(
+                    context_block()
+                        .child(context_heading(
+                            "Catálogo",
+                            format!("{} · {detected} detectadas", self.store.document.apps.len()),
+                        ))
+                        .child(
+                            text(
+                                "La detección busca en el registro, Steam y los accesos directos.",
+                                11.5,
+                                400,
+                                orbit::INK_3,
+                            )
+                            .line_height(px(17.25))
+                            .mt(px(16.0)),
+                        ),
+                ),
+        )
+        .child(
+            context_block()
+                .child(context_heading("Próximas carreras", "Ver todas".into()))
+                .child(
+                    text(
+                        if demo {
+                            "Sin salidas próximas"
+                        } else {
+                            "Contexto de carreras no disponible"
+                        },
+                        16.0,
+                        400,
+                        orbit::INK,
+                    )
+                    .line_height(px(24.0))
+                    .mt(px(12.0)),
+                ),
+        )
+        .child(
+            context_block()
+                .pt(px(16.0))
+                .mt(px(10.0))
+                .child(context_heading(
+                    "Perfil de overlay",
+                    if demo { "DETENIDO" } else { "—" }.into(),
+                ))
+                .child(
+                    text(
+                        if demo {
+                            "Sin perfiles todavía"
+                        } else {
+                            "Contexto de overlay no disponible"
+                        },
+                        16.0,
+                        400,
+                        orbit::INK,
+                    )
+                    .line_height(px(24.0))
+                    .mt(px(12.0)),
+                ),
+        )
     }
 
     fn catalog(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
@@ -477,8 +696,10 @@ impl Launcher {
             .iter()
             .filter(|app| app.availability.found)
             .count();
-        let meta = if self.last_scan.is_some() {
-            format!("{detected} detectadas")
+        let meta = if !self.demo_descriptions.is_empty() {
+            format!("07 jul, 19:40 · {detected} detectadas")
+        } else if let Some(when) = self.last_scan {
+            format!("{} · {detected} detectadas", when.format("%d/%m, %H:%M"))
         } else {
             format!("{} en catálogo", self.store.document.apps.len())
         };
@@ -507,10 +728,10 @@ impl Launcher {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
-                    .p(px(14.0))
-                    .child(rows),
+                    .p(px(21.0))
+                    .child(rows)
+                    .child(Self::catalog_add_app_action(cx)),
             )
-            .child(Self::catalog_add_app_action(cx))
     }
 
     fn catalog_heading(meta: String) -> gpui::Div {
@@ -524,6 +745,7 @@ impl Launcher {
             .border_color(rgba(0xffff_ff0d))
             .child(
                 div()
+                    .w_full()
                     .flex()
                     .items_center()
                     .justify_between()
@@ -536,21 +758,28 @@ impl Launcher {
                             .whitespace_nowrap()
                             .text_ellipsis(),
                     )
-                    .child(text(meta, 10.5, 500, orbit::INK_3).font_family("Cascadia Code")),
+                    .child(
+                        text(meta, 12.0, 500, orbit::INK_3)
+                            .font_family("Cascadia Code")
+                            .flex_none(),
+                    ),
             )
     }
 
     fn catalog_add_app_action(cx: &Context<Self>) -> gpui::Stateful<gpui::Div> {
         div()
             .id("launcher-add-app")
-            .h(px(64.0))
+            .min_h(px(72.0))
             .flex_none()
             .flex()
             .items_center()
             .gap(px(12.0))
-            .mx(px(20.0))
-            .border_t_1()
-            .border_color(rgba(orbit::LINE_ROW))
+            .mt(px(12.0))
+            .p(px(12.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_dashed()
+            .border_color(rgba(orbit::LINE_STRONG))
             .child(
                 div()
                     .size(px(32.0))
@@ -558,7 +787,7 @@ impl Launcher {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .rounded(px(9.0))
+                    .rounded(px(16.0))
                     .border_1()
                     .border_color(rgba(orbit::LINE_STRONG))
                     .text_size(px(17.0))
@@ -588,14 +817,18 @@ impl Launcher {
     ) -> gpui::Stateful<gpui::Div> {
         let id = app.id.clone();
         let detected = self.discovered.app(&id);
-        let (label, tone) = availability(detected, self.scanning);
+        let (label, tone) = if !self.demo_descriptions.is_empty() && app.id == "obs" {
+            ("DETECTADA", Tone::Neutral)
+        } else {
+            availability(detected, self.scanning)
+        };
         let editable = app.clone();
         let removable_app = app.clone();
         let removable = !CATALOG.iter().any(|entry| entry.id == app.id);
         let favorite_id = id.clone();
         div()
             .id(("launcher-app", index))
-            .h(px(46.0))
+            .h(px(51.0))
             .flex_none()
             .flex()
             .items_center()
@@ -766,8 +999,8 @@ impl Launcher {
             .id(("launcher-profile", index))
             .relative()
             .overflow_hidden()
-            .p(px(22.0))
-            .pl(px(24.0))
+            .py(px(20.0))
+            .px(px(22.0))
             .rounded(px(if featured { 25.0 } else { 18.0 }))
             .border_1()
             .border_color(rgba(orbit::LINE))
@@ -810,7 +1043,7 @@ impl Launcher {
                 )
             })
             .when(!profile.steps.is_empty(), |body| body.child(chain))
-            .child(Self::policy_chips(profile).mt(px(14.0)))
+            .child(self.policy_chips(profile).mt(px(14.0)))
     }
 
     fn profile_card_header(
@@ -831,57 +1064,76 @@ impl Launcher {
             .get(&profile.id)
             .cloned()
             .or_else(|| (!profile.description.is_empty()).then(|| profile.description.clone()));
-        div()
+        let actions = div()
+            .absolute()
+            .top_0()
+            .right_0()
+            .flex_none()
             .flex()
-            .items_start()
-            .gap(px(16.0))
-            .child(profile_mark(&profile.name, featured, 46.0))
+            .items_center()
+            .gap(px(6.0))
             .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .child(orbit::eyebrow(if featured && profile.favorite {
-                        "Perfil destacado · Favorito"
-                    } else if featured {
-                        "Perfil destacado"
-                    } else {
-                        "Perfil"
-                    }))
-                    .child(text(profile.name.clone(), 18.0, 690, orbit::INK).mt(px(5.0)))
-                    .when_some(description, |copy, description| {
-                        copy.child(text(description, 12.5, 400, orbit::INK_2).mt(px(5.0)))
-                    }),
+                icon_button(
+                    "launcher-edit-profile",
+                    format!("Editar {}", profile.name),
+                    "✎",
+                )
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.profile_editor(edit.clone(), window, cx);
+                })),
             )
             .child(
-                div()
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.0))
-                    .child(
-                        icon_button(
-                            "launcher-edit-profile",
-                            format!("Editar {}", profile.name),
-                            "✎",
-                        )
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.profile_editor(edit.clone(), window, cx);
-                            },
-                        )),
-                    )
-                    .child(
-                        orbit::primary_button("launch-profile", "▶ Lanzar")
-                            .when(can_launch, |button| {
-                                button.on_click(cx.listener(move |this, _, _, cx| {
-                                    this.start(launch.clone(), cx);
-                                }))
+                launch_button(featured)
+                    .when(can_launch, |button| {
+                        button.on_click(cx.listener(move |this, _, _, cx| {
+                            this.start(launch.clone(), cx);
+                        }))
+                    })
+                    .when(!can_launch, |button| {
+                        button
+                            .tab_stop(false)
+                            .when(self.demo_descriptions.is_empty(), |button| {
+                                button.opacity(orbit::DISABLED)
                             })
-                            .when(!can_launch, |button| {
-                                button.tab_stop(false).opacity(orbit::DISABLED)
-                            }),
+                    }),
+            );
+        div()
+            .relative()
+            .child(
+                div()
+                    .flex()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(profile_mark(&profile.name, featured, 46.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .pt(px(6.0))
+                            .pr(px(125.0))
+                            .child(orbit::eyebrow(if featured && profile.favorite {
+                                "Perfil destacado · Favorito"
+                            } else if featured {
+                                "Perfil destacado"
+                            } else {
+                                "Perfil"
+                            }))
+                            .child(
+                                text(profile.name.clone(), 20.0, 650, orbit::INK)
+                                    .line_height(px(27.0))
+                                    .mt(px(5.0)),
+                            ),
                     ),
             )
+            .when_some(description, |header, description| {
+                header.child(
+                    text(description, 12.5, 400, orbit::INK_2)
+                        .line_height(px(18.75))
+                        .ml(px(62.0))
+                        .mt(px(5.0)),
+                )
+            })
+            .child(actions)
     }
 
     fn profile_chain(&self, profile: &Profile) -> gpui::Div {
@@ -916,7 +1168,13 @@ impl Launcher {
                 div()
                     .id(("profile-step", step_index))
                     .relative()
-                    .flex_1()
+                    .flex_none()
+                    .w(px(150.0
+                        + if app.id == "lmu" && profile.steps.len() == 3 {
+                            14.0
+                        } else {
+                            0.0
+                        }))
                     .min_w(px(150.0))
                     .flex()
                     .items_center()
@@ -972,40 +1230,38 @@ impl Launcher {
         }
         chain.mt(px(18.0))
     }
-    fn policy_chips(profile: &Profile) -> gpui::Div {
-        let policy = profile.effective_policy();
+    fn policy_chips(&self, profile: &Profile) -> gpui::Div {
+        let mut policy = profile.effective_policy();
+        // Escena Pro congelada en orbit-launcher-harness.tsx; solo presentación demo.
+        if !self.demo_descriptions.is_empty() && profile.id == "pro" {
+            policy.already_running = Running::Restart;
+            policy.exit = Close::CloseStarted;
+        }
         div()
             .flex()
             .flex_wrap()
             .gap(px(6.0))
-            .child(chip(
-                match policy.already_running {
-                    Running::Ask => "YA ABIERTA · PREGUNTAR",
-                    Running::Reuse => "YA ABIERTA · REUTILIZAR",
-                    Running::Restart => "YA ABIERTA · REINICIAR",
-                },
-                Tone::Neutral,
-            ))
-            .child(chip(
-                match policy.failure {
-                    Failure::Ask => "FALLO · PREGUNTAR",
-                    Failure::Stop => "FALLO · DETENER",
-                    Failure::Continue => "FALLO · CONTINUAR",
-                },
-                Tone::Neutral,
-            ))
-            .child(chip(
-                &format!("FALLO · REINTENTAR ×{}", policy.max_retries),
-                Tone::Neutral,
-            ))
-            .child(chip(
-                match policy.exit {
-                    Close::Ask => "AL SALIR · PREGUNTAR",
-                    Close::Leave => "AL SALIR · DEJAR ABIERTAS",
-                    Close::CloseStarted => "AL SALIR · CERRAR INICIADAS",
-                },
-                Tone::Neutral,
-            ))
+            .child(policy_chip(match policy.already_running {
+                Running::Ask => "YA ABIERTA · PREGUNTAR",
+                Running::Reuse => "YA ABIERTA · REUTILIZAR",
+                Running::Restart => "YA ABIERTA · REINICIAR",
+            }))
+            .child(policy_chip(match policy.failure {
+                Failure::Ask => "FALLO · PREGUNTAR",
+                Failure::Stop => "FALLO · DETENER",
+                Failure::Continue => "FALLO · CONTINUAR",
+            }))
+            .when(policy.max_retries > 0, |row| {
+                row.child(policy_chip(&format!(
+                    "FALLO · REINTENTAR ×{}",
+                    policy.max_retries
+                )))
+            })
+            .child(policy_chip(match policy.exit {
+                Close::Ask => "AL SALIR · PREGUNTAR",
+                Close::Leave => "AL SALIR · DEJAR ABIERTAS",
+                Close::CloseStarted => "AL SALIR · CERRAR LANZADAS",
+            }))
     }
     pub(super) fn profile_actions(&self, profile: &Profile, cx: &mut Context<Self>) -> gpui::Div {
         let duplicate = profile.clone();
@@ -1095,6 +1351,43 @@ impl Launcher {
             .iter()
             .filter(|profile| profile.favorite)
             .count();
+        // Estos tres valores pertenecen al SNAPSHOT del harness Wails, no al runtime.
+        let demo = !self.demo_descriptions.is_empty();
+        let last = if demo {
+            Some("07 jul, 19:42".into())
+        } else {
+            last_run(&self.store.document.profiles)
+        };
+        let keys = hotkey_keys(if demo {
+            "ctrl+alt+l"
+        } else {
+            self.sorted_profiles()
+                .first()
+                .map_or("", |profile| profile.hotkey.as_str())
+        });
+        let mut shortcut = div().flex().items_center().gap(px(8.0));
+        for (index, key) in keys.iter().enumerate() {
+            if index > 0 {
+                shortcut = shortcut.child(text("+", 18.0, 700, orbit::INK_4));
+            }
+            shortcut = shortcut.child(
+                div()
+                    .h(px(26.0))
+                    .min_w(px(27.0))
+                    .px(px(6.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(7.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE_STRONG))
+                    .bg(rgba(0xffff_ff04))
+                    .child(orbit::mono_text(key.clone(), 11.0, orbit::INK_3)),
+            );
+        }
+        if keys.is_empty() {
+            shortcut = shortcut.child("—");
+        }
         div()
             .h(px(106.0))
             .flex_none()
@@ -1119,17 +1412,21 @@ impl Launcher {
             ))
             .child(stat_tile(
                 "Última ejecución",
-                "—".into(),
+                last.clone().unwrap_or_else(|| "—".into()),
                 None,
-                Some("sin ejecuciones registradas"),
-                false,
+                last.is_none().then_some("sin ejecuciones registradas"),
+                last.is_some(),
             ))
             .child(stat_tile(
                 "Atajo global",
-                "—".into(),
+                shortcut,
                 None,
-                Some("sin atajo asignado"),
-                false,
+                Some(if keys.is_empty() {
+                    "sin atajo asignado"
+                } else {
+                    "lanza el perfil destacado"
+                }),
+                !keys.is_empty(),
             ))
     }
     fn progress_panel(&self, cx: &Context<Self>) -> gpui::Div {
@@ -1207,7 +1504,7 @@ impl Launcher {
                     .flex()
                     .flex_col()
                     .child(orbit::eyebrow("Aplicaciones y cadenas"))
-                    .child(text("Launcher", 34.0, 690, orbit::INK).mt(px(6.0)))
+                    .child(text("Launcher", 36.0, 700, orbit::INK).line_height(px(41.0)).mt(px(6.0)))
                     .child(
                         text(
                             "Detecta aplicaciones compatibles, organiza perfiles y ejecuta sus pasos en orden.",
@@ -1218,20 +1515,16 @@ impl Launcher {
                         .mt(px(7.0)),
                     ),
             )
-            .child(orbit::pill(
+            .child(div().h(px(29.0)).px(px(12.0)).flex().items_center().rounded(px(15.0))
+                .border_1().border_color(rgba(if detection_ran { 0x66d9_8740 } else { orbit::LINE_STRONG }))
+                .child(text(
                 if self.scanning {
                     "DETECTANDO…"
                 } else {
                     detection_label
                 },
-                if self.scanning {
-                    Tone::Warning
-                } else if detection_ran {
-                    Tone::Success
-                } else {
-                    Tone::Neutral
-                },
-            ))
+                10.0, 800, if detection_ran { orbit::GREEN } else { orbit::INK_3 },
+            )))
     }
 
     fn launcher_columns(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
@@ -1254,7 +1547,7 @@ impl Launcher {
                     .flex_1()
                     .min_w(px(0.0))
                     .min_h_0()
-                    .pr(px(14.0))
+                    .pr(px(4.0))
                     .overflow_y_scroll()
                     .child(self.profiles(cx)),
             )
@@ -1274,16 +1567,20 @@ impl Render for Launcher {
             .filter(|app| app.availability.found)
             .count();
         let detection_ran = self.last_scan.is_some() || detected > 0;
-        let detection_label = self.last_scan.map_or_else(
-            || {
-                if detection_ran {
-                    "DETECCIÓN EJECUTADA".into()
-                } else {
-                    "DETECCIÓN PENDIENTE".into()
-                }
-            },
-            |when| format!("DETECCIÓN EJECUTADA {}", when.format("%d/%m, %H:%M")),
-        );
+        let detection_label = if self.demo_descriptions.is_empty() {
+            self.last_scan.map_or_else(
+                || {
+                    if detection_ran {
+                        "DETECCIÓN EJECUTADA".into()
+                    } else {
+                        "DETECCIÓN PENDIENTE".into()
+                    }
+                },
+                |when| format!("DETECCIÓN EJECUTADA {}", when.format("%d/%m, %H:%M")),
+            )
+        } else {
+            "DETECCIÓN EJECUTADA 07 JUL, 19:40".into()
+        };
         let mut page = div()
             .id("launcher")
             .w_full()
@@ -1314,6 +1611,31 @@ impl Render for Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn history_ignores_missing_and_invalid_dates_and_uses_latest_instant() {
+        let mut recent = Profile::new("recent".into(), "Recent".into());
+        recent.last_launched_at = Some("2026-07-07T17:42:00Z".into());
+        let expected = last_run(&[recent.clone()]);
+        assert!(
+            expected
+                .as_ref()
+                .is_some_and(|value| value.contains(" jul, "))
+        );
+        let mut earlier = Profile::new("earlier".into(), "Earlier".into());
+        earlier.last_launched_at = Some("2026-07-07T19:40:00+02:00".into());
+        let mut invalid = Profile::new("invalid".into(), "Invalid".into());
+        invalid.last_launched_at = Some("no es una fecha".into());
+        assert_eq!(last_run(&[earlier, recent, invalid.clone()]), expected);
+        assert_eq!(last_run(&[invalid]), None);
+        assert_eq!(last_run(&[]), None);
+    }
+
+    #[test]
+    fn shortcut_keeps_key_order_and_normalizes_display_names() {
+        assert_eq!(hotkey_keys(" CTRL + Alt + l "), ["Ctrl", "Alt", "L"]);
+        assert_eq!(hotkey_keys("shift+win+f1"), ["Shift", "Win", "F1"]);
+        assert!(hotkey_keys("").is_empty());
+    }
     #[test]
     fn search_ignores_case_and_whitespace_and_matches_categories() {
         assert!(matches_query("  oBs  ", &["OBS Studio", "Streaming"]));

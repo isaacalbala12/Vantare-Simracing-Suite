@@ -372,3 +372,27 @@ hotkey/autostart, extracción de iconos ni actualización de estadísticas hist�
 El banco usa fixtures demo Wails; no acredita estos flujos productivos por sí solo.
 Notion sigue sin acceso por excepción expresa; el orquestador debe reconciliar allí
 la entrega y la base asignada con nightly antes de integrar. Sin push, PR ni merge.
+
+## Segunda pasada visual — Launcher 2 (#1430, 2026-10-01)
+
+Solo presentación en `presentation.rs` y `editor.rs`: columna compacta,
+catálogo, estadísticas/historial/atajo, tarjetas y editor lateral. Los valores
+exclusivos de demo reproducen `frontend/src/orbit-launcher-harness.tsx`;
+no se escriben en el documento productivo ni cambian el lanzamiento de apps.
+No se añaden dependencias ni se modifica la lógica de discovery, procesos o políticas.
+
+Integración pendiente del marco: montar `Launcher::topbar_actions(cx)` en la
+barra superior (la búsqueda ya no ocupa la columna), retirar la cabecera
+`Hub nativo` duplicada y usar las migas `HERRAMIENTA / Launcher`. La base
+asignada aún contiene esa cabecera; no se compensa con offsets negativos.
+El blur del scrim y los iconos reales de apps requieren el kit/fuente compartida.
+El ▶ de la columna global demo pertenece a `shell/chrome.rs`, fuera de alcance.
+
+Base del worker: `0e26ac26c365138a1b67ae1f4ee63f1236000fc3`, rama
+`vantareapp/isa-1430-w-launcher-2`. Evidencia externa, imágenes inspeccionadas,
+mapas, tabla antes/después y gates: `C:/tmp/launcher-2-evidence/`.
+La aceptación visual exige ≤5 % en `x > 376, y > 70`, umbral 8; el informe
+externo distingue ese recorte de la ventana completa. La entrega queda
+pendiente de revisar en la integración del marco; no declara paridad aprobada.
+Notion no disponible por excepción expresa del encargo; seguimiento a cargo
+del orquestador. Sin push, PR, merge, promoción ni release.

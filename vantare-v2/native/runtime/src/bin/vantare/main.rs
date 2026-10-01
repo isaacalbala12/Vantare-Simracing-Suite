@@ -20,6 +20,9 @@
 //!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
 //!   el plazo, se le mata.
 
+#[cfg(unix)]
+mod unix;
+#[cfg(windows)]
 mod win;
 
 use std::path::{Path, PathBuf};
@@ -27,6 +30,7 @@ use std::process::{Child, Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 use std::{env, io};
 
+#[cfg(windows)]
 use win::{Instance, Stop};
 
 const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
@@ -71,11 +75,11 @@ fn value<'a>(
 fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
     let mut config = Config {
         core: Program {
-            path: bin_dir.join("vantare-core.exe"),
+            path: bin_dir.join(binary_name("vantare-core")),
             args: Vec::new(),
         },
         overlays: Program {
-            path: bin_dir.join("vantare-overlays.exe"),
+            path: bin_dir.join(binary_name("vantare-overlays")),
             args: Vec::new(),
         },
         engineer: None,
@@ -85,7 +89,7 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
         stop_only: false,
     };
     let mut args = args.iter();
-    let mut engineer_bin = bin_dir.join("vantare-engineer.exe");
+    let mut engineer_bin = bin_dir.join(binary_name("vantare-engineer"));
     let mut engineer_args = Vec::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -148,6 +152,17 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
     Ok(config)
 }
 
+fn binary_name(name: &str) -> String {
+    #[cfg(windows)]
+    {
+        format!("{name}.exe")
+    }
+    #[cfg(unix)]
+    {
+        name.to_owned()
+    }
+}
+
 /// Nombres de los objetos del sistema, por usuario (y por `--instancia`).
 fn object_name(kind: &str, instance: &str) -> String {
     let user = env::var("USERNAME").unwrap_or_else(|_| "usuario".into());
@@ -180,6 +195,7 @@ impl Restarts {
 
 struct Service {
     name: &'static str,
+    #[cfg(windows)]
     bootstrap: Option<String>,
     program: Program,
     child: Option<Child>,
@@ -193,6 +209,7 @@ impl Service {
     fn new(name: &'static str, program: Program, budget: u32) -> Self {
         Self {
             name,
+            #[cfg(windows)]
             bootstrap: None,
             program,
             child: None,
@@ -206,10 +223,13 @@ impl Service {
     }
 
     fn spawn(&mut self) -> io::Result<()> {
-        let mut child = Command::new(&self.program.path)
+        let child = Command::new(&self.program.path)
             .args(&self.program.args)
             .stdin(Stdio::piped()) // su cierre es la petición de fin de los hijos sin ventana
             .spawn()?;
+        #[cfg(windows)]
+        let mut child = child;
+        #[cfg(windows)]
         if let Some(nonce) = &self.bootstrap {
             let sent = child
                 .stdin
@@ -257,6 +277,7 @@ enum Outcome {
     Exhausted(&'static str),
 }
 
+#[cfg(windows)]
 fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
     use std::os::windows::io::AsRawHandle;
     loop {
@@ -310,6 +331,7 @@ fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
 
 /// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
+#[cfg(windows)]
 fn shutdown(services: &mut [Service], grace: Duration) {
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
@@ -328,6 +350,7 @@ fn shutdown(services: &mut [Service], grace: Duration) {
     }
 }
 
+#[cfg(windows)]
 fn start_remote_services(
     config: &mut Config,
 ) -> io::Result<(vantare_runtime::services::Host, String)> {
@@ -373,6 +396,7 @@ fn start_remote_services(
     Ok((host, nonce))
 }
 
+#[cfg(windows)]
 fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
         log("ya hay una instancia en marcha");
@@ -408,6 +432,21 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     })
 }
 
+#[cfg(unix)]
+fn run(config: Config) -> io::Result<ExitCode> {
+    unix::run(config)
+}
+
+#[cfg(windows)]
+fn signal_stop(instance: &str) -> io::Result<()> {
+    Stop::signal(&object_name("launcher-stop", instance))
+}
+
+#[cfg(unix)]
+fn signal_stop(instance: &str) -> io::Result<()> {
+    unix::Stop::signal(&object_name("launcher-stop", instance))
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
     let bin_dir = env::current_exe()
@@ -422,7 +461,7 @@ fn main() -> ExitCode {
         }
     };
     let result = if config.stop_only {
-        Stop::signal(&object_name("launcher-stop", &config.instance)).map(|()| ExitCode::SUCCESS)
+        signal_stop(&config.instance).map(|()| ExitCode::SUCCESS)
     } else {
         run(config)
     };
@@ -465,7 +504,7 @@ mod tests {
         .unwrap();
         let engineer = config.engineer.unwrap();
         assert_eq!(engineer.path, Path::new("voice.exe"));
-        let core_image = Path::new("bin").join("vantare-core.exe");
+        let core_image = Path::new("bin").join(binary_name("vantare-core"));
         assert_eq!(
             engineer.args,
             args(&[
@@ -485,6 +524,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn managed_services_share_the_generated_instance_pipe_with_all_consumers() {
         let instance = vantare_services::random_id().expect("instancia de test");
         let mut config = parsed(&["--instancia", &instance, "--engineer", "cursor.json"])
@@ -522,7 +562,10 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(config.grace, Duration::from_millis(500));
-        assert_eq!(config.core.path, Path::new("bin").join("vantare-core.exe"));
+        assert_eq!(
+            config.core.path,
+            Path::new("bin").join(binary_name("vantare-core"))
+        );
         assert_eq!(
             config.core.args,
             args(&["--replay", "x.jsonl", "--pipe", "p"])

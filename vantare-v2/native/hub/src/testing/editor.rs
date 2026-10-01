@@ -10,6 +10,7 @@ use crate::{
     },
 };
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
+use vantare_ui::efficiency::text as typography;
 
 pub struct Editor {
     inputs: [Entity<Input>; 5],
@@ -26,8 +27,30 @@ pub struct Editor {
 }
 impl Editor {
     fn field_label(label: &str) -> gpui::Div {
-        orbit::tracked_text(label.to_uppercase(), 11.0, 800, orbit::INK_4, 1.1)
-            .line_height(px(16.5))
+        Self::tracked_label(label, orbit::INK_4, 0.1)
+    }
+
+    fn tracked_label(label: &str, color: u32, tracking: f32) -> gpui::Div {
+        let label = label.to_uppercase();
+        // La cara estática W800 ya contiene el peso; modelar conserva el kerning.
+        div().h(px(16.5)).child(
+            gpui::canvas(
+                |_, _, _| (),
+                move |bounds, (), window, cx| {
+                    let ink = typography::ink(11.0, 800.0, tracking, rgb(color).into());
+                    typography::draw(
+                        window,
+                        cx,
+                        &label,
+                        bounds.origin.x.into(),
+                        typography::baseline(bounds.origin.y.into(), 16.5, 11.0),
+                        &ink,
+                    );
+                },
+            )
+            .w_full()
+            .h_full(),
+        )
     }
 
     pub(super) fn clear_approval(&mut self) {
@@ -155,7 +178,8 @@ impl Editor {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(Self::field_label(label))
+            // La línea de 16,5 px ocupa 17 px en los campos de Wails.
+            .child(Self::field_label(label).h(px(17.0)))
             .child(
                 div()
                     .h(px(78.0))
@@ -427,7 +451,11 @@ impl Editor {
                     .flex_1()
                     .flex()
                     .flex_col()
-                    .child(orbit::text(label, orbit::BODY, 650, label_color).line_height(px(20.25)))
+                    .child(
+                        orbit::text(label, orbit::BODY, 650, label_color)
+                            .font_weight(gpui::FontWeight::NORMAL)
+                            .line_height(px(20.25)),
+                    )
                     .child(
                         orbit::text(help, 11.0, 400, orbit::INK_MUTED)
                             .mt(px(2.5))
@@ -518,13 +546,10 @@ impl Editor {
             .px(px(21.0))
             .py(px(21.0))
             .pb(px(22.0))
-            .child(
-                orbit::text("CONSENTIMIENTO", 11.0, 800, orbit::INK_3)
-                    .mt(px(6.0))
-                    .line_height(px(16.5)),
-            )
+            .child(Self::tracked_label("Consentimiento", orbit::INK_3, 0.09).mt(px(6.0)))
             .child(
                 orbit::text("Datos adjuntos", 15.0, 650, orbit::INK)
+                    .font_weight(gpui::FontWeight::NORMAL)
                     .mt(px(7.0))
                     .line_height(px(22.5)),
             )

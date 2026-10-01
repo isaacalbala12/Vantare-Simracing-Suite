@@ -244,3 +244,63 @@ runtime de juegos, OBS, DPI mixto ni validación de otra GPU. Para aceptar la
 paridad, integrar primero el marco, repetir el banco de las cuatro pantallas
 y mirar referencia, captura y mapa además del porcentaje. Para verificar el
 flujo funcional, se conserva la lista manual de la primera pasada.
+
+## Continuación tras integrar el marco — 2026-10-01
+
+La entrada anterior describe el hito previo al merge y conserva sus resultados
+históricos. El merge local `880d37f22deb440b5614791588b7692291f51036`
+integra `f3b853be` por petición expresa: desaparece la cabecera genérica y
+el marco recibe la ranura de acciones descrita en `shell/README.md`.
+La nota posterior pide integrar también `bef4a971`; se conservan ambos lados
+de esa integración de Strategy y el marco, sin editar sus rutas.
+Testing conserva su estado de borrador junto a su propia cabecera; esta
+referencia no tiene acciones adicionales en la barra superior.
+
+Se revisaron de nuevo las cuatro referencias, capturas y mapas, además de
+ampliaciones del formulario y consentimiento. NIGHTLY está cerca de y107,
+el título de y150, la descripción de y192 y la píldora de y188. Pestañas
+en y238, separador en y258 y tarjetas desde y277. Validar conserva el error
+de carga; Mis reportes conserva Sin historial; Informe y Detalle conservan
+el mismo formulario y datos de sus referencias congeladas.
+
+Las etiquetas del formulario y consentimiento reutilizan el texto modelado
+común, con tracking CSS 0.1em y 0.09em respectivamente. Los textos W650 del
+consentimiento usan peso normal del motor sobre su cara estática, evitando
+otra negrita sintética. La línea de las etiquetas de textareas ocupa 17 px,
+como en la referencia, conservando el baseline, campos de 78 px y gaps de
+8/16 px. Son ajustes de presentación: no cambian comandos, validación,
+habilitación ni consentimiento. La evidencia visual congelada verifica los
+glifos y la geometría; los tests existentes protegen el flujo funcional.
+
+Las migas ya son `CALIDAD / Testing Center`. La columna común sigue mostrando
+`Centro operativo / v0.3.9`, frente a `Testing Center / v0.3.10` en Wails:
+queda pendiente para el propietario del marco, fuera de `testing/` y del
+área de contenido solicitada. El título mantiene los 36 px pedidos frente
+al token CSS de 34 px. El asa visual sigue sin habilitar resize del Input;
+esa capacidad corresponde al kit común. No hay dependencias nuevas.
+
+### Resultado y gates del cierre
+
+El banco canónico de las cuatro pantallas, tras ambas integraciones, cumple
+**≤5 % en cada área de contenido x > 376, y > 70**, sin desplazar las imágenes
+ni alterar referencias o datos de escena. Informe y Detalle siguen mostrando
+el mismo formulario. La aceptación se refiere a ese contenido; no declara
+paridad de la columna contextual ni prueba de envío real.
+
+Tabla antes/después, capturas, mapas, inspección, hashes y logs completos:
+`C:/tmp/testing-2-evidence/tabla-final.md`, `tabla-final.csv`, `cierre/`,
+`inspeccion-integrada.md`, `hashes-cierre.json` y `gates-cierre/`.
+Las carpetas `integrado/`, `final/` y `aceptacion/` conservan iteraciones
+intermedias; el resultado vigente es `cierre/`. Se releen las notas antes de
+medir y antes del commit, respetando la espera de pantalla y el mutex global
+mediante el helper de captura existente.
+
+Gates con exit 0: `cargo fmt --check`,
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings`,
+`cargo nextest run --workspace -j 2` (913 aprobados, 4 omitidos; 182 del Hub) y
+`cargo test --workspace --test lifecycle -j 2`. Durante la iteración pasan
+`cargo check --workspace --all-targets -j 2` y los 179 tests del Hub antes de
+la última integración; el gate completo comprueba los 182 posteriores.
+Go/frontend, CI remoto, envío real, juegos, OBS, DPI mixto y otra GPU siguen
+sin ejecución específica en este hito. Solo merges y commits locales
+autorizados; sin push, PR, promoción de canal ni release.

@@ -134,6 +134,47 @@ Núcleo y overlays en procesos separados unidos por el pipe (topología B de la
 ADR 0099). La variante con todo en un proceso (A) se midió en la fase 0 y se
 retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
+## Desarrollar en Linux y macOS
+
+La base Unix (#1437) permite compilar y probar en Linux el workspace completo:
+`domain`, `ipc`, `runtime`, `services`, `engineer`, `storage`, `ui` y `hub`.
+`strategy` sigue siendo un workspace independiente. IPC usa los mismos DTO,
+cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
+un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
+en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e
+imagen del par; retira el socket al cerrar y recupera sockets huérfanos tras una
+caída. Los ficheros `.lock` quedan para evitar carreras al reutilizar nombres.
+
+En Ubuntu, además de Rust fijado por `rust-toolchain.toml`, instala las
+herramientas y bibliotecas usadas por la revisión de GPUI y DuckDB:
+
+```sh
+sudo apt-get install build-essential clang cmake pkg-config libasound2-dev \
+  libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 \
+  libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev
+cd vantare-v2/native
+cargo fmt --check
+cargo check --workspace --all-targets -j 4
+cargo clippy --workspace --all-targets -j 4 -- -D warnings
+cargo test --workspace --no-fail-fast -j 4
+cargo test --workspace --test lifecycle -j 4
+(cd strategy && cargo check --workspace --all-targets -j 4 && \
+  cargo clippy --workspace --all-targets -j 4 -- -D warnings && cargo test --workspace -j 4)
+# Workshop con escena grabada, sin núcleo ni telemetría live:
+cargo run -p vantare-ui --bin vantare-workshop
+```
+
+La sesión gráfica es necesaria para abrir Hub, Studio o Workshop. Para comprobar
+el arranque del núcleo con el Hub en modo demo sobre el mismo IPC Unix, desde
+`native/` ejecuta `./scripts/smoke-linux-ipc.sh`. La prueba automatizada del
+replay del núcleo usa `../testdata/lmu-fixture.bin` y un `Subscriber` real.
+
+GPUI necesita una sesión gráfica X11/Wayland y un driver Vulkan en Linux; en
+macOS, las herramientas de desarrollo de Xcode. Esta entrega se verifica en
+Linux; compilación y ejecución macOS deben validarse en un Mac. Las ventanas
+Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
+y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
+
 ## Compilar y probar
 
 ```powershell
@@ -147,5 +188,6 @@ cargo test --workspace --offline -j 2
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.95.0. El workflow `native.yml` ejecuta lo mismo en
-Windows para los PR que tocan `vantare-v2/native/**`.
+`rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
+gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
+Windows, cuya validación se ejecuta en el entorno Windows del orquestador.

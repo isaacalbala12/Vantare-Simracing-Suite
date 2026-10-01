@@ -341,6 +341,14 @@ fn paint(
     );
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain, Steering};
+        crate::demand::signals(16, &[Pedals, Clutch, Steering, Powertrain])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

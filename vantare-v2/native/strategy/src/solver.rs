@@ -1,4 +1,28 @@
-//! Deterministic scalar subspace of Go `SolveV2`. Unsupported dimensions fail closed.
+//! Deterministic Strategy solver, with shared search and fixed-plan replay models.
+mod budget;
+mod certified;
+mod drivers;
+pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
+mod model;
+#[cfg(test)]
+mod parity_tests;
+mod risk;
+pub use risk::{CandidateDetail, SolverRisk, SolverVariant, WorstCaseTolerance};
+mod projection;
+mod replay;
+mod scenarios;
+mod search;
+pub use scenarios::*;
+mod weather;
+pub use weather::{RainThresholds, WeatherBucket, WeatherCondition, WeatherDriver, WeatherPlan};
+mod tyres;
+pub use tyres::{CompoundPace, CurvePoint, Fitment, PhysicalTyre, TyreInventory};
+
+pub use model::*;
+pub use replay::{
+    ReplayResult, ReplayStint, SolverReason, replay_decision_v2, replay_decision_v2_with_resources,
+    resource_requirements_v2,
+};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
@@ -129,6 +153,12 @@ fn populated(value: &Value) -> bool {
 
 impl Input {
     pub fn validate(&self) -> Result<(), String> {
+        if search::needs_extended(self) {
+            return model::Model::new(&budget::effective(self).0).map(|_| ());
+        }
+        self.validate_scalars()
+    }
+    fn validate_scalars(&self) -> Result<(), String> {
         if self.contract_version != "strategy.solver.v2"
             || self.race_laps == 0
             || self.race_laps > 100_000
@@ -177,7 +207,7 @@ impl Input {
         if self.budget.p95_millis == 0 {
             return Err("invalid_input: budget.p95Millis".into());
         }
-        if self.event_rules.required_windows.len() > 16 {
+        if self.event_rules.required_windows.len() > 64 {
             return Err("invalid_input: demasiadas ventanas".into());
         }
         for window in &self.event_rules.required_windows {
@@ -199,7 +229,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PitStop {
     pub lap: u32,
@@ -208,7 +238,7 @@ pub struct PitStop {
     pub change_tyres: bool,
     pub service_mode: String,
 }
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Evaluation {
     pub total_seconds: f64,
@@ -232,6 +262,20 @@ pub struct ResultV2 {
     pub ve_start_percent: f64,
     pub fuel_remaining_liters: f64,
     pub ve_remaining_percent: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub best: Option<DecisionVector>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reserve: Option<ReserveStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worst_case: Option<Evaluation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidates: Vec<DecisionVector>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidate_details: Vec<CandidateDetail>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub variants: Vec<SolverVariant>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_inputs: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -242,6 +286,30 @@ pub enum OptimalityStatus {
     NoSolution,
 }
 
+/// Auditable proof for the effective service grid. No lower bound is invented
+/// when enumeration, canonical-load ranking or a deadline prevents a proof.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchProof {
+    pub algorithm: &'static str,
+    pub objective: &'static str,
+    pub search_completed: bool,
+    pub iterations: usize,
+    pub pruned_states: usize,
+    pub duration_millis: u128,
+    pub relative_time_tolerance: f64,
+    pub discretization_degraded: bool,
+    pub requested_discretization: Discretization,
+    pub effective_discretization: Discretization,
+    pub budget: Budget,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub incumbent_seconds: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lower_bound_seconds: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub absolute_gap_seconds: Option<f64>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimalityCertificate {
@@ -250,11 +318,13 @@ pub struct OptimalityCertificate {
     pub scope: &'static str,
     pub explored_work_items: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub proof: Option<SearchProof>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
 
 /// Result for consumers that need an explicit search status and cost.
-/// `proven` applies only to the validated native scalar subspace.
+/// `proven` applies to the certificate's explicit scope and effective grid.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolverOutcome {
@@ -412,7 +482,8 @@ pub fn solve(input: &Input) -> Result<ResultV2, String> {
 /// Caller owns cancellation. This runs off the GPUI thread.
 #[allow(clippy::too_many_lines)] // Keep the bounded state-space walk in one place, rather than a search manager.
 pub fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
-    solve_internal(input, cancel, false).map(|outcome| outcome.result)
+    solve_internal(input, cancel, false, Some(input.budget.p95_millis))
+        .map(|outcome| outcome.result)
 }
 
 /// Solver API for UI consumers: carries the model certificate and the visible cost.
@@ -423,7 +494,12 @@ pub fn solve_v2(input: &Input) -> Result<SolverOutcome, String> {
 /// Returns the best complete plan found so far when the search budget expires.
 /// Cancellation and invalid inputs still fail without publishing a result.
 pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<SolverOutcome, String> {
-    solve_internal(input, cancel, true)
+    solve_internal(input, cancel, true, Some(input.budget.p95_millis))
+}
+
+#[cfg(test)]
+fn solve_v2_without_deadline(input: &Input) -> Result<SolverOutcome, String> {
+    solve_internal(input, &AtomicBool::new(false), true, None)
 }
 
 #[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
@@ -431,7 +507,22 @@ fn solve_internal(
     input: &Input,
     cancel: &AtomicBool,
     return_partial: bool,
+    deadline_millis: Option<u64>,
 ) -> Result<SolverOutcome, String> {
+    let (effective, requested) = budget::effective(input);
+    let degraded = effective
+        .discretization
+        .fuel_liters
+        .total_cmp(&requested.fuel_liters)
+        .is_ne()
+        || effective
+            .discretization
+            .ve_percent
+            .total_cmp(&requested.ve_percent)
+            .is_ne();
+    if search::needs_extended(input) || degraded {
+        return search::solve(input, cancel, return_partial, deadline_millis);
+    }
     input.validate()?;
     let fuel = Resource::new(
         input.fuel_capacity_liters.value,
@@ -447,7 +538,7 @@ fn solve_internal(
         &input.virtual_energy_reserve,
         input.race_laps,
     )?;
-    match single_fuel_decision(input, fuel, ve, cancel) {
+    match single_fuel_decision(input, fuel, ve, cancel, deadline_millis) {
         Ok(Some(result)) => {
             let status = if result.feasible {
                 OptimalityStatus::Proven
@@ -516,7 +607,7 @@ fn solve_internal(
                 if cancel.load(AtomicOrdering::Relaxed) {
                     return Err("cancelled".into());
                 }
-                if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                if deadline_exceeded(&started, deadline_millis) {
                     if return_partial {
                         exhaustion_reason = Some("deadline_exceeded");
                         break 'search;
@@ -599,7 +690,7 @@ fn solve_internal(
                             if cancel.load(AtomicOrdering::Relaxed) {
                                 return Err("cancelled".into());
                             }
-                            if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                            if deadline_exceeded(&started, deadline_millis) {
                                 if return_partial {
                                     exhaustion_reason = Some("deadline_exceeded");
                                     break 'search;
@@ -673,11 +764,16 @@ fn solver_outcome(
             status,
             scope: "supported_scalar_subspace",
             explored_work_items,
+            proof: None,
             reason: reason.map(str::to_owned),
         },
         cost_seconds,
         result,
     }
+}
+
+fn deadline_exceeded(started: &std::time::Instant, deadline_millis: Option<u64>) -> bool {
+    deadline_millis.is_some_and(|limit| started.elapsed().as_millis() > u128::from(limit))
 }
 
 fn resource_balance(
@@ -710,6 +806,7 @@ fn single_fuel_decision(
     fuel: Resource,
     ve: Resource,
     cancel: &AtomicBool,
+    deadline_millis: Option<u64>,
 ) -> Result<Option<ResultV2>, String> {
     if fuel.capacity == 0
         || ve.capacity != 0
@@ -752,7 +849,7 @@ fn single_fuel_decision(
         if cancel.load(AtomicOrdering::Relaxed) {
             return Err("cancelled".into());
         }
-        if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+        if deadline_exceeded(&started, deadline_millis) {
             return Err("native_deadline_exceeded: no se ha demostrado el óptimo".into());
         }
         let after = stint_count - index - 1;

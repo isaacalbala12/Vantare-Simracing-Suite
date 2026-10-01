@@ -132,20 +132,60 @@ fn fake_overlays(args: &[String]) -> ExitCode {
     note(&status, &format!("overlays pid={}", std::process::id()));
     if args.iter().any(|a| a == "--hang") {
         // Se conecta, saluda y no vuelve a leer ni atiende el cierre.
-        let hello = br#"{"hello":{"min_version":1,"max_version":1,"cursor":null}}"#;
-        let mut frame = u32::try_from(hello.len()).unwrap().to_le_bytes().to_vec();
-        frame.extend_from_slice(hello);
-        let path = format!(r"\\.\pipe\{pipe}");
-        let mut pipe = loop {
-            match OpenOptions::new().read(true).write(true).open(&path) {
-                Ok(pipe) => break pipe,
-                Err(_) => thread::sleep(Duration::from_millis(50)),
+        #[cfg(windows)]
+        {
+            let hello = br#"{"hello":{"min_version":1,"max_version":1,"cursor":null}}"#;
+            let mut frame = u32::try_from(hello.len()).unwrap().to_le_bytes().to_vec();
+            frame.extend_from_slice(hello);
+            let path = format!(r"\\.\pipe\{pipe}");
+            let mut pipe = loop {
+                match OpenOptions::new().read(true).write(true).open(&path) {
+                    Ok(pipe) => break pipe,
+                    Err(_) => thread::sleep(Duration::from_millis(50)),
+                }
+            };
+            pipe.write_all(&frame).unwrap();
+            note(&status, "overlays hung");
+            loop {
+                thread::sleep(Duration::from_mins(1));
             }
-        };
-        pipe.write_all(&frame).unwrap();
-        note(&status, "overlays hung");
-        loop {
-            thread::sleep(Duration::from_mins(1));
+        }
+        #[cfg(unix)]
+        {
+            use vantare_ipc::transport::{Event, IO_TIMEOUT, connect};
+
+            let stop = Arc::new(Event::new().unwrap());
+            let mut connection = loop {
+                match connect(&pipe, Arc::clone(&stop), IO_TIMEOUT) {
+                    Ok(connection) => break connection,
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
+                        ) =>
+                    {
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                    Err(error) => panic!("conectar overlays de prueba: {error}"),
+                }
+            };
+            let hello = br#"{"hello":{"min_version":1,"max_version":1,"cursor":null}}"#;
+            let mut frame = u32::try_from(hello.len()).unwrap().to_le_bytes().to_vec();
+            frame.extend_from_slice(hello);
+            connection.write_all(&frame).unwrap();
+            let mut header = [0; 4];
+            connection.read_exact(&mut header).unwrap();
+            let length = u32::from_le_bytes(header) as usize;
+            assert!(
+                length <= 1 << 20,
+                "respuesta IPC demasiado grande: {length}"
+            );
+            let mut response = vec![0; length];
+            connection.read_exact(&mut response).unwrap();
+            note(&status, "overlays hung");
+            loop {
+                thread::sleep(Duration::from_mins(1));
+            }
         }
     }
     let log = opt(args, "--log");
@@ -350,6 +390,7 @@ impl Drop for Scenario {
     }
 }
 
+#[cfg(windows)]
 fn alive(pid: u32) -> bool {
     let out = Command::new("tasklist")
         .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
@@ -358,6 +399,17 @@ fn alive(pid: u32) -> bool {
     String::from_utf8_lossy(&out.stdout).contains(&format!("\"{pid}\""))
 }
 
+#[cfg(unix)]
+fn alive(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+#[cfg(windows)]
 fn kill(pid: u32) {
     let status = Command::new("taskkill")
         .args(["/PID", &pid.to_string(), "/F"])
@@ -365,6 +417,16 @@ fn kill(pid: u32) {
         .status()
         .unwrap();
     assert!(status.success(), "taskkill {pid}");
+}
+
+#[cfg(unix)]
+fn kill(pid: u32) {
+    let status = Command::new("kill")
+        .args(["-KILL", &pid.to_string()])
+        .stdout(Stdio::null())
+        .status()
+        .unwrap();
+    assert!(status.success(), "kill -KILL {pid}");
 }
 
 // Bajo carga, el SO puede tardar en ejecutar el launcher incluso después de
@@ -534,6 +596,7 @@ fn the_restart_budget_runs_out_and_everything_stops() {
     );
 }
 
+#[cfg(windows)]
 fn children_die_with_the_launcher() {
     let scenario = Scenario::new("job");
     let launcher = running(&scenario, &[], &[]);
@@ -646,6 +709,7 @@ fn a_hung_engineer_is_killed_by_the_grace_deadline() {
     assert!(scenario.lines("status").contains(&"closed core".into()));
 }
 
+#[cfg(windows)]
 fn engineer_dies_in_the_same_job_when_launcher_is_killed() {
     let scenario = Scenario::new("engineer-job");
     let launcher = launch_engineer(&scenario, &[], 2);
@@ -671,7 +735,7 @@ fn engineer_dies_in_the_same_job_when_launcher_is_killed() {
 }
 
 fn run_scenarios(filters: &[String]) -> ExitCode {
-    let scenarios: [(&str, fn()); 11] = [
+    let mut scenarios: Vec<(&str, fn())> = vec![
         (
             "engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core",
             engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core,
@@ -684,39 +748,41 @@ fn run_scenarios(filters: &[String]) -> ExitCode {
             "a_hung_engineer_is_killed_by_the_grace_deadline",
             a_hung_engineer_is_killed_by_the_grace_deadline,
         ),
-        (
-            "engineer_dies_in_the_same_job_when_launcher_is_killed",
-            engineer_dies_in_the_same_job_when_launcher_is_killed,
-        ),
-        (
-            "killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted",
-            killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted,
-        ),
-        (
-            "killing_overlays_leaves_the_core_publishing",
-            killing_overlays_leaves_the_core_publishing,
-        ),
-        (
-            "a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop",
-            a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop,
-        ),
-        (
-            "a_second_instance_starts_nothing",
-            a_second_instance_starts_nothing,
-        ),
-        (
-            "stop_closes_overlays_before_the_core",
-            stop_closes_overlays_before_the_core,
-        ),
-        (
-            "the_restart_budget_runs_out_and_everything_stops",
-            the_restart_budget_runs_out_and_everything_stops,
-        ),
-        (
-            "children_die_with_the_launcher",
-            children_die_with_the_launcher,
-        ),
     ];
+    #[cfg(windows)]
+    scenarios.push((
+        "engineer_dies_in_the_same_job_when_launcher_is_killed",
+        engineer_dies_in_the_same_job_when_launcher_is_killed,
+    ));
+    scenarios.push((
+        "killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted",
+        killing_the_core_keeps_overlays_and_the_new_epoch_is_accepted,
+    ));
+    scenarios.push((
+        "killing_overlays_leaves_the_core_publishing",
+        killing_overlays_leaves_the_core_publishing,
+    ));
+    scenarios.push((
+        "a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop",
+        a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop,
+    ));
+    scenarios.push((
+        "a_second_instance_starts_nothing",
+        a_second_instance_starts_nothing,
+    ));
+    scenarios.push((
+        "stop_closes_overlays_before_the_core",
+        stop_closes_overlays_before_the_core,
+    ));
+    scenarios.push((
+        "the_restart_budget_runs_out_and_everything_stops",
+        the_restart_budget_runs_out_and_everything_stops,
+    ));
+    #[cfg(windows)]
+    scenarios.push((
+        "children_die_with_the_launcher",
+        children_die_with_the_launcher,
+    ));
     let filters: Vec<&String> = filters.iter().filter(|a| !a.starts_with('-')).collect();
     let mut failed = 0;
     println!("\nrunning {} tests", scenarios.len());

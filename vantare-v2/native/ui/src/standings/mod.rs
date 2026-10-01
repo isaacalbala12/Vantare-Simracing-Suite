@@ -311,9 +311,21 @@ impl Widget {
             self.config.height += bands as f32 * 28.0;
         }
         let plan = model::plan(&self.config, &next);
+        // Una columna oculta no debe cambiar la firma del contenido visible.
+        if !self
+            .config
+            .columns
+            .iter()
+            .any(|column| column.metric == Metric::CurrentLap)
+        {
+            for row in &mut next.rows {
+                row.current_lap_text = vantare_domain::format::PLACEHOLDER.into();
+            }
+        }
         // El número de secuencia cambia siempre y no se ve: no cuenta.
         let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
         let changed = next != self.vm || plan.visible_rows != self.plan.visible_rows;
+
         next.sequence = sequence;
         if changed {
             let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
@@ -360,6 +372,67 @@ impl Widget {
             Box::new(move |window, cx| view::paint(&scene, window, cx)),
             wake,
         )
+    }
+}
+
+impl Settings {
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
+            SessionInfo,
+        };
+        let settings = self.normalized();
+        let config = settings.config();
+        let mut demand = crate::demand::signals(250, &[Positions, PitStatus, SessionInfo]);
+        if settings.classification_mode == "multiclass" {
+            demand.request(ClassGaps, 250);
+        }
+        for column in &config.columns {
+            match column.metric {
+                Metric::Gap | Metric::Interval => {
+                    demand.request(
+                        if settings.class_scope != "all-classes" || config.multiclass {
+                            ClassGaps
+                        } else {
+                            Gaps
+                        },
+                        250,
+                    );
+                    // En práctica y clasificación el gap compara mejores vueltas.
+                    demand.request(LapTimes, 250);
+                }
+                Metric::LastLap | Metric::BestLap => demand.request(LapTimes, 250),
+                Metric::CurrentLap => demand.request(LapCount, 250),
+                _ => {}
+            }
+        }
+        if settings.show_session_header {
+            demand.request(SessionClock, 250);
+            demand.request(Flags, 250);
+        }
+        if settings.show_session_footer {
+            let slots = !config.footer_slots.is_empty();
+            let ids = if slots {
+                &config.footer_slots
+            } else {
+                &config.footer_ids
+            };
+            for id in ids {
+                crate::demand::information(&mut demand, id, slots);
+                if id == "gap" {
+                    demand.request(
+                        if settings.class_scope != "all-classes" || config.multiclass {
+                            ClassGaps
+                        } else {
+                            Gaps
+                        },
+                        250,
+                    );
+                    demand.request(LapTimes, 250);
+                }
+            }
+        }
+        demand
     }
 }
 

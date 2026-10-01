@@ -45,8 +45,11 @@ transiciones ni señales nuevas. Archivos hasta 16 MiB y 512 fotos. La escena
 de paridad. Un archivo externo no adquiere procedencia por su nombre.
 
 La selección se guarda en `workshop-selection.json` en `--data-dir` (por
-defecto `%LOCALAPPDATA%/VantareNative/hub`, separado de Wails). Error inicial
-de documento/escena: salida con error, sin reemplazarlo por datos ficticios.
+defecto `<directorio de datos>/VantareNative/hub`, separado de Wails). El
+directorio base es `%LOCALAPPDATA%` en Windows, `$XDG_DATA_HOME` (o
+`$HOME/.local/share`) en Linux y `$HOME/Library/Application Support` en macOS.
+Un error inicial de documento/escena termina con error, sin reemplazarlo por
+datos ficticios.
 Guardar o cerrar conserva widget/escena/foto/loop/unidades/idioma; la comparación
 es temporal. Los locks y temporales son archivos hermanos; tras una muerte
 abrupta revisar los restos antes de quitarlos. Conflictos o falta de permisos
@@ -72,8 +75,8 @@ Inspector edita los `Settings` tipados. Mismo `Overlay::configured` que overlays
 no hay otra implementación visual ni otro formato de layout.
 
 Cada edición, undo y redo se guarda mediante `layout::Document::save` antes de
-confirmarla. Usa `%LOCALAPPDATA%/Vantare/native/layout.json`, independiente de
-`--data-dir`. Conflicto por bytes/error conserva documento, selección e historial.
+confirmarla. Usa `<directorio de datos>/Vantare/native/layout.json`, independiente
+de `--data-dir`. Conflicto por bytes/error conserva documento, selección e historial.
 Recargar layout acepta explícitamente el archivo externo y descarta historial;
 si es inválido, conserva el anterior. Un archivo inválido al arrancar falla sin
 abrir ventana ni reemplazarlo. Tamaño/normalización/backup/escritura pertenecen

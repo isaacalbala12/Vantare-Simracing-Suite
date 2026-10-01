@@ -10,7 +10,7 @@ $project = Join-Path $repo 'vantare-v2'
 $tool = Join-Path $project 'native\ui\diff.py'
 $manifest = Join-Path $PSScriptRoot 'tools\demo-states.json'
 $references = Join-Path $PSScriptRoot 'wails'
-$evidence = 'C:\tmp\hub-banco-evidence'
+$evidence = if ($env:VANTARE_PARITY_OUT) { $env:VANTARE_PARITY_OUT } else { 'C:\tmp\hub-banco-evidence' }
 $null = New-Item -ItemType Directory -Path $evidence -Force
 
 if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) { throw "Falta el comparador: $tool" }

@@ -37,7 +37,8 @@ impl State {
         let query_text = capture
             .and_then(|capture| capture.palette_query.clone())
             .unwrap_or_default();
-        let query = cx.new(|cx| Input::new(query_text.clone(), "Buscar secciones y acciones", cx));
+        let query =
+            cx.new(|cx| Input::new(query_text.clone(), "Busca una sección o una acción…", cx));
         let context_query = cx.new(|cx| Input::new(String::new(), "Buscar en el contexto", cx));
         for input in [&query, &context_query] {
             cx.observe(input, |_, _, cx| cx.notify()).detach();
@@ -311,110 +312,203 @@ impl Hub {
                             cx.listener(|this, _, _, cx| this.navigate(Section::Settings, cx)),
                         ),
                     )
-                    .child(orbit::avatar(self.section == Section::Account).on_click(
-                        cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
-                    )),
+                    .child(
+                        orbit::avatar(self.section == Section::Account, &self.avatar_initial())
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
+                            ),
+                    ),
             )
     }
 
-    pub(super) fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
-        let query = self
-            .shell
-            .context_query
-            .read(cx)
-            .value
-            .trim()
-            .to_lowercase();
-        let mut rows = div()
-            .id("context-rows")
-            .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
+    fn avatar_initial(&self) -> String {
+        self.demo
+            .as_ref()
+            .and_then(|demo| demo.user.name.chars().next())
+            .map_or_else(|| "·".into(), |initial| initial.to_uppercase().to_string())
+    }
+
+    pub(super) fn context_column(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let width = orbit::column_width(f32::from(window.viewport_size().width));
+        let version = self
+            .demo
+            .as_ref()
+            .map(|demo| demo.versions.hub.as_str())
+            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let collapse = div()
+            .id("collapse-context")
+            .role(gpui::Role::Button)
+            .aria_label("Ocultar columna")
+            .tab_index(0)
+            .size(px(26.0))
             .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .py(px(16.0));
-        let destinations = navigation::context(self.section);
-        for &section in destinations {
-            let label = if section == Section::Settings {
-                "Aplicación"
-            } else {
-                section.label()
-            };
-            if format!("{} {}", label, section.subtitle())
-                .to_lowercase()
-                .contains(&query)
-            {
-                rows = rows.child(
-                    orbit::nav_item(
-                        section.label(),
-                        label,
-                        section.subtitle(),
-                        self.section == section,
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
-                );
-            }
-        }
-        // Bloques persistentes de ContextColumn; solo enlaces a datos locales.
-        // No publica carreras, perfiles activos ni cadenas que no estén expuestos.
-        if !matches!(
-            self.section,
-            Section::Settings
-                | Section::Account
-                | Section::Licenses
-                | Section::Studio
-                | Section::Workshop
-        ) {
-            for (section, label) in [
-                (Section::Calendar, "Próximas carreras"),
-                (Section::Workshop, "Perfil de overlays"),
-                (Section::Launcher, "Launcher"),
-            ] {
-                if section == self.section {
-                    continue;
-                }
-                if !format!("{label} {}", section.subtitle())
-                    .to_lowercase()
-                    .contains(&query)
-                {
-                    continue;
-                }
-                rows = rows.child(div().mx(px(24.0)).mt(px(16.0)).child(orbit::eyebrow(label)));
-                rows = rows.child(
-                    orbit::nav_item(label, section.label(), "Abrir", false)
-                        .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
-                );
-            }
-        }
-        orbit::column("Vantare", env!("CARGO_PKG_VERSION"))
+            .items_center()
+            .justify_center()
+            .cursor_pointer()
+            .child(orbit::text("‹", 20.0, 400, orbit::INK_3))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.shell.column_open = false;
+                cx.notify();
+            }));
+        let column = orbit::column_with_collapse("Centro operativo", version, collapse)
             .w(px(orbit::column_width(f32::from(
                 window.viewport_size().width,
             ))))
-            .child(
+            .id("hub-context-column");
+        self.context_blocks(column, cx).w(px(width))
+    }
+
+    fn context_blocks(
+        &self,
+        column: gpui::Stateful<gpui::Div>,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let races = div()
+            .flex()
+            .flex_col()
+            .child(Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas"))
+            .child(Self::context_row("Sin salidas próximas", "", None));
+        let overlay = div()
+            .flex()
+            .flex_col()
+            .child(Self::context_heading("PERFIL DE OVERLAY", "DETENIDO"))
+            .child(Self::context_row("Sin perfiles todavía", "", None));
+        let launcher = self.launcher_context(cx);
+        column.child(
+            div()
+                .id("context-blocks")
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .pt(px(6.0))
+                .overflow_y_scroll()
+                .child(Self::context_block("races", races))
+                .child(Self::context_block("overlay", overlay))
+                .child(Self::context_block("launcher", launcher)),
+        )
+    }
+
+    fn launcher_context(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let heading = Self::context_heading("LAUNCHER", "Gestionar");
+        let mut profiles = div().flex().flex_col();
+        if let Some(demo) = &self.demo {
+            for (index, profile) in demo.launcher.profiles.iter().enumerate() {
+                let profile = profile.clone();
+                let row = div()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .px(px(8.0))
+                    .py(px(6.0))
+                    .child(
+                        div()
+                            .size(px(32.0))
+                            .rounded(px(8.0))
+                            .bg(rgb(orbit::SURFACE_3))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(orbit::text(
+                                if profile.id == "creator" { "CC" } else { "PRO" },
+                                10.0,
+                                800,
+                                orbit::INK,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .flex()
+                            .flex_col()
+                            .child(orbit::text(profile.name.as_str(), 13.0, 600, orbit::INK))
+                            .child(orbit::text(
+                                format!("{} pasos", profile.steps.len()),
+                                11.0,
+                                400,
+                                orbit::INK_3,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .id(("launch-profile", index))
+                            .role(gpui::Role::Button)
+                            .tab_index(0)
+                            .size(px(26.0))
+                            .rounded(px(8.0))
+                            .bg(rgb(orbit::SURFACE_2))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .aria_label(format!("Lanzar {}", profile.name))
+                            .child(orbit::text("▶", 9.0, 700, orbit::INK_3))
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.navigate(Section::Launcher, cx)),
+                            ),
+                    );
+                profiles = profiles.child(row);
+            }
+        }
+        div().flex().flex_col().child(heading).child(profiles)
+    }
+
+    fn context_heading(title: &str, action: &str) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(10.0))
+            .px(px(9.0))
+            .pt(px(2.5))
+            .pb(px(11.0))
+            .child(orbit::eyebrow(title))
+            .child(if action == "DETENIDO" {
                 div()
-                    .px(px(24.0))
-                    .pt(px(20.0))
-                    .child(orbit::eyebrow(self.section.label())),
-            )
-            .child(div().px(px(24.0)).py(px(8.0)).child(orbit::text(
-                match self.previous_source {
-                    Some(true) => "Fuente conectada",
-                    Some(false) => "Sin fuente live",
-                    None => "Sin conexión",
-                },
-                11.5,
-                400,
-                orbit::INK_3,
-            )))
-            .child(
-                div()
-                    .px(px(24.0))
-                    .pt(px(12.0))
-                    .child(orbit::text("Buscar contexto", 12.0, 500, orbit::INK_3))
-                    .child(self.shell.context_query.clone()),
-            )
-            .child(rows)
+                    .px(px(8.0))
+                    .py(px(4.0))
+                    .rounded(px(orbit::RADIUS_CHIP))
+                    .bg(rgb(orbit::SURFACE_3))
+                    .child(orbit::text(action, 9.0, 700, orbit::INK_3))
+            } else {
+                orbit::text(action, 11.5, 400, orbit::INK_3)
+            })
+    }
+
+    fn context_row(title: &str, subtitle: &str, badge: Option<&str>) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(8.0))
+            .px(px(0.0))
+            .py(px(4.0))
+            .child(orbit::text(title, 13.0, 400, orbit::INK_3))
+            .when(!subtitle.is_empty(), |row| {
+                row.child(orbit::text(subtitle, 11.0, 400, orbit::INK_3))
+            })
+            .when_some(badge, |row, label| {
+                row.child(orbit::text(label, 10.0, 700, orbit::INK_3))
+            })
+    }
+
+    fn context_block(id: &'static str, content: gpui::Div) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id(id)
+            .w_full()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .pt(px(10.0))
+            .pb(px(4.0))
+            .border_t_1()
+            .border_color(rgba(orbit::LINE_ROW))
+            .child(content)
     }
 
     fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Div {
@@ -427,56 +521,52 @@ impl Hub {
             .items_center()
             .gap(px(orbit::MENU_PAD))
             .child(
-                orbit::rail_button(
-                    "notifications",
-                    "i-campana",
-                    "Notificaciones",
-                    self.notifications.read(cx).popover_open(cx),
-                    None,
-                )
-                .size(px(orbit::CONTROL_H))
-                .when(self.notifications.read(cx).unread() > 0, |bell| {
-                    bell.child(
-                        orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
-                            .absolute()
-                            .top_0()
-                            .right_0(),
-                    )
-                })
-                .child({
-                    let notifications = self.notifications.clone();
-                    // Mismo seguimiento de ancla que el dropdown Orbit.
-                    gpui::canvas(
-                        move |bounds, _, cx| {
-                            notifications.update(cx, |center, cx| {
-                                if center.bell_bounds.is_none() {
-                                    center.bell_bounds = Some(bounds);
-                                    cx.notify();
-                                }
-                            });
+                orbit::rail_button("notifications", "i-campana", "Notificaciones", false, None)
+                    .size(px(28.0))
+                    .when(self.notifications.read(cx).unread() > 0, |bell| {
+                        bell.child(
+                            orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
+                                .absolute()
+                                .top_0()
+                                .right_0(),
+                        )
+                    })
+                    .child({
+                        let notifications = self.notifications.clone();
+                        // Mismo seguimiento de ancla que el dropdown Orbit.
+                        gpui::canvas(
+                            move |bounds, _, cx| {
+                                notifications.update(cx, |center, cx| {
+                                    if center.bell_bounds.is_none() {
+                                        center.bell_bounds = Some(bounds);
+                                        cx.notify();
+                                    }
+                                });
+                            },
+                            |_, (), _, _| {},
+                        )
+                        .absolute()
+                        .size_full()
+                    })
+                    .aria_expanded(self.notifications.read(cx).popover_open(cx))
+                    .aria_label(format!(
+                        "Notificaciones · {} sin leer",
+                        self.notifications.read(cx).unread()
+                    ))
+                    .capture_any_mouse_down(cx.listener(
+                        |this, event: &gpui::MouseDownEvent, _, cx| {
+                            if event.button == gpui::MouseButton::Left {
+                                let open = this.notifications.read(cx).popover_open(cx);
+                                this.notifications
+                                    .update(cx, |center, _| center.bell_was_open = open);
+                            }
                         },
-                        |_, (), _, _| {},
-                    )
-                    .absolute()
-                    .size_full()
-                })
-                .aria_expanded(self.notifications.read(cx).popover_open(cx))
-                .aria_label(format!(
-                    "Notificaciones · {} sin leer",
-                    self.notifications.read(cx).unread()
-                ))
-                .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
-                    if event.button == gpui::MouseButton::Left {
-                        let open = this.notifications.read(cx).popover_open(cx);
+                    ))
+                    .on_click(cx.listener(|this, event, window, cx| {
                         this.notifications
-                            .update(cx, |center, _| center.bell_was_open = open);
-                    }
-                }))
-                .on_click(cx.listener(|this, event, window, cx| {
-                    this.notifications
-                        .update(cx, |center, cx| center.click_bell(event, window, cx));
-                    cx.notify();
-                })),
+                            .update(cx, |center, cx| center.click_bell(event, window, cx));
+                        cx.notify();
+                    })),
             )
             .when_some(self.notifications.read(cx).popover(), |bell, layer| {
                 bell.child(layer)
@@ -486,32 +576,36 @@ impl Hub {
     pub(super) fn topbar(&mut self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
         let bell = self.notification_bell(cx);
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
+        let pending = self
+            .demo
+            .as_ref()
+            .map(|demo| demo.versions.pending.as_str());
         orbit::topbar(
-            "Vantare",
+            "Centro operativo",
             self.section.label(),
             div()
                 .flex()
                 .items_center()
                 .gap(px(8.0))
                 .child(bell)
-                // El actualizador no está integrado: hueco local sin avisos ficticios.
-                .when(!narrow, |row| {
+                .when_some(pending, |row, version| {
                     row.child(
                         div()
-                            .id("local-update-state")
-                            .aria_label("Actualizaciones: sin estado local disponible")
-                            .child(orbit::text("", 11.5, 500, orbit::INK_3)),
+                            .flex()
+                            .items_center()
+                            .gap(px(6.0))
+                            .px(px(12.0))
+                            .h(px(36.0))
+                            .rounded(px(12.0))
+                            .bg(rgb(orbit::SURFACE_1))
+                            .border_1()
+                            .border_color(rgba(orbit::LINE_ROW))
+                            .child(div().size(px(6.0)).rounded_full().bg(rgb(orbit::EMBER)))
+                            .child(orbit::text(version, 11.0, 400, orbit::INK_3)),
                     )
-                })
-                .child(
-                    orbit::button(
-                        "close-hub",
-                        if narrow { "Cerrar" } else { "Guardar y cerrar" },
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
-                ),
+                }),
         )
-        .px(px(if narrow { 16.0 } else { orbit::GUTTER }))
+        .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
     }
 
     fn palette_rows(
@@ -532,8 +626,13 @@ impl Hub {
         for (index, item) in items.iter().enumerate() {
             let destination = matches!(item.command, Command::Navigate(_));
             if previous_group != Some(destination) {
-                rows = rows.child(div().px(px(20.0)).py(px(8.0)).child(orbit::eyebrow(
-                    if destination { "Ir a" } else { "Acciones" },
+                let heading = if destination { "IR A" } else { "ACCIONES" };
+                rows = rows.child(div().px(px(20.0)).py(px(8.0)).child(orbit::tracked_text(
+                    heading,
+                    10.5,
+                    850,
+                    orbit::INK_MUTED,
+                    1.365,
                 )));
                 previous_group = Some(destination);
             }
@@ -545,23 +644,25 @@ impl Hub {
                         item.label,
                         item.locked.unwrap_or(item.meta)
                     ))
-                    .child(orbit::icon(
-                        item.icon,
-                        16.0,
-                        if item.locked.is_some() {
-                            orbit::INK_MUTED
-                        } else {
-                            orbit::INK_2
-                        },
-                    ))
                     .child(
-                        orbit::text(item.label, 13.5, 600, orbit::INK)
+                        div()
+                            .size(px(36.0))
+                            .flex_none()
+                            .rounded(px(10.0))
+                            .bg(orbit::tint(orbit::CARMINE, 0.09))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(orbit::icon(item.icon, 14.0, orbit::CORAL)),
+                    )
+                    .child(
+                        orbit::text(item.label, 16.0, 400, orbit::INK)
                             .flex_1()
                             .min_w_0(),
                     )
                     .child(orbit::text(
                         item.locked.unwrap_or(item.meta),
-                        11.5,
+                        10.5,
                         400,
                         orbit::INK_3,
                     ))
@@ -638,53 +739,35 @@ impl Hub {
                     ))
                     .child(
                         div()
-                            .p(px(20.0))
+                            .h(px(75.0))
                             .flex_none()
+                            .px(px(21.0))
+                            .flex()
+                            .items_center()
+                            .gap(px(16.0))
                             .border_b_1()
                             .border_color(rgba(orbit::LINE))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .child(orbit::text(
-                                        "Buscar secciones y acciones",
-                                        15.0,
-                                        700,
-                                        orbit::INK,
-                                    ))
-                                    .child(
-                                        orbit::button("palette-close", "Esc")
-                                            .track_focus(&self.shell.close_focus)
-                                            .aria_label("Cerrar paleta")
-                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                this.close_palette(window, cx);
-                                            })),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .mt(px(12.0))
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(12.0))
-                                    .child(orbit::icon("i-comando", 20.0, orbit::INK_3))
-                                    .child(self.shell.query.clone()),
-                            ),
+                            .child(orbit::icon("i-comando", 20.0, orbit::INK_4))
+                            .child(self.shell.query.clone()),
                     )
                     .child(rows.flex_1().min_h_0())
                     .child(
                         div()
-                            .px(px(20.0))
-                            .py(px(12.0))
+                            .h(px(44.0))
+                            .px(px(17.0))
                             .flex_none()
+                            .flex()
+                            .items_center()
+                            .gap(px(16.0))
                             .border_t_1()
                             .border_color(rgba(orbit::LINE))
+                            .child(orbit::text("↑ ↓ Navegar", 10.5, 400, orbit::INK_MUTED))
+                            .child(orbit::text("↵ Ejecutar", 10.5, 400, orbit::INK_MUTED))
                             .child(orbit::text(
-                                "↑ ↓ Navegar · Enter Ejecutar · Esc Cerrar",
-                                11.5,
+                                "Los destinos bloqueados muestran el motivo",
+                                10.5,
                                 400,
-                                orbit::INK_3,
+                                orbit::INK_MUTED,
                             )),
                     ),
             )

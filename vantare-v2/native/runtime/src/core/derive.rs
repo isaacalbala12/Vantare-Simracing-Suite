@@ -9,13 +9,29 @@ use std::collections::HashSet;
 
 use vantare_domain::{Car, Gap, Quality, Session, State};
 
+#[cfg(test)]
 pub(super) fn derive(state: &mut State) {
-    relative(state);
+    derive_requested(state, &vantare_ipc::Demand::all());
+}
+
+pub(super) fn derive_requested(state: &mut State, demand: &vantare_ipc::Demand) {
+    use vantare_ipc::Signal;
+    if demand.contains(Signal::Relative) {
+        relative(state);
+    }
     let State { session, cars, .. } = state;
-    class_positions(cars);
-    gaps(cars);
-    class_gaps(cars);
-    laps_remaining(session, cars);
+    if demand.contains(Signal::Positions) || demand.contains(Signal::ClassGaps) {
+        class_positions(cars);
+    }
+    if demand.contains(Signal::Gaps) || demand.contains(Signal::ClassGaps) {
+        gaps(cars);
+    }
+    if demand.contains(Signal::ClassGaps) {
+        class_gaps(cars);
+    }
+    if demand.contains(Signal::LapsRemaining) {
+        laps_remaining(session, cars);
+    }
 }
 
 /// Tráfico respecto al jugador, sin memoria. Go usa `EstimatedLapTime`;

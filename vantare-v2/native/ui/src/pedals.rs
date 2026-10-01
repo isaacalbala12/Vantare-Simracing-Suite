@@ -218,6 +218,14 @@ impl Widget {
     }
 }
 
+impl Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
+        crate::demand::signals(16, &[Pedals, Clutch, Powertrain])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

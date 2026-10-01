@@ -22,7 +22,7 @@ fn recorded_database_smoke_reads_real_storage_pages_without_changing_original() 
         .expect("deps")
         .parent()
         .expect("perfil cargo")
-        .join("vantare-storage.exe");
+        .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
     assert!(
         exe.is_file(),
         "cargo build --offline -p vantare-storage -j 2 antes del smoke; cargo test --workspace construye este binario"

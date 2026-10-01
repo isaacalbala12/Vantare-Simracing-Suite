@@ -11,13 +11,11 @@ use serde_json::{Value, json};
 use crate::{
     files,
     orbit::{self, button},
-    strategy_core::{
-        application::{self, SourceStatus},
-        document::{Document, new_event},
-        solver::{
-            self, Budget, Discretization, Formation, Input, PitCost, ResultV2, Rules, Scalar,
-        },
-    },
+};
+use vantare_strategy::{
+    application::{self, SourceStatus},
+    document::{Document, new_event},
+    solver::{self, Budget, Discretization, Formation, Input, PitCost, ResultV2, Rules, Scalar},
 };
 
 #[path = "strategy/view.rs"]
@@ -494,7 +492,7 @@ impl Strategy {
             .trim()
             .parse::<u32>()
             .map_err(|_| "Vueltas enteras requeridas")?;
-        let reserve = crate::strategy_core::document::manual(json!(n(22)?));
+        let reserve = vantare_strategy::document::manual(json!(n(22)?));
         let evidence = reserve["evidence"].clone();
         let input = Input {
             contract_version: "strategy.solver.v2".into(),
@@ -769,19 +767,19 @@ fn append_manual_event(doc: &mut Document, fields: &[String]) -> Result<usize, S
         .find(|id| !events.iter().any(|event| event["id"] == id.as_str()))
         .ok_or("No se pudo crear ID")?;
     let mut event = new_event(&id, name, duration, tank, pit);
-    event["teamMode"] = crate::strategy_core::document::manual(json!("solo"));
+    event["teamMode"] = vantare_strategy::document::manual(json!("solo"));
     for (index, key) in [(4, "track"), (5, "cls"), (25, "team")] {
-        event[key] = crate::strategy_core::document::manual(json!(fields[index].trim()));
+        event[key] = vantare_strategy::document::manual(json!(fields[index].trim()));
     }
     if !fields[24].trim().is_empty() {
         chrono::DateTime::parse_from_rfc3339(fields[24].trim())
             .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
-        event["startAt"] = crate::strategy_core::document::manual(json!(fields[24].trim()));
+        event["startAt"] = vantare_strategy::document::manual(json!(fields[24].trim()));
     }
     for (index, key) in [(26, "name"), (27, "ini")] {
         if !fields[index].trim().is_empty() {
             event["drivers"][0][key] =
-                crate::strategy_core::document::manual(json!(fields[index].trim()));
+                vantare_strategy::document::manual(json!(fields[index].trim()));
         }
     }
     let mut overrides = serde_json::Map::new();

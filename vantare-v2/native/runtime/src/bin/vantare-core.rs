@@ -90,7 +90,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
     })
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 fn main() -> std::process::ExitCode {
     use std::process::ExitCode;
 
@@ -184,10 +184,76 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[cfg(not(windows))]
-fn main() {
-    eprintln!("vantare-core solo funciona en Windows");
-    std::process::exit(1);
+#[cfg(unix)]
+fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
+    use std::path::Path;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::thread;
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+    use vantare_domain::Adapter;
+    use vantare_ipc::Publisher;
+    use vantare_runtime::adapter::{open_acc_replay, open_replay};
+    use vantare_runtime::core::Core;
+    use vantare_runtime::flows::host::{EventHost, pipe_name as events_pipe_name};
+
+    if args.managed_rights {
+        return Err("--managed-rights solo está disponible en Windows".into());
+    }
+    let Input::Replay { path, build, speed } = args.input else {
+        return Err("la telemetría live solo está disponible en Windows".into());
+    };
+    let mut adapter: Box<dyn Adapter> = if args.simulator == "acc" {
+        Box::new(open_acc_replay(Path::new(&path))?)
+    } else {
+        Box::new(open_replay(Path::new(&path), build.as_deref())?)
+    };
+    let pipe = match args.pipe {
+        Some(pipe) => pipe,
+        None => vantare_ipc::default_pipe_name()?,
+    };
+    let epoch = u64::try_from(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())?;
+    let image = args
+        .engineer_image
+        .unwrap_or(std::env::current_exe()?.with_file_name("vantare-engineer"));
+    let mut events = EventHost::start(
+        &events_pipe_name(&pipe),
+        epoch,
+        args.recording.as_deref(),
+        move |peer| peer.is_image(&image),
+    )?;
+    let mut core = Core::with_event_base(events.base())?;
+    let mut publisher = Publisher::new(&pipe, |_| true)?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_on_eof = Arc::clone(&stop);
+    thread::spawn(move || {
+        let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
+        stop_on_eof.store(true, Ordering::Release);
+    });
+
+    let started = Instant::now();
+    let mut sent = 0;
+    let mut last_error = String::new();
+    while !stop.load(Ordering::Acquire) {
+        match core.step(adapter.as_mut(), started.elapsed().mul_f64(speed)) {
+            Ok(()) => last_error.clear(),
+            Err(error) if error.to_string() != last_error => {
+                last_error = error.to_string();
+                eprintln!("núcleo: {last_error}");
+            }
+            Err(_) => {} // La causa ya se registró; no repetir el mismo diagnóstico en cada ciclo.
+        }
+        let snapshot = core.snapshot();
+        if snapshot.sequence > sent {
+            sent = snapshot.sequence;
+            events.publish(Arc::clone(&snapshot), core.events());
+            publisher.publish(snapshot)?;
+        } else {
+            thread::sleep(Duration::from_millis(2));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

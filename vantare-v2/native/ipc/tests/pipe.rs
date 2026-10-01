@@ -1,6 +1,6 @@
 //! Publicador y suscriptor sobre un named pipe real, cada uno en sus hilos.
 
-#![cfg(windows)]
+#![cfg(any(windows, unix))]
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};

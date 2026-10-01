@@ -60,18 +60,22 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                 .child(
                     div()
                         .flex()
-                        .items_center()
+                        .items_start()
+                        .pt(px(4.0))
                         .gap(px(14.0))
                         .h(px(42.0))
                         .border_b_1()
                         .border_color(rgba(orbit::LINE))
-                        .child(orbit::tracked_text("TOTAL", 11.0, 700, orbit::RED, 0.8))
-                        .child(orbit::text(
-                            edited.pit_stop_laps.len().to_string(),
-                            18.0,
-                            700,
-                            orbit::INK,
-                        ))
+                        .child(orbit::text("TOTAL", 11.0, 700, orbit::RED).line_height(px(21.6)))
+                        .child(
+                            orbit::text(
+                                edited.pit_stop_laps.len().to_string(),
+                                18.0,
+                                700,
+                                orbit::INK,
+                            )
+                            .line_height(px(21.6)),
+                        )
                         .child(orbit::text(
                             service_label(this, index),
                             12.0,
@@ -113,7 +117,7 @@ fn stop_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy
                 .bg(rgb(0x000f_1212))
                 .when(index == selected, |tab| {
                     tab.border_color(rgb(orbit::RED))
-                        .bg(orbit::tint(orbit::CARMINE, 0.14))
+                        .bg(orbit::tint(orbit::CARMINE, 0.1))
                 })
                 .child(
                     div()
@@ -155,8 +159,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
         .or_else(|| stop.map(|stop| stop.ve_percent));
     let tyres = demo
         .map(|demo| demo.change_tyres)
-        .or_else(|| stop.map(|stop| stop.change_tyres))
-        .unwrap_or(false);
+        .or_else(|| stop.map(|stop| stop.change_tyres));
     let compound = demo.map_or("Sin dato", |demo| demo.compound.as_str());
     let costs = demo.map_or([None; 4], |demo| {
         [
@@ -227,7 +230,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
 fn stop_resources(
     fuel: Option<f64>,
     energy: Option<f64>,
-    tyres: bool,
+    tyres: Option<bool>,
     compound: &str,
     demo: bool,
 ) -> Div {
@@ -256,15 +259,19 @@ fn stop_resources(
                             div()
                                 .size(px(14.0))
                                 .rounded(px(3.0))
-                                .bg(rgb(if tyres { orbit::CARMINE } else { 0x0008_0b0c }))
+                                .bg(rgb(if tyres == Some(true) {
+                                    orbit::CARMINE
+                                } else {
+                                    0x0008_0b0c
+                                }))
                                 .child(orbit::text(
-                                    if tyres { "✓" } else { "" },
+                                    if tyres == Some(true) { "✓" } else { "" },
                                     12.0,
                                     700,
                                     orbit::INK,
                                 )),
                         )
-                        .child(orbit::text("Cambiar neumáticos", 13.0, 400, orbit::INK))
+                        .child(orbit::text(tyre_label(tyres), 13.0, 400, orbit::INK))
                         .opacity(if demo { 1.0 } else { orbit::DISABLED }),
                 ),
         )
@@ -284,6 +291,14 @@ fn stop_resources(
                         .child(super::datos::select_value(compound)),
                 ),
         )
+}
+
+fn tyre_label(tyres: Option<bool>) -> &'static str {
+    if tyres.is_some() {
+        "Cambiar neumáticos"
+    } else {
+        "Neumáticos sin dato"
+    }
 }
 
 fn cost_grid(values: &[String; 4]) -> Div {
@@ -338,7 +353,7 @@ fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
         .flex_1()
         .min_w_0()
         .gap(px(8.0))
-        .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2))
+        .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2).line_height(px(19.5)))
         .child(
             div()
                 .flex()
@@ -405,6 +420,13 @@ fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> D
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_tyre_decision_is_not_presented_as_no_change() {
+        assert_eq!(tyre_label(None), "Neumáticos sin dato");
+        assert_eq!(tyre_label(Some(false)), "Cambiar neumáticos");
+        assert_eq!(tyre_label(Some(true)), "Cambiar neumáticos");
+    }
 
     #[test]
     fn moving_a_stop_recalculates_only_its_adjacent_stints() {

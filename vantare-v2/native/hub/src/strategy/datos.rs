@@ -331,7 +331,7 @@ impl Strategy {
             .child(orbit::text("Vista avanzada de muestras originales. Las correcciones se guardan por separado y conservan la calidad del dato.",13.0,400,orbit::INK_2))
             .child(div().flex().gap(px(12.0)).children([("Señal registrada","Fuel level · L"),("Valor","Valor")].into_iter().map(|(label,value)|
                 div().flex().flex_col().flex_1().gap(px(8.0)).child(orbit::text(label,13.0,400,orbit::INK_2)).child(select_value(value)))))
-            .child(table.mt(px(16.0)))
+            .child(table.mt(px(16.0)).max_h(px(339.0)).id("strategy-data-samples").overflow_y_scroll())
     }
 
     fn empty_source_card(&self, cx: &mut Context<Self>) -> Div {
@@ -342,16 +342,21 @@ impl Strategy {
             .child(div().flex().flex_col().items_center().justify_center().h(px(263.0)).gap(px(18.0))
                 .child(orbit::icon("i-telemetria",40.0,orbit::INK_2))
                 .child(orbit::text("Elige una sesión para revisar",18.0,700,orbit::INK))
-                .child(orbit::text("Abre y selecciona tus archivos en la biblioteca. No se leen automáticamente al entrar aquí.",16.0,400,orbit::INK_2))
+                .child(orbit::text("Abre y selecciona tus archivos en la biblioteca. No se leen automáticamente al entrar aquí.",16.0,400,orbit::INK_2).relative().top(px(-3.0)))
                 .child(primary_action("strategy-empty-review-sources","Revisar fuentes")
-                    .h(px(40.0)).when(self.capture_demo.is_none(),|button| button.opacity(orbit::DISABLED))
+                    .w(px(122.0)).h(px(40.0)).relative().top(px(-8.0)).when(self.capture_demo.is_none(),|button| button.opacity(orbit::DISABLED))
                     .on_click(cx.listener(|this,_,_,cx| { if this.capture_demo.is_some() { this.data.sources_open=true; cx.notify(); } }))))
             .h(px(438.0)))
     }
 
     // Biblioteca del mock pass-27. La aplicación normal muestra source_panel con la fuente validada.
     pub(super) fn capture_sources_page(&self, height: f32, cx: &mut Context<Self>) -> Div {
-        let back = secondary_action("strategy-sources-back", "← Atrás")
+        let back = orbit::button("strategy-sources-back", "")
+            .aria_label("Atrás")
+            .bg(rgb(0x000a_0c0d))
+            .child(orbit::text("← Atrás", 16.0, 400, orbit::INK_2))
+            .relative()
+            .top(px(-7.0))
             .w(px(150.0))
             .h(px(56.0))
             .on_click(cx.listener(|this, _, _, cx| {
@@ -362,10 +367,10 @@ impl Strategy {
             .child(source_progress())
             .child(div().id("strategy-sources-body").flex_1().min_h(px(0.0)).overflow_y_scroll().px(px(32.0)).pt(px(22.0)).pb(px(32.0))
                 .child(orbit::tracked_text("SESIONES",11.0,400,orbit::INK_2,1.4))
-                .child(tight_title("Telemetría registrada",42.0,700,2.2).mt(px(14.0)).mb(px(14.0)).line_height(px(48.3)))
+                .child(tight_title("Telemetría registrada",42.0,700,2.6).mt(px(14.0)).mb(px(14.0)).line_height(px(48.3)))
                 .child(orbit::text("Los originales se conservan. Abre hasta cuatro sesiones para revisarlas y elige después cuáles utilizar.",16.0,400,orbit::INK_2).w(px(500.0)).line_height(px(24.0)))
                 .child(div().flex().items_center().justify_between().max_w(px(1040.0)).mt(px(14.0)).mb(px(15.0))
-                    .child(primary_action("strategy-capture-browse-sources","Buscar sesiones").h(px(40.0)))
+                    .child(primary_action("strategy-capture-browse-sources","Buscar sesiones").w(px(127.0)).h(px(40.0)))
                     .child(orbit::text("0/4",11.0,400,orbit::INK_2).px(px(9.0)).py(px(6.0)).rounded(px(8.0)).bg(rgb(0x0010_1315))))
                 .child(self.capture_library()))
             .child(div().flex().justify_between().items_center().h(px(112.0)).flex_none().px(px(32.0)).border_t_1().border_color(rgba(orbit::LINE)).bg(rgb(0x0008_090b))
@@ -942,8 +947,8 @@ impl Strategy {
 fn data_heading() -> gpui::Stateful<Div> {
     div().id("strategy-data").flex().flex_col().w_full().h_full().min_w_0().min_h(px(0.0)).overflow_y_scroll().gap(px(21.0))
         .child(div().flex().flex_col().px(px(12.0)).pt(px(12.0)).gap(px(8.0))
-            .child(tight_title("Revisa tus datos de telemetría",44.0,700,1.8).line_height(px(52.8)))
-            .child(orbit::text("Comprueba las observaciones registradas y conserva el motivo de cada corrección.",17.0,400,orbit::INK_2).line_height(px(26.0))))
+            .child(tight_title("Revisa tus datos de telemetría",44.0,700,1.87).line_height(px(52.8)))
+            .child(orbit::text("Comprueba las observaciones registradas y conserva el motivo de cada corrección.",17.0,400,orbit::INK_2).line_height(px(26.0)).relative().top(px(1.0))))
 }
 
 fn review_card() -> Div {
@@ -1062,7 +1067,7 @@ fn source_progress() -> Div {
         .pt(px(20.0))
         .border_b_1()
         .border_color(rgba(orbit::LINE))
-        .bg(rgb(0x0008_090b))
+        .bg(rgba(0x0809_0bf0))
         .children(
             AssistantStep::ALL
                 .into_iter()

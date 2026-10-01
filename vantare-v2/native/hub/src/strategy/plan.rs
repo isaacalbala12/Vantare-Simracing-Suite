@@ -451,9 +451,9 @@ cálculo",
         let Some(demo) = &self.capture_demo else {
             return div();
         };
-        plan_card().child(div().flex().flex_col().p(px(16.0))
-            .child(orbit::text("La telemetría permite mostrar estas magnitudes, pero todavía no respalda una estrategia completa.",16.0,600,orbit::INK))
-            .child(div().flex().gap(px(10.0)).mt(px(22.0))
+        plan_card().child(div().flex().flex_col().p(px(16.0)).pb(px(12.0))
+            .child(orbit::text("La telemetría permite mostrar estas magnitudes, pero todavía no respalda una estrategia completa.",16.0,600,orbit::INK).line_height(px(20.0)))
+            .child(div().flex().gap(px(10.0)).mt(px(18.0))
                 .child(metric_card("Fuel por vuelta",format!("{} L",decimal(demo.fuel_per_lap,2))).h(px(79.0)))
                 .child(metric_card("Energía virtual por vuelta",format!("{}%",decimal(demo.ve_per_lap,2))).h(px(79.0)))
                 .child(plan_card().w(px(368.0)).flex_none().p(px(18.0)).border_color(orbit::tint(orbit::CARMINE,0.5)).bg(orbit::tint(orbit::CARMINE,0.08))
@@ -519,7 +519,8 @@ cálculo",
                             .w_full()
                             .gap(px(12.0))
                             .child(
-                                orbit::button("strategy-edit-stints", "Ajustar stints")
+                                orbit::button("strategy-edit-stints", "")
+                                    .child(orbit::text("Ajustar stints", 16.0, 700, orbit::INK))
                                     .flex_1()
                                     .h(px(52.0))
                                     .min_w_0()
@@ -533,7 +534,8 @@ cálculo",
                                     })),
                             )
                             .child(
-                                orbit::button("strategy-edit-pits", "Ajustar paradas")
+                                orbit::button("strategy-edit-pits", "")
+                                    .child(orbit::text("Ajustar paradas", 16.0, 700, orbit::INK))
                                     .flex_1()
                                     .h(px(52.0))
                                     .min_w_0()
@@ -825,7 +827,7 @@ cálculo",
                         orbit::RED,
                         0.8,
                     ))
-                    .child(orbit::text(driver, 16.0, 700, orbit::INK)),
+                    .child(orbit::text(driver, 16.0, 700, orbit::INK).line_height(px(19.2))),
             )
             .child(
                 div()
@@ -874,7 +876,10 @@ cálculo",
                         orbit::RED,
                         0.8,
                     ))
-                    .child(orbit::text(format!("Vuelta {lap}"), 16.0, 700, orbit::INK)),
+                    .child(
+                        orbit::text(format!("Vuelta {lap}"), 16.0, 700, orbit::INK)
+                            .line_height(px(19.2)),
+                    ),
             );
         if self.edit_dirty {
             return Some(card.child(
@@ -915,7 +920,7 @@ cálculo",
         card = card.child(
             div().flex().flex_col().gap(px(6.0)).mt(px(14.0)).children(
                 rows.into_iter()
-                    .map(|row| orbit::text(row, 12.0, 400, orbit::INK_2)),
+                    .map(|row| orbit::text(row, 12.0, 400, orbit::INK_2).line_height(px(16.0))),
             ),
         );
         Some(card)
@@ -930,19 +935,18 @@ cálculo",
                     .flex_col()
                     .gap(px(4.0))
                     .p(px(12.0))
+                    .h(px(62.0))
+                    .flex_none()
                     .rounded(px(8.0))
                     .bg(rgb(0x0011_1416))
-                    .child(orbit::text(
-                        revision.session_id.clone(),
-                        16.0,
-                        700,
-                        orbit::INK,
-                    ))
-                    .child(orbit::mono_text(
-                        short_digest(&revision.revision_id),
-                        11.0,
-                        orbit::INK_2,
-                    )),
+                    .child(
+                        orbit::text(revision.session_id.clone(), 16.0, 700, orbit::INK)
+                            .line_height(px(19.2)),
+                    )
+                    .child(
+                        orbit::mono_text(short_digest(&revision.revision_id), 11.0, orbit::INK_2)
+                            .line_height(px(16.5)),
+                    ),
             );
         }
         if self.source_revisions.is_empty() {
@@ -958,19 +962,22 @@ cálculo",
             .flex_col()
             .border_t_1()
             .border_color(rgba(orbit::LINE))
-            .pt(px(12.0))
-            .gap(px(6.0))
-            .child(orbit::tracked_text(
-                if self.capture_demo.is_some() {
-                    "REVISIONES EXACTAS UTILIZADAS"
-                } else {
-                    "REVISIONES EXACTAS SELECCIONADAS"
-                },
-                11.0,
-                600,
-                orbit::INK,
-                0.7,
-            ))
+            .pt(px(9.0))
+            .gap(px(1.0))
+            .child(
+                orbit::text(
+                    if self.capture_demo.is_some() {
+                        "REVISIONES EXACTAS UTILIZADAS"
+                    } else {
+                        "REVISIONES EXACTAS SELECCIONADAS"
+                    },
+                    11.0,
+                    400,
+                    orbit::INK,
+                )
+                .line_height(px(16.5))
+                .h(px(16.5)),
+            )
             .child(rows)
     }
 
@@ -1006,7 +1013,7 @@ pub(super) fn edit_heading(title: &str) -> Div {
         .flex()
         .flex_col()
         .gap(px(12.0))
-        .pb(px(22.0))
+        .pb(px(18.0))
         .border_b_1()
         .border_color(rgba(orbit::LINE))
         .child(orbit::tracked_text(
@@ -1016,7 +1023,12 @@ pub(super) fn edit_heading(title: &str) -> Div {
             orbit::RED,
             0.9,
         ))
-        .child(orbit::text(title.to_owned(), 34.0, 400, orbit::INK).line_height(px(40.8)))
+        .child(
+            super::datos::tight_title(title, 34.0, 400, 2.0)
+                .line_height(px(40.8))
+                .relative()
+                .top(px(2.0)),
+        )
 }
 
 pub(super) fn plan_card() -> Div {
@@ -1078,7 +1090,7 @@ fn timeline_item(card: Div, index: usize) -> Div {
         .flex_1()
         .min_w_0()
         .relative()
-        .pt(px(17.0))
+        .pt(px(16.0))
         .child(card)
         .child(
             div()
@@ -1166,7 +1178,7 @@ fn certificate_card(certificate: Option<&vantare_strategy::solver::OptimalityCer
         return orbit::callout("El solver no devolvió un certificado.");
     };
     let proven = certificate.status == OptimalityStatus::Proven;
-    plan_card().h(px(102.0)).flex_none().bg(rgb(0x0010_1113)).relative().overflow_hidden().child(div().absolute().left(px(0.0)).top(px(0.0)).bottom(px(0.0)).w(px(3.0)).bg(rgb(if proven {orbit::GREEN} else {orbit::CORAL}))).p(px(16.0)).flex().flex_col().gap(px(8.0))
+    plan_card().h(px(102.0)).flex_none().bg(rgb(0x0010_1113)).relative().overflow_hidden().child(div().absolute().left(px(0.0)).top(px(0.0)).bottom(px(0.0)).w(px(3.0)).bg(rgb(if proven {orbit::GREEN} else {orbit::CORAL}))).p(px(16.0)).px(px(18.0)).pt(px(14.0)).flex().flex_col().gap(px(6.0))
         .child(orbit::text(if proven {"Estrategia óptima demostrada"} else {"Estrategia óptima no demostrada"},16.0,700,orbit::INK).line_height(px(19.2)))
         .child(orbit::text(if proven {"La decisión final coincide con el mejor resultado de la búsqueda completa del modelo."} else {"La búsqueda no demostró optimalidad completa para este resultado."},16.0,400,orbit::INK_2).line_height(px(24.0)))
         .child(orbit::text(format!("Modelo: {} · menor tiempo total",certificate.model),12.0,400,orbit::INK).line_height(px(18.0)))

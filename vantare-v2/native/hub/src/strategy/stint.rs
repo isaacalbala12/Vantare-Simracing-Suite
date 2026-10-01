@@ -139,30 +139,26 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
 fn stint_header(race_laps: u32) -> gpui::Div {
     div()
         .flex()
-        .items_center()
+        .items_start()
+        .pt(px(4.0))
         .gap(px(14.0))
         .h(px(42.0))
         .border_b_1()
         .border_color(rgba(orbit::LINE))
-        .child(orbit::tracked_text(
-            "VUELTAS TOTALES",
-            11.0,
-            700,
-            orbit::RED,
-            0.8,
-        ))
-        .child(orbit::text(
-            format!("{race_laps} vueltas"),
-            18.0,
-            700,
-            orbit::INK,
-        ))
-        .child(orbit::text(
-            "Mueve un límite para comparar con la propuesta.",
-            12.0,
-            400,
-            orbit::INK_2,
-        ))
+        .child(orbit::text("VUELTAS TOTALES", 11.0, 700, orbit::RED).line_height(px(21.6)))
+        .child(
+            orbit::text(format!("{race_laps} vueltas"), 18.0, 700, orbit::INK)
+                .line_height(px(21.6)),
+        )
+        .child(
+            orbit::text(
+                "Mueve un límite para comparar con la propuesta.",
+                12.0,
+                400,
+                orbit::INK_2,
+            )
+            .line_height(px(21.6)),
+        )
 }
 
 fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
@@ -220,7 +216,7 @@ fn stint_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strateg
                 .bg(rgb(0x000f_1212))
                 .when(index == selected, |tab| {
                     tab.border_color(rgb(orbit::RED))
-                        .bg(orbit::tint(orbit::CARMINE, 0.14))
+                        .bg(orbit::tint(orbit::CARMINE, 0.1))
                 })
                 .child(
                     div()
@@ -252,18 +248,13 @@ pub(super) fn editor_metric(label: &str, value: String) -> gpui::Div {
         .flex_1()
         .min_w_0()
         .p(px(18.0))
-        .gap(px(12.0))
+        .py(px(15.0))
+        .gap(px(8.0))
         .bg(rgb(0x000b_0e0f))
         .border_1()
         .border_color(rgba(orbit::LINE))
-        .child(orbit::tracked_text(
-            label.to_uppercase(),
-            11.0,
-            400,
-            orbit::INK_2,
-            0.7,
-        ))
-        .child(orbit::text(value, 20.0, 700, orbit::INK))
+        .child(orbit::text(label.to_uppercase(), 11.0, 400, orbit::INK_2).line_height(px(16.5)))
+        .child(orbit::text(value, 20.0, 700, orbit::INK).line_height(px(24.0)))
 }
 fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui::Div {
     div()
@@ -274,14 +265,14 @@ fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui:
         .child(
             div()
                 .flex()
-                .h(px(84.0))
+                .h(px(85.0))
                 .child(editor_metric("Vueltas", laps.to_string()))
                 .child(editor_metric("Ritmo base", pace)),
         )
         .child(
             div()
                 .flex()
-                .h(px(84.0))
+                .h(px(85.0))
                 .child(editor_metric("Fuel", fuel))
                 .child(editor_metric("Energía virtual", energy)),
         )
@@ -321,7 +312,7 @@ fn boundary_control(
     let slider = boundary_slider(this, index, min, max, value, cx);
     div()
         .flex()
-        .items_end()
+        .items_center()
         .gap(px(16.0))
         .px(px(14.0))
         .child(
@@ -330,7 +321,9 @@ fn boundary_control(
                 .flex_col()
                 .flex_1()
                 .gap(px(8.0))
-                .child(orbit::text("Límite del stint", 13.0, 400, orbit::INK_2))
+                .child(
+                    orbit::text("Límite del stint", 13.0, 400, orbit::INK_2).line_height(px(19.5)),
+                )
                 .child(slider),
         )
         .child(
@@ -339,7 +332,7 @@ fn boundary_control(
                 .flex_col()
                 .w(px(76.0))
                 .gap(px(8.0))
-                .child(orbit::text("Vuelta", 13.0, 400, orbit::INK_2))
+                .child(orbit::text("Vuelta", 13.0, 400, orbit::INK_2).line_height(px(19.5)))
                 .child(
                     div()
                         .h(px(40.0))

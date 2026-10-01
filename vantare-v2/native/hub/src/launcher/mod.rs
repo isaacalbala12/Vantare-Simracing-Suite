@@ -4,6 +4,7 @@ pub mod discovery;
 pub(crate) mod input;
 mod migration;
 pub mod policy;
+pub mod processes;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -258,6 +259,7 @@ impl Document {
                 || !profiles.insert(&profile.id)
                 || profile.steps.len() > 128
                 || profile.max_retries > 3
+                || profile.effective_policy().max_retries > 3
             {
                 return Err("perfil inválido: identidad, pasos, delay o reintentos".into());
             }

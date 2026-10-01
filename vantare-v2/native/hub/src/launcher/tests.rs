@@ -364,12 +364,233 @@ fn collect(chain: &Chain) -> Vec<chain::Progress> {
             .progress
             .recv_timeout(Duration::from_secs(10))
             .expect("progreso real");
-        let finished = event.step.is_none();
+        let finished =
+            event.step.is_none() && matches!(event.status, Status::Done | Status::Cancelled);
         events.push(event);
         if finished {
             return events;
         }
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn running_ask_rejects_stale_answers_and_never_grants_external_ownership() {
+    let tree = Tree::new();
+    let (document, mut profile, found) = process_fixture(&tree, 0);
+    let executable = document
+        .apps
+        .last()
+        .expect("app")
+        .executable
+        .as_ref()
+        .expect("exe");
+    let mut existing = std::process::Command::new(executable)
+        .args(["/d", "/c", "for /l %i in (1,1,20000000) do @rem"])
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("external child");
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
+    profile.policy = Some(policy::Policy::default());
+    let mut chain =
+        Chain::start_with_processes(document, profile, found, shared.clone()).expect("chain");
+    let mut decision = None;
+    while decision.is_none() {
+        decision = chain
+            .progress
+            .recv_timeout(Duration::from_secs(5))
+            .expect("decision")
+            .decision;
+    }
+    let decision = decision.expect("decision");
+    assert_eq!(
+        decision.actions,
+        [chain::Action::Reuse, chain::Action::Cancel]
+    );
+    chain
+        .answer(decision.id + 1, chain::Action::Reuse)
+        .expect("stale reply");
+    assert!(
+        chain
+            .progress
+            .recv_timeout(Duration::from_millis(100))
+            .is_err()
+    );
+    chain
+        .answer(decision.id, chain::Action::Reuse)
+        .expect("reply");
+    let events = collect(&chain);
+    chain.shutdown().expect("join");
+    let still_open = existing.try_wait().expect("state").is_none();
+    existing.kill().expect("cleanup");
+    existing.wait().expect("reap");
+    assert!(still_open);
+    assert!(events.last().expect("done").success);
+    assert!(
+        !shared
+            .lock()
+            .expect("registry")
+            .has_profile("test")
+            .expect("ownership")
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
+    for action in [chain::Action::Continue, chain::Action::Stop] {
+        let tree = Tree::new();
+        let (document, mut profile, found) = process_fixture(&tree, 7);
+        let mut next = profile.steps[0].clone();
+        next.args_override = Some(vec!["/d".into(), "/c".into(), "exit 0".into()]);
+        profile.steps.push(next);
+        profile.policy = Some(policy::Policy {
+            already_running: policy::Running::Reuse,
+            ..Default::default()
+        });
+        let mut chain = Chain::start(document, profile, found).expect("chain");
+        loop {
+            if let Some(decision) = chain
+                .progress
+                .recv_timeout(Duration::from_secs(5))
+                .expect("event")
+                .decision
+            {
+                chain.answer(decision.id, action).expect("answer");
+                break;
+            }
+        }
+        let events = collect(&chain);
+        chain.shutdown().expect("join");
+        assert_eq!(
+            events
+                .iter()
+                .any(|e| e.step == Some(1) && e.status == Status::Ready),
+            action == chain::Action::Continue
+        );
+    }
+    for close in [
+        policy::Close::Leave,
+        policy::Close::CloseStarted,
+        policy::Close::Ask,
+    ] {
+        let tree = Tree::new();
+        let (mut document, mut profile, found) = process_fixture(&tree, 0);
+        document.apps.last_mut().expect("app").args = vec![
+            "/d".into(),
+            "/c".into(),
+            "for /l %i in (1,1,20000000) do @rem".into(),
+        ];
+        profile.policy = Some(policy::Policy {
+            cancel: close,
+            ..Default::default()
+        });
+        let shared = std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default()));
+        let mut chain =
+            Chain::start_with_processes(document, profile, found, shared.clone()).expect("chain");
+        while chain
+            .progress
+            .recv_timeout(Duration::from_secs(5))
+            .expect("launch")
+            .status
+            != Status::Launching
+        {}
+        chain.cancel();
+        if close == policy::Close::Ask {
+            loop {
+                if let Some(decision) = chain
+                    .progress
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("close decision")
+                    .decision
+                {
+                    chain
+                        .answer(decision.id, chain::Action::CloseStarted)
+                        .expect("close answer");
+                    break;
+                }
+            }
+        }
+        assert_eq!(
+            collect(&chain).last().expect("cancelled").status,
+            Status::Cancelled
+        );
+        chain.shutdown().expect("join");
+        let mut registry = shared.lock().expect("registry");
+        let owns = registry.has_profile("test").expect("state");
+        registry.close_profile("test").expect("cleanup owned child");
+        assert_eq!(owns, close == policy::Close::Leave);
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child() {
+    let tree = Tree::new();
+    let (mut document, mut profile, found) = process_fixture(&tree, 0);
+    let executable = document
+        .apps
+        .last()
+        .expect("app")
+        .executable
+        .clone()
+        .expect("exe");
+    let args = ["/d", "/c", "for /l %i in (1,1,20000000) do @rem"];
+    let mut external = std::process::Command::new(&executable)
+        .args(args)
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("external");
+    let mut registry = processes::Processes::default();
+    assert!(registry.restart(&executable, &[external.id()]).is_err());
+    external.kill().expect("cleanup");
+    external.wait().expect("reap");
+    let child = std::process::Command::new(&executable)
+        .args(args)
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("owned");
+    let old_pid = child.id();
+    registry.record(
+        "test",
+        "custom:test",
+        &fs::canonicalize(&executable).expect("identity"),
+        child,
+    );
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(registry));
+    document.apps.last_mut().expect("app").args = args.iter().map(|v| (*v).into()).collect();
+    profile.policy = Some(policy::Policy {
+        already_running: policy::Running::Restart,
+        cancel: policy::Close::CloseStarted,
+        ..Default::default()
+    });
+    let mut chain = Chain::start_with_processes(document, profile, found, shared.clone())
+        .expect("restart chain");
+    let launched = loop {
+        let event = chain
+            .progress
+            .recv_timeout(Duration::from_secs(5))
+            .expect("launch");
+        if event.status == Status::Launching {
+            break event.pid.expect("new PID");
+        }
+    };
+    chain.cancel();
+    collect(&chain);
+    chain.shutdown().expect("join");
+    assert_ne!(old_pid, launched);
+    assert!(
+        !shared
+            .lock()
+            .expect("registry")
+            .has_profile("test")
+            .expect("closed")
+    );
+    assert!(
+        discovery::running_all(&executable)
+            .expect("Win32")
+            .is_empty()
+    );
 }
 
 #[cfg(windows)]

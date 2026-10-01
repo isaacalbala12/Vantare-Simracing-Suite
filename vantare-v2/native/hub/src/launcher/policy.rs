@@ -44,3 +44,25 @@ pub struct Policy {
     pub max_retries: u8,
     pub first_step_delay: u32,
 }
+
+impl super::Profile {
+    pub fn effective_policy(&self) -> Policy {
+        self.policy.clone().unwrap_or(Policy {
+            already_running: if self.reuse_running {
+                Running::Reuse
+            } else {
+                Running::Restart
+            },
+            failure: if self.continue_on_error {
+                Failure::Continue
+            } else {
+                Failure::Stop
+            },
+            cancel: Close::Leave,
+            exit: Close::Leave,
+            retry: Retry::Failed,
+            max_retries: self.max_retries,
+            first_step_delay: self.first_step_delay,
+        })
+    }
+}

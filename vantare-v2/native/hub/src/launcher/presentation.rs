@@ -962,31 +962,39 @@ impl Launcher {
         chain.mt(px(18.0))
     }
     fn policy_chips(profile: &Profile) -> gpui::Div {
+        let policy = profile.effective_policy();
         div()
             .flex()
             .flex_wrap()
             .gap(px(6.0))
             .child(chip(
-                if profile.reuse_running {
-                    "YA ABIERTA · REUTILIZAR"
-                } else {
-                    "YA ABIERTA · ABRIR"
+                match policy.already_running {
+                    Running::Ask => "YA ABIERTA · PREGUNTAR",
+                    Running::Reuse => "YA ABIERTA · REUTILIZAR",
+                    Running::Restart => "YA ABIERTA · REINICIAR",
                 },
                 Tone::Neutral,
             ))
             .child(chip(
-                if profile.continue_on_error {
-                    "FALLO · CONTINUAR"
-                } else {
-                    "FALLO · DETENER"
+                match policy.failure {
+                    Failure::Ask => "FALLO · PREGUNTAR",
+                    Failure::Stop => "FALLO · DETENER",
+                    Failure::Continue => "FALLO · CONTINUAR",
                 },
                 Tone::Neutral,
             ))
             .child(chip(
-                &format!("FALLO · REINTENTAR ×{}", profile.max_retries),
+                &format!("FALLO · REINTENTAR ×{}", policy.max_retries),
                 Tone::Neutral,
             ))
-            .child(chip("AL SALIR · DEJAR ABIERTAS", Tone::Neutral))
+            .child(chip(
+                match policy.exit {
+                    Close::Ask => "AL SALIR · PREGUNTAR",
+                    Close::Leave => "AL SALIR · DEJAR ABIERTAS",
+                    Close::CloseStarted => "AL SALIR · CERRAR INICIADAS",
+                },
+                Tone::Neutral,
+            ))
     }
     pub(super) fn profile_actions(&self, profile: &Profile, cx: &mut Context<Self>) -> gpui::Div {
         let duplicate = profile.clone();

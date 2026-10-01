@@ -69,6 +69,7 @@ struct Hub {
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
+    close_requested: bool,
 }
 
 impl Hub {
@@ -80,6 +81,16 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        if self
+            .launcher
+            .update(cx, |launcher, _| launcher.take_exit_cancelled())
+        {
+            self.close_requested = false;
+        }
+        if self.close_requested && self.can_close(cx) {
+            cx.quit();
+            return;
+        }
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
@@ -140,6 +151,10 @@ impl Hub {
     }
 
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        self.close_requested = true;
+        if !self.launcher.update(cx, Launcher::can_close) {
+            return false;
+        }
         match self.save(cx) {
             Ok(()) => true,
             Err(error) => {
@@ -147,6 +162,7 @@ impl Hub {
                     center.report("hub.save", error.clone(), cx);
                 });
                 self.status = Some(error);
+                self.close_requested = false;
                 cx.notify();
                 false
             }
@@ -284,7 +300,8 @@ impl Render for Hub {
             .child(main)
             .when(self.section == Section::Launcher, |root| {
                 root.when_some(
-                    self.launcher.read(cx).form_layer(),
+                    self.launcher
+                        .update(cx, |launcher, cx| launcher.form_layer(window, cx)),
                     gpui::ParentElement::child,
                 )
             })
@@ -515,18 +532,7 @@ impl Hub {
             prepared_analysis.refresh(cx);
             prepared_analysis
         });
-        let launcher = cx.new(|cx| match &demo {
-            Some(demo) => Launcher::new_demo(
-                launcher_store,
-                demo,
-                capture
-                    .as_ref()
-                    .is_some_and(|capture| capture.launcher_new_profile),
-                window,
-                cx,
-            ),
-            None => Launcher::new(launcher_store, cx),
-        });
+        let launcher = create_launcher(launcher_store, demo.as_ref(), capture.as_ref(), window, cx);
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
@@ -579,8 +585,30 @@ impl Hub {
             status: None,
             subscriber,
             previous_source: None,
+            close_requested: false,
         }
     }
+}
+
+fn create_launcher(
+    store: LauncherStore,
+    demo: Option<&crate::demo::DemoData>,
+    capture: Option<&crate::demo::CaptureState>,
+    window: &mut Window,
+    cx: &mut Context<Hub>,
+) -> Entity<Launcher> {
+    cx.new(|cx| match demo {
+        Some(demo) => Launcher::new_demo(
+            store,
+            demo,
+            capture
+                .as_ref()
+                .is_some_and(|capture| capture.launcher_new_profile),
+            window,
+            cx,
+        ),
+        None => Launcher::new(store, cx),
+    })
 }
 
 fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {

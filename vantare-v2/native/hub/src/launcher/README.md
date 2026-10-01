@@ -288,3 +288,14 @@ se certifica click de selección en esa lista, IME, DPI mixto, otras
 resoluciones, paridad por píxeles, fase 5 completa, LMU/ACC/Steam/OBS físicos,
 ni rendimiento. Notion no estaba disponible; no se actualizó ni se afirma
 haber completado su seguimiento. No hubo push, PR, merge ni release.
+
+## Hito 2 — políticas
+Las políticas importadas ya gobiernan app abierta, fallo y cancelación. La salida
+manual espera la decisión antes de cerrar el Hub. Respuestas con ID antiguo o
+acción no ofrecida no resuelven la decisión; cancelar despierta esperas y sondeos.
+Solo los hijos directos guardados con su handle original pueden cerrarse/reiniciarse.
+Reutilizar una app externa no concede propiedad. Steam conserva observación sin
+permiso de cierre sobre el juego. El cierre de hijos es forzado (Child::kill), no
+un cierre de ventana con guardado de documentos: revisar UX con apps reales antes
+de promocionar. La salida automática a Live conserva las apps con política Ask;
+no abre un diálogo que impida el handoff automático al juego.

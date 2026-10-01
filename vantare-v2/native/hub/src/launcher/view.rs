@@ -1,9 +1,11 @@
 //! Presentación Orbit: estado persistido, borradores y progreso real.
 use super::{
     App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
-    chain::{Chain, Progress},
+    chain::{Action, Chain, Decision, Progress},
     discovery::{self, Discovery, Sources},
     input::Input,
+    policy::{Close, Failure, Running},
+    processes,
 };
 use crate::orbit::{self, button};
 use gpui::{
@@ -33,8 +35,10 @@ struct ProfileDraft {
     notes: Entity<Input>,
     first_delay: Entity<orbit::NumberControl>,
     retries: Entity<orbit::NumberControl>,
-    failure: Entity<orbit::Checkbox>,
-    reuse: Entity<orbit::Checkbox>,
+    failure: Entity<orbit::Choice>,
+    reuse: Entity<orbit::Choice>,
+    cancel: Entity<orbit::Choice>,
+    exit: Entity<orbit::Choice>,
     tabs: Entity<orbit::Choice>,
     app_ids: Vec<String>,
     steps: Vec<StepDraft>,
@@ -42,6 +46,10 @@ struct ProfileDraft {
 
 pub struct Launcher {
     store: Store,
+    processes: processes::Shared,
+    pending_decision: Option<Decision>,
+    exit_answer: Option<Action>,
+    exit_cancelled: bool,
     discovered: Discovery,
     scanning: bool,
     last_scan: Option<chrono::DateTime<chrono::Local>>,
@@ -78,7 +86,14 @@ mod editor;
 mod presentation;
 
 impl Launcher {
-    pub fn form_layer(&self) -> Option<gpui::AnyView> {
+    pub fn form_layer(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<gpui::AnyView> {
+        if self.pending_decision.is_some() && self.form_layer.is_none() {
+            self.open_form(window, cx);
+        }
         self.form_layer.clone().map(Into::into)
     }
 
@@ -109,6 +124,10 @@ impl Launcher {
     fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
             store,
+            processes: std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default())),
+            pending_decision: None,
+            exit_answer: None,
+            exit_cancelled: false,
             discovered: discovery.unwrap_or_default(),
             scanning: false,
             last_scan: None,
@@ -207,13 +226,127 @@ impl Launcher {
     }
 
     pub fn shutdown(&mut self) -> Result<(), String> {
-        self.chain.as_mut().map_or(Ok(()), Chain::shutdown)
+        if let Some(chain) = &mut self.chain {
+            chain.shutdown()?;
+        }
+        self.close_on_exit()
+    }
+
+    fn close_on_exit(&mut self) -> Result<(), String> {
+        let mut processes = self
+            .processes
+            .lock()
+            .map_err(|e| format!("procesos Launcher: {e}"))?;
+        for profile in &self.store.document.profiles {
+            let policy = profile.effective_policy();
+            if policy.exit == Close::CloseStarted
+                || policy.exit == Close::Ask && self.exit_answer == Some(Action::CloseStarted)
+            {
+                processes.close_profile(&profile.id)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn take_exit_cancelled(&mut self) -> bool {
+        std::mem::take(&mut self.exit_cancelled)
+    }
+
+    pub fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        if let Some(chain) = &self.chain {
+            chain.prepare_shutdown();
+            return false;
+        }
+        let result = (|| {
+            let mut processes = self
+                .processes
+                .lock()
+                .map_err(|e| format!("procesos Launcher: {e}"))?;
+            for profile in &self.store.document.profiles {
+                if profile.effective_policy().exit == Close::Ask
+                    && processes.has_profile(&profile.id)?
+                    && self.exit_answer.is_none()
+                {
+                    self.pending_decision = Some(Decision {
+                        id: 0,
+                        message: "¿Cerrar las aplicaciones iniciadas por Vantare antes de salir?"
+                            .into(),
+                        actions: vec![Action::Leave, Action::CloseStarted, Action::Cancel],
+                    });
+                    return Ok(false);
+                }
+            }
+            Ok::<_, String>(true)
+        })();
+        match result {
+            Ok(ready) => {
+                cx.notify();
+                ready
+            }
+            Err(error) => {
+                self.report(Err(error), cx);
+                self.exit_cancelled = true;
+                false
+            }
+        }
+    }
+
+    pub(super) fn answer_decision(
+        &mut self,
+        action: Action,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(decision) = self.pending_decision.take() else {
+            return;
+        };
+        if !decision.actions.contains(&action) {
+            self.pending_decision = Some(decision);
+            return;
+        }
+        if decision.id == 0 {
+            if action == Action::Cancel {
+                self.exit_cancelled = true;
+            } else {
+                self.exit_answer = Some(action);
+            }
+        } else if let Some(chain) = &self.chain {
+            let result = chain.answer(decision.id, action);
+            self.report(result, cx);
+        }
+        self.close_form(window, cx);
+    }
+
+    pub(super) fn decision_form(&self, cx: &Context<Self>) -> gpui::Div {
+        let Some(decision) = &self.pending_decision else {
+            return div();
+        };
+        let mut form = div().flex().flex_col().gap_3().child(orbit::text(
+            decision.message.clone(),
+            orbit::BODY,
+            500,
+            orbit::INK,
+        ));
+        for (index, &action) in decision.actions.iter().enumerate() {
+            form = form.child(editor::form_button(
+                button(action.label(), action.label()),
+                &self.form_actions[index],
+                move |this, window, cx| this.answer_decision(action, window, cx),
+                cx,
+            ));
+        }
+        form
     }
 
     fn tick(&mut self, cx: &mut Context<Self>) {
         if let Some(chain) = &self.chain {
             let events: Vec<_> = chain.progress.try_iter().collect();
             if !events.is_empty() {
+                for event in &events {
+                    if let Some(decision) = &event.decision {
+                        self.pending_decision = Some(decision.clone());
+                    }
+                }
                 self.progress.extend(events);
                 if self.progress.len() > 512 {
                     self.progress.drain(..self.progress.len() - 512);
@@ -223,6 +356,14 @@ impl Launcher {
             if chain.finished()
                 && let Some(mut chain) = self.chain.take()
             {
+                if self
+                    .pending_decision
+                    .as_ref()
+                    .is_some_and(|decision| decision.id != 0)
+                {
+                    self.pending_decision = None;
+                    self.form_layer = None;
+                }
                 let result = chain.shutdown();
                 self.progress.extend(chain.progress.try_iter());
                 if let Some(event) = self.progress.last() {
@@ -304,10 +445,16 @@ impl Launcher {
             steam_executable: self.discovered.steam_executable.clone(),
             warnings: vec![],
         };
-        match Chain::start(self.store.document.clone(), profile, found) {
+        match Chain::start_with_processes(
+            self.store.document.clone(),
+            profile,
+            found,
+            self.processes.clone(),
+        ) {
             Ok(chain) => {
                 self.chain = Some(chain);
                 self.progress.clear();
+                self.exit_answer = None;
                 self.error = None;
                 self.status = "Cadena en marcha".into();
                 cx.notify();

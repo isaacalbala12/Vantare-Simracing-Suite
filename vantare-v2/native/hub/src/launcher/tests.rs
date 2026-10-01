@@ -10,6 +10,103 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn fresh_install_seeds_templates_once_and_respects_explicit_empty_profiles() {
+    let tree = Tree::new();
+    let path = tree.0.join("launcher.json");
+    let mut store = Store::load_with_wails(path.clone(), None).expect("fresh install");
+    assert_eq!(
+        store
+            .document
+            .profiles
+            .iter()
+            .map(|p| p.id.as_str())
+            .collect::<Vec<_>>(),
+        ["creator", "pro"]
+    );
+    assert_eq!(
+        store.document.profiles[0]
+            .steps
+            .iter()
+            .map(|s| s.app_id.as_str())
+            .collect::<Vec<_>>(),
+        ["lmu", "obs", "spotify"]
+    );
+    assert_eq!(store.document.profiles[1].steps.len(), 4);
+    let mut empty = store.document.clone();
+    empty.profiles.clear();
+    store.replace(empty).expect("user deleted all profiles");
+    assert!(
+        Store::load_with_wails(path, None)
+            .expect("reload")
+            .document
+            .profiles
+            .is_empty()
+    );
+    let source = tree.file(
+        "wails.json",
+        br#"{"launcherProfiles":[],"launcherApps":{}}"#,
+    );
+    assert!(
+        Store::load_with_wails(tree.0.join("other.json"), Some(&source))
+            .expect("import empty")
+            .document
+            .profiles
+            .is_empty()
+    );
+}
+
+#[test]
+fn editor_rejects_missing_steps_apps_duplicates_and_preserves_advanced_copies() {
+    let tree = Tree::new();
+    let executable = tree.file("tool.exe", b"path fixture");
+    let mut document = Document::default();
+    let id = document.add_app("Tool".into(), executable).expect("app");
+    let found = Discovery::scan(&document.apps, Sources::default());
+    let mut profile = Profile::new("source".into(), "Profile".into());
+    assert!(profile.validate_editor(&found).is_err());
+    profile.steps.push(Step {
+        app_id: id.clone(),
+        delay_seconds: 7200,
+        args_override: None,
+    });
+    profile.name.clear();
+    assert!(profile.validate_editor(&found).is_err());
+    profile.name = "Profile".into();
+    profile.steps[0].app_id = "obs".into();
+    assert!(profile.validate_editor(&found).is_err());
+    profile.steps[0].app_id = id;
+    profile.steps.push(profile.steps[0].clone());
+    assert!(profile.validate_editor(&found).is_err());
+    profile.advanced = true;
+    profile
+        .validate_editor(&found)
+        .expect("advanced duplicates allowed");
+    profile.hotkey = "ctrl+shift+1".into();
+    profile.launch_on_windows_startup = true;
+    profile.favorite = true;
+    profile.launch_count = 5;
+    profile.description = "Description".into();
+    profile.notes = "Notes".into();
+    let mut copy = profile.duplicate("copy".into());
+    assert_eq!(copy.name, "Profile (copia)");
+    assert_eq!(copy.description, profile.description);
+    assert_eq!(copy.notes, profile.notes);
+    assert!(copy.hotkey.is_empty());
+    assert!(!copy.launch_on_windows_startup);
+    assert!(!copy.favorite);
+    assert_eq!(copy.launch_count, 0);
+    copy.steps[0].delay_seconds = 2;
+    assert_eq!(profile.steps[0].delay_seconds, 7200);
+    document.profiles.push(profile);
+    document.lmu_trigger_profile = Some("source".into());
+    document
+        .remove_profile("source")
+        .expect("confirmed deletion");
+    assert!(document.lmu_trigger_profile.is_none());
+    assert!(document.remove_profile("source").is_err());
+}
+
+#[test]
 fn migration_imports_wails_once_without_modifying_source_or_other_settings() {
     let tree = Tree::new();
     let app = tree.file("herramienta.exe", b"fixture de ruta, no proceso");

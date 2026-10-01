@@ -175,6 +175,9 @@ fn import_profiles(
     value: Option<&serde_json::Value>,
     document: &mut Document,
 ) -> Result<(), String> {
+    if value.is_none_or(serde_json::Value::is_null) {
+        document.profiles = Document::fresh_install().profiles;
+    }
     if let Some(profiles) = value.filter(|v| !v.is_null()) {
         let profiles: Vec<WailsProfile> = serde_json::from_value(profiles.clone())
             .map_err(|e| format!("perfiles Wails inválidos: {e}"))?;

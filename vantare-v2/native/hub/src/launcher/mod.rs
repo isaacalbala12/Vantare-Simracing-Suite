@@ -175,6 +175,53 @@ impl Profile {
     }
 }
 
+impl Profile {
+    #[must_use]
+    pub fn duplicate(&self, id: String) -> Self {
+        let mut profile = self.clone();
+        profile.id = id;
+        profile.name = format!("{} (copia)", self.name);
+        profile.favorite = false;
+        profile.hotkey.clear();
+        profile.launch_on_windows_startup = false;
+        profile.launch_count = 0;
+        profile.last_launched_at = None;
+        profile.avg_chain_duration_ms = 0;
+        profile
+    }
+    pub fn validate_editor(&self, discovered: &discovery::Discovery) -> Result<(), String> {
+        if !valid_text(&self.name) {
+            return Err("Nombre: indica entre 1 y 256 caracteres sin NUL".into());
+        }
+        if self.steps.is_empty() {
+            return Err("Pasos: anade al menos una aplicacion".into());
+        }
+        let mut apps = HashSet::new();
+        for (index, step) in self.steps.iter().enumerate() {
+            if !self.advanced && !apps.insert(&step.app_id) {
+                return Err(format!(
+                    "Paso {}: las apps repetidas requieren modo avanzado",
+                    index + 1
+                ));
+            }
+            if !discovered
+                .app(&step.app_id)
+                .is_some_and(|app| app.availability.launchable)
+            {
+                return Err(format!("Paso {}: selecciona una app disponible", index + 1));
+            }
+        }
+        if self.description.len() > 8192
+            || self.notes.len() > 32768
+            || self.description.contains('\0')
+            || self.notes.contains('\0')
+        {
+            return Err("Descripcion o notas demasiado largas o con NUL".into());
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Document {
@@ -223,6 +270,40 @@ pub fn validate_args(args: &[String]) -> Result<(), String> {
 }
 
 impl Document {
+    pub fn fresh_install() -> Self {
+        let mut document = Self::default();
+        for (id, name, apps) in [
+            ("creator", "Creator", &["lmu", "obs", "spotify"][..]),
+            ("pro", "Pro", &["lmu", "crewchief", "spotify", "motec"][..]),
+        ] {
+            let mut profile = Profile::new(id.into(), name.into());
+            profile.policy = Some(policy::Policy::default());
+            profile.steps = apps
+                .iter()
+                .enumerate()
+                .map(|(index, app)| Step {
+                    app_id: (*app).into(),
+                    delay_seconds: if index == 0 { 0 } else { 2 },
+                    args_override: None,
+                })
+                .collect();
+            document.profiles.push(profile);
+        }
+        document
+    }
+    pub fn remove_profile(&mut self, id: &str) -> Result<(), String> {
+        let index = self
+            .profiles
+            .iter()
+            .position(|p| p.id == id)
+            .ok_or("perfil inexistente")?;
+        self.profiles.remove(index);
+        if self.lmu_trigger_profile.as_deref() == Some(id) {
+            self.lmu_trigger_profile = None;
+        }
+        Ok(())
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         if self.version != 1 || self.apps.len() > 256 || self.profiles.len() > 128 {
             return Err("versión o tamaño de Launcher no admitidos".into());
@@ -354,10 +435,11 @@ impl Store {
 
     pub fn load_with_wails(path: PathBuf, source: Option<&Path>) -> Result<Self, String> {
         let mut store = Self::load(path)?;
-        if store.saved.is_none()
-            && let Some(source) = source
-        {
-            let document = migration::read(source)?;
+        if store.saved.is_none() {
+            let document = match source {
+                Some(source) => migration::read(source)?,
+                None => Document::fresh_install(),
+            };
             store.replace(document)?;
         }
         Ok(store)

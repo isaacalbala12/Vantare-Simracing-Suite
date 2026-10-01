@@ -21,7 +21,7 @@ struct AppDraft {
     id: Option<String>,
     name: Entity<Input>,
     args: Entity<Input>,
-    executable: Option<PathBuf>,
+    executable: Entity<Input>,
 }
 struct StepDraft {
     app: Entity<orbit::Choice>,
@@ -60,6 +60,7 @@ pub struct Launcher {
     app_draft: Option<AppDraft>,
     profile_draft: Option<ProfileDraft>,
     pending_app_removal: Option<String>,
+    pending_profile_removal: Option<String>,
     form_layer: Option<Entity<editor::LauncherDrawer>>,
     demo_descriptions: HashMap<String, String>,
     form_actions: [gpui::FocusHandle; 3],
@@ -139,6 +140,7 @@ impl Launcher {
             app_draft: None,
             profile_draft: None,
             pending_app_removal: None,
+            pending_profile_removal: None,
             form_layer: None,
             demo_descriptions: HashMap::new(),
             form_actions: [cx.focus_handle(), cx.focus_handle(), cx.focus_handle()],
@@ -545,7 +547,11 @@ impl Launcher {
             id,
             name: input(name, "Nombre de aplicación", cx),
             args: input(args_json(&args), "Argumentos de aplicación en JSON", cx),
-            executable,
+            executable: input(
+                executable.map_or(String::new(), |path| path.display().to_string()),
+                "Ruta de ejecutable",
+                cx,
+            ),
         });
         self.profile_draft = None;
         self.open_form(window, cx);
@@ -573,7 +579,11 @@ impl Launcher {
                     if let Some(draft) = &mut this.app_draft
                         && draft.name == identity
                     {
-                        draft.executable = paths.into_iter().next();
+                        if let Some(path) = paths.into_iter().next() {
+                            draft.executable.update(cx, |field, cx| {
+                                field.set_value(path.display().to_string(), cx);
+                            });
+                        }
                         cx.notify();
                     }
                 }
@@ -597,7 +607,10 @@ impl Launcher {
             }
         };
         let id = draft.id.clone();
-        let path = draft.executable.clone();
+        let path = match draft.executable.read(cx).value.trim() {
+            "" => None,
+            value => Some(PathBuf::from(value)),
+        };
         if self.edit(
             move |document| {
                 if let Some(id) = id {
@@ -640,14 +653,6 @@ impl Launcher {
             .id
             .as_deref()
             .is_some_and(|id| CATALOG.iter().any(|app| app.id == id));
-        let path = draft.executable.as_ref().map_or(
-            if official {
-                "automática".into()
-            } else {
-                "pendiente de elegir".into()
-            },
-            |path| path.display().to_string(),
-        );
         orbit::card("Aplicación · borrador sin guardar").child(
             orbit::card_body()
                 .when_some(self.error.clone(), |body, error| {
@@ -665,11 +670,12 @@ impl Launcher {
                 ))
                 .child(orbit::setting_row(
                     "Ejecutable",
-                    &path,
+                    "Ruta local; vacia usa descubrimiento para apps oficiales",
                     div()
                         .flex()
                         .flex_wrap()
                         .gap_2()
+                        .child(draft.executable.clone())
                         .child(editor::form_button(
                             button("pick-app-path", "Elegir ejecutable"),
                             &self.form_actions[0],
@@ -680,7 +686,9 @@ impl Launcher {
                             row.child(button("auto-app-path", "Usar descubrimiento").on_click(
                                 cx.listener(|this, _, _, cx| {
                                     if let Some(draft) = &mut this.app_draft {
-                                        draft.executable = None;
+                                        draft.executable.update(cx, |field, cx| {
+                                            field.set_value(String::new(), cx);
+                                        });
                                     }
                                     cx.notify();
                                 }),

@@ -826,7 +826,11 @@ impl Launcher {
             &self.discovered,
             self.scanning || self.chain.is_some(),
         );
-        let description = self.demo_descriptions.get(&profile.id).cloned();
+        let description = self
+            .demo_descriptions
+            .get(&profile.id)
+            .cloned()
+            .or_else(|| (!profile.description.is_empty()).then(|| profile.description.clone()));
         div()
             .flex()
             .items_start()
@@ -1045,17 +1049,8 @@ impl Launcher {
                 )),
             )
             .child(button("delete-profile", "Eliminar").on_click(cx.listener(
-                move |this, _, _, cx| {
-                    this.edit(
-                        |doc| {
-                            doc.profiles.retain(|profile| profile.id != remove);
-                            if doc.lmu_trigger_profile.as_deref() == Some(&remove) {
-                                doc.lmu_trigger_profile = None;
-                            }
-                            Ok(())
-                        },
-                        cx,
-                    );
+                move |this, _, window, cx| {
+                    this.request_profile_removal(remove.clone(), window, cx);
                 },
             )))
             .child(

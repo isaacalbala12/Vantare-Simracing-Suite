@@ -312,3 +312,16 @@ El progreso ofrece cancelar la cadena en curso. Al terminar permite repetir los
 pasos fallidos (con los índices originales) o la cadena entera. Reintentar en modo
 Preguntar no dispara intentos automáticos; Fallidos limita reintentos por paso y
 Entera limita el número de pasadas completas. El máximo continúa siendo 3.
+
+## Hito 5 — editor e instalación
+Instalación productiva nueva: Creator y Pro con los pasos Wails; guardado atómico
+para no volver a sembrar perfiles borrados por el usuario. Un array Wails vacío
+se conserva vacío. El editor valida nombre, pasos, apps disponibles y duplicados
+(solo avanzados); conserva descripciones, notas, modo y retardos largos importados.
+Duplicar crea borrador independiente sin favorito, atajo, autostart ni historial.
+Borrar perfil exige confirmar y limpia su trigger LMU; se bloquea si quedan cadena
+o hijos propios asociados. La ruta de app se puede escribir/pegar o seleccionar.
+El selector de pasos usa Choice::List dentro del drawer para evitar el popup
+Dropdown que quedaba detrás del modal; no se certifica paridad de ese selector.
+Las exclusiones de las notas históricas siguientes quedan sustituidas por estos
+hitos. Atajos y arranque siguen pendientes de registro en el propietario residente.

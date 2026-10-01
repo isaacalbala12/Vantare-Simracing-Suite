@@ -236,8 +236,19 @@ impl Render for FormHost {
             .update(cx, |launcher, cx| {
                 if launcher.pending_decision.is_some() {
                     launcher.decision_form(cx)
-                } else if launcher.pending_app_removal.is_some() {
-                    launcher.app_removal_confirmation(cx)
+                } else if launcher.pending_app_removal.is_some()
+                    || launcher.pending_profile_removal.is_some()
+                {
+                    if let Some(id) = &launcher.pending_profile_removal {
+                        div().child(text(
+                            format!("Eliminar perfil {id}? Esta accion no se puede deshacer."),
+                            orbit::BODY,
+                            500,
+                            orbit::INK,
+                        ))
+                    } else {
+                        launcher.app_removal_confirmation(cx)
+                    }
                 } else if launcher.app_draft.is_some() {
                     launcher.app_form(cx)
                 } else {
@@ -443,12 +454,13 @@ impl Launcher {
                 .cloned()
                 .collect();
         }
-        if self.pending_app_removal.is_some() {
+        if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             return vec![self.form_actions[1].clone(), self.form_actions[2].clone()];
         }
         if let Some(draft) = &self.app_draft {
             return vec![
                 draft.name.read(cx).focus_handle(),
+                draft.executable.read(cx).focus_handle(),
                 draft.args.read(cx).focus_handle(),
                 self.form_actions[0].clone(),
                 self.form_actions[1].clone(),
@@ -460,6 +472,8 @@ impl Launcher {
         };
         let advanced = draft.tabs.read(cx).state.selected == Some(1);
         let mut targets = vec![
+            draft.description.read(cx).focus_handle(),
+            draft.notes.read(cx).focus_handle(),
             draft.name.read(cx).focus_handle(),
             draft.tabs.read(cx).focus_handle(),
         ];
@@ -497,7 +511,7 @@ impl Launcher {
         let targets = self.form_targets(cx);
         let label = if self.pending_decision.is_some() {
             "Decisión de lanzamiento"
-        } else if self.pending_app_removal.is_some() {
+        } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             "Eliminar aplicación"
         } else if self.app_draft.is_some() {
             "Editar aplicación"
@@ -506,7 +520,7 @@ impl Launcher {
         };
         let footer = if self.pending_decision.is_some() {
             None
-        } else if self.pending_app_removal.is_some() {
+        } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
             let footer = cx.new(|cx| {
                 cx.observe(&launcher, |_, _, cx| cx.notify()).detach();
                 AppRemovalFooter(launcher.downgrade())
@@ -539,6 +553,7 @@ impl Launcher {
             this.app_draft = None;
             this.profile_draft = None;
             this.pending_app_removal = None;
+            this.pending_profile_removal = None;
             this.form_layer = None;
             cx.notify();
         })
@@ -555,17 +570,49 @@ impl Launcher {
         self.app_draft = None;
         self.profile_draft = None;
         self.pending_app_removal = None;
+        self.pending_profile_removal = None;
         cx.notify();
     }
 
     pub(super) fn confirm_app_removal(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(id) = self.pending_app_removal.clone() else {
-            return;
-        };
-        if self.edit(move |document| document.remove_app(&id), cx) {
+        if let Some(id) = self.pending_profile_removal.clone() {
+            let owned = self
+                .processes
+                .lock()
+                .map_err(|e| e.to_string())
+                .and_then(|mut p| p.has_profile(&id));
+            match owned {
+                Ok(false) if self.chain.is_none() => {
+                    if self.edit(|doc| doc.remove_profile(&id), cx) {
+                        self.close_form(window, cx);
+                    }
+                }
+                Ok(_) => self.report(
+                    Err(
+                        "termina la cadena y cierra las apps iniciadas antes de borrar el perfil"
+                            .into(),
+                    ),
+                    cx,
+                ),
+                Err(error) => self.report(Err(error), cx),
+            }
+        } else if let Some(id) = self.pending_app_removal.clone()
+            && self.edit(move |document| document.remove_app(&id), cx)
+        {
             self.close_form(window, cx);
             self.scan(cx);
         }
+    }
+    pub(super) fn request_profile_removal(
+        &mut self,
+        id: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.profile_draft = None;
+        self.app_draft = None;
+        self.pending_profile_removal = Some(id);
+        self.open_form(window, cx);
     }
 
     pub(super) fn request_app_removal(
@@ -597,7 +644,7 @@ impl Launcher {
                     cx,
                 )
             }),
-            delay: number(step.delay_seconds, 3600, "Espera del paso (s)", cx),
+            delay: number(step.delay_seconds, u32::MAX, "Espera del paso (s)", cx),
             args: input(
                 step.args_override
                     .as_deref()
@@ -626,28 +673,21 @@ impl Launcher {
                 "Editor de pasos",
                 ChoiceKind::Tabs,
                 vec![OptionItem::new("Básico"), OptionItem::new("Avanzado")],
-                Some(0),
+                Some(usize::from(profile.advanced)),
                 window,
                 cx,
             )
         });
         cx.subscribe(&tabs, |_, _, _: &orbit::ChoiceChanged, cx| cx.notify())
             .detach();
-        let description = input(
-            String::new(),
-            "Descripción · pendiente de contrato nativo",
-            cx,
-        );
-        description.update(cx, |field, cx| field.set_enabled(false, cx));
-        let notes = cx
-            .new(|cx| Input::multiline(String::new(), "Notas · pendiente de contrato nativo", cx));
-        notes.update(cx, |field, cx| field.set_enabled(false, cx));
+        let description = input(profile.description.clone(), "Descripcion", cx);
+        let notes = cx.new(|cx| Input::multiline(profile.notes.clone(), "Notas", cx));
         self.profile_draft = Some(ProfileDraft {
             name: input(profile.name.clone(), "Nombre de perfil", cx),
             description,
             notes,
-            first_delay: number(profile.first_step_delay, 3600, "Espera inicial (s)", cx),
-            retries: number(u32::from(profile.max_retries), 3, "Reintentos por paso", cx),
+            first_delay: number(policy.first_step_delay, u32::MAX, "Espera inicial (s)", cx),
+            retries: number(u32::from(policy.max_retries), 3, "Reintentos por paso", cx),
             failure: policy_choice(
                 "Ante un fallo",
                 &["Preguntar", "Parar", "Continuar"],
@@ -721,8 +761,14 @@ impl Launcher {
             self.report(Err("límite de perfiles alcanzado".into()), cx);
             return;
         };
-        let mut profile = source.unwrap_or_else(|| Profile::new(id.clone(), "Nuevo perfil".into()));
+        let mut profile = source.map_or_else(
+            || Profile::new(id.clone(), "Nuevo perfil".into()),
+            |profile| profile.duplicate(id.clone()),
+        );
         profile.id = id;
+        if profile.policy.is_none() {
+            profile.policy = Some(super::super::policy::Policy::default());
+        }
         self.profile_editor(profile, window, cx);
     }
 
@@ -733,6 +779,11 @@ impl Launcher {
         let result = (|| {
             let mut profile = draft.profile.clone();
             profile.name = draft.name.read(cx).value.trim().into();
+            profile
+                .description
+                .clone_from(&draft.description.read(cx).value);
+            profile.notes.clone_from(&draft.notes.read(cx).value);
+            profile.advanced = draft.tabs.read(cx).state.selected == Some(1);
             profile.first_step_delay = seconds(&draft.first_delay, cx);
             profile.max_retries = u8::try_from(seconds(&draft.retries, cx))
                 .map_err(|error| format!("reintentos inválidos: {error}"))?;
@@ -771,6 +822,7 @@ impl Launcher {
                     )
                 })
                 .collect::<Result<Vec<_>, String>>()?;
+            profile.validate_editor(&self.discovered)?;
             Ok::<_, String>(profile)
         })();
         let profile = match result {

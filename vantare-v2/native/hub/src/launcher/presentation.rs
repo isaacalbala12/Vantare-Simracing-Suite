@@ -273,7 +273,7 @@ fn availability(app: Option<&discovery::Detected>, scanning: bool) -> (&'static 
     }
 }
 
-fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) -> bool {
+pub(super) fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) -> bool {
     !busy
         && !profile.steps.is_empty()
         && profile.steps.iter().all(|step| {
@@ -333,7 +333,7 @@ impl Launcher {
             .filter(|profile| self.profile_matches(profile, query))
             .collect();
         for (index, profile) in visible.iter().enumerate() {
-            let edit = (*profile).clone();
+            let row_launch = (*profile).clone();
             let launch = (*profile).clone();
             let can_launch = launchable(
                 profile,
@@ -365,11 +365,14 @@ impl Launcher {
                         )
                         .flex_1()
                         .min_w_0()
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.profile_editor(edit.clone(), window, cx);
-                            },
-                        )),
+                        .when(can_launch, |row| {
+                            row.on_click(cx.listener(move |this, _, _, cx| {
+                                this.start(row_launch.clone(), cx);
+                            }))
+                        })
+                        .when(!can_launch, |row| {
+                            row.tab_stop(false).opacity(orbit::DISABLED)
+                        }),
                     )
                     .child(
                         button("context-launch", "▶")
@@ -392,6 +395,10 @@ impl Launcher {
             ));
         }
         profiles
+    }
+
+    pub fn quick_profiles(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
+        self.context_profiles(query, cx)
     }
 
     pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {

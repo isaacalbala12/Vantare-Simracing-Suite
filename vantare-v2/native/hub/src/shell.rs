@@ -193,7 +193,17 @@ impl Hub {
                 self.calendar.read(cx),
                 self.demo.as_ref(),
                 |control, section| {
-                    control.on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx)))
+                    control.on_click(cx.listener(move |this, _, _, cx| {
+                        if section == Section::Launcher {
+                            if let Some(id) = this.launcher.read(cx).default_profile_id() {
+                                this.launch_profile(&id, cx);
+                            } else {
+                                this.navigate(section, cx);
+                            }
+                        } else {
+                            this.navigate(section, cx);
+                        }
+                    }))
                 },
             )
             .into_any_element(),

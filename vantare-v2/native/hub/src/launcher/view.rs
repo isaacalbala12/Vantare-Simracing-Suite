@@ -427,6 +427,40 @@ impl Launcher {
         .detach();
     }
 
+    pub fn saved_profiles(&self) -> &[Profile] {
+        &self.store.document.profiles
+    }
+
+    pub fn launch_id(&mut self, id: &str, cx: &mut Context<Self>) {
+        match self
+            .store
+            .document
+            .profiles
+            .iter()
+            .find(|profile| profile.id == id)
+            .cloned()
+        {
+            Some(profile) => self.start(profile, cx),
+            None => self.report(
+                Err("perfil inexistente; vuelve a cargar Launcher".into()),
+                cx,
+            ),
+        }
+    }
+
+    pub fn default_profile_id(&self) -> Option<String> {
+        self.store
+            .document
+            .profiles
+            .iter()
+            .min_by(|a, b| {
+                b.favorite
+                    .cmp(&a.favorite)
+                    .then_with(|| a.name.cmp(&b.name))
+            })
+            .map(|profile| profile.id.clone())
+    }
+
     fn start(&mut self, profile: Profile, cx: &mut Context<Self>) {
         if self.chain.is_some() {
             self.report(
@@ -437,6 +471,13 @@ impl Launcher {
         }
         if self.scanning {
             self.report(Err("espera a terminar el descubrimiento".into()), cx);
+            return;
+        }
+        if !presentation::launchable(&profile, &self.discovered, false) {
+            self.report(
+                Err("el perfil necesita pasos con aplicaciones disponibles".into()),
+                cx,
+            );
             return;
         }
         // Reusar la foto del discovery sin volver a recorrer discos en el hilo UI.

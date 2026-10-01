@@ -299,3 +299,10 @@ permiso de cierre sobre el juego. El cierre de hijos es forzado (Child::kill), n
 un cierre de ventana con guardado de documentos: revisar UX con apps reales antes
 de promocionar. La salida automática a Live conserva las apps con política Ask;
 no abre un diálogo que impida el handoff automático al juego.
+
+## Hito 3 — entradas de lanzamiento
+La fila del perfil y su botón lanzan la misma cadena. Inicio lanza el primer
+favorito (desempate por nombre); sin perfiles abre Launcher. La paleta contiene
+acciones `Lanzar <nombre>` con el ID persistido, filtrado y permisos del Hub.
+Las demás columnas de contexto incluyen los perfiles guardados. Todas las entradas
+rechazan un lanzamiento si hay cadena/escaneo activo o pasos no disponibles.

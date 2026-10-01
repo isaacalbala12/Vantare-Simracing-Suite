@@ -102,6 +102,27 @@ impl Hub {
         cx.notify();
     }
 
+    fn palette_commands(&self, cx: &Context<Self>) -> Vec<navigation::Item> {
+        let mut items = navigation::commands(self.shell.access, &self.shell.last_query);
+        items.extend(navigation::launch_commands(
+            self.shell.access,
+            &self.shell.last_query,
+            self.launcher.read(cx).saved_profiles(),
+        ));
+        items
+    }
+
+    pub(super) fn launch_profile(&mut self, id: &str, cx: &mut Context<Self>) {
+        if let Some(reason) = self.shell.access.lock(Section::Launcher) {
+            self.shell.navigation_notice = Some(reason.into());
+            cx.notify();
+            return;
+        }
+        self.launcher
+            .update(cx, |launcher, cx| launcher.launch_id(id, cx));
+        self.navigate(Section::Launcher, cx);
+    }
+
     pub(super) fn refresh_query(&mut self, cx: &mut Context<Self>) {
         let query = &self.shell.query.read(cx).value;
         if *query != self.shell.last_query {
@@ -118,6 +139,7 @@ impl Hub {
         self.focus.focus(window, cx);
         match command {
             Command::Navigate(section) => self.navigate(section, cx),
+            Command::LaunchProfile(id) => self.launch_profile(&id, cx),
             Command::Save => match self.save(cx) {
                 Ok(()) => self.status = Some("Borradores locales guardados".into()),
                 Err(error) => {
@@ -151,7 +173,7 @@ impl Hub {
         }
         if self.shell.palette_open {
             self.refresh_query(cx);
-            let items = navigation::commands(self.shell.access, &self.shell.last_query);
+            let items = self.palette_commands(cx);
             match key.key.as_str() {
                 "escape" => self.close_palette(window, cx),
                 "up" | "down" => {
@@ -173,7 +195,7 @@ impl Hub {
                     if self.shell.close_focus.is_focused(window) {
                         self.close_palette(window, cx);
                     } else if let Some(item) = items.get(self.shell.cursor) {
-                        self.execute(item.command, window, cx);
+                        self.execute(item.command.clone(), window, cx);
                     }
                 }
                 // Dos tab stops; los resultados se recorren con ↑/↓ y Enter.
@@ -387,6 +409,7 @@ impl Hub {
                 );
             }
         }
+        rows = self.with_launcher_profiles(rows, &query, cx);
         orbit::column("Vantare", env!("CARGO_PKG_VERSION"))
             .w(px(orbit::column_width(f32::from(
                 window.viewport_size().width,
@@ -415,6 +438,28 @@ impl Hub {
                     .child(self.shell.context_query.clone()),
             )
             .child(rows)
+    }
+
+    fn with_launcher_profiles(
+        &self,
+        rows: gpui::Stateful<gpui::Div>,
+        query: &str,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        if matches!(
+            self.section,
+            Section::Settings
+                | Section::Account
+                | Section::Licenses
+                | Section::Studio
+                | Section::Workshop
+        ) {
+            return rows;
+        }
+        rows.child(
+            self.launcher
+                .update(cx, |launcher, cx| launcher.quick_profiles(query, cx)),
+        )
     }
 
     fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Div {
@@ -537,7 +582,7 @@ impl Hub {
                 )));
                 previous_group = Some(destination);
             }
-            let command = item.command;
+            let command = item.command.clone();
             rows = rows.child(
                 orbit::palette_item(index, index == self.shell.cursor)
                     .aria_label(format!(
@@ -555,7 +600,7 @@ impl Hub {
                         },
                     ))
                     .child(
-                        orbit::text(item.label, 13.5, 600, orbit::INK)
+                        orbit::text(item.label.clone(), 13.5, 600, orbit::INK)
                             .flex_1()
                             .min_w_0(),
                     )
@@ -574,9 +619,9 @@ impl Hub {
                             cx.notify();
                         }
                     }))
-                    .on_click(
-                        cx.listener(move |this, _, window, cx| this.execute(command, window, cx)),
-                    ),
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.execute(command.clone(), window, cx);
+                    })),
             );
         }
         if items.is_empty() {
@@ -595,7 +640,7 @@ impl Hub {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
-        let items = navigation::commands(self.shell.access, &self.shell.last_query);
+        let items = self.palette_commands(cx);
         let rows = self.palette_rows(&items, window, cx);
         let width = (f32::from(window.viewport_size().width) - 80.0).clamp(240.0, orbit::PALETTE_W);
         div()

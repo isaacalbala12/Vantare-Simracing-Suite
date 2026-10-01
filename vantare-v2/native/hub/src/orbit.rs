@@ -74,7 +74,7 @@ pub const PALETTE_SHADOW_BLUR: f32 = 143.0;
 pub const MENU_SHADOW_COLOR: u32 = 0x0000_0099;
 pub const PALETTE_SHADOW_COLOR: u32 = 0x0000_00a8;
 
-fn layer_shadow(modal: bool) -> Vec<gpui::BoxShadow> {
+pub(crate) fn layer_shadow(modal: bool) -> Vec<gpui::BoxShadow> {
     vec![gpui::BoxShadow {
         color: rgba(if modal {
             PALETTE_SHADOW_COLOR
@@ -119,6 +119,7 @@ pub const LINE_ROW: u32 = 0xffff_ff0b;
 
 pub const COLUMN_W: f32 = 296.0;
 pub const TOPBAR_H: f32 = 70.0;
+pub const STRATEGY_TOPBAR_H: f32 = 60.0;
 pub const GUTTER: f32 = 32.0;
 pub const TOPBAR_GUTTER: f32 = 26.0;
 pub const RADIUS: f32 = 18.0;
@@ -406,25 +407,44 @@ pub fn nav_item(id: &'static str, label: &str, subtitle: &str, active: bool) -> 
 
 /// Barra superior: ruta `EYEBROW / Título` a la izquierda y acción a la derecha.
 pub fn topbar(trail: &str, title: &str, action: impl IntoElement) -> Div {
+    topbar_with_actions(trail, title, None, action)
+}
+
+/// Acciones opcionales de la sección entre la ruta y los controles comunes.
+/// La sección conserva su estado, eventos y persistencia; Orbit solo compone.
+pub fn topbar_with_actions(
+    trail: &str,
+    title: &str,
+    section_actions: Option<gpui::AnyElement>,
+    common_actions: impl IntoElement,
+) -> Div {
     div()
         .h(px(TOPBAR_H))
         .flex_none()
         .px(px(TOPBAR_GUTTER))
+        .pt(px(1.0))
         .flex()
         .items_center()
-        .justify_between()
+        .gap(px(14.0))
         .border_b_1()
         .border_color(rgba(LINE))
         .child(
             div()
                 .flex()
-                .items_center()
+                .items_baseline()
                 .gap(px(10.0))
-                .child(tracked_text(trail.to_uppercase(), 10.5, 800, INK_4, 1.155))
+                .child(tracked_text(trail.to_uppercase(), 10.5, 800, INK_4, 0.66))
                 .child(text("/", 12.0, 400, INK_MUTED))
-                .child(text(title.to_owned(), 16.0, 650, INK)),
+                .child(
+                    text(title.to_owned(), 16.0, 650, INK)
+                        .font_weight(FontWeight::NORMAL)
+                        .line_height(px(24.0)),
+                ),
         )
-        .child(action)
+        .when_some(section_actions, |bar, actions| {
+            bar.child(div().min_w_0().flex().items_center().child(actions))
+        })
+        .child(div().ml_auto().flex_none().child(common_actions))
 }
 
 /// Cabecera de página: rótulo, título grande y descripción.

@@ -36,6 +36,19 @@ use view::Page;
 const LIMIT: u64 = 12 * 1024 * 1024;
 const DURATIONS: [u32; 4] = [60, 120, 240, 360];
 
+fn load_strategy_image(
+    bytes: &'static [u8],
+    description: &str,
+) -> (Option<Arc<RenderImage>>, Option<String>) {
+    let image = Image::from_bytes(ImageFormat::Png, bytes.to_vec())
+        .to_image_data(SvgRenderer::new(Arc::new(())))
+        .map_err(|error| format!("decodificar {description}: {error}"));
+    match image {
+        Ok(image) => (Some(image), None),
+        Err(error) => (None, Some(error)),
+    }
+}
+
 #[derive(Default)]
 pub struct Editor {
     pub document: Option<Document>,
@@ -107,7 +120,7 @@ impl Editor {
 }
 
 const FIELDS: &[(&str, &str)] = &[
-    ("Nombre del evento", "name"),
+    ("Nombre de la carrera", "name"),
     ("Duración (min)", "durationMin"),
     ("Depósito (L)", "tankLiters"),
     ("Tránsito boxes (s)", "pitLossSeconds"),
@@ -116,7 +129,7 @@ const FIELDS: &[(&str, &str)] = &[
     ("Nombre variante", "variantName"),
     ("Nota variante", "variantNote"),
     ("Modo variante (dry / humid / wet / eco)", "variantMode"),
-    ("Vueltas de carrera", "raceLaps"),
+    ("Distancia · vueltas", "raceLaps"),
     ("Ritmo (s/v)", "pace"),
     ("Consumo Fuel (L/v)", "fuelPerLap"),
     ("Capacidad VE (%)", "veCapacity"),
@@ -146,7 +159,9 @@ pub struct Strategy {
     page: Page,
     automatic: bool,
     edit_mode: bool,
+    rules_details_open: bool,
     garage: Option<Arc<RenderImage>>,
+    garage_detail: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
     automatic_preparation: Option<application::AutomaticPreparation>,
     duration: Option<Entity<orbit::Choice>>,
@@ -229,16 +244,14 @@ impl Strategy {
                 Err(error) => Some(error),
             }
         };
-        let garage = Image::from_bytes(
-            ImageFormat::Png,
-            include_bytes!("../assets/strategy-garage.png").to_vec(),
-        )
-        .to_image_data(SvgRenderer::new(Arc::new(())))
-        .map_err(|error| format!("decodificar fondo de Strategy: {error}"));
-        let (garage, garage_error) = match garage {
-            Ok(image) => (Some(image), None),
-            Err(error) => (None, Some(error)),
-        };
+        let (garage, garage_error) = load_strategy_image(
+            include_bytes!("../assets/strategy-garage.png"),
+            "fondo de Strategy",
+        );
+        let (garage_detail, garage_detail_error) = load_strategy_image(
+            include_bytes!("../assets/strategy-garage-detail.png"),
+            "fondo detallado de Strategy",
+        );
         let inputs = FIELDS
             .iter()
             .enumerate()
@@ -278,7 +291,9 @@ impl Strategy {
             page: Page::Collection,
             automatic: false,
             edit_mode: false,
+            rules_details_open: false,
             garage,
+            garage_detail,
             demo_car: None,
             automatic_preparation: None,
             duration: None,
@@ -289,7 +304,7 @@ impl Strategy {
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
-            error: error.or(garage_error),
+            error: error.or(garage_error).or(garage_detail_error),
             result: None,
             running: false,
             cancellation: Arc::new(AtomicBool::new(false)),

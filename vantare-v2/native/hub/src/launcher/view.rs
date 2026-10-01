@@ -51,6 +51,9 @@ pub struct Launcher {
     store: Store,
     processes: processes::Shared,
     pending_decision: Option<Decision>,
+    resident_decision: Option<u64>,
+    resident_answered: Option<u64>,
+    resident_error: Option<String>,
     exit_answer: Option<Action>,
     exit_cancelled: bool,
     discovered: Discovery,
@@ -131,6 +134,9 @@ impl Launcher {
             store,
             processes: std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default())),
             pending_decision: None,
+            resident_decision: None,
+            resident_answered: None,
+            resident_error: None,
             exit_answer: None,
             exit_cancelled: false,
             discovered: discovery.unwrap_or_default(),
@@ -246,7 +252,7 @@ impl Launcher {
             .map_err(|e| format!("procesos Launcher: {e}"))?;
         for profile in &self.store.document.profiles {
             let policy = profile.effective_policy();
-            if policy.exit == Close::CloseStarted
+            if policy.exit == Close::Started
                 || policy.exit == Close::Ask && self.exit_answer == Some(Action::CloseStarted)
             {
                 processes.close_profile(&profile.id)?;
@@ -317,6 +323,25 @@ impl Launcher {
             } else {
                 self.exit_answer = Some(action);
             }
+        } else if self.resident_decision == Some(decision.id) {
+            let request = vantare_ipc::launcher::Request::Answer {
+                decision: decision.id,
+                action: action.label().into(),
+            };
+            let result = serde_json::to_vec(&request)
+                .map_err(|error| error.to_string())
+                .and_then(|bytes| {
+                    super::files::save(
+                        &vantare_ipc::launcher::request_path(&self.store.path),
+                        &bytes,
+                        None,
+                    )
+                });
+            self.resident_decision = None;
+            if result.is_ok() {
+                self.resident_answered = Some(decision.id);
+            }
+            self.report(result, cx);
         } else if let Some(chain) = &self.chain {
             let result = chain.answer(decision.id, action);
             self.report(result, cx);
@@ -345,7 +370,57 @@ impl Launcher {
         form
     }
 
+    fn poll_resident(&mut self, cx: &mut Context<Self>) {
+        if let Some(status) = vantare_ipc::launcher::read_status(&self.store.path) {
+            let error = status.error.or_else(|| {
+                status
+                    .profiles
+                    .iter()
+                    .find_map(|profile| profile.error.clone())
+            });
+            if error != self.resident_error || self.error.is_none() && error.is_some() {
+                if self.error.is_none() || self.error == self.resident_error {
+                    self.error.clone_from(&error);
+                }
+                self.resident_error = error;
+                cx.notify();
+            }
+            if self.chain.is_none() && !status.progress.is_empty() && self.status != status.progress
+            {
+                self.status = status.progress;
+                cx.notify();
+            }
+            if self.pending_decision.is_none()
+                && self.chain.is_none()
+                && let Some(decision) = status.decision
+                && self.resident_answered != Some(decision.id)
+            {
+                let actions = [
+                    Action::Reuse,
+                    Action::Restart,
+                    Action::Cancel,
+                    Action::Stop,
+                    Action::Continue,
+                    Action::Leave,
+                    Action::CloseStarted,
+                ]
+                .into_iter()
+                .filter(|action| decision.actions.iter().any(|label| label == action.label()))
+                .take(self.form_actions.len())
+                .collect();
+                self.pending_decision = Some(Decision {
+                    id: decision.id,
+                    message: decision.message,
+                    actions,
+                });
+                self.resident_decision = Some(decision.id);
+                cx.notify();
+            }
+        }
+    }
+
     fn tick(&mut self, cx: &mut Context<Self>) {
+        self.poll_resident(cx);
         if let Some(chain) = &self.chain {
             let events: Vec<_> = chain.progress.try_iter().collect();
             if !events.is_empty() {

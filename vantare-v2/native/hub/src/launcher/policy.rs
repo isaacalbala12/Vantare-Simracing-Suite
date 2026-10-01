@@ -23,7 +23,8 @@ pub enum Close {
     #[default]
     Ask,
     Leave,
-    CloseStarted,
+    #[serde(rename = "close-started")]
+    Started,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

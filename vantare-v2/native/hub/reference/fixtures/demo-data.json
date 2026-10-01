@@ -1,7 +1,7 @@
 {
   "capturedAt": "2026-09-30T17:00:00Z",
   "user": { "id": "mock-user", "name": "test", "fullName": "Isaac Albalá", "email": "test@example.com", "plan": "paid" },
-  "profile": { "id": "custom-clean-overlay", "file": "custom-clean-overlay.json", "name": "Clean Overlay", "active": true, "widgets": 3, "width": 1920, "height": 1080 },
+  "profile": { "id": "custom-clean-overlay", "file": "custom-clean-overlay.json", "name": "Clean Overlay", "active": true, "widgets": 3, "width": 1920, "height": 1080, "obsBrowserSourceUrl": "http://127.0.0.1:39261/overlay?profile=custom-clean-overlay.json" },
   "launcher": {
     "apps": [
       { "id": "lmu", "displayName": "Le Mans Ultimate", "abbreviation": "LMU", "category": "simulator", "launchMethod": "steam-uri", "found": true, "installed": true },

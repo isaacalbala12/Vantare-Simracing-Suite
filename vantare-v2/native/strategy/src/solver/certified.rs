@@ -12,6 +12,7 @@ pub(super) fn one_pit(
     risk: bool,
     cancel: &super::AtomicBool,
     started: &std::time::Instant,
+    deadline_millis: Option<u64>,
 ) -> Result<Option<Vec<ReplayResult>>, String> {
     let n = m.input.race_laps;
     let rules = &m.input.event_rules;
@@ -67,7 +68,7 @@ pub(super) fn one_pit(
         if cancel.load(super::AtomicOrdering::Relaxed) {
             return Err("cancelled".into());
         }
-        if started.elapsed().as_millis() > u128::from(m.input.budget.p95_millis) {
+        if super::deadline_exceeded(started, deadline_millis) {
             return Ok(None);
         }
         let decision = DecisionVector {
@@ -103,7 +104,7 @@ pub(super) fn one_pit(
     {
         candidates.push(replayed);
     }
-    let Some(bound) = multi_pit_bound(m, cancel, started)? else {
+    let Some(bound) = multi_pit_bound(m, cancel, started, deadline_millis)? else {
         return Ok(None);
     };
     let best = candidates
@@ -117,6 +118,7 @@ fn multi_pit_bound(
     m: &Model,
     cancel: &super::AtomicBool,
     started: &std::time::Instant,
+    deadline_millis: Option<u64>,
 ) -> Result<Option<f64>, String> {
     // Free resources and service, unrestricted fresh tyres: an optimistic
     // lower bound for every partition with at least three stints.
@@ -136,7 +138,7 @@ fn multi_pit_bound(
         if cancel.load(super::AtomicOrdering::Relaxed) {
             return Err("cancelled".into());
         }
-        if started.elapsed().as_millis() > u128::from(m.input.budget.p95_millis) {
+        if super::deadline_exceeded(started, deadline_millis) {
             return Ok(None);
         }
         let mut next = vec![f64::INFINITY; n as usize + 1];

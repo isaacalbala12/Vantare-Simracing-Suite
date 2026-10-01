@@ -111,6 +111,7 @@ pub(super) fn solve(
     input: &Input,
     cancel: &AtomicBool,
     partial: bool,
+    deadline_millis: Option<u64>,
 ) -> Result<SolverOutcome, String> {
     if cancel.load(AtomicOrdering::Relaxed) {
         return Err("cancelled".into());
@@ -122,7 +123,8 @@ pub(super) fn solve(
     let worst = Model::new(&super::risk::envelope(input, true))?;
     let cost = Model::new(&super::risk::envelope(input, false))?;
     let risk = super::risk::active(&m, &worst);
-    let certified = super::certified::one_pit(&m, &worst, &cost, risk, cancel, &started)?;
+    let certified =
+        super::certified::one_pit(&m, &worst, &cost, risk, cancel, &started, deadline_millis)?;
     let bound_certified = certified.is_some();
     let max_work = if input.budget.max_candidates == 0 {
         10_000_000
@@ -196,7 +198,7 @@ pub(super) fn solve(
                         if cancel.load(AtomicOrdering::Relaxed) {
                             return Err("cancelled".into());
                         }
-                        if started.elapsed().as_millis() > u128::from(input.budget.p95_millis) {
+                        if super::deadline_exceeded(&started, deadline_millis) {
                             reason = Some("deadline_exceeded");
                             break 'search;
                         }
@@ -356,9 +358,7 @@ pub(super) fn solve(
                                         if cancel.load(AtomicOrdering::Relaxed) {
                                             return Err("cancelled".into());
                                         }
-                                        if started.elapsed().as_millis()
-                                            > u128::from(input.budget.p95_millis)
-                                        {
+                                        if super::deadline_exceeded(&started, deadline_millis) {
                                             reason = Some("deadline_exceeded");
                                             break 'search;
                                         }
@@ -381,9 +381,7 @@ pub(super) fn solve(
                                             if cancel.load(AtomicOrdering::Relaxed) {
                                                 return Err("cancelled".into());
                                             }
-                                            if started.elapsed().as_millis()
-                                                > u128::from(input.budget.p95_millis)
-                                            {
+                                            if super::deadline_exceeded(&started, deadline_millis) {
                                                 reason = Some("deadline_exceeded");
                                                 break 'search;
                                             }

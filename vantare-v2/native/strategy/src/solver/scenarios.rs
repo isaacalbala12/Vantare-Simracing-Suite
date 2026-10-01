@@ -122,7 +122,7 @@ pub fn solve_weather_scenarios_cancellable(
             &thresholds,
             &set.bucket_parameters,
         )?;
-        let result = super::search::solve(&input, cancel, true)?;
+        let result = super::search::solve(&input, cancel, true, Some(input.budget.p95_millis))?;
         require(
             result.certificate.status != OptimalityStatus::NotProven,
             "weather scenario optimum not proven",

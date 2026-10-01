@@ -98,7 +98,7 @@ fn parity_case(case: &Value) {
             fields(&a["reasons"][0]["code"], &e["reasons"][0]["code"], name);
         }
     } else {
-        let actual = solve_v2(&input);
+        let actual = solve_v2_without_deadline(&input);
         if case["error"].is_string() {
             assert!(actual.is_err(), "{name}: expected error");
             return;

@@ -1,6 +1,5 @@
-//! Fuentes de `Snapshot`s para [`crate::run`]: el núcleo por su named pipe
-//! ([`pipe_feed`]) o una carrera sintética local ([`local_feed`]), para probar
-//! los widgets sin núcleo.
+//! Fuentes de `Snapshot`s para [`crate::run_with_rights`]: pipe del núcleo o
+//! carrera sintética local para probar los widgets sin núcleo.
 
 use std::sync::Arc;
 use std::thread;

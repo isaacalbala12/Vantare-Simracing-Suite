@@ -105,9 +105,7 @@ fn main() -> ExitCode {
     } else {
         let result = layout
             .map_or_else(vantare_ui::layout::default_path, Ok)
-            .and_then(|path| {
-                vantare_ui::run_layout_with_rights(path, snapshots, Preferences::default(), rights)
-            });
+            .and_then(|path| vantare_ui::run_layout_with_rights(path, snapshots, rights));
         if let Err(error) = result {
             eprintln!("vantare-overlays: {error}");
             return ExitCode::FAILURE;

@@ -4,7 +4,7 @@ use super::{
     protocol::{Command, Reply},
 };
 use crate::orbit;
-use gpui::{Context, prelude::*};
+use gpui::{Context, div, prelude::*, px, rgb, rgba};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -46,8 +46,12 @@ pub struct Remote {
     pub(crate) editor: crate::testing::Editor,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
+    roadmap_requested: bool,
     stale: bool,
 }
+
+const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
+const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
 impl Remote {
     pub fn new(pipe: String, cx: &mut Context<Self>) -> Self {
@@ -71,6 +75,7 @@ impl Remote {
             editor: crate::testing::Editor::new(crate::testing::empty_fields(), cx),
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
+            roadmap_requested: false,
             stale: true,
         };
         remote.request(Command::Status, cx);
@@ -332,19 +337,12 @@ impl Remote {
         self.editor.render(cx)
     }
 
-    pub fn roadmap(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut body = orbit::card_body()
-            .child(orbit::callout(self.roadmap_message.clone()))
-            .child(
-                orbit::button("services-roadmap-cache", "Ver publicación guardada").on_click(
-                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapCached, cx)),
-                ),
-            )
-            .child(
-                orbit::button("services-roadmap-refresh", "Actualizar roadmap").on_click(
-                    cx.listener(|this, _, _, cx| this.request(Command::RoadmapRefresh, cx)),
-                ),
-            );
+    pub fn roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        if !self.roadmap_requested && !self.busy {
+            self.roadmap_requested = true;
+            self.request(Command::RoadmapCached, cx);
+        }
+        let mut body = div().flex().flex_col().flex_1().min_h_0().gap(px(16.0));
         if let Some(publication) = &self.publication {
             body = body.child(orbit::text(
                 format!(
@@ -381,8 +379,43 @@ impl Remote {
                         .child(orbit::text(item.body.es.clone(), 13.5, 400, orbit::INK_2));
                 }
             }
+        } else if self.busy {
+            body = body.child(orbit::text("Cargando roadmap...", 13.5, 400, orbit::INK_3));
+        } else {
+            body = body.child(orbit::text(&self.roadmap_message, 13.5, 400, orbit::INK_3));
         }
-        orbit::card("Roadmap público").child(body)
+        div()
+            .id("roadmap")
+            .w_full()
+            .min_h(px(HUB_CONTENT_MIN_HEIGHT))
+            .mt(px(-SHELL_HEADER_OVERLAP))
+            .flex_1()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(15.0))
+            .pt(px(24.0))
+            .pb(px(20.0))
+            .bg(rgb(orbit::CANVAS))
+            .child(orbit::page_header(
+                "Dirección del producto",
+                "Roadmap",
+                "Explora los hitos en una línea temporal, por estado o como gráfico de distribución.",
+            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h_0()
+                    .px(px(20.0))
+                    .py(px(24.0))
+                    .bg(rgb(orbit::SURFACE_1))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .rounded(px(orbit::RADIUS))
+                    .child(body),
+            )
     }
 
     pub fn licenses(&self, cx: &mut Context<Self>) -> gpui::Div {

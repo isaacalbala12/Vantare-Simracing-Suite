@@ -2,7 +2,7 @@
 use super::{Calendar, Schedule};
 use crate::{Section, orbit};
 use chrono::{DateTime, Duration, Local, Timelike, Utc};
-use gpui::{Div, Stateful, div, prelude::*, px};
+use gpui::{Div, Stateful, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 
 const RACE_ROWS: usize = 4;
 
@@ -80,9 +80,28 @@ fn target<'a>(races: &'a [Race], following: &[String]) -> Option<&'a Race> {
 }
 
 fn pending_overlay(id: &'static str) -> Stateful<Div> {
-    orbit::button(id, "Abrir overlay · pendiente")
+    orbit::button(id, "Abrir overlay")
         .tab_stop(false)
         .opacity(orbit::DISABLED)
+}
+
+fn keycap(label: &'static str) -> Div {
+    div()
+        .min_w(px(27.0))
+        .h(px(26.0))
+        .px(px(6.5))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(6.5))
+        .border_1()
+        .border_color(rgba(orbit::LINE_STRONG))
+        .bg(rgba(0xffff_ff06))
+        .font_family("Cascadia Code")
+        .text_size(px(12.0))
+        .font_weight(gpui::FontWeight(500.0))
+        .text_color(rgb(orbit::INK_3))
+        .child(label)
 }
 
 /// Ejecuta el mismo Ctrl+K que la shell, incluido foco, cierre y teclado.
@@ -91,6 +110,15 @@ fn command() -> Stateful<Div> {
     orbit::button("home-command", "")
         .w_full()
         .h(px(72.0))
+        .pl(px(23.0))
+        .pr(px(18.0))
+        .rounded(px(24.0))
+        .bg(linear_gradient(
+            135.0,
+            linear_color_stop(rgb(0x0019_191e), 0.0),
+            linear_color_stop(rgb(0x0013_1317), 1.0),
+        ))
+        .border_color(rgba(0xf047_5526))
         .aria_label("Busca, abre o lanza algo en Vantare… · Ctrl+K")
         .on_click(|_, window, cx| {
             window.dispatch_keystroke(
@@ -111,7 +139,21 @@ fn command() -> Stateful<Div> {
                 .flex()
                 .items_center()
                 .gap(px(orbit::GUTTER / 2.0))
-                .child(orbit::icon("i-comando", 18.0, orbit::CORAL))
+                .child(
+                    div()
+                        .size(px(44.0))
+                        .flex_none()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded(px(13.0))
+                        .bg(linear_gradient(
+                            135.0,
+                            linear_color_stop(rgb(orbit::CARMINE), 0.0),
+                            linear_color_stop(rgb(orbit::CARMINE_DARK), 1.0),
+                        ))
+                        .child(orbit::icon("i-comando", 18.0, 0x00ff_ffff)),
+                )
                 .child(
                     div()
                         .flex_1()
@@ -119,17 +161,28 @@ fn command() -> Stateful<Div> {
                         .child(orbit::text(
                             "Busca, abre o lanza algo en Vantare…",
                             16.0,
-                            600,
+                            560,
                             orbit::INK_2,
                         ))
-                        .child(orbit::text(
-                            "\"Abre el Studio\"",
-                            orbit::SECONDARY,
-                            400,
-                            orbit::INK_3,
-                        )),
+                        .child(
+                            orbit::text(
+                                "\"Abre el Studio con el perfil Clean Overlay\"",
+                                11.0,
+                                400,
+                                orbit::INK_3,
+                            )
+                            .mt(px(4.0)),
+                        ),
                 )
-                .child(orbit::chip("Ctrl + K", orbit::Tone::Neutral)),
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.0))
+                        .child(keycap("Ctrl"))
+                        .child(orbit::text("+", 10.0, 500, orbit::INK_MUTED).px(px(3.0)))
+                        .child(keycap("K")),
+                ),
         )
 }
 
@@ -137,38 +190,45 @@ fn next_race(
     race: Option<&Race>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
 ) -> Div {
-    let mut view = div().w(px(300.0)).flex_none();
+    let mut view = div()
+        .w(px(300.0))
+        .flex_none()
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(px(8.0));
     if let Some(race) = race {
         view = view.child(
-            orbit::card("").child(
-                orbit::card_body()
-                    .child(orbit::eyebrow("Próxima serie"))
-                    .child(orbit::text(race.name.clone(), 15.0, 700, orbit::INK))
-                    .child(orbit::text(
-                        race.track.clone(),
-                        orbit::SECONDARY,
-                        400,
-                        orbit::INK_3,
-                    ))
-                    .child(orbit::text(
-                        race.at
-                            .with_timezone(&Local)
-                            .format("%d/%m · %H:%M")
-                            .to_string(),
-                        orbit::BODY,
-                        600,
-                        orbit::INK_2,
-                    ))
-                    .child(navigate(
-                        orbit::button("home-next", "Abrir la serie en Calendario"),
-                        Section::Calendar,
-                    )),
-            ),
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .child(div().size(px(8.0)).rounded_full().bg(rgb(orbit::GREEN)))
+                .child(orbit::eyebrow("Próximas carreras")),
         );
+        view = view
+            .child(orbit::text(race.name.clone(), 14.0, 600, orbit::INK_2))
+            .child(orbit::text(
+                format!(
+                    "{} · {}",
+                    race.track,
+                    race.at.with_timezone(&Local).format("%H:%M")
+                ),
+                12.0,
+                400,
+                orbit::INK_3,
+            ))
+            .child(navigate(
+                orbit::button("home-next", "Abrir en Calendario").h(px(36.0)),
+                Section::Calendar,
+            ));
     } else {
-        view = view.child(orbit::empty_state(
+        view = view.child(orbit::text(
             "Sin salidas próximas en el calendario",
-            "",
+            13.0,
+            400,
+            orbit::INK_3,
         ));
     }
     view
@@ -182,7 +242,7 @@ fn hero(
     div()
         .flex()
         .items_center()
-        .gap(px(orbit::GUTTER))
+        .gap(px(40.0))
         .child(
             div()
                 .flex_1()
@@ -190,29 +250,145 @@ fn hero(
                 .flex()
                 .flex_col()
                 .gap(px(orbit::GUTTER / 2.0))
-                .child(orbit::text(greeting, 34.0, 700, orbit::INK))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(14.0))
+                        .child(div().size(px(10.0)).rounded_full().bg(rgb(orbit::GREEN)))
+                        .child(orbit::text(greeting, 34.0, 700, orbit::INK))
+                        .mb(px(-6.0)),
+                )
                 .child(command())
                 .child(
                     div()
                         .flex()
                         .flex_wrap()
-                        .gap(px(orbit::RADIUS_CHIP))
+                        .gap(px(9.0))
                         .child(navigate(
-                            orbit::button("home-quick-studio", "Abrir Studio"),
+                            orbit::button("home-quick-studio", "Abrir Studio")
+                                .h(px(36.0))
+                                .px(px(13.0))
+                                .rounded(px(8.0)),
                             Section::Studio,
                         ))
-                        .child(pending_overlay("home-quick-overlay"))
+                        .child(
+                            pending_overlay("home-quick-overlay")
+                                .h(px(36.0))
+                                .px(px(13.0))
+                                .rounded(px(8.0)),
+                        )
                         .child(navigate(
-                            orbit::button("home-plan", "Crear plan"),
+                            orbit::button("home-plan", "Crear plan")
+                                .h(px(36.0))
+                                .px(px(13.0))
+                                .rounded(px(8.0)),
                             Section::Strategy,
                         ))
                         .child(navigate(
-                            orbit::button("home-launch", "Lanzar perfil"),
+                            orbit::button("home-launch", "Lanzar perfil")
+                                .h(px(36.0))
+                                .px(px(13.0))
+                                .rounded(px(8.0)),
                             Section::Launcher,
                         )),
                 ),
         )
         .child(next)
+}
+
+fn profile_metadata(demo: Option<&crate::demo::DemoData>) -> Div {
+    if let Some(data) = demo {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(16.0))
+            .mt(px(8.0))
+            .mb(px(12.0))
+            .child(
+                div()
+                    .font_family("Cascadia Code")
+                    .text_size(px(12.0))
+                    .font_weight(gpui::FontWeight(650.0))
+                    .text_color(rgb(orbit::INK_3))
+                    .child(format!("{} × {}", data.profile.width, data.profile.height)),
+            )
+            .child(orbit::text(
+                format!("{} widgets visibles", data.profile.widgets),
+                12.0,
+                400,
+                orbit::INK_3,
+            ))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(7.0))
+                    .child(div().size(px(7.0)).rounded_full().bg(rgb(orbit::INK_MUTED)))
+                    .child(orbit::text("Overlay detenido", 12.0, 400, orbit::INK_3)),
+            )
+    } else {
+        div()
+    }
+}
+
+fn profile_info(
+    name: &str,
+    meta: Div,
+    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+) -> Div {
+    div()
+        .h_full()
+        .flex_1()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .pt(px(6.0))
+        .child(orbit::eyebrow("Perfil activo"))
+        .child(
+            orbit::text(name, 22.0, 700, orbit::INK)
+                .mt(px(4.0))
+                .mb(px(2.0)),
+        )
+        .child(meta)
+        .child(div().flex_1())
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .gap(px(10.0))
+                .child(navigate(
+                    orbit::primary_button("home-studio", "Abrir Studio")
+                        .h(px(36.0))
+                        .px(px(13.0))
+                        .rounded(px(8.0)),
+                    Section::Studio,
+                ))
+                .child(
+                    pending_overlay("home-overlay")
+                        .h(px(36.0))
+                        .px(px(13.0))
+                        .rounded(px(8.0)),
+                ),
+        )
+}
+
+fn profile_preview() -> Div {
+    orbit::card("")
+        .w(px(340.0))
+        .h(px(191.25))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .overflow_hidden()
+        .bg(rgb(0x000b_0c0f))
+        .child(orbit::text(
+            "Vista previa · no disponible",
+            12.0,
+            400,
+            orbit::INK_3,
+        ))
 }
 
 fn profile(
@@ -221,74 +397,45 @@ fn profile(
 ) -> Div {
     // Falta una API de Studio que exponga su layout/renderers y una escala de
     // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
-    orbit::card("").child(
-        orbit::card_body().child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(orbit::GUTTER))
+    let name = demo.map_or("Sin perfil activo", |data| data.profile.name.as_str());
+    let meta = profile_metadata(demo);
+    orbit::card("")
+        .h(px(225.0))
+        .flex_none()
+        .rounded(px(orbit::FEATURED_RADIUS))
+        .border_color(rgba(0xf047_5530))
+        .bg(linear_gradient(
+            135.0,
+            linear_color_stop(rgb(0x0019_191e), 0.0),
+            linear_color_stop(rgb(0x0013_1317), 1.0),
+        ))
+        .child(
+            orbit::card_body()
+                .h_full()
+                .pl(px(24.0))
+                .pr(px(18.0))
+                .py(px(16.0))
                 .child(
                     div()
-                        .flex_1()
-                        .min_w_0()
+                        .h_full()
                         .flex()
-                        .flex_col()
-                        .gap(px(orbit::RADIUS_CHIP))
-                        .child(orbit::eyebrow("Perfil activo"))
-                        .child(orbit::text(
-                            demo.map_or("Perfil activo · pendiente", |data| {
-                                data.profile.name.as_str()
-                            }),
-                            24.0,
-                            700,
-                            orbit::INK,
-                        ))
-                        .child({
-                            let label = demo.map_or_else(
-                                || "Perfiles · pendiente".to_owned(),
-                                |data| format!("{} widgets · activa", data.profile.widgets),
-                            );
-                            orbit::chip(&label, orbit::Tone::Neutral)
-                        })
-                        .child(orbit::text(
-                            demo.map_or("Perfiles y vista previa pendientes.".to_owned(), |data| {
-                                format!(
-                                    "Perfil de demostración · {} × {}.",
-                                    data.profile.width, data.profile.height
-                                )
-                            }),
-                            orbit::SECONDARY,
-                            400,
-                            orbit::INK_3,
-                        ))
-                        .child(
-                            div()
-                                .flex()
-                                .flex_wrap()
-                                .gap(px(orbit::RADIUS_CHIP))
-                                .child(navigate(
-                                    orbit::button("home-studio", "Abrir Studio"),
-                                    Section::Studio,
-                                ))
-                                .child(pending_overlay("home-overlay")),
-                        ),
-                )
-                .child(
-                    orbit::card("")
-                        .w(px(340.0))
-                        .h(px(191.25))
-                        .flex_none()
-                        .justify_center()
-                        .child(orbit::empty_state("Vista previa · pendiente", "")),
+                        .items_center()
+                        .gap(px(28.0))
+                        .child(profile_info(name, meta, navigate))
+                        .child(profile_preview()),
                 ),
-        ),
-    )
+        )
 }
 
-fn lists(starts: &[Race], navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
-    let mut race_list = orbit::card_body();
+fn race_rows(starts: &[Race], navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>) -> Div {
+    let mut race_list = orbit::card_body().flex_1().min_h_0().py(px(21.0));
     if starts.is_empty() {
-        race_list = race_list.child(orbit::empty_state("Sin salidas próximas", ""));
+        race_list = race_list.child(div().w_full().flex().justify_center().child(orbit::text(
+            "Sin salidas próximas",
+            12.0,
+            400,
+            orbit::INK_3,
+        )));
     }
     for (index, race) in starts.iter().take(RACE_ROWS).enumerate() {
         race_list = race_list.child(navigate(
@@ -307,55 +454,153 @@ fn lists(starts: &[Race], navigate: &impl Fn(Stateful<Div>, Section) -> Stateful
             Section::Calendar,
         ));
     }
-    div()
-        .flex()
-        .gap(px(orbit::GUTTER * 0.75))
-        .child(
-            orbit::card("")
-                .flex_1()
-                .flex_basis(gpui::relative(7.0 / 12.0))
-                .min_w_0()
-                .min_h(px(360.0))
+    race_list
+}
+
+fn profile_rows(demo: Option<&crate::demo::DemoData>) -> Div {
+    let mut profiles = orbit::card_body().flex_1().min_h_0();
+    if let Some(profile) = demo.map(|data| &data.profile) {
+        profiles = profiles.child(
+            div()
+                .relative()
+                .mx(px(4.0))
+                .mt(px(10.0))
+                .h(px(46.0))
+                .px(px(8.0))
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .rounded(px(11.0))
+                .bg(linear_gradient(
+                    90.0,
+                    linear_color_stop(rgba(0xd52f_491c), 0.0),
+                    linear_color_stop(rgba(0xd52f_4905), 1.0),
+                ))
+                .when(profile.active, |row| {
+                    row.child(
+                        div()
+                            .absolute()
+                            .left(px(-13.0))
+                            .top(px(14.0))
+                            .w(px(3.0))
+                            .h(px(18.0))
+                            .flex_none()
+                            .rounded_full()
+                            .bg(rgb(orbit::RED)),
+                    )
+                })
                 .child(
-                    orbit::setting_row(
-                        "Próximas carreras",
-                        "",
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.0))
+                        .child(orbit::text(profile.name.clone(), 13.0, 650, orbit::INK))
+                        .child(orbit::text(
+                            format!("{} widgets · configuración local", profile.widgets),
+                            11.0,
+                            400,
+                            orbit::INK_3,
+                        )),
+                )
+                .when(profile.active, |row| {
+                    row.child(
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(orbit::RADIUS_CHIP))
-                            .child(orbit::text(
-                                "Cadencia publicada",
-                                orbit::SECONDARY,
-                                400,
-                                orbit::INK_3,
-                            ))
-                            .child(navigate(
-                                orbit::button("home-races", "Ver todas"),
-                                Section::Calendar,
-                            )),
+                            .gap(px(6.0))
+                            .child(orbit::text("✓", 14.0, 700, orbit::GREEN))
+                            .child(orbit::text("Activo", 12.0, 500, orbit::GREEN)),
                     )
-                    .px(px(20.0)),
+                }),
+        );
+    } else {
+        profiles = profiles.child(div().w_full().flex().justify_center().child(orbit::text(
+            "Sin perfiles todavía",
+            12.0,
+            400,
+            orbit::INK_3,
+        )));
+    }
+    profiles
+}
+
+fn lists(
+    starts: &[Race],
+    demo: Option<&crate::demo::DemoData>,
+    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+) -> Div {
+    let race_list = race_rows(starts, navigate);
+    let profiles = profile_rows(demo);
+    div()
+        .flex()
+        .flex_1()
+        .min_h_0()
+        .gap(px(20.0))
+        .child(
+            orbit::card("")
+                .flex_1()
+                .flex_basis(gpui::relative(0.575))
+                .min_w_0()
+                .min_h(px(360.0))
+                .child(
+                    div()
+                        .h(px(50.0))
+                        .px(px(20.0))
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .border_b_1()
+                        .border_color(gpui::rgba(orbit::LINE_ROW))
+                        .child(orbit::text("Próximas carreras", 15.0, 700, orbit::INK))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(12.0))
+                                .child(orbit::text("Cadencia publicada", 12.0, 400, orbit::INK_3))
+                                .child(navigate(
+                                    div()
+                                        .id("home-races")
+                                        .role(gpui::Role::Button)
+                                        .aria_label("Ver todas")
+                                        .tab_index(0)
+                                        .child(orbit::text("Ver todas", 12.0, 500, orbit::INK_3)),
+                                    Section::Calendar,
+                                )),
+                        ),
                 )
                 .child(race_list),
         )
         .child(
             orbit::card("")
                 .flex_1()
-                .flex_basis(gpui::relative(5.0 / 12.0))
+                .flex_basis(gpui::relative(0.405))
                 .min_w_0()
+                .flex()
+                .flex_col()
                 .child(
-                    orbit::setting_row(
-                        "Perfiles",
-                        "",
-                        navigate(orbit::button("home-profiles", "Gestionar"), Section::Studio),
-                    )
-                    .px(px(20.0)),
+                    div()
+                        .h(px(50.0))
+                        .px(px(20.0))
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .border_b_1()
+                        .border_color(gpui::rgba(orbit::LINE_ROW))
+                        .child(orbit::text("Perfiles", 15.0, 700, orbit::INK))
+                        .child(navigate(
+                            div()
+                                .id("home-profiles")
+                                .role(gpui::Role::Button)
+                                .aria_label("Gestionar")
+                                .tab_index(0)
+                                .child(orbit::text("Gestionar", 12.0, 500, orbit::INK_3)),
+                            Section::Studio,
+                        )),
                 )
-                .child(orbit::empty_state(
-                    "Perfiles · pendiente",
-                    "Catálogo de perfiles · pendiente",
-                )),
+                .child(profiles),
         )
 }
 
@@ -381,18 +626,32 @@ pub fn render(
     } else {
         greeting(now.with_timezone(&Local).hour()).into()
     };
-    div()
-        .id("home")
+    let content = div()
+        .mt(px(10.0))
+        .flex_1()
+        .min_h_0()
         .flex()
         .flex_col()
-        .gap(px(orbit::GUTTER / 2.0))
+        .gap(px(20.0))
+        .child(profile(demo, &navigate))
+        .child(lists(&starts, demo, &navigate));
+    div()
+        .id("home")
+        .w_full()
+        .h_full()
+        .min_w_0()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .mt(px(-50.0))
+        .pt(px(21.0))
+        .pb(px(20.0))
         .child(hero(
             next_race(target(&starts, &calendar.following.series_ids), &navigate),
             salute,
             &navigate,
         ))
-        .child(profile(demo, &navigate))
-        .child(lists(&starts, &navigate))
+        .child(content)
         .when_some(error, |view, error| view.child(orbit::callout(error)))
         .when_some(calendar.error.clone(), |view, error| {
             view.child(orbit::callout(error))

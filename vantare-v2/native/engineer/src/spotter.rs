@@ -5,6 +5,47 @@
 use crate::radio::Intent;
 use vantare_domain::{Quality, Snapshot, SourceState};
 
+/// Disponibilidad de la misma evidencia que usa evaluate; listo no implica solape.
+pub fn availability(snapshot: &Snapshot) -> crate::control::runtime::Spotter {
+    use crate::control::runtime::Spotter;
+    if snapshot.state.source_state != SourceState::Live {
+        return Spotter::WaitingSource;
+    }
+    let (Some(player), Some(car)) = (snapshot.state.player.as_ref(), snapshot.state.player_car())
+    else {
+        return Spotter::WaitingPlayer;
+    };
+    if car.in_pits == Quality::Reliable(true) {
+        return Spotter::WaitingPitLane;
+    }
+    let (
+        Quality::Reliable(pose),
+        Quality::Reliable([vx, vy]) | Quality::Estimated([vx, vy]),
+        Quality::Reliable(false),
+        Quality::Reliable(speed),
+    ) = (
+        car.pose,
+        car.velocity_mps,
+        car.in_pits,
+        player.telemetry.speed_mps,
+    )
+    else {
+        return Spotter::UnavailableSpatial;
+    };
+    if ![pose.x_m, pose.y_m, pose.yaw_rad, vx, vy, speed]
+        .iter()
+        .all(|value| value.is_finite())
+    {
+        return Spotter::UnavailableSpatial;
+    }
+    if speed < 10.0 || vx.hypot(vy) < 10.0 {
+        return Spotter::WaitingLowSpeed;
+    }
+    // evaluate ignora rivales sin evidencia; no impiden evaluar al resto.
+    // Ready no acredita cobertura espacial completa ni pista despejada.
+    Spotter::Ready
+}
+
 /// Ocupación actual; el ACK de presentación conserva la histéresis geométrica.
 pub fn evaluate(snapshot: &Snapshot, existing: Option<Intent>) -> Option<Intent> {
     if snapshot.state.source_state != SourceState::Live {

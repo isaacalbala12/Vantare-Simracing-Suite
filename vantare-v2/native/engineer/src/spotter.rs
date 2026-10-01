@@ -41,13 +41,8 @@ pub fn availability(snapshot: &Snapshot) -> crate::control::runtime::Spotter {
     if speed < 10.0 || vx.hypot(vy) < 10.0 {
         return Spotter::WaitingLowSpeed;
     }
-    if snapshot.state.cars.iter().filter(|rival| rival.id != car.id).any(|rival| {
-        !matches!((rival.pose, rival.velocity_mps, rival.in_pits),
-            (Quality::Reliable(pose), Quality::Reliable([vx, vy]) | Quality::Estimated([vx, vy]), Quality::Reliable(_))
-            if [pose.x_m, pose.y_m, vx, vy].iter().all(|value| value.is_finite()))
-    }) {
-        return Spotter::UnavailableSpatial;
-    }
+    // evaluate ignora rivales sin evidencia; no impiden evaluar al resto.
+    // Ready no acredita cobertura espacial completa ni pista despejada.
     Spotter::Ready
 }
 

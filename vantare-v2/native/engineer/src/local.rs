@@ -137,7 +137,7 @@ impl Local {
             let mut runtime = radio.runtime_status(self.heartbeat_ms, &self.status.assets);
             if !active {
                 runtime.connection = control::runtime::Connection::Disconnected;
-                runtime.player_available = false;
+                runtime.telemetry_player_available = false;
             }
             let report = control::runtime::Report {
                 status: self.status.clone(),

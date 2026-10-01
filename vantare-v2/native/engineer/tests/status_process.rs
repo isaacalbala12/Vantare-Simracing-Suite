@@ -21,11 +21,20 @@ impl Process {
             std::process::id()
         ));
         fs::create_dir(&root).expect("temporal");
+        let clips = root.join("clips");
+        fs::create_dir(&clips).expect("clips sintéticos vacíos");
+        fs::write(
+            root.join("engineer.json"),
+            serde_json::to_vec(&control::Settings::default().json()).expect("ajustes"),
+        )
+        .expect("escribir ajustes");
         let child = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
             .args(["--stream", "--cursor"])
             .arg(root.join("cursor.json"))
             .arg("--settings")
             .arg(root.join("engineer.json"))
+            .arg("--clips")
+            .arg(clips)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())

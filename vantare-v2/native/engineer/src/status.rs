@@ -91,7 +91,7 @@ pub struct RuntimeStatus {
     pub heartbeat_ms: u64,
     pub connection: Connection,
     pub epoch: Option<u64>,
-    pub player_available: bool,
+    pub telemetry_player_available: bool,
     pub spotter: Spotter,
     pub voice: VoiceStatus,
     pub delivery: DeliveryStatus,
@@ -105,7 +105,7 @@ impl RuntimeStatus {
                 "heartbeat_ms",
                 "connection",
                 "epoch",
-                "player_available",
+                "telemetry_player_available",
                 "spotter",
                 "voice",
                 "delivery",
@@ -144,7 +144,7 @@ impl RuntimeStatus {
             heartbeat_ms: super::number(&value["heartbeat_ms"])?,
             connection: Connection::parse(&value["connection"])?,
             epoch: optional_number(&value["epoch"])?,
-            player_available: super::boolean(&value["player_available"])?,
+            telemetry_player_available: super::boolean(&value["telemetry_player_available"])?,
             spotter: Spotter::parse(&value["spotter"])?,
             voice: VoiceStatus {
                 engine: VoiceEngine::parse(&voice["engine"])?,
@@ -320,7 +320,7 @@ impl RuntimeStatus {
             .collect();
         let history: Vec<_> = self.delivery.history.iter().map(Delivery::json).collect();
         json!({"instance_ms":self.instance_ms,"heartbeat_ms":self.heartbeat_ms,"connection":self.connection.as_str(),"epoch":self.epoch,
-            "player_available":self.player_available,"spotter":self.spotter.as_str(),
+            "telemetry_player_available":self.telemetry_player_available,"spotter":self.spotter.as_str(),
             "voice":{"engine":self.voice.engine.as_str(),"clips_configured":self.voice.clips_configured,
                 "selected_voice":self.voice.selected_voice,"cached_voices":voices,"error":self.voice.error,
                 "synthesis":"unavailable","voice_input":"unavailable"},
@@ -350,7 +350,7 @@ pub(crate) fn test_report() -> Report {
             heartbeat_ms: 100,
             connection: Connection::Live,
             epoch: Some(1),
-            player_available: true,
+            telemetry_player_available: true,
             spotter: Spotter::Ready,
             voice: VoiceStatus {
                 engine: VoiceEngine::Unavailable,
@@ -389,6 +389,11 @@ mod tests {
             Status::parse(&bytes).expect("compatibilidad vista"),
             report.status
         );
+        let legacy_export =
+            serde_json::to_vec(&report.status.json()).expect("exportación anterior");
+        let projected = Status::parse(&legacy_export).expect("subconjunto v1 válido");
+        assert_eq!(projected.version, 1);
+        assert_eq!(projected.settings, report.status.settings);
         let mut legacy = report.status;
         legacy.version = 1;
         let bytes = serde_json::to_vec(&legacy.json()).expect("json v1");

@@ -108,12 +108,14 @@ pub struct Status {
     pub error: Option<String>,
 }
 impl Status {
+    /// Proyección v1 para consumidores anteriores. Para conservar los datos
+    /// v2 al exportar, usar `runtime::Report::json`.
     pub fn json(&self) -> Value {
         let message = self
             .last_message
             .as_ref()
             .map(|m| json!({"epoch":m.epoch, "sequence":m.sequence, "intent":m.intent, "locale":m.locale, "text":m.text}));
-        json!({"version":self.version, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
+        json!({"version":1, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
         let value = decode(bytes)?;

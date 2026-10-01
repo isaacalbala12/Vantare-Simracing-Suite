@@ -59,7 +59,7 @@ fn connection_spotter_disabled_stale_and_recovery_are_observable() {
     let state = worker.runtime_status(0, &assets);
     assert_eq!(state.connection, Connection::Live);
     assert_eq!(state.spotter, Spotter::Ready);
-    assert!(state.player_available);
+    assert!(state.telemetry_player_available);
     assert_eq!(state.epoch, Some(1));
     worker
         .tick(Duration::from_millis(500), &mut output)
@@ -107,6 +107,15 @@ fn spotter_reports_missing_player_spatial_pits_and_low_speed() {
     use vantare_engineer::spotter::availability;
     let mut snapshot = photo(1);
     assert_eq!(availability(&snapshot), Spotter::Ready);
+    snapshot.state.cars.push(Car {
+        id: CarId(8),
+        ..Car::default()
+    });
+    assert_eq!(
+        availability(&snapshot),
+        Spotter::Ready,
+        "un rival sin datos se omite como en el productor, no bloquea los demás"
+    );
     snapshot.state.cars[0].in_pits = Quality::Reliable(true);
     assert_eq!(availability(&snapshot), Spotter::WaitingPitLane);
     snapshot.state.cars[0].in_pits = Quality::Reliable(false);

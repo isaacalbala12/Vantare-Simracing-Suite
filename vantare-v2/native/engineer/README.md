@@ -488,16 +488,19 @@ en `C:/tmp/isa-1428-voz-banderas-evidence/` en la máquina de trabajo.
 atómica y heartbeat cada segundo. `control::runtime::Report` conserva los
 campos v1 y añade `runtime` (versión local **2**). `Status::parse` sigue leyendo
 v1/v2 para las vistas anteriores; `Report::parse` expone la extensión tipada.
+`Status::json` exporta el subconjunto v1 válido; `Report::json` conserva v2.
 Un v1 no acredita frescura ni diagnósticos: `runtime=None`. La versión del DTO
 de fotos y las escenas permanecen intactas: este archivo no es el DTO IPC.
 
 El runtime publica conexión a observaciones aceptadas (`waiting`, `live`,
-`stale`, `disconnected`), época, presencia de jugador, disponibilidad de
-Spotter, motor de clips WinMM (no disponible fuera de Windows), preset de voz
+`stale`, `disconnected`), época, presencia del jugador de telemetría
+(`telemetry_player_available`), disponibilidad de Spotter, motor de clips
+WinMM (no disponible fuera de Windows), preset de voz
 por locale y packs completos validados de los 13 intents nativos. Packs no
-acreditan reproducción. La falta de poses/vectores de rivales se declara
-`unavailable_spatial`; `ready` indica evidencia suficiente, no solape ni
-pista despejada. El ajuste global gobierna Spotter; no existe ajuste propio.
+acreditan reproducción. La falta de poses/vectores del jugador se declara
+`unavailable_spatial`; `ready` permite evaluar, no acredita solape, cobertura
+completa de rivales ni pista despejada. Los rivales sin evidencia se omiten
+como en el productor existente. El ajuste global gobierna Spotter; no existe ajuste propio.
 Con política denegada no llegan observaciones aceptadas al worker: no se
 anuncia conexión ni disponibilidad basándose solo en el transporte del Core.
 
@@ -527,8 +530,9 @@ usar ese modelo para obtener estos estados; la vista anterior sigue leyendo
 solo el subconjunto v1. No se modifica el arranque de procesos ni Win32.
 
 No disponibles explícitos: síntesis TTS y entrada de voz (en el JSON),
-catálogo TTS, voces independientes por canal, modos por familia, ACK de vista,
-prueba de audio Hub, contadores de policy/percentiles e historial durable
+catálogo TTS, disponibilidad del dispositivo de audio, voces independientes
+por canal, modos por familia, ACK de vista, prueba de audio Hub, contadores de
+policy/percentiles e historial durable
 (en `model::UNAVAILABLE` y exportación). No se fabrica paridad con esas
 funciones Wails. La integración visual y los gates acústicos/IPC de producto
 en Windows corresponden al orquestador.

@@ -16,7 +16,7 @@ let view = model.view(now);
 | --- | --- |
 | Salud | `View.health: Health`: Fresh, Stopped, Missing, Invalid, Expired, LegacyUnavailable. |
 | Servicio / conexión | `View.running`, `View.connected`, `View.connection: Connection`. Conectado exige proceso fresco + observación Live aceptada; no implica permiso ni audio. |
-| Spotter | `View.spotter: Spotter`: Disabled, WaitingSource/Player/PitLane/LowSpeed, UnavailableSpatial, Ready. Global enabled controla también Spotter. |
+| Spotter | `View.spotter: Spotter`: Disabled, WaitingSource/Player/PitLane/LowSpeed, UnavailableSpatial, Ready. Global enabled controla también Spotter. Ready no acredita cobertura completa de rivales; los que carecen de evidencia se omiten como en el productor. |
 | Datos actuales | `View.runtime: Option<&RuntimeStatus>`; None = no disponible, no pintar datos viejos. |
 | Jugador de telemetría | `runtime.telemetry_player_available`, presencia del sujeto en la foto; distinto del audio playerAvailable de Wails, no disponible sin validar dispositivo. |
 | Voz | `runtime.voice`: engine, clips_configured, selected_voice, cached_voices `[locale, voice, clips_available]`, error. Cache-only, un preset compartido. |

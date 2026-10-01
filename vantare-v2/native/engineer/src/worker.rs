@@ -28,7 +28,7 @@ pub struct RadioWorker {
     source_stale: bool,
     presentation: Option<Message>,
     connection: Connection,
-    player_available: bool,
+    telemetry_player_available: bool,
     spotter: Spotter,
     history: std::collections::VecDeque<Delivery>,
     delivery_id: u64,
@@ -56,7 +56,7 @@ impl RadioWorker {
             source_stale: false,
             presentation: None,
             connection: Connection::Waiting,
-            player_available: false,
+            telemetry_player_available: false,
             spotter: Spotter::WaitingSource,
             history: std::collections::VecDeque::new(),
             delivery_id: 0,
@@ -94,7 +94,7 @@ impl RadioWorker {
         self.families.reset();
         self.presentation = None;
         self.connection = Connection::Disconnected;
-        self.player_available = false;
+        self.telemetry_player_available = false;
         self.spotter = if self.settings.enabled {
             Spotter::WaitingSource
         } else {
@@ -115,16 +115,18 @@ impl RadioWorker {
         Ok(())
     }
     fn record_delivery(&mut self, message: &Message, audio: AudioOutcome) {
+        let message = crate::control::Message {
+            epoch: message.epoch,
+            sequence: message.sequence,
+            intent: message.intent.key().into(),
+            locale: message.locale.code().into(),
+            text: message.intent.text(message.locale).into(),
+        };
+        self.last_message = Some(message.clone());
         self.delivery_id = self.delivery_id.saturating_add(1);
         self.history.push_back(Delivery {
             id: self.delivery_id,
-            message: crate::control::Message {
-                epoch: message.epoch,
-                sequence: message.sequence,
-                intent: message.intent.key().into(),
-                locale: message.locale.code().into(),
-                text: message.intent.text(message.locale).into(),
-            },
+            message,
             text_emitted: true,
             audio,
             selected_at_ms: crate::control::runtime::now_ms(),
@@ -144,7 +146,7 @@ impl RadioWorker {
             heartbeat_ms,
             connection: self.connection,
             epoch: self.latest_revision.map(|(epoch, _)| epoch),
-            player_available: self.player_available,
+            telemetry_player_available: self.telemetry_player_available,
             spotter: self.spotter,
             voice: VoiceStatus {
                 engine: if cfg!(windows) {
@@ -211,7 +213,7 @@ impl RadioWorker {
             vantare_domain::SourceState::Lost => Connection::Disconnected,
             vantare_domain::SourceState::Waiting => Connection::Waiting,
         };
-        self.player_available = snapshot.state.player_car().is_some();
+        self.telemetry_player_available = snapshot.state.player_car().is_some();
         self.spotter = if self.settings.enabled {
             crate::spotter::availability(snapshot)
         } else {
@@ -299,35 +301,22 @@ impl RadioWorker {
                 }
                 Err(error) => {
                     self.voice_error = Some(format!("voz {}: {error}", message.intent.key()));
-                    presentation["voice"] = if error.kind() == io::ErrorKind::NotFound {
-                        "missing"
-                    } else if cfg!(unix) && error.kind() == io::ErrorKind::Unsupported {
-                        "unavailable"
-                    } else {
-                        "failed"
-                    }
-                    .into();
-                    presentation["voice_error"] = format!("{:?}", error.kind()).into();
-                    if error.kind() == io::ErrorKind::NotFound {
+                    let outcome = if error.kind() == io::ErrorKind::NotFound {
                         AudioOutcome::Missing
-                    } else if error.kind() == io::ErrorKind::Unsupported {
+                    } else if cfg!(unix) && error.kind() == io::ErrorKind::Unsupported {
                         AudioOutcome::Unavailable
                     } else {
                         AudioOutcome::Failed
-                    }
+                    };
+                    presentation["voice"] = outcome.as_str().into();
+                    presentation["voice_error"] = format!("{:?}", error.kind()).into();
+                    outcome
                 }
             };
             serde_json::to_writer(&mut *output, &presentation).map_err(io::Error::other)?;
             writeln!(output)?;
             output.flush()?;
             self.families.started(&message); // ACK visual; no claim de acústica.
-            self.last_message = Some(crate::control::Message {
-                epoch: message.epoch,
-                sequence: message.sequence,
-                intent: message.intent.key().into(),
-                locale: message.locale.code().into(),
-                text: message.intent.text(message.locale).into(),
-            });
             self.record_delivery(&message, audio);
             self.presentation = Some(message);
             if audio == AudioOutcome::Started {
@@ -346,4 +335,37 @@ fn clear_output(output: &mut impl Write) -> io::Result<()> {
         "{{\"version\":\"vantare.radio.status.v1\",\"clear\":true}}"
     )?;
     output.flush()
+}
+
+#[cfg(test)]
+mod status_tests {
+    use super::*;
+    #[test]
+    fn published_pending_tracks_real_queue_until_text_delivery() {
+        // Entrada de cola sintética: Linux no retiene clips reproduciéndose.
+        let mut worker = RadioWorker::new(Locale::Es, None).expect("worker");
+        let mut snapshot = Snapshot::default();
+        snapshot.state.player = Some(vantare_domain::Player::default());
+        let message = Message::new(
+            crate::radio::Intent::FuelOne,
+            Locale::Es,
+            &snapshot,
+            Duration::ZERO,
+        )
+        .expect("mensaje");
+        assert!(worker.queue.submit(message));
+        let assets = std::collections::BTreeMap::new();
+        assert_eq!(worker.runtime_status(0, &assets).delivery.pending, 1);
+        let mut output = Vec::new();
+        worker
+            .tick(Duration::ZERO, &mut output)
+            .expect("entregar texto");
+        let status = worker.runtime_status(0, &assets);
+        assert_eq!(status.delivery.pending, 0);
+        assert!(!status.delivery.speaking);
+        let last = status.delivery.last().expect("última entrega");
+        assert!(last.text_emitted);
+        assert_eq!(last.audio, AudioOutcome::Disabled);
+        assert!(!output.is_empty());
+    }
 }

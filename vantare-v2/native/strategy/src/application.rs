@@ -6,9 +6,16 @@ use serde::{Deserialize, Serialize};
 use super::solver::{self, Input, SolverOutcome};
 
 mod automatic;
+mod corrections;
 pub use automatic::{
     AutomaticPreparation, AutomaticPreparationStatus, ClimateBucket, ProjectionFamily,
     ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,
+};
+pub use corrections::{
+    AnalysisValidity, ContinuousCoverage, CorrectionFamily, CorrectionSource, CoverageGap,
+    FamilyCorrectionRequest, FamilyCorrectionTarget, FamilyUse, LapExclusionReason,
+    PreparedFamilyCorrection, SourceAnalysisRef, ValidityLap, apply_family_corrections,
+    continue_with_analysis_revision, prepare_family_corrections,
 };
 
 #[derive(Clone, Debug)]

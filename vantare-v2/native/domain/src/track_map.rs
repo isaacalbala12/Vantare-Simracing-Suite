@@ -5,7 +5,7 @@
 use crate::format::{Language, Preferences};
 use crate::{CarId, Quality, Snapshot};
 
-pub const VIEWPORT: (f64, f64) = (320.0, 220.0);
+const VIEWPORT: (f64, f64) = (320.0, 220.0);
 const PADDING: f64 = 12.0;
 
 /// Geometría externa en el mismo plano SI que `Car::pose` (metros).
@@ -38,10 +38,6 @@ pub struct ViewModel {
     pub track_label: Option<String>,
     pub reference_text: Option<String>,
     pub empty_text: String,
-}
-
-pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-    project_with_geometry(snapshot, prefs, None)
 }
 
 /// El nombre debe coincidir exactamente (ignorando mayúsculas y espacios
@@ -226,7 +222,7 @@ mod tests {
             assert!(vm.markers.is_empty());
             assert!(vm.track_label.is_none());
         }
-        let vm = project(&snapshot(), Preferences::default());
+        let vm = project_with_geometry(&snapshot(), Preferences::default(), None);
         assert_eq!(vm.empty_text, "PISTA SIN MAPA");
         assert!(vm.outline.is_empty(), "un nombre no inventa un circuito");
         for points in [
@@ -353,7 +349,10 @@ mod tests {
                 language,
                 ..Preferences::default()
             };
-            assert_eq!(project(&Snapshot::default(), prefs).empty_text, empty);
+            assert_eq!(
+                project_with_geometry(&Snapshot::default(), prefs, None).empty_text,
+                empty
+            );
             let mut geometry = geometry(POINTS);
             assert!(
                 project_with_geometry(&snapshot(), prefs, Some(&geometry))

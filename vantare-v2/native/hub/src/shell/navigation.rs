@@ -87,6 +87,33 @@ pub fn icon(section: Section) -> &'static str {
     }
 }
 
+/// Copia del marco Wails; no cambia los nombres internos de las secciones.
+pub fn title(section: Section) -> &'static str {
+    match section {
+        Section::Studio => "Overlays Studio",
+        Section::Strategy => "Estrategia",
+        Section::Engineer => "Ingeniero",
+        Section::Analysis => "Telemetría",
+        _ => section.label(),
+    }
+}
+
+pub fn trail(section: Section) -> &'static str {
+    match section {
+        Section::Home => "Centro operativo",
+        Section::Studio => "Editor",
+        Section::Launcher => "Herramienta",
+        Section::Calendar => "Le Mans Ultimate",
+        Section::Strategy => "Planificador",
+        Section::Engineer => "Telemetry Core",
+        Section::Analysis => "Análisis post-sesión",
+        Section::Roadmap => "Producto",
+        Section::Settings => "Preferencias locales",
+        Section::Testing => "Calidad",
+        _ => section.subtitle(),
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     Navigate(Section),
@@ -134,16 +161,16 @@ pub fn commands(access: Access, query: &str) -> Vec<Item> {
         .copied()
         .map(|section| Item {
             command: Command::Navigate(section),
-            label: section.label().into(),
-            meta: section.subtitle(),
+            label: title(section).into(),
+            meta: trail(section),
             icon: icon(section),
             locked: access.lock(section),
         })
         .chain([
             Item {
                 command: Command::Save,
-                label: "Guardar".into(),
-                meta: "Borradores locales",
+                label: "Guardar perfil".into(),
+                meta: "Overlays Studio",
                 icon: "i-studio",
                 locked: None,
             },
@@ -245,7 +272,7 @@ mod tests {
             blocked: false,
         };
         assert!(
-            commands(access, "  eNgInEeR  ")
+            commands(access, "  iNgEnIeRo  ")
                 .iter()
                 .any(|item| item.command == Command::Navigate(Section::Engineer))
         );
@@ -255,11 +282,15 @@ mod tests {
                 .all(|item| item.locked.is_some())
         );
         assert!(
-            commands(access, "paradas")
+            commands(access, "planificador")
                 .iter()
                 .any(|item| item.command == Command::Navigate(Section::Strategy))
         );
         assert_eq!(commands(access, "").len(), Section::ALL.len() + 3);
+        let studio = commands(access, "Overlays Studio");
+        assert_eq!(studio.len(), 2);
+        assert_eq!(studio[0].meta, "Editor");
+        assert_eq!(studio[1].command, Command::Save);
         assert!(commands(access, "no-existe-🏁").is_empty());
         assert!(
             !commands(access, "telemetria")

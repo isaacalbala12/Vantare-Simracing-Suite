@@ -21,6 +21,7 @@ mod demand;
 pub use demand::{Demand, Photo, Signal, SignalState};
 pub mod control;
 mod dto;
+pub mod launcher;
 /// Versión vigente del DTO de fotos (JSON).
 pub use dto::VERSION as DTO_VERSION;
 mod latest;

@@ -26,6 +26,7 @@ pub(super) struct State {
     scroll: ScrollHandle,
     rail_scroll: ScrollHandle,
     rail_focus: Vec<FocusHandle>,
+    rail_sections: Vec<Section>,
 }
 
 impl State {
@@ -43,6 +44,15 @@ impl State {
         for input in [&query, &context_query] {
             cx.observe(input, |_, _, cx| cx.notify()).detach();
         }
+        let rail_sections: Vec<_> = navigation::RAIL
+            .iter()
+            .copied()
+            .filter(|section| {
+                *section != Section::Testing
+                    || capture.is_none_or(|capture| capture.section == Section::Testing)
+            })
+            .collect();
+        let rail_focus = rail_sections.iter().map(|_| cx.focus_handle()).collect();
         Self {
             access,
             column_open: capture.is_none_or(|capture| capture.column_open),
@@ -58,7 +68,8 @@ impl State {
             return_focus: None,
             scroll: ScrollHandle::new(),
             rail_scroll: ScrollHandle::new(),
-            rail_focus: navigation::RAIL.iter().map(|_| cx.focus_handle()).collect(),
+            rail_focus,
+            rail_sections,
         }
     }
 }
@@ -105,6 +116,17 @@ impl Hub {
 
     fn palette_commands(&self, cx: &Context<Self>) -> Vec<navigation::Item> {
         let mut items = navigation::commands(self.shell.access, &self.shell.last_query);
+        items.retain(|item| {
+            item.command != Command::Navigate(Section::Testing)
+                || self.shell.rail_sections.contains(&Section::Testing)
+        });
+        if self.capture.is_some() {
+            for item in &mut items {
+                if item.command == Command::Navigate(Section::Analysis) {
+                    item.label.push_str(" · Próximamente");
+                }
+            }
+        }
         items.extend(navigation::launch_commands(
             self.shell.access,
             &self.shell.last_query,
@@ -257,17 +279,11 @@ impl Hub {
             .flex_col()
             .items_center()
             .gap(px(8.0));
-        for (index, &section) in navigation::RAIL.iter().enumerate() {
+        for (index, &section) in self.shell.rail_sections.iter().enumerate() {
             items = items.child(
-                orbit::rail_button(
-                    section.label(),
-                    navigation::icon(section),
-                    section.label(),
-                    self.section == section,
-                    self.shell.access.lock(section),
-                )
-                .track_focus(&self.shell.rail_focus[index])
-                .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
+                self.section_rail_button(section)
+                    .track_focus(&self.shell.rail_focus[index])
+                    .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
             );
         }
         div()
@@ -327,20 +343,45 @@ impl Hub {
                             "settings",
                             "i-ajustes",
                             "Ajustes",
-                            self.section == Section::Settings,
+                            matches!(
+                                self.section,
+                                Section::Settings | Section::Account | Section::Licenses
+                            ),
                             None,
                         )
                         .on_click(
                             cx.listener(|this, _, _, cx| this.navigate(Section::Settings, cx)),
                         ),
                     )
-                    .child(
-                        orbit::avatar(self.section == Section::Account, &self.avatar_initial())
-                            .on_click(
-                                cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
-                            ),
-                    ),
+                    .child(orbit::avatar(false, &self.avatar_initial()).on_click(
+                        cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
+                    )),
             )
+    }
+
+    fn section_rail_button(&self, section: Section) -> gpui::Stateful<gpui::Div> {
+        orbit::rail_button(
+            navigation::title(section),
+            navigation::icon(section),
+            navigation::title(section),
+            self.section == section,
+            self.shell.access.lock(section),
+        )
+        .when(
+            section == Section::Analysis && self.demo.is_some(),
+            |button| {
+                button.child(
+                    div()
+                        .absolute()
+                        .right(px(8.0))
+                        .top(px(8.0))
+                        .size(px(6.0))
+                        .rounded_full()
+                        .border_1()
+                        .border_color(rgb(orbit::EMBER)),
+                )
+            },
+        )
     }
 
     fn avatar_initial(&self) -> String {
@@ -415,11 +456,7 @@ impl Hub {
             .flex_col()
             .child(Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas"))
             .child(Self::context_row("Sin salidas próximas", "", None));
-        let overlay = div()
-            .flex()
-            .flex_col()
-            .child(Self::context_heading("PERFIL DE OVERLAY", "DETENIDO"))
-            .child(Self::context_row("Sin perfiles todavía", "", None));
+        let overlay = self.overlay_context(cx);
         let launcher = self.launcher_context(cx);
         let mut blocks = div()
             .id("context-blocks")
@@ -437,13 +474,79 @@ impl Hub {
             blocks
                 .child(Self::context_block("races", races))
                 .child(Self::context_block("overlay", overlay))
-                .child(Self::context_block("launcher", launcher)),
+                .when(
+                    !matches!(
+                        self.section,
+                        Section::Settings
+                            | Section::Account
+                            | Section::Licenses
+                            | Section::Studio
+                            | Section::Workshop
+                    ),
+                    |blocks| blocks.child(Self::context_block("launcher", launcher)),
+                ),
         )
+    }
+
+    fn overlay_context(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let heading = Self::context_heading("PERFIL DE OVERLAY", "DETENIDO");
+        let Some(profile) = self.demo.as_ref().and_then(|demo| demo.overlay_profile()) else {
+            return div()
+                .flex()
+                .flex_col()
+                .child(heading)
+                .child(Self::context_row("Sin perfiles todavía", "", None));
+        };
+        let row = div()
+            .id("context-overlay-profile")
+            .role(gpui::Role::Button)
+            .aria_label(format!("Abrir Studio con {}", profile.name))
+            .aria_selected(profile.active)
+            .tab_index(0)
+            .min_h(px(46.0))
+            .px(px(8.0))
+            .py(px(6.0))
+            .rounded(px(11.0))
+            .flex()
+            .items_center()
+            .gap(px(10.0))
+            .cursor_pointer()
+            .when(profile.active, |row| {
+                row.bg(orbit::tint(orbit::CARMINE, 0.11))
+            })
+            .focus_visible(|row| row.border_1().border_color(rgb(orbit::CORAL)))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .child(orbit::text(profile.name.clone(), 13.0, 650, orbit::INK))
+                    .child(orbit::text(
+                        profile.context_subtitle(),
+                        11.0,
+                        400,
+                        orbit::INK_3,
+                    )),
+            )
+            .child(
+                div()
+                    .size(px(26.0))
+                    .flex_none()
+                    .rounded(px(8.0))
+                    .bg(rgba(0xffff_ff0a))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(orbit::text("▶", 9.0, 400, orbit::INK_3)),
+            )
+            .on_click(cx.listener(|this, _, _, cx| this.navigate(Section::Studio, cx)));
+        div().flex().flex_col().child(heading).child(row)
     }
 
     fn launcher_context(&self, cx: &mut Context<Self>) -> gpui::Div {
         let heading = Self::context_heading("LAUNCHER", "Gestionar");
-        let mut profiles = div().flex().flex_col();
+        let mut profiles = div().flex().flex_col().px(px(2.0)).gap(px(2.0));
         if let Some(demo) = &self.demo {
             for (index, profile) in demo.launcher.profiles.iter().enumerate() {
                 let profile = profile.clone();
@@ -474,13 +577,21 @@ impl Hub {
                             .min_w_0()
                             .flex()
                             .flex_col()
-                            .child(orbit::text(profile.name.as_str(), 13.0, 600, orbit::INK))
-                            .child(orbit::text(
-                                format!("{} pasos", profile.steps.len()),
-                                11.0,
-                                400,
-                                orbit::INK_3,
-                            )),
+                            .gap(px(2.0))
+                            .child(
+                                orbit::text(profile.name.as_str(), 13.0, 650, orbit::INK)
+                                    .font_weight(gpui::FontWeight::NORMAL)
+                                    .line_height(px(19.5)),
+                            )
+                            .child(
+                                orbit::text(
+                                    format!("{} pasos", profile.steps.len()),
+                                    11.0,
+                                    400,
+                                    orbit::INK_3,
+                                )
+                                .line_height(px(16.5)),
+                            ),
                     )
                     .child(
                         div()
@@ -519,15 +630,24 @@ impl Hub {
             .gap(px(10.0))
             .px(px(9.0))
             .pt(px(2.5))
-            .pb(px(11.0))
+            .pb(px(if title == "LAUNCHER" { 11.0 } else { 7.0 }))
             .child(orbit::eyebrow(title))
             .child(if action == "DETENIDO" {
                 div()
                     .px(px(8.0))
-                    .py(px(4.0))
-                    .rounded(px(orbit::RADIUS_CHIP))
-                    .bg(rgb(orbit::SURFACE_3))
-                    .child(orbit::text(action, 9.0, 700, orbit::INK_3))
+                    .py(px(3.0))
+                    .rounded_full()
+                    .bg(rgba(0xffff_ff0a))
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(0.63))
+                            .children(action.chars().map(|letter| {
+                                orbit::mono_text(letter.to_string(), 10.5, orbit::INK_3)
+                                    .font_weight(gpui::FontWeight(750.0))
+                                    .line_height(px(15.75))
+                            })),
+                    )
             } else {
                 orbit::text(action, 11.5, 400, orbit::INK_3)
             })
@@ -540,8 +660,8 @@ impl Hub {
             .justify_between()
             .gap(px(8.0))
             .px(px(0.0))
-            .py(px(4.0))
-            .child(orbit::text(title, 13.0, 400, orbit::INK_3))
+            .pb(px(4.0))
+            .child(orbit::text(title, 16.0, 400, orbit::INK))
             .when(!subtitle.is_empty(), |row| {
                 row.child(orbit::text(subtitle, 11.0, 400, orbit::INK_3))
             })
@@ -564,102 +684,140 @@ impl Hub {
             .child(content)
     }
 
+    fn update_bell_anchor(
+        notifications: &gpui::Entity<crate::notifications::Notifications>,
+        bounds: gpui::Bounds<gpui::Pixels>,
+        cx: &mut gpui::App,
+    ) {
+        let notifications = notifications.clone();
+        cx.defer(move |cx| {
+            notifications.update(cx, |center, cx| {
+                let changed = center.bell_bounds != Some(bounds);
+                center.bell_bounds = Some(bounds);
+                if let Some(layer) = center.popover() {
+                    let position = gpui::point(
+                        bounds.origin.x + bounds.size.width - px(orbit::POPOVER_W),
+                        bounds.origin.y + bounds.size.height + px(8.0),
+                    );
+                    layer.update(cx, |layer, cx| layer.set_popover_position(position, cx));
+                }
+                if changed {
+                    cx.notify();
+                }
+            });
+        });
+    }
+
     fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Div {
         if self.shell.notification_subscription.is_none() {
             self.shell.notification_subscription =
                 Some(cx.observe(&self.notifications, |_, _, cx| cx.notify()));
         }
-        div()
-            .flex()
-            .items_center()
-            .gap(px(orbit::MENU_PAD))
-            .child(
-                orbit::rail_button("notifications", "i-campana", "Notificaciones", false, None)
-                    .size(px(28.0))
-                    .when(self.notifications.read(cx).unread() > 0, |bell| {
-                        bell.child(
-                            orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
-                                .absolute()
-                                .top_0()
-                                .right_0(),
-                        )
-                    })
-                    .child({
-                        let notifications = self.notifications.clone();
-                        // Mismo seguimiento de ancla que el dropdown Orbit.
-                        gpui::canvas(
-                            move |bounds, _, cx| {
-                                notifications.update(cx, |center, cx| {
-                                    if center.bell_bounds.is_none() {
-                                        center.bell_bounds = Some(bounds);
-                                        cx.notify();
-                                    }
-                                });
-                            },
-                            |_, (), _, _| {},
-                        )
-                        .absolute()
-                        .size_full()
-                    })
-                    .aria_expanded(self.notifications.read(cx).popover_open(cx))
-                    .aria_label(format!(
-                        "Notificaciones · {} sin leer",
-                        self.notifications.read(cx).unread()
-                    ))
-                    .capture_any_mouse_down(cx.listener(
-                        |this, event: &gpui::MouseDownEvent, _, cx| {
-                            if event.button == gpui::MouseButton::Left {
-                                let open = this.notifications.read(cx).popover_open(cx);
-                                this.notifications
-                                    .update(cx, |center, _| center.bell_was_open = open);
-                            }
+        div().flex().items_center().gap(px(orbit::MENU_PAD)).child(
+            orbit::rail_button("notifications", "i-campana", "Notificaciones", false, None)
+                .size(px(28.0))
+                .bg(rgba(0x0000_0000))
+                .when(self.notifications.read(cx).popover_open(cx), |bell| {
+                    bell.bg(rgba(0xffff_ff0a))
+                })
+                .when(self.notifications.read(cx).unread() > 0, |bell| {
+                    bell.child(
+                        orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
+                            .absolute()
+                            .top_0()
+                            .right_0(),
+                    )
+                })
+                .child({
+                    let notifications = self.notifications.clone();
+                    // Mismo seguimiento de ancla que el dropdown Orbit.
+                    gpui::canvas(
+                        move |bounds, _, cx| {
+                            Self::update_bell_anchor(&notifications, bounds, cx);
                         },
-                    ))
-                    .on_click(cx.listener(|this, event, window, cx| {
+                        |_, (), _, _| {},
+                    )
+                    .absolute()
+                    .inset_0()
+                    .size(px(28.0))
+                })
+                .aria_expanded(self.notifications.read(cx).popover_open(cx))
+                .aria_label(format!(
+                    "Notificaciones · {} sin leer",
+                    self.notifications.read(cx).unread()
+                ))
+                .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                    if event.button == gpui::MouseButton::Left {
+                        let open = this.notifications.read(cx).popover_open(cx);
                         this.notifications
-                            .update(cx, |center, cx| center.click_bell(event, window, cx));
-                        cx.notify();
-                    })),
-            )
-            .when_some(self.notifications.read(cx).popover(), |bell, layer| {
-                bell.child(layer)
-            })
+                            .update(cx, |center, _| center.bell_was_open = open);
+                    }
+                }))
+                .on_click(cx.listener(|this, event, window, cx| {
+                    this.notifications
+                        .update(cx, |center, cx| center.click_bell(event, window, cx));
+                    cx.notify();
+                })),
+        )
     }
 
-    pub(super) fn topbar(&mut self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+    /// `section_actions` pertenece a la sección; la campana y la versión son comunes.
+    pub(super) fn topbar(
+        &mut self,
+        window: &Window,
+        section_actions: Option<gpui::AnyElement>,
+        cx: &mut Context<Self>,
+    ) -> gpui::Div {
         let bell = self.notification_bell(cx);
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
         let pending = self
             .demo
             .as_ref()
+            .filter(|_| {
+                self.capture.as_ref().is_none_or(|capture| {
+                    capture.name != "ajustes-preparacion-oscuro"
+                        && (capture.name.starts_with("shell-")
+                            || matches!(
+                                capture.section,
+                                Section::Settings | Section::Account | Section::Licenses
+                            ))
+                })
+            })
             .map(|demo| demo.versions.pending.as_str());
-        let (trail, title) = if self.section == Section::Strategy {
-            ("PLANIFICADOR", "Estrategia")
+        let breadcrumb = if matches!(self.section, Section::Account | Section::Licenses) {
+            Section::Settings
         } else {
-            ("Centro operativo", self.section.label())
+            self.section
         };
-        orbit::topbar(
-            trail,
-            title,
+        orbit::topbar_with_actions(
+            navigation::trail(breadcrumb),
+            navigation::title(breadcrumb),
+            section_actions,
             div()
                 .flex()
                 .items_center()
-                .gap(px(8.0))
+                .gap(px(10.0))
                 .child(bell)
                 .when_some(pending, |row, version| {
                     row.child(
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(6.0))
-                            .px(px(12.0))
+                            .gap(px(9.0))
+                            .px(px(13.0))
                             .h(px(36.0))
                             .rounded(px(12.0))
-                            .bg(rgb(orbit::SURFACE_1))
+                            .bg(rgba(0xffff_ff06))
                             .border_1()
-                            .border_color(rgba(orbit::LINE_ROW))
-                            .child(div().size(px(6.0)).rounded_full().bg(rgb(orbit::EMBER)))
-                            .child(orbit::text(version, 11.0, 400, orbit::INK_3)),
+                            .border_color(rgba(orbit::LINE))
+                            .child(
+                                div()
+                                    .size(px(6.5))
+                                    .rounded_full()
+                                    .border_1()
+                                    .border_color(rgb(orbit::EMBER)),
+                            )
+                            .child(orbit::text(version, 12.0, 400, orbit::INK_3)),
                     )
                 }),
         )
@@ -675,17 +833,21 @@ impl Hub {
         let mut rows = div()
             .id("palette-results")
             .role(gpui::Role::ListBox)
-            .aria_label("Resultados de comandos")
+            .aria_label(if items.is_empty() {
+                "Sin resultados"
+            } else {
+                "Resultados de comandos"
+            })
             .max_h(px(f32::from(window.viewport_size().height) * 0.46))
             .overflow_y_scroll()
             .track_scroll(&self.shell.scroll)
-            .py(px(8.0));
+            .p(px(10.0));
         let mut previous_group = None;
         for (index, item) in items.iter().enumerate() {
             let destination = matches!(item.command, Command::Navigate(_));
             if previous_group != Some(destination) {
                 let heading = if destination { "IR A" } else { "ACCIONES" };
-                rows = rows.child(div().px(px(20.0)).py(px(8.0)).child(orbit::tracked_text(
+                rows = rows.child(div().px(px(12.0)).py(px(9.0)).child(orbit::tracked_text(
                     heading,
                     10.5,
                     850,
@@ -714,15 +876,24 @@ impl Hub {
                             .child(orbit::icon(item.icon, 14.0, orbit::CORAL)),
                     )
                     .child(
-                        orbit::text(item.label.clone(), 16.0, 400, orbit::INK)
-                            .flex_1()
-                            .min_w_0(),
+                        orbit::text(
+                            item.label.clone(),
+                            16.0,
+                            400,
+                            if index == self.shell.cursor {
+                                orbit::INK
+                            } else {
+                                orbit::INK_2
+                            },
+                        )
+                        .flex_1()
+                        .min_w_0(),
                     )
                     .child(orbit::text(
                         item.locked.unwrap_or(item.meta),
                         10.5,
                         400,
-                        orbit::INK_3,
+                        orbit::INK_4,
                     ))
                     .when(item.locked.is_some(), |row| {
                         row.child(orbit::icon("i-lock", 13.0, orbit::INK_MUTED))
@@ -737,14 +908,6 @@ impl Hub {
                         this.execute(command.clone(), window, cx);
                     })),
             );
-        }
-        if items.is_empty() {
-            rows = rows.child(div().p(px(20.0)).child(orbit::text(
-                "Sin resultados",
-                13.5,
-                400,
-                orbit::INK_3,
-            )));
         }
         rows
     }
@@ -787,6 +950,7 @@ impl Hub {
                     .border_1()
                     .border_color(rgba(orbit::LINE_STRONG))
                     .rounded(px(orbit::FEATURED_RADIUS))
+                    .shadow(orbit::layer_shadow(true))
                     .overflow_hidden()
                     .on_mouse_down_out(cx.listener(
                         |this, event: &gpui::MouseDownEvent, window, cx| {
@@ -819,8 +983,8 @@ impl Hub {
                             .gap(px(16.0))
                             .border_t_1()
                             .border_color(rgba(orbit::LINE))
-                            .child(orbit::text("↑ ↓ Navegar", 10.5, 400, orbit::INK_MUTED))
-                            .child(orbit::text("↵ Ejecutar", 10.5, 400, orbit::INK_MUTED))
+                            .child(orbit::text("↑↓ navegar", 10.5, 400, orbit::INK_MUTED))
+                            .child(orbit::text("↵ ejecutar", 10.5, 400, orbit::INK_MUTED))
                             .child(orbit::text(
                                 "Los destinos bloqueados muestran el motivo",
                                 10.5,

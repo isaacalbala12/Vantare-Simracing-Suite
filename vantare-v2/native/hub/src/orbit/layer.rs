@@ -62,6 +62,20 @@ impl Layer {
         self.focus.focus(window, cx);
         cx.notify();
     }
+    /// Mantiene el popover unido a su control tras un cambio de layout.
+    pub fn set_popover_position(
+        &mut self,
+        position: gpui::Point<gpui::Pixels>,
+        cx: &mut Context<Self>,
+    ) {
+        if let LayerKind::Popover(current) = &mut self.kind
+            && *current != position
+        {
+            *current = position;
+            cx.notify();
+        }
+    }
+
     pub fn set_targets(&mut self, targets: Vec<FocusHandle>) {
         self.targets = targets;
     }

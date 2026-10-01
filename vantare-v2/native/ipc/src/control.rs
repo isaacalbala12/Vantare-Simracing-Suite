@@ -104,13 +104,13 @@ pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> 
     writer.flush()
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub fn request(link: &CoreLink, command: Command) -> io::Result<Policy> {
     use crate::transport::Event;
     let stop = std::sync::Arc::new(Event::new()?);
     request_cancelled(link, command, &stop)
 }
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub fn request_cancelled(
     link: &CoreLink,
     command: Command,
@@ -142,7 +142,7 @@ pub fn request_cancelled(
 }
 
 /// Espera acotada solo al abrir un pipe ocupado/en arranque. Nunca reenvía RPC.
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub fn connect_ready(
     name: &str,
     stop: &std::sync::Arc<crate::transport::Event>,
@@ -155,9 +155,7 @@ pub fn connect_ready(
         }
         match crate::transport::connect(name, std::sync::Arc::clone(stop), timeout) {
             Ok(pipe) => return Ok(pipe),
-            Err(error)
-                if matches!(error.raw_os_error(), Some(2 | 231)) && started.elapsed() < timeout =>
-            {
+            Err(error) if retryable_connect(&error) && started.elapsed() < timeout => {
                 stop.wait(std::time::Duration::from_millis(10));
             }
             Err(error) => return Err(error),
@@ -166,13 +164,25 @@ pub fn connect_ready(
 }
 
 #[cfg(windows)]
+fn retryable_connect(error: &io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(2 | 231))
+}
+#[cfg(unix)]
+fn retryable_connect(error: &io::Error) -> bool {
+    matches!(
+        error.kind(),
+        io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused | io::ErrorKind::WouldBlock
+    )
+}
+
+#[cfg(any(windows, unix))]
 pub struct Feed {
     latest: std::sync::Arc<std::sync::Mutex<Option<Policy>>>,
     stop: std::sync::Arc<crate::transport::Event>,
     initial: std::sync::Arc<crate::transport::Event>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 impl Feed {
     pub fn connect(photo: &str, core_image: std::path::PathBuf) -> io::Result<Self> {
         use crate::transport::Event;
@@ -234,7 +244,7 @@ impl Feed {
         self.initial.wait(timeout)
     }
 }
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 impl Drop for Feed {
     fn drop(&mut self) {
         self.stop.set();

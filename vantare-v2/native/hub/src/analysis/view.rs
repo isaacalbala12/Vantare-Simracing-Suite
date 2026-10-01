@@ -851,6 +851,7 @@ fn telemetry_stat(
         .min_w_0()
         .px(px(18.0))
         .py(px(14.0))
+        .pb(px(15.0))
         .border_1()
         .border_color(rgba(orbit::LINE))
         .rounded(px(orbit::RADIUS))
@@ -1871,7 +1872,7 @@ impl Analysis {
             .mr(px(-2.0))
             .flex()
             .gap(px(21.0))
-            .mt(px(17.0))
+            .mt(px(16.0))
             .child(
                 div()
                     .w(px(400.0))

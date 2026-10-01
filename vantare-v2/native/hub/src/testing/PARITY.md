@@ -150,3 +150,157 @@ de preview se verifica con tests de lógica; no se inyectaron previews en la UI.
 - Autosave, bloqueo de cierre y actividad visible del envío deben coordinarse
   con el propietario de servicios; se conserva el guardado explícito nativo.
 - Cuenta/canal/configuración real y envío autorizado siguen sin prueba física.
+
+## Segunda pasada estricta — 2026-10-01
+
+Esta entrada sustituye los pendientes visuales de la primera pasada donde
+corresponda; conserva su evidencia histórica. Issue GitHub #1430, rama
+`vantareapp/isa-1430-w-testing-2`, base asignada
+`0e26ac26c365138a1b67ae1f4ee63f1236000fc3`. Se consultó la issue abierta y
+se obtuvo `origin/nightly` (`f29b5fee04022756f9ae59f19bf153f91eebe4ed`),
+sin cambiar la base de integración recibida. Notion no está disponible y el
+encargo autoriza GitHub como excepción; su reconciliación queda pendiente.
+
+Propiedad de este hito: **solo `native/hub/src/testing/`**. Cambios en
+`view.rs`, `editor.rs`, `model.rs`, `tests.rs` y esta nota. Sin cambios al
+marco, Orbit, servicios, referencias Wails, fixtures, otras secciones ni
+dependencias. Sin push, PR, merge, promoción, release ni subagentes.
+
+### Estructura y presentación
+
+Se leyeron las cuatro referencias, capturas iniciales propias y mapas con
+`view_image`, antes de editar. El banco reproduce los porcentajes recibidos.
+Las tarjetas y campos estaban unos 60 px por debajo de Wails porque el marco
+pinta una cabecera genérica y Testing añade otra fila con el lead y estado.
+La nota `C:/tmp/fase2/notas-testing-2.md` ordena que el worker del marco retire
+esa cabecera y que Testing pinte la suya.
+
+La sección aporta ahora cabecera completa: canal, título, descripción y estado
+de borrador con borde y redondeado completo; después pestañas (16 px) y panel
+(18 px). El título usa Inter W700, la cara embebida más próxima al peso Wails:
+W690 no está registrada y provocaba una sustitución tipográfica visible.
+Conserva los 36 px pedidos por el orquestador y el tracking Wails de -0.035em
+(-1.26 px); el token CSS vigente mide 34 px. La diferencia con la referencia
+congelada se debe revisar con el orquestador tras integrar el marco.
+Reutiliza el texto modelado común de `vantare-ui`, como Inicio, para conservar
+kerning y espaciado negativo sin sintetizar otra negrita sobre la cara estática.
+El canal Nightly se limita a la escena de captura; en una build normal se usa
+`VANTARE_BUILD_CHANNEL`, o se declara `CANAL NO DISPONIBLE`. Un test impide
+atribuir Nightly a una build sin canal configurado.
+
+Formulario y consentimiento conservan sus columnas y controles productivos,
+validación, comandos y consentimiento. Las etiquetas llevan el tracking de
+Wails y las superficies su composición RGBA. La nota de Mis reportes usa un
+único `StyledText` para que el texto continúe tras Sin historial y las líneas
+siguientes vuelvan al borde izquierdo. No se inventa un historial.
+Los textareas incorporan el pequeño trazo visual inferior derecho. No habilita
+resize: `orbit::Input` fija su altura; ampliar su API corresponde al kit,
+fuera de las rutas de este worker. El editor e IME siguen siendo los existentes.
+
+Informe y detalle **son la misma escena en las referencias congeladas**:
+ambas tienen el mismo SHA-256, registrado fuera del repo en
+`C:/tmp/testing-2-evidence/banco/content-metrics.json`.
+El manifiesto solo hace scroll de `.orbit-workspace` para detalle; no abre
+un reporte diferente. La cifra idéntica no es un fallo del selector de tabs.
+
+### Banco y dependencia de integración
+
+Toda la evidencia está en `C:/tmp/testing-2-evidence/`, fuera del repo:
+`primera-*.png`, `banco/`, `despues/`, inspección visual, mapas, hashes,
+logs y tabla. El banco es `native/hub/reference/compare.ps1`; umbral 8.
+La métrica de contenido compara sin desplazamiento ni enmascarado los píxeles
+con **x > 376, y > 70** (recorte 377,71–1440,900), en RGBA premultiplicado.
+
+La base de este worktree aún pinta la cabecera genérica antes de Testing.
+La nueva captura muestra las dos: no se oculta mediante márgenes negativos ni
+se modifica una imagen para simular integración. **El gate visual ≤5 % está
+pendiente de integrar el marco**, cuyo worker debe quitar esa cabecera para
+Testing y conservar el padding de 32 px sin añadir otra separación.
+También le corresponden las migas `CALIDAD / Testing Center` y el título /
+versión demo `Testing Center / v0.3.10` de la columna contextual. Esta escena
+usa los bloques comunes de carreras, perfil y Launcher, no otra columna propia.
+El porcentaje tras integrar el marco requiere nueva medición y ajuste de
+detalle si procede; no se anticipa su aceptación.
+
+### Verificación de este hito
+
+Gates locales del hito (todos con salida completa fuera del repo):
+`cargo fmt --check`, `cargo clippy --workspace --all-targets -j 2 -- -D warnings`,
+`cargo nextest run --workspace -j 2` y
+`cargo test --workspace --test lifecycle -j 2`.
+Nextest ejecuta 897 tests y omite 4 según la configuración del workspace;
+el filtro de Hub ejecuta 173 tests. Se usa además
+`cargo check --workspace --all-targets -j 2` durante la iteración.
+El registro de resultados y códigos de salida es
+`C:/tmp/testing-2-evidence/gates.json`.
+
+La tabla antes/después está en `C:/tmp/testing-2-evidence/tabla.md` y
+`tabla.csv`: ninguna de las cuatro pantallas cumple todavía el 5 % de
+contenido. Mis reportes empeora en la comparación absoluta al coexistir
+ambas cabeceras; no se declara el hito como paridad aceptada.
+
+No se ejecutan Go/frontend (sin cambios), CI remoto, envío real de reportes,
+runtime de juegos, OBS, DPI mixto ni validación de otra GPU. Para aceptar la
+paridad, integrar primero el marco, repetir el banco de las cuatro pantallas
+y mirar referencia, captura y mapa además del porcentaje. Para verificar el
+flujo funcional, se conserva la lista manual de la primera pasada.
+
+## Continuación tras integrar el marco — 2026-10-01
+
+La entrada anterior describe el hito previo al merge y conserva sus resultados
+históricos. El merge local `880d37f22deb440b5614791588b7692291f51036`
+integra `f3b853be` por petición expresa: desaparece la cabecera genérica y
+el marco recibe la ranura de acciones descrita en `shell/README.md`.
+La nota posterior pide integrar también `bef4a971`; se conservan ambos lados
+de esa integración de Strategy y el marco, sin editar sus rutas.
+Testing conserva su estado de borrador junto a su propia cabecera; esta
+referencia no tiene acciones adicionales en la barra superior.
+
+Se revisaron de nuevo las cuatro referencias, capturas y mapas, además de
+ampliaciones del formulario y consentimiento. NIGHTLY está cerca de y107,
+el título de y150, la descripción de y192 y la píldora de y188. Pestañas
+en y238, separador en y258 y tarjetas desde y277. Validar conserva el error
+de carga; Mis reportes conserva Sin historial; Informe y Detalle conservan
+el mismo formulario y datos de sus referencias congeladas.
+
+Las etiquetas del formulario y consentimiento reutilizan el texto modelado
+común, con tracking CSS 0.1em y 0.09em respectivamente. Los textos W650 del
+consentimiento usan peso normal del motor sobre su cara estática, evitando
+otra negrita sintética. La línea de las etiquetas de textareas ocupa 17 px,
+como en la referencia, conservando el baseline, campos de 78 px y gaps de
+8/16 px. Son ajustes de presentación: no cambian comandos, validación,
+habilitación ni consentimiento. La evidencia visual congelada verifica los
+glifos y la geometría; los tests existentes protegen el flujo funcional.
+
+Las migas ya son `CALIDAD / Testing Center`. La columna común sigue mostrando
+`Centro operativo / v0.3.9`, frente a `Testing Center / v0.3.10` en Wails:
+queda pendiente para el propietario del marco, fuera de `testing/` y del
+área de contenido solicitada. El título mantiene los 36 px pedidos frente
+al token CSS de 34 px. El asa visual sigue sin habilitar resize del Input;
+esa capacidad corresponde al kit común. No hay dependencias nuevas.
+
+### Resultado y gates del cierre
+
+El banco canónico de las cuatro pantallas, tras ambas integraciones, cumple
+**≤5 % en cada área de contenido x > 376, y > 70**, sin desplazar las imágenes
+ni alterar referencias o datos de escena. Informe y Detalle siguen mostrando
+el mismo formulario. La aceptación se refiere a ese contenido; no declara
+paridad de la columna contextual ni prueba de envío real.
+
+Tabla antes/después, capturas, mapas, inspección, hashes y logs completos:
+`C:/tmp/testing-2-evidence/tabla-final.md`, `tabla-final.csv`, `cierre/`,
+`inspeccion-integrada.md`, `hashes-cierre.json` y `gates-cierre/`.
+Las carpetas `integrado/`, `final/` y `aceptacion/` conservan iteraciones
+intermedias; el resultado vigente es `cierre/`. Se releen las notas antes de
+medir y antes del commit, respetando la espera de pantalla y el mutex global
+mediante el helper de captura existente.
+
+Gates con exit 0: `cargo fmt --check`,
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings`,
+`cargo nextest run --workspace -j 2` (913 aprobados, 4 omitidos; 182 del Hub) y
+`cargo test --workspace --test lifecycle -j 2`. Durante la iteración pasan
+`cargo check --workspace --all-targets -j 2` y los 179 tests del Hub antes de
+la última integración; el gate completo comprueba los 182 posteriores.
+Go/frontend, CI remoto, envío real, juegos, OBS, DPI mixto y otra GPU siguen
+sin ejecución específica en este hito. Solo merges y commits locales
+autorizados; sin push, PR, promoción de canal ni release.

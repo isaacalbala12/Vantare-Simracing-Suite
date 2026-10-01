@@ -10,6 +10,7 @@ use crate::{
     },
 };
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
+use vantare_ui::efficiency::text as typography;
 
 pub struct Editor {
     inputs: [Entity<Input>; 5],
@@ -26,7 +27,30 @@ pub struct Editor {
 }
 impl Editor {
     fn field_label(label: &str) -> gpui::Div {
-        orbit::text(label.to_uppercase(), 11.0, 800, orbit::INK_4).line_height(px(16.5))
+        Self::tracked_label(label, orbit::INK_4, 0.1)
+    }
+
+    fn tracked_label(label: &str, color: u32, tracking: f32) -> gpui::Div {
+        let label = label.to_uppercase();
+        // La cara estática W800 ya contiene el peso; modelar conserva el kerning.
+        div().h(px(16.5)).child(
+            gpui::canvas(
+                |_, _, _| (),
+                move |bounds, (), window, cx| {
+                    let ink = typography::ink(11.0, 800.0, tracking, rgb(color).into());
+                    typography::draw(
+                        window,
+                        cx,
+                        &label,
+                        bounds.origin.x.into(),
+                        typography::baseline(bounds.origin.y.into(), 16.5, 11.0),
+                        &ink,
+                    );
+                },
+            )
+            .w_full()
+            .h_full(),
+        )
     }
 
     pub(super) fn clear_approval(&mut self) {
@@ -154,15 +178,36 @@ impl Editor {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(Self::field_label(label))
+            // La línea de 16,5 px ocupa 17 px en los campos de Wails.
+            .child(Self::field_label(label).h(px(17.0)))
             .child(
                 div()
                     .h(px(78.0))
+                    .relative()
                     .min_h(px(0.0))
                     .flex()
                     .flex_col()
                     .overflow_hidden()
-                    .child(self.inputs[index].clone()),
+                    .child(self.inputs[index].clone())
+                    // El kit fija la altura del Input. El trazo conserva el detalle
+                    // visual de Wails; redimensionar requiere soporte del kit común.
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .size(px(13.0))
+                            .children((0_u8..3).flat_map(|line| {
+                                (0..=line).map(move |offset| {
+                                    div()
+                                        .absolute()
+                                        .right(px(2.0 + f32::from(offset) * 3.0))
+                                        .bottom(px(2.0 + f32::from(line - offset) * 3.0))
+                                        .size(px(1.0))
+                                        .bg(rgb(orbit::INK_3))
+                                })
+                            })),
+                    ),
             )
             .when(self.show_errors, |view| {
                 view.when_some(field_errors(&self.fields(cx))[index], |view, error| {
@@ -406,7 +451,11 @@ impl Editor {
                     .flex_1()
                     .flex()
                     .flex_col()
-                    .child(orbit::text(label, orbit::BODY, 650, label_color).line_height(px(20.25)))
+                    .child(
+                        orbit::text(label, orbit::BODY, 650, label_color)
+                            .font_weight(gpui::FontWeight::NORMAL)
+                            .line_height(px(20.25)),
+                    )
                     .child(
                         orbit::text(help, 11.0, 400, orbit::INK_MUTED)
                             .mt(px(2.5))
@@ -497,13 +546,10 @@ impl Editor {
             .px(px(21.0))
             .py(px(21.0))
             .pb(px(22.0))
-            .child(
-                orbit::text("CONSENTIMIENTO", 11.0, 800, orbit::INK_3)
-                    .mt(px(6.0))
-                    .line_height(px(16.5)),
-            )
+            .child(Self::tracked_label("Consentimiento", orbit::INK_3, 0.09).mt(px(6.0)))
             .child(
                 orbit::text("Datos adjuntos", 15.0, 650, orbit::INK)
+                    .font_weight(gpui::FontWeight::NORMAL)
                     .mt(px(7.0))
                     .line_height(px(22.5)),
             )
@@ -579,8 +625,20 @@ impl Editor {
                     .flex()
                     .items_start()
                     .gap(px(21.0))
-                    .child(orbit::card("").flex_1().min_w_0().child(form))
-                    .child(orbit::card("").w(px(280.0)).flex_none().child(consent)),
+                    .child(
+                        orbit::card("")
+                            .bg(orbit::tint(0x0010_1114, 0.79))
+                            .flex_1()
+                            .min_w_0()
+                            .child(form),
+                    )
+                    .child(
+                        orbit::card("")
+                            .bg(orbit::tint(0x0010_1114, 0.79))
+                            .w(px(280.0))
+                            .flex_none()
+                            .child(consent),
+                    ),
             );
         if let Some(preview) = &self.preview {
             page = page.child(

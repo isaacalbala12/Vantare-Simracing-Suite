@@ -1,5 +1,19 @@
 use crate::services::protocol::report_document::{Fields, Preview};
 
+/// La escena de paridad declara Nightly; fuera de ella manda la build.
+pub(super) fn channel_label(channel: Option<&str>, capture: bool) -> String {
+    if capture {
+        "NIGHTLY".into()
+    } else {
+        channel
+            .filter(|value| !value.trim().is_empty())
+            .map_or_else(
+                || "CANAL NO DISPONIBLE".into(),
+                |value| value.trim().to_uppercase(),
+            )
+    }
+}
+
 // Lista cerrada del servicio nativo y nombres del producto Wails.
 pub(super) const MODULES: [(&str, &str); 15] = [
     ("unknown", "Sin determinar"),

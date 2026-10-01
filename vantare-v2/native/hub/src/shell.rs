@@ -256,6 +256,37 @@ impl Hub {
             .into_any_element()
     }
 
+    fn render_fullscreen(&self, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        if self
+            .capture
+            .as_ref()
+            .is_some_and(|capture| capture.name == "workshop-detalle")
+        {
+            self.workshop.read(cx).scroll_to_detail();
+        }
+        div()
+            .id("hub")
+            .track_focus(&self.focus)
+            .tab_group()
+            .tab_stop(false)
+            .capture_key_down(cx.listener(Self::shell_key))
+            .size_full()
+            .relative()
+            .child(self.section_view(cx))
+            .when_some(self.status.clone(), |root, status| {
+                root.child(
+                    orbit::callout(status)
+                        .absolute()
+                        .top(gpui::px(52.0))
+                        .left(gpui::px(280.0)),
+                )
+            })
+            .when(self.shell.palette_open, |root| {
+                root.child(self.palette(window, cx))
+            })
+            .into_any_element()
+    }
+
     /// Columna contextual de la sección activa; Strategy la oculta si su vista no la usa.
     fn section_column(
         &mut self,
@@ -293,6 +324,9 @@ impl Render for Hub {
                 .into_any_element();
         }
         self.refresh_query(cx);
+        if presentation(self.section) == Presentation::Fullscreen {
+            return self.render_fullscreen(window, cx);
+        }
         let rail = self.rail(cx);
         // La sección aporta aquí sus controles con `.into_any_element()`;
         // None conserva la barra común hasta conectar su API (ver shell/README.md).
@@ -373,6 +407,19 @@ impl Render for Hub {
                 root.child(div().absolute().inset_0().size_full().child(layer))
             })
             .into_any_element()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Presentation {
+    Framed,
+    Fullscreen,
+}
+
+fn presentation(section: Section) -> Presentation {
+    match section {
+        Section::Workshop => Presentation::Fullscreen,
+        _ => Presentation::Framed,
     }
 }
 
@@ -772,5 +819,20 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     match result.borrow_mut().take() {
         Some(error) => Err(error),
         None => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod presentation_tests {
+    use super::*;
+
+    #[test]
+    fn only_workshop_occupies_the_whole_window() {
+        for section in Section::ALL {
+            assert_eq!(
+                presentation(*section) == Presentation::Fullscreen,
+                *section == Section::Workshop
+            );
+        }
     }
 }

@@ -5,6 +5,7 @@ pub(crate) mod input;
 mod migration;
 pub mod policy;
 pub mod processes;
+mod shortcuts;
 pub mod view;
 #[cfg(windows)]
 #[allow(unsafe_code)]

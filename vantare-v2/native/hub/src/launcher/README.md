@@ -325,3 +325,14 @@ El selector de pasos usa Choice::List dentro del drawer para evitar el popup
 Dropdown que quedaba detrás del modal; no se certifica paridad de ese selector.
 Las exclusiones de las notas históricas siguientes quedan sustituidas por estos
 hitos. Atajos y arranque siguen pendientes de registro en el propietario residente.
+
+## Hito 6 — detección
+Steam: un índice acotado por biblioteca también encuentra ejecutables de apps del
+catálogo que no son juegos; se mantienen validación de manifests y ruta manual.
+Accesos directos: Desktop del usuario/público (sin descender), Start Menu de usuario
+y sistema (dos niveles), filtros Wails por nombre y destino conocido; se excluye
+LMU/Steam URI. Hasta 20.000 entradas y 128 enlaces; resolver en grupos de 16, helper
+oculto de PowerShell/WScript.Shell del propio Windows, salida hasta 128 KiB y
+20 segundos por grupo. No se instala una dependencia ni se ejecuta/guarda el `.lnk`.
+Los tests crean un acceso directo real y comprueban bytes intactos y no ejecución;
+los árboles Steam son fixtures de rutas, no prueba de una instalación de Steam real.

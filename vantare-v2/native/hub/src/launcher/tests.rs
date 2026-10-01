@@ -10,6 +10,106 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn steam_common_detects_non_game_catalog_apps_and_shortcuts_never_override_manual_paths() {
+    let tree = Tree::new();
+    let steam = tree.0.join("Steam");
+    let obs = tree.file("Steam/steamapps/common/OBS/bin/64bit/obs64.exe", b"fixture");
+    let shortcut_target = tree.file("elsewhere/Spotify.exe", b"fixture");
+    let document = Document::default();
+    let found = Discovery::scan(
+        &document.apps,
+        Sources {
+            steam_roots: vec![steam],
+            shortcuts: vec![shortcut_target.clone()],
+            ..Default::default()
+        },
+    );
+    assert_eq!(
+        found.app("obs").expect("OBS").executable.as_ref(),
+        Some(&obs)
+    );
+    assert_eq!(found.app("obs").expect("OBS").source, "Steam");
+    assert_eq!(
+        found.app("spotify").expect("Spotify").executable.as_ref(),
+        Some(&shortcut_target)
+    );
+    assert_eq!(
+        found.app("spotify").expect("Spotify").source,
+        "acceso directo"
+    );
+    let mut overridden = document;
+    overridden
+        .apps
+        .iter_mut()
+        .find(|app| app.id == "spotify")
+        .expect("app")
+        .executable = Some(tree.0.join("missing/Spotify.exe"));
+    let found = Discovery::scan(
+        &overridden.apps,
+        Sources {
+            shortcuts: vec![shortcut_target],
+            ..Default::default()
+        },
+    );
+    assert!(
+        found
+            .app("spotify")
+            .expect("manual wins")
+            .executable
+            .is_none()
+    );
+    assert!(
+        !found
+            .app("spotify")
+            .expect("manual wins")
+            .availability
+            .launchable
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn actual_lnk_is_read_without_modification_or_execution() {
+    use std::os::windows::process::CommandExt;
+    let tree = Tree::new();
+    let system = PathBuf::from(std::env::var_os("SystemRoot").expect("Windows"));
+    let target = tree.0.join("obs64.exe");
+    fs::copy(system.join("System32/cmd.exe"), &target).expect("real PE fixture");
+    let link = tree.0.join("OBS Studio.lnk");
+    let marker = tree.0.join("must-not-run.txt");
+    let script = "$shell=New-Object -ComObject WScript.Shell; $link=$shell.CreateShortcut($env:VANTARE_TEST_LINK); $link.TargetPath=$env:VANTARE_TEST_TARGET; $link.Arguments=('/d /c echo ran > '+[char]34+$env:VANTARE_TEST_MARKER+[char]34); $link.Save()";
+    let output =
+        std::process::Command::new(system.join("System32/WindowsPowerShell/v1.0/powershell.exe"))
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+            .env("VANTARE_TEST_LINK", &link)
+            .env("VANTARE_TEST_TARGET", &target)
+            .env("VANTARE_TEST_MARKER", &marker)
+            .creation_flags(0x0800_0000)
+            .output()
+            .expect("create private fixture");
+    assert!(output.status.success());
+    let original = fs::read(&link).expect("actual lnk");
+    let paths = shortcuts::resolve(std::slice::from_ref(&link)).expect("read via OS COM");
+    assert_eq!(paths.as_slice(), std::slice::from_ref(&target));
+    assert_eq!(fs::read(&link).expect("unchanged"), original);
+    assert!(!marker.exists());
+    assert!(
+        discovery::running_all(&target)
+            .expect("not executed")
+            .is_empty()
+    );
+    let found = Discovery::scan(
+        &Document::default().apps,
+        Sources {
+            shortcuts: paths,
+            ..Default::default()
+        },
+    );
+    assert_eq!(found.app("obs").expect("app").source, "acceso directo");
+    assert!(shortcuts::resolve(&[PathBuf::from(r"\\server\share\OBS.lnk")]).is_err());
+}
+
+#[test]
 fn fresh_install_seeds_templates_once_and_respects_explicit_empty_profiles() {
     let tree = Tree::new();
     let path = tree.0.join("launcher.json");
@@ -310,6 +410,7 @@ fn discovery_reads_real_known_registry_and_steam_trees_and_keeps_evidence_distin
             ("MoTeC i2".into(), tree.0.join("missing")),
         ],
         steam_roots: vec![tree.0.join("steam")],
+        shortcuts: vec![],
         warnings: vec![],
     };
     let discovered = Discovery::scan(&Document::default().apps, sources);
@@ -452,6 +553,19 @@ fn process_fixture(tree: &Tree, exit_code: i32) -> (Document, Profile, Discovery
     });
     let discovered = Discovery::scan(&document.apps, Sources::default());
     (document, profile, discovered)
+}
+
+#[cfg(windows)]
+struct ProcessCleanup(processes::Shared);
+#[cfg(windows)]
+impl Drop for ProcessCleanup {
+    fn drop(&mut self) {
+        if let Ok(mut registry) = self.0.lock()
+            && let Err(error) = registry.close_profile("test")
+        {
+            eprintln!("limpiar proceso propio del test: {error}");
+        }
+    }
 }
 
 fn collect(chain: &Chain) -> Vec<chain::Progress> {
@@ -817,7 +931,11 @@ fn cancellation_interrupts_delay_and_probe_without_starting_the_next_step() {
             profile.first_step_delay = 3600;
         }
         profile.steps.push(profile.steps[0].clone());
-        let mut chain = Chain::start(document, profile, found).expect("cadena");
+        let cleanup = ProcessCleanup(std::sync::Arc::new(std::sync::Mutex::new(
+            processes::Processes::default(),
+        )));
+        let mut chain = Chain::start_with_processes(document, profile, found, cleanup.0.clone())
+            .expect("cadena");
         let pending = chain
             .progress
             .recv_timeout(Duration::from_secs(5))
@@ -838,19 +956,15 @@ fn cancellation_interrupts_delay_and_probe_without_starting_the_next_step() {
         let events = collect(&chain);
         chain.shutdown().expect("join cancelado");
         let elapsed = start.elapsed();
-        // Limpiar el PID que acaba de lanzar este test antes de cualquier assert posterior.
         if let Some(event) = launched {
-            let pid = event.pid.expect("pid real");
-            let status = std::process::Command::new("taskkill.exe")
-                .args(["/PID", &pid.to_string(), "/F"])
-                .output()
-                .expect("limpiar proceso creado por test");
-            assert!(
-                status.status.success(),
-                "{}",
-                String::from_utf8_lossy(&status.stderr)
-            );
+            assert!(event.pid.is_some());
         }
+        cleanup
+            .0
+            .lock()
+            .expect("registry")
+            .close_profile("test")
+            .expect("cleanup by original child handle");
         assert!(elapsed < Duration::from_secs(1));
         assert!(!events.iter().any(|event| event.step == Some(1)));
         assert_eq!(events.last().expect("fin").status, Status::Cancelled);

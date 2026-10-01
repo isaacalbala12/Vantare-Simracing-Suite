@@ -6,7 +6,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 mod tests;
 
 #[derive(Deserialize)]

@@ -110,7 +110,7 @@ impl Roadmap {
     }
 }
 
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 mod tests {
     use super::*;
     use crate::test_http::Server;

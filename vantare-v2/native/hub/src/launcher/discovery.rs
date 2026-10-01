@@ -39,6 +39,7 @@ pub struct Discovery {
     pub warnings: Vec<String>,
 }
 
+#[cfg(windows)]
 fn expand(template: &str) -> Option<PathBuf> {
     let end = template.strip_prefix('%')?.find('%')? + 1;
     let value = std::env::var_os(&template[1..end])?;
@@ -47,22 +48,28 @@ fn expand(template: &str) -> Option<PathBuf> {
 
 impl Sources {
     pub fn system() -> Self {
-        let mut result = Self::default();
-        for app in CATALOG {
-            for template in app.paths {
-                if let Some(path) = expand(template) {
-                    result.known_paths.push((app.id.into(), path));
+        #[cfg(windows)]
+        {
+            let mut result = Self::default();
+            for app in CATALOG {
+                for template in app.paths {
+                    if let Some(path) = expand(template) {
+                        result.known_paths.push((app.id.into(), path));
+                    }
                 }
             }
-        }
-        for template in [r"%PROGRAMFILES(X86)%\Steam", r"%PROGRAMFILES%\Steam"] {
-            if let Some(path) = expand(template) {
-                result.steam_roots.push(path);
+            for template in [r"%PROGRAMFILES(X86)%\Steam", r"%PROGRAMFILES%\Steam"] {
+                if let Some(path) = expand(template) {
+                    result.steam_roots.push(path);
+                }
             }
+            super::windows::registry_sources(&mut result);
+            result
         }
-        #[cfg(windows)]
-        super::windows::registry_sources(&mut result);
-        result
+        #[cfg(not(windows))]
+        {
+            Self::default()
+        }
     }
 }
 

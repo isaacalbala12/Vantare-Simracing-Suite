@@ -1,10 +1,12 @@
 use super::*;
+#[cfg(windows)]
 use chain::{Chain, Status};
 use discovery::{Discovery, Sources};
+#[cfg(windows)]
+use std::time::{Duration, Instant};
 use std::{
     fs,
     sync::atomic::{AtomicU64, Ordering},
-    time::{Duration, Instant},
 };
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -233,6 +235,7 @@ fn process_fixture(tree: &Tree, exit_code: i32) -> (Document, Profile, Discovery
     (document, profile, discovered)
 }
 
+#[cfg(windows)]
 fn collect(chain: &Chain) -> Vec<chain::Progress> {
     let mut events = vec![];
     loop {
@@ -246,6 +249,16 @@ fn collect(chain: &Chain) -> Vec<chain::Progress> {
             return events;
         }
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn system_discovery_is_empty_on_unix() {
+    let sources = Sources::system();
+    assert!(sources.known_paths.is_empty());
+    assert!(sources.registry.is_empty());
+    assert!(sources.steam_roots.is_empty());
+    assert!(sources.warnings.is_empty());
 }
 
 #[cfg(windows)]

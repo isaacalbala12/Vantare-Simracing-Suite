@@ -11,6 +11,7 @@ mod controls;
 mod input;
 mod layer;
 mod specimen;
+pub mod theme;
 mod state;
 pub use controls::*;
 pub use input::Input;

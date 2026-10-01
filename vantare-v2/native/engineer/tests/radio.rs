@@ -11,7 +11,7 @@ use vantare_engineer::{
     Applied,
     radio::{Families, Intent, Locale, MAX_PENDING, Message, Queue},
     spotter::{Side, classify_position},
-    voice::{Voice, clip_paths, pcm_duration, resolve_clip},
+    voice::{Voice, pcm_duration, resolve_clip},
     worker::RadioWorker,
 };
 use vantare_runtime::flows::{Cursor, GapReason, PitEvent};
@@ -725,7 +725,9 @@ fn valid_local_clip_marks_audio_unavailable_without_losing_radio_text() {
     use vantare_engineer::control::Settings;
 
     let files = Assets::new();
-    let path = clip_paths(&files.0, Locale::Es, Intent::FuelOne).unwrap()[0].clone();
+    let path = vantare_engineer::voice::clip_paths(&files.0, Locale::Es, Intent::FuelOne).unwrap()
+        [0]
+    .clone();
     fs::write(path, wav(1)).unwrap();
     let mut snapshot = photo();
     snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);

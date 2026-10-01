@@ -249,7 +249,11 @@ impl Hub {
             );
         }
         div()
-            .w(px(orbit::RAIL_W))
+            .w(px(if self.section == Section::Strategy {
+                72.0
+            } else {
+                orbit::RAIL_W
+            }))
             .h_full()
             .flex_none()
             .flex()
@@ -349,7 +353,7 @@ impl Hub {
         let content = self
             .strategy
             .update(cx, |strategy, cx| strategy.context_sidebar(cx));
-        self.context_column_with_content("Estrategia", "", 246.0, Some(content), cx)
+        self.context_column_with_content("Estrategia", "", 255.0, Some(content), cx)
     }
 
     fn context_column_with_content(
@@ -599,20 +603,17 @@ impl Hub {
     }
 
     pub(super) fn topbar(&mut self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
-        let bell = self.notification_bell(cx);
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
-        let pending = self
-            .demo
-            .as_ref()
-            .map(|demo| demo.versions.pending.as_str());
+        let pending = self.demo.as_ref().map(|demo| demo.versions.pending.clone());
         let (trail, title) = if self.section == Section::Strategy {
             ("PLANIFICADOR", "Estrategia")
         } else {
             ("Centro operativo", self.section.label())
         };
-        orbit::topbar(
-            trail,
-            title,
+        let action = if self.section == Section::Strategy {
+            div().into_any_element()
+        } else {
+            let bell = self.notification_bell(cx);
             div()
                 .flex()
                 .items_center()
@@ -633,9 +634,14 @@ impl Hub {
                             .child(div().size(px(6.0)).rounded_full().bg(rgb(orbit::EMBER)))
                             .child(orbit::text(version, 11.0, 400, orbit::INK_3)),
                     )
-                }),
-        )
-        .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
+                })
+                .into_any_element()
+        };
+        orbit::topbar(trail, title, action)
+            .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
+            .when(self.section == Section::Strategy, |bar| {
+                bar.h(px(orbit::STRATEGY_TOPBAR_H))
+            })
     }
 
     fn palette_rows(

@@ -13,6 +13,7 @@ pub(super) enum Page {
     Create,
     Continue,
     Workspace,
+    Data,
 }
 impl Page {
     fn back(self) -> Self {
@@ -467,30 +468,46 @@ impl Strategy {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let content = match self.page {
-            Page::Collection => self.collection(cx),
-            Page::Origin | Page::Team | Page::Start => self.wizard(cx),
-            Page::Create => self.event_form(window, cx),
-            Page::Continue => Self::continuation(cx),
-            Page::Workspace => self.workspace(cx),
+            Page::Collection => self.collection(cx).into_any_element(),
+            Page::Origin | Page::Team | Page::Start => self.wizard(cx).into_any_element(),
+            Page::Create => self.event_form(window, cx).into_any_element(),
+            Page::Continue => Self::continuation(cx).into_any_element(),
+            Page::Workspace => self.workspace(cx).into_any_element(),
+            Page::Data => self.data_page(cx),
         };
+        let tabs = matches!(self.page, Page::Workspace | Page::Data).then(|| self.section_tabs(cx));
         column()
             .id("strategy")
             .when(self.page != Page::Collection, |page| {
-                page.child(button("strategy-collection", "← Mis estrategias").on_click(
-                    cx.listener(|this, _, _, cx| {
-                        if this.page == Page::Create {
-                            this.cancel_form(cx);
+                page.child(
+                    button(
+                        "strategy-collection",
+                        if self.page == Page::Data {
+                            "← Volver al asistente"
+                        } else {
+                            "← Mis estrategias"
+                        },
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if this.page == Page::Data {
+                            this.page = Page::Start;
+                            cx.notify();
+                        } else {
+                            if this.page == Page::Create {
+                                this.cancel_form(cx);
+                            }
+                            this.navigate(Page::Collection, cx);
                         }
-                        this.navigate(Page::Collection, cx);
-                    }),
-                ))
+                    })),
+                )
             })
+            .when_some(tabs, gpui::ParentElement::child)
             .child(content)
             .when_some(self.error.clone(), |page, error| {
                 page.child(orbit::callout(error))
             })
             .when(
-                matches!(self.page, Page::Collection | Page::Workspace),
+                matches!(self.page, Page::Collection | Page::Workspace | Page::Data),
                 |page| {
                     page.child(orbit::text(
                         self.status.clone(),
@@ -511,6 +528,31 @@ impl Strategy {
                 },
             )
             .into_any_element()
+    }
+
+    fn section_tabs(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let selected = self.page == Page::Data;
+        row()
+            .child(
+                button("strategy-tab-race", "Carrera")
+                    .when(!selected, |tab| {
+                        tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.page = Page::Workspace;
+                        cx.notify();
+                    })),
+            )
+            .child(
+                button("strategy-tab-data", "Datos")
+                    .when(selected, |tab| {
+                        tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.page = Page::Data;
+                        cx.notify();
+                    })),
+            )
     }
 }
 

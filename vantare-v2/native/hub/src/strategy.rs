@@ -13,11 +13,14 @@ use crate::{
     orbit::{self, button},
 };
 use vantare_strategy::{
-    application::{self, SourceStatus},
+    application::{
+        self, AnalysisRevisionRef, CorrectionSource, PreparedFamilyCorrection, SourceStatus,
+    },
     document::{Document, new_event},
     solver::{self, Budget, Discretization, Formation, Input, PitCost, ResultV2, Rules, Scalar},
 };
 
+mod datos;
 #[path = "strategy/view.rs"]
 mod view;
 use view::Page;
@@ -137,6 +140,8 @@ pub struct Strategy {
     variant: usize,
     form_dirty: bool,
     scalar_dirty: bool,
+    data: datos::State,
+    correction_reason: Entity<orbit::Input>,
     pub status: String,
     pub error: Option<String>,
     result: Option<ResultV2>,
@@ -161,17 +166,51 @@ impl Strategy {
             crate::demo::CaptureStrategyPage::Team => Page::Team,
             crate::demo::CaptureStrategyPage::Start => Page::Start,
             crate::demo::CaptureStrategyPage::Create => Page::Create,
+            crate::demo::CaptureStrategyPage::DataEmpty
+            | crate::demo::CaptureStrategyPage::DataSources
+            | crate::demo::CaptureStrategyPage::DataLaps
+            | crate::demo::CaptureStrategyPage::DataAdvanced => Page::Data,
         };
         if page == crate::demo::CaptureStrategyPage::Create {
             strategy.start_form(cx);
         }
+        if matches!(
+            page,
+            crate::demo::CaptureStrategyPage::DataSources
+                | crate::demo::CaptureStrategyPage::DataLaps
+                | crate::demo::CaptureStrategyPage::DataAdvanced
+        ) && let Err(error) = strategy.load_capture_review(page)
+        {
+            strategy.error = Some(error);
+        }
         strategy
+    }
+
+    fn load_capture_review(
+        &mut self,
+        page: crate::demo::CaptureStrategyPage,
+    ) -> Result<(), String> {
+        let demo = crate::demo::strategy_review_demo()?;
+        let revisions = vec![demo.source.revision.clone()];
+        self.set_review_source(demo.label, demo.source, revisions, &[])?;
+        let (selected_lap, advanced, sources_open) = match page {
+            crate::demo::CaptureStrategyPage::DataSources => (None, false, true),
+            crate::demo::CaptureStrategyPage::DataAdvanced => (None, true, false),
+            _ => (None, false, false),
+        };
+        self.data
+            .set_capture_view(0, selected_lap, advanced, sources_open);
+        Ok(())
     }
 
     pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
         let mut editor = Editor::default();
         let path = directory.join("strategy-v2.json");
         let error = path.exists().then(|| editor.open(path).err()).flatten();
+        let correction_reason =
+            cx.new(|cx| orbit::Input::multiline(String::new(), "Motivo de corrección", cx));
+        cx.observe(&correction_reason, |_, _, cx| cx.notify())
+            .detach();
         let inputs = FIELDS
             .iter()
             .enumerate()
@@ -214,6 +253,8 @@ impl Strategy {
             variant: 0,
             form_dirty: false,
             scalar_dirty: false,
+            data: datos::State::default(),
+            correction_reason,
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
@@ -236,6 +277,19 @@ impl Strategy {
         self.generation = self.generation.wrapping_add(1);
         self.running = false;
         self.result = None;
+    }
+
+    pub(super) fn set_review_source(
+        &mut self,
+        label: String,
+        source: CorrectionSource,
+        selected_revisions: Vec<AnalysisRevisionRef>,
+        saved: &[PreparedFamilyCorrection],
+    ) -> Result<(), String> {
+        self.data.load(label, source, selected_revisions, saved)?;
+        self.invalidate();
+        self.error = None;
+        Ok(())
     }
     fn ensure_clean_form(&self) -> Result<(), String> {
         if self.form_dirty {

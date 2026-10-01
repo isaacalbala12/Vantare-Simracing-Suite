@@ -14,6 +14,7 @@ const relative = path.relative(repo, output);
 if (!relative.startsWith('..') && !path.isAbsolute(relative)) throw new Error('Evidencia dentro del repo');
 const states = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
 if (!Array.isArray(states) || states.some(s => !/^[a-z0-9-]+$/.test(s.name))) throw new Error('Nombres de captura inválidos');
+const capturableStates = states.filter(state => !state.reference);
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(path.resolve(modulesRoot), 'playwright'));
 const browser = await chromium.connectOverCDP(cdp);
@@ -26,6 +27,11 @@ try {
     page.setDefaultNavigationTimeout(60000);
     await fs.mkdir(output, { recursive: true });
     for (const state of states) {
+        if (state.reference) {
+            results.push({ name: state.name, status: 'reference-only', reference: state.reference });
+            await fs.writeFile(path.join(output, 'manifest.json'), JSON.stringify(results, null, 2));
+            continue;
+        }
         try {
             if (state.url) await page.goto(state.url, { waitUntil: 'domcontentloaded' });
             if (state.ready) await page.locator(state.ready).waitFor();
@@ -54,5 +60,5 @@ try {
 } finally {
     await browser.close(); // Desconecta CDP; el cierre del proceso pertenece al operador.
 }
-console.log(`${results.filter(r => r.status === 'captured').length}/${states.length} capturas; véase manifest.json`);
+console.log(`${results.filter(r => r.status === 'captured').length}/${capturableStates.length} capturas Wails; véase manifest.json`);
 if (results.some(r => r.status === 'blocked')) process.exitCode = 1;

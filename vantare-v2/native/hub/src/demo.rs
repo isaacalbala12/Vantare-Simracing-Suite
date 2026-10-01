@@ -2,9 +2,11 @@
 use crate::Section;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use vantare_strategy::application::CorrectionSource;
 
 const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
+const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -294,6 +296,20 @@ pub struct CaptureState {
     pub strategy_page: Option<CaptureStrategyPage>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct StrategyReviewDemo {
+    pub label: String,
+    pub source: CorrectionSource,
+}
+
+pub fn strategy_review_demo() -> Result<StrategyReviewDemo, String> {
+    let mut demo: StrategyReviewDemo = serde_json::from_str(STRATEGY_REVIEW)
+        .map_err(|error| format!("fixture demo Strategy: {error}"))?;
+    demo.source.revision.base_digest = demo.source.base.digest()?;
+    Ok(demo)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {
     Application,
@@ -313,6 +329,10 @@ pub enum CaptureStrategyPage {
     Team,
     Start,
     Create,
+    DataEmpty,
+    DataSources,
+    DataLaps,
+    DataAdvanced,
 }
 
 impl CaptureState {
@@ -324,7 +344,7 @@ impl CaptureState {
         let screens: Vec<Screen> =
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
         if !screens.iter().any(|screen| screen.name == name) {
-            return Err(format!("pantalla Wails desconocida: {name}"));
+            return Err(format!("pantalla de captura desconocida: {name}"));
         }
         let section = match name {
             "shell-notificaciones-abiertas" => Section::Home,
@@ -340,7 +360,11 @@ impl CaptureState {
             | "strategy-asistente-origen"
             | "strategy-asistente-equipo"
             | "strategy-asistente-inicio"
-            | "strategy-nuevo-evento" => Section::Strategy,
+            | "strategy-nuevo-evento"
+            | "strategy-datos-vacio"
+            | "strategy-datos-fuentes"
+            | "strategy-datos-vueltas"
+            | "strategy-datos-avanzado" => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-informe"
@@ -385,6 +409,10 @@ impl CaptureState {
             "strategy-asistente-equipo" => Some(CaptureStrategyPage::Team),
             "strategy-asistente-inicio" => Some(CaptureStrategyPage::Start),
             "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
+            "strategy-datos-vacio" => Some(CaptureStrategyPage::DataEmpty),
+            "strategy-datos-fuentes" => Some(CaptureStrategyPage::DataSources),
+            "strategy-datos-vueltas" => Some(CaptureStrategyPage::DataLaps),
+            "strategy-datos-avanzado" => Some(CaptureStrategyPage::DataAdvanced),
             _ => None,
         };
         Ok(Self {
@@ -436,10 +464,12 @@ mod tests {
     #[test]
     fn every_wails_reference_has_a_native_capture_target() {
         let screens: Vec<serde_json::Value> = serde_json::from_str(SCREENS).expect("referencias");
-        assert_eq!(screens.len(), 48);
+        assert!(screens.len() >= 48);
+        let mut names = std::collections::BTreeSet::new();
         for screen in screens {
-            let name = screen["name"].as_str().expect("nombre");
-            assert!(CaptureState::parse(name).is_ok(), "{name}");
+            let name = screen["name"].as_str().expect("nombre").to_owned();
+            assert!(names.insert(name.clone()), "pantalla duplicada: {name}");
+            assert!(CaptureState::parse(&name).is_ok(), "{name}");
         }
         assert_eq!(
             CaptureState::parse("shell-paleta-busqueda")
@@ -464,7 +494,30 @@ mod tests {
                 .strategy_page,
             Some(CaptureStrategyPage::Team)
         );
+        for (name, page) in [
+            ("strategy-datos-vacio", CaptureStrategyPage::DataEmpty),
+            ("strategy-datos-fuentes", CaptureStrategyPage::DataSources),
+            ("strategy-datos-vueltas", CaptureStrategyPage::DataLaps),
+            ("strategy-datos-avanzado", CaptureStrategyPage::DataAdvanced),
+        ] {
+            assert_eq!(CaptureState::parse(name).unwrap().strategy_page, Some(page));
+        }
         assert!(CaptureState::parse("ajustes-desconocidos").is_err());
+    }
+
+    #[test]
+    fn strategy_review_demo_uses_a_valid_exact_analysis_source() {
+        let demo = strategy_review_demo().expect("fuente demo válida");
+        assert_eq!(demo.label, "2026-09-15 · Imola Race");
+        assert_eq!(
+            demo.source.revision.base_digest,
+            demo.source.base.digest().unwrap()
+        );
+        assert_eq!(
+            demo.source.revision.session_id,
+            demo.source.validity.session_id
+        );
+        assert_eq!(demo.source.validity.laps.len(), 25);
     }
 
     #[test]

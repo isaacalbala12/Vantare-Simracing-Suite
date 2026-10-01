@@ -1,17 +1,18 @@
 //! Ajustes persistidos y último estado publicado; no arranca procesos.
 pub mod history;
+pub mod model;
+mod surface;
 use crate::{
     demo::{DemoData, DemoEngineer},
     engineer_control::{self as control, Document, Settings, Status},
+    orbit,
 };
-use chrono::{DateTime, Duration, Local};
+use chrono::{DateTime, Local};
 use gpui::{
-    Context, FontWeight, IntoElement, Render, ScrollHandle, Window, div, prelude::*, px, rgb,
+    Context, FontWeight, IntoElement, Render, ScrollHandle, Window, deferred, div, prelude::*, px,
+    rgb,
 };
-use std::{
-    path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::path::{Path, PathBuf};
 
 const TEXT: u32 = 0x00e6_e9ec;
 const MUTED: u32 = 0x00b8_c3cf;
@@ -24,30 +25,26 @@ const CHECK: u32 = 0x008d_c9ff;
 #[allow(clippy::struct_excessive_bools)] // Estado independiente de captura, filtro y despliegue.
 pub struct Engineer {
     document: Document,
-    status_path: PathBuf,
-    stamp: Option<SystemTime>,
-    status: Option<Status>,
-    loaded: bool,
     pub error: Option<String>,
-    status_error: Option<String>,
     demo_error: Option<String>,
     demo: Option<DemoEngineer>,
-    history: history::History,
+    model: model::Model,
     history_scroll: ScrollHandle,
     capture_history: bool,
     counters_open: bool,
     current_cycle_only: bool,
     family_filter: Option<String>,
     export_preview: Option<String>,
+    content_left: gpui::Pixels,
 }
 impl Engineer {
     pub fn load(path: PathBuf) -> Self {
         let capture_history = history_capture_path(&path);
         let capture_demo = engineer_capture_path(&path);
-        let status_path = control::status_path(&path);
+        let mut model = model::Model::new(&path);
         let mut document = Document::new(path, Settings::default());
         let error = document.poll().err().map(|error| error.to_string());
-        let (demo, demo_error) = if capture_demo {
+        let (demo, mut demo_error) = if capture_demo {
             match DemoData::load() {
                 Ok(data) => (Some(data.engineer), None),
                 Err(error) => (None, Some(error)),
@@ -55,34 +52,33 @@ impl Engineer {
         } else {
             (None, None)
         };
+        if let Some(demo) = &demo {
+            demo_error = model.capture(demo).err();
+        }
         let history_scroll = ScrollHandle::new();
         if capture_history {
             history_scroll.scroll_to_bottom();
         }
         Self {
             document,
-            status_path,
-            stamp: None,
-            status: None,
-            loaded: false,
             error,
-            status_error: None,
             demo_error,
             demo,
-            history: history::History::default(),
+            model,
             history_scroll,
             capture_history,
             counters_open: false,
             current_cycle_only: true,
             family_filter: None,
             export_preview: None,
+            content_left: px(376.0),
         }
     }
     pub fn settings(&self) -> &Settings {
         self.document.settings()
     }
     pub fn status(&self) -> Option<&Status> {
-        self.status.as_ref()
+        self.model.report().map(|report| &report.status)
     }
     pub fn change(&mut self, edit: impl FnOnce(&mut Settings)) -> Result<(), String> {
         let mut next = self.settings().clone();
@@ -93,28 +89,7 @@ impl Engineer {
         self.document.reload().map_err(|error| error.to_string())
     }
     pub fn poll(&mut self) -> bool {
-        let stamp = control::modified(&self.status_path);
-        if self.loaded && stamp == self.stamp && self.status_error.is_none() {
-            return false;
-        }
-        let previous = (self.status.clone(), self.status_error.clone());
-        match control::read(&self.status_path)
-            .and_then(|bytes| bytes.as_deref().map(Status::parse).transpose())
-        {
-            Ok(status) => {
-                if let Some(status) = status.as_ref() {
-                    self.history.observe(status, now_ms());
-                }
-                self.loaded = true;
-                self.status = status;
-                self.stamp = stamp;
-                self.status_error = None;
-            }
-            Err(error) => {
-                self.status_error = Some(format!("estado: {error}; se conserva el último válido"));
-            }
-        }
-        previous != (self.status.clone(), self.status_error.clone())
+        self.demo.is_none() && self.model.poll(self.model.now())
     }
     fn edit(&mut self, edit: impl FnOnce(&mut Settings), cx: &mut Context<Self>) {
         self.error = self.change(edit).err();
@@ -152,24 +127,21 @@ fn engineer_capture_path(path: &Path) -> bool {
             })
 }
 
-fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| {
-            duration
-                .as_secs()
-                .saturating_mul(1_000)
-                .saturating_add(u64::from(duration.subsec_millis()))
-        })
-}
-
 fn text(value: impl Into<gpui::SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
-    div()
-        .text_size(px(size))
-        .font_family(format!("Inter W{weight}"))
-        .font_weight(FontWeight(f32::from(weight)))
-        .text_color(rgb(color))
-        .child(value.into())
+    // Mismas métricas Inter que el kit Eficiencia: Chrome redondea ascenso y
+    // descenso y trunca el semi-interlineado; GPUI lo centra con fracciones.
+    let line_height = size * 1.5;
+    let native_line = line_height.round();
+    let css_baseline = vantare_ui::efficiency::text::baseline(0.0, line_height, size);
+    let native_baseline = f32::midpoint(native_line, size * (1984.0 - 494.0) / 2048.0);
+    orbit::text(value, size, weight, color)
+        .relative()
+        .top(px(css_baseline - native_baseline))
+        .line_height(px(native_line))
+        // GPUI ajusta las cajas de texto a píxeles; CSS mantiene fracciones.
+        // Las etiquetas/títulos de una línea conservan su alto lógico original.
+        .when((12.7..13.1).contains(&size), |view| view.h(px(line_height)))
+        .font_weight(FontWeight::NORMAL)
 }
 
 fn paragraph(value: impl Into<gpui::SharedString>) -> gpui::Div {
@@ -188,7 +160,7 @@ fn section(title: &str) -> gpui::Div {
         .border_color(rgb(CARD_BORDER))
         .rounded(px(8.0))
         .p(px(18.0))
-        .child(text(title.to_owned(), 19.0, 700, TEXT))
+        .child(text(title.to_owned(), 19.0, 400, TEXT))
         .child(div().h(px(12.0)))
 }
 
@@ -198,6 +170,7 @@ fn fact(label: &str, value: &str) -> gpui::Div {
         .flex_col()
         .flex_1()
         .min_w(px(190.0))
+        .min_h(px(13.0 * 1.5 + 4.0 + 24.0))
         .child(text(label.to_owned(), 13.0, 400, MUTED))
         .child(text(value.to_owned(), 16.0, 400, TEXT).mt(px(4.0)))
 }
@@ -228,32 +201,45 @@ fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::
             checkbox.child(text("✓", 13.0, 700, CARD))
         });
     div()
+        .id(format!("engineer-checkbox-{label}"))
         .flex()
         .items_center()
         .gap(px(8.0))
-        .when(disabled, |view| view.opacity(0.55))
+        .role(gpui::Role::CheckBox)
+        .aria_label(label.to_owned())
+        .aria_description(if disabled {
+            "Sin contrato nativo; deshabilitado"
+        } else {
+            ""
+        })
+        .tab_stop(!disabled)
         .child(mark)
         .child(text(label.to_owned(), 16.0, 400, TEXT))
-        .id(format!("engineer-checkbox-{label}"))
 }
 
-fn select_control(value: &str, disabled: bool) -> gpui::Div {
+fn select_control(value: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
     div()
+        .id(format!("engineer-select-{value}"))
+        .role(gpui::Role::ComboBox)
+        .aria_description(if disabled {
+            "Sin contrato nativo; deshabilitado"
+        } else {
+            ""
+        })
+        .tab_stop(!disabled)
         .flex()
         .items_center()
         .justify_between()
         .gap(px(10.0))
-        .min_h(px(38.0))
+        .h(px(40.0))
         .px(px(12.0))
-        .py(px(8.0))
         .bg(rgb(CONTROL))
         .text_color(rgb(TEXT))
         .border_1()
         .border_color(rgb(CONTROL_BORDER))
         .rounded(px(5.0))
-        .when(disabled, |view| view.opacity(0.55))
-        .child(text(value.to_owned(), 16.0, 400, TEXT))
-        .child(text("⌄", 14.0, 400, MUTED))
+        .child(text(value.to_owned(), 16.0, 400, 0x00f1_f5fa))
+        .child(text("⌄", 14.0, 400, 0x00f1_f5fa))
 }
 
 fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {
@@ -264,7 +250,7 @@ fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {
         .min_w(px(190.0))
         .gap(px(6.0))
         .child(text(label.to_owned(), 16.0, 400, TEXT))
-        .child(select_control(value, disabled))
+        .child(select_control(value, disabled).id(format!("engineer-output-{label}")))
 }
 
 fn action_button(label: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
@@ -272,9 +258,8 @@ fn action_button(label: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
         .flex()
         .items_center()
         .justify_center()
-        .min_h(px(38.0))
+        .h(px(40.0))
         .px(px(12.0))
-        .py(px(8.0))
         .bg(rgb(CONTROL))
         .border_1()
         .border_color(rgb(CONTROL_BORDER))
@@ -284,76 +269,71 @@ fn action_button(label: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
         .id(format!("engineer-action-{label}"))
 }
 
-#[derive(Clone)]
 struct HistoryRow {
     time: String,
     text: String,
     intent: String,
     family: String,
+    cycle: String,
+    delivery: RowDelivery,
+}
+
+struct RowDelivery {
+    mode: &'static str,
+    visual: &'static str,
+    audio: &'static str,
+    duration_ms: Option<u64>,
 }
 
 impl Engineer {
     fn history_rows(&self) -> Vec<HistoryRow> {
-        if self.capture_history {
-            let Some(demo) = &self.demo else {
-                return Vec::new();
-            };
-            let Some(captured_at) = DateTime::parse_from_rfc3339(&demo.captured_at)
-                .ok()
-                .map(|time| time.with_timezone(&Local))
-            else {
-                return Vec::new();
-            };
-            return demo
-                .messages
-                .iter()
-                .rev()
-                .map(|message| {
-                    let at = captured_at
-                        .checked_sub_signed(Duration::seconds(i64::from(message.seconds_ago)))
-                        .map_or(captured_at, |time| time);
-                    let family = message.intent.split('.').next().map_or("", |family| family);
-                    HistoryRow {
-                        time: at.format("%H:%M:%S").to_string(),
-                        text: message.text.clone(),
-                        intent: message.intent.clone(),
-                        family: family.to_owned(),
-                    }
-                })
-                .filter(|row| {
-                    self.family_filter
-                        .as_deref()
-                        .is_none_or(|family| row.family == family)
-                })
-                .collect();
-        }
-
+        use control::runtime::AudioOutcome;
+        let demo = self.demo.is_some();
         let mut rows: Vec<_> = self
-            .history
-            .view(history::Filter {
+            .model
+            .history(history::Filter {
                 current_cycle_only: self.current_cycle_only,
                 family: self.family_filter.as_deref(),
                 query: "",
             })
-            .rows
             .into_iter()
             .map(|entry| {
-                let observed_at =
-                    UNIX_EPOCH + std::time::Duration::from_millis(entry.observed_at_ms);
-                let family = entry
-                    .message
-                    .intent
-                    .split('.')
-                    .next()
-                    .map_or("", |family| family)
-                    .to_owned();
+                let delivery = &entry.delivery;
+                let message = &delivery.message;
+                let family = message.intent.split('.').next().map_or("", |family| family);
+                let time = i64::try_from(delivery.selected_at_ms)
+                    .ok()
+                    .and_then(DateTime::from_timestamp_millis)
+                    .map_or_else(
+                        || "No disponible".into(),
+                        |time| time.with_timezone(&Local).format("%H:%M:%S").to_string(),
+                    );
                 HistoryRow {
-                    time: DateTime::<Local>::from(observed_at)
-                        .format("%H:%M:%S")
-                        .to_string(),
-                    text: entry.message.text.clone(),
-                    intent: entry.message.intent.clone(),
-                    family,
+                    time,
+                    text: message.text.clone(),
+                    intent: message.intent.clone(),
+                    family: family.into(),
+                    cycle: message.epoch.to_string(),
+                    delivery: RowDelivery {
+                        mode: self.model.capture_output(family).unwrap_or("No disponible"),
+                        visual: match (demo, delivery.text_emitted) {
+                            (true, true) => "Publicado",
+                            (true, false) => "No publicado",
+                            (false, true) => "Texto emitido",
+                            (false, false) => "No emitido",
+                        },
+                        audio: match delivery.audio {
+                            AudioOutcome::Disabled => "Desactivado",
+                            AudioOutcome::Started => "Iniciado",
+                            AudioOutcome::Finished => "Completado",
+                            AudioOutcome::Cancelled => "Cancelado",
+                            AudioOutcome::Missing => "Sin audio en caché",
+                            AudioOutcome::Unavailable => "No disponible",
+                            AudioOutcome::Failed => "Error",
+                        },
+                        // El contrato nativo no contiene ACK visual ni duración.
+                        duration_ms: self.model.capture_duration_ms(),
+                    },
                 }
             })
             .collect();
@@ -362,33 +342,70 @@ impl Engineer {
     }
 
     fn observed_facts(&self) -> gpui::Div {
-        let status = self.status.as_ref();
-        let service = match status {
-            Some(status) if status.active => "En marcha",
-            Some(_) => "Detenido",
-            None => "No disponible",
+        use control::runtime::{Connection, Spotter, VoiceEngine};
+        let view = self.model.view(self.model.now());
+        let service = match view.health {
+            model::Health::Fresh => "En marcha",
+            model::Health::Stopped => "Detenido",
+            model::Health::Expired => "Estado caducado",
+            model::Health::Invalid => "Estado inválido",
+            model::Health::Missing | model::Health::LegacyUnavailable => "No disponible",
         };
-        let locale = match status {
-            Some(status) => status.settings.locale.as_str(),
-            None => self.settings().locale.as_str(),
+        let telemetry = if view.runtime.is_none() {
+            "No disponible"
+        } else {
+            match view.connection {
+                Connection::Live => "Conectada",
+                Connection::Waiting => "Esperando",
+                Connection::Stale => "Caducada",
+                Connection::Disconnected => "Desconectada",
+            }
         };
-        let locale_value = format!("{locale} · No disponible / No disponible");
-        let demo_capture = self
-            .demo
-            .as_ref()
-            .and_then(|demo| DateTime::parse_from_rfc3339(&demo.captured_at).ok())
-            .map(|time| time.with_timezone(&Local).format("%H:%M:%S").to_string());
-        let captured = match demo_capture {
-            Some(time) => time,
-            None => match self.history.view(history::Filter::default()).rows.first() {
-                Some(entry) => DateTime::<Local>::from(
-                    UNIX_EPOCH + std::time::Duration::from_millis(entry.observed_at_ms),
-                )
-                .format("%H:%M:%S")
-                .to_string(),
-                None => "No disponible".into(),
+        let spotter = if view.runtime.is_none() {
+            "No disponible"
+        } else {
+            match view.spotter {
+                Spotter::Ready => "Preparado",
+                Spotter::Disabled => "Desactivado",
+                Spotter::WaitingSource => "Esperando telemetría",
+                Spotter::WaitingPlayer => "Esperando jugador",
+                Spotter::WaitingPitLane => "En boxes",
+                Spotter::WaitingLowSpeed => "Velocidad insuficiente",
+                Spotter::UnavailableSpatial => "Sin datos espaciales",
+            }
+        };
+        let player = match view.runtime {
+            Some(runtime)
+                if runtime.voice.engine == VoiceEngine::CachedClipsWinmm
+                    && runtime.voice.clips_configured =>
+            {
+                "Configurado"
+            }
+            Some(_) | None => "No disponible",
+        };
+        let locale_value = view.runtime.map_or_else(
+            || "No disponible".into(),
+            |runtime| {
+                let locale = self
+                    .model
+                    .report()
+                    .map_or("—", |report| report.status.settings.locale.as_str());
+                let voice = &runtime.voice.selected_voice;
+                format!("{locale} · {voice} / {voice}")
             },
-        };
+        );
+        let cycle = view.runtime.and_then(|runtime| runtime.epoch).map_or_else(
+            || "No disponible".into(),
+            |epoch| {
+                // Hora congelada de la observación en el harness Wails; no es un
+                // heartbeat real ni una marca de tiempo inferida del proceso.
+                if self.demo.is_some() {
+                    format!("{epoch} · 16:00:19")
+                } else {
+                    epoch.to_string()
+                }
+            },
+        );
         div()
             .flex()
             .flex_col()
@@ -396,34 +413,48 @@ impl Engineer {
             .gap(px(14.0))
             .child(fact_row(&[
                 ("Servicio", service),
-                ("Telemetría", "No disponible"),
-                ("Spotter", "No disponible"),
-                ("Reproductor real", "No disponible"),
+                ("Telemetría", telemetry),
+                ("Spotter", spotter),
+                ("Reproductor real", player),
             ]))
             .child(fact_row(&[
                 ("Idioma · voz spotter / ingeniero", &locale_value),
-                ("Ciclo", &format!("No disponible · {captured}")),
+                ("Ciclo", &cycle),
             ]))
     }
 
     fn status_section(&self) -> gpui::Div {
         let mut card = section("Estado observado");
-        let status_copy = if self.status.is_some() {
+        let view = self.model.view(self.model.now());
+        let status_copy = if view.health == model::Health::Fresh {
             "Estado actualizado desde el servicio."
+        } else if view.health == model::Health::Expired {
+            "El estado ha caducado; esperando un heartbeat reciente."
         } else {
             "Esperando respuesta de Vantare…"
         };
         card = card
-            .child(paragraph(status_copy))
+            .child(paragraph(status_copy).mt(px(0.0)))
             .child(self.observed_facts())
             .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido."));
-        if let Some(status_error) = &self.status_error {
-            card = card.child(text(status_error.clone(), 16.0, 400, 0x00ff_8c7d));
+        if let Some(error) = view.error {
+            card = card.child(text(
+                format!("estado: {error}; se conserva la evidencia anterior"),
+                16.0,
+                400,
+                0x00ff_8c7d,
+            ));
         }
-        if let Some(status) = &self.status
-            && let Some(error) = &status.error
+        if view.running
+            && let Some(report) = self.model.report()
+            && let Some(error) = &report.status.error
         {
             card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+        }
+        if let Some(runtime) = view.runtime
+            && let Some(error) = &runtime.voice.error
+        {
+            card = card.child(text(format!("audio: {error}"), 16.0, 400, 0x00ff_8c7d));
         }
         if let Some(error) = &self.demo_error {
             card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
@@ -535,6 +566,7 @@ impl Engineer {
 
     fn configuration_section(&self, cx: &Context<Self>) -> gpui::Div {
         let settings = self.settings();
+        let view = self.model.view(self.model.now());
         let controls = div()
             .flex()
             .flex_wrap()
@@ -546,30 +578,71 @@ impl Engineer {
                     |this, _, _, cx| this.edit(|settings| settings.enabled = !settings.enabled, cx),
                 )),
             )
-            .child(checkbox("Spotter", false, true))
-            .child(checkbox("Subtítulos", false, true))
+            .child(checkbox(
+                "Spotter",
+                view.runtime
+                    .is_some_and(|runtime| runtime.spotter != control::runtime::Spotter::Disabled),
+                true,
+            ))
+            .child(checkbox(
+                "Subtítulos",
+                view.runtime
+                    .is_some_and(|runtime| runtime.delivery.text_enabled),
+                true,
+            ))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .opacity(0.55)
                     .child(text("Sensibilidad del spotter", 16.0, 400, TEXT))
-                    .child(select_control("No disponible", true).w(px(154.0))),
+                    .child(
+                        select_control(
+                            if self.demo.is_some() {
+                                "Normal"
+                            } else {
+                                "No disponible"
+                            },
+                            true,
+                        )
+                        .w(px(154.0)),
+                    ),
             );
-        let outputs = div()
-            .flex()
-            .flex_wrap()
-            .gap(px(14.0))
-            .child(labeled_select("Spotter", "No disponible", true))
-            .child(labeled_select("Combustible", "No disponible", true))
-            .child(labeled_select("Penalizaciones", "No disponible", true))
-            .child(labeled_select("Vueltas", "No disponible", true))
-            .child(labeled_select("Diferencias", "No disponible", true))
-            .child(labeled_select("Boxes", "No disponible", true))
-            .child(labeled_select("Respuestas de voz", "No disponible", true));
+        // repeat(auto-fit, minmax(190px, 1fr)) en orbit-engineer.css:
+        // cuatro columnas en el contenido de 1440 px, sin siete flex items.
+        let mut outputs = div().flex().flex_col().gap(px(14.0));
+        let output_rows: [&[(&str, &str)]; 2] = [
+            &[
+                ("Spotter", "spotter"),
+                ("Combustible", "fuel"),
+                ("Penalizaciones", "penalties"),
+                ("Vueltas", "laps"),
+            ],
+            &[
+                ("Diferencias", "timings"),
+                ("Boxes", "pitstops"),
+                ("Respuestas de voz", "voice"),
+            ],
+        ];
+        for categories in output_rows {
+            let mut row = div().flex().w_full().gap(px(14.0));
+            for &(label, family) in categories {
+                row = row.child(labeled_select(
+                    label,
+                    self.model.capture_output(family).unwrap_or("No disponible"),
+                    true,
+                ));
+            }
+            for _ in categories.len()..4 {
+                row = row.child(div().flex_1().min_w(px(190.0)));
+            }
+            outputs = outputs.child(row);
+        }
 
         let fieldset = div()
+            .relative()
+            .mt(px(12.0))
+            .pt(px(25.0))
             .flex()
             .flex_col()
             .w_full()
@@ -577,24 +650,25 @@ impl Engineer {
             .border_color(rgb(CARD_BORDER))
             .px(px(14.0))
             .pb(px(14.0))
-            .child(
-                div()
+            .child(deferred(
+                text("Módulos y salidas", 16.0, 400, TEXT)
+                    .absolute()
+                    .top(px(-12.0))
+                    .left(px(14.0))
                     .px(px(6.0))
-                    .text_size(px(16.0))
-                    .text_color(rgb(TEXT))
-                    .child("Módulos y salidas"),
-            )
+                    .bg(rgb(CARD)),
+            ))
             .child(controls)
             .child(outputs);
         section("Configuración real")
             .child(fieldset)
-            .child(self.native_settings(cx))
             .child(paragraph("La salida «Respuestas de voz» solo afecta a respuestas si la entrada de voz experimental está disponible; no activa el micrófono."))
+            .child(paragraph(if self.demo.is_some() { "Los valores muestran el estado confirmado por Vantare." } else { "Los ajustes nativos disponibles se guardan localmente. Las salidas sin contrato están deshabilitadas." }))
     }
 
     fn audio_section() -> gpui::Div {
         section("Prueba del reproductor")
-            .child(paragraph("Desactiva el ingeniero para probar. El tono usa el mismo reproductor que la radio. La frase de prueba comprueba «Coche a la izquierda» en el idioma activo, sin simular tráfico."))
+            .child(paragraph("Desactiva el ingeniero para probar. El tono usa el mismo reproductor que la radio. La frase de prueba comprueba «Coche a la izquierda» en el idioma activo, sin simular tráfico.").mt(px(0.0)))
             .child(
                 div()
                     .flex()
@@ -613,11 +687,14 @@ impl Engineer {
         cx: &mut Context<Self>,
         current_cycle_disabled: bool,
     ) -> gpui::Div {
-        let cycle = if self.current_cycle_only {
-            "Ciclo actual"
-        } else {
-            "Todos los ciclos guardados"
-        };
+        let cycle =
+            if self.current_cycle_only && self.model.view(self.model.now()).runtime.is_none() {
+                "Último ciclo observado"
+            } else if self.current_cycle_only {
+                "Ciclo actual"
+            } else {
+                "Todos los ciclos guardados"
+            };
         let family = match self.family_filter.as_deref().unwrap_or("all") {
             "spotter" => "Spotter",
             "fuel" => "Combustible",
@@ -681,7 +758,10 @@ impl Engineer {
             )
             .child(
                 action_button("Preparar informe", false).on_click(cx.listener(|this, _, _, cx| {
-                    this.export_preview = this.history.prepare_export(this.status.as_ref()).ok();
+                    match this.model.prepare_export(this.model.now()) {
+                        Ok(preview) => this.export_preview = Some(preview),
+                        Err(error) => this.error = Some(format!("informe: {error}")),
+                    }
                     cx.notify();
                 })),
             )
@@ -707,21 +787,21 @@ impl Engineer {
                 })),
         );
         if self.counters_open {
-            let view = self.history.view(history::Filter::default());
+            let retained = self.model.history(history::Filter::default()).len();
             counters = counters
                 .child(paragraph(
-                    "El historial solo contiene estados observados por el Hub y puede omitir eventos entre cursores.",
+                    "Solo entregas recibidas por el Hub. Puede haber huecos entre publicaciones; las expulsiones del proceso y del Hub no son una pérdida total exacta.",
                 ))
                 .child(
                     div()
                         .flex()
                         .flex_wrap()
                         .gap(px(14.0))
-                        .child(fact("Mensajes retenidos", &view.retained.to_string()))
-                        .child(fact("Mensajes expulsados", &view.evicted.to_string()))
+                        .child(fact("Mensajes retenidos", &retained.to_string()))
+                        .child(fact("Mensajes expulsados", &self.model.evicted.to_string()))
                         .child(fact(
                             "Época del cursor",
-                            &view.current_epoch.map_or_else(
+                            &self.model.current_epoch.map_or_else(
                                 || "No disponible".into(),
                                 |epoch| epoch.to_string(),
                             ),
@@ -778,21 +858,12 @@ impl Engineer {
         let rows = self.history_rows();
         let rows_empty = rows.is_empty();
         let mut card = section("Registro de entregas")
-            .child(paragraph("Últimos mensajes observados desde el estado publicado. Puede haber saltos del cursor; este registro no equivale a todas las entregas de radio."));
-        if self.capture_history {
-            card = card.child(text(
-                "Los datos de la captura proceden del fixture compartido de paridad; los resultados de entrega no están en el contrato nativo.",
-                16.0,
-                400,
-                MUTED,
-            ));
-        }
-        let current_cycle_disabled = self.capture_history
-            || self
-                .history
-                .view(history::Filter::default())
-                .current_epoch
-                .is_none();
+            .child(paragraph(if self.demo.is_some() {
+                "Últimas 200 entregas seleccionadas por la radio. La salida configurada corresponde al momento del envío; los resultados visual y audio muestran lo que ocurrió. El registro se conserva entre ciclos hasta cerrar la app."
+            } else {
+                "Últimas entregas observadas desde el estado publicado. Puede haber huecos entre publicaciones; este registro no equivale a todas las entregas de radio."
+            }).mt(px(0.0)));
+        let current_cycle_disabled = self.model.current_epoch.is_none();
         card = card.child(self.history_filters(cx, current_cycle_disabled));
 
         card = card.child(history_table(rows));
@@ -803,6 +874,11 @@ impl Engineer {
             ));
         }
         card = card.child(self.history_counters(cx));
+        // Los ajustes adicionales del servicio local siguen accesibles sin desplazar
+        // los bloques Wails; no se incluyen en la escena demo de entregas.
+        if self.demo.is_none() {
+            card = card.child(self.native_settings(cx));
+        }
         if let Some(preview) = self.export_preview(cx) {
             card = card.child(preview);
         }
@@ -811,47 +887,74 @@ impl Engineer {
 }
 
 fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
-    let headings = div()
+    // Anchos resultantes de table-layout:auto en el corpus Wails congelado.
+    let widths = [90.0, 293.0, 154.0, 123.0, 168.0, 138.0];
+    let headings = [
+        "Hora",
+        "Mensaje",
+        "Salida al seleccionar",
+        "Visual",
+        "Audio",
+        "Entrega · duración",
+    ];
+    let mut heading = div()
         .flex()
         .w_full()
         .border_b_1()
-        .border_color(rgb(CARD_BORDER))
-        .child(table_cell("Hora", 110.0, true))
-        .child(table_cell("Mensaje", 290.0, true))
-        .child(table_cell("Salida al seleccionar", 155.0, true))
-        .child(table_cell("Visual", 125.0, true))
-        .child(table_cell("Audio", 155.0, true))
-        .child(table_cell("Entrega · duración", 150.0, true));
+        .border_color(rgb(CARD_BORDER));
+    for (label, width) in headings.into_iter().zip(widths) {
+        heading = heading.child(table_cell(text(label, 13.0, 700, MUTED), width));
+    }
     let mut table = div()
         .id("engineer-history-table")
         .flex()
         .flex_col()
         .min_w(px(820.0))
-        .child(headings);
-    for row in rows {
+        .child(heading);
+    for (index, row) in (0_u16..).zip(rows) {
+        // CSS conserva 73.2 px (padding + líneas + margen + borde). GPUI
+        // redondea cada caja: repartir el resto evita perder 0.2 px por fila.
+        // min-height mantiene el crecimiento natural de mensajes que envuelven.
+        let css_height = 12.0 * 2.0 + 24.0 + 5.0 + 12.8 * 1.5 + 1.0;
+        let row_height =
+            (f32::from(index + 1) * css_height).ceil() - (f32::from(index) * css_height).ceil();
+        let when = div()
+            .flex()
+            .flex_col()
+            .child(text(row.time, 16.0, 400, TEXT))
+            .child(text(format!("Ciclo {}", row.cycle), 12.8, 400, MUTED).mt(px(5.0)));
         let message = div()
             .flex()
             .flex_col()
-            .gap(px(5.0))
             .child(text(row.text, 16.0, 400, TEXT))
-            .child(text(
-                format!("{} · {}", row.family, row.intent),
-                13.0,
-                400,
-                MUTED,
-            ));
-        let cells = div()
-            .flex()
-            .w_full()
-            .border_b_1()
-            .border_color(rgb(CARD_BORDER))
-            .child(table_cell(&row.time, 110.0, false))
-            .child(table_cell_element(message, 290.0))
-            .child(table_cell("No disponible", 155.0, false))
-            .child(table_cell("No disponible", 125.0, false))
-            .child(table_cell("No disponible", 155.0, false))
-            .child(table_cell("No disponible", 150.0, false));
-        table = table.child(cells);
+            .child(text(format!("{} · {}", row.family, row.intent), 12.8, 400, MUTED).mt(px(5.0)));
+        let delivery = row.delivery;
+        let result = if let Some(duration) = delivery.duration_ms {
+            div()
+                .flex()
+                .flex_col()
+                .child(text("Completado", 16.0, 400, TEXT))
+                .child(text(format!("{duration} ms"), 12.8, 400, MUTED).mt(px(5.0)))
+        } else {
+            text("No disponible", 16.0, 400, MUTED)
+        };
+        table = table.child(
+            div()
+                .flex()
+                .w_full()
+                .min_h(px(row_height))
+                .border_b_1()
+                .border_color(rgb(CARD_BORDER))
+                .child(table_cell(when, widths[0]))
+                .child(table_cell(message, widths[1]))
+                .child(table_cell(text(delivery.mode, 16.0, 400, TEXT), widths[2]))
+                .child(table_cell(
+                    text(delivery.visual, 16.0, 400, TEXT),
+                    widths[3],
+                ))
+                .child(table_cell(text(delivery.audio, 16.0, 400, TEXT), widths[4]))
+                .child(table_cell(result, widths[5])),
+        );
     }
     div()
         .id("engineer-history-horizontal")
@@ -861,22 +964,7 @@ fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
         .child(table)
 }
 
-fn table_cell(label: &str, width: f32, heading: bool) -> gpui::Div {
-    div()
-        .w(px(width))
-        .flex_none()
-        .py(px(12.0))
-        .px(px(8.0))
-        .items_start()
-        .child(text(
-            label.to_owned(),
-            if heading { 13.0 } else { 16.0 },
-            400,
-            if heading { MUTED } else { TEXT },
-        ))
-}
-
-fn table_cell_element(element: impl IntoElement, width: f32) -> gpui::Div {
+fn table_cell(element: impl IntoElement, width: f32) -> gpui::Div {
     div()
         .w(px(width))
         .flex_none()
@@ -903,7 +991,8 @@ impl Render for Engineer {
             .w_full()
             .max_w(px(1450.0))
             .mx_auto()
-            .px(px(24.0))
+            .pl(px(24.0))
+            .pr(px(34.0))
             .py(px(24.0))
             .font_family("Inter W400")
             .font_weight(FontWeight::NORMAL)
@@ -913,7 +1002,7 @@ impl Render for Engineer {
                 div()
                     .flex()
                     .flex_col()
-                    .child(text("Ingeniero Vantare", 26.0, 700, TEXT).mb(px(8.0)))
+                    .child(text("Ingeniero Vantare", 26.0, 400, TEXT))
                     .child(paragraph(
                         "Panel de pruebas: configura el ingeniero, comprueba el sonido y revisa cada entrega.",
                     )),
@@ -925,20 +1014,118 @@ impl Render for Engineer {
         if let Some(error) = &self.error {
             page = page.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
         }
-        div()
-            .id("engineer-page-scroll")
-            .flex_1()
-            .min_h(px(0.0))
-            .max_h(px(f32::from(window.viewport_size().height) - 150.0))
-            .overflow_y_scroll()
-            .track_scroll(&self.history_scroll)
-            .child(page)
+        surface::render(self, page, window, cx)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn demo_history_matches_wails_cycles_and_frozen_delivery_results() {
+        let path = std::env::temp_dir()
+            .join("vantare-hub-parity")
+            .join("test-engineer-historial")
+            .join("engineer.json");
+        let mut engineer = Engineer::load(path);
+        let rows = engineer.history_rows();
+        assert_eq!(rows.len(), 19);
+        assert_eq!(
+            rows.first().expect("primera entrega").intent,
+            "fuel.on_target"
+        );
+        let last = rows.last().expect("última entrega del ciclo actual");
+        assert_eq!(last.intent, "pitstops.window_open");
+        let delivery = &last.delivery;
+        assert_eq!(delivery.mode, "Audio y visual");
+        assert_eq!(delivery.visual, "Publicado");
+        assert_eq!(delivery.audio, "Sin audio en caché");
+        assert!(rows.iter().all(|row| row.cycle == "3"));
+        engineer.current_cycle_only = false;
+        let rows = engineer.history_rows();
+        assert_eq!(rows.len(), 20);
+        assert_eq!(rows.last().expect("ciclo anterior").cycle, "2");
+        engineer.family_filter = Some("laps".into());
+        let rows = engineer.history_rows();
+        assert_eq!(rows.len(), 2);
+        assert!(rows.iter().all(|row| row.delivery.mode == "Solo visual"));
+        engineer.document = Document::new(
+            PathBuf::from("unused-capture.json"),
+            Settings {
+                voice: false,
+                ..Settings::default()
+            },
+        );
+        assert!(
+            engineer
+                .history_rows()
+                .iter()
+                .all(|row| row.delivery.duration_ms == Some(25))
+        );
+        // Los ajustes actuales no reescriben los resultados congelados del harness.
+        assert_eq!(
+            engineer.model.view(engineer.model.now()).health,
+            model::Health::Fresh
+        );
+    }
+
+    #[test]
+    fn observed_history_never_claims_demo_delivery_results() {
+        let mut engineer = Engineer::load(
+            std::env::temp_dir()
+                .join("engineer-parity-not-a-capture")
+                .join("engineer.json"),
+        );
+        assert!(engineer.demo.is_none());
+        assert!(engineer.history_rows().is_empty());
+        let status = Status {
+            version: 1,
+            pid: 7,
+            active: true,
+            settings: Settings::default(),
+            assets: std::collections::BTreeMap::default(),
+            last_message: Some(control::Message {
+                epoch: 42,
+                sequence: 1,
+                intent: "fuel.low_1l".into(),
+                locale: "es".into(),
+                text: "Mensaje observado".into(),
+            }),
+            error: None,
+        };
+        let legacy = serde_json::to_vec(&status.json()).expect("legacy");
+        engineer.model.observe(Some(&legacy), 100);
+        assert!(engineer.history_rows().is_empty(), "v1 no prueba entregas");
+        let mut report = control::runtime::test_report();
+        let runtime = report.runtime.as_mut().expect("runtime");
+        runtime.epoch = Some(42);
+        runtime.delivery.history.push(control::runtime::Delivery {
+            id: 1,
+            message: status.last_message.expect("mensaje"),
+            text_emitted: true,
+            audio: control::runtime::AudioOutcome::Finished,
+            selected_at_ms: 100,
+        });
+        let bytes = serde_json::to_vec(&report.json()).expect("v2");
+        engineer.model.observe(Some(&bytes), 100);
+        let rows = engineer.history_rows();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].text, "Mensaje observado");
+        assert_eq!(rows[0].cycle, "42");
+        let delivery = &rows[0].delivery;
+        assert_eq!(delivery.visual, "Texto emitido");
+        assert_eq!(delivery.audio, "Completado");
+        assert_eq!(delivery.mode, "No disponible");
+        assert!(delivery.duration_ms.is_none());
+        report.runtime.as_mut().expect("runtime").delivery.history[0].selected_at_ms = u64::MAX;
+        engineer.model.observe(
+            Some(&serde_json::to_vec(&report.json()).expect("fecha fuera de rango")),
+            100,
+        );
+        assert_eq!(engineer.history_rows()[0].time, "No disponible");
+    }
+
     #[test]
     fn editor_conflicts_and_invalid_status_preserve_observed_values() {
         let root = std::env::temp_dir().join(format!("hub-engineer-{}", std::process::id()));
@@ -971,26 +1158,32 @@ mod tests {
             error: None,
         };
         let bytes = serde_json::to_vec(&status.json()).expect("json");
-        control::save(&second.status_path, None, &bytes).expect("publicar");
+        control::save(&control::status_path(&path), None, &bytes).expect("publicar");
+        assert!(second.poll());
+        assert_eq!(second.status(), Some(&status));
+        assert!(
+            second.model.history(history::Filter::default()).is_empty(),
+            "v1 no acredita entregas"
+        );
+        std::fs::write(control::status_path(&path), b"{").expect("inválido");
         assert!(second.poll());
         assert_eq!(second.status(), Some(&status));
         assert_eq!(
-            second.history.view(history::Filter::default()).rows.len(),
-            1
+            second.model.view(second.model.now()).health,
+            model::Health::Invalid
         );
-        std::fs::write(&second.status_path, b"{").expect("inválido");
-        second.stamp = None;
+        assert!(!second.model.view(second.model.now()).connected);
+        control::save(&control::status_path(&path), Some(b"{"), &bytes).expect("recuperar");
         assert!(second.poll());
-        assert_eq!(second.status(), Some(&status));
-        assert!(second.status_error.is_some());
-        control::save(&second.status_path, Some(b"{"), &bytes).expect("recuperar");
-        assert!(second.poll());
-        assert!(second.status_error.is_none());
+        assert_eq!(
+            second.model.view(second.model.now()).health,
+            model::Health::LegacyUnavailable
+        );
         for file in [
             path.clone(),
             path.with_extension("json.lock"),
-            second.status_path.clone(),
-            second.status_path.with_extension("json.lock"),
+            control::status_path(&path).clone(),
+            control::status_path(&path).with_extension("json.lock"),
         ] {
             std::fs::remove_file(file).expect("limpiar");
         }

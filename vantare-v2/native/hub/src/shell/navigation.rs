@@ -87,9 +87,10 @@ pub fn icon(section: Section) -> &'static str {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     Navigate(Section),
+    LaunchProfile(String),
     Save,
     ToggleColumn,
     Close,
@@ -98,7 +99,7 @@ pub enum Command {
 #[derive(Clone, Debug)]
 pub struct Item {
     pub command: Command,
-    pub label: &'static str,
+    pub label: String,
     pub meta: &'static str,
     pub icon: &'static str,
     pub locked: Option<&'static str>,
@@ -133,7 +134,7 @@ pub fn commands(access: Access, query: &str) -> Vec<Item> {
         .copied()
         .map(|section| Item {
             command: Command::Navigate(section),
-            label: section.label(),
+            label: section.label().into(),
             meta: section.subtitle(),
             icon: icon(section),
             locked: access.lock(section),
@@ -141,26 +142,44 @@ pub fn commands(access: Access, query: &str) -> Vec<Item> {
         .chain([
             Item {
                 command: Command::Save,
-                label: "Guardar",
+                label: "Guardar".into(),
                 meta: "Borradores locales",
                 icon: "i-studio",
                 locked: None,
             },
             Item {
                 command: Command::ToggleColumn,
-                label: "Mostrar / ocultar contexto",
+                label: "Mostrar / ocultar contexto".into(),
                 meta: "Columna de contexto",
                 icon: "i-panel",
                 locked: None,
             },
             Item {
                 command: Command::Close,
-                label: "Guardar y cerrar",
+                label: "Guardar y cerrar".into(),
                 meta: "Hub",
                 icon: "i-ajustes",
                 locked: None,
             },
         ])
+        .filter(|item| item.matches(query.trim()))
+        .collect()
+}
+
+pub fn launch_commands(
+    access: Access,
+    query: &str,
+    profiles: &[crate::launcher::Profile],
+) -> Vec<Item> {
+    profiles
+        .iter()
+        .map(|profile| Item {
+            command: Command::LaunchProfile(profile.id.clone()),
+            label: format!("Lanzar {}", profile.name),
+            meta: "Perfil de Launcher",
+            icon: "i-launcher",
+            locked: access.lock(Section::Launcher),
+        })
         .filter(|item| item.matches(query.trim()))
         .collect()
 }
@@ -197,6 +216,27 @@ pub fn context(section: Section) -> &'static [Section] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn launcher_palette_filters_names_preserves_ids_and_respects_access() {
+        let profiles = vec![crate::launcher::Profile::new(
+            "actual-id".into(),
+            "Mi rig".into(),
+        )];
+        let items = launch_commands(Access::default(), "  RIG  ", &profiles);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].command, Command::LaunchProfile("actual-id".into()));
+        assert!(items[0].locked.is_none());
+        assert!(launch_commands(Access::default(), "missing", &profiles).is_empty());
+        let access = Access {
+            blocked: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            launch_commands(access, "", &profiles)[0].locked,
+            access.lock(Section::Launcher)
+        );
+    }
 
     #[test]
     fn filter_covers_label_meta_lock_case_trim_and_empty_results() {

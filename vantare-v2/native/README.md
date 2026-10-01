@@ -136,7 +136,8 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 ## Desarrollar en Linux y macOS
 
-La base Unix (#1437) permite compilar y probar en Linux el workspace completo:
+La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
+completo:
 `domain`, `ipc`, `runtime`, `services`, `engineer`, `storage`, `ui` y `hub`.
 `strategy` sigue siendo un workspace independiente. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
@@ -167,11 +168,12 @@ cargo run -p vantare-ui --bin vantare-workshop
 La sesión gráfica es necesaria para abrir Hub, Studio o Workshop. Para comprobar
 el arranque del núcleo con el Hub en modo demo sobre el mismo IPC Unix, desde
 `native/` ejecuta `./scripts/smoke-linux-ipc.sh`. La prueba automatizada del
-replay del núcleo usa `../testdata/lmu-fixture.bin` y un `Subscriber` real.
+replay del núcleo usa `../testdata/lmu-fixture.bin` y un `Subscriber` real. El
+smoke funciona en Linux y macOS; en macOS confirma la conexión con `lsof`.
 
 GPUI necesita una sesión gráfica X11/Wayland y un driver Vulkan en Linux; en
-macOS, las herramientas de desarrollo de Xcode. Esta entrega se verifica en
-Linux; compilación y ejecución macOS deben validarse en un Mac. Las ventanas
+macOS, las herramientas de desarrollo de Xcode. #1437 verifica el workspace
+completo en ambos sistemas con esos gates y el smoke IPC. Las ventanas
 Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
 y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
 

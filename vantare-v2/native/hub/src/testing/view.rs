@@ -3,8 +3,13 @@ use super::{
     store::{self, Draft, LABELS, Store},
 };
 use crate::orbit::{self, Input};
-use crate::services::view::Remote;
-use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*};
+use crate::services::{protocol::Command, view::Remote};
+use gpui::{
+    Context, Entity, IntoElement, Render, Window, div, linear_color_stop, linear_gradient,
+    prelude::*, px, rgba,
+};
+#[cfg(any(feature = "parity-capture", test))]
+use std::path::Path;
 use std::{path::PathBuf, time::Instant};
 
 pub struct Testing {
@@ -29,6 +34,10 @@ impl Testing {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        #[cfg(feature = "parity-capture")]
+        let selected_tab = selected_capture_tab(&data).unwrap_or(0);
+        #[cfg(not(feature = "parity-capture"))]
+        let selected_tab = 0;
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
                 "Vistas de Testing Center",
@@ -37,7 +46,7 @@ impl Testing {
                     .into_iter()
                     .map(orbit::OptionItem::new)
                     .collect(),
-                Some(0),
+                Some(selected_tab),
                 window,
                 cx,
             )
@@ -312,35 +321,210 @@ impl Testing {
         orbit::card("Diagnóstico sanitizado").child(body)
     }
 }
+
+#[cfg(any(feature = "parity-capture", test))]
+fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
+    let capture_name = data_dir.parent()?.file_name()?.to_str()?;
+    let mut parts = capture_name.splitn(3, '-');
+    let process_id = parts.next()?.parse::<u32>().ok()?;
+    let _started_at = parts.next()?.parse::<u128>().ok()?;
+    if process_id != std::process::id() {
+        return None;
+    }
+    let screen = parts.next()?;
+    match screen {
+        "testing-center-informe" | "testing-center-detalle" => Some(0),
+        "testing-center-validar" => Some(1),
+        "testing-center-mis-reportes" => Some(2),
+        _ => None,
+    }
+}
+
+fn panel_header(title: &str, meta: &str, action: Option<gpui::Stateful<gpui::Div>>) -> gpui::Div {
+    let mut header = div()
+        .flex()
+        .items_center()
+        .gap(px(12.0))
+        .min_h(px(60.0))
+        .px(px(20.0))
+        .py(px(13.0))
+        .border_b_1()
+        .border_color(rgba(0xffff_ff0d))
+        .child(orbit::text(title, 15.0, 700, orbit::INK).flex_1().min_w_0())
+        .child(
+            orbit::text(meta, orbit::SECONDARY, 400, orbit::INK_3)
+                .font_family("Cascadia Code")
+                .flex_none(),
+        );
+    if let Some(action) = action {
+        header = header.child(action);
+    }
+    header
+}
+
+fn panel_note(content: impl Into<gpui::SharedString>) -> gpui::Div {
+    div()
+        .mt(px(12.0))
+        .px(px(17.0))
+        .py(px(13.0))
+        .border_1()
+        .border_color(rgba(0xff9b_5721))
+        .rounded(px(14.0))
+        .bg(linear_gradient(
+            110.0,
+            linear_color_stop(rgba(0xff9b_570f), 0.0),
+            linear_color_stop(rgba(0xd52f_4905), 1.0),
+        ))
+        .child(orbit::text(content, orbit::SECONDARY, 400, orbit::INK_3).line_height(px(18.0)))
+}
+
+fn disabled_refresh() -> gpui::Stateful<gpui::Div> {
+    div()
+        .id("testing-validate-refresh")
+        .role(gpui::Role::Button)
+        .aria_label("Actualizar")
+        .aria_description(
+            "Deshabilitado: esta build no dispone de validación nativa de candidatos.",
+        )
+        .tab_stop(false)
+        .h(px(34.0))
+        .px(px(14.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(orbit::RADIUS_CONTROL))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .bg(rgba(0xffff_ff06))
+        .flex_none()
+        .opacity(0.55)
+        .child(orbit::text(
+            "Actualizar",
+            orbit::SECONDARY,
+            600,
+            orbit::INK_3,
+        ))
+}
+
+fn validation_panel() -> gpui::Div {
+    orbit::card("")
+        .w_full()
+        .child(panel_header(
+            "Correcciones pendientes",
+            "una validación por candidato",
+            Some(disabled_refresh()),
+        ))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .px(px(21.0))
+                .py(px(21.0))
+                .child(orbit::text(
+                    "Prueba una corrección disponible para tu canal y registra un único resultado verificable.",
+                    orbit::BODY,
+                    400,
+                    orbit::INK_2,
+                ))
+                .child(panel_note(
+                    "No se pudieron cargar o guardar las validaciones. Inténtalo de nuevo.",
+                ))
+                .child(div().mt(px(14.0))),
+        )
+}
+
+fn reports_panel() -> gpui::Div {
+    orbit::card("")
+        .w_full()
+        .child(panel_header("Mis reportes", "solo esta sesión", None))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .px(px(21.0))
+                .py(px(21.0))
+                .child(
+                    div()
+                        .flex()
+                        .items_start()
+                        .mt(px(12.0))
+                        .bg(linear_gradient(
+                            110.0,
+                            linear_color_stop(rgba(0xff9b_570f), 0.0),
+                            linear_color_stop(rgba(0xd52f_4905), 1.0),
+                        ))
+                        .px(px(17.0))
+                        .py(px(13.0))
+                        .border_1()
+                        .border_color(rgba(0xff9b_5721))
+                        .rounded(px(14.0))
+                        .child(orbit::text(
+                            "Sin historial",
+                            orbit::SECONDARY,
+                            750,
+                            orbit::BRONZE,
+                        ).line_height(px(18.0)))
+                        .child(orbit::text(
+                            " El servicio de Testing Center no publica el historial de reportes: solo abre, guarda y descarta el borrador en curso. Aquí aparece lo que envíes durante esta sesión.",
+                            orbit::SECONDARY,
+                            400,
+                            orbit::INK_3,
+                        ).line_height(px(18.0)).flex_1().min_w_0()),
+                ),
+        )
+}
+
 impl Render for Testing {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
-            1 => orbit::card("Correcciones pendientes").child(orbit::card_body()
-                .gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(div().flex().justify_between()
-                    .child(orbit::text("una validación por candidato", orbit::SECONDARY, 400, orbit::INK_3))
-                    .child(orbit::button("testing-validate-refresh", "Actualizar")
-                        .tab_stop(false).opacity(orbit::DISABLED).aria_description("Pendiente: sin contrato nativo de validación")))
-                .child(orbit::text("Prueba una corrección disponible para tu canal y registra un único resultado verificable.", orbit::BODY, 400, orbit::INK_2))
-                .child(orbit::callout("Pendiente: el servicio nativo no publica candidatos ni permite registrar validaciones. No se han consultado correcciones."))),
-            2 => orbit::card("Mis reportes").child(orbit::card_body()
-                .gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(orbit::text("solo esta sesión", orbit::SECONDARY, 400, orbit::INK_3))
-                .child(orbit::callout("Sin historial. El servicio de Testing Center no publica el historial de reportes. El listado de recibos de esta sesión está pendiente de integración nativa."))
-                .child(orbit::text("Consulta el último intento o recibo desde Reportar.", orbit::SECONDARY, 400, orbit::INK_3))),
-            _ => self.remote.update(cx, |remote, cx| {
-                remote.editor.controls(window, cx);
-                remote.editor.render(cx)
-            }),
+            1 => validation_panel(),
+            2 => reports_panel(),
+            _ => self
+                .remote
+                .update(cx, |remote, cx| remote.editor.render(cx)),
         };
         let dirty = self.remote.read(cx).editor.dirty;
+        let status_label = if dirty {
+            "Cambios sin guardar"
+        } else {
+            "Borrador local"
+        };
+        let status = orbit::chip(
+            status_label,
+            if dirty {
+                orbit::Tone::Warning
+            } else {
+                orbit::Tone::Success
+            },
+        )
+        .id("testing-draft-status")
+        .role(gpui::Role::Button)
+        .aria_label(if dirty {
+            "Guardar borrador"
+        } else {
+            "Abrir herramientas de Testing Center"
+        })
+        .tab_stop(true)
+        .cursor_pointer()
+        .on_click(cx.listener(|this, _, _, cx| {
+            if this.remote.read(cx).editor.dirty {
+                this.remote.update(cx, |remote, cx| {
+                    let fields = remote.editor.fields(cx);
+                    remote.report_action(Command::DraftSave { fields }, cx);
+                });
+            } else {
+                this.local_open = !this.local_open;
+                cx.notify();
+            }
+        }));
         let mut page = div()
             .id("testing-center")
+            .w_full()
             .flex()
             .flex_col()
             .min_w_0()
-            .gap(gpui::px(orbit::GUTTER / 2.0))
+            .gap(px(16.0))
             .child(
                 div()
                     .flex()
@@ -352,42 +536,15 @@ impl Render for Testing {
                         400,
                         orbit::INK_2,
                     ))
-                    .child(orbit::chip(
-                        if dirty {
-                            "Cambios sin guardar"
-                        } else {
-                            "Borrador local"
-                        },
-                        if dirty {
-                            orbit::Tone::Warning
-                        } else {
-                            orbit::Tone::Success
-                        },
-                    )),
+                    .child(status),
             )
             .child(self.tabs.clone())
-            .child(content);
-        if tab != 0 {
+            .child(div().w_full().mt(px(2.0)).child(content));
+        if tab != 0 || !self.local_open {
             return page;
         }
-        page = page.child(
-            orbit::button(
-                "testing-local",
-                if self.local_open {
-                    "Ocultar diagnóstico local"
-                } else {
-                    "Diagnóstico y borrador privados · solo local"
-                },
-            )
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.local_open = !this.local_open;
-                cx.notify();
-            })),
-        );
-        if !self.local_open {
-            return page;
-        }
-        page.child(self.local_tools(cx))
+        page = page.child(self.local_tools(cx));
+        page
     }
 }
 impl Testing {
@@ -399,6 +556,21 @@ impl Testing {
             div()
                 .flex()
                 .gap(gpui::px(orbit::GUTTER / 2.0))
+                .child(orbit::button("testing-load-report", "Cargar borrador").on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.remote.update(cx, |remote, cx| {
+                            remote.report_action(Command::DraftLoad, cx);
+                        });
+                    }),
+                ))
+                .child(orbit::button("testing-retry-report", "Revisar intento pendiente o recibo").on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.remote.update(cx, |remote, cx| {
+                            remote.editor.clear_approval();
+                            remote.report_action(Command::ReportRetryPrepare, cx);
+                        });
+                    }),
+                ))
                 .child(
                     orbit::button("testing-report-tab", "Borrador privado local").on_click(
                         cx.listener(|this, _, _, cx| {
@@ -453,5 +625,34 @@ impl Testing {
         } else {
             self.form(cx)
         })
+    }
+}
+
+#[cfg(test)]
+mod capture_view_tests {
+    use super::selected_capture_tab;
+
+    #[test]
+    fn capture_selects_its_testing_center_tab_only_for_the_current_process() {
+        let process_id = std::process::id();
+        for (screen, tab) in [
+            ("testing-center-informe", 0),
+            ("testing-center-detalle", 0),
+            ("testing-center-validar", 1),
+            ("testing-center-mis-reportes", 2),
+        ] {
+            let root = std::env::temp_dir()
+                .join("vantare-hub-parity")
+                .join(format!("{process_id}-1700000000000-{screen}"));
+            assert_eq!(selected_capture_tab(&root.join("data")), Some(tab));
+        }
+
+        let other_process = process_id.wrapping_add(1);
+        let root = std::env::temp_dir()
+            .join("vantare-hub-parity")
+            .join(format!(
+                "{other_process}-1700000000000-testing-center-validar"
+            ));
+        assert_eq!(selected_capture_tab(&root.join("data")), None);
     }
 }

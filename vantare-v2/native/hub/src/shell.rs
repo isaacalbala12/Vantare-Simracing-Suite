@@ -227,22 +227,25 @@ impl Hub {
             .flex_1()
             .flex()
             .flex_col()
-            .when(self.section != Section::Strategy, |content| {
-                // Estos consumidores aun restan el espacio de la antigua cabecera.
-                // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                let inset = if matches!(
-                    self.section,
-                    Section::Calendar | Section::Studio | Section::Roadmap
-                ) {
-                    135.0
-                } else {
-                    0.0
-                };
-                content
-                    .gap(gpui::px(24.0))
-                    .p(gpui::px(orbit::GUTTER))
-                    .pt(gpui::px(orbit::GUTTER + inset))
-            })
+            .when(
+                !matches!(self.section, Section::Strategy | Section::Launcher),
+                |content| {
+                    // Estos consumidores aun restan el espacio de la antigua cabecera.
+                    // Conservamos su geometria hasta que sus propietarios retiren ese margen.
+                    let inset = if matches!(
+                        self.section,
+                        Section::Calendar | Section::Studio | Section::Roadmap
+                    ) {
+                        135.0
+                    } else {
+                        0.0
+                    };
+                    content
+                        .gap(gpui::px(24.0))
+                        .p(gpui::px(orbit::GUTTER))
+                        .pt(gpui::px(orbit::GUTTER + inset))
+                },
+            )
             .when(self.section == Section::Settings, |content| {
                 content.child(self.settings_header())
             })
@@ -294,9 +297,21 @@ impl Render for Hub {
         }
         self.refresh_query(cx);
         let rail = self.rail(cx);
-        // La sección aporta aquí sus controles con `.into_any_element()`;
-        // None conserva la barra común hasta conectar su API (ver shell/README.md).
-        let topbar = self.topbar(window, None, cx);
+        let section_actions = (self.section == Section::Launcher).then(|| {
+            let available_width = f32::from(window.viewport_size().width)
+                - orbit::RAIL_W
+                - if self.shell.column_open {
+                    orbit::COLUMN_W
+                } else {
+                    0.0
+                };
+            self.launcher.update(cx, |launcher, cx| {
+                launcher
+                    .topbar_actions(available_width, cx)
+                    .into_any_element()
+            })
+        });
+        let topbar = self.topbar(window, section_actions, cx);
         if self
             .capture
             .as_ref()

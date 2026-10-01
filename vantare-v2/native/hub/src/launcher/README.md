@@ -373,6 +373,30 @@ El banco usa fixtures demo Wails; no acredita estos flujos productivos por sí s
 Notion sigue sin acceso por excepción expresa; el orquestador debe reconciliar allí
 la entrega y la base asignada con nightly antes de integrar. Sin push, PR ni merge.
 
+## Segunda pasada visual — Launcher 2 (#1430, 2026-10-01)
+
+Solo presentación en `presentation.rs` y `editor.rs`: columna compacta,
+catálogo, estadísticas/historial/atajo, tarjetas y editor lateral. Los valores
+exclusivos de demo reproducen `frontend/src/orbit-launcher-harness.tsx`;
+no se escriben en el documento productivo ni cambian el lanzamiento de apps.
+No se añaden dependencias ni se modifica la lógica de discovery, procesos o políticas.
+
+Integración pendiente del marco: montar `Launcher::topbar_actions(cx)` en la
+barra superior (la búsqueda ya no ocupa la columna), retirar la cabecera
+`Hub nativo` duplicada y usar las migas `HERRAMIENTA / Launcher`. La base
+asignada aún contiene esa cabecera; no se compensa con offsets negativos.
+El blur del scrim y los iconos reales de apps requieren el kit/fuente compartida.
+El ▶ de la columna global demo pertenece a `shell/chrome.rs`, fuera de alcance.
+
+Base del worker: `0e26ac26c365138a1b67ae1f4ee63f1236000fc3`, rama
+`vantareapp/isa-1430-w-launcher-2`. Evidencia externa, imágenes inspeccionadas,
+mapas, tabla antes/después y gates: `C:/tmp/launcher-2-evidence/`.
+La aceptación visual exige ≤5 % en `x > 376, y > 70`, umbral 8; el informe
+externo distingue ese recorte de la ventana completa. La entrega queda
+pendiente de revisar en la integración del marco; no declara paridad aprobada.
+Notion no disponible por excepción expresa del encargo; seguimiento a cargo
+del orquestador. Sin push, PR, merge, promoción ni release.
+
 ## Hito residente — atajos y arranque con Windows (#1430)
 
 Encargo del 2026-10-01, worker `vantareapp/isa-1430-w-launcher-residente`.
@@ -454,3 +478,67 @@ Los opt-in físicos LMU/ACC no se ejecutaron; CI remoto no se ejecutó porque
 el encargo prohíbe push y PR. Los logs completos y los códigos de salida están
 fuera del repositorio. Los fallos de las iteraciones iniciales también se
 conservan allí; no se relajaron gates ni se añadieron exclusiones de tests.
+
+## Hito de integración del marco — segunda pasada (#1430)
+
+Se incorpora la rama local del marco `f3b853be`, conservando los hitos de
+presentación y residente. La cabecera común desaparece y el buscador existente
+se monta en la ranura de acciones de la barra superior. Launcher administra
+sus márgenes como Strategy; no se reimplementa la búsqueda ni el motor.
+
+La presentación ajusta primero cabecera, métricas, catálogo y perfiles a las
+referencias Wails, y después pesos de Inter, tracking, iconos SVG, marca MoTeC,
+políticas y etiquetas del editor. Para el tracking se reutilizan las primitivas
+de texto del kit nativo; no se añaden dependencias. Los callbacks se conservan.
+Los datos fechados de referencia siguen limitados a la escena demo.
+
+Evidencia y rondas comparables: `C:/tmp/launcher-2-evidence/`. La ronda
+`ajuste3` mide 8,1257 % en Launcher y 10,4190 % en el editor, región
+x>376, y>70, umbral 8. No declara el objetivo de 5 % cumplido. La tipografía
+posterior se verificará tras incorporar `bef4a971`, según las notas del
+orquestador. El editor conserva el oscurecimiento; el desenfoque de fondo
+Wails necesita soporte compartido fuera del alcance de estas vistas.
+
+## Cierre visual con marco vigente — segunda pasada (#1430)
+
+Se incorpora también `bef4a971` por las notas del orquestador. Los cambios de
+Strategy y del marco proceden de esa integración; los ajustes propios siguen
+en las vistas Launcher y en su conexión mínima con `shell.rs`.
+
+Aplicadas las notas completas, incluidas las de las 00:05: búsqueda en la barra
+superior centrada en el espacio disponible, «Ver todas» en Inter y «DETENIDO»
+como chip. El campo mantiene la entidad/filtro existentes. Se reserva el alto
+real bajo la barra para que catálogo y perfiles terminen antes del margen
+inferior. Los nombres editables conservan el renderizado y ajuste de texto.
+
+Los SVG se preparan con el renderer GPUI y se conservan por elemento, evitando
+que MoTeC falte en el primer fotograma. Los rótulos con tracking conservan su
+nombre accesible. No se añaden dependencias, estado global ni lógica de motor.
+
+Resultado del banco a 1440×900, DPI 100 %, umbral 8, región x>376,y>70:
+
+| Pantalla | Antes | Después | Objetivo ≤5 % |
+|---|---:|---:|---|
+| launcher-base | 25,2864 % | 6,9593 % | No |
+| launcher-nuevo-perfil | 12,1321 % | 10,3032 % | No |
+
+Ventana completa: 7,1412 % y 9,9294 %. Dos capturas nuevas por pantalla tienen
+hashes idénticos; se miraron referencia, captura, mapa y ampliaciones del
+buscador, pie contextual, MoTeC y formulario. Evidencia y tabla comparables:
+`C:/tmp/launcher-2-evidence/banco/` y `tabla-antes-despues.*`, fuera del repo.
+
+La estructura está cubierta; la aceptación estricta sigue pendiente. En el
+editor, el drawer aporta 3,172 % en su región propia, pero el fondo sin blur
+se incluye en la medida exigida. Persisten diferencias de rasterizado,
+baselines, pesos, controles del kit y algunos píxeles de iconos/bordes. El
+objetivo completo requiere continuar esa revisión; no se ocultan zonas ni se
+sustituye el fondo productivo por imágenes de referencia. No se verifica aquí
+el lanzamiento real por ▶ en demo, hotkey, autostart, LMU/OBS o DPI mixto.
+
+Gates del cierre, desde `native/`, con compilación `-j 2`:
+`cargo fmt --check` y `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+PASS; `cargo nextest run --workspace --build-jobs 2 -j 2`: 914 PASS,
+4 omitidos según el perfil existente; `cargo test --workspace --test lifecycle
+-j 2`: 5 Engineer y 11 Launcher, 0 fallos. `git diff --check`: PASS.
+Los logs y hashes están fuera del repo. Sin push, PR, CI remoto, merge remoto,
+promoción ni release; los merges locales fueron solicitados expresamente.

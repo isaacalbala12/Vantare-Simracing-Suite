@@ -25,14 +25,14 @@ fn frozen_files_and_manifest_have_their_reviewed_hashes() {
     let bytes = frozen_bytes(&root.join("manifest.json"));
     assert_eq!(
         format!("{:x}", Sha256::digest(&bytes)),
-        "948fbaf7ff4cd2e556e58f2c161e80c793fbfc18246d8e645ab032df84d2876a"
+        "09b40626ed2f027394b0dc616b46db3a23734be65126e5f37e65dd89a248c23e"
     );
     let manifest: Value = serde_json::from_slice(&bytes).expect("manifest");
     let files = manifest["files"].as_object().expect("files");
     assert_eq!(
         files.len(),
-        6,
-        "document rules, documents, current Go solver results, legacy solver inputs/output, full Go results and source hashes"
+        12,
+        "Go document, correction, edited-plan, projection, repository, and solver fixtures"
     );
     for (name, expected) in files {
         let bytes = frozen_bytes(&root.join(name));

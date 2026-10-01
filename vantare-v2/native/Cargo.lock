@@ -6295,9 +6295,9 @@ dependencies = [
  "gpui_platform",
  "serde",
  "serde_json",
- "sha2",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-strategy",
  "vantare-ui",
 ]
 
@@ -6358,6 +6358,16 @@ dependencies = [
  "serde_json",
  "vantare-domain",
  "vantare-runtime",
+]
+
+[[package]]
+name = "vantare-strategy"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

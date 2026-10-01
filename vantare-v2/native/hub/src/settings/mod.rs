@@ -9,8 +9,10 @@ use orbit::{Choice, ChoiceChanged, ChoiceKind, Input, OptionItem};
 use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
+mod releases;
 #[cfg(test)]
 mod tests;
+mod text_rendering;
 mod updates;
 mod view;
 
@@ -18,6 +20,7 @@ mod view;
 enum Page {
     #[default]
     Application,
+    Account,
     Appearance,
     Performance,
     Updates,
@@ -43,6 +46,7 @@ impl Page {
     fn label(self) -> &'static str {
         match self {
             Self::Application => "Aplicación",
+            Self::Account => "Cuenta",
             Self::Appearance => "Apariencia",
             Self::Performance => "Rendimiento",
             Self::Updates => "Actualizaciones",
@@ -54,6 +58,7 @@ impl Page {
     fn subtitle(self) -> &'static str {
         match self {
             Self::Application => "Interfaz y sistema",
+            Self::Account => "Sesión, plan y dispositivos",
             Self::Appearance => "Colores, contraste y fuentes",
             Self::Performance => "Nivel global y perfil activo",
             Self::Updates => "Versión, canal y novedades",
@@ -72,6 +77,7 @@ impl Page {
     fn description(self) -> &'static str {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
+            Self::Account => "Tu sesión, tu plan y lo que incluye.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Elige cuánto trabajo hace Vantare durante la carrera.",
             Self::Updates => "Versión instalada, canal y novedades.",
@@ -82,6 +88,7 @@ impl Page {
     }
     fn matches(self, query: &str) -> bool {
         let titles = match self {
+            Self::Account => "cuenta sesión plan módulos licencias dispositivos",
             Self::Application => {
                 "zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
             }
@@ -109,6 +116,7 @@ pub(super) struct State {
     page: Page,
     pub(super) scroll: gpui::ScrollHandle,
     pub(super) panel_scroll: gpui::ScrollHandle,
+    panel_height: f32,
     nav_focus: Vec<FocusHandle>,
     action_focus: [FocusHandle; 2],
     query: Entity<Input>,
@@ -237,6 +245,16 @@ impl State {
         window: &mut Window,
         cx: &mut Context<Hub>,
     ) -> Self {
+        // Cuenta y Licencias son páginas de Ajustes, como en Wails. La shell
+        // conserva sus destinos públicos y este módulo compone su presentación.
+        cx.observe_self(Hub::settings_account_destination).detach();
+        let hub = cx.entity();
+        cx.defer(move |cx| hub.update(cx, Hub::settings_account_destination));
+        cx.observe_window_bounds(window, |this, window, cx| {
+            this.settings.panel_height = panel_height(f32::from(window.viewport_size().height));
+            cx.notify();
+        })
+        .detach();
         let (language, units) = Self::format_controls(prefs, window, cx);
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
@@ -245,6 +263,7 @@ impl State {
             page: Page::default(),
             scroll: gpui::ScrollHandle::new(),
             panel_scroll: gpui::ScrollHandle::new(),
+            panel_height: panel_height(f32::from(window.viewport_size().height)),
             nav_focus: (0..9).map(|_| cx.focus_handle()).collect(),
             action_focus: std::array::from_fn(|_| cx.focus_handle()),
             query,
@@ -306,6 +325,10 @@ impl State {
         }
     }
 }
+// Topbar 70 + cabecera/separación 152 + pie 24, según orbit-settings.css.
+fn panel_height(viewport_height: f32) -> f32 {
+    (viewport_height - 246.0).max(0.0)
+}
 fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
     matches!(filter, 0 | 3)
         && search_text(&format!("{} {:?}", error.module.label(), error.code))
@@ -331,6 +354,15 @@ fn search_text(value: &str) -> String {
         .collect()
 }
 impl Hub {
+    fn settings_account_destination(&mut self, cx: &mut Context<Self>) {
+        if matches!(
+            self.section,
+            crate::Section::Account | crate::Section::Licenses
+        ) {
+            self.section = crate::Section::Settings;
+            self.select_settings_page(Page::Account, cx);
+        }
+    }
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
             Action::PrepareDiagnostic => self.prepare_settings_diagnostic(cx),

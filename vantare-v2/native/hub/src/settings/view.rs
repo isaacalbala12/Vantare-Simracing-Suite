@@ -1,10 +1,141 @@
-use super::{Action, Hub, Page, updates::LocalUpdate};
+use super::{
+    Action, Hub, Page,
+    text_rendering::{Grayscale, Paragraph},
+    updates::LocalUpdate,
+};
 use crate::{Section, orbit};
 use gpui::{
     Context, Div, IntoElement, Window, div, linear_color_stop, linear_gradient, prelude::*, px,
     rgb, rgba,
 };
-use orbit::{Tone, setting_row, text};
+use orbit::{Tone, setting_row};
+
+// El texto hereda 1,5 em del Hub Wails; las excepciones del CSS son explícitas.
+fn text(content: impl Into<gpui::SharedString>, size: f32, weight: u16, color: u32) -> Div {
+    let weight = match weight {
+        720 => 700,
+        850 => 800,
+        other => other,
+    };
+    // Las familias Inter W* ya contienen el peso; DirectWrite las registra
+    // como Regular. Pedir además negrita sintetiza un segundo engrosado.
+    orbit::text(content, size, weight, color)
+        .font_weight(gpui::FontWeight(400.0))
+        .font_features(gpui::FontFeatures(std::sync::Arc::new(vec![(
+            "kern".into(),
+            1,
+        )])))
+        .line_height(px(size * 1.5))
+        .relative()
+}
+
+fn font(family: impl Into<gpui::SharedString>) -> gpui::Font {
+    gpui::Font {
+        features: gpui::FontFeatures(std::sync::Arc::new(vec![("kern".into(), 1)])),
+        ..gpui::font(family)
+    }
+}
+
+fn paragraph(content: &str, size: f32, weight: u16, color: u32) -> Div {
+    div()
+        .text_size(px(size))
+        .line_height(px(size * 1.5))
+        .child(Paragraph {
+            text: content.to_owned().into(),
+            runs: vec![gpui::TextRun {
+                len: content.len(),
+                font: font(format!("Inter W{weight}")),
+                color: rgb(color).into(),
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+            }],
+        })
+}
+
+fn tracked_text(content: &str, size: f32, weight: u16, color: u32, tracking: f32) -> Div {
+    div().flex().gap(px(tracking)).children(
+        content
+            .chars()
+            .map(|ch| text(ch.to_string(), size, weight, color).flex_none()),
+    )
+}
+// El kit de texto compartido conserva el kerning antes de aplicar el tracking.
+// Div por carácter redondea cada avance y ensancha títulos largos.
+fn page_title(label: &'static str) -> Div {
+    div().h(px(51.0)).w_full().child(
+        gpui::canvas(
+            |bounds, _, _| bounds,
+            move |_, bounds, window, cx| {
+                use vantare_ui::efficiency::text::{baseline, draw, ink};
+                draw(
+                    window,
+                    cx,
+                    label,
+                    f32::from(bounds.left()),
+                    baseline(f32::from(bounds.top()), 51.0, 34.0),
+                    &ink(34.0, 700.0, -0.035, rgb(orbit::INK).into()),
+                );
+            },
+        )
+        .size_full(),
+    )
+}
+
+// KPIs y versión usan tracking negativo en orbit-kit/settings.css.
+// El cursor conserva el kerning de Cascadia, sin redondear cada avance.
+fn mono_tracked(content: String, size: f32, weight: f32, tracking: f32, color: u32) -> Div {
+    div().h(px(size * 1.5)).w_full().child(
+        gpui::canvas(
+            |bounds, _, _| bounds,
+            move |_, bounds, window, cx| {
+                let run = gpui::TextRun {
+                    len: content.len(),
+                    font: gpui::Font {
+                        weight: gpui::FontWeight(weight),
+                        ..font("Cascadia Code")
+                    },
+                    color: rgb(color).into(),
+                    background_color: None,
+                    underline: None,
+                    strikethrough: None,
+                };
+                let line =
+                    window
+                        .text_system()
+                        .shape_line(content.clone().into(), px(size), &[run], None);
+                let base = vantare_ui::efficiency::text::baseline(
+                    f32::from(bounds.top()),
+                    size * 1.5,
+                    size,
+                );
+                let height = line.ascent + line.descent;
+                let mut cursor = line.cursor();
+                let mut spacing = px(0.0);
+                for (byte, ch) in content.char_indices() {
+                    let x = bounds.left() + cursor.x_offset() + spacing;
+                    spacing += px(tracking);
+                    let part = cursor.take_until(byte + ch.len_utf8());
+                    if let Err(error) = part.paint(
+                        gpui::point(x, px(base) - line.ascent),
+                        height,
+                        gpui::TextAlign::Left,
+                        None,
+                        window,
+                        cx,
+                    ) {
+                        eprintln!("No se pudo pintar el valor monoespaciado: {error}");
+                    }
+                }
+            },
+        )
+        .size_full(),
+    )
+}
+
+fn eyebrow(content: &str) -> Div {
+    tracked_text(&content.to_uppercase(), 11.0, 700, orbit::INK_3, 0.44)
+}
 
 fn stack() -> Div {
     div().flex().flex_col().w_full().min_w_0().gap(px(21.0))
@@ -16,6 +147,9 @@ fn section_text(content: &str, size: f32, weight: u16, color: u32, line_height: 
     text(content, size, weight, color).line_height(px(line_height))
 }
 fn section_row(label: &str, help: &str, control: impl IntoElement) -> Div {
+    section_row_hint(label, help, control, 12.0)
+}
+fn section_row_hint(label: &str, help: &str, control: impl IntoElement, hint_size: f32) -> Div {
     div()
         .min_h(px(54.0))
         .py(px(6.0))
@@ -32,8 +166,18 @@ fn section_row(label: &str, help: &str, control: impl IntoElement) -> Div {
                 .flex()
                 .flex_col()
                 .gap(px(2.5))
-                .child(section_text(label, 13.5, 650, orbit::INK, 16.0))
-                .child(section_text(help, 12.0, 400, orbit::INK_3, 16.8)),
+                .child(section_text(label, 13.5, 650, orbit::INK, 20.25))
+                .child(section_text(
+                    help,
+                    hint_size,
+                    400,
+                    orbit::INK_3,
+                    if hint_size < 12.0 {
+                        17.25
+                    } else {
+                        hint_size * 1.4
+                    },
+                )),
         )
         .child(control)
 }
@@ -51,7 +195,7 @@ fn section_palette_row(label: &str, help: &str, palettes: Div) -> Div {
                 .flex()
                 .flex_col()
                 .gap(px(2.5))
-                .child(section_text(label, 13.5, 650, orbit::INK, 16.0))
+                .child(section_text(label, 13.5, 650, orbit::INK, 20.25))
                 .child(section_text(help, 12.0, 400, orbit::INK_3, 16.8)),
         )
         .child(palettes)
@@ -68,7 +212,7 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div) -> Div {
         .rounded(px(orbit::RADIUS))
         .border_1()
         .border_color(rgba(orbit::LINE))
-        .bg(rgb(orbit::SURFACE_1))
+        .bg(rgba(0x1011_14c9))
         .child(
             div()
                 .min_h(px(60.0))
@@ -82,11 +226,25 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div) -> Div {
                 .child(text(title, 15.0, 700, orbit::INK))
                 .when_some(meta, |head, value| {
                     let meta = if title == "Nivel de rendimiento" {
-                        section_status(value, orbit::EMBER)
+                        section_status(
+                            value,
+                            if value.starts_with("Activo") {
+                                orbit::GREEN
+                            } else {
+                                orbit::EMBER
+                            },
+                        )
                     } else {
-                        text(value, 12.0, 500, orbit::INK_3)
+                        text(value, 12.0, 500, orbit::INK_3).font_family("Cascadia Code")
                     };
-                    head.child(div().flex_1()).child(meta)
+                    head.child(div().flex_1()).child(meta).when(
+                        title == "Últimos eventos" && value == "8 en esta sesión",
+                        |head| {
+                            head.child(
+                                small_button("settings-demo-copy-events", "Copiar").tab_stop(false),
+                            )
+                        },
+                    )
                 }),
         )
         .child(body)
@@ -129,22 +287,117 @@ fn section_status(content: &str, color: u32) -> Div {
         ))
 }
 fn small_button(id: &'static str, label: &str) -> gpui::Stateful<Div> {
-    orbit::button(id, label)
-        .h(px(30.0))
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .flex_none()
+        .h(px(34.0))
         .px(px(12.0))
         .rounded(px(10.0))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .bg(rgba(0xffff_ff04))
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(text(label, 12.0, 600, orbit::INK_3))
+}
+fn reference_choice(id: &'static str, label: &str) -> gpui::Stateful<Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .tab_stop(false)
+        .aria_description("Pendiente: sin contrato nativo")
+        .w(px(168.0))
+        .h(px(39.0))
+        .px(px(13.0))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_between()
+        .rounded(px(12.0))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .bg(rgba(0xf5f3_f207))
+        .child(text(label, 14.0, 500, orbit::INK_2))
+        .child(text("⌄", 16.0, 400, orbit::INK_3))
+}
+fn reference_schemes(selected: usize) -> Div {
+    let mut schemes = div().flex().flex_none().gap(px(6.0));
+    for (index, label) in ["Sistema", "Claro", "Oscuro"].into_iter().enumerate() {
+        schemes = schemes.child(
+            div()
+                .id(("settings-scheme", index))
+                .role(gpui::Role::Button)
+                .aria_label(label)
+                .aria_selected(index == selected)
+                .tab_stop(false)
+                .aria_description("Pendiente: sin contrato nativo")
+                .h(px(34.0))
+                .px(px(12.0))
+                .flex()
+                .items_center()
+                .rounded(px(9.0))
+                .border_1()
+                .border_color(if index == selected {
+                    rgb(orbit::CARMINE)
+                } else {
+                    rgba(orbit::LINE)
+                })
+                .bg(if index == selected {
+                    linear_gradient(
+                        90.0,
+                        linear_color_stop(rgba(0xd52f_491c), 0.0),
+                        linear_color_stop(rgba(0xd52f_4905), 1.0),
+                    )
+                } else {
+                    gpui::Background::from(rgb(orbit::SURFACE_1))
+                })
+                .child(text(
+                    label,
+                    16.0,
+                    400,
+                    if index == selected {
+                        orbit::INK
+                    } else {
+                        orbit::INK_2
+                    },
+                )),
+        );
+    }
+    schemes
+}
+fn reference_primary(id: &'static str, label: &str) -> gpui::Stateful<Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .tab_stop(false)
+        .aria_description("Pendiente: sin contrato nativo")
+        .flex_none()
+        .h(px(39.0))
+        .px(px(14.0))
+        .rounded(px(12.0))
+        .border_1()
+        .border_color(rgba(0x0000_0000))
+        .bg(rgb(orbit::PRIMARY_BG))
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(text(label, 12.0, 600, 0x001c_1719))
 }
 fn privacy_bullet(content: &str) -> Div {
     div()
         .flex()
         .items_start()
-        .gap(px(10.0))
-        .child(text("•", 16.0, 400, orbit::INK_2))
+        .ml(px(18.0))
         .child(
             div()
                 .flex_1()
                 .min_w_0()
-                .child(text(content, 16.0, 400, orbit::INK_2).line_height(px(24.0))),
+                .child(paragraph(content, 16.0, 400, orbit::INK_2)),
         )
 }
 fn palette_card(
@@ -205,7 +458,7 @@ fn palette_card(
                     linear_color_stop(rgb(dark), 0.5),
                 ))),
         )
-        .child(text(name, 12.0, 400, orbit::INK_2))
+        .child(text(name, 12.0, 400, orbit::INK_2).line_height(px(18.0)))
         .child(
             div()
                 .flex()
@@ -218,28 +471,52 @@ fn palette_card(
 }
 fn palette_variant(color: u32, active: bool) -> Div {
     div()
+        .relative()
         .size(px(23.0))
         .flex_none()
         .rounded_full()
         .border_2()
-        .border_color(if active {
-            rgb(orbit::CARMINE)
-        } else {
-            rgba(orbit::LINE_STRONG)
-        })
+        .border_color(rgba(orbit::LINE_STRONG))
         .bg(rgb(color))
         .when(active, |variant| {
-            variant.shadow(vec![gpui::BoxShadow {
-                color: rgba(orbit::CARMINE).into(),
-                offset: gpui::point(px(0.0), px(0.0)),
-                blur_radius: px(0.0),
-                spread_radius: px(2.0),
-                inset: false,
-            }])
+            variant.child(
+                div()
+                    .absolute()
+                    .left(px(-6.0))
+                    .top(px(-6.0))
+                    .size(px(31.0))
+                    .rounded_full()
+                    .border_2()
+                    .border_color(rgb(orbit::CARMINE)),
+            )
         })
 }
 fn disabled_toggle(id: &'static str, label: &str, value: bool) -> gpui::Stateful<Div> {
-    orbit::toggle(id, label, value, false).tab_stop(false)
+    div()
+        .id(id)
+        .role(gpui::Role::Switch)
+        .aria_label(label)
+        .tab_stop(false)
+        .aria_description("Pendiente: sin contrato nativo")
+        .w(px(44.0))
+        .h(px(24.0))
+        .flex_none()
+        .p(px(3.0))
+        .rounded_full()
+        .flex()
+        .when(value, |toggle| {
+            toggle.justify_end().bg(linear_gradient(
+                130.0,
+                linear_color_stop(rgb(orbit::RED), 0.0),
+                linear_color_stop(rgb(orbit::CARMINE), 1.0),
+            ))
+        })
+        .when(!value, |toggle| toggle.bg(rgb(0x0015_1619)))
+        .child(div().size(px(18.0)).rounded_full().bg(rgb(if value {
+            0x001e_171c
+        } else {
+            orbit::INK_MUTED
+        })))
 }
 fn disabled_slider(value: f32, min: f32, max: f32, label: &'static str) -> gpui::Stateful<Div> {
     let fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
@@ -259,7 +536,7 @@ fn disabled_slider(value: f32, min: f32, max: f32, label: &'static str) -> gpui:
         .gap(px(12.0))
         .aria_description("Pendiente: sin contrato nativo")
         .child(div().w(px(45.0)).flex_none().text_right().child(
-            text(format!("{value:.0}%"), 12.0, 500, orbit::INK_2).font_family("Cascadia Code"),
+            text(format!("{value:.0}%"), 16.0, 400, orbit::INK_2).font_family("Cascadia Code"),
         ))
         .child(
             div()
@@ -320,7 +597,7 @@ fn performance_choice(
                         orbit::INK_4
                     }
                 } else {
-                    orbit::LINE
+                    0x002a_2a2f
                 },
             )))
         },
@@ -334,7 +611,7 @@ fn performance_choice(
         .tab_stop(false)
         .flex_1()
         .min_w_0()
-        .min_h(px(157.0))
+        .h(px(167.0))
         .px(px(15.0))
         .pt(px(14.0))
         .pb(px(13.0))
@@ -349,9 +626,13 @@ fn performance_choice(
             rgba(orbit::LINE)
         })
         .bg(if selected {
-            rgba(0xd52f_491a)
+            linear_gradient(
+                160.0,
+                linear_color_stop(rgba(0x2412_15ff), 0.0),
+                linear_color_stop(rgba(0x0e0f_11ff), 0.7),
+            )
         } else {
-            rgb(orbit::SURFACE_1)
+            gpui::Background::from(rgba(0x1011_14c9))
         })
         .child(
             div()
@@ -359,11 +640,13 @@ fn performance_choice(
                 .items_center()
                 .justify_between()
                 .child(text(title, 15.0, 720, orbit::INK))
-                .child(div().size(px(7.0)).rounded_full().bg(rgb(if selected {
-                    orbit::GREEN
-                } else {
-                    orbit::INK_MUTED
-                }))),
+                .child(
+                    div()
+                        .size(px(7.0))
+                        .rounded_full()
+                        .border_1()
+                        .border_color(rgb(orbit::INK_3)),
+                ),
         )
         .child(meter)
         .child(
@@ -375,13 +658,17 @@ fn performance_choice(
             )
             .font_family("Cascadia Code"),
         )
-        .child(text(description, 12.0, 400, orbit::INK_3).line_height(px(18.0)))
+        .child(
+            text(description, 12.0, 400, orbit::INK_3)
+                .line_height(px(18.0))
+                .top(px(1.0)),
+        )
 }
 fn performance_mode(title: &str, rate: &str, description: &str, selected: bool) -> Div {
     div()
         .flex_1()
         .min_w_0()
-        .min_h(px(98.0))
+        .h(px(100.0))
         .px(px(15.0))
         .pt(px(14.0))
         .pb(px(13.0))
@@ -396,11 +683,14 @@ fn performance_mode(title: &str, rate: &str, description: &str, selected: bool) 
             rgba(orbit::LINE)
         })
         .bg(if selected {
-            rgba(0xd52f_491a)
+            linear_gradient(
+                160.0,
+                linear_color_stop(rgba(0x2412_15ff), 0.0),
+                linear_color_stop(rgba(0x0e0f_11ff), 0.7),
+            )
         } else {
-            rgb(orbit::SURFACE_1)
+            gpui::Background::from(rgba(0x1011_14c9))
         })
-        .opacity(0.62)
         .child(
             div()
                 .flex()
@@ -414,17 +704,55 @@ fn performance_mode(title: &str, rate: &str, description: &str, selected: bool) 
                         .size(px(8.0))
                         .rounded_full()
                         .border_1()
-                        .border_color(rgba(orbit::INK_3))
+                        .border_color(rgb(orbit::INK_3))
                 }),
         )
         .child(text(rate, 11.0, 600, orbit::INK_3).font_family("Cascadia Code"))
         .child(text(description, 12.0, 400, orbit::INK_3))
 }
 fn disabled_button(id: &'static str, label: &str) -> gpui::Stateful<Div> {
-    orbit::button(id, label)
+    small_button(id, label)
         .tab_stop(false)
-        .opacity(orbit::DISABLED)
+        .opacity(0.55)
         .aria_description("Pendiente: sin contrato nativo")
+}
+fn hotkey_keycaps(keys: [&str; 3]) -> Div {
+    let mut keycaps = div().flex().flex_none().items_center().gap(px(4.0));
+    for (key_index, key) in keys.into_iter().enumerate() {
+        if key_index > 0 {
+            keycaps = keycaps.child(div().px(px(3.0)).child(text(
+                "+",
+                16.0,
+                400,
+                orbit::INK_MUTED,
+            )));
+        }
+        keycaps = keycaps.child(
+            div()
+                .min_w(px(30.0))
+                .h(px(28.0))
+                .px(px(9.0))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(7.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE_STRONG))
+                .border_b(px(2.5))
+                .border_color(rgba(0xffff_ff38))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(rgb(orbit::SURFACE_3), 0.0),
+                    linear_color_stop(rgb(orbit::SURFACE_2), 1.0),
+                ))
+                .child(
+                    text(key, 12.0, 700, orbit::INK_2)
+                        .font_family("Cascadia Code")
+                        .font_weight(gpui::FontWeight(700.0)),
+                ),
+        );
+    }
+    keycaps
 }
 impl Hub {
     fn settings_button(
@@ -438,47 +766,77 @@ impl Hub {
             Action::PrepareDiagnostic => !self.settings.busy,
             Action::CopyDiagnostic => self.settings.diagnostic.is_some(),
         };
-        orbit::button(id, label)
-            .track_focus(&self.settings.action_focus[action as usize])
-            .tab_stop(enabled)
-            .when(!enabled, |button| button.opacity(orbit::DISABLED))
-            .on_click(cx.listener(move |this, _, window, cx| {
-                if enabled {
-                    this.settings.action_focus[action as usize].focus(window, cx);
-                    this.settings_action(action, cx);
-                }
-            }))
-            .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
-                if enabled && matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.settings_action(action, cx);
-                    cx.stop_propagation();
-                }
-            }))
+        (if matches!(action, Action::PrepareDiagnostic) {
+            reference_primary(id, label).aria_description("Preparar informe de diagnóstico local")
+        } else {
+            small_button(id, label)
+        })
+        .track_focus(&self.settings.action_focus[action as usize])
+        .tab_stop(enabled)
+        .when(!enabled, |button| button.opacity(orbit::DISABLED))
+        .on_click(cx.listener(move |this, _, window, cx| {
+            if enabled {
+                this.settings.action_focus[action as usize].focus(window, cx);
+                this.settings_action(action, cx);
+            }
+        }))
+        .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
+            if enabled && matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                this.settings_action(action, cx);
+                cx.stop_propagation();
+            }
+        }))
     }
     pub(in crate::shell) fn settings_header(&self) -> Div {
-        div()
-            .flex()
-            .flex_col()
-            .mt(px(-4.0))
-            .child(orbit::eyebrow("Preferencias"))
-            .child(text(self.settings.page.title(), 34.0, 700, orbit::INK).mt(px(6.0)))
-            .child(text(self.settings.page.description(), 13.5, 400, orbit::INK_2).mt(px(7.0)))
+        div().ml(px(-1.0)).child(Grayscale(
+            div()
+                .flex()
+                .flex_col()
+                .mt(px(-1.0))
+                .child(eyebrow("Preferencias").line_height(px(13.2)))
+                .child(page_title(self.settings.page.title()).mt(px(8.0)))
+                .child(
+                    text(self.settings.page.description(), 13.5, 400, orbit::INK_2)
+                        .line_height(px(20.925))
+                        .mt(px(9.0)),
+                )
+                .into_any_element(),
+        ))
+    }
+    fn settings_search(&self, cx: &Context<Self>) -> Div {
+        div().px(px(14.0)).py(px(18.0)).child(
+            div()
+                .relative()
+                .rounded_full()
+                .overflow_hidden()
+                .child(self.settings.query.clone())
+                .when(self.settings.query.read(cx).value.is_empty(), |search| {
+                    search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
+                        "Buscar ajustes...",
+                        13.5,
+                        400,
+                        orbit::INK_3,
+                    )))
+                }),
+        )
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
         let mut rows = stack().gap_1();
         let mut found = false;
-        for (index, (section, label, subtitle)) in [
-            (Section::Account, "Cuenta", "Sesión, plan y dispositivos"),
-            (Section::Licenses, "Licencias", "Plan y módulos"),
-        ]
-        .into_iter()
-        .enumerate()
+        for (index, (section, label, subtitle)) in
+            [(Section::Account, "Cuenta", "Sesión, plan y dispositivos")]
+                .into_iter()
+                .enumerate()
         {
             if super::search_text(&format!("{label} {subtitle}")).contains(&query) {
                 found = true;
                 rows = rows.child(
-                    orbit::nav_item(label, label, subtitle, false)
+                    orbit::nav_item(label, label, subtitle, self.settings.page == Page::Account)
+                        .mx(px(0.0))
+                        .px(px(11.0))
+                        .py(px(7.0))
+                        .h(px(52.0))
                         .track_focus(&self.settings.nav_focus[index])
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.settings.nav_focus[index].focus(window, cx);
@@ -506,6 +864,10 @@ impl Hub {
                         page.subtitle(),
                         page == self.settings.page,
                     )
+                    .mx(px(0.0))
+                    .px(px(11.0))
+                    .py(px(7.0))
+                    .h(px(52.0))
                     .track_focus(&self.settings.nav_focus[focus_index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[focus_index].focus(window, cx);
@@ -528,37 +890,28 @@ impl Hub {
                 "Busca otra sección o ajuste.",
             ));
         }
-        orbit::column("Ajustes", env!("CARGO_PKG_VERSION"))
-            .w(px(orbit::column_width(f32::from(
-                window.viewport_size().width,
-            ))))
-            .child(
-                div()
-                    .px(px(24.0))
-                    .pt(px(24.0))
-                    .child(orbit::eyebrow("Secciones")),
-            )
-            .child(
-                div()
-                    .px(px(14.0))
-                    .py(px(18.0))
-                    .child(orbit::text(
-                        "Buscar ajustes…",
-                        orbit::SECONDARY,
-                        400,
-                        orbit::INK_3,
-                    ))
-                    .child(self.settings.query.clone()),
-            )
-            .child(
-                div()
-                    .id("settings-nav")
-                    .flex_1()
-                    .min_w_0()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .child(rows),
-            )
+        orbit::column(
+            "Ajustes",
+            if self.demo.is_some() {
+                "v0.3.10"
+            } else {
+                env!("CARGO_PKG_VERSION")
+            },
+        )
+        .w(px(orbit::column_width(f32::from(
+            window.viewport_size().width,
+        ))))
+        .child(div().px(px(24.0)).pt(px(24.0)).child(eyebrow("Secciones")))
+        .child(self.settings_search(cx))
+        .child(
+            div()
+                .id("settings-nav")
+                .flex_1()
+                .min_w_0()
+                .min_h_0()
+                .overflow_y_scroll()
+                .child(rows),
+        )
     }
     pub(in crate::shell) fn settings(&self, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         self.sync_settings_preferences(cx);
@@ -573,30 +926,41 @@ impl Hub {
             self.settings.panel_scroll.scroll_to_bottom();
         }
         let content = stack()
+            .when(
+                matches!(self.settings.page, Page::Updates | Page::Privacy),
+                |content| content.pr(px(10.0)),
+            )
             .when_some(self.settings.status.clone(), |view, status| {
                 view.child(orbit::callout(status))
             })
             .child(match self.settings.page {
-                Page::Application => self.settings_application(),
+                Page::Application => self.settings_application(cx),
+                Page::Account => {
+                    div().child(self.remote.update(cx, |remote, cx| remote.account(cx)))
+                }
                 Page::Appearance => self.settings_appearance(cx),
-                Page::Performance => Self::settings_performance(),
+                Page::Performance => self.settings_performance(),
                 Page::Updates => self.settings_updates(),
-                Page::Hotkeys => Self::settings_hotkeys(),
-                Page::Privacy => Self::settings_privacy(),
+                Page::Hotkeys => self.settings_hotkeys(),
+                Page::Privacy => self.settings_privacy(),
                 Page::Diagnostics => self.settings_diagnostics(cx),
             });
         div()
             .id("settings-panel")
+            .mx(px(-1.0))
             .mt(px(-9.0))
-            .flex_1()
+            // La shell permite altura intrínseca: el panel reserva el viewport
+            // menos topbar, cabecera, separación y pie, como `.orbit-set`.
+            .h(px(self.settings.panel_height))
+            .flex_none()
             .min_h_0()
-            .w_full()
+            .w_auto()
             .overflow_y_scroll()
             .track_scroll(&self.settings.panel_scroll)
-            .child(content)
+            .child(Grayscale(content.into_any_element()))
     }
-    fn settings_application(&self) -> Div {
-        let zoom = div()
+    fn settings_zoom() -> gpui::Stateful<Div> {
+        div()
             .id("settings-zoom-control")
             .role(gpui::Role::Group)
             .aria_label("Zoom de la interfaz")
@@ -609,7 +973,6 @@ impl Hub {
             .border_1()
             .border_color(rgba(orbit::LINE_STRONG))
             .bg(rgb(orbit::SURFACE_2))
-            .opacity(orbit::DISABLED)
             .child(
                 div()
                     .size(px(44.0))
@@ -637,7 +1000,10 @@ impl Hub {
                     .items_center()
                     .justify_center()
                     .child(text("+", 16.0, 700, orbit::INK)),
-            );
+            )
+    }
+    fn settings_application(&self, cx: &Context<Self>) -> Div {
+        let zoom = Self::settings_zoom();
         let interface = section_surface(
             "Interfaz",
             None,
@@ -650,16 +1016,37 @@ impl Hub {
                 .child(section_row(
                     "Idioma",
                     "Idioma de la interfaz del hub.",
-                    self.settings.hub_language.clone(),
+                    reference_choice(
+                        "settings-hub-language",
+                        &self.settings.hub_language.read(cx).state.options[0].label,
+                    ),
                 ))
                 .child(
                     section_row(
                         "Densidad",
                         "Altura de filas, espaciado y radios.",
-                        self.settings.density.clone(),
+                        reference_choice(
+                            "settings-density",
+                            &self.settings.density.read(cx).state.options[1].label,
+                        ),
                     )
                     .border_b_0(),
-                ),
+                )
+                .when(self.demo.is_none(), |body| {
+                    body.child(section_row(
+                        "Idioma de widgets",
+                        "Se guarda en el layout compartido de Overlay Studio.",
+                        self.settings.language.clone(),
+                    ))
+                    .child(
+                        section_row(
+                            "Unidades de widgets",
+                            "Preferencias reales del layout activo.",
+                            self.settings.units.clone(),
+                        )
+                        .border_b_0(),
+                    )
+                }),
         )
         .flex_1();
         let system = Self::settings_system();
@@ -684,9 +1071,11 @@ impl Hub {
     fn settings_language_menu() -> Div {
         let mut menu = div()
             .absolute()
-            .top(px(180.0))
-            .left(px(300.0))
+            .top(px(205.0))
+            .left(px(301.0))
             .w(px(168.0))
+            .h(px(160.0))
+            .overflow_hidden()
             .p(px(6.0))
             .rounded(px(12.0))
             .border_1()
@@ -706,19 +1095,33 @@ impl Hub {
             menu = menu.child(
                 div()
                     .h(px(38.0))
-                    .px(px(14.0))
+                    .px(px(10.0))
                     .flex()
                     .items_center()
                     .justify_between()
                     .rounded(px(8.0))
                     .when(index == 0, |item| item.bg(rgba(orbit::LINE_ROW)))
-                    .child(text(language, orbit::BODY, 500, orbit::INK_2))
+                    .child(text(
+                        language,
+                        orbit::BODY,
+                        if index == 0 { 650 } else { 400 },
+                        if index == 0 { orbit::INK } else { orbit::INK_2 },
+                    ))
                     .when(index == 0, |item| {
                         item.child(text("✓", orbit::SECONDARY, 650, orbit::CORAL))
                     }),
             );
         }
-        menu
+        menu.child(
+            div()
+                .absolute()
+                .right(px(2.0))
+                .top(px(4.0))
+                .w(px(6.0))
+                .h(px(148.0))
+                .rounded_full()
+                .bg(rgba(0xffff_ff24)),
+        )
     }
     fn settings_system() -> Div {
         section_surface(
@@ -779,7 +1182,7 @@ impl Hub {
             ("Grises", 0x00e9_e9e9, 0x0030_3030),
         ];
         let selected_scheme = self.settings.scheme.read(cx).state.selected;
-        let mut palettes = div().w_full().mt(px(18.0)).flex().flex_wrap().gap(px(6.0));
+        let mut palettes = div().w_full().mt(px(16.0)).flex().flex_wrap().gap(px(6.0));
         for (index, (name, light, dark)) in colors.into_iter().enumerate() {
             palettes = palettes.child(palette_card(
                 index,
@@ -807,7 +1210,7 @@ impl Hub {
                 .child(section_row(
                     "Apariencia",
                     "Elige claro, oscuro o sigue el ajuste de Windows.",
-                    self.settings.scheme.clone(),
+                    reference_schemes(selected_scheme.unwrap_or(2)),
                 ))
                 .child(section_row(
                     "Contraste",
@@ -822,13 +1225,13 @@ impl Hub {
                 .child(section_row(
                     "Fuente de interfaz",
                     "Se aplica a menús, controles y textos de la aplicación.",
-                    self.settings.font.clone(),
+                    reference_choice("settings-font", &self.settings.font.read(cx).state.options[0].label),
                 ))
                 .child(
                     section_row(
                         "Fuente monoespaciada",
                         "Se aplica a cifras y textos técnicos de la interfaz.",
-                        self.settings.mono.clone(),
+                        reference_choice("settings-mono", &self.settings.mono.read(cx).state.options[0].label),
                     )
                     .border_b_0(),
                 )
@@ -846,7 +1249,7 @@ impl Hub {
                         .bg(rgb(orbit::SURFACE_1))
                         .child(text(
                             "Vista previa de la interfaz y sus cifras",
-                            12.0,
+                            16.0,
                             400,
                             orbit::INK,
                         ))
@@ -854,7 +1257,7 @@ impl Hub {
                             div()
                                 .font_family("Cascadia Code")
                                 .child(
-                                    text("01:23.456 · LMU / Vantare", 12.0, 500, orbit::INK_2)
+                                    text("01:23.456 · LMU / Vantare", 16.0, 400, orbit::INK_2)
                                         .font_family("Cascadia Code"),
                                 ),
                         ),
@@ -863,13 +1266,13 @@ impl Hub {
                     "Reducir animaciones",
                     "Preferencia local de esta app; la del sistema se respeta siempre.",
                     disabled_toggle("settings-motion", "Reducir animaciones", false),
-                ))
+                ).border_b_0())
                 .child(section_note(
                     "La apariencia de los widgets del overlay se configura por separado en Overlay Studio.",
                 )),
             ))
     }
-    fn settings_performance() -> Div {
+    fn settings_performance(&self) -> Div {
         let choices = [
             (
                 "Máximo",
@@ -920,7 +1323,7 @@ impl Hub {
             ));
         section_surface(
             "Nivel de rendimiento",
-            Some("Sin estado de rendimiento nativo"),
+            Some(if self.demo.is_some() { "Activo ahora · Equilibrado · 40 fps · elegido por ti" } else { "Sin estado de rendimiento nativo" }),
             section_body()
                 .gap(px(12.0))
                 .child(levels)
@@ -930,54 +1333,152 @@ impl Hub {
                     orbit::SECONDARY,
                     400,
                     orbit::INK_3,
-                )),
+                ).mt(px(-8.0)).line_height(px(18.0))),
         )
     }
     fn settings_updates(&self) -> Div {
-        let (version, state, channel) = match &self.settings.update {
-            LocalUpdate::Unread => ("—".into(), "sin respuesta del actualizador".into(), None),
-            LocalUpdate::Development => (
-                format!("v{}", env!("CARGO_PKG_VERSION")),
-                "build de desarrollo · sin instalación local detectada".to_owned(),
-                None,
-            ),
-            LocalUpdate::Package {
-                version,
-                channel,
-                previous,
-            } => (
-                format!("v{version}"),
-                format!(
-                    "estado local leído · referencia anterior {}",
-                    if *previous { "presente" } else { "ausente" }
+        let (version, state, channel) = if let Some(demo) = &self.demo {
+            (
+                demo.versions.current.clone(),
+                format!("Stable · {} disponible", demo.versions.pending),
+                Some("Stable"),
+            )
+        } else {
+            match &self.settings.update {
+                LocalUpdate::Unread => ("—".into(), "sin respuesta del actualizador".into(), None),
+                LocalUpdate::Development => (
+                    format!("v{}", env!("CARGO_PKG_VERSION")),
+                    "build de desarrollo · sin instalación local detectada".to_owned(),
+                    None,
                 ),
-                Some(match channel.as_str() {
-                    "master" | "stable" => "Stable",
-                    "testers" => "Testers",
-                    "nightly" => "Nightly",
-                    _ => "",
-                }),
-            ),
-            LocalUpdate::Invalid => (
-                "—".into(),
-                "estado local inválido o no legible".into(),
-                None,
-            ),
+                LocalUpdate::Package {
+                    version,
+                    channel,
+                    previous,
+                } => (
+                    format!("v{version}"),
+                    format!(
+                        "estado local leído · referencia anterior {}",
+                        if *previous { "presente" } else { "ausente" }
+                    ),
+                    Some(match channel.as_str() {
+                        "master" | "stable" => "Stable",
+                        "testers" => "Testers",
+                        "nightly" => "Nightly",
+                        _ => "",
+                    }),
+                ),
+                LocalUpdate::Invalid => (
+                    "—".into(),
+                    "estado local inválido o no legible".into(),
+                    None,
+                ),
+            }
         };
         let news = section_surface(
             "Novedades",
             Some("docs/releases"),
-            section_body().child(section_note(
-                "Todavía no hay ninguna nota de versión empaquetada.",
-            )),
+            self.settings_release_news(),
         );
         stack()
-            .child(Self::settings_update_hero(version, state))
-            .child(Self::settings_update_channels(channel))
+            .child(Self::settings_update_hero(
+                version,
+                state,
+                self.demo.is_some(),
+            ))
+            .child(Self::settings_update_channels(channel, self.demo.is_some()))
             .child(news)
     }
-    fn settings_update_hero(version: String, state: String) -> Div {
+    fn settings_release_news(&self) -> Div {
+        let mut body = section_body().mt(px(-2.5));
+        match super::releases::news() {
+            Ok(releases) => {
+                for release in releases {
+                    body = body.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(14.0))
+                            .min_h(px(46.0))
+                            .border_b_1()
+                            .border_color(rgba(orbit::LINE_ROW))
+                            .child(
+                                div().w(px(96.0)).flex_none().child(
+                                    text(release.tag.replace('-', "-\n"), 12.0, 700, orbit::CORAL)
+                                        .font_family("Cascadia Code")
+                                        .font_weight(gpui::FontWeight(700.0))
+                                        .line_height(px(18.0)),
+                                ),
+                            )
+                            .child(
+                                div().flex_1().min_w_0().child(
+                                    div()
+                                        .text_size(px(12.5))
+                                        .font_family("Inter W400")
+                                        .text_color(rgb(0x00c9_c4c6))
+                                        .line_height(px(18.75))
+                                        .relative()
+                                        .top(px(0.0))
+                                        .child(Paragraph {
+                                            text: format!(
+                                                "{} — {}",
+                                                release.title, release.summary
+                                            )
+                                            .into(),
+                                            runs: vec![
+                                                gpui::TextRun {
+                                                    len: release.title.len(),
+                                                    font: font("Inter W700"),
+                                                    color: rgb(orbit::INK).into(),
+                                                    background_color: None,
+                                                    underline: None,
+                                                    strikethrough: None,
+                                                },
+                                                gpui::TextRun {
+                                                    len: 5 + release.summary.len(),
+                                                    font: font("Inter W400"),
+                                                    color: rgb(0x00c9_c4c6).into(),
+                                                    background_color: None,
+                                                    underline: None,
+                                                    strikethrough: None,
+                                                },
+                                            ],
+                                        }),
+                                ),
+                            )
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .px(px(8.0))
+                                    .py(px(3.0))
+                                    .rounded_full()
+                                    .bg(rgba(0xffff_ff0d))
+                                    .child(div().flex().gap(px(0.8)).children(
+                                        release.channel.to_uppercase().chars().map(|ch| {
+                                            text(ch.to_string(), 10.0, 750, orbit::INK_3)
+                                                .w(px(6.0))
+                                                .font_family("Cascadia Code")
+                                                .font_weight(gpui::FontWeight(750.0))
+                                        }),
+                                    )),
+                            ),
+                    );
+                }
+            }
+            Err(error) => body = body.child(section_note(error)),
+        }
+        // Wails reparte el espacio restante de Novedades y desplaza su cuerpo.
+        div().child(
+            div()
+                .id("settings-release-news")
+                .h(px((self.settings.panel_height - 367.0).max(80.0)))
+                .overflow_y_scroll()
+                .child(body),
+        )
+    }
+    fn settings_update_hero(version: String, state: String, demo: bool) -> Div {
         div()
+            .h(px(139.0))
             .w_full()
             .flex()
             .items_center()
@@ -992,11 +1493,11 @@ impl Hub {
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(orbit::eyebrow("Versión instalada"))
+                    .child(eyebrow("Versión instalada"))
                     .child(
-                        div()
-                            .font_family("Cascadia Code")
-                            .child(text(version, 30.0, 750, orbit::INK).mt(px(4.0))),
+                        div().font_family("Cascadia Code").child(
+                            mono_tracked(version, 30.0, 700.0, -1.2, orbit::INK).mt(px(4.0)),
+                        ),
                     )
                     .child(text(state, 12.5, 400, orbit::INK_3).mt(px(4.0))),
             )
@@ -1006,17 +1507,21 @@ impl Hub {
                     .flex_none()
                     .items_center()
                     .gap(px(12.0))
-                    .child(disabled_button(
+                    .child(reference_primary(
                         "settings-update-install",
-                        "Instalar actualización",
+                        if demo {
+                            "Instalar v0.1.0.2"
+                        } else {
+                            "Instalar actualización"
+                        },
                     ))
-                    .child(disabled_button(
+                    .child(reference_primary(
                         "settings-update-check",
                         "Buscar actualizaciones",
                     )),
             )
     }
-    fn settings_update_channels(channel: Option<&str>) -> Div {
+    fn settings_update_channels(channel: Option<&str>, demo: bool) -> Div {
         let mut channels = div().flex().w_full().gap(px(21.0));
         for (index, (name, description)) in [
             ("Stable", "Versiones probadas para todo el mundo."),
@@ -1035,7 +1540,8 @@ impl Hub {
                     .flex_1()
                     .min_w_0()
                     .min_h(px(125.0))
-                    .p(px(16.0))
+                    .px(px(18.0))
+                    .py(px(16.0))
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
@@ -1051,7 +1557,6 @@ impl Hub {
                     } else {
                         rgb(orbit::SURFACE_1)
                     })
-                    .opacity(orbit::DISABLED)
                     .child(
                         div()
                             .flex()
@@ -1059,20 +1564,55 @@ impl Hub {
                             .justify_between()
                             .child(text(name, 15.0, 700, orbit::INK))
                             .child(if active {
-                                orbit::chip("Canal local", Tone::Neutral).into_any_element()
+                                div()
+                                    .size(px(7.0))
+                                    .rounded_full()
+                                    .bg(rgb(orbit::GREEN))
+                                    .into_any_element()
                             } else if index > 0 {
                                 orbit::icon("i-lock", 13.0, orbit::INK_3).into_any_element()
                             } else {
-                                orbit::icon("i-chevron", 13.0, orbit::INK_3).into_any_element()
+                                text("⌄", 16.0, 400, orbit::INK_3).into_any_element()
                             }),
                     )
-                    .child(text(description, 12.0, 400, orbit::INK_3))
-                    .child(text("sin versión publicada", 11.0, 600, orbit::INK_3)),
+                    .child(
+                        text(
+                            format!(
+                                "{description}{}",
+                                if demo && index > 0 {
+                                    " Requiere invitación."
+                                } else {
+                                    ""
+                                }
+                            ),
+                            12.0,
+                            400,
+                            orbit::INK_3,
+                        )
+                        .line_height(px(18.0)),
+                    )
+                    .child(
+                        text(
+                            if demo {
+                                [
+                                    "v0.1.0.2 · 2/6/2026",
+                                    "v0.1.0.7-testers.1 · 3/6/2026",
+                                    "v0.1.0.7-nightly.11 · 5/6/2026",
+                                ][index]
+                            } else {
+                                "sin versión publicada"
+                            },
+                            11.0,
+                            600,
+                            orbit::INK_3,
+                        )
+                        .font_family("Cascadia Code"),
+                    ),
             );
         }
         channels
     }
-    fn settings_hotkeys() -> Div {
+    fn settings_hotkeys(&self) -> Div {
         let mut body = section_body();
         for (index, (label, help, keys)) in [
             (
@@ -1099,30 +1639,17 @@ impl Hub {
         .into_iter()
         .enumerate()
         {
-            let mut keycaps = div().flex().flex_none().items_center().gap(px(5.0));
-            for (key_index, key) in keys.into_iter().enumerate() {
-                if key_index > 0 {
-                    keycaps = keycaps.child(text("+", 11.0, 500, orbit::INK_3));
-                }
-                keycaps = keycaps.child(
-                    div()
-                        .min_w(px(30.0))
-                        .h(px(28.0))
-                        .px(px(9.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded(px(7.0))
-                        .border_1()
-                        .border_color(rgba(orbit::LINE_STRONG))
-                        .bg(rgb(orbit::SURFACE_2))
-                        .opacity(orbit::DISABLED)
-                        .child(text(key, 10.5, 600, orbit::INK_2)),
-                );
-            }
-            body = body.child(section_row(label, help, keycaps).id(("settings-hotkey", index)));
+            let keycaps = hotkey_keycaps(keys);
+            body = body.child(
+                section_row_hint(label, help, keycaps, 11.5)
+                    .id(("settings-hotkey", index))
+                    .px(px(8.0))
+                    .py(px(8.0))
+                    .min_h(px(56.5))
+                    .when(index == 3, gpui::Stateful::<Div>::border_b_0),
+            );
         }
-        stack()
+        stack().mt(px(7.0))
             .child(
                 div()
                     .flex()
@@ -1137,7 +1664,7 @@ impl Hub {
                             .flex()
                             .flex_col()
                             .gap(px(7.0))
-                            .child(orbit::eyebrow("Atajos globales"))
+                            .child(eyebrow("Atajos globales").line_height(px(13.2)))
                             .child(text(
                                 "Funcionan aunque Vantare esté en segundo plano. Pulsa una fila y después la combinación para reasignarla; los conflictos se marcan en ámbar.",
                                 orbit::BODY,
@@ -1164,7 +1691,7 @@ impl Hub {
                     .child(section_surface("Overlay", Some("4 combinaciones"), body)),
             )
             .child(section_note(
-                "El Hub nativo todavía no registra atajos globales. Las combinaciones se muestran como referencia y no se pueden reasignar aquí.",
+                if self.demo.is_some() { "La app registra estas cuatro combinaciones y ninguna más. Los grupos «Launcher y carrera», «Studio» y «Global» del prototipo no tienen atajos registrados todavía, así que no se pintan." } else { "El Hub nativo todavía no registra atajos globales. Las combinaciones se muestran como referencia y no se pueden reasignar aquí." },
             ))
     }
     fn settings_privacy_consent() -> Div {
@@ -1214,23 +1741,23 @@ impl Hub {
                     "Si aceptas, Vantare puede preparar y subir automáticamente paquetes seudonimizados de Strategy. Cada paquete queda visible e inspeccionable antes del envío.",
                     16.0,
                     400,
-                    orbit::INK_2,
-                ).line_height(px(24.0)))
-                .child(columns().child(shared).child(never))
+                    orbit::INK,
+                ).line_height(px(24.0)).mt(px(0.0)))
+                .child(columns().gap(px(16.0)).child(shared).child(never))
                 .child(section_note(
                     "Los paquetes son seudonimizados, no anónimos. Los secretos de subida y borrado se generan al aceptar y permanecen en el almacén protegido de Windows.",
                 ))
                 .child(
                     div()
-                        .mt(px(10.0))
+                        .mt(px(12.0)).mb(px(12.0))
                         .flex()
                         .flex_wrap()
                         .items_center()
                         .gap(px(8.0))
-                        .child(disabled_button(
+                        .child(reference_primary(
                             "settings-consent",
                             "Aceptar y participar",
-                        ))
+                        ).opacity(0.55))
                         .child(disabled_button("settings-revoke", "Revocar consentimiento"))
                         .child(disabled_button(
                             "settings-delete-remote",
@@ -1239,7 +1766,7 @@ impl Hub {
                 )
                 .child(
                     div()
-                        .mt(px(12.0))
+                        .mt(px(0.0))
                         .flex()
                         .items_start()
                         .child(section_status(
@@ -1249,14 +1776,20 @@ impl Hub {
                 ),
         )
     }
-    fn settings_privacy_queue() -> Div {
+    fn settings_privacy_queue(&self) -> Div {
         section_surface(
             "Cola e historial de envíos",
-            Some("no disponible"),
+            Some(if self.demo.is_some() {
+                "0 sin enviar · 0 enviados"
+            } else {
+                "no disponible"
+            }),
             section_body()
-                .child(section_note(
-                    "La cola de Strategy no está disponible en el Hub nativo.",
-                ))
+                .child(section_note(if self.demo.is_some() {
+                    "Todavía no hay paquetes preparados."
+                } else {
+                    "La cola de Strategy no está disponible en el Hub nativo."
+                }))
                 .child(
                     div()
                         .mt(px(2.0))
@@ -1266,31 +1799,34 @@ impl Hub {
                 ),
         )
     }
-    fn settings_privacy_history() -> Div {
+    fn settings_privacy_history(&self) -> Div {
         section_surface(
             "Historial de borrado remoto",
             None,
             section_body()
                 .child(section_note(
-                    "No hay un contrato nativo para consultar borrados remotos.",
+                    if self.demo.is_some() { "No hay solicitudes de borrado remoto registradas." } else { "No hay un contrato nativo para consultar borrados remotos." },
                 ))
                 .child(section_note(
                     "El borrado alcanza bundles, copias, índices, cachés e informes derivados. Los agregados irreversibles de cohortes ya publicadas no se pueden retirar individualmente.",
                 )),
         )
     }
-    fn settings_privacy() -> Div {
+    fn settings_privacy(&self) -> Div {
         div()
             .flex()
             .flex_col()
             .w_full()
             .min_w_0()
-            .gap(px(15.0))
+            .gap(px(14.0))
             .child(Self::settings_privacy_consent())
-            .child(Self::settings_privacy_queue())
-            .child(Self::settings_privacy_history())
+            .child(self.settings_privacy_queue())
+            .child(self.settings_privacy_history())
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {
+        if self.demo.is_some() {
+            return Self::settings_demo_events();
+        }
         let observed = &self.testing.read(cx).observed;
         let filter = self
             .settings
@@ -1337,60 +1873,115 @@ impl Hub {
         }
         section_surface("Últimos eventos", Some("sesión actual"), events).flex_1()
     }
-    fn settings_diagnostics(&self, cx: &mut Context<Self>) -> Div {
-        let tiles = [
-            ("Telemetry Core", "—", "sin fuente conectada"),
-            ("Overlay", "—", "sin perfil activo"),
-            ("CPU · memoria", "—", "muestreo no disponible"),
-            ("Datos locales", "—", "medición no disponible"),
-        ];
-        let mut stats = div().flex().w_full().gap(px(12.0));
+    fn settings_statistics(demo: bool) -> Div {
+        let tiles = if demo {
+            [
+                (
+                    "Telemetry Core",
+                    "LMU conectado",
+                    "fuente en vivo y disponible",
+                ),
+                ("Overlay", "Detenido", "sin perfil activo"),
+                (
+                    "CPU · memoria",
+                    "—",
+                    "esperando la primera muestra del backend",
+                ),
+                (
+                    "Datos locales",
+                    "45 MB",
+                    "3 carpetas medidas por el backend",
+                ),
+            ]
+        } else {
+            [
+                ("Telemetry Core", "—", "sin fuente conectada"),
+                ("Overlay", "—", "sin perfil activo"),
+                ("CPU · memoria", "—", "muestreo no disponible"),
+                ("Datos locales", "—", "medición no disponible"),
+            ]
+        };
+        let mut stats = div().grid().grid_cols(4).w_full().gap(px(21.0));
         for (label, value, help) in tiles {
             stats = stats.child(
                 div()
                     .flex_1()
                     .min_w_0()
-                    .min_h(px(108.0))
-                    .p(px(16.0))
+                    .h(px(107.0))
+                    .px(px(18.0))
+                    .py(px(15.0))
                     .flex()
                     .flex_col()
-                    .justify_between()
                     .rounded(px(orbit::RADIUS))
                     .border_1()
                     .border_color(rgba(orbit::LINE))
-                    .bg(rgb(orbit::SURFACE_1))
-                    .child(orbit::eyebrow(label))
-                    .child(text(value, 23.0, 700, orbit::INK))
-                    .child(text(help, 12.0, 400, orbit::INK_3)),
+                    .bg(rgba(0x1011_14c9))
+                    .child(
+                        text(label.to_uppercase(), 11.0, 700, orbit::INK_3).line_height(px(13.2)),
+                    )
+                    .child(
+                        mono_tracked(
+                            value.to_owned(),
+                            22.0,
+                            700.0,
+                            -0.66,
+                            if demo && label == "Telemetry Core" {
+                                orbit::GREEN
+                            } else {
+                                orbit::INK
+                            },
+                        )
+                        .mt(px(8.0)),
+                    )
+                    .child(
+                        text(help, 11.5, 400, orbit::INK_4)
+                            .mt(px(4.0))
+                            .whitespace_nowrap()
+                            .text_ellipsis(),
+                    ),
             );
         }
+        stats
+    }
+    fn settings_diagnostics(&self, cx: &mut Context<Self>) -> Div {
+        let demo = self.demo.is_some();
+        let stats = Self::settings_statistics(demo);
         let data = section_surface(
             "Datos y registros",
             None,
             section_body()
-                .child(section_row(
+                .child(section_row_hint(
                     "Carpeta de datos",
-                    &self.settings.data.display().to_string(),
+                    &if demo {
+                        "C:\\Users\\piloto\\AppData\\Roaming\\Vantare\\configs".into()
+                    } else {
+                        self.settings.data.display().to_string()
+                    },
                     small_button("settings-data-open", "Abrir")
                         .tab_stop(false)
-                        .opacity(orbit::DISABLED)
                         .aria_description("Sin acción nativa para abrir esta carpeta"),
+                    12.0,
                 ))
-                .child(section_row(
+                .child(section_row_hint(
                     "Carpeta de registros",
-                    "Sin contrato nativo de registro del Hub.",
+                    if demo {
+                        "C:\\Users\\piloto\\AppData\\Local\\Vantare\\logs"
+                    } else {
+                        "Sin contrato nativo de registro del Hub."
+                    },
                     small_button("settings-logs-open", "Abrir")
                         .tab_stop(false)
-                        .opacity(orbit::DISABLED)
                         .aria_description("Sin ruta de registros disponible"),
+                    12.0,
                 ))
-                .child(section_row(
+                .child(section_row_hint(
                     "Muestreo de CPU",
                     "Métrica de diagnóstico local.",
-                    disabled_toggle("settings-cpu", "Muestreo de CPU", false),
+                    disabled_toggle("settings-cpu", "Muestreo de CPU", demo),
+                    12.0,
                 ))
                 .child(
-                    section_row(
+                    section_row_hint(
                         "Informe de diagnóstico",
                         "Paquete saneado, listo para copiar o adjuntar.",
                         self.settings_button(
@@ -1403,8 +1994,9 @@ impl Hub {
                             Action::PrepareDiagnostic,
                             cx,
                         )
-                        .h(px(30.0))
+                        .h(px(34.0))
                         .px(px(12.0)),
+                        12.0,
                     )
                     .border_b_0(),
                 ),
@@ -1417,6 +2009,133 @@ impl Hub {
             view = view.child(detail);
         }
         view
+    }
+    fn settings_event_filters() -> Div {
+        let mut filters = div()
+            .flex()
+            .items_center()
+            .gap(px(2.5))
+            .p(px(4.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(rgba(orbit::LINE_ROW));
+        for (index, label) in ["Todos 8", "Info 5", "Aviso 2", "Error 1"]
+            .into_iter()
+            .enumerate()
+        {
+            filters = filters.child(
+                div()
+                    .h(px(29.0))
+                    .px(px(10.0))
+                    .rounded(px(8.0))
+                    .flex()
+                    .items_center()
+                    .when(index == 0, |item| {
+                        item.bg(rgba(0xd52f_492e))
+                            .border_1()
+                            .border_color(rgba(0xf047_554d))
+                    })
+                    .child(text(
+                        label,
+                        12.0,
+                        650,
+                        if index == 0 { orbit::INK } else { orbit::INK_4 },
+                    )),
+            );
+        }
+        filters
+    }
+    fn settings_demo_events() -> Div {
+        // Anillo del harness Wails (`wails-runtime-mock.ts`), sin observaciones
+        // productivas ni envío. Las horas son las de la referencia congelada.
+        let mut rows = section_body().gap(px(2.0));
+        let filters = Self::settings_event_filters();
+        rows = rows.child(div().flex().mb(px(8.0)).child(filters));
+        for (index, (time, level, message)) in [
+            ("16:00:24", "INFO", "launcher: Le Mans Ultimate started"),
+            (
+                "16:00:02",
+                "AVISO",
+                "warning: hotkey Ctrl+Alt+O already registered by another app",
+            ),
+            ("15:59:35", "INFO", "updater: channel nightly selected"),
+            (
+                "15:59:00",
+                "ERROR",
+                "storage error: telemetry session chunk could not be written",
+            ),
+            (
+                "15:58:38",
+                "INFO",
+                "overlay: profile 'Racing' loaded with 7 widgets",
+            ),
+            (
+                "15:58:04",
+                "AVISO",
+                "warning: configs directory not found — hub profile CRUD disabled",
+            ),
+            ("15:57:45", "INFO", "telemetry: LMU shared memory attached"),
+            (
+                "15:57:32",
+                "INFO",
+                "HTTP server: listening on 127.0.0.1:39261",
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            rows = rows.child(
+                div()
+                    .flex()
+                    .items_start()
+                    .gap(px(10.0))
+                    .px(px(6.0))
+                    .py(px(4.0))
+                    .rounded(px(5.0))
+                    .bg(rgba(if level == "ERROR" {
+                        0xff6a_5f14
+                    } else if index % 2 == 0 {
+                        orbit::LINE_ROW
+                    } else {
+                        0x0000_0000
+                    }))
+                    .child(
+                        div().w(px(58.0)).flex_none().child(
+                            text(time, 12.0, 400, orbit::INK_3)
+                                .font_family("Cascadia Code")
+                                .line_height(px(18.0)),
+                        ),
+                    )
+                    .child(
+                        div()
+                            .w(px(52.0))
+                            .flex_none()
+                            .relative()
+                            .left(px(-1.0))
+                            .child(mono_tracked(
+                                level.to_owned(),
+                                10.0,
+                                700.0,
+                                0.4,
+                                match level {
+                                    "ERROR" => orbit::CORAL,
+                                    "AVISO" => orbit::EMBER,
+                                    _ => orbit::INK_3,
+                                },
+                            )),
+                    )
+                    .child(
+                        div().flex_1().min_w_0().child(
+                            text(message, 12.0, 400, orbit::INK_2)
+                                .relative()
+                                .left(px(-1.0))
+                                .font_family("Cascadia Code")
+                                .line_height(px(18.0)),
+                        ),
+                    ),
+            );
+        }
+        section_surface("Últimos eventos", Some("8 en esta sesión"), rows).flex_1()
     }
     fn settings_diagnostic_report(&self, cx: &mut Context<Self>) -> Vec<Div> {
         let Some(diagnostic) = &self.settings.diagnostic else {

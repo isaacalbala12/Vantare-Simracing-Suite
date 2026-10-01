@@ -80,7 +80,8 @@ pub(super) struct Dimensions {
     pub fuel_weight: Option<FuelWeight>,
     pub saving_cost: Option<SavingCost>,
     pub projection: Option<Value>,
-    pub observed: Option<Value>,
+    #[serde(rename = "observed")]
+    pub _observed: Option<Value>,
     pub base_lap_climate_bucket: Option<String>,
     pub race_duration_seconds: Option<f64>,
 }
@@ -174,6 +175,8 @@ pub(super) struct Model {
     pub tyres: super::tyres::TyreModel,
     pub drivers: Vec<super::drivers::Driver>,
     pub weather: super::weather::WeatherModel,
+    pub pace_points: Vec<super::CurvePoint>,
+    pub pace_tail: f64,
     pub rules: ExtraRules,
 }
 
@@ -199,7 +202,7 @@ pub(super) fn source(p: &Value, c: &Value) -> Result<(), String> {
 impl Model {
     #[allow(clippy::too_many_lines)] // Ordered validation of the immutable model.
     pub fn new(input: &Input) -> Result<Self, String> {
-        let dims: Dimensions = serde_json::from_value(json!(input.extra))
+        let mut dims: Dimensions = serde_json::from_value(json!(input.extra))
             .map_err(|e| format!("unsupported_native_dimension: {e}"))?;
         let mut scalar = input.clone();
         scalar.extra.clear();
@@ -217,10 +220,8 @@ impl Model {
                 )?;
             }
         }
-        require(
-            dims.projection.is_none() && dims.observed.is_none(),
-            "projection/observed not yet supported",
-        )?;
+        // Observed is metadata in Go SolveV2, not an alternate authority for decisions.
+        let (pace_points, pace_tail) = super::projection::resolve(&mut scalar, &mut dims)?;
         if let Some(bucket) = &dims.base_lap_climate_bucket {
             require(
                 ["dry", "humid", "wet"].contains(&bucket.as_str()),
@@ -281,6 +282,7 @@ impl Model {
             nonnegative(weight.seconds_per_liter, "fuelWeight.secondsPerLiter")?;
             fuel_weight = weight.seconds_per_liter;
         }
+        let selected_levels = super::projection::selected_levels(&dims)?;
         let mut levels = vec![SavingLevel {
             level: "none".into(),
             ..SavingLevel::default()
@@ -301,7 +303,7 @@ impl Model {
                 "savingCost.levels",
             )?;
             let mut seen = std::collections::BTreeSet::new();
-            for level in &saving.levels {
+            for level in selected_levels.as_ref().unwrap_or(&saving.levels) {
                 require(
                     !level.level.is_empty() && level.level != "none" && seen.insert(&level.level),
                     "savingCost.level identifier",
@@ -322,6 +324,31 @@ impl Model {
                     levels.push(level.clone());
                 }
             }
+        }
+        if dims.saving_cost.is_none()
+            && let Some(selected) = selected_levels
+        {
+            require(selected.len() <= 16, "derived saving levels")?;
+            let mut seen = std::collections::BTreeSet::new();
+            for level in selected {
+                require(
+                    seen.insert(level.level.clone()),
+                    "duplicate derived saving level",
+                )?;
+                if level.fuel_saved_per_lap != 0.0
+                    || level.ve_saved_per_lap != 0.0
+                    || level.time_cost_per_lap != 0.0
+                {
+                    levels.push(level);
+                }
+            }
+        }
+        if let Some(pr) = &dims.projection
+            && pr["fuelWeightCurve"]["presence"] == "valid"
+        {
+            fuel_weight = pr["fuelWeightCurve"]["slopeSecondsPerUnit"]
+                .as_f64()
+                .unwrap_or(0.0);
         }
         let tyres = super::tyres::TyreModel::new(
             &scalar,
@@ -353,6 +380,8 @@ impl Model {
             dims.projection.as_ref(),
         )?;
         Ok(Self {
+            pace_points,
+            pace_tail,
             weather,
             drivers,
             input: scalar,
@@ -413,6 +442,18 @@ impl Model {
             saving_seconds: count * level.time_cost_per_lap,
             ..Evaluation::default()
         };
+        if !self.pace_points.is_empty() {
+            eval.degradation_seconds = (1..=laps)
+                .map(|lap| {
+                    super::tyres::curve_delta(
+                        &self.pace_points,
+                        self.input.degradation_per_lap_seconds.value,
+                        lap,
+                        self.pace_tail,
+                    )
+                })
+                .sum();
+        }
         if let Some(cost) = self.tyres.compounds.get(compound) {
             eval.compound_seconds = count * cost.pace_delta_seconds;
             eval.degradation_seconds = (1..=laps).map(|lap| cost.delta(lap)).sum();

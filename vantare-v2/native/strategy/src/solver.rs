@@ -1,9 +1,13 @@
 //! Deterministic Strategy solver, with shared search and fixed-plan replay models.
+mod certified;
 mod drivers;
 pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
 mod model;
 #[cfg(test)]
 mod parity_tests;
+mod risk;
+pub use risk::{CandidateDetail, SolverRisk, SolverVariant, WorstCaseTolerance};
+mod projection;
 mod replay;
 mod scenarios;
 mod search;
@@ -262,6 +266,12 @@ pub struct ResultV2 {
     pub worst_case: Option<Evaluation>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<DecisionVector>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidate_details: Vec<CandidateDetail>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub variants: Vec<SolverVariant>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_inputs: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]

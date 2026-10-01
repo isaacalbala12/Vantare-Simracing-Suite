@@ -5,12 +5,16 @@ use super::{
     PitDecision, PitStop, ResultV2, SolverOutcome, StintDecision, amount, populated,
     solver_outcome, units,
 };
+use serde_json::json;
 
 pub(super) fn needs_extended(input: &Input) -> bool {
     input.extra.values().any(populated) || input.event_rules.extra.values().any(populated)
 }
 #[derive(Clone)]
 struct State {
+    worst_fuel: i64,
+    worst_ve: i64,
+    worst_feasible: bool,
     fuel: i64,
     ve: i64,
     age: u32,
@@ -39,7 +43,13 @@ fn compare_state(l: &State, r: &State) -> Ordering {
     time_cmp(l.evaluation.total_seconds, r.evaluation.total_seconds)
         .then_with(|| decision_cmp(&l.decision, &r.decision))
 }
-fn dominates(l: &State, r: &State, m: &Model) -> bool {
+fn dominates(l: &State, r: &State, m: &Model, risk: bool) -> bool {
+    if risk
+        && ((!l.worst_feasible && r.worst_feasible)
+            || (l.worst_feasible && (l.worst_fuel < r.worst_fuel || l.worst_ve < r.worst_ve)))
+    {
+        return false;
+    }
     let rules = &m.input.event_rules;
     if m.dims.race_duration_seconds.is_some()
         && time_cmp(l.evaluation.total_seconds, r.evaluation.total_seconds) != Ordering::Equal
@@ -89,7 +99,13 @@ pub(super) fn solve(
     cancel: &AtomicBool,
     partial: bool,
 ) -> Result<SolverOutcome, String> {
+    if cancel.load(AtomicOrdering::Relaxed) {
+        return Err("cancelled".into());
+    }
     let m = Model::new(input)?;
+    let worst = Model::new(&super::risk::envelope(input, true))?;
+    let cost = Model::new(&super::risk::envelope(input, false))?;
+    let risk = super::risk::active(&m, &worst);
     let started = std::time::Instant::now();
     let max_work = if input.budget.max_candidates == 0 {
         10_000_000
@@ -108,6 +124,21 @@ pub(super) fn solve(
     for choice in m.tyres.initial() {
         frontier[0].push(State {
             drivers: super::drivers::DriverState::default(),
+            worst_fuel: units(
+                worst
+                    .dims
+                    .initial_fuel_liters
+                    .as_ref()
+                    .map_or(amount(worst.fuel.capacity), |s| s.value),
+            )?,
+            worst_ve: units(
+                worst
+                    .dims
+                    .initial_ve_percent
+                    .as_ref()
+                    .map_or(amount(worst.ve.capacity), |s| s.value),
+            )?,
+            worst_feasible: true,
             tyre: choice,
             tyre_usage: std::collections::BTreeMap::new(),
             fuel: units(
@@ -132,6 +163,7 @@ pub(super) fn solve(
         });
     }
     let mut completed: Vec<State> = vec![];
+    let mut safe_completed: Vec<State> = vec![];
     'search: for lap in 0..input.race_laps {
         let nodes = std::mem::take(&mut frontier[usize::try_from(lap).map_err(|e| e.to_string())?]);
         for node in nodes {
@@ -154,11 +186,11 @@ pub(super) fn solve(
                         let (f, v) = m.usage(lap + 1, laps, &driver.id, level)?;
                         if f > node.fuel
                             || v > node.ve
-                            || (input.tyre_life_laps.value > 0.0
+                            || (m.input.tyre_life_laps.value > 0.0
                                 && f64::from(
                                     super::tyres::age(&node.tyre, &node.tyre_usage, node.age)
                                         + laps,
-                                ) > input.tyre_life_laps.value)
+                                ) > m.input.tyre_life_laps.value)
                         {
                             break;
                         }
@@ -183,6 +215,20 @@ pub(super) fn solve(
                         .is_some()
                         {
                             continue;
+                        }
+                        let worst_level = worst.level(&level.level)?;
+                        let (wf, wv) = worst.usage(lap + 1, laps, &driver.id, worst_level)?;
+                        after.worst_fuel -= wf;
+                        after.worst_ve -= wv;
+                        if after.worst_fuel < 0
+                            || after.worst_ve < 0
+                            || (worst.input.tyre_life_laps.value > 0.0
+                                && f64::from(
+                                    super::tyres::age(&node.tyre, &node.tyre_usage, node.age)
+                                        + laps,
+                                ) > worst.input.tyre_life_laps.value)
+                        {
+                            after.worst_feasible = false;
                         }
                         after.fuel -= f;
                         after.ve -= v;
@@ -214,6 +260,11 @@ pub(super) fn solve(
                             if completed_reason(&m, &after.decision).is_none() {
                                 let replayed = replay_model(&m, &after.decision, None, true)?;
                                 if replayed.feasible {
+                                    if after.worst_feasible {
+                                        safe_completed.push(after.clone());
+                                        safe_completed.sort_by(compare_state);
+                                        safe_completed.truncate(8);
+                                    }
                                     completed.push(after);
                                     completed.sort_by(|l, r| {
                                         let laps = |s: &State| {
@@ -260,6 +311,8 @@ pub(super) fn solve(
                                         saving_level: "none".into(),
                                         ..PitDecision::default()
                                     });
+                                    next.worst_fuel += f;
+                                    next.worst_ve += v;
                                     next.fuel += f;
                                     next.ve += v;
                                     next.tyre = next_tyre.clone();
@@ -287,13 +340,15 @@ pub(super) fn solve(
                                             reason = Some("deadline_exceeded");
                                             break 'search;
                                         }
-                                        if dominates(existing, &next, &m) {
+                                        if dominates(existing, &next, &m, risk) {
                                             dominated = true;
                                             break;
                                         }
                                     }
                                     if !dominated {
-                                        target.retain(|existing| !dominates(&next, existing, &m));
+                                        target.retain(|existing| {
+                                            !dominates(&next, existing, &m, risk)
+                                        });
                                         target.push(next);
                                     }
                                 }
@@ -311,11 +366,21 @@ pub(super) fn solve(
         )?;
     }
     let mut candidates = Vec::new();
-    for state in completed {
+    let mut keys = std::collections::BTreeSet::new();
+    for state in completed.into_iter().chain(safe_completed) {
+        let key = serde_json::to_string(&state.decision).map_err(|e| e.to_string())?;
+        if !keys.insert(key) {
+            continue;
+        }
         let replayed = replay_model(&m, &state.decision, None, true)?;
         if replayed.feasible {
             candidates.push(replayed);
         }
+    }
+    let certified = super::certified::one_pit(&m, &worst, &cost, risk)?;
+    let adverse_policy = risk && certified.is_some();
+    if let Some(plans) = certified {
+        candidates = plans;
     }
     candidates.sort_by(|l, r| {
         let laps = |d: &DecisionVector| d.stints.iter().map(|s| s.laps).sum::<u32>();
@@ -357,9 +422,24 @@ pub(super) fn solve(
             best: Some(best.decision.clone()),
             reserve: Some(best.reserve.clone()),
             worst_case: None,
+            candidate_details: Vec::new(),
+            variants: Vec::new(),
+            resolved_inputs: Some(
+                json!({"baseLapSeconds":m.input.base_lap_seconds,"fuelCapacityLiters":m.input.fuel_capacity_liters,"veCapacityPercent":m.input.ve_capacity_percent,"tyreLifeLaps":m.input.tyre_life_laps,"fuelPerLapLiters":m.input.fuel_per_lap_liters,"vePerLapPercent":m.input.ve_per_lap_percent,"degradationPerLapSeconds":m.input.degradation_per_lap_seconds,"formationSeconds":m.input.formation.seconds,"pitCost":m.input.pit_cost}),
+            ),
             candidates: candidates.iter().map(|r| r.decision.clone()).collect(),
         };
     }
+    for replayed in &candidates {
+        result
+            .candidate_details
+            .push(super::risk::detail(replayed, &cost, &worst)?);
+    }
+    result.variants = super::risk::variants(&result.candidate_details);
+    result.worst_case = result
+        .candidate_details
+        .first()
+        .map(|d| d.worst_case.clone());
     let status = if reason.is_some() {
         OptimalityStatus::NotProven
     } else if result.feasible {
@@ -368,6 +448,10 @@ pub(super) fn solve(
         OptimalityStatus::NoSolution
     };
     let mut outcome = solver_outcome(result, status, work, reason);
-    outcome.certificate.scope = "validated_discrete_input";
+    outcome.certificate.scope = if adverse_policy {
+        "validated_adverse_feasible_input"
+    } else {
+        "validated_discrete_input"
+    };
     Ok(outcome)
 }

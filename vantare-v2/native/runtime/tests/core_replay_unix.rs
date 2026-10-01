@@ -3,11 +3,12 @@
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use vantare_domain::{SourceKind, SourceState};
 use vantare_ipc::Subscriber;
+
+mod support;
 
 fn testdata(file: &str) -> PathBuf {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -66,13 +67,5 @@ fn replay_process_publishes_real_photos_and_stops_on_stdin_eof() {
     assert!(stale.sequence > first.sequence);
 
     drop(core.0.stdin.take());
-    let deadline = Instant::now() + Duration::from_secs(3);
-    let status = loop {
-        if let Some(status) = core.0.try_wait().expect("estado del núcleo") {
-            break status;
-        }
-        assert!(Instant::now() < deadline, "EOF no cerró el núcleo");
-        thread::sleep(Duration::from_millis(10));
-    };
-    assert!(status.success(), "salida del núcleo: {status}");
+    support::wait_for_success(&mut core.0);
 }

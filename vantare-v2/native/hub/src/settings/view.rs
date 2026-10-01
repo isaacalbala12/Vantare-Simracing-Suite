@@ -804,25 +804,33 @@ impl Hub {
         ))
     }
     fn settings_search(&self, cx: &Context<Self>) -> Div {
-        div().px(px(14.0)).py(px(18.0)).child(
-            div()
-                .relative()
-                .rounded_full()
-                .overflow_hidden()
-                .child(self.settings.query.clone())
-                .when(self.settings.query.read(cx).value.is_empty(), |search| {
-                    search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
-                        "Buscar ajustes...",
-                        13.5,
-                        400,
-                        orbit::INK_3,
-                    )))
-                }),
-        )
+        let aligned = self.settings.page == Page::Diagnostics;
+        div()
+            .px(px(if aligned { 0.0 } else { 14.0 }))
+            .pt(px(if aligned { 20.0 } else { 18.0 }))
+            .pb(px(if aligned { 9.0 } else { 18.0 }))
+            .child(
+                div()
+                    .relative()
+                    .rounded_full()
+                    .overflow_hidden()
+                    .child(self.settings.query.clone())
+                    .when(self.settings.query.read(cx).value.is_empty(), |search| {
+                        search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
+                            "Buscar ajustes...",
+                            13.5,
+                            400,
+                            orbit::INK_3,
+                        )))
+                    }),
+            )
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let mut rows = stack().gap_1();
+        let aligned = self.settings.page == Page::Diagnostics;
+        let mut rows = stack()
+            .gap(px(if aligned { 2.0 } else { 4.0 }))
+            .when(aligned, |rows| rows.px(px(2.0)));
         let mut found = false;
         for (index, (section, label, subtitle)) in
             [(Section::Account, "Cuenta", "Sesión, plan y dispositivos")]
@@ -834,9 +842,9 @@ impl Hub {
                 rows = rows.child(
                     orbit::nav_item(label, label, subtitle, self.settings.page == Page::Account)
                         .mx(px(0.0))
-                        .px(px(11.0))
+                        .px(px(if aligned { 8.0 } else { 11.0 }))
                         .py(px(7.0))
-                        .h(px(52.0))
+                        .h(px(if aligned { 50.0 } else { 52.0 }))
                         .track_focus(&self.settings.nav_focus[index])
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.settings.nav_focus[index].focus(window, cx);
@@ -865,9 +873,9 @@ impl Hub {
                         page == self.settings.page,
                     )
                     .mx(px(0.0))
-                    .px(px(11.0))
+                    .px(px(if aligned { 8.0 } else { 11.0 }))
                     .py(px(7.0))
-                    .h(px(52.0))
+                    .h(px(if aligned { 50.0 } else { 52.0 }))
                     .track_focus(&self.settings.nav_focus[focus_index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[focus_index].focus(window, cx);
@@ -901,7 +909,12 @@ impl Hub {
         .w(px(orbit::column_width(f32::from(
             window.viewport_size().width,
         ))))
-        .child(div().px(px(24.0)).pt(px(24.0)).child(eyebrow("Secciones")))
+        .child(
+            div()
+                .px(px(if aligned { 9.0 } else { 24.0 }))
+                .pt(px(if aligned { 27.0 } else { 24.0 }))
+                .child(eyebrow("Secciones")),
+        )
         .child(self.settings_search(cx))
         .child(
             div()
@@ -2026,7 +2039,7 @@ impl Hub {
             filters = filters.child(
                 div()
                     .h(px(29.0))
-                    .px(px(10.0))
+                    .px(px(12.0))
                     .rounded(px(8.0))
                     .flex()
                     .items_center()

@@ -7,6 +7,7 @@ use super::solver::{self, Input, SolverOutcome};
 
 mod automatic;
 mod corrections;
+pub mod repository;
 pub use automatic::{
     AutomaticPreparation, AutomaticPreparationStatus, ClimateBucket, ProjectionFamily,
     ProjectionFamilyCoverage, VirtualEnergyApplicability, prepare_automatic,

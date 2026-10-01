@@ -2,7 +2,7 @@
 use super::assistant::AssistantStep;
 use super::editor_view::EditorTab;
 use super::*;
-use gpui::{AnyElement, px, rgb, rgba};
+use gpui::{AnyElement, ObjectFit, img, px, rgb, rgba};
 use orbit::{Choice, ChoiceChanged, ChoiceKind, OptionItem, Tone};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -43,6 +43,25 @@ fn option(title: &str, help: &str, action: impl IntoElement) -> gpui::Div {
 fn context_new_selected(page: Page) -> bool {
     !matches!(page, Page::Collection)
 }
+fn context_sidebar_visible(page: Page) -> bool {
+    matches!(page, Page::Assistant(_))
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GarageBackground {
+    Standard,
+    Career,
+    Detail,
+}
+fn garage_background_kind(page: Page) -> Option<GarageBackground> {
+    match page {
+        Page::Editor(EditorTab::Revisiones) => Some(GarageBackground::Detail),
+        Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
+        Page::Assistant(_) | Page::Editor(EditorTab::Datos | EditorTab::Plan) => {
+            Some(GarageBackground::Standard)
+        }
+        _ => None,
+    }
+}
 fn summary(event: &Value) -> String {
     [
         display(&event["cls"]["value"]),
@@ -63,6 +82,86 @@ fn summary(event: &Value) -> String {
 }
 
 impl Strategy {
+    pub(crate) fn context_sidebar_visible(&self) -> bool {
+        context_sidebar_visible(self.page)
+    }
+
+    pub(crate) fn garage_background(&self, viewport_width: f32) -> Option<AnyElement> {
+        match garage_background_kind(self.page)? {
+            GarageBackground::Detail => {
+                let image = self.garage_detail.clone()?;
+                let scale = viewport_width / 1672.0;
+                let width = 1056.0 * scale;
+                let image_height = width * 762.0 / 2064.0;
+                Some(
+                    div()
+                        .absolute()
+                        .top(px(0.0))
+                        .right(px(0.0))
+                        .w(px(width))
+                        .h(px(272.0 * scale))
+                        .overflow_hidden()
+                        .child(
+                            img(image)
+                                .absolute()
+                                .left(px(0.0))
+                                .top(px(-10.0 * scale))
+                                .w(px(width))
+                                .h(px(image_height))
+                                .object_fit(ObjectFit::Cover),
+                        )
+                        .into_any_element(),
+                )
+            }
+            GarageBackground::Standard => {
+                let image = self.garage.clone()?;
+                let width = (viewport_width - 74.0).max(0.0);
+                Some(
+                    div()
+                        .absolute()
+                        .left(px(74.0))
+                        .top(px(0.0))
+                        .w(px(width))
+                        .h(px(width * 941.0 / 1672.0))
+                        .child(
+                            img(image)
+                                .absolute()
+                                .inset_0()
+                                .size_full()
+                                .object_fit(ObjectFit::Cover),
+                        )
+                        .child(div().absolute().inset_0().bg(rgba(0x0809_0b04)))
+                        .into_any_element(),
+                )
+            }
+            GarageBackground::Career => {
+                let image = self.garage.clone()?;
+                let scale = viewport_width / 1672.0 * 0.88;
+                let width = 1672.0 * scale;
+                let image_height = 941.0 * scale;
+                Some(
+                    div()
+                        .absolute()
+                        .top(px(0.0))
+                        .right(px(0.0))
+                        .w(px(width))
+                        .h(px(image_height - 14.0 * scale))
+                        .overflow_hidden()
+                        .child(
+                            img(image)
+                                .absolute()
+                                .left(px(0.0))
+                                .top(px(-14.0 * scale))
+                                .w(px(width))
+                                .h(px(image_height))
+                                .object_fit(ObjectFit::Cover),
+                        )
+                        .into_any_element(),
+                )
+            }
+        }
+    }
+
     pub(super) fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
         if let Err(error) = self.ensure_clean_form() {
             self.outcome(Err(error), cx);
@@ -412,19 +511,22 @@ impl Strategy {
             .cursor_pointer()
             .child(orbit::text("Guardadas", 15.0, 400, orbit::INK_2))
             .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx)));
-        column()
+        div()
+            .flex()
+            .flex_col()
             .w_full()
             .gap(px(0.0))
+            .mb(px(32.0))
             .child(orbit::eyebrow("ESTRATEGIA").px(px(9.0)).py(px(4.0)))
             .child(new_strategy)
             .child(saved)
             .child(
                 div()
-                    .mt(px(5.0))
+                    .mt(px(15.0))
                     .pt(px(12.0))
                     .border_t_1()
                     .border_color(rgba(orbit::LINE_ROW))
-                    .child(orbit::eyebrow("TU CARRERA").px(px(9.0)).pb(px(4.0)))
+                    .child(orbit::eyebrow("TU CARRERA").px(px(9.0)).pb(px(23.0)))
                     .child(Self::context_info_row(
                         "i-telemetria",
                         "Simulador",
@@ -474,13 +576,16 @@ impl Strategy {
                 self.assistant_page(step, f32::from(window.viewport_size().height), cx)
             }
             Page::Create => self.event_form(window, cx),
-            Page::Editor(tab) => self.editor_page(tab, cx),
+            Page::Editor(tab) => {
+                self.editor_page(tab, f32::from(window.viewport_size().height), cx)
+            }
         };
         column()
             .id("strategy")
-            .when(matches!(self.page, Page::Assistant(_)), |page| {
-                page.h_full().min_h(px(0.0))
-            })
+            .when(
+                matches!(self.page, Page::Assistant(_) | Page::Editor(_)),
+                |page| page.h_full().min_h(px(0.0)),
+            )
             .child(content)
             .when_some(self.error.clone(), |page, error| {
                 page.child(orbit::callout(error))
@@ -529,5 +634,30 @@ mod tests {
         assert!(!context_new_selected(Page::Collection));
         assert!(context_new_selected(Page::Assistant(AssistantStep::Inicio)));
         assert!(context_new_selected(Page::Editor(EditorTab::Carrera)));
+    }
+
+    #[test]
+    fn strategy_context_column_only_belongs_to_the_assistant() {
+        assert!(context_sidebar_visible(Page::Assistant(
+            AssistantStep::Inicio
+        )));
+        assert!(!context_sidebar_visible(Page::Editor(EditorTab::Carrera)));
+    }
+
+    #[test]
+    fn strategy_garage_background_only_covers_assistant_and_editor() {
+        assert_eq!(
+            garage_background_kind(Page::Assistant(AssistantStep::Inicio)),
+            Some(GarageBackground::Standard)
+        );
+        assert_eq!(
+            garage_background_kind(Page::Editor(EditorTab::Carrera)),
+            Some(GarageBackground::Career)
+        );
+        assert_eq!(
+            garage_background_kind(Page::Editor(EditorTab::Revisiones)),
+            Some(GarageBackground::Detail)
+        );
+        assert_eq!(garage_background_kind(Page::Collection), None);
     }
 }

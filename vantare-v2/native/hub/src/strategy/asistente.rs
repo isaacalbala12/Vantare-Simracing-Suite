@@ -1,6 +1,6 @@
 //! Asistente de cinco pasos; prepara datos desde el documento y la API nativa.
 use super::*;
-use gpui::{ObjectFit, div, img, px, rgb, rgba};
+use gpui::{div, px, rgb, rgba};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum AssistantStep {
@@ -46,6 +46,10 @@ impl AssistantStep {
 
     pub(super) fn next(self) -> Option<Self> {
         Self::ALL.get(self.index() + 1).copied()
+    }
+
+    fn shows_navigation_footer(self) -> bool {
+        matches!(self, Self::Inicio | Self::Combinacion | Self::Sesiones)
     }
 }
 
@@ -116,26 +120,13 @@ impl Strategy {
     ) -> gpui::Div {
         let main = div()
             .id("strategy-assistant")
-            .relative()
             .flex()
             .flex_col()
             .flex_1()
-            .h(px((viewport_height - orbit::TOPBAR_H).max(0.0)))
+            .h(px((viewport_height - orbit::STRATEGY_TOPBAR_H).max(0.0)))
             .min_w_0()
-            .overflow_hidden()
-            .bg(rgb(0x0010_1114));
-        let main = if let Some(image) = self.garage.clone() {
-            main.child(
-                img(image)
-                    .absolute()
-                    .inset_0()
-                    .size_full()
-                    .object_fit(ObjectFit::Cover)
-                    .opacity(0.82),
-            )
-        } else {
-            main
-        };
+            .min_h(px(0.0))
+            .overflow_hidden();
         let (title, description) = match step {
             AssistantStep::Inicio => (
                 "Prepara tu próxima carrera",
@@ -143,19 +134,19 @@ impl Strategy {
             ),
             AssistantStep::Combinacion => (
                 "Elige tu combinación",
-                "Configura una carrera o parte de un evento disponible.",
+                "Configura tu carrera o parte de un evento del calendario de Vantare.",
             ),
             AssistantStep::Reglas => (
                 "Configura tu carrera",
-                "Define los parámetros que ya conoces; los campos vacíos siguen pendientes.",
+                "Define los parámetros de carrera según el reglamento del evento.",
             ),
             AssistantStep::Pilotos => (
-                "Prepara tus pilotos",
-                "Revisa los pilotos guardados o introduce los datos que tengas.",
+                "Prepara tu equipo",
+                "Asigna tu piloto principal y prepara los relevos de resistencia.",
             ),
             AssistantStep::Sesiones => (
                 "Elige tu telemetría",
-                "La preparación automática exige sesiones y revisiones exactas.",
+                "Revisa las sesiones compatibles y confirma cuáles utilizar en tu estrategia.",
             ),
         };
         let mut progress = gpui::div()
@@ -164,6 +155,10 @@ impl Strategy {
             .items_start()
             .justify_between()
             .gap(px(8.0))
+            .ml(px(-32.0))
+            .mr(px(-32.0))
+            .pl(px(48.0))
+            .pr(px(154.0))
             .h(px(93.0))
             .child(
                 gpui::div()
@@ -186,9 +181,17 @@ impl Strategy {
                 gpui::div()
                     .relative()
                     .flex()
-                    .flex_1()
+                    .when(index < AssistantStep::ALL.len() - 1, gpui::Styled::flex_1)
+                    .when(index == AssistantStep::ALL.len() - 1, |item| {
+                        item.w(px(60.0)).flex_none()
+                    })
                     .flex_col()
-                    .items_center()
+                    .when(index < AssistantStep::ALL.len() - 1, |item| {
+                        item.items_start()
+                    })
+                    .when(index == AssistantStep::ALL.len() - 1, |item| {
+                        item.items_center()
+                    })
                     .gap(px(8.0))
                     .child(
                         gpui::div()
@@ -219,12 +222,28 @@ impl Strategy {
                                 },
                             )),
                     )
-                    .child(orbit::text(
-                        item.label(),
-                        orbit::SECONDARY,
-                        if current { 600 } else { 400 },
-                        if current { orbit::INK } else { orbit::INK_3 },
-                    )),
+                    .child(
+                        div()
+                            .w(px(90.0))
+                            .when(index < AssistantStep::ALL.len() - 1, |label| {
+                                label.ml(px(-27.0))
+                            })
+                            .flex()
+                            .justify_center()
+                            .child(
+                                div()
+                                    .pb(px(7.0))
+                                    .when(current, |label| {
+                                        label.border_b_2().border_color(rgb(orbit::CARMINE))
+                                    })
+                                    .child(orbit::text(
+                                        item.label(),
+                                        orbit::SECONDARY,
+                                        if current { 600 } else { 400 },
+                                        if current { orbit::INK } else { orbit::INK_3 },
+                                    )),
+                            ),
+                    ),
             );
         }
 
@@ -321,7 +340,7 @@ impl Strategy {
         let body = match step {
             AssistantStep::Inicio => self.start_choices(cx),
             AssistantStep::Combinacion => self.combination_choices(),
-            AssistantStep::Reglas => self.rules_fields(),
+            AssistantStep::Reglas => self.rules_fields(cx),
             AssistantStep::Pilotos => self.driver_fields(),
             AssistantStep::Sesiones => self.session_sources(cx),
         };
@@ -333,29 +352,36 @@ impl Strategy {
             .min_h(px(0.0))
             .gap(px(14.0))
             .px(px(orbit::GUTTER))
-            .pt(px(10.0))
+            .pt(px(20.0))
             .pb(px(22.0))
-            .child(progress)
-            .child(orbit::eyebrow(step.label().to_uppercase()))
+            .child(progress.flex_none())
+            .child(orbit::eyebrow(step.label().to_uppercase()).flex_none())
             .child(
-                orbit::text(title, 38.0, 700, orbit::INK)
+                orbit::text(title, 42.0, 700, orbit::INK)
                     .max_w(px(480.0))
-                    .line_height(px(48.0)),
+                    .line_height(px(50.0))
+                    .flex_none(),
             )
-            .child(orbit::text(description, 14.0, 400, orbit::INK_2).max_w(px(460.0)))
-            .child(body);
-        let main = main
-            .child(div().absolute().inset_0().bg(rgba(0x0809_0b68)))
             .child(
-                gpui::div()
-                    .relative()
-                    .flex()
-                    .flex_col()
-                    .flex_1()
-                    .min_h(px(0.0))
-                    .child(content)
-                    .child(footer),
-            );
+                orbit::text(description, 16.0, 400, orbit::INK_2)
+                    .max_w(px(if step == AssistantStep::Pilotos {
+                        600.0
+                    } else {
+                        460.0
+                    }))
+                    .flex_none(),
+            )
+            .child(body);
+        let main = main.child(
+            gpui::div()
+                .relative()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_h(px(0.0))
+                .child(content)
+                .when(step.shows_navigation_footer(), |main| main.child(footer)),
+        );
         div().flex().flex_1().min_w_0().min_h(px(0.0)).child(main)
     }
 
@@ -401,7 +427,6 @@ impl Strategy {
         gpui::div()
             .flex()
             .flex_col()
-            .mt(px(10.0))
             .gap(px(14.0))
             .max_w(px(520.0))
             .child(
@@ -433,106 +458,328 @@ impl Strategy {
             )
     }
 
+    fn combination_option_card(
+        id: &'static str,
+        title: &'static str,
+        description: &'static str,
+        icon: &'static str,
+        selected: bool,
+    ) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id(id)
+            .flex()
+            .items_center()
+            .gap(px(14.0))
+            .w(px(354.0))
+            .flex_none()
+            .h(px(70.0))
+            .px(px(18.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(if selected {
+                rgb(orbit::CARMINE)
+            } else {
+                rgba(orbit::LINE)
+            })
+            .bg(if selected {
+                rgba(0x100d_0ff2)
+            } else {
+                rgba(0x0809_0bf0)
+            })
+            .opacity(if selected { 1.0 } else { 0.82 })
+            .child(orbit::icon(icon, 20.0, orbit::INK_2))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .child(orbit::text(title, 16.0, 600, orbit::INK))
+                    .child(orbit::text(description, 12.0, 400, orbit::INK_2)),
+            )
+    }
+
+    fn combination_event_options(selected: bool) -> gpui::Div {
+        div()
+            .flex()
+            .gap(px(12.0))
+            .child(Self::combination_option_card(
+                "strategy-custom-event",
+                "Carrera personalizada",
+                "Elige coche, circuito y reglamento",
+                "i-ajustes",
+                selected,
+            ))
+            .child(Self::combination_option_card(
+                "strategy-calendar-event",
+                "Calendario de Vantare",
+                "Selección de eventos no disponible",
+                "i-carreras",
+                false,
+            ))
+    }
+
+    fn combination_summary(circuit: String, category: String) -> gpui::Div {
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .mt(px(8.0))
+            .w(px(720.0))
+            .h(px(90.0))
+            .flex_none()
+            .p(px(18.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgba(0x0809_0bf2))
+            .child(orbit::eyebrow("TU COMBINACIÓN"))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .flex_1()
+                    .child(orbit::text(circuit, 17.0, 500, orbit::INK))
+                    .child(orbit::text(category, 13.0, 400, orbit::INK_2)),
+            )
+    }
+
     fn combination_choices(&self) -> gpui::Div {
+        let event_available = self.current_event().is_some();
+        let simulator = if event_available && self.demo_car.is_some() {
+            "Le Mans Ultimate"
+        } else {
+            "Sin simulador seleccionado"
+        };
+        let category = if self.fields[5].trim().is_empty() {
+            "Sin categoría seleccionada".to_owned()
+        } else if let Some(car) = &self.demo_car {
+            format!("{} · {car}", self.fields[5])
+        } else {
+            self.fields[5].clone()
+        };
+        let circuit = if self.fields[4].trim().is_empty() {
+            "Sin circuito seleccionado".to_owned()
+        } else {
+            self.fields[4].clone()
+        };
+        let row = |label: &str, control: gpui::Div| {
+            div()
+                .flex()
+                .items_center()
+                .gap(px(16.0))
+                .h(px(50.0))
+                .child(orbit::text(label.to_owned(), 14.0, 500, orbit::INK_2).w(px(124.0)))
+                .child(control)
+        };
+        let surface = || {
+            div()
+                .flex()
+                .items_center()
+                .w(px(580.0))
+                .h(px(50.0))
+                .px(px(16.0))
+                .rounded(px(10.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE))
+                .bg(rgba(0x0809_0bf0))
+        };
+        let simulator_row = row(
+            "Simulador",
+            surface()
+                .gap(px(12.0))
+                .child(orbit::text("LMU", 14.0, 800, orbit::CARMINE))
+                .child(orbit::text(simulator, 13.0, 600, orbit::INK)),
+        );
+        let category_control = surface().child(if self.demo_car.is_some() {
+            orbit::text(category.clone(), 13.0, 500, orbit::INK)
+        } else {
+            div().flex_1().child(self.inputs[5].clone())
+        });
+        let circuit_control = surface()
+            .child(div().flex_1().child(self.inputs[4].clone()))
+            .child(orbit::icon("i-chevron", 14.0, orbit::INK_2));
         gpui::div()
             .flex()
             .flex_col()
             .gap(px(12.0))
             .max_w(px(720.0))
+            .child(orbit::eyebrow("EVENTO"))
+            .child(Self::combination_event_options(event_available))
             .child(
-                orbit::card("Evento").child(
-                    orbit::card_body()
-                        .gap(px(8.0))
-                        .child(orbit::text(
-                            "Carrera personalizada",
-                            orbit::BODY,
-                            700,
-                            orbit::INK,
-                        ))
-                        .child(orbit::text(
-                            "Los valores se confirman en el paso Reglas.",
-                            orbit::SECONDARY,
-                            400,
-                            orbit::INK_2,
-                        )),
-                ),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .mt(px(6.0))
+                    .w(px(720.0))
+                    .flex_none()
+                    .child(simulator_row)
+                    .child(row("Categoría / coche", category_control))
+                    .child(row("Circuito / trazado", circuit_control)),
             )
-            .child(orbit::empty_state(
-                "Calendario de Vantare",
-                "La selección de eventos todavía no tiene un contrato nativo en Strategy.",
-            ))
-            .child(
-                orbit::card("Tu combinación actual")
-                    .child(orbit::card_body().child(self.field(4)).child(self.field(5))),
-            )
+            .child(Self::combination_summary(circuit, category))
     }
 
-    fn rules_fields(&self) -> gpui::Div {
-        gpui::div()
+    #[allow(clippy::too_many_lines)] // Mantiene juntos los campos de un único paso del asistente.
+    fn rules_fields(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let laps_selected = !self.fields[9].trim().is_empty();
+        let distance_field = if laps_selected { 9 } else { 1 };
+        let distance_unit = if laps_selected { "vueltas" } else { "minutos" };
+        let distance_label = if laps_selected {
+            "Distancia · vueltas"
+        } else {
+            "Duración · minutos"
+        };
+        let advanced = div()
+            .flex()
+            .gap(px(12.0))
+            .p(px(18.0))
+            .child(self.field(3).flex_1())
+            .child(self.field(16).flex_1())
+            .child(self.field(24).flex_1());
+        let advanced_section = div()
+            .flex()
+            .flex_col()
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgba(0x0809_0be8))
+            .child(
+                button(
+                    "strategy-rules-advanced",
+                    if self.rules_details_open {
+                        "▾  Neumáticos y paradas"
+                    } else {
+                        "›  Neumáticos y paradas"
+                    },
+                )
+                .w_full()
+                .h(px(58.0))
+                .justify_start()
+                .px(px(18.0))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.rules_details_open = !this.rules_details_open;
+                    cx.notify();
+                })),
+            )
+            .when(self.rules_details_open, |section| section.child(advanced));
+
+        div()
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .max_w(px(920.0))
+            .max_w(px(980.0))
+            .child(orbit::eyebrow(
+                "CONFIGURACIÓN DE CARRERA · LOS CAMPOS VACÍOS SIGUEN PENDIENTES",
+            ))
+            .child(self.labeled_input("Nombre de la carrera", 0, 220.0))
             .child(
-                orbit::card("Carrera").child(
-                    orbit::card_body().gap(px(12.0)).child(self.field(0)).child(
-                        gpui::div()
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .child(
+                        div()
                             .flex()
+                            .items_center()
+                            .flex_1()
+                            .h(px(64.0))
                             .gap(px(12.0))
-                            .child(self.field(1))
-                            .child(self.field(9)),
+                            .child(orbit::text("Formato", 14.0, 500, orbit::INK_2).w(px(205.0)))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .flex_1()
+                                    .h(px(44.0))
+                                    .px(px(14.0))
+                                    .rounded(px(10.0))
+                                    .border_1()
+                                    .border_color(rgba(orbit::LINE))
+                                    .bg(rgba(0x0809_0be8))
+                                    .child(orbit::text(distance_unit, 14.0, 500, orbit::INK))
+                                    .child(orbit::text("⌄", 16.0, 500, orbit::INK_2)),
+                            ),
+                    )
+                    .child(
+                        self.labeled_input(distance_label, distance_field, 205.0)
+                            .flex_1(),
                     ),
-                ),
             )
             .child(
-                orbit::card("Combustible y energía virtual").child(
-                    orbit::card_body()
-                        .gap(px(12.0))
-                        .child(
-                            gpui::div()
-                                .flex()
-                                .gap(px(12.0))
-                                .child(self.field(2))
-                                .child(self.field(11)),
-                        )
-                        .child(
-                            gpui::div()
-                                .flex()
-                                .gap(px(12.0))
-                                .child(self.field(12))
-                                .child(self.field(13)),
-                        )
-                        .child(
-                            gpui::div()
-                                .flex()
-                                .gap(px(12.0))
-                                .child(self.field(22))
-                                .child(self.field(8)),
-                        ),
-                ),
+                div()
+                    .flex()
+                    .flex_col()
+                    .justify_between()
+                    .h(px(306.0))
+                    .p(px(18.0))
+                    .rounded(px(12.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .bg(rgba(0x0809_0be8))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(orbit::text("▾", 14.0, 600, orbit::INK))
+                            .child(orbit::text(
+                                "Combustible y energía virtual",
+                                14.0,
+                                600,
+                                orbit::INK,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(18.0))
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .flex_1()
+                                    .justify_between()
+                                    .h(px(234.0))
+                                    .child(self.labeled_input(
+                                        "Capacidad de combustible · L",
+                                        2,
+                                        205.0,
+                                    ))
+                                    .child(self.labeled_input("Consumo Fuel · L/v", 11, 205.0))
+                                    .child(self.labeled_input("Reserva final · vueltas", 22, 205.0))
+                                    .child(div().h(px(44.0))),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .flex_1()
+                                    .justify_between()
+                                    .h(px(234.0))
+                                    .child(self.labeled_input("Modo de variante", 8, 205.0))
+                                    .child(self.labeled_input("Capacidad VE · %", 12, 205.0))
+                                    .child(self.labeled_input("Consumo VE · %/v", 13, 205.0))
+                                    .child(div().h(px(44.0))),
+                            ),
+                    ),
             )
-            .child(
-                orbit::card("Reglamento y paradas").child(
-                    orbit::card_body()
-                        .gap(px(12.0))
-                        .child(
-                            gpui::div()
-                                .flex()
-                                .gap(px(12.0))
-                                .child(self.field(3))
-                                .child(self.field(16)),
-                        )
-                        .child(
-                            gpui::div()
-                                .flex()
-                                .gap(px(12.0))
-                                .child(self.field(25))
-                                .child(self.field(24)),
-                        ),
-                ),
-            )
+            .child(advanced_section)
     }
 
+    fn labeled_input(&self, label: &str, index: usize, label_width: f32) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .h(px(44.0))
+            .child(orbit::text(label.to_owned(), 14.0, 500, orbit::INK_2).w(px(label_width)))
+            .child(div().flex_1().child(self.inputs[index].clone()))
+    }
+
+    #[allow(clippy::too_many_lines)] // Mantiene el orden y las tarjetas del equipo en una vista.
     fn driver_fields(&self) -> gpui::Div {
         let drivers = self
             .current_event()
@@ -540,99 +787,196 @@ impl Strategy {
             .map_or_else(Vec::new, |drivers| {
                 drivers
                     .iter()
-                    .map(|driver| display(&driver["name"]["value"]))
-                    .filter(|name| !name.is_empty())
+                    .filter_map(|driver| {
+                        let name = display(&driver["name"]["value"]);
+                        (!name.is_empty()).then(|| (name, display(&driver["cls"]["value"])))
+                    })
                     .collect::<Vec<_>>()
             });
-        orbit::card("Piloto principal").child(
-            orbit::card_body()
-                .gap(px(12.0))
-                .child(if drivers.is_empty() {
-                    orbit::empty_state(
-                        "Sin pilotos guardados",
-                        "Introduce el piloto principal; no se añadirán pilotos automáticamente.",
-                    )
-                } else {
-                    orbit::text(drivers.join(" · "), orbit::BODY, 600, orbit::INK)
-                })
-                .child(
-                    gpui::div()
-                        .flex()
-                        .gap(px(12.0))
-                        .child(self.field(26))
-                        .child(self.field(27)),
-                )
-                .child(self.field(25)),
-        )
-    }
-
-    fn session_sources(&self, cx: &mut Context<Self>) -> gpui::Div {
-        if !self.automatic {
-            return orbit::card("Sesiones registradas").child(orbit::card_body().child(
-                orbit::empty_state(
-                    "Modo manual",
-                    "Este borrador no requiere sesiones de telemetría.",
-                ),
+        if drivers.is_empty() {
+            return div().max_w(px(980.0)).child(orbit::empty_state(
+                "Sin pilotos guardados",
+                "Añade el piloto principal con los datos que tengas.",
             ));
         }
-        let preparation = match &self.automatic_preparation {
-            Some(prepared) => Ok(Some(prepared.clone())),
-            None => self.prepare_automatic(),
-        };
-        let browse = button("strategy-browse-sessions", "Buscar sesiones").on_click(cx.listener(
-            |this, _, _, cx| {
-                this.page = Page::Editor(EditorTab::Datos);
-                this.error = None;
-                cx.notify();
-            },
-        ));
-        match preparation {
-            Ok(Some(prepared)) => orbit::card("Sesiones registradas").child(
-                orbit::card_body()
+
+        let mut order = div().flex().gap(px(8.0));
+        for (index, (name, _)) in drivers.iter().enumerate() {
+            order = order.child(
+                div()
+                    .flex()
+                    .items_center()
                     .gap(px(10.0))
+                    .flex_1()
+                    .min_w_0()
+                    .h(px(48.0))
+                    .px(px(12.0))
+                    .rounded(px(12.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .bg(rgba(0x0809_0be8))
                     .child(orbit::text(
-                        format!(
-                            "{} sesiones · {} revisiones exactas",
-                            prepared.source_revisions.len(),
-                            prepared.source_revisions.len()
-                        ),
-                        orbit::BODY,
+                        format!("{}", index + 1),
+                        14.0,
                         600,
-                        orbit::INK,
+                        orbit::INK_3,
                     ))
+                    .child(orbit::text(name.clone(), 15.0, 600, orbit::INK)),
+            );
+        }
+
+        let mut cards = div().flex().gap(px(12.0));
+        for (index, (name, class)) in drivers.iter().enumerate() {
+            let role = if index == 0 {
+                "PILOTO PRINCIPAL".to_owned()
+            } else {
+                format!("RELEVO {index}")
+            };
+            let mut card = div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_w_0()
+                .min_h(px(390.0))
+                .gap(px(14.0))
+                .p(px(18.0))
+                .rounded(px(12.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE))
+                .bg(rgba(0x0809_0be8))
+                .child(orbit::eyebrow(role));
+            if index == 0 {
+                card = card.child(self.field(26)).child(self.field(27));
+            } else {
+                card = card
+                    .child(orbit::eyebrow("NOMBRE DEL PILOTO"))
+                    .child(orbit::text(name.clone(), 16.0, 600, orbit::INK));
+            }
+            if !class.is_empty() {
+                card = card
+                    .child(orbit::eyebrow("CLASE / ACREDITACIÓN"))
+                    .child(orbit::text(class.clone(), 14.0, 500, orbit::INK_2));
+            }
+            cards = cards.child(card.child(orbit::empty_state(
+                "Límites de stint sin configurar",
+                "El documento no contiene límites para este piloto.",
+            )));
+        }
+
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .max_w(px(980.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .min_h(px(155.0))
+                    .gap(px(14.0))
+                    .p(px(18.0))
+                    .rounded(px(12.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .bg(rgba(0x0809_0be8))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(orbit::text("Orden de pilotos", 17.0, 600, orbit::INK))
+                            .child(orbit::text("Orden guardado", 13.0, 500, orbit::INK_2)),
+                    )
                     .child(orbit::text(
-                        match prepared.status {
-                            application::AutomaticPreparationStatus::Ready => {
-                                "Preparación completa".to_owned()
-                            }
-                            application::AutomaticPreparationStatus::Partial => format!(
-                                "Preparación parcial · bloqueos: {}",
-                                prepared.blockers.len()
-                            ),
-                        },
-                        orbit::SECONDARY,
+                        "La carrera conserva la secuencia del documento.",
+                        13.0,
                         400,
                         orbit::INK_2,
                     ))
-                    .child(browse),
-            ),
-            Ok(None) => orbit::card("Sesiones registradas").child(orbit::card_body().child(
-                gpui::div()
+                    .child(order),
+            )
+            .child(cards)
+    }
+
+    fn session_sources(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let preparation = match &self.automatic_preparation {
+            Some(prepared) => Ok(Some(prepared.clone())),
+            None if self.automatic => self.prepare_automatic(),
+            None => Ok(None),
+        };
+        let linked_sessions = self.current_event().map_or(0, |event| {
+            event["planningInputs"]["projection"]["sourceSessions"]
+                .as_array()
+                .map_or(0, Vec::len)
+        });
+        let session_count = preparation
+            .as_ref()
+            .ok()
+            .and_then(Option::as_ref)
+            .map_or(linked_sessions, |prepared| prepared.source_revisions.len());
+        let status = preparation.as_ref().map_or_else(
+            |error| Some(error.clone()),
+            |prepared| match prepared {
+                Some(prepared) if prepared.blockers.is_empty() => {
+                    Some("Preparación completa".to_owned())
+                }
+                Some(prepared) => Some(format!(
+                    "Preparación parcial · {} bloqueos",
+                    prepared.blockers.len()
+                )),
+                None if self.automatic => None,
+                None => Some("Modo manual · no requiere telemetría".to_owned()),
+            },
+        );
+        let browse = orbit::primary_button("strategy-browse-sessions", "Buscar sesiones")
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.page = Page::Editor(EditorTab::Datos);
+                this.error = None;
+                cx.notify();
+            }))
+            .w(px(128.0))
+            .h(px(40.0));
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(13.0))
+            .mt(px(-3.0))
+            .max_w(px(520.0))
+            .p(px(22.0))
+            .rounded(px(14.0))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgba(0x0809_0bf0))
+            .child(
+                div()
                     .flex()
-                    .flex_col()
-                    .gap(px(12.0))
-                    .child(orbit::empty_state(
-                        "Sin sesiones compatibles",
-                        "No hay una proyección guardada con revisiones exactas para esta carrera.",
-                    ))
-                    .child(browse),
-            )),
-            Err(error) => orbit::card("Sesiones registradas").child(
-                orbit::card_body()
-                    .child(orbit::callout(error))
-                    .child(browse),
-            ),
-        }
+                    .items_center()
+                    .gap(px(10.0))
+                    .child(orbit::text("Telemetría registrada", 17.0, 600, orbit::INK))
+                    .child(
+                        div()
+                            .px(px(8.0))
+                            .py(px(3.0))
+                            .rounded(px(7.0))
+                            .bg(rgb(orbit::SURFACE_2))
+                            .child(orbit::text(
+                                format!("{session_count}/4"),
+                                11.0,
+                                500,
+                                orbit::INK_3,
+                            )),
+                    ),
+            )
+            .child(orbit::text(
+                "Los originales se conservan. Abre hasta cuatro sesiones para revisarlas y elige después cuáles utilizar.",
+                15.0,
+                400,
+                orbit::INK_2,
+            ))
+            .when_some(status, |card, status| {
+                card.child(orbit::text(status, 13.0, 500, orbit::INK_3))
+            })
+            .child(browse)
     }
 
     fn choice_card(
@@ -653,7 +997,7 @@ impl Strategy {
             .items_center()
             .gap(px(24.0))
             .w(px(520.0))
-            .h(px(146.0))
+            .h(px(144.0))
             .px(px(22.0))
             .border_1()
             .border_color(if selected {
@@ -663,9 +1007,9 @@ impl Strategy {
             })
             .rounded(px(12.0))
             .bg(if selected {
-                rgba(0xd52f_4912)
+                rgba(0x100d_0ff2)
             } else {
-                rgba(0x0809_0bd9)
+                rgba(0x0809_0bf2)
             })
             .child(
                 gpui::div()
@@ -734,5 +1078,14 @@ mod tests {
         assert_eq!(AssistantStep::Reglas.index(), 2);
         assert_eq!(AssistantStep::Pilotos.next(), Some(AssistantStep::Sesiones));
         assert_eq!(AssistantStep::Sesiones.next(), None);
+    }
+
+    #[test]
+    fn navigation_footer_matches_the_reference_screens() {
+        assert!(AssistantStep::Inicio.shows_navigation_footer());
+        assert!(AssistantStep::Combinacion.shows_navigation_footer());
+        assert!(!AssistantStep::Reglas.shows_navigation_footer());
+        assert!(!AssistantStep::Pilotos.shows_navigation_footer());
+        assert!(AssistantStep::Sesiones.shows_navigation_footer());
     }
 }

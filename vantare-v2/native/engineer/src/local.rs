@@ -112,6 +112,24 @@ impl Local {
         Ok(())
     }
     pub fn publish(&mut self, radio: &RadioWorker, active: bool, runtime_error: Option<&str>) {
+        self.publish_at(
+            radio,
+            active,
+            runtime_error,
+            Instant::now(),
+            control::runtime::now_ms(),
+        );
+    }
+
+    // El test distingue deduplicación y heartbeat sin depender de cuánto tarde el SO.
+    fn publish_at(
+        &mut self,
+        radio: &RadioWorker,
+        active: bool,
+        runtime_error: Option<&str>,
+        now: Instant,
+        wall_ms: u64,
+    ) {
         self.status.active = active;
         self.status.last_message = radio.last_message().cloned();
         let errors: Vec<_> = self
@@ -129,10 +147,10 @@ impl Local {
         let result = (|| -> io::Result<()> {
             if self
                 .heartbeat_at
-                .is_none_or(|at| at.elapsed() >= Duration::from_secs(1))
+                .is_none_or(|at| now.duration_since(at) >= Duration::from_secs(1))
             {
-                self.heartbeat_ms = control::runtime::now_ms();
-                self.heartbeat_at = Some(Instant::now());
+                self.heartbeat_ms = wall_ms;
+                self.heartbeat_at = Some(now);
             }
             let mut runtime = radio.runtime_status(self.heartbeat_ms, &self.status.assets);
             if !active {
@@ -181,7 +199,8 @@ mod tests {
         };
         let mut local = Local::new(root.join("engineer.json"), seed, Some(clips.clone()));
         local.poll(&mut radio, &mut Vec::new()).expect("sondear");
-        local.publish(&radio, true, None);
+        let now = Instant::now();
+        local.publish_at(&radio, true, None, now, 1_000);
         assert!(local.status.assets.values().all(|present| !present));
         let old = SystemTime::UNIX_EPOCH;
         fs::OpenOptions::new()
@@ -190,12 +209,19 @@ mod tests {
             .expect("estado")
             .set_modified(old)
             .expect("mtime");
-        local.publish(&radio, true, None);
+        local.publish_at(&radio, true, None, now + Duration::from_millis(999), 1_999);
         assert_eq!(
             control::modified(&local.path),
             Some(old),
             "no reescribir sin cambio"
         );
+        // Al segundo, el heartbeat sí cambia aunque ajustes y radio sean iguales.
+        local.publish_at(&radio, true, None, now + Duration::from_secs(1), 2_000);
+        assert_ne!(control::modified(&local.path), Some(old));
+        let report =
+            control::runtime::Report::parse(&fs::read(&local.path).expect("estado con heartbeat"))
+                .expect("reporte");
+        assert_eq!(report.runtime.expect("runtime").heartbeat_ms, 2_000);
         let mut wav = vec![0; 44 + 320];
         wav[..4].copy_from_slice(b"RIFF");
         wav[4..8].copy_from_slice(&356_u32.to_le_bytes());
@@ -230,7 +256,13 @@ mod tests {
             .poll(&mut radio, &mut Vec::new())
             .expect("pack corrupto");
         assert!(!local.status.assets["es"]);
-        local.publish(&radio, false, Some("cierre de prueba"));
+        local.publish_at(
+            &radio,
+            false,
+            Some("cierre de prueba"),
+            now + Duration::from_secs(1),
+            2_000,
+        );
         let bytes = control::read(&local.path)
             .expect("leer")
             .expect("estado publicado");

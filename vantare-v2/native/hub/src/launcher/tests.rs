@@ -6,6 +6,7 @@ use discovery::{Discovery, Sources};
 use std::time::{Duration, Instant};
 use std::{
     fs,
+    path::Path,
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -811,7 +812,7 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
     }
     for close in [
         policy::Close::Leave,
-        policy::Close::CloseStarted,
+        policy::Close::Started,
         policy::Close::Ask,
     ] {
         let tree = Tree::new();
@@ -901,7 +902,7 @@ fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child()
     document.apps.last_mut().expect("app").args = args.iter().map(|v| (*v).into()).collect();
     profile.policy = Some(policy::Policy {
         already_running: policy::Running::Restart,
-        cancel: policy::Close::CloseStarted,
+        cancel: policy::Close::Started,
         ..Default::default()
     });
     let mut chain = Chain::start_with_processes(document, profile, found, shared.clone())

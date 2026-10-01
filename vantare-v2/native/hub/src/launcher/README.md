@@ -327,7 +327,7 @@ o hijos propios asociados. La ruta de app se puede escribir/pegar o seleccionar.
 El selector de pasos usa Choice::List dentro del drawer para evitar el popup
 Dropdown que quedaba detrás del modal; no se certifica paridad de ese selector.
 Las exclusiones de las notas históricas siguientes quedan sustituidas por estos
-hitos. Atajos y arranque siguen pendientes de registro en el propietario residente.
+hitos. Atajos y arranque están registrados por el supervisor en el hito residente descrito abajo.
 
 ## Hito 6 — detección
 Steam: un índice acotado por biblioteca también encuentra ejecutables de apps del
@@ -396,3 +396,105 @@ externo distingue ese recorte de la ventana completa. La entrega queda
 pendiente de revisar en la integración del marco; no declara paridad aprobada.
 Notion no disponible por excepción expresa del encargo; seguimiento a cargo
 del orquestador. Sin push, PR, merge, promoción ni release.
+
+## Hito residente — atajos y arranque con Windows (#1430)
+
+Encargo del 2026-10-01, worker `vantareapp/isa-1430-w-launcher-residente`.
+Base de entrada `a7717eac`, integración local solicitada `e9d2bae7`.
+Notion no disponible por excepción expresa del encargo; referencia técnica
+[GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430).
+Sin push, PR, integración remota ni release. Evidencia:
+`C:/tmp/launcher-residente-evidence/`.
+
+Esta entrega sustituye los pendientes de registro de los hitos 5 y 7:
+
+- `vantare` registra los atajos en un hilo propio (`RegisterHotKey`,
+  `WM_HOTKEY`, `MOD_NOREPEAT`) y los retira al parar. Relee el archivo de
+  ajustes cada 500 ms, conserva la última configuración válida ante errores,
+  retira registros revocados y reintenta conflictos externos.
+- `engine.rs` extrae el motor existente, sin reescribirlo. Hub y supervisor
+  compilan la misma fuente (incluidas cadenas, validación, discovery,
+  políticas y propiedad de procesos). No se enlaza GPUI desde el supervisor
+  ni se añade una dependencia. Las sesiones de procesos de Hub y residente
+  conservan propietarios independientes: ninguno puede reiniciar procesos
+  pertenecientes al otro como si fueran propios.
+- `--launch PERFIL` (también `--launch=PERFIL`) ejecuta un perfil guardado sin
+  abrir el Hub. `--launcher-file RUTA` permite aislar configuración; la ruta
+  productiva sigue siendo `%LOCALAPPDATA%/Vantare/native/launcher.json`.
+  Una segunda instancia envía su petición al residente y sale.
+- El perfil de inicio se guarda en HKCU, clave
+  `Software\Microsoft\Windows\CurrentVersion\Run`, valor
+  `VantareNative.Launcher`. El comando incluye supervisor, archivo de ajustes,
+  perfil validado y `--live`, con rutas entre comillas. Cambiar de perfil
+  sustituye la entrada; desactivar/eliminar el perfil la retira. Cerrar la app
+  mantiene esa preferencia. La entrada de Wails permanece independiente.
+- Los errores de registro/Run y las decisiones de cadena aparecen en el
+  Launcher abierto; el editor responde por buzón local versionado v1.
+  Los estados caducan a los 3 s. Si no está el supervisor, el editor declara
+  que las preferencias quedan guardadas pendientes de activación.
+- Las apps del perfil se crean con `CREATE_BREAKAWAY_FROM_JOB`; núcleo,
+  overlays y Engineer siguen dentro del Job supervisado. Así Leave conserva
+  las apps y CloseStarted solo cierra las propias. Un cierre de supervisor
+  con política Ask conserva las apps: no inventa consentimiento de cierre.
+
+El supervisor debe estar en marcha para activar cambios guardados desde un
+Hub ejecutado por separado. Sin Hub abierto, una política Ask espera la
+respuesta hasta el plazo que ya fija el motor; no se decide automáticamente
+continuar/reiniciar. El discovery previo al lanzamiento usa sus límites
+existentes (incluido el helper local de shortcuts), por lo que un escaneo lento
+puede retrasar el servicio de nuevos disparadores. No es prueba física de
+pulsación de teclado, inicio de sesión Windows, ni LMU/OBS durante Live.
+
+Pruebas nuevas: conflicto Win32 real entre hilos, retirada/recarga y recuperación,
+configuración corrupta/vacía sin sustitución, ejecución por buzón sin Hub sobre
+`cmd.exe` real aislado, comando de inicio y escritura/retirada en una clave HKCU
+**de test**, validación CLI y caducidad/límite del estado IPC. No escriben el
+valor Run productivo ni necesitan una ventana. Las pruebas del motor existente
+siguen protegiendo reintentos, políticas, cancelación y propiedad.
+
+Verificación manual pendiente de Opus/Isaac:
+1. Arrancar `vantare -- --live`; guardar un atajo desde el editor y pulsarlo
+   desde otra aplicación. Cambiarlo/desactivarlo sin reiniciar; comprobar el
+   conflicto con otra app y su retirada al cerrar el supervisor.
+2. Activar un perfil de inicio; inspeccionar el valor indicado de HKCU Run,
+   cambiar de perfil, desactivar y comprobar retirada. Volver a activarlo y
+   validar un inicio de sesión real de Windows.
+3. Cerrar Hub durante Live y lanzar por atajo. Reabrir Hub para responder una
+   política Ask. Comprobar Leave y CloseStarted con apps reales; confirmar que
+   el supervisor no cierra apps ajenas y que no reaparece una decisión resuelta.
+
+### Gates del hito residente (Windows, `-j 2`)
+
+- `cargo fmt --check`: PASS.
+- `cargo clippy --workspace --all-targets -j 2 -- -D warnings`: PASS.
+- Iteración focalizada con nextest sobre runtime/Hub/IPC: 517 PASS.
+- `cargo nextest run --workspace --build-jobs 2 -j 2 --no-fail-fast`:
+  894 PASS, 4 omitidos según el perfil existente; 1 test lento, sin fallos.
+- `cargo test --workspace --test lifecycle -j 2`: 16 escenarios PASS,
+  0 fallos. Se ejecuta aparte porque tiene harness propio.
+- `git diff --check`: PASS.
+
+Los opt-in físicos LMU/ACC no se ejecutaron; CI remoto no se ejecutó porque
+el encargo prohíbe push y PR. Los logs completos y los códigos de salida están
+fuera del repositorio. Los fallos de las iteraciones iniciales también se
+conservan allí; no se relajaron gates ni se añadieron exclusiones de tests.
+
+## Hito de integración del marco — segunda pasada (#1430)
+
+Se incorpora la rama local del marco `f3b853be`, conservando los hitos de
+presentación y residente. La cabecera común desaparece y el buscador existente
+se monta en la ranura de acciones de la barra superior. Launcher administra
+sus márgenes como Strategy; no se reimplementa la búsqueda ni el motor.
+
+La presentación ajusta primero cabecera, métricas, catálogo y perfiles a las
+referencias Wails, y después pesos de Inter, tracking, iconos SVG, marca MoTeC,
+políticas y etiquetas del editor. Para el tracking se reutilizan las primitivas
+de texto del kit nativo; no se añaden dependencias. Los callbacks se conservan.
+Los datos fechados de referencia siguen limitados a la escena demo.
+
+Evidencia y rondas comparables: `C:/tmp/launcher-2-evidence/`. La ronda
+`ajuste3` mide 8,1257 % en Launcher y 10,4190 % en el editor, región
+x>376, y>70, umbral 8. No declara el objetivo de 5 % cumplido. La tipografía
+posterior se verificará tras incorporar `bef4a971`, según las notas del
+orquestador. El editor conserva el oscurecimiento; el desenfoque de fondo
+Wails necesita soporte compartido fuera del alcance de estas vistas.

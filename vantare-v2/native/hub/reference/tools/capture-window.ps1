@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory)][int]$ProcessId,
     [Parameter(Mandatory)][string]$ExpectedExecutable,
     [Parameter(Mandatory)][string]$OutputPath,
+    [string]$Screen = '',
     [string]$RepositoryRoot,
     [int]$X = -1,
     [int]$Y = -1,
@@ -10,6 +11,12 @@ param(
     [int]$WheelSteps = 0
 )
 $ErrorActionPreference = 'Stop'
+$width = 1440
+$height = 900
+if ($Screen.StartsWith('strategy-v5-', [StringComparison]::Ordinal)) {
+    $width = 1672
+    $height = 941
+}
 $repo = if ($RepositoryRoot) { [IO.Path]::GetFullPath($RepositoryRoot) } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..')) }
 $output = [IO.Path]::GetFullPath($OutputPath)
 if ($output.StartsWith($repo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
@@ -77,19 +84,19 @@ try {
     $client = New-Object HubReferenceWindow+RECT
     if (-not [HubReferenceWindow]::GetWindowRect($handle,[ref]$outer) -or
         -not [HubReferenceWindow]::GetClientRect($handle,[ref]$client)) { throw 'No se pudo medir la ventana' }
-    if (-not [HubReferenceWindow]::MoveWindow($handle,0,0,1440+($outer.R-$outer.L-$client.R),900+($outer.B-$outer.T-$client.B),$true)) {
+    if (-not [HubReferenceWindow]::MoveWindow($handle,0,0,$width+($outer.R-$outer.L-$client.R),$height+($outer.B-$outer.T-$client.B),$true)) {
         throw 'No se pudo ajustar el área cliente'
     }
     Start-Sleep -Milliseconds 600
     if ([HubReferenceWindow]::GetDpiForWindow($handle) -ne 96) { throw 'El monitor no está a DPI 100 %' }
-    if (-not [HubReferenceWindow]::GetClientRect($handle,[ref]$client) -or $client.R -ne 1440 -or $client.B -ne 900) {
-        throw 'El área cliente no mide 1440 x 900'
+    if (-not [HubReferenceWindow]::GetClientRect($handle,[ref]$client) -or $client.R -ne $width -or $client.B -ne $height) {
+        throw "El área cliente no mide ${width} x ${height}"
     }
     $origin = New-Object HubReferenceWindow+POINT
     if (-not [HubReferenceWindow]::ClientToScreen($handle,[ref]$origin)) { throw 'No se pudo localizar el área cliente' }
     if ([HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'El Hub no tiene el foco' }
     if ($X -ge 0 -or $Y -ge 0) {
-        if ($X -lt 0 -or $X -ge 1440 -or $Y -lt 0 -or $Y -ge 900) { throw 'Click fuera del área cliente' }
+        if ($X -lt 0 -or $X -ge $width -or $Y -lt 0 -or $Y -ge $height) { throw 'Click fuera del área cliente' }
         if (-not [HubReferenceWindow]::SetCursorPos($origin.X+$X,$origin.Y+$Y)) { throw 'No se pudo mover el cursor' }
         if ($WheelSteps -eq 0) {
             [HubReferenceWindow]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
@@ -104,11 +111,11 @@ try {
     Start-Sleep -Milliseconds 500
     if ([HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'Otra ventana ha recibido el foco' }
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output))
-    $bitmap = [Drawing.Bitmap]::new(1440,900)
+    $bitmap = [Drawing.Bitmap]::new($width,$height)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size)
     $bitmap.Save($output,[Drawing.Imaging.ImageFormat]::Png)
-    Write-Output "1440 x 900; DPI 96; PID $ProcessId; $output"
+    Write-Output "${width} x ${height}; DPI 96; PID $ProcessId; $output"
 } finally {
     if ($graphics) { $graphics.Dispose() }
     if ($bitmap) { $bitmap.Dispose() }

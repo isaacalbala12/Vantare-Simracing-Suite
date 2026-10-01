@@ -1,6 +1,7 @@
 //! Borrador local sobre controles Orbit; solo Guardar confirma en disco.
+use super::presentation::{eyebrow, text, tracked_text};
 use super::*;
-use crate::orbit::{Choice, ChoiceKind, NumberControl, NumberKind, NumberRange, OptionItem, text};
+use crate::orbit::{Choice, ChoiceKind, NumberControl, NumberKind, NumberRange, OptionItem};
 use gpui::{
     AnyView, Context, Entity, EventEmitter, FocusHandle, IntoElement, Render, Window, deferred,
     div, px, rgb, rgba,
@@ -431,8 +432,7 @@ fn editor_field(label: &str, control: impl IntoElement) -> gpui::Div {
         .flex_col()
         .gap(px(9.0))
         .child(
-            orbit::tracked_text(label.to_uppercase(), 11.0, 700, orbit::INK_3, 0.77)
-                .line_height(px(16.0)),
+            tracked_text(label.to_uppercase(), 11.0, 700, orbit::INK_3, 0.77).line_height(px(16.0)),
         )
         .child(div().w_full().child(control))
 }
@@ -914,7 +914,7 @@ impl Launcher {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(orbit::tracked_text("PASOS", 11.0, 700, orbit::INK_3, 0.77))
+                    .child(tracked_text("PASOS", 11.0, 700, orbit::INK_3, 0.77))
                     .child(
                         div()
                             .id("launcher-editor-mode")
@@ -924,7 +924,7 @@ impl Launcher {
                             .tab_index(0)
                             .tab_stop(false)
                             .cursor_pointer()
-                            .child(orbit::tracked_text(
+                            .child(tracked_text(
                                 if advanced { "BÁSICO" } else { "AVANZADO" },
                                 10.0,
                                 700,
@@ -964,7 +964,8 @@ impl Launcher {
                 .border_dashed()
                 .border_color(rgba(orbit::LINE_STRONG))
                 .text_size(px(12.0))
-                .font_weight(gpui::FontWeight(650.0))
+                .font_family("Inter W650")
+                .font_weight(gpui::FontWeight::NORMAL)
                 .text_color(rgb(orbit::INK_2))
                 .cursor_pointer()
                 .child("+ Añadir paso"),
@@ -1116,10 +1117,10 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(orbit::eyebrow("Políticas nativas"))
-            .child(editor_field("Atajo global preparado", draft.hotkey.clone()))
+            .child(eyebrow("Políticas nativas"))
+            .child(editor_field("Atajo global", draft.hotkey.clone()))
             .child(editor_field(
-                "Inicio Windows preparado",
+                "Iniciar con Windows",
                 draft.autostart.clone(),
             ))
             .child(editor_field("Ante un fallo", draft.failure.clone()))
@@ -1133,7 +1134,11 @@ impl Launcher {
                 draft.retries.clone(),
             ))
             .child(orbit::callout(
-                "Atajos globales e inicio de Windows pendientes del propietario residente nativo.",
+                if vantare_ipc::launcher::read_status(&self.store.path).is_some() {
+                    "El supervisor aplica estos ajustes al guardar. Los conflictos de atajo se muestran en Launcher."
+                } else {
+                    "Supervisor no disponible: los ajustes quedan guardados. Inicia la aplicación con vantare para activar los atajos y el inicio Windows."
+                },
             ))
             .when(
                 self.store
@@ -1168,13 +1173,13 @@ fn close_index(policy: Close) -> usize {
     match policy {
         Close::Ask => 0,
         Close::Leave => 1,
-        Close::CloseStarted => 2,
+        Close::Started => 2,
     }
 }
 fn selected_close(selected: Option<usize>) -> Close {
     match selected {
         Some(1) => Close::Leave,
-        Some(2) => Close::CloseStarted,
+        Some(2) => Close::Started,
         _ => Close::Ask,
     }
 }

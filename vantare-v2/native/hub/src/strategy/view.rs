@@ -40,6 +40,9 @@ fn option(title: &str, help: &str, action: impl IntoElement) -> gpui::Div {
             .child(action),
     )
 }
+fn context_new_selected(page: Page) -> bool {
+    !matches!(page, Page::Collection)
+}
 fn summary(event: &Value) -> String {
     [
         display(&event["cls"]["value"]),
@@ -341,65 +344,123 @@ impl Strategy {
                 }))))
             .child(self.result_card()).child(Self::document_actions(cx))
     }
-    pub(super) fn strategy_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let (simulator, class, circuit) = self.current_event().map_or_else(
-            || (String::new(), String::new(), String::new()),
+    pub(crate) fn context_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
+            "Le Mans Ultimate"
+        } else {
+            "Sin simulador seleccionado"
+        };
+        let (car, circuit) = self.current_event().map_or_else(
+            || {
+                (
+                    "Sin carrera seleccionada".to_owned(),
+                    "Sin circuito seleccionado".to_owned(),
+                )
+            },
             |event| {
                 (
-                    "Le Mans Ultimate".to_owned(),
-                    display(&event["cls"]["value"]),
+                    self.demo_car
+                        .clone()
+                        .unwrap_or_else(|| display(&event["cls"]["value"])),
                     display(&event["track"]["value"]),
                 )
             },
         );
-        let class = self.demo_car.clone().unwrap_or(class);
-        column()
-            .w(px(246.0))
-            .h_full()
-            .flex_none()
-            .gap(px(12.0))
-            .border_r_1()
-            .border_color(rgba(orbit::LINE))
-            .bg(rgb(0x0010_1114))
+        let selected_new = context_new_selected(self.page);
+        let new_strategy = div()
+            .id("strategy-context-new")
+            .role(gpui::Role::Button)
+            .aria_label("Nueva estrategia")
+            .aria_selected(selected_new)
+            .tab_index(0)
+            .w_full()
+            .h(px(46.0))
             .px(px(14.0))
-            .py(px(16.0))
-            .child(orbit::text("Estrategia", orbit::BODY, 700, orbit::INK))
-            .child(orbit::eyebrow("ESTRATEGIA"))
+            .flex()
+            .items_center()
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .cursor_pointer()
+            .when(selected_new, |row| {
+                row.bg(rgb(orbit::SURFACE_2))
+                    .border_l_2()
+                    .border_color(rgb(orbit::CARMINE))
+            })
+            .child(orbit::text("Nueva estrategia", 15.0, 500, orbit::INK))
+            .on_click(cx.listener(|this, _, _, cx| {
+                if let Err(error) = this.ensure_clean_form() {
+                    this.error = Some(error);
+                } else {
+                    this.automatic = false;
+                    this.automatic_preparation = None;
+                    this.page = Page::Assistant(AssistantStep::Inicio);
+                    this.error = None;
+                }
+                cx.notify();
+            }));
+        let saved = div()
+            .id("strategy-context-saved")
+            .role(gpui::Role::Button)
+            .aria_label("Guardadas")
+            .aria_selected(!selected_new)
+            .tab_index(0)
+            .w_full()
+            .h(px(46.0))
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .cursor_pointer()
+            .child(orbit::text("Guardadas", 15.0, 400, orbit::INK_2))
+            .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx)));
+        column()
+            .w_full()
+            .gap(px(0.0))
+            .child(orbit::eyebrow("ESTRATEGIA").px(px(9.0)).py(px(4.0)))
+            .child(new_strategy)
+            .child(saved)
             .child(
-                button("strategy-context-new", "Nueva estrategia").on_click(cx.listener(
-                    |this, _, _, cx| {
-                        if let Err(error) = this.ensure_clean_form() {
-                            this.error = Some(error);
-                        } else {
-                            this.automatic = false;
-                            this.automatic_preparation = None;
-                            this.page = Page::Assistant(AssistantStep::Inicio);
-                            this.error = None;
-                        }
-                        cx.notify();
-                    },
-                )),
+                div()
+                    .mt(px(5.0))
+                    .pt(px(12.0))
+                    .border_t_1()
+                    .border_color(rgba(orbit::LINE_ROW))
+                    .child(orbit::eyebrow("TU CARRERA").px(px(9.0)).pb(px(4.0)))
+                    .child(Self::context_info_row(
+                        "i-telemetria",
+                        "Simulador",
+                        simulator,
+                    ))
+                    .child(Self::context_info_row(
+                        "i-estrategia",
+                        "Categoría / coche",
+                        &car,
+                    ))
+                    .child(Self::context_info_row(
+                        "i-carreras",
+                        "Circuito / trazado",
+                        &circuit,
+                    )),
             )
+    }
+
+    fn context_info_row(icon: &'static str, label: &str, value: &str) -> gpui::Div {
+        div()
+            .h(px(70.0))
+            .px(px(9.0))
+            .flex()
+            .items_center()
+            .gap(px(15.0))
+            .border_b_1()
+            .border_color(rgba(orbit::LINE_ROW))
+            .child(orbit::icon(icon, 19.0, orbit::INK_2))
             .child(
-                button("strategy-context-saved", "Guardadas")
-                    .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx))),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .child(orbit::text(label, 11.5, 400, orbit::INK_3))
+                    .child(orbit::text(value.to_owned(), 12.5, 600, orbit::INK)),
             )
-            .child(orbit::eyebrow("TU CARRERA"))
-            .child(orbit::setting_row(
-                "Simulador",
-                "Le Mans Ultimate",
-                orbit::text(simulator, orbit::SECONDARY, 500, orbit::INK),
-            ))
-            .child(orbit::setting_row(
-                "Categoría / coche",
-                "",
-                orbit::text(class, orbit::SECONDARY, 500, orbit::INK),
-            ))
-            .child(orbit::setting_row(
-                "Circuito / trazado",
-                "",
-                orbit::text(circuit, orbit::SECONDARY, 500, orbit::INK),
-            ))
     }
 
     pub(super) fn render_page(
@@ -456,5 +517,12 @@ mod tests {
             Page::Editor(EditorTab::Carrera),
             Page::Editor(EditorTab::Revisiones)
         );
+    }
+
+    #[test]
+    fn context_navigation_tracks_the_strategy_and_saved_pages() {
+        assert!(!context_new_selected(Page::Collection));
+        assert!(context_new_selected(Page::Assistant(AssistantStep::Inicio)));
+        assert!(context_new_selected(Page::Editor(EditorTab::Carrera)));
     }
 }

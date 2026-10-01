@@ -334,13 +334,7 @@ impl Strategy {
                     .child(content)
                     .child(footer),
             );
-        div()
-            .flex()
-            .flex_1()
-            .min_w_0()
-            .min_h(px(0.0))
-            .child(self.strategy_sidebar(cx))
-            .child(main)
+        div().flex().flex_1().min_w_0().min_h(px(0.0)).child(main)
     }
 
     fn start_choices(&self, cx: &mut Context<Self>) -> gpui::Div {

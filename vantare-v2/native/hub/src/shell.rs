@@ -226,6 +226,8 @@ impl Render for Hub {
             self.launcher
                 .update(cx, |launcher, cx| launcher.context_column(window, cx))
                 .into_any_element()
+        } else if self.section == Section::Strategy {
+            self.strategy_context_column(cx).into_any_element()
         } else {
             self.context_column(window, cx).into_any_element()
         };

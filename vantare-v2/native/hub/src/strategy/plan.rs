@@ -686,46 +686,53 @@ cálculo",
         recalculate_id: &'static str,
         recalculate_label: &'static str,
     ) -> gpui::AnyElement {
-        let mut footer = div().flex().flex_col().gap(px(orbit::RADIUS_CONTROL));
-        if self.edit_dirty {
-            footer = footer.child(orbit::text(
-                "Cambios pendientes de recalcular",
-                12.0,
-                600,
-                orbit::CORAL,
-            ));
-        }
-        if let Some(cost) = self.edit_cost_seconds {
-            footer = footer.child(orbit::text(
-                format!("Coste del plan recalculado: {}", duration(cost)),
-                12.0,
-                600,
-                orbit::INK_2,
-            ));
-        }
-        if let Some(error) = &self.edit_error {
-            footer = footer.child(orbit::callout(error.clone()));
-        }
-        footer
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(8.0))
+            .border_t_1()
+            .border_color(rgba(orbit::LINE))
+            .pt(px(12.0))
+            .when(self.edit_dirty, |footer| {
+                footer.child(orbit::text(
+                    "Cambios pendientes de recalcular",
+                    12.0,
+                    500,
+                    orbit::INK_2,
+                ))
+            })
+            .when_some(self.edit_cost_seconds, |footer, cost| {
+                footer.child(orbit::text(
+                    format!("Coste del plan recalculado: {}", duration(cost)),
+                    12.0,
+                    600,
+                    orbit::INK_2,
+                ))
+            })
+            .when_some(self.edit_error.clone(), |footer, error| {
+                footer.child(orbit::callout(error))
+            })
             .child(
                 div()
                     .flex()
                     .justify_end()
-                    .gap(px(orbit::RADIUS_CONTROL))
+                    .gap(px(16.0))
                     .child(
                         orbit::button(reset_id, "Restablecer")
+                            .h(px(40.0))
                             .when(!self.can_reset_plan_edit() || self.running, |button| {
                                 button.opacity(orbit::DISABLED)
                             })
                             .on_click(cx.listener(|this, _, _, cx| this.reset_plan_edit(cx))),
+                    )
+                    .child(
+                        super::datos::primary_action(recalculate_id, recalculate_label)
+                            .h(px(40.0))
+                            .when(!self.edit_dirty || self.running, |button| {
+                                button.opacity(orbit::DISABLED)
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| this.recalculate_plan_edit(cx))),
                     ),
-            )
-            .child(
-                orbit::primary_button(recalculate_id, recalculate_label)
-                    .when(!self.edit_dirty || self.running, |button| {
-                        button.opacity(orbit::DISABLED)
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| this.recalculate_plan_edit(cx))),
             )
             .into_any_element()
     }
@@ -994,6 +1001,24 @@ fn compact_summary(label: &str, value: String) -> Div {
         .child(orbit::text(value, 15.0, 700, orbit::INK).line_height(px(22.0)))
 }
 
+pub(super) fn edit_heading(title: &str) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(12.0))
+        .pb(px(22.0))
+        .border_b_1()
+        .border_color(rgba(orbit::LINE))
+        .child(orbit::tracked_text(
+            "EDICIÓN MANUAL",
+            11.0,
+            700,
+            orbit::RED,
+            0.9,
+        ))
+        .child(orbit::text(title.to_owned(), 34.0, 400, orbit::INK).line_height(px(40.8)))
+}
+
 pub(super) fn plan_card() -> Div {
     orbit::card("")
         .flex_none()
@@ -1006,7 +1031,15 @@ pub(super) fn decimal(value: f64, digits: usize) -> String {
     if !value.is_finite() {
         return "Sin dato".into();
     }
-    format!("{value:.digits$}").replace('.', ",")
+    let Ok(places) = i32::try_from(digits) else {
+        return "Sin dato".into();
+    };
+    let factor = 10_f64.powi(places);
+    let rounded = (value * factor).round() / factor;
+    if !rounded.is_finite() {
+        return "Sin dato".into();
+    }
+    format!("{rounded:.digits$}").replace('.', ",")
 }
 
 pub(super) fn fact(label: &str, value: String) -> Div {
@@ -1227,6 +1260,17 @@ fn short_digest(value: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decimal_values_follow_the_reference_rounding_and_keep_missing_values_explicit() {
+        assert_eq!(decimal(83.35, 1), "83,4");
+        assert_eq!(decimal(64.53, 1), "64,5");
+        assert_eq!(decimal(-31.33, 1), "-31,3");
+        assert_eq!(decimal(1.14, 2), "1,14");
+        assert_eq!(decimal(f64::NAN, 1), "Sin dato");
+        assert_eq!(decimal(f64::INFINITY, 1), "Sin dato");
+        assert_eq!(decimal(1.0, usize::MAX), "Sin dato");
+    }
 
     #[test]
     fn plan_states_distinguish_idle_loading_partial_error_and_certificate() {

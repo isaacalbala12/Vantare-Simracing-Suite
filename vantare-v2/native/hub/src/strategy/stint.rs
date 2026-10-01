@@ -1,5 +1,5 @@
 //! Edición de límites de stint; el solver nativo vuelve a valorar el plan.
-use gpui::{Context, ParentElement, Styled, div, prelude::*, px, rgba};
+use gpui::{Context, ParentElement, Styled, div, prelude::*, px, rgb, rgba};
 
 use super::{Page, Strategy, orbit};
 use vantare_strategy::{application::EditedPlan, solver::SolverOutcome};
@@ -48,159 +48,482 @@ pub(super) fn move_boundary(
     Ok(changed)
 }
 
-pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui::AnyElement {
-    if this.result.is_none() {
-        return orbit::card("Ajustar stints")
-            .child(orbit::card_body().child(orbit::empty_state(
-                "Sin plan calculado",
-                "Calcula una estrategia antes de editar los stints.",
-            )))
-            .into_any_element();
+pub(super) struct EditorState {
+    pub stint: usize,
+    pub stop: usize,
+    bounds: Option<gpui::Bounds<gpui::Pixels>>,
+    dragging: bool,
+    focus: gpui::FocusHandle,
+}
+impl EditorState {
+    pub(super) fn new(cx: &mut Context<Strategy>) -> Self {
+        Self {
+            stint: 0,
+            stop: 0,
+            bounds: None,
+            dragging: false,
+            focus: cx.focus_handle(),
+        }
     }
+}
+
+pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui::AnyElement {
     let Some(edited) = this.edited_plan.as_ref() else {
-        return orbit::card("Ajustar stints")
-            .child(orbit::card_body().child(orbit::empty_state(
-                "Abre el editor desde Plan",
-                "El calendario se copia del resultado confirmado.",
-            )))
-            .into_any_element();
+        return orbit::empty_state(
+            "Sin plan calculado",
+            "Calcula una estrategia antes de editar los stints.",
+        )
+        .into_any_element();
     };
     let race_laps = this.last_input.as_ref().map_or(0, |input| input.race_laps);
+    let index = this
+        .plan_editor
+        .stint
+        .min(edited.stints.len().saturating_sub(1));
+    let laps = edited.stints.get(index).copied().unwrap_or(0);
+    let [driver, pace, fuel, energy] = this.stint_values(index);
     div()
         .id("strategy-stint-editor")
         .flex()
         .flex_col()
-        .gap(px(orbit::RADIUS_CONTROL))
-        .child(orbit::eyebrow("Edición manual"))
-        .child(orbit::text("Ajustar stints", 28.0, 500, orbit::INK))
+        .px(px(12.0))
+        .pt(px(10.0))
+        .gap(px(14.0))
+        .child(super::plan::edit_heading("Ajustar stints"))
         .child(
-            orbit::button("strategy-stints-back", "← Plan").on_click(
-                cx.listener(|this, _, _, cx| {
+            orbit::button("strategy-stints-back", "← Plan")
+                .w(px(70.0))
+                .h(px(40.0))
+                .on_click(cx.listener(|this, _, _, cx| {
                     this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
-                }),
-            ),
+                })),
         )
-        .child(total_laps_card(race_laps))
-        .child(stint_cards(this, cx, edited))
-        .child(orbit::callout(
-            "La API nativa permite editar el calendario de vueltas. La asignación de piloto y los consumos por stint no se fijan en este recálculo.",
-        ))
-        .child(this.plan_edit_footer(
-            cx,
-            "strategy-stints-reset",
-            "strategy-stints-recalculate",
-            "Recalcular cambios",
-        ))
-        .into_any_element()
-}
-
-fn total_laps_card(race_laps: u32) -> gpui::AnyElement {
-    orbit::card("Vueltas totales")
         .child(
-            orbit::card_body()
-                .flex_row()
-                .items_center()
-                .gap(px(orbit::RADIUS_CONTROL))
-                .child(orbit::text(
-                    format!("{race_laps} vueltas"),
-                    17.0,
-                    700,
-                    orbit::INK,
-                ))
-                .child(orbit::text(
-                    "Mueve un límite; la suma de vueltas se mantiene.",
-                    12.0,
-                    400,
-                    orbit::INK_2,
+            super::plan::plan_card()
+                .p(px(18.0))
+                .gap(px(14.0))
+                .child(stint_header(race_laps))
+                .child(stint_selector(edited, index, cx))
+                .child(
+                    div()
+                        .flex()
+                        .gap(px(14.0))
+                        .min_w_0()
+                        .child(
+                            stint_metrics(laps, pace, fuel, energy)
+                                .w(gpui::relative(0.4454))
+                                .flex_none(),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .flex_1()
+                                .min_w_0()
+                                .gap(px(14.0))
+                                .child(pilot_row(index, laps, &driver))
+                                .child(boundary_control(this, edited, index, race_laps, cx)),
+                        ),
+                )
+                .child(this.plan_edit_footer(
+                    cx,
+                    "strategy-stints-reset",
+                    "strategy-stints-recalculate",
+                    "Recalcular cambios",
                 )),
         )
         .into_any_element()
 }
 
-fn stint_cards(
-    this: &Strategy,
-    cx: &mut Context<Strategy>,
-    edited: &EditedPlan,
-) -> gpui::AnyElement {
-    let mut items = div().flex().flex_wrap().gap(px(orbit::RADIUS_CONTROL));
-    let mut previous = 0_u32;
-    for (index, &laps) in edited.stints.iter().enumerate() {
-        let boundary = edited.pit_stop_laps.get(index).copied();
-        let first_lap = previous.saturating_add(1);
-        let last_lap = previous.saturating_add(laps);
-        items = items.child(stint_card(this, cx, index, first_lap, last_lap, boundary));
-        previous = boundary.unwrap_or(last_lap);
-    }
-    items.into_any_element()
-}
-
-fn stint_card(
-    this: &Strategy,
-    cx: &mut Context<Strategy>,
-    index: usize,
-    first_lap: u32,
-    last_lap: u32,
-    boundary: Option<u32>,
-) -> gpui::AnyElement {
-    let mut body = orbit::card_body()
-        .gap(px(orbit::RADIUS_CONTROL))
-        .child(orbit::eyebrow(format!("Stint {}", index + 1)))
-        .child(orbit::text(
-            format!("Vueltas {first_lap}–{last_lap}"),
-            15.0,
-            700,
-            orbit::INK,
-        ));
-    if let Some(boundary) = boundary {
-        body = body
-            .child(orbit::text(
-                format!("Límite de stint · vuelta {boundary}"),
-                12.0,
-                400,
-                orbit::INK_2,
-            ))
-            .child(boundary_controls(this, cx, index, boundary));
-    }
-    orbit::card("")
-        .flex_1()
-        .min_w(px(220.0))
-        .border_color(rgba(orbit::LINE))
-        .child(body)
-        .into_any_element()
-}
-
-fn boundary_controls(
-    this: &Strategy,
-    cx: &mut Context<Strategy>,
-    index: usize,
-    boundary: u32,
-) -> gpui::AnyElement {
+fn stint_header(race_laps: u32) -> gpui::Div {
     div()
         .flex()
-        .gap(px(orbit::RADIUS_CONTROL))
+        .items_center()
+        .gap(px(14.0))
+        .h(px(42.0))
+        .border_b_1()
+        .border_color(rgba(orbit::LINE))
+        .child(orbit::tracked_text(
+            "VUELTAS TOTALES",
+            11.0,
+            700,
+            orbit::RED,
+            0.8,
+        ))
+        .child(orbit::text(
+            format!("{race_laps} vueltas"),
+            18.0,
+            700,
+            orbit::INK,
+        ))
+        .child(orbit::text(
+            "Mueve un límite para comparar con la propuesta.",
+            12.0,
+            400,
+            orbit::INK_2,
+        ))
+}
+
+fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_between()
+        .gap(px(16.0))
+        .h(px(88.0))
+        .p(px(14.0))
+        .rounded(px(10.0))
+        .bg(rgb(0x0011_1515))
+        .child(orbit::text(
+            format!("Stint {}", index + 1),
+            16.0,
+            700,
+            orbit::INK,
+        ))
         .child(
-            orbit::button("strategy-stint-earlier", "− 1 vuelta")
-                .id(("strategy-stint-earlier", index))
-                .when(this.running, |button| button.opacity(orbit::DISABLED))
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(8.0))
+                .w(px(320.0))
+                .child(orbit::text("Piloto", 13.0, 400, orbit::INK_2))
+                .child(super::datos::select_value(driver)),
+        )
+        .child(orbit::text(
+            format!("{laps} vueltas"),
+            12.0,
+            400,
+            orbit::INK_2,
+        ))
+}
+
+fn stint_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy>) -> gpui::Div {
+    div()
+        .flex()
+        .gap(px(8.0))
+        .children(edited.stints.iter().enumerate().map(|(index, _)| {
+            div()
+                .id(("strategy-stint-selector", index))
+                .role(gpui::Role::Button)
+                .tab_index(0)
+                .aria_selected(index == selected)
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .w(px(240.0))
+                .h(px(54.0))
+                .px(px(14.0))
+                .rounded(px(8.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE_STRONG))
+                .bg(rgb(0x000f_1212))
+                .when(index == selected, |tab| {
+                    tab.border_color(rgb(orbit::RED))
+                        .bg(orbit::tint(orbit::CARMINE, 0.14))
+                })
+                .child(
+                    div()
+                        .size(px(28.0))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded_full()
+                        .bg(rgb(0x000a_0c0e))
+                        .child(orbit::text((index + 1).to_string(), 16.0, 400, orbit::RED)),
+                )
+                .child(orbit::text(
+                    format!("Stint {}", index + 1),
+                    16.0,
+                    400,
+                    orbit::INK,
+                ))
                 .on_click(cx.listener(move |this, _, _, cx| {
-                    this.move_plan_boundary(index, boundary.saturating_sub(1), cx);
-                })),
+                    this.plan_editor.stint = index;
+                    cx.notify();
+                }))
+        }))
+}
+
+pub(super) fn editor_metric(label: &str, value: String) -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .flex_1()
+        .min_w_0()
+        .p(px(18.0))
+        .gap(px(12.0))
+        .bg(rgb(0x000b_0e0f))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .child(orbit::tracked_text(
+            label.to_uppercase(),
+            11.0,
+            400,
+            orbit::INK_2,
+            0.7,
+        ))
+        .child(orbit::text(value, 20.0, 700, orbit::INK))
+}
+fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .rounded(px(10.0))
+        .overflow_hidden()
+        .child(
+            div()
+                .flex()
+                .h(px(84.0))
+                .child(editor_metric("Vueltas", laps.to_string()))
+                .child(editor_metric("Ritmo base", pace)),
         )
         .child(
-            orbit::button("strategy-stint-later", "+ 1 vuelta")
-                .id(("strategy-stint-later", index))
-                .when(this.running, |button| button.opacity(orbit::DISABLED))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.move_plan_boundary(index, boundary.saturating_add(1), cx);
-                })),
+            div()
+                .flex()
+                .h(px(84.0))
+                .child(editor_metric("Fuel", fuel))
+                .child(editor_metric("Energía virtual", energy)),
         )
-        .into_any_element()
+}
+
+fn boundary_range(edited: &EditedPlan, index: usize, race_laps: u32) -> Option<(u32, u32, u32)> {
+    let value = *edited.pit_stop_laps.get(index)?;
+    let first = if index == 0 {
+        1
+    } else {
+        edited.pit_stop_laps.get(index - 1)?.checked_add(1)?
+    };
+    let last = edited
+        .pit_stop_laps
+        .get(index + 1)
+        .copied()
+        .unwrap_or(race_laps)
+        .checked_sub(1)?;
+    (first <= last).then_some((first, last, value))
+}
+
+fn boundary_control(
+    this: &Strategy,
+    edited: &EditedPlan,
+    index: usize,
+    race_laps: u32,
+    cx: &mut Context<Strategy>,
+) -> gpui::Div {
+    let Some((min, max, value)) = boundary_range(edited, index, race_laps) else {
+        return orbit::text(
+            "El último stint termina en la última vuelta de carrera.",
+            13.0,
+            400,
+            orbit::INK_2,
+        );
+    };
+    let slider = boundary_slider(this, index, min, max, value, cx);
+    div()
+        .flex()
+        .items_end()
+        .gap(px(16.0))
+        .px(px(14.0))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .gap(px(8.0))
+                .child(orbit::text("Límite del stint", 13.0, 400, orbit::INK_2))
+                .child(slider),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .w(px(76.0))
+                .gap(px(8.0))
+                .child(orbit::text("Vuelta", 13.0, 400, orbit::INK_2))
+                .child(
+                    div()
+                        .h(px(40.0))
+                        .px(px(8.0))
+                        .flex()
+                        .items_center()
+                        .rounded(px(8.0))
+                        .border_1()
+                        .border_color(rgba(orbit::LINE_STRONG))
+                        .bg(rgb(0x0008_0b0c))
+                        .child(orbit::text(value.to_string(), 13.0, 500, orbit::INK)),
+                ),
+        )
+}
+
+fn boundary_slider(
+    this: &Strategy,
+    index: usize,
+    min: u32,
+    max: u32,
+    value: u32,
+    cx: &mut Context<Strategy>,
+) -> gpui::Stateful<gpui::Div> {
+    let fraction = if min == max {
+        0.0
+    } else {
+        f64::from(value.saturating_sub(min)) / f64::from(max - min)
+    };
+    let entity = cx.entity();
+    div()
+        .id("strategy-stint-boundary")
+        .track_focus(&this.plan_editor.focus)
+        .tab_index(0)
+        .role(gpui::Role::Slider)
+        .aria_label("Límite del stint")
+        .aria_numeric_value(f64::from(value))
+        .aria_min_numeric_value(f64::from(min))
+        .aria_max_numeric_value(f64::from(max))
+        .aria_numeric_value_step(1.0)
+        .h(px(20.0))
+        .w_full()
+        .cursor_pointer()
+        .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
+            let next = match event.keystroke.key.as_str() {
+                "left" | "down" => value.saturating_sub(1),
+                "right" | "up" => value.saturating_add(1),
+                "home" => min,
+                "end" => max,
+                _ => return,
+            };
+            this.move_plan_boundary(index, next.clamp(min, max), cx);
+            cx.stop_propagation();
+        }))
+        .on_mouse_down(
+            gpui::MouseButton::Left,
+            cx.listener(move |this, event: &gpui::MouseDownEvent, window, cx| {
+                if !this.running {
+                    this.plan_editor.focus.focus(window, cx);
+                    this.plan_editor.dragging = true;
+                    this.move_boundary_pointer(index, min, max, event.position.x, cx);
+                }
+            }),
+        )
+        .on_mouse_move(
+            cx.listener(move |this, event: &gpui::MouseMoveEvent, _, cx| {
+                if this.plan_editor.dragging {
+                    this.move_boundary_pointer(index, min, max, event.position.x, cx);
+                }
+            }),
+        )
+        .on_mouse_up(
+            gpui::MouseButton::Left,
+            cx.listener(|this, _, _, _| this.plan_editor.dragging = false),
+        )
+        .on_mouse_up_out(
+            gpui::MouseButton::Left,
+            cx.listener(|this, _, _, _| this.plan_editor.dragging = false),
+        )
+        .child(
+            gpui::canvas(
+                move |bounds, _, cx| {
+                    entity.update(cx, |this, _| this.plan_editor.bounds = Some(bounds));
+                },
+                move |bounds, (), window, _| paint_boundary(bounds, fraction, window),
+            )
+            .size_full(),
+        )
+}
+
+impl Strategy {
+    fn move_boundary_pointer(
+        &mut self,
+        index: usize,
+        min: u32,
+        max: u32,
+        x: gpui::Pixels,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(bounds) = self.plan_editor.bounds else {
+            return;
+        };
+        if bounds.size.width <= px(0.0) {
+            return;
+        }
+        let fraction = f64::from((x - bounds.left()) / bounds.size.width);
+        if let Some(lap) = boundary_at_fraction(min, max, fraction) {
+            self.move_plan_boundary(index, lap, cx);
+        }
+    }
+}
+
+fn boundary_at_fraction(min: u32, max: u32, fraction: f64) -> Option<u32> {
+    if min > max || !fraction.is_finite() {
+        return None;
+    }
+    let range = orbit::NumberRange::new(
+        f64::from(min),
+        f64::from(max),
+        1.0,
+        f64::from(min) + fraction.clamp(0.0, 1.0) * f64::from(max - min),
+    )
+    .ok()?;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // El rango validado está limitado a u32 y el paso es una vuelta.
+    Some(range.value as u32)
+}
+
+fn paint_boundary(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mut gpui::Window) {
+    let y = bounds.top() + bounds.size.height / 2.0;
+    let track = gpui::Bounds::new(
+        gpui::point(bounds.left(), y - px(3.0)),
+        gpui::size(bounds.size.width, px(6.0)),
+    );
+    window.paint_quad(gpui::fill(track, rgb(0x0053_5353)).corner_radii(px(3.0)));
+    #[allow(clippy::cast_possible_truncation)] // Fracción de presentación acotada a 0..1.
+    let width = bounds.size.width * fraction.clamp(0.0, 1.0) as f32;
+    window.paint_quad(
+        gpui::fill(
+            gpui::Bounds::new(track.origin, gpui::size(width, px(6.0))),
+            rgb(orbit::RED),
+        )
+        .corner_radii(px(3.0)),
+    );
+    window.paint_quad(
+        gpui::fill(
+            gpui::Bounds::new(
+                gpui::point(bounds.left() + width - px(7.0), y - px(7.0)),
+                gpui::size(px(14.0), px(14.0)),
+            ),
+            rgb(orbit::RED),
+        )
+        .corner_radii(px(7.0)),
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pointer_mapping_rounds_clamps_and_rejects_invalid_ranges() {
+        for (fraction, expected) in [(-1.0, 1), (0.0, 1), (0.5, 23), (1.0, 45), (2.0, 45)] {
+            assert_eq!(boundary_at_fraction(1, 45, fraction), Some(expected));
+        }
+        assert_eq!(boundary_at_fraction(7, 7, 0.5), Some(7));
+        assert_eq!(boundary_at_fraction(2, 1, 0.0), None);
+        assert_eq!(boundary_at_fraction(1, 45, f64::NAN), None);
+        assert_eq!(boundary_at_fraction(1, 45, f64::INFINITY), None);
+        assert_eq!(
+            boundary_at_fraction(u32::MAX, u32::MAX, 0.0),
+            Some(u32::MAX)
+        );
+    }
+
+    #[test]
+    fn boundary_range_prevents_empty_adjacent_stints() {
+        let edited = EditedPlan {
+            stints: vec![23, 23, 23],
+            pit_stop_laps: vec![23, 46],
+        };
+        assert_eq!(boundary_range(&edited, 0, 69), Some((1, 45, 23)));
+        assert_eq!(boundary_range(&edited, 1, 69), Some((24, 68, 46)));
+        assert_eq!(boundary_range(&edited, 2, 69), None);
+    }
 
     #[test]
     fn moving_a_boundary_keeps_total_laps_and_other_boundaries() {

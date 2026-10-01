@@ -1,9 +1,8 @@
 //! Edición de vueltas de parada y lectura de las decisiones reales del solver.
-use gpui::{Context, Div, ParentElement, Styled, div, prelude::*, px};
+use gpui::{Context, Div, ParentElement, Styled, div, prelude::*, px, rgb, rgba};
 
 use super::{Page, Strategy, orbit};
 use vantare_strategy::application::EditedPlan;
-use vantare_strategy::solver::SolverOutcome;
 
 pub(super) fn move_stop(
     edited: &EditedPlan,
@@ -23,189 +22,384 @@ pub(super) fn move_stop(
 }
 
 pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui::AnyElement {
-    let Some(outcome) = this.result.as_ref() else {
-        return orbit::card("Ajustar paradas")
-            .child(orbit::card_body().child(orbit::empty_state(
-                "Sin plan calculado",
-                "Calcula una estrategia antes de editar las paradas.",
-            )))
-            .into_any_element();
-    };
     let Some(edited) = this.edited_plan.as_ref() else {
-        return orbit::card("Ajustar paradas")
-            .child(orbit::card_body().child(orbit::empty_state(
-                "Abre el editor desde Plan",
-                "Las vueltas se copian del resultado confirmado.",
-            )))
-            .into_any_element();
+        return orbit::empty_state(
+            "Sin plan calculado",
+            "Calcula una estrategia antes de editar las paradas.",
+        )
+        .into_any_element();
     };
-    let race_laps = this.last_input.as_ref().map_or(0, |input| input.race_laps);
+    let index = this
+        .plan_editor
+        .stop
+        .min(edited.pit_stop_laps.len().saturating_sub(1));
     div()
         .id("strategy-pit-editor")
         .flex()
         .flex_col()
-        .gap(px(orbit::RADIUS_CONTROL))
-        .child(orbit::eyebrow("Edición manual"))
-        .child(orbit::text("Ajustar paradas", 28.0, 500, orbit::INK))
+        .px(px(12.0))
+        .pt(px(10.0))
+        .gap(px(14.0))
+        .child(super::plan::edit_heading("Ajustar paradas"))
         .child(
-            orbit::button("strategy-stops-back", "← Plan").on_click(
-                cx.listener(|this, _, _, cx| {
+            orbit::button("strategy-stops-back", "← Plan")
+                .w(px(70.0))
+                .h(px(40.0))
+                .on_click(cx.listener(|this, _, _, cx| {
                     this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
-                }),
-            ),
+                })),
         )
         .child(
-            orbit::card("Paradas del plan").child(
-                orbit::card_body()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(orbit::RADIUS_CONTROL))
-                    .child(orbit::text(
-                        edited.pit_stop_laps.len().to_string(),
-                        17.0,
-                        700,
-                        orbit::INK,
-                    ))
-                    .child(orbit::text(
-                        format!("{race_laps} vueltas · calendario en edición"),
-                        12.0,
-                        400,
-                        orbit::INK_2,
-                    )),
-            ),
-        )
-        .child(stop_list(this, cx, outcome, edited))
-        .child(orbit::callout(
-            "Este contrato de recálculo solo fija las vueltas de parada. Fuel, energía virtual y neumáticos no se editan aquí; los valores visibles pertenecen a la última solución factible.",
-        ))
-        .child(this.plan_edit_footer(
-            cx,
-            "strategy-stops-reset",
-            "strategy-stops-recalculate",
-            "Recalcular paradas",
-        ))
-        .into_any_element()
-}
-
-fn stop_list(
-    this: &Strategy,
-    cx: &mut Context<Strategy>,
-    outcome: &SolverOutcome,
-    edited: &EditedPlan,
-) -> gpui::AnyElement {
-    if edited.pit_stop_laps.is_empty() {
-        return orbit::empty_state(
-            "Sin paradas",
-            "El calendario no contiene paradas para ajustar.",
-        )
-        .into_any_element();
-    }
-    let mut stops = div().flex().flex_col().gap(px(orbit::RADIUS_CONTROL));
-    for (index, &lap) in edited.pit_stop_laps.iter().enumerate() {
-        stops = stops.child(stop_card(this, cx, outcome, index, lap));
-    }
-    stops.into_any_element()
-}
-
-fn stop_card(
-    this: &Strategy,
-    cx: &mut Context<Strategy>,
-    outcome: &SolverOutcome,
-    index: usize,
-    lap: u32,
-) -> gpui::AnyElement {
-    let summary = div()
-        .flex()
-        .justify_between()
-        .child(orbit::text(
-            format!("Parada {}", index + 1),
-            14.0,
-            700,
-            orbit::INK,
-        ))
-        .child(orbit::text(
-            format!("Vuelta {lap}"),
-            12.0,
-            500,
-            orbit::INK_2,
-        ));
-    orbit::card("")
-        .border_color(orbit::tint(orbit::CARMINE, 0.38))
-        .child(
-            orbit::card_body()
-                .gap(px(orbit::RADIUS_CONTROL))
-                .child(summary)
-                .child(stop_resources(outcome.result.pit_stops.get(index)))
-                .child(stop_controls(this, cx, index)),
+            super::plan::plan_card()
+                .p(px(18.0))
+                .flex()
+                .flex_col()
+                .gap(px(14.0))
+                .border_color(orbit::tint(orbit::CARMINE, 0.4))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(14.0))
+                        .h(px(42.0))
+                        .border_b_1()
+                        .border_color(rgba(orbit::LINE))
+                        .child(orbit::tracked_text("TOTAL", 11.0, 700, orbit::RED, 0.8))
+                        .child(orbit::text(
+                            edited.pit_stop_laps.len().to_string(),
+                            18.0,
+                            700,
+                            orbit::INK,
+                        ))
+                        .child(orbit::text(
+                            service_label(this, index),
+                            12.0,
+                            400,
+                            orbit::INK_2,
+                        )),
+                )
+                .child(stop_selector(edited, index, cx))
+                .child(stop_details(this, index, cx))
+                .child(this.plan_edit_footer(
+                    cx,
+                    "strategy-stops-reset",
+                    "strategy-stops-recalculate",
+                    "Recalcular parada",
+                )),
         )
         .into_any_element()
 }
 
-fn stop_resources(stop: Option<&vantare_strategy::solver::PitStop>) -> gpui::AnyElement {
-    let Some(stop) = stop else {
-        return orbit::callout(
-            "Este calendario no tiene una decisión factible de recursos para mostrar.",
-        )
-        .into_any_element();
-    };
+fn stop_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy>) -> Div {
     div()
         .flex()
-        .flex_wrap()
-        .gap(px(orbit::RADIUS_CONTROL))
-        .child(read_only(
-            "Fuel añadido",
-            format!("{:.1} L", stop.fuel_liters),
-        ))
-        .child(read_only(
-            "Energía virtual añadida",
-            format!("{:.1}%", stop.ve_percent),
-        ))
-        .child(read_only(
-            "Neumáticos",
-            if stop.change_tyres {
-                "Cambio"
-            } else {
-                "Sin cambio"
-            }
-            .to_owned(),
-        ))
-        .child(read_only("Servicio", stop.service_mode.clone()))
-        .into_any_element()
+        .gap(px(8.0))
+        .children(edited.pit_stop_laps.iter().enumerate().map(|(index, _)| {
+            div()
+                .id(("strategy-stop-selector", index))
+                .role(gpui::Role::Button)
+                .tab_index(0)
+                .aria_selected(index == selected)
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .w(px(240.0))
+                .h(px(54.0))
+                .px(px(14.0))
+                .rounded(px(8.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE_STRONG))
+                .bg(rgb(0x000f_1212))
+                .when(index == selected, |tab| {
+                    tab.border_color(rgb(orbit::RED))
+                        .bg(orbit::tint(orbit::CARMINE, 0.14))
+                })
+                .child(
+                    div()
+                        .size(px(28.0))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .rounded_full()
+                        .bg(rgb(0x000a_0c0e))
+                        .child(orbit::text((index + 1).to_string(), 16.0, 400, orbit::RED)),
+                )
+                .child(orbit::text(
+                    format!("Parada {}", index + 1),
+                    16.0,
+                    400,
+                    orbit::INK,
+                ))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.plan_editor.stop = index;
+                    cx.notify();
+                }))
+        }))
 }
 
-fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> gpui::AnyElement {
+fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Div {
+    let demo = this
+        .capture_demo
+        .as_ref()
+        .and_then(|demo| demo.stops.get(index));
+    let stop = this
+        .result
+        .as_ref()
+        .and_then(|outcome| outcome.result.pit_stops.get(index));
+    let fuel = demo
+        .map(|demo| demo.fuel_added)
+        .or_else(|| stop.map(|stop| stop.fuel_liters));
+    let energy = demo
+        .map(|demo| demo.ve_added)
+        .or_else(|| stop.map(|stop| stop.ve_percent));
+    let tyres = demo
+        .map(|demo| demo.change_tyres)
+        .or_else(|| stop.map(|stop| stop.change_tyres))
+        .unwrap_or(false);
+    let compound = demo.map_or("Sin dato", |demo| demo.compound.as_str());
+    let costs = demo.map_or([None; 4], |demo| {
+        [
+            Some(demo.transit_seconds),
+            Some(demo.service_seconds),
+            Some(-demo.overlap_seconds),
+            Some(demo.total_seconds),
+        ]
+    });
+    let values = costs.map(|cost| {
+        cost.map_or_else(
+            || "Sin dato".into(),
+            |cost| format!("{} s", super::plan::decimal(cost, 1).trim_end_matches(",0")),
+        )
+    });
+    let lap = this
+        .edited_plan
+        .as_ref()
+        .and_then(|edited| edited.pit_stop_laps.get(index))
+        .copied();
+    super::plan::plan_card()
+        .p(px(16.0))
+        .bg(rgb(0x0010_1415))
+        .gap(px(16.0))
+        .child(
+            div()
+                .flex()
+                .justify_between()
+                .items_center()
+                .child(
+                    orbit::text(format!("Parada {}", index + 1), 16.0, 700, orbit::INK)
+                        .line_height(px(20.0)),
+                )
+                .child(orbit::text(
+                    lap.map_or_else(|| "Sin dato".into(), |lap| format!("Vuelta {lap}")),
+                    12.0,
+                    400,
+                    orbit::INK_2,
+                )),
+        )
+        .when(this.capture_demo.is_none(), |card| {
+            card.child(stop_controls(this, cx, index))
+        })
+        .when(this.edit_dirty, |card| {
+            card.child(orbit::text(
+                "Valores anteriores: recalcula para actualizar los recursos.",
+                12.0,
+                400,
+                orbit::INK_2,
+            ))
+        })
+        .child(
+            div()
+                .flex()
+                .gap(px(14.0))
+                .min_w_0()
+                .child(stop_resources(
+                    fuel,
+                    energy,
+                    tyres,
+                    compound,
+                    this.capture_demo.is_some(),
+                ))
+                .child(cost_grid(&values)),
+        )
+}
+
+fn stop_resources(
+    fuel: Option<f64>,
+    energy: Option<f64>,
+    tyres: bool,
+    compound: &str,
+    demo: bool,
+) -> Div {
+    div()
+        .flex()
+        .flex_1()
+        .min_w_0()
+        .gap(px(10.0))
+        .items_start()
+        .pr(px(14.0))
+        .border_r_1()
+        .border_color(rgba(orbit::LINE))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .gap(px(40.0))
+                .child(resource_value("Fuel añadido", fuel, "L"))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(5.0))
+                        .child(
+                            div()
+                                .size(px(14.0))
+                                .rounded(px(3.0))
+                                .bg(rgb(if tyres { orbit::CARMINE } else { 0x0008_0b0c }))
+                                .child(orbit::text(
+                                    if tyres { "✓" } else { "" },
+                                    12.0,
+                                    700,
+                                    orbit::INK,
+                                )),
+                        )
+                        .child(orbit::text("Cambiar neumáticos", 13.0, 400, orbit::INK))
+                        .opacity(if demo { 1.0 } else { orbit::DISABLED }),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .gap(px(10.0))
+                .child(resource_value("Energía virtual añadida", energy, "%"))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(8.0))
+                        .child(orbit::text("Compuesto", 13.0, 400, orbit::INK_2))
+                        .child(super::datos::select_value(compound)),
+                ),
+        )
+}
+
+fn cost_grid(values: &[String; 4]) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .w(gpui::relative(0.41))
+        .flex_none()
+        .gap(px(8.0))
+        .child(
+            div()
+                .flex()
+                .gap(px(8.0))
+                .h(px(72.0))
+                .child(cost_metric("Tránsito", &values[0]))
+                .child(cost_metric("Servicio", &values[1])),
+        )
+        .child(
+            div()
+                .flex()
+                .gap(px(8.0))
+                .h(px(74.0))
+                .child(cost_metric("Solape", &values[2]))
+                .child(
+                    cost_metric("Total", &values[3])
+                        .border_color(orbit::tint(orbit::CARMINE, 0.5))
+                        .bg(orbit::tint(orbit::CARMINE, 0.08)),
+                ),
+        )
+}
+
+fn service_label(this: &Strategy, index: usize) -> &'static str {
+    if this.capture_demo.is_some() {
+        return "Servicios en paralelo";
+    }
+    match this
+        .result
+        .as_ref()
+        .and_then(|outcome| outcome.result.pit_stops.get(index))
+        .map(|stop| stop.service_mode.as_str())
+    {
+        Some("parallel") => "Servicios en paralelo",
+        Some("sequential") => "Servicios secuenciales",
+        _ => "Modo de servicio sin dato",
+    }
+}
+
+fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .flex_1()
+        .min_w_0()
+        .gap(px(8.0))
+        .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .child(
+                    div()
+                        .h(px(40.0))
+                        .flex_1()
+                        .min_w_0()
+                        .px(px(10.0))
+                        .flex()
+                        .items_center()
+                        .rounded(px(8.0))
+                        .border_1()
+                        .border_color(rgba(orbit::LINE_STRONG))
+                        .bg(rgb(0x0008_0b0c))
+                        .child(orbit::text(
+                            value.map_or_else(
+                                || "Sin dato".into(),
+                                |value| {
+                                    super::plan::decimal(value, 1)
+                                        .trim_end_matches(",0")
+                                        .to_owned()
+                                },
+                            ),
+                            13.0,
+                            400,
+                            orbit::INK,
+                        )),
+                )
+                .child(orbit::text(unit.to_owned(), 13.0, 400, orbit::INK_2)),
+        )
+}
+
+fn cost_metric(label: &str, value: &str) -> Div {
+    super::plan::plan_card()
+        .flex_1()
+        .min_w_0()
+        .p(px(14.0))
+        .child(super::plan::fact(label, value.to_owned()))
+}
+
+fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> Div {
     div()
         .flex()
         .items_center()
-        .gap(px(orbit::RADIUS_CONTROL))
+        .gap(px(8.0))
         .child(orbit::text("Mover parada", 12.0, 600, orbit::INK_2))
-        .child(
-            orbit::button("strategy-stop-earlier", "− 1 vuelta")
-                .id(("strategy-stop-earlier", index))
-                .when(this.running, |button| button.opacity(orbit::DISABLED))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.move_plan_stop(index, -1, cx);
-                })),
+        .children(
+            [(-1, "− 1 vuelta"), (1, "+ 1 vuelta")]
+                .into_iter()
+                .map(|(delta, label)| {
+                    orbit::button("strategy-stop-move", label)
+                        .id(("strategy-stop-move", (index * 2) + usize::from(delta > 0)))
+                        .when(this.running, |button| button.opacity(orbit::DISABLED))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.move_plan_stop(index, delta, cx);
+                        }))
+                }),
         )
-        .child(
-            orbit::button("strategy-stop-later", "+ 1 vuelta")
-                .id(("strategy-stop-later", index))
-                .when(this.running, |button| button.opacity(orbit::DISABLED))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.move_plan_stop(index, 1, cx);
-                })),
-        )
-        .into_any_element()
-}
-
-fn read_only(label: &str, value: String) -> Div {
-    orbit::card("").flex_1().min_w(px(145.0)).child(
-        orbit::card_body()
-            .gap(px(5.0))
-            .child(orbit::eyebrow(label))
-            .child(orbit::text(value, 13.0, 650, orbit::INK)),
-    )
 }
 
 #[cfg(test)]

@@ -1,4 +1,15 @@
-//! Deterministic scalar subspace of Go `SolveV2`. Unsupported dimensions fail closed.
+//! Deterministic Strategy solver, with shared search and fixed-plan replay models.
+mod model;
+#[cfg(test)]
+mod parity_tests;
+mod replay;
+mod search;
+
+pub use model::*;
+pub use replay::{
+    ReplayResult, ReplayStint, SolverReason, replay_decision_v2, replay_decision_v2_with_resources,
+    resource_requirements_v2,
+};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
@@ -135,6 +146,9 @@ impl Input {
         {
             return Err("invalid_input: versión o raceLaps".into());
         }
+        if search::needs_extended(self) {
+            return model::Model::new(self).map(|_| ());
+        }
         for (field, value) in &self.extra {
             if populated(value) {
                 return Err(format!("unsupported_native_dimension: {field}"));
@@ -199,7 +213,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PitStop {
     pub lap: u32,
@@ -208,7 +222,7 @@ pub struct PitStop {
     pub change_tyres: bool,
     pub service_mode: String,
 }
-#[derive(Clone, Debug, Default, Serialize, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Evaluation {
     pub total_seconds: f64,
@@ -232,6 +246,14 @@ pub struct ResultV2 {
     pub ve_start_percent: f64,
     pub fuel_remaining_liters: f64,
     pub ve_remaining_percent: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub best: Option<DecisionVector>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reserve: Option<ReserveStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worst_case: Option<Evaluation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidates: Vec<DecisionVector>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -432,6 +454,9 @@ fn solve_internal(
     cancel: &AtomicBool,
     return_partial: bool,
 ) -> Result<SolverOutcome, String> {
+    if search::needs_extended(input) {
+        return search::solve(input, cancel, return_partial);
+    }
     input.validate()?;
     let fuel = Resource::new(
         input.fuel_capacity_liters.value,

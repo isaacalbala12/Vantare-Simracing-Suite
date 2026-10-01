@@ -437,7 +437,7 @@ impl Strategy {
             )
     }
 
-    pub(super) fn editor_footer(
+    pub(super) fn plan_edit_footer(
         &self,
         cx: &mut Context<Self>,
         reset_id: &'static str,

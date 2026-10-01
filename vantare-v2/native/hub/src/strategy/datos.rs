@@ -215,7 +215,7 @@ impl Strategy {
         cx.notify();
     }
 
-    pub(super) fn data_page(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    pub(super) fn data_page(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
         let heading = data_heading();
         let Some(source) = self.data.source.as_ref() else {
             return heading.child(empty_source_card()).into_any_element();

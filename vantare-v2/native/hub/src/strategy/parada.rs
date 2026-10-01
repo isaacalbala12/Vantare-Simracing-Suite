@@ -50,7 +50,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .child(
             orbit::button("strategy-stops-back", "← Plan").on_click(
                 cx.listener(|this, _, _, cx| {
-                    this.page = Page::Plan;
+                    this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
                 }),
             ),
@@ -79,7 +79,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .child(orbit::callout(
             "Este contrato de recálculo solo fija las vueltas de parada. Fuel, energía virtual y neumáticos no se editan aquí; los valores visibles pertenecen a la última solución factible.",
         ))
-        .child(this.editor_footer(
+        .child(this.plan_edit_footer(
             cx,
             "strategy-stops-reset",
             "strategy-stops-recalculate",

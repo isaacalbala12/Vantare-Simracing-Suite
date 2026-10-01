@@ -76,7 +76,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .child(
             orbit::button("strategy-stints-back", "← Plan").on_click(
                 cx.listener(|this, _, _, cx| {
-                    this.page = Page::Plan;
+                    this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
                 }),
             ),
@@ -86,7 +86,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .child(orbit::callout(
             "La API nativa permite editar el calendario de vueltas. La asignación de piloto y los consumos por stint no se fijan en este recálculo.",
         ))
-        .child(this.editor_footer(
+        .child(this.plan_edit_footer(
             cx,
             "strategy-stints-reset",
             "strategy-stints-recalculate",

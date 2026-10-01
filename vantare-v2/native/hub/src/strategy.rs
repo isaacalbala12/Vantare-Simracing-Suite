@@ -5,7 +5,10 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-use gpui::{Context, Entity, IntoElement, PathPromptOptions, Render, Window, div, prelude::*};
+use gpui::{
+    Context, Entity, Image, ImageFormat, IntoElement, PathPromptOptions, Render, RenderImage,
+    SvgRenderer, Window, div, prelude::*,
+};
 use serde_json::{Value, json};
 
 use crate::{
@@ -23,16 +26,37 @@ use vantare_strategy::{
     },
 };
 
+#[path = "strategy/asistente.rs"]
+mod assistant;
 mod datos;
+#[path = "strategy/editor.rs"]
+mod editor_view;
 mod parada;
 mod plan;
+#[path = "strategy/revisiones.rs"]
+mod revisions_view;
 mod stint;
 #[path = "strategy/view.rs"]
 mod view;
+use assistant::AssistantStep;
+use editor_view::EditorTab;
 use view::Page;
 
 const LIMIT: u64 = 12 * 1024 * 1024;
 const DURATIONS: [u32; 4] = [60, 120, 240, 360];
+
+fn load_strategy_image(
+    bytes: &'static [u8],
+    description: &str,
+) -> (Option<Arc<RenderImage>>, Option<String>) {
+    let image = Image::from_bytes(ImageFormat::Png, bytes.to_vec())
+        .to_image_data(SvgRenderer::new(Arc::new(())))
+        .map_err(|error| format!("decodificar {description}: {error}"));
+    match image {
+        Ok(image) => (Some(image), None),
+        Err(error) => (None, Some(error)),
+    }
+}
 
 #[derive(Default)]
 pub struct Editor {
@@ -111,7 +135,7 @@ struct FormState {
 }
 
 const FIELDS: &[(&str, &str)] = &[
-    ("Nombre del evento", "name"),
+    ("Nombre de la carrera", "name"),
     ("Duración (min)", "durationMin"),
     ("Depósito (L)", "tankLiters"),
     ("Tránsito boxes (s)", "pitLossSeconds"),
@@ -120,7 +144,7 @@ const FIELDS: &[(&str, &str)] = &[
     ("Nombre variante", "variantName"),
     ("Nota variante", "variantNote"),
     ("Modo variante (dry / humid / wet / eco)", "variantMode"),
-    ("Vueltas de carrera", "raceLaps"),
+    ("Distancia · vueltas", "raceLaps"),
     ("Ritmo (s/v)", "pace"),
     ("Consumo Fuel (L/v)", "fuelPerLap"),
     ("Capacidad VE (%)", "veCapacity"),
@@ -141,12 +165,20 @@ const FIELDS: &[(&str, &str)] = &[
     ("Iniciales", "driverInitials"),
 ];
 
+#[allow(clippy::struct_excessive_bools)] // Modo, edición, formulario y solver son estados independientes.
 pub struct Strategy {
     editor: Editor,
     directory: PathBuf,
     fields: Vec<String>,
     inputs: Vec<Entity<orbit::Input>>,
     page: Page,
+    automatic: bool,
+    edit_mode: bool,
+    rules_details_open: bool,
+    garage: Option<Arc<RenderImage>>,
+    garage_detail: Option<Arc<RenderImage>>,
+    demo_car: Option<String>,
+    automatic_preparation: Option<application::AutomaticPreparation>,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
@@ -169,6 +201,32 @@ pub struct Strategy {
     cancellation: Arc<AtomicBool>,
     generation: u64,
 }
+fn open_editor(directory: &std::path::Path) -> (Editor, Option<String>) {
+    let mut editor = Editor::default();
+    let path = directory.join("strategy-v2.json");
+    let error =
+        if path.exists() {
+            editor.open(path).err()
+        } else {
+            match application::repository::LocalRepository::open(directory)
+                .and_then(|repository| repository.load())
+            {
+                Ok(snapshot) => snapshot.drafts.last().and_then(|draft| {
+                    match Document::parse(draft.as_bytes()) {
+                        Ok(document) => {
+                            editor.document = Some(document);
+                            editor.saved = Some(draft.as_bytes().to_vec());
+                            None
+                        }
+                        Err(error) => Some(error),
+                    }
+                }),
+                Err(error) => Some(error),
+            }
+        };
+    (editor, error)
+}
+
 impl Strategy {
     pub fn new_demo(
         directory: PathBuf,
@@ -181,23 +239,45 @@ impl Strategy {
         };
         strategy.page = match page {
             crate::demo::CaptureStrategyPage::Collection => Page::Collection,
-            crate::demo::CaptureStrategyPage::Continue => Page::Continue,
-            crate::demo::CaptureStrategyPage::Origin => Page::Origin,
-            crate::demo::CaptureStrategyPage::Team => Page::Team,
-            crate::demo::CaptureStrategyPage::Start => Page::Start,
             crate::demo::CaptureStrategyPage::Create => Page::Create,
             crate::demo::CaptureStrategyPage::DataEmpty
             | crate::demo::CaptureStrategyPage::DataSources
             | crate::demo::CaptureStrategyPage::DataLaps
-            | crate::demo::CaptureStrategyPage::DataAdvanced => Page::Data,
+            | crate::demo::CaptureStrategyPage::DataAdvanced => Page::Editor(EditorTab::Datos),
             crate::demo::CaptureStrategyPage::PlanIdle
             | crate::demo::CaptureStrategyPage::PlanLoading
             | crate::demo::CaptureStrategyPage::PlanPartial
             | crate::demo::CaptureStrategyPage::PlanError
-            | crate::demo::CaptureStrategyPage::PlanCalculated => Page::Plan,
+            | crate::demo::CaptureStrategyPage::PlanCalculated => Page::Editor(EditorTab::Plan),
             crate::demo::CaptureStrategyPage::Stints => Page::Stints,
             crate::demo::CaptureStrategyPage::Stops => Page::Stops,
+            crate::demo::CaptureStrategyPage::AssistantInicio => {
+                Page::Assistant(AssistantStep::Inicio)
+            }
+            crate::demo::CaptureStrategyPage::AssistantCombinacion => {
+                Page::Assistant(AssistantStep::Combinacion)
+            }
+            crate::demo::CaptureStrategyPage::AssistantReglas => {
+                Page::Assistant(AssistantStep::Reglas)
+            }
+            crate::demo::CaptureStrategyPage::AssistantPilotos => {
+                Page::Assistant(AssistantStep::Pilotos)
+            }
+            crate::demo::CaptureStrategyPage::AssistantSesiones => {
+                Page::Assistant(AssistantStep::Sesiones)
+            }
+            crate::demo::CaptureStrategyPage::Career => Page::Editor(EditorTab::Carrera),
+            crate::demo::CaptureStrategyPage::Revisions => Page::Editor(EditorTab::Revisiones),
         };
+        strategy.automatic = false;
+        if page != crate::demo::CaptureStrategyPage::Create
+            && let Err(error) = strategy.seed_capture_demo(cx)
+        {
+            strategy.error = Some(error);
+        }
+        if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
+            strategy.automatic = true;
+        }
         if page == crate::demo::CaptureStrategyPage::Create {
             strategy.start_form(cx);
         }
@@ -282,9 +362,16 @@ impl Strategy {
     }
 
     pub fn new(directory: PathBuf, cx: &mut Context<Self>) -> Self {
-        let mut editor = Editor::default();
-        let path = directory.join("strategy-v2.json");
-        let error = path.exists().then(|| editor.open(path).err()).flatten();
+        let (editor, error) = open_editor(&directory);
+        let (garage, garage_error) = load_strategy_image(
+            include_bytes!("../assets/strategy-garage.png"),
+            "fondo de Strategy",
+        );
+        let (garage_detail, garage_detail_error) = load_strategy_image(
+            include_bytes!("../assets/strategy-garage-detail.png"),
+            "fondo detallado de Strategy",
+        );
+
         let manual_source_status = if editor.document.is_some() {
             SourceStatus::Open
         } else {
@@ -331,6 +418,13 @@ impl Strategy {
             fields: vec![String::new(); FIELDS.len()],
             inputs,
             page: Page::Collection,
+            automatic: false,
+            edit_mode: false,
+            rules_details_open: false,
+            garage,
+            garage_detail,
+            demo_car: None,
+            automatic_preparation: None,
             duration: None,
             event: 0,
             variant: 0,
@@ -338,7 +432,7 @@ impl Strategy {
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
-            error,
+            error: error.or(garage_error).or(garage_detail_error),
             result: None,
             last_input: None,
             manual_source_status,
@@ -375,6 +469,7 @@ impl Strategy {
         self.edit_dirty = false;
         self.edit_cost_seconds = None;
         self.edit_error = None;
+        self.automatic_preparation = None;
     }
 
     pub(super) fn set_review_source(
@@ -635,7 +730,7 @@ impl Strategy {
             self.variant = 0;
             self.invalidate();
             self.load_fields(cx);
-            self.page = Page::Workspace;
+            self.page = Page::Editor(EditorTab::Carrera);
             self.status =
                 "Evento creado. Completa las entradas explícitas para calcular el plan.".into();
             Ok(())
@@ -957,6 +1052,12 @@ fn append_manual_event(doc: &mut Document, fields: &[String]) -> Result<usize, S
     for (index, key) in [(4, "track"), (5, "cls"), (25, "team")] {
         event[key] = vantare_strategy::document::manual(json!(fields[index].trim()));
     }
+    for (index, key) in [(6, "name"), (7, "note"), (8, "mode")] {
+        if !fields[index].trim().is_empty() {
+            event["strategies"][0][key] =
+                vantare_strategy::document::manual(json!(fields[index].trim()));
+        }
+    }
     if !fields[24].trim().is_empty() {
         chrono::DateTime::parse_from_rfc3339(fields[24].trim())
             .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
@@ -1219,6 +1320,22 @@ mod tests {
         );
         // Unentered resources remain absent, including the full solver input.
         assert!(event["strategies"][0]["overrides"]["nativeScalarInput"].is_null());
+    }
+    #[test]
+    fn manual_creation_persists_explicit_variant_and_team_metadata() {
+        let mut document = Document::empty("2026-09-30T00:00:00Z").expect("document");
+        let mut fields = event_fields();
+        fields[6] = "Lluvia".into();
+        fields[7] = "Ajustes revisados".into();
+        fields[8] = "wet".into();
+        fields[25] = "Equipo local".into();
+        append_manual_event(&mut document, &fields).expect("evento");
+        let event = &document.value()["events"][0];
+        assert_eq!(event["teamMode"]["value"], "solo");
+        assert_eq!(event["team"]["value"], "Equipo local");
+        assert_eq!(event["strategies"][0]["name"]["value"], "Lluvia");
+        assert_eq!(event["strategies"][0]["note"]["value"], "Ajustes revisados");
+        assert_eq!(event["strategies"][0]["mode"]["value"], "wet");
     }
     #[test]
     fn invalid_manual_form_never_changes_existing_document_or_selection() {

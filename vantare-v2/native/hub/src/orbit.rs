@@ -118,6 +118,7 @@ pub const LINE_ROW: u32 = 0xffff_ff0b;
 
 pub const COLUMN_W: f32 = 296.0;
 pub const TOPBAR_H: f32 = 70.0;
+pub const STRATEGY_TOPBAR_H: f32 = 60.0;
 pub const GUTTER: f32 = 32.0;
 pub const TOPBAR_GUTTER: f32 = 26.0;
 pub const RADIUS: f32 = 18.0;

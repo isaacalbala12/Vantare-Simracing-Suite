@@ -17,6 +17,7 @@ pub(super) struct Gate {
 
 impl Gate {
     /// Caducado en `now` aunque nadie haya observado desde entonces.
+    #[cfg(any(windows, test))]
     pub(super) fn is_stale_at(&self, now: Duration) -> bool {
         self.stale
             || self

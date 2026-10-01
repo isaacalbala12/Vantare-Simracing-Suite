@@ -164,6 +164,7 @@ fn binary_name(name: &str) -> String {
 }
 
 /// Nombres de los objetos del sistema, por usuario (y por `--instancia`).
+#[cfg(windows)]
 fn object_name(kind: &str, instance: &str) -> String {
     let user = env::var("USERNAME").unwrap_or_else(|_| "usuario".into());
     let suffix = if instance.is_empty() {
@@ -172,6 +173,16 @@ fn object_name(kind: &str, instance: &str) -> String {
         format!("-{instance}")
     };
     format!(r"Global\vantare-{kind}-{user}{suffix}")
+}
+
+#[cfg(unix)]
+fn object_name(kind: &str, instance: &str) -> String {
+    let suffix = if instance.is_empty() {
+        String::new()
+    } else {
+        format!("-{instance}")
+    };
+    format!("vantare-{kind}{suffix}")
 }
 
 /// Presupuesto de reinicios de un hijo con espera creciente.

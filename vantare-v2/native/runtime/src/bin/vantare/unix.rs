@@ -16,6 +16,10 @@ use super::{Config, Outcome, Service, log, object_name};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(25);
 const CLOSE_POLL: Duration = Duration::from_millis(10);
+#[cfg(target_os = "macos")]
+const MAX_SOCKET_PATH: usize = 103;
+#[cfg(not(target_os = "macos"))]
+const MAX_SOCKET_PATH: usize = 107;
 
 struct BoundSocket {
     listener: UnixListener,
@@ -133,7 +137,7 @@ impl Instance {
             match self.socket.listener.accept() {
                 Ok((stream, _)) => drop(stream),
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(()),
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
                 Err(error) => return Err(error),
             }
         }
@@ -167,7 +171,7 @@ impl Stop {
                     return Ok(true);
                 }
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(false),
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
                 Err(error) => return Err(error),
             }
         }
@@ -188,10 +192,13 @@ fn socket_path(name: &str) -> io::Result<PathBuf> {
         return Err(io::ErrorKind::InvalidInput.into());
     }
     let directory = root.join(format!("vantare-launcher-{uid}"));
-    match fs::DirBuilder::new().mode(0o700).create(&directory) {
-        Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+    let created = match fs::DirBuilder::new().mode(0o700).create(&directory) {
+        Ok(()) => true,
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
         Err(error) => return Err(error),
+    };
+    if created {
+        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))?;
     }
     let metadata = fs::symlink_metadata(&directory)?;
     if !metadata.is_dir() || metadata.uid().to_string() != uid || metadata.mode() & 0o777 != 0o700 {
@@ -201,11 +208,7 @@ fn socket_path(name: &str) -> io::Result<PathBuf> {
     name.hash(&mut hasher);
     let path = directory.join(format!("launcher-{:016x}.sock", hasher.finish()));
     // sockaddr_un incluye el NUL final: 104 bytes en macOS, 108 en Linux.
-    #[cfg(target_os = "macos")]
-    const MAX_PATH: usize = 103;
-    #[cfg(not(target_os = "macos"))]
-    const MAX_PATH: usize = 107;
-    if path.as_os_str().as_bytes().len() > MAX_PATH {
+    if path.as_os_str().as_bytes().len() > MAX_SOCKET_PATH {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "ruta de socket Unix demasiado larga",
@@ -241,7 +244,7 @@ fn configured_pipe(config: &mut Config) -> io::Result<String> {
     if !config.instance.is_empty() {
         let mut hasher = DefaultHasher::new();
         config.instance.hash(&mut hasher);
-        pipe.push_str(&format!("-{:016x}", hasher.finish()));
+        pipe = format!("{pipe}-{:016x}", hasher.finish());
     }
     config.core.args.extend(["--pipe".into(), pipe.clone()]);
     Ok(pipe)
@@ -391,6 +394,17 @@ mod tests {
         format!("vantare-test-{kind}-{}-{nonce}", std::process::id())
     }
 
+    fn shell(args: &[&str], budget: u32) -> Service {
+        Service::new(
+            "proceso de prueba",
+            Program {
+                path: PathBuf::from("/bin/sh"),
+                args: args.iter().map(|arg| (*arg).to_owned()).collect(),
+            },
+            budget,
+        )
+    }
+
     #[test]
     fn instance_socket_allows_one_owner_and_releases_on_drop() {
         let name = unique_name("instance");
@@ -459,5 +473,34 @@ mod tests {
                 .windows(2)
                 .any(|pair| pair == ["--pipe-name", &pipe])
         }));
+    }
+
+    #[test]
+    fn clean_child_exit_finishes_supervision() {
+        let stop = Stop::create(&unique_name("supervise-stop")).expect("parada");
+        let instance = Instance::acquire(&unique_name("supervise-instance"))
+            .expect("instancia")
+            .expect("dueño");
+        let mut services = [shell(&["-c", "exit 0"], 0)];
+        assert!(matches!(
+            supervise(&mut services, &stop, &instance).expect("supervisión"),
+            Outcome::Finished("proceso de prueba")
+        ));
+    }
+
+    #[test]
+    fn shutdown_closes_stdin_before_forcing_a_child() {
+        let mut services = [shell(&["-c", "read -r value || exit 0"], 0)];
+        services[0].spawn().expect("arrancar hijo");
+        shutdown(&mut services, Duration::from_secs(1)).expect("cierre");
+        assert!(
+            services[0]
+                .child
+                .as_mut()
+                .expect("hijo recogible")
+                .try_wait()
+                .expect("estado del hijo")
+                .is_some_and(|status| status.success())
+        );
     }
 }

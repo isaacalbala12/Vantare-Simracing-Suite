@@ -7,7 +7,7 @@ use gpui::{
     Context, Entity, IntoElement, Render, RenderImage, Window, div, img, prelude::*, px, rgb, rgba,
 };
 use serde::{Deserialize, Serialize};
-use vantare_domain::format::Preferences;
+use vantare_domain::format::{Language, Preferences};
 use vantare_ui::{
     Kind, Overlay, Settings as WidgetSettings,
     standings::{model::PIT_RAIL_WIDTH, options::ColumnSetting},
@@ -40,12 +40,12 @@ struct Selection {
     background: usize,
 }
 
-#[derive(Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum Mode {
-    #[default]
     SideBySide,
     Overlaid,
+    #[default]
     Hidden,
 }
 
@@ -70,6 +70,9 @@ pub struct Workshop {
     next_poll: Instant,
     next_frame: Instant,
     background: usize,
+    controls: Vec<Entity<orbit::Choice>>,
+    scroll: gpui::ScrollHandle,
+    tools_open: bool,
 }
 
 fn stamp(path: &Path) -> Option<(SystemTime, u64)> {
@@ -169,6 +172,230 @@ impl Prepared {
 }
 
 impl Workshop {
+    pub fn scroll_to_detail(&self) {
+        self.scroll.scroll_to_bottom();
+    }
+
+    fn sync_controls(&self, cx: &mut Context<Self>) {
+        for (index, selected) in [
+            (0, usize::from(self.prefs.language == Language::En)),
+            (
+                1,
+                Kind::ALL
+                    .iter()
+                    .position(|kind| *kind == self.kind)
+                    .unwrap_or(0),
+            ),
+            (
+                3,
+                match self.mode {
+                    Mode::Hidden => 0,
+                    Mode::SideBySide => 1,
+                    Mode::Overlaid => 2,
+                },
+            ),
+        ] {
+            self.controls[index].update(cx, |choice, cx| {
+                if choice.state.selected != Some(selected) {
+                    choice.state.selected = Some(selected);
+                    cx.notify();
+                }
+            });
+        }
+    }
+
+    fn prepare_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.controls.is_empty() {
+            self.sync_controls(cx);
+            return;
+        }
+        let widgets = Kind::ALL
+            .iter()
+            .map(|kind| orbit::OptionItem::new(widget_label(*kind)))
+            .collect();
+        let widget = Kind::ALL
+            .iter()
+            .position(|kind| *kind == self.kind)
+            .unwrap_or(0);
+        for (index, (label, options, selected)) in [
+            (
+                "Idioma",
+                vec![
+                    orbit::OptionItem::new("Español"),
+                    orbit::OptionItem::new("English"),
+                ],
+                usize::from(self.prefs.language == Language::En),
+            ),
+            ("Widget", widgets, widget),
+            (
+                "Sistema de diseño",
+                vec![orbit::OptionItem::new("Eficiencia")],
+                0,
+            ),
+            (
+                "Comparar con",
+                vec![
+                    orbit::OptionItem::new("Sin comparar"),
+                    orbit::OptionItem::new("Referencia · lado a lado"),
+                    orbit::OptionItem::new("Referencia · superpuesta"),
+                ],
+                match self.mode {
+                    Mode::Hidden => 0,
+                    Mode::SideBySide => 1,
+                    Mode::Overlaid => 2,
+                },
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let choice = cx.new(|cx| {
+                orbit::Choice::new(
+                    label,
+                    orbit::ChoiceKind::Dropdown,
+                    options,
+                    Some(selected),
+                    window,
+                    cx,
+                )
+            });
+            cx.subscribe(
+                &choice,
+                move |this, _, event: &orbit::ChoiceChanged, cx| match index {
+                    0 => {
+                        this.prefs.language = if event.0 == 0 {
+                            Language::Es
+                        } else {
+                            Language::En
+                        };
+                        this.rebuild(cx);
+                    }
+                    1 => {
+                        this.kind = Kind::ALL[event.0];
+                        this.rebuild(cx);
+                        if let Err(error) = this.persist() {
+                            this.status = error;
+                            this.tools_open = true;
+                        }
+                    }
+                    3 => {
+                        this.mode = match event.0 {
+                            1 => Mode::SideBySide,
+                            2 => Mode::Overlaid,
+                            _ => Mode::Hidden,
+                        };
+                        cx.notify();
+                    }
+                    _ => {}
+                },
+            )
+            .detach();
+            self.controls.push(choice);
+        }
+        let entity = cx.entity();
+        window.on_next_frame(move |_, cx| entity.update(cx, |_, cx| cx.notify()));
+    }
+
+    fn study_panel(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let choice = |index: usize, label: &str| {
+            study_label(label).child(study_choice(
+                self.controls[index].clone(),
+                index,
+                window,
+                cx,
+            ))
+        };
+        let mut panel = div().flex().flex_col().px(px(22.0)).pt(px(38.0)).pb(px(30.0))
+            .child(orbit::tracked_text("VANTARE / WORKSHOP", 8.0, 600, 0x00aa_aab0, 1.6))
+            .child(orbit::tracked_text("Eficiencia.", 28.0, 600, 0x00f5_f5f5, -1.96).mt(px(18.0)))
+            .child(orbit::text(format!("{} · Sistema Eficiencia", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab).mt(px(4.0)))
+            .child(study_section("Idioma del widget")
+                .child(choice(0, "Idioma"))
+                .child(study_note("Demostración local. El idioma de esta vista se restablece al abrir el Workshop.")))
+            .child(study_section("Widget")
+                .child(choice(1, "Widget"))
+                .child(choice(2, "Sistema de diseño").mt(px(10.0)))
+                .child(study_note("Fixture: default")))
+            .child(study_section("Sesión").child(study_segments("session", &["Práctica", "Clasificación", "Carrera"], 2)))
+            .child(study_section("Marca").child(study_segments("brand", &["Con marca", "Sin marca"], 0)))
+            .child(study_section("Dirección v2").child(study_segments("direction", &["V1", "Default", "Foco"], 1)))
+            .child(study_section("Clasificación").child(study_segments("scope", &["General", "Multiclase"], 0)))
+            .child(study_section("Filas")
+                .child(study_note("Pilotos totales; Default muestra el podio y la ventana alrededor del jugador."))
+                .child(study_label("Pilotos totales").child(study_readonly("rows", "7")))
+                .child(study_label("Posición del jugador").mt(px(10.0)).child(study_readonly("player", "1")))
+                .child(study_label("Pilotos alrededor").mt(px(10.0)).child(study_readonly("around", "4"))))
+            .child(study_section("Módulos").child(study_note("Posición y piloto siempre visibles."))
+                .children([("Diferencia", true), ("Mejor vuelta", false), ("Última vuelta", true), ("Estado en boxes", true)].into_iter().enumerate().map(|(index, (label, on))| study_toggle("module", index, label, on))))
+            .child(study_section("Nombre").child(study_segments("name", &["Completo", "Apellido", "Inicial"], 0)))
+            .child(study_section("Pie de datos").child(study_note("Datos bajo las filas, en orden de selección."))
+                .children(["Tiempo", "Vuelta", "Posición", "Diferencia", "Mejor vuelta", "Última vuelta", "Pista", "Aire", "Viento"].into_iter().enumerate().map(|(index, label)| study_toggle("slot", index, label, label == "Pista"))))
+            .child(study_section("Ubicación").child(study_label("Ubicación").child(study_readonly("location", "Pista"))))
+            .child(study_section("Presentación")
+                .child(study_note("Fondo"))
+                .child(div().flex().gap(px(4.0)).children(["Mixto", "Oscuro", "Claro"].into_iter().enumerate().map(|(index, label)| {
+                    study_button("stage-background", label).id(("stage-background", index)).flex_1()
+                        .on_click(cx.listener(move |this, _, _, cx| { this.background = index; cx.notify(); }))
+                })))
+                .child(study_label("Superficie").child(study_readonly("surface", "Studio")))
+                .child(choice(3, "Comparar con").mt(px(10.0)))
+                .child(study_note("Escala"))
+                .child(study_segments("scale", &["0.5×", "1×", "1.5×", "2×"], 1))
+                .child(study_note("La resolución real del widget es la base; ancho y alto solo cambian la previsualización del harness."))
+                .child(study_label("Resolución").child(study_readonly("resolution", "1080p · 1920×1080")))
+                .child(study_label("Ancho").mt(px(10.0)).child(study_readonly("width", "410")))
+                .child(study_label("Alto").mt(px(8.0)).child(study_readonly("height", "302")))
+                .child(study_button("apply-size", "Aplicar tamaño declarado").w(px(131.0)).mt(px(10.0)).tab_stop(false).cursor_default().aria_description("Tamaño fijo del renderer nativo")))
+            .child(div().mt(px(30.0))
+                .child(study_button("workshop-tools", "Escenario de diseño").h(px(12.0)).relative().pl(px(12.0)).justify_start().border_0().text_color(rgb(0x00c4_c4c8)).child(div().absolute().left_0().top(px(4.0)).size(px(5.0)).rounded_full().bg(rgb(0x00c1_121f))).on_click(cx.listener(|this, _, _, cx| { this.tools_open = !this.tools_open; cx.notify(); })))
+                .child(study_note("Datos de demostración. El widget usa el mismo componente que la aplicación.").mt(px(8.0)).mb(px(0.0)).line_height(px(17.0)))
+                .child(orbit::mono_text(format!("widget={}&system=vantare-functional&scene={}&frame={}&language={:?}&background={}&comparison={}", self.kind.name(), self.scene.path.file_name().unwrap_or_default().to_string_lossy(), self.scene.index(), self.prefs.language, ["grid", "dark", "light"][self.background], match self.mode { Mode::Hidden => "none", Mode::SideBySide => "side-by-side", Mode::Overlaid => "overlaid" }), 9.0, 0x0077_777d).line_height(px(14.4)).mt(px(10.0)))
+                .child(study_button("reset-study", "Restablecer selección").w(px(127.0)).h(px(28.0)).mt(px(10.0)).on_click(cx.listener(|this, _, _, cx| {
+                    this.kind = Kind::Standings;
+                    this.background = 0;
+                    this.mode = Mode::Hidden;
+                    this.prefs.language = Language::Es;
+                    this.controls.clear();
+                    this.select_scene(this.scenes.iter().position(|path| path.file_name().is_some_and(|name| name == "standings.snapshot.json")).unwrap_or(this.chosen_scene), cx);
+                }))));
+        if self.tools_open {
+            panel = panel.child(self.toolbar(cx)).child(self.playback(cx))
+                .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone())))
+                .child(study_note("La sesión, opciones de Standings y tamaño se editan en Studio. Este panel conserva su estado de referencia; esas opciones aún no tienen control nativo en Workshop."));
+        }
+        div()
+            .id("workshop-controls")
+            .w(px(248.0))
+            .h_full()
+            .flex_shrink_0()
+            .relative()
+            .bg(rgb(0x0019_191b))
+            .overflow_hidden()
+            .child(
+                div()
+                    .id("workshop-panel-scroll")
+                    .w(px(232.0))
+                    .h_full()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.scroll)
+                    .child(panel),
+            )
+            .child(study_scrollbar(&self.scroll).on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                    let bounds = this.scroll.bounds();
+                    let fraction = f32::from(event.position.y - bounds.top())
+                        / f32::from(bounds.size.height).max(1.0);
+                    this.scroll.set_offset(gpui::point(
+                        px(0.0),
+                        -this.scroll.max_offset().y * fraction.clamp(0.0, 1.0),
+                    ));
+                    cx.notify();
+                }),
+            ))
+            .on_scroll_wheel(cx.listener(|_, _, _, cx| cx.notify()))
+    }
+
     pub fn preferences(&self) -> Preferences {
         self.prefs
     }
@@ -219,6 +446,9 @@ impl Workshop {
             next_poll: Instant::now(),
             next_frame: Instant::now(),
             background,
+            controls: Vec::new(),
+            scroll: gpui::ScrollHandle::new(),
+            tools_open: false,
         }
     }
 
@@ -373,11 +603,12 @@ impl Workshop {
     fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
         orbit::card("Selección de trabajo").child(
             orbit::card_body()
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Widget",
                     "Renderer productivo",
                     div()
                         .flex()
+                        .flex_wrap()
                         .items_center()
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(
@@ -392,11 +623,12 @@ impl Workshop {
                                 .on_click(cx.listener(|this, _, _, cx| this.widget(true, cx))),
                         ),
                 ))
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Escena",
                     "JSON local · catálogo",
                     div()
                         .flex()
+                        .flex_wrap()
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(
                             button("scene-prev", "◀ escena").on_click(
@@ -409,7 +641,7 @@ impl Workshop {
                             ),
                         ),
                 ))
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Archivo local",
                     "Recarga el JSON de la escena",
                     button("reload-scene", "Recargar JSON").on_click(cx.listener(
@@ -422,7 +654,7 @@ impl Workshop {
                         },
                     )),
                 ))
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Continuidad",
                     "Conserva la selección actual",
                     button("save-workshop", "Guardar selección").on_click(cx.listener(
@@ -446,7 +678,7 @@ impl Workshop {
     fn playback(&self, cx: &mut Context<Self>) -> gpui::Div {
         orbit::card("Reproducción y comparación").child(
             orbit::card_body()
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Fotograma",
                     &format!(
                         "Foto {} / {} · revisión {}",
@@ -485,7 +717,7 @@ impl Workshop {
                             },
                         ))),
                 ))
-                .child(orbit::setting_row(
+                .child(study_setting(
                     "Repetir escena",
                     "Vuelve al inicio al terminar la secuencia",
                     orbit::toggle("loop", "Repetir escena", self.scene.looping, true).on_click(
@@ -495,39 +727,8 @@ impl Workshop {
                         }),
                     ),
                 ))
-                .child(orbit::setting_row(
-                    "Fondo del escenario",
-                    "El fondo no entra en la captura",
-                    orbit::select(
-                        "background",
-                        ["Canvas", "Superficie", "Claro"][self.background],
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.background = (this.background + 1) % 3;
-                        cx.notify();
-                    })),
-                ))
-                .child(orbit::setting_row(
-                    "Referencia congelada",
-                    "PNG fijo durante el replay",
-                    orbit::select(
-                        "reference",
-                        match self.mode {
-                            Mode::SideBySide => "Lado a lado",
-                            Mode::Overlaid => "Superpuesta 50 %",
-                            Mode::Hidden => "Oculta",
-                        },
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.mode = match this.mode {
-                            Mode::SideBySide => Mode::Overlaid,
-                            Mode::Overlaid => Mode::Hidden,
-                            Mode::Hidden => Mode::SideBySide,
-                        };
-                        cx.notify();
-                    })),
-                ))
-                .child(orbit::setting_row(
+                .child(self.presentation_tools(cx))
+                .child(study_setting(
                     "Paridad de píxeles",
                     "ES/métrico · DPI 100 %",
                     button(
@@ -538,9 +739,52 @@ impl Workshop {
                             "Capturar y calcular %"
                         },
                     )
+                    .px(px(6.0))
                     .on_click(cx.listener(|this, _, _, cx| this.capture(cx))),
                 )),
         )
+    }
+
+    fn presentation_tools(&self, cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .flex()
+            .flex_col()
+            .child(study_setting(
+                "Fondo del escenario",
+                "El fondo no entra en la captura",
+                orbit::select(
+                    "background",
+                    ["Canvas", "Superficie", "Claro"][self.background],
+                )
+                .min_w_0()
+                .w_full()
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.background = (this.background + 1) % 3;
+                    cx.notify();
+                })),
+            ))
+            .child(study_setting(
+                "Referencia congelada",
+                "PNG fijo durante el replay",
+                orbit::select(
+                    "reference",
+                    match self.mode {
+                        Mode::SideBySide => "Lado a lado",
+                        Mode::Overlaid => "Superpuesta 50 %",
+                        Mode::Hidden => "Oculta",
+                    },
+                )
+                .min_w_0()
+                .w_full()
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.mode = match this.mode {
+                        Mode::SideBySide => Mode::Overlaid,
+                        Mode::Overlaid => Mode::Hidden,
+                        Mode::Hidden => Mode::SideBySide,
+                    };
+                    cx.notify();
+                })),
+            ))
     }
 }
 
@@ -551,55 +795,6 @@ impl Drop for Workshop {
 }
 
 impl Workshop {
-    fn catalog(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        let mut catalog = orbit::card("Catálogo local")
-            .id("workshop-catalog")
-            .w(px(orbit::COLUMN_W))
-            .flex_shrink_0()
-            .h(px(orbit::COLUMN_W))
-            .overflow_y_scroll();
-        let mut widgets = orbit::card_body()
-            .flex_shrink_0()
-            .child(orbit::eyebrow("Widgets registrados"));
-        for &kind in Kind::ALL {
-            widgets = widgets.child(
-                button(kind.name(), kind.name())
-                    .justify_start()
-                    .when(kind == self.kind, |button| {
-                        button.border_color(rgb(orbit::CARMINE))
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.kind = kind;
-                        this.rebuild(cx);
-                        if let Err(error) = this.persist() {
-                            this.status = error;
-                        }
-                    })),
-            );
-        }
-        catalog = catalog.child(widgets);
-        let mut scenes = orbit::card_body()
-            .flex_shrink_0()
-            .child(orbit::eyebrow("Escenas locales"));
-        for (index, path) in self.scenes.iter().enumerate() {
-            let label = path.file_name().map_or_else(
-                || path.display().to_string(),
-                |name| name.to_string_lossy().into_owned(),
-            );
-            scenes = scenes.child(
-                button("scene", &label)
-                    .id(("scene", index))
-                    .justify_start()
-                    .when(index == self.chosen_scene, |item| {
-                        item.border_color(rgb(orbit::CARMINE))
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| this.select_scene(index, cx))),
-            );
-        }
-        catalog = catalog.child(scenes);
-        catalog
-    }
-
     #[allow(clippy::cast_precision_loss)] // PNG acotado a 16 Mpx; tamaño visual f32 de GPUI.
     fn preview(&self, cx: &Context<Self>) -> gpui::Div {
         let mut preview = div().flex().gap(px(orbit::GUTTER));
@@ -657,59 +852,8 @@ impl Workshop {
         }
     }
 
-    /// Panel lateral para la integración del shell; la vista central queda
-    /// reservada al escenario de autoría.
-    pub fn context_column(&mut self, cx: &mut Context<Self>) -> gpui::AnyElement {
-        let backgrounds = [orbit::CANVAS, orbit::SURFACE_3, orbit::INK];
-        div()
-            .id("workshop-context")
-            .flex()
-            .flex_col()
-            .gap(px(orbit::RADIUS))
-            .w(px(orbit::COLUMN_W))
-            .h_full()
-            .overflow_y_scroll()
-            .child(self.toolbar(cx))
-            .child(self.playback(cx))
-            .child(orbit::callout(
-                self.scene.error.clone().unwrap_or_else(|| self.status.clone()),
-            ))
-            .child(self.catalog(cx))
-            .child(
-                orbit::card("Vista previa · renderer productivo")
-                    .child(orbit::card_body().child(orbit::text(
-                        format!("Vista actual: {:?} / {:?}", self.prefs.language, self.prefs.units),
-                        12.0,
-                        400,
-                        orbit::INK_3,
-                    ))
-                    .when_some(self.comparison.as_ref(), |content, comparison| {
-                        content.child(orbit::text(
-                            format!(
-                                "{:.4} % de píxeles distintos · ES/métrico · umbral 8 RGBA premultiplicado",
-                                comparison.percent
-                            ),
-                            12.0,
-                            400,
-                            orbit::INK_2,
-                        ))
-                    }))
-                    .child(
-                        div()
-                            .id("workshop-preview")
-                            .h(px(orbit::COLUMN_W))
-                            .overflow_scroll()
-                            .bg(rgb(backgrounds[self.background]))
-                            .child(self.preview(cx)),
-                    ),
-            )
-            .child(orbit::callout("Escena local: lmu47 procede del corpus; las demás son fixtures de paridad. La referencia PNG está congelada. Comparar abre una ventana temporal de vantare-workshop con parity-capture; el fondo no forma parte del widget."))
-            .into_any_element()
-    }
-
     fn stage(&self, window: &Window, cx: &Context<Self>) -> gpui::Div {
-        const CONTENT_LEFT: f32 = 376.0;
-        const TOPBAR_HEIGHT: f32 = 70.0;
+        const CONTENT_LEFT: f32 = 248.0;
         const GRID_SIZE: f32 = 32.0;
         const GRID_COLOR: u32 = 0x6e_79_96_14;
 
@@ -717,34 +861,30 @@ impl Workshop {
         let viewport_width = f32::from(viewport.width);
         let viewport_height = f32::from(viewport.height);
         let stage_width = (viewport_width - CONTENT_LEFT).max(0.0);
-        let stage_height = (viewport_height - TOPBAR_HEIGHT).max(0.0);
+        let stage_height = viewport_height;
         let (widget_width, widget_height) = self.overlay.read(cx).wanted_size();
-        let centered_width = if self.kind == Kind::Standings {
-            (widget_width - PIT_RAIL_WIDTH).max(0.0)
+        let preview_width = if self.mode == Mode::SideBySide {
+            widget_width * 2.0 + orbit::GUTTER
         } else {
             widget_width
         };
-        // La referencia Wails centra el escenario en su columna tras el panel
-        // de 248 px; al recortar desde x=376, su centro queda en viewport/2-252.
-        let widget_left = (viewport_width / 2.0 - 252.0 - centered_width / 2.0).max(0.0);
-        let widget_top = (viewport_height / 2.0 - TOPBAR_HEIGHT - widget_height / 2.0).max(0.0);
+        let (widget_left, widget_top) = widget_origin(
+            (stage_width, stage_height),
+            (preview_width, widget_height),
+            self.kind,
+        );
 
         let mut stage = div()
-            .absolute()
-            // El origen visible de contenido nativo queda 1 px a la derecha
-            // del Wails; extender el escenario conserva el origen x=376.
-            .left(px(-1.0))
-            .top_0()
-            .w(px(stage_width + 1.0))
+            .relative()
+            .w(px(stage_width))
             .h(px(stage_height))
             .overflow_hidden()
-            .bg(rgb(0x0015_1516));
+            .bg(rgb([0x0015_1516, 0x0025_2527, 0x00c9_c8c4][self.background]));
 
         // Wails usa dos gradientes de 1 px sobre una cuadrícula de 32 px.
-        // El área comienza en y=70, seis px después de una línea horizontal.
-        let first_horizontal = GRID_SIZE - TOPBAR_HEIGHT % GRID_SIZE;
+        let first_horizontal = 0.0;
         let mut y = first_horizontal;
-        while y < stage_height {
+        while self.background == 0 && y < stage_height {
             stage = stage.child(
                 div()
                     .absolute()
@@ -757,7 +897,7 @@ impl Workshop {
             y += GRID_SIZE;
         }
         let mut x = 0.0;
-        while x < stage_width {
+        while self.background == 0 && x < stage_width {
             stage = stage.child(
                 div()
                     .absolute()
@@ -770,28 +910,307 @@ impl Workshop {
             x += GRID_SIZE;
         }
 
+        stage = stage.child(
+            orbit::tracked_text(
+                format!(
+                    "OVERLAY.WIDGETS.{} / ESTUDIO 01",
+                    self.kind.name().to_uppercase()
+                ),
+                9.0,
+                500,
+                0x00aa_aeb0,
+                1.26,
+            )
+            .absolute()
+            .left(px(32.0))
+            .top(px(26.0)),
+        );
+        stage = stage.when_some(self.scene.error.clone(), |stage, error| {
+            stage.child(
+                orbit::callout(error)
+                    .absolute()
+                    .left(px(32.0))
+                    .top(px(52.0)),
+            )
+        });
         stage.child(
             div()
                 .absolute()
                 .left(px(widget_left + 0.5))
                 .top(px(widget_top))
-                .w(px(widget_width))
+                .w(px(preview_width))
                 .h(px(widget_height))
                 .overflow_hidden()
-                .child(self.overlay.clone()),
+                .child(self.preview(cx)),
         )
     }
 }
 
 impl Render for Workshop {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.stage(window, cx)
+        self.prepare_controls(window, cx);
+        div()
+            .size_full()
+            .flex()
+            .child(self.study_panel(window, cx))
+            .child(self.stage(window, cx))
     }
+}
+
+fn widget_label(kind: Kind) -> &'static str {
+    if kind == Kind::Standings {
+        "Standings"
+    } else {
+        kind.name()
+    }
+}
+
+fn widget_origin(stage: (f32, f32), widget: (f32, f32), kind: Kind) -> (f32, f32) {
+    // Wails centra el cuerpo de Standings; el rail PIT sobresale a su derecha.
+    let body_width = if kind == Kind::Standings {
+        widget.0 - PIT_RAIL_WIDTH
+    } else {
+        widget.0
+    };
+    (
+        (stage.0 / 2.0 - body_width / 2.0).max(0.0),
+        (stage.1 / 2.0 - widget.1 / 2.0).max(0.0),
+    )
+}
+
+fn study_label(label: &str) -> gpui::Div {
+    div().flex().flex_col().gap(px(8.0)).child(orbit::text(
+        label.to_owned(),
+        10.0,
+        400,
+        0x00ac_acb2,
+    ))
+}
+
+fn study_setting(label: &str, help: &str, control: impl IntoElement) -> gpui::Div {
+    orbit::setting_row(label, help, div().w_full().child(control))
+        .flex_col()
+        .items_stretch()
+        .gap(px(8.0))
+}
+
+fn study_choice(
+    choice: Entity<orbit::Choice>,
+    index: usize,
+    window: &Window,
+    cx: &Context<Workshop>,
+) -> gpui::Div {
+    let control = choice.read(cx);
+    let value = control
+        .state
+        .selected
+        .and_then(|selected| control.state.options.get(selected))
+        .map_or("Seleccionar…", |option| option.label.as_str())
+        .to_owned();
+    let focused = control.focus_handle().is_focused(window);
+    // La entidad Orbit mantiene menú, teclado y foco. Solo vestimos su trigger
+    // con las medidas compactas de Workshop, sin cambiar el kit para el Hub.
+    div()
+        .relative()
+        .w_full()
+        .h(px(34.0))
+        .child(choice.clone())
+        .child(
+            div()
+                .absolute()
+                .top(px(34.0))
+                .left_0()
+                .w_full()
+                .h(px(5.0))
+                .bg(rgb(0x0019_191b)),
+        )
+        .child(
+            orbit::field("study-select")
+                .id(("study-select", index))
+                .absolute()
+                .inset_0()
+                .min_w_0()
+                .w_full()
+                .h(px(34.0))
+                .px(px(12.0))
+                .rounded(px(3.0))
+                .bg(rgb(0x0023_2325))
+                .border_color(rgb(0x0044_444a))
+                .tab_stop(false)
+                .occlude()
+                .cursor_pointer()
+                .justify_between()
+                .when(focused, |field| field.border_color(rgb(orbit::CORAL)))
+                .child(orbit::text(value, 13.0, 400, 0x00de_dee2))
+                .child(orbit::text("⌄", 13.0, 600, 0x00de_dee2))
+                .on_click(move |_, window, cx| {
+                    choice.update(cx, |control, cx| {
+                        control.focus_handle().focus(window, cx);
+                        control.state.toggle();
+                        cx.notify();
+                    });
+                }),
+        )
+}
+
+fn study_note(note: &str) -> gpui::Div {
+    orbit::text(note.to_owned(), 10.0, 400, 0x0091_9197)
+        .line_height(px(15.0))
+        .mb(px(12.0))
+}
+
+fn study_section(title: &str) -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .flex_shrink_0()
+        .mt(px(28.0))
+        .pt(px(18.0))
+        .border_t_1()
+        .border_color(rgb(0x0033_3336))
+        .child(orbit::tracked_text(title, 10.0, 600, 0x00bd_bdc2, 0.4).mb(px(10.0)))
+}
+
+fn study_button(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
+    button(id, "")
+        .aria_label(label.to_owned())
+        .h(px(30.0))
+        .px(px(3.0))
+        .rounded(px(3.0))
+        .bg(rgb(0x0019_191b))
+        .border_color(rgb(0x003b_3b40))
+        .text_size(px(10.0))
+        .font_family("Inter W500")
+        .text_color(rgb(0x00b0_b0b6))
+        .child(label.to_owned())
+}
+
+fn study_readonly(id: &'static str, value: &str) -> gpui::Stateful<gpui::Div> {
+    orbit::field(id)
+        .w_full()
+        .min_w_0()
+        .h(px(34.0))
+        .px(px(8.0))
+        .rounded(px(3.0))
+        .bg(rgb(0x0023_2325))
+        .border_color(rgb(0x0044_444a))
+        .tab_stop(false)
+        .cursor_default()
+        .opacity(0.72)
+        .aria_description("Opción de referencia no disponible en Workshop nativo")
+        .child(orbit::text(value.to_owned(), 11.0, 400, 0x00de_dee2))
+        .when(
+            matches!(id, "location" | "surface" | "resolution"),
+            |field| {
+                field
+                    .justify_between()
+                    .child(orbit::text("⌄", 12.0, 600, 0x00de_dee2))
+            },
+        )
+}
+
+fn study_segments(id: &'static str, labels: &[&str], selected: usize) -> gpui::Div {
+    div()
+        .flex()
+        .gap(px(4.0))
+        .children(labels.iter().enumerate().map(|(index, label)| {
+            study_button(id, label)
+                .id((id, index))
+                .flex_1()
+                .aria_selected(index == selected)
+                .tab_stop(false)
+                .cursor_default()
+                .opacity(0.72)
+                .aria_description("Opción de referencia; usa Studio para editar el documento")
+                .when(index == selected, |button| {
+                    button
+                        .bg(rgb(0x0035_3539))
+                        .border_color(rgb(0x0062_6268))
+                        .opacity(1.0)
+                        .font_family("Inter W600")
+                        .text_color(rgb(0x00f5_f5f5))
+                })
+        }))
+}
+
+fn study_toggle(id: &'static str, index: usize, label: &str, on: bool) -> gpui::Div {
+    div()
+        .h(px(34.0))
+        .flex()
+        .items_center()
+        .justify_between()
+        .child(orbit::text(label.to_owned(), 12.0, 400, 0x00f5_f5f5))
+        .child(
+            orbit::toggle(id, label, on, false)
+                .id((id, index))
+                .w(px(26.0))
+                .h(px(15.0)),
+        )
+}
+
+fn study_scrollbar(scroll: &gpui::ScrollHandle) -> gpui::Stateful<gpui::Div> {
+    let maximum = f32::from(scroll.max_offset().y);
+    let offset = -f32::from(scroll.offset().y);
+    let height = f32::from(scroll.bounds().size.height).max(36.0);
+    let thumb = if maximum > 0.0 {
+        ((height - 36.0) * height / (height + maximum)).max(20.0)
+    } else {
+        height - 36.0
+    };
+    let top = 18.0
+        + if maximum > 0.0 {
+            offset / maximum * (height - 36.0 - thumb)
+        } else {
+            0.0
+        };
+    div()
+        .id("workshop-scrollbar")
+        .absolute()
+        .right_0()
+        .top_0()
+        .w(px(16.0))
+        .h_full()
+        .bg(rgb(0x002c_2c2c))
+        .child(
+            orbit::text("▴", 12.0, 600, 0x00aa_aaaa)
+                .absolute()
+                .top_0()
+                .left(px(3.0)),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(px(3.0))
+                .top(px(top))
+                .w(px(9.0))
+                .h(px(thumb))
+                .rounded(px(5.0))
+                .bg(rgb(0x0099_9999)),
+        )
+        .child(
+            orbit::text("▾", 12.0, 600, 0x00aa_aaaa)
+                .absolute()
+                .bottom_0()
+                .left(px(3.0)),
+        )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fullscreen_stage_keeps_the_wails_widget_center_and_pit_rail() {
+        let (x, y) = widget_origin(
+            (1440.0 - 248.0, 900.0),
+            (410.0 + PIT_RAIL_WIDTH, 302.0),
+            Kind::Standings,
+        );
+        assert!((x + 248.0 - 639.0).abs() < 0.001);
+        assert!((y - 299.0).abs() < 0.001);
+        let (x, y) = widget_origin((100.0, 100.0), (410.0, 302.0), Kind::Standings);
+        assert!(x.abs() + y.abs() < 0.001);
+    }
+
     #[test]
     fn a_replayed_loop_restarts_productive_record_history() {
         use vantare_domain::fastest_lap::{self, Records, Update};
@@ -895,6 +1314,7 @@ mod tests {
         std::fs::create_dir(&dir).expect("directorio propio");
 
         let prepared = Prepared::load(&dir, None).expect("escena predeterminada");
+        assert!(matches!(prepared.mode, Mode::Hidden));
         assert_eq!(
             prepared
                 .scene

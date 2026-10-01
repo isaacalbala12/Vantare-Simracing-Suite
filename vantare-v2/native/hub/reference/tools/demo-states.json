@@ -25,7 +25,7 @@
   {"name":"engineer-historial","actions":[{"scroll":".orbit-workspace"}]},
   {"name":"telemetria-base","url":"http://127.0.0.1:51430/orbit-telemetry-harness.html?access=paid&telemetryDemo=0","ready":"[data-testid=orbit-telemetry]"},
   {"name":"telemetria-demo","url":"http://127.0.0.1:51430/orbit-telemetry-harness.html?access=paid&telemetryDemo=1","ready":"[data-testid=orbit-telemetry]"},
-  {"name":"telemetria-trazas","actions":[{"scroll":".orbit-workspace"}]},
+  {"name":"telemetria-trazas"},
   {"name":"testing-center-informe","url":"http://127.0.0.1:51430/orbit-testing-harness.html?access=paid&channel=nightly","ready":"[data-testid=orbit-testing]"},
   {"name":"testing-center-detalle","actions":[{"scroll":".orbit-workspace"}]},
   {"name":"testing-center-validar","actions":[{"click":"text=\"Validar\""}]},

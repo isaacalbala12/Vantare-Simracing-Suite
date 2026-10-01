@@ -2,8 +2,9 @@ use super::{
     model::{Charts, Lap, Point, Signal, project_laps},
     reader::{Cancel, Reader, recordings},
 };
+use crate::demo::DemoData;
 #[cfg(feature = "parity-capture")]
-use crate::demo::{DemoData, DemoTelemetrySession};
+use crate::demo::DemoTelemetrySession;
 use crate::orbit;
 #[cfg(feature = "parity-capture")]
 use gpui::relative;
@@ -183,6 +184,7 @@ impl DemoModel {
 
 #[cfg(feature = "parity-capture")]
 fn telemetry_demo_capture() -> bool {
+    // El harness congeló demo y trazas con la misma escena; no se inventa un desplazamiento.
     let mut args = std::env::args();
     while let Some(arg) = args.next() {
         if arg == "--capture" {
@@ -231,7 +233,121 @@ pub struct Analysis {
     demo: Option<Result<DemoTelemetrySession, String>>,
 }
 
+fn telemetry_context_row(
+    session: &crate::demo::DemoTelemetrySession,
+    selected: bool,
+) -> gpui::Stateful<gpui::Div> {
+    let title = format!("{} · {}", session.track, session.car);
+    let subtitle = format!(
+        "{} · {} vueltas · {}",
+        session.when, session.laps, session.best
+    );
+    div()
+        .id(gpui::SharedString::from(format!(
+            "telemetry-session-{}",
+            session.id
+        )))
+        .role(gpui::Role::ListBoxOption)
+        .aria_selected(selected)
+        .min_h(px(46.0))
+        .w_full()
+        .relative()
+        .flex()
+        .items_center()
+        .px(px(8.0))
+        .py(px(6.0))
+        .rounded(px(11.0))
+        .when(selected, |row| row.bg(orbit::tint(orbit::CARMINE, 0.08)))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .child(
+                    telemetry_text(title, 13.0, 650, orbit::INK_2)
+                        .w_full()
+                        .whitespace_nowrap()
+                        .text_ellipsis(),
+                )
+                .child(
+                    telemetry_text(subtitle, 11.0, 400, orbit::INK_3)
+                        .w_full()
+                        .whitespace_nowrap()
+                        .text_ellipsis(),
+                ),
+        )
+        .when(selected, |row| {
+            row.child(
+                div()
+                    .absolute()
+                    .left(px(-13.0))
+                    .w(px(3.0))
+                    .h(px(18.0))
+                    .rounded(px(4.0))
+                    .bg(rgb(orbit::CARMINE)),
+            )
+        })
+}
+
 impl Analysis {
+    pub(crate) fn context_sidebar(
+        demo: Option<&DemoData>,
+        capture_name: Option<&str>,
+    ) -> gpui::Div {
+        let show_demo_sessions =
+            matches!(capture_name, Some("telemetria-demo" | "telemetria-trazas"));
+        let sessions = demo
+            .filter(|demo| show_demo_sessions && demo.telemetry.synthetic)
+            .map(|demo| demo.telemetry.sessions.as_slice())
+            .unwrap_or_default();
+        let mut rows = div()
+            .id("telemetry-context-sessions")
+            .role(gpui::Role::ListBox)
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .px(px(2.0));
+        for (index, session) in sessions.iter().enumerate() {
+            rows = rows.child(telemetry_context_row(session, index == 0));
+        }
+        if sessions.is_empty() {
+            rows = rows.child(telemetry_text(
+                "Sin sesiones indexadas.",
+                12.0,
+                400,
+                orbit::INK_3,
+            ));
+        }
+
+        div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px(px(9.0))
+                    .pb(px(11.0))
+                    .child(orbit::eyebrow("Sesiones"))
+                    .child(telemetry_mono(sessions.len().to_string(), 11.0, 400, orbit::INK_4)),
+            )
+            .child(rows)
+            .child(
+                telemetry_text(
+                    "Fuente: archivos locales de LMU indexados en DuckDB (ADR 0005). El puente todavía no publica sesiones.",
+                    11.0,
+                    400,
+                    orbit::INK_MUTED,
+                )
+                .line_height(px(16.5))
+                .mt_auto()
+                .px(px(14.0))
+                .pb(px(10.0)),
+            )
+    }
+
     pub fn new(root: PathBuf, exe: PathBuf) -> Self {
         Self {
             root,

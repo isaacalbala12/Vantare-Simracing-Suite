@@ -339,6 +339,45 @@ impl Hub {
             .as_ref()
             .map(|demo| demo.versions.hub.as_str())
             .unwrap_or(env!("CARGO_PKG_VERSION"));
+        self.context_column_with_content("Centro operativo", version, width, None, cx)
+    }
+
+    pub(super) fn strategy_context_column(
+        &self,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let content = self
+            .strategy
+            .update(cx, |strategy, cx| strategy.context_sidebar(cx));
+        self.context_column_with_content("Estrategia", "", 246.0, Some(content), cx)
+    }
+
+    pub(super) fn analysis_context_column(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let content = crate::analysis::Analysis::context_sidebar(
+            self.demo.as_ref(),
+            self.capture.as_ref().map(|capture| capture.name.as_str()),
+        );
+        let version = self
+            .demo
+            .as_ref()
+            .map(|demo| demo.versions.hub.as_str())
+            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let width = orbit::column_width(f32::from(window.viewport_size().width));
+        self.context_column_with_content("Telemetría", version, width, Some(content), cx)
+    }
+
+    fn context_column_with_content(
+        &self,
+        title: &str,
+        version: &str,
+        width: f32,
+        section_content: Option<gpui::Div>,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
         let collapse = div()
             .id("collapse-context")
             .role(gpui::Role::Button)
@@ -354,17 +393,17 @@ impl Hub {
                 this.shell.column_open = false;
                 cx.notify();
             }));
-        let column = orbit::column_with_collapse("Centro operativo", version, collapse)
-            .w(px(orbit::column_width(f32::from(
-                window.viewport_size().width,
-            ))))
+        let column = orbit::column_with_collapse(title, version, collapse)
+            .w(px(width))
             .id("hub-context-column");
-        self.context_blocks(column, cx).w(px(width))
+        self.context_blocks(column, section_content, cx)
+            .w(px(width))
     }
 
     fn context_blocks(
         &self,
         column: gpui::Stateful<gpui::Div>,
+        section_content: Option<gpui::Div>,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let races = div()
@@ -378,16 +417,20 @@ impl Hub {
             .child(Self::context_heading("PERFIL DE OVERLAY", "DETENIDO"))
             .child(Self::context_row("Sin perfiles todavía", "", None));
         let launcher = self.launcher_context(cx);
+        let mut blocks = div()
+            .id("context-blocks")
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(6.0))
+            .pt(px(6.0))
+            .overflow_y_scroll();
+        if let Some(content) = section_content {
+            blocks = blocks.child(content);
+        }
         column.child(
-            div()
-                .id("context-blocks")
-                .flex_1()
-                .min_h_0()
-                .flex()
-                .flex_col()
-                .gap(px(6.0))
-                .pt(px(6.0))
-                .overflow_y_scroll()
+            blocks
                 .child(Self::context_block("races", races))
                 .child(Self::context_block("overlay", overlay))
                 .child(Self::context_block("launcher", launcher)),
@@ -580,9 +623,14 @@ impl Hub {
             .demo
             .as_ref()
             .map(|demo| demo.versions.pending.as_str());
+        let (trail, title) = match self.section {
+            Section::Strategy => ("PLANIFICADOR", "Estrategia"),
+            Section::Analysis => ("ANÁLISIS POST-SESIÓN", "Telemetría"),
+            _ => ("Centro operativo", self.section.label()),
+        };
         orbit::topbar(
-            "Centro operativo",
-            self.section.label(),
+            trail,
+            title,
             div()
                 .flex()
                 .items_center()

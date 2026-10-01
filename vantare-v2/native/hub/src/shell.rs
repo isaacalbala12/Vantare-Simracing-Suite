@@ -195,6 +195,38 @@ impl Hub {
                 .into_any_element(),
         }
     }
+
+    fn render_content(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+        div()
+            .flex_1()
+            .flex()
+            .flex_col()
+            .when(self.section != Section::Strategy, |content| {
+                content.gap(gpui::px(24.0)).p(gpui::px(orbit::GUTTER))
+            })
+            .when(
+                self.section != Section::Home && self.section != Section::Strategy,
+                |content| {
+                    content.child(if self.section == Section::Settings {
+                        self.settings_header()
+                    } else {
+                        orbit::page_header(
+                            "Hub nativo",
+                            self.section.label(),
+                            self.section.subtitle(),
+                        )
+                    })
+                },
+            )
+            .when_some(self.status.clone(), |content, status| {
+                content.child(orbit::callout(status))
+            })
+            .when_some(self.shell.navigation_notice.clone(), |content, notice| {
+                content.child(orbit::callout(notice))
+            })
+            .child(self.section_view(cx))
+            .into_any_element()
+    }
 }
 
 impl Render for Hub {
@@ -226,29 +258,14 @@ impl Render for Hub {
             self.launcher
                 .update(cx, |launcher, cx| launcher.context_column(window, cx))
                 .into_any_element()
+        } else if self.section == Section::Analysis {
+            self.analysis_context_column(window, cx).into_any_element()
+        } else if self.section == Section::Strategy {
+            self.strategy_context_column(cx).into_any_element()
         } else {
             self.context_column(window, cx).into_any_element()
         };
-        let content = div()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .gap(gpui::px(24.0))
-            .p(gpui::px(orbit::GUTTER))
-            .when(self.section != Section::Home, |content| {
-                content.child(if self.section == Section::Settings {
-                    self.settings_header()
-                } else {
-                    orbit::page_header("Hub nativo", self.section.label(), self.section.subtitle())
-                })
-            })
-            .when_some(self.status.clone(), |content, status| {
-                content.child(orbit::callout(status))
-            })
-            .when_some(self.shell.navigation_notice.clone(), |content, notice| {
-                content.child(orbit::callout(notice))
-            })
-            .child(self.section_view(cx));
+        let content = self.render_content(cx);
         let main = div()
             .flex_1()
             .flex()

@@ -14,7 +14,8 @@ use crate::{
 };
 use vantare_strategy::{
     application::{
-        self, AnalysisRevisionRef, CorrectionSource, PreparedFamilyCorrection, SourceStatus,
+        self, AnalysisRevisionRef, CorrectionSource, EditedPlan, PreparedFamilyCorrection,
+        SourceStatus,
     },
     document::{Document, new_event},
     solver::{
@@ -23,7 +24,9 @@ use vantare_strategy::{
 };
 
 mod datos;
+mod parada;
 mod plan;
+mod stint;
 #[path = "strategy/view.rs"]
 mod view;
 use view::Page;
@@ -101,6 +104,12 @@ impl Editor {
     }
 }
 
+#[derive(Default)]
+struct FormState {
+    dirty: bool,
+    scalar_dirty: bool,
+}
+
 const FIELDS: &[(&str, &str)] = &[
     ("Nombre del evento", "name"),
     ("Duración (min)", "durationMin"),
@@ -141,16 +150,21 @@ pub struct Strategy {
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
-    form_dirty: bool,
-    scalar_dirty: bool,
-    data: datos::State,
-    correction_reason: Entity<orbit::Input>,
-    source_revisions: Vec<AnalysisRevisionRef>,
+    form: FormState,
     pub status: String,
     pub error: Option<String>,
     result: Option<SolverOutcome>,
     last_input: Option<Input>,
     manual_source_status: SourceStatus,
+    source_revisions: Vec<AnalysisRevisionRef>,
+    data: datos::State,
+    correction_reason: Entity<orbit::Input>,
+    edited_plan: Option<EditedPlan>,
+    baseline_edited_plan: Option<EditedPlan>,
+    baseline_result: Option<SolverOutcome>,
+    edit_dirty: bool,
+    edit_cost_seconds: Option<f64>,
+    edit_error: Option<String>,
     running: bool,
     cancellation: Arc<AtomicBool>,
     generation: u64,
@@ -181,6 +195,8 @@ impl Strategy {
             | crate::demo::CaptureStrategyPage::PlanPartial
             | crate::demo::CaptureStrategyPage::PlanError
             | crate::demo::CaptureStrategyPage::PlanCalculated => Page::Plan,
+            crate::demo::CaptureStrategyPage::Stints => Page::Stints,
+            crate::demo::CaptureStrategyPage::Stops => Page::Stops,
         };
         if page == crate::demo::CaptureStrategyPage::Create {
             strategy.start_form(cx);
@@ -200,6 +216,8 @@ impl Strategy {
                 | crate::demo::CaptureStrategyPage::PlanPartial
                 | crate::demo::CaptureStrategyPage::PlanError
                 | crate::demo::CaptureStrategyPage::PlanCalculated
+                | crate::demo::CaptureStrategyPage::Stints
+                | crate::demo::CaptureStrategyPage::Stops
         ) && let Err(error) = strategy.load_capture_plan(page)
         {
             strategy.error = Some(error);
@@ -250,6 +268,16 @@ impl Strategy {
             solver::OptimalityStatus::NotProven => "Búsqueda demo parcial.".into(),
             solver::OptimalityStatus::NoSolution => "La demo no tiene plan factible.".into(),
         };
+
+        if matches!(
+            page,
+            crate::demo::CaptureStrategyPage::Stints | crate::demo::CaptureStrategyPage::Stops
+        ) {
+            let edited = stint::schedule_from_outcome(&outcome)?;
+            self.baseline_result = Some(outcome);
+            self.baseline_edited_plan = Some(edited.clone());
+            self.edited_plan = Some(edited);
+        }
         Ok(())
     }
 
@@ -262,10 +290,6 @@ impl Strategy {
         } else {
             SourceStatus::Closed
         };
-        let correction_reason =
-            cx.new(|cx| orbit::Input::multiline(String::new(), "Motivo de corrección", cx));
-        cx.observe(&correction_reason, |_, _, cx| cx.notify())
-            .detach();
         let inputs = FIELDS
             .iter()
             .enumerate()
@@ -275,8 +299,8 @@ impl Strategy {
                     let value = input.read(cx).value.clone();
                     if this.fields[index] != value {
                         this.fields[index] = value;
-                        this.form_dirty = true;
-                        this.scalar_dirty |= (9..24).contains(&index);
+                        this.form.dirty = true;
+                        this.form.scalar_dirty |= (9..24).contains(&index);
                         if index == 1
                             && this.page == Page::Create
                             && let Some(duration) = &this.duration
@@ -297,6 +321,10 @@ impl Strategy {
                 input
             })
             .collect();
+        let correction_reason =
+            cx.new(|cx| orbit::Input::multiline(String::new(), "Motivo de corrección", cx));
+        cx.observe(&correction_reason, |_, _, cx| cx.notify())
+            .detach();
         let mut this = Self {
             editor,
             directory,
@@ -306,11 +334,7 @@ impl Strategy {
             duration: None,
             event: 0,
             variant: 0,
-            form_dirty: false,
-            scalar_dirty: false,
-            data: datos::State::default(),
-            correction_reason,
-            source_revisions: Vec::new(),
+            form: FormState::default(),
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
@@ -318,6 +342,15 @@ impl Strategy {
             result: None,
             last_input: None,
             manual_source_status,
+            source_revisions: Vec::new(),
+            data: datos::State::default(),
+            correction_reason,
+            edited_plan: None,
+            baseline_edited_plan: None,
+            baseline_result: None,
+            edit_dirty: false,
+            edit_cost_seconds: None,
+            edit_error: None,
             running: false,
             cancellation: Arc::new(AtomicBool::new(false)),
             generation: 0,
@@ -336,6 +369,12 @@ impl Strategy {
         self.running = false;
         self.result = None;
         self.last_input = None;
+        self.edited_plan = None;
+        self.baseline_edited_plan = None;
+        self.baseline_result = None;
+        self.edit_dirty = false;
+        self.edit_cost_seconds = None;
+        self.edit_error = None;
     }
 
     pub(super) fn set_review_source(
@@ -351,8 +390,9 @@ impl Strategy {
         self.source_revisions = self.data.selected_revisions().to_vec();
         Ok(())
     }
+
     fn ensure_clean_form(&self) -> Result<(), String> {
-        if self.form_dirty {
+        if self.form.dirty {
             return Err("Confirma los cambios pendientes o descártalos antes de continuar".into());
         }
         Ok(())
@@ -363,8 +403,8 @@ impl Strategy {
     }
     fn load_fields(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
-        self.form_dirty = false;
-        self.scalar_dirty = false;
+        self.form.dirty = false;
+        self.form.scalar_dirty = false;
         let Some(doc) = &self.editor.document else {
             self.sync_inputs(cx);
             return;
@@ -566,7 +606,7 @@ impl Strategy {
             .ok_or_else(|| "Documento ausente".into())
             .and_then(|doc| confirm_metadata(doc, self.event, self.variant, &self.fields));
         if result.is_ok() {
-            self.form_dirty = self.scalar_dirty;
+            self.form.dirty = self.form.scalar_dirty;
             self.status =
                 "Evento y variante confirmados; las entradas de cálculo se confirman al calcular."
                     .into();
@@ -761,6 +801,13 @@ impl Strategy {
         if self.running {
             return;
         }
+        if self.edit_dirty {
+            self.status =
+                "Recalcula o restablece el calendario editado antes de iniciar otro cálculo."
+                    .into();
+            cx.notify();
+            return;
+        }
         if self.manual_source_status != SourceStatus::Open || self.editor.document.is_none() {
             self.outcome(Err("source_not_open".into()), cx);
             return;
@@ -783,18 +830,17 @@ impl Strategy {
         let solver_input = input.input().clone();
         self.invalidate();
         self.last_input = Some(solver_input);
-        self.form_dirty = false;
-        self.scalar_dirty = false;
+        self.form.dirty = false;
+        self.form.scalar_dirty = false;
         self.running = true;
         self.error = None;
         self.status = "Calculando el espacio escalar con entradas manuales confirmadas…".into();
         self.cancellation = Arc::new(AtomicBool::new(false));
         let cancel = self.cancellation.clone();
-        let source_status = self.manual_source_status;
         let generation = self.generation;
         let task = cx
             .background_executor()
-            .spawn(async move { application::calculate(&input, source_status, &cancel) });
+            .spawn(async move { application::calculate(&input, SourceStatus::Open, &cancel) });
         cx.spawn(async move |this, cx| {
             let result = task.await;
             let _ = this.update(cx, |this, cx| {
@@ -846,7 +892,6 @@ fn capture_solver_input(page: crate::demo::CaptureStrategyPage) -> Result<Input,
     }
     Ok(input)
 }
-
 impl Drop for Strategy {
     fn drop(&mut self) {
         self.cancellation.store(true, Ordering::Relaxed);
@@ -1088,12 +1133,9 @@ mod tests {
         let calculated = capture_solver_input(crate::demo::CaptureStrategyPage::PlanCalculated)
             .expect("fixture de cálculo");
         let prepared = application::prepare_manual(calculated).expect("entrada manual válida");
-        let outcome = application::calculate(
-            &prepared,
-            SourceStatus::Open,
-            &std::sync::atomic::AtomicBool::new(false),
-        )
-        .expect("solver demo calculado");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo calculado");
         assert!(outcome.result.feasible);
         assert_eq!(outcome.certificate.status, solver::OptimalityStatus::Proven);
         assert_eq!(outcome.result.stints, [23, 23, 23]);
@@ -1111,12 +1153,9 @@ mod tests {
             .expect("fixture parcial");
         assert_eq!(partial.budget.max_candidates, 1);
         let prepared = application::prepare_manual(partial).expect("entrada parcial válida");
-        let outcome = application::calculate(
-            &prepared,
-            SourceStatus::Open,
-            &std::sync::atomic::AtomicBool::new(false),
-        )
-        .expect("solver demo parcial");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo parcial");
         assert_eq!(
             outcome.certificate.status,
             solver::OptimalityStatus::NotProven
@@ -1127,19 +1166,15 @@ mod tests {
         assert_eq!(impossible.event_rules.max_pit_stops, Some(0));
         let prepared =
             application::prepare_manual(impossible).expect("entrada sin solución válida");
-        let outcome = application::calculate(
-            &prepared,
-            SourceStatus::Open,
-            &std::sync::atomic::AtomicBool::new(false),
-        )
-        .expect("solver demo sin solución");
+        let outcome =
+            application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+                .expect("solver demo sin solución");
         assert!(!outcome.result.feasible);
         assert_eq!(
             outcome.certificate.status,
             solver::OptimalityStatus::NoSolution
         );
     }
-
     fn event_fields() -> Vec<String> {
         let mut fields = vec![String::new(); FIELDS.len()];
         for (index, value) in [

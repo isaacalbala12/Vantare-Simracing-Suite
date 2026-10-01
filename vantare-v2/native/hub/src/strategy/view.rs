@@ -15,6 +15,8 @@ pub(super) enum Page {
     Workspace,
     Data,
     Plan,
+    Stints,
+    Stops,
 }
 impl Page {
     fn back(self) -> Self {
@@ -92,8 +94,8 @@ impl Strategy {
     }
     pub(super) fn start_form(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
-        self.form_dirty = false;
-        self.scalar_dirty = false;
+        self.form.dirty = false;
+        self.form.scalar_dirty = false;
         self.duration = None;
         self.invalidate();
         self.sync_inputs(cx);
@@ -339,7 +341,7 @@ impl Strategy {
             cx.subscribe(&duration, |this, _, event: &ChoiceChanged, cx| {
                 if let Some(minutes) = DURATIONS.get(event.0) {
                     this.fields[1] = minutes.to_string();
-                    this.form_dirty = true;
+                    this.form.dirty = true;
                     this.sync_inputs(cx);
                 }
                 cx.notify();
@@ -476,31 +478,40 @@ impl Strategy {
             Page::Workspace => self.workspace(cx).into_any_element(),
             Page::Data => self.data_page(cx),
             Page::Plan => self.plan_page(cx),
+            Page::Stints => self.stint_editor_page(cx),
+            Page::Stops => self.pit_editor_page(cx),
         };
-        let tabs = matches!(self.page, Page::Workspace | Page::Data | Page::Plan)
-            .then(|| self.section_tabs(cx));
+        let tabs = matches!(
+            self.page,
+            Page::Workspace | Page::Data | Page::Plan | Page::Stints | Page::Stops
+        )
+        .then(|| self.section_tabs(cx));
         column()
             .id("strategy")
             .when(self.page != Page::Collection, |page| {
                 page.child(
                     button(
                         "strategy-collection",
-                        if matches!(self.page, Page::Data | Page::Plan) {
+                        if matches!(
+                            self.page,
+                            Page::Data | Page::Plan | Page::Stints | Page::Stops
+                        ) {
                             "← Volver al asistente"
                         } else {
                             "← Mis estrategias"
                         },
                     )
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if matches!(this.page, Page::Data | Page::Plan) {
+                    .on_click(cx.listener(|this, _, _, cx| match this.page {
+                        Page::Data | Page::Plan => {
                             this.page = Page::Start;
                             cx.notify();
-                        } else {
-                            if this.page == Page::Create {
-                                this.cancel_form(cx);
-                            }
-                            this.navigate(Page::Collection, cx);
                         }
+                        Page::Stints | Page::Stops => {
+                            this.page = Page::Plan;
+                            cx.notify();
+                        }
+                        Page::Create => this.cancel_form(cx),
+                        _ => this.navigate(Page::Collection, cx),
                     })),
                 )
             })
@@ -522,7 +533,7 @@ impl Strategy {
                         orbit::INK_3,
                     ))
                     .child(orbit::text(
-                        if self.editor.dirty() || self.form_dirty {
+                        if self.editor.dirty() || self.form.dirty {
                             "Cambios pendientes"
                         } else {
                             "Sin cambios pendientes"
@@ -537,10 +548,14 @@ impl Strategy {
     }
 
     fn section_tabs(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let selected = self.page;
+        let selected = match self.page {
+            Page::Data => Page::Data,
+            Page::Plan | Page::Stints | Page::Stops => Page::Plan,
+            _ => Page::Workspace,
+        };
         row()
             .child(
-                button("strategy-tab-race", "Carrera")
+                orbit::button("strategy-tab-race", "Carrera")
                     .when(selected == Page::Workspace, |tab| {
                         tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
                     })
@@ -550,7 +565,7 @@ impl Strategy {
                     })),
             )
             .child(
-                button("strategy-tab-data", "Datos")
+                orbit::button("strategy-tab-data", "Datos")
                     .when(selected == Page::Data, |tab| {
                         tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
                     })
@@ -560,7 +575,7 @@ impl Strategy {
                     })),
             )
             .child(
-                button("strategy-tab-plan", "Plan")
+                orbit::button("strategy-tab-plan", "Plan")
                     .when(selected == Page::Plan, |tab| {
                         tab.border_color(orbit::tint(orbit::CARMINE, 1.0))
                     })

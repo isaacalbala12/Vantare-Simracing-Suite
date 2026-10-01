@@ -1,4 +1,4 @@
-//! Fixtures del harness Wails; solo se cargan con `--capture`.
+//! Fixtures del modo de captura; solo se cargan con `--capture`.
 use crate::Section;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -338,6 +338,31 @@ pub enum CaptureStrategyPage {
     PlanPartial,
     PlanError,
     PlanCalculated,
+    Stints,
+    Stops,
+}
+
+fn strategy_page(name: &str) -> Option<CaptureStrategyPage> {
+    match name {
+        "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
+        "strategy-continuar" => Some(CaptureStrategyPage::Continue),
+        "strategy-asistente-origen" => Some(CaptureStrategyPage::Origin),
+        "strategy-asistente-equipo" => Some(CaptureStrategyPage::Team),
+        "strategy-asistente-inicio" => Some(CaptureStrategyPage::Start),
+        "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
+        "strategy-datos-vacio" => Some(CaptureStrategyPage::DataEmpty),
+        "strategy-datos-fuentes" => Some(CaptureStrategyPage::DataSources),
+        "strategy-datos-vueltas" => Some(CaptureStrategyPage::DataLaps),
+        "strategy-datos-avanzado" => Some(CaptureStrategyPage::DataAdvanced),
+        "strategy-plan-reposo" => Some(CaptureStrategyPage::PlanIdle),
+        "strategy-plan-cargando" => Some(CaptureStrategyPage::PlanLoading),
+        "strategy-plan-parcial" => Some(CaptureStrategyPage::PlanPartial),
+        "strategy-plan-error" => Some(CaptureStrategyPage::PlanError),
+        "strategy-plan-calculado" => Some(CaptureStrategyPage::PlanCalculated),
+        "strategy-editor-stint" => Some(CaptureStrategyPage::Stints),
+        "strategy-editor-parada" => Some(CaptureStrategyPage::Stops),
+        _ => None,
+    }
 }
 
 impl CaptureState {
@@ -365,16 +390,8 @@ impl CaptureState {
             | "strategy-asistente-origen"
             | "strategy-asistente-equipo"
             | "strategy-asistente-inicio"
-            | "strategy-nuevo-evento"
-            | "strategy-datos-vacio"
-            | "strategy-datos-fuentes"
-            | "strategy-datos-vueltas"
-            | "strategy-datos-avanzado"
-            | "strategy-plan-reposo"
-            | "strategy-plan-cargando"
-            | "strategy-plan-parcial"
-            | "strategy-plan-error"
-            | "strategy-plan-calculado" => Section::Strategy,
+            | "strategy-nuevo-evento" => Section::Strategy,
+            name if strategy_page(name).is_some() => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
             "testing-center-informe"
@@ -412,24 +429,7 @@ impl CaptureState {
             name if name.starts_with("ajustes-") => Some(CaptureSettingsPage::Application),
             _ => None,
         };
-        let strategy_page = match name {
-            "strategy-base" | "strategy-lista" => Some(CaptureStrategyPage::Collection),
-            "strategy-continuar" => Some(CaptureStrategyPage::Continue),
-            "strategy-asistente-origen" => Some(CaptureStrategyPage::Origin),
-            "strategy-asistente-equipo" => Some(CaptureStrategyPage::Team),
-            "strategy-asistente-inicio" => Some(CaptureStrategyPage::Start),
-            "strategy-nuevo-evento" => Some(CaptureStrategyPage::Create),
-            "strategy-datos-vacio" => Some(CaptureStrategyPage::DataEmpty),
-            "strategy-datos-fuentes" => Some(CaptureStrategyPage::DataSources),
-            "strategy-datos-vueltas" => Some(CaptureStrategyPage::DataLaps),
-            "strategy-datos-avanzado" => Some(CaptureStrategyPage::DataAdvanced),
-            "strategy-plan-reposo" => Some(CaptureStrategyPage::PlanIdle),
-            "strategy-plan-cargando" => Some(CaptureStrategyPage::PlanLoading),
-            "strategy-plan-parcial" => Some(CaptureStrategyPage::PlanPartial),
-            "strategy-plan-error" => Some(CaptureStrategyPage::PlanError),
-            "strategy-plan-calculado" => Some(CaptureStrategyPage::PlanCalculated),
-            _ => None,
-        };
+        let strategy_page = strategy_page(name);
         Ok(Self {
             name: name.into(),
             section,
@@ -522,6 +522,8 @@ mod tests {
                 "strategy-plan-calculado",
                 CaptureStrategyPage::PlanCalculated,
             ),
+            ("strategy-editor-stint", CaptureStrategyPage::Stints),
+            ("strategy-editor-parada", CaptureStrategyPage::Stops),
         ] {
             assert_eq!(CaptureState::parse(name).unwrap().strategy_page, Some(page));
         }

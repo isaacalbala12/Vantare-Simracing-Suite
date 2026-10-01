@@ -27,6 +27,8 @@
   {"name":"strategy-datos-avanzado","reference":"10-data-advanced.png"},
   {"name":"strategy-plan-reposo","reference":"12-plan-idle.png"},
   {"name":"strategy-plan-calculado","reference":"13-plan-calculated.png"},
+  {"name":"strategy-editor-stint","reference":"14-stint-editor.png"},
+  {"name":"strategy-editor-parada","reference":"15-pit-editor.png"},
   {"name":"strategy-plan-cargando","reference":"16-plan-loading.png"},
   {"name":"strategy-plan-parcial","reference":"17-plan-partial.png"},
   {"name":"strategy-plan-error","reference":"18-plan-error.png"},

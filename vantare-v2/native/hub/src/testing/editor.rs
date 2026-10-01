@@ -1,6 +1,6 @@
 use super::model::{Consent, MODULES, can_send, field_errors};
 use crate::{
-    orbit::{self, Checkbox, Choice, ChoiceChanged, ChoiceKind, Input, OptionItem},
+    orbit::{self, Checkbox, ChoiceState, Input, OptionItem},
     services::{
         protocol::{
             Command,
@@ -9,12 +9,12 @@ use crate::{
         view::Remote,
     },
 };
-use gpui::{Context, Entity, Window, div, prelude::*, px};
+use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
 
 pub struct Editor {
     inputs: [Entity<Input>; 5],
     values: [String; 5],
-    module: Option<Entity<Choice>>,
+    module_choice: ChoiceState,
     consent: Entity<Checkbox>,
     attachments: [Entity<Checkbox>; 3],
     approved: Option<Consent>,
@@ -25,6 +25,14 @@ pub struct Editor {
     pub dirty: bool,
 }
 impl Editor {
+    fn field_label(label: &str) -> gpui::Div {
+        orbit::text(label.to_uppercase(), 11.0, 800, orbit::INK_4).line_height(px(16.5))
+    }
+
+    pub(super) fn clear_approval(&mut self) {
+        self.approved = None;
+    }
+
     pub fn new(fields: Fields, cx: &mut Context<Remote>) -> Self {
         let values = [
             fields.action_text,
@@ -33,6 +41,15 @@ impl Editor {
             fields.context_text,
             fields.module,
         ];
+        let module_choice = ChoiceState::new(
+            MODULES
+                .iter()
+                .map(|(_, label)| OptionItem::new(*label))
+                .collect(),
+            MODULES
+                .iter()
+                .position(|(key, _)| *key == values[4].as_str()),
+        );
         let labels = [
             "Qué hiciste",
             "Qué esperabas",
@@ -101,7 +118,7 @@ impl Editor {
         Self {
             inputs,
             values,
-            module: None,
+            module_choice,
             consent,
             attachments,
             approved: None,
@@ -112,49 +129,14 @@ impl Editor {
             dirty: false,
         }
     }
-    pub(super) fn controls(&mut self, window: &mut Window, cx: &mut Context<Remote>) {
-        if self.module.is_none() {
-            let value = &self.inputs[4].read(cx).value;
-            let selected = MODULES.iter().position(|(key, _)| key == value);
-            let module = cx.new(|cx| {
-                Choice::new(
-                    "Módulo",
-                    ChoiceKind::Dropdown,
-                    MODULES
-                        .iter()
-                        .map(|(_, label)| OptionItem::new(*label))
-                        .collect(),
-                    selected,
-                    window,
-                    cx,
-                )
-            });
-            cx.subscribe(&module, |this, control, event: &ChoiceChanged, cx| {
-                if this
-                    .editor
-                    .module
-                    .as_ref()
-                    .is_none_or(|module| module.entity_id() != control.entity_id())
-                {
-                    return;
-                }
-                if let Some((key, _)) = MODULES.get(event.0) {
-                    this.editor.inputs[4]
-                        .update(cx, |input, cx| input.set_value((*key).into(), cx));
-                }
-            })
-            .detach();
-            self.module = Some(module);
+    fn sync_module_value(&mut self, cx: &mut Context<Remote>) {
+        if let Some((key, _)) = self
+            .module_choice
+            .selected
+            .and_then(|index| MODULES.get(index))
+        {
+            self.inputs[4].update(cx, |input, cx| input.set_value((*key).into(), cx));
         }
-        let enabled = self.preview.is_some();
-        let checked = can_send(self.preview.as_ref(), self.approved.as_ref(), self.dirty);
-        self.consent.update(cx, |control, cx| {
-            if control.enabled != enabled || control.checked != checked {
-                control.enabled = enabled;
-                control.checked = checked;
-                cx.notify();
-            }
-        });
     }
     pub fn fields(&self, cx: &Context<Remote>) -> Fields {
         Fields {
@@ -171,57 +153,169 @@ impl Editor {
             .min_w_0()
             .flex()
             .flex_col()
-            .gap(px(orbit::RADIUS_CHIP))
-            .child(orbit::eyebrow(label.to_owned()))
-            .child(self.inputs[index].clone())
+            .gap(px(8.0))
+            .child(Self::field_label(label))
+            .child(
+                div()
+                    .h(px(78.0))
+                    .min_h(px(0.0))
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    .child(self.inputs[index].clone()),
+            )
             .when(self.show_errors, |view| {
                 view.when_some(field_errors(&self.fields(cx))[index], |view, error| {
                     view.child(orbit::text(error, orbit::SECONDARY, 400, orbit::RED))
                 })
             })
     }
-    fn form(&self, cx: &mut Context<Remote>) -> gpui::Div {
-        let mut controls = div()
+    fn module_control(&self, cx: &mut Context<Remote>) -> gpui::Div {
+        let selected = self
+            .module_choice
+            .selected
+            .and_then(|index| MODULES.get(index))
+            .map_or("Sin determinar", |(_, label)| *label);
+        let mut control = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .child(self.module_trigger(selected, cx));
+        if self.module_choice.open {
+            control = control.child(self.module_options(cx));
+        }
+        control
+    }
+
+    fn module_trigger(
+        &self,
+        selected: &str,
+        cx: &mut Context<Remote>,
+    ) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("testing-module-select")
+            .role(gpui::Role::ComboBox)
+            .w_full()
+            .aria_label("Módulo")
+            .aria_expanded(self.module_choice.open)
+            .tab_stop(true)
+            .h(px(orbit::CONTROL_H))
+            .px(px(orbit::FIELD_PAD))
             .flex()
             .items_center()
             .justify_between()
-            .gap(px(orbit::RADIUS_CHIP));
-        if let Some(module) = &self.module {
-            controls = controls.child(module.clone());
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .border_1()
+            .border_color(rgba(0xffff_ff12))
+            .bg(rgba(0xffff_ff07))
+            .cursor_pointer()
+            .hover(|style| style.border_color(rgba(orbit::LINE_STRONG)))
+            .focus_visible(|style| style.border_2().border_color(rgb(orbit::CORAL)))
+            .child(orbit::text(selected, 14.0, 500, orbit::INK_2).line_height(px(14.0)))
+            .child(
+                orbit::icon("i-chevron", 16.0, orbit::INK_3)
+                    .with_transformation(gpui::Transformation::rotate(gpui::radians(
+                        std::f32::consts::FRAC_PI_2,
+                    )))
+                    .relative()
+                    .right(px(-5.0))
+                    .flex_none(),
+            )
+            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                let key = event.keystroke.key.as_str();
+                if !matches!(
+                    key,
+                    "enter"
+                        | "space"
+                        | "escape"
+                        | "up"
+                        | "left"
+                        | "down"
+                        | "right"
+                        | "home"
+                        | "end"
+                ) {
+                    return;
+                }
+                if this.editor.module_choice.key(key, false) {
+                    this.editor.sync_module_value(cx);
+                }
+                cx.stop_propagation();
+                cx.notify();
+            }))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.editor.module_choice.toggle();
+                cx.notify();
+            }))
+    }
+
+    fn module_options(&self, cx: &mut Context<Remote>) -> gpui::Stateful<gpui::Div> {
+        let mut options = div()
+            .id("testing-module-options")
+            .flex()
+            .flex_col()
+            .gap(px(2.0))
+            .p(px(4.0))
+            .max_h(px(240.0))
+            .overflow_y_scroll()
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgba(orbit::SURFACE_2));
+        for (index, (_, label)) in MODULES.iter().enumerate() {
+            let selected = self.module_choice.selected == Some(index);
+            let active = self.module_choice.active == Some(index);
+            options = options.child(
+                div()
+                    .id(("testing-module-option", index))
+                    .role(gpui::Role::ListBoxOption)
+                    .aria_label(*label)
+                    .aria_selected(selected)
+                    .tab_stop(false)
+                    .h(px(orbit::OPTION_H))
+                    .px(px(orbit::FIELD_PAD))
+                    .flex()
+                    .items_center()
+                    .rounded(px(orbit::RADIUS_CHIP))
+                    .when(active, |style| style.bg(rgba(orbit::LINE_ROW)))
+                    .child(orbit::text(
+                        *label,
+                        orbit::BODY,
+                        if selected { 650 } else { 500 },
+                        orbit::INK_2,
+                    ))
+                    .on_mouse_move(cx.listener(move |this, _, _, cx| {
+                        this.editor.module_choice.active = Some(index);
+                        cx.notify();
+                    }))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.editor.module_choice.choose(index);
+                        this.editor.sync_module_value(cx);
+                        cx.notify();
+                    })),
+            );
         }
-        controls = controls.child(
-            div()
-                .flex()
-                .gap(px(orbit::RADIUS_CHIP))
-                .child(
-                    orbit::button("report-save", "Guardar borrador").on_click(cx.listener(
-                        |this, _, _, cx| {
-                            let fields = this.editor.fields(cx);
-                            this.report_action(Command::DraftSave { fields }, cx);
-                        },
-                    )),
-                )
-                .child(
-                    orbit::button("report-preview", "Previsualizar envío").on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.editor.show_errors = true;
-                            this.editor.approved = None;
-                            if field_errors(&this.editor.fields(cx))
-                                .iter()
-                                .all(Option::is_none)
-                            {
-                                this.report_action(Command::ReportPrepare, cx);
-                            } else {
-                                cx.notify();
-                            }
-                        },
-                    )),
-                ),
-        );
-        orbit::card_body()
+        options
+    }
+    fn form(&self, cx: &mut Context<Remote>) -> gpui::Div {
+        let controls = self.module_control(cx);
+        let fields = self.fields(cx);
+        let valid = field_errors(&fields).iter().all(Option::is_none);
+        let has_text = !fields.action_text.is_empty()
+            || !fields.expected_text.is_empty()
+            || !fields.observed_text.is_empty();
+        let module = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.0))
+            .child(Self::field_label("Módulo"))
+            .child(controls);
+        let mut body = orbit::card_body()
+            .px(px(21.0))
+            .py(px(21.0))
             .gap(px(orbit::GUTTER / 2.0))
-            .child(orbit::eyebrow("Módulo"))
-            .child(controls)
+            .child(module)
             .child(
                 div()
                     .flex()
@@ -230,77 +324,264 @@ impl Editor {
                     .child(self.field(1, "Qué esperabas", cx)),
             )
             .child(self.field(2, "Qué ocurrió", cx))
-            .child(self.field(3, "Contexto adicional · opcional", cx))
+            .child(self.field(3, "Contexto adicional · opcional", cx));
+        if self.dirty {
+            body = body.child(div().flex().justify_end().child(
+                orbit::button("report-save", "Guardar borrador").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        let fields = this.editor.fields(cx);
+                        this.report_action(Command::DraftSave { fields }, cx);
+                    },
+                )),
+            ));
+        } else if valid && has_text && self.preview.is_none() {
+            body = body.child(div().flex().justify_end().child(
+                orbit::button("report-preview", "Previsualizar envío").on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.editor.show_errors = true;
+                        this.editor.approved = None;
+                        this.report_action(Command::ReportPrepare, cx);
+                    },
+                )),
+            ));
+        }
+        body
     }
+
+    fn attachment_row(
+        &self,
+        index: usize,
+        label: &str,
+        help: &str,
+        cx: &Context<Remote>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let attachment = self.attachments[index].read(cx);
+        let checked = attachment.checked;
+        // La primera fila conserva el aspecto del diagnóstico habilitado en Wails,
+        // aunque permanezca inerte mientras falte el contrato nativo de adjuntos.
+        let dimmed = index != 0;
+        let label_color = if dimmed { orbit::INK_3 } else { orbit::INK };
+        div()
+            .id(("testing-attachment-row", index))
+            .role(gpui::Role::CheckBox)
+            .aria_label(label)
+            .aria_toggled(if checked {
+                gpui::Toggled::True
+            } else {
+                gpui::Toggled::False
+            })
+            .aria_description(
+                "Deshabilitado: este build no tiene contrato nativo para estos adjuntos.",
+            )
+            .tab_stop(false)
+            .w_full()
+            .flex()
+            .items_start()
+            .gap(px(13.0))
+            .pt(px(13.0))
+            .pb(px(15.0))
+            .border_b_1()
+            .border_color(rgba(orbit::LINE_ROW))
+            .when(dimmed, |row| row.opacity(0.6))
+            .child(
+                div()
+                    .size(px(18.0))
+                    .mt(px(2.0))
+                    .rounded(px(5.0))
+                    .border_1()
+                    .border_color(if checked {
+                        rgb(orbit::CARMINE)
+                    } else {
+                        rgba(orbit::LINE_STRONG)
+                    })
+                    .bg(if checked {
+                        rgb(orbit::CARMINE)
+                    } else {
+                        rgba(0xffff_ff08)
+                    }),
+            )
+            .child(
+                div()
+                    .min_w_0()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .child(orbit::text(label, orbit::BODY, 650, label_color).line_height(px(20.25)))
+                    .child(
+                        orbit::text(help, 11.0, 400, orbit::INK_MUTED)
+                            .mt(px(2.5))
+                            .line_height(px(15.95))
+                            .min_w_0(),
+                    ),
+            )
+    }
+
+    fn disabled_action(label: &'static str, primary: bool) -> gpui::Stateful<gpui::Div> {
+        let background = if primary {
+            orbit::PRIMARY_BG
+        } else {
+            0xffff_ff06
+        };
+        let ink = if primary { 0x001c_1719 } else { orbit::INK_3 };
+        div()
+            .id(if primary {
+                "report-send"
+            } else {
+                "report-discard"
+            })
+            .role(gpui::Role::Button)
+            .aria_label(label)
+            .aria_description(if primary {
+                "Deshabilitado: requiere una vista previa y consentimiento vigentes."
+            } else {
+                "Deshabilitado: no hay un borrador que descartar."
+            })
+            .tab_stop(false)
+            .h(px(orbit::CONTROL_H))
+            .w_full()
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .bg(if primary {
+                rgb(background)
+            } else {
+                rgba(background)
+            })
+            .when(!primary, |button| {
+                button.border_1().border_color(rgba(orbit::LINE))
+            })
+            .when(primary, |button| {
+                button.shadow(vec![gpui::BoxShadow {
+                    color: rgba(0x0000_0059).into(),
+                    offset: gpui::point(px(0.0), px(13.0)),
+                    blur_radius: px(34.0),
+                    spread_radius: px(0.0),
+                    inset: false,
+                }])
+            })
+            .opacity(0.55)
+            .child(orbit::text(label, orbit::SECONDARY, 600, ink))
+    }
+
+    fn discard_action(cx: &mut Context<Remote>) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("report-discard")
+            .role(gpui::Role::Button)
+            .aria_label("Descartar borrador")
+            .tab_stop(true)
+            .cursor_pointer()
+            .h(px(orbit::CONTROL_H))
+            .w_full()
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(orbit::RADIUS_CONTROL))
+            .border_1()
+            .border_color(rgba(orbit::LINE))
+            .bg(rgba(0xffff_ff06))
+            .child(orbit::text(
+                "Descartar borrador",
+                orbit::SECONDARY,
+                600,
+                orbit::INK_3,
+            ))
+            .on_click(cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)))
+    }
+
     fn consent_card(&self, cx: &mut Context<Remote>) -> gpui::Div {
         let ready = can_send(self.preview.as_ref(), self.approved.as_ref(), self.dirty);
         let mut consent = orbit::card_body()
-            .gap(px(orbit::RADIUS_CONTROL))
-            .child(orbit::eyebrow("Consentimiento"))
-            .child(orbit::text("Datos adjuntos", 15.0, 700, orbit::INK))
-            .child(orbit::text(
-                "Nada se adjunta sin selección explícita y vista previa.",
-                orbit::SECONDARY,
-                400,
-                orbit::INK_3,
-            ));
-        for (index, help) in [
-            "Pendiente: el envío nativo solo admite texto. Diagnóstico disponible como JSON local.",
-            "No disponible en este flujo · pendiente.",
-            "No hay búfer de logs disponible · pendiente.",
+            .px(px(21.0))
+            .py(px(21.0))
+            .pb(px(22.0))
+            .child(
+                orbit::text("CONSENTIMIENTO", 11.0, 800, orbit::INK_3)
+                    .mt(px(6.0))
+                    .line_height(px(16.5)),
+            )
+            .child(
+                orbit::text("Datos adjuntos", 15.0, 650, orbit::INK)
+                    .mt(px(7.0))
+                    .line_height(px(22.5)),
+            )
+            .child(
+                orbit::text(
+                    "Nada se adjunta sin selección explícita y vista previa.",
+                    orbit::SECONDARY,
+                    400,
+                    orbit::INK_3,
+                )
+                .mt(px(8.0))
+                .line_height(px(18.0)),
+            );
+        for (index, (label, help)) in [
+            (
+                "Diagnóstico preparado",
+                "Genera una vista previa antes de enviar.",
+            ),
+            ("Replay de telemetría", "No disponible en este flujo."),
+            ("Logs de producto", "No hay búfer de logs disponible."),
         ]
         .into_iter()
         .enumerate()
         {
-            consent = consent
-                .child(self.attachments[index].clone())
-                .child(orbit::text(help, orbit::SECONDARY, 400, orbit::INK_3));
+            consent = consent.child(self.attachment_row(index, label, help, cx));
         }
-        consent = consent
-            .child(
-                // El primario del kit duplica hover y provoca panic al renderizar.
-                // Componer el botón existente hasta que el propietario de Orbit lo corrija.
-                orbit::button("report-send", "Enviar reporte")
-                    .tab_stop(ready)
-                    .when(!ready, |s| s.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if can_send(
-                            this.editor.preview.as_ref(),
-                            this.editor.approved.as_ref(),
-                            this.editor.dirty,
-                        ) && let Some(preview) = &this.editor.preview
-                        {
-                            let preview_id = preview.id.clone();
-                            // Consumo inmediato: doble click no reutiliza consentimiento.
-                            this.editor.approved = None;
-                            this.report_action(Command::ReportSend { preview_id }, cx);
-                            cx.notify();
-                        }
-                    })),
-            )
-            .child(
-                orbit::button("report-discard", "Descartar borrador").on_click(
-                    cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)),
-                ),
-            );
+        let send = if ready {
+            orbit::button("report-send", "Enviar reporte")
+                .on_click(cx.listener(|this, _, _, cx| {
+                    if can_send(
+                        this.editor.preview.as_ref(),
+                        this.editor.approved.as_ref(),
+                        this.editor.dirty,
+                    ) && let Some(preview) = &this.editor.preview
+                    {
+                        let preview_id = preview.id.clone();
+                        // El consentimiento se consume inmediatamente para evitar reusar el clic.
+                        this.editor.approved = None;
+                        this.report_action(Command::ReportSend { preview_id }, cx);
+                        cx.notify();
+                    }
+                }))
+                .into_any_element()
+        } else {
+            Self::disabled_action("Enviar reporte", true).into_any_element()
+        };
+        let discard = if self.dirty {
+            Self::discard_action(cx).into_any_element()
+        } else {
+            Self::disabled_action("Descartar borrador", false).into_any_element()
+        };
+        consent = consent.child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(10.0))
+                .mt(px(17.0))
+                .child(send)
+                .child(discard),
+        );
         consent
     }
     pub fn render(&self, cx: &mut Context<Remote>) -> gpui::Div {
         let form = self.form(cx);
         let consent = self.consent_card(cx);
-        let mut page = div().flex().flex_col().gap(px(orbit::GUTTER / 2.0)).child(
-            div()
-                .flex()
-                .items_start()
-                .gap(px(orbit::GUTTER / 2.0))
-                .child(orbit::card("").flex_1().min_w_0().child(form))
-                .child(
-                    orbit::card("")
-                        .w(px(orbit::COLUMN_W))
-                        .flex_none()
-                        .child(consent),
-                ),
-        );
+        let mut page = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(orbit::GUTTER / 2.0))
+            .child(
+                div()
+                    .flex()
+                    .items_start()
+                    .gap(px(21.0))
+                    .child(orbit::card("").flex_1().min_w_0().child(form))
+                    .child(orbit::card("").w(px(280.0)).flex_none().child(consent)),
+            );
         if let Some(preview) = &self.preview {
             page = page.child(
                 orbit::card("Vista previa del envío").child(
@@ -331,28 +612,10 @@ impl Editor {
                 ),
             );
         }
-        page.child(orbit::text(
-            self.message.clone(),
-            orbit::SECONDARY,
-            400,
-            orbit::INK_2,
-        ))
-        .child(
-            div()
-                .flex()
-                .gap(px(orbit::RADIUS_CHIP))
-                .child(orbit::button("report-load", "Cargar borrador").on_click(
-                    cx.listener(|this, _, _, cx| this.report_action(Command::DraftLoad, cx)),
-                ))
-                .child(
-                    orbit::button("report-retry", "Revisar intento pendiente o recibo").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.editor.approved = None;
-                            this.report_action(Command::ReportRetryPrepare, cx);
-                        }),
-                    ),
-                ),
-        )
+        if self.message != "Borrador local: revise el texto antes de enviar" {
+            page = page.child(orbit::callout(self.message.clone()));
+        }
+        page
     }
 }
 pub fn empty_fields() -> Fields {

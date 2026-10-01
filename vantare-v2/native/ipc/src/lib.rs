@@ -11,13 +11,17 @@
 //! crezca; el suscriptor descarta lo que no supera su cursor dentro de la
 //! misma época. Una época distinta significa productor nuevo: se acepta y el
 //! cursor se reinicia. Al reconectar, el suscriptor presenta su cursor y el
-//! publicador no reenvía lo que ya tiene.
+//! publicador no reenvía lo que ya tiene. Una conexión con demanda inicia una
+//! caché nueva y exige una primera entrega completa de lo pedido.
 
 #![deny(unsafe_code)]
 
 mod codec;
+mod demand;
+pub use demand::{Demand, Photo, Signal, SignalState};
 pub mod control;
 mod dto;
+pub mod launcher;
 /// Versión vigente del DTO de fotos (JSON).
 pub use dto::VERSION as DTO_VERSION;
 mod latest;
@@ -34,7 +38,7 @@ mod subscriber;
 #[cfg(any(windows, unix))]
 pub use pipe::{Peer, default_pipe_name};
 #[cfg(any(windows, unix))]
-pub use publisher::Publisher;
+pub use publisher::{DemandSource, Publisher};
 #[cfg(any(windows, unix))]
 pub use subscriber::Subscriber;
 
@@ -66,7 +70,9 @@ pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
 /// versión que este extremo no entiende, [`Error::Protocol`] si algún valor no
 /// se admite.
 pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
-    Snapshot::try_from(serde_json::from_str::<dto::SnapshotDto>(text)?)
+    let mut dto = serde_json::from_str::<dto::SnapshotDto>(text)?;
+    dto.restore(None, &Demand::all(), &Demand::all())?;
+    Snapshot::try_from(dto)
 }
 
 #[derive(Debug)]
@@ -141,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn v6_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v7_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
@@ -153,7 +159,7 @@ mod tests {
             snapshot.state.source_state = state;
             let text = snapshot_to_json(&snapshot).expect("serializa");
             assert!(text.contains(&format!("\"version\":{DTO_VERSION}")));
-            assert_eq!(snapshot_from_json(&text).expect("v6"), snapshot);
+            assert_eq!(snapshot_from_json(&text).expect("v7"), snapshot);
         }
         let mut json: serde_json::Value =
             serde_json::from_str(&snapshot_to_json(&rich_snapshot(7, 42)).expect("serializa"))

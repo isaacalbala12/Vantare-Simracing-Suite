@@ -719,6 +719,39 @@ fn local_clips_fail_visibly_without_fallback_and_validate_media_without_playing(
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn valid_local_clip_marks_audio_unavailable_without_losing_radio_text() {
+    use vantare_engineer::control::Settings;
+
+    let files = Assets::new();
+    let path = vantare_engineer::voice::clip_paths(&files.0, Locale::Es, Intent::FuelOne).unwrap()
+        [0]
+    .clone();
+    fs::write(path, wav(1)).unwrap();
+    let mut snapshot = photo();
+    snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
+    let mut worker = RadioWorker::new(Locale::Es, Some(&files.0)).unwrap();
+    worker
+        .configure(&Settings {
+            voice: true,
+            ..Default::default()
+        })
+        .unwrap();
+    let mut output = Vec::new();
+    worker
+        .ingest(&snapshot, &Applied::default(), Duration::ZERO, &mut output)
+        .unwrap();
+
+    let message = lines(&output)
+        .into_iter()
+        .find(|line| line["version"] == "vantare.radio.v1")
+        .unwrap();
+    assert_eq!(message["text"], "Queda un litro");
+    assert_eq!(message["voice"], "unavailable");
+    assert_eq!(message["voice_error"], "Unsupported");
+}
+
 #[test]
 fn limiter_deduplicates_revalidates_and_respects_cadence() {
     let mut snapshot = photo();

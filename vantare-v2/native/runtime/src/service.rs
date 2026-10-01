@@ -85,7 +85,8 @@ pub fn run_controlled(
     })?;
     let mut core = Core::with_event_base(events.base())?;
     let mut publisher = Publisher::new(pipe, |_| true)?;
-    drive_core(&mut core, adapter, speed, stop, |core| {
+    let demand = publisher.demand_source();
+    drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
         let snapshot = core.snapshot();
         rights.publish(Arc::clone(&snapshot));
         events.publish(Arc::clone(&snapshot), core.events());
@@ -114,11 +115,30 @@ fn drive_core<E>(
     adapter: &mut dyn Adapter,
     speed: f64,
     stop: &AtomicBool,
+    publish: impl FnMut(&Core) -> Result<(), E>,
+) -> Result<(), E> {
+    drive_core_demanded(core, adapter, speed, stop, None, publish)
+}
+
+fn drive_core_demanded<E>(
+    core: &mut Core,
+    adapter: &mut dyn Adapter,
+    speed: f64,
+    stop: &AtomicBool,
+    demand: Option<&vantare_ipc::DemandSource>,
     mut publish: impl FnMut(&Core) -> Result<(), E>,
 ) -> Result<(), E> {
     let start = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
+    let mut demand_revision = u64::MAX;
     while !stop.load(Ordering::Relaxed) {
+        if let Some(demand) = demand {
+            let revision = demand.revision();
+            if revision != demand_revision {
+                core.set_demand_mask(demand.mask());
+                demand_revision = revision;
+            }
+        }
         // Un fallo del adaptador no para el núcleo: se registra al cambiar de
         // causa (con la fuente cerrada, `poll` repite el mismo error).
         match core.step(adapter, start.elapsed().mul_f64(speed)) {

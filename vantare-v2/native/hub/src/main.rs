@@ -16,7 +16,8 @@ fn persistence_paths(
     } else {
         match data_dir {
             Some(path) => path,
-            None => PathBuf::from(std::env::var_os("LOCALAPPDATA").ok_or("indica --data-dir")?)
+            None => vantare_ui::paths::default_data_dir()
+                .map_err(str::to_owned)?
                 .join("VantareNative")
                 .join("hub"),
         }
@@ -29,15 +30,27 @@ fn persistence_paths(
         )
     } else {
         (
-            layout
-                .unwrap_or(vantare_ui::layout::default_path().map_err(|error| error.to_string())?),
-            engineer.unwrap_or(
-                vantare_hub::engineer_control::default_path().map_err(|error| error.to_string())?,
-            ),
-            launcher_file.unwrap_or(vantare_hub::launcher::default_path()?),
+            match layout {
+                Some(path) => path,
+                None => vantare_ui::layout::default_path().map_err(|error| error.to_string())?,
+            },
+            match engineer {
+                Some(path) => path,
+                None => default_engineer_path()?,
+            },
+            match launcher_file {
+                Some(path) => path,
+                None => vantare_hub::launcher::default_path()?,
+            },
         )
     };
     Ok((data_dir, layout, engineer, launcher_file))
+}
+
+fn default_engineer_path() -> Result<PathBuf, String> {
+    vantare_ui::paths::default_data_dir()
+        .map(|root| root.join("Vantare/native/engineer.json"))
+        .map_err(str::to_owned)
 }
 
 struct RawOptions {
@@ -168,9 +181,6 @@ impl RawOptions {
             .as_deref()
             .map(vantare_hub::demo::CaptureState::parse)
             .transpose()?;
-        if demo_requested && capture.is_none() {
-            return Err("--demo solo está disponible con --capture".into());
-        }
         if capture.is_some()
             && (explicit_section
                 || controlled
@@ -184,9 +194,8 @@ impl RawOptions {
         {
             return Err("--capture usa datos aislados y no admite rutas persistentes".into());
         }
-        let demo = capture
-            .as_ref()
-            .map(|_| vantare_hub::demo::DemoData::load())
+        let demo = (demo_requested || capture.is_some())
+            .then(vantare_hub::demo::DemoData::load)
             .transpose()?;
         let capture_root = capture.as_ref().map(|state| {
             let ticks = std::time::SystemTime::now()
@@ -251,7 +260,7 @@ fn main() -> ExitCode {
         Err(error) => {
             eprintln!(
                 "{error}
-uso: vantare-hub [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
+uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
      vantare-hub --capture PANTALLA --out PNG [--demo]"
             );
             return ExitCode::from(2);
@@ -382,8 +391,39 @@ mod tests {
         assert_eq!(options.launcher_file, PathBuf::from("local-launcher.json"));
         assert!(
             vantare_hub::launcher::default_path()
-                .expect("LOCALAPPDATA")
+                .expect("directorio de datos")
                 .ends_with("Vantare/native/launcher.json")
+        );
+    }
+
+    #[test]
+    fn demo_opens_the_hub_with_fixture_data_without_capture_mode() {
+        let options = parse(&[
+            "--demo".into(),
+            "--pipe".into(),
+            "vantare-1437-smoke".into(),
+        ])
+        .expect("modo demo conectado por IPC");
+        assert!(options.demo.is_some());
+        assert!(options.capture.is_none());
+        assert_eq!(options.section, Section::Home);
+        assert_eq!(options.pipe.as_deref(), Some("vantare-1437-smoke"));
+    }
+
+    #[test]
+    fn data_paths_share_the_platform_directory() {
+        let root = vantare_ui::paths::default_data_dir().expect("directorio de datos");
+        assert_eq!(
+            vantare_ui::layout::default_path().expect("layout"),
+            root.join("Vantare/native/layout.json")
+        );
+        assert_eq!(
+            default_engineer_path().expect("Engineer"),
+            root.join("Vantare/native/engineer.json")
+        );
+        assert_eq!(
+            vantare_hub::launcher::default_path().expect("Launcher"),
+            root.join("Vantare/native/launcher.json")
         );
     }
 
@@ -415,7 +455,6 @@ mod tests {
         for bad in [
             vec!["--capture", "inicio-base"],
             vec!["--capture", "no-existe", "--out", "capture.png"],
-            vec!["--demo"],
             vec![
                 "--capture",
                 "inicio-base",

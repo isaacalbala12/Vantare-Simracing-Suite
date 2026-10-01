@@ -7,6 +7,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
+#[path = "status.rs"]
+pub mod runtime;
+
 pub const MAX_BYTES: u64 = 64 * 1024;
 pub const LOCALES: &[&str] = &["es", "en", "it", "pt-BR"];
 
@@ -105,27 +108,32 @@ pub struct Status {
     pub error: Option<String>,
 }
 impl Status {
+    /// Proyección v1 para consumidores anteriores. Para conservar los datos
+    /// v2 al exportar, usar `runtime::Report::json`.
     pub fn json(&self) -> Value {
         let message = self
             .last_message
             .as_ref()
             .map(|m| json!({"epoch":m.epoch, "sequence":m.sequence, "intent":m.intent, "locale":m.locale, "text":m.text}));
-        json!({"version":self.version, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
+        json!({"version":1, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
         let value = decode(bytes)?;
-        fields(
-            &value,
-            &[
-                "version",
-                "active",
-                "pid",
-                "settings",
-                "assets",
-                "last_message",
-                "error",
-            ],
-        )?;
+        let version = number(&value["version"])?;
+        let mut keys = vec![
+            "version",
+            "active",
+            "pid",
+            "settings",
+            "assets",
+            "last_message",
+            "error",
+        ];
+        if version == u64::from(runtime::STATUS_VERSION) {
+            keys.push("runtime");
+            runtime::RuntimeStatus::parse(&value["runtime"])?;
+        }
+        fields(&value, &keys)?;
         let message = &value["last_message"];
         let last_message = if message.is_null() {
             None
@@ -162,7 +170,7 @@ impl Status {
             },
         };
         status.settings.validate()?;
-        if status.version != 1
+        if ![1, runtime::STATUS_VERSION].contains(&status.version)
             || status.pid == 0
             || status.assets.len() != LOCALES.len()
             || !LOCALES
@@ -176,9 +184,38 @@ impl Status {
 }
 
 pub fn default_path() -> io::Result<PathBuf> {
-    std::env::var_os("LOCALAPPDATA")
-        .map(|root| PathBuf::from(root).join("Vantare/native/engineer.json"))
-        .ok_or_else(|| invalid("LOCALAPPDATA no está definido"))
+    #[cfg(windows)]
+    {
+        std::env::var_os("LOCALAPPDATA")
+            .map(|root| PathBuf::from(root).join("Vantare/native/engineer.json"))
+            .ok_or_else(|| invalid("LOCALAPPDATA no está definido"))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let root = match std::env::var_os("XDG_CONFIG_HOME") {
+            Some(root) if PathBuf::from(&root).is_absolute() => PathBuf::from(root),
+            Some(_) => return Err(invalid("XDG_CONFIG_HOME debe ser absoluto")),
+            None => home()?.join(".config"),
+        };
+        Ok(root.join("Vantare/native/engineer.json"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Ok(home()?.join("Library/Application Support/Vantare/native/engineer.json"))
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    {
+        Err(invalid("plataforma sin ruta de configuración"))
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn home() -> io::Result<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|home| !home.is_empty())
+        .map(PathBuf::from)
+        .filter(|home| home.is_absolute())
+        .ok_or_else(|| invalid("HOME no está definido"))
 }
 pub fn status_path(settings: &Path) -> PathBuf {
     settings.with_file_name("engineer-status.json")

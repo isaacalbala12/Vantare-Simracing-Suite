@@ -3,7 +3,7 @@
 use crate::{Capability, CarId, Snapshot, SourceState};
 
 /// Mitad del lado del cuadrado que cubre el radar.
-pub const RANGE_M: f64 = 36.0;
+const RANGE_M: f64 = 36.0;
 /// Dos coches se solapan si están a menos de un largo en la marcha...
 const OVERLAP_AHEAD_M: f64 = 5.0;
 /// ...y como máximo a un carril de distancia lateral (incluye 4 m).

@@ -35,3 +35,20 @@ preview/consentimiento efímero, intento durable manual y recibo. Sin autoenvío
 Tests: HTTP loopback, claves generadas, procesos/pipes y DPAPI de fixtures;
 ningún secreto ni credencial real, `.env*` ni backend real. El corte 6 queda
 pendiente de Isaac; sync de perfiles/layouts no se implementa aquí.
+
+### Desarrollo Unix — #1437
+
+El auxiliar y su cliente usan `vantare-ipc` también en Linux/macOS: socket Unix
+local, mismo nonce, límites, PID e imagen del par. La sesión y demás datos del
+`Store` se guardan bajo `$XDG_CONFIG_HOME/Vantare/native/services` (Linux,
+`~/.config` si no está definido) o `~/Library/Application Support/Vantare/native/services`
+(macOS). Cada namespace queda en un directorio `0700`; los JSON y el lock son
+`0600`, y el reemplazo es atómico. A diferencia de DPAPI, Unix no cifra esos
+JSON: los permisos protegen frente a otros usuarios, pero no frente a procesos
+del mismo usuario, administrador/root, ni acceso al disco fuera del sistema.
+
+El contrato v1 conserva el fingerprint heredado como SHA-256 de `HOME|GOOS`
+(`linux`/`darwin`). La clave Ed25519 de instalación
+conserva su ID RFC 7638 y prueba de enrollment; queda en el `Store` privado.
+El backend v2 aún no está desplegado, por lo que la renovación v1 sigue usando
+el fingerprint heredado también en Unix.

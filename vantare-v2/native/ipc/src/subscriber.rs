@@ -7,16 +7,21 @@ use std::time::Duration;
 
 use vantare_domain::Snapshot;
 
-use crate::Error;
-use crate::codec::{Message, Revision, hello, read_message, supports, write_message};
+use crate::codec::{
+    Message, Revision, hello, hello_requested, read_message, supports, write_message,
+};
 use crate::latest::{Slot, Wait};
 use crate::pipe::{self, Event, IO_TIMEOUT, Peer};
+use crate::{Demand, Error, Photo};
 
 /// Espera entre intentos de conexión (el núcleo puede no haber arrancado).
 const RETRY: Duration = Duration::from_millis(250);
 
 pub struct Subscriber {
-    latest: Arc<Slot<Snapshot>>,
+    name: String,
+    accept_peer: Arc<dyn Fn(&Peer) -> bool + Send + Sync>,
+    demand: Option<Demand>,
+    latest: Arc<Slot<Photo>>,
     seen: u64,
     stop: Arc<Event>,
     worker: Option<JoinHandle<()>>,
@@ -32,7 +37,39 @@ impl Subscriber {
     /// Si el sistema no puede crear el evento o el hilo.
     pub fn connect(
         name: &str,
-        accept_peer: impl Fn(&Peer) -> bool + Send + 'static,
+        accept_peer: impl Fn(&Peer) -> bool + Send + Sync + 'static,
+    ) -> Result<Self, Error> {
+        Self::start(name, Arc::new(accept_peer), None)
+    }
+
+    pub fn connect_requested(
+        name: &str,
+        demand: Demand,
+        accept_peer: impl Fn(&Peer) -> bool + Send + Sync + 'static,
+    ) -> Result<Self, Error> {
+        demand.validate()?;
+        Self::start(name, Arc::new(accept_peer), Some(demand))
+    }
+
+    /// Reconexión inmediata: descarta la casilla anterior y fuerza hidratación.
+    /// Cancelar la E/S y cerrar el hilo es acotado por el transporte existente.
+    pub fn set_demand(&mut self, demand: Demand) -> Result<(), Error> {
+        demand.validate()?;
+        if self.demand.as_ref() != Some(&demand) {
+            self.stop.set();
+            if let Some(worker) = self.worker.take() {
+                let _ = worker.join();
+            }
+            let next = Self::start(&self.name, Arc::clone(&self.accept_peer), Some(demand))?;
+            *self = next;
+        }
+        Ok(())
+    }
+
+    fn start(
+        name: &str,
+        accept_peer: Arc<dyn Fn(&Peer) -> bool + Send + Sync>,
+        demand: Option<Demand>,
     ) -> Result<Self, Error> {
         let latest = Arc::new(Slot::new());
         let stop = Arc::new(Event::new()?);
@@ -40,11 +77,25 @@ impl Subscriber {
         let worker = {
             let (name, latest, stop) = (name.to_owned(), Arc::clone(&latest), Arc::clone(&stop));
             let activity = Arc::clone(&activity);
+            let accept_peer = Arc::clone(&accept_peer);
+            let demand = demand.clone();
             thread::Builder::new()
                 .name("ipc-subscriber".into())
-                .spawn(move || run(&name, &stop, &latest, &accept_peer, &activity))?
+                .spawn(move || {
+                    run(
+                        &name,
+                        &stop,
+                        &latest,
+                        &*accept_peer,
+                        &activity,
+                        demand.as_ref(),
+                    );
+                })?
         };
         Ok(Self {
+            name: name.to_owned(),
+            accept_peer,
+            demand,
             latest,
             seen: 0,
             stop,
@@ -57,10 +108,14 @@ impl Subscriber {
     /// `timeout` si aún no hay una nueva. Las intermedias se han perdido a
     /// propósito: quien llama, por lento que sea, ve siempre la más reciente.
     pub fn next(&mut self, timeout: Duration) -> Option<Arc<Snapshot>> {
+        self.next_photo(timeout).map(|photo| photo.snapshot)
+    }
+
+    pub fn next_photo(&mut self, timeout: Duration) -> Option<Photo> {
         match self.latest.wait(self.seen, timeout) {
             Wait::Value(snapshot, generation) => {
                 self.seen = generation;
-                Some(snapshot)
+                Some((*snapshot).clone())
             }
             Wait::Timeout | Wait::Closed => None,
         }
@@ -86,9 +141,10 @@ impl Drop for Subscriber {
 fn run(
     name: &str,
     stop: &Arc<Event>,
-    latest: &Slot<Snapshot>,
+    latest: &Slot<Photo>,
     accept_peer: &dyn Fn(&Peer) -> bool,
     activity: &AtomicU64,
+    demand: Option<&Demand>,
 ) {
     // El cursor sobrevive a las reconexiones: es lo que evita repeticiones
     // mientras el productor siga en su época.
@@ -96,8 +152,15 @@ fn run(
     let mut reported_incompatible = false;
     loop {
         // Cualquier error (par caído, mudo o hostil) se resuelve igual: reconectar.
-        if let Err(error) = session(name, stop, latest, accept_peer, &mut cursor, activity)
-            && matches!(error, Error::Version { .. } | Error::Rejected(_))
+        if let Err(error) = session(
+            name,
+            stop,
+            latest,
+            accept_peer,
+            &mut cursor,
+            activity,
+            demand,
+        ) && matches!(error, Error::Version { .. } | Error::Rejected(_))
             && !reported_incompatible
         {
             eprintln!("IPC incompatible: {error}");
@@ -112,16 +175,23 @@ fn run(
 fn session(
     name: &str,
     stop: &Arc<Event>,
-    latest: &Slot<Snapshot>,
+    latest: &Slot<Photo>,
     accept_peer: &dyn Fn(&Peer) -> bool,
     cursor: &mut Option<Revision>,
     activity: &AtomicU64,
+    demand: Option<&Demand>,
 ) -> Result<(), Error> {
     let mut pipe = pipe::connect(name, Arc::clone(stop), IO_TIMEOUT)?;
     if !accept_peer(&pipe.server_peer()?) {
         return Err(Error::Peer);
     }
-    write_message(&mut pipe, &hello(*cursor))?;
+    write_message(
+        &mut pipe,
+        &demand.map_or_else(
+            || hello(*cursor),
+            |demand| hello_requested(None, demand.clone()),
+        ),
+    )?;
     match read_message(&mut pipe)? {
         Message::Welcome { version } if supports(version) => {}
         Message::Welcome { version } => return Err(Error::Version { got: version }),
@@ -129,16 +199,58 @@ fn session(
         _ => return Err(Error::Protocol("se esperaba Welcome")),
     }
     activity.fetch_add(1, Ordering::Relaxed);
+    let mut previous: Option<crate::dto::SnapshotDto> = None;
     loop {
         match read_message(&mut pipe)? {
             Message::Ping => {}
-            Message::Snapshot(dto) => {
+            Message::Snapshot(mut dto) => {
+                if demand.is_some() {
+                    return Err(Error::Protocol("se esperaba foto con demanda"));
+                }
+                dto.restore(None, &Demand::all(), &Demand::all())?;
                 let revision = Revision {
                     epoch: dto.epoch,
                     sequence: dto.sequence,
                 };
                 if revision.is_newer(*cursor) {
-                    latest.put(Arc::new(Snapshot::try_from(dto)?));
+                    latest.put(Arc::new(Photo::full(Arc::new(Snapshot::try_from(dto)?))));
+                    *cursor = Some(revision);
+                }
+            }
+            Message::DemandSnapshot {
+                mut snapshot,
+                requested,
+                delivered,
+            } => {
+                requested.validate()?;
+                // La lista delivered es parcial: las identidades pueden quedar retenidas.
+                if delivered.mask() & !requested.mask() != 0 {
+                    return Err(Error::Protocol("señal no solicitada"));
+                }
+                if demand != Some(&requested) || !requested.covers(&delivered) {
+                    return Err(Error::Protocol("entrega fuera de la demanda"));
+                }
+                let revision = Revision {
+                    epoch: snapshot.epoch,
+                    sequence: snapshot.sequence,
+                };
+                if revision.is_newer(*cursor) {
+                    if previous
+                        .as_ref()
+                        .is_some_and(|old| !snapshot.same_scope(old, &delivered))
+                    {
+                        previous = None;
+                    }
+                    if previous.is_none() && !delivered.covers(&requested) {
+                        return Err(Error::Protocol("primera entrega sin hidratación completa"));
+                    }
+                    snapshot.restore(previous.as_ref(), &requested, &delivered)?;
+                    let decoded = Snapshot::try_from(snapshot.clone())?;
+                    previous = Some(snapshot);
+                    latest.put(Arc::new(Photo {
+                        snapshot: Arc::new(decoded),
+                        demand: requested,
+                    }));
                     *cursor = Some(revision);
                 }
             }

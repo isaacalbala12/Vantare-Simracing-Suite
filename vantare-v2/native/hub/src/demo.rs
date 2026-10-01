@@ -50,6 +50,7 @@ pub struct DemoUser {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct DemoProfile {
+    pub present: bool,
     pub id: String,
     pub file: String,
     pub name: String,
@@ -57,6 +58,17 @@ pub struct DemoProfile {
     pub widgets: usize,
     pub width: u32,
     pub height: u32,
+    pub obs_browser_source_url: String,
+}
+
+impl DemoProfile {
+    pub fn context_subtitle(&self) -> String {
+        format!(
+            "{} widgets · {}",
+            self.widgets,
+            if self.active { "activo" } else { "recomendado" }
+        )
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -247,6 +259,16 @@ pub struct DemoVersions {
 }
 
 impl DemoData {
+    /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
+    pub fn apply_capture(&mut self, capture: &CaptureState) {
+        self.profile.present = capture.name == "inicio-base";
+        self.notifications.clear();
+    }
+
+    pub fn overlay_profile(&self) -> Option<&DemoProfile> {
+        self.profile.present.then_some(&self.profile)
+    }
+
     pub fn load() -> Result<Self, String> {
         let data: Self =
             serde_json::from_str(DATA).map_err(|error| format!("demo Hub: {error}"))?;
@@ -275,6 +297,7 @@ impl DemoData {
         if self.user.name.is_empty()
             || self.user.plan != "paid"
             || self.profile.name != "Clean Overlay"
+            || !self.profile.present
             || !self.profile.active
             || self.profile.widgets != 3
             || self.profile.width == 0
@@ -474,6 +497,16 @@ mod tests {
         assert_eq!(first.user.full_name, "Isaac Albalá");
         assert_eq!(first.captured_at, "2026-09-30T17:00:00Z");
         assert_eq!(first.profile.name, "Clean Overlay");
+        assert!(first.overlay_profile().is_some());
+        assert_eq!(first.profile.context_subtitle(), "3 widgets · activo");
+        let mut recommended = first.profile.clone();
+        recommended.active = false;
+        recommended.widgets = 5;
+        assert_eq!(recommended.context_subtitle(), "5 widgets · recomendado");
+        assert_eq!(
+            first.profile.obs_browser_source_url,
+            "http://127.0.0.1:39261/overlay?profile=custom-clean-overlay.json"
+        );
         assert_eq!(first.launcher.profiles[0].name, "Creador de Contenido");
         assert_eq!(first.launcher.apps[1].display_name, "OBS Studio");
         assert_eq!(first.home_races[0].name, "LMGT3 Fixed");
@@ -538,5 +571,26 @@ mod tests {
         let schedule = crate::calendar::Schedule::parse(&demo.calendar_json().expect("json"))
             .expect("contrato de calendario");
         assert_eq!(schedule.series.len(), 10);
+    }
+
+    #[test]
+    fn shell_captures_are_empty_without_changing_home_fixture() -> Result<(), String> {
+        for name in [
+            "shell-completa",
+            "shell-columna-colapsada",
+            "shell-notificaciones-abiertas",
+        ] {
+            let mut demo = DemoData::load()?;
+            demo.apply_capture(&CaptureState::parse(name)?);
+            assert!(demo.overlay_profile().is_none(), "{name}");
+            assert!(demo.notifications.is_empty(), "{name}");
+            assert_eq!(demo.user.name, "test");
+            assert_eq!(demo.launcher.profiles.len(), 2);
+        }
+        let mut home = DemoData::load()?;
+        home.apply_capture(&CaptureState::parse("inicio-base")?);
+        assert!(home.overlay_profile().is_some());
+        assert!(home.notifications.is_empty());
+        Ok(())
     }
 }

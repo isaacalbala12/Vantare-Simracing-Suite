@@ -106,19 +106,64 @@ pub struct Environment {
 #[allow(unsafe_code)]
 mod windows;
 
+#[cfg(target_os = "linux")]
+const OS_FAMILY: &str = "linux";
+#[cfg(target_os = "macos")]
+const OS_FAMILY: &str = "macos";
+#[cfg(windows)]
+const OS_FAMILY: &str = "windows";
+
 impl Environment {
     pub fn local(channel: &str) -> Result<Self> {
         #[cfg(windows)]
-        return Ok(Self {
-            channel: channel.into(),
-            app_version: option_env!("VANTARE_VERSION")
-                .unwrap_or(env!("CARGO_PKG_VERSION"))
-                .into(),
-            os_version: windows::os_version()?,
-        });
-        #[cfg(not(windows))]
-        Err(Error::Unsupported)
+        {
+            Ok(Self {
+                channel: channel.into(),
+                app_version: option_env!("VANTARE_VERSION")
+                    .unwrap_or(env!("CARGO_PKG_VERSION"))
+                    .into(),
+                os_version: windows::os_version()?,
+            })
+        }
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            Ok(Self {
+                channel: channel.into(),
+                app_version: option_env!("VANTARE_VERSION")
+                    .unwrap_or(env!("CARGO_PKG_VERSION"))
+                    .into(),
+                os_version: unix_os_version()?,
+            })
+        }
+        #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+        {
+            Err(Error::Unsupported)
+        }
     }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn unix_os_version() -> Result<String> {
+    use std::process::Command;
+
+    #[cfg(target_os = "linux")]
+    let output = Command::new("uname").arg("-r").output();
+    #[cfg(target_os = "macos")]
+    let output = Command::new("sw_vers").arg("-productVersion").output();
+    let output = output.map_err(|_| Error::Unsupported)?;
+    if !output.status.success() {
+        return Err(Error::Unsupported);
+    }
+    let version = String::from_utf8(output.stdout).map_err(|_| Error::Unsupported)?;
+    let version = version.trim();
+    if version.is_empty() || version.len() > 56 {
+        return Err(Error::Unsupported);
+    }
+    #[cfg(target_os = "linux")]
+    let name = "Linux";
+    #[cfg(target_os = "macos")]
+    let name = "macOS";
+    Ok(format!("{name} {version}"))
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -173,7 +218,7 @@ impl Submission {
             observed_text: draft.fields.observed_text.trim().into(),
             context_text: draft.fields.context_text.trim().into(),
             app_version: env.app_version,
-            os_family: "windows".into(),
+            os_family: OS_FAMILY.into(),
             os_version: env.os_version,
             module: draft.fields.module,
             include_diagnostic: false,
@@ -185,7 +230,7 @@ impl Submission {
     }
     fn validate(&self) -> Result<()> {
         if self.contract_version != "testing-center.v1"
-            || self.os_family != "windows"
+            || self.os_family != OS_FAMILY
             || self.include_diagnostic
             || self.include_logs
             || self.diagnostic_payload.is_some()

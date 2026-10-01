@@ -77,10 +77,10 @@ rustc --edition 2024 -C codegen-units=1 ui/src/standings/scenes.rs -L dependency
 & ui/src/standings/capture-scenes.ps1 -Exe "$env:TEMP/vantare-variants.exe"
 ```
 
-El helper usa `run_layout` y los renderizadores productivos; el script exige
-DPI 96, serializa con `Global\VantareParityCapture`, espera que el panel se
-pinte y cierra exclusivamente sus procesos. Las imágenes completas temporales
-se recortan al widget sobre el fondo negro; no se versiona el escritorio.
+El helper usa `run_layout_with_rights(..., None)` y los renderizadores productivos.
+El script exige DPI 96, serializa con `Global\VantareParityCapture`, espera que
+se pinte el panel y cierra sus procesos. Las imágenes temporales se recortan al
+widget sobre el fondo negro; no se versiona el escritorio.
 El montaje TSX fue temporal, con dependencias ya instaladas, cache/envDir
 externos y Playwright. No se modificó frontend ni se instalaron paquetes.
 

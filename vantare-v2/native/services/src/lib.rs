@@ -17,7 +17,7 @@ pub mod http;
 pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
-#[cfg(windows)]
+#[cfg(any(windows, unix))]
 pub mod process;
 pub mod protocol;
 #[cfg(feature = "network")]
@@ -44,7 +44,7 @@ pub fn random_id() -> Result<String> {
 #[cfg(all(test, feature = "network"))]
 mod test_http;
 
-#[cfg(all(test, windows))]
+#[cfg(all(test, any(windows, unix)))]
 fn test_store(context: &str) -> (std::path::PathBuf, storage::Store) {
     let root = std::env::temp_dir().join(format!(
         "vantare-services-test-{}",
@@ -54,14 +54,7 @@ fn test_store(context: &str) -> (std::path::PathBuf, storage::Store) {
     (root, store)
 }
 
-#[cfg(all(test, windows))]
-fn cleanup_store(root: &std::path::Path, context: &str, names: &[&str]) {
-    use sha2::{Digest, Sha256};
-    let namespace = root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
-    for name in names {
-        std::fs::remove_file(namespace.join(format!("{name}.dpapi"))).expect("test file cleanup");
-    }
-    std::fs::remove_file(namespace.join("owner.lock")).expect("test lock cleanup");
-    std::fs::remove_dir(namespace).expect("test namespace cleanup");
-    std::fs::remove_dir(root).expect("test root cleanup");
+#[cfg(all(test, any(windows, unix)))]
+fn cleanup_store(root: &std::path::Path, _context: &str, _names: &[&str]) {
+    std::fs::remove_dir_all(root).expect("test store cleanup");
 }

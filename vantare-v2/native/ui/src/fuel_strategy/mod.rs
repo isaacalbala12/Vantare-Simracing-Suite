@@ -313,6 +313,17 @@ impl Widget {
     }
 }
 
+impl Settings {
+    pub fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{FuelEstimate, FuelLevel, LapsRemaining};
+        let mut demand = crate::demand::signals(500, &[FuelLevel, FuelEstimate]);
+        if self.show_projection {
+            demand.request(LapsRemaining, 500);
+        }
+        demand
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

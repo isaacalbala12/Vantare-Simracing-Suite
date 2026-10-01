@@ -1,15 +1,18 @@
 //! Presentación Orbit: estado persistido, borradores y progreso real.
 use super::{
     App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
-    chain::{Chain, Progress},
+    chain::{Action, Chain, Decision, Progress},
     discovery::{self, Discovery, Sources},
     input::Input,
+    policy::{Close, Failure, Running},
+    processes,
 };
 use crate::orbit::{self, button};
 use gpui::{
     Context, Entity, IntoElement, PathPromptOptions, Render, WeakEntity, Window, div, prelude::*,
 };
 use std::{
+    collections::HashMap,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -18,7 +21,7 @@ struct AppDraft {
     id: Option<String>,
     name: Entity<Input>,
     args: Entity<Input>,
-    executable: Option<PathBuf>,
+    executable: Entity<Input>,
 }
 struct StepDraft {
     app: Entity<orbit::Choice>,
@@ -30,10 +33,15 @@ struct ProfileDraft {
     name: Entity<Input>,
     description: Entity<Input>,
     notes: Entity<Input>,
+    hotkey: Entity<Input>,
+    autostart: Entity<orbit::Checkbox>,
     first_delay: Entity<orbit::NumberControl>,
     retries: Entity<orbit::NumberControl>,
-    failure: Entity<orbit::Checkbox>,
-    reuse: Entity<orbit::Checkbox>,
+    failure: Entity<orbit::Choice>,
+    reuse: Entity<orbit::Choice>,
+    cancel: Entity<orbit::Choice>,
+    exit: Entity<orbit::Choice>,
+    retry_policy: Entity<orbit::Choice>,
     tabs: Entity<orbit::Choice>,
     app_ids: Vec<String>,
     steps: Vec<StepDraft>,
@@ -41,14 +49,25 @@ struct ProfileDraft {
 
 pub struct Launcher {
     store: Store,
+    processes: processes::Shared,
+    pending_decision: Option<Decision>,
+    resident_decision: Option<u64>,
+    resident_answered: Option<u64>,
+    resident_error: Option<String>,
+    exit_answer: Option<Action>,
+    exit_cancelled: bool,
     discovered: Discovery,
     scanning: bool,
     last_scan: Option<chrono::DateTime<chrono::Local>>,
     chain: Option<Chain>,
     progress: Vec<Progress>,
+    last_profile: Option<Profile>,
     app_draft: Option<AppDraft>,
     profile_draft: Option<ProfileDraft>,
-    form_layer: Option<Entity<orbit::Layer>>,
+    pending_app_removal: Option<String>,
+    pending_profile_removal: Option<String>,
+    form_layer: Option<Entity<editor::LauncherDrawer>>,
+    demo_descriptions: HashMap<String, String>,
     form_actions: [gpui::FocusHandle; 3],
     query: Entity<Input>,
     trigger: LmuTrigger,
@@ -75,8 +94,15 @@ mod editor;
 mod presentation;
 
 impl Launcher {
-    pub fn form_layer(&self) -> Option<Entity<orbit::Layer>> {
-        self.form_layer.clone()
+    pub fn form_layer(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<gpui::AnyView> {
+        if self.pending_decision.is_some() && self.form_layer.is_none() {
+            self.open_form(window, cx);
+        }
+        self.form_layer.clone().map(Into::into)
     }
 
     pub fn new(store: Store, cx: &mut Context<Self>) -> Self {
@@ -91,6 +117,12 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> Self {
         let mut view = Self::build(store, Some(Discovery::demo(demo)), cx);
+        view.demo_descriptions = demo
+            .launcher
+            .profiles
+            .iter()
+            .map(|profile| (profile.id.clone(), profile.description.clone()))
+            .collect();
         if create_profile {
             view.new_profile(None, window, cx);
         }
@@ -100,14 +132,25 @@ impl Launcher {
     fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
             store,
+            processes: std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default())),
+            pending_decision: None,
+            resident_decision: None,
+            resident_answered: None,
+            resident_error: None,
+            exit_answer: None,
+            exit_cancelled: false,
             discovered: discovery.unwrap_or_default(),
             scanning: false,
             last_scan: None,
             chain: None,
             progress: vec![],
+            last_profile: None,
             app_draft: None,
             profile_draft: None,
+            pending_app_removal: None,
+            pending_profile_removal: None,
             form_layer: None,
+            demo_descriptions: HashMap::new(),
             form_actions: [cx.focus_handle(), cx.focus_handle(), cx.focus_handle()],
             query: input(String::new(), "Buscar aplicaciones y perfiles", cx),
             trigger: LmuTrigger::default(),
@@ -137,6 +180,19 @@ impl Launcher {
     fn report(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
         self.error = result.err();
         cx.notify();
+    }
+
+    pub(super) fn reload(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match Store::load(self.store.path.clone()) {
+            Ok(store) => {
+                self.close_form(window, cx);
+                self.store = store;
+                self.trigger = LmuTrigger::default();
+                self.error = None;
+                self.scan(cx);
+            }
+            Err(error) => self.report(Err(error), cx),
+        }
     }
 
     fn edit(
@@ -182,28 +238,197 @@ impl Launcher {
         cx.notify();
     }
 
-    fn reload(&mut self, cx: &mut Context<Self>) {
-        match Store::load(self.store.path.clone()) {
-            Ok(store) => {
-                self.store = store;
-                self.app_draft = None;
-                self.profile_draft = None;
-                self.trigger = LmuTrigger::default();
-                self.error = None;
-                self.scan(cx);
+    pub fn shutdown(&mut self) -> Result<(), String> {
+        if let Some(chain) = &mut self.chain {
+            chain.shutdown()?;
+        }
+        self.close_on_exit()
+    }
+
+    fn close_on_exit(&mut self) -> Result<(), String> {
+        let mut processes = self
+            .processes
+            .lock()
+            .map_err(|e| format!("procesos Launcher: {e}"))?;
+        for profile in &self.store.document.profiles {
+            let policy = profile.effective_policy();
+            if policy.exit == Close::Started
+                || policy.exit == Close::Ask && self.exit_answer == Some(Action::CloseStarted)
+            {
+                processes.close_profile(&profile.id)?;
             }
-            Err(error) => self.report(Err(error), cx),
+        }
+        Ok(())
+    }
+
+    pub fn take_exit_cancelled(&mut self) -> bool {
+        std::mem::take(&mut self.exit_cancelled)
+    }
+
+    pub fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        if let Some(chain) = &self.chain {
+            chain.prepare_shutdown();
+            return false;
+        }
+        let result = (|| {
+            let mut processes = self
+                .processes
+                .lock()
+                .map_err(|e| format!("procesos Launcher: {e}"))?;
+            for profile in &self.store.document.profiles {
+                if profile.effective_policy().exit == Close::Ask
+                    && processes.has_profile(&profile.id)?
+                    && self.exit_answer.is_none()
+                {
+                    self.pending_decision = Some(Decision {
+                        id: 0,
+                        message: "¿Cerrar las aplicaciones iniciadas por Vantare antes de salir?"
+                            .into(),
+                        actions: vec![Action::Leave, Action::CloseStarted, Action::Cancel],
+                    });
+                    return Ok(false);
+                }
+            }
+            Ok::<_, String>(true)
+        })();
+        match result {
+            Ok(ready) => {
+                cx.notify();
+                ready
+            }
+            Err(error) => {
+                self.report(Err(error), cx);
+                self.exit_cancelled = true;
+                false
+            }
         }
     }
 
-    pub fn shutdown(&mut self) -> Result<(), String> {
-        self.chain.as_mut().map_or(Ok(()), Chain::shutdown)
+    pub(super) fn answer_decision(
+        &mut self,
+        action: Action,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(decision) = self.pending_decision.take() else {
+            return;
+        };
+        if !decision.actions.contains(&action) {
+            self.pending_decision = Some(decision);
+            return;
+        }
+        if decision.id == 0 {
+            if action == Action::Cancel {
+                self.exit_cancelled = true;
+            } else {
+                self.exit_answer = Some(action);
+            }
+        } else if self.resident_decision == Some(decision.id) {
+            let request = vantare_ipc::launcher::Request::Answer {
+                decision: decision.id,
+                action: action.label().into(),
+            };
+            let result = serde_json::to_vec(&request)
+                .map_err(|error| error.to_string())
+                .and_then(|bytes| {
+                    super::files::save(
+                        &vantare_ipc::launcher::request_path(&self.store.path),
+                        &bytes,
+                        None,
+                    )
+                });
+            self.resident_decision = None;
+            if result.is_ok() {
+                self.resident_answered = Some(decision.id);
+            }
+            self.report(result, cx);
+        } else if let Some(chain) = &self.chain {
+            let result = chain.answer(decision.id, action);
+            self.report(result, cx);
+        }
+        self.close_form(window, cx);
+    }
+
+    pub(super) fn decision_form(&self, cx: &Context<Self>) -> gpui::Div {
+        let Some(decision) = &self.pending_decision else {
+            return div();
+        };
+        let mut form = div().flex().flex_col().gap_3().child(orbit::text(
+            decision.message.clone(),
+            orbit::BODY,
+            500,
+            orbit::INK,
+        ));
+        for (index, &action) in decision.actions.iter().enumerate() {
+            form = form.child(editor::form_button(
+                button(action.label(), action.label()),
+                &self.form_actions[index],
+                move |this, window, cx| this.answer_decision(action, window, cx),
+                cx,
+            ));
+        }
+        form
+    }
+
+    fn poll_resident(&mut self, cx: &mut Context<Self>) {
+        if let Some(status) = vantare_ipc::launcher::read_status(&self.store.path) {
+            let error = status.error.or_else(|| {
+                status
+                    .profiles
+                    .iter()
+                    .find_map(|profile| profile.error.clone())
+            });
+            if error != self.resident_error || self.error.is_none() && error.is_some() {
+                if self.error.is_none() || self.error == self.resident_error {
+                    self.error.clone_from(&error);
+                }
+                self.resident_error = error;
+                cx.notify();
+            }
+            if self.chain.is_none() && !status.progress.is_empty() && self.status != status.progress
+            {
+                self.status = status.progress;
+                cx.notify();
+            }
+            if self.pending_decision.is_none()
+                && self.chain.is_none()
+                && let Some(decision) = status.decision
+                && self.resident_answered != Some(decision.id)
+            {
+                let actions = [
+                    Action::Reuse,
+                    Action::Restart,
+                    Action::Cancel,
+                    Action::Stop,
+                    Action::Continue,
+                    Action::Leave,
+                    Action::CloseStarted,
+                ]
+                .into_iter()
+                .filter(|action| decision.actions.iter().any(|label| label == action.label()))
+                .take(self.form_actions.len())
+                .collect();
+                self.pending_decision = Some(Decision {
+                    id: decision.id,
+                    message: decision.message,
+                    actions,
+                });
+                self.resident_decision = Some(decision.id);
+                cx.notify();
+            }
+        }
     }
 
     fn tick(&mut self, cx: &mut Context<Self>) {
+        self.poll_resident(cx);
         if let Some(chain) = &self.chain {
             let events: Vec<_> = chain.progress.try_iter().collect();
             if !events.is_empty() {
+                for event in &events {
+                    if let Some(decision) = &event.decision {
+                        self.pending_decision = Some(decision.clone());
+                    }
+                }
                 self.progress.extend(events);
                 if self.progress.len() > 512 {
                     self.progress.drain(..self.progress.len() - 512);
@@ -213,6 +438,14 @@ impl Launcher {
             if chain.finished()
                 && let Some(mut chain) = self.chain.take()
             {
+                if self
+                    .pending_decision
+                    .as_ref()
+                    .is_some_and(|decision| decision.id != 0)
+                {
+                    self.pending_decision = None;
+                    self.form_layer = None;
+                }
                 let result = chain.shutdown();
                 self.progress.extend(chain.progress.try_iter());
                 if let Some(event) = self.progress.last() {
@@ -276,6 +509,40 @@ impl Launcher {
         .detach();
     }
 
+    pub fn saved_profiles(&self) -> &[Profile] {
+        &self.store.document.profiles
+    }
+
+    pub fn launch_id(&mut self, id: &str, cx: &mut Context<Self>) {
+        match self
+            .store
+            .document
+            .profiles
+            .iter()
+            .find(|profile| profile.id == id)
+            .cloned()
+        {
+            Some(profile) => self.start(profile, cx),
+            None => self.report(
+                Err("perfil inexistente; vuelve a cargar Launcher".into()),
+                cx,
+            ),
+        }
+    }
+
+    pub fn default_profile_id(&self) -> Option<String> {
+        self.store
+            .document
+            .profiles
+            .iter()
+            .min_by(|a, b| {
+                b.favorite
+                    .cmp(&a.favorite)
+                    .then_with(|| a.name.cmp(&b.name))
+            })
+            .map(|profile| profile.id.clone())
+    }
+
     fn start(&mut self, profile: Profile, cx: &mut Context<Self>) {
         if self.chain.is_some() {
             self.report(
@@ -288,16 +555,42 @@ impl Launcher {
             self.report(Err("espera a terminar el descubrimiento".into()), cx);
             return;
         }
+        if !presentation::launchable(&profile, &self.discovered, false) {
+            self.report(
+                Err("el perfil necesita pasos con aplicaciones disponibles".into()),
+                cx,
+            );
+            return;
+        }
         // Reusar la foto del discovery sin volver a recorrer discos en el hilo UI.
         let found = Discovery {
             apps: self.discovered.apps.clone(),
             steam_executable: self.discovered.steam_executable.clone(),
             warnings: vec![],
         };
-        match Chain::start(self.store.document.clone(), profile, found) {
+        let selected = (0..profile.steps.len()).collect();
+        self.start_selection(profile, found, selected, cx);
+    }
+
+    fn start_selection(
+        &mut self,
+        profile: Profile,
+        found: Discovery,
+        selected: Vec<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        match Chain::start_selected(
+            self.store.document.clone(),
+            profile.clone(),
+            found,
+            self.processes.clone(),
+            selected,
+        ) {
             Ok(chain) => {
+                self.last_profile = Some(profile);
                 self.chain = Some(chain);
                 self.progress.clear();
+                self.exit_answer = None;
                 self.error = None;
                 self.status = "Cadena en marcha".into();
                 cx.notify();
@@ -306,14 +599,20 @@ impl Launcher {
         }
     }
 
-    fn launch_app(&mut self, id: &str, cx: &mut Context<Self>) {
-        let mut profile = Profile::new("single-app".into(), "Lanzamiento individual".into());
-        profile.steps.push(Step {
-            app_id: id.into(),
-            delay_seconds: 0,
-            args_override: None,
-        });
-        self.start(profile, cx);
+    fn retry(&mut self, scope: super::chain::RetryScope, cx: &mut Context<Self>) {
+        if self.chain.is_some() || self.scanning {
+            return;
+        }
+        let Some(profile) = self.last_profile.clone() else {
+            return;
+        };
+        let selected = super::chain::retry_steps(&profile, &self.progress, scope);
+        let found = Discovery {
+            apps: self.discovered.apps.clone(),
+            steam_executable: self.discovered.steam_executable.clone(),
+            warnings: vec![],
+        };
+        self.start_selection(profile, found, selected, cx);
     }
 
     fn app_editor(&mut self, app: Option<App>, window: &mut Window, cx: &mut Context<Self>) {
@@ -325,7 +624,11 @@ impl Launcher {
             id,
             name: input(name, "Nombre de aplicación", cx),
             args: input(args_json(&args), "Argumentos de aplicación en JSON", cx),
-            executable,
+            executable: input(
+                executable.map_or(String::new(), |path| path.display().to_string()),
+                "Ruta de ejecutable",
+                cx,
+            ),
         });
         self.profile_draft = None;
         self.open_form(window, cx);
@@ -353,7 +656,11 @@ impl Launcher {
                     if let Some(draft) = &mut this.app_draft
                         && draft.name == identity
                     {
-                        draft.executable = paths.into_iter().next();
+                        if let Some(path) = paths.into_iter().next() {
+                            draft.executable.update(cx, |field, cx| {
+                                field.set_value(path.display().to_string(), cx);
+                            });
+                        }
                         cx.notify();
                     }
                 }
@@ -377,7 +684,10 @@ impl Launcher {
             }
         };
         let id = draft.id.clone();
-        let path = draft.executable.clone();
+        let path = match draft.executable.read(cx).value.trim() {
+            "" => None,
+            value => Some(PathBuf::from(value)),
+        };
         if self.edit(
             move |document| {
                 if let Some(id) = id {
@@ -420,18 +730,10 @@ impl Launcher {
             .id
             .as_deref()
             .is_some_and(|id| CATALOG.iter().any(|app| app.id == id));
-        let path = draft.executable.as_ref().map_or(
-            if official {
-                "automática".into()
-            } else {
-                "pendiente de elegir".into()
-            },
-            |path| path.display().to_string(),
-        );
         orbit::card("Aplicación · borrador sin guardar").child(
             orbit::card_body()
                 .when_some(self.error.clone(), |body, error| {
-                    body.child(orbit::callout(error))
+                    body.child(presentation::error_panel(error, cx))
                 })
                 .child(orbit::setting_row(
                     "Nombre",
@@ -445,11 +747,12 @@ impl Launcher {
                 ))
                 .child(orbit::setting_row(
                     "Ejecutable",
-                    &path,
+                    "Ruta local; vacia usa descubrimiento para apps oficiales",
                     div()
                         .flex()
                         .flex_wrap()
                         .gap_2()
+                        .child(draft.executable.clone())
                         .child(editor::form_button(
                             button("pick-app-path", "Elegir ejecutable"),
                             &self.form_actions[0],
@@ -460,7 +763,9 @@ impl Launcher {
                             row.child(button("auto-app-path", "Usar descubrimiento").on_click(
                                 cx.listener(|this, _, _, cx| {
                                     if let Some(draft) = &mut this.app_draft {
-                                        draft.executable = None;
+                                        draft.executable.update(cx, |field, cx| {
+                                            field.set_value(String::new(), cx);
+                                        });
                                     }
                                     cx.notify();
                                 }),

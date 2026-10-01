@@ -396,11 +396,14 @@ struct LiveScreens {
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     prefs: Preferences,
     last: Option<Arc<Snapshot>>,
+    last_demand: vantare_ipc::Demand,
+    required: vantare_ipc::Demand,
 }
 
 impl LiveScreens {
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
         self.prefs = layout.preferences;
+        self.required = layout.demand();
         let displays = cx.displays();
         let bounds: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
         // Una instancia oculta conserva la ocupación de su monitor y su HWND.
@@ -443,7 +446,13 @@ impl LiveScreens {
                 .filter(|(instance, _)| instance.visible)
                 .map(|(instance, at)| {
                     let view = cx.new(|_| {
-                        Overlay::with_snapshot(&instance.settings, self.prefs, self.last.as_deref())
+                        Overlay::with_snapshot(
+                            &instance.settings,
+                            self.prefs,
+                            self.last
+                                .as_deref()
+                                .filter(|_| self.last_demand.covers(&instance.settings.demand())),
+                        )
                     });
                     PlacedOverlay {
                         view,
@@ -490,7 +499,12 @@ impl LiveScreens {
         );
     }
 
-    fn ingest(&mut self, snapshot: Arc<Snapshot>, cx: &mut App) {
+    fn ingest(&mut self, photo: vantare_ipc::Photo, cx: &mut App) {
+        if !photo.demand.covers(&self.required) {
+            return;
+        }
+        let snapshot = photo.snapshot;
+        self.last_demand = photo.demand;
         for (_, handle) in &self.screens {
             if let Err(error) = handle.update(cx, |screen, _, cx| {
                 for placed in &screen.widgets {
@@ -508,21 +522,29 @@ impl LiveScreens {
 
 /// Vigila el documento cada 500 ms. El proceso sigue vivo incluso sin ventanas;
 /// solo cambia sus HWND cuando cambia el conjunto de monitores ocupados.
-/// El documento posee las preferencias; el último parámetro se conserva por
-/// compatibilidad de la API y no sustituye el formato persistido.
-pub fn run_layout(
-    path: PathBuf,
-    snapshots: flume::Receiver<Arc<Snapshot>>,
-    prefs: Preferences,
-) -> Result<(), crate::layout::Error> {
-    run_layout_with_rights(path, snapshots, prefs, None)
-}
-
 pub fn run_layout_with_rights(
     path: PathBuf,
     snapshots: flume::Receiver<Arc<Snapshot>>,
-    _prefs: Preferences,
     rights: Option<vantare_ipc::control::Feed>,
+) -> Result<(), crate::layout::Error> {
+    run_layout_feed(path, snapshots, rights, vantare_ipc::Photo::full, None)
+}
+
+pub fn run_layout_requested(
+    path: PathBuf,
+    photos: flume::Receiver<vantare_ipc::Photo>,
+    rights: Option<vantare_ipc::control::Feed>,
+    demand: crate::source::DemandHandle,
+) -> Result<(), crate::layout::Error> {
+    run_layout_feed(path, photos, rights, std::convert::identity, Some(demand))
+}
+
+fn run_layout_feed<T: Send + 'static>(
+    path: PathBuf,
+    snapshots: flume::Receiver<T>,
+    rights: Option<vantare_ipc::control::Feed>,
+    decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
+    demand: Option<crate::source::DemandHandle>,
 ) -> Result<(), crate::layout::Error> {
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -539,12 +561,17 @@ pub fn run_layout_with_rights(
             screens: Vec::new(),
             prefs: document.layout().preferences,
             last: None,
+            last_demand: vantare_ipc::Demand::default(),
+            required: document.layout().demand(),
         }));
+        if let Some(demand) = &demand {
+            demand.set(document.layout().demand());
+        }
         screens.borrow_mut().apply(document.layout(), cx);
         let feed_screens = screens.clone();
         cx.spawn(async move |cx| {
             while let Ok(snapshot) = snapshots.recv_async().await {
-                cx.update(|cx| feed_screens.borrow_mut().ingest(snapshot, cx));
+                cx.update(|cx| feed_screens.borrow_mut().ingest(decode(snapshot), cx));
             }
         })
         .detach();
@@ -557,6 +584,9 @@ pub fn run_layout_with_rights(
                 match document.poll() {
                     Ok(true) => {
                         last_error = None;
+                        if let Some(demand) = &demand {
+                            demand.set(document.layout().demand());
+                        }
                         cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
                     }
                     Ok(false) => last_error = None,
@@ -614,12 +644,8 @@ fn origin_of(index: usize) -> (f32, f32) {
     )
 }
 
-/// Abre `windows` widgets, una ventana por monitor con widgets, y reenvía cada
-/// `Snapshot` del canal a todos. Vuelve cuando se cierra la última ventana.
-pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
-    run_with_rights(windows, snapshots, prefs, None);
-}
-
+/// Abre la cuadrícula de widgets y reenvía cada foto a todas sus ventanas.
+/// Si se pasa `rights`, instala la política de acceso en los overlays.
 pub fn run_with_rights(
     windows: usize,
     snapshots: flume::Receiver<Arc<Snapshot>>,
@@ -630,7 +656,7 @@ pub fn run_with_rights(
     run_placed_authorized(placed, snapshots, prefs, rights);
 }
 
-/// Como [`run`], con los widgets y sus posiciones (px globales de pantalla) dados.
+/// Abre los widgets y sus posiciones (px globales de pantalla) dados.
 pub fn run_placed(
     placed: Vec<(Kind, (f32, f32))>,
     snapshots: flume::Receiver<Arc<Snapshot>>,
@@ -754,8 +780,8 @@ mod tests {
         layout.instances.clear();
         assert_eq!(window_action(true, occupied(&layout)), WindowAction::Close);
         assert_eq!(window_action(false, occupied(&layout)), WindowAction::None);
-        // run_layout usa QuitMode::Explicit; la QA de ventana comprueba que el
-        // proceso continúa tras quitar todas las instancias y vuelve a abrirlas.
+        // QuitMode::Explicit permite recuperar un layout vacío sin reiniciar;
+        // la QA de ventana comprueba ese ciclo.
     }
 
     #[test]

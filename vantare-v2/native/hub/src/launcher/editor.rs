@@ -1111,9 +1111,9 @@ impl Launcher {
             .flex_col()
             .gap(px(12.0))
             .child(orbit::eyebrow("Políticas nativas"))
-            .child(editor_field("Atajo global preparado", draft.hotkey.clone()))
+            .child(editor_field("Atajo global", draft.hotkey.clone()))
             .child(editor_field(
-                "Inicio Windows preparado",
+                "Iniciar con Windows",
                 draft.autostart.clone(),
             ))
             .child(editor_field("Ante un fallo", draft.failure.clone()))
@@ -1127,7 +1127,11 @@ impl Launcher {
                 draft.retries.clone(),
             ))
             .child(orbit::callout(
-                "Atajos globales e inicio de Windows pendientes del propietario residente nativo.",
+                if vantare_ipc::launcher::read_status(&self.store.path).is_some() {
+                    "El supervisor aplica estos ajustes al guardar. Los conflictos de atajo se muestran en Launcher."
+                } else {
+                    "Supervisor no disponible: los ajustes quedan guardados. Inicia la aplicación con vantare para activar los atajos y el inicio Windows."
+                },
             ))
             .when(
                 self.store
@@ -1162,13 +1166,13 @@ fn close_index(policy: Close) -> usize {
     match policy {
         Close::Ask => 0,
         Close::Leave => 1,
-        Close::CloseStarted => 2,
+        Close::Started => 2,
     }
 }
 fn selected_close(selected: Option<usize>) -> Close {
     match selected {
         Some(1) => Close::Leave,
-        Some(2) => Close::CloseStarted,
+        Some(2) => Close::Started,
         _ => Close::Ask,
     }
 }

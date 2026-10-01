@@ -1,7 +1,7 @@
 {
   "capturedAt": "2026-09-30T17:00:00Z",
   "user": { "id": "mock-user", "name": "test", "fullName": "Isaac Albalá", "email": "test@example.com", "plan": "paid" },
-  "profile": { "id": "custom-clean-overlay", "file": "custom-clean-overlay.json", "name": "Clean Overlay", "active": true, "widgets": 3, "width": 1920, "height": 1080, "obsBrowserSourceUrl": "http://127.0.0.1:39261/overlay?profile=custom-clean-overlay.json" },
+  "profile": { "present": true, "id": "custom-clean-overlay", "file": "custom-clean-overlay.json", "name": "Clean Overlay", "active": true, "widgets": 3, "width": 1920, "height": 1080, "obsBrowserSourceUrl": "http://127.0.0.1:39261/overlay?profile=custom-clean-overlay.json" },
   "launcher": {
     "apps": [
       { "id": "lmu", "displayName": "Le Mans Ultimate", "abbreviation": "LMU", "category": "simulator", "launchMethod": "steam-uri", "found": true, "installed": true },
@@ -39,7 +39,7 @@
     ]
   },
   "strategy": {
-    "event": { "startMinute": 840, "durationMinute": 240, "tankLiters": 90, "pitSeconds": 64, "name": "4 Horas de Imola", "subtitle": "ELMS · Imola · horario de muestra", "vehicleClass": "LMGT3", "team": "Vantare Racing · #58", "dayLabel": "Sáb 12" },
+    "event": { "startMinute": 840, "durationMinute": 240, "tankLiters": 90, "pitSeconds": 64, "name": "4 Horas de Imola", "subtitle": "ELMS · Imola · horario de muestra", "vehicleClass": "LMGT3", "car": "Ford Mustang GT3", "track": "Imola", "team": "Vantare Racing · #58", "dayLabel": "Sáb 12" },
     "drivers": [
       { "id": "isaac", "name": "Isaac Albalá", "initials": "IA", "class": "Gold SR · 4.12", "dry": [104.0, 2.75], "wet": [112.4, 2.4], "eco": [105.1, 2.55] },
       { "id": "sol", "name": "Sol Martín", "initials": "SM", "class": "Gold SR · 3.88", "dry": [104.6, 2.72], "wet": [113.0, 2.38], "eco": [105.7, 2.52] },

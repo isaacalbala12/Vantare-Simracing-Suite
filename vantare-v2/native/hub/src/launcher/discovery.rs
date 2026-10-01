@@ -1,6 +1,6 @@
 //! Discovery acotado: hechos locales, sin persistir detecciones ni consultar red.
+use super::files;
 use super::{App, CATALOG, is_executable};
-use crate::files;
 use std::{
     collections::BTreeMap,
     fs,
@@ -224,28 +224,6 @@ fn read_vdf(path: &Path, warnings: &mut Vec<String>) -> Option<String> {
 }
 
 impl Discovery {
-    pub fn demo(data: &crate::demo::DemoData) -> Self {
-        Self {
-            apps: data
-                .launcher
-                .apps
-                .iter()
-                .map(|app| Detected {
-                    id: app.id.clone(),
-                    executable: None,
-                    source: "fixture demo Wails",
-                    availability: Availability {
-                        catalogued: true,
-                        found: app.found,
-                        installed: app.installed,
-                        launchable: false,
-                    },
-                })
-                .collect(),
-            ..Self::default()
-        }
-    }
-
     pub fn scan(apps: &[App], mut sources: Sources) -> Self {
         let mut result = Self {
             warnings: std::mem::take(&mut sources.warnings),

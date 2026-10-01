@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services"]
+members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy"]
 # DuckDB bundled solo se compila al pedir storage o los gates --workspace.
-default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services"]
+default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services", "strategy"]
 
 [workspace.package]
 version = "0.0.0"
@@ -33,3 +33,7 @@ gpui_windows = { path = "vendor/gpui_windows" }
 # enlaza más rápido y los target/ ocupan ~25 % menos.
 [profile.dev]
 debug = "line-tables-only"
+
+# El solver de Strategy es cálculo puro con plazo real: optimizado también en debug/tests.
+[profile.dev.package.vantare-strategy]
+opt-level = 3

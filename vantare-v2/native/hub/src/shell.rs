@@ -290,6 +290,32 @@ impl Hub {
             .into_any_element()
     }
 
+    /// Controles propios de la sección para la ranura de la barra superior.
+    fn section_actions(
+        &mut self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Option<gpui::AnyElement> {
+        match self.section {
+            Section::Launcher => {
+                let available_width = f32::from(window.viewport_size().width)
+                    - orbit::RAIL_W
+                    - if self.shell.column_open {
+                        orbit::COLUMN_W
+                    } else {
+                        0.0
+                    };
+                Some(self.launcher.update(cx, |launcher, cx| {
+                    launcher
+                        .topbar_actions(available_width, cx)
+                        .into_any_element()
+                }))
+            }
+            Section::Studio => Some(self.studio.read(cx).topbar_controls().into_any_element()),
+            _ => None,
+        }
+    }
+
     /// Columna contextual de la sección activa; Strategy la oculta si su vista no la usa.
     fn section_column(
         &mut self,
@@ -333,20 +359,7 @@ impl Render for Hub {
             return self.render_fullscreen(window, cx);
         }
         let rail = self.rail(cx);
-        let section_actions = (self.section == Section::Launcher).then(|| {
-            let available_width = f32::from(window.viewport_size().width)
-                - orbit::RAIL_W
-                - if self.shell.column_open {
-                    orbit::COLUMN_W
-                } else {
-                    0.0
-                };
-            self.launcher.update(cx, |launcher, cx| {
-                launcher
-                    .topbar_actions(available_width, cx)
-                    .into_any_element()
-            })
-        });
+        let section_actions = self.section_actions(window, cx);
         let topbar = self.topbar(window, section_actions, cx);
         if self
             .capture

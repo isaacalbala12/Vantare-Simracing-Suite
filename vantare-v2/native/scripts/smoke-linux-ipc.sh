@@ -9,20 +9,23 @@ run_dir="$(mktemp -d "$evidence_root/ipc-smoke.XXXXXX")"
 core_log="$run_dir/core.log"
 hub_log="$run_dir/hub.log"
 build_log="$run_dir/build.log"
+platform="$(uname -s)"
 core_pid=""
 hub_pid=""
+core_stdin_open=false
+hub_stdin_open=false
 
 close_hub_stdin() {
-    if [[ ${hub_stdin_fd:-} =~ ^[0-9]+$ ]]; then
-        exec {hub_stdin_fd}>&-
-        unset hub_stdin_fd
+    if [[ $hub_stdin_open == true ]]; then
+        exec 8>&-
+        hub_stdin_open=false
     fi
 }
 
 close_core_stdin() {
-    if [[ ${core_stdin_fd:-} =~ ^[0-9]+$ ]]; then
-        exec {core_stdin_fd}>&-
-        unset core_stdin_fd
+    if [[ $core_stdin_open == true ]]; then
+        exec 9>&-
+        core_stdin_open=false
     fi
 }
 
@@ -50,11 +53,11 @@ if [[ -z ${WAYLAND_DISPLAY:-} && -z ${DISPLAY:-} && -n ${XDG_RUNTIME_DIR:-} ]]; 
         fi
     done
 fi
-if [[ -z ${WAYLAND_DISPLAY:-} && -z ${DISPLAY:-} ]]; then
+if [[ $platform == Linux && -z ${WAYLAND_DISPLAY:-} && -z ${DISPLAY:-} ]]; then
     echo "Hub requiere una sesión gráfica X11 o Wayland accesible." >&2
     exit 2
 fi
-if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+if [[ $platform == Linux && -n ${WAYLAND_DISPLAY:-} ]]; then
     if [[ $WAYLAND_DISPLAY = /* ]]; then
         wayland_socket="$WAYLAND_DISPLAY"
     else
@@ -68,10 +71,24 @@ fi
 if [[ -z ${DBUS_SESSION_BUS_ADDRESS:-} && -n ${XDG_RUNTIME_DIR:-} && -S "$XDG_RUNTIME_DIR/bus" ]]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 fi
-if ! command -v ss >/dev/null 2>&1; then
-    echo "Falta ss (paquete iproute2), necesario para confirmar el socket conectado." >&2
-    exit 2
-fi
+case "$platform" in
+    Linux)
+        if ! command -v ss >/dev/null 2>&1; then
+            echo "Falta ss (paquete iproute2), necesario para confirmar el socket conectado." >&2
+            exit 2
+        fi
+        ;;
+    Darwin)
+        if ! command -v lsof >/dev/null 2>&1; then
+            echo "Falta lsof, necesario para confirmar el socket conectado." >&2
+            exit 2
+        fi
+        ;;
+    *)
+        echo "El smoke IPC solo admite Linux y macOS (plataforma: $platform)." >&2
+        exit 2
+        ;;
+esac
 
 fixture="$native_dir/../testdata/lmu-fixture.bin"
 core_bin="$native_dir/target/debug/vantare-core"
@@ -89,13 +106,18 @@ if ! (
 fi
 
 pipe_name="vantare-1437-smoke-$(id -u)-$$"
-runtime_root="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+if [[ $platform == Darwin ]]; then
+    runtime_root="${XDG_RUNTIME_DIR:-/tmp}"
+else
+    runtime_root="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+fi
 socket_path="$runtime_root/vantare-ipc-$(id -u)/$pipe_name.sock"
 mkfifo "$run_dir/core.stdin"
-"$core_bin" --replay "$fixture" --build 1.3.0.0 --pipe "$pipe_name" \
+"$core_bin" --replay "$fixture" --build 1.3.0.0 --pipe "$pipe_name" 8>&- 9>&- \
     <"$run_dir/core.stdin" >"$core_log" 2>&1 &
 core_pid=$!
-exec {core_stdin_fd}>"$run_dir/core.stdin"
+exec 9>"$run_dir/core.stdin"
+core_stdin_open=true
 
 for attempt in {1..100}; do
     [[ -S $socket_path ]] && break
@@ -113,17 +135,26 @@ if [[ ! -S $socket_path ]]; then
 fi
 
 mkfifo "$run_dir/hub.stdin"
-"$hub_bin" --demo --pipe "$pipe_name" --control-stdin \
+"$hub_bin" --demo --pipe "$pipe_name" --control-stdin 8>&- 9>&- \
     --data-dir "$run_dir/data" --layout "$run_dir/layout.json" \
     --engineer-settings "$run_dir/engineer.json" \
     --launcher-file "$run_dir/launcher.json" \
     <"$run_dir/hub.stdin" >"$hub_log" 2>&1 &
 hub_pid=$!
-exec {hub_stdin_fd}>"$run_dir/hub.stdin"
+exec 8>"$run_dir/hub.stdin"
+hub_stdin_open=true
 
 connected=false
 for attempt in {1..100}; do
-    if ss -xH | grep -F "$socket_path" | grep -q 'ESTAB'; then
+    if [[ $platform == Darwin ]] && \
+        lsof -nP -U -a -p "$core_pid" 2>/dev/null | \
+            awk -v path="$socket_path" -v pid="$core_pid" \
+                'NR > 1 && $2 == pid && $5 == "unix" && index($0, path) > 0 { count++ }
+                 END { exit count > 1 ? 0 : 1 }'; then
+        connected=true
+        break
+    elif [[ $platform == Linux ]] && \
+        ss -xH | grep -F "$socket_path" | grep -q 'ESTAB'; then
         connected=true
         break
     fi
@@ -158,6 +189,9 @@ elif command -v gdbus >/dev/null 2>&1 && [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]] 
     gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Screenshot \
         --method org.gnome.Shell.Screenshot.Screenshot false false "$screenshot" \
         >"$run_dir/screenshot.log" 2>&1; then
+    captured=true
+elif [[ $platform == Darwin ]] && command -v screencapture >/dev/null 2>&1 && \
+    screencapture -x "$screenshot" >"$run_dir/screenshot.log" 2>&1; then
     captured=true
 else
     echo "IPC confirmado; la sesión no permitió capturar la pantalla. Detalle: $run_dir/screenshot.log" >&2

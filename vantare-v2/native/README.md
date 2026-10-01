@@ -134,6 +134,45 @@ Núcleo y overlays en procesos separados unidos por el pipe (topología B de la
 ADR 0099). La variante con todo en un proceso (A) se midió en la fase 0 y se
 retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
+## Desarrollar en Linux y macOS
+
+La base Unix (#1437) permite trabajar en `domain`, `ipc`, `storage`, `ui` y el
+workspace independiente `strategy`. IPC usa los mismos DTO, cursores, límites y
+nonce que Windows, mediante sockets de dominio Unix 0600 en un directorio 0700
+por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp` en macOS, para no
+superar el límite de longitud del socket). Verifica UID, PID e imagen del par;
+retira el socket al cerrar y recupera sockets huérfanos tras una caída. Los
+ficheros `.lock` quedan para evitar carreras al reutilizar nombres.
+
+En Ubuntu, además de Rust fijado por `rust-toolchain.toml`, instala las
+herramientas y bibliotecas usadas por la revisión de GPUI y DuckDB:
+
+```sh
+sudo apt-get install build-essential clang cmake pkg-config libasound2-dev \
+  libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 \
+  libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev
+cd vantare-v2/native
+cargo check -p vantare-domain -p vantare-ipc -p vantare-storage -p vantare-ui --all-targets -j 4
+cargo clippy --no-deps -p vantare-domain -p vantare-ipc -p vantare-storage -p vantare-ui --all-targets -j 4 -- -D warnings
+cargo test -p vantare-domain -p vantare-ipc -p vantare-storage -p vantare-ui -j 4
+(cd strategy && cargo check --workspace --all-targets -j 4 && \
+  cargo clippy --workspace --all-targets -j 4 -- -D warnings && cargo test --workspace -j 4)
+# Workshop con escena grabada, sin núcleo ni telemetría live:
+cargo run -p vantare-ui --bin vantare-workshop
+```
+
+El clippy local usa `--no-deps` para separar el código asignado de los
+pendientes de `services`/`runtime`; el gate global sin exclusiones queda pendiente
+hasta completar esos portes.
+
+GPUI necesita una sesión gráfica X11/Wayland y un driver Vulkan en Linux; en
+macOS, las herramientas de desarrollo de Xcode. Esta entrega se verifica en
+Linux: compilación/ejecución macOS debe validarse en un Mac. Hub/Studio y replay
+con el núcleo requieren completar los portes de `hub`, `services`, `runtime`
+y `engineer` antes de pasar los gates del workspace completo. Las ventanas Unix
+son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX y
+paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
+
 ## Compilar y probar
 
 ```powershell

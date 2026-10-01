@@ -450,6 +450,8 @@ mod tests {
             restarts: 5,
             instance: "test-1".into(),
             stop_only: false,
+            launcher_file: None,
+            launch: None,
         };
         configure(&mut config).expect("configurar canales");
         let pipe = config

@@ -516,6 +516,7 @@ impl Engineer {
         card
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn native_settings(&self, cx: &Context<Self>) -> gpui::Div {
         let settings = self.settings();
         let mut locales = div().flex().flex_wrap().gap(px(8.0));
@@ -625,6 +626,7 @@ impl Engineer {
             )
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn configuration_section(&self, cx: &Context<Self>) -> gpui::Div {
         let settings = self.settings();
         let view = self.model.view(self.model.now());

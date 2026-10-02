@@ -169,6 +169,7 @@ fn keycap(label: &'static str, cx: &gpui::App) -> Div {
 
 /// Ejecuta el mismo Ctrl+K que la shell, incluido foco, cierre y teclado.
 /// No monta otra paleta ni mantiene otro estado de búsqueda.
+#[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
 fn command(cx: &gpui::App) -> Stateful<Div> {
     orbit::button("home-command", "", cx)
         .w_full()

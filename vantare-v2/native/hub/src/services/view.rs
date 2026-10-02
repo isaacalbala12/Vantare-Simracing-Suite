@@ -924,6 +924,7 @@ impl Remote {
         self.editor.render(cx)
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub fn roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         if !self.roadmap_requested && !self.busy {
             self.roadmap_requested = true;

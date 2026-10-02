@@ -540,6 +540,7 @@ impl Strategy {
         (simulator, car, circuit)
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub(crate) fn context_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
         let (simulator, car, circuit) = self.context_identity();
         let selected_new = context_new_selected(self.page);

@@ -982,6 +982,7 @@ impl Hub {
                     }),
             )
     }
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
         let aligned = aligned_navigation(self.settings.page);
@@ -1368,6 +1369,7 @@ impl Hub {
          cx)
         .flex_1()
     }
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
         let colors = [
             ("Vantare", 0x00f6_e8e8, 0x00a9_1d3e),
@@ -1379,11 +1381,12 @@ impl Hub {
             ("Grises", 0x00e9_e9e9, 0x0030_3030),
         ];
         let settings = self.settings.appearance.settings;
-        let selected_scheme = Some(match settings.scheme {
+        let scheme_index = match settings.scheme {
             orbit::theme::Scheme::System => 0,
             orbit::theme::Scheme::Light => 1,
             orbit::theme::Scheme::Dark => 2,
-        });
+        };
+        let selected_scheme = Some(scheme_index);
         let mut palettes = div().w_full().mt(px(16.0)).flex().flex_wrap().gap(px(6.0));
         for (index, (name, light, dark)) in colors.into_iter().enumerate() {
             palettes = palettes.child(
@@ -1429,7 +1432,7 @@ impl Hub {
                 .child(section_row(
                     "Apariencia",
                     "Elige claro, oscuro o sigue el ajuste de Windows.",
-                    reference_schemes(selected_scheme.unwrap_or(2), self, cx),
+                    reference_schemes(scheme_index, self, cx),
                  cx))
                 .child(section_row(
                     "Contraste",
@@ -1508,7 +1511,7 @@ impl Hub {
                 gpui::canvas(
                     move |bounds, _, cx| {
                         entity.update(cx, |hub, _| {
-                            hub.settings.appearance_bounds[index] = Some(bounds)
+                            hub.settings.appearance_bounds[index] = Some(bounds);
                         });
                     },
                     |_, (), _, _| {},

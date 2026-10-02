@@ -792,6 +792,7 @@ impl Launcher {
         favorites
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub fn context_column(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
         let query = self.query.read(cx).value.clone();
         let favorites = self.context_favorites(&query, cx);

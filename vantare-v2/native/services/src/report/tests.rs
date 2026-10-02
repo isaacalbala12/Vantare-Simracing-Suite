@@ -127,10 +127,10 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
     assert_ne!(retry.id, preview.id);
     // Hold only this test's draft file without delete sharing: simulate cleanup failure.
     let held = hold_draft(&root);
-    let (receipt, cleanup_pending) = restored
+    let (receipt, draft_state) = restored
         .send(&request, &retry.id, &store)
         .expect("confirmed send");
-    assert!(cleanup_pending);
+    assert_eq!(draft_state, DraftState::CleanupPending);
     assert!(receipt.idempotent);
     assert_eq!(receipt.report_id, report_id);
     drop(held);
@@ -150,6 +150,85 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
     crate::cleanup_store(
         &root,
         "report-retry",
+        &["account", "report-draft", "report-attempt"],
+    );
+}
+
+#[test]
+fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
+    let report_id = format!("report_{}", crate::random_id().expect("entropy"));
+    let server = Server::start(vec![
+        (200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":crate::random_id().expect("entropy"),"expires_at":160}).to_string()),
+        (503, "{}".into()),
+        (200, serde_json::json!([{"report_id":report_id,"report_state":"submitted","idempotent":true,"created_at":"2026-09-30T10:00:00Z"}]).to_string()),
+    ]);
+    let (root, store) = crate::test_store("report-new-draft");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server.base.join("bridge").expect("url"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("bridge");
+    server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("bridge request");
+    let request = session.request(&http, &config, &account, 100);
+    let first_draft = save_draft(&store, fields()).expect("first draft");
+    let mut reports = Reports::restore(&store).expect("reports");
+    let preview = reports
+        .prepare(&request, first_draft.clone(), environment())
+        .expect("preview");
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::Uncertain)
+    ));
+    let first = server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("first submit");
+    let mut edited = fields();
+    edited.observed_text = "Nuevo informe sin enviar".into();
+    let later_draft = save_draft(&store, edited).expect("later draft");
+    assert_ne!(first_draft.idempotency_key, later_draft.idempotency_key);
+    let retry = reports.prepare_retry(&request, "nightly").expect("retry");
+    assert_eq!(retry.payload, preview.payload);
+    let (receipt, draft_state) = reports.send(&request, &retry.id, &store).expect("receipt");
+    assert_eq!(draft_state, DraftState::Preserved);
+    assert_eq!(
+        serde_json::to_value(load_draft(&store).expect("draft")).expect("json"),
+        serde_json::to_value(Some(&later_draft)).expect("json")
+    );
+    let second = server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("retry submit");
+    assert_text_only_retry(&first, &second, &retry);
+    let mut restored = Reports::restore(&store).expect("restore");
+    assert_eq!(
+        restored.draft_state(&store).expect("draft state"),
+        DraftState::Preserved
+    );
+    assert_eq!(
+        restored.receipt().expect("durable receipt").report_id,
+        receipt.report_id
+    );
+    assert!(matches!(
+        restored.prepare_retry(&request, "nightly"),
+        Err(Error::Conflict)
+    ));
+    assert_eq!(
+        serde_json::to_value(load_draft(&store).expect("durable draft")).expect("json"),
+        serde_json::to_value(Some(&later_draft)).expect("json")
+    );
+    assert!(server.requests.try_recv().is_err());
+    server.finish();
+    drop(store);
+    crate::cleanup_store(
+        &root,
+        "report-new-draft",
         &["account", "report-draft", "report-attempt"],
     );
 }

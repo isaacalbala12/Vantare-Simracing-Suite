@@ -23,6 +23,11 @@ común, HTTP/URL opcionales. Las pruebas de runtime habilitan network solo como
 dev-dependency. Cargo unifica features en una compilación conjunta: ese grafo
 no se presenta como prueba de ausencia de TLS en el artefacto completo.
 
+IPC v2 distingue en `ReportReceipt` un borrador limpiado, otro posterior
+conservado y una limpieza pendiente. Confirmar un reintento solo retira el
+borrador con su misma idempotency key; un error de lectura conserva el archivo.
+Hub, supervisor y auxiliar comparten el contrato y deben compilarse juntos.
+
 Sin configuración se muestra «servicio no configurado», con funciones básicas
 y borradores locales. La hora de excepción solo aplica a derechos válidos al
 entrar a la sesión live; no hay otra gracia offline. Límite de restauración

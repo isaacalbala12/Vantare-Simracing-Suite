@@ -413,7 +413,12 @@ impl App {
                 {
                     return Ok(Reply::ReportReceipt {
                         receipt: receipt.clone(),
-                        cleanup_pending: crate::report::load_draft(store)?.is_some(),
+                        draft_state: self
+                            .reports
+                            .as_ref()
+                            .ok_or(Error::Storage)?
+                            .draft_state(store)
+                            .unwrap_or(crate::protocol::DraftState::CleanupPending),
                     });
                 }
             }
@@ -448,10 +453,10 @@ impl App {
                     .prepare_retry(&request, self.config.channel.ok_or(Error::Unconfigured)?)?,
             }),
             Command::ReportSend { preview_id } => {
-                let (receipt, cleanup_pending) = reports.send(&request, &preview_id, store)?;
+                let (receipt, draft_state) = reports.send(&request, &preview_id, store)?;
                 Ok(Reply::ReportReceipt {
                     receipt,
-                    cleanup_pending,
+                    draft_state,
                 })
             }
             _ => Err(Error::Protocol),

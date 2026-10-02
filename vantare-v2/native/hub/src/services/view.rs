@@ -410,12 +410,7 @@ impl Remote {
                                     if this.report_revision==Some(this.editor.revision) { this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
                                     else { this.editor.message="Texto cambiado; vuelva a revisar el envío".into(); }
                                 },
-                                Reply::ReportReceipt { receipt,cleanup_pending }=>{
-                                    let changed=this.report_revision!=Some(this.editor.revision);
-                                    if !changed && !cleanup_pending { this.editor=crate::testing::Editor::new(crate::testing::empty_fields(),cx); }
-                                    this.editor.preview=None;
-                                    this.editor.message=format!("Recibo guardado: {} · {}{}",receipt.report_id,receipt.created_at,if cleanup_pending { " · borrador pendiente de limpiar" } else { "" });
-                                },
+                                Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
                             }
                             if let Some(command) = access::follow_up(this.account.pending, &mut this.account.cancel_login, check_session) {
                                 this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
@@ -433,6 +428,29 @@ impl Remote {
             }
         })
         .detach();
+    }
+
+    fn report_receipt(
+        &mut self,
+        receipt: &super::protocol::report_document::Receipt,
+        draft_state: super::protocol::DraftState,
+        cx: &mut Context<Self>,
+    ) {
+        use super::protocol::DraftState;
+        let changed = self.report_revision != Some(self.editor.revision);
+        if !changed && draft_state == DraftState::Cleared {
+            self.editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
+        }
+        self.editor.preview = None;
+        let draft_message = match draft_state {
+            DraftState::Cleared => "",
+            DraftState::Preserved => " · borrador posterior conservado",
+            DraftState::CleanupPending => " · borrador pendiente de limpiar",
+        };
+        self.editor.message = format!(
+            "Recibo guardado: {} · {}{}",
+            receipt.report_id, receipt.created_at, draft_message
+        );
     }
 
     fn account_identity_actions(&self, cx: &mut Context<Self>) -> gpui::Div {

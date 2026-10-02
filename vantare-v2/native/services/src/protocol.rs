@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 #[path = "report_document.rs"]
 pub mod report_document;
 #[path = "roadmap_document.rs"]
@@ -70,7 +70,7 @@ pub enum Reply {
     },
     ReportReceipt {
         receipt: report_document::Receipt,
-        cleanup_pending: bool,
+        draft_state: DraftState,
     },
     Roadmap {
         publication: Option<roadmap_document::Publication>,
@@ -87,6 +87,15 @@ pub enum Reply {
     Error {
         message: String,
     },
+}
+
+/// Estado local tras confirmar un informe; conservar otro borrador no es un fallo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DraftState {
+    Cleared,
+    Preserved,
+    CleanupPending,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

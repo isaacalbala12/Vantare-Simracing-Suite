@@ -47,6 +47,8 @@ pub use subscriber::Subscriber;
 /// dueño del protocolo decide codec y ACK.
 #[cfg(any(windows, unix))]
 pub mod transport {
+    #[cfg(unix)]
+    pub use crate::pipe::lock_endpoint;
     pub use crate::pipe::{Event, IO_TIMEOUT, Listener, Peer, Pipe, connect};
 }
 

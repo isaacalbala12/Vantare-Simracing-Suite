@@ -217,7 +217,7 @@ fn weather_and_damage_expire_with_their_blocks() {
         .state;
     near(state.session.weather.air_temperature_k, 289.15);
     assert!(matches!(
-        state.player.expect("jugador").damage.tyre_wear[0],
+        state.player.as_ref().expect("jugador").damage.tyre_wear[0],
         Quality::Stale(_)
     ));
     assert_eq!(
@@ -231,12 +231,110 @@ fn write(bytes: &mut [u8], at: usize, value: f64) {
 }
 
 #[test]
+fn all_telemetry_signals_follow_their_clock_and_recovery() {
+    // Frontera controlada sobre captura real; el delta no nulo tiene referencia.
+    for timed in [false, true] {
+        let mut bytes = REAL_44.to_vec();
+        write(&mut bytes, PLAYER + 696, 0.25);
+        if timed {
+            write(&mut bytes, PLAYER + 12, 112.6);
+        }
+        let mut t = Translator::new(SourceKind::Replay);
+        let initial = t
+            .observe(&bytes, "1.3.0.0", Duration::ZERO)
+            .expect("inicial");
+        let initial = initial.state.player.expect("jugador");
+        for (now, advance, stale) in [
+            (600_u32, false, true),
+            (800, true, true),
+            (2800, true, false),
+        ] {
+            write(&mut bytes, 1700, 112.6 + f64::from(now) / 1000.0);
+            if advance {
+                if timed {
+                    write(&mut bytes, PLAYER + 12, 112.6 + f64::from(now) / 1000.0);
+                } else {
+                    write(&mut bytes, PLAYER + 404, f64::from(now) / 10000.0);
+                }
+            }
+            let state = t
+                .observe(&bytes, "1.3.0.0", Duration::from_millis(u64::from(now)))
+                .expect("paso")
+                .state;
+            let p = state.player.as_ref().expect("jugador");
+            let expected = |q| stale_quality(q, stale);
+            assert_eq!(p.telemetry.throttle, expected(initial.telemetry.throttle));
+            assert_eq!(p.telemetry.brake, expected(initial.telemetry.brake));
+            assert_eq!(p.telemetry.clutch, expected(initial.telemetry.clutch));
+            assert_eq!(
+                p.telemetry.gear,
+                stale_quality(initial.telemetry.gear, stale)
+            );
+            assert_eq!(p.telemetry.speed_mps, expected(initial.telemetry.speed_mps));
+            assert_eq!(
+                p.telemetry.engine_speed_rad_s,
+                expected(initial.telemetry.engine_speed_rad_s)
+            );
+            assert_eq!(p.fuel.level_l, expected(initial.fuel.level_l));
+            assert_eq!(p.fuel.capacity_l, expected(initial.fuel.capacity_l));
+            assert_eq!(p.delta_best_s, expected(initial.delta_best_s));
+            assert!(if stale {
+                matches!(p.telemetry.steering, Quality::Stale(_))
+            } else {
+                matches!(p.telemetry.steering, Quality::Reliable(_))
+            });
+            let cap = if stale {
+                Capability::WithData
+            } else {
+                Capability::Fresh
+            };
+            assert_eq!(
+                [
+                    state.capabilities.driver_inputs,
+                    state.capabilities.powertrain,
+                    state.capabilities.fuel,
+                    state.capabilities.delta
+                ],
+                [cap; 4]
+            );
+            // El scoring permanece fresco aunque caduque la telemetría.
+            assert_eq!(state.capabilities.positions, Capability::Fresh);
+            let mut core = crate::core::Core::new(1);
+            core.observe(Observation {
+                origin: Origin {
+                    source: Source {
+                        simulator: "lmu",
+                        kind: SourceKind::Replay,
+                    },
+                    source_time: Some(Duration::from_millis(u64::from(now))),
+                    received_at: Duration::from_millis(u64::from(now)),
+                },
+                state,
+            })
+            .expect("núcleo");
+            let snapshot = core.snapshot();
+            let player = snapshot.state.player.as_ref().expect("jugador en núcleo");
+            assert_eq!(
+                player.telemetry.throttle,
+                expected(initial.telemetry.throttle)
+            );
+            assert_eq!(player.fuel.level_l, expected(initial.fuel.level_l));
+            assert_eq!(snapshot.state.capabilities.powertrain, cap);
+        }
+    }
+}
+
+#[test]
 fn scoring_freeze_does_not_expire_a_running_telemetry_clock() {
     let mut bytes = REAL_44.to_vec();
     write(&mut bytes, PLAYER + 12, 112.6);
     let mut t = Translator::new(SourceKind::Replay);
-    t.observe(&bytes, "1.3.0.0", Duration::ZERO)
-        .expect("primero");
+    let initial = t
+        .observe(&bytes, "1.3.0.0", Duration::ZERO)
+        .expect("primero")
+        .state
+        .player
+        .expect("jugador inicial");
     write(&mut bytes, PLAYER + 12, 113.2);
     let state = t
         .observe(&bytes, "1.3.0.0", Duration::from_millis(600))
@@ -247,12 +345,23 @@ fn scoring_freeze_does_not_expire_a_running_telemetry_clock() {
         Quality::Stale(_)
     ));
     near(
-        state.player.expect("jugador").damage.tyre_wear[0],
+        state.player.as_ref().expect("jugador").damage.tyre_wear[0],
         0.999_603_688_716_888_4,
     );
     assert_eq!(
         (state.capabilities.weather, state.capabilities.damage),
         (Capability::WithData, Capability::Fresh)
+    );
+    let player = state.player.expect("jugador fresco por telemetría");
+    assert_eq!(player.telemetry, initial.telemetry);
+    assert_eq!(player.fuel, initial.fuel);
+    assert_eq!(
+        [
+            state.capabilities.driver_inputs,
+            state.capabilities.powertrain,
+            state.capabilities.fuel
+        ],
+        [Capability::Fresh; 3]
     );
 }
 

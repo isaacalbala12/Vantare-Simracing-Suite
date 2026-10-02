@@ -2,6 +2,108 @@
 use super::*;
 
 #[test]
+#[allow(unsafe_code)] // Mappings Win32 propios, igual que tests/acc/shm.rs.
+fn broken_broadcasting_configuration_does_not_skip_shared_memory() {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Memory::{
+        CreateFileMappingW, FILE_MAP_WRITE, MapViewOfFile, PAGE_READWRITE, UnmapViewOfFile,
+    };
+    let path = std::env::temp_dir().join(format!("vantare-acc-broken-{}.json", std::process::id()));
+    let mut acc = Acc::with_config_path(path.clone());
+    let mut owners = Vec::new();
+    for (i, size) in PAGE_SIZES.into_iter().enumerate() {
+        let name = format!("Local\\vantare-acc-partial-{}-{i}", std::process::id());
+        let wide: Vec<u16> = name.encode_utf16().chain([0]).collect();
+        // SAFETY: mapping anónimo propio del tamaño verificado y nombre NUL válido.
+        let raw = unsafe {
+            CreateFileMappingW(
+                INVALID_HANDLE_VALUE,
+                std::ptr::null(),
+                PAGE_READWRITE,
+                0,
+                u32::try_from(size).expect("tamaño de página"),
+                wide.as_ptr(),
+            )
+        };
+        assert!(!raw.is_null());
+        // SAFETY: handle nuevo con dueño único.
+        let owner = unsafe { OwnedHandle::from_raw_handle(raw) };
+        // SAFETY: mapping vivo de size bytes; se libera la vista tras la copia.
+        let view = unsafe { MapViewOfFile(owner.as_raw_handle(), FILE_MAP_WRITE, 0, 0, size) };
+        assert!(!view.Value.is_null());
+        let mut bytes = vec![0; size];
+        if i == 2 {
+            for (offset, text) in [(0, "1.9"), (30, "1.7")] {
+                for (j, unit) in text.encode_utf16().enumerate() {
+                    bytes[offset + j * 2..offset + j * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+                }
+            }
+        } else {
+            bytes[..4].copy_from_slice(&1_i32.to_le_bytes());
+            if i == 0 {
+                bytes[4..8].copy_from_slice(&0.75_f32.to_le_bytes());
+            }
+            if i == 1 {
+                bytes[4..8].copy_from_slice(&2_i32.to_le_bytes());
+            }
+        }
+        // SAFETY: origen y vista propios, ambos de size bytes, sin escritor concurrente.
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), view.Value.cast::<u8>(), size);
+        }
+        // SAFETY: vista propia, ya no se utiliza.
+        assert_ne!(unsafe { UnmapViewOfFile(view) }, 0);
+        acc.pages[i] = Some(Page::open(&name, size).expect("SHM de test"));
+        owners.push(owner);
+    }
+    for (second, config) in ["{invalid}", "{\"udpListenerPort\":0}"]
+        .into_iter()
+        .enumerate()
+    {
+        std::fs::write(&path, config).expect("config defectuosa propia");
+        let observation = acc
+            .poll(Duration::from_secs(
+                u64::try_from(second).expect("instante"),
+            ))
+            .expect("SHM sigue disponible")
+            .expect("foto");
+        let expected = if second == 0 {
+            vantare_domain::Quality::Reliable(0.75)
+        } else {
+            vantare_domain::Quality::Stale(0.75)
+        };
+        assert_eq!(
+            observation
+                .state
+                .player
+                .expect("jugador")
+                .telemetry
+                .throttle,
+            expected
+        );
+        assert!(acc.socket.is_none());
+    }
+    let server = UdpSocket::bind("127.0.0.1:0").expect("UDP vector");
+    server
+        .set_read_timeout(Some(Duration::from_secs(1)))
+        .expect("plazo");
+    std::fs::write(
+        &path,
+        format!(
+            "{{\"udpListenerPort\":{}}}",
+            server.local_addr().expect("puerto").port()
+        ),
+    )
+    .expect("reparar");
+    let _observation = acc.poll(Duration::from_secs(2)).expect("config reparada");
+    assert!(acc.socket.is_some());
+    let mut buf = [0; 512];
+    assert!(server.recv(&mut buf).expect("registro recuperado") > 2);
+    std::fs::remove_file(path).expect("limpiar config propia");
+}
+
+#[test]
 fn udp_registration_requests_unknown_car_throttling_and_reconnect() {
     let server = UdpSocket::bind("127.0.0.1:0").expect("servidor de test");
     server

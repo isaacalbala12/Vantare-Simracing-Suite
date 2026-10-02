@@ -225,6 +225,7 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let mut core = Core::with_event_base(events.base())?;
     let mut publisher = Publisher::new(&pipe, |_| true)?;
+    let demand = publisher.demand_source();
     let stop = Arc::new(AtomicBool::new(false));
     let stop_on_eof = Arc::clone(&stop);
     thread::spawn(move || {
@@ -235,7 +236,13 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
     let mut sent = 0;
     let mut last_error = String::new();
+    let mut demand_revision = u64::MAX;
     while !stop.load(Ordering::Acquire) {
+        let revision = demand.revision();
+        if revision != demand_revision {
+            core.set_demand_mask(demand.mask());
+            demand_revision = revision;
+        }
         match core.step(adapter.as_mut(), started.elapsed().mul_f64(speed)) {
             Ok(()) => last_error.clear(),
             Err(error) if error.to_string() != last_error => {

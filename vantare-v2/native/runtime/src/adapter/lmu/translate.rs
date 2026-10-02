@@ -376,35 +376,35 @@ impl Translator {
     }
 }
 
-fn player(vehicle: &Vehicle, car: CarId, stale: bool, damage_stale: bool) -> Player {
+fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> Player {
     let inputs = vehicle.inputs.as_ref();
     Player {
         car,
         telemetry: inputs.map_or_else(Telemetry::default, |inputs| Telemetry {
-            throttle: quality(inputs.throttle, stale),
-            brake: quality(inputs.brake, stale),
-            clutch: quality(inputs.clutch, stale),
-            steering: quality(inputs.steering, stale || damage_stale),
-            gear: quality(inputs.gear, stale),
-            speed_mps: quality(inputs.speed_mps, stale),
-            engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
+            throttle: quality(inputs.throttle, telemetry_stale),
+            brake: quality(inputs.brake, telemetry_stale),
+            clutch: quality(inputs.clutch, telemetry_stale),
+            steering: quality(inputs.steering, telemetry_stale),
+            gear: quality(inputs.gear, telemetry_stale),
+            speed_mps: quality(inputs.speed_mps, telemetry_stale),
+            engine_speed_rad_s: quality(
+                inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0),
+                telemetry_stale,
+            ),
         }),
         fuel: inputs.map_or_else(Fuel::default, |inputs| Fuel {
-            level_l: quality(inputs.fuel_level_l, stale),
-            capacity_l: quality(inputs.fuel_capacity_l, stale),
+            level_l: quality(inputs.fuel_level_l, telemetry_stale),
+            capacity_l: quality(inputs.fuel_capacity_l, telemetry_stale),
             ..Fuel::default()
         }),
         damage: inputs.map_or_else(Damage::default, |inputs| Damage {
             tyre_wear: inputs
                 .damage
                 .tyre_wear
-                .map(|value| stale_quality(value, damage_stale)),
+                .map(|value| stale_quality(value, telemetry_stale)),
             ..Damage::default()
         }),
-        pit_limiter_active: quality(
-            inputs.and_then(|i| i.pit_limiter_active),
-            stale || damage_stale,
-        ),
+        pit_limiter_active: quality(inputs.and_then(|i| i.pit_limiter_active), telemetry_stale),
         pit_stop_stopped: quality(vehicle.pit_stop_stopped, stale),
         // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
         // delta, y un 0 fiable taparía el delta que deriva el núcleo.
@@ -412,7 +412,7 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, damage_stale: bool) -> Pla
             inputs
                 .and_then(|inputs| inputs.delta_best_s)
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
-            stale,
+            telemetry_stale,
         ),
     }
 }
@@ -460,7 +460,7 @@ fn capabilities(
     player: Option<&Player>,
     flags: &Quality<Vec<Flag>>,
     stale: bool,
-    damage_stale: bool,
+    telemetry_stale: bool,
 ) -> Capabilities {
     let has_cars = !cars.is_empty();
     let telemetry = player.map(|player| &player.telemetry);
@@ -479,20 +479,20 @@ fn capabilities(
             telemetry.is_some_and(|t| {
                 has(&t.throttle) || has(&t.brake) || has(&t.clutch) || has(&t.steering)
             }),
-            stale,
+            telemetry_stale,
         ),
         powertrain: capability(
             telemetry
                 .is_some_and(|t| has(&t.gear) || has(&t.speed_mps) || has(&t.engine_speed_rad_s)),
-            stale,
+            telemetry_stale,
         ),
         fuel: capability(
             player.is_some_and(|player| has(&player.fuel.level_l) || has(&player.fuel.capacity_l)),
-            stale,
+            telemetry_stale,
         ),
         delta: capability(
             player.is_some_and(|player| has(&player.delta_best_s)),
-            stale,
+            telemetry_stale,
         ),
         sectors: capability(cars.iter().any(|car| has(&car.current_sector)), stale),
         lap_progress: capability(
@@ -514,7 +514,7 @@ fn capabilities(
         ),
         damage: capability(
             player.is_some_and(|p| p.damage.tyre_wear.iter().any(has)),
-            damage_stale,
+            telemetry_stale,
         ),
     }
 }

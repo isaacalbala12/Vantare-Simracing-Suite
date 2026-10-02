@@ -43,6 +43,8 @@ const SCHEMA: &str = "vantare.lmu-temporal-high-rate.v1";
 const REST_SCHEMA: &str = "vantare.lmu-rest-bodies.v1";
 const ENDPOINTS: [&str; 2] = ["/rest/watch/standings", "/rest/watch/sessionInfo"];
 const MAX_BODY: usize = 1_048_576;
+const REST_QUEUE_ROUNDS: usize = 2;
+const REST_ROUNDS_PER_TICK: usize = 1;
 
 #[derive(Debug, PartialEq, Eq)]
 struct Args {
@@ -135,6 +137,37 @@ struct Response {
     status: Option<u16>,
     body: Vec<u8>,
     error: Option<String>,
+}
+
+/// Backpressure conserva cada ronda adquirida. Si se cancela con la cola
+/// llena, el dueño recibe la pendiente en join y la persiste después de la cola.
+fn send_round(
+    send: &std::sync::mpsc::SyncSender<[Response; 2]>,
+    mut round: [Response; 2],
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Option<[Response; 2]> {
+    use std::sync::{atomic::Ordering, mpsc::TrySendError};
+    loop {
+        if cancel.load(Ordering::Acquire) {
+            return Some(round);
+        }
+        match send.try_send(round) {
+            Ok(()) => return None,
+            Err(TrySendError::Full(pending)) => round = pending,
+            Err(TrySendError::Disconnected(pending)) => return Some(pending),
+        }
+        std::thread::park_timeout(Duration::from_millis(10));
+    }
+}
+
+fn persist_rest_tick(
+    capture: &mut Capture,
+    rounds: &std::sync::mpsc::Receiver<[Response; 2]>,
+) -> io::Result<()> {
+    for round in rounds.try_iter().take(REST_ROUNDS_PER_TICK) {
+        capture.rest(&round)?;
+    }
+    Ok(())
 }
 
 fn fetch(agent: &ureq::Agent, url: &str, start: Instant) -> Response {
@@ -300,6 +333,7 @@ impl Capture {
             "build": self.build, "escenario": self.escenario, "startedUtc": utc(self.wall),
             "durationSeconds": elapsed.as_secs_f64(), "duration_ns": u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX),
             "complete": error.is_none(), "error": error, "sanitized": false,
+            "restBackpressure": { "queueRounds": REST_QUEUE_ROUNDS, "roundsPerTick": REST_ROUNDS_PER_TICK },
             "events": self.events, "responses": self.responses, "sourceEvents": self.source_events,
             "sha256": self.hashes,
             "counts": { "shm": self.frames.len(), "rest": self.rests.len(), "responses": self.responses.len() } })
@@ -386,9 +420,7 @@ fn record(
     while !stop.load(Ordering::Acquire)
         && seconds.is_none_or(|limit| start.elapsed() < Duration::from_secs(limit))
     {
-        for round in rounds.try_iter() {
-            capture.rest(&round)?;
-        }
+        persist_rest_tick(capture, rounds)?;
         if source.is_none() && start.elapsed() >= retry {
             retry = start.elapsed() + Duration::from_secs(1);
             match shm::RunningSource::open() {
@@ -486,25 +518,31 @@ fn run(args: Args) -> io::Result<()> {
     );
     let cancelled = Arc::new(AtomicBool::new(false));
     let cancel = Arc::clone(&cancelled);
-    let (send, rounds) = mpsc::channel();
+    let (send, rounds) = mpsc::sync_channel(REST_QUEUE_ROUNDS);
     let worker = std::thread::spawn(move || {
         let agent = http_agent();
         while !cancel.load(Ordering::Acquire) {
             let round =
                 ENDPOINTS.map(|path| fetch(&agent, &format!("http://127.0.0.1:6397{path}"), start));
-            if send.send(round).is_err() {
-                break;
+            if let Some(pending) = send_round(&send, round, &cancel) {
+                return Some(pending);
             }
             std::thread::park_timeout(Duration::from_millis(250));
         }
+        None
     });
     let mut result = record(&mut capture, start, args.segundos, stop, &rounds);
     cancelled.store(true, Ordering::Release);
     worker.thread().unpark();
-    if worker.join().is_err() && result.is_ok() {
-        result = Err(io::Error::other("el hilo REST terminó con pánico"));
-    }
-    for round in rounds.try_iter() {
+    let pending = if let Ok(pending) = worker.join() {
+        pending
+    } else {
+        if result.is_ok() {
+            result = Err(io::Error::other("el hilo REST terminó con pánico"));
+        }
+        None
+    };
+    for round in rounds.try_iter().chain(pending) {
         if let Err(error) = capture.rest(&round) {
             if result.is_ok() {
                 result = Err(error);
@@ -586,6 +624,61 @@ mod tests {
             finished,
             error: status.is_none().then(|| "conexión rechazada".into()),
         }
+    }
+
+    #[test]
+    fn rest_backpressure_is_bounded_and_cancellation_preserves_pending_order() {
+        use std::sync::{Arc, atomic::AtomicBool, mpsc};
+        let (send, rounds) = mpsc::sync_channel(REST_QUEUE_ROUNDS);
+        let round = |index| {
+            [
+                response(Some(200), b"[]", index, index),
+                response(Some(200), b"{}", index, index),
+            ]
+        };
+        for index in 0..u64::try_from(REST_QUEUE_ROUNDS).expect("cota de cola") {
+            assert!(send.try_send(round(index)).is_ok());
+        }
+        let cancel = Arc::new(AtomicBool::new(false));
+        let stopped = Arc::clone(&cancel);
+        let worker = std::thread::spawn(move || send_round(&send, round(2), &stopped));
+        // Disco detenido: cola llena y productor con una única ronda propia.
+        // Cancelar sin drenar tiene que desbloquear join y conservar esa ronda.
+        cancel.store(true, Ordering::Release);
+        worker.thread().unpark();
+        let pending = worker
+            .join()
+            .expect("cierre sin deadlock")
+            .expect("ronda pendiente");
+        let got: Vec<_> = rounds
+            .try_iter()
+            .chain([pending])
+            .map(|round| round[0].started)
+            .collect();
+        assert_eq!(got, [0, 1, 2]);
+    }
+
+    #[test]
+    fn each_rest_tick_leaves_work_for_the_next_shm_turn() {
+        use std::sync::mpsc;
+        let (send, rounds) = mpsc::sync_channel(REST_QUEUE_ROUNDS);
+        for index in 0..2 {
+            assert!(
+                send.try_send([
+                    response(Some(200), b"[]", index, index),
+                    response(Some(200), b"{}", index, index)
+                ])
+                .is_ok()
+            );
+        }
+        let (mut capture, _temp) = capture();
+        persist_rest_tick(&mut capture, &rounds).expect("una vuelta");
+        assert_eq!(capture.responses.len(), 2);
+        assert_eq!(
+            rounds.try_recv().expect("ronda para próxima vuelta")[0].started,
+            1
+        );
+        assert!(rounds.try_recv().is_err());
     }
 
     #[test]

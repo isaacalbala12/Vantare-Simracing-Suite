@@ -47,7 +47,14 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Adapter(error) => Some(error),
+            Self::Reject(error) => Some(error),
+        }
+    }
+}
 
 pub struct Core {
     epoch: u64,
@@ -264,6 +271,27 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn wrapped_errors_preserve_their_source_and_display() {
+        use std::error::Error as _;
+        let adapter = Error::Adapter(AdapterError::Disconnected);
+        assert_eq!(adapter.to_string(), AdapterError::Disconnected.to_string());
+        assert_eq!(
+            adapter
+                .source()
+                .expect("causa")
+                .downcast_ref::<AdapterError>(),
+            Some(&AdapterError::Disconnected)
+        );
+        let reject = Reject::DuplicateCar(CarId(7));
+        let error = Error::Reject(reject);
+        assert_eq!(error.to_string(), reject.to_string());
+        assert_eq!(
+            error.source().expect("causa").downcast_ref::<Reject>(),
+            Some(&reject)
+        );
+    }
 
     /// Adaptador de prueba: entrega lo que se le encoló, sin ningún simulador.
     #[derive(Default)]

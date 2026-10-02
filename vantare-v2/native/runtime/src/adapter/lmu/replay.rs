@@ -34,7 +34,8 @@ impl ReplayEvent {
 
 pub struct Replay {
     build: String,
-    events: Peekable<Box<dyn Iterator<Item = ReplayEvent> + Send>>,
+    events: Peekable<Box<dyn Iterator<Item = std::io::Result<ReplayEvent>> + Send>>,
+    failure: Option<String>,
     translator: Translator,
     /// Último frame de memoria compartida: una ronda REST se publica sobre él.
     latest: Option<Vec<u8>>,
@@ -47,10 +48,19 @@ impl Replay {
         build: impl Into<String>,
         events: impl IntoIterator<IntoIter: Send + 'static, Item = ReplayEvent>,
     ) -> Self {
-        let events: Box<dyn Iterator<Item = ReplayEvent> + Send> = Box::new(events.into_iter());
+        Self::from_results(build, events.into_iter().map(Ok))
+    }
+
+    pub(super) fn from_results(
+        build: impl Into<String>,
+        events: impl Iterator<Item = std::io::Result<ReplayEvent>> + Send + 'static,
+    ) -> Self {
+        let events: Box<dyn Iterator<Item = std::io::Result<ReplayEvent>> + Send> =
+            Box::new(events);
         Self {
             build: build.into(),
             events: events.peekable(),
+            failure: None,
             translator: Translator::new(SourceKind::Replay),
             latest: None,
         }
@@ -61,9 +71,20 @@ impl Adapter for Replay {
     /// Entrega como máximo un evento por llamada, el siguiente cuyo `at` ya ha
     /// llegado; sin más eventos devuelve `Ok(None)`.
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError> {
-        let Some(event) = self.events.next_if(|event| event.at() <= now) else {
+        if let Some(error) = &self.failure {
+            return Err(AdapterError::Rejected(error.clone()));
+        }
+        let Some(event) = self.events.next_if(|event| match event {
+            Ok(event) => event.at() <= now,
+            Err(_) => true,
+        }) else {
             return Ok(None);
         };
+        let event = event.map_err(|error| {
+            let message = format!("corpus LMU inválido: {error}");
+            self.failure = Some(message.clone());
+            AdapterError::Rejected(message)
+        })?;
         match event {
             ReplayEvent::Shm { frame, .. } => self.latest = Some(frame),
             ReplayEvent::Rest {

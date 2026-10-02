@@ -53,14 +53,22 @@ impl Subscriber {
 
     /// Reconexión inmediata: descarta la casilla anterior y fuerza hidratación.
     /// Cancelar la E/S y cerrar el hilo es acotado por el transporte existente.
+    /// El reemplazo se crea antes de cerrar el anterior: un fallo conserva la
+    /// conexión, con un breve solapamiento de clientes durante el cambio exitoso.
     pub fn set_demand(&mut self, demand: Demand) -> Result<(), Error> {
+        self.change_demand(demand, |this, demand| {
+            Self::start(&this.name, Arc::clone(&this.accept_peer), Some(demand))
+        })
+    }
+
+    fn change_demand(
+        &mut self,
+        demand: Demand,
+        start: impl FnOnce(&Self, Demand) -> Result<Self, Error>,
+    ) -> Result<(), Error> {
         demand.validate()?;
         if self.demand.as_ref() != Some(&demand) {
-            self.stop.set();
-            if let Some(worker) = self.worker.take() {
-                let _ = worker.join();
-            }
-            let next = Self::start(&self.name, Arc::clone(&self.accept_peer), Some(demand))?;
+            let next = start(self, demand)?;
             *self = next;
         }
         Ok(())
@@ -264,6 +272,58 @@ fn session(
 mod tests {
     use super::*;
     use crate::pipe::Listener;
+
+    #[test]
+    fn failed_demand_replacement_keeps_the_old_worker_alive() {
+        use crate::{Publisher, Signal};
+        let name = format!("vantare-demand-transaction-{}", std::process::id());
+        let mut publisher = Publisher::new(&name, |_| true).expect("publicador");
+        let mut old = Demand::default();
+        old.request(Signal::TrackName, 10);
+        let mut subscriber =
+            Subscriber::connect_requested(&name, old.clone(), |_| true).expect("suscriptor");
+        let stop = Arc::clone(&subscriber.stop);
+        let mut wanted = old.clone();
+        wanted.request(Signal::Weather, 10);
+        let result = subscriber.change_demand(wanted.clone(), |_, _| {
+            Err(std::io::Error::other("fallo de recursos inyectado").into())
+        });
+        assert!(result.is_err());
+        assert!(
+            !stop.is_set(),
+            "no cancelar el trabajador ante creación fallida"
+        );
+        assert!(subscriber.worker.is_some());
+        subscriber.set_demand(old).expect("demanda anterior");
+        assert!(Arc::ptr_eq(&stop, &subscriber.stop));
+        let demand = publisher.demand_source();
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        while demand.revision() == 0 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "handshake del trabajador conservado"
+            );
+            thread::yield_now();
+        }
+        publisher
+            .publish(Arc::new(Snapshot {
+                epoch: 1,
+                sequence: 1,
+                ..Snapshot::default()
+            }))
+            .expect("foto tras fallo");
+        assert_eq!(
+            subscriber
+                .next(Duration::from_secs(3))
+                .expect("conexión preservada")
+                .sequence,
+            1
+        );
+        subscriber.set_demand(wanted).expect("reintento");
+        assert!(stop.is_set());
+        assert!(subscriber.worker.is_some());
+        assert!(!subscriber.stop.is_set());
+    }
 
     #[test]
     fn incompatible_server_reconnects_without_publishing_a_snapshot() {

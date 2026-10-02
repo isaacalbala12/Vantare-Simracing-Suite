@@ -11,7 +11,6 @@ const token = "test-oauth-access-token";
 const now = new Date("2026-10-02T12:00:00Z");
 const config = {
   secretKey: "test-server-secret",
-  anonKey: "test-anon-key",
   clientId: "test-native-client",
   issuer: "https://clerk.example.invalid",
 };
@@ -67,7 +66,7 @@ function request(
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      apikey: config.anonKey,
+      apikey: "public-anon",
       "Content-Type": "application/json",
       ...headers,
     },
@@ -302,7 +301,7 @@ Deno.test("native enforces byte limits on body, declared length and bearer", asy
   );
 });
 
-Deno.test("native rejects methods, malformed JSON, media type and API key", async () => {
+Deno.test("native rejects methods, malformed JSON and media type", async () => {
   for (const method of ["GET", "OPTIONS", "PUT"]) {
     await expectError(
       await handleNativeLicenseRequest(
@@ -329,13 +328,6 @@ Deno.test("native rejects methods, malformed JSON, media type and API key", asyn
     400,
     "invalid_request",
   );
-  for (const apikey of ["", "wrong-key"]) {
-    await expectError(
-      await handleNativeLicenseRequest(request(body, { apikey }), deps()),
-      401,
-      "unauthorized",
-    );
-  }
 });
 
 for (
@@ -443,7 +435,7 @@ Deno.test("native fails closed for Clerk inactive, invalid JSON and upstream fai
 
 Deno.test("native config, account, grants and signing failures do not issue access", async () => {
   for (
-    const partial of [{ secretKey: "" }, { clientId: "" }, { anonKey: "" }, {
+    const partial of [{ secretKey: "" }, { clientId: "" }, {
       issuer: "http://clerk.invalid",
     }, { issuer: "https://clerk.invalid/path" }]
   ) {

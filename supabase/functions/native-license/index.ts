@@ -14,7 +14,6 @@ type NativeConfig = {
   secretKey: string;
   clientId: string;
   issuer: string;
-  anonKey: string;
 };
 
 export type NativeLicenseDeps = Pick<CredentialDeps, "now" | "sign"> & {
@@ -81,17 +80,15 @@ export async function handleNativeLicenseRequest(
       secretKey: Deno.env.get("CLERK_SECRET_KEY") ?? "",
       clientId: Deno.env.get("CLERK_NATIVE_CLIENT_ID") ?? "",
       issuer: Deno.env.get("CLERK_ISSUER") ?? "",
-      anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     };
     const issuer = config.issuer.replace(/\/$/, "");
     if (
-      !config.secretKey || !config.clientId || !config.anonKey ||
+      !config.secretKey || !config.clientId ||
       !issuer || new URL(issuer).protocol !== "https:" ||
       new URL(issuer).origin !== issuer
     ) return unavailable();
-    if (request.headers.get("apikey") !== config.anonKey) {
-      return failure(401, "unauthorized", "Valid API key required");
-    }
+    // La apikey anon es pública y no concede autoridad (el gateway no la exige
+    // con verify_jwt=false); la autoridad es solo el token OAuth verificado.
 
     // Official Clerk verification works for opaque and JWT OAuth access tokens.
     // Never decode client claims or use userinfo/email as identity authority.

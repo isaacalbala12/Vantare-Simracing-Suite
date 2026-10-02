@@ -5,6 +5,12 @@ red ni síntesis TTS. Reutiliza `runtime::flows` para cursor, ACK y codec y
 `runtime::shutdown` en Windows. No invoca Core ni los adaptadores privados.
 Microplan: `docs/superpowers/plans/2026-09-30-fase-3-eventos-engineer.md`.
 
+`Document::poll` detecta cambios de contenido aunque conserven mtime. Tras
+la primera lectura válida, comprueba bytes como máximo una vez por segundo
+si el timestamp no cambia; un mtime nuevo y `reload` conservan lectura inmediata.
+El límite sigue siendo 64 KiB. Un archivo inválido conserva los últimos ajustes
+y su error visible hasta el próximo intento, sin repetir E/S por cada tick.
+
 ## Ejecución de producto
 
 `vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`

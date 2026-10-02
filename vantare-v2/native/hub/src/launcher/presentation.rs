@@ -55,7 +55,12 @@ pub(super) fn text(
     color: u32,
     cx: &gpui::App,
 ) -> gpui::Div {
+    let height = size * 1.5;
+    let baseline = typography::baseline(0.0, height, size);
+    let native_baseline = f32::midpoint(height.round(), size * (1984.0 - 494.0) / 2048.0);
     orbit::text(content, size, weight, color, cx)
+        .relative()
+        .top(px(baseline - native_baseline))
         .font_weight(
             if cx.global::<orbit::theme::Theme>().interface_font
                 == orbit::theme::InterfaceFont::Inter
@@ -625,7 +630,7 @@ impl Launcher {
             .into_iter()
             .filter(|profile| self.profile_matches(profile, query))
             .collect();
-        let mut rows = div().mt(px(12.0));
+        let mut rows = div().mt(px(7.0));
         for (index, profile) in visible.iter().enumerate() {
             let row_launch = (*profile).clone();
             let launch = (*profile).clone();
@@ -735,7 +740,7 @@ impl Launcher {
 
     fn context_favorites(&self, query: &str, cx: &mut Context<Self>) -> gpui::Div {
         let mut favorites = div().child(context_heading(
-            "Favoritos",
+            "Favoritas",
             self.store
                 .document
                 .apps
@@ -773,7 +778,7 @@ impl Launcher {
         if count == 0 {
             favorites = favorites.child(
                 text(
-                    "Sin favoritos: marca la estrella de una aplicación.",
+                    "Sin favoritas: marca la estrella de una aplicación.",
                     16.0,
                     400,
                     orbit::ink(cx),
@@ -1354,9 +1359,16 @@ impl Launcher {
                                 cx,
                             ))
                             .child(
-                                text(profile.name.clone(), 20.0, 650, orbit::ink(cx), cx)
-                                    .line_height(px(27.0))
-                                    .mt(px(5.0)),
+                                tracked_line(
+                                    profile.name.clone(),
+                                    18.0,
+                                    700,
+                                    orbit::ink(cx),
+                                    -0.36,
+                                    27.0,
+                                )
+                                .line_height(px(27.0))
+                                .mt(px(5.0)),
                             ),
                     ),
             )
@@ -1772,7 +1784,7 @@ impl Launcher {
                     .flex()
                     .flex_col()
                     .child(eyebrow("Aplicaciones y cadenas", cx).h(px(24.0)).items_center())
-                    .child(tracked_line("Launcher", 36.0, 700, orbit::ink(cx), -1.26, 51.0).mt(px(6.0)))
+                    .child(tracked_line("Launcher", 34.0, 700, orbit::ink(cx), -1.19, 51.0).mt(px(6.0)))
                     .child(
                         text(
                             "Detecta aplicaciones compatibles, organiza perfiles y ejecuta sus pasos en orden.",

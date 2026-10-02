@@ -67,7 +67,8 @@ pub(super) fn render(
 
 fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>, cx: &gpui::App) -> Div {
     // Artefactos del harness Wails, exclusivamente en --capture engineer-*.
-    // No desplazan la shell ni alteran los estados de usuario en uso normal.
+    // La shell se desplaza bajo la franja en captura; estos anclajes conservan
+    // las coordenadas de ventana y no alteran el uso normal.
     root.child(deferred(
         anchored().position(point(px(0.0), px(0.0))).child(
             div()

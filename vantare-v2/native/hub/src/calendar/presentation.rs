@@ -64,15 +64,11 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .p(px(4.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(
-            if cx.global::<orbit::theme::Theme>().palette == orbit::theme::Palette::Vantare
-                && cx.global::<orbit::theme::Theme>().scheme == orbit::theme::Scheme::Dark
-            {
-                rgb(orbit::line(cx)).into()
-            } else {
-                gpui::Hsla::from(gpui::rgba(orbit::line(cx)))
-            },
-        )
+        .border_color(if calendar.view == CalendarView::Upcoming {
+            rgb(orbit::line(cx))
+        } else {
+            gpui::rgba(orbit::line(cx))
+        })
         .bg(rgb(orbit::surface_1(cx)))
         .children([
             view_button(
@@ -114,9 +110,23 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                         .font_weight(gpui::FontWeight(800.0)),
                 )
                 .child(
-                    orbit::text("Calendario", 34.0, 690, orbit::ink(cx), cx)
-                        .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
-                        .mt(px(6.0)),
+                    if matches!(
+                        calendar.view,
+                        CalendarView::Month
+                            | CalendarView::Day
+                            | CalendarView::Week
+                            | CalendarView::Timeline
+                    ) {
+                        super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
+                            .h(px(55.0))
+                            .mt(px(6.0))
+                            .into_any_element()
+                    } else {
+                        orbit::text("Calendario", 34.0, 690, orbit::ink(cx), cx)
+                            .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
+                            .mt(px(6.0))
+                            .into_any_element()
+                    },
                 )
                 .child(
                     orbit::text(
@@ -210,7 +220,11 @@ fn card_header(
     cx: &gpui::App,
 ) -> Div {
     div()
-        .h(px(59.0))
+        .h(px(if calendar.view == CalendarView::Upcoming {
+            59.0
+        } else {
+            61.0
+        }))
         .flex_none()
         .px(px(20.0))
         .flex()
@@ -336,7 +350,7 @@ fn day_view(now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let first = aligned - Duration::minutes(105);
     // Wails centra la franja actual; el scroll deja 5 px arriba y reserva 10 px a la derecha.
     let mut rows = div()
-        .mt(px(5.0))
+        .mt(px(4.0))
         .flex()
         .flex_col()
         .flex_1()
@@ -397,22 +411,12 @@ fn day_view(now: DateTime<Utc>, cx: &gpui::App) -> Div {
 
 fn week_title(monday: NaiveDate) -> String {
     let sunday = monday + Duration::days(6);
-    if monday.month() == sunday.month() {
-        format!(
-            "{} – {} de {}",
-            monday.day(),
-            sunday.day(),
-            month_name(sunday.month())
-        )
-    } else {
-        format!(
-            "{} de {} – {} de {}",
-            monday.day(),
-            month_name(monday.month()),
-            sunday.day(),
-            month_name(sunday.month())
-        )
-    }
+    format!(
+        "{} – {} de {}",
+        monday.day(),
+        sunday.day(),
+        month_name(sunday.month())
+    )
 }
 
 fn week_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
@@ -531,11 +535,12 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     };
     let mut grid = div().flex().flex_col().flex_1().min_h_0();
     let mut labels = div()
-        .h(px(32.0))
+        .h(px(33.0))
+        .bg(rgb(orbit::surface_1(cx)))
         .flex_none()
         .flex()
         .border_b_1()
-        .border_color(gpui::rgba(orbit::line_row(cx)));
+        .border_color(rgb(crate::orbit::legacy_rgb(0x0018_181b, cx)));
     for index in 0..7 {
         labels = labels.child(
             div()
@@ -555,7 +560,7 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
             .min_h(px(72.0))
             .flex()
             .border_b_1()
-            .border_color(gpui::rgba(orbit::line_row(cx)));
+            .border_color(rgb(crate::orbit::legacy_rgb(0x0018_181b, cx)));
         for day in week {
             let color = if day.today {
                 orbit::ink(cx)
@@ -591,7 +596,7 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
                     .px(px(10.0))
                     .py(px(8.0))
                     .border_r_1()
-                    .border_color(gpui::rgba(orbit::line_row(cx)))
+                    .border_color(rgb(crate::orbit::legacy_rgb(0x0018_181b, cx)))
                     .bg(rgb(orbit::surface_1(cx)))
                     .child(date),
             );
@@ -612,7 +617,7 @@ fn timeline(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
         return empty_panel("No se pudo leer el horario.", cx);
     };
     if starts.is_empty() {
-        empty_panel("No hay salidas en la próxima hora.", cx)
+        empty_panel("No hay salidas en la próxima hora.", cx).pt(px(28.0))
     } else {
         let mut body = div().flex_1().min_h_0().px(px(12.0)).py(px(12.0));
         for start in starts {
@@ -663,7 +668,11 @@ fn content(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
         .flex_1()
         .min_h_0()
         .overflow_hidden()
-        .bg(rgb(orbit::surface_1(cx)))
+        .bg(rgb(if calendar.view == CalendarView::Upcoming {
+            orbit::surface_1(cx)
+        } else {
+            0x000f_0f12
+        }))
         .border_1()
         .border_color(gpui::rgba(orbit::line(cx)))
         .rounded(px(orbit::RADIUS))
@@ -683,7 +692,11 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .w_full()
         .flex()
         .flex_col()
-        .gap(px(19.0))
+        .gap(px(if calendar.view == CalendarView::Upcoming {
+            19.0
+        } else {
+            18.0
+        }))
         .pt(px(24.0))
         .pb(px(25.0))
         .bg(rgb(orbit::canvas(cx)))
@@ -695,6 +708,9 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
     div()
         .id("calendar")
         .w_full()
+        .when(calendar.view != CalendarView::Upcoming, |page| {
+            page.mx(px(-1.0)).w_auto()
+        })
         .min_h(px(HUB_CONTENT_MIN_HEIGHT))
         .mt(px(-SHELL_HEADER_OVERLAP))
         .flex_1()
@@ -704,4 +720,23 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .overflow_hidden()
         .bg(rgb(orbit::canvas(cx)))
         .child(page)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn week_caption_matches_wails_across_month_and_year_boundaries() -> Result<(), String> {
+        for (date, expected) in [
+            ("2026-09-28", "28 – 4 de octubre"),
+            ("2026-12-28", "28 – 3 de enero"),
+            ("2026-10-05", "5 – 11 de octubre"),
+        ] {
+            let monday =
+                NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|error| error.to_string())?;
+            assert_eq!(week_title(monday), expected);
+        }
+        Ok(())
+    }
 }

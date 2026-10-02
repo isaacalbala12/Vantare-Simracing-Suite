@@ -434,7 +434,8 @@ impl Notifications {
         let focus = self.focus(id, cx);
         // Acción textual del popover Wails: composición del texto/foco del kit.
         let button = if compact {
-            orbit::text(label.to_owned(), orbit::MICRO, 400, orbit::ink_3(cx), cx)
+            orbit::text(label.to_owned(), 10.5, 400, orbit::ink_3(cx), cx)
+                .font_weight(gpui::FontWeight::NORMAL)
                 .id(id)
                 .role(gpui::Role::Button)
                 .aria_label(label.to_owned())
@@ -560,7 +561,14 @@ impl Notifications {
                 .flex()
                 .items_center()
                 .justify_between()
-                .child(orbit::eyebrow("Notificaciones", cx))
+                .child(orbit::tracked_text(
+                    "NOTIFICACIONES",
+                    10.5,
+                    800,
+                    orbit::ink_4(cx),
+                    1.155,
+                    cx,
+                ))
                 .child(tools)
         } else {
             tools
@@ -569,17 +577,13 @@ impl Notifications {
             .flex()
             .flex_col()
             .gap(px(orbit::MENU_PAD))
-            .p(px(orbit::FIELD_PAD))
+            .p(px(if compact { 12.0 } else { orbit::FIELD_PAD }))
             .child(header);
         if self.center.records.is_empty() {
             view = view.child(if compact {
-                orbit::text(
-                    "Sin notificaciones.",
-                    orbit::PILL_TEXT,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )
+                orbit::text("Sin notificaciones.", 11.0, 400, orbit::ink_muted(cx), cx)
+                    .line_height(px(16.5))
+                    .my(px(6.0))
             } else {
                 orbit::empty_state("Sin notificaciones.", "", cx)
             });
@@ -600,7 +604,7 @@ impl Notifications {
                 view = view.child(Self::record_row(&record, &focus, cx));
             }
         }
-        if compact {
+        if compact && nonempty {
             view = view.child(self.tool(
                 "full-notifications",
                 "Ver todas las notificaciones",
@@ -610,9 +614,9 @@ impl Notifications {
                 cx,
             ));
             targets.push(self.focus("full-notifications", cx));
-            if let Some(layer) = &self.layer {
-                layer.update(cx, |layer, _| layer.set_targets(targets));
-            }
+        }
+        if compact && let Some(layer) = &self.layer {
+            layer.update(cx, |layer, _| layer.set_targets(targets));
         }
         view.when_some(self.error.clone(), |view, error| {
             view.child(orbit::callout(error, cx))

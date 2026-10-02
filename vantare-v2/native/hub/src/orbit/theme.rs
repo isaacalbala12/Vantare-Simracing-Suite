@@ -1097,11 +1097,11 @@ impl Theme {
         }
         // Contratos históricos de Engineer, fondos y selección de secciones.
         match color {
-            0x00e6_e9ec | 0x00f5_f5f5 => self.ink,
+            0x00e6_e9ec | 0x00f5_f5f5 | 0x00f1_f5fa => self.ink,
             0x00b8_c3cf | 0x00c4_c4c8 | 0x00b0_b0b6 | 0x00c9_c4c6 | 0x00d9_d5d5 => self.ink_2,
             0x0017_1d25 | 0x0013_1317 | 0x000e_0f11 | 0x0010_1114 => self.surface_1,
             0x0026_313e | 0x0019_191e | 0x001e_191c | 0x0015_1619 | 0x0019_191b | 0x0023_2325
-            | 0x002a_2a30 | 0x0022_2228 | 0x001b_1c1e | 0x002c_2c2c => self.surface_2,
+            | 0x002a_2a30 | 0x0022_2228 | 0x001b_1c1e | 0x002c_2c2c | 0x0018_181b => self.surface_2,
             0x0042_4954 | 0x0067_768a | 0x0062_6268 | 0x0099_9999 | 0x0053_5353 | 0x005f_5b62 => {
                 self.ink_4
             }
@@ -1111,9 +1111,8 @@ impl Theme {
             0x000b_0d0f | 0x000a_0c0d | 0x0009_0c0d | 0x000b_0e0f | 0x000c_1012 | 0x000f_1212
             | 0x000a_0c0e | 0x0008_0b0c | 0x0010_151b | 0x0017_171b | 0x0010_1214 | 0x0010_0d0f
             | 0x000f_1214 | 0x0010_1315 | 0x000c_1011 | 0x000e_1213 | 0x0011_1416 | 0x0010_1113
-            | 0x0010_1012 | 0x0015_1113 | 0x0010_1415 | 0x0011_1515 | 0x0018_181d | 0x000f_1012 => {
-                self.canvas
-            }
+            | 0x0010_1012 | 0x0015_1113 | 0x0010_1415 | 0x0011_1515 | 0x0018_181d | 0x000f_1012
+            | 0x000f_0f12 | 0x000d_0e10 => self.canvas,
             0x00c1_121f | 0x00c5_2e42 => self.carmine,
             0x0054_3f18 => self.ember,
             other => other,

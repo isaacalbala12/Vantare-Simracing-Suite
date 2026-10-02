@@ -92,10 +92,25 @@ fn text(
     cx: &gpui::App,
 ) -> Div {
     let weight = if weight == 560 { 600 } else { weight };
-    orbit::text(content, size, weight, color, cx).font_weight(FontWeight::NORMAL)
+    let line_height = size * 1.5;
+    let baseline = typography::baseline(0.0, line_height, size);
+    let native_baseline = f32::midpoint(line_height.round(), size * (1984.0 - 494.0) / 2048.0);
+    orbit::text(content, size, weight, color, cx)
+        .font_weight(
+            if cx.global::<orbit::theme::Theme>().interface_font
+                == orbit::theme::InterfaceFont::Inter
+            {
+                FontWeight::NORMAL
+            } else {
+                FontWeight(f32::from(weight))
+            },
+        )
+        .line_height(px(line_height))
+        .relative()
+        .top(px(baseline - native_baseline))
 }
 
-fn title(content: String, size: f32, tracking: f32, line_height: f32) -> Div {
+pub(super) fn title(content: String, size: f32, tracking: f32, line_height: f32) -> Div {
     div().h(px(line_height)).flex_1().child(
         gpui::canvas(
             |_, _, _| (),
@@ -147,7 +162,7 @@ fn keycap(label: &'static str, cx: &gpui::App) -> Div {
         .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
         .font_family(crate::orbit::mono_family(cx))
         .text_size(px(12.0))
-        .font_weight(gpui::FontWeight(500.0))
+        .font_weight(FontWeight::NORMAL)
         .text_color(rgb(orbit::ink_3(cx)))
         .child(label)
 }
@@ -337,7 +352,21 @@ fn hero(
                         .flex()
                         .items_center()
                         .gap(px(14.0))
-                        .child(orbit::status_dot(orbit::Tone::Success, 10.0, cx))
+                        .child(if orbit::is_mono(cx) {
+                            orbit::status_dot(orbit::Tone::Success, 10.0, cx)
+                        } else {
+                            div()
+                                .size(px(10.0))
+                                .rounded_full()
+                                .bg(rgb(orbit::green(cx)))
+                                .shadow(vec![gpui::BoxShadow {
+                                    color: rgb(orbit::green(cx)).into(),
+                                    offset: gpui::point(px(0.0), px(0.0)),
+                                    blur_radius: px(14.0),
+                                    spread_radius: px(0.0),
+                                    inset: false,
+                                }])
+                        })
                         .child(title(greeting, 34.0, -0.045, 35.7)),
                 )
                 .child(command(cx))
@@ -379,7 +408,7 @@ fn hero(
 }
 
 fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
-    if let Some(data) = demo {
+    if let Some(data) = demo.filter(|data| data.overlay_profile().is_some()) {
         div()
             .flex()
             .items_center()
@@ -390,7 +419,7 @@ fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div
                 div()
                     .font_family(crate::orbit::mono_family(cx))
                     .text_size(px(12.0))
-                    .font_weight(gpui::FontWeight(650.0))
+                    .font_weight(FontWeight::NORMAL)
                     .text_color(rgb(orbit::ink_3(cx)))
                     .child(format!("{} × {}", data.profile.width, data.profile.height)),
             )
@@ -422,6 +451,7 @@ fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div
 fn profile_info(
     name: &str,
     meta: Div,
+    has_profile: bool,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     cx: &gpui::App,
 ) -> Div {
@@ -435,11 +465,13 @@ fn profile_info(
         .child(orbit::eyebrow("Perfil activo", cx))
         .child(
             title(name.to_owned(), 22.0, -0.03, 27.0)
+                .relative()
+                .top(px(1.0))
                 .flex_none()
                 .mt(px(4.0))
                 .mb(px(2.0)),
         )
-        .child(meta)
+        .child(meta.relative().top(px(-1.0)))
         .child(div().flex_1())
         .child(
             div()
@@ -457,20 +489,22 @@ fn profile_info(
                             cx,
                         ))
                         .h(px(34.0))
-                        .px(px(13.0))
+                        .px(px(14.0))
                         .rounded(px(8.0)),
                     Section::Studio,
                 ))
-                .child(
-                    pending_overlay("home-overlay", cx)
-                        .h(px(34.0))
-                        .px(px(13.0))
-                        .rounded(px(8.0)),
-                ),
+                .when(has_profile, |row| {
+                    row.child(
+                        pending_overlay("home-overlay", cx)
+                            .h(px(34.0))
+                            .px(px(16.0))
+                            .rounded(px(8.0)),
+                    )
+                }),
         )
 }
 
-fn profile_preview(cx: &gpui::App) -> Div {
+fn profile_preview(has_profile: bool, cx: &gpui::App) -> Div {
     orbit::card("", cx)
         .w(px(340.0))
         .h(px(191.25))
@@ -480,14 +514,35 @@ fn profile_preview(cx: &gpui::App) -> Div {
         .justify_center()
         .overflow_hidden()
         .rounded(px(14.0))
-        .bg(rgb(crate::orbit::legacy_rgb(0x000b_0c0e, cx)))
-        .child(text(
-            "Vista previa · no disponible",
-            12.0,
-            400,
-            orbit::ink_3(cx),
-            cx,
-        ))
+        .bg(rgb(crate::orbit::legacy_rgb(0x000d_0e10, cx)))
+        .relative()
+        .children([90.0, 180.0, 270.0].map(|left| {
+            div()
+                .absolute()
+                .left(px(left))
+                .top_0()
+                .w(px(1.0))
+                .h_full()
+                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
+        }))
+        .children([90.0, 180.0].map(|top| {
+            div()
+                .absolute()
+                .left_0()
+                .top(px(top))
+                .h(px(1.0))
+                .w_full()
+                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
+        }))
+        .when(has_profile, |preview| {
+            preview.child(text(
+                "Vista previa · no disponible",
+                12.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+        })
 }
 
 fn profile(
@@ -497,21 +552,29 @@ fn profile(
 ) -> Div {
     // Falta una API de Studio que exponga su layout/renderers y una escala de
     // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
-    let name = demo.map_or("Sin perfil activo", |data| data.profile.name.as_str());
+    let profile = demo.and_then(crate::demo::DemoData::overlay_profile);
+    let name = profile.map_or("Sin perfil activo", |profile| profile.name.as_str());
     let meta = profile_metadata(demo, cx);
     orbit::card("", cx)
         .h(px(225.0))
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
-        .border_color(rgba(crate::orbit::legacy_rgba(0xf047_5530, cx)))
+        .border_0()
+        .p(px(1.0))
         .bg(linear_gradient(
-            180.0,
-            linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0019_191e, cx)), 0.0),
-            linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0013_1317, cx)), 1.0),
+            115.0,
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xf047_559e, cx)), 0.0),
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xffff_ff0f, cx)), 1.0),
         ))
         .child(
             orbit::card_body()
                 .h_full()
+                .rounded(px(orbit::FEATURED_RADIUS - 1.0))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0019_191e, cx)), 0.0),
+                    linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0013_1317, cx)), 1.0),
+                ))
                 .pl(px(24.0))
                 .pr(px(18.0))
                 .py(px(16.0))
@@ -521,8 +584,8 @@ fn profile(
                         .flex()
                         .items_center()
                         .gap(px(28.0))
-                        .child(profile_info(name, meta, navigate, cx))
-                        .child(profile_preview(cx)),
+                        .child(profile_info(name, meta, profile.is_some(), navigate, cx))
+                        .child(profile_preview(profile.is_some(), cx)),
                 ),
         )
 }
@@ -565,7 +628,7 @@ fn race_rows(
 
 fn profile_rows(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
     let mut profiles = orbit::card_body().flex_1().min_h_0();
-    if let Some(profile) = demo.map(|data| &data.profile) {
+    if let Some(profile) = demo.and_then(crate::demo::DemoData::overlay_profile) {
         profiles = profiles.child(
             div()
                 .relative()
@@ -754,7 +817,7 @@ pub fn render(
         .flex_col()
         .mt(px(-50.0))
         .pt(px(34.0))
-        .pb(px(15.0))
+        .pb(px(13.0))
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(

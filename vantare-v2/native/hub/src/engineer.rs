@@ -269,14 +269,24 @@ fn select_control(value: &str, disabled: bool, cx: &gpui::App) -> gpui::Stateful
         .justify_between()
         .gap(px(10.0))
         .h(px(40.0))
-        .px(px(12.0))
+        .pl(px(16.0))
+        .pr(px(4.0))
         .bg(rgb(control_color(cx)))
         .text_color(rgb(text_color(cx)))
         .border_1()
         .border_color(rgb(control_border_color(cx)))
         .rounded(px(5.0))
-        .child(text(value.to_owned(), 16.0, 400, 0x00f1_f5fa, cx))
-        .child(text("⌄", 14.0, 400, 0x00f1_f5fa, cx))
+        .child(text(
+            value.to_owned(),
+            16.0,
+            400,
+            orbit::legacy_rgb(0x00f1_f5fa, cx),
+            cx,
+        ))
+        .child(
+            text("⌄", 16.0, 400, orbit::legacy_rgb(0x00f1_f5fa, cx), cx)
+                .font_family(crate::orbit::sans_override("Segoe UI", cx)),
+        )
 }
 
 fn labeled_select(label: &str, value: &str, disabled: bool, cx: &gpui::App) -> gpui::Div {

@@ -194,7 +194,11 @@ impl State {
                 if self.transition == Transition::Logout {
                     self.transition = Transition::Renewal;
                 }
-                self.invalidate();
+                // Releer una sesión que sigue igual no retira la política vigente:
+                // hacerlo dejaba el candado visible hasta la siguiente lectura.
+                if !*signed_in || *pending || self.expires_at.is_none() {
+                    self.invalidate();
+                }
                 self.expires_at = if *signed_in && !pending {
                     *expires_at
                 } else {
@@ -962,6 +966,36 @@ mod navigation_tests {
         assert_eq!(state.navigation(true, 2000).plan, Plan::Suite);
         assert_eq!(state.navigation(false, 2000).plan, Plan::Unknown);
         state.observe(&Reply::Closed, false);
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+    }
+
+    #[test]
+    fn rereading_the_same_session_keeps_the_policy_but_logout_drops_it() {
+        let mut state = state(true, true);
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Suite);
+        // Regresión: cada AccountPoll retiraba la política y el candado
+        // aparecía al repintar (p. ej. al pasar el ratón por una pestaña).
+        state.observe(
+            &Reply::Account {
+                signed_in: true,
+                pending: false,
+                expires_at: Some(10),
+                message: String::new(),
+                error: None,
+            },
+            true,
+        );
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Suite);
+        state.observe(
+            &Reply::Account {
+                signed_in: false,
+                pending: false,
+                expires_at: None,
+                message: String::new(),
+                error: None,
+            },
+            true,
+        );
         assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
     }
 

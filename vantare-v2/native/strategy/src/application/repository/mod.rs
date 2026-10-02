@@ -1,6 +1,6 @@
 //! Local Strategy document storage and Go-compatible repository migration.
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -114,14 +114,22 @@ impl LocalRepository {
 
     fn load_envelope(&self) -> Result<Option<DiskEnvelope>, String> {
         let path = self.root.join(FILE_NAME);
-        let bytes = match fs::read(&path) {
-            Ok(bytes) => bytes,
+        let file = match File::open(&path) {
+            Ok(file) => file,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
             Err(error) => return Err(format!("read Strategy repository: {error}")),
         };
-        if bytes.len() as u64 > MAX_REPOSITORY_BYTES {
+        // Metadata rejects oversized regular files cheaply. The bounded read
+        // still enforces the limit if the file grows after this check.
+        if file
+            .metadata()
+            .map_err(|error| format!("stat Strategy repository: {error}"))?
+            .len()
+            > MAX_REPOSITORY_BYTES
+        {
             return Err("repository_size_limit".into());
         }
+        let bytes = read_repository_bytes(file)?;
         let (migrated, steps) = migrate_repository_json(&bytes)?;
         let envelope = decode_envelope(&migrated)?;
         validate_envelope(&envelope)?;
@@ -130,6 +138,18 @@ impl LocalRepository {
         }
         Ok(Some(envelope))
     }
+}
+
+fn read_repository_bytes(reader: impl Read) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    reader
+        .take(MAX_REPOSITORY_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("read Strategy repository: {error}"))?;
+    if bytes.len() as u64 > MAX_REPOSITORY_BYTES {
+        return Err("repository_size_limit".into());
+    }
+    Ok(bytes)
 }
 
 /// Migrates v1 to v2; v2 bytes are returned unchanged, making the gate idempotent.
@@ -885,6 +905,47 @@ mod tests {
         let repository = LocalRepository::open(&root).expect("open repository");
         assert!(repository.load().is_err(), "unsafe generation rejected");
         assert_eq!(fs::read(&path).expect("original remains"), original);
+        assert_eq!(fs::read_dir(&root).expect("directory").count(), 1);
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+
+    #[test]
+    fn repository_read_stops_at_limit_plus_one() {
+        let mut reader = std::io::repeat(b' ').take(MAX_REPOSITORY_BYTES * 2);
+        assert_eq!(
+            read_repository_bytes(&mut reader).expect_err("oversize"),
+            "repository_size_limit"
+        );
+        assert_eq!(
+            reader.limit(),
+            MAX_REPOSITORY_BYTES - 1,
+            "no read beyond limit+1"
+        );
+        for size in [MAX_REPOSITORY_BYTES - 1, MAX_REPOSITORY_BYTES] {
+            let bytes =
+                read_repository_bytes(std::io::repeat(b' ').take(size)).expect("within limit");
+            assert_eq!(bytes.len() as u64, size);
+        }
+    }
+
+    #[test]
+    fn oversized_repository_is_rejected_without_changing_the_file() {
+        let root = temp_root();
+        fs::create_dir_all(&root).expect("fixture directory");
+        let path = root.join(FILE_NAME);
+        let file = File::create(&path).expect("sparse fixture");
+        file.set_len(MAX_REPOSITORY_BYTES + 1)
+            .expect("fixture length");
+        drop(file);
+        let repository = LocalRepository::open(&root).expect("repository");
+        assert_eq!(
+            repository.load().expect_err("oversize"),
+            "repository_size_limit"
+        );
+        assert_eq!(
+            fs::metadata(&path).expect("original file").len(),
+            MAX_REPOSITORY_BYTES + 1
+        );
         assert_eq!(fs::read_dir(&root).expect("directory").count(), 1);
         fs::remove_dir_all(root).expect("remove fixture");
     }

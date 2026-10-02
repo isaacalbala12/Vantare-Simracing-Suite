@@ -3,6 +3,7 @@ const productionFunctions = new Set([
   "billing-portal",
   "billing-webhook",
   "license-credential",
+  "native-license",
 ]);
 const testingPilotFunctions = new Set([
   "testing-center-feedback",

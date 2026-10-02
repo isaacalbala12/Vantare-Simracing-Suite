@@ -16,6 +16,49 @@ Deno.test("deploy surface rejects legacy and unknown top-level functions", () =>
   }
 });
 
+Deno.test("native license is guarded and deployable in isolation", () => {
+  if (
+    invalidDeployableDirectories([
+      { name: "native-license", isDirectory: true },
+    ] as Deno.DirEntry[]).length !== 0
+  ) throw new Error("native license rejected");
+  const wrapper = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  const workflow = Deno.readTextFileSync(
+    new URL(
+      "../../../.github/workflows/deploy-supabase-functions.yml",
+      import.meta.url,
+    ),
+  );
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  ).replaceAll("\r\n", "\n");
+  if (
+    !wrapper.includes("[ValidateSet(") ||
+    !wrapper.includes('"native-license"') ||
+    !wrapper.includes("foreach ($functionName in $Functions)") ||
+    !workflow.includes('-Functions @("native-license")') ||
+    !workflow.includes("default: commercial") ||
+    !config.includes("[functions.native-license]\nverify_jwt = false")
+  ) {
+    throw new Error(
+      "native deploy does not have the reviewed isolated surface",
+    );
+  }
+  const defaultFunctions = wrapper.match(/\$Functions = @\(([^\n]+)\)/)?.[1];
+  if (!defaultFunctions || defaultFunctions.includes('"native-license"')) {
+    throw new Error(
+      "native bridge was added to the default commercial deployment",
+    );
+  }
+  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(wrapper)) {
+    throw new Error(
+      "PowerShell guard incorrectly reuses stale native exit code",
+    );
+  }
+});
+
 Deno.test("testing pilot functions are recognized but remain outside production wrapper", () => {
   const entries = [
     { name: "testing-center-feedback", isDirectory: true },

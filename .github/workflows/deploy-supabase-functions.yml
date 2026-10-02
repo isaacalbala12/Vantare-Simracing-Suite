@@ -2,6 +2,14 @@ name: Deploy approved Supabase Functions
 
 on:
   workflow_dispatch:
+    inputs:
+      surface:
+        description: Approved deployment surface
+        type: choice
+        options:
+          - commercial
+          - native-license
+        default: commercial
 
 permissions:
   contents: read
@@ -37,6 +45,14 @@ jobs:
 
       - name: Guard and deploy approved Functions
         shell: powershell
+        env:
+          DEPLOY_SURFACE: ${{ inputs.surface }}
         run: |
-          & "$env:GITHUB_WORKSPACE\supabase\functions\scripts\deploy-approved-functions.ps1" `
-            -ProjectRef $env:SUPABASE_PROJECT_REF
+          $wrapper = "$env:GITHUB_WORKSPACE\supabase\functions\scripts\deploy-approved-functions.ps1"
+          if ($env:DEPLOY_SURFACE -eq "native-license") {
+            & $wrapper -ProjectRef $env:SUPABASE_PROJECT_REF -Functions @("native-license")
+          } elseif ($env:DEPLOY_SURFACE -eq "commercial") {
+            & $wrapper -ProjectRef $env:SUPABASE_PROJECT_REF
+          } else {
+            throw "Unsupported deployment surface"
+          }

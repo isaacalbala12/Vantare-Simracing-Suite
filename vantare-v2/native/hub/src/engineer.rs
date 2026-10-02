@@ -232,14 +232,15 @@ fn select_control(value: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
         .justify_between()
         .gap(px(10.0))
         .h(px(40.0))
-        .px(px(12.0))
+        .pl(px(16.0))
+        .pr(px(4.0))
         .bg(rgb(CONTROL))
         .text_color(rgb(TEXT))
         .border_1()
         .border_color(rgb(CONTROL_BORDER))
         .rounded(px(5.0))
         .child(text(value.to_owned(), 16.0, 400, 0x00f1_f5fa))
-        .child(text("⌄", 14.0, 400, 0x00f1_f5fa))
+        .child(text("⌄", 16.0, 400, 0x00f1_f5fa).font_family("Segoe UI"))
 }
 
 fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {

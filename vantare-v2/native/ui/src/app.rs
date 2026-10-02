@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gpui::{
     App, Bounds, Context, DisplayId, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -31,6 +31,27 @@ pub enum Wake {
     Frame,
     At(Duration),
     Idle,
+}
+
+#[derive(Default)]
+struct WakeDeadline(Option<Instant>);
+
+impl WakeDeadline {
+    fn schedule(&mut self, deadline: Instant) -> bool {
+        if self.0.is_some_and(|pending| pending <= deadline) {
+            return false;
+        }
+        self.0 = Some(deadline);
+        true
+    }
+
+    fn fired(&mut self, deadline: Instant) -> bool {
+        if self.0 != Some(deadline) {
+            return false;
+        }
+        self.0 = None;
+        true
+    }
 }
 
 impl Kind {
@@ -60,7 +81,8 @@ pub struct Overlay {
     widget: Widget,
     prefs: Preferences,
     /// Hay un despertar programado (ver `wake_after`).
-    wake_pending: bool,
+    wake_deadline: WakeDeadline,
+    wake_task: Option<gpui::Task<()>>,
     preview_scale: f32,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
@@ -82,7 +104,8 @@ impl Overlay {
             kind: settings.kind(),
             widget,
             prefs,
-            wake_pending: false,
+            wake_deadline: WakeDeadline::default(),
+            wake_task: None,
             preview_scale: 1.0,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
@@ -97,21 +120,27 @@ impl Overlay {
         overlay
     }
 
-    /// Repinta al cabo de `after` (un aviso quieto que caduca). Un solo despertar
-    /// pendiente a la vez: los avisos caducan en el orden en que nacieron.
+    /// Conserva el vencimiento más temprano. Reemplazar la tarea cancela el
+    /// timer anterior; destruir el Overlay también lo cancela.
     fn wake_after(&mut self, after: Duration, cx: &mut Context<Self>) {
-        if self.wake_pending {
+        let Some(deadline) = Instant::now().checked_add(after) else {
+            eprintln!("vencimiento de widget fuera del rango del reloj");
+            return;
+        };
+        if !self.wake_deadline.schedule(deadline) {
             return;
         }
-        self.wake_pending = true;
-        cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(after).await;
+        self.wake_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(deadline.saturating_duration_since(Instant::now()))
+                .await;
             let _ = this.update(cx, |overlay, cx| {
-                overlay.wake_pending = false;
-                cx.notify();
+                if overlay.wake_deadline.fired(deadline) {
+                    overlay.wake_task = None;
+                    cx.notify();
+                }
             });
-        })
-        .detach();
+        }));
     }
 
     pub fn wanted_size(&self) -> (f32, f32) {
@@ -692,6 +721,51 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn wake_deadline_replaces_a_long_notice_with_an_earlier_expiry() {
+        let now = Instant::now();
+        let long = now + Duration::from_secs(4);
+        let short = now + Duration::from_millis(750);
+        let mut pending = WakeDeadline::default();
+        assert!(pending.schedule(long));
+        assert!(pending.schedule(short), "el aviso de cruce vence antes");
+        assert!(!pending.schedule(long));
+        assert!(!pending.fired(long), "callback sustituido");
+        assert_eq!(pending.0, Some(short));
+        assert!(pending.fired(short));
+        assert!(!pending.fired(short), "solo notifica una vez");
+        assert!(pending.schedule(long));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn dropping_an_overlay_cancels_its_pending_task() {
+        struct Released(flume::Sender<()>);
+        impl Drop for Released {
+            fn drop(&mut self) {
+                let _ = self.0.send(()); // El receptor puede haber terminado el test.
+            }
+        }
+        let application = gpui_platform::application();
+        let executor = application.background_executor();
+        let (started_tx, started_rx) = flume::bounded(1);
+        let (released_tx, released_rx) = flume::bounded(1);
+        let task = executor.spawn(async move {
+            let _released = Released(released_tx);
+            started_tx.send(()).expect("tarea iniciada");
+            std::future::pending::<()>().await;
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("inicio");
+        let mut overlay = Overlay::new(Kind::Delta, Preferences::default());
+        overlay.wake_task = Some(task);
+        drop(overlay);
+        released_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("cancelación");
+    }
+
     #[test]
     fn supported_variants_do_not_report_a_pending_port() {
         for value in [

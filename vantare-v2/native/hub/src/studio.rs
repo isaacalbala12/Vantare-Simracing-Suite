@@ -78,7 +78,7 @@ fn demo_content_scale(kind: Kind, width: f32) -> f32 {
 
 // El peso ya está en las fuentes Inter estáticas del kit.
 fn text(content: impl Into<SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
-    orbit::text(content, size, weight, color).font_weight(FontWeight::NORMAL)
+    orbit::text(content, size, weight.min(800), color).font_weight(FontWeight::NORMAL)
 }
 
 fn toggle_visibility(editor: &mut Editor, id: &str) -> Result<(), String> {
@@ -502,11 +502,12 @@ impl Studio {
             .items_center()
             .gap(px(10.0))
             .flex_none()
+            .ml(px(-45.0))
             .child(disabled_topbar_select(
                 "studio-profile",
                 "Perfil activo",
                 profile,
-                175.0,
+                260.0,
             ))
             .child(disabled_topbar_select(
                 "studio-performance",
@@ -514,14 +515,17 @@ impl Studio {
                 "Heredar de la aplicación",
                 210.0,
             ))
-            .child(orbit::chip(
-                if demo {
-                    "NIVEL EFECTIVO: EQUILIBRADO"
-                } else {
-                    "NIVEL EFECTIVO: NO DISPONIBLE"
-                },
-                orbit::Tone::Reference,
-            ))
+            .child(
+                orbit::chip(
+                    if demo {
+                        "NIVEL EFECTIVO: EQUILIBRADO"
+                    } else {
+                        "NIVEL EFECTIVO: NO DISPONIBLE"
+                    },
+                    orbit::Tone::Reference,
+                )
+                .w(px(190.0)),
+            )
             .child(
                 div()
                     .id("studio-save-status")
@@ -1045,8 +1049,8 @@ impl Studio {
                     .h(px(28.0))
                     .flex()
                     .flex_col()
-                    .mt(px(10.0))
-                    .mb(px(6.0))
+                    .mt(px(8.0))
+                    .mb(px(8.0))
                     .child(self.search.clone())
                     .when(query.is_empty(), |search| {
                         search.child(
@@ -1161,7 +1165,6 @@ impl Studio {
             .flex()
             .flex_col()
             .pt(px(13.0))
-            .pb(px(2.0))
             .border_t_1()
             .border_color(gpui::rgba(orbit::LINE))
             .when(self.catalog_open, |body| {
@@ -1574,7 +1577,7 @@ impl Studio {
                 )
                 .line_height(px(20.25))
                 .relative()
-                .top(px(-2.0)),
+                .top(px(-1.0)),
             );
         }
         let url = self

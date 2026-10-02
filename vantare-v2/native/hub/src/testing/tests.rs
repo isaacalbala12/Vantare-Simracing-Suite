@@ -13,6 +13,17 @@ use vantare_domain::{Snapshot, SourceKind, SourceState};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn missing_build_channel_does_not_claim_the_demo_channel() {
+    use super::model::channel_label;
+    for missing in [None, Some(""), Some(" ")] {
+        assert_eq!(channel_label(missing, false), "CANAL NO DISPONIBLE");
+        assert_eq!(channel_label(missing, true), "NIGHTLY");
+    }
+    assert_eq!(channel_label(Some("testers"), false), "TESTERS");
+    assert_eq!(channel_label(Some("nightly"), false), "NIGHTLY");
+}
+
+#[test]
 fn report_form_uses_wails_utf8_limits_and_optional_context() {
     use super::{empty_fields, model::field_errors};
     let mut fields = empty_fields();

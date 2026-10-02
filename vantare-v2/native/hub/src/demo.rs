@@ -570,6 +570,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn telemetry_demo_and_traces_keep_the_same_frozen_scene() {
+        let demo = CaptureState::parse("telemetria-demo").expect("demo");
+        let traces = CaptureState::parse("telemetria-trazas").expect("trazas");
+        let base = CaptureState::parse("telemetria-base").expect("base");
+        assert_eq!(demo.section, traces.section);
+        assert_eq!(demo.palette_query, traces.palette_query);
+        let screens: serde_json::Value = serde_json::from_str(SCREENS).expect("escenas Wails");
+        for name in ["telemetria-demo", "telemetria-trazas"] {
+            let actions = screens
+                .as_array()
+                .and_then(|screens| screens.iter().find(|screen| screen["name"] == name))
+                .and_then(|screen| screen.get("actions"))
+                .and_then(serde_json::Value::as_array);
+            assert!(
+                actions.is_none_or(Vec::is_empty),
+                "{name} no debe añadir scroll"
+            );
+        }
+        assert!(!base.notifications_open && !demo.notifications_open);
+    }
+
+    #[test]
     fn loads_the_wails_demo_snapshot_and_fixed_clock_deterministically() {
         let first = DemoData::load().expect("fixture demo");
         let second = DemoData::load().expect("segunda carga");

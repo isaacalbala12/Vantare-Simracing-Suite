@@ -1,20 +1,25 @@
 //! Extremo a extremo: el binario `vantare-core` reproduce una captura real y un
 //! `Subscriber` de `ipc` (el mismo que usan los overlays) recibe las fotos por
 //! el pipe. Falta la captura = fallo, nunca se omite en silencio.
-#![cfg(windows)]
+#![cfg(any(windows, unix))]
 // Ayudantes de test: un `unwrap` que falla es un fallo del test.
 #![allow(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+#[cfg(windows)]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use vantare_domain::{Quality, Snapshot, SourceKind};
 use vantare_ipc::Subscriber;
+#[cfg(windows)]
 use vantare_runtime::adapter::open_replay;
+#[cfg(windows)]
 use vantare_runtime::service;
+
+mod support;
 
 fn testdata(file: &str) -> PathBuf {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -149,15 +154,7 @@ fn the_core_process_emits_and_persists_source_fact_outside_acquisition() {
     assert!(received, "hecho productivo de fuente desde captura real");
     drop(client);
     drop(core.0.stdin.take());
-    let deadline = Instant::now() + Duration::from_secs(3);
-    loop {
-        if let Some(status) = core.0.try_wait().unwrap() {
-            assert!(status.success());
-            break;
-        }
-        assert!(Instant::now() < deadline, "EOF no cerró dueño I/O");
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    support::wait_for_success(&mut core.0);
     assert!(
         std::fs::read(&recording.0).unwrap().starts_with(b"[3,"),
         "hecho v3 realmente confirmado"
@@ -245,22 +242,11 @@ fn the_core_process_exits_in_order_when_its_stdin_reaches_eof() {
         "sigue vivo mientras stdin está abierto"
     );
 
-    let asked = Instant::now();
     drop(core.0.stdin.take());
-    let status = loop {
-        if let Some(status) = core.0.try_wait().unwrap() {
-            break status;
-        }
-        assert!(
-            asked.elapsed() < Duration::from_secs(3),
-            "no terminó tras el EOF"
-        );
-        std::thread::sleep(Duration::from_millis(10));
-    };
-    // Código 0: salida ordenada, no el corte por plazo (que sale con 1).
-    assert!(status.success(), "{status}");
+    support::wait_for_success(&mut core.0);
 }
 
+#[cfg(windows)]
 #[test]
 fn the_service_shuts_down_in_order_when_asked() {
     let pipe = pipe_name("shutdown");
@@ -291,6 +277,7 @@ fn the_service_shuts_down_in_order_when_asked() {
     service::run(&mut replay, &pipe, 2, 1.0, &stop).unwrap();
 }
 
+#[cfg(windows)]
 #[test]
 fn an_added_widget_is_hydrated_even_after_replay_stops_producing_observations() {
     use vantare_ipc::{Demand, Signal, SignalState};

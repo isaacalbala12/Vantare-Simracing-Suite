@@ -509,6 +509,7 @@ fn a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop() {
     // 30 fotos de 20 KB desbordan el búfer del pipe del colgado (64 KB).
     scenario.assert_core_progresses(&mut watcher);
     let (hung, _) = scenario.starts("overlays")[0];
+    let (core, _) = scenario.starts("core")[0];
     assert!(alive(hung));
 
     scenario.stop();
@@ -518,11 +519,11 @@ fn a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop() {
         !alive(hung),
         "el colgado no atiende el cierre: debe morir por el plazo"
     );
-    assert!(
-        scenario
-            .lines("status")
-            .contains(&"closed core".to_string())
-    );
+    // El launcher puede agotar también la gracia del núcleo bajo carga.
+    // "closed core" solo lo escribe la salida voluntaria del falso; comprobar
+    // el proceso cubre tanto esa salida como el cierre forzado del contrato.
+    // El cierre voluntario y su orden tienen su propio escenario.
+    assert!(!alive(core), "el núcleo también debía estar muerto");
     assert!(
         scenario
             .lines("launcher.log")

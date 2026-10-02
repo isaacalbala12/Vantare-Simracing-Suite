@@ -14,6 +14,45 @@ use vantare_ipc::transport::Event;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 
+// Solo presentación del banco: no modifica credenciales, permisos ni IPC.
+fn account_demo() -> Option<&'static crate::demo::DemoData> {
+    #[cfg(feature = "parity-capture")]
+    {
+        static DEMO: std::sync::OnceLock<Option<crate::demo::DemoData>> =
+            std::sync::OnceLock::new();
+        DEMO.get_or_init(|| {
+            let args: Vec<_> = std::env::args().collect();
+            if args.iter().any(|arg| arg == "--capture") && args.iter().any(|arg| arg == "--demo") {
+                crate::demo::DemoData::load().ok()
+            } else {
+                None
+            }
+        })
+        .as_ref()
+    }
+    #[cfg(not(feature = "parity-capture"))]
+    None
+}
+
+fn text(content: impl Into<gpui::SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
+    orbit::text(content, size, weight, color).font_weight(gpui::FontWeight(400.0))
+}
+
+fn account_note(content: &str) -> gpui::Div {
+    div()
+        .px(px(17.0))
+        .py(px(13.0))
+        .rounded(px(14.0))
+        .border_1()
+        .border_color(rgba(0xff9b_5721))
+        .bg(linear_gradient(
+            110.0,
+            linear_color_stop(rgba(0xff9b_570f), 0.0),
+            linear_color_stop(rgba(0xd52f_4905), 1.0),
+        ))
+        .child(text(content, 12.0, 400, orbit::INK_3).line_height(px(18.0)))
+}
+
 fn account_surface(title: &str, meta: &str, body: gpui::Div) -> gpui::Div {
     div()
         .flex()
@@ -23,7 +62,7 @@ fn account_surface(title: &str, meta: &str, body: gpui::Div) -> gpui::Div {
         .rounded(px(orbit::RADIUS))
         .border_1()
         .border_color(rgba(orbit::LINE))
-        .bg(rgb(orbit::SURFACE_1))
+        .bg(rgba(0x1011_14c9))
         .child(
             div()
                 .min_h(px(60.0))
@@ -34,9 +73,9 @@ fn account_surface(title: &str, meta: &str, body: gpui::Div) -> gpui::Div {
                 .gap(px(12.0))
                 .border_b_1()
                 .border_color(rgba(0xffff_ff0d))
-                .child(orbit::text(title, 15.0, 700, orbit::INK))
+                .child(text(title, 15.0, 700, orbit::INK).line_height(px(18.0)))
                 .child(div().flex_1())
-                .child(orbit::text(meta, 12.0, 500, orbit::INK_3)),
+                .child(text(meta, 12.0, 500, orbit::INK_3).font_family("Cascadia Code")),
         )
         .child(body)
 }
@@ -57,7 +96,7 @@ fn account_value(label: &str, value: &str, active: bool) -> gpui::Div {
             div()
                 .w(px(150.0))
                 .flex_none()
-                .child(orbit::text(label, 12.5, 500, orbit::INK_3)),
+                .child(text(label, 12.5, 500, orbit::INK_3)),
         )
         .child(
             div()
@@ -65,20 +104,33 @@ fn account_value(label: &str, value: &str, active: bool) -> gpui::Div {
                 .min_w_0()
                 .items_center()
                 .gap(px(7.0))
-                .child(div().size(px(6.0)).rounded_full().bg(rgb(if active {
-                    orbit::GREEN
-                } else {
-                    orbit::INK_MUTED
-                })))
-                .child(orbit::text(value, 12.5, 500, orbit::INK_2)),
+                .when(label == "Estado", |value| {
+                    value.child(div().size(px(6.0)).rounded_full().bg(rgb(if active {
+                        orbit::GREEN
+                    } else {
+                        orbit::INK_MUTED
+                    })))
+                })
+                .child(text(value, 12.5, 400, 0x00d9_d5d5).line_height(px(15.0))),
         )
 }
 
 fn account_button(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
-    orbit::button(id, label)
-        .h(px(30.0))
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label)
+        .flex_none()
+        .h(px(34.0))
         .px(px(12.0))
         .rounded(px(10.0))
+        .border_1()
+        .border_color(rgba(orbit::LINE))
+        .bg(rgba(0xffff_ff04))
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(text(label, 12.0, 650, orbit::INK_3).line_height(px(18.0)))
 }
 
 #[path = "access.rs"]
@@ -354,6 +406,19 @@ impl Remote {
     }
 
     fn account_identity_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
+        if account_demo().is_some() {
+            return div()
+                .flex()
+                .flex_none()
+                .flex_col()
+                .gap(px(6.0))
+                .child(account_button("services-account-check", "Comprobar acceso").tab_stop(false))
+                .child(
+                    account_button("services-sign-out", "Cerrar sesión")
+                        .tab_stop(false)
+                        .aria_description("Datos de demostración; acciones deshabilitadas"),
+                );
+        }
         let signed_in = self.account.signed_in;
         let can_start = self.requires_access();
         div()
@@ -409,22 +474,59 @@ impl Remote {
                 }))
             })
     }
+    fn account_badges(demo: bool) -> gpui::Div {
+        div()
+            .mt(px(8.0))
+            .flex()
+            .flex_wrap()
+            .gap(px(6.0))
+            .child(orbit::chip(
+                if demo {
+                    "● Overlays"
+                } else {
+                    "Plan no disponible"
+                },
+                if demo {
+                    orbit::Tone::Gold
+                } else {
+                    orbit::Tone::Neutral
+                },
+            ))
+            .child(orbit::chip(
+                if demo {
+                    "Stable"
+                } else {
+                    "Canal no disponible"
+                },
+                orbit::Tone::Neutral,
+            ))
+            .child(div().w_full().flex().items_start().child(orbit::chip(
+                if demo {
+                    "Este dispositivo"
+                } else {
+                    "Dispositivo sin verificar"
+                },
+                orbit::Tone::Neutral,
+            )))
+    }
     fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let demo = account_demo();
         let signed_in = self.account.signed_in;
         let identity_actions = self.account_identity_actions(cx);
         div()
             .flex_1()
             .flex_basis(gpui::relative(1.3 / 2.3))
             .min_w_0()
-            .min_h(px(144.0))
-            .p(px(20.0))
+            .min_h(px(212.0))
+            .px(px(22.0))
+            .py(px(20.0))
             .flex()
             .items_center()
             .gap(px(16.0))
             .rounded(px(orbit::RADIUS))
             .border_1()
             .border_color(rgba(orbit::LINE))
-            .bg(rgb(orbit::SURFACE_1))
+            .bg(rgba(0x1011_14c9))
             .child(
                 div()
                     .size(px(64.0))
@@ -435,10 +537,15 @@ impl Remote {
                     .rounded(px(18.0))
                     .bg(linear_gradient(
                         160.0,
-                        linear_color_stop(rgb(orbit::SURFACE_3), 0.0),
-                        linear_color_stop(rgb(orbit::SURFACE_1), 1.0),
+                        linear_color_stop(rgb(0x002a_2a30), 0.0),
+                        linear_color_stop(rgb(0x0017_171b), 1.0),
                     ))
-                    .child(orbit::text("·", 26.0, 750, orbit::INK)),
+                    .child(text(
+                        if demo.is_some() { "T" } else { "·" },
+                        26.0,
+                        750,
+                        orbit::INK,
+                    )),
             )
             .child(
                 div()
@@ -447,8 +554,10 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(2.0))
-                    .child(orbit::text(
-                        if signed_in {
+                    .child(text(
+                        if let Some(demo) = demo {
+                            &demo.user.name
+                        } else if signed_in {
                             "Cuenta conectada"
                         } else {
                             "Sin sesión"
@@ -457,29 +566,21 @@ impl Remote {
                         700,
                         orbit::INK,
                     ))
-                    .child(orbit::text(
-                        "Sin correo en la credencial local",
+                    .child(text(
+                        if demo.is_some() {
+                            "tes•••@example.com"
+                        } else {
+                            "Sin correo en la credencial local"
+                        },
                         12.5,
                         400,
                         orbit::INK_3,
                     ))
-                    .child(
-                        div()
-                            .mt(px(8.0))
-                            .flex()
-                            .flex_wrap()
-                            .gap(px(6.0))
-                            .child(orbit::chip("Plan no disponible", orbit::Tone::Neutral))
-                            .child(orbit::chip("Canal no disponible", orbit::Tone::Neutral))
-                            .child(orbit::chip(
-                                "Dispositivo sin verificar",
-                                orbit::Tone::Neutral,
-                            )),
-                    ),
+                    .child(Self::account_badges(demo.is_some())),
             )
             .child(identity_actions)
     }
-    fn account_plan() -> gpui::Div {
+    fn account_modules(demo: bool) -> gpui::Div {
         let module_names = [
             ("i-studio", "Overlays Studio", false),
             ("i-launcher", "Launcher", false),
@@ -498,25 +599,65 @@ impl Remote {
             modules = modules.child(
                 div()
                     .w(px(184.0))
+                    .flex_none()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .opacity(orbit::DISABLED)
-                    .child(orbit::icon(icon, 15.0, orbit::INK_3))
-                    .child(orbit::text(label, 12.0, 500, orbit::INK_2))
+                    .child(
+                        div()
+                            .size(px(16.0))
+                            .rounded_full()
+                            .bg(rgba(if soon {
+                                0xff9b_5724
+                            } else if demo && icon != "i-ingeniero" {
+                                0x78d6_8b2e
+                            } else {
+                                0xffff_ff0f
+                            }))
+                            .when(soon, |dot| dot.border_1().border_color(rgba(0xff9b_5780)))
+                            .when(demo && !soon && icon != "i-ingeniero", |dot| {
+                                dot.flex().items_center().justify_center().child(text(
+                                    "✓",
+                                    11.0,
+                                    700,
+                                    orbit::GREEN,
+                                ))
+                            }),
+                    )
+                    .child(
+                        text(
+                            label,
+                            12.5,
+                            400,
+                            if icon == "i-ingeniero" {
+                                orbit::INK_MUTED
+                            } else {
+                                0x00d9_d5d5
+                            },
+                        )
+                        .line_height(px(15.0)),
+                    )
                     .when(soon, |module| {
-                        module.child(orbit::text("· próximamente", 10.5, 500, orbit::INK_3))
+                        module.child(
+                            text("· próximamente", 10.5, 500, orbit::INK_3).whitespace_nowrap(),
+                        )
                     }),
             );
         }
+        modules
+    }
+    fn account_plan() -> gpui::Div {
+        let demo = account_demo().is_some();
+        let modules = Self::account_modules(demo);
         div()
             .relative()
             .flex_1()
             .flex_basis(gpui::relative(1.0 / 2.3))
             .min_w_0()
-            .min_h(px(144.0))
+            .min_h(px(212.0))
             .overflow_hidden()
-            .p(px(20.0))
+            .px(px(22.0))
+            .py(px(20.0))
             .rounded(px(orbit::RADIUS))
             .border_1()
             .border_color(rgba(0xf047_5533))
@@ -525,29 +666,71 @@ impl Remote {
                 linear_color_stop(rgba(0xd52f_4924), 0.0),
                 linear_color_stop(rgba(0xff9b_570a), 1.0),
             ))
-            .child(orbit::eyebrow("Plan activo"))
-            .child(orbit::text("No disponible", 26.0, 750, orbit::INK).mt(px(4.0)))
-            .child(orbit::text("— de 6 módulos incluidos", 12.0, 400, orbit::INK_2).mt(px(3.0)))
+            .child(
+                div()
+                    .absolute()
+                    .top(px(-70.0))
+                    .right(px(-60.0))
+                    .size(px(150.0))
+                    .rounded_full()
+                    .border(px(22.0))
+                    .border_color(rgba(0xffff_ff0d)),
+            )
+            .child(orbit::eyebrow("Plan activo").line_height(px(18.0)))
+            .child(
+                text(
+                    if demo { "Overlays" } else { "No disponible" },
+                    26.0,
+                    750,
+                    orbit::INK,
+                )
+                .line_height(px(39.0))
+                .mt(px(4.0)),
+            )
+            .child(
+                text(
+                    if demo {
+                        "4 de 6 módulos incluidos"
+                    } else {
+                        "— de 6 módulos incluidos"
+                    },
+                    12.0,
+                    400,
+                    0x00c9_c4c6,
+                )
+                .line_height(px(18.0))
+                .mt(px(3.0)),
+            )
             .child(modules)
     }
     fn account_session(&self) -> gpui::Div {
+        let demo = account_demo().is_some();
         let signed_in = self.account.signed_in;
         account_surface(
             "Sesión",
             "credencial local",
             account_body()
+                .px(px(23.0))
+                .pt(px(23.0))
+                .pb(px(25.0))
                 .child(account_value(
                     "Estado",
-                    if signed_in {
+                    if demo {
+                        "Activo"
+                    } else if signed_in {
                         "Conectada"
                     } else {
                         "Sin sesión"
                     },
-                    signed_in,
+                    signed_in || demo,
                 ))
                 .child(account_value(
                     "Último acceso",
-                    "La credencial no lo declara",
+                    if demo {
+                        "30/9/2026, 16:00:32"
+                    } else {
+                        "La credencial no lo declara"
+                    },
                     false,
                 ))
                 .child(account_value(
@@ -555,15 +738,30 @@ impl Remote {
                     "La credencial no lo declara",
                     false,
                 ))
-                .child(account_value("Canales disponibles", "—", false).border_b_0()),
+                .child(
+                    account_value(
+                        "Canales disponibles",
+                        if demo { "Stable" } else { "—" },
+                        false,
+                    )
+                    .border_b_0(),
+                ),
         )
         .flex_1()
     }
     fn account_devices(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let demo = account_demo().is_some();
         let device = div()
             .flex()
             .items_center()
             .gap(px(12.0))
+            .w_full()
+            .px(px(12.0))
+            .py(px(10.0))
+            .rounded(px(12.0))
+            .border_1()
+            .border_color(rgba(if demo { 0x78d6_8b33 } else { 0xffff_ff0d }))
+            .bg(rgba(0xffff_ff04))
             .child(
                 div()
                     .size(px(34.0))
@@ -575,7 +773,7 @@ impl Remote {
                     .bg(rgb(orbit::SURFACE_2))
                     .border_1()
                     .border_color(rgba(orbit::LINE))
-                    .child(orbit::text("PC", 10.5, 700, orbit::INK_3)),
+                    .child(text("PC", 10.5, 700, orbit::INK_3)),
             )
             .child(
                 div()
@@ -584,30 +782,38 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(3.0))
-                    .child(orbit::text("Este dispositivo", 13.0, 650, orbit::INK))
-                    .child(orbit::text(
-                        "estado no disponible en esta sesión",
-                        12.0,
+                    .child(text("Este dispositivo", 13.0, 650, orbit::INK))
+                    .child(text(
+                        if demo {
+                            "verificado por el servicio de licencias"
+                        } else {
+                            "estado no disponible en esta sesión"
+                        },
+                        11.5,
                         400,
                         orbit::INK_3,
                     )),
             )
-            .child(div().size(px(6.0)).rounded_full().bg(rgb(orbit::INK_MUTED)));
+            .child(div().size(px(6.0)).rounded_full().bg(rgb(if demo {
+                orbit::GREEN
+            } else {
+                orbit::INK_MUTED
+            })));
         account_surface(
             "Dispositivos",
-            "—",
+            if demo { "1" } else { "—" },
             account_body()
-                .gap(px(14.0))
+                .items_start().gap(px(10.0))
                 .child(device)
-                .child(orbit::callout(
+                .child(account_note(
                     "El servicio de licencias solo declara si este equipo está verificado; no publica la lista de dispositivos, así que aquí no se inventa ninguno. «Restablecer dispositivo» libera el equipo activo (1 vez cada 24 h).",
                 ))
                 .child(
                     account_button("services-device-reset", "Restablecer dispositivo")
-                        .tab_stop(!self.busy)
+                        .tab_stop(!self.busy && !demo)
                         .when(self.busy, |button| button.opacity(orbit::DISABLED))
                         .on_click(cx.listener(|this, _, _, cx| {
-                            if !this.busy {
+                            if !this.busy && account_demo().is_none() {
                                 this.request(Command::DeviceReset, cx);
                             }
                         })),
@@ -635,10 +841,14 @@ impl Remote {
             .flex_col()
             .w_full()
             .min_w_0()
+            .mt(px(0.0))
+            .line_height(gpui::relative(1.5))
             .gap(px(21.0))
             .child(hero)
             .child(details)
-            .child(orbit::callout(self.message.clone()))
+            .when(account_demo().is_none(), |page| {
+                page.child(orbit::callout(self.message.clone()))
+            })
     }
 
     pub fn account(&self, cx: &mut Context<Self>) -> gpui::Div {

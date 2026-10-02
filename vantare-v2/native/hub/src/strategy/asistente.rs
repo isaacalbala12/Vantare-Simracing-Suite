@@ -129,7 +129,7 @@ impl Strategy {
             .overflow_hidden();
         let (title, description) = match step {
             AssistantStep::Inicio => (
-                "Prepara tu próxima carrera",
+                "Prepara tu próxima\ncarrera",
                 "Elige cómo empezar. Construye tu estrategia con sesiones registradas.",
             ),
             AssistantStep::Combinacion => (
@@ -157,8 +157,8 @@ impl Strategy {
             .gap(px(8.0))
             .ml(px(-32.0))
             .mr(px(-32.0))
-            .pl(px(48.0))
-            .pr(px(154.0))
+            .pl(px(49.0))
+            .pr(px(166.0))
             .h(px(93.0))
             .child(
                 gpui::div()
@@ -181,18 +181,11 @@ impl Strategy {
                 gpui::div()
                     .relative()
                     .flex()
-                    .when(index < AssistantStep::ALL.len() - 1, gpui::Styled::flex_1)
-                    .when(index == AssistantStep::ALL.len() - 1, |item| {
-                        item.w(px(60.0)).flex_none()
-                    })
+                    .w(px(36.0))
+                    .flex_none()
                     .flex_col()
-                    .when(index < AssistantStep::ALL.len() - 1, |item| {
-                        item.items_start()
-                    })
-                    .when(index == AssistantStep::ALL.len() - 1, |item| {
-                        item.items_center()
-                    })
-                    .gap(px(8.0))
+                    .items_start()
+                    .gap(px(12.0))
                     .child(
                         gpui::div()
                             .flex()
@@ -213,8 +206,8 @@ impl Strategy {
                             })
                             .child(orbit::text(
                                 marker,
-                                orbit::BODY,
-                                600,
+                                17.0,
+                                400,
                                 if current || complete {
                                     orbit::INK
                                 } else {
@@ -225,22 +218,20 @@ impl Strategy {
                     .child(
                         div()
                             .w(px(90.0))
-                            .when(index < AssistantStep::ALL.len() - 1, |label| {
-                                label.ml(px(-27.0))
-                            })
+                            .ml(px(-27.0))
                             .flex()
                             .justify_center()
                             .child(
                                 div()
-                                    .pb(px(7.0))
+                                    .pb(px(6.0))
                                     .when(current, |label| {
-                                        label.border_b_2().border_color(rgb(orbit::CARMINE))
+                                        label.border_b_1().border_color(rgb(orbit::CARMINE))
                                     })
                                     .child(orbit::text(
                                         item.label(),
                                         orbit::SECONDARY,
-                                        if current { 600 } else { 400 },
-                                        if current { orbit::INK } else { orbit::INK_3 },
+                                        400,
+                                        if current { orbit::INK } else { orbit::INK_2 },
                                     )),
                             ),
                     ),
@@ -255,7 +246,7 @@ impl Strategy {
             .flex_none()
             .border_t_1()
             .border_color(rgba(orbit::LINE_STRONG))
-            .bg(rgba(0x0809_0bf0))
+            .bg(rgb(orbit::CANVAS))
             .px(px(32.0))
             .child(
                 gpui::div()
@@ -278,7 +269,7 @@ impl Strategy {
             .child(
                 gpui::div()
                     .flex()
-                    .gap(px(18.0))
+                    .gap(px(18.0)).mt(px(-14.0))
                     .child(
                         Self::assistant_footer_button(
                             "strategy-assistant-back",
@@ -355,11 +346,19 @@ impl Strategy {
             .pt(px(20.0))
             .pb(px(22.0))
             .child(progress.flex_none())
-            .child(orbit::eyebrow(step.label().to_uppercase()).flex_none())
             .child(
-                orbit::text(title, 42.0, 700, orbit::INK)
-                    .max_w(px(480.0))
+                orbit::tracked_text(step.label().to_uppercase(), 11.0, 400, orbit::INK_2, 1.43)
+                    .ml(px(1.0))
+                    .relative()
+                    .top(px(2.0))
+                    .flex_none(),
+            )
+            .child(
+                super::view::heading(title, 50.0, -2.0)
                     .line_height(px(50.0))
+                    .max_w(px(440.0))
+                    .mt(px(2.0))
+                    .ml(px(1.0))
                     .flex_none(),
             )
             .child(
@@ -369,9 +368,21 @@ impl Strategy {
                     } else {
                         460.0
                     }))
+                    .ml(px(1.0))
+                    .relative()
+                    .top(px(-2.0))
                     .flex_none(),
             )
-            .child(body);
+            .child(body.ml(px(1.0)).when(
+                matches!(step, AssistantStep::Reglas | AssistantStep::Pilotos),
+                |body| {
+                    body.mt(px(if step == AssistantStep::Reglas {
+                        0.0
+                    } else {
+                        -2.0
+                    }))
+                },
+            ));
         let main = main.child(
             gpui::div()
                 .relative()
@@ -404,7 +415,7 @@ impl Strategy {
             .bg(rgb(if primary {
                 orbit::PRIMARY_BG
             } else {
-                orbit::SURFACE_2
+                orbit::CANVAS
             }))
             .border_1()
             .border_color(if primary {
@@ -417,9 +428,9 @@ impl Strategy {
             .focus_visible(|style| style.border_color(rgb(orbit::CARMINE)))
             .child(orbit::text(
                 label.to_owned(),
-                15.0,
-                600,
-                if primary { 0x001c_1719 } else { orbit::INK },
+                16.0,
+                500,
+                if primary { 0x001c_1719 } else { orbit::INK_3 },
             ))
     }
 
@@ -482,65 +493,83 @@ impl Strategy {
                 rgba(orbit::LINE)
             })
             .bg(if selected {
-                rgba(0x100d_0ff2)
+                rgb(0x001c_1216)
             } else {
-                rgba(0x0809_0bf0)
+                rgb(0x000b_0d0f)
             })
-            .opacity(if selected { 1.0 } else { 0.82 })
             .child(orbit::icon(icon, 20.0, orbit::INK_2))
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(4.0))
-                    .child(orbit::text(title, 16.0, 600, orbit::INK))
+                    .child(orbit::text(title, 14.0, 600, orbit::INK))
                     .child(orbit::text(description, 12.0, 400, orbit::INK_2)),
             )
     }
 
-    fn combination_event_options(selected: bool) -> gpui::Div {
+    fn combination_event_options(&self, selected: bool) -> gpui::Div {
         div()
             .flex()
             .gap(px(12.0))
             .child(Self::combination_option_card(
                 "strategy-custom-event",
                 "Carrera personalizada",
-                "Elige coche, circuito y reglamento",
+                if self.capture_demo().is_some() {
+                    "Elige tu combinación"
+                } else {
+                    "Elige coche, circuito y reglamento"
+                },
                 "i-ajustes",
                 selected,
             ))
             .child(Self::combination_option_card(
                 "strategy-calendar-event",
                 "Calendario de Vantare",
-                "Selección de eventos no disponible",
+                if self.capture_demo().is_some() {
+                    "Parte de un evento publicado"
+                } else {
+                    "Selección de eventos no disponible"
+                },
                 "i-carreras",
                 false,
             ))
     }
 
-    fn combination_summary(circuit: String, category: String) -> gpui::Div {
+    fn combination_summary(&self, circuit: String, category: String) -> gpui::Div {
         div()
             .flex()
             .flex_col()
             .gap(px(10.0))
-            .mt(px(8.0))
+            .mt(px(7.0))
             .w(px(720.0))
-            .h(px(90.0))
+            .h(px(92.0))
             .flex_none()
-            .p(px(18.0))
+            .p(px(22.0))
             .rounded(px(12.0))
             .border_1()
             .border_color(rgba(orbit::LINE))
-            .bg(rgba(0x0809_0bf2))
-            .child(orbit::eyebrow("TU COMBINACIÓN"))
+            .bg(rgb(0x000b_0d0f))
+            .child(orbit::tracked_text(
+                "TU COMBINACIÓN",
+                11.0,
+                400,
+                orbit::INK_2,
+                1.43,
+            ))
             .child(
                 div()
                     .flex()
                     .items_center()
-                    .justify_between()
+                    .gap(px(18.0))
                     .flex_1()
-                    .child(orbit::text(circuit, 17.0, 500, orbit::INK))
-                    .child(orbit::text(category, 13.0, 400, orbit::INK_2)),
+                    .child(orbit::text(circuit, 22.0, 500, orbit::INK).w(px(175.0)))
+                    .when_some(self.capture_demo(), |row, demo| {
+                        row.child(
+                            orbit::text(demo.track_layout, 13.0, 400, orbit::INK_2).w(px(113.0)),
+                        )
+                    })
+                    .child(orbit::text(category, 13.0, 400, orbit::INK_2).flex_1()),
             )
     }
 
@@ -569,7 +598,7 @@ impl Strategy {
                 .items_center()
                 .gap(px(16.0))
                 .h(px(50.0))
-                .child(orbit::text(label.to_owned(), 14.0, 500, orbit::INK_2).w(px(124.0)))
+                .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2).w(px(124.0)))
                 .child(control)
         };
         let surface = || {
@@ -582,7 +611,7 @@ impl Strategy {
                 .rounded(px(10.0))
                 .border_1()
                 .border_color(rgba(orbit::LINE))
-                .bg(rgba(0x0809_0bf0))
+                .bg(rgb(0x000b_0d0f))
         };
         let simulator_row = row(
             "Simulador",
@@ -591,34 +620,46 @@ impl Strategy {
                 .child(orbit::text("LMU", 14.0, 800, orbit::CARMINE))
                 .child(orbit::text(simulator, 13.0, 600, orbit::INK)),
         );
-        let category_control = surface().child(if self.demo_car.is_some() {
-            orbit::text(category.clone(), 13.0, 500, orbit::INK)
-        } else {
-            div().flex_1().child(self.inputs[5].clone())
-        });
+        let category_control = surface()
+            .child(if self.demo_car.is_some() {
+                orbit::text(category.clone(), 13.0, 500, orbit::INK)
+            } else {
+                div().flex_1().child(self.inputs[5].clone())
+            })
+            .child(orbit::text("⌄", 16.0, 500, orbit::INK_2).ml_auto());
         let circuit_control = surface()
-            .child(div().flex_1().child(self.inputs[4].clone()))
-            .child(orbit::icon("i-chevron", 14.0, orbit::INK_2));
+            .child(if let Some(demo) = self.capture_demo() {
+                orbit::text(
+                    format!("{circuit} · {}", demo.track_layout),
+                    13.0,
+                    500,
+                    orbit::INK,
+                )
+                .flex_1()
+            } else {
+                div().flex_1().child(self.inputs[4].clone())
+            })
+            .child(orbit::text("⌄", 16.0, 500, orbit::INK_2));
         gpui::div()
             .flex()
             .flex_col()
             .gap(px(12.0))
             .max_w(px(720.0))
             .child(orbit::eyebrow("EVENTO"))
-            .child(Self::combination_event_options(event_available))
+            .child(self.combination_event_options(event_available))
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
-                    .mt(px(6.0))
+                    .mt(px(4.0))
                     .w(px(720.0))
                     .flex_none()
                     .child(simulator_row)
                     .child(row("Categoría / coche", category_control))
                     .child(row("Circuito / trazado", circuit_control)),
             )
-            .child(Self::combination_summary(circuit, category))
+            .child(self.combination_summary(circuit, category))
     }
 
     #[allow(clippy::too_many_lines)] // Mantiene juntos los campos de un único paso del asistente.
@@ -644,7 +685,7 @@ impl Strategy {
             .rounded(px(12.0))
             .border_1()
             .border_color(rgba(orbit::LINE))
-            .bg(rgba(0x0809_0be8))
+            .bg(rgb(0x000b_0d0f))
             .child(
                 button(
                     "strategy-rules-advanced",
@@ -655,6 +696,7 @@ impl Strategy {
                     },
                 )
                 .w_full()
+                .bg(rgb(0x000b_0d0f))
                 .h(px(58.0))
                 .justify_start()
                 .px(px(18.0))
@@ -670,10 +712,28 @@ impl Strategy {
             .flex_col()
             .gap(px(12.0))
             .max_w(px(980.0))
-            .child(orbit::eyebrow(
-                "CONFIGURACIÓN DE CARRERA · LOS CAMPOS VACÍOS SIGUEN PENDIENTES",
-            ))
-            .child(self.labeled_input("Nombre de la carrera", 0, 220.0))
+            .child(
+                orbit::text(
+                    "Configuración de carrera · los campos vacíos siguen pendientes.",
+                    12.0,
+                    400,
+                    orbit::INK_2,
+                )
+                .line_height(px(18.0)),
+            )
+            .child(if self.capture_demo().is_some() {
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(14.0))
+                    .h(px(42.0))
+                    .child(
+                        orbit::text("Nombre de la carrera", 13.0, 400, orbit::INK_2).w(px(220.0)),
+                    )
+                    .child(super::editor_view::demo_control(&self.fields[0]))
+            } else {
+                self.labeled_input("Nombre de la carrera", 0, 220.0)
+            })
             .child(
                 div()
                     .flex()
@@ -686,6 +746,11 @@ impl Strategy {
                             .flex_1()
                             .h(px(64.0))
                             .gap(px(12.0))
+                            .p(px(12.0))
+                            .rounded(px(10.0))
+                            .border_1()
+                            .border_color(rgba(orbit::LINE))
+                            .bg(rgba(0x0b0d_0fe8))
                             .child(orbit::text("Formato", 14.0, 500, orbit::INK_2).w(px(205.0)))
                             .child(
                                 div()
@@ -698,14 +763,24 @@ impl Strategy {
                                     .rounded(px(10.0))
                                     .border_1()
                                     .border_color(rgba(orbit::LINE))
-                                    .bg(rgba(0x0809_0be8))
+                                    .bg(rgb(0x000b_0d0f))
                                     .child(orbit::text(distance_unit, 14.0, 500, orbit::INK))
                                     .child(orbit::text("⌄", 16.0, 500, orbit::INK_2)),
                             ),
                     )
                     .child(
-                        self.labeled_input(distance_label, distance_field, 205.0)
-                            .flex_1(),
+                        (if self.capture_demo().is_some() {
+                            Self::demo_rule_row(distance_label, &self.fields[distance_field])
+                        } else {
+                            self.labeled_input(distance_label, distance_field, 205.0)
+                        })
+                        .flex_1()
+                        .h(px(64.0))
+                        .p(px(12.0))
+                        .rounded(px(10.0))
+                        .border_1()
+                        .border_color(rgba(orbit::LINE))
+                        .bg(rgba(0x0b0d_0fe8)),
                     ),
             )
             .child(
@@ -713,12 +788,13 @@ impl Strategy {
                     .flex()
                     .flex_col()
                     .justify_between()
-                    .h(px(306.0))
+                    .h(px(305.0))
                     .p(px(18.0))
+                    .pb(px(14.0))
                     .rounded(px(12.0))
                     .border_1()
                     .border_color(rgba(orbit::LINE))
-                    .bg(rgba(0x0809_0be8))
+                    .bg(rgb(0x000b_0d0f))
                     .child(
                         div()
                             .flex()
@@ -728,11 +804,13 @@ impl Strategy {
                             .child(orbit::text(
                                 "Combustible y energía virtual",
                                 14.0,
-                                600,
+                                400,
                                 orbit::INK,
                             )),
                     )
-                    .child(
+                    .child(if let Some(demo) = self.capture_demo() {
+                        Self::demo_resource_fields(demo)
+                    } else {
                         div()
                             .flex()
                             .gap(px(18.0))
@@ -763,10 +841,302 @@ impl Strategy {
                                     .child(self.labeled_input("Capacidad VE · %", 12, 205.0))
                                     .child(self.labeled_input("Consumo VE · %/v", 13, 205.0))
                                     .child(div().h(px(44.0))),
-                            ),
-                    ),
+                            )
+                    }),
             )
             .child(advanced_section)
+    }
+
+    fn demo_rule_row(label: &str, value: &(impl ToString + ?Sized)) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .h(px(44.0))
+            .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2).w(px(205.0)))
+            .child(super::editor_view::demo_control(value))
+    }
+
+    fn demo_resource_fields(demo: &super::editor_view::CaptureDemo) -> gpui::Div {
+        let left = div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .justify_between()
+            .h(px(234.0))
+            .child(Self::demo_rule_row("Capacidad de combustible · L", &110))
+            .child(Self::demo_rule_row(
+                "Combustible inicial · L",
+                &demo.fuel_initial,
+            ))
+            .child(Self::demo_rule_row(
+                "Reserva de combustible · L",
+                &demo.fuel_reserve,
+            ))
+            .child(div().h(px(44.0)));
+        let right = div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .justify_between()
+            .h(px(234.0))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .h(px(44.0))
+                    .child(orbit::text("Energía virtual", 13.0, 400, orbit::INK_2).w(px(205.0)))
+                    .child(
+                        super::editor_view::demo_control("Aplica").child(orbit::text(
+                            "⌄",
+                            16.0,
+                            500,
+                            orbit::INK,
+                        )),
+                    ),
+            )
+            .child(Self::demo_rule_row(
+                "Capacidad de energía · %",
+                &demo.energy_capacity,
+            ))
+            .child(Self::demo_rule_row(
+                "Energía inicial · %",
+                &demo.energy_initial,
+            ))
+            .child(Self::demo_rule_row(
+                "Reserva de energía · %",
+                &demo.energy_reserve,
+            ));
+        div().flex().gap(px(18.0)).child(left).child(right)
+    }
+
+    #[allow(clippy::too_many_lines)] // Composición de las tres tarjetas de la fixture aprobada.
+    fn demo_driver_fields(&self, demo: &super::editor_view::CaptureDemo) -> gpui::Div {
+        let names = self
+            .current_event()
+            .and_then(|event| event["drivers"].as_array())
+            .map_or_else(Vec::new, |drivers| {
+                drivers
+                    .iter()
+                    .map(|driver| display(&driver["name"]["value"]))
+                    .collect::<Vec<_>>()
+            });
+        let mut order = div().flex().gap(px(8.0));
+        let mut cards = div().flex().items_start().gap(px(14.0));
+        for (index, name) in names.iter().enumerate() {
+            order = order.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .flex_1()
+                    .min_w_0()
+                    .gap(px(10.0))
+                    .h(px(50.0))
+                    .px(px(9.0))
+                    .rounded(px(7.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE))
+                    .bg(rgb(0x000b_0d0f))
+                    .child(
+                        orbit::text((index + 1).to_string(), 16.0, 400, orbit::INK_2)
+                            .w(px(16.0))
+                            .mr(px(6.0)),
+                    )
+                    .child(
+                        orbit::text(name.clone(), 16.0, 700, orbit::INK)
+                            .flex_1()
+                            .min_w_0(),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(5.0))
+                            .children(["↑", "↓"].into_iter().map(|arrow| {
+                                super::editor_view::demo_control(arrow)
+                                    .flex_none()
+                                    .w(px(34.0))
+                                    .h(px(38.0))
+                                    .rounded(px(12.0))
+                                    .opacity(0.5)
+                            })),
+                    ),
+            );
+            let role = if index == 0 {
+                "PILOTO PRINCIPAL".to_owned()
+            } else {
+                format!("RELEVO {index}")
+            };
+            let mut limits = div().flex().flex_col().gap(px(8.0)).mt(px(-4.0));
+            for (offset, labels) in [
+                ["Mínimo · vueltas", "Máximo · vueltas"],
+                ["Máximo seguido · minutos", "Máximo total · minutos"],
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                limits = limits.child(div().flex().gap(px(8.0)).children(
+                    labels.into_iter().enumerate().map(|(column, label)| {
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .gap(px(4.0))
+                            .child(
+                                orbit::text(label, 12.0, 400, orbit::INK_2)
+                                    .h(px(30.0))
+                                    .line_height(px(15.0)),
+                            )
+                            .child(super::editor_view::demo_control(
+                                &demo.driver_limits[offset * 2 + column],
+                            ))
+                    }),
+                ));
+            }
+            let card = div()
+                .flex()
+                .flex_col()
+                .flex_1()
+                .min_w_0()
+                .gap(px(14.0))
+                .p(px(18.0))
+                .pt(px(17.0))
+                .rounded(px(10.0))
+                .border_1()
+                .border_color(rgba(orbit::LINE_STRONG))
+                .bg(rgb(0x000b_0d0f))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .h(px(38.0))
+                        .child(orbit::tracked_text(role, 10.5, 400, orbit::INK_2, 1.2))
+                        .child(
+                            super::editor_view::demo_control("Quitar piloto")
+                                .rounded(px(14.0))
+                                .opacity(0.6)
+                                .flex_none()
+                                .w(px(102.0))
+                                .h(px(38.0)),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(12.0))
+                        .h(px(42.0))
+                        .child(
+                            orbit::text("Nombre del piloto", 13.0, 400, orbit::INK_2).w(px(123.0)),
+                        )
+                        .child(super::editor_view::demo_control(name)),
+                )
+                .child(limits)
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.0))
+                        .pt(px(12.0))
+                        .border_t_1()
+                        .border_color(rgba(orbit::LINE))
+                        .child(orbit::text("▶", 11.0, 400, orbit::INK))
+                        .child(
+                            orbit::text("Tramos no disponibles", 14.5, 650, orbit::INK)
+                                .line_height(px(24.0)),
+                        ),
+                )
+                .child(
+                    (if index == 0 {
+                        orbit::text(
+                            "Ritmo pendiente de validar con sus sesiones.",
+                            13.0,
+                            400,
+                            orbit::INK_2,
+                        )
+                    } else {
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(8.0))
+                            .child(orbit::text("Fuente de ritmo", 13.0, 400, orbit::INK_2))
+                            .child(
+                                super::editor_view::demo_control(
+                                    "Estimar a partir de Isaac Albalá",
+                                )
+                                .child(orbit::text(
+                                    "⌄",
+                                    16.0,
+                                    500,
+                                    orbit::INK_2,
+                                )),
+                            )
+                            .child(
+                                div()
+                                    .h(px(20.0))
+                                    .mt(px(8.0))
+                                    .border_t_1()
+                                    .border_color(rgba(orbit::LINE)),
+                            )
+                    })
+                    .mt(px(-8.0)),
+                );
+            cards = cards.child(card);
+        }
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(14.0))
+            .max_w(px(980.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .justify_between()
+                    .h(px(156.0))
+                    .p(px(22.0))
+                    .rounded(px(10.0))
+                    .border_1()
+                    .border_color(rgba(orbit::LINE_STRONG))
+                    .bg(rgb(0x0010_1214))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(32.0))
+                            .h(px(48.0))
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .flex_1()
+                                    .gap(px(4.0)).relative().top(px(-2.0))
+                                    .child(orbit::text(
+                                        "Criterio de asignación",
+                                        16.0,
+                                        600,
+                                        orbit::INK,
+                                    ).line_height(px(24.0)))
+                                    .child(orbit::text(
+                                        "El motor repetirá esta secuencia y respetará sus límites.",
+                                        13.0,
+                                        400,
+                                        orbit::INK_2,
+                                    ).line_height(px(19.5))),
+                            )
+                            .child(orbit::text("Orden de pilotos", 13.0, 400, orbit::INK_2))
+                            .child(
+                                super::editor_view::demo_control("Rotación fijada").px(px(16.0))
+                                    .flex_none()
+                                    .w(px(147.0))
+                                    .child(orbit::text("⌄", 16.0, 500, orbit::INK_2)),
+                            ),
+                    )
+                    .child(order.relative().top(px(1.0))),
+            )
+            .child(cards)
     }
 
     fn labeled_input(&self, label: &str, index: usize, label_width: f32) -> gpui::Div {
@@ -781,6 +1151,9 @@ impl Strategy {
 
     #[allow(clippy::too_many_lines)] // Mantiene el orden y las tarjetas del equipo en una vista.
     fn driver_fields(&self) -> gpui::Div {
+        if let Some(demo) = self.capture_demo() {
+            return self.demo_driver_fields(demo);
+        }
         let drivers = self
             .current_event()
             .and_then(|event| event["drivers"].as_array())
@@ -905,9 +1278,14 @@ impl Strategy {
             None => Ok(None),
         };
         let linked_sessions = self.current_event().map_or(0, |event| {
-            event["planningInputs"]["projection"]["sourceSessions"]
+            event["combination"]["sessions"]
                 .as_array()
-                .map_or(0, Vec::len)
+                .map_or(0, |sessions| {
+                    sessions
+                        .iter()
+                        .filter(|session| session["included"] == true)
+                        .count()
+                })
         });
         let session_count = preparation
             .as_ref()
@@ -928,14 +1306,15 @@ impl Strategy {
                 None => Some("Modo manual · no requiere telemetría".to_owned()),
             },
         );
-        let browse = orbit::primary_button("strategy-browse-sessions", "Buscar sesiones")
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.page = Page::Editor(EditorTab::Datos);
-                this.error = None;
-                cx.notify();
-            }))
-            .w(px(128.0))
-            .h(px(40.0));
+        let browse =
+            super::editor_view::white_button("strategy-browse-sessions", "Buscar sesiones")
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.page = Page::Editor(EditorTab::Datos);
+                    this.error = None;
+                    cx.notify();
+                }))
+                .w(px(128.0))
+                .h(px(40.0));
         div()
             .flex()
             .flex_col()
@@ -946,7 +1325,7 @@ impl Strategy {
             .rounded(px(14.0))
             .border_1()
             .border_color(rgba(orbit::LINE))
-            .bg(rgba(0x0809_0bf0))
+            .bg(rgb(0x000b_0d0f))
             .child(
                 div()
                     .flex()
@@ -973,7 +1352,7 @@ impl Strategy {
                 400,
                 orbit::INK_2,
             ))
-            .when_some(status, |card, status| {
+            .when_some(status.filter(|_| self.capture_demo().is_none()), |card, status| {
                 card.child(orbit::text(status, 13.0, 500, orbit::INK_3))
             })
             .child(browse)
@@ -1007,9 +1386,9 @@ impl Strategy {
             })
             .rounded(px(12.0))
             .bg(if selected {
-                rgba(0x100d_0ff2)
+                rgb(0x0010_0d0f)
             } else {
-                rgba(0x0809_0bf2)
+                rgb(0x000b_0d0f)
             })
             .child(
                 gpui::div()

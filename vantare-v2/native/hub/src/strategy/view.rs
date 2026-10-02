@@ -16,6 +16,25 @@ pub(super) enum Page {
     Stops,
 }
 
+/// Orbit no expone tracking negativo; acumula el espaciado sin redondear cada letra.
+pub(super) fn heading(title: &str, line_height: f32, tracking: f32) -> gpui::Div {
+    div().flex().flex_col().children(title.lines().map(|line| {
+        div().flex().h(px(line_height)).children(line.chars().scan(
+            0.0_f32,
+            |advance, character| {
+                let previous = advance.round();
+                *advance += tracking;
+                Some(
+                    orbit::text(character.to_string(), 42.0, 700, orbit::INK)
+                        .line_height(px(line_height))
+                        .flex_none()
+                        .mr(px(advance.round() - previous)),
+                )
+            },
+        ))
+    }))
+}
+
 fn pending(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
     button(id, &format!("{label} · pendiente"))
         .tab_stop(false)
@@ -110,18 +129,18 @@ impl Strategy {
                                 .top(px(-10.0 * scale))
                                 .w(px(width))
                                 .h(px(image_height))
-                                .object_fit(ObjectFit::Cover),
+                                .object_fit(ObjectFit::Fill),
                         )
                         .into_any_element(),
                 )
             }
             GarageBackground::Standard => {
                 let image = self.garage.clone()?;
-                let width = (viewport_width - 74.0).max(0.0);
+                let width = (viewport_width - 73.0).max(0.0);
                 Some(
                     div()
                         .absolute()
-                        .left(px(74.0))
+                        .left(px(73.0))
                         .top(px(0.0))
                         .w(px(width))
                         .h(px(width * 941.0 / 1672.0))
@@ -138,7 +157,7 @@ impl Strategy {
             }
             GarageBackground::Career => {
                 let image = self.garage.clone()?;
-                let scale = viewport_width / 1672.0 * 0.88;
+                let scale = viewport_width / 1672.0 * (1475.0 / 1672.0);
                 let width = 1672.0 * scale;
                 let image_height = 941.0 * scale;
                 Some(
@@ -147,13 +166,13 @@ impl Strategy {
                         .top(px(0.0))
                         .right(px(0.0))
                         .w(px(width))
-                        .h(px(image_height - 14.0 * scale))
+                        .h(px(image_height - 15.0 * viewport_width / 1672.0))
                         .overflow_hidden()
                         .child(
                             img(image)
                                 .absolute()
                                 .left(px(0.0))
-                                .top(px(-14.0 * scale))
+                                .top(px(-15.0 * viewport_width / 1672.0))
                                 .w(px(width))
                                 .h(px(image_height))
                                 .object_fit(ObjectFit::Cover),
@@ -435,7 +454,7 @@ impl Strategy {
                 }))))
             .child(self.result_card()).child(Self::document_actions(cx))
     }
-    pub(crate) fn context_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn context_identity(&self) -> (&'static str, String, String) {
         let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
             "Le Mans Ultimate"
         } else {
@@ -457,6 +476,11 @@ impl Strategy {
                 )
             },
         );
+        (simulator, car, circuit)
+    }
+
+    pub(crate) fn context_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let (simulator, car, circuit) = self.context_identity();
         let selected_new = context_new_selected(self.page);
         let new_strategy = div()
             .id("strategy-context-new")
@@ -469,14 +493,14 @@ impl Strategy {
             .px(px(14.0))
             .flex()
             .items_center()
-            .rounded(px(orbit::RADIUS_CONTROL))
+            .rounded(px(8.0))
             .cursor_pointer()
             .when(selected_new, |row| {
                 row.bg(rgb(orbit::SURFACE_2))
                     .border_l_2()
                     .border_color(rgb(orbit::CARMINE))
             })
-            .child(orbit::text("Nueva estrategia", 15.0, 500, orbit::INK))
+            .child(orbit::text("Nueva estrategia", 16.0, 400, orbit::INK))
             .on_click(cx.listener(|this, _, _, cx| {
                 if let Err(error) = this.ensure_clean_form() {
                     this.error = Some(error);
@@ -499,31 +523,44 @@ impl Strategy {
             .px(px(14.0))
             .flex()
             .items_center()
-            .rounded(px(orbit::RADIUS_CONTROL))
+            .rounded(px(8.0))
             .cursor_pointer()
-            .child(orbit::text("Guardadas", 15.0, 400, orbit::INK_2))
+            .child(
+                orbit::text("Guardadas", 16.0, 400, orbit::INK_2)
+                    .relative()
+                    .top(px(6.0)),
+            )
             .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx)));
         div()
             .flex()
             .flex_col()
             .w_full()
             .gap(px(0.0))
-            .mb(px(32.0))
-            .child(orbit::eyebrow("ESTRATEGIA").px(px(9.0)).py(px(4.0)))
+            .mb(px(36.0))
+            .child(
+                orbit::tracked_text("ESTRATEGIA", 11.0, 400, orbit::INK_2, 1.4)
+                    .relative()
+                    .left(px(-1.0))
+                    .top(px(-2.0))
+                    .px(px(10.0))
+                    .py(px(4.0)),
+            )
             .child(new_strategy)
             .child(saved)
             .child(
                 div()
-                    .mt(px(15.0))
-                    .pt(px(12.0))
+                    .mt(px(12.0))
+                    .pt(px(20.0))
                     .border_t_1()
                     .border_color(rgba(orbit::LINE_ROW))
-                    .child(orbit::eyebrow("TU CARRERA").px(px(9.0)).pb(px(23.0)))
-                    .child(Self::context_info_row(
-                        "i-telemetria",
-                        "Simulador",
-                        simulator,
-                    ))
+                    .child(
+                        orbit::tracked_text("TU CARRERA", 10.0, 500, orbit::INK_2, 1.3)
+                            .relative()
+                            .top(px(-1.0))
+                            .px(px(20.0))
+                            .pb(px(19.0)),
+                    )
+                    .child(Self::context_info_row("i-launcher", "Simulador", simulator))
                     .child(Self::context_info_row(
                         "i-estrategia",
                         "Categoría / coche",
@@ -540,20 +577,21 @@ impl Strategy {
     fn context_info_row(icon: &'static str, label: &str, value: &str) -> gpui::Div {
         div()
             .h(px(70.0))
-            .px(px(9.0))
+            .px(px(14.0))
             .flex()
             .items_center()
-            .gap(px(15.0))
-            .border_b_1()
+            .gap(px(18.0))
+            .border_1()
+            .bg(rgba(0xffff_ff04))
             .border_color(rgba(orbit::LINE_ROW))
-            .child(orbit::icon(icon, 19.0, orbit::INK_2))
+            .child(orbit::icon(icon, 24.0, orbit::INK))
             .child(
                 div()
                     .flex()
                     .flex_col()
-                    .gap(px(4.0))
-                    .child(orbit::text(label, 11.5, 400, orbit::INK_3))
-                    .child(orbit::text(value.to_owned(), 12.5, 600, orbit::INK)),
+                    .gap(px(5.0))
+                    .child(orbit::text(label, 12.0, 400, orbit::INK_2))
+                    .child(orbit::text(value.to_owned(), 12.0, 600, orbit::INK)),
             )
     }
 

@@ -527,6 +527,8 @@ mod tests {
             session_checked: false,
             login_requested: true,
             error: None,
+            policy: None,
+            expires_at: None,
         };
         let mut cancel = false;
         for pending in [true, false] {
@@ -602,6 +604,7 @@ mod navigation_tests {
                 pending: false,
                 expires_at: Some(10),
                 message: String::new(),
+                error: None,
             },
             true,
         );
@@ -674,6 +677,7 @@ mod navigation_tests {
                 pending: false,
                 expires_at: None,
                 message: String::new(),
+                error: None,
             },
             true,
         );
@@ -685,6 +689,7 @@ mod navigation_tests {
                 pending: false,
                 expires_at: None,
                 message: String::new(),
+                error: None,
             },
             true,
         );
@@ -699,6 +704,7 @@ mod navigation_tests {
                 pending: false,
                 expires_at: Some(2),
                 message: String::new(),
+                error: None,
             },
             true,
         );

@@ -59,16 +59,11 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .p(px(4.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(
-            if matches!(
-                calendar.view,
-                CalendarView::Month | CalendarView::Day | CalendarView::Week
-            ) {
-                gpui::rgba(orbit::LINE)
-            } else {
-                rgb(orbit::LINE)
-            },
-        )
+        .border_color(if calendar.view == CalendarView::Upcoming {
+            rgb(orbit::LINE)
+        } else {
+            gpui::rgba(orbit::LINE)
+        })
         .bg(rgb(orbit::SURFACE_1))
         .children([
             view_button(
@@ -112,7 +107,10 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                 .child(
                     if matches!(
                         calendar.view,
-                        CalendarView::Month | CalendarView::Day | CalendarView::Week
+                        CalendarView::Month
+                            | CalendarView::Day
+                            | CalendarView::Week
+                            | CalendarView::Timeline
                     ) {
                         super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
                             .h(px(55.0))
@@ -211,16 +209,11 @@ fn card_header(
     now: DateTime<Utc>,
 ) -> Div {
     div()
-        .h(px(
-            if matches!(
-                calendar.view,
-                CalendarView::Month | CalendarView::Day | CalendarView::Week
-            ) {
-                61.0
-            } else {
-                59.0
-            },
-        ))
+        .h(px(if calendar.view == CalendarView::Upcoming {
+            59.0
+        } else {
+            61.0
+        }))
         .flex_none()
         .px(px(20.0))
         .flex()
@@ -591,7 +584,7 @@ fn timeline(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         return empty_panel("No se pudo leer el horario.");
     };
     if starts.is_empty() {
-        empty_panel("No hay salidas en la próxima hora.")
+        empty_panel("No hay salidas en la próxima hora.").pt(px(28.0))
     } else {
         let mut body = div().flex_1().min_h_0().px(px(12.0)).py(px(12.0));
         for start in starts {
@@ -638,16 +631,11 @@ fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .flex_1()
         .min_h_0()
         .overflow_hidden()
-        .bg(rgb(
-            if matches!(
-                calendar.view,
-                CalendarView::Month | CalendarView::Day | CalendarView::Week
-            ) {
-                0x000f_0f12
-            } else {
-                orbit::SURFACE_1
-            },
-        ))
+        .bg(rgb(if calendar.view == CalendarView::Upcoming {
+            orbit::SURFACE_1
+        } else {
+            0x000f_0f12
+        }))
         .border_1()
         .border_color(gpui::rgba(orbit::LINE))
         .rounded(px(orbit::RADIUS))
@@ -667,16 +655,11 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .w_full()
         .flex()
         .flex_col()
-        .gap(px(
-            if matches!(
-                calendar.view,
-                CalendarView::Month | CalendarView::Day | CalendarView::Week
-            ) {
-                18.0
-            } else {
-                19.0
-            },
-        ))
+        .gap(px(if calendar.view == CalendarView::Upcoming {
+            19.0
+        } else {
+            18.0
+        }))
         .pt(px(24.0))
         .pb(px(25.0))
         .bg(rgb(orbit::CANVAS))
@@ -688,13 +671,9 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
     div()
         .id("calendar")
         .w_full()
-        .when(
-            matches!(
-                calendar.view,
-                CalendarView::Month | CalendarView::Day | CalendarView::Week
-            ),
-            |page| page.mx(px(-1.0)).w_auto(),
-        )
+        .when(calendar.view != CalendarView::Upcoming, |page| {
+            page.mx(px(-1.0)).w_auto()
+        })
         .min_h(px(HUB_CONTENT_MIN_HEIGHT))
         .mt(px(-SHELL_HEADER_OVERLAP))
         .flex_1()

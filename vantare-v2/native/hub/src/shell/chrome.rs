@@ -460,7 +460,7 @@ impl Hub {
                 this.shell.column_open = false;
                 cx.notify();
             }));
-        let column = if section_content.is_some() {
+        let column = if self.section == Section::Strategy {
             div()
                 .h_full()
                 .flex_none()
@@ -496,7 +496,7 @@ impl Hub {
         section_content: Option<gpui::Div>,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
-        let strategy = section_content.is_some();
+        let strategy = self.section == Section::Strategy;
         let races = div()
             .flex()
             .flex_col()
@@ -517,7 +517,7 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(6.0))
-            .pt(px(if section_content.is_some() { 10.0 } else { 6.0 }))
+            .pt(px(if strategy { 10.0 } else { 6.0 }))
             .overflow_y_scroll();
         if let Some(content) = section_content {
             blocks = blocks.child(content);

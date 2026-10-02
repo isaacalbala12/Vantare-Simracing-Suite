@@ -35,6 +35,16 @@ pub enum InterfaceFont {
     Arial,
 }
 
+impl InterfaceFont {
+    /// Las caras Inter Wxxx contienen el peso; una familia alternativa lo necesita.
+    pub fn face_weight(self, requested: u16) -> u16 {
+        match self {
+            Self::Inter => 400,
+            Self::Segoe | Self::Arial => requested,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MonoFont {
@@ -79,9 +89,8 @@ pub struct StageBackground {
 
 /// Tokens compartidos por el kit Orbit y la apariencia del Hub.
 ///
-/// Los campos de geometría conservan su nombre en minúscula respecto a las
-/// constantes de `orbit.rs`. Los tokens de Wails se añaden con el nombre CSS
-/// sin el prefijo `--orbit-`.
+/// Contiene colores y opciones que cambian con la apariencia. La geometría
+/// fija vive en las constantes de `orbit.rs`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     // Colores ya usados como constantes por el kit Orbit.
@@ -120,8 +129,6 @@ pub struct Theme {
     pub surface_0: u32,
     pub panel_bg: u32,
     pub topbar_bg: u32,
-    pub featured_bg: &'static str,
-    pub featured_border: &'static str,
     pub ink_5: u32,
     pub scroll_thumb: u32,
     pub scroll_thumb_hover: u32,
@@ -141,73 +148,6 @@ pub struct Theme {
     pub tyre_medium: u32,
     pub tyre_hard: u32,
     pub primary_ink: u32,
-    pub brand_gradient: &'static str,
-    pub selection_bg: &'static str,
-    pub glow_active: &'static str,
-    pub shadow_featured: &'static str,
-    pub shadow_featured_hover: &'static str,
-    pub shadow_primary: &'static str,
-    pub shadow_toast: &'static str,
-    pub shadow_palette: &'static str,
-    pub shadow_menu: &'static str,
-    pub inset_glass: &'static str,
-
-    // Geometría y tipografía del kit Orbit.
-    pub row_h: f32,
-    pub chip_h: f32,
-    pub pill_h: f32,
-    pub radius_chip: f32,
-    pub body: f32,
-    pub secondary: f32,
-    pub micro: f32,
-    pub chip_text: f32,
-    pub pill_text: f32,
-    pub chip_pad: f32,
-    pub pill_gap: f32,
-    pub line_width: f32,
-    pub field_w: f32,
-    pub textarea_h: f32,
-    pub field_pad: f32,
-    pub field_text: f32,
-    pub tab_pad: f32,
-    pub tab_inset: f32,
-    pub fader_w: f32,
-    pub fader_h: f32,
-    pub fader_radius: f32,
-    pub fader_thumb: f32,
-    pub option_h: f32,
-    pub menu_pad: f32,
-    pub check_size: f32,
-    pub check_radius: f32,
-    pub segment_h: f32,
-    pub segment_pad: f32,
-    pub segment_gap: f32,
-    pub dot: f32,
-    pub pill_dot: f32,
-    pub focus_width: f32,
-    pub disabled: f32,
-    pub menu_z: usize,
-    pub modal_z: usize,
-    pub menu_shadow_y: f32,
-    pub menu_shadow_blur: f32,
-    pub palette_shadow_y: f32,
-    pub palette_shadow_blur: f32,
-    pub column_w: f32,
-    pub topbar_h: f32,
-    pub gutter: f32,
-    pub topbar_gutter: f32,
-    pub radius: f32,
-    pub radius_control: f32,
-    pub control_h: f32,
-    pub rail_w: f32,
-    pub column_compact_w: f32,
-    pub column_breakpoint: f32,
-    pub rail_button: f32,
-    pub palette_w: f32,
-    pub popover_w: f32,
-    pub popover_radius: f32,
-    pub popover_max_h: f32,
-    pub featured_radius: f32,
 
     // Opciones de apariencia reflejadas en el tema resuelto.
     pub palette: Palette,
@@ -242,7 +182,6 @@ impl Theme {
             theme.apply_light_defaults();
         }
         theme.apply_palette();
-        theme.apply_palette_effects();
         if theme.scheme == Scheme::Light {
             theme.white = theme.ink;
             theme.line_chip = (theme.ink << 8) | 0x09;
@@ -267,7 +206,6 @@ impl Theme {
         theme
     }
 
-    #[allow(clippy::too_many_lines)]
     fn dark_defaults(palette: Palette, scheme: Scheme, contrast: u8, glass: u8) -> Self {
         Self {
             coral: 0xff_6a5f,
@@ -304,8 +242,6 @@ impl Theme {
             palette_shadow_color: 0x0000_00a8,
             panel_bg: 0x1011_14c9,
             topbar_bg: 0x0809_0bd1,
-            featured_bg: "linear-gradient(rgba(25,25,30,.98), rgba(19,19,23,.99))",
-            featured_border: "linear-gradient(115deg, rgba(240,71,85,.62), rgba(255,106,95,.2), rgba(255,255,255,.06))",
             scroll_thumb: 0xffff_ff21,
             scroll_thumb_hover: 0xffff_ff3d,
             scroll_thumb_idle: 0x0000_0000,
@@ -324,71 +260,6 @@ impl Theme {
             tyre_medium: 0xff_d166,
             tyre_hard: 0xe6_e2e2,
             primary_ink: 0x1c_1719,
-            brand_gradient: "linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine))",
-            selection_bg: "linear-gradient(90deg, rgba(213,47,73,.11), rgba(213,47,73,.02))",
-            glow_active: "0 0 13px rgba(240,71,85,.6)",
-            shadow_featured: "0 32px 91px rgba(0,0,0,.42), 0 0 42px rgba(213,47,73,.04)",
-            shadow_featured_hover: "0 39px 110px rgba(0,0,0,.5), 0 0 62px rgba(213,47,73,.07)",
-            shadow_primary: "0 13px 34px rgba(0,0,0,.35)",
-            shadow_toast: "0 23px 78px rgba(0,0,0,.5)",
-            shadow_palette: "0 44px 143px rgba(0,0,0,.66), 0 0 58px rgba(213,47,73,.05)",
-            shadow_menu: "0 24px 70px rgba(0,0,0,.6)",
-            inset_glass: "inset 0 1px 0 rgba(255,255,255,.08)",
-            row_h: 49.0,
-            chip_h: 26.0,
-            pill_h: 30.0,
-            radius_chip: 8.0,
-            body: 13.5,
-            secondary: 12.0,
-            micro: 10.5,
-            chip_text: 10.0,
-            pill_text: 11.5,
-            chip_pad: 9.0,
-            pill_gap: 9.0,
-            line_width: 1.0,
-            field_w: 168.0,
-            textarea_h: 83.0,
-            field_pad: 13.0,
-            field_text: 14.0,
-            tab_pad: 14.0,
-            tab_inset: 10.0,
-            fader_w: 150.0,
-            fader_h: 6.0,
-            fader_radius: 3.0,
-            fader_thumb: 16.0,
-            option_h: 38.0,
-            menu_pad: 6.0,
-            check_size: 18.0,
-            check_radius: 5.0,
-            segment_h: 29.0,
-            segment_pad: 4.0,
-            segment_gap: 2.5,
-            dot: 6.0,
-            pill_dot: 8.0,
-            focus_width: 2.0,
-            disabled: 0.45,
-            menu_z: 30,
-            modal_z: 100,
-            menu_shadow_y: 24.0,
-            menu_shadow_blur: 70.0,
-            palette_shadow_y: 44.0,
-            palette_shadow_blur: 143.0,
-            column_w: 296.0,
-            topbar_h: 70.0,
-            gutter: 32.0,
-            topbar_gutter: 26.0,
-            radius: 18.0,
-            radius_control: 12.0,
-            control_h: 39.0,
-            rail_w: 81.0,
-            column_compact_w: 216.0,
-            column_breakpoint: 1152.0,
-            rail_button: 52.0,
-            palette_w: 640.0,
-            popover_w: 360.0,
-            popover_radius: 14.0,
-            popover_max_h: 520.0,
-            featured_radius: 25.0,
             palette,
             scheme,
             contrast,
@@ -440,19 +311,6 @@ impl Theme {
         self.cyan_soft = 0x13_7c96;
         self.primary_bg = 0xa5_1e39;
         self.primary_ink = 0xff_ffff;
-        self.featured_bg = "linear-gradient(#fff, #f5f2f1)";
-        self.featured_border =
-            "linear-gradient(115deg, rgba(183,35,65,.4), rgba(183,35,65,.12), rgba(31,25,28,.07))";
-        self.brand_gradient = "linear-gradient(145deg, #cf3e59, #a51e39 62%, #741c35)";
-        self.selection_bg = "linear-gradient(90deg, rgba(183,35,65,.13), rgba(183,35,65,.025))";
-        self.glow_active = "0 0 0 3px rgba(183,35,65,.2)";
-        self.shadow_featured = "0 25px 65px rgba(50,30,35,.12)";
-        self.shadow_featured_hover = "0 30px 75px rgba(50,30,35,.17)";
-        self.shadow_primary = "0 10px 25px rgba(70,25,40,.16)";
-        self.shadow_toast = "0 18px 55px rgba(35,25,30,.19)";
-        self.shadow_palette = "0 28px 90px rgba(35,25,30,.21)";
-        self.shadow_menu = "0 16px 52px rgba(35,25,30,.17)";
-        self.inset_glass = "inset 0 1px 0 rgba(255,255,255,.7)";
         self.stage = StageBackground {
             accent: 0xb2_3546,
             top: 0xff_f4f2,
@@ -463,7 +321,7 @@ impl Theme {
     #[allow(clippy::too_many_lines)]
     fn apply_palette(&mut self) {
         match (self.palette, self.scheme) {
-            (Palette::Rose, Scheme::Dark) => self.set_palette_dark(
+            (Palette::Rose, Scheme::Dark) => self.set_palette(
                 [
                     0x1b_1119,
                     0x24_1720,
@@ -488,7 +346,6 @@ impl Theme {
                     0x82_3554,
                     0xff_e1ef,
                     0x31_1525,
-                    0xe1_63a3,
                 ],
                 StageBackground {
                     accent: 0xe1_63a3,
@@ -496,7 +353,7 @@ impl Theme {
                     base: 0x1b_1119,
                 },
             ),
-            (Palette::Rose, Scheme::Light) => self.set_palette_light(
+            (Palette::Rose, Scheme::Light) => self.set_palette(
                 [
                     0xff_f7fa,
                     0xff_ffff,
@@ -521,7 +378,6 @@ impl Theme {
                     0x71_3050,
                     0xa8_316c,
                     0xff_ffff,
-                    0xa8_316c,
                 ],
                 StageBackground {
                     accent: 0xa8_316c,
@@ -529,7 +385,7 @@ impl Theme {
                     base: 0xff_f7fa,
                 },
             ),
-            (Palette::Grove, Scheme::Dark) => self.set_palette_dark(
+            (Palette::Grove, Scheme::Dark) => self.set_palette(
                 [
                     0x10_1a15,
                     0x16_221b,
@@ -554,7 +410,6 @@ impl Theme {
                     0x28_5d42,
                     0xda_f5df,
                     0x17_3222,
-                    0x64_bd88,
                 ],
                 StageBackground {
                     accent: 0x64_bd88,
@@ -562,7 +417,7 @@ impl Theme {
                     base: 0x10_1a15,
                 },
             ),
-            (Palette::Grove, Scheme::Light) => self.set_palette_light(
+            (Palette::Grove, Scheme::Light) => self.set_palette(
                 [
                     0xf5_faf5,
                     0xff_ffff,
@@ -587,7 +442,6 @@ impl Theme {
                     0x1c_563a,
                     0x26_714d,
                     0xff_ffff,
-                    0x26_714d,
                 ],
                 StageBackground {
                     accent: 0x26_714d,
@@ -595,7 +449,7 @@ impl Theme {
                     base: 0xf5_faf5,
                 },
             ),
-            (Palette::Ocean, Scheme::Dark) => self.set_palette_dark(
+            (Palette::Ocean, Scheme::Dark) => self.set_palette(
                 [
                     0x09_141c,
                     0x0e_1b24,
@@ -620,7 +474,6 @@ impl Theme {
                     0x12_496c,
                     0xd4_f1fa,
                     0x10_232b,
-                    0x32_95c0,
                 ],
                 StageBackground {
                     accent: 0x6b_bbe1,
@@ -628,7 +481,7 @@ impl Theme {
                     base: 0x10_1820,
                 },
             ),
-            (Palette::Ocean, Scheme::Light) => self.set_palette_light(
+            (Palette::Ocean, Scheme::Light) => self.set_palette(
                 [
                     0xf4_f9fb,
                     0xff_ffff,
@@ -653,7 +506,6 @@ impl Theme {
                     0x16_4d72,
                     0x17_6d99,
                     0xff_ffff,
-                    0x17_6d99,
                 ],
                 StageBackground {
                     accent: 0x29_7aa8,
@@ -661,7 +513,7 @@ impl Theme {
                     base: 0xf3_f9fc,
                 },
             ),
-            (Palette::Ember, Scheme::Dark) => self.set_palette_dark(
+            (Palette::Ember, Scheme::Dark) => self.set_palette(
                 [
                     0x1d_1511,
                     0x28_1c17,
@@ -686,7 +538,6 @@ impl Theme {
                     0x86_5339,
                     0xfb_e5ca,
                     0x35_2217,
-                    0xde_985e,
                 ],
                 StageBackground {
                     accent: 0xde_985e,
@@ -694,7 +545,7 @@ impl Theme {
                     base: 0x1d_1511,
                 },
             ),
-            (Palette::Ember, Scheme::Light) => self.set_palette_light(
+            (Palette::Ember, Scheme::Light) => self.set_palette(
                 [
                     0xfd_f8f3,
                     0xff_ffff,
@@ -719,7 +570,6 @@ impl Theme {
                     0x78_4426,
                     0xa6_5b30,
                     0xff_ffff,
-                    0xa6_5b30,
                 ],
                 StageBackground {
                     accent: 0xa6_5b30,
@@ -727,7 +577,7 @@ impl Theme {
                     base: 0xfd_f8f3,
                 },
             ),
-            (Palette::Iris, Scheme::Dark) => self.set_palette_dark(
+            (Palette::Iris, Scheme::Dark) => self.set_palette(
                 [
                     0x15_111f,
                     0x1b_1627,
@@ -752,7 +602,6 @@ impl Theme {
                     0x57_3677,
                     0xee_e1ff,
                     0x26_1932,
-                    0x95_72d7,
                 ],
                 StageBackground {
                     accent: 0xb9_92e8,
@@ -760,7 +609,7 @@ impl Theme {
                     base: 0x17_131f,
                 },
             ),
-            (Palette::Iris, Scheme::Light) => self.set_palette_light(
+            (Palette::Iris, Scheme::Light) => self.set_palette(
                 [
                     0xf8_f6fc,
                     0xff_ffff,
@@ -785,7 +634,6 @@ impl Theme {
                     0x4d_3074,
                     0x72_49ae,
                     0xff_ffff,
-                    0x72_49ae,
                 ],
                 StageBackground {
                     accent: 0x79_54a8,
@@ -800,58 +648,7 @@ impl Theme {
         }
     }
 
-    fn apply_palette_effects(&mut self) {
-        let scheme = match self.scheme {
-            Scheme::System => Scheme::Dark,
-            resolved => resolved,
-        };
-        match (self.palette, scheme) {
-            (Palette::Vantare, _) | (_, Scheme::System) => {}
-            (Palette::Ocean, Scheme::Dark) => {
-                self.featured_border = "linear-gradient(115deg, rgba(78,175,210,.58), rgba(78,175,210,.2), rgba(255,255,255,.07))";
-                self.brand_gradient = "linear-gradient(145deg, #76d1e9, #3295c0 62%, #12496c)";
-                self.selection_bg =
-                    "linear-gradient(90deg, rgba(50,149,192,.2), rgba(50,149,192,.025))";
-                self.glow_active = "0 0 13px rgba(84,184,220,.5)";
-            }
-            (Palette::Ocean, Scheme::Light) => {
-                self.featured_border = "linear-gradient(115deg, rgba(28,105,143,.4), rgba(28,105,143,.12), rgba(15,40,54,.07))";
-                self.brand_gradient = "linear-gradient(145deg, #2791bb, #176d99 62%, #164d72)";
-                self.selection_bg =
-                    "linear-gradient(90deg, rgba(23,109,153,.13), rgba(23,109,153,.025))";
-                self.glow_active = "0 0 0 3px rgba(23,109,153,.2)";
-            }
-            (Palette::Iris, Scheme::Dark) => {
-                self.featured_border = "linear-gradient(115deg, rgba(177,145,238,.56), rgba(177,145,238,.2), rgba(255,255,255,.07))";
-                self.brand_gradient = "linear-gradient(145deg, #c9aaf7, #9572d7 62%, #573677)";
-                self.selection_bg =
-                    "linear-gradient(90deg, rgba(149,114,215,.2), rgba(149,114,215,.025))";
-                self.glow_active = "0 0 13px rgba(187,152,241,.5)";
-            }
-            (Palette::Iris, Scheme::Light) => {
-                self.featured_border = "linear-gradient(115deg, rgba(109,69,166,.4), rgba(109,69,166,.12), rgba(45,25,65,.07))";
-                self.brand_gradient = "linear-gradient(145deg, #9469cc, #7249ae 62%, #4d3074)";
-                self.selection_bg =
-                    "linear-gradient(90deg, rgba(114,73,174,.13), rgba(114,73,174,.025))";
-                self.glow_active = "0 0 0 3px rgba(114,73,174,.2)";
-            }
-            (Palette::Rose | Palette::Grove | Palette::Ember | Palette::Mono, Scheme::Dark) => {
-                self.featured_border = "linear-gradient(115deg, rgba(var(--orbit-accent-rgb),.55), rgba(var(--orbit-accent-rgb),.18), var(--orbit-line))";
-                self.brand_gradient = "linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine))";
-                self.selection_bg = "linear-gradient(90deg, rgba(var(--orbit-accent-rgb),.2), rgba(var(--orbit-accent-rgb),.025))";
-                self.glow_active = "0 0 13px rgba(var(--orbit-accent-rgb),.5)";
-            }
-            (Palette::Rose | Palette::Grove | Palette::Ember | Palette::Mono, Scheme::Light) => {
-                self.featured_border = "linear-gradient(115deg, rgba(var(--orbit-accent-rgb),.4), rgba(var(--orbit-accent-rgb),.12), var(--orbit-line))";
-                self.brand_gradient = "linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine))";
-                self.selection_bg = "linear-gradient(90deg, rgba(var(--orbit-accent-rgb),.13), rgba(var(--orbit-accent-rgb),.025))";
-                self.glow_active = "0 0 0 3px rgba(var(--orbit-accent-rgb),.2)";
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn set_palette_dark(&mut self, v: [u32; 24], stage: StageBackground) {
+    fn set_palette(&mut self, v: [u32; 23], stage: StageBackground) {
         let [
             canvas,
             s0,
@@ -876,7 +673,6 @@ impl Theme {
             wine,
             primary,
             primary_ink,
-            _,
         ] = v;
         self.canvas = canvas;
         self.surface_0 = s0;
@@ -904,11 +700,6 @@ impl Theme {
         self.primary_bg = primary;
         self.primary_ink = primary_ink;
         self.stage = stage;
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn set_palette_light(&mut self, v: [u32; 24], stage: StageBackground) {
-        self.set_palette_dark(v, stage);
     }
 
     fn set_vantare_dark(&mut self) {
@@ -972,7 +763,6 @@ impl Theme {
         self.tyre_hard = 0xf2_f2f2;
         self.primary_bg = 0xf2_f2f2;
         self.primary_ink = 0x11_1111;
-        self.featured_bg = "linear-gradient(#303030, #202020)";
         self.stage = StageBackground {
             accent: 0xbd_bdbd,
             top: 0x29_2929,
@@ -1024,7 +814,6 @@ impl Theme {
         self.tyre_hard = 0x1a_1a1a;
         self.primary_bg = 0x1a_1a1a;
         self.primary_ink = 0xff_ffff;
-        self.featured_bg = "linear-gradient(#fff, #ececec)";
         self.stage = StageBackground {
             accent: 0x55_5555,
             top: 0xeb_ebeb,
@@ -1290,7 +1079,6 @@ mod tests {
     use crate::orbit;
 
     #[test]
-    #[allow(clippy::float_cmp)]
     fn vantare_dark_matches_orbit_constants_field_by_field() {
         let theme = Theme::resolve(Palette::Vantare, Scheme::Dark, 100, 80);
         assert_eq!(theme.coral, orbit::CORAL);
@@ -1303,49 +1091,10 @@ mod tests {
         assert_eq!(theme.primary_ink, 0x001c_1719);
         assert_eq!(theme.silver, orbit::SILVER);
         assert_eq!(theme.ink_4, orbit::INK_4);
-        assert_eq!(theme.row_h, orbit::ROW_H);
-        assert_eq!(theme.chip_h, orbit::CHIP_H);
-        assert_eq!(theme.pill_h, orbit::PILL_H);
-        assert_eq!(theme.radius_chip, orbit::RADIUS_CHIP);
-        assert_eq!(theme.body, orbit::BODY);
-        assert_eq!(theme.secondary, orbit::SECONDARY);
-        assert_eq!(theme.micro, orbit::MICRO);
-        assert_eq!(theme.chip_text, orbit::CHIP_TEXT);
-        assert_eq!(theme.pill_text, orbit::PILL_TEXT);
-        assert_eq!(theme.chip_pad, orbit::CHIP_PAD);
-        assert_eq!(theme.pill_gap, orbit::PILL_GAP);
-        assert_eq!(theme.line_width, orbit::LINE_WIDTH);
         assert_eq!(theme.white, orbit::WHITE);
         assert_eq!(theme.line_chip, orbit::LINE_CHIP);
         assert_eq!(theme.line_pill, orbit::LINE_PILL);
-        assert_eq!(theme.field_w, orbit::FIELD_W);
-        assert_eq!(theme.textarea_h, orbit::TEXTAREA_H);
-        assert_eq!(theme.field_pad, orbit::FIELD_PAD);
-        assert_eq!(theme.field_text, orbit::FIELD_TEXT);
-        assert_eq!(theme.tab_pad, orbit::TAB_PAD);
-        assert_eq!(theme.tab_inset, orbit::TAB_INSET);
-        assert_eq!(theme.fader_w, orbit::FADER_W);
-        assert_eq!(theme.fader_h, orbit::FADER_H);
-        assert_eq!(theme.fader_radius, orbit::FADER_RADIUS);
-        assert_eq!(theme.fader_thumb, orbit::FADER_THUMB);
         assert_eq!(theme.primary_bg, orbit::PRIMARY_BG);
-        assert_eq!(theme.option_h, orbit::OPTION_H);
-        assert_eq!(theme.menu_pad, orbit::MENU_PAD);
-        assert_eq!(theme.check_size, orbit::CHECK_SIZE);
-        assert_eq!(theme.check_radius, orbit::CHECK_RADIUS);
-        assert_eq!(theme.segment_h, orbit::SEGMENT_H);
-        assert_eq!(theme.segment_pad, orbit::SEGMENT_PAD);
-        assert_eq!(theme.segment_gap, orbit::SEGMENT_GAP);
-        assert_eq!(theme.dot, orbit::DOT);
-        assert_eq!(theme.pill_dot, orbit::PILL_DOT);
-        assert_eq!(theme.focus_width, orbit::FOCUS_WIDTH);
-        assert_eq!(theme.disabled, orbit::DISABLED);
-        assert_eq!(theme.menu_z, orbit::MENU_Z);
-        assert_eq!(theme.modal_z, orbit::MODAL_Z);
-        assert_eq!(theme.menu_shadow_y, orbit::MENU_SHADOW_Y);
-        assert_eq!(theme.menu_shadow_blur, orbit::MENU_SHADOW_BLUR);
-        assert_eq!(theme.palette_shadow_y, orbit::PALETTE_SHADOW_Y);
-        assert_eq!(theme.palette_shadow_blur, orbit::PALETTE_SHADOW_BLUR);
         assert_eq!(theme.menu_shadow_color, orbit::MENU_SHADOW_COLOR);
         assert_eq!(theme.palette_shadow_color, orbit::PALETTE_SHADOW_COLOR);
         assert_eq!(theme.canvas, orbit::CANVAS);
@@ -1363,24 +1112,8 @@ mod tests {
         assert_eq!(theme.line, orbit::LINE);
         assert_eq!(theme.line_strong, orbit::LINE_STRONG);
         assert_eq!(theme.line_row, orbit::LINE_ROW);
-        assert_eq!(theme.column_w, orbit::COLUMN_W);
-        assert_eq!(theme.topbar_h, orbit::TOPBAR_H);
-        assert_eq!(theme.gutter, orbit::GUTTER);
-        assert_eq!(theme.topbar_gutter, orbit::TOPBAR_GUTTER);
-        assert_eq!(theme.radius, orbit::RADIUS);
-        assert_eq!(theme.radius_control, orbit::RADIUS_CONTROL);
-        assert_eq!(theme.control_h, orbit::CONTROL_H);
         assert_eq!(theme.rail_bg, orbit::RAIL_BG);
-        assert_eq!(theme.rail_w, orbit::RAIL_W);
-        assert_eq!(theme.column_compact_w, orbit::COLUMN_COMPACT_W);
-        assert_eq!(theme.column_breakpoint, orbit::COLUMN_BREAKPOINT);
-        assert_eq!(theme.rail_button, orbit::RAIL_BUTTON);
-        assert_eq!(theme.palette_w, orbit::PALETTE_W);
-        assert_eq!(theme.popover_w, orbit::POPOVER_W);
-        assert_eq!(theme.popover_radius, orbit::POPOVER_RADIUS);
-        assert_eq!(theme.popover_max_h, orbit::POPOVER_MAX_H);
         assert_eq!(theme.palette_backdrop, orbit::PALETTE_BACKDROP);
-        assert_eq!(theme.featured_radius, orbit::FEATURED_RADIUS);
     }
 
     #[test]
@@ -1650,5 +1383,23 @@ mod tests {
         let theme = Theme::from_settings(custom);
         assert_eq!(theme.font_sans, "Arial, \"Segoe UI\", sans-serif");
         assert_eq!(theme.font_mono, "\"Courier New\", ui-monospace, monospace");
+    }
+}
+
+#[cfg(test)]
+#[path = "theme_tokens.rs"]
+mod token_tests;
+
+#[cfg(test)]
+mod font_tests {
+    use super::InterfaceFont;
+
+    #[test]
+    fn alternative_faces_keep_requested_weights() {
+        for weight in [400, 500, 650, 700, 750, 800] {
+            assert_eq!(InterfaceFont::Inter.face_weight(weight), 400);
+            assert_eq!(InterfaceFont::Segoe.face_weight(weight), weight);
+            assert_eq!(InterfaceFont::Arial.face_weight(weight), weight);
+        }
     }
 }

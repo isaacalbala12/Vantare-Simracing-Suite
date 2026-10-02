@@ -41,7 +41,7 @@ fn text(
     color: u32,
     cx: &gpui::App,
 ) -> gpui::Div {
-    orbit::text(content, size, weight, color, cx).font_weight(gpui::FontWeight(400.0))
+    orbit::text(content, size, weight, color, cx).font_weight(orbit::face_weight(weight, cx))
 }
 
 fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {

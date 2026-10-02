@@ -718,7 +718,7 @@ fn telemetry_text(
         _ => 800,
     };
     orbit::text(content, size, family_weight, color, cx)
-        .font_weight(FontWeight(400.0))
+        .font_weight(orbit::face_weight(weight, cx))
         .line_height(px(size * 1.5))
 }
 
@@ -935,7 +935,7 @@ fn telemetry_segment(
         .rounded(px(orbit::RADIUS_CHIP))
         .text_size(px(orbit::SECONDARY))
         .font_family(crate::orbit::sans_override("Inter W650", cx))
-        .font_weight(FontWeight(400.0))
+        .font_weight(orbit::face_weight(650, cx))
         .line_height(px(orbit::SECONDARY * 1.5))
         .text_color(rgb(if active {
             orbit::ink(cx)

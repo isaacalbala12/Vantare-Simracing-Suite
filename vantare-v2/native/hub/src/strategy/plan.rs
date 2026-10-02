@@ -458,11 +458,12 @@ cálculo",
         };
         plan_card().child(div().flex().flex_col().p(px(16.0)).pb(px(12.0))
             .child(orbit::text("La telemetría permite mostrar estas magnitudes, pero todavía no respalda una estrategia completa.",18.0,400,orbit::INK).line_height(px(20.0)))
-            .child(div().flex().gap(px(10.0)).mt(px(18.0))
-                .child(metric_card("Fuel por vuelta",format!("{} L",decimal(demo.fuel_per_lap,2))).h(px(79.0)))
-                .child(metric_card("Energía virtual por vuelta",format!("{}%",decimal(demo.ve_per_lap,2))).h(px(79.0)))
-                .child(plan_card().w(px(368.0)).flex_none().p(px(18.0)).border_color(orbit::tint(orbit::CARMINE,0.5)).bg(orbit::tint(orbit::CARMINE,0.08))
-                    .child(orbit::text("Falta ritmo válido para la condición elegida",16.0,700,orbit::INK).line_height(px(24.0))))))
+            .child(div().flex().items_center().gap(px(20.0)).mt(px(18.0))
+                .child(div().flex().flex_1().min_w_0().gap(px(10.0))
+                    .child(metric_card("Fuel por vuelta",format!("{} L",decimal(demo.fuel_per_lap,2))).h(px(79.0)))
+                    .child(metric_card("Energía virtual por vuelta",format!("{}%",decimal(demo.ve_per_lap,2))).h(px(79.0))))
+                .child(plan_card().w(px(368.0)).h(px(85.0)).flex_none().p(px(18.0)).border_color(orbit::tint(orbit::CARMINE,0.5)).bg(orbit::tint(orbit::CARMINE,0.08))
+                    .child(orbit::text("Falta ritmo válido para la condición elegida",16.0,700,orbit::INK).line_height(px(23.2))))))
             .child(stage_strip(false,false,false)).child(self.state_footer(false,cx))
     }
 
@@ -562,7 +563,7 @@ cálculo",
                                     })),
                             ),
                     )
-                    .child(self.timeline(outcome));
+                    .child(self.timeline(outcome).mt(px(1.0)));
             }
             details = details.child(self.exact_revisions());
             if self.capture_demo.is_none() {
@@ -620,16 +621,22 @@ cálculo",
             .last_input
             .as_ref()
             .map_or_else(|| "Sin dato".into(), |input| input.race_laps.to_string());
-        div().flex().w_full().min_w_0().gap(px(10.0)).children(
-            [
-                ("Duración", duration(seconds)),
-                ("Vueltas", laps),
-                ("Paradas", plan.pit_stops.len().to_string()),
-                ("Reserva real / exigida", reserve),
-            ]
-            .into_iter()
-            .map(|(label, value)| metric_card(label, value).h(px(80.0))),
-        )
+        div()
+            .grid()
+            .grid_cols(4)
+            .w_full()
+            .min_w_0()
+            .gap(px(10.0))
+            .children(
+                [
+                    ("Duración", duration(seconds)),
+                    ("Vueltas", laps),
+                    ("Paradas", plan.pit_stops.len().to_string()),
+                    ("Reserva real / exigida", reserve),
+                ]
+                .into_iter()
+                .map(|(label, value)| metric_card(label, value).h(px(79.0))),
+            )
     }
 
     fn calculation_footer(&self, cx: &mut Context<Self>) -> Div {
@@ -641,7 +648,7 @@ cálculo",
             .items_center()
             .border_t_1()
             .border_color(rgba(orbit::LINE))
-            .pt(px(18.0))
+            .pt(px(17.0))
             .child(orbit::text(
                 "Guardar configuración y aceptar propuesta son acciones independientes.",
                 12.0,
@@ -662,7 +669,7 @@ cálculo",
                                     self.editor.document.is_some(),
                                     self.running,
                                     self.edit_dirty,
-                                ) || self.capture_demo.is_some(),
+                                ),
                                 |button| button.opacity(orbit::DISABLED),
                             )
                             .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))),
@@ -771,13 +778,15 @@ cálculo",
         let mut first = 1_u32;
         for (index, &laps) in stints.iter().enumerate() {
             let last = first.saturating_add(laps).saturating_sub(1);
+            let stop = self.stop_card(outcome, index, use_solver_schedule);
+            let last_stint = index + 1 == stints.len();
             timeline = timeline.child(timeline_item(
                 self.stint_card(index, first, last),
-                index * 2,
+                last_stint && stop.is_none(),
             ));
             first = last.saturating_add(1);
-            if let Some(card) = self.stop_card(outcome, index, use_solver_schedule) {
-                timeline = timeline.child(timeline_item(card, index * 2 + 1));
+            if let Some(card) = stop {
+                timeline = timeline.child(timeline_item(card, last_stint));
             }
         }
         timeline
@@ -839,7 +848,7 @@ cálculo",
                     .flex()
                     .justify_between()
                     .gap(px(8.0))
-                    .items_center()
+                    .items_start()
                     .child(
                         orbit::tracked_text(
                             format!("STINT {}", index + 1),
@@ -851,11 +860,12 @@ cálculo",
                         .text_size(px(11.0))
                         .line_height(px(16.5)),
                     )
-                    .child(orbit::text(driver, 18.0, 600, orbit::INK).line_height(px(21.6))),
+                    .child(orbit::text(driver, 16.0, 600, orbit::INK).line_height(px(21.6))),
             )
             .child(
                 div()
-                    .flex()
+                    .grid()
+                    .grid_cols(2)
                     .gap(px(16.0))
                     .mt(px(10.0))
                     .child(fact("Vueltas", format!("{first}–{last}")))
@@ -863,9 +873,10 @@ cálculo",
             )
             .child(
                 div()
-                    .flex()
+                    .grid()
+                    .grid_cols(2)
                     .gap(px(16.0))
-                    .mt(px(10.0))
+                    .mt(px(14.0))
                     .child(fact("Fuel", fuel))
                     .child(fact("Energía virtual", energy)),
             )
@@ -886,9 +897,10 @@ cálculo",
                 .and_then(|edited| edited.pit_stop_laps.get(index).copied())
         }?;
         let mut card = plan_card()
+            .min_h(px(128.0))
             .p(px(16.0))
             .pt(px(14.0))
-            .border_color(orbit::tint(orbit::CARMINE, 0.42))
+            .border_color(rgb(0x005d_2c32))
             .child(
                 div()
                     .flex()
@@ -1000,7 +1012,7 @@ cálculo",
                     } else {
                         "REVISIONES EXACTAS SELECCIONADAS"
                     },
-                    11.0,
+                    12.0,
                     400,
                     orbit::INK,
                 )
@@ -1116,7 +1128,7 @@ fn metric_card(label: &str, value: String) -> Div {
         .child(orbit::text(value, 20.0, 700, orbit::INK).line_height(px(24.0)))
 }
 
-fn timeline_item(card: Div, index: usize) -> Div {
+fn timeline_item(card: Div, last: bool) -> Div {
     div()
         .flex()
         .flex_col()
@@ -1130,10 +1142,10 @@ fn timeline_item(card: Div, index: usize) -> Div {
                 .absolute()
                 .left(px(8.0))
                 .top(px(4.0))
-                .w_full()
+                .right(px(-20.0))
                 .h(px(1.0))
                 .bg(orbit::tint(orbit::CARMINE, 0.5))
-                .when(index == 4, |line| line.w(px(0.0))),
+                .when(last, |line| line.w(px(0.0))),
         )
         .child(
             div()
@@ -1153,6 +1165,8 @@ fn stage_strip(first_complete: bool, second_active: bool, first_active: bool) ->
         .flex()
         .border_y_1()
         .border_color(rgba(orbit::LINE))
+        .bg(rgba(orbit::LINE))
+        .p(px(1.0))
         .h(px(70.0))
         .children(
             ["Fuente de datos", "Pendiente de validar", "Plan de carrera"]
@@ -1167,6 +1181,7 @@ fn stage_strip(first_complete: bool, second_active: bool, first_active: bool) ->
                         .flex_1()
                         .gap(px(12.0))
                         .px(px(18.0))
+                        .bg(rgb(if index == 0 { 0x000b_0e0f } else { 0x0013_1416 }))
                         .border_r_1()
                         .border_color(rgba(orbit::LINE))
                         .child(

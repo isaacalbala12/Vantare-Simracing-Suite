@@ -189,7 +189,7 @@ impl Strategy {
                             .top(px(0.0))
                             .right(px(0.0))
                             .w(px(viewport_width))
-                            .h(px(viewport_width * 400.0 / 1672.0))
+                            .h(px(viewport_width * 672.0 / 1672.0))
                     }))
                 })
                 .into_any_element(),

@@ -24,6 +24,19 @@ al juego y la clasificación real de su estado siguen pendientes de QA.
 La paridad y los bloqueos están en el
 [microplan](../../docs/superpowers/plans/2026-09-30-fase-5-hub-studio-workshop.md).
 
+## Desarrollo en Linux y macOS (#1437)
+
+Los gates de desarrollo se ejecutan desde `native/`: `cargo fmt --check`,
+`cargo check --workspace --all-targets -j 4`,
+`cargo clippy --workspace --all-targets -j 4 -- -D warnings`,
+`cargo test --workspace --no-fail-fast -j 4` y
+`cargo test --workspace --test lifecycle -j 4`.
+El discovery del sistema y la lectura de accesos directos `.lnk` solo están
+disponibles en Windows; Unix conserva las fuentes explícitas de prueba.
+Los tests que ejecutan `cmd.exe` también son exclusivos de Windows. La captura
+de paridad por Win32/PowerShell no está disponible en Unix; estos gates no
+verifican paridad visual ni el comportamiento Windows.
+
 ## Workshop local
 
 ```powershell

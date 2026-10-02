@@ -25,6 +25,16 @@ El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 
 Los elementos propios de Standings siguen en `standings/`. Pedales conserva su fondo al 90 % y Standings al 87 % con su degradado y sombra; radar conserva el lienzo transparente. Este refactor no amplía sus diseños.
 
+## Preview de Studio (ISA-1430)
+
+`Overlay::set_preview_scale` acepta un factor finito y positivo. Studio aplica
+el mismo factor a las posiciones del documento, los marcos y el renderer;
+`wanted_size` sigue devolviendo el tamaño lógico. El kit transforma quads,
+rutas, máscaras, imágenes, SVG, sombras y texto alrededor del origen del widget,
+sin cambiar el DPI de GPUI ni crear otro renderer. Las ventanas de overlay y
+OBS conservan el factor 1 y su camino de pintado. Al añadir una primitiva nueva,
+comprobar también su transformación en `efficiency/preview.rs`.
+
 ## Paridad visual
 
 La regresión histórica de Standings (escena `standings-44`, 474 × 364) se retiró

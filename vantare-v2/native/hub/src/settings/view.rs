@@ -754,6 +754,22 @@ fn hotkey_keycaps(keys: [&str; 3]) -> Div {
     }
     keycaps
 }
+fn aligned_navigation(page: Page) -> bool {
+    matches!(
+        page,
+        Page::Diagnostics | Page::Hotkeys | Page::Privacy | Page::Performance
+    )
+}
+
+/// Actualizaciones (pulido-1) y las páginas alineadas (pulido-2) ajustan su fila.
+fn nav_row_height(page: Page) -> f32 {
+    match page {
+        Page::Updates => 48.0,
+        _ if aligned_navigation(page) => 50.0,
+        _ => 52.0,
+    }
+}
+
 impl Hub {
     fn settings_button(
         &self,
@@ -788,41 +804,67 @@ impl Hub {
         }))
     }
     pub(in crate::shell) fn settings_header(&self) -> Div {
-        div().ml(px(-1.0)).child(Grayscale(
-            div()
-                .flex()
-                .flex_col()
-                .mt(px(-1.0))
-                .child(eyebrow("Preferencias").line_height(px(13.2)))
-                .child(page_title(self.settings.page.title()).mt(px(8.0)))
-                .child(
-                    text(self.settings.page.description(), 13.5, 400, orbit::INK_2)
-                        .line_height(px(20.925))
-                        .mt(px(9.0)),
-                )
-                .into_any_element(),
-        ))
+        let header = div()
+            .flex()
+            .flex_col()
+            .mt(px(-1.0))
+            .child(eyebrow("Preferencias").line_height(px(13.2)))
+            .child(page_title(self.settings.page.title()).mt(px(8.0)))
+            .child(
+                text(self.settings.page.description(), 13.5, 400, orbit::INK_2)
+                    .line_height(px(20.925))
+                    .mt(px(9.0)),
+            );
+        div()
+            .ml(px(-1.0))
+            .child(if self.settings.page == Page::Updates {
+                header.into_any_element()
+            } else {
+                Grayscale(header.into_any_element()).into_any_element()
+            })
     }
     fn settings_search(&self, cx: &Context<Self>) -> Div {
-        div().px(px(14.0)).py(px(18.0)).child(
-            div()
-                .relative()
-                .rounded_full()
-                .overflow_hidden()
-                .child(self.settings.query.clone())
-                .when(self.settings.query.read(cx).value.is_empty(), |search| {
-                    search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
-                        "Buscar ajustes...",
-                        13.5,
-                        400,
-                        orbit::INK_3,
-                    )))
-                }),
-        )
+        let aligned = aligned_navigation(self.settings.page);
+        let updates = self.settings.page == Page::Updates;
+        div()
+            .px(px(if aligned || updates { 0.0 } else { 14.0 }))
+            .pt(px(if updates {
+                23.0
+            } else if aligned {
+                20.0
+            } else {
+                18.0
+            }))
+            .pb(px(if updates {
+                8.0
+            } else if aligned {
+                9.0
+            } else {
+                18.0
+            }))
+            .child(
+                div()
+                    .relative()
+                    .rounded_full()
+                    .overflow_hidden()
+                    .child(self.settings.query.clone())
+                    .when(self.settings.query.read(cx).value.is_empty(), |search| {
+                        search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
+                            "Buscar ajustes...",
+                            13.5,
+                            400,
+                            orbit::INK_3,
+                        )))
+                    }),
+            )
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let mut rows = stack().gap_1();
+        let aligned = aligned_navigation(self.settings.page);
+        let row_height = nav_row_height(self.settings.page);
+        let mut rows = stack()
+            .gap(px(if aligned { 2.0 } else { 4.0 }))
+            .when(aligned, |rows| rows.px(px(2.0)));
         let mut found = false;
         for (index, (section, label, subtitle)) in
             [(Section::Account, "Cuenta", "Sesión, plan y dispositivos")]
@@ -834,9 +876,9 @@ impl Hub {
                 rows = rows.child(
                     orbit::nav_item(label, label, subtitle, self.settings.page == Page::Account)
                         .mx(px(0.0))
-                        .px(px(11.0))
+                        .px(px(if aligned { 8.0 } else { 11.0 }))
                         .py(px(7.0))
-                        .h(px(52.0))
+                        .h(px(row_height))
                         .track_focus(&self.settings.nav_focus[index])
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.settings.nav_focus[index].focus(window, cx);
@@ -865,9 +907,9 @@ impl Hub {
                         page == self.settings.page,
                     )
                     .mx(px(0.0))
-                    .px(px(11.0))
+                    .px(px(if aligned { 8.0 } else { 11.0 }))
                     .py(px(7.0))
-                    .h(px(52.0))
+                    .h(px(row_height))
                     .track_focus(&self.settings.nav_focus[focus_index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[focus_index].focus(window, cx);
@@ -901,7 +943,12 @@ impl Hub {
         .w(px(orbit::column_width(f32::from(
             window.viewport_size().width,
         ))))
-        .child(div().px(px(24.0)).pt(px(24.0)).child(eyebrow("Secciones")))
+        .child(
+            div()
+                .px(px(if aligned { 9.0 } else { 24.0 }))
+                .pt(px(if aligned { 27.0 } else { 24.0 }))
+                .child(eyebrow("Secciones")),
+        )
         .child(self.settings_search(cx))
         .child(
             div()
@@ -957,7 +1004,11 @@ impl Hub {
             .w_auto()
             .overflow_y_scroll()
             .track_scroll(&self.settings.panel_scroll)
-            .child(Grayscale(content.into_any_element()))
+            .child(if self.settings.page == Page::Updates {
+                content.into_any_element()
+            } else {
+                Grayscale(content.into_any_element()).into_any_element()
+            })
     }
     fn settings_zoom() -> gpui::Stateful<Div> {
         div()
@@ -1387,10 +1438,10 @@ impl Hub {
                 self.demo.is_some(),
             ))
             .child(Self::settings_update_channels(channel, self.demo.is_some()))
-            .child(news)
+            .child(Grayscale(news.into_any_element()))
     }
     fn settings_release_news(&self) -> Div {
-        let mut body = section_body().mt(px(-2.5));
+        let mut body = section_body().mt(px(-0.5));
         match super::releases::news() {
             Ok(releases) => {
                 for release in releases {
@@ -1400,6 +1451,7 @@ impl Hub {
                             .items_center()
                             .gap(px(14.0))
                             .min_h(px(46.0))
+                            .mb(px(-0.5))
                             .border_b_1()
                             .border_color(rgba(orbit::LINE_ROW))
                             .child(
@@ -1478,7 +1530,7 @@ impl Hub {
     }
     fn settings_update_hero(version: String, state: String, demo: bool) -> Div {
         div()
-            .h(px(139.0))
+            .h(px(138.0))
             .w_full()
             .flex()
             .items_center()
@@ -1677,6 +1729,8 @@ impl Hub {
                             .flex()
                             .items_center()
                             .gap(px(10.0))
+                            .relative()
+                            .top(px(-7.0))
                             .child(disabled_button(
                                 "settings-hotkeys-reset",
                                 "Restablecer todos",
@@ -2026,7 +2080,7 @@ impl Hub {
             filters = filters.child(
                 div()
                     .h(px(29.0))
-                    .px(px(10.0))
+                    .px(px(12.0))
                     .rounded(px(8.0))
                     .flex()
                     .items_center()

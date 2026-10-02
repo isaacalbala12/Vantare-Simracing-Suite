@@ -1,6 +1,7 @@
 //! `PedalsAdvancedEfficiency`, composición por defecto de 300 × 112.
 //! Volante genérico con steering canónico × 450°, rasterizado por GPUI.
 
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::{
     app::{Paint, Wake, replace_if_changed},
     efficiency::{
@@ -9,9 +10,7 @@ use crate::{
         tokens,
     },
 };
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use std::{
     cell::RefCell,
     rc::Rc,

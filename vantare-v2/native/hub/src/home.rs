@@ -86,10 +86,17 @@ fn target<'a>(races: &'a [Race], following: &[String]) -> Option<&'a Race> {
 // Las fuentes Inter del kit son estáticas: pedir otra vez el peso sintetiza negrita.
 fn text(content: impl Into<SharedString>, size: f32, weight: u16, color: u32) -> Div {
     let weight = if weight == 560 { 600 } else { weight };
-    orbit::text(content, size, weight, color).font_weight(FontWeight::NORMAL)
+    let line_height = size * 1.5;
+    let baseline = typography::baseline(0.0, line_height, size);
+    let native_baseline = f32::midpoint(line_height.round(), size * (1984.0 - 494.0) / 2048.0);
+    orbit::text(content, size, weight, color)
+        .font_weight(FontWeight::NORMAL)
+        .line_height(px(line_height))
+        .relative()
+        .top(px(baseline - native_baseline))
 }
 
-fn title(content: String, size: f32, tracking: f32, line_height: f32) -> Div {
+pub(super) fn title(content: String, size: f32, tracking: f32, line_height: f32) -> Div {
     div().h(px(line_height)).flex_1().child(
         gpui::canvas(
             |_, _, _| (),
@@ -141,7 +148,7 @@ fn keycap(label: &'static str) -> Div {
         .bg(rgba(0xffff_ff06))
         .font_family("Cascadia Code")
         .text_size(px(12.0))
-        .font_weight(gpui::FontWeight(500.0))
+        .font_weight(FontWeight::NORMAL)
         .text_color(rgb(orbit::INK_3))
         .child(label)
 }
@@ -319,7 +326,19 @@ fn hero(
                         .flex()
                         .items_center()
                         .gap(px(14.0))
-                        .child(div().size(px(10.0)).rounded_full().bg(rgb(orbit::GREEN)))
+                        .child(
+                            div()
+                                .size(px(10.0))
+                                .rounded_full()
+                                .bg(rgb(orbit::GREEN))
+                                .shadow(vec![gpui::BoxShadow {
+                                    color: rgb(orbit::GREEN).into(),
+                                    offset: gpui::point(px(0.0), px(0.0)),
+                                    blur_radius: px(14.0),
+                                    spread_radius: px(0.0),
+                                    inset: false,
+                                }]),
+                        )
                         .child(title(greeting, 34.0, -0.045, 35.7)),
                 )
                 .child(command())
@@ -361,7 +380,7 @@ fn hero(
 }
 
 fn profile_metadata(demo: Option<&crate::demo::DemoData>) -> Div {
-    if let Some(data) = demo {
+    if let Some(data) = demo.filter(|data| data.overlay_profile().is_some()) {
         div()
             .flex()
             .items_center()
@@ -372,7 +391,7 @@ fn profile_metadata(demo: Option<&crate::demo::DemoData>) -> Div {
                 div()
                     .font_family("Cascadia Code")
                     .text_size(px(12.0))
-                    .font_weight(gpui::FontWeight(650.0))
+                    .font_weight(FontWeight::NORMAL)
                     .text_color(rgb(orbit::INK_3))
                     .child(format!("{} × {}", data.profile.width, data.profile.height)),
             )
@@ -398,6 +417,7 @@ fn profile_metadata(demo: Option<&crate::demo::DemoData>) -> Div {
 fn profile_info(
     name: &str,
     meta: Div,
+    has_profile: bool,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
 ) -> Div {
     div()
@@ -410,11 +430,13 @@ fn profile_info(
         .child(orbit::eyebrow("Perfil activo"))
         .child(
             title(name.to_owned(), 22.0, -0.03, 27.0)
+                .relative()
+                .top(px(1.0))
                 .flex_none()
                 .mt(px(4.0))
                 .mb(px(2.0)),
         )
-        .child(meta)
+        .child(meta.relative().top(px(-1.0)))
         .child(div().flex_1())
         .child(
             div()
@@ -426,20 +448,22 @@ fn profile_info(
                         .aria_label("Abrir Studio")
                         .child(text("Abrir Studio", 12.0, 600, 0x001c_1719))
                         .h(px(34.0))
-                        .px(px(13.0))
+                        .px(px(14.0))
                         .rounded(px(8.0)),
                     Section::Studio,
                 ))
-                .child(
-                    pending_overlay("home-overlay")
-                        .h(px(34.0))
-                        .px(px(13.0))
-                        .rounded(px(8.0)),
-                ),
+                .when(has_profile, |row| {
+                    row.child(
+                        pending_overlay("home-overlay")
+                            .h(px(34.0))
+                            .px(px(16.0))
+                            .rounded(px(8.0)),
+                    )
+                }),
         )
 }
 
-fn profile_preview() -> Div {
+fn profile_preview(has_profile: bool) -> Div {
     orbit::card("")
         .w(px(340.0))
         .h(px(191.25))
@@ -449,13 +473,34 @@ fn profile_preview() -> Div {
         .justify_center()
         .overflow_hidden()
         .rounded(px(14.0))
-        .bg(rgb(0x000b_0c0e))
-        .child(text(
-            "Vista previa · no disponible",
-            12.0,
-            400,
-            orbit::INK_3,
-        ))
+        .bg(rgb(0x000d_0e10))
+        .relative()
+        .children([90.0, 180.0, 270.0].map(|left| {
+            div()
+                .absolute()
+                .left(px(left))
+                .top_0()
+                .w(px(1.0))
+                .h_full()
+                .bg(rgba(0xffff_ff04))
+        }))
+        .children([90.0, 180.0].map(|top| {
+            div()
+                .absolute()
+                .left_0()
+                .top(px(top))
+                .h(px(1.0))
+                .w_full()
+                .bg(rgba(0xffff_ff04))
+        }))
+        .when(has_profile, |preview| {
+            preview.child(text(
+                "Vista previa · no disponible",
+                12.0,
+                400,
+                orbit::INK_3,
+            ))
+        })
 }
 
 fn profile(
@@ -464,21 +509,45 @@ fn profile(
 ) -> Div {
     // Falta una API de Studio que exponga su layout/renderers y una escala de
     // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
-    let name = demo.map_or("Sin perfil activo", |data| data.profile.name.as_str());
+    let profile = demo.and_then(crate::demo::DemoData::overlay_profile);
+    let name = profile.map_or("Sin perfil activo", |profile| profile.name.as_str());
     let meta = profile_metadata(demo);
     orbit::card("")
         .h(px(225.0))
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
-        .border_color(rgba(0xf047_5530))
+        .shadow(vec![
+            gpui::BoxShadow {
+                color: rgba(0x0000_006b).into(),
+                offset: gpui::point(px(0.0), px(32.0)),
+                blur_radius: px(91.0),
+                spread_radius: px(0.0),
+                inset: false,
+            },
+            gpui::BoxShadow {
+                color: rgba(0xd52f_490a).into(),
+                offset: gpui::point(px(0.0), px(0.0)),
+                blur_radius: px(42.0),
+                spread_radius: px(0.0),
+                inset: false,
+            },
+        ])
+        .border_0()
+        .p(px(1.0))
         .bg(linear_gradient(
-            180.0,
-            linear_color_stop(rgb(0x0019_191e), 0.0),
-            linear_color_stop(rgb(0x0013_1317), 1.0),
+            115.0,
+            linear_color_stop(rgba(0xf047_559e), 0.0),
+            linear_color_stop(rgba(0xffff_ff0f), 1.0),
         ))
         .child(
             orbit::card_body()
                 .h_full()
+                .rounded(px(orbit::FEATURED_RADIUS - 1.0))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(rgb(0x0019_191e), 0.0),
+                    linear_color_stop(rgb(0x0013_1317), 1.0),
+                ))
                 .pl(px(24.0))
                 .pr(px(18.0))
                 .py(px(16.0))
@@ -488,8 +557,8 @@ fn profile(
                         .flex()
                         .items_center()
                         .gap(px(28.0))
-                        .child(profile_info(name, meta, navigate))
-                        .child(profile_preview()),
+                        .child(profile_info(name, meta, profile.is_some(), navigate))
+                        .child(profile_preview(profile.is_some())),
                 ),
         )
 }
@@ -526,13 +595,13 @@ fn race_rows(starts: &[Race], navigate: &impl Fn(Stateful<Div>, Section) -> Stat
 
 fn profile_rows(demo: Option<&crate::demo::DemoData>) -> Div {
     let mut profiles = orbit::card_body().flex_1().min_h_0();
-    if let Some(profile) = demo.map(|data| &data.profile) {
+    if let Some(profile) = demo.and_then(crate::demo::DemoData::overlay_profile) {
         profiles = profiles.child(
             div()
                 .relative()
                 .mx(px(4.0))
                 .mt(px(10.0))
-                .h(px(46.0))
+                .h(px(50.0))
                 .px(px(8.0))
                 .flex()
                 .items_center()
@@ -563,7 +632,7 @@ fn profile_rows(demo: Option<&crate::demo::DemoData>) -> Div {
                         .flex()
                         .flex_col()
                         .gap(px(2.0))
-                        .child(text(profile.name.clone(), 13.0, 650, orbit::INK))
+                        .child(text(profile.name.clone(), 13.0, 650, orbit::INK_2))
                         .child(text(
                             format!("{} widgets · configuración local", profile.widgets),
                             11.0,
@@ -610,7 +679,7 @@ fn lists(
                 .flex_1()
                 .flex_basis(gpui::relative(0.575))
                 .min_w_0()
-                .min_h(px(360.0))
+                .min_h(px(362.0))
                 .child(
                     div()
                         .h(px(50.0))
@@ -626,7 +695,7 @@ fn lists(
                                 .flex()
                                 .items_center()
                                 .gap(px(12.0))
-                                .child(text("Cadencia publicada", 12.0, 400, orbit::INK_3))
+                                .child(orbit::mono_text("Cadencia publicada", 12.0, orbit::INK_3))
                                 .child(navigate(
                                     div()
                                         .id("home-races")
@@ -711,7 +780,7 @@ pub fn render(
         .flex_col()
         .mt(px(-50.0))
         .pt(px(34.0))
-        .pb(px(15.0))
+        .pb(px(13.0))
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(

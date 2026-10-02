@@ -17,13 +17,68 @@ use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
+const PREVIEW_PADDING: f32 = 22.0;
+const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 167.0;
 const AUTO_SAVED: &str = "Guardado automáticamente";
 
+fn fitted_scale(width: f32, height: f32) -> Option<f32> {
+    if !width.is_finite() || !height.is_finite() {
+        return None;
+    }
+    let scale = ((width - PREVIEW_PADDING * 2.0) / 1920.0)
+        .min((height - PREVIEW_PADDING * 2.0) / 1080.0)
+        .min(1.0);
+    (scale > 0.0).then_some(scale)
+}
+
+#[cfg(any(test, feature = "parity-capture"))]
+fn demo_standings_settings() -> Settings {
+    use vantare_ui::standings::{
+        Settings as StandingsSettings,
+        options::{ColumnSetting, Format},
+    };
+    // La escena Wails reserva 340×420 en x=1560. Eficiencia usa filas de 30 px:
+    // estas opciones admitidas producen 338×424 sin cambiar el renderer ni sus defaults.
+    Settings::Standings(StandingsSettings {
+        row_count: 12,
+        columns: Some(
+            ["position", "driverNumber", "driverName", "gap", "lastLap"]
+                .into_iter()
+                .map(|metric| ColumnSetting {
+                    id: metric.into(),
+                    metric_id: metric.into(),
+                    format: if metric == "driverName" {
+                        Format {
+                            mode: "truncate".into(),
+                            max_chars: Some(11),
+                            ..Format::default()
+                        }
+                    } else {
+                        Format::default()
+                    },
+                    ..ColumnSetting::default()
+                })
+                .collect(),
+        ),
+        ..StandingsSettings::default()
+    })
+}
+
+#[cfg(any(test, feature = "parity-capture"))]
+fn demo_content_scale(kind: Kind, width: f32) -> f32 {
+    // Ancho lógico de delta en hub-profile-mock-state.ts. Mantiene su aspecto.
+    if kind == Kind::Delta {
+        400.0 / width
+    } else {
+        1.0
+    }
+}
+
 // El peso ya está en las fuentes Inter estáticas del kit.
 fn text(content: impl Into<SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
-    orbit::text(content, size, weight, color).font_weight(FontWeight::NORMAL)
+    orbit::text(content, size, weight.min(800), color).font_weight(FontWeight::NORMAL)
 }
 
 fn toggle_visibility(editor: &mut Editor, id: &str) -> Result<(), String> {
@@ -277,6 +332,9 @@ impl Prepared {
                 editor.edit_selected(|item| {
                     item.x = x;
                     item.y = y;
+                    if kind == Kind::Standings {
+                        item.settings = demo_standings_settings();
+                    }
                 })?;
             }
             editor.selected = None;
@@ -312,6 +370,8 @@ pub struct Studio {
     active_tab: Tab,
     inspector_open: bool,
     demo_profile: Option<crate::demo::DemoProfile>,
+    fit_scale: f32,
+    zoom_step: usize,
 }
 /// La shell enlaza esta columna; Studio conserva el documento y sus interacciones.
 pub(crate) struct StudioSidebar {
@@ -387,6 +447,7 @@ struct CanvasFrame {
     item: Instance,
     renderer: Entity<Overlay>,
     preview_scale: f32,
+    content_scale: f32,
     selected: bool,
     focus: FocusHandle,
     drag: Option<Drag>,
@@ -404,9 +465,8 @@ impl Render for CanvasFrame {
             .absolute()
             .left(px(x * self.preview_scale))
             .top(px(y * self.preview_scale))
-            .w(px(dimensions.0 * self.preview_scale))
-            .h(px(dimensions.1 * self.preview_scale))
-            .overflow_hidden()
+            .w(px(dimensions.0 * self.preview_scale * self.content_scale))
+            .h(px(dimensions.1 * self.preview_scale * self.content_scale))
             .opacity(self.item.opacity)
             .when(self.selected, |s| {
                 s.border_1().border_color(rgb(orbit::CARMINE))
@@ -442,11 +502,12 @@ impl Studio {
             .items_center()
             .gap(px(10.0))
             .flex_none()
+            .ml(px(-45.0))
             .child(disabled_topbar_select(
                 "studio-profile",
                 "Perfil activo",
                 profile,
-                215.0,
+                260.0,
             ))
             .child(disabled_topbar_select(
                 "studio-performance",
@@ -454,14 +515,17 @@ impl Studio {
                 "Heredar de la aplicación",
                 210.0,
             ))
-            .child(orbit::chip(
-                if demo {
-                    "NIVEL EFECTIVO: EQUILIBRADO"
-                } else {
-                    "NIVEL EFECTIVO: NO DISPONIBLE"
-                },
-                orbit::Tone::Reference,
-            ))
+            .child(
+                orbit::chip(
+                    if demo {
+                        "NIVEL EFECTIVO: EQUILIBRADO"
+                    } else {
+                        "NIVEL EFECTIVO: NO DISPONIBLE"
+                    },
+                    orbit::Tone::Reference,
+                )
+                .w(px(190.0)),
+            )
             .child(
                 div()
                     .id("studio-save-status")
@@ -565,6 +629,8 @@ impl Studio {
             active_tab: Tab::Layout,
             inspector_open: true,
             demo_profile,
+            fit_scale: STUDIO_PREVIEW_SCALE,
+            zoom_step: 0,
         };
         studio.rebuild(cx);
         studio
@@ -577,15 +643,27 @@ impl Studio {
         self.drag = None;
         self.frames.clear();
         for item in &self.editor.layout().instances {
+            let mut overlay = Overlay::configured(&item.settings, self.preferences());
+            #[cfg(feature = "parity-capture")]
+            let content_scale = if studio_demo_capture() {
+                demo_content_scale(item.settings.kind(), overlay.wanted_size().0)
+            } else {
+                1.0
+            };
+            #[cfg(not(feature = "parity-capture"))]
+            let content_scale = 1.0;
+            if let Err(error) = overlay.set_preview_scale(self.preview_scale() * content_scale) {
+                eprintln!("Studio: {error}");
+            }
             let renderer = cx.new(|cx| {
-                let mut overlay = Overlay::configured(&item.settings, self.preferences());
                 overlay.ingest(&self.snapshot, cx);
                 overlay
             });
             let frame = cx.new(|_| CanvasFrame {
                 item: item.clone(),
                 renderer,
-                preview_scale: STUDIO_PREVIEW_SCALE,
+                preview_scale: self.preview_scale(),
+                content_scale,
                 focus: self.focus.clone(),
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
@@ -609,6 +687,32 @@ impl Studio {
             self.frames.push((item.id.clone(), frame));
         }
         cx.notify();
+    }
+    fn preview_scale(&self) -> f32 {
+        ZOOM_STEPS[self.zoom_step].map_or(self.fit_scale, |percent| f32::from(percent) / 100.0)
+    }
+
+    fn rescale_preview(&mut self, cx: &mut Context<Self>) {
+        self.cancel_drag(cx);
+        let scale = self.preview_scale();
+        for (_, frame) in &self.frames {
+            frame.update(cx, |frame, cx| {
+                frame.renderer.update(cx, |overlay, cx| {
+                    if let Err(error) = overlay.set_preview_scale(scale * frame.content_scale) {
+                        eprintln!("Studio: {error}");
+                    }
+                    cx.notify();
+                });
+                frame.preview_scale = scale;
+                cx.notify();
+            });
+        }
+        cx.notify();
+    }
+
+    fn zoom(&mut self, step: usize, cx: &mut Context<Self>) {
+        self.zoom_step = step.min(ZOOM_STEPS.len() - 1);
+        self.rescale_preview(cx);
     }
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         if self.snapshot == *snapshot {
@@ -945,8 +1049,8 @@ impl Studio {
                     .h(px(28.0))
                     .flex()
                     .flex_col()
-                    .mt(px(10.0))
-                    .mb(px(6.0))
+                    .mt(px(8.0))
+                    .mb(px(8.0))
                     .child(self.search.clone())
                     .when(query.is_empty(), |search| {
                         search.child(
@@ -1061,7 +1165,6 @@ impl Studio {
             .flex()
             .flex_col()
             .pt(px(13.0))
-            .pb(px(2.0))
             .border_t_1()
             .border_color(gpui::rgba(orbit::LINE))
             .when(self.catalog_open, |body| {
@@ -1186,8 +1289,13 @@ impl Studio {
             }))
     }
 
-    fn toolbar_zoom_out_control() -> gpui::Div {
+    fn toolbar_zoom_out_control(cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         div()
+            .id("studio-zoom-out")
+            .role(gpui::Role::Button)
+            .aria_label("Reducir zoom")
+            .cursor_pointer()
+            .on_click(cx.listener(|this, _, _, cx| this.zoom(this.zoom_step.saturating_sub(1), cx)))
             .size(px(39.0))
             .flex_none()
             .flex()
@@ -1196,14 +1304,27 @@ impl Studio {
             .child(text("−", 14.0, 500, orbit::INK_3))
     }
 
-    fn toolbar_zoom_label() -> gpui::Div {
-        orbit::mono_text("Ajustar", 12.0, orbit::INK_3)
+    fn toolbar_zoom_label(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let label = ZOOM_STEPS[self.zoom_step]
+            .map_or_else(|| "Ajustar".to_owned(), |percent| format!("{percent}%"));
+        div()
+            .id("studio-zoom-fit")
+            .role(gpui::Role::Button)
+            .aria_label("Ajustar overlay al lienzo")
+            .cursor_pointer()
+            .on_click(cx.listener(|this, _, _, cx| this.zoom(0, cx)))
             .w(px(60.0))
             .text_center()
+            .child(orbit::mono_text(label, 12.0, orbit::INK_3))
     }
 
-    fn toolbar_zoom_in_control() -> gpui::Div {
+    fn toolbar_zoom_in_control(cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         div()
+            .id("studio-zoom-in")
+            .role(gpui::Role::Button)
+            .aria_label("Ampliar zoom")
+            .cursor_pointer()
+            .on_click(cx.listener(|this, _, _, cx| this.zoom(this.zoom_step + 1, cx)))
             .size(px(39.0))
             .flex_none()
             .flex()
@@ -1247,9 +1368,9 @@ impl Studio {
                     .flex()
                     .items_center()
                     .gap(px(2.5))
-                    .child(Self::toolbar_zoom_out_control())
-                    .child(Self::toolbar_zoom_label())
-                    .child(Self::toolbar_zoom_in_control()),
+                    .child(Self::toolbar_zoom_out_control(cx))
+                    .child(self.toolbar_zoom_label(cx))
+                    .child(Self::toolbar_zoom_in_control(cx)),
             )
     }
     fn color_settings(&self, mut panel: gpui::Div, cx: &mut Context<Self>) -> gpui::Div {
@@ -1456,7 +1577,7 @@ impl Studio {
                 )
                 .line_height(px(20.25))
                 .relative()
-                .top(px(-2.0)),
+                .top(px(-1.0)),
             );
         }
         let url = self
@@ -1486,8 +1607,9 @@ impl Studio {
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut stage = div()
             .relative()
-            .w(px(700.0))
-            .h(px(395.0))
+            .w(px(1920.0 * self.preview_scale()))
+            .h(px((1080.0 * self.preview_scale()).ceil() + 1.0))
+            .m_auto()
             .flex_none()
             .overflow_hidden()
             .rounded(px(16.0))
@@ -1551,6 +1673,32 @@ impl Studio {
     fn editor_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
         self.init_controls(window, cx);
         let stage = self.preview_stage(cx);
+        let studio = cx.entity().downgrade();
+        let measure = gpui::canvas(
+            move |bounds, _, cx| {
+                if let Some(scale) =
+                    fitted_scale(bounds.size.width.into(), bounds.size.height.into())
+                {
+                    // La entidad aún participa en el prepaint: actualizar al terminar
+                    // el frame permite medir también los cambios del inspector.
+                    cx.defer(move |cx| {
+                        let _ = studio.update(cx, |this, cx| {
+                            if (this.fit_scale - scale).abs() > 0.000_01 {
+                                this.fit_scale = scale;
+                                if this.zoom_step == 0 {
+                                    this.rescale_preview(cx);
+                                }
+                            }
+                        });
+                    });
+                }
+            },
+            |_, (), _, _| {},
+        )
+        .absolute()
+        .top_0()
+        .left_0()
+        .size_full();
         let canvas = div()
             .id("studio-canvas")
             .flex_1()
@@ -1558,11 +1706,11 @@ impl Studio {
             .min_h_0()
             .relative()
             .flex()
-            .items_center()
-            .justify_center()
-            .overflow_hidden()
+            .p(px(PREVIEW_PADDING))
+            .overflow_scroll()
             .bg(rgb(orbit::CANVAS))
             .child(stage_highlight(true))
+            .child(measure)
             .child(stage);
         let left = div()
             .flex_1()
@@ -1655,6 +1803,41 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn demo_delta_keeps_its_document_width_and_aspect_at_each_zoom() {
+        let overlay = Overlay::new(Kind::Delta, Preferences::default());
+        let (width, height) = overlay.wanted_size();
+        let content_scale = demo_content_scale(Kind::Delta, width);
+        for scale in [STUDIO_PREVIEW_SCALE, 0.5, 0.75, 1.0, 1.5] {
+            assert!((width * content_scale * scale - 400.0 * scale).abs() < 0.001);
+            assert!(
+                ((width * content_scale) / (height * content_scale) - width / height).abs() < 0.001
+            );
+            assert!((760.0 + width * content_scale) * scale < 1920.0 * scale);
+        }
+        assert!((demo_content_scale(Kind::Relative, 304.0) - 1.0).abs() < f32::EPSILON);
+    }
+    #[test]
+    fn fit_keeps_the_whole_overlay_inside_wide_and_tall_canvases() {
+        for (width, height) in [(744.0, 731.0), (444.0, 731.0), (1044.0, 300.0)] {
+            let scale = fitted_scale(width, height).expect("canvas medido");
+            assert!(1920.0 * scale <= width - PREVIEW_PADDING * 2.0);
+            assert!(1080.0 * scale <= height - PREVIEW_PADDING * 2.0);
+            // Standings llega al borde derecho sin salirse del viewport.
+            let overlay = Overlay::configured(&demo_standings_settings(), Preferences::default());
+            assert_eq!(overlay.wanted_size(), (338.0, 424.0));
+            assert!((1560.0 + overlay.wanted_size().0) * scale <= 1920.0 * scale);
+        }
+        assert_eq!(fitted_scale(744.0, 731.0), Some(STUDIO_PREVIEW_SCALE));
+        for (width, height) in [
+            (0.0, 10.0),
+            (44.0, 44.0),
+            (f32::NAN, 900.0),
+            (800.0, f32::INFINITY),
+        ] {
+            assert_eq!(fitted_scale(width, height), None);
+        }
+    }
     #[test]
     fn visibility_is_persisted_and_undoable_without_changing_selection() {
         let file = crate::document::tests::File::new();

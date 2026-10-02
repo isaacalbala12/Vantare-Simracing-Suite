@@ -1,6 +1,7 @@
 //! Aviso Eficiencia de vuelta rápida. Valores y reglas vienen de domain;
 //! geometría del renderer productivo a 480 × 104, captura congelada ISA-1427.
 
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::{
     app::{Paint, Wake},
     efficiency::{
@@ -8,9 +9,7 @@ use crate::{
         text::{self, ink},
     },
 };
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use std::time::{Duration, Instant};
 use vantare_domain::{
     Snapshot,

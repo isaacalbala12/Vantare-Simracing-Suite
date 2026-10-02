@@ -1,5 +1,6 @@
 //! Banner Eficiencia, geometría congelada 280 × 88. Sin reglas de simulador.
 
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::{
     app::{Paint, Wake, replace_if_changed},
     efficiency::{
@@ -8,7 +9,7 @@ use crate::{
         tokens,
     },
 };
-use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
+use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::{
     cell::RefCell,
     collections::HashMap,

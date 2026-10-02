@@ -9,8 +9,8 @@ use crate::orbit;
 #[cfg(feature = "parity-capture")]
 use gpui::relative;
 use gpui::{
-    Context, FontWeight, IntoElement, PathBuilder, Render, Window, canvas, div, linear_color_stop,
-    linear_gradient, point, prelude::*, px, rgb, rgba,
+    Context, FontWeight, IntoElement, PathBuilder, Render, TextRenderingMode, Window, canvas, div,
+    linear_color_stop, linear_gradient, point, prelude::*, px, rgb, rgba,
 };
 use std::{
     path::PathBuf,
@@ -257,7 +257,13 @@ fn telemetry_context_row(
         .px(px(8.0))
         .py(px(6.0))
         .rounded(px(11.0))
-        .when(selected, |row| row.bg(orbit::tint(orbit::CARMINE, 0.08)))
+        .when(selected, |row| {
+            row.bg(linear_gradient(
+                90.0,
+                linear_color_stop(orbit::tint(orbit::CARMINE, 0.11), 0.0),
+                linear_color_stop(orbit::tint(orbit::CARMINE, 0.02), 1.0),
+            ))
+        })
         .child(
             div()
                 .flex_1()
@@ -269,12 +275,15 @@ fn telemetry_context_row(
                         if selected { 700 } else { 650 },
                         if selected { orbit::INK } else { orbit::INK_2 },
                     )
+                    .when(selected, |title| title.relative().top(px(-1.0)))
                     .w_full()
                     .whitespace_nowrap()
                     .text_ellipsis(),
                 )
                 .child(
                     telemetry_text(subtitle, 11.0, 400, orbit::INK_3)
+                        .relative()
+                        .top(px(3.0))
                         .w_full()
                         .whitespace_nowrap()
                         .text_ellipsis(),
@@ -343,13 +352,13 @@ impl Analysis {
             .child(
                 telemetry_text(
                     "Fuente: archivos locales de LMU indexados en DuckDB (ADR 0005). El puente todavía no publica sesiones.",
-                    11.0,
+                    10.5,
                     400,
                     orbit::INK_MUTED,
                 )
-                .line_height(px(16.5))
+                .line_height(px(15.5))
                 .mt_auto()
-                .pb(px(2.0)),
+                .pb(px(4.0)),
             )
     }
 
@@ -704,6 +713,8 @@ fn telemetry_tracked(content: &str, size: f32, weight: u16, color: u32, spacing:
         canvas(
             |_, _, _| (),
             move |bounds, (), window, cx| {
+                let previous = cx.text_rendering_mode();
+                cx.set_text_rendering_mode(TextRenderingMode::Grayscale);
                 text::draw(
                     window,
                     cx,
@@ -716,6 +727,7 @@ fn telemetry_tracked(content: &str, size: f32, weight: u16, color: u32, spacing:
                     ),
                     &text::ink(size, f32::from(weight), spacing / size, rgb(color).into()),
                 );
+                cx.set_text_rendering_mode(previous);
             },
         )
         .w_full()
@@ -792,7 +804,7 @@ fn telemetry_note(title: Option<&str>, message: &str) -> gpui::Div {
                 text::draw(window, cx, title, x, baseline, &ink);
                 x += text::width(window, title, &ink) - 1.0;
             }
-            let ink = text::ink(12.0, 400.0, 0.004, rgb(orbit::INK_3).into());
+            let ink = text::ink(12.0, 400.0, 0.0025, rgb(orbit::INK_3).into());
             let message = text::fit(window, &message, &ink, f32::from(bounds.right()) - x);
             text::draw(window, cx, &message, x, baseline, &ink);
         },
@@ -884,7 +896,8 @@ fn telemetry_segment(
     div()
         .id(id)
         .h(px(29.0))
-        .px(px(12.0))
+        // El borde activo equivale al inset del CSS, sin ensanchar la opción.
+        .px(px(if active { 11.0 } else { 12.0 }))
         .flex()
         .items_center()
         .rounded(px(orbit::RADIUS_CHIP))
@@ -1235,7 +1248,7 @@ fn demo_trace(
             telemetry_mono(name, 12.0, 600, orbit::INK_4)
                 .absolute()
                 .left(relative(position as f32 - 0.028))
-                .top(px(15.0)),
+                .top(px(13.0)),
         );
     }
     trace
@@ -1561,7 +1574,7 @@ impl Analysis {
         }
     }
 
-    fn telemetry_header(&self, cx: &Context<Self>) -> gpui::Div {
+    fn telemetry_header(&self, window: &Window, cx: &Context<Self>) -> gpui::Div {
         let synthetic = self.is_synthetic();
         let mut references = telemetry_segment_group();
         for (reference, label) in TelemetryReference::ALL {
@@ -1582,6 +1595,19 @@ impl Analysis {
                 cx,
             ));
         }
+        let status_label = if synthetic {
+            "DATOS SINTÉTICOS"
+        } else {
+            "SIN SESIONES"
+        };
+        let status_color = if synthetic {
+            orbit::EMBER
+        } else {
+            orbit::INK_3
+        };
+        let status_ink =
+            vantare_ui::efficiency::text::ink(10.0, 750.0, 0.06, rgb(status_color).into());
+        let status_width = vantare_ui::efficiency::text::width(window, status_label, &status_ink);
         let status = div()
             .h(px(29.0))
             .px(px(12.0))
@@ -1591,19 +1617,9 @@ impl Analysis {
             .border_1()
             .border_color(rgba(if synthetic { 0xff9b_5738 } else { 0xffff_ff12 }))
             .bg(rgba(0xffff_ff06))
-            .text_size(px(10.0))
-            .font_family("Inter W750")
-            .font_weight(FontWeight(400.0))
-            .text_color(rgb(if synthetic {
-                orbit::EMBER
-            } else {
-                orbit::INK_3
-            }))
-            .child(if synthetic {
-                "DATOS SINTÉTICOS"
-            } else {
-                "SIN SESIONES"
-            });
+            .child(
+                telemetry_tracked(status_label, 10.0, 750, status_color, 0.6).w(px(status_width)),
+            );
         let actions = div()
             .flex()
             .items_center()
@@ -1624,7 +1640,8 @@ impl Analysis {
                     .min_w_0()
                     .child(telemetry_tracked("ANÁLISIS POST-SESIÓN", 11.0, 800, orbit::INK_3, 0.99).relative().top(px(-2.0)))
                     .child(
-                        telemetry_tracked(&self.telemetry_title(), 32.0, 700, orbit::INK, -0.3)
+                        // W700 estático compensa el ancho del W690 variable de Wails.
+                        telemetry_tracked(&self.telemetry_title(), 34.0, 700, orbit::INK, -1.36)
                             .mt(px(6.0))
                             .h(px(51.0))
                             .line_height(px(51.0)),
@@ -1923,7 +1940,7 @@ impl Render for Analysis {
             .pb(px(20.0))
             .flex()
             .flex_col()
-            .child(self.telemetry_header(cx))
+            .child(self.telemetry_header(window, cx))
             .child(self.telemetry_stats())
             .child(columns)
             .child(self.telemetry_note())

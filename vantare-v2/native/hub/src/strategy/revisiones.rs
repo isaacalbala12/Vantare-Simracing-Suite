@@ -2,7 +2,7 @@
 use super::{Strategy, Value, application, orbit};
 use gpui::{
     div,
-    prelude::{InteractiveElement, ParentElement, Styled},
+    prelude::{FluentBuilder, InteractiveElement, ParentElement, Styled},
     px,
 };
 
@@ -56,7 +56,9 @@ impl Strategy {
                         .id(("strategy-revision", index)),
                     );
                 }
-                let history = if snapshot.revisions.is_empty() {
+                let history = if self.capture_demo().is_some() {
+                    Self::demo_revision_history()
+                } else if snapshot.revisions.is_empty() {
                     div()
                         .flex()
                         .items_start()
@@ -96,6 +98,7 @@ impl Strategy {
                         "{} referencias exactas de sesión vinculadas a esta carrera.",
                         revisions.len()
                     ),
+                    Ok(None) if self.capture_demo().is_some() => "Se muestran todas las correcciones activas de esta revisión. Consultarla no cambia la carrera.".to_owned(),
                     Ok(None) => {
                         "No hay referencias exactas de sesión vinculadas a esta carrera.".to_owned()
                     }
@@ -103,61 +106,68 @@ impl Strategy {
                 };
                 let plan_state = if self.result.is_some() {
                     "El resultado del solver se conserva en memoria para esta sesión.".to_owned()
+                } else if self.capture_demo().is_some() {
+                    "Guardar la configuración o corregir datos no equivale a aceptar un resultado de carrera.".to_owned()
                 } else {
                     "Sin calcular. Guardar la configuración no acepta un resultado.".to_owned()
                 };
-                let information_card =
-                    |icon: &'static str, title: &str, description: &str, height: f32| {
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(18.0))
-                            .min_h(px(height))
-                            .px(px(16.0))
-                            .rounded(px(10.0))
-                            .border_1()
-                            .border_color(gpui::rgba(orbit::LINE))
-                            .bg(gpui::rgba(0x1012_14e8))
-                            .child(orbit::icon(icon, 22.0, orbit::INK_2))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .min_w_0()
-                                    .gap(px(8.0))
-                                    .child(orbit::text(title.to_owned(), 16.0, 600, orbit::INK))
-                                    .child(orbit::text(
-                                        description.to_owned(),
-                                        13.0,
-                                        400,
-                                        orbit::INK_2,
-                                    )),
-                            )
-                    };
+                let information_card = |icon: &'static str,
+                                        title: &str,
+                                        description: &str,
+                                        height: f32| {
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(24.0))
+                        .min_h(px(height))
+                        .px(px(19.0))
+                        .rounded(px(10.0))
+                        .border_1()
+                        .border_color(gpui::rgba(orbit::LINE))
+                        .bg(gpui::rgba(0x1012_14e8))
+                        .child(orbit::icon(icon, 29.0, orbit::INK_2))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .flex_1()
+                                .gap(px(9.0))
+                                .child(
+                                    orbit::text(title.to_owned(), 16.0, 700, orbit::INK)
+                                        .line_height(px(24.0)),
+                                )
+                                .child(
+                                    orbit::text(description.to_owned(), 13.0, 400, orbit::INK_2)
+                                        .line_height(px(19.5)),
+                                ),
+                        )
+                };
                 let source_control = div()
                     .flex()
                     .items_center()
                     .justify_between()
                     .flex_1()
                     .min_w_0()
-                    .h(px(42.0))
-                    .px(px(12.0))
+                    .h(px(40.0))
+                    .px(px(16.0))
                     .rounded(px(8.0))
                     .border_1()
                     .border_color(gpui::rgba(orbit::LINE_STRONG))
                     .bg(gpui::rgba(0x0809_0bf0))
                     .child(orbit::text(
-                        "Sin fuentes de datos conectadas",
+                        self.capture_demo()
+                            .map_or("Sin fuentes de datos conectadas", |demo| demo.session_name),
                         13.0,
                         400,
-                        orbit::INK_2,
+                        orbit::INK,
                     ))
-                    .child(orbit::icon("i-chevron", 14.0, orbit::INK_3));
+                    .child(orbit::text("⌄", 16.0, 500, orbit::INK_3));
                 let source_actions = div()
                     .flex()
                     .items_center()
-                    .gap(px(10.0))
-                    .mt(px(11.0))
+                    .gap(px(9.0))
+                    .mt(px(21.0))
                     .children(
                         [
                             "Revisión anterior",
@@ -167,59 +177,57 @@ impl Strategy {
                         .into_iter()
                         .enumerate()
                         .map(|(index, label)| {
-                            orbit::button(
+                            super::editor_view::secondary_button(
                                 match index {
                                     0 => "strategy-revision-previous",
                                     1 => "strategy-revision-latest",
                                     _ => "strategy-revision-career-data",
                                 },
                                 label,
+                                13.0,
                             )
                             .tab_stop(false)
                             .opacity(orbit::DISABLED)
                             .cursor(gpui::CursorStyle::Arrow)
                             .h(px(40.0))
+                            .w(px([129.0, 163.0, 164.0][index]))
                         }),
                     );
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(0.0))
-                    .child(
-                        orbit::text("Revisiones", 42.0, 700, orbit::INK)
-                            .mt(px(4.0))
-                            .ml(px(12.0)),
-                    )
+                    .child(super::view::heading("Revisiones", 68.0, -1.15).mt(px(2.0)).ml(px(12.0)))
                     .child(
                         orbit::text(
                             "Consulta los cambios y decide qué revisión usa tu carrera.",
-                            orbit::BODY,
+                            13.0,
                             400,
                             orbit::INK_2,
                         )
-                        .ml(px(12.0)),
+                        .line_height(px(22.4)).ml(px(11.0)),
                     )
                     .child(
                         div()
                             .flex()
                             .items_start()
                             .gap(px(16.0))
-                            .mt(px(19.0))
+                            .mt(px(20.0))
                             .child(
                                 div()
                                     .flex_1()
                                     .min_w_0()
                                     .h(px(466.0))
                                     .p(px(22.0))
-                                    .pt(px(36.0))
+                                    .pt(px(33.0))
                                     .rounded(px(orbit::RADIUS))
                                     .border_1()
                                     .border_color(gpui::rgba(orbit::LINE))
-                                    .bg(gpui::rgba(0x0b0d_0fe8))
+                                    .bg(gpui::rgb(0x000c_1012))
                                     .child(orbit::text(
                                         "Fuente del historial",
-                                        14.0,
-                                        500,
+                                        13.0,
+                                        400,
                                         orbit::INK_2,
                                     ))
                                     .child(
@@ -235,35 +243,38 @@ impl Strategy {
                                                     "Gestionar fuentes",
                                                 )
                                                 .tab_stop(false)
-                                                .opacity(orbit::DISABLED)
+                                                .opacity(if self.capture_demo().is_some() { 1.0 } else { orbit::DISABLED })
+                                                .when(self.capture_demo().is_some(), |button| button.border_color(gpui::rgb(orbit::CARMINE)).bg(gpui::rgba(0xc52e_4214)))
                                                 .cursor(gpui::CursorStyle::Arrow)
                                                 .w(px(136.0))
-                                                .h(px(42.0)),
+                                                .h(px(40.0)).relative().top(px(1.0)),
                                             ),
                                     )
                                     .child(
-                                        orbit::text("Historial de datos", 20.0, 600, orbit::INK)
-                                            .mt(px(20.0)),
+                                        orbit::text("Historial de datos",20.0,400,orbit::INK).line_height(px(30.0))
+                                            .mt(px(18.0)),
                                     )
                                     .child(source_actions)
                                     .child(history)
                                     .child(
-                                        orbit::text(exact_summary, 12.0, 400, orbit::INK_2)
-                                            .mt(px(14.0)),
+                                        orbit::text(exact_summary,13.0,400,orbit::INK_2).line_height(px(19.5))
+                                            .mt(px(13.0)),
                                     )
                                     .child(
                                         orbit::text(
-                                            format!(
+                                            if self.capture_demo().is_some() {
+                                                "Esta revisión utiliza los valores originales.".to_owned()
+                                            } else { format!(
                                                 "{} borradores · {} revisiones · generación {}",
                                                 snapshot.drafts.len(),
                                                 snapshot.revisions.len(),
                                                 snapshot.generation
-                                            ),
-                                            12.0,
+                                            ) },
+                                            13.0,
                                             400,
-                                            orbit::INK_3,
+                                            orbit::INK_2,
                                         )
-                                        .mt(px(8.0)),
+                                        .mt(px(15.0)),
                                     ),
                             )
                             .child(
@@ -272,22 +283,22 @@ impl Strategy {
                                     .h(px(520.0))
                                     .flex_none()
                                     .p(px(22.0))
-                                    .pt(px(36.0))
+                                    .pt(px(26.0))
                                     .rounded(px(orbit::RADIUS))
                                     .border_1()
                                     .border_color(gpui::rgba(orbit::LINE))
-                                    .bg(gpui::rgba(0x0b0d_0fe8))
+                                    .bg(gpui::rgb(0x000c_1012))
                                     .child(orbit::text(
                                         "Qué conserva tu carrera",
                                         20.0,
-                                        500,
+                                        400,
                                         orbit::INK,
                                     ))
                                     .child(
                                         information_card(
                                             "i-ajustes",
                                             "Configuración guardada",
-                                            "Combinación, reglas, pilotos y referencias exactas del documento.",
+                                            if self.capture_demo().is_some() { "Combinación, reglas, pilotos y referencias exactas de los datos seleccionados." } else { "Combinación, reglas, pilotos y referencias exactas del documento." },
                                             98.0,
                                         )
                                         .mt(px(20.0)),
@@ -312,29 +323,31 @@ impl Strategy {
                                             .mt(px(20.0)),
                                     )
                                     .child(
-                                        orbit::text("Recuperar esta revisión", 16.0, 600, orbit::INK)
-                                            .mt(px(16.0)),
+                                        orbit::text("Recuperar esta revisión",16.0,500,orbit::INK)
+                                            .mt(px(29.0)),
                                     )
                                     .child(
                                         orbit::text(
-                                            "Una revisión local válida puede restaurarse sin modificar los datos de origen.",
+                                            if self.capture_demo().is_some() { "Se guardará una revisión nueva con estas correcciones. Los originales y las revisiones anteriores permanecen intactos. Después podrás elegirla para la carrera.
+Consulta una revisión anterior para recuperar sus correcciones." } else { "Una revisión local válida puede restaurarse sin modificar los datos de origen." },
                                             13.0,
                                             400,
                                             orbit::INK_2,
                                         )
-                                        .mt(px(10.0)),
+                                        .line_height(px(20.2)).mt(px(10.0)),
                                     )
                                     .child(
-                                        orbit::button(
+                                        super::editor_view::secondary_button(
                                             "strategy-restore-revision",
                                             "Preparar revisión",
+                                            13.0,
                                         )
                                         .tab_stop(false)
                                         .opacity(orbit::DISABLED)
                                         .cursor(gpui::CursorStyle::Arrow)
                                         .w(px(132.0))
                                         .h(px(40.0))
-                                        .mt(px(6.0)),
+                                        .mt(px(0.0)),
                                     ),
                             ),
                     )
@@ -343,7 +356,7 @@ impl Strategy {
                             .flex()
                             .items_center()
                             .gap(px(10.0))
-                            .mt(px(16.0))
+                            .mt(px(20.0))
                             .ml(px(4.0))
                             .child(orbit::icon("i-lock", 16.0, orbit::INK_3))
                             .child(orbit::text(
@@ -357,6 +370,67 @@ impl Strategy {
             Err(error) => orbit::card("Revisiones locales")
                 .child(orbit::card_body().child(orbit::callout(error))),
         }
+    }
+
+    fn demo_revision_history() -> gpui::Div {
+        let badge = |label: &'static str| {
+            div()
+                .px(px(8.0))
+                .py(px(3.0))
+                .rounded(px(5.0))
+                .border_1()
+                .border_color(gpui::rgba(orbit::LINE))
+                .child(orbit::text(label, 11.0, 400, orbit::INK).line_height(px(16.0)))
+        };
+        div()
+            .flex()
+            .items_start()
+            .gap(px(22.0))
+            .h(px(146.0))
+            .flex_none()
+            .mt(px(19.0))
+            .px(px(20.0))
+            .py(px(18.0))
+            .rounded(px(7.0))
+            .border_1()
+            .overflow_hidden()
+            .border_color(gpui::rgba(orbit::LINE_STRONG))
+            .bg(gpui::rgb(0x0015_1113))
+            .child(orbit::icon("i-roadmap", 20.0, orbit::CARMINE))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(8.0))
+                            .child(badge("Usada por esta carrera"))
+                            .child(badge("Última guardada")),
+                    )
+                    .child(orbit::text("Datos originales", 16.0, 600, orbit::INK))
+                    .child(
+                        orbit::text(
+                            "Punto de partida sin correcciones.\nCorrecciones activas: 0",
+                            13.0,
+                            400,
+                            orbit::INK_2,
+                        )
+                        .line_height(px(19.5))
+                        .mt(px(3.0)),
+                    ),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .left(px(0.0))
+                    .top(px(0.0))
+                    .bottom(px(0.0))
+                    .w(px(3.0))
+                    .bg(gpui::rgb(orbit::CARMINE)),
+            )
+            .relative()
     }
 
     fn exact_projection_revisions(

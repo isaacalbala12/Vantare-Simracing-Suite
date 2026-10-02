@@ -1,9 +1,8 @@
 //! Renderer productivo Eficiencia, geometría congelada 420 × 155.
 //! Sin animaciones propias en MulticlassRelativeFunctional.tsx/tokens.css.
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::{
     Snapshot,
     format::Preferences,

@@ -4,14 +4,15 @@
 mod motion;
 
 use crate::app::{Paint, Wake};
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{
     self, col, paint_rect, rect,
     text::{self, ink},
     tokens,
 };
 use gpui::{
-    App, BorderStyle, ContentMask, Corners, Edges, PathBuilder, Window, linear_color_stop,
-    linear_gradient, point, px, quad,
+    App, BorderStyle, ContentMask, Corners, Edges, PathBuilder, linear_color_stop, linear_gradient,
+    point, px, quad,
 };
 use motion::{Card, Motion};
 use std::time::Instant;

@@ -9,6 +9,7 @@ use gpui::{
 
 pub(super) struct LauncherDrawer {
     open: bool,
+    capture: bool,
     label: String,
     content: AnyView,
     footer: Option<AnyView>,
@@ -48,6 +49,7 @@ impl LauncherDrawer {
         .detach();
         Self {
             open: false,
+            capture: false,
             label,
             content,
             footer,
@@ -65,6 +67,11 @@ impl LauncherDrawer {
         self.open = true;
         self.focus.focus(window, cx);
         cx.notify();
+    }
+
+    pub(super) fn capture_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.capture = true;
+        self.close_focus.focus(window, cx);
     }
 
     pub(super) fn set_targets(&mut self, targets: Vec<FocusHandle>) {
@@ -155,9 +162,13 @@ impl LauncherDrawer {
 }
 
 impl Render for LauncherDrawer {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.open {
             return div().id("launcher-drawer").into_any_element();
+        }
+        // La escena de captura conserva el foco en un control sin cursor de edición.
+        if self.capture && !self.close_focus.is_focused(window) {
+            self.close_focus.focus(window, cx);
         }
         let mut panel = div()
             .id("launcher-drawer-panel")
@@ -279,7 +290,7 @@ fn drawer_action_button(
         .aria_label(label)
         .tab_index(0)
         .h(px(39.0))
-        .px(px(16.0))
+        .px(px(if primary { 13.0 } else { 16.0 }))
         .flex()
         .items_center()
         .justify_center()

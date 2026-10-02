@@ -9,6 +9,7 @@ pub(crate) mod migration;
 pub mod policy;
 #[path = "processes.rs"]
 pub mod processes;
+#[cfg(windows)]
 #[path = "shortcuts.rs"]
 pub(crate) mod shortcuts;
 #[path = "triggers.rs"]

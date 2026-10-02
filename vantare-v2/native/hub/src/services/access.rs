@@ -111,8 +111,11 @@ impl State {
         self.expires_at = None;
     }
 
-    pub(super) fn session_current(&self, now_ms: u64) -> bool {
-        self.expires_at.is_some_and(|end| now_ms / 1000 < end)
+    /// Sesión iniciada y confirmada por servicios. La caducidad del access
+    /// token OAuth no cierra sesión (servicios lo renueva con refresh) y los
+    /// derechos los decide la política fresca del núcleo, no ese token.
+    pub(super) fn session_known(&self) -> bool {
+        self.expires_at.is_some()
     }
 
     pub(super) fn navigation(
@@ -121,7 +124,7 @@ impl State {
         now_ms: u64,
     ) -> crate::shell::navigation::Access {
         use crate::shell::navigation::{Access, Plan};
-        if !signed_in || self.login_requested || !self.session_current(now_ms) {
+        if !signed_in || self.login_requested || !self.session_known() {
             return Access::default();
         }
         let Some(policy) = &self.policy else {
@@ -660,9 +663,10 @@ mod tests {
             Some(Command::AccountPoll)
         ));
         state.observe(&rights, false);
+        // Un access token OAuth caducado no bloquea: decide la política del núcleo.
         assert_eq!(
             state.navigation(true, 2000).plan,
-            crate::shell::navigation::Plan::Unknown
+            crate::shell::navigation::Plan::Engineer
         );
         let refreshed = account_reply(true, false, None);
         state.observe(&refreshed, true);
@@ -934,7 +938,7 @@ mod navigation_tests {
         assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
     }
     #[test]
-    fn session_expiry_and_closed_reply_revoke_even_a_fresh_positive_policy() {
+    fn oauth_expiry_keeps_fresh_policy_but_closed_reply_revokes_it() {
         let mut state = state(true, true);
         state.observe(
             &Reply::Account {
@@ -954,7 +958,9 @@ mod navigation_tests {
             false,
         );
         assert_eq!(state.navigation(true, 1999).plan, Plan::Suite);
-        assert_eq!(state.navigation(true, 2000).plan, Plan::Unknown);
+        // Regresión: el candado volvía al caducar el access token OAuth (renovable).
+        assert_eq!(state.navigation(true, 2000).plan, Plan::Suite);
+        assert_eq!(state.navigation(false, 2000).plan, Plan::Unknown);
         state.observe(&Reply::Closed, false);
         assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
     }

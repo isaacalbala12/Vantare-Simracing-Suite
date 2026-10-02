@@ -312,7 +312,7 @@ impl Remote {
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
         if !self.busy()
             && self.account.signed_in
-            && vantare_ipc::control::wall_ms().is_ok_and(|now| self.access.session_current(now))
+            && self.access.session_known()
             && self
                 .license_polled_at
                 .is_none_or(|last| last.elapsed() >= std::time::Duration::from_secs(1))

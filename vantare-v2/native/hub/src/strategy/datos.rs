@@ -289,15 +289,23 @@ impl Strategy {
                 div()
                     .flex()
                     .items_center()
+                    .relative()
+                    .top(px(2.0))
                     .child(
                         secondary_action("strategy-data-classification", "Clasificación", cx)
+                            .w(px(107.0))
                             .h(px(34.0))
-                            .opacity(orbit::DISABLED),
+                            .when(self.capture_demo.is_none(), |button| {
+                                button.opacity(orbit::DISABLED)
+                            }),
                     )
                     .child(
                         secondary_action("strategy-data-boundaries", "Límites de stint", cx)
+                            .w(px(119.5))
                             .h(px(34.0))
-                            .opacity(orbit::DISABLED),
+                            .when(self.capture_demo.is_none(), |button| {
+                                button.opacity(orbit::DISABLED)
+                            }),
                     )
                     .child(self.advanced_button(cx)),
             )
@@ -318,23 +326,30 @@ impl Strategy {
             ));
         if let Some(demo) = &self.capture_demo {
             for (index, sample) in demo.samples.iter().enumerate() {
-                table = table.child(table_row(
-                    &[
-                        &format!("Muestra {index}"),
-                        &sample.value.to_string(),
-                        "Sin cambios",
-                        &sample.quality,
-                    ],
-                    false,
-                    cx,
-                ));
+                table = table.child(
+                    table_row(
+                        &[
+                            &format!("Muestra {index}"),
+                            &sample.value.to_string(),
+                            "Sin cambios",
+                            &sample.quality,
+                        ],
+                        false,
+                        cx,
+                    )
+                    .min_h(px(if index.is_multiple_of(2) {
+                        44.0
+                    } else {
+                        45.0
+                    })),
+                );
             }
         }
         div().flex().flex_col().gap(px(10.0)).mt(px(20.0))
             .child(orbit::text("Vista avanzada de muestras originales. Las correcciones se guardan por separado y conservan la calidad del dato.",13.0,400,orbit::ink_2(cx), cx))
             .child(div().flex().gap(px(12.0)).children([("Señal registrada","Fuel level · L"),("Valor","Valor")].into_iter().map(|(label,value)|
-                div().flex().flex_col().flex_1().gap(px(8.0)).child(orbit::text(label,13.0,400,orbit::ink_2(cx), cx)).child(select_value(value, cx)))))
-            .child(table.mt(px(16.0)).max_h(px(339.0)).id("strategy-data-samples").overflow_y_scroll())
+                div().flex().flex_col().flex_1().gap(px(7.0)).child(orbit::text(label,13.0,400,orbit::ink_2(cx), cx)).child(select_value(value, cx)))))
+            .child(table.mt(px(16.0)).max_h(px(340.0)).id("strategy-data-samples").overflow_y_scroll())
     }
 
     fn empty_source_card(&self, cx: &mut Context<Self>) -> Div {
@@ -504,7 +519,7 @@ impl Strategy {
                             .role(gpui::Role::Button)
                             .tab_index(0)
                             .w_full()
-                            .h(px(54.0))
+                            .h(px(55.0))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -612,6 +627,11 @@ impl Strategy {
                         false,
                         cx,
                     )
+                    .min_h(px(if (index - range.start).is_multiple_of(2) {
+                        44.0
+                    } else {
+                        45.0
+                    }))
                     .id(("strategy-observation", index))
                     .when(selected, |row| {
                         row.bg(orbit::tint(orbit::carmine(cx), 0.08))
@@ -728,9 +748,9 @@ impl Strategy {
                     .child(self.correction_controls(automatic, cx));
             }
         } else {
-            rows = rows.h(px(294.0)).justify_center().items_center().gap(px(20.0))
-                .child(orbit::icon("i-ajustes",32.0,orbit::ink_2(cx)).relative().top(px(-4.0)))
-                .child(orbit::text(if self.data.advanced { "Selecciona una muestra para ver el original y preparar un cambio con motivo." } else { "Selecciona una vuelta para revisar su uso en esta familia" },16.0,400,orbit::ink_2(cx), cx).text_center().line_height(px(24.0)).max_w(px(260.0)).relative().top(px(-4.0)));
+            rows = rows.h(px(295.0)).justify_center().items_center().gap(px(20.0))
+                .child(orbit::icon("i-ajustes",36.0,orbit::ink_2(cx)))
+                .child(orbit::text(if self.data.advanced { "Selecciona una muestra para ver el original y preparar un cambio con motivo." } else { "Selecciona una vuelta para revisar su uso en esta familia." },16.0,400,orbit::ink_2(cx), cx).text_center().line_height(px(24.0)).max_w(px(260.0)).relative().top(px(-6.5)));
         }
         review_card(cx)
             .w(px(336.0))
@@ -741,7 +761,7 @@ impl Strategy {
                     .flex_col()
                     .p(px(22.0))
                     .pt(px(27.0))
-                    .pb(px(19.0))
+                    .pb(px(22.0))
                     .child(orbit::text(
                         "Revisar observación",
                         20.0,
@@ -756,16 +776,19 @@ impl Strategy {
                             .border_color(rgba(orbit::line(cx)))
                             .pt(px(20.0))
                             .mt(px(11.0))
-                            .child(orbit::text(
-                                format!(
-                                    "Correcciones en esta revisión: {}",
-                                    self.data.corrections.len()
-                                ),
-                                13.0,
-                                700,
-                                orbit::ink(cx),
-                                cx,
-                            ))
+                            .child(
+                                orbit::text(
+                                    format!(
+                                        "Correcciones en esta revisión: {}",
+                                        self.data.corrections.len()
+                                    ),
+                                    13.0,
+                                    700,
+                                    orbit::ink(cx),
+                                    cx,
+                                )
+                                .line_height(px(19.5)),
+                            )
                             .child(
                                 secondary_action(
                                     "strategy-prepare-data-revision",
@@ -773,8 +796,10 @@ impl Strategy {
                                     cx,
                                 )
                                 .w(px(130.0))
-                                .h(px(40.0))
-                                .opacity(orbit::DISABLED),
+                                .h(px(39.0))
+                                .when(self.capture_demo.is_none(), |button| {
+                                    button.opacity(orbit::DISABLED)
+                                }),
                             ),
                     ),
             )
@@ -977,47 +1002,67 @@ impl Strategy {
     }
 
     fn advanced_button(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
-        secondary_action(
-            "strategy-data-advanced",
-            if self.data.advanced {
-                "Volver a vueltas"
+        let label = if self.data.advanced {
+            "Volver a vueltas"
+        } else {
+            "Ver muestras · avanzado"
+        };
+        orbit::button("strategy-data-advanced", "", cx)
+            .aria_label(label)
+            .rounded(px(14.0))
+            .px(px(14.0))
+            .border_color(rgba(orbit::line(cx)))
+            .bg(rgb(if self.data.advanced {
+                0x0018_191b
             } else {
-                "Ver muestras · avanzado"
-            },
-            cx,
-        )
-        .h(px(34.0))
-        .on_click(cx.listener(|this, _, _, cx| {
-            this.data.advanced = !this.data.advanced;
-            cx.notify();
-        }))
-        .into_any_element()
+                0x0010_1517
+            }))
+            .child(orbit::text(
+                label,
+                12.0,
+                600,
+                if self.data.advanced {
+                    orbit::ink(cx)
+                } else {
+                    orbit::ink_3(cx)
+                },
+                cx,
+            ))
+            .w(px(if self.data.advanced { 124.5 } else { 176.5 }))
+            .h(px(34.0))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.data.advanced = !this.data.advanced;
+                cx.notify();
+            }))
+            .into_any_element()
     }
 
     fn sources_button(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
-        secondary_action(
-            "strategy-data-sources",
-            if self.data.sources_open {
-                "Volver a observaciones"
-            } else {
-                "Revisar fuentes"
-            },
-            cx,
-        )
-        .h(px(40.0))
-        .border_color(orbit::tint(orbit::carmine(cx), 0.5))
-        .bg(orbit::tint(orbit::carmine(cx), 0.08))
-        .on_click(cx.listener(|this, _, _, cx| {
-            this.data.sources_open = !this.data.sources_open;
-            cx.notify();
-        }))
-        .into_any_element()
+        let label = if self.data.sources_open {
+            "Volver a observaciones"
+        } else {
+            "Revisar fuentes"
+        };
+        orbit::button("strategy-data-sources", "", cx)
+            .aria_label(label)
+            .rounded(px(14.0))
+            .px(px(14.0))
+            .child(orbit::text(label, 12.0, 600, orbit::ink(cx), cx))
+            .h(px(40.0))
+            .min_w(px(122.0))
+            .border_color(orbit::tint(orbit::carmine(cx), 0.5))
+            .bg(orbit::tint(orbit::carmine(cx), 0.08))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.data.sources_open = !this.data.sources_open;
+                cx.notify();
+            }))
+            .into_any_element()
     }
 }
 
 fn data_heading(cx: &gpui::App) -> gpui::Stateful<Div> {
     div().id("strategy-data").flex().flex_col().w_full().h_full().min_w_0().min_h(px(0.0)).overflow_y_scroll().gap(px(21.0))
-        .child(div().flex().flex_col().px(px(12.0)).pt(px(12.0)).gap(px(8.0))
+        .child(div().flex().flex_col().px(px(12.0)).pt(px(10.0)).gap(px(8.0))
             .child(tight_title("Revisa tus datos de telemetría",44.0,700,1.87, cx).line_height(px(52.8)))
             .child(orbit::text("Comprueba las observaciones registradas y conserva el motivo de cada corrección.",17.0,400,orbit::ink_2(cx), cx).line_height(px(26.0)).relative().top(px(1.0))))
 }
@@ -1037,13 +1082,18 @@ pub(super) fn select_value(value: &str, cx: &gpui::App) -> Div {
         .justify_between()
         .gap(px(12.0))
         .h(px(40.0))
-        .px(px(16.0))
+        .pl(px(16.0))
+        .pr(px(4.0))
         .rounded(px(8.0))
         .border_1()
         .border_color(rgba(orbit::line_strong(cx)))
-        .bg(rgb(crate::orbit::legacy_rgb(0x000a_0c0d, cx)))
+        .bg(rgb(0x000a_0c0d))
         .child(orbit::text(value.to_owned(), 13.0, 400, orbit::ink(cx), cx))
-        .child(orbit::text("⌄", 16.0, 700, orbit::ink_2(cx), cx))
+        .child(
+            orbit::icon("i-chevron", 12.0, orbit::ink(cx)).with_transformation(
+                gpui::Transformation::rotate(gpui::radians(std::f32::consts::FRAC_PI_2)),
+            ),
+        )
 }
 
 fn originals_footer(cx: &gpui::App) -> Div {
@@ -1066,10 +1116,10 @@ fn table_row(cells: &[&str], header: bool, cx: &gpui::App) -> Div {
     let mut row = div()
         .flex()
         .items_center()
-        .min_h(px(if header { 44.0 } else { 45.0 }))
+        .min_h(px(if header { 45.0 } else { 44.5 }))
         .px(px(12.0))
         .border_b_1()
-        .border_color(rgba(orbit::line_row(cx)));
+        .border_color(rgba(orbit::line(cx)));
     for (index, cell) in cells.iter().enumerate() {
         row = row.child(
             orbit::text(
@@ -1237,14 +1287,15 @@ fn source_progress(cx: &gpui::App) -> Div {
 fn secondary_action(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     orbit::button(id, "", cx)
         .aria_label(label.to_owned())
-        .bg(rgb(crate::orbit::legacy_rgb(0x000e_1213, cx)))
-        .rounded(px(8.0))
+        .bg(rgb(0x000e_1213))
+        .rounded(px(14.0))
+        .border_color(rgba(orbit::line(cx)))
         .px(px(14.0))
         .child(orbit::text(
             label.to_owned(),
             12.0,
-            400,
-            orbit::ink_2(cx),
+            600,
+            orbit::ink_3(cx),
             cx,
         ))
 }

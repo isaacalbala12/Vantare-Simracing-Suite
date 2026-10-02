@@ -47,9 +47,10 @@ const DURATIONS: [u32; 4] = [60, 120, 240, 360];
 
 fn load_strategy_image(
     bytes: &'static [u8],
+    format: ImageFormat,
     description: &str,
 ) -> (Option<Arc<RenderImage>>, Option<String>) {
-    let image = Image::from_bytes(ImageFormat::Png, bytes.to_vec())
+    let image = Image::from_bytes(format, bytes.to_vec())
         .to_image_data(SvgRenderer::new(Arc::new(())))
         .map_err(|error| format!("decodificar {description}: {error}"));
     match image {
@@ -177,6 +178,7 @@ pub struct Strategy {
     rules_details_open: bool,
     garage: Option<Arc<RenderImage>>,
     garage_detail: Option<Arc<RenderImage>>,
+    garage_veil: Option<Arc<RenderImage>>,
     demo_car: Option<String>,
     capture_demo: Option<crate::demo::StrategyCaptureDemo>,
     automatic_preparation: Option<application::AutomaticPreparation>,
@@ -370,12 +372,16 @@ impl Strategy {
         let (editor, error) = open_editor(&directory);
         let (garage, garage_error) = load_strategy_image(
             include_bytes!("../assets/strategy-garage.png"),
+            ImageFormat::Png,
             "fondo de Strategy",
         );
         let (garage_detail, garage_detail_error) = load_strategy_image(
             include_bytes!("../assets/strategy-garage-detail.png"),
+            ImageFormat::Png,
             "fondo detallado de Strategy",
         );
+
+        let (garage_veil, garage_veil_error) = view::load_garage_veil();
 
         let manual_source_status = if editor.document.is_some() {
             SourceStatus::Open
@@ -428,6 +434,7 @@ impl Strategy {
             rules_details_open: false,
             garage,
             garage_detail,
+            garage_veil,
             demo_car: None,
             capture_demo: None,
             automatic_preparation: None,
@@ -438,7 +445,10 @@ impl Strategy {
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
-            error: error.or(garage_error).or(garage_detail_error),
+            error: error
+                .or(garage_error)
+                .or(garage_detail_error)
+                .or(garage_veil_error),
             result: None,
             last_input: None,
             manual_source_status,

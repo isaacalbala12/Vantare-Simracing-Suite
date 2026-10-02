@@ -5,6 +5,14 @@ use super::*;
 use gpui::{AnyElement, ObjectFit, img, px, rgb, rgba};
 use orbit::{Choice, ChoiceChanged, ChoiceKind, OptionItem, Tone};
 
+pub(super) fn load_garage_veil() -> (Option<Arc<RenderImage>>, Option<String>) {
+    load_strategy_image(
+        include_bytes!("../../assets/strategy-garage-veil.svg"),
+        ImageFormat::Svg,
+        "velo del garaje de Strategy",
+    )
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) enum Page {
     #[default]
@@ -73,6 +81,12 @@ enum GarageBackground {
     Career,
     Detail,
 }
+fn garage_veil_visible(page: Page) -> bool {
+    matches!(
+        page,
+        Page::Editor(EditorTab::Plan) | Page::Stints | Page::Stops
+    )
+}
 fn garage_background_kind(page: Page) -> Option<GarageBackground> {
     match page {
         Page::Editor(EditorTab::Datos | EditorTab::Plan | EditorTab::Revisiones)
@@ -108,7 +122,7 @@ impl Strategy {
     }
 
     pub(crate) fn garage_background(&self, viewport_width: f32) -> Option<AnyElement> {
-        match garage_background_kind(self.page)? {
+        let background = match garage_background_kind(self.page)? {
             GarageBackground::Detail => {
                 let image = self.garage_detail.clone()?;
                 let scale = viewport_width / 1672.0;
@@ -180,7 +194,25 @@ impl Strategy {
                         .into_any_element(),
                 )
             }
-        }
+        }?;
+        let editor = garage_veil_visible(self.page);
+        Some(
+            div()
+                .absolute()
+                .inset_0()
+                .child(background)
+                .when(editor, |layer| {
+                    layer.children(self.garage_veil.clone().map(|veil| {
+                        img(veil)
+                            .absolute()
+                            .top(px(0.0))
+                            .right(px(0.0))
+                            .w(px(viewport_width))
+                            .h(px(viewport_width * 400.0 / 1672.0))
+                    }))
+                })
+                .into_any_element(),
+        )
     }
 
     pub(super) fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
@@ -688,6 +720,22 @@ mod tests {
     }
 
     #[test]
+    fn garage_lighting_matches_each_editor_reference() {
+        for page in [Page::Editor(EditorTab::Plan), Page::Stints, Page::Stops] {
+            assert!(garage_veil_visible(page));
+        }
+        for page in [
+            Page::Collection,
+            Page::Assistant(AssistantStep::Inicio),
+            Page::Editor(EditorTab::Carrera),
+            Page::Editor(EditorTab::Datos),
+            Page::Editor(EditorTab::Revisiones),
+        ] {
+            assert!(!garage_veil_visible(page));
+        }
+    }
+
+    #[test]
     fn strategy_garage_background_only_covers_assistant_and_editor() {
         assert_eq!(
             garage_background_kind(Page::Assistant(AssistantStep::Inicio)),
@@ -697,10 +745,15 @@ mod tests {
             garage_background_kind(Page::Editor(EditorTab::Carrera)),
             Some(GarageBackground::Career)
         );
-        assert_eq!(
-            garage_background_kind(Page::Editor(EditorTab::Revisiones)),
-            Some(GarageBackground::Detail)
-        );
+        for page in [
+            Page::Editor(EditorTab::Datos),
+            Page::Editor(EditorTab::Plan),
+            Page::Editor(EditorTab::Revisiones),
+            Page::Stints,
+            Page::Stops,
+        ] {
+            assert_eq!(garage_background_kind(page), Some(GarageBackground::Detail));
+        }
         assert_eq!(garage_background_kind(Page::Collection), None);
     }
 }

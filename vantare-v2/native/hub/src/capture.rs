@@ -96,7 +96,8 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         options,
         crate::shell::navigation::Access {
             plan: crate::shell::navigation::Plan::Suite,
-            blocked: false,
+            capture_locks: state.locked_sections(),
+            ..Default::default()
         },
     );
     if result.is_err() {

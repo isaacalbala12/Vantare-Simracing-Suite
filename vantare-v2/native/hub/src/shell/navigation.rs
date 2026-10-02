@@ -16,6 +16,9 @@ pub enum Plan {
 pub struct Access {
     pub plan: Plan,
     pub blocked: bool,
+    /// Restricciones de la escena; no se compilan en el Hub de producción.
+    #[cfg(feature = "parity-capture")]
+    pub capture_locks: &'static [Section],
 }
 
 impl Access {
@@ -31,6 +34,10 @@ impl Access {
     /// Matriz de `access-policy.ts`: Studio básico admite Free; Strategy y
     /// Telemetría admiten ambos planes de pago. Workshop es una herramienta local.
     pub fn lock(self, section: Section) -> Option<&'static str> {
+        #[cfg(feature = "parity-capture")]
+        if self.capture_locks.contains(&section) {
+            return Some("No incluido en el acceso demo");
+        }
         let (allowed, required) = match section {
             Section::Studio => (
                 self.plan != Plan::Unknown && self.plan != Plan::Engineer,
@@ -269,7 +276,7 @@ mod tests {
     fn filter_covers_label_meta_lock_case_trim_and_empty_results() {
         let access = Access {
             plan: Plan::Free,
-            blocked: false,
+            ..Default::default()
         };
         assert!(
             commands(access, "  iNgEnIeRo  ")
@@ -304,6 +311,31 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "parity-capture")]
+    #[test]
+    fn capture_restrictions_block_navigation_without_granting_access() {
+        let access = Access {
+            plan: Plan::Suite,
+            capture_locks: &[Section::Engineer, Section::Analysis],
+            ..Default::default()
+        };
+        let mut current = Section::Strategy;
+        for destination in access.capture_locks {
+            assert!(access.navigate(&mut current, *destination).is_err());
+            assert_eq!(current, Section::Strategy);
+        }
+        assert!(access.lock(Section::Strategy).is_none());
+        assert!(access.lock(Section::Studio).is_none());
+        assert!(
+            Access {
+                plan: Plan::Unknown,
+                ..access
+            }
+            .lock(Section::Strategy)
+            .is_some()
+        );
+    }
+
     #[test]
     fn plan_matrix_matches_wails_and_unknown_never_grants_paid_navigation() {
         for (plan, expected) in [
@@ -315,7 +347,7 @@ mod tests {
         ] {
             let access = Access {
                 plan,
-                blocked: false,
+                ..Default::default()
             };
             for (section, allowed) in [
                 Section::Studio,

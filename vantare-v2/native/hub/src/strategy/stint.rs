@@ -91,9 +91,10 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .gap(px(14.0))
         .child(super::plan::edit_heading("Ajustar stints"))
         .child(
-            orbit::button("strategy-stints-back", "← Plan")
-                .w(px(70.0))
-                .h(px(40.0))
+            super::plan::secondary_action("strategy-stints-back", "← Plan")
+                .rounded(px(10.0))
+                .w(px(69.0))
+                .h(px(39.0))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
@@ -126,12 +127,12 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                                 .child(boundary_control(this, edited, index, race_laps, cx)),
                         ),
                 )
-                .child(this.plan_edit_footer(
+                .child(div().mt(px(3.0)).child(this.plan_edit_footer(
                     cx,
                     "strategy-stints-reset",
                     "strategy-stints-recalculate",
                     "Recalcular cambios",
-                )),
+                ))),
         )
         .into_any_element()
 }
@@ -183,8 +184,8 @@ fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
                 .flex_col()
                 .gap(px(8.0))
                 .w(px(320.0))
-                .child(orbit::text("Piloto", 13.0, 400, orbit::INK_2))
-                .child(super::datos::select_value(driver)),
+                .child(orbit::text("Piloto", 13.0, 400, orbit::INK_2).line_height(px(19.5)))
+                .child(super::plan::read_only_select(driver)),
         )
         .child(orbit::text(
             format!("{laps} vueltas"),
@@ -266,15 +267,28 @@ fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui:
             div()
                 .flex()
                 .h(px(85.0))
-                .child(editor_metric("Vueltas", laps.to_string()))
-                .child(editor_metric("Ritmo base", pace)),
+                .child(editor_metric("Vueltas", laps.to_string()).rounded_tl(px(10.0)))
+                .child(
+                    editor_metric("Ritmo base", pace)
+                        .border_l(px(0.0))
+                        .rounded_tr(px(10.0)),
+                ),
         )
         .child(
             div()
                 .flex()
                 .h(px(85.0))
-                .child(editor_metric("Fuel", fuel))
-                .child(editor_metric("Energía virtual", energy)),
+                .child(
+                    editor_metric("Fuel", fuel)
+                        .border_t(px(0.0))
+                        .rounded_bl(px(10.0)),
+                )
+                .child(
+                    editor_metric("Energía virtual", energy)
+                        .border_l(px(0.0))
+                        .border_t(px(0.0))
+                        .rounded_br(px(10.0)),
+                ),
         )
 }
 
@@ -315,6 +329,8 @@ fn boundary_control(
         .items_center()
         .gap(px(16.0))
         .px(px(14.0))
+        .relative()
+        .top(px(-5.0))
         .child(
             div()
                 .flex()
@@ -466,7 +482,14 @@ fn paint_boundary(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mu
         gpui::point(bounds.left(), y - px(3.0)),
         gpui::size(bounds.size.width, px(6.0)),
     );
-    window.paint_quad(gpui::fill(track, rgb(0x0053_5353)).corner_radii(px(3.0)));
+    window.paint_quad(gpui::quad(
+        track,
+        px(3.0),
+        rgb(0x0053_5353),
+        px(1.0),
+        rgb(0x008b_8b8b),
+        gpui::BorderStyle::Solid,
+    ));
     #[allow(clippy::cast_possible_truncation)] // Fracción de presentación acotada a 0..1.
     let width = bounds.size.width * fraction.clamp(0.0, 1.0) as f32;
     window.paint_quad(

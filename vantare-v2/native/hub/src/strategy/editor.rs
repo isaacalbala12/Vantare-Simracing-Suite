@@ -327,8 +327,16 @@ impl Strategy {
                     .pt(px(9.0))
                     .pb(px(0.0))
                     .child(
-                        secondary_button("strategy-back-assistant", "← Volver al asistente", 12.0)
-                            .opacity(0.65)
+                        button("strategy-back-assistant", "")
+                            .aria_label("← Volver al asistente")
+                            .bg(gpui::transparent_black())
+                            .border_color(rgba(orbit::LINE))
+                            .child(orbit::text(
+                                "← Volver al asistente",
+                                12.0,
+                                400,
+                                orbit::INK_2,
+                            ))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 if let Err(error) = this.ensure_clean_form() {
                                     this.error = Some(error);

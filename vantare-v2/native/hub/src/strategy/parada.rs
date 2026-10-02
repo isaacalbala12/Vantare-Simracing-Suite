@@ -42,9 +42,10 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .gap(px(14.0))
         .child(super::plan::edit_heading("Ajustar paradas"))
         .child(
-            orbit::button("strategy-stops-back", "← Plan")
-                .w(px(70.0))
-                .h(px(40.0))
+            super::plan::secondary_action("strategy-stops-back", "← Plan")
+                .rounded(px(10.0))
+                .w(px(69.0))
+                .h(px(39.0))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.page = Page::Editor(super::EditorTab::Plan);
                     cx.notify();
@@ -182,6 +183,7 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
         .copied();
     super::plan::plan_card()
         .p(px(16.0))
+        .pb(px(15.0))
         .bg(rgb(0x0010_1415))
         .gap(px(16.0))
         .child(
@@ -268,7 +270,7 @@ fn stop_resources(
                                     if tyres == Some(true) { "✓" } else { "" },
                                     12.0,
                                     700,
-                                    orbit::INK,
+                                    0x0040_2329,
                                 )),
                         )
                         .child(orbit::text(tyre_label(tyres), 13.0, 400, orbit::INK))
@@ -287,8 +289,10 @@ fn stop_resources(
                         .flex()
                         .flex_col()
                         .gap(px(8.0))
-                        .child(orbit::text("Compuesto", 13.0, 400, orbit::INK_2))
-                        .child(super::datos::select_value(compound)),
+                        .child(
+                            orbit::text("Compuesto", 13.0, 400, orbit::INK_2).line_height(px(19.5)),
+                        )
+                        .child(super::plan::read_only_select(compound)),
                 ),
         )
 }
@@ -307,6 +311,8 @@ fn cost_grid(values: &[String; 4]) -> Div {
         .flex_col()
         .w(gpui::relative(0.41))
         .flex_none()
+        .relative()
+        .top(px(1.0))
         .gap(px(8.0))
         .child(
             div()
@@ -352,7 +358,7 @@ fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
         .flex_col()
         .flex_1()
         .min_w_0()
-        .gap(px(8.0))
+        .gap(px(6.0))
         .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2).line_height(px(19.5)))
         .child(
             div()
@@ -394,7 +400,15 @@ fn cost_metric(label: &str, value: &str) -> Div {
         .flex_1()
         .min_w_0()
         .p(px(14.0))
-        .child(super::plan::fact(label, value.to_owned()))
+        .flex()
+        .flex_col()
+        .gap(px(5.0))
+        .child(
+            orbit::tracked_text(label.to_uppercase(), 11.0, 400, orbit::INK_2, 0.2)
+                .text_size(px(11.0))
+                .line_height(px(16.5)),
+        )
+        .child(orbit::text(value.to_owned(), 16.0, 700, orbit::INK).line_height(px(24.0)))
 }
 
 fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> Div {

@@ -262,7 +262,7 @@ impl Remote {
     }
 
     fn begin_access(&mut self, cx: &mut Context<Self>) {
-        if self.busy {
+        if self.working() {
             return;
         }
         self.access.error = None;
@@ -271,7 +271,7 @@ impl Remote {
         // OAuth IdP de Clerk no documenta selección de proveedor en authorize:
         // Google, Discord y email usan la misma página alojada con PKCE.
         self.request(Command::AccountBegin, cx);
-        self.access.login_requested = self.busy;
+        self.access.login_requested = self.busy();
     }
 
     fn retry_access(&mut self, cx: &mut Context<Self>) {
@@ -309,7 +309,7 @@ impl Remote {
             .w_full()
             .h(px(44.0))
             .rounded(px(8.0))
-            .when(self.busy, |button| {
+            .when(self.working(), |button| {
                 button
                     .opacity(orbit::DISABLED)
                     .tab_stop(false)

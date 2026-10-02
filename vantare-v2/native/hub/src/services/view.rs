@@ -182,6 +182,13 @@ struct AccountState {
     cancel_login: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Inflight {
+    Idle,
+    /// Consulta periódica de política: no bloquea ni se muestra.
+    Background,
+    User,
+}
 pub struct Remote {
     pipe: String,
     send: Option<SyncSender<Command>>,
@@ -189,7 +196,9 @@ pub struct Remote {
     stop: Arc<AtomicBool>,
     cancellation: Option<Arc<Event>>,
     worker: Option<std::thread::JoinHandle<()>>,
-    busy: bool,
+    inflight: Inflight,
+    /// Acción del usuario recibida durante la consulta periódica; se envía al acabar.
+    queued: Option<Command>,
     account: AccountState,
     access: access::State,
     license_polled_at: Option<std::time::Instant>,
@@ -273,7 +282,8 @@ impl Remote {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: None,
             worker: None,
-            busy: false,
+            inflight: Inflight::Idle,
+            queued: None,
             account: AccountState::default(),
             access: access::State::from_build(),
             license_polled_at: None,
@@ -300,7 +310,7 @@ impl Remote {
 
     /// `LicenseStatus` solo lee el núcleo por IPC. Su política caduca a los 2 s.
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
-        if !self.busy
+        if !self.busy()
             && self.account.signed_in
             && vantare_ipc::control::wall_ms().is_ok_and(|now| self.access.session_current(now))
             && self
@@ -309,7 +319,19 @@ impl Remote {
         {
             self.license_polled_at = Some(std::time::Instant::now());
             self.request(Command::LicenseStatus, cx);
+            if self.busy() {
+                self.inflight = Inflight::Background;
+            }
         }
+    }
+
+    fn busy(&self) -> bool {
+        self.inflight != Inflight::Idle
+    }
+
+    /// Ocupado a ojos del usuario: excluye la consulta periódica de política.
+    fn working(&self) -> bool {
+        self.inflight == Inflight::User
     }
 
     /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
@@ -424,7 +446,7 @@ impl Remote {
             .as_ref()
             .is_some_and(|send| send.try_send(command).is_ok())
         {
-            self.busy = true;
+            self.inflight = Inflight::User;
             true
         } else {
             self.message = "servicios ocupado".into();
@@ -440,12 +462,16 @@ impl Remote {
 
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
         self.access.requested(&command);
-        if self.busy && matches!(command, Command::Logout) {
+        if self.inflight == Inflight::Background {
+            self.queued = Some(command);
+            return cx.notify();
+        }
+        if self.busy() && matches!(command, Command::Logout) {
             self.account.cancel_login = true;
             cx.notify();
             return;
         }
-        if self.busy || self.stop.load(Ordering::Acquire) || !self.dispatch(command) {
+        if self.busy() || self.stop.load(Ordering::Acquire) || !self.dispatch(command) {
             cx.notify();
             return;
         }
@@ -467,7 +493,8 @@ impl Remote {
                             } else { None };
                             this.access.observe(&reply, matches!(this.active, Area::Account));
                             let next = this.access.next_command(&reply, &mut this.account.cancel_login).or(after_renew);
-                            this.busy = false;
+                            let background = this.inflight == Inflight::Background;
+                            this.inflight = Inflight::Idle;
                             this.account.pending = false;
                             match reply {
                                 Reply::Status { message, .. } | Reply::Error { message } => {
@@ -501,6 +528,8 @@ impl Remote {
                                     this.account.pending = pending;
                                     this.message = message;
                                 }
+                                // La consulta periódica no pisa el resultado de una acción del usuario.
+                                Reply::License { .. } if background => {}
                                 Reply::License { message, .. } => {
                                     this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().plan));
                                 }
@@ -517,13 +546,13 @@ impl Remote {
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
                             }
-                            if let Some(command) = next {
+                            if let Some(command) = next.or_else(|| this.queued.take()) {
                                 this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
                                 this.dispatch(command);
                             }
                             cx.notify();
                         }
-                        this.busy && !this.stop.load(Ordering::Acquire)
+                        this.busy() && !this.stop.load(Ordering::Acquire)
                     })
                     .unwrap_or(false);
                 if !keep {
@@ -585,27 +614,27 @@ impl Remote {
             .child(
                 account_button(
                     "services-account-check",
-                    if self.busy {
+                    if self.working() {
                         "Comprobando…"
                     } else {
                         "Comprobar acceso"
                     },
                     cx,
                 )
-                .tab_stop(!self.busy)
-                .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                .tab_stop(!self.working())
+                .when(self.working(), |button| button.opacity(orbit::DISABLED))
                 .on_click(cx.listener(|this, _, _, cx| {
-                    if !this.busy {
+                    if !this.busy() {
                         this.request(Command::LicenseRenew, cx);
                     }
                 })),
             )
             .child(if signed_in {
                 account_button("services-sign-out", "Cerrar sesión", cx)
-                    .tab_stop(!self.busy)
-                    .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                    .tab_stop(!self.working())
+                    .when(self.working(), |button| button.opacity(orbit::DISABLED))
                     .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.busy {
+                        if !this.busy() {
                             this.request(Command::Logout, cx);
                         }
                     }))
@@ -619,14 +648,14 @@ impl Remote {
                     },
                     cx,
                 )
-                .tab_stop(can_start && !self.busy)
-                .when(!can_start || self.busy, |button| {
+                .tab_stop(can_start && !self.working())
+                .when(!can_start || self.working(), |button| {
                     button
                         .opacity(orbit::DISABLED)
                         .aria_description("El servicio de cuenta no está configurado")
                 })
                 .on_click(cx.listener(|this, _, _, cx| {
-                    if this.requires_access() && !this.busy {
+                    if this.requires_access() && !this.busy() {
                         this.request(Command::AccountBegin, cx);
                     }
                 }))
@@ -999,10 +1028,10 @@ impl Remote {
                  cx))
                 .child(
                     account_button("services-device-reset", "Restablecer dispositivo", cx)
-                        .tab_stop(!self.busy && !demo)
-                        .when(self.busy, |button| button.opacity(orbit::DISABLED))
+                        .tab_stop(!self.working() && !demo)
+                        .when(self.working(), |button| button.opacity(orbit::DISABLED))
                         .on_click(cx.listener(|this, _, _, cx| {
-                            if !this.busy && account_demo().is_none() {
+                            if !this.busy() && account_demo().is_none() {
                                 this.request(Command::DeviceReset, cx);
                             }
                         })),
@@ -1060,7 +1089,7 @@ impl Remote {
 
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub fn roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        if !self.roadmap_requested && !self.busy {
+        if !self.roadmap_requested && !self.busy() {
             self.roadmap_requested = true;
             self.request(Command::RoadmapCached, cx);
         }
@@ -1118,7 +1147,7 @@ impl Remote {
                         ));
                 }
             }
-        } else if self.busy {
+        } else if self.working() {
             body = body.child(orbit::text(
                 "Cargando roadmap...",
                 13.5,

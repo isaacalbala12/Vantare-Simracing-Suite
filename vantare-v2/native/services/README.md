@@ -31,6 +31,10 @@ Hub, supervisor y auxiliar comparten el contrato y deben compilarse juntos.
 rechazado mantiene polling; caducidad/intercambio fallido lo termina. Reiniciar
 explícitamente libera el listener anterior y estrena generación, state y PKCE.
 
+El host IPC comparte implementación Windows/Unix sobre `vantare_ipc::transport`.
+El watcher del padre usa `Builder::spawn`: si no puede crear el hilo, devuelve
+error de protocolo también en Windows, en lugar de provocar un panic.
+
 Sin configuración se muestra «servicio no configurado», con funciones básicas
 y borradores locales. La hora de excepción solo aplica a derechos válidos al
 entrar a la sesión live; no hay otra gracia offline. Límite de restauración

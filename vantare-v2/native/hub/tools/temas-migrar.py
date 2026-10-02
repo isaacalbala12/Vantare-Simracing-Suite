@@ -7,8 +7,8 @@ que el test de paridad usa como contrato. La propagación de cx en helpers exige
 revisión y cargo check: el script no inventa contexto ni altera widgets native/ui.
 Reaplicar después de merges:
   python3 native/hub/tools/temas-migrar.py --write
-  cargo check -p vantare-hub --all-targets -j 4 --message-format=json > cx.jsonl
-  python3 hub/tools/temas-migrar.py --repair-context cx.jsonl
+  cargo check --manifest-path native/Cargo.toml -p vantare-hub --all-targets -j 4 --message-format=json > cx.jsonl
+  python3 native/hub/tools/temas-migrar.py --repair-context cx.jsonl
 Repetir check/repair hasta cerrar el grafo. Revisar callbacks de canvas: usan su
 propio cx, nunca capturan un App prestado. --repair-context solo repara los
 argumentos GPUI ausentes que el compilador demuestra; no es un parser Rust general.
@@ -17,6 +17,8 @@ import argparse
 import json
 import re
 from pathlib import Path
+
+RAW_STRING = re.compile(r'(?:br|r)(#*)"')
 
 ROOT = Path(__file__).resolve().parents[1] / "src"
 TOKENS = "CORAL EMBER RED CYAN BRONZE SILVER INK_4 WHITE LINE_CHIP LINE_PILL PRIMARY_BG MENU_SHADOW_COLOR PALETTE_SHADOW_COLOR CANVAS SURFACE_1 SURFACE_2 SURFACE_3 COLUMN_BG INK INK_2 INK_3 INK_MUTED CARMINE CARMINE_DARK GREEN LINE LINE_STRONG LINE_ROW RAIL_BG PALETTE_BACKDROP".split()
@@ -44,10 +46,10 @@ def code_mask(source):
                 else:
                     end += 1
         else:
-            raw = re.match(r'(?:br|r)(#*)"', source[i:])
+            raw = RAW_STRING.match(source, i)
             if raw:
                 close = '"' + raw[1]
-                end = source.find(close, i + raw.end())
+                end = source.find(close, raw.end())
                 end = len(source) if end < 0 else end + len(close)
             elif source[i] == '"':
                 end = i + 1
@@ -135,8 +137,13 @@ def repair_context(diagnostics):
                if primary['line_start'] - 1 + i < len(current_lines)):
             continue
         mask = code_mask(source)
-        start = len(source.encode()[:primary['byte_start']].decode())
-        end = len(source.encode()[:primary['byte_end']].decode())
+        try:
+            start = len(source.encode()[:primary['byte_start']].decode())
+            end = len(source.encode()[:primary['byte_end']].decode())
+        except UnicodeDecodeError:
+            continue
+        if source[:start].count('\n') + 1 != primary['line_start']:
+            continue
         if any(a <= start <= b for a, b in test_ranges(mask)):
             continue
         if code == 'E0425' and error['message'].startswith('cannot find value `cx`'):

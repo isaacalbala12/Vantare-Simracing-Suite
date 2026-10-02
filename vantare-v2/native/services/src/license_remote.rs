@@ -76,9 +76,21 @@ pub fn renew(
             },
             Some(bearer),
             Some(anon),
-        )?
-        .success()
+        )
     })?;
+    if response.status == 409 {
+        #[derive(Deserialize)]
+        struct Rejected {
+            error: String,
+        }
+        if response
+            .json::<Rejected>()
+            .is_ok_and(|rejected| rejected.error == "device_limit")
+        {
+            return Err(Error::DeviceLimit);
+        }
+    }
+    let response = response.success()?;
     if response.status != 200 {
         return Err(Error::Protocol);
     }

@@ -99,7 +99,7 @@ fn native_license_maps_remote_errors_without_retry_or_saving_a_candidate() {
         (400, "invalid_request", Error::Protocol),
         (401, "unauthorized", Error::Authentication),
         (403, "forbidden", Error::Denied),
-        (409, "device_limit", Error::Conflict),
+        (409, "device_limit", Error::DeviceLimit),
         (409, "account_conflict", Error::Conflict),
         (413, "request_too_large", Error::Protocol),
         (429, "rate_limited", Error::Offline),

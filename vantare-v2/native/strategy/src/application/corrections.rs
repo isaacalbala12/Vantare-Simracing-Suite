@@ -292,25 +292,32 @@ pub fn prepare_family_corrections(
 
     let mut prepared = requests
         .iter()
-        .map(|request| prepare_one(source, request.clone()))
-        .collect::<Result<Vec<_>, _>>()?;
-    prepared.sort_by(|left, right| {
-        left.request
-            .family
-            .as_str()
-            .cmp(right.request.family.as_str())
-            .then_with(|| left.request.target.start.cmp(&right.request.target.start))
-            .then_with(|| left.request.target.end.cmp(&right.request.target.end))
-            .then_with(|| left.request.target.number.cmp(&right.request.target.number))
-    });
+        .map(|request| {
+            let correction = prepare_one(source, request.clone())?;
+            let (start, end) = parse_target(&correction.request.target)?;
+            Ok((correction, start, end))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    prepared.sort_by(
+        |(left, left_start, left_end), (right, right_start, right_end)| {
+            left.request
+                .family
+                .as_str()
+                .cmp(right.request.family.as_str())
+                .then_with(|| left_start.cmp(right_start))
+                .then_with(|| left_end.cmp(right_end))
+                .then_with(|| left.request.target.number.cmp(&right.request.target.number))
+        },
+    );
     for pair in prepared.windows(2) {
-        let previous = &pair[0].request;
-        let current = &pair[1].request;
-        if previous.family == current.family && current.target.start < previous.target.end {
+        if pair[0].0.request.family == pair[1].0.request.family && pair[1].1 < pair[0].2 {
             return Err("overlapping_corrections".into());
         }
     }
-    Ok(prepared)
+    Ok(prepared
+        .into_iter()
+        .map(|(correction, _, _)| correction)
+        .collect())
 }
 
 /// Reapplies a prepared set to an effective view without changing unrelated families.
@@ -746,6 +753,55 @@ mod tests {
             }
         }
         request.base.clone_from(&source.base);
+    }
+
+    #[test]
+    fn correction_intervals_compare_instants_across_fractional_seconds() {
+        for (intervals, overlap) in [
+            ([("00Z", "00.300Z"), ("00.200Z", "00.400Z")], true),
+            ([("00Z", "01Z"), ("01.100Z", "02Z")], false),
+            ([("00Z", "00.300Z"), ("00.300Z", "01Z")], false),
+        ] {
+            let (mut source, selected, request) = example();
+            source.validity.laps.clear();
+            let requests = intervals
+                .into_iter()
+                .enumerate()
+                .map(|(index, (start, end))| {
+                    let mut next = request.clone();
+                    next.target.number = i64::try_from(index).expect("lap index");
+                    next.target.start = format!("2026-09-10T12:00:{start}");
+                    next.target.end = format!("2026-09-10T12:00:{end}");
+                    source.validity.laps.push(ValidityLap {
+                        number: next.target.number,
+                        start: next.target.start.clone(),
+                        end: next.target.end.clone(),
+                        complete: true,
+                        family_use: vec![next.expected.clone()],
+                    });
+                    next
+                })
+                .collect::<Vec<_>>();
+            let mut reversed = requests.clone();
+            reversed.reverse();
+            for set in [&requests, &reversed] {
+                let result = prepare_family_corrections(&source, &selected, set);
+                if overlap {
+                    assert_eq!(result.expect_err("overlap"), "overlapping_corrections");
+                } else {
+                    let prepared = result.expect("disjoint or adjacent intervals");
+                    assert_eq!(prepared[0].request.target.number, 0);
+                    assert_eq!(prepared[1].request.target.number, 1);
+                }
+            }
+            if overlap {
+                let mut other_family = requests;
+                other_family[1].family = CorrectionFamily::FuelConsumption;
+                other_family[1].expected.family = CorrectionFamily::FuelConsumption;
+                source.validity.laps[1].family_use[0].family = CorrectionFamily::FuelConsumption;
+                assert!(prepare_family_corrections(&source, &selected, &other_family).is_ok());
+            }
+        }
     }
 
     #[test]

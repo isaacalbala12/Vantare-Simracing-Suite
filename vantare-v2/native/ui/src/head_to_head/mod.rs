@@ -4,9 +4,8 @@
 //! Referencia Workshop congelada: líder mirando delante, SIN RIVAL; 20 coches
 //! presentes. `compare.ps1`: 635/46080 px (1,3780 %), umbral RGBA 8, sin máscaras.
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::{
     Snapshot,
     format::Preferences,

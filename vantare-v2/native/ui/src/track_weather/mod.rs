@@ -1,9 +1,8 @@
 //! Track weather Eficiencia: geometría de `TrackWeatherFunctional` a 240 × 150.
 //! Sin efectos temporales en el productivo: el host solo despierta por datos.
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::{
     Snapshot,
     format::Preferences,

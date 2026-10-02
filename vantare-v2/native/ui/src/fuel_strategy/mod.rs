@@ -2,9 +2,8 @@
 //! El historial se omite como en el productivo cuando no hay filas canónicas.
 //! No hay animaciones ni avisos temporales en `FuelStrategyFunctional.tsx`.
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::{
     Snapshot,
     format::Preferences,

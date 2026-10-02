@@ -1,12 +1,13 @@
 //! `CarDamageNumbersFunctional`: paneles independientes, sin fondo exterior ni animación.
 
 use crate::app::{Paint, Wake, replace_if_changed};
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{
     col, rect,
     text::{self, ink},
     tokens,
 };
-use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
+use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use vantare_domain::{
     Snapshot,
     car_damage_numbers::{self, ViewModel},

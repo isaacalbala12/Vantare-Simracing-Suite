@@ -1,11 +1,12 @@
 //! Input telemetry Eficiencia, layout por defecto de 360 × 140.
 //! La traza corta pertenece al widget y solo conserva muestras observadas.
 
+use crate::efficiency::preview::PaintWindow as Window;
 use std::time::{Duration, Instant};
 
 use gpui::{
-    App, BorderStyle, Corners, Edges, FontWeight, TextAlign, TextRun, Window, font,
-    linear_color_stop, linear_gradient, point, px, quad,
+    App, BorderStyle, Corners, Edges, FontWeight, TextAlign, TextRun, font, linear_color_stop,
+    linear_gradient, point, px, quad,
 };
 use vantare_domain::{
     Snapshot,
@@ -347,6 +348,7 @@ fn paint_bars(
 // el tracking .18em de estos rótulos se conserva sin añadir fuentes/dependencias.
 fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut App) {
     let (ox, oy) = text::origin();
+    let scale = window.preview_scale();
     let mut font = font("Consolas");
     font.weight = FontWeight(600.0);
     let glyphs: Vec<_> = label
@@ -363,15 +365,18 @@ fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut
             };
             window
                 .text_system()
-                .shape_line(glyph.into(), px(6.0), &[run], None)
+                .shape_line(glyph.into(), px(6.0 * scale), &[run], None)
         })
         .collect();
-    let width: f32 = glyphs.iter().map(|line| f32::from(line.width) + 1.08).sum();
-    let mut x = middle - width / 2.0 + ox;
+    let width: f32 = glyphs
+        .iter()
+        .map(|line| f32::from(line.width) + 1.08 * scale)
+        .sum();
+    let mut x = middle * scale - width / 2.0 + ox;
     for line in glyphs {
         let ascent = f32::from(line.ascent);
         let descent = f32::from(line.descent);
-        let baseline = top + oy + ascent + ((6.0 - ascent - descent) / 2.0).floor();
+        let baseline = top * scale + oy + ascent + ((6.0 * scale - ascent - descent) / 2.0).floor();
         if let Err(error) = line.paint(
             point(px(x), px(baseline - ascent)),
             px(ascent + descent),
@@ -382,7 +387,7 @@ fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut
         ) {
             eprintln!("input-telemetry: pintar rótulo: {error}");
         }
-        x += f32::from(line.width) + 1.08;
+        x += f32::from(line.width) + 1.08 * scale;
     }
 }
 

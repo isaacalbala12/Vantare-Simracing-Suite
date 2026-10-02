@@ -168,13 +168,45 @@ pub fn with_origin<R>(origin: (f32, f32), f: impl FnOnce() -> R) -> R {
     result
 }
 
+/// Texto del kit en ventanas comunes o dentro de un widget escalado.
+pub trait TextWindow {
+    fn for_text(&mut self) -> (&mut Window, f32);
+}
+
+impl TextWindow for Window {
+    fn for_text(&mut self) -> (&mut Window, f32) {
+        (self, 1.0)
+    }
+}
+
+impl TextWindow for super::preview::PaintWindow<'_> {
+    fn for_text(&mut self) -> (&mut Window, f32) {
+        let scale = self.preview_scale();
+        (self, scale)
+    }
+}
+
 /// Pinta el texto con la linea de base en `base_y` y su borde izquierdo en `x`.
-pub fn draw(window: &mut Window, cx: &mut App, text: &str, x: f32, base_y: f32, ink: &Ink) {
+pub fn draw(
+    window: &mut impl TextWindow,
+    cx: &mut App,
+    text: &str,
+    x: f32,
+    base_y: f32,
+    ink: &Ink,
+) {
     if text.is_empty() {
         return;
     }
     let (ox, oy) = origin();
-    let (x, base_y) = (x + ox, base_y + oy);
+    let (window, scale) = window.for_text();
+    let scaled_ink = Ink {
+        size: ink.size * scale,
+        tracking: ink.tracking * scale,
+        ..*ink
+    };
+    let ink = if scale == 1.0 { ink } else { &scaled_ink };
+    let (x, base_y) = (x * scale + ox, base_y * scale + oy);
     let line = shape(window, text, ink);
     let ascent = f32::from(line.ascent);
     let descent = f32::from(line.descent);

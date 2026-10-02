@@ -1,10 +1,10 @@
 //! Kit mínimo Eficiencia, compartido por Standings, radar y pedales.
 //! Las composiciones y efectos que solo usa un widget permanecen en él.
 
-use gpui::{
-    BorderStyle, Bounds, Corners, Edges, Hsla, Pixels, Rgba, Window, fill, point, px, quad, size,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{BorderStyle, Bounds, Corners, Edges, Hsla, Pixels, Rgba, fill, point, px, quad, size};
 
+pub mod preview;
 pub mod text;
 
 /// Valores compartidos de `vantare-functional/tokens.css`.

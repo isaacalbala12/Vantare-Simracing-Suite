@@ -1,8 +1,9 @@
 //! Delta-trace Eficiencia, geometría congelada de `reference/delta-trace`.
 //! El widget posee una traza pura de domain; Snapshot sigue siendo una foto.
 
+use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{
-    App, BorderStyle, Bounds, Corners, Edges, PathBuilder, Window, fill, linear_color_stop,
+    App, BorderStyle, Bounds, Corners, Edges, PathBuilder, fill, linear_color_stop,
     linear_gradient, point, px, quad, size,
 };
 use vantare_domain::{

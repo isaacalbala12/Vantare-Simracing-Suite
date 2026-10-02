@@ -17,12 +17,13 @@ use gpui::{
 use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
+use crate::efficiency::preview::PaintWindow;
 use crate::efficiency::text;
 use crate::overlay::{self, Hwnd};
 use crate::{Kind, Settings, Widget};
 
 /// Cómo se pinta un widget en el lienzo que GPUI le da.
-pub(crate) type Paint = Box<dyn Fn(&mut Window, &mut App)>;
+pub(crate) type Paint = Box<dyn Fn(&mut PaintWindow<'_>, &mut App)>;
 
 /// Lo que un widget pide al host tras pintar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,6 +61,7 @@ pub struct Overlay {
     prefs: Preferences,
     /// Hay un despertar programado (ver `wake_after`).
     wake_pending: bool,
+    preview_scale: f32,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -81,6 +83,7 @@ impl Overlay {
             widget,
             prefs,
             wake_pending: false,
+            preview_scale: 1.0,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
@@ -113,6 +116,16 @@ impl Overlay {
 
     pub fn wanted_size(&self) -> (f32, f32) {
         self.widget.size()
+    }
+
+    /// Solo el host de preview reduce/amplía el renderer. Las ventanas reales
+    /// conservan el factor 1; tamaño lógico y ViewModel permanecen iguales.
+    pub fn set_preview_scale(&mut self, scale: f32) -> Result<(), &'static str> {
+        if !scale.is_finite() || scale <= 0.0 {
+            return Err("la escala de preview debe ser finita y positiva");
+        }
+        self.preview_scale = scale;
+        Ok(())
     }
 
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
@@ -182,8 +195,11 @@ impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if crate::rights::denied(self.kind, cx) {
             return div()
-                .w(px(self.wanted_size().0))
-                .h(px(self.wanted_size().1))
+                .w(px(self.wanted_size().0 * self.preview_scale))
+                .h(px(self.wanted_size().1 * self.preview_scale))
+                .when(self.preview_scale != 1.0, |view| {
+                    view.text_size(window.rem_size() * self.preview_scale)
+                })
                 .bg(gpui::rgba(0x181818ee))
                 .text_color(gpui::white())
                 .child("Requiere licencia vigente")
@@ -194,6 +210,7 @@ impl Render for Overlay {
         #[cfg(feature = "paint-stats")]
         crate::stats::render(kind);
         let size = self.wanted_size();
+        let scale = self.preview_scale;
         let (paint, wake) = self.widget.frame(self.prefs);
         #[cfg(feature = "parity-capture")]
         let backdrop = self.backdrop;
@@ -204,12 +221,13 @@ impl Render for Overlay {
                 crate::stats::paint(kind);
                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
                 text::with_origin(origin, || {
+                    let mut window = PaintWindow::new(window, bounds.origin, scale);
                     #[cfg(feature = "parity-capture")]
                     if let Some(color) = backdrop {
                         // La marca fuera del recorte confirma la pasada sin asumir
                         // que el widget tenga un margen transparente.
                         crate::efficiency::paint_rect(
-                            window,
+                            &mut window,
                             0.0,
                             0.0,
                             size.0.ceil(),
@@ -217,12 +235,12 @@ impl Render for Overlay {
                             color,
                         );
                     }
-                    paint(window, cx);
+                    paint(&mut window, cx);
                 });
             },
         )
-        .w(px(size.0))
-        .h(px(size.1));
+        .w(px(size.0 * scale))
+        .h(px(size.1 * scale));
         // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
         match wake {
             Wake::Frame => window.request_animation_frame(),
@@ -700,6 +718,21 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn preview_scale_does_not_resize_the_logical_widget_and_rejects_invalid_factors() {
+        let mut overlay = super::Overlay::new(
+            crate::Kind::Standings,
+            vantare_domain::format::Preferences::default(),
+        );
+        let size = overlay.wanted_size();
+        assert_eq!(overlay.preview_scale, 1.0);
+        overlay.set_preview_scale(700.0 / 1920.0).expect("preview");
+        assert_eq!(overlay.wanted_size(), size);
+        for invalid in [0.0, -0.5, f32::NAN, f32::INFINITY] {
+            assert!(overlay.set_preview_scale(invalid).is_err());
+            assert_eq!(overlay.preview_scale, 700.0 / 1920.0);
+        }
+    }
     use super::*;
     use gpui::size;
 

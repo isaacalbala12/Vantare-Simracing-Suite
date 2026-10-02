@@ -2,7 +2,8 @@
 //! el jugador en el centro y 3 px por metro. Geometría y colores del CSS de
 //! producción; escena de paridad congelada en `ui/reference/radar.geometry.json`.
 
-use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use vantare_domain::radar::ViewModel;
 
 use crate::efficiency::text::{self, ink};

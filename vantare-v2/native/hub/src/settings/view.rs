@@ -177,8 +177,14 @@ fn eyebrow(content: &str, cx: &gpui::App) -> Div {
 fn stack() -> Div {
     div().flex().flex_col().w_full().min_w_0().gap(px(21.0))
 }
-fn columns() -> Div {
-    div().flex().w_full().min_w_0().gap(px(21.0)).items_start()
+fn columns(compact: bool) -> Div {
+    div()
+        .flex()
+        .w_full()
+        .min_w_0()
+        .gap(px(21.0))
+        .items_start()
+        .when(compact, |element| element.flex_col().items_stretch())
 }
 fn section_text(
     content: &str,
@@ -274,7 +280,8 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                 .gap(px(12.0))
                 .border_b_1()
                 .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-                .child(text(title, 15.0, 700, orbit::ink(cx), cx))
+                .flex_wrap()
+                .child(text(title, 15.0, 700, orbit::ink(cx), cx).flex_none())
                 .when_some(meta, |head, value| {
                     let meta = if title == "Nivel de rendimiento" {
                         section_status(
@@ -290,7 +297,7 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                         text(value, 12.0, 500, orbit::ink_3(cx), cx)
                             .font_family(crate::orbit::mono_family(cx))
                     };
-                    head.child(div().flex_1()).child(meta).when(
+                    head.child(div().flex_1()).child(meta.flex_none()).when(
                         title == "Últimos eventos" && value == "8 en esta sesión",
                         |head| {
                             head.child(
@@ -946,9 +953,9 @@ impl Hub {
                 Grayscale(header.into_any_element()).into_any_element()
             })
     }
-    fn settings_search(&self, cx: &Context<Self>) -> Div {
-        let aligned = aligned_navigation(self.settings.page);
-        let updates = self.settings.page == Page::Updates;
+    fn settings_search(&self, compact: bool, cx: &Context<Self>) -> Div {
+        let aligned = compact || aligned_navigation(self.settings.page);
+        let updates = !compact && self.settings.page == Page::Updates;
         div()
             .px(px(if aligned || updates { 0.0 } else { 14.0 }))
             .pt(px(if updates {
@@ -985,8 +992,13 @@ impl Hub {
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let aligned = aligned_navigation(self.settings.page);
-        let row_height = nav_row_height(self.settings.page);
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
+        let aligned = compact || aligned_navigation(self.settings.page);
+        let row_height = if compact {
+            52.0
+        } else {
+            nav_row_height(self.settings.page)
+        };
         let mut rows = stack()
             .gap(px(if aligned { 2.0 } else { 4.0 }))
             .when(aligned, |rows| rows.px(px(2.0)));
@@ -1009,7 +1021,10 @@ impl Hub {
                     .mx(px(0.0))
                     .px(px(if aligned { 8.0 } else { 11.0 }))
                     .py(px(7.0))
-                    .h(px(row_height))
+                    .when(compact, |row| {
+                        row.min_h(px(row_height)).h_auto().flex_none()
+                    })
+                    .when(!compact, |row| row.h(px(row_height)))
                     .track_focus(&self.settings.nav_focus[index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[index].focus(window, cx);
@@ -1041,7 +1056,10 @@ impl Hub {
                     .mx(px(0.0))
                     .px(px(if aligned { 8.0 } else { 11.0 }))
                     .py(px(7.0))
-                    .h(px(row_height))
+                    .when(compact, |row| {
+                        row.min_h(px(row_height)).h_auto().flex_none()
+                    })
+                    .when(!compact, |row| row.h(px(row_height)))
                     .track_focus(&self.settings.nav_focus[focus_index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[focus_index].focus(window, cx);
@@ -1083,7 +1101,7 @@ impl Hub {
                 .pt(px(if aligned { 27.0 } else { 24.0 }))
                 .child(eyebrow("Secciones", cx)),
         )
-        .child(self.settings_search(cx))
+        .child(self.settings_search(compact, cx))
         .child(
             div()
                 .id("settings-nav")
@@ -1094,7 +1112,12 @@ impl Hub {
                 .child(rows),
         )
     }
-    pub(in crate::shell) fn settings(&self, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
+    pub(in crate::shell) fn settings(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         self.sync_settings_preferences(cx);
         if self.capture.as_ref().is_some_and(|capture| {
             matches!(
@@ -1115,16 +1138,17 @@ impl Hub {
                 view.child(orbit::callout(status, cx))
             })
             .child(match self.settings.page {
-                Page::Application => self.settings_application(cx),
-                Page::Account => {
-                    div().child(self.remote.update(cx, |remote, cx| remote.account(cx)))
-                }
+                Page::Application => self.settings_application(compact, cx),
+                Page::Account => div().child(
+                    self.remote
+                        .update(cx, |remote, cx| remote.account(window, cx)),
+                ),
                 Page::Appearance => self.settings_appearance(cx),
-                Page::Performance => self.settings_performance(cx),
+                Page::Performance => self.settings_performance(compact, cx),
                 Page::Updates => self.settings_updates(cx),
                 Page::Hotkeys => self.settings_hotkeys(cx),
-                Page::Privacy => self.settings_privacy(cx),
-                Page::Diagnostics => self.settings_diagnostics(cx),
+                Page::Privacy => self.settings_privacy(compact, cx),
+                Page::Diagnostics => self.settings_diagnostics(compact, cx),
             });
         div()
             .id("settings-panel")
@@ -1187,7 +1211,7 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    fn settings_application(&self, cx: &Context<Self>) -> Div {
+    fn settings_application(&self, compact: bool, cx: &Context<Self>) -> Div {
         let zoom = Self::settings_zoom(cx);
         let interface = section_surface(
             "Interfaz",
@@ -1247,7 +1271,9 @@ impl Hub {
             .capture
             .as_ref()
             .is_some_and(|capture| capture.name == "ajustes-idioma-desplegado");
-        let mut view = columns().child(interface).child(system);
+        let mut view = columns(compact)
+            .child(interface.when(compact, gpui::Styled::flex_none))
+            .child(system.when(compact, gpui::Styled::flex_none));
         if open_language {
             // El banco incluye un estado con el selector abierto. Las opciones
             // se dibujan como vista de referencia inerte porque el Hub nativo
@@ -1568,7 +1594,7 @@ impl Hub {
                 }),
             )
     }
-    fn settings_performance(&self, cx: &gpui::App) -> Div {
+    fn settings_performance(&self, compact: bool, cx: &gpui::App) -> Div {
         let choices = [
             (
                 "Máximo",
@@ -1597,35 +1623,40 @@ impl Hub {
             ),
         ];
         let mut levels = div().flex().w_full().min_w_0().gap(px(12.0));
+        if compact {
+            levels = levels.grid().grid_cols(2);
+        }
         for (index, (name, rate, description)) in choices.into_iter().enumerate() {
-            levels = levels.child(performance_choice(
-                index,
-                name,
-                rate,
-                description,
-                false,
-                cx,
-            ));
+            levels = levels.child(
+                performance_choice(index, name, rate, description, false, cx)
+                    .when(compact, |element| element.h_auto().min_h(px(167.0))),
+            );
         }
         let custom_auto = div()
             .flex()
             .w_full()
             .min_w_0()
             .gap(px(12.0))
-            .child(performance_mode(
-                "Personalizado",
-                "Sin perfil activo",
-                "Elige la cadencia widget a widget; cada aumento muestra su coste de CPU.",
-                false,
-                cx,
-            ))
-            .child(performance_mode(
-                "Automático",
-                "Próximamente",
-                "Vantare mide tu PC en carrera y se ajusta solo (entre Alto y Mínimo).",
-                true,
-                cx,
-            ));
+            .child(
+                performance_mode(
+                    "Personalizado",
+                    "Sin perfil activo",
+                    "Elige la cadencia widget a widget; cada aumento muestra su coste de CPU.",
+                    false,
+                    cx,
+                )
+                .when(compact, |element| element.h_auto().min_h(px(100.0))),
+            )
+            .child(
+                performance_mode(
+                    "Automático",
+                    "Próximamente",
+                    "Vantare mide tu PC en carrera y se ajusta solo (entre Alto y Mínimo).",
+                    true,
+                    cx,
+                )
+                .when(compact, |element| element.h_auto().min_h(px(100.0))),
+            );
         section_surface(
             "Nivel de rendimiento",
             Some(if self.demo.is_some() { "Activo ahora · Equilibrado · 40 fps · elegido por ti" } else { "Sin estado de rendimiento nativo" }),
@@ -2016,7 +2047,7 @@ impl Hub {
                 if self.demo.is_some() { "La app registra estas cuatro combinaciones y ninguna más. Los grupos «Launcher y carrera», «Studio» y «Global» del prototipo no tienen atajos registrados todavía, así que no se pintan." } else { "El Hub nativo todavía no registra atajos globales. Las combinaciones se muestran como referencia y no se pueden reasignar aquí." },
              cx))
     }
-    fn settings_privacy_consent(cx: &gpui::App) -> Div {
+    fn settings_privacy_consent(compact: bool, cx: &gpui::App) -> Div {
         let shared_bullets = div()
             .flex()
             .flex_col()
@@ -2073,7 +2104,9 @@ impl Hub {
                     400,
                     orbit::ink(cx),
                  cx).line_height(px(24.0)).mt(px(0.0)))
-                .child(columns().gap(px(16.0)).child(shared).child(never))
+                .child(columns(compact).gap(px(16.0))
+                    .child(shared.when(compact, gpui::Styled::flex_none))
+                    .child(never.when(compact, gpui::Styled::flex_none)))
                 .child(section_note(
                     "Los paquetes son seudonimizados, no anónimos. Los secretos de subida y borrado se generan al aceptar y permanecen en el almacén protegido de Windows.",
                  cx))
@@ -2150,14 +2183,14 @@ impl Hub {
                  cx)),
          cx)
     }
-    fn settings_privacy(&self, cx: &gpui::App) -> Div {
+    fn settings_privacy(&self, compact: bool, cx: &gpui::App) -> Div {
         div()
             .flex()
             .flex_col()
             .w_full()
             .min_w_0()
             .gap(px(14.0))
-            .child(Self::settings_privacy_consent(cx))
+            .child(Self::settings_privacy_consent(compact, cx))
             .child(self.settings_privacy_queue(cx))
             .child(self.settings_privacy_history(cx))
     }
@@ -2282,9 +2315,10 @@ impl Hub {
         }
         stats
     }
-    fn settings_diagnostics(&self, cx: &mut Context<Self>) -> Div {
+    fn settings_diagnostics(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         let demo = self.demo.is_some();
-        let stats = Self::settings_statistics(demo, cx);
+        let stats =
+            Self::settings_statistics(demo, cx).when(compact, |stats| stats.grid().grid_cols(2));
         let data = section_surface(
             "Datos y registros",
             None,
@@ -2346,9 +2380,14 @@ impl Hub {
             cx,
         )
         .flex_1();
-        let mut view = stack()
-            .child(stats)
-            .child(columns().child(data).child(self.settings_events(cx)));
+        let mut view = stack().child(stats).child(
+            columns(compact)
+                .child(data.when(compact, gpui::Styled::flex_none))
+                .child(
+                    self.settings_events(cx)
+                        .when(compact, gpui::Styled::flex_none),
+                ),
+        );
         for detail in self.settings_diagnostic_report(cx) {
             view = view.child(detail);
         }

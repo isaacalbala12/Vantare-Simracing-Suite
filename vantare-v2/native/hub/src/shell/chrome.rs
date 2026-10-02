@@ -431,6 +431,7 @@ impl Hub {
         let content = crate::analysis::Analysis::context_sidebar(
             self.demo.as_ref(),
             self.capture.as_ref().map(|capture| capture.name.as_str()),
+            f32::from(window.viewport_size().width) <= 1360.0,
             cx,
         );
         let version = self
@@ -728,6 +729,7 @@ impl Hub {
     fn context_heading(title: &str, action: &str, strategy: bool, cx: &gpui::App) -> gpui::Div {
         div()
             .flex()
+            .flex_wrap()
             .items_center()
             .justify_between()
             .gap(px(10.0))
@@ -949,6 +951,7 @@ impl Hub {
             navigation::title(breadcrumb),
             section_actions,
             action,
+            self.section == Section::Studio && f32::from(window.viewport_size().width) <= 1360.0,
             cx,
         )
         .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))

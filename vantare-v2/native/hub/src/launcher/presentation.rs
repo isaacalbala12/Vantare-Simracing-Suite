@@ -245,6 +245,7 @@ fn context_heading(label: &str, value: String, cx: &gpui::App) -> gpui::Div {
 fn context_heading_action(label: &str, value: impl IntoElement, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
+        .flex_wrap()
         .items_center()
         .justify_between()
         .px(px(7.0))
@@ -1627,7 +1628,7 @@ impl Launcher {
             )
     }
 
-    fn stats(&self, cx: &gpui::App) -> gpui::Div {
+    fn stats(&self, compact: bool, cx: &gpui::App) -> gpui::Div {
         let detected = self
             .discovered
             .apps
@@ -1683,6 +1684,7 @@ impl Launcher {
             .flex_none()
             .grid()
             .grid_cols(4)
+            .when(compact, |stats| stats.grid_cols(2).h_auto())
             .gap(px(21.0))
             .child(stat_tile(
                 "Aplicaciones",
@@ -1791,6 +1793,7 @@ impl Launcher {
         &self,
         detection_label: &str,
         detection_ran: bool,
+        compact: bool,
         cx: &gpui::App,
     ) -> gpui::Div {
         div()
@@ -1800,6 +1803,7 @@ impl Launcher {
             .items_start()
             .justify_between()
             .gap(px(21.0))
+            .when(compact, |element| element.flex_col().h_auto())
             .child(
                 div()
                     .flex()
@@ -1828,18 +1832,21 @@ impl Launcher {
             )))
     }
 
-    fn launcher_columns(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    fn launcher_columns(&self, compact: bool, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         div()
             .id("launcher-profile-list")
             .flex_1()
             .min_h_0()
-            .overflow_hidden()
+            .when(!compact, gpui::Styled::overflow_hidden)
             .flex()
             .gap(px(21.0))
+            .when(compact, |element| element.flex_col().flex_none())
             .child(
                 div()
                     .w(px(338.0))
+                    .when(compact, gpui::Styled::w_full)
                     .h_full()
+                    .when(compact, |catalog| catalog.h(px(620.0)))
                     .flex_none()
                     .flex()
                     .flex_col()
@@ -1853,7 +1860,11 @@ impl Launcher {
                     .min_w(px(0.0))
                     .min_h_0()
                     .pr(px(14.0))
-                    .overflow_y_scroll()
+                    .when(
+                        !compact,
+                        gpui::StatefulInteractiveElement::overflow_y_scroll,
+                    )
+                    .when(compact, |element| element.flex_none().w_full())
                     .child(self.profiles(cx)),
             )
     }
@@ -1861,6 +1872,7 @@ impl Launcher {
 
 impl Render for Launcher {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         if let Some(layer) = &self.form_layer {
             let targets = self.form_targets(cx);
             layer.update(cx, |layer, _| layer.set_targets(targets));
@@ -1901,15 +1913,16 @@ impl Render for Launcher {
             .px(px(31.0))
             .pb(px(20.0))
             .gap(px(21.0))
-            .child(self.launcher_heading(&detection_label, detection_ran, cx))
-            .child(self.stats(cx))
+            .when(compact, |element| element.h_auto().flex_none())
+            .child(self.launcher_heading(&detection_label, detection_ran, compact, cx))
+            .child(self.stats(compact, cx))
             .when_some(self.error.clone(), |page, error| {
                 page.child(error_panel(error, cx))
             })
             .when(!self.progress.is_empty(), |page| {
                 page.child(self.progress_panel(cx))
             })
-            .child(self.launcher_columns(cx));
+            .child(self.launcher_columns(compact, cx));
         for warning in &self.discovered.warnings {
             page = page.child(orbit::callout(warning.clone(), cx));
         }

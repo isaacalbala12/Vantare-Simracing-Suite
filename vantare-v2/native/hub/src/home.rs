@@ -335,15 +335,20 @@ fn hero(
     next: Div,
     greeting: String,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+    compact: bool,
     cx: &gpui::App,
 ) -> Div {
     div()
         .flex()
         .items_center()
         .gap(px(40.0))
+        .when(compact, |hero| {
+            hero.flex_col().items_stretch().gap(px(16.0)).flex_none()
+        })
         .child(
             div()
                 .flex_1()
+                .when(compact, gpui::Styled::flex_none)
                 .min_w_0()
                 .flex()
                 .flex_col()
@@ -405,7 +410,7 @@ fn hero(
                         )),
                 ),
         )
-        .child(next)
+        .child(next.when(compact, gpui::Styled::w_full))
 }
 
 fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
@@ -549,6 +554,7 @@ fn profile_preview(has_profile: bool, cx: &gpui::App) -> Div {
 fn profile(
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+    compact: bool,
     cx: &gpui::App,
 ) -> Div {
     // Falta una API de Studio que exponga su layout/renderers y una escala de
@@ -558,6 +564,7 @@ fn profile(
     let meta = profile_metadata(demo, cx);
     orbit::card("", cx)
         .h(px(225.0))
+        .when(compact, gpui::Styled::h_auto)
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
         .shadow(vec![
@@ -586,6 +593,7 @@ fn profile(
         .child(
             orbit::card_body()
                 .h_full()
+                .when(compact, gpui::Styled::h_auto)
                 .rounded(px(orbit::FEATURED_RADIUS - 1.0))
                 .bg(linear_gradient(
                     180.0,
@@ -601,8 +609,19 @@ fn profile(
                         .flex()
                         .items_center()
                         .gap(px(28.0))
-                        .child(profile_info(name, meta, profile.is_some(), navigate, cx))
-                        .child(profile_preview(profile.is_some(), cx)),
+                        .when(compact, |element| {
+                            element.h_auto().flex_col().items_stretch()
+                        })
+                        .child(
+                            profile_info(name, meta, profile.is_some(), navigate, cx)
+                                .when(compact, |element| {
+                                    element.h_auto().flex_none().gap(px(12.0))
+                                }),
+                        )
+                        .child(
+                            profile_preview(profile.is_some(), cx)
+                                .when(compact, gpui::Styled::w_full),
+                        ),
                 ),
         )
 }
@@ -718,6 +737,7 @@ fn lists(
     starts: &[Race],
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+    compact: bool,
     cx: &gpui::App,
 ) -> Div {
     let race_list = race_rows(starts, navigate, cx);
@@ -727,12 +747,16 @@ fn lists(
         .flex_1()
         .min_h_0()
         .gap(px(20.0))
+        .when(compact, |lists| {
+            lists.flex_col().flex_none().items_stretch()
+        })
         .child(
             orbit::card("", cx)
                 .flex_1()
                 .flex_basis(gpui::relative(0.575))
                 .min_w_0()
                 .min_h(px(362.0))
+                .when(compact, gpui::Styled::flex_none)
                 .child(
                     div()
                         .h(px(50.0))
@@ -771,6 +795,7 @@ fn lists(
             orbit::card("", cx)
                 .flex_1()
                 .flex_basis(gpui::relative(0.405))
+                .when(compact, gpui::Styled::flex_none)
                 .min_w_0()
                 .flex()
                 .flex_col()
@@ -803,6 +828,7 @@ fn lists(
 pub fn render(
     calendar: &Calendar,
     demo: Option<&crate::demo::DemoData>,
+    compact: bool,
     navigate: impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     cx: &gpui::App,
 ) -> Stateful<Div> {
@@ -828,11 +854,13 @@ pub fn render(
         .flex()
         .flex_col()
         .gap(px(21.0))
-        .child(profile(demo, &navigate, cx))
-        .child(lists(&starts, demo, &navigate, cx));
+        .when(compact, gpui::Styled::flex_none)
+        .child(profile(demo, &navigate, compact, cx))
+        .child(lists(&starts, demo, &navigate, compact, cx));
     div()
         .id("home")
         .h_full()
+        .when(compact, gpui::Styled::h_auto)
         .min_w_0()
         .min_h_0()
         .flex()
@@ -850,6 +878,7 @@ pub fn render(
             ),
             salute,
             &navigate,
+            compact,
             cx,
         ))
         .child(content)

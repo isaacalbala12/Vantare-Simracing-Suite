@@ -352,8 +352,8 @@ impl Calendar {
 }
 
 impl Render for Calendar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        presentation::render(self, cx)
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        presentation::render(self, f32::from(window.viewport_size().width) <= 1360.0, cx)
     }
 }
 #[cfg(test)]

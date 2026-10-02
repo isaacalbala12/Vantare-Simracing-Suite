@@ -94,6 +94,7 @@ struct RawOptions {
     capture_name: Option<String>,
     capture_output: Option<PathBuf>,
     capture_appearance: Option<AppearanceSettings>,
+    capture_size: Option<(u32, u32)>,
     demo_requested: bool,
 }
 
@@ -113,6 +114,7 @@ impl RawOptions {
             capture_name: None,
             capture_output: None,
             capture_appearance: None,
+            capture_size: None,
             demo_requested: false,
         };
         let mut args = args.iter();
@@ -131,6 +133,11 @@ impl RawOptions {
                 "--appearance" if parsed.capture_appearance.is_none() => {
                     parsed.capture_appearance = Some(capture_appearance(
                         args.next().ok_or("falta apariencia de captura")?,
+                    )?);
+                }
+                "--size" if parsed.capture_size.is_none() => {
+                    parsed.capture_size = Some(capture_size(
+                        args.next().ok_or("falta tamaño de captura WxH")?,
                     )?);
                 }
                 "--workshop" if parsed.section == Section::Home => {
@@ -207,6 +214,7 @@ impl RawOptions {
             capture_name,
             capture_output,
             capture_appearance,
+            capture_size,
             demo_requested,
         } = self;
         if capture_name.is_some() != capture_output.is_some() {
@@ -214,6 +222,9 @@ impl RawOptions {
         }
         if capture_appearance.is_some() && capture_name.is_none() {
             return Err("--appearance requiere --capture".into());
+        }
+        if capture_size.is_some() && capture_name.is_none() {
+            return Err("--size requiere --capture".into());
         }
         let capture = capture_name
             .as_deref()
@@ -275,8 +286,21 @@ impl RawOptions {
             capture,
             capture_output,
             capture_appearance,
+            capture_size,
         })
     }
+}
+
+fn capture_size(value: &str) -> Result<(u32, u32), String> {
+    let (width, height) = value.split_once('x').ok_or("usa --size WxH")?;
+    let dimension = |value: &str| {
+        value
+            .parse::<u32>()
+            .ok()
+            .filter(|size| (1..=8192).contains(size))
+            .ok_or("dimensión de captura fuera de 1..=8192")
+    };
+    Ok((dimension(width)?, dimension(height)?))
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -300,7 +324,7 @@ fn main() -> ExitCode {
             eprintln!(
                 "{error}
 uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
-     vantare-hub --capture PANTALLA --out PNG [--demo] [--appearance PALETA-dark|PALETA-light]
+     vantare-hub --capture PANTALLA --out PNG [--demo] [--size WxH] [--appearance PALETA-dark|PALETA-light]
      paletas: vantare, rose, grove, ocean, ember, iris, mono"
             );
             return ExitCode::from(2);
@@ -340,6 +364,42 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capture_size_is_explicit_validated_and_capture_only() {
+        let capture = ["--capture", "inicio-base", "--out", "capture.png"];
+        let args = |extra: &[&str]| {
+            capture
+                .iter()
+                .chain(extra)
+                .map(|arg| (*arg).to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            parse(&args(&[])).expect("tamaño habitual").capture_size,
+            None
+        );
+        for (value, expected) in [("900x600", (900, 600)), ("1280x720", (1280, 720))] {
+            assert_eq!(
+                parse(&args(&["--size", value]))
+                    .expect("tamaño explícito")
+                    .capture_size,
+                Some(expected)
+            );
+        }
+        for extra in [
+            vec!["--size"],
+            vec!["--size", "900"],
+            vec!["--size", "0x600"],
+            vec!["--size", "900x-1"],
+            vec!["--size", "8193x600"],
+            vec!["--size", "900x600x1"],
+            vec!["--size", "900x600", "--size", "1280x720"],
+        ] {
+            assert!(parse(&args(&extra)).is_err(), "{extra:?}");
+        }
+        assert!(parse(&["--size".into(), "900x600".into()]).is_err());
+    }
     #[test]
     fn capture_appearance_resolves_the_requested_palette_and_scheme() {
         for (name, palette) in [

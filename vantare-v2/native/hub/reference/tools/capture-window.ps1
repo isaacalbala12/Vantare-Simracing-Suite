@@ -8,14 +8,19 @@ param(
     [int]$X = -1,
     [int]$Y = -1,
     [string]$Keys = '',
-    [int]$WheelSteps = 0
+    [int]$WheelSteps = 0,
+    [ValidateRange(0, 8192)][int]$Width = 0,
+    [ValidateRange(0, 8192)][int]$Height = 0
 )
 $ErrorActionPreference = 'Stop'
-$width = 1440
-$height = 900
-if ($Screen.StartsWith('strategy-v5-', [StringComparison]::Ordinal)) {
-    $width = 1672
-    $height = 941
+if (($Width -eq 0) -ne ($Height -eq 0)) { throw 'Indica ancho y alto juntos' }
+if ($Width -eq 0) {
+    $width = 1440
+    $height = 900
+    if ($Screen.StartsWith('strategy-v5-', [StringComparison]::Ordinal)) {
+        $width = 1672
+        $height = 941
+    }
 }
 $repo = if ($RepositoryRoot) { [IO.Path]::GetFullPath($RepositoryRoot) } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..')) }
 $output = [IO.Path]::GetFullPath($OutputPath)

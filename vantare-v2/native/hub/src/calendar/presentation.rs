@@ -91,16 +91,23 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         ])
 }
 
-fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Utc>) -> Div {
+fn page_header(
+    calendar: &Calendar,
+    compact: bool,
+    cx: &mut Context<Calendar>,
+    now: DateTime<Utc>,
+) -> Div {
     let current = matches!(calendar.schedule.is_current(now), Ok(true));
     div()
         .flex()
         .items_end()
         .justify_between()
         .gap(px(20.0))
+        .when(compact, |element| element.flex_col().items_stretch())
         .child(
             div()
                 .flex_1()
+                .when(compact, gpui::Styled::flex_none)
                 .min_w_0()
                 .flex()
                 .flex_col()
@@ -680,7 +687,11 @@ fn content(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
         .child(body)
 }
 
-pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Stateful<Div> {
+pub(super) fn render(
+    calendar: &mut Calendar,
+    compact: bool,
+    cx: &mut Context<Calendar>,
+) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
     let (_, error) = calendar.upcoming(now);
     if let Some(error) = error {
@@ -700,7 +711,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .pt(px(24.0))
         .pb(px(25.0))
         .bg(rgb(orbit::canvas(cx)))
-        .child(page_header(calendar, cx, now))
+        .child(page_header(calendar, compact, cx, now))
         .child(content(calendar, now, cx))
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))

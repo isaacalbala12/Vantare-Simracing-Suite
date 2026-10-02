@@ -55,7 +55,8 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         .nth(3)
         .ok_or("raíz Git no disponible en este build")?
         .to_path_buf();
-    let mut helper = Command::new("powershell.exe")
+    let mut command = Command::new("powershell.exe");
+    command
         .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
         .arg(&scripts.runner)
         .arg("-ProcessId")
@@ -70,7 +71,11 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         .arg(&scripts.window)
         .arg("-RepositoryRoot")
         .arg(repository)
-        .stdout(Stdio::piped())
+        .stdout(Stdio::piped());
+    if let Some((width, height)) = options.capture_size {
+        command.args(["-Width", &width.to_string(), "-Height", &height.to_string()]);
+    }
+    let mut helper = command
         .spawn()
         .map_err(|error| format!("iniciar capturador PowerShell: {error}"))?;
 

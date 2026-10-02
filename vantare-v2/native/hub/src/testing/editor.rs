@@ -633,7 +633,7 @@ impl Editor {
         );
         consent
     }
-    pub fn render(&self, cx: &mut Context<Remote>) -> gpui::Div {
+    pub fn render(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
         let form = self.form(cx);
         let consent = self.consent_card(cx);
         let mut page = div()
@@ -646,10 +646,12 @@ impl Editor {
                     .flex()
                     .items_start()
                     .gap(px(21.0))
+                    .when(compact, |element| element.flex_col().items_stretch())
                     .child(
                         orbit::card("", cx)
                             .bg(orbit::tint(0x0010_1114, 0.79))
                             .flex_1()
+                            .when(compact, gpui::Styled::flex_none)
                             .min_w_0()
                             .child(form),
                     )
@@ -657,6 +659,7 @@ impl Editor {
                         orbit::card("", cx)
                             .bg(orbit::tint(0x0010_1114, 0.79))
                             .w(px(280.0))
+                            .when(compact, gpui::Styled::w_full)
                             .flex_none()
                             .child(consent),
                     ),

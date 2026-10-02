@@ -4,7 +4,9 @@ param(
     [Parameter(Mandatory)][string]$OutputPath,
     [Parameter(Mandatory)][string]$Screen,
     [Parameter(Mandatory)][string]$CaptureScript,
-    [Parameter(Mandatory)][string]$RepositoryRoot
+    [Parameter(Mandatory)][string]$RepositoryRoot,
+    [ValidateRange(0, 8192)][int]$Width = 0,
+    [ValidateRange(0, 8192)][int]$Height = 0
 )
 $ErrorActionPreference = 'Stop'
 $marker = 'C:\tmp\fase2\pantalla-ocupada'
@@ -36,7 +38,7 @@ try {
     } while ([DateTime]::UtcNow -lt $deadline)
     if ($target.MainWindowHandle -eq 0) { throw 'La ventana Hub no apareció en 2 minutos' }
 
-    & $CaptureScript -ProcessId $ProcessId -ExpectedExecutable $ExpectedExecutable -OutputPath $OutputPath -Screen $Screen -RepositoryRoot $RepositoryRoot
+    & $CaptureScript -ProcessId $ProcessId -ExpectedExecutable $ExpectedExecutable -OutputPath $OutputPath -Screen $Screen -RepositoryRoot $RepositoryRoot -Width $Width -Height $Height
 } finally {
     try {
         if ($target) {

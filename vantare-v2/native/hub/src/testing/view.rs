@@ -532,14 +532,15 @@ fn reports_panel(cx: &gpui::App) -> gpui::Div {
 }
 
 impl Render for Testing {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
             1 => validation_panel(cx),
             2 => reports_panel(cx),
             _ => self
                 .remote
-                .update(cx, |remote, cx| remote.editor.render(cx)),
+                .update(cx, |remote, cx| remote.editor.render(compact, cx)),
         };
         let dirty = self.remote.read(cx).editor.dirty;
         let status_label = if dirty {

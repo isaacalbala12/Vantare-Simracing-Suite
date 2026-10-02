@@ -317,6 +317,7 @@ impl Analysis {
     pub(crate) fn context_sidebar(
         demo: Option<&DemoData>,
         capture_name: Option<&str>,
+        compact: bool,
         cx: &gpui::App,
     ) -> gpui::Div {
         let show_demo_sessions =
@@ -348,6 +349,7 @@ impl Analysis {
         div()
             .flex_1()
             .min_h_0()
+            .when(compact, gpui::Styled::flex_none)
             .flex()
             .flex_col()
             .pt(px(19.0))
@@ -371,6 +373,7 @@ impl Analysis {
                  cx)
                 .line_height(px(15.5))
                 .mt_auto()
+                .when(compact, |note| note.mt(px(8.0)))
                 .pb(px(4.0)),
             )
     }
@@ -1640,6 +1643,7 @@ impl Analysis {
     }
 
     fn telemetry_header(&self, window: &Window, cx: &Context<Self>) -> gpui::Div {
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let synthetic = self.is_synthetic();
         let mut references = telemetry_segment_group(cx);
         for (reference, label) in TelemetryReference::ALL {
@@ -1687,6 +1691,7 @@ impl Analysis {
             );
         let actions = div()
             .flex()
+            .when(compact, gpui::Styled::flex_wrap)
             .items_center()
             .gap(px(10.0))
             .child(references)
@@ -1699,9 +1704,11 @@ impl Analysis {
             .items_end()
             .justify_between()
             .gap(px(orbit::GUTTER / 2.0))
+            .when(compact, |element| element.flex_col().items_stretch())
             .child(
                 div()
                     .flex_1()
+                    .when(compact, gpui::Styled::flex_none)
                     .min_w_0()
                     .child(telemetry_tracked("ANÁLISIS POST-SESIÓN", 11.0, 800, orbit::ink_3(cx), 0.99).relative().top(px(-2.0)))
                     .child(
@@ -1725,13 +1732,16 @@ impl Analysis {
             .child(actions)
     }
 
-    fn telemetry_stats(&self, cx: &gpui::App) -> gpui::Div {
+    fn telemetry_stats(&self, compact: bool, cx: &gpui::App) -> gpui::Div {
         let mut row = div()
             .flex_none()
             .mr(px(-2.0))
             .flex()
             .gap(px(21.0))
             .mt(px(16.0));
+        if compact {
+            row = row.grid().grid_cols(2);
+        }
         #[cfg(feature = "parity-capture")]
         if self.is_synthetic() {
             let model = DemoModel::new();
@@ -1928,6 +1938,7 @@ impl Analysis {
         map_body: gpui::Div,
         insight_body: gpui::Div,
         trace_body: gpui::Div,
+        compact: bool,
         cx: &Context<Self>,
     ) -> gpui::Div {
         let mut axis = telemetry_segment_group(cx);
@@ -1986,18 +1997,22 @@ impl Analysis {
             .flex()
             .gap(px(21.0))
             .mt(px(16.0))
+            .when(compact, |element| element.flex_col().flex_none())
             .child(
                 div()
                     .w(px(400.0))
+                    .when(compact, gpui::Styled::w_full)
                     .flex_none()
                     .flex()
                     .flex_col()
                     .min_h_0()
                     .gap(px(21.0))
                     .child(map)
-                    .child(insights),
+                    .child(insights.when(compact, |element| element.flex_none().min_h(px(220.0)))),
             )
-            .child(traces)
+            .child(traces.when(compact, |element| {
+                element.flex_none().w_full().min_h(px(350.0))
+            }))
     }
 
     fn telemetry_note(&self, cx: &gpui::App) -> gpui::Div {
@@ -2019,11 +2034,18 @@ impl Analysis {
 
 impl Render for Analysis {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let (map, mut insights, traces) = self.telemetry_bodies(cx);
         if let Some(recordings) = self.telemetry_recordings(cx) {
             insights = recordings;
         }
-        let columns = Self::telemetry_columns(map, insights, self.telemetry_traces(traces, cx), cx);
+        let columns = Self::telemetry_columns(
+            map,
+            insights,
+            self.telemetry_traces(traces, cx),
+            compact,
+            cx,
+        );
 
         div()
             .id("analysis")
@@ -2031,6 +2053,7 @@ impl Render for Analysis {
             // La shell desplaza el contenido; la rejilla necesita un alto finito
             // para reservar la nota inferior y desplazar solo las trazas/insights.
             .h((window.viewport_size().height - px(orbit::TOPBAR_H + orbit::GUTTER)).max(px(0.0)))
+            .when(compact, gpui::Styled::h_auto)
             .max_w(px(1508.0))
             .mx_auto()
             .relative()
@@ -2039,7 +2062,7 @@ impl Render for Analysis {
             .flex()
             .flex_col()
             .child(self.telemetry_header(window, cx))
-            .child(self.telemetry_stats(cx))
+            .child(self.telemetry_stats(compact, cx))
             .child(columns)
             .child(self.telemetry_note(cx))
     }

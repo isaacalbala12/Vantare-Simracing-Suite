@@ -654,7 +654,7 @@ pub fn nav_item(
 
 /// Barra superior: ruta `EYEBROW / Título` a la izquierda y acción a la derecha.
 pub fn topbar(trail: &str, title: &str, action: impl IntoElement, cx: &gpui::App) -> Div {
-    topbar_with_actions(trail, title, None, action, cx)
+    topbar_with_actions(trail, title, None, action, false, cx)
 }
 
 /// Acciones opcionales de la sección entre la ruta y los controles comunes.
@@ -664,10 +664,15 @@ pub fn topbar_with_actions(
     title: &str,
     section_actions: Option<gpui::AnyElement>,
     common_actions: impl IntoElement,
+    compact: bool,
     cx: &gpui::App,
 ) -> Div {
+    let wrap_actions = compact && section_actions.is_some();
     div()
         .h(px(TOPBAR_H))
+        .when(wrap_actions, |bar| {
+            bar.flex_wrap().h_auto().min_h(px(TOPBAR_H)).py(px(12.0))
+        })
         .flex_none()
         .px(px(TOPBAR_GUTTER))
         .pt(px(1.0))
@@ -679,6 +684,7 @@ pub fn topbar_with_actions(
         .child(
             div()
                 .flex()
+                .when(compact, gpui::Styled::flex_none)
                 .items_baseline()
                 .gap(px(10.0))
                 .child(tracked_text(
@@ -697,7 +703,14 @@ pub fn topbar_with_actions(
                 ),
         )
         .when_some(section_actions, |bar, actions| {
-            bar.child(div().min_w_0().flex().items_center().child(actions))
+            bar.child(
+                div()
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .when(wrap_actions, gpui::Styled::w_full)
+                    .child(actions),
+            )
         })
         .child(div().ml_auto().flex_none().child(common_actions))
 }

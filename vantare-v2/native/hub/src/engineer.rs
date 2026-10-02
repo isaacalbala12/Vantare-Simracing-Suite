@@ -203,13 +203,18 @@ fn fact(label: &str, value: &str, cx: &gpui::App) -> gpui::Div {
         .child(text(value.to_owned(), 16.0, 400, text_color(cx), cx).mt(px(4.0)))
 }
 
-fn fact_row(items: &[(&str, &str)], cx: &gpui::App) -> gpui::Div {
+fn fact_row(items: &[(&str, &str)], compact: bool, cx: &gpui::App) -> gpui::Div {
     let mut row = div().flex().w_full().gap(px(14.0));
+    if compact {
+        row = row.grid().grid_cols(2);
+    }
     for (label, value) in items {
         row = row.child(fact(label, value, cx));
     }
     for _ in items.len()..4 {
-        row = row.child(div().flex_1().min_w(px(190.0)));
+        if !compact {
+            row = row.child(div().flex_1().min_w(px(190.0)));
+        }
     }
     row
 }
@@ -388,7 +393,7 @@ impl Engineer {
         rows
     }
 
-    fn observed_facts(&self, cx: &gpui::App) -> gpui::Div {
+    fn observed_facts(&self, compact: bool, cx: &gpui::App) -> gpui::Div {
         use control::runtime::{Connection, Spotter, VoiceEngine};
         let view = self.model.view(self.model.now());
         let service = match view.health {
@@ -465,6 +470,7 @@ impl Engineer {
                     ("Spotter", spotter),
                     ("Reproductor real", player),
                 ],
+                compact,
                 cx,
             ))
             .child(fact_row(
@@ -472,11 +478,12 @@ impl Engineer {
                     ("Idioma · voz spotter / ingeniero", &locale_value),
                     ("Ciclo", &cycle),
                 ],
+                compact,
                 cx,
             ))
     }
 
-    fn status_section(&self, cx: &gpui::App) -> gpui::Div {
+    fn status_section(&self, compact: bool, cx: &gpui::App) -> gpui::Div {
         let mut card = section("Estado observado", cx);
         let view = self.model.view(self.model.now());
         let status_copy = if view.health == model::Health::Fresh {
@@ -488,7 +495,7 @@ impl Engineer {
         };
         card = card
             .child(paragraph(status_copy, cx).mt(px(0.0)))
-            .child(self.observed_facts( cx))
+            .child(self.observed_facts(compact, cx))
             .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido.", cx));
         if let Some(error) = view.error {
             card = card.child(text(
@@ -1094,7 +1101,7 @@ impl Render for Engineer {
         if self.capture_history {
             self.history_scroll.scroll_to_bottom();
         }
-        let status = self.status_section(cx);
+        let status = self.status_section(f32::from(window.viewport_size().width) <= 1360.0, cx);
         let configuration = self.configuration_section(cx);
         let audio = Self::audio_section(cx);
         let history = self.history_section(cx);

@@ -112,6 +112,7 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
         .child(
             div()
                 .flex()
+                .flex_1()
                 .min_w_0()
                 .items_center()
                 .gap(px(7.0))
@@ -1039,21 +1040,37 @@ impl Remote {
          cx)
         .flex_1()
     }
-    fn account_page(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn account_page(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        // Wails apila hero y detalles a 1360 px (orbit-settings.css).
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let hero = div()
             .flex()
+            .when(compact, gpui::Styled::flex_col)
             .w_full()
             .gap(px(21.0))
             .items_stretch()
-            .child(self.account_identity(cx))
-            .child(self.account_plan(cx));
+            .child(
+                self.account_identity(cx)
+                    .when(compact, |element| element.flex_none().w_full()),
+            )
+            .child(
+                self.account_plan(cx)
+                    .when(compact, |element| element.flex_none().w_full()),
+            );
         let details = div()
             .flex()
+            .when(compact, gpui::Styled::flex_col)
             .w_full()
             .gap(px(21.0))
             .items_start()
-            .child(self.account_session(cx))
-            .child(self.account_devices(cx));
+            .child(
+                self.account_session(cx)
+                    .when(compact, |element| element.flex_none().w_full()),
+            )
+            .child(
+                self.account_devices(cx)
+                    .when(compact, |element| element.flex_none().w_full()),
+            );
         div()
             .flex()
             .flex_col()
@@ -1069,8 +1086,8 @@ impl Remote {
             })
     }
 
-    pub fn account(&self, cx: &mut Context<Self>) -> gpui::Div {
-        self.account_page(cx)
+    pub fn account(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.account_page(window, cx)
     }
 
     pub fn report_action(&mut self, command: Command, cx: &mut Context<Self>) {
@@ -1083,8 +1100,9 @@ impl Remote {
         self.request(command, cx);
     }
 
-    pub fn testing(&self, cx: &mut Context<Self>) -> gpui::Div {
-        self.editor.render(cx)
+    pub fn testing(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.editor
+            .render(f32::from(window.viewport_size().width) <= 1360.0, cx)
     }
 
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
@@ -1198,8 +1216,8 @@ impl Remote {
             )
     }
 
-    pub fn licenses(&self, cx: &mut Context<Self>) -> gpui::Div {
-        self.account_page(cx)
+    pub fn licenses(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.account_page(window, cx)
     }
 }
 

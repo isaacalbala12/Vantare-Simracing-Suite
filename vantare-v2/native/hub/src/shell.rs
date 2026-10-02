@@ -47,6 +47,7 @@ pub struct Options {
     pub capture: Option<crate::demo::CaptureState>,
     pub capture_output: Option<PathBuf>,
     pub capture_appearance: Option<orbit::theme::AppearanceSettings>,
+    pub capture_size: Option<(u32, u32)>,
 }
 
 struct Hub {
@@ -182,7 +183,7 @@ impl Hub {
     }
 
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
-    fn section_view(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn section_view(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         if let Some(reason) = self.shell.access.lock(self.section) {
             return orbit::callout(
                 format!(
@@ -202,11 +203,12 @@ impl Hub {
             Section::Launcher => self.launcher.clone().into_any_element(),
             Section::Strategy => self.strategy.clone().into_any_element(),
             Section::Notifications => self.notifications.clone().into_any_element(),
-            Section::Settings => self.settings(cx).into_any_element(),
+            Section::Settings => self.settings(window, cx).into_any_element(),
             Section::Testing => self.testing.clone().into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
                 self.demo.as_ref(),
+                f32::from(window.viewport_size().width) <= 1360.0,
                 |control, section| {
                     control.on_click(cx.listener(move |this, _, _, cx| {
                         if section == Section::Launcher {
@@ -225,11 +227,11 @@ impl Hub {
             .into_any_element(),
             Section::Account => self
                 .remote
-                .update(cx, |remote, cx| remote.account(cx))
+                .update(cx, |remote, cx| remote.account(window, cx))
                 .into_any_element(),
             Section::Licenses => self
                 .remote
-                .update(cx, |remote, cx| remote.licenses(cx))
+                .update(cx, |remote, cx| remote.licenses(window, cx))
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
@@ -238,7 +240,7 @@ impl Hub {
         }
     }
 
-    fn render_content(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
+    fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
             .flex_1()
             .flex()
@@ -271,7 +273,7 @@ impl Hub {
             .when_some(self.shell.navigation_notice.clone(), |content, notice| {
                 content.child(orbit::callout(notice, cx))
             })
-            .child(self.section_view(cx))
+            .child(self.section_view(window, cx))
             .into_any_element()
     }
 
@@ -291,7 +293,7 @@ impl Hub {
             .capture_key_down(cx.listener(Self::shell_key))
             .size_full()
             .relative()
-            .child(self.section_view(cx))
+            .child(self.section_view(window, cx))
             .when_some(self.status.clone(), |root, status| {
                 root.child(
                     orbit::callout(status, cx)
@@ -391,7 +393,10 @@ impl Render for Hub {
         let strategy_context_visible =
             self.section == Section::Strategy && self.strategy.read(cx).context_sidebar_visible();
         let column = self.section_column(window, strategy_context_visible, cx);
-        let content = self.render_content(cx);
+        let topbar = topbar.when(f32::from(window.viewport_size().width) <= 1360.0, |bar| {
+            bar.flex_wrap().h_auto().min_h(gpui::px(orbit::TOPBAR_H))
+        });
+        let content = self.render_content(window, cx);
         let main = div()
             .relative()
             .flex_1()
@@ -864,6 +869,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 return;
             }
             let window_options = WindowOptions {
+                window_min_size: Some(gpui::size(gpui::px(900.0), gpui::px(600.0))),
                 titlebar: Some(gpui::TitlebarOptions {
                     title: Some("Vantare Hub — nativo".into()),
                     ..Default::default()

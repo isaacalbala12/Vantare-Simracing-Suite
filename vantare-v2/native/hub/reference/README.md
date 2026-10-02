@@ -63,6 +63,13 @@ mayor a menor diferencia en `C:/tmp/hub-banco-evidence/` (o en
 `$env:VANTARE_PARITY_OUT` si está definida, para ejecuciones simultáneas). El modo
 `-VerificarDeterminismo` repite `inicio-base` y exige SHA256 idénticos.
 `--capture` usa una raíz temporal exclusiva y no carga los archivos de usuario.
+
+Para verificar reflujo, `--size 900x600` o `--size 1280x720` cambia solamente
+el área cliente de la captura. Sin esa opción conserva 1440×900 (Strategy V5
+mantiene su corte de 1672×941). Requiere `--capture` y admite dimensiones
+enteras positivas hasta 8192; el escritorio y el mínimo de ventana deben
+permitir el tamaño solicitado. El Hub usa el mínimo de Wails, 900×600
+(`cmd/vantare/main.go`), y Ajustes apila sus tarjetas a 1360 px, como su CSS.
 El helper espera `C:/tmp/fase2/pantalla-ocupada` antes de abrir la ventana y
 retiene `Global\VantareParityCapture` hasta cerrarla.
 

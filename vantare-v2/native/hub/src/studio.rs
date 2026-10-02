@@ -406,6 +406,9 @@ impl Render for StudioSidebar {
                 },
                 cx,
             )
+            .w(px(orbit::column_width(f32::from(
+                window.viewport_size().width,
+            ))))
             .child(
                 div()
                     .id("studio-widget-list")
@@ -426,12 +429,15 @@ pub(crate) struct StudioTopbar {
     studio: gpui::WeakEntity<Studio>,
 }
 impl Render for StudioTopbar {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self
             .studio
             .update(cx, |studio, cx| studio.topbar_actions(cx))
         {
-            Ok(actions) => actions,
+            Ok(actions) => actions.when(
+                f32::from(window.viewport_size().width) <= 1360.0,
+                |actions| actions.flex_wrap().ml(px(0.0)).w_full(),
+            ),
             Err(_) => div(),
         }
     }
@@ -1769,13 +1775,17 @@ impl Studio {
             .child(stage_highlight(true))
             .child(measure)
             .child(stage);
+        let compact = f32::from(window.viewport_size().width) <= 1152.0;
         let left = div()
             .flex_1()
             .min_w_0()
             .min_h_0()
             .flex()
             .flex_col()
-            .child(self.toolbar(cx))
+            .when(compact, |element| element.flex_none().h(px(430.0)).w_full())
+            .child(self.toolbar(cx).when(compact, |toolbar| {
+                toolbar.flex_wrap().h_auto().min_h(px(60.0))
+            }))
             .child(canvas)
             .child(self.preview_footer(cx));
         let mut workspace = div()
@@ -1784,12 +1794,14 @@ impl Studio {
             .min_h_0()
             .flex()
             .bg(rgb(orbit::canvas(cx)))
+            .when(compact, |element| element.flex_col().flex_none())
             .child(left);
         if self.inspector_open {
             workspace = workspace.child(
                 div()
                     .w(px(320.0))
                     .h_full()
+                    .when(compact, |element| element.w_full().h(px(360.0)))
                     .flex_none()
                     .flex()
                     .flex_col()

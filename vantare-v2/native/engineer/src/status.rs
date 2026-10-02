@@ -222,13 +222,7 @@ impl Report {
         value
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
-        let status = Status::parse(bytes)?;
-        let runtime = if status.version == STATUS_VERSION {
-            Some(RuntimeStatus::parse(&decode(bytes)?["runtime"])?)
-        } else {
-            None
-        };
-        Ok(Self { status, runtime })
+        Status::parse_report(&decode(bytes)?)
     }
 }
 pub fn now_ms() -> u64 {

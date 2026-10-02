@@ -63,9 +63,11 @@ impl Settings {
         Ok(())
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
-        let value = decode(bytes)?;
+        Self::parse_value(&decode(bytes)?)
+    }
+    fn parse_value(value: &Value) -> io::Result<Self> {
         fields(
-            &value,
+            value,
             &["version", "enabled", "locale", "voice", "families"],
         )?;
         let family = &value["families"];
@@ -118,7 +120,9 @@ impl Status {
         json!({"version":1, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
-        let value = decode(bytes)?;
+        Self::parse_report(&decode(bytes)?).map(|report| report.status)
+    }
+    fn parse_report(value: &Value) -> io::Result<runtime::Report> {
         let version = number(&value["version"])?;
         let mut keys = vec![
             "version",
@@ -129,11 +133,13 @@ impl Status {
             "last_message",
             "error",
         ];
-        if version == u64::from(runtime::STATUS_VERSION) {
+        let runtime = if version == u64::from(runtime::STATUS_VERSION) {
             keys.push("runtime");
-            runtime::RuntimeStatus::parse(&value["runtime"])?;
-        }
-        fields(&value, &keys)?;
+            Some(runtime::RuntimeStatus::parse(&value["runtime"])?)
+        } else {
+            None
+        };
+        fields(value, &keys)?;
         let message = &value["last_message"];
         let last_message = if message.is_null() {
             None
@@ -158,9 +164,7 @@ impl Status {
                 .map_err(|_| invalid("versión inválida"))?,
             active: boolean(&value["active"])?,
             pid: u32::try_from(number(&value["pid"])?).map_err(|_| invalid("pid inválido"))?,
-            settings: Settings::parse(
-                &serde_json::to_vec(&value["settings"]).map_err(io::Error::other)?,
-            )?,
+            settings: Settings::parse_value(&value["settings"])?,
             assets,
             last_message,
             error: if value["error"].is_null() {
@@ -169,7 +173,6 @@ impl Status {
                 Some(string(&value["error"])?)
             },
         };
-        status.settings.validate()?;
         if ![1, runtime::STATUS_VERSION].contains(&status.version)
             || status.pid == 0
             || status.assets.len() != LOCALES.len()
@@ -179,7 +182,7 @@ impl Status {
         {
             return Err(invalid("estado de Engineer inválido"));
         }
-        Ok(status)
+        Ok(runtime::Report { status, runtime })
     }
 }
 

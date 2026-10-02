@@ -23,9 +23,63 @@ TOKENS = "CORAL EMBER RED CYAN BRONZE SILVER INK_4 WHITE LINE_CHIP LINE_PILL PRI
 TOKEN = re.compile(r"\b(?:(?:crate::)?orbit::)?(" + "|".join(TOKENS) + r")\b")
 
 def code_mask(source):
-    # Preserve offsets; Rust lifetimes are not character literals.
-    pattern = r'//[^\n]*|/\*[\s\S]*?\*/|r(#+)?"[\s\S]*?"\1|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\''
-    return re.sub(pattern, lambda m: re.sub(r'[^\n]', ' ', m.group()), source)
+    # Offsets stay in Unicode characters; compiler byte offsets are converted below.
+    result = list(source)
+    i = 0
+    while i < len(source):
+        start, end = i, i
+        if source.startswith('//', i):
+            end = source.find('\n', i)
+            if end < 0:
+                end = len(source)
+        elif source.startswith('/*', i):
+            depth, end = 1, i + 2
+            while end < len(source) and depth:
+                if source.startswith('/*', end):
+                    depth += 1
+                    end += 2
+                elif source.startswith('*/', end):
+                    depth -= 1
+                    end += 2
+                else:
+                    end += 1
+        else:
+            raw = re.match(r'(?:br|r)(#*)"', source[i:])
+            if raw:
+                close = '"' + raw[1]
+                end = source.find(close, i + raw.end())
+                end = len(source) if end < 0 else end + len(close)
+            elif source[i] == '"':
+                end = i + 1
+                while end < len(source):
+                    if source[end] == '\\':
+                        end += 2
+                    elif source[end] == '"':
+                        end += 1
+                        break
+                    else:
+                        end += 1
+            elif source[i] == "'":
+                char = re.match(r"'(?:\\u\{[0-9a-fA-F_]+\}|\\.|[^'\\])'", source[i:])
+                if char:
+                    end = i + char.end()
+        if end > start:
+            result[start:end] = ['\n' if ch == '\n' else ' ' for ch in source[start:end]]
+            i = end
+        else:
+            i += 1
+    return ''.join(result)
+
+
+def test_ranges(mask):
+    result = []
+    for match in re.finditer(r'#\[(?:cfg\(test\)|test)\]\s*(?:mod|fn)\s+\w+', mask):
+        start = mask.find('{', match.end())
+        end = pair(mask, start, '{', '}') if start >= 0 else None
+        if end is not None:
+            result.append((match.start(), end))
+    return result
+
 
 def pair(mask, start, opening='(', closing=')'):
     level = 0
@@ -83,6 +137,8 @@ def repair_context(diagnostics):
         mask = code_mask(source)
         start = len(source.encode()[:primary['byte_start']].decode())
         end = len(source.encode()[:primary['byte_end']].decode())
+        if any(a <= start <= b for a, b in test_ranges(mask)):
+            continue
         if code == 'E0425' and error['message'].startswith('cannot find value `cx`'):
             enclosing = [f for f in functions(source) if f[2] < start < f[3]]
             if not enclosing:
@@ -120,8 +176,11 @@ def migrate(source, path):
         return source, 0
     mask = code_mask(source)
     changes = []
+    tests = test_ranges(mask)
     orbit_module = path == ROOT / "orbit.rs" or path.parent.name == "orbit"
     for match in TOKEN.finditer(mask):
+        if any(a <= match.start() <= b for a, b in tests):
+            continue
         before = mask[:match.start()]
         if re.search(r'\bconst\s*$', before):
             continue
@@ -155,6 +214,11 @@ def main():
         result, count = migrate(source, ROOT / 'orbit.rs')
         assert count == 1 and result.startswith('pub const INK:')
         assert pair('(f(1), 2)', 0) == 8
+        source = '/* nested /* inner */ orbit::INK */ fn a() { let x = r##"orbit::INK"##; rgb(orbit::INK); }'
+        result, count = migrate(source, ROOT / 'home.rs')
+        assert count == 1 and 'r##"orbit::INK"##' in result
+        source = '#[cfg(test)] mod tests { fn a() { rgb(orbit::INK); } }'
+        assert migrate(source, ROOT / 'orbit.rs') == (source, 0)
         print('self-test OK')
         return 0
     if args.repair_context:

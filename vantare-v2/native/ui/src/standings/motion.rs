@@ -707,6 +707,7 @@ impl Motion {
     }
 
     /// `true` mientras quede algo por animar o caducar.
+    #[cfg(any(test, feature = "parity-capture"))]
     pub fn animating(&self, now: Instant) -> bool {
         self.wake(now) != Wake::Idle
     }

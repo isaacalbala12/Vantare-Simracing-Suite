@@ -1,9 +1,28 @@
 //! Widget Standings Eficiencia: modelo, movimiento y pintado.
+//!
+//! Los detalles de renderizado no forman parte del contrato público.
+//! ```compile_fail
+//! use vantare_ui::standings::model::Config;
+//! ```
+//! ```compile_fail
+//! use vantare_ui::standings::motion;
+//! ```
+//! ```compile_fail
+//! use vantare_ui::standings::view;
+//! ```
+//! ```compile_fail
+//! let _ = vantare_ui::standings::options::ColumnSetting::default().column();
+//! ```
+//! Los ajustes y el ancho del rail usado por Workshop siguen públicos.
+//! ```
+//! use vantare_ui::standings::{Settings, model::PIT_RAIL_WIDTH, options::{ColumnSetting, Format}};
+//! let _ = (Settings::default(), ColumnSetting::default(), Format::default(), PIT_RAIL_WIDTH);
+//! ```
 
 pub mod model;
-pub mod motion;
+pub(crate) mod motion;
 pub mod options;
-pub mod view;
+pub(crate) mod view;
 
 use crate::app::Paint;
 use model::{Config, Metric, Plan, Status, Vm};

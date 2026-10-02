@@ -4,10 +4,11 @@
 //! ViewModel cambia.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gpui::{
     App, Bounds, Context, DisplayId, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -31,6 +32,27 @@ pub enum Wake {
     Frame,
     At(Duration),
     Idle,
+}
+
+#[derive(Default)]
+struct WakeDeadline(Option<Instant>);
+
+impl WakeDeadline {
+    fn schedule(&mut self, deadline: Instant) -> bool {
+        if self.0.is_some_and(|pending| pending <= deadline) {
+            return false;
+        }
+        self.0 = Some(deadline);
+        true
+    }
+
+    fn fired(&mut self, deadline: Instant) -> bool {
+        if self.0 != Some(deadline) {
+            return false;
+        }
+        self.0 = None;
+        true
+    }
 }
 
 impl Kind {
@@ -60,7 +82,8 @@ pub struct Overlay {
     widget: Widget,
     prefs: Preferences,
     /// Hay un despertar programado (ver `wake_after`).
-    wake_pending: bool,
+    wake_deadline: WakeDeadline,
+    wake_task: Option<gpui::Task<()>>,
     preview_scale: f32,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
@@ -82,7 +105,8 @@ impl Overlay {
             kind: settings.kind(),
             widget,
             prefs,
-            wake_pending: false,
+            wake_deadline: WakeDeadline::default(),
+            wake_task: None,
             preview_scale: 1.0,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
@@ -97,21 +121,27 @@ impl Overlay {
         overlay
     }
 
-    /// Repinta al cabo de `after` (un aviso quieto que caduca). Un solo despertar
-    /// pendiente a la vez: los avisos caducan en el orden en que nacieron.
+    /// Conserva el vencimiento más temprano. Reemplazar la tarea cancela el
+    /// timer anterior; destruir el Overlay también lo cancela.
     fn wake_after(&mut self, after: Duration, cx: &mut Context<Self>) {
-        if self.wake_pending {
+        let Some(deadline) = Instant::now().checked_add(after) else {
+            eprintln!("vencimiento de widget fuera del rango del reloj");
+            return;
+        };
+        if !self.wake_deadline.schedule(deadline) {
             return;
         }
-        self.wake_pending = true;
-        cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(after).await;
+        self.wake_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(deadline.saturating_duration_since(Instant::now()))
+                .await;
             let _ = this.update(cx, |overlay, cx| {
-                overlay.wake_pending = false;
-                cx.notify();
+                if overlay.wake_deadline.fired(deadline) {
+                    overlay.wake_task = None;
+                    cx.notify();
+                }
             });
-        })
-        .detach();
+        }));
     }
 
     pub fn wanted_size(&self) -> (f32, f32) {
@@ -144,39 +174,13 @@ impl Overlay {
     }
 }
 
-// El encargo permite Settings/constructores; los portes de variantes que exigen
-// editar ingest/paint siguen pendientes. No anunciar una opción ignorada como aplicada.
+// Estas claves legacy se conservan en el documento, pero no se proyectan.
 fn settings_limit(settings: &Settings) -> Option<&'static str> {
     match settings {
-        Settings::Delta(options) if options.template_id != "instrument" => {
-            Some("templateId persistido; el renderer actual solo pinta instrument")
-        }
-        Settings::Pedals(options) if options.transparent_background => {
-            Some("transparentBackground persistido; variante aún sin portar")
-        }
-        Settings::BroadcastTower(options) if options.driver_carousel => {
-            Some("driverCarousel persistido; variante aún sin portar")
-        }
-        Settings::PedalsTelemetry(options) if options.steering_wheel != "generic" => {
-            Some("steeringWheel persistido; el renderer actual solo pinta generic")
-        }
-        Settings::RacingFlags(options) if options.text_color != "#000000" => {
-            Some("textColor persistido; variante aún sin portar")
-        }
-        Settings::HeadToHead(options) if options.target != "ahead" => {
-            Some("target persistido; el renderer actual solo proyecta ahead")
-        }
         Settings::Standings(options)
-            if options.template_id != "signature"
-                || options.header_first != "none"
-                || options.header_second != "none"
-                || options.show_brand
-                || options.footer_slots.is_some()
-                || [&options.footer_first, &options.footer_second]
-                    .iter()
-                    .any(|value| !["none", "track", "estimatedLaps"].contains(&value.as_str())) =>
+            if options.header_first != "none" || options.header_second != "none" =>
         {
-            Some("opciones persistidas; variantes y métricas adicionales aún sin portar")
+            Some("headerFirst/headerSecond legacy persistidos; no se usan en la cabecera")
         }
         _ => None,
     }
@@ -412,16 +416,77 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 
 struct LiveScreens {
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
+    widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
     prefs: Preferences,
     last: Option<Arc<Snapshot>>,
     last_demand: vantare_ipc::Demand,
     required: vantare_ipc::Demand,
 }
 
+struct LiveWidget<T> {
+    settings: Settings,
+    visible: bool,
+    view: T,
+}
+
+fn reconcile_widgets<T>(
+    mut previous: HashMap<String, LiveWidget<T>>,
+    instances: &[crate::layout::Instance],
+    mut create: impl FnMut(&crate::layout::Instance) -> T,
+) -> HashMap<String, LiveWidget<T>> {
+    instances
+        .iter()
+        .map(|instance| {
+            let view = match previous.remove(&instance.id) {
+                Some(old) if old.settings == instance.settings => old.view,
+                _ => create(instance),
+            };
+            (
+                instance.id.clone(),
+                LiveWidget {
+                    settings: instance.settings.clone(),
+                    visible: instance.visible,
+                    view,
+                },
+            )
+        })
+        .collect()
+}
+
 impl LiveScreens {
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
         self.prefs = layout.preferences;
         self.required = layout.demand();
+        self.widgets = reconcile_widgets(
+            std::mem::take(&mut self.widgets),
+            &layout.instances,
+            |instance| {
+                cx.new(|_| {
+                    Overlay::with_snapshot(
+                        &instance.settings,
+                        self.prefs,
+                        self.last.as_deref().filter(|_| {
+                            instance.visible && self.last_demand.covers(&instance.settings.demand())
+                        }),
+                    )
+                })
+            },
+        );
+        // Las pantallas solo colocan referencias. La entidad pertenece al ID,
+        // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
+        for widget in self.widgets.values() {
+            widget.view.update(cx, |overlay, cx| {
+                overlay.prefs = self.prefs;
+                if widget.visible
+                    && let Some(snapshot) = self
+                        .last
+                        .as_deref()
+                        .filter(|_| self.last_demand.covers(&widget.settings.demand()))
+                {
+                    overlay.ingest(snapshot, cx);
+                }
+            });
+        }
         let displays = cx.displays();
         let bounds: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
         // Una instancia oculta conserva la ocupación de su monitor y su HWND.
@@ -463,15 +528,7 @@ impl LiveScreens {
                 .into_iter()
                 .filter(|(instance, _)| instance.visible)
                 .map(|(instance, at)| {
-                    let view = cx.new(|_| {
-                        Overlay::with_snapshot(
-                            &instance.settings,
-                            self.prefs,
-                            self.last
-                                .as_deref()
-                                .filter(|_| self.last_demand.covers(&instance.settings.demand())),
-                        )
-                    });
+                    let view = self.widgets[&instance.id].view.clone();
                     PlacedOverlay {
                         view,
                         at,
@@ -523,16 +580,10 @@ impl LiveScreens {
         }
         let snapshot = photo.snapshot;
         self.last_demand = photo.demand;
-        for (_, handle) in &self.screens {
-            if let Err(error) = handle.update(cx, |screen, _, cx| {
-                for placed in &screen.widgets {
-                    placed
-                        .view
-                        .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
-                }
-            }) {
-                eprintln!("actualizar monitor de layout: {error}");
-            }
+        for widget in self.widgets.values().filter(|widget| widget.visible) {
+            widget
+                .view
+                .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
         }
         self.last = Some(snapshot);
     }
@@ -577,6 +628,7 @@ fn run_layout_feed<T: Send + 'static>(
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
             screens: Vec::new(),
+            widgets: HashMap::new(),
             prefs: document.layout().preferences,
             last: None,
             last_demand: vantare_ipc::Demand::default(),
@@ -718,6 +770,183 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn layout_spatial_edits_and_visibility_preserve_the_same_widget_state() {
+        let prefs = Preferences::default();
+        let snapshots = crate::workshop::snapshots_from_json(include_str!(
+            "../fixtures/input-telemetry.sequence.json"
+        ))
+        .expect("historia observada");
+        let mut instance = crate::layout::Instance {
+            id: "inputs".into(),
+            x: 20.0,
+            y: 30.0,
+            visible: true,
+            opacity: 1.0,
+            settings: Settings::default_for(Kind::InputTelemetry),
+        };
+        let mut widgets = reconcile_widgets(HashMap::new(), &[instance.clone()], |instance| {
+            let mut overlay = Box::new(Overlay::new(instance.settings.kind(), prefs));
+            for snapshot in &snapshots {
+                overlay.widget.ingest(snapshot, prefs);
+            }
+            overlay
+        });
+        let identity = std::ptr::from_ref(widgets["inputs"].view.as_ref());
+        for (x, y, opacity, visible) in [
+            (-1200.0, 60.0, 0.5, true),
+            (8000.0, 60.0, 0.5, false),
+            (20.0, 30.0, 1.0, true),
+        ] {
+            instance.x = x;
+            instance.y = y;
+            instance.opacity = opacity;
+            instance.visible = visible;
+            widgets = reconcile_widgets(widgets, &[instance.clone()], |instance| {
+                Box::new(Overlay::with_snapshot(
+                    &instance.settings,
+                    prefs,
+                    snapshots.last(),
+                ))
+            });
+            assert_eq!(
+                std::ptr::from_ref(widgets["inputs"].view.as_ref()),
+                identity,
+                "misma entidad y su historia"
+            );
+            assert_eq!(widgets["inputs"].visible, visible);
+        }
+        let latest = snapshots.last().expect("última foto");
+        assert!(
+            !widgets
+                .get_mut("inputs")
+                .expect("widget")
+                .view
+                .widget
+                .ingest(latest, prefs)
+        );
+    }
+
+    #[test]
+    fn layout_recreates_only_changed_settings_types_new_ids_and_deleted_widgets() {
+        let mut instance = crate::layout::Instance {
+            id: "inputs".into(),
+            x: 20.0,
+            y: 30.0,
+            visible: true,
+            opacity: 1.0,
+            settings: Settings::default_for(Kind::InputTelemetry),
+        };
+        let mut created = 0;
+        let mut apply = |previous, instances: &[crate::layout::Instance]| {
+            reconcile_widgets(previous, instances, |_| {
+                created += 1;
+                created
+            })
+        };
+        let widgets = apply(HashMap::new(), &[instance.clone()]);
+        assert_eq!(widgets["inputs"].view, 1);
+        let widgets = apply(widgets, &[instance.clone()]);
+        assert_eq!(widgets["inputs"].view, 1);
+        if let Settings::InputTelemetry(options) = &mut instance.settings {
+            options.show_clutch = false;
+        }
+        let widgets = apply(widgets, &[instance.clone()]);
+        assert_eq!(widgets["inputs"].view, 2);
+        instance.settings = Settings::default_for(Kind::Radar);
+        let widgets = apply(widgets, &[instance.clone()]);
+        assert_eq!(widgets["inputs"].view, 3);
+        instance.id = "radar".into();
+        let widgets = apply(widgets, &[instance]);
+        assert!(!widgets.contains_key("inputs"));
+        assert_eq!(widgets["radar"].view, 4);
+        let widgets = apply(widgets, &[]);
+        assert!(widgets.is_empty());
+        assert_eq!(created, 4, "borrar no construye una entidad");
+    }
+
+    #[test]
+    fn wake_deadline_replaces_a_long_notice_with_an_earlier_expiry() {
+        let now = Instant::now();
+        let long = now + Duration::from_secs(4);
+        let short = now + Duration::from_millis(750);
+        let mut pending = WakeDeadline::default();
+        assert!(pending.schedule(long));
+        assert!(pending.schedule(short), "el aviso de cruce vence antes");
+        assert!(!pending.schedule(long));
+        assert!(!pending.fired(long), "callback sustituido");
+        assert_eq!(pending.0, Some(short));
+        assert!(pending.fired(short));
+        assert!(!pending.fired(short), "solo notifica una vez");
+        assert!(pending.schedule(long));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn dropping_an_overlay_cancels_its_pending_task() {
+        struct Released(flume::Sender<()>);
+        impl Drop for Released {
+            fn drop(&mut self) {
+                let _ = self.0.send(()); // El receptor puede haber terminado el test.
+            }
+        }
+        let application = gpui_platform::application();
+        let executor = application.background_executor();
+        let (started_tx, started_rx) = flume::bounded(1);
+        let (released_tx, released_rx) = flume::bounded(1);
+        let task = executor.spawn(async move {
+            let _released = Released(released_tx);
+            started_tx.send(()).expect("tarea iniciada");
+            std::future::pending::<()>().await;
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("inicio");
+        let mut overlay = Overlay::new(Kind::Delta, Preferences::default());
+        overlay.wake_task = Some(task);
+        drop(overlay);
+        released_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("cancelación");
+    }
+
+    #[test]
+    fn supported_variants_do_not_report_a_pending_port() {
+        for value in [
+            serde_json::json!({"kind":"delta", "templateId":"capsule"}),
+            serde_json::json!({"kind":"pedals", "transparentBackground":true}),
+            serde_json::json!({"kind":"broadcast-tower", "driverCarousel":true}),
+            serde_json::json!({"kind":"pedals-telemetry", "steeringWheel":"ferrari-499p"}),
+            serde_json::json!({"kind":"racing-flags", "textColor":"#abcdef"}),
+            serde_json::json!({"kind":"head-to-head", "target":"behind"}),
+            serde_json::json!({"kind":"standings", "templateId":"broadcast", "showBrand":true,
+                "footerFirst":"remaining", "footerSecond":"rain",
+                "footerSlots":["trackTemperature", "rain", "wetness"]}),
+        ] {
+            let settings: Settings = serde_json::from_value(value).expect("variante soportada");
+            assert_eq!(settings.normalized(), settings, "opciones aplicables");
+            assert_eq!(
+                settings_limit(&settings),
+                None,
+                "{}",
+                settings.kind().name()
+            );
+        }
+    }
+
+    #[test]
+    fn ignored_legacy_header_keys_still_report_their_actual_limit() {
+        for key in ["headerFirst", "headerSecond"] {
+            let mut value = serde_json::json!({"kind":"standings"});
+            value[key] = "track".into();
+            let settings: Settings = serde_json::from_value(value).expect("cabecera legacy");
+            assert_eq!(
+                settings_limit(&settings),
+                Some("headerFirst/headerSecond legacy persistidos; no se usan en la cabecera")
+            );
+        }
+    }
+
     #[test]
     fn preview_scale_does_not_resize_the_logical_widget_and_rejects_invalid_factors() {
         let mut overlay = super::Overlay::new(

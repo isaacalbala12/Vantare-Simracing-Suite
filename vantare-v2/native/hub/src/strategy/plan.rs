@@ -736,7 +736,8 @@ cálculo",
                     .justify_end()
                     .gap(px(16.0))
                     .child(
-                        orbit::button(reset_id, "Restablecer")
+                        secondary_action(reset_id, "Restablecer")
+                            .rounded(px(14.0))
                             .h(px(40.0))
                             .when(!self.can_reset_plan_edit() || self.running, |button| {
                                 button.opacity(orbit::DISABLED)
@@ -747,8 +748,9 @@ cálculo",
                         super::datos::primary_action(recalculate_id, recalculate_label)
                             .h(px(40.0))
                             .when(!self.edit_dirty || self.running, |button| {
-                                button.opacity(orbit::DISABLED)
+                                button.bg(rgb(0x008b_8889)).border_color(rgb(0x008b_8889))
                             })
+                            .rounded(px(14.0))
                             .on_click(cx.listener(|this, _, _, cx| this.recalculate_plan_edit(cx))),
                     ),
             )
@@ -1041,7 +1043,7 @@ pub(super) fn edit_heading(title: &str) -> Div {
         .flex()
         .flex_col()
         .gap(px(12.0))
-        .pb(px(18.0))
+        .pb(px(19.0))
         .border_b_1()
         .border_color(rgba(orbit::LINE))
         .child(orbit::tracked_text(

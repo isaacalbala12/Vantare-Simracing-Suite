@@ -696,6 +696,7 @@ impl Strategy {
         pager.into_any_element()
     }
 
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn observation_panel(
         &self,
         source: &CorrectionSource,

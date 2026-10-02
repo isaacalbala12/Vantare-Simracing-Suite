@@ -71,6 +71,44 @@ fn explicit_login_restart_releases_the_fixed_callback_port() {
 }
 
 #[test]
+fn callback_waits_for_a_browser_that_connects_before_sending() {
+    let server = Server::start(vec![]);
+    let (root, store) = crate::test_store("login-slow-browser");
+    let mut account = Account::restore(oauth(&server), &store).expect("account");
+    let login = account.begin_login().expect("login");
+    let params: std::collections::HashMap<_, _> = login
+        .query_pairs()
+        .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        .collect();
+    let redirect = Url::parse(&params["redirect_uri"]).expect("test redirect");
+    let mut socket =
+        TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("connect");
+    let state = params["state"].clone();
+    // Sleep justificado: reproduce el hueco real entre conectar y enviar.
+    let writer = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(300));
+        write!(
+            socket,
+            "GET /callback?state={state}&code=c HTTP/1.1\r\nHost: x\r\n\r\n"
+        )
+        .expect("callback");
+        let mut reply = String::new();
+        socket.read_to_string(&mut reply).expect("reply");
+        reply
+    });
+    assert!(account.poll_login().expect("callback").is_some());
+    assert!(
+        writer
+            .join()
+            .expect("writer")
+            .starts_with("HTTP/1.1 200 OK")
+    );
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "login-slow-browser", &[]);
+}
+
+#[test]
 fn pkce_refresh_restore_logout_and_late_completion_are_bound_to_identity() {
     let access = crate::random_id().expect("test entropy");
     let refresh = crate::random_id().expect("test entropy");

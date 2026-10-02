@@ -367,7 +367,8 @@ impl Account {
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(None),
             Err(_) => return Err(Error::Protocol),
         };
-        #[cfg(target_os = "macos")]
+        // Windows y macOS heredan el modo no bloqueante del listener: el navegador
+        // conecta antes de enviar la petición y leer fallaría con WouldBlock.
         socket.set_nonblocking(false).map_err(|_| Error::Protocol)?;
         // One absolute deadline; a local slow sender cannot retain this worker.
         let deadline = Instant::now() + Duration::from_secs(3);

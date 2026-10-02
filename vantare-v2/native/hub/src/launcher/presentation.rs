@@ -99,7 +99,7 @@ pub(super) fn eyebrow(content: impl Into<gpui::SharedString>) -> gpui::Div {
 fn chip(label: &str, tone: Tone) -> gpui::Div {
     div()
         .h(px(26.0))
-        .px(px(9.0))
+        .px(px(10.0))
         .rounded(px(8.0))
         .flex_none()
         .flex()
@@ -310,8 +310,9 @@ fn monogram(label: &str, size: f32, first: u32, second: u32) -> gpui::Div {
         .justify_center()
         .bg(linear_gradient(
             145.0,
-            linear_color_stop(rgb(first), 0.0),
-            linear_color_stop(rgb(second), 1.0),
+            // CSS extiende la diagonal del cuadrado: sin(145°) + |cos(145°)|.
+            linear_color_stop(rgb(first), -0.196_364),
+            linear_color_stop(rgb(second), 1.196_364),
         ))
         .text_size(px(if size >= 46.0 {
             11.5
@@ -977,12 +978,17 @@ impl Launcher {
                     .flex_1()
                     .min_w_0()
                     .child(text("Añadir aplicación", 13.0, 650, orbit::INK_2))
-                    .child(text(
-                        "Elige un ejecutable que la detección no encontró.",
-                        11.0,
-                        400,
-                        orbit::INK_3,
-                    )),
+                    .child(
+                        text(
+                            "Elige un ejecutable que la detección no encontró.",
+                            11.0,
+                            400,
+                            orbit::INK_3,
+                        )
+                        .whitespace_nowrap()
+                        .overflow_hidden()
+                        .text_ellipsis(),
+                    ),
             )
             .on_click(cx.listener(|this, _, window, cx| this.app_editor(None, window, cx)))
     }
@@ -1180,7 +1186,7 @@ impl Launcher {
             .overflow_hidden()
             .py(px(20.0))
             .px(px(22.0))
-            .rounded(px(if featured { 25.0 } else { 18.0 }))
+            .rounded(px(18.0))
             .border_1()
             .border_color(rgba(orbit::LINE))
             .bg(linear_gradient(
@@ -1191,10 +1197,20 @@ impl Launcher {
             .child(
                 div()
                     .absolute()
-                    .top_0()
-                    .bottom_0()
+                    .top(px(8.0))
+                    .bottom(px(8.0))
                     .left_0()
                     .w(px(3.0))
+                    .rounded(px(1.5))
+                    .when(featured, |bar| {
+                        bar.shadow(vec![gpui::BoxShadow {
+                            color: rgba(0xf047_5580).into(),
+                            offset: gpui::point(px(0.0), px(0.0)),
+                            blur_radius: px(18.0),
+                            spread_radius: px(0.0),
+                            inset: false,
+                        }])
+                    })
                     .bg(linear_gradient(
                         180.0,
                         linear_color_stop(
@@ -1307,7 +1323,9 @@ impl Launcher {
                                     27.0,
                                 )
                                 .line_height(px(27.0))
-                                .mt(px(5.0)),
+                                .mt(px(5.0))
+                                .relative()
+                                .top(px(2.0)),
                             ),
                     ),
             )
@@ -1317,7 +1335,9 @@ impl Launcher {
                         .line_height(px(18.75))
                         .ml(px(62.0))
                         .mr(px(134.0))
-                        .mt(px(5.0)),
+                        .mt(px(5.0))
+                        .relative()
+                        .top(px(2.0)),
                 )
             })
             .child(actions)

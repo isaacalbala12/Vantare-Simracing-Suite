@@ -81,6 +81,16 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        if self.capture.is_none() {
+            let access = self.remote.update(cx, |remote, cx| {
+                remote.refresh_license(cx);
+                remote.navigation_access()
+            });
+            if self.shell.access != access {
+                self.shell.access = access;
+                cx.notify();
+            }
+        }
         if self
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
@@ -696,7 +706,13 @@ impl Hub {
         let engineer = create_engineer(engineer, cx);
         let remote =
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
-        cx.observe(&remote, |_, _, cx| cx.notify()).detach();
+        cx.observe(&remote, |this, remote, cx| {
+            if this.capture.is_none() {
+                this.shell.access = remote.read(cx).navigation_access();
+            }
+            cx.notify();
+        })
+        .detach();
         let strategy = cx.new(|cx| match &demo {
             Some(_) => Strategy::new_demo(
                 strategy_dir,

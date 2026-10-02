@@ -8,6 +8,8 @@ pub(super) struct State {
     session_checked: bool,
     pub(super) login_requested: bool,
     error: Option<String>,
+    policy: Option<vantare_ipc::control::Policy>,
+    expires_at: Option<u64>,
 }
 
 pub(super) fn follow_up(pending: bool, cancel: &mut bool, check_session: bool) -> Option<Command> {
@@ -35,6 +37,56 @@ impl State {
             session_checked: false,
             login_requested: false,
             error: None,
+            policy: None,
+            expires_at: None,
+        }
+    }
+
+    pub(super) fn requested(&mut self, command: &Command) {
+        if matches!(command, Command::Logout | Command::AccountBegin) {
+            self.invalidate();
+        }
+    }
+
+    fn invalidate(&mut self) {
+        self.policy = None;
+        self.expires_at = None;
+    }
+
+    pub(super) fn session_current(&self, now_ms: u64) -> bool {
+        self.expires_at.is_some_and(|end| now_ms / 1000 < end)
+    }
+
+    pub(super) fn navigation(
+        &self,
+        signed_in: bool,
+        now_ms: u64,
+    ) -> crate::shell::navigation::Access {
+        use crate::shell::navigation::{Access, Plan};
+        if !signed_in || self.login_requested || !self.session_current(now_ms) {
+            return Access::default();
+        }
+        let Some(policy) = &self.policy else {
+            return Access::default();
+        };
+        if policy.error.is_some() {
+            return Access {
+                blocked: true,
+                ..Access::default()
+            };
+        }
+        if !policy.current_at(now_ms) {
+            return Access::default();
+        }
+        // Combinaciones para la matriz UI; nunca se deduce Free de derechos ausentes.
+        Access {
+            plan: match (policy.overlays_advanced, policy.engineer) {
+                (true, true) => Plan::Suite,
+                (true, false) => Plan::Overlays,
+                (false, true) => Plan::Engineer,
+                (false, false) => Plan::Unknown,
+            },
+            ..Access::default()
         }
     }
 
@@ -43,19 +95,39 @@ impl State {
     }
 
     pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
+        if matches!(reply, Reply::Error { .. }) {
+            self.policy = None;
+        }
         match reply {
             Reply::Status {
                 account_configured, ..
             } => {
                 self.configured = *account_configured;
+                if !account_configured {
+                    self.invalidate();
+                }
                 self.error = None;
             }
-            Reply::Account { pending, .. } => {
+            Reply::Account {
+                pending,
+                signed_in,
+                expires_at,
+                ..
+            } => {
+                self.invalidate();
+                self.expires_at = if *signed_in && !pending {
+                    *expires_at
+                } else {
+                    None
+                };
                 self.session_checked = true;
                 self.login_requested = *pending;
                 self.error = None;
             }
+            Reply::License { policy, .. } => self.policy = Some(policy.clone()),
+            Reply::Closed => self.invalidate(),
             Reply::Error { message } if account => {
+                self.expires_at = None;
                 self.login_requested = false;
                 self.error = Some(format!("No se pudo completar el acceso: {message}"));
             }
@@ -394,6 +466,8 @@ mod tests {
                     session_checked: true,
                     login_requested: false,
                     error: None,
+                    policy: None,
+                    expires_at: None,
                 };
                 assert_eq!(state.required(signed_in), configured && !signed_in);
             }
@@ -407,6 +481,8 @@ mod tests {
             session_checked: false,
             login_requested: false,
             error: None,
+            policy: None,
+            expires_at: None,
         };
         assert!(state.required(false));
         for signed_in in [true, false] {
@@ -459,6 +535,185 @@ mod tests {
         assert_eq!(
             portal_url(issuer, Portal::Reset).as_deref(),
             Some("https://enabled-lionfish-1336.accounts.dev/sign-in?__clerk_reset_password=true")
+        );
+    }
+}
+
+#[cfg(test)]
+mod navigation_tests {
+    use super::*;
+    use crate::{
+        Section,
+        shell::navigation::{Access, Command as NavigationCommand, Plan, commands},
+    };
+    use vantare_ipc::control::Policy;
+
+    fn valid() -> Policy {
+        Policy {
+            version: 1,
+            revision: 1,
+            checked_at_ms: 1000,
+            overlays_advanced: true,
+            engineer: true,
+            ..Policy::default()
+        }
+    }
+
+    fn state(overlays: bool, engineer: bool) -> State {
+        let mut state = State::from_build();
+        state.observe(
+            &Reply::Account {
+                signed_in: true,
+                pending: false,
+                expires_at: Some(10),
+                message: String::new(),
+            },
+            true,
+        );
+        state.observe(
+            &Reply::License {
+                policy: Policy {
+                    version: 1,
+                    revision: 1,
+                    checked_at_ms: 1000,
+                    valid_until_ms: Some(9000),
+                    overlays_advanced: overlays,
+                    engineer,
+                    ..Policy::default()
+                },
+                message: String::new(),
+            },
+            false,
+        );
+        state
+    }
+    #[test]
+    fn observed_capabilities_reach_navigation_palette_and_content_locks() {
+        for (overlays, engineer, plan) in [
+            (true, false, Plan::Overlays),
+            (false, true, Plan::Engineer),
+            (true, true, Plan::Suite),
+            (false, false, Plan::Unknown),
+        ] {
+            let access = state(overlays, engineer).navigation(true, 1000);
+            assert_eq!(access.plan, plan);
+            for (section, allowed) in [
+                (Section::Studio, overlays),
+                (Section::Strategy, overlays || engineer),
+                (Section::Analysis, overlays || engineer),
+                (Section::Engineer, engineer),
+            ] {
+                assert_eq!(access.lock(section).is_none(), allowed);
+                let mut current = Section::Home;
+                assert_eq!(access.navigate(&mut current, section).is_ok(), allowed);
+                assert_eq!(current, if allowed { section } else { Section::Home });
+                let item = commands(access, "")
+                    .into_iter()
+                    .find(|item| item.command == NavigationCommand::Navigate(section))
+                    .expect("destino");
+                assert_eq!(item.locked.is_none(), allowed);
+            }
+        }
+    }
+    #[test]
+    fn logout_error_missing_session_and_expiry_never_grant_navigation() {
+        let mut state = state(true, true);
+        assert_eq!(state.navigation(true, 2999).plan, Plan::Suite);
+        for (signed_in, time) in [(false, 1000), (true, 999), (true, 3000), (true, 10000)] {
+            assert_eq!(state.navigation(signed_in, time).plan, Plan::Unknown);
+        }
+        state.observe(
+            &Reply::Error {
+                message: "IPC desconectado".into(),
+            },
+            false,
+        );
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        state = self::state(true, true);
+        state.requested(&Command::Logout); // Antes del ACK.
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        state = self::state(true, true);
+        state.observe(
+            &Reply::Account {
+                signed_in: true,
+                pending: false,
+                expires_at: None,
+                message: String::new(),
+            },
+            true,
+        );
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        state = self::state(true, true);
+        state.observe(
+            &Reply::Account {
+                signed_in: false,
+                pending: false,
+                expires_at: None,
+                message: String::new(),
+            },
+            true,
+        );
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+    }
+    #[test]
+    fn session_expiry_and_closed_reply_revoke_even_a_fresh_positive_policy() {
+        let mut state = state(true, true);
+        state.observe(
+            &Reply::Account {
+                signed_in: true,
+                pending: false,
+                expires_at: Some(2),
+                message: String::new(),
+            },
+            true,
+        );
+        state.observe(
+            &Reply::License {
+                policy: valid(),
+                message: String::new(),
+            },
+            false,
+        );
+        assert_eq!(state.navigation(true, 1999).plan, Plan::Suite);
+        assert_eq!(state.navigation(true, 2000).plan, Plan::Unknown);
+        state.observe(&Reply::Closed, false);
+        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+    }
+
+    #[test]
+    fn malformed_or_revoked_policy_cannot_turn_into_a_free_plan() {
+        for policy in [
+            Policy {
+                version: 2,
+                ..valid()
+            },
+            Policy {
+                revision: 0,
+                ..valid()
+            },
+            Policy {
+                valid_until_ms: Some(1000),
+                ..valid()
+            },
+            Policy {
+                error: Some("revocada".into()),
+                ..valid()
+            },
+            Policy::default(),
+        ] {
+            let mut state = state(true, true);
+            state.observe(
+                &Reply::License {
+                    policy,
+                    message: String::new(),
+                },
+                false,
+            );
+            assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        }
+        assert_eq!(
+            state(false, false).navigation(true, 1000),
+            Access::default()
         );
     }
 }

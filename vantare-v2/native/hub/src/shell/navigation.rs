@@ -1,7 +1,8 @@
 //! Navegación local de la shell. No verifica licencias ni concede derechos al núcleo.
 use crate::Section;
 
-/// Plan resuelto por la integración de cuenta; nunca se lee de un archivo/env local.
+/// Combinación para la matriz UI, proyectada de capacidades vigentes del núcleo.
+/// No acredita el nombre comercial del plan ni se lee de un archivo/env local.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Plan {
     #[default]
@@ -12,7 +13,7 @@ pub enum Plan {
     Suite,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Access {
     pub plan: Plan,
     pub blocked: bool,

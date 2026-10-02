@@ -188,6 +188,7 @@ pub struct Remote {
     busy: bool,
     account: AccountState,
     access: access::State,
+    license_polled_at: Option<std::time::Instant>,
     message: String,
     active: Area,
     report_revision: Option<u64>,
@@ -243,6 +244,7 @@ impl Remote {
             busy: false,
             account: AccountState::default(),
             access: access::State::from_build(),
+            license_polled_at: None,
             message: "servicio no configurado".into(),
             active: Area::Account,
             report_revision: None,
@@ -255,6 +257,27 @@ impl Remote {
         };
         remote.request(Command::Status, cx);
         remote
+    }
+
+    pub(crate) fn navigation_access(&self) -> crate::shell::navigation::Access {
+        vantare_ipc::control::wall_ms().map_or_else(
+            |_| crate::shell::navigation::Access::default(),
+            |now| self.access.navigation(self.account.signed_in, now),
+        )
+    }
+
+    /// `LicenseStatus` solo lee el núcleo por IPC. Su política caduca a los 2 s.
+    pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
+        if !self.busy
+            && self.account.signed_in
+            && vantare_ipc::control::wall_ms().is_ok_and(|now| self.access.session_current(now))
+            && self
+                .license_polled_at
+                .is_none_or(|last| last.elapsed() >= std::time::Duration::from_secs(1))
+        {
+            self.license_polled_at = Some(std::time::Instant::now());
+            self.request(Command::LicenseStatus, cx);
+        }
     }
 
     /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
@@ -383,6 +406,7 @@ impl Remote {
     }
 
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
+        self.access.requested(&command);
         if self.busy
             && (self.account.pending || self.access.login_requested)
             && matches!(command, Command::Logout)

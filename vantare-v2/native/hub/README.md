@@ -144,6 +144,13 @@ el hilo UI durante el join. GPUI limita las futures de cierre a 200 ms; señalar
 el evento y cerrar el sender despierta también connect/hello y recv pendientes.
 Descartar una conexión no cancela al propietario, por
 lo que una reconexión conserva su evento hasta el cierre del Hub.
+La navegación, el rail, la paleta y el contenido usan la misma proyección de las
+capacidades del núcleo recibidas por Cuenta. Requiere sesión no caducada y política
+vigente sin error; logout, cierre del servicio o error revocan la proyección. El
+Hub consulta LicenseStatus por IPC una vez por segundo cuando el canal está libre;
+la política pierde vigencia a los dos segundos aunque no llegue otra respuesta.
+Los bits ausentes no acreditan Free ni Studio básico: ese dato no está en el DTO.
+Las restricciones de capturas/demo permanecen aisladas de la autoridad productiva.
 El microplan y los bloques fechados conservan la evidencia de los hitos anteriores.
 
 

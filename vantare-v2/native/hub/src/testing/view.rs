@@ -2,6 +2,7 @@ use super::{
     diagnostic::{Diagnostic, Module, Observed},
     store::{self, Draft, LABELS, Store},
 };
+use crate::orbit::typography;
 use crate::orbit::{self, Input};
 use crate::services::{protocol::Command, view::Remote};
 use gpui::{
@@ -11,7 +12,6 @@ use gpui::{
 #[cfg(any(feature = "parity-capture", test))]
 use std::path::Path;
 use std::{path::PathBuf, time::Instant};
-use vantare_ui::efficiency::text as typography;
 
 pub struct Testing {
     remote: Entity<Remote>,
@@ -242,6 +242,7 @@ impl Testing {
             "Sección afectada",
             "Selecciona la sección del informe",
             self.local_module.clone(),
+            cx,
         ));
         for (index, label) in LABELS.into_iter().enumerate() {
             body = body.child(orbit::setting_row(
@@ -255,36 +256,45 @@ impl Testing {
                     .w(gpui::px(orbit::COLUMN_W * 1.5))
                     .min_w_0()
                     .child(self.inputs[index].clone()),
+                cx,
             ));
         }
-        orbit::card("Borrador de informe").child(body).child(
+        orbit::card("Borrador de informe", cx).child(body).child(
             orbit::card_body().child(
                 div()
                     .flex()
                     .gap(gpui::px(orbit::GUTTER / 2.0))
                     .child(
-                        orbit::button("testing-save", "Guardar borrador")
+                        orbit::button("testing-save", "Guardar borrador", cx)
                             .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
                     )
                     .child(
-                        orbit::button("testing-reload", "Recargar y descartar cambios")
+                        orbit::button("testing-reload", "Recargar y descartar cambios", cx)
                             .on_click(cx.listener(|this, _, _, cx| this.reload(cx))),
                     )
-                    .child(orbit::button("testing-new", "Vaciar formulario").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.store.draft = Draft::new();
-                            this.inputs = Self::inputs(&this.store.draft, cx);
-                            this.sync_local_module(cx);
-                            cx.notify();
-                        }),
-                    )),
+                    .child(
+                        orbit::button("testing-new", "Vaciar formulario", cx).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.store.draft = Draft::new();
+                                this.inputs = Self::inputs(&this.store.draft, cx);
+                                this.sync_local_module(cx);
+                                cx.notify();
+                            }),
+                        ),
+                    ),
             ),
         )
     }
-    fn diagnostic(&self) -> gpui::Div {
+    fn diagnostic(&self, cx: &gpui::App) -> gpui::Div {
         let mut body = orbit::card_body();
         if let Some(diagnostic) = &self.diagnostic {
-            body = body.child(orbit::text(diagnostic.summary(), 12.5, 400, orbit::INK_2));
+            body = body.child(orbit::text(
+                diagnostic.summary(),
+                12.5,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ));
             for binary in &diagnostic.binaries {
                 body = body.child(orbit::setting_row(
                     binary.name,
@@ -296,27 +306,31 @@ impl Testing {
                             .unwrap_or_else(|| "Hash no disponible".into()),
                         11.0,
                         400,
-                        orbit::INK_3,
+                        orbit::ink_3(cx),
+                        cx,
                     ),
+                    cx,
                 ));
             }
             for error in &diagnostic.section_errors {
                 body = body.child(orbit::setting_row(
                     error.module.label(),
                     "Último error observado (sin mensaje libre)",
-                    orbit::text(format!("{:?}", error.code), 12.0, 400, orbit::INK_2),
+                    orbit::text(format!("{:?}", error.code), 12.0, 400, orbit::ink_2(cx), cx),
+                    cx,
                 ));
             }
-            body = body.child(orbit::text("Studio y Análisis: error no instrumentado. Ausencia de error no demuestra que una sección funcione.", 12.0, 400, orbit::INK_3));
+            body = body.child(orbit::text("Studio y Análisis: error no instrumentado. Ausencia de error no demuestra que una sección funcione.", 12.0, 400, orbit::ink_3(cx), cx));
             // La vista previa es exactamente el payload que genera el exportador.
             if let Ok(bytes) = store::export_bytes(&self.store.draft, diagnostic) {
                 body = body
-                    .child(orbit::eyebrow("Contenido del JSON exportable"))
+                    .child(orbit::eyebrow("Contenido del JSON exportable", cx))
                     .child(orbit::text(
                         String::from_utf8_lossy(&bytes).into_owned(),
                         11.0,
                         400,
-                        orbit::INK_3,
+                        orbit::ink_3(cx),
+                        cx,
                     ));
             }
         } else {
@@ -324,10 +338,11 @@ impl Testing {
                 "Prepara el diagnóstico para ver la lista blanca de datos exportables.",
                 13.0,
                 400,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             ));
         }
-        orbit::card("Diagnóstico sanitizado").child(body)
+        orbit::card("Diagnóstico sanitizado", cx).child(body)
     }
 }
 
@@ -349,7 +364,12 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
     }
 }
 
-fn panel_header(title: &str, meta: &str, action: Option<gpui::Stateful<gpui::Div>>) -> gpui::Div {
+fn panel_header(
+    title: &str,
+    meta: &str,
+    action: Option<gpui::Stateful<gpui::Div>>,
+    cx: &gpui::App,
+) -> gpui::Div {
     let mut header = div()
         .flex()
         .items_center()
@@ -358,11 +378,15 @@ fn panel_header(title: &str, meta: &str, action: Option<gpui::Stateful<gpui::Div
         .px(px(20.0))
         .py(px(13.0))
         .border_b_1()
-        .border_color(rgba(0xffff_ff0d))
-        .child(orbit::text(title, 15.0, 700, orbit::INK).flex_1().min_w_0())
+        .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
         .child(
-            orbit::text(meta, orbit::SECONDARY, 400, orbit::INK_3)
-                .font_family("Cascadia Code")
+            orbit::text(title, 15.0, 700, orbit::ink(cx), cx)
+                .flex_1()
+                .min_w_0(),
+        )
+        .child(
+            orbit::text(meta, orbit::SECONDARY, 400, orbit::ink_3(cx), cx)
+                .font_family(crate::orbit::mono_family(cx))
                 .flex_none(),
         );
     if let Some(action) = action {
@@ -371,23 +395,25 @@ fn panel_header(title: &str, meta: &str, action: Option<gpui::Stateful<gpui::Div
     header
 }
 
-fn panel_note(content: impl Into<gpui::SharedString>) -> gpui::Div {
+fn panel_note(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> gpui::Div {
     div()
         .mt(px(12.0))
         .px(px(17.0))
         .py(px(13.0))
         .border_1()
-        .border_color(rgba(0xff9b_5721))
+        .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5721, cx)))
         .rounded(px(14.0))
         .bg(linear_gradient(
             110.0,
-            linear_color_stop(rgba(0xff9b_570f), 0.0),
-            linear_color_stop(rgba(0xd52f_4905), 1.0),
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xff9b_570f, cx)), 0.0),
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
         ))
-        .child(orbit::text(content, orbit::SECONDARY, 400, orbit::INK_3).line_height(px(18.0)))
+        .child(
+            orbit::text(content, orbit::SECONDARY, 400, orbit::ink_3(cx), cx).line_height(px(18.0)),
+        )
 }
 
-fn disabled_refresh() -> gpui::Stateful<gpui::Div> {
+fn disabled_refresh(cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     div()
         .id("testing-validate-refresh")
         .role(gpui::Role::Button)
@@ -403,15 +429,16 @@ fn disabled_refresh() -> gpui::Stateful<gpui::Div> {
         .justify_center()
         .rounded(px(orbit::RADIUS_CONTROL))
         .border_1()
-        .border_color(rgba(orbit::LINE))
-        .bg(rgba(0xffff_ff06))
+        .border_color(rgba(orbit::line(cx)))
+        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
         .flex_none()
         .opacity(0.55)
         .child(orbit::text(
             "Actualizar",
             orbit::SECONDARY,
             600,
-            orbit::INK_3,
+            orbit::ink_3(cx),
+            cx,
         ))
 }
 
@@ -421,7 +448,7 @@ fn testing_title() -> gpui::Div {
         gpui::canvas(
             |_, _, _| (),
             |bounds, (), window, cx| {
-                let ink = typography::ink(36.0, 700.0, -0.035, rgb(orbit::INK).into());
+                let ink = typography::ink(36.0, 700.0, -0.035, rgb(orbit::ink(cx)).into());
                 typography::draw(
                     window,
                     cx,
@@ -437,15 +464,15 @@ fn testing_title() -> gpui::Div {
     )
 }
 
-fn validation_panel() -> gpui::Div {
-    orbit::card("")
+fn validation_panel(cx: &gpui::App) -> gpui::Div {
+    orbit::card("", cx)
         .bg(orbit::tint(0x0010_1114, 0.79))
         .w_full()
         .child(panel_header(
             "Correcciones pendientes",
             "una validación por candidato",
-            Some(disabled_refresh()),
-        ))
+            Some(disabled_refresh( cx)),
+         cx))
         .child(
             div()
                 .flex()
@@ -456,20 +483,20 @@ fn validation_panel() -> gpui::Div {
                     "Prueba una corrección disponible para tu canal y registra un único resultado verificable.",
                     orbit::BODY,
                     400,
-                    orbit::INK_2,
-                ))
+                    orbit::ink_2(cx),
+                 cx))
                 .child(panel_note(
                     "No se pudieron cargar o guardar las validaciones. Inténtalo de nuevo.",
-                ))
+                 cx))
                 .child(div().mt(px(14.0))),
         )
 }
 
-fn reports_panel() -> gpui::Div {
-    orbit::card("")
+fn reports_panel(cx: &gpui::App) -> gpui::Div {
+    orbit::card("", cx)
         .bg(orbit::tint(0x0010_1114, 0.79))
         .w_full()
-        .child(panel_header("Mis reportes", "solo esta sesión", None))
+        .child(panel_header("Mis reportes", "solo esta sesión", None, cx))
         .child(
             div()
                 .flex()
@@ -481,22 +508,22 @@ fn reports_panel() -> gpui::Div {
                         .mt(px(12.0))
                         .bg(linear_gradient(
                             110.0,
-                            linear_color_stop(rgba(0xff9b_570f), 0.0),
-                            linear_color_stop(rgba(0xd52f_4905), 1.0),
+                            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xff9b_570f, cx)), 0.0),
+                            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
                         ))
                         .px(px(17.0))
                         .py(px(13.0))
                         .border_1()
-                        .border_color(rgba(0xff9b_5721))
+                        .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5721, cx)))
                         .rounded(px(14.0))
-                        .font_family("Inter W400")
+                        .font_family(crate::orbit::sans_override("Inter W400", cx))
                         .text_size(px(orbit::SECONDARY))
-                        .text_color(rgb(orbit::INK_3))
+                        .text_color(rgb(orbit::ink_3(cx)))
                         .line_height(px(18.0))
                         .child(gpui::StyledText::new(
                             "Sin historial El servicio de Testing Center no publica el historial de reportes: solo abre, guarda y descarta el borrador en curso. Aquí aparece lo que envíes durante esta sesión.",
                         ).with_highlights([(0.."Sin historial".len(), gpui::HighlightStyle {
-                            color: Some(rgb(orbit::BRONZE).into()),
+                            color: Some(rgb(orbit::bronze(cx)).into()),
                             font_weight: Some(gpui::FontWeight(750.0)),
                             ..Default::default()
                         })])),
@@ -508,8 +535,8 @@ impl Render for Testing {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
-            1 => validation_panel(),
-            2 => reports_panel(),
+            1 => validation_panel(cx),
+            2 => reports_panel(cx),
             _ => self
                 .remote
                 .update(cx, |remote, cx| remote.editor.render(cx)),
@@ -520,7 +547,11 @@ impl Render for Testing {
         } else {
             "Borrador local"
         };
-        let status_color = if dirty { orbit::EMBER } else { orbit::GREEN };
+        let status_color = if dirty {
+            orbit::ember(cx)
+        } else {
+            orbit::green(cx)
+        };
         let status = div()
             .h(px(30.0))
             .px(px(13.0))
@@ -537,6 +568,7 @@ impl Render for Testing {
                 800,
                 status_color,
                 0.3,
+                cx,
             ))
             .id("testing-draft-status")
             .role(gpui::Role::Button)
@@ -571,12 +603,12 @@ impl Render for Testing {
                     .justify_between()
                     .gap(px(21.0))
                     .child(div().flex_1().min_w_0().flex().flex_col()
-                        .child(orbit::eyebrow(self.channel_label.clone()).line_height(px(16.5)))
+                        .child(orbit::eyebrow(self.channel_label.clone(), cx).line_height(px(16.5)))
                         .child(testing_title().mt(px(6.0)))
                         .child(orbit::text(
                             "Reporta un comportamiento reproducible o valida una corrección asignada.",
-                            orbit::BODY, 400, orbit::INK_2,
-                        ).mt(px(7.0)).line_height(px(20.925))))
+                            orbit::BODY, 400, orbit::ink_2(cx),
+                         cx).mt(px(7.0)).line_height(px(20.925))))
                     .child(status),
             )
             .child(div().mt(px(16.0)).child(self.tabs.clone()))
@@ -592,19 +624,19 @@ impl Testing {
     fn local_tools(&self, cx: &mut Context<Self>) -> gpui::Div {
         div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0)).child(orbit::callout(
             "Solo local. Este JSON omite el texto privado y no se adjunta al envío del reporte.",
-        ))
+         cx))
         .child(
             div()
                 .flex()
                 .gap(gpui::px(orbit::GUTTER / 2.0))
-                .child(orbit::button("testing-load-report", "Cargar borrador").on_click(
+                .child(orbit::button("testing-load-report", "Cargar borrador", cx).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.remote.update(cx, |remote, cx| {
                             remote.report_action(Command::DraftLoad, cx);
                         });
                     }),
                 ))
-                .child(orbit::button("testing-retry-report", "Revisar intento pendiente o recibo").on_click(
+                .child(orbit::button("testing-retry-report", "Revisar intento pendiente o recibo", cx).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.remote.update(cx, |remote, cx| {
                             remote.editor.clear_approval();
@@ -613,7 +645,7 @@ impl Testing {
                     }),
                 ))
                 .child(
-                    orbit::button("testing-report-tab", "Borrador privado local").on_click(
+                    orbit::button("testing-report-tab", "Borrador privado local", cx).on_click(
                         cx.listener(|this, _, _, cx| {
                             this.diagnostic_tab = false;
                             cx.notify();
@@ -621,7 +653,7 @@ impl Testing {
                     ),
                 )
                 .child(
-                    orbit::button("testing-diagnostic-tab", "Diagnóstico").on_click(cx.listener(
+                    orbit::button("testing-diagnostic-tab", "Diagnóstico", cx).on_click(cx.listener(
                         |this, _, _, cx| {
                             this.diagnostic_tab = true;
                             cx.notify();
@@ -636,11 +668,11 @@ impl Testing {
                         } else {
                             "Preparar diagnóstico"
                         },
-                    )
+                     cx)
                     .on_click(cx.listener(|this, _, _, cx| this.refresh(cx))),
                 )
                 .child(
-                    orbit::button("testing-export", "Exportar JSON local")
+                    orbit::button("testing-export", "Exportar JSON local", cx)
                         .on_click(cx.listener(|this, _, _, cx| this.export(cx))),
                 ),
         )
@@ -656,13 +688,13 @@ impl Testing {
             ),
             12.5,
             400,
-            orbit::INK_2,
-        ))
+            orbit::ink_2(cx),
+         cx))
         .when_some(self.error.clone(), |view, error| {
-            view.child(orbit::callout(error))
+            view.child(orbit::callout(error, cx))
         })
         .child(if self.diagnostic_tab {
-            self.diagnostic()
+            self.diagnostic( cx)
         } else {
             self.form(cx)
         })

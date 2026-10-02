@@ -11,7 +11,6 @@ use gpui::{
     App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
 };
 use vantare_ipc::Subscriber;
-use vantare_ui::efficiency::text;
 
 use crate::{
     Section,
@@ -172,10 +171,13 @@ impl Hub {
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
         if let Some(reason) = self.shell.access.lock(self.section) {
-            return orbit::callout(format!(
-                "{} · {reason}. Abre Cuenta para consultar el acceso.",
-                self.section.label()
-            ))
+            return orbit::callout(
+                format!(
+                    "{} · {reason}. Abre Cuenta para consultar el acceso.",
+                    self.section.label()
+                ),
+                cx,
+            )
             .into_any_element();
         }
         match self.section {
@@ -205,6 +207,7 @@ impl Hub {
                         }
                     }))
                 },
+                cx,
             )
             .into_any_element(),
             Section::Account => self
@@ -247,13 +250,13 @@ impl Hub {
                 },
             )
             .when(self.section == Section::Settings, |content| {
-                content.child(self.settings_header())
+                content.child(self.settings_header(cx))
             })
             .when_some(self.status.clone(), |content, status| {
-                content.child(orbit::callout(status))
+                content.child(orbit::callout(status, cx))
             })
             .when_some(self.shell.navigation_notice.clone(), |content, notice| {
-                content.child(orbit::callout(notice))
+                content.child(orbit::callout(notice, cx))
             })
             .child(self.section_view(cx))
             .into_any_element()
@@ -278,7 +281,7 @@ impl Hub {
             .child(self.section_view(cx))
             .when_some(self.status.clone(), |root, status| {
                 root.child(
-                    orbit::callout(status)
+                    orbit::callout(status, cx)
                         .absolute()
                         .top(gpui::px(52.0))
                         .left(gpui::px(280.0)),
@@ -398,7 +401,7 @@ impl Render for Hub {
         let background = if self.section == Section::Strategy {
             self.strategy
                 .read(cx)
-                .garage_background(f32::from(window.viewport_size().width))
+                .garage_background(f32::from(window.viewport_size().width), cx)
         } else {
             None
         };
@@ -411,9 +414,9 @@ impl Render for Hub {
             .size_full()
             .relative()
             .flex()
-            .bg(gpui::rgb(orbit::CANVAS))
-            .text_color(gpui::rgb(orbit::INK))
-            .font_family("Inter W400")
+            .bg(gpui::rgb(orbit::canvas(cx)))
+            .text_color(gpui::rgb(orbit::ink(cx)))
+            .font_family(crate::orbit::sans_override("Inter W400", cx))
             .when_some(background, gpui::ParentElement::child)
             .child(rail)
             .when(
@@ -624,6 +627,7 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
 struct Loaded {
+    appearance: settings::appearance::Store,
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
@@ -649,6 +653,7 @@ impl Hub {
         cx: &mut Context<Self>,
     ) -> Self {
         let Loaded {
+            appearance,
             prepared,
             studio: prepared_studio,
             calendar,
@@ -663,6 +668,7 @@ impl Hub {
             demo,
             capture,
         } = loaded;
+        orbit::theme::install(appearance.settings, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
         focus.focus(window, cx);
@@ -696,7 +702,7 @@ impl Hub {
             ),
             None => Strategy::new(strategy_dir, cx),
         });
-        let mut settings = settings::State::new(prefs, testing_dir.clone(), window, cx);
+        let mut settings = settings::State::new(prefs, appearance, testing_dir.clone(), window, cx);
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
         }
@@ -783,6 +789,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture);
     }
+    let appearance = settings::appearance::Store::load(options.data_dir.join("appearance.json"))?;
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
@@ -798,6 +805,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         }
     };
     let loaded = Loaded {
+        appearance,
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,
         studio: PreparedStudio::load(options.layout)?,
@@ -825,7 +833,8 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
-            if let Err(error) = text::register_fonts(cx) {
+            cx.set_global(orbit::theme::Theme::default());
+            if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx) {
                 *failure.borrow_mut() = Some(error);
                 cx.quit();
                 return;

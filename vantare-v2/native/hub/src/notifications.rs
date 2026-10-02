@@ -272,9 +272,16 @@ fn source_label(source: Source) -> &'static str {
         Source::System => "Sistema",
     }
 }
-fn severity(record: &Record) -> (&'static str, orbit::Tone) {
+fn severity(record: &Record, cx: &gpui::App) -> (&'static str, orbit::Tone) {
     match record.severity {
-        Severity::Info => ("Información", orbit::Tone::Neutral),
+        Severity::Info => (
+            "Información",
+            if orbit::is_mono(cx) {
+                orbit::Tone::Reference
+            } else {
+                orbit::Tone::Neutral
+            },
+        ),
         Severity::Warning => ("Aviso", orbit::Tone::Warning),
         Severity::Error => ("Error", orbit::Tone::Danger),
     }
@@ -427,16 +434,16 @@ impl Notifications {
         let focus = self.focus(id, cx);
         // Acción textual del popover Wails: composición del texto/foco del kit.
         let button = if compact {
-            orbit::text(label.to_owned(), 10.5, 400, orbit::INK_3)
+            orbit::text(label.to_owned(), 10.5, 400, orbit::ink_3(cx), cx)
                 .font_weight(gpui::FontWeight::NORMAL)
                 .id(id)
                 .role(gpui::Role::Button)
                 .aria_label(label.to_owned())
                 .tab_index(0)
                 .cursor_pointer()
-                .focus_visible(|s| s.border_2().border_color(gpui::rgb(orbit::CORAL)))
+                .focus_visible(|s| s.border_2().border_color(gpui::rgb(orbit::coral(cx))))
         } else {
-            orbit::button(id, label)
+            orbit::button(id, label, cx)
         };
         button
             .track_focus(&focus)
@@ -457,7 +464,7 @@ impl Notifications {
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let id = record.id.clone();
-        let (severity, tone) = severity(record);
+        let (severity, tone) = severity(record, cx);
         let detail = [
             message(&record.text_key, &record.params),
             record.concrete_cause.clone(),
@@ -473,6 +480,7 @@ impl Notifications {
             &detail,
             record.unread,
             true,
+            cx,
         )
         .track_focus(focus)
         .child(
@@ -481,25 +489,28 @@ impl Notifications {
                 .flex_wrap()
                 .items_center()
                 .gap(px(orbit::MENU_PAD))
-                .child(orbit::chip(severity, tone))
+                .child(orbit::chip(severity, tone, cx))
                 .child(orbit::text(
                     time(record.occurred_at),
                     orbit::MICRO,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 ))
                 .child(orbit::text(
                     if record.unread { "Sin leer" } else { "Leído" },
                     orbit::MICRO,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 ))
                 .when(record.action.is_some(), |row| {
                     row.child(orbit::text(
                         "Abrir destino",
                         orbit::MICRO,
                         500,
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
+                        cx,
                     ))
                 }),
         )
@@ -554,8 +565,9 @@ impl Notifications {
                     "NOTIFICACIONES",
                     10.5,
                     800,
-                    orbit::INK_4,
+                    orbit::ink_4(cx),
                     1.155,
+                    cx,
                 ))
                 .child(tools)
         } else {
@@ -569,11 +581,11 @@ impl Notifications {
             .child(header);
         if self.center.records.is_empty() {
             view = view.child(if compact {
-                orbit::text("Sin notificaciones.", 11.0, 400, orbit::INK_MUTED)
+                orbit::text("Sin notificaciones.", 11.0, 400, orbit::ink_muted(cx), cx)
                     .line_height(px(16.5))
                     .my(px(6.0))
             } else {
-                orbit::empty_state("Sin notificaciones.", "")
+                orbit::empty_state("Sin notificaciones.", "", cx)
             });
         }
         // Clonar el máximo de 50 registros permite componer controles con su propio foco.
@@ -584,7 +596,7 @@ impl Notifications {
             .map(|(source, records)| (source, records.into_iter().cloned().collect::<Vec<_>>()))
             .collect();
         for (source, records) in groups {
-            view = view.child(orbit::eyebrow(source_label(source)));
+            view = view.child(orbit::eyebrow(source_label(source), cx));
             for record in records {
                 let id = record.id.clone();
                 let focus = self.focus(&id, cx);
@@ -607,15 +619,15 @@ impl Notifications {
             layer.update(cx, |layer, _| layer.set_targets(targets));
         }
         view.when_some(self.error.clone(), |view, error| {
-            view.child(orbit::callout(error))
+            view.child(orbit::callout(error, cx))
         })
     }
 }
 impl Render for Notifications {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div().flex().flex_col().gap(px(orbit::FIELD_PAD))
-            .child(orbit::card("Notificaciones").child(self.history(false, cx)))
-            .child(orbit::callout("Historial local de esta sesión (máximo 50). Avisos del actualizador y notificación de prueba: pendiente."))
+            .child(orbit::card("Notificaciones", cx).child(self.history(false, cx)))
+            .child(orbit::callout("Historial local de esta sesión (máximo 50). Avisos del actualizador y notificación de prueba: pendiente.", cx))
     }
 }
 #[cfg(test)]

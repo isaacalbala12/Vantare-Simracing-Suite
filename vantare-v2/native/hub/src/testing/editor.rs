@@ -1,4 +1,5 @@
 use super::model::{Consent, MODULES, can_send, field_errors};
+use crate::orbit::typography;
 use crate::{
     orbit::{self, Checkbox, ChoiceState, Input, OptionItem},
     services::{
@@ -10,7 +11,6 @@ use crate::{
     },
 };
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
-use vantare_ui::efficiency::text as typography;
 
 pub struct Editor {
     inputs: [Entity<Input>; 5],
@@ -26,8 +26,8 @@ pub struct Editor {
     pub dirty: bool,
 }
 impl Editor {
-    fn field_label(label: &str) -> gpui::Div {
-        Self::tracked_label(label, orbit::INK_4, 0.1)
+    fn field_label(label: &str, cx: &gpui::App) -> gpui::Div {
+        Self::tracked_label(label, orbit::ink_4(cx), 0.1)
     }
 
     fn tracked_label(label: &str, color: u32, tracking: f32) -> gpui::Div {
@@ -179,7 +179,7 @@ impl Editor {
             .flex_col()
             .gap(px(8.0))
             // La línea de 16,5 px ocupa 17 px en los campos de Wails.
-            .child(Self::field_label(label).h(px(17.0)))
+            .child(Self::field_label(label, cx).h(px(17.0)))
             .child(
                 div()
                     .h(px(78.0))
@@ -204,14 +204,20 @@ impl Editor {
                                         .right(px(2.0 + f32::from(offset) * 3.0))
                                         .bottom(px(2.0 + f32::from(line - offset) * 3.0))
                                         .size(px(1.0))
-                                        .bg(rgb(orbit::INK_3))
+                                        .bg(rgb(orbit::ink_3(cx)))
                                 })
                             })),
                     ),
             )
             .when(self.show_errors, |view| {
                 view.when_some(field_errors(&self.fields(cx))[index], |view, error| {
-                    view.child(orbit::text(error, orbit::SECONDARY, 400, orbit::RED))
+                    view.child(orbit::text(
+                        error,
+                        orbit::SECONDARY,
+                        400,
+                        orbit::red(cx),
+                        cx,
+                    ))
                 })
             })
     }
@@ -252,14 +258,14 @@ impl Editor {
             .justify_between()
             .rounded(px(orbit::RADIUS_CONTROL))
             .border_1()
-            .border_color(rgba(0xffff_ff12))
-            .bg(rgba(0xffff_ff07))
+            .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff12, cx)))
+            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff07, cx)))
             .cursor_pointer()
-            .hover(|style| style.border_color(rgba(orbit::LINE_STRONG)))
-            .focus_visible(|style| style.border_2().border_color(rgb(orbit::CORAL)))
-            .child(orbit::text(selected, 14.0, 500, orbit::INK_2).line_height(px(14.0)))
+            .hover(|style| style.border_color(rgba(orbit::line_strong(cx))))
+            .focus_visible(|style| style.border_2().border_color(rgb(orbit::coral(cx))))
+            .child(orbit::text(selected, 14.0, 500, orbit::ink_2(cx), cx).line_height(px(14.0)))
             .child(
-                orbit::icon("i-chevron", 16.0, orbit::INK_3)
+                orbit::icon("i-chevron", 16.0, orbit::ink_3(cx))
                     .with_transformation(gpui::Transformation::rotate(gpui::radians(
                         std::f32::consts::FRAC_PI_2,
                     )))
@@ -306,8 +312,8 @@ impl Editor {
             .overflow_y_scroll()
             .rounded(px(orbit::RADIUS_CONTROL))
             .border_1()
-            .border_color(rgba(orbit::LINE))
-            .bg(rgba(orbit::SURFACE_2));
+            .border_color(rgba(orbit::line(cx)))
+            .bg(rgba(orbit::surface_2(cx)));
         for (index, (_, label)) in MODULES.iter().enumerate() {
             let selected = self.module_choice.selected == Some(index);
             let active = self.module_choice.active == Some(index);
@@ -323,12 +329,13 @@ impl Editor {
                     .flex()
                     .items_center()
                     .rounded(px(orbit::RADIUS_CHIP))
-                    .when(active, |style| style.bg(rgba(orbit::LINE_ROW)))
+                    .when(active, |style| style.bg(rgba(orbit::line_row(cx))))
                     .child(orbit::text(
                         *label,
                         orbit::BODY,
                         if selected { 650 } else { 500 },
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
+                        cx,
                     ))
                     .on_mouse_move(cx.listener(move |this, _, _, cx| {
                         this.editor.module_choice.active = Some(index);
@@ -354,7 +361,7 @@ impl Editor {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(Self::field_label("Módulo"))
+            .child(Self::field_label("Módulo", cx))
             .child(controls);
         let mut body = orbit::card_body()
             .px(px(21.0))
@@ -372,7 +379,7 @@ impl Editor {
             .child(self.field(3, "Contexto adicional · opcional", cx));
         if self.dirty {
             body = body.child(div().flex().justify_end().child(
-                orbit::button("report-save", "Guardar borrador").on_click(cx.listener(
+                orbit::button("report-save", "Guardar borrador", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         let fields = this.editor.fields(cx);
                         this.report_action(Command::DraftSave { fields }, cx);
@@ -381,7 +388,7 @@ impl Editor {
             ));
         } else if valid && has_text && self.preview.is_none() {
             body = body.child(div().flex().justify_end().child(
-                orbit::button("report-preview", "Previsualizar envío").on_click(cx.listener(
+                orbit::button("report-preview", "Previsualizar envío", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         this.editor.show_errors = true;
                         this.editor.approved = None;
@@ -405,7 +412,11 @@ impl Editor {
         // La primera fila conserva el aspecto del diagnóstico habilitado en Wails,
         // aunque permanezca inerte mientras falte el contrato nativo de adjuntos.
         let dimmed = index != 0;
-        let label_color = if dimmed { orbit::INK_3 } else { orbit::INK };
+        let label_color = if dimmed {
+            orbit::ink_3(cx)
+        } else {
+            orbit::ink(cx)
+        };
         div()
             .id(("testing-attachment-row", index))
             .role(gpui::Role::CheckBox)
@@ -426,7 +437,7 @@ impl Editor {
             .pt(px(13.0))
             .pb(px(15.0))
             .border_b_1()
-            .border_color(rgba(orbit::LINE_ROW))
+            .border_color(rgba(orbit::line_row(cx)))
             .when(dimmed, |row| row.opacity(0.6))
             .child(
                 div()
@@ -435,14 +446,14 @@ impl Editor {
                     .rounded(px(5.0))
                     .border_1()
                     .border_color(if checked {
-                        rgb(orbit::CARMINE)
+                        rgb(orbit::carmine(cx))
                     } else {
-                        rgba(orbit::LINE_STRONG)
+                        rgba(orbit::line_strong(cx))
                     })
                     .bg(if checked {
-                        rgb(orbit::CARMINE)
+                        rgb(orbit::carmine(cx))
                     } else {
-                        rgba(0xffff_ff08)
+                        rgba(crate::orbit::legacy_rgba(0xffff_ff08, cx))
                     }),
             )
             .child(
@@ -452,12 +463,12 @@ impl Editor {
                     .flex()
                     .flex_col()
                     .child(
-                        orbit::text(label, orbit::BODY, 650, label_color)
+                        orbit::text(label, orbit::BODY, 650, label_color, cx)
                             .font_weight(gpui::FontWeight::NORMAL)
                             .line_height(px(20.25)),
                     )
                     .child(
-                        orbit::text(help, 11.0, 400, orbit::INK_MUTED)
+                        orbit::text(help, 11.0, 400, orbit::ink_muted(cx), cx)
                             .mt(px(2.5))
                             .line_height(px(15.95))
                             .min_w_0(),
@@ -465,13 +476,21 @@ impl Editor {
             )
     }
 
-    fn disabled_action(label: &'static str, primary: bool) -> gpui::Stateful<gpui::Div> {
+    fn disabled_action(
+        label: &'static str,
+        primary: bool,
+        cx: &gpui::App,
+    ) -> gpui::Stateful<gpui::Div> {
         let background = if primary {
-            orbit::PRIMARY_BG
+            orbit::primary_bg(cx)
         } else {
             0xffff_ff06
         };
-        let ink = if primary { 0x001c_1719 } else { orbit::INK_3 };
+        let ink = if primary {
+            cx.global::<crate::orbit::theme::Theme>().primary_ink
+        } else {
+            orbit::ink_3(cx)
+        };
         div()
             .id(if primary {
                 "report-send"
@@ -499,7 +518,7 @@ impl Editor {
                 rgba(background)
             })
             .when(!primary, |button| {
-                button.border_1().border_color(rgba(orbit::LINE))
+                button.border_1().border_color(rgba(orbit::line(cx)))
             })
             .when(primary, |button| {
                 button.shadow(vec![gpui::BoxShadow {
@@ -511,7 +530,7 @@ impl Editor {
                 }])
             })
             .opacity(0.55)
-            .child(orbit::text(label, orbit::SECONDARY, 600, ink))
+            .child(orbit::text(label, orbit::SECONDARY, 600, ink, cx))
     }
 
     fn discard_action(cx: &mut Context<Remote>) -> gpui::Stateful<gpui::Div> {
@@ -529,13 +548,14 @@ impl Editor {
             .justify_center()
             .rounded(px(orbit::RADIUS_CONTROL))
             .border_1()
-            .border_color(rgba(orbit::LINE))
-            .bg(rgba(0xffff_ff06))
+            .border_color(rgba(orbit::line(cx)))
+            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
             .child(orbit::text(
                 "Descartar borrador",
                 orbit::SECONDARY,
                 600,
-                orbit::INK_3,
+                orbit::ink_3(cx),
+                cx,
             ))
             .on_click(cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)))
     }
@@ -546,9 +566,9 @@ impl Editor {
             .px(px(21.0))
             .py(px(21.0))
             .pb(px(22.0))
-            .child(Self::tracked_label("Consentimiento", orbit::INK_3, 0.09).mt(px(6.0)))
+            .child(Self::tracked_label("Consentimiento", orbit::ink_3(cx), 0.09).mt(px(6.0)))
             .child(
-                orbit::text("Datos adjuntos", 15.0, 650, orbit::INK)
+                orbit::text("Datos adjuntos", 15.0, 650, orbit::ink(cx), cx)
                     .font_weight(gpui::FontWeight::NORMAL)
                     .mt(px(7.0))
                     .line_height(px(22.5)),
@@ -558,7 +578,8 @@ impl Editor {
                     "Nada se adjunta sin selección explícita y vista previa.",
                     orbit::SECONDARY,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 )
                 .mt(px(8.0))
                 .line_height(px(18.0)),
@@ -577,7 +598,7 @@ impl Editor {
             consent = consent.child(self.attachment_row(index, label, help, cx));
         }
         let send = if ready {
-            orbit::button("report-send", "Enviar reporte")
+            orbit::button("report-send", "Enviar reporte", cx)
                 .on_click(cx.listener(|this, _, _, cx| {
                     if can_send(
                         this.editor.preview.as_ref(),
@@ -594,12 +615,12 @@ impl Editor {
                 }))
                 .into_any_element()
         } else {
-            Self::disabled_action("Enviar reporte", true).into_any_element()
+            Self::disabled_action("Enviar reporte", true, cx).into_any_element()
         };
         let discard = if self.dirty {
             Self::discard_action(cx).into_any_element()
         } else {
-            Self::disabled_action("Descartar borrador", false).into_any_element()
+            Self::disabled_action("Descartar borrador", false, cx).into_any_element()
         };
         consent = consent.child(
             div()
@@ -626,14 +647,14 @@ impl Editor {
                     .items_start()
                     .gap(px(21.0))
                     .child(
-                        orbit::card("")
+                        orbit::card("", cx)
                             .bg(orbit::tint(0x0010_1114, 0.79))
                             .flex_1()
                             .min_w_0()
                             .child(form),
                     )
                     .child(
-                        orbit::card("")
+                        orbit::card("", cx)
                             .bg(orbit::tint(0x0010_1114, 0.79))
                             .w(px(280.0))
                             .flex_none()
@@ -642,7 +663,7 @@ impl Editor {
             );
         if let Some(preview) = &self.preview {
             page = page.child(
-                orbit::card("Vista previa del envío").child(
+                orbit::card("Vista previa del envío", cx).child(
                     orbit::card_body()
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(orbit::text(
@@ -658,20 +679,22 @@ impl Editor {
                             ),
                             orbit::BODY,
                             700,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ))
                         .child(orbit::text(
                             preview.payload.clone(),
                             orbit::SECONDARY,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         ))
                         .child(self.consent.clone()),
                 ),
             );
         }
         if self.message != "Borrador local: revise el texto antes de enviar" {
-            page = page.child(orbit::callout(self.message.clone()));
+            page = page.child(orbit::callout(self.message.clone(), cx));
         }
         page
     }

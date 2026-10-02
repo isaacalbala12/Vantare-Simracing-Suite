@@ -44,7 +44,7 @@ pub enum MonoFont {
     Courier,
 }
 
-/// Preferencias persistibles. Los valores por defecto coinciden con Wails.
+/// Preferencias persistibles. Oscuro mantiene el aspecto inicial del Hub nativo.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppearanceSettings {
@@ -60,7 +60,7 @@ impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
             palette: Palette::Vantare,
-            scheme: Scheme::System,
+            scheme: Scheme::Dark,
             contrast: 100,
             glass_opacity: 80,
             interface_font: InterfaceFont::Inter,
@@ -221,6 +221,14 @@ pub struct Theme {
     pub stage: StageBackground,
 }
 
+impl gpui::Global for Theme {}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self::from_settings(AppearanceSettings::default())
+    }
+}
+
 impl Theme {
     /// Resuelve `system` como oscuro, igual que el fallback de Wails cuando no
     /// hay información del sistema. El llamador puede elegir explícitamente luz.
@@ -235,6 +243,12 @@ impl Theme {
         }
         theme.apply_palette();
         theme.apply_palette_effects();
+        if theme.scheme == Scheme::Light {
+            theme.white = theme.ink;
+            theme.line_chip = (theme.ink << 8) | 0x09;
+            theme.line_pill = (theme.ink << 8) | 0x0f;
+            theme.palette_backdrop = (theme.canvas << 8) | 0x9e;
+        }
         theme.apply_accessibility(contrast, glass);
         theme
     }
@@ -930,34 +944,34 @@ impl Theme {
         self.ink_4 = 0x99_9999;
         self.ink_5 = 0x80_8080;
         self.ink_muted = 0x80_8080;
-        self.line = 0xffff_ff1f;
-        self.line_strong = 0xffff_ff33;
-        self.line_row = 0xffff_ff14;
+        self.line = 0xffff_ff24;
+        self.line_strong = 0xffff_ff42;
+        self.line_row = 0xffff_ff17;
         self.scroll_thumb = 0xffff_ff33;
         self.scroll_thumb_hover = 0xffff_ff55;
-        self.coral = 0xe4_e4e4;
-        self.ember = 0xc4_c4c4;
-        self.red = 0xd0_d0d0;
-        self.cyan = 0xc6_c6c6;
-        self.cyan_soft = 0xd8_d8d8;
-        self.bronze = 0xa5_a5a5;
-        self.silver = 0xc9_c9c9;
-        self.carmine = 0xbd_bdbd;
-        self.carmine_dark = 0x44_4444;
-        self.accent_rgb = 0xbd_bdbd;
+        self.coral = 0xa6_a6a6;
+        self.ember = 0xa6_a6a6;
+        self.red = 0xf2_f2f2;
+        self.cyan = 0xbd_bdbd;
+        self.cyan_soft = 0xbd_bdbd;
+        self.bronze = 0x8a_8a8a;
+        self.silver = 0xbc_bcbc;
+        self.carmine = 0xf2_f2f2;
+        self.carmine_dark = 0x3a_3a3a;
+        self.accent_rgb = 0xf2_f2f2;
         self.palette_backdrop = 0x0404_049e;
-        self.danger = 0xe0_e0e0;
-        self.danger_rgb = 0xe0_e0e0;
+        self.danger = 0xf2_f2f2;
+        self.danger_rgb = 0xf2_f2f2;
         self.wine = 0x66_6666;
-        self.green = 0xce_cece;
-        self.tier_bronze = 0xa5_a5a5;
-        self.tier_silver = 0xc9_c9c9;
-        self.tier_gold = 0xe0_e0e0;
-        self.tyre_soft = 0xb5_b5b5;
-        self.tyre_medium = 0xce_cece;
-        self.tyre_hard = 0xe6_e6e6;
-        self.primary_bg = 0xe8_e8e8;
-        self.primary_ink = 0x17_1717;
+        self.green = 0xd6_d6d6;
+        self.tier_bronze = 0x8a_8a8a;
+        self.tier_silver = 0xbc_bcbc;
+        self.tier_gold = 0xee_eeee;
+        self.tyre_soft = 0x8c_8c8c;
+        self.tyre_medium = 0xc4_c4c4;
+        self.tyre_hard = 0xf2_f2f2;
+        self.primary_bg = 0xf2_f2f2;
+        self.primary_ink = 0x11_1111;
         self.featured_bg = "linear-gradient(#303030, #202020)";
         self.stage = StageBackground {
             accent: 0xbd_bdbd,
@@ -971,7 +985,7 @@ impl Theme {
         self.surface_0 = 0xff_ffff;
         self.surface_1 = 0xec_ecec;
         self.surface_2 = 0xdf_dfdf;
-        self.surface_3 = 0xce_cece;
+        self.surface_3 = 0xd6_d6d6;
         self.rail_bg = 0xeb_ebeb;
         self.column_bg = 0xf1_f1f1;
         self.panel_bg = 0xffff_ffe0;
@@ -982,33 +996,33 @@ impl Theme {
         self.ink_4 = 0x70_7070;
         self.ink_5 = 0x85_8585;
         self.ink_muted = 0x85_8585;
-        self.line = 0x1e1e_1e24;
-        self.line_strong = 0x1e1e_1e3d;
-        self.line_row = 0x1e1e_1e1a;
+        self.line = 0x0000_0024;
+        self.line_strong = 0x0000_0042;
+        self.line_row = 0x0000_0017;
         self.scroll_thumb = 0x1e1e_1e38;
         self.scroll_thumb_hover = 0x1e1e_1e5c;
-        self.carmine = 0x55_5555;
-        self.carmine_dark = 0x55_5555;
-        self.accent_rgb = 0x55_5555;
-        self.bronze = 0x65_6565;
-        self.silver = 0x8a_8a8a;
+        self.carmine = 0x1a_1a1a;
+        self.carmine_dark = 0xd6_d6d6;
+        self.accent_rgb = 0x1a_1a1a;
+        self.bronze = 0x8a_8a8a;
+        self.silver = 0x5a_5a5a;
         self.palette_backdrop = 0x0404_049e;
-        self.red = 0x49_4949;
-        self.danger = 0x3a_3a3a;
-        self.danger_rgb = 0x3a_3a3a;
-        self.coral = 0x77_7777;
-        self.ember = 0x70_7070;
+        self.red = 0x1a_1a1a;
+        self.danger = 0x1a_1a1a;
+        self.danger_rgb = 0x1a_1a1a;
+        self.coral = 0x6e_6e6e;
+        self.ember = 0x6e_6e6e;
         self.wine = 0x35_3535;
-        self.green = 0x4c_4c4c;
-        self.cyan = 0x51_5151;
-        self.cyan_soft = 0x63_6363;
-        self.tier_bronze = 0x65_6565;
-        self.tier_silver = 0x8a_8a8a;
-        self.tier_gold = 0x50_5050;
-        self.tyre_soft = 0x99_9999;
-        self.tyre_medium = 0x77_7777;
-        self.tyre_hard = 0x55_5555;
-        self.primary_bg = 0x39_3939;
+        self.green = 0x3a_3a3a;
+        self.cyan = 0x55_5555;
+        self.cyan_soft = 0x55_5555;
+        self.tier_bronze = 0x8a_8a8a;
+        self.tier_silver = 0x5a_5a5a;
+        self.tier_gold = 0x1f_1f1f;
+        self.tyre_soft = 0x8a_8a8a;
+        self.tyre_medium = 0x55_5555;
+        self.tyre_hard = 0x1a_1a1a;
+        self.primary_bg = 0x1a_1a1a;
         self.primary_ink = 0xff_ffff;
         self.featured_bg = "linear-gradient(#fff, #ececec)";
         self.stage = StageBackground {
@@ -1043,6 +1057,73 @@ impl Theme {
             self.topbar_bg = scale_alpha(self.topbar_bg, alpha_factor);
         }
         (self.font_sans, self.font_mono) = fonts(self.interface_font, self.mono_font);
+    }
+
+    /// Colores literales de secciones portadas antes de los temas. La identidad
+    /// del tema inicial conserva esos píxeles; el resto usa el token semántico.
+    pub fn legacy_color(&self, color: u32) -> u32 {
+        let token = match color {
+            0x00ff_6a5f => Some(self.coral),
+            0x00ff_9b57 => Some(self.ember),
+            0x00f0_4755 => Some(self.red),
+            0x005c_cbd5 => Some(self.cyan),
+            0x00d2_9a6c => Some(self.bronze),
+            0x00c9_c9cf => Some(self.silver),
+            0x00f5_f3f2 => Some(self.ink),
+            0x00b7_b2b2 => Some(self.ink_2),
+            0x008a_858b => Some(self.ink_3),
+            0x0078_7379 => Some(self.ink_4),
+            0x0057_545a => Some(self.ink_muted),
+            0x00ff_ffff => Some(self.white),
+            0x00d5_2f49 => Some(self.carmine),
+            0x009a_0606 => Some(self.carmine_dark),
+            0x0078_d68b => Some(self.green),
+            0x0008_090b => Some(self.canvas),
+            0x0012_1316 => Some(self.surface_1),
+            0x0018_191e => Some(self.surface_2),
+            0x0020_2127 => Some(self.surface_3),
+            0x000f_1013 => Some(self.column_bg),
+            0x000b_0c0e => Some(self.rail_bg),
+            0x00f3_eeee => Some(self.primary_bg),
+            0x001c_1719 => Some(self.primary_ink),
+            0x0064_1526 => Some(self.wine),
+            _ => None,
+        };
+        if let Some(token) = token {
+            return token;
+        }
+        if self.palette == Palette::Vantare && self.scheme == Scheme::Dark {
+            return color;
+        }
+        // Contratos históricos de Engineer, fondos y selección de secciones.
+        match color {
+            0x00e6_e9ec | 0x00f5_f5f5 | 0x00f1_f5fa => self.ink,
+            0x00b8_c3cf | 0x00c4_c4c8 | 0x00b0_b0b6 | 0x00c9_c4c6 | 0x00d9_d5d5 => self.ink_2,
+            0x0017_1d25 | 0x0013_1317 | 0x000e_0f11 | 0x0010_1114 => self.surface_1,
+            0x0026_313e | 0x0019_191e | 0x001e_191c | 0x0015_1619 | 0x0019_191b | 0x0023_2325
+            | 0x002a_2a30 | 0x0022_2228 | 0x001b_1c1e | 0x002c_2c2c | 0x0018_181b => self.surface_2,
+            0x0042_4954 | 0x0067_768a | 0x0062_6268 | 0x0099_9999 | 0x0053_5353 | 0x005f_5b62 => {
+                self.ink_4
+            }
+            0x008d_c9ff | 0x0081_96c6 => self.cyan,
+            0x0033_171c | 0x0024_1215 | 0x001e_171c | 0x0044_444a | 0x0033_3336 | 0x003b_3b40
+            | 0x0035_3539 | 0x001c_1216 => self.surface_3,
+            0x000b_0d0f | 0x000a_0c0d | 0x0009_0c0d | 0x000b_0e0f | 0x000c_1012 | 0x000f_1212
+            | 0x000a_0c0e | 0x0008_0b0c | 0x0010_151b | 0x0017_171b | 0x0010_1214 | 0x0010_0d0f
+            | 0x000f_1214 | 0x0010_1315 | 0x000c_1011 | 0x000e_1213 | 0x0011_1416 | 0x0010_1113
+            | 0x0010_1012 | 0x0015_1113 | 0x0010_1415 | 0x0011_1515 | 0x0018_181d | 0x000f_1012
+            | 0x000f_0f12 | 0x000d_0e10 => self.canvas,
+            0x00c1_121f | 0x00c5_2e42 => self.carmine,
+            0x0054_3f18 => self.ember,
+            other => other,
+        }
+    }
+    pub fn legacy_alpha(&self, color: u32) -> u32 {
+        match color {
+            0x1011_14c9 => self.panel_bg,
+            0x0809_0bd1 => self.topbar_bg,
+            other => (self.legacy_color(other >> 8) << 8) | (other & 0xff),
+        }
     }
 
     pub fn stage_background(&self) -> StageBackground {
@@ -1169,6 +1250,40 @@ fn contrast_ratio(foreground: u32, background: u32) -> f64 {
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
+/// `System` sigue la apariencia que GPUI recibe del sistema operativo.
+pub fn system_settings(
+    mut settings: AppearanceSettings,
+    appearance: gpui::WindowAppearance,
+) -> AppearanceSettings {
+    if settings.scheme == Scheme::System {
+        settings.scheme = match appearance {
+            gpui::WindowAppearance::Light | gpui::WindowAppearance::VibrantLight => Scheme::Light,
+            gpui::WindowAppearance::Dark | gpui::WindowAppearance::VibrantDark => Scheme::Dark,
+        };
+    }
+    settings
+}
+
+pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, cx: &mut gpui::App) {
+    let resolved = Theme::from_settings(system_settings(settings, appearance));
+    cx.set_global(settings);
+    cx.set_global(resolved);
+    cx.refresh_windows();
+}
+impl gpui::Global for AppearanceSettings {}
+
+pub fn install(settings: AppearanceSettings, window: &mut gpui::Window, cx: &mut gpui::App) {
+    apply(settings, window.appearance(), cx);
+    window
+        .observe_window_appearance(|window, cx| {
+            let settings = *cx.global::<AppearanceSettings>();
+            if settings.scheme == Scheme::System {
+                apply(settings, window.appearance(), cx);
+            }
+        })
+        .detach();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1183,6 +1298,9 @@ mod tests {
         assert_eq!(theme.red, orbit::RED);
         assert_eq!(theme.cyan, orbit::CYAN);
         assert_eq!(theme.bronze, orbit::BRONZE);
+        assert_eq!(theme.silver, orbit::SILVER);
+        assert_eq!(theme.ink_4, orbit::INK_4);
+        assert_eq!(theme.primary_ink, 0x001c_1719);
         assert_eq!(theme.silver, orbit::SILVER);
         assert_eq!(theme.ink_4, orbit::INK_4);
         assert_eq!(theme.row_h, orbit::ROW_H);
@@ -1266,6 +1384,110 @@ mod tests {
     }
 
     #[test]
+    fn system_scheme_tracks_os_without_overriding_explicit_choices() {
+        for (os, expected) in [
+            (gpui::WindowAppearance::Light, Scheme::Light),
+            (gpui::WindowAppearance::VibrantLight, Scheme::Light),
+            (gpui::WindowAppearance::Dark, Scheme::Dark),
+            (gpui::WindowAppearance::VibrantDark, Scheme::Dark),
+        ] {
+            let settings = AppearanceSettings {
+                scheme: Scheme::System,
+                ..AppearanceSettings::default()
+            };
+            assert_eq!(system_settings(settings, os).scheme, expected);
+            for scheme in [Scheme::Dark, Scheme::Light] {
+                assert_eq!(
+                    system_settings(AppearanceSettings { scheme, ..settings }, os).scheme,
+                    scheme
+                );
+            }
+        }
+    }
+    #[test]
+    fn mono_uses_the_orchestrator_tokens_and_readable_inverted_danger() {
+        for scheme in [Scheme::Dark, Scheme::Light] {
+            let t = Theme::resolve(Palette::Mono, scheme, 100, 80);
+            let expected = if scheme == Scheme::Dark {
+                (
+                    0x00f2_f2f2,
+                    0x003a_3a3a,
+                    0x00d6_d6d6,
+                    0x00a6_a6a6,
+                    0x00bd_bdbd,
+                    0x0011_1111,
+                )
+            } else {
+                (
+                    0x001a_1a1a,
+                    0x00d6_d6d6,
+                    0x003a_3a3a,
+                    0x006e_6e6e,
+                    0x0055_5555,
+                    0x00ff_ffff,
+                )
+            };
+            assert_eq!(
+                (
+                    t.carmine,
+                    t.carmine_dark,
+                    t.green,
+                    t.ember,
+                    t.cyan,
+                    t.primary_ink
+                ),
+                expected
+            );
+            assert_eq!(t.red, t.primary_bg);
+            assert!(contrast_ratio(t.primary_ink, t.red) >= 4.5);
+            assert!(contrast_ratio(t.ink, t.surface_1) >= 4.5);
+            for color in [t.green, t.ember, t.cyan] {
+                assert!(
+                    contrast_ratio(color, t.surface_0) >= 4.5,
+                    "{scheme:?}: {color:#08x}"
+                );
+            }
+            let states = [t.green, t.ember, t.cyan];
+            for (i, color) in states.iter().enumerate() {
+                for other in &states[..i] {
+                    let a = relative_luminance(*color);
+                    let b = relative_luminance(*other);
+                    // Separación relativa respecto al estado más luminoso (≥20%).
+                    assert!((a - b).abs() / a.max(b) >= 0.2);
+                }
+            }
+        }
+    }
+    #[test]
+    fn legacy_section_tokens_keep_exact_default_pixels() {
+        let t = Theme::from_settings(AppearanceSettings::default());
+        for color in [
+            0x0019_191e,
+            0x0013_1317,
+            0x00e6_e9ec,
+            0x00b8_c3cf,
+            0x0017_1d25,
+            0x0026_313e,
+            0x0042_4954,
+            0x0067_768a,
+            0x008d_c9ff,
+            0x00d9_d5d5,
+            0x000b_0d0f,
+        ] {
+            assert_eq!(t.legacy_color(color), color);
+        }
+        for color in [
+            0xffff_ff09,
+            0xffff_ff06,
+            0xd52f_491c,
+            0xf047_5530,
+            0x1011_14c9,
+        ] {
+            assert_eq!(t.legacy_alpha(color), color);
+        }
+    }
+
+    #[test]
     fn wcag_contrast_report_for_primary_and_secondary_text() {
         for palette in [
             Palette::Vantare,
@@ -1287,6 +1509,10 @@ mod tests {
                     } else {
                         " (AA)"
                     }
+                );
+                assert!(
+                    primary >= 4.5 && secondary >= 4.5,
+                    "{palette:?}/{scheme:?}: texto AA"
                 );
             }
         }
@@ -1402,7 +1628,7 @@ mod tests {
     fn appearance_settings_defaults_and_serde_round_trip() {
         let defaults = AppearanceSettings::default();
         assert_eq!(defaults.palette, Palette::Vantare);
-        assert_eq!(defaults.scheme, Scheme::System);
+        assert_eq!(defaults.scheme, Scheme::Dark);
         assert_eq!(defaults.contrast, 100);
         assert_eq!(defaults.glass_opacity, 80);
         assert_eq!(defaults.interface_font, InterfaceFont::Inter);

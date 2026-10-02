@@ -25,7 +25,7 @@ pub(super) enum Page {
 }
 
 /// Orbit no expone tracking negativo; acumula el espaciado sin redondear cada letra.
-pub(super) fn heading(title: &str, line_height: f32, tracking: f32) -> gpui::Div {
+pub(super) fn heading(title: &str, line_height: f32, tracking: f32, cx: &gpui::App) -> gpui::Div {
     div().flex().flex_col().children(title.lines().map(|line| {
         div().flex().h(px(line_height)).children(line.chars().scan(
             0.0_f32,
@@ -33,7 +33,7 @@ pub(super) fn heading(title: &str, line_height: f32, tracking: f32) -> gpui::Div
                 let previous = advance.round();
                 *advance += tracking;
                 Some(
-                    orbit::text(character.to_string(), 42.0, 700, orbit::INK)
+                    orbit::text(character.to_string(), 42.0, 700, orbit::ink(cx), cx)
                         .line_height(px(line_height))
                         .flex_none()
                         .mr(px(advance.round() - previous)),
@@ -43,8 +43,8 @@ pub(super) fn heading(title: &str, line_height: f32, tracking: f32) -> gpui::Div
     }))
 }
 
-fn pending(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
-    button(id, &format!("{label} · pendiente"))
+fn pending(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
+    button(id, &format!("{label} · pendiente"), cx)
         .tab_stop(false)
         .opacity(orbit::DISABLED)
         .cursor(gpui::CursorStyle::Arrow)
@@ -60,12 +60,24 @@ fn column() -> gpui::Div {
 fn row() -> gpui::Div {
     div().flex().min_w_0().gap(px(orbit::RADIUS_CONTROL))
 }
-fn option(title: &str, help: &str, action: impl IntoElement) -> gpui::Div {
-    orbit::card("").child(
+fn option(title: &str, help: &str, action: impl IntoElement, cx: &gpui::App) -> gpui::Div {
+    orbit::card("", cx).child(
         orbit::card_body()
             .gap(px(orbit::RADIUS_CONTROL))
-            .child(orbit::text(title.to_owned(), orbit::BODY, 700, orbit::INK))
-            .child(orbit::text(help.to_owned(), orbit::BODY, 400, orbit::INK_2))
+            .child(orbit::text(
+                title.to_owned(),
+                orbit::BODY,
+                700,
+                orbit::ink(cx),
+                cx,
+            ))
+            .child(orbit::text(
+                help.to_owned(),
+                orbit::BODY,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
             .child(action),
     )
 }
@@ -121,7 +133,11 @@ impl Strategy {
         context_sidebar_visible(self.page)
     }
 
-    pub(crate) fn garage_background(&self, viewport_width: f32) -> Option<AnyElement> {
+    pub(crate) fn garage_background(
+        &self,
+        viewport_width: f32,
+        cx: &gpui::App,
+    ) -> Option<AnyElement> {
         let background = match garage_background_kind(self.page)? {
             GarageBackground::Detail => {
                 let image = self.garage_detail.clone()?;
@@ -165,7 +181,12 @@ impl Strategy {
                                 .size_full()
                                 .object_fit(ObjectFit::Cover),
                         )
-                        .child(div().absolute().inset_0().bg(rgba(0x0809_0b04)))
+                        .child(
+                            div()
+                                .absolute()
+                                .inset_0()
+                                .bg(rgba(crate::orbit::legacy_rgba(0x0809_0b04, cx))),
+                        )
                         .into_any_element(),
                 )
             }
@@ -235,16 +256,20 @@ impl Strategy {
             option(
                 &display(&event["name"]["value"]),
                 &summary(event),
-                button("strategy-continue", "Continuar").on_click(cx.listener(|this, _, _, cx| {
-                    this.navigate(Page::Editor(EditorTab::Carrera), cx);
-                })),
+                button("strategy-continue", "Continuar", cx).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.navigate(Page::Editor(EditorTab::Carrera), cx);
+                    },
+                )),
+                cx,
             )
         } else {
             option(
                 "Continuar",
                 "Abre un documento V2 guardado en este equipo.",
-                button("strategy-open", "Abrir documento")
+                button("strategy-open", "Abrir documento", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.open(cx))),
+                cx,
             )
         };
         let mut saved = orbit::card_body().gap(px(orbit::RADIUS_CONTROL));
@@ -270,6 +295,7 @@ impl Strategy {
                         &summary(event),
                         index == self.event,
                         true,
+                        cx,
                     )
                     .id(("strategy-saved", index))
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -284,25 +310,26 @@ impl Strategy {
             saved = saved.child(orbit::empty_state(
                 "Sin estrategias guardadas",
                 "Crea tu estrategia o abre un documento V2 de este equipo.",
+                cx,
             ));
         }
         column()
-            .child(orbit::card("Estrategia").child(
+            .child(orbit::card("Estrategia", cx).child(
                 orbit::card_body()
                     .gap(px(orbit::RADIUS_CONTROL))
                     .child(orbit::text(
                         "Retoma la estrategia que tenías entre manos o arranca una nueva con el asistente.",
                         orbit::BODY,
                         400,
-                        orbit::INK_2,
-                    ))
+                        orbit::ink_2(cx),
+                     cx))
                     .child(
                         row()
                             .child(column().child(continue_action))
                             .child(column().child(option(
                                 "Nueva estrategia",
                                 "Prepara la carrera con el asistente de cinco pasos.",
-                                button("strategy-new", "Nueva estrategia").on_click(cx.listener(
+                                button("strategy-new", "Nueva estrategia", cx).on_click(cx.listener(
                                     |this, _, _, cx| {
                                         this.automatic = false;
                                         this.navigate(
@@ -311,44 +338,44 @@ impl Strategy {
                                         );
                                     },
                                 )),
-                            ))),
+                             cx))),
                     ),
             ))
-            .child(orbit::card("Carreras de Le Mans Ultimate").child(
+            .child(orbit::card("Carreras de Le Mans Ultimate", cx).child(
                 orbit::card_body()
                     .child(orbit::empty_state(
                         "Calendario · pendiente",
                         "La selección de carreras todavía no tiene contrato nativo en Strategy.",
-                    ))
-                    .child(pending("strategy-calendar", "Ver carreras")),
+                     cx))
+                    .child(pending("strategy-calendar", "Ver carreras", cx)),
             ))
-            .child(orbit::card("Guardadas").child(saved))
+            .child(orbit::card("Guardadas", cx).child(saved))
             .child(Self::document_actions(cx))
     }
     fn document_actions(cx: &mut Context<Self>) -> gpui::Div {
         row()
             .flex_wrap()
             .child(
-                button("strategy-open-document", "Abrir documento V2")
+                button("strategy-open-document", "Abrir documento V2", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.open(cx))),
             )
             .child(
-                button("strategy-save", "Guardar")
+                button("strategy-save", "Guardar", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
             )
             .child(
-                button("strategy-save-as", "Guardar como")
+                button("strategy-save-as", "Guardar como", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.save_as(cx))),
             )
             .child(
-                button("strategy-discard", "Descartar cambios")
+                button("strategy-discard", "Descartar cambios", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.discard(cx))),
             )
-            .child(pending("strategy-migrate", "Migrar datos antiguos"))
+            .child(pending("strategy-migrate", "Migrar datos antiguos", cx))
     }
-    pub(super) fn field(&self, index: usize) -> gpui::Div {
+    pub(super) fn field(&self, index: usize, cx: &gpui::App) -> gpui::Div {
         column()
-            .child(orbit::eyebrow(FIELDS[index].0))
+            .child(orbit::eyebrow(FIELDS[index].0, cx))
             .child(self.inputs[index].clone())
     }
     fn event_form(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
@@ -377,62 +404,63 @@ impl Strategy {
             .detach();
             self.duration = Some(duration);
         }
-        orbit::card("Crear mi estrategia").child(
+        orbit::card("Crear mi estrategia", cx).child(
             orbit::card_body()
                 .gap(px(orbit::RADIUS_CONTROL))
                 .child(orbit::text(
                     "todo se puede cambiar después",
                     orbit::SECONDARY,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 ))
-                .child(row().child(self.field(0)).child(self.field(4)))
-                .child(row().child(self.field(5)).child(self.field(24)))
+                .child(row().child(self.field(0, cx)).child(self.field(4, cx)))
+                .child(row().child(self.field(5, cx)).child(self.field(24, cx)))
                 .child(
                     row()
                         .child(
                             column()
-                                .child(orbit::eyebrow("Duración"))
+                                .child(orbit::eyebrow("Duración", cx))
                                 .children(self.duration.clone())
                                 .child(self.inputs[1].clone())
-                                .child(orbit::chip("Manual", Tone::Neutral)),
+                                .child(orbit::chip("Manual", Tone::Neutral, cx)),
                         )
-                        .child(
-                            column()
-                                .child(self.field(2))
-                                .child(orbit::chip("Manual", Tone::Neutral)),
-                        ),
+                        .child(column().child(self.field(2, cx)).child(orbit::chip(
+                            "Manual",
+                            Tone::Neutral,
+                            cx,
+                        ))),
                 )
                 .child(
                     row()
-                        .child(
-                            column()
-                                .child(self.field(3))
-                                .child(orbit::chip("Manual", Tone::Neutral)),
-                        )
-                        .child(
-                            column()
-                                .child(orbit::eyebrow("Equipo"))
-                                .child(pending("strategy-team-name", "Equipo")),
-                        ),
+                        .child(column().child(self.field(3, cx)).child(orbit::chip(
+                            "Manual",
+                            Tone::Neutral,
+                            cx,
+                        )))
+                        .child(column().child(orbit::eyebrow("Equipo", cx)).child(pending(
+                            "strategy-team-name",
+                            "Equipo",
+                            cx,
+                        ))),
                 )
-                .child(orbit::eyebrow("Pilotos"))
+                .child(orbit::eyebrow("Pilotos", cx))
                 .child(
                     row()
-                        .child(self.field(26))
-                        .child(self.field(27))
-                        .child(self.field(10))
-                        .child(self.field(11)),
+                        .child(self.field(26, cx))
+                        .child(self.field(27, cx))
+                        .child(self.field(10, cx))
+                        .child(self.field(11, cx)),
                 )
-                .child(pending("strategy-add-driver", "Añadir piloto"))
+                .child(pending("strategy-add-driver", "Añadir piloto", cx))
                 .child(
                     row()
                         .child(
-                            button("strategy-create-plan", "Crear y planificar")
+                            button("strategy-create-plan", "Crear y planificar", cx)
                                 .on_click(cx.listener(|this, _, _, cx| this.add_event(cx))),
                         )
                         .child(
-                            button("strategy-cancel-form", "Cancelar")
+                            button("strategy-cancel-form", "Cancelar", cx)
                                 .on_click(cx.listener(|this, _, _, cx| this.cancel_form(cx))),
                         ),
                 ),
@@ -455,36 +483,37 @@ impl Strategy {
                         &display(&variant["note"]["value"]),
                         index == self.variant,
                         true,
+                        cx,
                     )
                     .id(("strategy-variant", index))
                     .on_click(cx.listener(move |this, _, _, cx| this.choose(event, index, cx))),
                 );
             }
         }
-        orbit::card("Estrategias").child(body)
+        orbit::card("Estrategias", cx).child(body)
     }
-    fn field_group(&self, title: &str, range: std::ops::Range<usize>) -> gpui::Div {
-        orbit::card(title).child(
+    fn field_group(&self, title: &str, range: std::ops::Range<usize>, cx: &gpui::App) -> gpui::Div {
+        orbit::card(title, cx).child(
             orbit::card_body()
                 .gap(px(orbit::RADIUS_CONTROL))
-                .children(range.map(|index| self.field(index))),
+                .children(range.map(|index| self.field(index, cx))),
         )
     }
     pub(super) fn workspace(&self, cx: &mut Context<Self>) -> gpui::Div {
         column().child(self.variants(cx))
-            .child(orbit::callout("Cálculo manual escalar. Telemetría, forecast, pilotos múltiples, inventario, ahorro e incertidumbre · pendiente. Escribe todos los números; 0 desactiva VE/vida/reserva."))
-            .child(row().child(column().child(self.field_group("Evento", 0..6)).child(self.field_group("Variante", 6..9)))
-                .child(column().child(self.field_group("Ritmo y recursos", 9..16)).child(self.field_group("Boxes y reservas", 16..24))))
+            .child(orbit::callout("Cálculo manual escalar. Telemetría, forecast, pilotos múltiples, inventario, ahorro e incertidumbre · pendiente. Escribe todos los números; 0 desactiva VE/vida/reserva.", cx))
+            .child(row().child(column().child(self.field_group("Evento", 0..6, cx)).child(self.field_group("Variante", 6..9, cx)))
+                .child(column().child(self.field_group("Ritmo y recursos", 9..16, cx)).child(self.field_group("Boxes y reservas", 16..24, cx))))
             .child(row().flex_wrap()
-                .child(button("strategy-confirm-event", "Confirmar evento y variante").on_click(cx.listener(|this, _, _, cx| this.confirm_event(cx))))
-                .child(button("strategy-calculate", if self.running { "Calculando…" } else { "Confirmar entradas y calcular" })
+                .child(button("strategy-confirm-event", "Confirmar evento y variante", cx).on_click(cx.listener(|this, _, _, cx| this.confirm_event(cx))))
+                .child(button("strategy-calculate", if self.running { "Calculando…" } else { "Confirmar entradas y calcular" }, cx)
                     .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))))
-                .child(button("strategy-cancel", "Cancelar cálculo").on_click(cx.listener(|this, _, _, cx| {
+                .child(button("strategy-cancel", "Cancelar cálculo", cx).on_click(cx.listener(|this, _, _, cx| {
                     this.invalidate();
                     this.status = "Cálculo cancelado; no se conserva resultado parcial".into();
                     cx.notify();
                 }))))
-            .child(self.result_card()).child(Self::document_actions(cx))
+            .child(self.result_card( cx)).child(Self::document_actions(cx))
     }
     fn context_identity(&self) -> (&'static str, String, String) {
         let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
@@ -528,11 +557,17 @@ impl Strategy {
             .rounded(px(8.0))
             .cursor_pointer()
             .when(selected_new, |row| {
-                row.bg(rgb(orbit::SURFACE_2))
+                row.bg(rgb(orbit::surface_2(cx)))
                     .border_l_2()
-                    .border_color(rgb(orbit::CARMINE))
+                    .border_color(rgb(orbit::carmine(cx)))
             })
-            .child(orbit::text("Nueva estrategia", 16.0, 400, orbit::INK))
+            .child(orbit::text(
+                "Nueva estrategia",
+                16.0,
+                400,
+                orbit::ink(cx),
+                cx,
+            ))
             .on_click(cx.listener(|this, _, _, cx| {
                 if let Err(error) = this.ensure_clean_form() {
                     this.error = Some(error);
@@ -558,7 +593,7 @@ impl Strategy {
             .rounded(px(8.0))
             .cursor_pointer()
             .child(
-                orbit::text("Guardadas", 16.0, 400, orbit::INK_2)
+                orbit::text("Guardadas", 16.0, 400, orbit::ink_2(cx), cx)
                     .relative()
                     .top(px(6.0)),
             )
@@ -570,7 +605,7 @@ impl Strategy {
             .gap(px(0.0))
             .mb(px(36.0))
             .child(
-                orbit::tracked_text("ESTRATEGIA", 11.0, 400, orbit::INK_2, 1.4)
+                orbit::tracked_text("ESTRATEGIA", 11.0, 400, orbit::ink_2(cx), 1.4, cx)
                     .relative()
                     .left(px(-1.0))
                     .top(px(-2.0))
@@ -584,29 +619,36 @@ impl Strategy {
                     .mt(px(12.0))
                     .pt(px(20.0))
                     .border_t_1()
-                    .border_color(rgba(orbit::LINE_ROW))
+                    .border_color(rgba(orbit::line_row(cx)))
                     .child(
-                        orbit::tracked_text("TU CARRERA", 10.0, 500, orbit::INK_2, 1.3)
+                        orbit::tracked_text("TU CARRERA", 10.0, 500, orbit::ink_2(cx), 1.3, cx)
                             .relative()
                             .top(px(-1.0))
                             .px(px(20.0))
                             .pb(px(19.0)),
                     )
-                    .child(Self::context_info_row("i-launcher", "Simulador", simulator))
+                    .child(Self::context_info_row(
+                        "i-launcher",
+                        "Simulador",
+                        simulator,
+                        cx,
+                    ))
                     .child(Self::context_info_row(
                         "i-estrategia",
                         "Categoría / coche",
                         &car,
+                        cx,
                     ))
                     .child(Self::context_info_row(
                         "i-carreras",
                         "Circuito / trazado",
                         &circuit,
+                        cx,
                     )),
             )
     }
 
-    fn context_info_row(icon: &'static str, label: &str, value: &str) -> gpui::Div {
+    fn context_info_row(icon: &'static str, label: &str, value: &str, cx: &gpui::App) -> gpui::Div {
         div()
             .h(px(70.0))
             .px(px(14.0))
@@ -614,16 +656,16 @@ impl Strategy {
             .items_center()
             .gap(px(18.0))
             .border_1()
-            .bg(rgba(0xffff_ff04))
-            .border_color(rgba(orbit::LINE_ROW))
-            .child(orbit::icon(icon, 24.0, orbit::INK))
+            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
+            .border_color(rgba(orbit::line_row(cx)))
+            .child(orbit::icon(icon, 24.0, orbit::ink(cx)))
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(5.0))
-                    .child(orbit::text(label, 12.0, 400, orbit::INK_2))
-                    .child(orbit::text(value.to_owned(), 12.0, 600, orbit::INK)),
+                    .child(orbit::text(label, 12.0, 400, orbit::ink_2(cx), cx))
+                    .child(orbit::text(value.to_owned(), 12.0, 600, orbit::ink(cx), cx)),
             )
     }
 
@@ -663,14 +705,15 @@ impl Strategy {
             )
             .child(content)
             .when_some(self.error.clone(), |page, error| {
-                page.child(orbit::callout(error))
+                page.child(orbit::callout(error, cx))
             })
             .when(matches!(self.page, Page::Collection), |page| {
                 page.child(orbit::text(
                     self.status.clone(),
                     orbit::SECONDARY,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 ))
                 .child(orbit::text(
                     if self.editor.dirty() || self.form.dirty {
@@ -680,7 +723,8 @@ impl Strategy {
                     },
                     orbit::SECONDARY,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 ))
             })
             .into_any_element()

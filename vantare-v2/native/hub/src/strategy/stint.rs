@@ -72,6 +72,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         return orbit::empty_state(
             "Sin plan calculado",
             "Calcula una estrategia antes de editar los stints.",
+            cx,
         )
         .into_any_element();
     };
@@ -89,9 +90,9 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .px(px(12.0))
         .pt(px(10.0))
         .gap(px(14.0))
-        .child(super::plan::edit_heading("Ajustar stints"))
+        .child(super::plan::edit_heading("Ajustar stints", cx))
         .child(
-            super::plan::secondary_action("strategy-stints-back", "← Plan")
+            super::plan::secondary_action("strategy-stints-back", "← Plan", cx)
                 .rounded(px(10.0))
                 .w(px(69.0))
                 .h(px(39.0))
@@ -101,10 +102,10 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                 })),
         )
         .child(
-            super::plan::plan_card()
+            super::plan::plan_card(cx)
                 .p(px(18.0))
                 .gap(px(14.0))
-                .child(stint_header(race_laps))
+                .child(stint_header(race_laps, cx))
                 .child(stint_selector(edited, index, cx))
                 .child(
                     div()
@@ -112,7 +113,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                         .gap(px(14.0))
                         .min_w_0()
                         .child(
-                            stint_metrics(laps, pace, fuel, energy)
+                            stint_metrics(laps, pace, fuel, energy, cx)
                                 .w(gpui::relative(0.4454))
                                 .flex_none(),
                         )
@@ -123,7 +124,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                                 .flex_1()
                                 .min_w_0()
                                 .gap(px(14.0))
-                                .child(pilot_row(index, laps, &driver))
+                                .child(pilot_row(index, laps, &driver, cx))
                                 .child(boundary_control(this, edited, index, race_laps, cx)),
                         ),
                 )
@@ -137,7 +138,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .into_any_element()
 }
 
-fn stint_header(race_laps: u32) -> gpui::Div {
+fn stint_header(race_laps: u32, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_start()
@@ -145,24 +146,31 @@ fn stint_header(race_laps: u32) -> gpui::Div {
         .gap(px(14.0))
         .h(px(42.0))
         .border_b_1()
-        .border_color(rgba(orbit::LINE))
-        .child(orbit::text("VUELTAS TOTALES", 11.0, 700, orbit::RED).line_height(px(21.6)))
+        .border_color(rgba(orbit::line(cx)))
+        .child(orbit::text("VUELTAS TOTALES", 11.0, 700, orbit::red(cx), cx).line_height(px(21.6)))
         .child(
-            orbit::text(format!("{race_laps} vueltas"), 18.0, 700, orbit::INK)
-                .line_height(px(21.6)),
+            orbit::text(
+                format!("{race_laps} vueltas"),
+                18.0,
+                700,
+                orbit::ink(cx),
+                cx,
+            )
+            .line_height(px(21.6)),
         )
         .child(
             orbit::text(
                 "Mueve un límite para comparar con la propuesta.",
                 12.0,
                 400,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             )
             .line_height(px(21.6)),
         )
 }
 
-fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
+fn pilot_row(index: usize, laps: u32, driver: &str, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_center()
@@ -171,12 +179,13 @@ fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
         .h(px(88.0))
         .p(px(14.0))
         .rounded(px(10.0))
-        .bg(rgb(0x0011_1515))
+        .bg(rgb(crate::orbit::legacy_rgb(0x0011_1515, cx)))
         .child(orbit::text(
             format!("Stint {}", index + 1),
             16.0,
             700,
-            orbit::INK,
+            orbit::ink(cx),
+            cx,
         ))
         .child(
             div()
@@ -184,14 +193,15 @@ fn pilot_row(index: usize, laps: u32, driver: &str) -> gpui::Div {
                 .flex_col()
                 .gap(px(8.0))
                 .w(px(320.0))
-                .child(orbit::text("Piloto", 13.0, 400, orbit::INK_2).line_height(px(19.5)))
-                .child(super::plan::read_only_select(driver)),
+                .child(orbit::text("Piloto", 13.0, 400, orbit::ink_2(cx), cx).line_height(px(19.5)))
+                .child(super::plan::read_only_select(driver, cx)),
         )
         .child(orbit::text(
             format!("{laps} vueltas"),
             12.0,
             400,
-            orbit::INK_2,
+            orbit::ink_2(cx),
+            cx,
         ))
 }
 
@@ -213,11 +223,11 @@ fn stint_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strateg
                 .px(px(14.0))
                 .rounded(px(8.0))
                 .border_1()
-                .border_color(rgba(orbit::LINE_STRONG))
-                .bg(rgb(0x000f_1212))
+                .border_color(rgba(orbit::line_strong(cx)))
+                .bg(rgb(crate::orbit::legacy_rgb(0x000f_1212, cx)))
                 .when(index == selected, |tab| {
-                    tab.border_color(rgb(orbit::RED))
-                        .bg(orbit::tint(orbit::CARMINE, 0.1))
+                    tab.border_color(rgb(orbit::red(cx)))
+                        .bg(orbit::tint(orbit::carmine(cx), 0.1))
                 })
                 .child(
                     div()
@@ -226,14 +236,21 @@ fn stint_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strateg
                         .items_center()
                         .justify_center()
                         .rounded_full()
-                        .bg(rgb(0x000a_0c0e))
-                        .child(orbit::text((index + 1).to_string(), 16.0, 400, orbit::RED)),
+                        .bg(rgb(crate::orbit::legacy_rgb(0x000a_0c0e, cx)))
+                        .child(orbit::text(
+                            (index + 1).to_string(),
+                            16.0,
+                            400,
+                            orbit::red(cx),
+                            cx,
+                        )),
                 )
                 .child(orbit::text(
                     format!("Stint {}", index + 1),
                     16.0,
                     400,
-                    orbit::INK,
+                    orbit::ink(cx),
+                    cx,
                 ))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.plan_editor.stint = index;
@@ -242,7 +259,7 @@ fn stint_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strateg
         }))
 }
 
-pub(super) fn editor_metric(label: &str, value: String) -> gpui::Div {
+pub(super) fn editor_metric(label: &str, value: String, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
@@ -251,13 +268,22 @@ pub(super) fn editor_metric(label: &str, value: String) -> gpui::Div {
         .p(px(18.0))
         .py(px(15.0))
         .gap(px(8.0))
-        .bg(rgb(0x000b_0e0f))
+        .bg(rgb(crate::orbit::legacy_rgb(0x000b_0e0f, cx)))
         .border_1()
-        .border_color(rgba(orbit::LINE))
-        .child(orbit::text(label.to_uppercase(), 11.0, 400, orbit::INK_2).line_height(px(16.5)))
-        .child(orbit::text(value, 20.0, 700, orbit::INK).line_height(px(24.0)))
+        .border_color(rgba(orbit::line(cx)))
+        .child(
+            orbit::text(label.to_uppercase(), 11.0, 400, orbit::ink_2(cx), cx)
+                .line_height(px(16.5)),
+        )
+        .child(orbit::text(value, 20.0, 700, orbit::ink(cx), cx).line_height(px(24.0)))
 }
-fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui::Div {
+fn stint_metrics(
+    laps: u32,
+    pace: String,
+    fuel: String,
+    energy: String,
+    cx: &gpui::App,
+) -> gpui::Div {
     div()
         .flex()
         .flex_col()
@@ -267,9 +293,9 @@ fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui:
             div()
                 .flex()
                 .h(px(85.0))
-                .child(editor_metric("Vueltas", laps.to_string()).rounded_tl(px(10.0)))
+                .child(editor_metric("Vueltas", laps.to_string(), cx).rounded_tl(px(10.0)))
                 .child(
-                    editor_metric("Ritmo base", pace)
+                    editor_metric("Ritmo base", pace, cx)
                         .border_l(px(0.0))
                         .rounded_tr(px(10.0)),
                 ),
@@ -279,12 +305,12 @@ fn stint_metrics(laps: u32, pace: String, fuel: String, energy: String) -> gpui:
                 .flex()
                 .h(px(85.0))
                 .child(
-                    editor_metric("Fuel", fuel)
+                    editor_metric("Fuel", fuel, cx)
                         .border_t(px(0.0))
                         .rounded_bl(px(10.0)),
                 )
                 .child(
-                    editor_metric("Energía virtual", energy)
+                    editor_metric("Energía virtual", energy, cx)
                         .border_l(px(0.0))
                         .border_t(px(0.0))
                         .rounded_br(px(10.0)),
@@ -320,7 +346,8 @@ fn boundary_control(
             "El último stint termina en la última vuelta de carrera.",
             13.0,
             400,
-            orbit::INK_2,
+            orbit::ink_2(cx),
+            cx,
         );
     };
     let slider = boundary_slider(this, index, min, max, value, cx);
@@ -338,7 +365,8 @@ fn boundary_control(
                 .flex_1()
                 .gap(px(8.0))
                 .child(
-                    orbit::text("Límite del stint", 13.0, 400, orbit::INK_2).line_height(px(19.5)),
+                    orbit::text("Límite del stint", 13.0, 400, orbit::ink_2(cx), cx)
+                        .line_height(px(19.5)),
                 )
                 .child(slider),
         )
@@ -348,7 +376,7 @@ fn boundary_control(
                 .flex_col()
                 .w(px(76.0))
                 .gap(px(8.0))
-                .child(orbit::text("Vuelta", 13.0, 400, orbit::INK_2).line_height(px(19.5)))
+                .child(orbit::text("Vuelta", 13.0, 400, orbit::ink_2(cx), cx).line_height(px(19.5)))
                 .child(
                     div()
                         .h(px(40.0))
@@ -357,9 +385,15 @@ fn boundary_control(
                         .items_center()
                         .rounded(px(8.0))
                         .border_1()
-                        .border_color(rgba(orbit::LINE_STRONG))
-                        .bg(rgb(0x0008_0b0c))
-                        .child(orbit::text(value.to_string(), 13.0, 500, orbit::INK)),
+                        .border_color(rgba(orbit::line_strong(cx)))
+                        .bg(rgb(crate::orbit::legacy_rgb(0x0008_0b0c, cx)))
+                        .child(orbit::text(
+                            value.to_string(),
+                            13.0,
+                            500,
+                            orbit::ink(cx),
+                            cx,
+                        )),
                 ),
         )
 }
@@ -432,7 +466,7 @@ fn boundary_slider(
                 move |bounds, _, cx| {
                     entity.update(cx, |this, _| this.plan_editor.bounds = Some(bounds));
                 },
-                move |bounds, (), window, _| paint_boundary(bounds, fraction, window),
+                move |bounds, (), window, cx| paint_boundary(bounds, fraction, window, cx),
             )
             .size_full(),
         )
@@ -476,7 +510,12 @@ fn boundary_at_fraction(min: u32, max: u32, fraction: f64) -> Option<u32> {
     Some(range.value as u32)
 }
 
-fn paint_boundary(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mut gpui::Window) {
+fn paint_boundary(
+    bounds: gpui::Bounds<gpui::Pixels>,
+    fraction: f64,
+    window: &mut gpui::Window,
+    cx: &gpui::App,
+) {
     let y = bounds.top() + bounds.size.height / 2.0;
     let track = gpui::Bounds::new(
         gpui::point(bounds.left(), y - px(3.0)),
@@ -495,7 +534,7 @@ fn paint_boundary(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mu
     window.paint_quad(
         gpui::fill(
             gpui::Bounds::new(track.origin, gpui::size(width, px(6.0))),
-            rgb(orbit::RED),
+            rgb(orbit::red(cx)),
         )
         .corner_radii(px(3.0)),
     );
@@ -505,7 +544,7 @@ fn paint_boundary(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mu
                 gpui::point(bounds.left() + width - px(7.0), y - px(7.0)),
                 gpui::size(px(14.0), px(14.0)),
             ),
-            rgb(orbit::RED),
+            rgb(orbit::red(cx)),
         )
         .corner_radii(px(7.0)),
     );

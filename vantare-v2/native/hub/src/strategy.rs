@@ -1145,7 +1145,7 @@ fn confirm_metadata(
 }
 
 impl Strategy {
-    fn result_card(&self) -> gpui::Div {
+    fn result_card(&self, cx: &gpui::App) -> gpui::Div {
         let mut result = orbit::card_body();
         if let Some(outcome) = &self.result {
             let plan = &outcome.result;
@@ -1158,13 +1158,16 @@ impl Strategy {
                             format!("{:.3} s", plan.expected.total_seconds),
                             15.0,
                             700,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ),
+                        cx,
                     ))
                     .child(orbit::setting_row(
                         "Stints",
                         "Vueltas por stint",
-                        orbit::text(format!("{:?}", plan.stints), 13.5, 600, orbit::INK),
+                        orbit::text(format!("{:?}", plan.stints), 13.5, 600, orbit::ink(cx), cx),
+                        cx,
                     ))
                     .child(orbit::setting_row(
                         "Recursos de salida",
@@ -1176,8 +1179,10 @@ impl Strategy {
                             ),
                             13.5,
                             600,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ),
+                        cx,
                     ))
                     .child(orbit::setting_row(
                         "Recursos de llegada",
@@ -1189,8 +1194,10 @@ impl Strategy {
                             ),
                             13.5,
                             600,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ),
+                        cx,
                     ));
                 for pit in &plan.pit_stops {
                     result = result.child(orbit::setting_row(
@@ -1203,13 +1210,16 @@ impl Strategy {
                             ),
                             12.5,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         ),
+                        cx,
                     ));
                 }
             } else {
                 result = result.child(orbit::callout(
                     "Sin plan factible; no hay tiempos ni recursos de salida que mostrar.",
+                    cx,
                 ));
             }
         } else {
@@ -1221,10 +1231,11 @@ impl Strategy {
                 },
                 12.5,
                 400,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             ));
         }
-        orbit::card("Resultado y paradas").child(result)
+        orbit::card("Resultado y paradas", cx).child(result)
     }
 }
 

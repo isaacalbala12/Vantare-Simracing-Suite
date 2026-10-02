@@ -281,7 +281,7 @@ impl Hub {
             .gap(px(8.0));
         for (index, &section) in self.shell.rail_sections.iter().enumerate() {
             items = items.child(
-                self.section_rail_button(section)
+                self.section_rail_button(section, cx)
                     .track_focus(&self.shell.rail_focus[index])
                     .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
             );
@@ -300,9 +300,9 @@ impl Hub {
             .pt(px(9.0))
             .pb(px(16.0))
             .gap(px(8.0))
-            .bg(rgb(orbit::RAIL_BG))
+            .bg(rgb(orbit::rail_bg(cx)))
             .border_r_1()
-            .border_color(rgba(orbit::LINE))
+            .border_color(rgba(orbit::line(cx)))
             .child(items)
             .child(
                 div()
@@ -322,6 +322,7 @@ impl Hub {
                             },
                             false,
                             None,
+                            cx,
                         )
                         .aria_expanded(self.shell.column_open)
                         .on_click(cx.listener(|this, _, _, cx| {
@@ -336,6 +337,7 @@ impl Hub {
                             "Comandos · Ctrl+K",
                             false,
                             None,
+                            cx,
                         )
                         .aria_keyshortcuts("Control+K")
                         .on_click(
@@ -352,24 +354,26 @@ impl Hub {
                                 Section::Settings | Section::Account | Section::Licenses
                             ),
                             None,
+                            cx,
                         )
                         .on_click(
                             cx.listener(|this, _, _, cx| this.navigate(Section::Settings, cx)),
                         ),
                     )
-                    .child(orbit::avatar(false, &self.avatar_initial()).on_click(
+                    .child(orbit::avatar(false, &self.avatar_initial(), cx).on_click(
                         cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
                     )),
             )
     }
 
-    fn section_rail_button(&self, section: Section) -> gpui::Stateful<gpui::Div> {
+    fn section_rail_button(&self, section: Section, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
         orbit::rail_button(
             navigation::title(section),
             navigation::icon(section),
             navigation::title(section),
             self.section == section,
             self.shell.access.lock(section),
+            cx,
         )
         .when(
             section == Section::Analysis && self.demo.is_some(),
@@ -382,7 +386,7 @@ impl Hub {
                         .size(px(6.0))
                         .rounded_full()
                         .border_1()
-                        .border_color(rgb(orbit::EMBER)),
+                        .border_color(rgb(orbit::ember(cx))),
                 )
             },
         )
@@ -427,6 +431,7 @@ impl Hub {
         let content = crate::analysis::Analysis::context_sidebar(
             self.demo.as_ref(),
             self.capture.as_ref().map(|capture| capture.name.as_str()),
+            cx,
         );
         let version = self
             .demo
@@ -455,7 +460,7 @@ impl Hub {
             .items_center()
             .justify_center()
             .cursor_pointer()
-            .child(orbit::text("‹", 20.0, 400, orbit::INK_3))
+            .child(orbit::text("‹", 20.0, 400, orbit::ink_3(cx), cx))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.shell.column_open = false;
                 cx.notify();
@@ -467,9 +472,9 @@ impl Hub {
                 .flex()
                 .flex_col()
                 .px(px(10.0))
-                .bg(rgb(orbit::COLUMN_BG))
+                .bg(rgb(orbit::column_bg(cx)))
                 .border_r_1()
-                .border_color(rgba(orbit::LINE))
+                .border_color(rgba(orbit::line(cx)))
                 .child(
                     div()
                         .h(px(60.0))
@@ -477,12 +482,14 @@ impl Hub {
                         .flex()
                         .items_center()
                         .border_b_1()
-                        .border_color(rgba(orbit::LINE_ROW))
-                        .child(orbit::text(title.to_owned(), 12.0, 700, orbit::INK).flex_1())
+                        .border_color(rgba(orbit::line_row(cx)))
+                        .child(
+                            orbit::text(title.to_owned(), 12.0, 700, orbit::ink(cx), cx).flex_1(),
+                        )
                         .child(collapse),
                 )
         } else {
-            orbit::column_with_collapse(title, version, collapse)
+            orbit::column_with_collapse(title, version, collapse, cx)
         }
         .w(px(width))
         .id("hub-context-column");
@@ -501,11 +508,11 @@ impl Hub {
             .flex()
             .flex_col()
             .child(
-                Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas", strategy)
+                Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas", strategy, cx)
                     .when(strategy, |heading| heading.pb(px(9.0))),
             )
             .child(
-                Self::context_row("Sin salidas próximas", "", None)
+                Self::context_row("Sin salidas próximas", "", None, cx)
                     .when(strategy, |row| row.relative().left(px(1.0)).top(px(-2.0))),
             );
         let overlay = self.overlay_context(cx);
@@ -525,11 +532,11 @@ impl Hub {
         column.child(
             blocks
                 .child(
-                    Self::context_block("races", races)
+                    Self::context_block("races", races, cx)
                         .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
                 )
                 .child(
-                    Self::context_block("overlay", overlay)
+                    Self::context_block("overlay", overlay, cx)
                         .when(strategy, |block| block.h(px(82.0)).pt(px(15.0)).pb(px(0.0))),
                 )
                 .when(
@@ -541,7 +548,7 @@ impl Hub {
                             | Section::Studio
                             | Section::Workshop
                     ),
-                    |blocks| blocks.child(Self::context_block("launcher", launcher)),
+                    |blocks| blocks.child(Self::context_block("launcher", launcher, cx)),
                 ),
         )
     }
@@ -551,13 +558,14 @@ impl Hub {
             "PERFIL DE OVERLAY",
             "DETENIDO",
             self.section == Section::Strategy,
+            cx,
         )
         .when(self.section == Section::Strategy, |heading| {
             heading.pb(px(13.0))
         });
         let Some(profile) = self.demo.as_ref().and_then(|demo| demo.overlay_profile()) else {
             return div().flex().flex_col().child(heading).child(
-                Self::context_row("Sin perfiles todavía", "", None)
+                Self::context_row("Sin perfiles todavía", "", None, cx)
                     .when(self.section == Section::Strategy, |row| {
                         row.relative().left(px(1.0))
                     }),
@@ -578,21 +586,28 @@ impl Hub {
             .gap(px(10.0))
             .cursor_pointer()
             .when(profile.active, |row| {
-                row.bg(orbit::tint(orbit::CARMINE, 0.11))
+                row.bg(orbit::tint(orbit::carmine(cx), 0.11))
             })
-            .focus_visible(|row| row.border_1().border_color(rgb(orbit::CORAL)))
+            .focus_visible(|row| row.border_1().border_color(rgb(orbit::coral(cx))))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .flex()
                     .flex_col()
-                    .child(orbit::text(profile.name.clone(), 13.0, 650, orbit::INK))
+                    .child(orbit::text(
+                        profile.name.clone(),
+                        13.0,
+                        650,
+                        orbit::ink(cx),
+                        cx,
+                    ))
                     .child(orbit::text(
                         profile.context_subtitle(),
                         11.0,
                         400,
-                        orbit::INK_3,
+                        orbit::ink_3(cx),
+                        cx,
                     )),
             )
             .child(
@@ -600,19 +615,23 @@ impl Hub {
                     .size(px(26.0))
                     .flex_none()
                     .rounded(px(8.0))
-                    .bg(rgba(0xffff_ff0a))
+                    .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0a, cx)))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(orbit::text("▶", 9.0, 400, orbit::INK_3)),
+                    .child(orbit::text("▶", 9.0, 400, orbit::ink_3(cx), cx)),
             )
             .on_click(cx.listener(|this, _, _, cx| this.navigate(Section::Studio, cx)));
         div().flex().flex_col().child(heading).child(row)
     }
 
     fn launcher_context(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let heading =
-            Self::context_heading("LAUNCHER", "Gestionar", self.section == Section::Strategy);
+        let heading = Self::context_heading(
+            "LAUNCHER",
+            "Gestionar",
+            self.section == Section::Strategy,
+            cx,
+        );
         let mut profiles = div()
             .flex()
             .flex_col()
@@ -634,7 +653,7 @@ impl Hub {
                         div()
                             .size(px(32.0))
                             .rounded(px(8.0))
-                            .bg(rgb(orbit::SURFACE_3))
+                            .bg(rgb(orbit::surface_3(cx)))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -642,7 +661,8 @@ impl Hub {
                                 if profile.id == "creator" { "CC" } else { "PRO" },
                                 10.0,
                                 800,
-                                orbit::INK,
+                                orbit::ink(cx),
+                                cx,
                             )),
                     )
                     .child(
@@ -657,7 +677,7 @@ impl Hub {
                                 2.0
                             }))
                             .child(
-                                orbit::text(profile.name.as_str(), 13.0, 650, orbit::INK)
+                                orbit::text(profile.name.as_str(), 13.0, 650, orbit::ink(cx), cx)
                                     .font_weight(gpui::FontWeight::NORMAL)
                                     .line_height(px(if self.section == Section::Strategy {
                                         18.0
@@ -670,7 +690,8 @@ impl Hub {
                                     format!("{} pasos", profile.steps.len()),
                                     11.0,
                                     400,
-                                    orbit::INK_3,
+                                    orbit::ink_3(cx),
+                                    cx,
                                 )
                                 .line_height(px(16.5)),
                             ),
@@ -682,12 +703,12 @@ impl Hub {
                             .tab_index(0)
                             .size(px(26.0))
                             .rounded(px(8.0))
-                            .bg(rgb(orbit::SURFACE_2))
+                            .bg(rgb(orbit::surface_2(cx)))
                             .flex()
                             .items_center()
                             .justify_center()
                             .aria_label(format!("Lanzar {}", profile.name))
-                            .child(orbit::text("▶", 9.0, 700, orbit::INK_3))
+                            .child(orbit::text("▶", 9.0, 700, orbit::ink_3(cx), cx))
                             .on_click(
                                 cx.listener(|this, _, _, cx| this.navigate(Section::Launcher, cx)),
                             ),
@@ -704,7 +725,7 @@ impl Hub {
         div().flex().flex_col().child(heading).child(profiles)
     }
 
-    fn context_heading(title: &str, action: &str, strategy: bool) -> gpui::Div {
+    fn context_heading(title: &str, action: &str, strategy: bool, cx: &gpui::App) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -714,32 +735,32 @@ impl Hub {
             .pt(px(2.5))
             .pb(px(if title == "LAUNCHER" { 11.0 } else { 7.0 }))
             .child(if strategy {
-                orbit::tracked_text(title, 10.0, 750, orbit::INK_3, 0.8)
+                orbit::tracked_text(title, 10.0, 750, orbit::ink_3(cx), 0.8, cx)
             } else {
-                orbit::eyebrow(title)
+                orbit::eyebrow(title, cx)
             })
             .child(if action == "DETENIDO" {
                 div()
                     .px(px(8.0))
                     .py(px(3.0))
                     .rounded_full()
-                    .bg(rgba(0xffff_ff0a))
+                    .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0a, cx)))
                     .child(
                         div()
                             .flex()
                             .gap(px(0.63))
                             .children(action.chars().map(|letter| {
-                                orbit::mono_text(letter.to_string(), 10.5, orbit::INK_3)
+                                orbit::mono_text(letter.to_string(), 10.5, orbit::ink_3(cx), cx)
                                     .font_weight(gpui::FontWeight(750.0))
                                     .line_height(px(15.75))
                             })),
                     )
             } else {
-                orbit::text(action, 11.5, 400, orbit::INK_3)
+                orbit::text(action, 11.5, 400, orbit::ink_3(cx), cx)
             })
     }
 
-    fn context_row(title: &str, subtitle: &str, badge: Option<&str>) -> gpui::Div {
+    fn context_row(title: &str, subtitle: &str, badge: Option<&str>, cx: &gpui::App) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -747,16 +768,20 @@ impl Hub {
             .gap(px(8.0))
             .px(px(0.0))
             .pb(px(4.0))
-            .child(orbit::text(title, 16.0, 400, orbit::INK))
+            .child(orbit::text(title, 16.0, 400, orbit::ink(cx), cx))
             .when(!subtitle.is_empty(), |row| {
-                row.child(orbit::text(subtitle, 11.0, 400, orbit::INK_3))
+                row.child(orbit::text(subtitle, 11.0, 400, orbit::ink_3(cx), cx))
             })
             .when_some(badge, |row, label| {
-                row.child(orbit::text(label, 10.0, 700, orbit::INK_3))
+                row.child(orbit::text(label, 10.0, 700, orbit::ink_3(cx), cx))
             })
     }
 
-    fn context_block(id: &'static str, content: gpui::Div) -> gpui::Stateful<gpui::Div> {
+    fn context_block(
+        id: &'static str,
+        content: gpui::Div,
+        cx: &gpui::App,
+    ) -> gpui::Stateful<gpui::Div> {
         div()
             .id(id)
             .w_full()
@@ -766,7 +791,7 @@ impl Hub {
             .pt(px(10.0))
             .pb(px(4.0))
             .border_t_1()
-            .border_color(rgba(orbit::LINE_ROW))
+            .border_color(rgba(orbit::line_row(cx)))
             .child(content)
     }
 
@@ -800,50 +825,61 @@ impl Hub {
                 Some(cx.observe(&self.notifications, |_, _, cx| cx.notify()));
         }
         div().flex().items_center().gap(px(orbit::MENU_PAD)).child(
-            orbit::rail_button("notifications", "i-campana", "Notificaciones", false, None)
-                .size(px(28.0))
-                .bg(rgba(0x0000_0000))
-                .when(self.notifications.read(cx).popover_open(cx), |bell| {
-                    bell.bg(rgba(0xffff_ff0a))
-                })
-                .when(self.notifications.read(cx).unread() > 0, |bell| {
-                    bell.child(
-                        orbit::badge(self.notifications.read(cx).unread(), orbit::Tone::Danger)
-                            .absolute()
-                            .top_0()
-                            .right_0(),
-                    )
-                })
-                .child({
-                    let notifications = self.notifications.clone();
-                    // Mismo seguimiento de ancla que el dropdown Orbit.
-                    gpui::canvas(
-                        move |bounds, _, cx| {
-                            Self::update_bell_anchor(&notifications, bounds, cx);
-                        },
-                        |_, (), _, _| {},
+            orbit::rail_button(
+                "notifications",
+                "i-campana",
+                "Notificaciones",
+                false,
+                None,
+                cx,
+            )
+            .size(px(28.0))
+            .bg(rgba(0x0000_0000))
+            .when(self.notifications.read(cx).popover_open(cx), |bell| {
+                bell.bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0a, cx)))
+            })
+            .when(self.notifications.read(cx).unread() > 0, |bell| {
+                bell.child(
+                    orbit::badge(
+                        self.notifications.read(cx).unread(),
+                        orbit::Tone::Danger,
+                        cx,
                     )
                     .absolute()
-                    .inset_0()
-                    .size(px(28.0))
-                })
-                .aria_expanded(self.notifications.read(cx).popover_open(cx))
-                .aria_label(format!(
-                    "Notificaciones · {} sin leer",
-                    self.notifications.read(cx).unread()
-                ))
-                .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
-                    if event.button == gpui::MouseButton::Left {
-                        let open = this.notifications.read(cx).popover_open(cx);
-                        this.notifications
-                            .update(cx, |center, _| center.bell_was_open = open);
-                    }
-                }))
-                .on_click(cx.listener(|this, event, window, cx| {
+                    .top_0()
+                    .right_0(),
+                )
+            })
+            .child({
+                let notifications = self.notifications.clone();
+                // Mismo seguimiento de ancla que el dropdown Orbit.
+                gpui::canvas(
+                    move |bounds, _, cx| {
+                        Self::update_bell_anchor(&notifications, bounds, cx);
+                    },
+                    |_, (), _, _| {},
+                )
+                .absolute()
+                .inset_0()
+                .size(px(28.0))
+            })
+            .aria_expanded(self.notifications.read(cx).popover_open(cx))
+            .aria_label(format!(
+                "Notificaciones · {} sin leer",
+                self.notifications.read(cx).unread()
+            ))
+            .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                if event.button == gpui::MouseButton::Left {
+                    let open = this.notifications.read(cx).popover_open(cx);
                     this.notifications
-                        .update(cx, |center, cx| center.click_bell(event, window, cx));
-                    cx.notify();
-                })),
+                        .update(cx, |center, _| center.bell_was_open = open);
+                }
+            }))
+            .on_click(cx.listener(|this, event, window, cx| {
+                this.notifications
+                    .update(cx, |center, cx| center.click_bell(event, window, cx));
+                cx.notify();
+            })),
         )
     }
 
@@ -893,17 +929,17 @@ impl Hub {
                             .px(px(13.0))
                             .h(px(36.0))
                             .rounded(px(12.0))
-                            .bg(rgba(0xffff_ff06))
+                            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
                             .border_1()
-                            .border_color(rgba(orbit::LINE))
+                            .border_color(rgba(orbit::line(cx)))
                             .child(
                                 div()
                                     .size(px(6.5))
                                     .rounded_full()
                                     .border_1()
-                                    .border_color(rgb(orbit::EMBER)),
+                                    .border_color(rgb(orbit::ember(cx))),
                             )
-                            .child(orbit::text(version, 12.0, 400, orbit::INK_3)),
+                            .child(orbit::text(version, 12.0, 400, orbit::ink_3(cx), cx)),
                     )
                 })
                 .into_any_element()
@@ -913,6 +949,7 @@ impl Hub {
             navigation::title(breadcrumb),
             section_actions,
             action,
+            cx,
         )
         .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
         .when(self.section == Section::Strategy, |bar| {
@@ -947,14 +984,15 @@ impl Hub {
                     heading,
                     10.5,
                     850,
-                    orbit::INK_MUTED,
+                    orbit::ink_muted(cx),
                     1.365,
+                    cx,
                 )));
                 previous_group = Some(destination);
             }
             let command = item.command.clone();
             rows = rows.child(
-                orbit::palette_item(index, index == self.shell.cursor)
+                orbit::palette_item(index, index == self.shell.cursor, cx)
                     .aria_label(format!(
                         "{} · {}",
                         item.label,
@@ -965,11 +1003,11 @@ impl Hub {
                             .size(px(36.0))
                             .flex_none()
                             .rounded(px(10.0))
-                            .bg(orbit::tint(orbit::CARMINE, 0.09))
+                            .bg(orbit::tint(orbit::carmine(cx), 0.09))
                             .flex()
                             .items_center()
                             .justify_center()
-                            .child(orbit::icon(item.icon, 14.0, orbit::CORAL)),
+                            .child(orbit::icon(item.icon, 14.0, orbit::coral(cx))),
                     )
                     .child(
                         orbit::text(
@@ -977,10 +1015,11 @@ impl Hub {
                             16.0,
                             400,
                             if index == self.shell.cursor {
-                                orbit::INK
+                                orbit::ink(cx)
                             } else {
-                                orbit::INK_2
+                                orbit::ink_2(cx)
                             },
+                            cx,
                         )
                         .flex_1()
                         .min_w_0(),
@@ -989,10 +1028,11 @@ impl Hub {
                         item.locked.unwrap_or(item.meta),
                         10.5,
                         400,
-                        orbit::INK_4,
+                        orbit::ink_4(cx),
+                        cx,
                     ))
                     .when(item.locked.is_some(), |row| {
-                        row.child(orbit::icon("i-lock", 13.0, orbit::INK_MUTED))
+                        row.child(orbit::icon("i-lock", 13.0, orbit::ink_muted(cx)))
                     })
                     .on_hover(cx.listener(move |this, hovered, _, cx| {
                         if *hovered {
@@ -1021,7 +1061,7 @@ impl Hub {
             .absolute()
             .inset_0()
             .occlude()
-            .bg(rgba(orbit::PALETTE_BACKDROP))
+            .bg(rgba(orbit::palette_backdrop(cx)))
             .flex()
             .justify_center()
             .items_start()
@@ -1042,11 +1082,11 @@ impl Hub {
                     ))
                     .flex()
                     .flex_col()
-                    .bg(rgb(orbit::SURFACE_1))
+                    .bg(rgb(orbit::surface_1(cx)))
                     .border_1()
-                    .border_color(rgba(orbit::LINE_STRONG))
+                    .border_color(rgba(orbit::line_strong(cx)))
                     .rounded(px(orbit::FEATURED_RADIUS))
-                    .shadow(orbit::layer_shadow(true))
+                    .shadow(orbit::layer_shadow(true, cx))
                     .overflow_hidden()
                     .on_mouse_down_out(cx.listener(
                         |this, event: &gpui::MouseDownEvent, window, cx| {
@@ -1064,8 +1104,8 @@ impl Hub {
                             .items_center()
                             .gap(px(16.0))
                             .border_b_1()
-                            .border_color(rgba(orbit::LINE))
-                            .child(orbit::icon("i-comando", 20.0, orbit::INK_4))
+                            .border_color(rgba(orbit::line(cx)))
+                            .child(orbit::icon("i-comando", 20.0, orbit::ink_4(cx)))
                             .child(self.shell.query.clone()),
                     )
                     .child(rows.flex_1().min_h_0())
@@ -1078,14 +1118,27 @@ impl Hub {
                             .items_center()
                             .gap(px(16.0))
                             .border_t_1()
-                            .border_color(rgba(orbit::LINE))
-                            .child(orbit::text("↑↓ navegar", 10.5, 400, orbit::INK_MUTED))
-                            .child(orbit::text("↵ ejecutar", 10.5, 400, orbit::INK_MUTED))
+                            .border_color(rgba(orbit::line(cx)))
+                            .child(orbit::text(
+                                "↑↓ navegar",
+                                10.5,
+                                400,
+                                orbit::ink_muted(cx),
+                                cx,
+                            ))
+                            .child(orbit::text(
+                                "↵ ejecutar",
+                                10.5,
+                                400,
+                                orbit::ink_muted(cx),
+                                cx,
+                            ))
                             .child(orbit::text(
                                 "Los destinos bloqueados muestran el motivo",
                                 10.5,
                                 400,
-                                orbit::INK_MUTED,
+                                orbit::ink_muted(cx),
+                                cx,
                             )),
                     ),
             )

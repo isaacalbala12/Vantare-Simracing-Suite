@@ -8,8 +8,9 @@ Esta sección compone Orbit y las piezas de vista que el kit todavía no expone.
 
 El panel reserva la altura de topbar, cabecera y pie y se actualiza al cambiar
 el tamaño de ventana; el scroll de detalle no necesita modificar la shell.
-Los selectores, paletas y controles pendientes se componen en esta vista con
-la geometría Wails y permanecen sin acciones ni persistencia.
+Los controles conservan la geometría Wails. Apariencia está conectada a la
+configuración local; los controles sin contrato de las otras páginas permanecen
+sin acciones ni persistencia.
 Novedades importa los mismos manifiestos versionados de `docs/releases` que
 el producto Wails; esta lectura no concede autoridad para actualizar el producto.
 
@@ -40,7 +41,7 @@ No concede roles ni crea Agenda Owner.
 | Página | Conectado | Pendiente, deshabilitado |
 | --- | --- | --- |
 | Aplicación | Fuera del banco, idioma/unidades de widgets → preferencias de Studio → layout compartido. Workshop observa Studio; overlays recarga el layout. Error de guardado visible y selector restituido al valor real. | Idioma del Hub, zoom, densidad, inicio/minimizado, preferencias de avisos y prueba de notificación. |
-| Apariencia | Orbit oscuro fijo. | Siete paletas, sistema/claro/oscuro, contraste, opacidad, fuentes y reducir animaciones. |
+| Apariencia | Siete paletas, sistema/claro/oscuro, contraste, opacidad y fuentes, con vista previa y guardado inmediato. | Reducir animaciones. |
 | Rendimiento | Ninguna política nativa configurable. | Cinco niveles, Personalizado, Automático y cadencias por widget. Los FPS de referencia son descripciones Wails, no valores efectivos del núcleo. |
 | Actualizaciones | Metadatos locales del candidato fase 7, lectura en segundo plano al abrir y al actualizar. Portable: manifiesto junto a `bin/`; instalado: generación activa y `state.json`. Build de desarrollo identificada. | Búsqueda remota, instalación, cambio de canal. Las notas son lectura informativa de manifiestos versionados. No se validan hashes aquí: esta vista no autoriza actualización/rollback. |
 | Atajos | Las cuatro acciones reales del producto como referencia. | Sin registro global nativo: no combinaciones inventadas, editor o declaración de ausencia de conflictos. |
@@ -105,3 +106,41 @@ GitHub #1430. En esta segunda pasada solo hay integración de bases y commits
 locales autorizados. Sin push, PR, merge remoto ni promoción; revisión de Opus
 pendiente. Los porcentajes finales y el estado real de los gates se entregan
 en el informe externo, sin afirmar paridad total desde esta documentación.
+
+
+## Temas conectados — worker Linux ISA-1430
+
+`appearance.json` vive en el directorio de datos del Hub (`--data-dir`); utiliza
+el guardado atómico y la detección de conflictos de `files.rs`. Un fallo de disco
+se muestra en Ajustes y conserva el tema aplicado; los selectores vuelven al
+valor guardado. El arranque valida JSON y tamaño (16 KiB), y acota porcentajes.
+La selección inicial es **Vantare oscuro**, contraste 100 y cristal 80, para
+conservar el Hub previo. `Sistema` guarda la preferencia y sigue los eventos de
+apariencia de GPUI (incluida la ruta Windows existente).
+
+El global GPUI `orbit::theme::Theme` contiene los colores resueltos. Los accesores
+requieren `cx`; las antiguas constantes de color solo se compilan en tests como
+contrato de paridad. Los literales históricos de secciones pasan por una tabla
+semántica que mantiene sus valores exactos en Vantare oscuro. Inter delega en
+el helper de pintura previo; Segoe/Arial usan el shaping de GPUI. Las fuentes
+monoespaciadas se aplican únicamente al Hub.
+
+Grises aplica los tokens del diseño del orquestador: éxito con ✓ y contorno,
+aviso con ⚠ y borde discontinuo, peligro invertido con ✕ e información con ⓘ.
+Las formas adicionales aparecen solo en Grises. Los chips de nivel añaden
+estrellas y usan sus luminancias. Studio cambia su fondo sin modificar los
+ViewModels ni el renderer de los 18 widgets; Vantare oscuro conserva el fondo
+nativo anterior de superficies Orbit.
+
+Tras futuros merges, ejecutar `native/hub/tools/temas-migrar.py --write`, producir
+diagnósticos JSON con Cargo y usar `--repair-context <log>`; el script documenta
+el ciclo. Revisar imports y callbacks: el `cx` de pintura lo proporciona GPUI y
+no se captura una referencia de render. Ejecutar `--check` y `--self-test`.
+El script no sustituye la revisión de colores semánticos, fonts o paridad.
+
+El worker Linux guarda evidencia fuera del repo en `~/evidence/temas-conexion/`.
+Quedan para el integrador: gates Windows, banco `-Todas` (≤0,05 pp por pantalla),
+los 18 widgets, y capturas de Inicio/Apariencia en Vantare oscuro/claro, Grises
+oscuro/claro y Océano. En esta sesión no hay DISPLAY ni WAYLAND_DISPLAY. Notion
+está pendiente por la indisponibilidad explícita del encargo; no se ha simulado
+su seguimiento ni realizado push, PR, merge o release.

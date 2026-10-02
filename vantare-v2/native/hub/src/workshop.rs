@@ -298,7 +298,7 @@ impl Workshop {
 
     fn study_panel(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let choice = |index: usize, label: &str| {
-            study_label(label).child(study_choice(
+            study_label(label, cx).child(study_choice(
                 self.controls[index].clone(),
                 index,
                 window,
@@ -306,51 +306,51 @@ impl Workshop {
             ))
         };
         let mut panel = div().flex().flex_col().px(px(22.0)).pt(px(38.0)).pb(px(30.0))
-            .child(orbit::tracked_text("VANTARE / WORKSHOP", 8.0, 600, 0x00aa_aab0, 1.6))
-            .child(orbit::tracked_text("Eficiencia.", 28.0, 600, 0x00f5_f5f5, -1.96).mt(px(18.0)))
-            .child(orbit::text(format!("{} · Sistema Eficiencia", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab).mt(px(4.0)))
-            .child(study_section("Idioma del widget")
+            .child(orbit::tracked_text("VANTARE / WORKSHOP", 8.0, 600, 0x00aa_aab0, 1.6, cx))
+            .child(orbit::tracked_text("Eficiencia.", 28.0, 600, 0x00f5_f5f5, -1.96, cx).mt(px(18.0)))
+            .child(orbit::text(format!("{} · Sistema Eficiencia", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab, cx).mt(px(4.0)))
+            .child(study_section("Idioma del widget", cx)
                 .child(choice(0, "Idioma"))
-                .child(study_note("Demostración local. El idioma de esta vista se restablece al abrir el Workshop.")))
-            .child(study_section("Widget")
+                .child(study_note("Demostración local. El idioma de esta vista se restablece al abrir el Workshop.", cx)))
+            .child(study_section("Widget", cx)
                 .child(choice(1, "Widget"))
                 .child(choice(2, "Sistema de diseño").mt(px(10.0)))
-                .child(study_note("Fixture: default")))
-            .child(study_section("Sesión").child(study_segments("session", &["Práctica", "Clasificación", "Carrera"], 2)))
-            .child(study_section("Marca").child(study_segments("brand", &["Con marca", "Sin marca"], 0)))
-            .child(study_section("Dirección v2").child(study_segments("direction", &["V1", "Default", "Foco"], 1)))
-            .child(study_section("Clasificación").child(study_segments("scope", &["General", "Multiclase"], 0)))
-            .child(study_section("Filas")
-                .child(study_note("Pilotos totales; Default muestra el podio y la ventana alrededor del jugador."))
-                .child(study_label("Pilotos totales").child(study_readonly("rows", "7")))
-                .child(study_label("Posición del jugador").mt(px(10.0)).child(study_readonly("player", "1")))
-                .child(study_label("Pilotos alrededor").mt(px(10.0)).child(study_readonly("around", "4"))))
-            .child(study_section("Módulos").child(study_note("Posición y piloto siempre visibles."))
-                .children([("Diferencia", true), ("Mejor vuelta", false), ("Última vuelta", true), ("Estado en boxes", true)].into_iter().enumerate().map(|(index, (label, on))| study_toggle("module", index, label, on))))
-            .child(study_section("Nombre").child(study_segments("name", &["Completo", "Apellido", "Inicial"], 0)))
-            .child(study_section("Pie de datos").child(study_note("Datos bajo las filas, en orden de selección."))
-                .children(["Tiempo", "Vuelta", "Posición", "Diferencia", "Mejor vuelta", "Última vuelta", "Pista", "Aire", "Viento"].into_iter().enumerate().map(|(index, label)| study_toggle("slot", index, label, label == "Pista"))))
-            .child(study_section("Ubicación").child(study_label("Ubicación").child(study_readonly("location", "Pista"))))
-            .child(study_section("Presentación")
-                .child(study_note("Fondo"))
+                .child(study_note("Fixture: default", cx)))
+            .child(study_section("Sesión", cx).child(study_segments("session", &["Práctica", "Clasificación", "Carrera"], 2, cx)))
+            .child(study_section("Marca", cx).child(study_segments("brand", &["Con marca", "Sin marca"], 0, cx)))
+            .child(study_section("Dirección v2", cx).child(study_segments("direction", &["V1", "Default", "Foco"], 1, cx)))
+            .child(study_section("Clasificación", cx).child(study_segments("scope", &["General", "Multiclase"], 0, cx)))
+            .child(study_section("Filas", cx)
+                .child(study_note("Pilotos totales; Default muestra el podio y la ventana alrededor del jugador.", cx))
+                .child(study_label("Pilotos totales", cx).child(study_readonly("rows", "7", cx)))
+                .child(study_label("Posición del jugador", cx).mt(px(10.0)).child(study_readonly("player", "1", cx)))
+                .child(study_label("Pilotos alrededor", cx).mt(px(10.0)).child(study_readonly("around", "4", cx))))
+            .child(study_section("Módulos", cx).child(study_note("Posición y piloto siempre visibles.", cx))
+                .children([("Diferencia", true), ("Mejor vuelta", false), ("Última vuelta", true), ("Estado en boxes", true)].into_iter().enumerate().map(|(index, (label, on))| study_toggle("module", index, label, on, cx))))
+            .child(study_section("Nombre", cx).child(study_segments("name", &["Completo", "Apellido", "Inicial"], 0, cx)))
+            .child(study_section("Pie de datos", cx).child(study_note("Datos bajo las filas, en orden de selección.", cx))
+                .children(["Tiempo", "Vuelta", "Posición", "Diferencia", "Mejor vuelta", "Última vuelta", "Pista", "Aire", "Viento"].into_iter().enumerate().map(|(index, label)| study_toggle("slot", index, label, label == "Pista", cx))))
+            .child(study_section("Ubicación", cx).child(study_label("Ubicación", cx).child(study_readonly("location", "Pista", cx))))
+            .child(study_section("Presentación", cx)
+                .child(study_note("Fondo", cx))
                 .child(div().flex().gap(px(4.0)).children(["Mixto", "Oscuro", "Claro"].into_iter().enumerate().map(|(index, label)| {
-                    study_button("stage-background", label).id(("stage-background", index)).flex_1()
+                    study_button("stage-background", label, cx).id(("stage-background", index)).flex_1()
                         .on_click(cx.listener(move |this, _, _, cx| { this.background = index; cx.notify(); }))
                 })))
-                .child(study_label("Superficie").child(study_readonly("surface", "Studio")))
+                .child(study_label("Superficie", cx).child(study_readonly("surface", "Studio", cx)))
                 .child(choice(3, "Comparar con").mt(px(10.0)))
-                .child(study_note("Escala"))
-                .child(study_segments("scale", &["0.5×", "1×", "1.5×", "2×"], 1))
-                .child(study_note("La resolución real del widget es la base; ancho y alto solo cambian la previsualización del harness."))
-                .child(study_label("Resolución").child(study_readonly("resolution", "1080p · 1920×1080")))
-                .child(study_label("Ancho").mt(px(10.0)).child(study_readonly("width", "410")))
-                .child(study_label("Alto").mt(px(8.0)).child(study_readonly("height", "302")))
-                .child(study_button("apply-size", "Aplicar tamaño declarado").w(px(131.0)).mt(px(10.0)).tab_stop(false).cursor_default().aria_description("Tamaño fijo del renderer nativo")))
+                .child(study_note("Escala", cx))
+                .child(study_segments("scale", &["0.5×", "1×", "1.5×", "2×"], 1, cx))
+                .child(study_note("La resolución real del widget es la base; ancho y alto solo cambian la previsualización del harness.", cx))
+                .child(study_label("Resolución", cx).child(study_readonly("resolution", "1080p · 1920×1080", cx)))
+                .child(study_label("Ancho", cx).mt(px(10.0)).child(study_readonly("width", "410", cx)))
+                .child(study_label("Alto", cx).mt(px(8.0)).child(study_readonly("height", "302", cx)))
+                .child(study_button("apply-size", "Aplicar tamaño declarado", cx).w(px(131.0)).mt(px(10.0)).tab_stop(false).cursor_default().aria_description("Tamaño fijo del renderer nativo")))
             .child(div().mt(px(30.0))
-                .child(study_button("workshop-tools", "Escenario de diseño").h(px(12.0)).relative().pl(px(12.0)).justify_start().border_0().text_color(rgb(0x00c4_c4c8)).child(div().absolute().left_0().top(px(4.0)).size(px(5.0)).rounded_full().bg(rgb(0x00c1_121f))).on_click(cx.listener(|this, _, _, cx| { this.tools_open = !this.tools_open; cx.notify(); })))
-                .child(study_note("Datos de demostración. El widget usa el mismo componente que la aplicación.").mt(px(8.0)).mb(px(0.0)).line_height(px(17.0)))
-                .child(orbit::mono_text(format!("widget={}&system=vantare-functional&scene={}&frame={}&language={:?}&background={}&comparison={}", self.kind.name(), self.scene.path.file_name().unwrap_or_default().to_string_lossy(), self.scene.index(), self.prefs.language, ["grid", "dark", "light"][self.background], match self.mode { Mode::Hidden => "none", Mode::SideBySide => "side-by-side", Mode::Overlaid => "overlaid" }), 9.0, 0x0077_777d).line_height(px(14.4)).mt(px(10.0)))
-                .child(study_button("reset-study", "Restablecer selección").w(px(127.0)).h(px(28.0)).mt(px(10.0)).on_click(cx.listener(|this, _, _, cx| {
+                .child(study_button("workshop-tools", "Escenario de diseño", cx).h(px(12.0)).relative().pl(px(12.0)).justify_start().border_0().text_color(rgb(crate::orbit::legacy_rgb(0x00c4_c4c8, cx))).child(div().absolute().left_0().top(px(4.0)).size(px(5.0)).rounded_full().bg(rgb(crate::orbit::legacy_rgb(0x00c1_121f, cx)))).on_click(cx.listener(|this, _, _, cx| { this.tools_open = !this.tools_open; cx.notify(); })))
+                .child(study_note("Datos de demostración. El widget usa el mismo componente que la aplicación.", cx).mt(px(8.0)).mb(px(0.0)).line_height(px(17.0)))
+                .child(orbit::mono_text(format!("widget={}&system=vantare-functional&scene={}&frame={}&language={:?}&background={}&comparison={}", self.kind.name(), self.scene.path.file_name().unwrap_or_default().to_string_lossy(), self.scene.index(), self.prefs.language, ["grid", "dark", "light"][self.background], match self.mode { Mode::Hidden => "none", Mode::SideBySide => "side-by-side", Mode::Overlaid => "overlaid" }), 9.0, 0x0077_777d, cx).line_height(px(14.4)).mt(px(10.0)))
+                .child(study_button("reset-study", "Restablecer selección", cx).w(px(127.0)).h(px(28.0)).mt(px(10.0)).on_click(cx.listener(|this, _, _, cx| {
                     this.kind = Kind::Standings;
                     this.background = 0;
                     this.mode = Mode::Hidden;
@@ -360,8 +360,8 @@ impl Workshop {
                 }))));
         if self.tools_open {
             panel = panel.child(self.toolbar(cx)).child(self.playback(cx))
-                .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone())))
-                .child(study_note("La sesión, opciones de Standings y tamaño se editan en Studio. Este panel conserva su estado de referencia; esas opciones aún no tienen control nativo en Workshop."));
+                .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone()), cx))
+                .child(study_note("La sesión, opciones de Standings y tamaño se editan en Studio. Este panel conserva su estado de referencia; esas opciones aún no tienen control nativo en Workshop.", cx));
         }
         div()
             .id("workshop-controls")
@@ -369,7 +369,7 @@ impl Workshop {
             .h_full()
             .flex_shrink_0()
             .relative()
-            .bg(rgb(0x0019_191b))
+            .bg(rgb(crate::orbit::legacy_rgb(0x0019_191b, cx)))
             .overflow_hidden()
             .child(
                 div()
@@ -380,7 +380,7 @@ impl Workshop {
                     .track_scroll(&self.scroll)
                     .child(panel),
             )
-            .child(study_scrollbar(&self.scroll).on_mouse_down(
+            .child(study_scrollbar(&self.scroll, cx).on_mouse_down(
                 gpui::MouseButton::Left,
                 cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
                     let bounds = this.scroll.bounds();
@@ -601,7 +601,7 @@ impl Workshop {
     }
 
     fn toolbar(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card("Selección de trabajo").child(
+        orbit::card("Selección de trabajo", cx).child(
             orbit::card_body()
                 .child(study_setting(
                     "Widget",
@@ -612,16 +612,17 @@ impl Workshop {
                         .items_center()
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(
-                            button("widget-prev", "◀")
+                            button("widget-prev", "◀", cx)
                                 .aria_label("Widget anterior")
                                 .on_click(cx.listener(|this, _, _, cx| this.widget(false, cx))),
                         )
-                        .child(orbit::text(self.kind.name(), 13.5, 600, orbit::INK))
+                        .child(orbit::text(self.kind.name(), 13.5, 600, orbit::ink(cx), cx))
                         .child(
-                            button("widget-next", "▶")
+                            button("widget-next", "▶", cx)
                                 .aria_label("Widget siguiente")
                                 .on_click(cx.listener(|this, _, _, cx| this.widget(true, cx))),
                         ),
+                    cx,
                 ))
                 .child(study_setting(
                     "Escena",
@@ -631,20 +632,21 @@ impl Workshop {
                         .flex_wrap()
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(
-                            button("scene-prev", "◀ escena").on_click(
+                            button("scene-prev", "◀ escena", cx).on_click(
                                 cx.listener(|this, _, _, cx| this.choose_scene(false, cx)),
                             ),
                         )
                         .child(
-                            button("scene-next", "escena ▶").on_click(
+                            button("scene-next", "escena ▶", cx).on_click(
                                 cx.listener(|this, _, _, cx| this.choose_scene(true, cx)),
                             ),
                         ),
+                    cx,
                 ))
                 .child(study_setting(
                     "Archivo local",
                     "Recarga el JSON de la escena",
-                    button("reload-scene", "Recargar JSON").on_click(cx.listener(
+                    button("reload-scene", "Recargar JSON", cx).on_click(cx.listener(
                         |this, _, _, cx| {
                             if this.scene.replace(this.scene.path.clone()) {
                                 this.rebuild(cx);
@@ -653,11 +655,12 @@ impl Workshop {
                             }
                         },
                     )),
+                    cx,
                 ))
                 .child(study_setting(
                     "Continuidad",
                     "Conserva la selección actual",
-                    button("save-workshop", "Guardar selección").on_click(cx.listener(
+                    button("save-workshop", "Guardar selección", cx).on_click(cx.listener(
                         |this, _, _, cx| {
                             if let Err(error) = this.persist() {
                                 this.status = error;
@@ -665,18 +668,20 @@ impl Workshop {
                             cx.notify();
                         },
                     )),
+                    cx,
                 ))
                 .child(orbit::text(
                     self.scene.path.display().to_string(),
                     12.0,
                     400,
-                    orbit::INK_3,
+                    orbit::ink_3(cx),
+                    cx,
                 )),
         )
     }
 
     fn playback(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::card("Reproducción y comparación").child(
+        orbit::card("Reproducción y comparación", cx).child(
             orbit::card_body()
                 .child(study_setting(
                     "Fotograma",
@@ -690,42 +695,48 @@ impl Workshop {
                         .flex()
                         .flex_wrap()
                         .gap(px(orbit::RADIUS_CONTROL))
-                        .child(button("rewind", "Inicio").on_click(cx.listener(
+                        .child(button("rewind", "Inicio", cx).on_click(cx.listener(
                             |this, _, _, cx| {
                                 this.scene.rewind();
                                 this.ingest(cx);
                             },
                         )))
-                        .child(button("step-prev", "◀ foto").on_click(cx.listener(
+                        .child(button("step-prev", "◀ foto", cx).on_click(cx.listener(
                             |this, _, _, cx| {
                                 this.scene.step(false);
                                 this.ingest(cx);
                             },
                         )))
                         .child(
-                            button("play", if self.scene.playing { "Pausa" } else { "Play" })
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.scene.play();
-                                    this.next_frame = Instant::now() + this.scene.delay();
-                                    this.ingest(cx);
-                                })),
+                            button(
+                                "play",
+                                if self.scene.playing { "Pausa" } else { "Play" },
+                                cx,
+                            )
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.scene.play();
+                                this.next_frame = Instant::now() + this.scene.delay();
+                                this.ingest(cx);
+                            })),
                         )
-                        .child(button("step-next", "foto ▶").on_click(cx.listener(
+                        .child(button("step-next", "foto ▶", cx).on_click(cx.listener(
                             |this, _, _, cx| {
                                 this.scene.step(true);
                                 this.ingest(cx);
                             },
                         ))),
+                    cx,
                 ))
                 .child(study_setting(
                     "Repetir escena",
                     "Vuelve al inicio al terminar la secuencia",
-                    orbit::toggle("loop", "Repetir escena", self.scene.looping, true).on_click(
+                    orbit::toggle("loop", "Repetir escena", self.scene.looping, true, cx).on_click(
                         cx.listener(|this, _, _, cx| {
                             this.scene.looping = !this.scene.looping;
                             cx.notify();
                         }),
                     ),
+                    cx,
                 ))
                 .child(self.presentation_tools(cx))
                 .child(study_setting(
@@ -738,9 +749,11 @@ impl Workshop {
                         } else {
                             "Capturar y calcular %"
                         },
+                        cx,
                     )
                     .px(px(6.0))
                     .on_click(cx.listener(|this, _, _, cx| this.capture(cx))),
+                    cx,
                 )),
         )
     }
@@ -755,6 +768,7 @@ impl Workshop {
                 orbit::select(
                     "background",
                     ["Canvas", "Superficie", "Claro"][self.background],
+                    cx,
                 )
                 .min_w_0()
                 .w_full()
@@ -762,6 +776,7 @@ impl Workshop {
                     this.background = (this.background + 1) % 3;
                     cx.notify();
                 })),
+                cx,
             ))
             .child(study_setting(
                 "Referencia congelada",
@@ -773,6 +788,7 @@ impl Workshop {
                         Mode::Overlaid => "Superpuesta 50 %",
                         Mode::Hidden => "Oculta",
                     },
+                    cx,
                 )
                 .min_w_0()
                 .w_full()
@@ -784,6 +800,7 @@ impl Workshop {
                     };
                     cx.notify();
                 })),
+                cx,
             ))
     }
 }
@@ -806,7 +823,7 @@ impl Workshop {
             Err(error) => {
                 return preview
                     .child(self.overlay.clone())
-                    .child(orbit::callout(format!("Referencia pendiente: {error}")));
+                    .child(orbit::callout(format!("Referencia pendiente: {error}"), cx));
             }
         };
         let mut candidate = div().relative().flex_shrink_0();
@@ -920,6 +937,7 @@ impl Workshop {
                 500,
                 0x00aa_aeb0,
                 1.26,
+                cx,
             )
             .absolute()
             .left(px(32.0))
@@ -927,7 +945,7 @@ impl Workshop {
         );
         stage = stage.when_some(self.scene.error.clone(), |stage, error| {
             stage.child(
-                orbit::callout(error)
+                orbit::callout(error, cx)
                     .absolute()
                     .left(px(32.0))
                     .top(px(52.0)),
@@ -978,17 +996,18 @@ fn widget_origin(stage: (f32, f32), widget: (f32, f32), kind: Kind) -> (f32, f32
     )
 }
 
-fn study_label(label: &str) -> gpui::Div {
+fn study_label(label: &str, cx: &gpui::App) -> gpui::Div {
     div().flex().flex_col().gap(px(8.0)).child(orbit::text(
         label.to_owned(),
         10.0,
         400,
         0x00ac_acb2,
+        cx,
     ))
 }
 
-fn study_setting(label: &str, help: &str, control: impl IntoElement) -> gpui::Div {
-    orbit::setting_row(label, help, div().w_full().child(control))
+fn study_setting(label: &str, help: &str, control: impl IntoElement, cx: &gpui::App) -> gpui::Div {
+    orbit::setting_row(label, help, div().w_full().child(control), cx)
         .flex_col()
         .items_stretch()
         .gap(px(8.0))
@@ -1022,10 +1041,10 @@ fn study_choice(
                 .left_0()
                 .w_full()
                 .h(px(5.0))
-                .bg(rgb(0x0019_191b)),
+                .bg(rgb(crate::orbit::legacy_rgb(0x0019_191b, cx))),
         )
         .child(
-            orbit::field("study-select")
+            orbit::field("study-select", cx)
                 .id(("study-select", index))
                 .absolute()
                 .inset_0()
@@ -1034,15 +1053,15 @@ fn study_choice(
                 .h(px(34.0))
                 .px(px(12.0))
                 .rounded(px(3.0))
-                .bg(rgb(0x0023_2325))
-                .border_color(rgb(0x0044_444a))
+                .bg(rgb(crate::orbit::legacy_rgb(0x0023_2325, cx)))
+                .border_color(rgb(crate::orbit::legacy_rgb(0x0044_444a, cx)))
                 .tab_stop(false)
                 .occlude()
                 .cursor_pointer()
                 .justify_between()
-                .when(focused, |field| field.border_color(rgb(orbit::CORAL)))
-                .child(orbit::text(value, 13.0, 400, 0x00de_dee2))
-                .child(orbit::text("⌄", 13.0, 600, 0x00de_dee2))
+                .when(focused, |field| field.border_color(rgb(orbit::coral(cx))))
+                .child(orbit::text(value, 13.0, 400, 0x00de_dee2, cx))
+                .child(orbit::text("⌄", 13.0, 600, 0x00de_dee2, cx))
                 .on_click(move |_, window, cx| {
                     choice.update(cx, |control, cx| {
                         control.focus_handle().focus(window, cx);
@@ -1053,13 +1072,13 @@ fn study_choice(
         )
 }
 
-fn study_note(note: &str) -> gpui::Div {
-    orbit::text(note.to_owned(), 10.0, 400, 0x0091_9197)
+fn study_note(note: &str, cx: &gpui::App) -> gpui::Div {
+    orbit::text(note.to_owned(), 10.0, 400, 0x0091_9197, cx)
         .line_height(px(15.0))
         .mb(px(12.0))
 }
 
-fn study_section(title: &str) -> gpui::Div {
+fn study_section(title: &str, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
@@ -1067,54 +1086,54 @@ fn study_section(title: &str) -> gpui::Div {
         .mt(px(28.0))
         .pt(px(18.0))
         .border_t_1()
-        .border_color(rgb(0x0033_3336))
-        .child(orbit::tracked_text(title, 10.0, 600, 0x00bd_bdc2, 0.4).mb(px(10.0)))
+        .border_color(rgb(crate::orbit::legacy_rgb(0x0033_3336, cx)))
+        .child(orbit::tracked_text(title, 10.0, 600, 0x00bd_bdc2, 0.4, cx).mb(px(10.0)))
 }
 
-fn study_button(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
-    button(id, "")
+fn study_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
+    button(id, "", cx)
         .aria_label(label.to_owned())
         .h(px(30.0))
         .px(px(3.0))
         .rounded(px(3.0))
-        .bg(rgb(0x0019_191b))
-        .border_color(rgb(0x003b_3b40))
+        .bg(rgb(crate::orbit::legacy_rgb(0x0019_191b, cx)))
+        .border_color(rgb(crate::orbit::legacy_rgb(0x003b_3b40, cx)))
         .text_size(px(10.0))
-        .font_family("Inter W500")
-        .text_color(rgb(0x00b0_b0b6))
+        .font_family(crate::orbit::sans_override("Inter W500", cx))
+        .text_color(rgb(crate::orbit::legacy_rgb(0x00b0_b0b6, cx)))
         .child(label.to_owned())
 }
 
-fn study_readonly(id: &'static str, value: &str) -> gpui::Stateful<gpui::Div> {
-    orbit::field(id)
+fn study_readonly(id: &'static str, value: &str, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
+    orbit::field(id, cx)
         .w_full()
         .min_w_0()
         .h(px(34.0))
         .px(px(8.0))
         .rounded(px(3.0))
-        .bg(rgb(0x0023_2325))
-        .border_color(rgb(0x0044_444a))
+        .bg(rgb(crate::orbit::legacy_rgb(0x0023_2325, cx)))
+        .border_color(rgb(crate::orbit::legacy_rgb(0x0044_444a, cx)))
         .tab_stop(false)
         .cursor_default()
         .opacity(0.72)
         .aria_description("Opción de referencia no disponible en Workshop nativo")
-        .child(orbit::text(value.to_owned(), 11.0, 400, 0x00de_dee2))
+        .child(orbit::text(value.to_owned(), 11.0, 400, 0x00de_dee2, cx))
         .when(
             matches!(id, "location" | "surface" | "resolution"),
             |field| {
                 field
                     .justify_between()
-                    .child(orbit::text("⌄", 12.0, 600, 0x00de_dee2))
+                    .child(orbit::text("⌄", 12.0, 600, 0x00de_dee2, cx))
             },
         )
 }
 
-fn study_segments(id: &'static str, labels: &[&str], selected: usize) -> gpui::Div {
+fn study_segments(id: &'static str, labels: &[&str], selected: usize, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .gap(px(4.0))
         .children(labels.iter().enumerate().map(|(index, label)| {
-            study_button(id, label)
+            study_button(id, label, cx)
                 .id((id, index))
                 .flex_1()
                 .aria_selected(index == selected)
@@ -1124,31 +1143,37 @@ fn study_segments(id: &'static str, labels: &[&str], selected: usize) -> gpui::D
                 .aria_description("Opción de referencia; usa Studio para editar el documento")
                 .when(index == selected, |button| {
                     button
-                        .bg(rgb(0x0035_3539))
-                        .border_color(rgb(0x0062_6268))
+                        .bg(rgb(crate::orbit::legacy_rgb(0x0035_3539, cx)))
+                        .border_color(rgb(crate::orbit::legacy_rgb(0x0062_6268, cx)))
                         .opacity(1.0)
-                        .font_family("Inter W600")
-                        .text_color(rgb(0x00f5_f5f5))
+                        .font_family(crate::orbit::sans_override("Inter W600", cx))
+                        .text_color(rgb(crate::orbit::legacy_rgb(0x00f5_f5f5, cx)))
                 })
         }))
 }
 
-fn study_toggle(id: &'static str, index: usize, label: &str, on: bool) -> gpui::Div {
+fn study_toggle(
+    id: &'static str,
+    index: usize,
+    label: &str,
+    on: bool,
+    cx: &gpui::App,
+) -> gpui::Div {
     div()
         .h(px(34.0))
         .flex()
         .items_center()
         .justify_between()
-        .child(orbit::text(label.to_owned(), 12.0, 400, 0x00f5_f5f5))
+        .child(orbit::text(label.to_owned(), 12.0, 400, 0x00f5_f5f5, cx))
         .child(
-            orbit::toggle(id, label, on, false)
+            orbit::toggle(id, label, on, false, cx)
                 .id((id, index))
                 .w(px(26.0))
                 .h(px(15.0)),
         )
 }
 
-fn study_scrollbar(scroll: &gpui::ScrollHandle) -> gpui::Stateful<gpui::Div> {
+fn study_scrollbar(scroll: &gpui::ScrollHandle, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     let maximum = f32::from(scroll.max_offset().y);
     let offset = -f32::from(scroll.offset().y);
     let height = f32::from(scroll.bounds().size.height).max(36.0);
@@ -1170,9 +1195,9 @@ fn study_scrollbar(scroll: &gpui::ScrollHandle) -> gpui::Stateful<gpui::Div> {
         .top_0()
         .w(px(16.0))
         .h_full()
-        .bg(rgb(0x002c_2c2c))
+        .bg(rgb(crate::orbit::legacy_rgb(0x002c_2c2c, cx)))
         .child(
-            orbit::text("▴", 12.0, 600, 0x00aa_aaaa)
+            orbit::text("▴", 12.0, 600, 0x00aa_aaaa, cx)
                 .absolute()
                 .top_0()
                 .left(px(3.0)),
@@ -1185,10 +1210,10 @@ fn study_scrollbar(scroll: &gpui::ScrollHandle) -> gpui::Stateful<gpui::Div> {
                 .w(px(9.0))
                 .h(px(thumb))
                 .rounded(px(5.0))
-                .bg(rgb(0x0099_9999)),
+                .bg(rgb(crate::orbit::legacy_rgb(0x0099_9999, cx))),
         )
         .child(
-            orbit::text("▾", 12.0, 600, 0x00aa_aaaa)
+            orbit::text("▾", 12.0, 600, 0x00aa_aaaa, cx)
                 .absolute()
                 .bottom_0()
                 .left(px(3.0)),

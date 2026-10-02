@@ -236,6 +236,7 @@ pub struct Analysis {
 fn telemetry_context_row(
     session: &crate::demo::DemoTelemetrySession,
     selected: bool,
+    cx: &gpui::App,
 ) -> gpui::Stateful<gpui::Div> {
     let title = format!("{} · {}", session.track, session.car);
     let subtitle = format!(
@@ -260,9 +261,14 @@ fn telemetry_context_row(
         .when(selected, |row| {
             row.bg(linear_gradient(
                 90.0,
-                linear_color_stop(orbit::tint(orbit::CARMINE, 0.11), 0.0),
-                linear_color_stop(orbit::tint(orbit::CARMINE, 0.02), 1.0),
+                linear_color_stop(orbit::tint(orbit::carmine(cx), 0.11), 0.0),
+                linear_color_stop(orbit::tint(orbit::carmine(cx), 0.02), 1.0),
             ))
+        })
+        .when(selected && orbit::is_mono(cx), |row| {
+            row.bg(rgb(orbit::surface_3(cx)))
+                .border_1()
+                .border_color(orbit::selection_border(cx))
         })
         .child(
             div()
@@ -273,7 +279,12 @@ fn telemetry_context_row(
                         title,
                         13.0,
                         if selected { 700 } else { 650 },
-                        if selected { orbit::INK } else { orbit::INK_2 },
+                        if selected {
+                            orbit::ink(cx)
+                        } else {
+                            orbit::ink_2(cx)
+                        },
+                        cx,
                     )
                     .when(selected, |title| title.relative().top(px(-1.0)))
                     .w_full()
@@ -281,7 +292,7 @@ fn telemetry_context_row(
                     .text_ellipsis(),
                 )
                 .child(
-                    telemetry_text(subtitle, 11.0, 400, orbit::INK_3)
+                    telemetry_text(subtitle, 11.0, 400, orbit::ink_3(cx), cx)
                         .relative()
                         .top(px(3.0))
                         .w_full()
@@ -297,7 +308,7 @@ fn telemetry_context_row(
                     .w(px(3.0))
                     .h(px(18.0))
                     .rounded(px(4.0))
-                    .bg(rgb(orbit::CARMINE)),
+                    .bg(rgb(orbit::carmine(cx))),
             )
         })
 }
@@ -306,6 +317,7 @@ impl Analysis {
     pub(crate) fn context_sidebar(
         demo: Option<&DemoData>,
         capture_name: Option<&str>,
+        cx: &gpui::App,
     ) -> gpui::Div {
         let show_demo_sessions =
             matches!(capture_name, Some("telemetria-demo" | "telemetria-trazas"));
@@ -321,14 +333,15 @@ impl Analysis {
             .gap(px(2.0))
             .px(px(2.0));
         for (index, session) in sessions.iter().enumerate() {
-            rows = rows.child(telemetry_context_row(session, index == 0));
+            rows = rows.child(telemetry_context_row(session, index == 0, cx));
         }
         if sessions.is_empty() {
             rows = rows.child(telemetry_text(
                 "Sin sesiones indexadas.",
                 12.0,
                 400,
-                orbit::INK_3,
+                orbit::ink_3(cx),
+                cx,
             ));
         }
 
@@ -345,8 +358,8 @@ impl Analysis {
                     .justify_between()
                     .px(px(9.0))
                     .pb(px(11.0))
-                    .child(orbit::eyebrow("Sesiones"))
-                    .child(telemetry_mono(sessions.len().to_string(), 11.0, 400, orbit::INK_4)),
+                    .child(orbit::eyebrow("Sesiones", cx))
+                    .child(telemetry_mono(sessions.len().to_string(), 11.0, 400, orbit::ink_4(cx), cx)),
             )
             .child(rows)
             .child(
@@ -354,8 +367,8 @@ impl Analysis {
                     "Fuente: archivos locales de LMU indexados en DuckDB (ADR 0005). El puente todavía no publica sesiones.",
                     10.5,
                     400,
-                    orbit::INK_MUTED,
-                )
+                    orbit::ink_muted(cx),
+                 cx)
                 .line_height(px(15.5))
                 .mt_auto()
                 .pb(px(4.0)),
@@ -555,11 +568,13 @@ fn chart(
     series: [Vec<Point>; 2],
     distance_range: Option<(f64, f64)>,
     fixed: Option<(f64, f64)>,
+    cx: &gpui::App,
 ) -> gpui::Div {
     let points: Vec<_> = series.iter().flatten().collect();
     if points.is_empty() {
-        return orbit::card(title)
-            .child(orbit::card_body().child(orbit::callout("Sin muestras fiables comparables")));
+        return orbit::card(title, cx).child(
+            orbit::card_body().child(orbit::callout("Sin muestras fiables comparables", cx)),
+        );
     }
     let measured_min = points
         .iter()
@@ -580,23 +595,24 @@ fn chart(
             points.iter().map(|p| p.value).fold(0.0, f64::max),
         ),
     };
-    orbit::card(title)
+    orbit::card(title, cx)
         .child(orbit::card_body().child(telemetry_text(
             format!("{x_min:.0}–{x_max:.0} m · {y_min:.2}–{y_max:.2}"),
             12.0,
             400,
-            orbit::INK_3,
+            orbit::ink_3(cx),
+            cx,
         )))
         .child(
             canvas(
                 |_, _, _| (),
-                move |bounds, (), window, _| {
+                move |bounds, (), window, cx| {
                     let mut axes = PathBuilder::stroke(px(1.0));
                     axes.move_to(bounds.origin);
                     axes.line_to(point(bounds.origin.x, bounds.bottom()));
                     axes.line_to(point(bounds.right(), bounds.bottom()));
                     if let Ok(path) = axes.build() {
-                        window.paint_path(path, rgb(orbit::INK_3));
+                        window.paint_path(path, rgb(orbit::ink_3(cx)));
                     }
                     let zero = ((0.0 - y_min) / (y_max - y_min).max(0.001)).clamp(0.0, 1.0);
                     #[allow(clippy::cast_possible_truncation)]
@@ -605,9 +621,9 @@ fn chart(
                     baseline.move_to(point(bounds.origin.x, zero_y));
                     baseline.line_to(point(bounds.right(), zero_y));
                     if let Ok(path) = baseline.build() {
-                        window.paint_path(path, rgb(orbit::INK_MUTED));
+                        window.paint_path(path, rgb(orbit::ink_muted(cx)));
                     }
-                    for (line, color) in series.iter().zip([orbit::CARMINE, orbit::INK_2]) {
+                    for (line, color) in series.iter().zip([orbit::carmine(cx), orbit::ink_2(cx)]) {
                         let mut path = PathBuilder::stroke(px(1.5));
                         let mut previous = None;
                         for p in line {
@@ -673,10 +689,11 @@ fn telemetry_mono(
     size: f32,
     weight: u16,
     color: u32,
+    cx: &gpui::App,
 ) -> gpui::Div {
     div()
         .text_size(px(size))
-        .font_family("Cascadia Code")
+        .font_family(crate::orbit::mono_family(cx))
         .font_weight(FontWeight(f32::from(weight)))
         .line_height(px(size * 1.5))
         .text_color(rgb(color))
@@ -688,6 +705,7 @@ fn telemetry_text(
     size: f32,
     weight: u16,
     color: u32,
+    cx: &gpui::App,
 ) -> gpui::Div {
     // Solo existen estas siete familias estáticas; W690/W640 caían en Segoe UI.
     let family_weight = match weight {
@@ -699,14 +717,14 @@ fn telemetry_text(
         725..=774 => 750,
         _ => 800,
     };
-    orbit::text(content, size, family_weight, color)
+    orbit::text(content, size, family_weight, color, cx)
         .font_weight(FontWeight(400.0))
         .line_height(px(size * 1.5))
 }
 
 /// GPUI no expone letter-spacing; conserva el espaciado del contrato CSS.
 fn telemetry_tracked(content: &str, size: f32, weight: u16, color: u32, spacing: f32) -> gpui::Div {
-    use vantare_ui::efficiency::text;
+    use crate::orbit::typography as text;
     let content = content.to_owned();
     let line_height = size * 1.5;
     div().h(px(line_height)).child(
@@ -741,6 +759,7 @@ fn telemetry_surface(
     actions: Option<gpui::Div>,
     body: impl IntoElement,
     fill: bool,
+    cx: &gpui::App,
 ) -> gpui::Div {
     div()
         .flex()
@@ -749,9 +768,9 @@ fn telemetry_surface(
         .min_h_0()
         .overflow_hidden()
         .when(fill, gpui::Styled::flex_1)
-        .bg(rgba(0x10_11_14_c9))
+        .bg(rgba(crate::orbit::legacy_rgba(0x10_11_14_c9, cx)))
         .border_1()
-        .border_color(rgba(orbit::LINE))
+        .border_color(rgba(orbit::line(cx)))
         .rounded(px(orbit::RADIUS))
         .child(
             div()
@@ -763,9 +782,9 @@ fn telemetry_surface(
                 .items_center()
                 .gap(px(12.0))
                 .border_b_1()
-                .border_color(rgba(0xffff_ff0d))
+                .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
                 .child(
-                    telemetry_tracked(title, 15.0, 700, orbit::INK, -0.15)
+                    telemetry_tracked(title, 15.0, 700, orbit::ink(cx), -0.15)
                         .flex_1()
                         .min_w_0()
                         .whitespace_nowrap()
@@ -786,12 +805,12 @@ fn telemetry_surface(
         )
 }
 
-fn telemetry_empty(message: &str) -> gpui::Div {
-    telemetry_text(message.to_owned(), 12.0, 400, orbit::INK_3).line_height(px(18.6))
+fn telemetry_empty(message: &str, cx: &gpui::App) -> gpui::Div {
+    telemetry_text(message.to_owned(), 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.6))
 }
 
-fn telemetry_note(title: Option<&str>, message: &str) -> gpui::Div {
-    use vantare_ui::efficiency::text;
+fn telemetry_note(title: Option<&str>, message: &str, cx: &gpui::App) -> gpui::Div {
+    use crate::orbit::typography as text;
     let title = title.map(str::to_owned);
     let message = message.to_owned();
     let note = canvas(
@@ -800,12 +819,12 @@ fn telemetry_note(title: Option<&str>, message: &str) -> gpui::Div {
             let mut x = f32::from(bounds.origin.x);
             let baseline = text::baseline(f32::from(bounds.origin.y), 18.0, 12.0);
             if let Some(title) = title.as_ref() {
-                let ink = text::ink(12.0, 750.0, 0.0, rgb(orbit::BRONZE).into());
+                let ink = text::ink(12.0, 750.0, 0.0, rgb(orbit::bronze(cx)).into());
                 text::draw(window, cx, title, x, baseline, &ink);
-                x += text::width(window, title, &ink) - 1.0;
+                x += text::width(window, title, &ink, cx) - 1.0;
             }
-            let ink = text::ink(12.0, 400.0, 0.0025, rgb(orbit::INK_3).into());
-            let message = text::fit(window, &message, &ink, f32::from(bounds.right()) - x);
+            let ink = text::ink(12.0, 400.0, 0.0025, rgb(orbit::ink_3(cx)).into());
+            let message = text::fit(window, &message, &ink, f32::from(bounds.right()) - x, cx);
             text::draw(window, cx, &message, x, baseline, &ink);
         },
     )
@@ -819,12 +838,12 @@ fn telemetry_note(title: Option<&str>, message: &str) -> gpui::Div {
         .px(px(17.0))
         .py(px(13.0))
         .border_1()
-        .border_color(rgba(0xff9b_5721))
+        .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5721, cx)))
         .rounded(px(14.0))
         .bg(linear_gradient(
             110.0,
-            linear_color_stop(rgba(0xff9b_570f), 0.0),
-            linear_color_stop(rgba(0xd52f_4905), 1.0),
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xff9b_570f, cx)), 0.0),
+            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
         ))
         .child(note)
 }
@@ -836,11 +855,16 @@ fn telemetry_stat(
     sub: &str,
     value_color: u32,
     sectors: bool,
+    cx: &gpui::App,
 ) -> gpui::Div {
     let value_row = if sectors {
         let mut row = div().flex().items_baseline().gap(px(10.0)).mt(px(6.0));
-        for (sector, color) in [("S1", orbit::INK_3), ("S2", orbit::RED), ("S3", orbit::RED)] {
-            row = row.child(telemetry_mono(sector, 21.0, 700, color));
+        for (sector, color) in [
+            ("S1", orbit::ink_3(cx)),
+            ("S2", orbit::red(cx)),
+            ("S3", orbit::red(cx)),
+        ] {
+            row = row.child(telemetry_mono(sector, 21.0, 700, color, cx));
         }
         row
     } else {
@@ -850,9 +874,17 @@ fn telemetry_stat(
             .gap(px(6.0))
             .mt(px(6.0))
             .whitespace_nowrap()
-            .child(telemetry_mono(value.to_owned(), 21.0, 700, value_color).line_height(px(33.0)));
+            .child(
+                telemetry_mono(value.to_owned(), 21.0, 700, value_color, cx).line_height(px(33.0)),
+            );
         if let Some(unit) = unit {
-            row = row.child(telemetry_text(unit.to_owned(), 12.0, 400, orbit::INK_3));
+            row = row.child(telemetry_text(
+                unit.to_owned(),
+                12.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ));
         }
         row
     };
@@ -865,19 +897,19 @@ fn telemetry_stat(
         .py(px(14.0))
         .pb(px(15.0))
         .border_1()
-        .border_color(rgba(orbit::LINE))
+        .border_color(rgba(orbit::line(cx)))
         .rounded(px(orbit::RADIUS))
-        .bg(rgba(0x10_11_14_c9))
+        .bg(rgba(crate::orbit::legacy_rgba(0x10_11_14_c9, cx)))
         .child(telemetry_tracked(
             &label.to_uppercase(),
             11.0,
             700,
-            orbit::INK_3,
+            orbit::ink_3(cx),
             0.44,
         ))
         .child(value_row)
         .child(
-            telemetry_text(sub.to_owned(), 11.5, 400, orbit::INK_4)
+            telemetry_text(sub.to_owned(), 11.5, 400, orbit::ink_4(cx), cx)
                 .mt(px(4.0))
                 .overflow_hidden()
                 .whitespace_nowrap()
@@ -902,17 +934,21 @@ fn telemetry_segment(
         .items_center()
         .rounded(px(orbit::RADIUS_CHIP))
         .text_size(px(orbit::SECONDARY))
-        .font_family("Inter W650")
+        .font_family(crate::orbit::sans_override("Inter W650", cx))
         .font_weight(FontWeight(400.0))
         .line_height(px(orbit::SECONDARY * 1.5))
-        .text_color(rgb(if active { orbit::INK } else { orbit::INK_4 }))
+        .text_color(rgb(if active {
+            orbit::ink(cx)
+        } else {
+            orbit::ink_4(cx)
+        }))
         .when(active, |button| {
             button
-                .bg(rgba(0xd52f_4929))
+                .bg(rgba(crate::orbit::legacy_rgba(0xd52f_4929, cx)))
                 .border_1()
-                .border_color(rgba(0xf047_5538))
+                .border_color(rgba(crate::orbit::legacy_rgba(0xf047_5538, cx)))
         })
-        .when(!active, |button| button.text_color(rgb(orbit::INK_4)))
+        .when(!active, |button| button.text_color(rgb(orbit::ink_4(cx))))
         .when(disabled, |button| button.opacity(0.45))
         .when(!disabled, |button| {
             button
@@ -922,33 +958,33 @@ fn telemetry_segment(
         .child(label)
 }
 
-fn telemetry_segment_group() -> gpui::Div {
+fn telemetry_segment_group(cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_center()
         .gap(px(2.5))
         .p(px(4.0))
         .border_1()
-        .border_color(rgba(0xffff_ff0f))
+        .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0f, cx)))
         .rounded(px(orbit::RADIUS_CONTROL))
-        .bg(rgba(0xffff_ff05))
+        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff05, cx)))
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_tone(delta: f64) -> u32 {
+fn demo_tone(delta: f64, cx: &gpui::App) -> u32 {
     if delta > 0.025 {
-        orbit::RED
+        orbit::red(cx)
     } else if delta < -0.025 {
-        orbit::GREEN
+        orbit::green(cx)
     } else {
-        orbit::INK_3
+        orbit::ink_3(cx)
     }
 }
 
 #[cfg(feature = "parity-capture")]
 #[allow(clippy::cast_possible_truncation)]
-fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
-    use vantare_ui::efficiency::text;
+fn demo_track_map(model: &DemoModel, scale: f64, cx: &gpui::App) -> gpui::Div {
+    use crate::orbit::typography as text;
     let track = model.track.clone();
     let min_x = track.iter().map(|p| p.0).fold(f64::INFINITY, f64::min) - 34.0;
     let min_y = track.iter().map(|p| p.1).fold(f64::INFINITY, f64::min) - 34.0;
@@ -985,7 +1021,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
                     base.line_to(position(*x, *y));
                 }
                 if let Ok(path) = base.build() {
-                    window.paint_path(path, rgba(0xffff_ff14));
+                    window.paint_path(path, rgba(crate::orbit::legacy_rgba(0xffff_ff14, cx)));
                 }
 
                 for (name, delta, at) in DEMO_CORNERS {
@@ -1003,7 +1039,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
                         }
                     }
                     if let Ok(path) = segment.build() {
-                        window.paint_path(path, rgb(demo_tone(delta * scale)));
+                        window.paint_path(path, rgb(demo_tone(delta * scale, cx)));
                     }
                     // El SVG usa extremos redondos; PathBuilder los deja planos.
                     let radius = px(4.5 * scale_x);
@@ -1016,7 +1052,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
                                         point(at.x - radius, at.y - radius),
                                         gpui::size(radius * 2.0, radius * 2.0),
                                     ),
-                                    rgb(demo_tone(delta * scale)),
+                                    rgb(demo_tone(delta * scale, cx)),
                                 )
                                 .corner_radii(radius),
                             );
@@ -1031,7 +1067,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
                             name,
                             f32::from(at.x),
                             f32::from(at.y),
-                            &text::ink(10.0 * scale_x, 700.0, 0.0, rgb(orbit::INK_2).into()),
+                            &text::ink(10.0 * scale_x, 700.0, 0.0, rgb(orbit::ink_2(cx)).into()),
                         );
                     }
                 }
@@ -1041,7 +1077,7 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
                     start_line.move_to(position(x + angle.cos() * 10.0, y + angle.sin() * 10.0));
                     start_line.line_to(position(x - angle.cos() * 10.0, y - angle.sin() * 10.0));
                     if let Ok(path) = start_line.build() {
-                        window.paint_path(path, rgb(orbit::INK));
+                        window.paint_path(path, rgb(orbit::ink(cx)));
                     }
                 }
             },
@@ -1052,28 +1088,35 @@ fn demo_track_map(model: &DemoModel, scale: f64) -> gpui::Div {
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_legend_item(text: &'static str, tone: u32) -> gpui::Div {
+fn demo_legend_item(text: &'static str, tone: u32, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_center()
         .gap(px(6.0))
         .child(div().w(px(9.0)).h(px(3.0)).rounded(px(2.0)).bg(rgb(tone)))
-        .child(telemetry_text(text, 10.5, 400, orbit::INK_4))
+        .child(telemetry_text(text, 10.5, 400, orbit::ink_4(cx), cx))
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_map_legend() -> gpui::Div {
+fn demo_map_legend(cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .h(px(15.0))
         .items_center()
         .gap(px(14.0))
         .mt(px(12.0))
-        .child(demo_legend_item("ganas", orbit::GREEN))
-        .child(demo_legend_item("neutro", orbit::INK_3))
-        .child(demo_legend_item("pierdes", orbit::RED))
+        .child(demo_legend_item("ganas", orbit::green(cx), cx))
+        .child(demo_legend_item("neutro", orbit::ink_3(cx), cx))
+        .child(demo_legend_item("pierdes", orbit::red(cx), cx))
         .child(
-            telemetry_text("clic en una curva para saltar", 10.5, 400, orbit::INK_MUTED).ml_auto(),
+            telemetry_text(
+                "clic en una curva para saltar",
+                10.5,
+                400,
+                orbit::ink_muted(cx),
+                cx,
+            )
+            .ml_auto(),
         )
 }
 
@@ -1087,6 +1130,7 @@ fn demo_trace(
     reference: Vec<f64>,
     extra: Vec<f64>,
     delta: bool,
+    cx: &gpui::App,
 ) -> gpui::Div {
     let mut values = mine.clone();
     values.extend(reference.iter().copied());
@@ -1119,21 +1163,21 @@ fn demo_trace(
             }
         }
     };
-    let plot_title = telemetry_text(title, 10.5, 700, orbit::INK_2);
-    let plot_unit = telemetry_text(unit, 10.5, 500, orbit::INK_3).ml(px(4.0));
+    let plot_title = telemetry_text(title, 10.5, 700, orbit::ink_2(cx), cx);
+    let plot_unit = telemetry_text(unit, 10.5, 500, orbit::ink_3(cx), cx).ml(px(4.0));
     let mut trace = div()
         .relative()
         .w_full()
         .h(px(height))
         .overflow_hidden()
         .border_1()
-        .border_color(rgba(orbit::LINE))
+        .border_color(rgba(orbit::line(cx)))
         .rounded(px(8.0))
-        .bg(rgba(0xffff_ff05))
+        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff05, cx)))
         .child(
             canvas(
                 |_, _, _| (),
-                move |bounds, (), window, _| {
+                move |bounds, (), window, cx| {
                     let x_for = |index: usize, length: usize| {
                         if length <= 1 {
                             bounds.origin.x
@@ -1161,7 +1205,7 @@ fn demo_trace(
                                 point(x, bounds.origin.y),
                                 gpui::size(right - x, bounds.size.height),
                             ),
-                            rgba(0xffff_ff09),
+                            rgba(crate::orbit::legacy_rgba(0xffff_ff09, cx)),
                         ));
                     }
                     if channel == "speed" || channel == "pedals" {
@@ -1171,7 +1215,10 @@ fn demo_trace(
                             grid.move_to(point(bounds.origin.x, y));
                             grid.line_to(point(bounds.right(), y));
                             if let Ok(path) = grid.build() {
-                                window.paint_path(path, rgba(0xffff_ff0d));
+                                window.paint_path(
+                                    path,
+                                    rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)),
+                                );
                             }
                         }
                     } else {
@@ -1180,7 +1227,8 @@ fn demo_trace(
                         zero.move_to(point(bounds.origin.x, y));
                         zero.line_to(point(bounds.right(), y));
                         if let Ok(path) = zero.build() {
-                            window.paint_path(path, rgba(0xffff_ff24));
+                            window
+                                .paint_path(path, rgba(crate::orbit::legacy_rgba(0xffff_ff24, cx)));
                         }
                     }
 
@@ -1220,13 +1268,13 @@ fn demo_trace(
                         }
                     };
                     if delta {
-                        paint_series(&mine, 1.5, rgb(orbit::INK).into());
+                        paint_series(&mine, 1.5, rgb(orbit::ink(cx)).into());
                     } else if channel == "pedals" {
-                        paint_series(&mine, 1.8, rgb(orbit::GREEN).into());
-                        paint_series(&extra, 1.8, rgb(orbit::RED).into());
+                        paint_series(&mine, 1.8, rgb(orbit::green(cx)).into());
+                        paint_series(&extra, 1.8, rgb(orbit::red(cx)).into());
                     } else {
-                        paint_series(&reference, 1.5, orbit::tint(0x8fd6dd, 0.9));
-                        paint_series(&mine, 2.0, rgb(orbit::CORAL).into());
+                        paint_series(&reference, 1.5, orbit::tint(0x008f_d6dd, 0.9));
+                        paint_series(&mine, 2.0, rgb(orbit::coral(cx)).into());
                     }
                 },
             )
@@ -1245,7 +1293,7 @@ fn demo_trace(
         );
     for (name, _, position) in DEMO_CORNERS {
         trace = trace.child(
-            telemetry_mono(name, 12.0, 600, orbit::INK_4)
+            telemetry_mono(name, 12.0, 600, orbit::ink_4(cx), cx)
                 .absolute()
                 .left(relative(position as f32 - 0.028))
                 .top(px(13.0)),
@@ -1255,16 +1303,16 @@ fn demo_trace(
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_trace_legend() -> gpui::Div {
+fn demo_trace_legend(cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_center()
         .gap(px(14.0))
         .mt(px(12.0))
-        .child(demo_legend_item("tu vuelta", orbit::CORAL))
-        .child(demo_legend_item("referencia", orbit::CYAN))
-        .child(demo_legend_item("acelerador", orbit::GREEN))
-        .child(demo_legend_item("freno", orbit::RED))
+        .child(demo_legend_item("tu vuelta", orbit::coral(cx), cx))
+        .child(demo_legend_item("referencia", orbit::cyan(cx), cx))
+        .child(demo_legend_item("acelerador", orbit::green(cx), cx))
+        .child(demo_legend_item("freno", orbit::red(cx), cx))
 }
 
 #[cfg(feature = "parity-capture")]
@@ -1273,7 +1321,7 @@ fn format_delta(value: f64, digits: usize) -> String {
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_insights_view(scale: f64) -> gpui::Div {
+fn demo_insights_view(scale: f64, cx: &gpui::App) -> gpui::Div {
     const INSIGHTS: [(&str, f64, u32, &str); 8] = [
         (
             "T7",
@@ -1322,7 +1370,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
 
     let mut list = div().flex().flex_col().gap(px(6.0));
     for (corner, delta, meters, why) in INSIGHTS {
-        let color = demo_tone(delta * scale);
+        let color = demo_tone(delta * scale, cx);
         list = list.child(
             div()
                 .w_full()
@@ -1332,7 +1380,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                 .items_center()
                 .gap(px(12.0))
                 .rounded(px(orbit::RADIUS_CONTROL))
-                .bg(rgba(0xffff_ff05))
+                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff05, cx)))
                 .child(
                     div()
                         .w(px(34.0))
@@ -1342,8 +1390,8 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                         .items_center()
                         .justify_center()
                         .rounded(px(orbit::RADIUS_CHIP))
-                        .bg(rgba(0xffff_ff0d))
-                        .child(telemetry_mono(corner, 10.5, 700, color)),
+                        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
+                        .child(telemetry_mono(corner, 10.5, 700, color, cx)),
                 )
                 .child(
                     div()
@@ -1362,9 +1410,13 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                             },
                             12.0,
                             640,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ))
-                        .child(telemetry_text(why, 10.5, 400, orbit::INK_3).line_height(px(15.2))),
+                        .child(
+                            telemetry_text(why, 10.5, 400, orbit::ink_3(cx), cx)
+                                .line_height(px(15.2)),
+                        ),
                 )
                 .child(
                     div()
@@ -1377,12 +1429,14 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
                             12.0,
                             700,
                             color,
+                            cx,
                         ))
                         .child(telemetry_text(
                             format!("{meters} m"),
                             10.5,
                             500,
-                            orbit::INK_MUTED,
+                            orbit::ink_muted(cx),
+                            cx,
                         )),
                 ),
         );
@@ -1391,7 +1445,7 @@ fn demo_insights_view(scale: f64) -> gpui::Div {
 }
 
 #[cfg(feature = "parity-capture")]
-fn demo_traces_view(model: &DemoModel) -> gpui::Div {
+fn demo_traces_view(model: &DemoModel, cx: &gpui::App) -> gpui::Div {
     let mine = &model.mine;
     let reference = &model.reference;
     let speed = demo_trace(
@@ -1403,6 +1457,7 @@ fn demo_traces_view(model: &DemoModel) -> gpui::Div {
         reference.iter().map(|sample| sample.speed).collect(),
         Vec::new(),
         false,
+        cx,
     );
     let pedals = demo_trace(
         "Acelerador / Freno",
@@ -1413,6 +1468,7 @@ fn demo_traces_view(model: &DemoModel) -> gpui::Div {
         Vec::new(),
         mine.iter().map(|sample| sample.brake).collect(),
         false,
+        cx,
     );
     let steer = demo_trace(
         "Volante",
@@ -1423,6 +1479,7 @@ fn demo_traces_view(model: &DemoModel) -> gpui::Div {
         reference.iter().map(|sample| sample.steer).collect(),
         Vec::new(),
         false,
+        cx,
     );
     let delta = demo_trace(
         "Delta",
@@ -1433,6 +1490,7 @@ fn demo_traces_view(model: &DemoModel) -> gpui::Div {
         Vec::new(),
         Vec::new(),
         true,
+        cx,
     );
     div()
         .flex()
@@ -1442,7 +1500,7 @@ fn demo_traces_view(model: &DemoModel) -> gpui::Div {
         .child(pedals)
         .child(steer)
         .child(delta)
-        .child(demo_trace_legend())
+        .child(demo_trace_legend(cx))
 }
 
 impl Analysis {
@@ -1463,14 +1521,16 @@ impl Analysis {
                 } else {
                     "Grabación nativa · solo lectura"
                 },
-                orbit::button("open-recording", "Abrir")
+                orbit::button("open-recording", "Abrir", cx)
                     .id(("recording", index))
                     .on_click(cx.listener(move |this, _, _, cx| this.open(path.clone(), cx))),
+                cx,
             ));
         }
         if self.files.is_empty() {
             files = files.child(orbit::callout(
                 "Sin grabaciones disponibles. Recarga el directorio local para buscar sesiones.",
+                cx,
             ));
         }
         files
@@ -1497,13 +1557,14 @@ impl Analysis {
                                 ""
                             }
                         ),
+                        cx,
                     )
                     .id((if side == 0 { "lap-a" } else { "lap-b" }, index))
                     .on_click(cx.listener(move |this, _, _, cx| this.choose(side, index, cx))),
                 );
             }
             laps = laps.child(
-                orbit::card(&format!("Vuelta {} · coche {}", lap.lap, lap.car)).child(
+                orbit::card(&format!("Vuelta {} · coche {}", lap.lap, lap.car), cx).child(
                     orbit::card_body()
                         .child(orbit::setting_row(
                             &format!("Época {} · sesión {}", lap.epoch, lap.session),
@@ -1517,24 +1578,28 @@ impl Analysis {
                                     .map_or_else(|| "—".into(), |value| format!("{value:.3} s"))
                             ),
                             choices,
+                            cx,
                         ))
                         .child(telemetry_text(
                             stats("km/h", &lap.speed, 3.6),
                             12.0,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         ))
                         .child(telemetry_text(
                             stats("Acelerador %", &lap.throttle, 100.0),
                             12.0,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         ))
                         .child(telemetry_text(
                             stats("Freno %", &lap.brake, 100.0),
                             12.0,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         )),
                 ),
             );
@@ -1576,7 +1641,7 @@ impl Analysis {
 
     fn telemetry_header(&self, window: &Window, cx: &Context<Self>) -> gpui::Div {
         let synthetic = self.is_synthetic();
-        let mut references = telemetry_segment_group();
+        let mut references = telemetry_segment_group(cx);
         for (reference, label) in TelemetryReference::ALL {
             let id = match reference {
                 TelemetryReference::Best => "telemetry-ref-best",
@@ -1601,9 +1666,9 @@ impl Analysis {
             "SIN SESIONES"
         };
         let status_color = if synthetic {
-            orbit::EMBER
+            orbit::ember(cx)
         } else {
-            orbit::INK_3
+            orbit::ink_3(cx)
         };
         let status_ink =
             vantare_ui::efficiency::text::ink(10.0, 750.0, 0.06, rgb(status_color).into());
@@ -1616,7 +1681,7 @@ impl Analysis {
             .rounded_full()
             .border_1()
             .border_color(rgba(if synthetic { 0xff9b_5738 } else { 0xffff_ff12 }))
-            .bg(rgba(0xffff_ff06))
+            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
             .child(
                 telemetry_tracked(status_label, 10.0, 750, status_color, 0.6).w(px(status_width)),
             );
@@ -1638,10 +1703,10 @@ impl Analysis {
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(telemetry_tracked("ANÁLISIS POST-SESIÓN", 11.0, 800, orbit::INK_3, 0.99).relative().top(px(-2.0)))
+                    .child(telemetry_tracked("ANÁLISIS POST-SESIÓN", 11.0, 800, orbit::ink_3(cx), 0.99).relative().top(px(-2.0)))
                     .child(
                         // W700 estático compensa el ancho del W690 variable de Wails.
-                        telemetry_tracked(&self.telemetry_title(), 34.0, 700, orbit::INK, -1.36)
+                        telemetry_tracked(&self.telemetry_title(), 34.0, 700, orbit::ink(cx), -1.36)
                             .mt(px(6.0))
                             .h(px(51.0))
                             .line_height(px(51.0)),
@@ -1651,8 +1716,8 @@ impl Analysis {
                             "Compara tu mejor vuelta con una referencia y te dice, curva a curva, dónde se va el tiempo y por qué.",
                             orbit::BODY,
                             400,
-                            orbit::INK_2,
-                        )
+                            orbit::ink_2(cx),
+                         cx)
                         .mt(px(7.0))
                         .line_height(px(20.9)),
                     ),
@@ -1660,7 +1725,7 @@ impl Analysis {
             .child(actions)
     }
 
-    fn telemetry_stats(&self) -> gpui::Div {
+    fn telemetry_stats(&self, cx: &gpui::App) -> gpui::Div {
         let mut row = div()
             .flex_none()
             .mr(px(-2.0))
@@ -1688,8 +1753,9 @@ impl Analysis {
                         "2:04.512",
                         None,
                         "vuelta 9 de 12 · óptima teórica 2:04.101",
-                        orbit::INK,
+                        orbit::ink(cx),
                         false,
+                        cx,
                     )
                     .flex_grow(1.002),
                 )
@@ -1698,11 +1764,12 @@ impl Analysis {
                     &format_delta(total, 3),
                     Some("s"),
                     "referencia 2:03.980 · vuelta 4",
-                    orbit::CORAL,
+                    orbit::coral(cx),
                     false,
+                    cx,
                 ))
                 .child(
-                    telemetry_stat("Sectores", "", None, &sectors, orbit::INK, true)
+                    telemetry_stat("Sectores", "", None, &sectors, orbit::ink(cx), true, cx)
                         .flex_grow(1.002),
                 )
                 .child(telemetry_stat(
@@ -1710,8 +1777,9 @@ impl Analysis {
                     "94",
                     Some("%"),
                     "8 de 12 vueltas a ±0.5 s",
-                    orbit::GREEN,
+                    orbit::green(cx),
                     false,
+                    cx,
                 ));
         }
         if !self.is_synthetic() {
@@ -1725,8 +1793,16 @@ impl Analysis {
             .enumerate()
             {
                 row = row.child(
-                    telemetry_stat(label, "—", None, "sin datos de sesión", orbit::INK, false)
-                        .flex_grow(if index % 2 == 0 { 1.002 } else { 0.998 }),
+                    telemetry_stat(
+                        label,
+                        "—",
+                        None,
+                        "sin datos de sesión",
+                        orbit::ink(cx),
+                        false,
+                        cx,
+                    )
+                    .flex_grow(if index % 2 == 0 { 1.002 } else { 0.998 }),
                 );
             }
         }
@@ -1734,7 +1810,7 @@ impl Analysis {
     }
 
     #[cfg_attr(not(feature = "parity-capture"), allow(clippy::unused_self))]
-    fn telemetry_bodies(&self) -> (gpui::Div, gpui::Div, gpui::Div) {
+    fn telemetry_bodies(&self, cx: &gpui::App) -> (gpui::Div, gpui::Div, gpui::Div) {
         #[cfg(feature = "parity-capture")]
         match self.demo.as_ref() {
             Some(Ok(_)) => {
@@ -1743,25 +1819,30 @@ impl Analysis {
                 let map = div()
                     .flex()
                     .flex_col()
-                    .child(demo_track_map(&model, scale))
-                    .child(demo_map_legend());
-                return (map, demo_insights_view(scale), demo_traces_view(&model));
+                    .child(demo_track_map(&model, scale, cx))
+                    .child(demo_map_legend(cx));
+                return (
+                    map,
+                    demo_insights_view(scale, cx),
+                    demo_traces_view(&model, cx),
+                );
             }
             Some(Err(error)) => {
                 return (
-                    telemetry_empty(error),
-                    telemetry_empty("Sin curvas que analizar todavía."),
-                    telemetry_empty("Las trazas se dibujan cuando haya una vuelta grabada."),
+                    telemetry_empty(error, cx),
+                    telemetry_empty("Sin curvas que analizar todavía.", cx),
+                    telemetry_empty("Las trazas se dibujan cuando haya una vuelta grabada.", cx),
                 );
             }
             None => {}
         }
         (
-            telemetry_empty("El mapa se dibuja cuando haya una vuelta grabada."),
+            telemetry_empty("El mapa se dibuja cuando haya una vuelta grabada.", cx),
             telemetry_empty(
                 "No hay sesiones disponibles · importa archivos locales de LMU cuando el flujo esté disponible.",
+                cx,
             ),
-            telemetry_empty("Las trazas se dibujan cuando haya una vuelta grabada."),
+            telemetry_empty("Las trazas se dibujan cuando haya una vuelta grabada.", cx),
         )
     }
 
@@ -1776,6 +1857,7 @@ impl Analysis {
             } else {
                 "Recargar grabaciones"
             },
+            cx,
         )
         .on_click(cx.listener(|this, _, _, cx| this.refresh(cx)));
         let mut recordings = div()
@@ -1786,10 +1868,11 @@ impl Analysis {
                 "Directorio local",
                 &self.root.display().to_string(),
                 refresh,
+                cx,
             ))
-            .child(orbit::callout(self.status.clone()));
+            .child(orbit::callout(self.status.clone(), cx));
         if !self.recording_status.is_empty() {
-            recordings = recordings.child(orbit::callout(self.recording_status.clone()));
+            recordings = recordings.child(orbit::callout(self.recording_status.clone(), cx));
         }
         recordings = recordings.child(self.recordings_view(cx));
         let mut insights = div()
@@ -1803,7 +1886,7 @@ impl Analysis {
         Some(insights)
     }
 
-    fn telemetry_traces(&self, placeholder: gpui::Div) -> gpui::Div {
+    fn telemetry_traces(&self, placeholder: gpui::Div, cx: &gpui::App) -> gpui::Div {
         if self.charts.speed[0].is_empty() && self.charts.speed[1].is_empty() {
             return placeholder;
         }
@@ -1816,24 +1899,28 @@ impl Analysis {
                 self.charts.speed.clone(),
                 self.charts.distance_range,
                 None,
+                cx,
             ))
             .child(chart(
                 "Acelerador %",
                 self.charts.throttle.clone(),
                 self.charts.distance_range,
                 Some((0.0, 100.0)),
+                cx,
             ))
             .child(chart(
                 "Freno %",
                 self.charts.brake.clone(),
                 self.charts.distance_range,
                 Some((0.0, 100.0)),
+                cx,
             ))
             .child(chart(
                 "Delta A−B s",
                 [self.charts.delta.clone(), Vec::new()],
                 self.charts.distance_range,
                 None,
+                cx,
             ))
     }
 
@@ -1843,7 +1930,7 @@ impl Analysis {
         trace_body: gpui::Div,
         cx: &Context<Self>,
     ) -> gpui::Div {
-        let mut axis = telemetry_segment_group();
+        let mut axis = telemetry_segment_group(cx);
         axis = axis
             .child(telemetry_segment(
                 "telemetry-axis-distance",
@@ -1864,24 +1951,33 @@ impl Analysis {
 
         let map = telemetry_surface(
             "Mapa",
-            telemetry_mono("color = tiempo ganado / perdido", 12.0, 400, orbit::INK_3),
+            telemetry_mono(
+                "color = tiempo ganado / perdido",
+                12.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ),
             None,
             map_body,
             false,
+            cx,
         );
         let insights = telemetry_surface(
             "Dónde se va el tiempo",
-            telemetry_mono("ordenado por pérdida", 12.0, 400, orbit::INK_3),
+            telemetry_mono("ordenado por pérdida", 12.0, 400, orbit::ink_3(cx), cx),
             None,
             insight_body,
             true,
+            cx,
         );
         let traces = telemetry_surface(
             "Trazas",
-            telemetry_mono("— m", 12.0, 400, orbit::INK_3),
+            telemetry_mono("— m", 12.0, 400, orbit::ink_3(cx), cx),
             Some(axis),
             trace_body,
             true,
+            cx,
         );
         div()
             .flex_1()
@@ -1904,16 +2000,18 @@ impl Analysis {
             .child(traces)
     }
 
-    fn telemetry_note(&self) -> gpui::Div {
+    fn telemetry_note(&self, cx: &gpui::App) -> gpui::Div {
         if self.is_synthetic() {
             telemetry_note(
                 Some("Datos sintéticos "),
                 "el circuito, los canales y los insights los genera la propia pantalla para enseñar la estructura. No son una sesión tuya.",
+                cx,
             )
         } else {
             telemetry_note(
                 None,
                 "No hay sesiones disponibles · importa archivos locales de LMU cuando el flujo esté disponible.",
+                cx,
             )
         }
     }
@@ -1921,11 +2019,11 @@ impl Analysis {
 
 impl Render for Analysis {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (map, mut insights, traces) = self.telemetry_bodies();
+        let (map, mut insights, traces) = self.telemetry_bodies(cx);
         if let Some(recordings) = self.telemetry_recordings(cx) {
             insights = recordings;
         }
-        let columns = Self::telemetry_columns(map, insights, self.telemetry_traces(traces), cx);
+        let columns = Self::telemetry_columns(map, insights, self.telemetry_traces(traces, cx), cx);
 
         div()
             .id("analysis")
@@ -1941,8 +2039,8 @@ impl Render for Analysis {
             .flex()
             .flex_col()
             .child(self.telemetry_header(window, cx))
-            .child(self.telemetry_stats())
+            .child(self.telemetry_stats(cx))
             .child(columns)
-            .child(self.telemetry_note())
+            .child(self.telemetry_note(cx))
     }
 }

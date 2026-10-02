@@ -132,9 +132,9 @@ impl LauncherDrawer {
             .gap(px(12.0))
             .px(px(20.0))
             .border_b_1()
-            .border_color(rgba(orbit::LINE))
+            .border_color(rgba(orbit::line(cx)))
             .child(
-                tracked_text(self.label.clone(), 16.0, 650, orbit::INK, -0.24)
+                tracked_text(self.label.clone(), 16.0, 650, orbit::ink(cx), -0.24)
                     .flex_1()
                     .min_w_0(),
             )
@@ -152,9 +152,13 @@ impl LauncherDrawer {
                     .justify_center()
                     .rounded(px(7.0))
                     .text_size(px(18.0))
-                    .text_color(rgb(orbit::INK_3))
+                    .text_color(rgb(orbit::ink_3(cx)))
                     .cursor_pointer()
-                    .hover(|style| style.bg(rgba(orbit::LINE_ROW)).text_color(rgb(orbit::INK)))
+                    .hover(|style| {
+                        style
+                            .bg(rgba(orbit::line_row(cx)))
+                            .text_color(rgb(orbit::ink(cx)))
+                    })
                     .child("×")
                     .on_click(cx.listener(|this, _, window, cx| this.dismiss(window, cx))),
             )
@@ -186,9 +190,9 @@ impl Render for LauncherDrawer {
             .flex_col()
             .min_h_0()
             .overflow_hidden()
-            .bg(rgb(orbit::SURFACE_1))
+            .bg(rgb(orbit::surface_1(cx)))
             .border_l_1()
-            .border_color(rgba(orbit::LINE))
+            .border_color(rgba(orbit::line(cx)))
             .shadow(vec![gpui::BoxShadow {
                 color: rgba(0x0000_00e6).into(),
                 offset: gpui::point(px(-28.0), px(0.0)),
@@ -219,8 +223,8 @@ impl Render for LauncherDrawer {
                     .px(px(20.0))
                     .py(px(14.0))
                     .border_t_1()
-                    .border_color(rgba(orbit::LINE))
-                    .bg(rgb(orbit::SURFACE_2))
+                    .border_color(rgba(orbit::line(cx)))
+                    .bg(rgb(orbit::surface_2(cx)))
                     .child(footer.clone()),
             );
         }
@@ -256,7 +260,8 @@ impl Render for FormHost {
                             format!("Eliminar perfil {id}? Esta accion no se puede deshacer."),
                             orbit::BODY,
                             500,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         ))
                     } else {
                         launcher.app_removal_confirmation(cx)
@@ -278,11 +283,22 @@ fn drawer_action_button(
     id: &'static str,
     label: &'static str,
     primary: bool,
+    cx: &gpui::App,
 ) -> gpui::Stateful<gpui::Div> {
     let (background, foreground, border, weight) = if primary {
-        (rgb(0x00f3_eeee), 0x001c_1719, rgb(0x00f3_eeee), 650)
+        (
+            rgb(crate::orbit::legacy_rgb(0x00f3_eeee, cx)),
+            cx.global::<crate::orbit::theme::Theme>().primary_ink,
+            rgb(crate::orbit::legacy_rgb(0x00f3_eeee, cx)),
+            650,
+        )
     } else {
-        (rgba(0xffff_ff06), orbit::INK_3, rgba(0xffff_ff12), 400)
+        (
+            rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)),
+            orbit::ink_3(cx),
+            rgba(crate::orbit::legacy_rgba(0xffff_ff12, cx)),
+            400,
+        )
     };
     div()
         .id(id)
@@ -299,8 +315,8 @@ fn drawer_action_button(
         .border_1()
         .border_color(border)
         .cursor_pointer()
-        .hover(|style| style.bg(rgb(orbit::INK)))
-        .child(text(label.to_owned(), 13.0, weight, foreground))
+        .hover(|style| style.bg(rgb(orbit::ink(cx))))
+        .child(text(label.to_owned(), 13.0, weight, foreground, cx))
 }
 
 impl Render for ProfileFooter {
@@ -312,13 +328,13 @@ impl Render for ProfileFooter {
                     .items_center()
                     .gap(px(8.0))
                     .child(form_button(
-                        drawer_action_button("discard-profile", "Cancelar", false),
+                        drawer_action_button("discard-profile", "Cancelar", false, cx),
                         &launcher.form_actions[1],
                         Launcher::close_form,
                         cx,
                     ))
                     .child(form_button(
-                        drawer_action_button("save-profile", "Guardar", true),
+                        drawer_action_button("save-profile", "Guardar", true, cx),
                         &launcher.form_actions[2],
                         Launcher::commit_form,
                         cx,
@@ -328,7 +344,11 @@ impl Render for ProfileFooter {
     }
 }
 
-fn drawer_danger_button(id: &'static str, label: &'static str) -> gpui::Stateful<gpui::Div> {
+fn drawer_danger_button(
+    id: &'static str,
+    label: &'static str,
+    cx: &gpui::App,
+) -> gpui::Stateful<gpui::Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
@@ -340,12 +360,16 @@ fn drawer_danger_button(id: &'static str, label: &'static str) -> gpui::Stateful
         .items_center()
         .justify_center()
         .rounded(px(orbit::RADIUS_CONTROL))
-        .bg(rgb(orbit::CARMINE))
+        .bg(rgb(orbit::carmine(cx)))
         .border_1()
-        .border_color(rgb(orbit::CARMINE))
+        .border_color(rgb(orbit::carmine(cx)))
         .cursor_pointer()
-        .hover(|style| style.bg(rgb(orbit::CORAL)).border_color(rgb(orbit::CORAL)))
-        .child(text(label.to_owned(), 13.0, 800, orbit::WHITE))
+        .hover(|style| {
+            style
+                .bg(rgb(orbit::coral(cx)))
+                .border_color(rgb(orbit::coral(cx)))
+        })
+        .child(text(label.to_owned(), 13.0, 800, orbit::white(cx), cx))
 }
 
 impl Render for AppRemovalFooter {
@@ -357,13 +381,13 @@ impl Render for AppRemovalFooter {
                     .items_center()
                     .gap(px(8.0))
                     .child(form_button(
-                        drawer_action_button("cancel-app-removal", "Cancelar", false),
+                        drawer_action_button("cancel-app-removal", "Cancelar", false, cx),
                         &launcher.form_actions[1],
                         Launcher::close_form,
                         cx,
                     ))
                     .child(form_button(
-                        drawer_danger_button("confirm-app-removal", "Eliminar"),
+                        drawer_danger_button("confirm-app-removal", "Eliminar", cx),
                         &launcher.form_actions[2],
                         Launcher::confirm_app_removal,
                         cx,
@@ -437,13 +461,14 @@ pub(super) fn form_button(
         )
 }
 
-fn editor_field(label: &str, control: impl IntoElement) -> gpui::Div {
+fn editor_field(label: &str, control: impl IntoElement, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
         .gap(px(9.0))
         .child(
-            tracked_text(label.to_uppercase(), 11.0, 700, orbit::INK_3, 0.77).line_height(px(16.0)),
+            tracked_text(label.to_uppercase(), 11.0, 700, orbit::ink_3(cx), 0.77)
+                .line_height(px(16.0)),
         )
         .child(div().w_full().child(control))
 }
@@ -894,9 +919,9 @@ impl Launcher {
             .when_some(self.error.clone(), |form, error| {
                 form.child(super::presentation::error_panel(error, cx))
             })
-            .child(editor_field("Nombre", draft.name.clone()))
-            .child(editor_field("Descripción", draft.description.clone()).mt(px(14.0)))
-            .child(editor_field("Notas", draft.notes.clone()).mt(px(14.0)))
+            .child(editor_field("Nombre", draft.name.clone(), cx))
+            .child(editor_field("Descripción", draft.description.clone(), cx).mt(px(14.0)))
+            .child(editor_field("Notas", draft.notes.clone(), cx).mt(px(14.0)))
             .child(self.profile_steps_section(draft, advanced, cx))
             .child(Self::profile_hotkey_row(draft, cx))
             .child(Self::profile_autostart_row(draft, cx))
@@ -919,13 +944,13 @@ impl Launcher {
             .flex_col()
             .gap(px(10.0))
             .border_t_1()
-            .border_color(rgba(orbit::LINE))
+            .border_color(rgba(orbit::line(cx)))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(tracked_text("PASOS", 11.0, 700, orbit::INK_3, 0.77))
+                    .child(tracked_text("PASOS", 11.0, 700, orbit::ink_3(cx), 0.77))
                     .child(
                         div()
                             .id("launcher-editor-mode")
@@ -939,7 +964,7 @@ impl Launcher {
                                 if advanced { "BÁSICO" } else { "AVANZADO" },
                                 10.0,
                                 700,
-                                orbit::INK_3,
+                                orbit::ink_3(cx),
                                 1.8,
                             ))
                             .on_click(cx.listener(move |this, _, _, cx| {
@@ -973,11 +998,11 @@ impl Launcher {
                 .rounded(px(12.0))
                 .border_1()
                 .border_dashed()
-                .border_color(rgba(orbit::LINE_STRONG))
+                .border_color(rgba(orbit::line_strong(cx)))
                 .text_size(px(12.0))
-                .font_family("Inter W650")
+                .font_family(crate::orbit::sans_override("Inter W650", cx))
                 .font_weight(gpui::FontWeight::NORMAL)
-                .text_color(rgb(orbit::INK_2))
+                .text_color(rgb(orbit::ink_2(cx)))
                 .cursor_pointer()
                 .child("+ Añadir paso"),
             &self.form_actions[0],
@@ -1001,7 +1026,11 @@ impl Launcher {
                     step.delay.clone()
                 });
             if advanced {
-                row = row.child(editor_field("Argumentos propios · JSON", step.args.clone()));
+                row = row.child(editor_field(
+                    "Argumentos propios · JSON",
+                    step.args.clone(),
+                    cx,
+                ));
             }
             row = row.child(Self::profile_step_actions(index, draft.steps.len(), cx));
             steps = steps.child(
@@ -1010,7 +1039,13 @@ impl Launcher {
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
-                    .child(text(format!("PASO {}", index + 1), 10.0, 700, orbit::INK_3))
+                    .child(text(
+                        format!("PASO {}", index + 1),
+                        10.0,
+                        700,
+                        orbit::ink_3(cx),
+                        cx,
+                    ))
                     .child(row),
             );
         }
@@ -1022,7 +1057,7 @@ impl Launcher {
             .flex()
             .gap_2()
             .child(
-                button("step-up", "↑ Subir")
+                button("step-up", "↑ Subir", cx)
                     .when(index > 0, |button| {
                         button.on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(draft) = &mut this.profile_draft {
@@ -1036,7 +1071,7 @@ impl Launcher {
                     }),
             )
             .child(
-                button("step-down", "↓ Bajar")
+                button("step-down", "↓ Bajar", cx)
                     .when(index + 1 < count, |button| {
                         button.on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(draft) = &mut this.profile_draft {
@@ -1049,16 +1084,16 @@ impl Launcher {
                         button.tab_stop(false).opacity(orbit::DISABLED)
                     }),
             )
-            .child(
-                button("remove-step", "Quitar").on_click(cx.listener(move |this, _, _, cx| {
+            .child(button("remove-step", "Quitar", cx).on_click(cx.listener(
+                move |this, _, _, cx| {
                     if let Some(draft) = &mut this.profile_draft
                         && index < draft.steps.len()
                     {
                         draft.steps.remove(index);
                     }
                     cx.notify();
-                })),
-            )
+                },
+            )))
     }
 
     fn profile_hotkey_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
@@ -1072,17 +1107,18 @@ impl Launcher {
             .gap(px(14.0))
             .rounded(px(10.0))
             .border_b_1()
-            .border_color(rgba(orbit::LINE_ROW))
+            .border_color(rgba(orbit::line_row(cx)))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(text("Atajo global", 13.5, 650, orbit::INK))
+                    .child(text("Atajo global", 13.5, 650, orbit::ink(cx), cx))
                     .child(text(
                         "Lanza este perfil desde cualquier sitio.",
                         11.5,
                         400,
-                        orbit::INK_3,
+                        orbit::ink_3(cx),
+                        cx,
                     )),
             )
             .child(
@@ -1094,10 +1130,10 @@ impl Launcher {
                     .rounded(px(7.0))
                     .border_1()
                     .border_dashed()
-                    .border_color(rgba(orbit::LINE_STRONG))
-                    .font_family("Cascadia Code")
+                    .border_color(rgba(orbit::line_strong(cx)))
+                    .font_family(crate::orbit::mono_family(cx))
                     .text_size(px(12.0))
-                    .text_color(rgb(orbit::INK_3))
+                    .text_color(rgb(orbit::ink_3(cx)))
                     .child(if draft.hotkey.read(cx).value.is_empty() {
                         "sin asignar".into()
                     } else {
@@ -1113,12 +1149,13 @@ impl Launcher {
             .flex()
             .items_center()
             .justify_between()
-            .child(text("Iniciar con Windows", 13.5, 400, orbit::INK_2))
+            .child(text("Iniciar con Windows", 13.5, 400, orbit::ink_2(cx), cx))
             .child(orbit::toggle(
                 "windows-start",
                 "Iniciar con Windows",
                 draft.autostart.read(cx).checked,
                 false,
+                cx,
             ))
     }
 
@@ -1128,29 +1165,29 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(eyebrow("Políticas nativas"))
-            .child(editor_field("Atajo global", draft.hotkey.clone()))
+            .child(eyebrow("Políticas nativas", cx))
+            .child(editor_field("Atajo global", draft.hotkey.clone(), cx))
             .child(editor_field(
                 "Iniciar con Windows",
                 draft.autostart.clone(),
-            ))
-            .child(editor_field("Ante un fallo", draft.failure.clone()))
-            .child(editor_field("Aplicación ya abierta", draft.reuse.clone()))
-            .child(editor_field("Al cancelar", draft.cancel.clone()))
-            .child(editor_field("Al salir", draft.exit.clone()))
-            .child(editor_field("Reintentar", draft.retry_policy.clone()))
+             cx))
+            .child(editor_field("Ante un fallo", draft.failure.clone(), cx))
+            .child(editor_field("Aplicación ya abierta", draft.reuse.clone(), cx))
+            .child(editor_field("Al cancelar", draft.cancel.clone(), cx))
+            .child(editor_field("Al salir", draft.exit.clone(), cx))
+            .child(editor_field("Reintentar", draft.retry_policy.clone(), cx))
             .child(orbit::setting_row(
                 "Reintentos por paso",
                 "De 0 a 3",
                 draft.retries.clone(),
-            ))
+             cx))
             .child(orbit::callout(
                 if vantare_ipc::launcher::read_status(&self.store.path).is_some() {
                     "El supervisor aplica estos ajustes al guardar. Los conflictos de atajo se muestran en Launcher."
                 } else {
                     "Supervisor no disponible: los ajustes quedan guardados. Inicia la aplicación con vantare para activar los atajos y el inicio Windows."
                 },
-            ))
+             cx))
             .when(
                 self.store
                     .document

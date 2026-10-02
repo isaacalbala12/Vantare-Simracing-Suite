@@ -368,6 +368,7 @@ impl Input {
         &self,
         bounds: Bounds<Pixels>,
         window: &mut Window,
+        cx: &gpui::App,
     ) -> Vec<(usize, ShapedLine, Point<Pixels>)> {
         let style = window.text_style();
         let mut offset = 0;
@@ -389,7 +390,7 @@ impl Input {
             let run = gpui::TextRun {
                 len: text.len(),
                 font: style.font(),
-                color: rgb(INK_2).into(),
+                color: rgb(ink_2(cx)).into(),
                 background_color: None,
                 underline: None,
                 strikethrough: None,
@@ -456,7 +457,7 @@ fn paint_input(
         if focused && selected.start <= end && selected.end > *start {
             window.paint_quad(fill(
                 text_bounds(line, *origin, selected.clone(), *start, height),
-                tint(CARMINE, 0.24),
+                tint(carmine(cx), 0.24),
             ));
         }
         if let Err(error) = line.paint(*origin, height, gpui::TextAlign::Left, None, window, cx) {
@@ -468,7 +469,7 @@ fn paint_input(
                     point(origin.x + line.x_for_index(cursor - start), origin.y),
                     size(gpui::px(FOCUS_WIDTH), height),
                 ),
-                rgb(CORAL),
+                rgb(coral(cx)),
             ));
         }
         if let Some(marked) = &marked
@@ -478,7 +479,7 @@ fn paint_input(
             let mut underline = text_bounds(line, *origin, marked.clone(), *start, height);
             underline.origin.y += height - gpui::px(LINE_WIDTH);
             underline.size.height = gpui::px(LINE_WIDTH);
-            window.paint_quad(fill(underline, rgb(CORAL)));
+            window.paint_quad(fill(underline, rgb(coral(cx))));
         }
     }
     if enabled {
@@ -493,7 +494,7 @@ impl Render for Input {
         let multiline = self.multiline;
         // ponytail: 16 KiB, movimiento por escalares Unicode y líneas explícitas.
         // Un editor de documentos con wrap/grafemas requiere ampliar este mismo control.
-        field("orbit-input")
+        field("orbit-input", cx)
             .track_focus(&self.focus.clone().tab_stop(self.enabled))
             .tab_index(0)
             .tab_stop(self.enabled)
@@ -535,7 +536,7 @@ impl Render for Input {
             .on_key_down(cx.listener(Self::key))
             .child(
                 canvas(
-                    move |bounds, window, cx| entity.read(cx).shape(bounds, window),
+                    move |bounds, window, cx| entity.read(cx).shape(bounds, window, cx),
                     move |bounds, lines, window, cx| {
                         paint_input(&paint_entity, bounds, lines, window, cx);
                     },

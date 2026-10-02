@@ -4,7 +4,7 @@ use gpui::{
     Context, Div, EventEmitter, FocusHandle, IntoElement, Render, Stateful, Window, anchored,
     deferred, div, px, rgb, rgba,
 };
-pub fn field(id: &'static str) -> Stateful<Div> {
+pub fn field(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
     div()
         .id(id)
         .h(px(CONTROL_H))
@@ -14,13 +14,13 @@ pub fn field(id: &'static str) -> Stateful<Div> {
         .items_center()
         .rounded(px(RADIUS_CONTROL))
         .border_1()
-        .border_color(rgba(LINE))
-        .bg(tint(INK, 0.028))
-        .font_family(weight(500))
+        .border_color(rgba(line(cx)))
+        .bg(tint(ink(cx), 0.028))
+        .font_family(sans_family(500, cx))
         .text_size(px(FIELD_TEXT))
-        .text_color(rgb(INK_2))
-        .hover(|s| s.border_color(rgba(LINE_STRONG)))
-        .focus_visible(|s| s.border_2().border_color(rgb(CORAL)))
+        .text_color(rgb(ink_2(cx)))
+        .hover(|s| s.border_color(rgba(line_strong(cx))))
+        .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChoiceKind {
@@ -38,6 +38,7 @@ pub struct Choice {
     focus: FocusHandle,
     scroll: gpui::ScrollHandle,
     trigger_bounds: Option<gpui::Bounds<gpui::Pixels>>,
+    reference_trigger: bool,
 }
 impl EventEmitter<ChoiceChanged> for Choice {}
 impl Choice {
@@ -69,7 +70,11 @@ impl Choice {
             focus,
             scroll: gpui::ScrollHandle::new(),
             trigger_bounds: None,
+            reference_trigger: false,
         }
+    }
+    pub fn reference_trigger(&mut self) {
+        self.reference_trigger = true;
     }
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus.clone()
@@ -125,20 +130,25 @@ impl Choice {
             .flex()
             .items_center()
             .justify_between()
-            .when(self.state.active == Some(index), |s| s.bg(rgba(LINE_ROW)))
+            .when(self.state.active == Some(index), |s| {
+                s.bg(rgba(line_row(cx)))
+            })
             .when(!option.enabled, |s| {
                 s.opacity(DISABLED).aria_description("Deshabilitado")
             })
             .when(option.enabled, |s| {
-                s.cursor_pointer().hover(|s| s.bg(rgba(LINE_ROW)))
+                s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
             })
             .child(text(
                 option.label.clone(),
                 BODY,
                 if selected { 650 } else { 500 },
-                INK_2,
+                ink_2(cx),
+                cx,
             ))
-            .when(selected, |s| s.child(text("✓", SECONDARY, 650, CORAL)))
+            .when(selected, |s| {
+                s.child(text("✓", SECONDARY, 650, coral(cx), cx))
+            })
             .on_mouse_move(cx.listener(move |this, _, _, cx| {
                 if this.state.options[index].enabled && this.state.active != Some(index) {
                     this.state.active = Some(index);
@@ -158,13 +168,37 @@ impl Choice {
         .absolute()
         .size_full()
     }
+    fn trigger_label(
+        &self,
+        label: impl Into<SharedString>,
+        size: f32,
+        weight: u16,
+        color: u32,
+        cx: &gpui::App,
+    ) -> Div {
+        text(label, size, weight, color, cx).when(self.reference_trigger, |text| {
+            text.font_weight(
+                if cx.global::<theme::Theme>().interface_font == theme::InterfaceFont::Inter {
+                    gpui::FontWeight::NORMAL
+                } else {
+                    gpui::FontWeight(f32::from(weight))
+                },
+            )
+            .line_height(px(size * 1.5))
+            .relative()
+            .font_features(gpui::FontFeatures(std::sync::Arc::new(vec![(
+                "kern".into(),
+                1,
+            )])))
+        })
+    }
     fn dropdown(&self, cx: &mut Context<Self>) -> Div {
         let value = self
             .state
             .selected
             .and_then(|i| self.state.options.get(i))
             .map_or("Seleccionar…", |o| o.label.as_str());
-        let trigger = field("choice-trigger")
+        let trigger = field("choice-trigger", cx)
             .relative()
             .w(px(FIELD_W))
             .tab_stop(false)
@@ -172,8 +206,27 @@ impl Choice {
             .justify_between()
             .when(!self.state.enabled, |s| s.opacity(DISABLED))
             .child(Self::trigger_tracker(cx))
-            .child(text(value.to_owned(), BODY, 500, INK_2))
-            .child(text("⌄", SECONDARY, 500, INK_3))
+            .when(self.reference_trigger, |field| {
+                field.bg(tint(ink(cx), 7.0 / 255.0))
+            })
+            .child(self.trigger_label(
+                value.to_owned(),
+                if self.reference_trigger { 14.0 } else { BODY },
+                500,
+                ink_2(cx),
+                cx,
+            ))
+            .child(self.trigger_label(
+                "⌄",
+                if self.reference_trigger {
+                    16.0
+                } else {
+                    SECONDARY
+                },
+                if self.reference_trigger { 400 } else { 500 },
+                ink_3(cx),
+                cx,
+            ))
             .on_click(cx.listener(|this, _, window, cx| {
                 if !this.state.enabled {
                     return;
@@ -192,12 +245,12 @@ impl Choice {
                 .max_h(px(ROW_H * 5.0))
                 .overflow_y_scroll()
                 .track_scroll(&self.scroll)
-                .shadow(layer_shadow(false))
+                .shadow(layer_shadow(false, cx))
                 .p(px(MENU_PAD))
                 .rounded(px(RADIUS_CONTROL))
                 .border_1()
-                .border_color(rgba(LINE_STRONG))
-                .bg(rgb(SURFACE_2))
+                .border_color(rgba(line_strong(cx)))
+                .bg(rgb(surface_2(cx)))
                 .on_mouse_down_out(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
                     // El botón alterna en click; cerrarlo aquí lo volvería a abrir.
                     if !this
@@ -233,6 +286,7 @@ impl Choice {
                     "",
                     self.state.selected == Some(index),
                     option.enabled && self.state.enabled,
+                    cx,
                 )
                 .role(gpui::Role::ListBoxOption)
                 .tab_stop(false)
@@ -251,15 +305,17 @@ impl Choice {
         let mut segments = div()
             .flex()
             .when(tabs, |s| {
-                s.gap(px(SEGMENT_PAD)).border_b_1().border_color(rgba(LINE))
+                s.gap(px(SEGMENT_PAD))
+                    .border_b_1()
+                    .border_color(rgba(line(cx)))
             })
             .when(!tabs, |s| {
                 s.gap(px(SEGMENT_GAP))
                     .p(px(SEGMENT_PAD))
                     .rounded(px(RADIUS_CONTROL))
-                    .bg(tint(INK, 0.02))
+                    .bg(tint(ink(cx), 0.02))
                     .border_1()
-                    .border_color(rgba(LINE_ROW))
+                    .border_color(rgba(line_row(cx)))
             });
         for (index, option) in self.state.options.iter().enumerate() {
             let selected = self.state.selected == Some(index);
@@ -280,9 +336,9 @@ impl Choice {
                             .rounded(px(RADIUS_CHIP))
                     })
                     .when(selected && !tabs, |s| {
-                        s.bg(tint(CARMINE, 0.16))
+                        s.bg(tint(carmine(cx), 0.16))
                             .border_1()
-                            .border_color(tint(RED, 0.22))
+                            .border_color(tint(red(cx), 0.22))
                     })
                     .when(selected && tabs, |s| {
                         s.child(
@@ -293,20 +349,26 @@ impl Choice {
                                 .bottom_0()
                                 .h(px(FOCUS_WIDTH))
                                 .rounded(px(FOCUS_WIDTH))
-                                .bg(rgb(RED)),
+                                .bg(rgb(red(cx))),
                         )
+                    })
+                    .when(selected && is_mono(cx), |c| {
+                        c.bg(rgb(surface_3(cx)))
+                            .border_1()
+                            .border_color(selection_border(cx))
                     })
                     .when(!option.enabled || !self.state.enabled, |s| {
                         s.opacity(DISABLED).aria_description("Deshabilitado")
                     })
                     .when(option.enabled && self.state.enabled, |s| {
-                        s.cursor_pointer().hover(|s| s.bg(rgba(LINE_ROW)))
+                        s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
                     })
                     .child(text(
                         option.label.clone(),
                         if tabs { BODY } else { SECONDARY },
                         650,
-                        if selected { INK } else { INK_4 },
+                        if selected { ink(cx) } else { ink_4(cx) },
+                        cx,
                     ))
                     .on_click(cx.listener(move |this, _, window, cx| {
                         if this.state.enabled && this.state.options[index].enabled {
@@ -344,7 +406,7 @@ impl Render for Choice {
                 s.border_2()
                     .m(px(-FOCUS_WIDTH))
                     .rounded(px(RADIUS_CONTROL))
-                    .border_color(rgb(CORAL))
+                    .border_color(rgb(coral(cx)))
             })
     }
 }
@@ -360,22 +422,116 @@ pub enum Tone {
     Silver,
     Gold,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StatusShape {
+    Plain,
+    Outline,
+    Dashed,
+    Inverted,
+    Info,
+}
 impl Tone {
-    pub fn color(self) -> u32 {
+    pub fn color(self, cx: &gpui::App) -> u32 {
+        self.color_in(cx.global::<theme::Theme>())
+    }
+    pub fn color_in(self, theme: &theme::Theme) -> u32 {
         match self {
-            Self::Neutral => INK_4,
-            Self::Accent => CORAL,
-            Self::Success => GREEN,
-            Self::Warning | Self::Gold => EMBER,
-            Self::Danger => RED,
-            Self::Reference => CYAN,
-            Self::Bronze => BRONZE,
-            Self::Silver => SILVER,
+            Self::Neutral => theme.ink_4,
+            Self::Accent => theme.coral,
+            Self::Success => theme.green,
+            Self::Warning => theme.ember,
+            Self::Gold => {
+                if theme.palette == theme::Palette::Mono {
+                    theme.tier_gold
+                } else {
+                    theme.ember
+                }
+            }
+            Self::Danger => theme.red,
+            Self::Reference => theme.cyan,
+            Self::Bronze => theme.bronze,
+            Self::Silver => theme.silver,
+        }
+    }
+    pub fn status_shape(self) -> StatusShape {
+        match self {
+            Self::Success => StatusShape::Outline,
+            Self::Warning => StatusShape::Dashed,
+            Self::Danger => StatusShape::Inverted,
+            Self::Reference => StatusShape::Info,
+            _ => StatusShape::Plain,
+        }
+    }
+    pub fn symbol(self) -> &'static str {
+        match self {
+            Self::Success => "✓",
+            Self::Warning => "⚠",
+            Self::Danger => "✕",
+            Self::Reference => "ⓘ",
+            Self::Bronze => "★",
+            Self::Silver => "★★",
+            Self::Gold => "★★★",
+            _ => "",
         }
     }
 }
-pub fn chip(label: &str, tone: Tone) -> Div {
-    div()
+fn mono_status(control: Div, tone: Tone, cx: &gpui::App) -> Div {
+    if !is_mono(cx) {
+        return control;
+    }
+    let color = tone.color(cx);
+    control
+        .bg(rgb(cx.global::<theme::Theme>().surface_0))
+        .when(tone.status_shape() == StatusShape::Outline, |c| {
+            c.border_1().border_color(rgb(color))
+        })
+        .when(tone.status_shape() == StatusShape::Dashed, |c| {
+            c.border_1().border_dashed().border_color(rgb(color))
+        })
+        .when(tone.status_shape() == StatusShape::Inverted, |c| {
+            c.bg(rgb(color))
+                .text_color(rgb(cx.global::<theme::Theme>().primary_ink))
+        })
+}
+/// Indicador semántico: mantiene el punto original y añade forma solo en Grises.
+pub fn status_dot(tone: Tone, size: f32, cx: &gpui::App) -> Div {
+    if is_mono(cx) && !tone.symbol().is_empty() {
+        mono_status(
+            text(
+                tone.symbol(),
+                size.max(11.0),
+                700,
+                if tone == Tone::Danger {
+                    cx.global::<theme::Theme>().primary_ink
+                } else {
+                    tone.color(cx)
+                },
+                cx,
+            ),
+            tone,
+            cx,
+        )
+    } else {
+        div().size(px(size)).rounded_full().bg(rgb(tone.color(cx)))
+    }
+}
+pub fn chip(label: &str, tone: Tone, cx: &gpui::App) -> Div {
+    let label = if is_mono(cx)
+        && !tone.symbol().is_empty()
+        && !matches!(tone, Tone::Bronze | Tone::Silver | Tone::Gold)
+    {
+        format!("{} {}", tone.symbol(), label.to_uppercase())
+    } else {
+        label.to_uppercase()
+    };
+    let color = if is_mono(cx) && tone == Tone::Danger {
+        cx.global::<theme::Theme>().primary_ink
+    } else if is_mono(cx) && matches!(tone, Tone::Bronze | Tone::Silver | Tone::Gold) {
+        ink(cx)
+    } else {
+        tone.color(cx)
+    };
+    let control = div()
         .h(px(CHIP_H))
         .px(px(CHIP_PAD))
         .rounded(px(RADIUS_CHIP))
@@ -384,42 +540,48 @@ pub fn chip(label: &str, tone: Tone) -> Div {
         .items_center()
         .gap(px(DOT))
         .bg(match tone {
-            Tone::Bronze | Tone::Gold => tint(tone.color(), 0.1),
-            Tone::Silver => tint(SILVER, 0.09),
-            _ => rgba(LINE_CHIP).into(),
+            Tone::Bronze | Tone::Gold => tint(tone.color(cx), 0.1),
+            Tone::Silver => tint(silver(cx), 0.09),
+            _ => rgba(line_chip(cx)).into(),
         })
-        .child(text(label.to_uppercase(), CHIP_TEXT, 700, tone.color()))
+        .when(
+            is_mono(cx) && matches!(tone, Tone::Bronze | Tone::Silver | Tone::Gold),
+            |chip| chip.child(text(tone.symbol(), CHIP_TEXT, 700, tone.color(cx), cx)),
+        )
+        .child(text(label, CHIP_TEXT, 700, color, cx));
+    mono_status(control, tone, cx)
 }
-pub fn pill(label: &str, tone: Tone) -> Div {
-    div()
+pub fn pill(label: &str, tone: Tone, cx: &gpui::App) -> Div {
+    let control = div()
         .h(px(PILL_H))
         .px(px(FIELD_PAD))
         .rounded(px(RADIUS_CONTROL))
         .border_1()
-        .border_color(rgba(LINE_PILL))
-        .bg(tint(WHITE, 0.022))
+        .border_color(rgba(line_pill(cx)))
+        .bg(tint(white(cx), 0.022))
         .flex()
         .items_center()
         .gap(px(PILL_GAP))
-        .child(
-            div()
-                .size(px(PILL_DOT))
-                .rounded_full()
-                .bg(rgb(tone.color())),
-        )
+        .child(status_dot(tone, PILL_DOT, cx))
         .child(text(
             label.to_owned(),
             PILL_TEXT,
             500,
-            match tone {
-                Tone::Success => INK_2,
-                Tone::Neutral => INK_MUTED,
-                _ => tone.color(),
+            if is_mono(cx) && tone == Tone::Danger {
+                cx.global::<theme::Theme>().primary_ink
+            } else {
+                match tone {
+                    Tone::Success => ink_2(cx),
+                    Tone::Neutral => ink_muted(cx),
+                    _ => tone.color(cx),
+                }
             },
-        ))
+            cx,
+        ));
+    mono_status(control, tone, cx)
 }
-pub fn badge(count: usize, tone: Tone) -> Div {
-    chip(&count.to_string(), tone)
+pub fn badge(count: usize, tone: Tone, cx: &gpui::App) -> Div {
+    chip(&count.to_string(), tone, cx)
 }
 /// Iniciales del ViewModel; sin acceso a cuenta ni red.
 pub fn initials(name: &str) -> String {
@@ -433,7 +595,13 @@ pub fn initials(name: &str) -> String {
         .chain(last.into_iter().flat_map(char::to_uppercase))
         .collect()
 }
-pub fn profile_avatar(id: &'static str, name: &str, active: bool, enabled: bool) -> Stateful<Div> {
+pub fn profile_avatar(
+    id: &'static str,
+    name: &str,
+    active: bool,
+    enabled: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
@@ -450,15 +618,19 @@ pub fn profile_avatar(id: &'static str, name: &str, active: bool, enabled: bool)
         .flex()
         .items_center()
         .justify_center()
-        .bg(rgb(SURFACE_3))
+        .bg(rgb(surface_3(cx)))
         .border_1()
-        .border_color(if active { rgb(CARMINE) } else { rgba(LINE) })
+        .border_color(if active {
+            rgb(carmine(cx))
+        } else {
+            rgba(line(cx))
+        })
         .when(enabled, |s| {
-            s.cursor_pointer().hover(|s| s.bg(rgb(SURFACE_2)))
+            s.cursor_pointer().hover(|s| s.bg(rgb(surface_2(cx))))
         })
         .when(!enabled, |s| s.opacity(DISABLED))
-        .focus_visible(|s| s.border_2().border_color(rgb(CORAL)))
-        .child(text(initials(name), SECONDARY, 800, INK))
+        .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
+        .child(text(initials(name), SECONDARY, 800, ink(cx), cx))
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Checked(pub bool);
@@ -513,7 +685,7 @@ impl Render for Checkbox {
                 s.border_2()
                     .m(px(-FOCUS_WIDTH))
                     .rounded(px(CHECK_RADIUS))
-                    .border_color(rgb(CORAL))
+                    .border_color(rgb(coral(cx)))
             })
             .on_click(cx.listener(|this, _, window, cx| {
                 if this.enabled {
@@ -525,24 +697,28 @@ impl Render for Checkbox {
                 div()
                     .size(px(CHECK_SIZE))
                     .rounded(px(CHECK_RADIUS))
-                    .when(self.enabled, |s| s.hover(|s| s.border_color(rgb(INK_4))))
+                    .when(self.enabled, |s| {
+                        s.hover(|s| s.border_color(rgb(ink_4(cx))))
+                    })
                     .border_1()
                     .border_color(if self.checked {
-                        rgb(CARMINE)
+                        rgb(carmine(cx))
                     } else {
-                        rgba(LINE_STRONG)
+                        rgba(line_strong(cx))
                     })
                     .bg(if self.checked {
-                        tint(CARMINE, 1.0)
+                        tint(carmine(cx), 1.0)
                     } else {
-                        tint(INK, 0.03)
+                        tint(ink(cx), 0.03)
                     })
                     .flex()
                     .items_center()
                     .justify_center()
-                    .when(self.checked, |s| s.child(text("✓", SECONDARY, 700, INK))),
+                    .when(self.checked, |s| {
+                        s.child(text("✓", SECONDARY, 700, ink(cx), cx))
+                    }),
             )
-            .child(text(self.label, BODY, 650, INK))
+            .child(text(self.label, BODY, 650, ink(cx), cx))
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -613,7 +789,7 @@ impl NumberControl {
             .items_center()
             .gap(px(RADIUS_CONTROL))
             .child(
-                button("number-minus", "−")
+                button("number-minus", "−", cx)
                     .tab_stop(false)
                     .when(!self.enabled || self.range.value <= self.range.min, |s| {
                         s.opacity(DISABLED)
@@ -625,9 +801,15 @@ impl NumberControl {
                         }
                     })),
             )
-            .child(text(format!("{}", self.range.value), BODY, 700, INK))
+            .child(text(
+                format!("{}", self.range.value),
+                BODY,
+                700,
+                ink(cx),
+                cx,
+            ))
             .child(
-                button("number-plus", "+")
+                button("number-plus", "+", cx)
                     .tab_stop(false)
                     .when(!self.enabled || self.range.value >= self.range.max, |s| {
                         s.opacity(DISABLED)
@@ -682,27 +864,40 @@ impl NumberControl {
                             move |bounds, _, cx| {
                                 entity.update(cx, |this, _| this.bounds = Some(bounds));
                             },
-                            move |bounds, (), window, _| paint_slider(bounds, fraction, window),
+                            move |bounds, (), window, cx| {
+                                paint_slider(bounds, fraction, window, cx);
+                            },
                         )
                         .size_full(),
                     ),
             )
-            .child(text(format!("{}", self.range.value), SECONDARY, 650, INK_2))
+            .child(text(
+                format!("{}", self.range.value),
+                SECONDARY,
+                650,
+                ink_2(cx),
+                cx,
+            ))
     }
 }
-fn paint_slider(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mut Window) {
+fn paint_slider(
+    bounds: gpui::Bounds<gpui::Pixels>,
+    fraction: f64,
+    window: &mut Window,
+    cx: &gpui::App,
+) {
     let y = bounds.top() + bounds.size.height / 2.0;
     let track = gpui::Bounds::new(
         gpui::point(bounds.left(), y - px(FADER_H / 2.0)),
         gpui::size(bounds.size.width, px(FADER_H)),
     );
-    window.paint_quad(gpui::fill(track, rgba(LINE_STRONG)).corner_radii(px(FADER_RADIUS)));
+    window.paint_quad(gpui::fill(track, rgba(line_strong(cx))).corner_radii(px(FADER_RADIUS)));
     #[allow(clippy::cast_possible_truncation)] // Fracción 0..1 para el renderer f32 de GPUI.
     let width = bounds.size.width * fraction as f32;
     let gradient = gpui::linear_gradient(
         90.0,
-        gpui::linear_color_stop(rgb(CARMINE), 0.0),
-        gpui::linear_color_stop(rgb(CORAL), 1.0),
+        gpui::linear_color_stop(rgb(carmine(cx)), 0.0),
+        gpui::linear_color_stop(rgb(coral(cx)), 1.0),
     );
     window.paint_quad(
         gpui::fill(
@@ -720,7 +915,7 @@ fn paint_slider(bounds: gpui::Bounds<gpui::Pixels>, fraction: f64, window: &mut 
                 ),
                 gpui::size(px(FADER_THUMB), px(FADER_THUMB)),
             ),
-            rgb(PRIMARY_BG),
+            rgb(primary_bg(cx)),
         )
         .corner_radii(px(FADER_THUMB / 2.0)),
     );
@@ -751,7 +946,7 @@ impl Render for NumberControl {
             .focus_visible(|s| {
                 s.border_2()
                     .rounded(px(RADIUS_CONTROL))
-                    .border_color(rgb(CORAL))
+                    .border_color(rgb(coral(cx)))
             })
             .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(
@@ -775,6 +970,7 @@ pub fn list_row(
     detail: &str,
     selected: bool,
     enabled: bool,
+    cx: &gpui::App,
 ) -> Stateful<Div> {
     div()
         .id(id)
@@ -789,24 +985,29 @@ pub fn list_row(
         .rounded(px(RADIUS_CONTROL))
         .flex()
         .flex_col()
-        .when(selected, |s| s.bg(tint(CARMINE, 0.11)))
+        .when(selected, |s| s.bg(tint(carmine(cx), 0.11)))
+        .when(selected && is_mono(cx), |s| {
+            s.bg(rgb(surface_3(cx)))
+                .border_1()
+                .border_color(selection_border(cx))
+        })
         .when(enabled, |s| {
-            s.cursor_pointer().hover(|s| s.bg(rgba(LINE_ROW)))
+            s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
         })
         .when(!enabled, |s| s.opacity(DISABLED))
-        .focus_visible(|s| s.border_2().border_color(rgb(CORAL)))
-        .child(text(label.to_owned(), BODY, 650, INK))
-        .child(text(detail.to_owned(), SECONDARY, 400, INK_3))
+        .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
+        .child(text(label.to_owned(), BODY, 650, ink(cx), cx))
+        .child(text(detail.to_owned(), SECONDARY, 400, ink_3(cx), cx))
 }
-pub fn empty_state(title: &str, help: &str) -> Div {
+pub fn empty_state(title: &str, help: &str, cx: &gpui::App) -> Div {
     div()
         .p(px(GUTTER))
         .flex()
         .flex_col()
         .items_center()
         .gap(px(RADIUS_CHIP))
-        .child(text(title.to_owned(), BODY, 650, INK_2))
-        .child(text(help.to_owned(), SECONDARY, 400, INK_3))
+        .child(text(title.to_owned(), BODY, 650, ink_2(cx), cx))
+        .child(text(help.to_owned(), SECONDARY, 400, ink_3(cx), cx))
 }
 pub struct Table {
     pub headers: Vec<String>,
@@ -820,7 +1021,7 @@ impl Table {
             Ok(())
         }
     }
-    pub fn render(&self) -> Result<Stateful<Div>, &'static str> {
+    pub fn render(&self, cx: &gpui::App) -> Result<Stateful<Div>, &'static str> {
         self.validate()?;
         let mut table = div()
             .id("orbit-table")
@@ -835,7 +1036,7 @@ impl Table {
                 .flex()
                 .items_center()
                 .border_b_1()
-                .border_color(rgba(LINE_ROW));
+                .border_color(rgba(line_row(cx)));
             for (i, cell) in cells.iter().enumerate() {
                 row = row.child(
                     div()
@@ -852,7 +1053,8 @@ impl Table {
                             cell.clone(),
                             if header { SECONDARY } else { BODY },
                             if header { 700 } else { 500 },
-                            if header { INK_3 } else { INK_2 },
+                            if header { ink_3(cx) } else { ink_2(cx) },
+                            cx,
                         )),
                 );
             }
@@ -866,6 +1068,7 @@ impl Table {
             table = table.child(empty_state(
                 "Sin resultados",
                 "Cambia los filtros o añade una entrada.",
+                cx,
             ));
         }
         Ok(table)
@@ -882,10 +1085,19 @@ mod tests {
     }
     #[test]
     fn semantic_badges_keep_plan_status_and_channel_tokens_distinct() {
-        assert_eq!(Tone::Success.color(), GREEN);
-        assert_eq!(Tone::Gold.color(), EMBER);
-        assert_eq!(Tone::Accent.color(), CORAL);
-        assert_ne!(Tone::Danger.color(), Tone::Neutral.color());
+        let t = theme::Theme::default();
+        assert_eq!(Tone::Success.color_in(&t), t.green);
+        assert_eq!(Tone::Gold.color_in(&t), t.ember);
+        assert_eq!(Tone::Accent.color_in(&t), t.coral);
+        assert_ne!(Tone::Danger.color_in(&t), Tone::Neutral.color_in(&t));
+        let states = [Tone::Success, Tone::Warning, Tone::Danger, Tone::Reference];
+        for (index, tone) in states.iter().enumerate() {
+            assert!(!tone.symbol().is_empty());
+            for other in &states[..index] {
+                assert_ne!(tone.symbol(), other.symbol());
+                assert_ne!(tone.status_shape(), other.status_shape());
+            }
+        }
     }
     #[test]
     fn table_rejects_misaligned_rows_and_accepts_empty_results() {

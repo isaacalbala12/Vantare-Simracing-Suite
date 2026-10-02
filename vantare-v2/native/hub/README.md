@@ -12,9 +12,12 @@ cargo run --offline -j 2 -p vantare-hub
 Todas las secciones del producto distribuido están en la navegación. La presencia
 de una sección no acredita acceso, conexión remota ni paridad funcional completa.
 
-El botón Cerrar Hub y cerrar su ventana terminan el proceso. El Hub no es
-hijo del launcher: consume el pipe IPC con Subscriber y cierra al observar
-un flanco no-Live→Live. Live exige origen `SourceKind::Live` **y**
+El botón Cerrar Hub, el cierre de ventana y el flanco no-Live→Live solicitan
+el mismo cierre protegido. Primero deben resolverse las decisiones del Launcher
+y guardarse los documentos: un formulario Strategy sin confirmar, un conflicto
+o un error de escritura mantiene el Hub abierto y muestra el error. La preservación
+de datos tiene prioridad incluso si el juego ya está activo; tras resolverlo,
+se puede cerrar manualmente. El Hub no es hijo del launcher. Live exige origen `SourceKind::Live` **y**
 `state.source_state == SourceState::Live` (DTO v4). Waiting, Stale, Lost y
 Replay no cierran; primera foto Live establece referencia y tampoco cierra.
 El cierre cancela el Subscriber, sin parar núcleo, overlays ni Engineer.

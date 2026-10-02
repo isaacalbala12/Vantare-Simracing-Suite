@@ -193,6 +193,7 @@ pub struct Remote {
     active: Area,
     report_revision: Option<u64>,
     pub(crate) editor: crate::testing::Editor,
+    recovery: Result<crate::testing::recovery::Recovery, String>,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
@@ -203,7 +204,19 @@ const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
 impl Remote {
-    pub fn new(pipe: String, cx: &mut Context<Self>) -> Self {
+    pub fn new(pipe: String, data: &std::path::Path, cx: &mut Context<Self>) -> Self {
+        let recovery = crate::testing::recovery::Recovery::load(data);
+        let mut editor = crate::testing::Editor::new(
+            recovery.as_ref().map_or_else(
+                |_| crate::testing::empty_fields(),
+                |store| store.fields.clone(),
+            ),
+            cx,
+        );
+        match &recovery {
+            Ok(store) => editor.dirty = store.fields != crate::testing::empty_fields(),
+            Err(error) => editor.message.clone_from(error),
+        }
         cx.on_app_quit(|this, _| {
             this.cancel();
             async {}
@@ -221,7 +234,8 @@ impl Remote {
             message: "servicio no configurado".into(),
             active: Area::Account,
             report_revision: None,
-            editor: crate::testing::Editor::new(crate::testing::empty_fields(), cx),
+            editor,
+            recovery,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
@@ -229,6 +243,16 @@ impl Remote {
         };
         remote.request(Command::Status, cx);
         remote
+    }
+
+    /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
+    pub(crate) fn persist(&mut self, cx: &Context<Self>) -> Result<(), String> {
+        let fields = self.editor.fields(cx);
+        match &mut self.recovery {
+            Ok(store) => store.save(fields),
+            Err(error) if self.editor.dirty => Err(error.clone()),
+            Err(_) => Ok(()), // Un archivo inválido sin nuevas ediciones se conserva intacto.
+        }
     }
 
     pub fn cancel(&mut self) {

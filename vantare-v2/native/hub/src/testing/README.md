@@ -7,6 +7,13 @@ sus afirmaciones de ausencia de envío describen aquel corte anterior.
 
 El formulario principal pertenece a `Remote.editor`: guarda el borrador mediante
 el supervisor, prepara una vista previa y exige consentimiento para esa revisión.
+Al guardar o cerrar el Hub, el texto visible se conserva además en
+`testing-center/editor-draft.json`, bajo el directorio local del Hub. Admite
+campos incompletos dentro del límite del input y escritura atómica con conflicto
+por bytes. Reabrir recupera el texto con revisión/consentimiento vacíos y exige
+guardar el borrador remoto antes de preparar el envío. No se envía ni adjunta
+esta recuperación al diagnóstico. Un archivo inválido se conserva y se informa;
+si hay nuevas ediciones que no pueden guardarse, se bloquea el cierre normal/Live.
 El diagnóstico/exportación local tiene otro borrador y omite el texto privado.
 Los inputs actuales vienen de Orbit y admiten texto multilínea/IME; no se usa el
 alias histórico del Launcher. La validación local no demuestra un envío real.

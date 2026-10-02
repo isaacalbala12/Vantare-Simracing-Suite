@@ -24,7 +24,7 @@ pub use replay::{
     resource_requirements_v2,
 };
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
 use serde::{Deserialize, Serialize};
@@ -572,7 +572,7 @@ fn solve_internal(
     let mut work = 0;
     let mut iterations = 0;
     let mut frontier =
-        vec![HashMap::new(); usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1];
+        vec![BTreeMap::new(); usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1];
     let initial = Node {
         fuel: fuel.capacity,
         ve: ve.capacity,
@@ -910,6 +910,42 @@ fn single_fuel_decision(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numeric_budget_partial_is_deterministic() {
+        let fixtures: Value = serde_json::from_str(include_str!("../testdata/oracle/solver.json"))
+            .expect("scalar fixtures");
+        let mut input: Input = serde_json::from_value(fixtures[0]["input"].clone()).expect("input");
+        input.race_laps = 7;
+        input.fuel_capacity_liters.value = 6.0;
+        input.fuel_per_lap_liters.value = 2.0;
+        input.discretization.fuel_liters = 1.0;
+        input.ve_capacity_percent.value = 0.0;
+        input.ve_per_lap_percent.value = 0.0;
+        input.budget.p95_millis = 5000;
+        input.budget.max_iterations = 100_000;
+        input.budget.max_candidates = 500;
+        let first = solve_v2_without_deadline(&input).expect("partial plan");
+        assert_eq!(first.certificate.status, OptimalityStatus::NotProven);
+        assert_eq!(
+            first.certificate.reason.as_deref(),
+            Some("candidate_budget_exhausted")
+        );
+        assert_eq!(first.certificate.explored_work_items, 501);
+        assert!(first.result.feasible);
+        for _ in 0..50 {
+            let next = solve_v2_without_deadline(&input).expect("repeat plan");
+            assert_eq!(
+                serde_json::to_value(&next.result).expect("result JSON"),
+                serde_json::to_value(&first.result).expect("result JSON")
+            );
+            assert_eq!(next.cost_seconds, first.cost_seconds);
+            assert_eq!(
+                next.certificate.explored_work_items,
+                first.certificate.explored_work_items
+            );
+        }
+    }
 
     fn compare_fields(actual: &Value, expected: &Value, path: &str) {
         match (actual, expected) {

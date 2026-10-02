@@ -1,10 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="400" viewBox="0 0 1672 400">
-  <!-- Shared editor lighting; independent of the garage crop and content. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="672" viewBox="0 0 1672 672">
+  <!-- Preserve the garage lighting and extend its soft glow below the header. -->
   <defs>
     <radialGradient id="carmine" gradientUnits="userSpaceOnUse" cx="1411" cy="246" r="518" gradientTransform="translate(0 188.53) scale(1 .23359)">
       <stop stop-color="#d52f49" stop-opacity=".169"/>
       <stop offset="1" stop-color="#d52f49" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="tail" gradientUnits="userSpaceOnUse" cx="1300" cy="460" r="783" gradientTransform="translate(0 347.79) scale(1 .24393)">
+      <stop stop-color="#d52f49" stop-opacity=".055"/>
+      <stop offset="1" stop-color="#d52f49" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tail-fade" gradientUnits="userSpaceOnUse" x1="0" y1="272" x2="0" y2="312">
+      <stop stop-color="white" stop-opacity="0"/>
+      <stop offset="1" stop-color="white"/>
+    </linearGradient>
+    <mask id="tail-mask"><rect width="1672" height="672" fill="url(#tail-fade)"/></mask>
   </defs>
   <rect width="1672" height="400" fill="url(#carmine)"/>
+  <rect width="1672" height="672" fill="url(#tail)" mask="url(#tail-mask)"/>
 </svg>

@@ -59,11 +59,13 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .p(px(4.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(if matches!(calendar.view, CalendarView::Month) {
-            gpui::rgba(orbit::LINE)
-        } else {
-            rgb(orbit::LINE)
-        })
+        .border_color(
+            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                gpui::rgba(orbit::LINE)
+            } else {
+                rgb(orbit::LINE)
+            },
+        )
         .bg(rgb(orbit::SURFACE_1))
         .children([
             view_button(
@@ -104,17 +106,19 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                         .font_family("Segoe UI Variable")
                         .font_weight(gpui::FontWeight(800.0)),
                 )
-                .child(if matches!(calendar.view, CalendarView::Month) {
-                    super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
-                        .h(px(55.0))
-                        .mt(px(6.0))
-                        .into_any_element()
-                } else {
-                    orbit::text("Calendario", 34.0, 690, orbit::INK)
-                        .font_family("Segoe UI Variable")
-                        .mt(px(6.0))
-                        .into_any_element()
-                })
+                .child(
+                    if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                        super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
+                            .h(px(55.0))
+                            .mt(px(6.0))
+                            .into_any_element()
+                    } else {
+                        orbit::text("Calendario", 34.0, 690, orbit::INK)
+                            .font_family("Segoe UI Variable")
+                            .mt(px(6.0))
+                            .into_any_element()
+                    },
+                )
                 .child(
                     orbit::text(
                         if current {
@@ -201,11 +205,13 @@ fn card_header(
     now: DateTime<Utc>,
 ) -> Div {
     div()
-        .h(px(if matches!(calendar.view, CalendarView::Month) {
-            61.0
-        } else {
-            59.0
-        }))
+        .h(px(
+            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                61.0
+            } else {
+                59.0
+            },
+        ))
         .flex_none()
         .px(px(20.0))
         .flex()
@@ -322,7 +328,7 @@ fn day_view(now: DateTime<Utc>) -> Div {
     let first = aligned - Duration::minutes(105);
     // Wails centra la franja actual; el scroll deja 5 px arriba y reserva 10 px a la derecha.
     let mut rows = div()
-        .mt(px(5.0))
+        .mt(px(4.0))
         .flex()
         .flex_col()
         .flex_1()
@@ -633,11 +639,13 @@ fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .flex_1()
         .min_h_0()
         .overflow_hidden()
-        .bg(rgb(if matches!(calendar.view, CalendarView::Month) {
-            0x000f_0f12
-        } else {
-            orbit::SURFACE_1
-        }))
+        .bg(rgb(
+            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                0x000f_0f12
+            } else {
+                orbit::SURFACE_1
+            },
+        ))
         .border_1()
         .border_color(gpui::rgba(orbit::LINE))
         .rounded(px(orbit::RADIUS))
@@ -657,11 +665,13 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .w_full()
         .flex()
         .flex_col()
-        .gap(px(if matches!(calendar.view, CalendarView::Month) {
-            18.0
-        } else {
-            19.0
-        }))
+        .gap(px(
+            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                18.0
+            } else {
+                19.0
+            },
+        ))
         .pt(px(24.0))
         .pb(px(25.0))
         .bg(rgb(orbit::CANVAS))
@@ -673,9 +683,10 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
     div()
         .id("calendar")
         .w_full()
-        .when(matches!(calendar.view, CalendarView::Month), |page| {
-            page.mx(px(-1.0)).w_auto()
-        })
+        .when(
+            matches!(calendar.view, CalendarView::Month | CalendarView::Day),
+            |page| page.mx(px(-1.0)).w_auto(),
+        )
         .min_h(px(HUB_CONTENT_MIN_HEIGHT))
         .mt(px(-SHELL_HEADER_OVERLAP))
         .flex_1()

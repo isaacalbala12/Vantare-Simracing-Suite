@@ -75,7 +75,7 @@ durante un corte posterior de despliegue; BIL-02 no cambia producción.
 
 El replay es una acción administrativa, nunca una operación del cliente:
 
-1. Revisar la causa sin copiar PII a Linear o logs.
+1. Revisar la causa sin copiar PII a Notion o logs.
 2. Corregir mapping/configuración si corresponde.
 3. Elegir un `actor_id` técnico no personal y un `reason_code` estable.
 4. Invocar `billing_replay_webhook` con `service_role` mediante una herramienta

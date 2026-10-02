@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -1656,21 +1657,52 @@ func TestHandleProfileRetryFailed(t *testing.T) {
 		t.Fatalf("seed profile: %v", err)
 	}
 	ctx := context.Background()
-	// Retry must not return an immediate error (the chain runs on a goroutine).
+	// Without a failed chain, retry must not silently launch the entire profile.
 	handleProfileRetryFailed("creator", svc, emitter, ctx)
-	// La cadena corre en una goroutine y emite de forma asíncrona a través de
-	// ChainRunner/serviceEmitter; esperamos de forma acotada a que el emitter
-	// registre al menos un evento de la cadena antes de verificar que no hubo
-	// error, evitando el sleep arbitrario y la carrera sin sincronizar.
-	events, _ := waitForEmitterCondition(t, emitter, 2*time.Second, func(events []string, _ []any) bool {
-		return len(events) > 0
+	events := emitter.Events()
+	if len(events) != 1 || events[0] != "launcher:error" {
+		t.Fatalf("retry without failed chain must emit launcher:error, got %v", events)
+	}
+}
+
+func TestResolveLauncherFailureDecisionRemembersPolicy(t *testing.T) {
+	backend := &fakeLauncherBackend{
+		apps: map[string]app.LauncherAppEntry{
+			"obs": {ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\nope\missing.exe`},
+			"lmu": {ID: "lmu", DisplayName: "LMU", LaunchMethod: "steam-uri", SteamAppID: 2399420},
+		},
+		profiles: []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "obs"}, {AppID: "lmu"}}}},
+	}
+	emitter := &spyMainEmitter{}
+	svc := launcher.NewService(backend, emitter, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.LaunchProfile(ctx, "creator"); err != nil {
+		t.Fatal(err)
+	}
+	_, data := waitForEmitterCondition(t, emitter, time.Second, func(events []string, _ []any) bool {
+		for _, name := range events {
+			if name == "launcher:decision:required" {
+				return true
+			}
+		}
+		return false
 	})
-	for _, e := range events {
-		if e == "launcher:error" {
-			t.Fatal("retry failed must not emit launcher:error for a valid profile")
+	var request launcher.DecisionRequest
+	for _, value := range data {
+		if candidate, ok := value.(launcher.DecisionRequest); ok {
+			request = candidate
+			break
 		}
 	}
-	// Limpieza: cancela la cadena pendiente para no dejar goroutines huérfanas.
+	if request.DecisionID == "" {
+		t.Fatal("missing decision request")
+	}
+	handleResolveLauncherDecision(request.DecisionID, "stop", true, svc, emitter)
+	profiles := svc.ListProfiles()
+	if len(profiles) != 1 || profiles[0].Policy == nil || profiles[0].Policy.Failure != app.FailureStop {
+		t.Fatalf("remembered decision was not saved: profiles=%+v events=%v data=%+v", profiles, emitter.Events(), emitter.Data())
+	}
 	svc.CancelAll()
 }
 
@@ -1727,38 +1759,266 @@ func TestHandleProfileStatsSaveEmitsErrorOnUnknown(t *testing.T) {
 	}
 }
 
-func TestHandleProfileHotkeySet(t *testing.T) {
-	hkMgr := launcher.NewHotkeyManager()
-	defer hkMgr.Unregister("test-profile")
+type capturedLauncherHotkey struct {
+	name   string
+	combo  string
+	action func()
+}
 
-	emitter := &spyMainEmitter{}
+type launcherHotkeyCapture struct{ entries []capturedLauncherHotkey }
 
-	// Empty combo = unregister; must succeed even if not registered.
-	handleProfileHotkeySet("test-profile", "", hkMgr, emitter, nil)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:hotkey:set" {
-		t.Fatalf("expected launcher:profile:hotkey:set on unregister, got %v", emitter.events)
+func (c *launcherHotkeyCapture) Register(name, combo string, action func()) error {
+	c.entries = append(c.entries, capturedLauncherHotkey{name: name, combo: combo, action: action})
+	return nil
+}
+
+func TestRegisterLauncherProfileHotkeysLaunchesOnlyValidDistinctProfiles(t *testing.T) {
+	settings := app.DefaultAppSettings()
+	settings.Hotkeys["toggleOverlay"] = "ctrl+alt+o"
+	settings.LauncherProfiles = []app.LaunchProfile{
+		{ID: "creator", Hotkey: "ctrl+alt+l", Steps: []app.LaunchStep{{AppID: "lmu"}}},
+		{ID: "empty", Hotkey: "ctrl+alt+e"},
+		{ID: "conflict", Hotkey: "ctrl+alt+o", Steps: []app.LaunchStep{{AppID: "lmu"}}},
+		{ID: "duplicate", Hotkey: "CTRL+ALT+L", Steps: []app.LaunchStep{{AppID: "lmu"}}},
 	}
-	payload := emitter.data[0].(map[string]any)
-	if payload["combo"] != "" {
-		t.Fatalf("expected empty combo in payload, got %q", payload["combo"])
+	capture := &launcherHotkeyCapture{}
+	launched := ""
+	registerLauncherProfileHotkeys(capture, settings, func(id string) { launched = id })
+	if len(capture.entries) != 1 || capture.entries[0].name != "launcher:creator" || capture.entries[0].combo != "ctrl+alt+l" {
+		t.Fatalf("unexpected registrations: %+v", capture.entries)
+	}
+	capture.entries[0].action()
+	if launched != "creator" {
+		t.Fatalf("hotkey launched %q, want creator", launched)
+	}
+}
+
+func TestHandleProfileHotkeySet(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if !handleProfileHotkeySet("creator", "ctrl+alt+l", svc, nil, emitter) {
+		t.Fatal("setting an existing profile hotkey failed")
+	}
+	if got := svc.ListProfiles()[0].Hotkey; got != "ctrl+alt+l" {
+		t.Fatalf("hotkey was not persisted: %q", got)
+	}
+	if !handleProfileHotkeySet("creator", "", svc, nil, emitter) || svc.ListProfiles()[0].Hotkey != "" {
+		t.Fatal("clearing a hotkey was not persisted")
+	}
+	if handleProfileHotkeySet("missing", "ctrl+alt+x", svc, nil, emitter) {
+		t.Fatal("unknown profile must not receive a hotkey")
+	}
+}
+
+func TestValidateLauncherProfileHotkeyRejectsConflicts(t *testing.T) {
+	profile := app.LaunchProfile{ID: "creator", Hotkey: "ctrl+alt+l"}
+	if err := validateLauncherProfileHotkey(profile, nil, nil); err != nil {
+		t.Fatalf("valid profile hotkey rejected: %v", err)
+	}
+	if err := validateLauncherProfileHotkey(profile, nil, map[string]string{"toggleOverlay": "CTRL+ALT+L"}); err == nil {
+		t.Fatal("global shortcut conflict was accepted")
+	}
+	if err := validateLauncherProfileHotkey(profile, []app.LaunchProfile{{ID: "other", Hotkey: "ctrl+alt+l"}}, nil); err == nil {
+		t.Fatal("profile shortcut conflict was accepted")
+	}
+	profile.Hotkey = "alt+f4"
+	if err := validateLauncherProfileHotkey(profile, nil, nil); err == nil {
+		t.Fatal("reserved Windows shortcut was accepted")
 	}
 }
 
 func TestHandleAutostartToggle(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	// On non-Windows, RegisterAutostart will fail (registry API not available).
-	// The handler must emit launcher:error in that case; on Windows it may
-	// succeed depending on the test environment. We test both paths.
-	handleAutostartToggle("test-profile", true, emitter)
-
-	if len(emitter.events) == 0 {
-		t.Fatal("expected at least one event from autostart toggle")
+	svc, emitter := newTestLauncherService(t)
+	handleAutostartToggle("missing", true, svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("unknown profile must not create a Run entry, got %v", emitter.events)
 	}
-	// If it succeeded, we got launcher:autostart:toggled; if it failed,
-	// we got launcher:error. Either is valid behavior for the handler.
-	got := emitter.events[0]
-	if got != "launcher:autostart:toggled" && got != "launcher:error" {
-		t.Fatalf("expected launcher:autostart:toggled or launcher:error, got %q", got)
+}
+
+func TestSaveProfileAutostartFailureRollsBackPersistedFlag(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(profile, svc, emitter, func(_ string, enabled bool) error {
+		if enabled {
+			return fmt.Errorf("registry unavailable")
+		}
+		return nil
+	}) {
+		t.Fatal("initial profile save failed")
+	}
+	profile.LaunchOnWindowsStartup = true
+	if saveProfileWithAutostart(profile, svc, emitter, func(_ string, _ bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("save must fail when startup registration fails")
+	}
+	if svc.ListProfiles()[0].LaunchOnWindowsStartup {
+		t.Fatal("persisted profile claims autostart despite registry failure")
+	}
+}
+
+func TestSaveProfileWithoutAutostartDoesNotRequireRegistry(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(profile, svc, emitter, func(string, bool) error {
+		return fmt.Errorf("registry unavailable")
+	}) {
+		t.Fatal("a normal profile must save without registry access")
+	}
+}
+
+func TestSaveOtherProfileDoesNotResyncExistingAutostart(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	old := app.LaunchProfile{ID: "startup", Name: "Startup", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if err := svc.SaveProfile(old); err != nil {
+		t.Fatal(err)
+	}
+	other := app.LaunchProfile{ID: "normal", Name: "Normal", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(other, svc, emitter, func(string, bool) error {
+		return fmt.Errorf("registry unavailable")
+	}) {
+		t.Fatal("saving another profile must not require registry access")
+	}
+}
+
+func TestNewAutostartProfileRollsBackWhenRegistryFails(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if saveProfileWithAutostart(profile, svc, emitter, func(string, bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("new autostart profile saved despite registry failure")
+	}
+	if len(svc.ListProfiles()) != 0 {
+		t.Fatal("failed new profile was not rolled back")
+	}
+}
+
+func TestSelectingNewAutostartProfileRemovesOldRunEntry(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	run := map[string]bool{}
+	syncRun := func(id string, enabled bool) error { run[id] = enabled; return nil }
+	for _, id := range []string{"first", "second"} {
+		if !saveProfileWithAutostart(app.LaunchProfile{ID: id, Name: id, Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}, svc, emitter, syncRun) {
+			t.Fatalf("saving %s failed", id)
+		}
+	}
+	if run["first"] || !run["second"] {
+		t.Fatalf("Windows Run entries must contain only the selected profile: %+v", run)
+	}
+}
+
+func TestSelectingNewAutostartProfileRollsBackWhenOldRunEntryCannotBeRemoved(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	run := map[string]bool{}
+	old := app.LaunchProfile{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if !saveProfileWithAutostart(old, svc, emitter, func(id string, enabled bool) error { run[id] = enabled; return nil }) {
+		t.Fatal("initial profile failed")
+	}
+	newProfile := app.LaunchProfile{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if saveProfileWithAutostart(newProfile, svc, emitter, func(id string, enabled bool) error {
+		if id == "first" && !enabled {
+			return fmt.Errorf("cannot remove old Run entry")
+		}
+		run[id] = enabled
+		return nil
+	}) {
+		t.Fatal("save succeeded despite old Run entry failure")
+	}
+	profiles := svc.ListProfiles()
+	if len(profiles) != 1 || profiles[0].ID != "first" || !profiles[0].LaunchOnWindowsStartup || !run["first"] || run["second"] {
+		t.Fatalf("settings and Run entries were not restored: profiles=%+v run=%+v", profiles, run)
+	}
+}
+
+func TestStartupReconcilesLegacyMultipleAutostartProfiles(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	run := map[string]bool{"first": true, "second": true}
+	reconcileLauncherAutostart(svc, emitter, func(id string, enabled bool) error { run[id] = enabled; return nil })
+	got := svc.ListProfiles()
+	if len(got) != 2 || !got[0].LaunchOnWindowsStartup || got[1].LaunchOnWindowsStartup || !run["first"] || run["second"] {
+		t.Fatalf("legacy autostart was not reduced to one profile: profiles=%+v run=%+v", got, run)
+	}
+}
+
+func TestQueuedLegacyAutostartFlagsLaunchOnlySelectedProfile(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	var queue launcherStartupQueue
+	queue.Offer([]string{"--launch=second"})
+	queue.Offer([]string{"--launch=first"})
+	reconcileLauncherAutostart(svc, emitter, func(string, bool) error { return nil })
+	var launched []string
+	queue.Ready(func(id string) {
+		replayAutostartFlag(id, svc, func(selected string) { launched = append(launched, selected) })
+	})
+	if len(launched) != 1 || launched[0] != "first" {
+		t.Fatalf("legacy Run flags launched more than the selected profile: %v", launched)
+	}
+}
+
+func TestQueuedAutostartStillLaunchesOneProfileWhenMigrationFails(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	var launched []string
+	for _, id := range []string{"second", "first"} {
+		replayAutostartFlag(id, svc, func(selected string) { launched = append(launched, selected) })
+	}
+	if len(launched) != 1 || launched[0] != "first" {
+		t.Fatalf("legacy settings launched multiple profiles after failed migration: %v", launched)
+	}
+}
+
+func TestQueuedDeletedAutostartProfileStillReachesCleanup(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	called := ""
+	replayAutostartFlag("deleted", svc, func(id string) { called = id })
+	if called != "deleted" {
+		t.Fatal("obsolete Run entry did not reach the cleanup handler")
+	}
+}
+
+func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	if !deleteProfileWithAutostart("creator", svc, emitter, func(id string, enabled bool) error {
+		called = id == "creator" && !enabled && len(svc.ListProfiles()) == 1
+		return nil
+	}) || !called || len(svc.ListProfiles()) != 0 {
+		t.Fatal("profile deletion did not unregister startup first")
+	}
+}
+
+func TestDeleteProfileKeepsAutostartProfileWhenRegistryFails(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {
+		t.Fatal(err)
+	}
+	if deleteProfileWithAutostart("creator", svc, emitter, func(string, bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("delete reported success despite retained Run key")
+	}
+	if len(svc.ListProfiles()) != 1 {
+		t.Fatal("profile was deleted although Run key could not be removed")
 	}
 }
 
@@ -1844,6 +2104,19 @@ func TestHandleLaunchFlagIgnoresMissingFlag(t *testing.T) {
 	handleLaunchFlag([]string{"--other-flag"}, nil, svc, emitter)
 	if len(emitter.events) != 0 {
 		t.Fatalf("expected no events when flag is missing, got %v", emitter.events)
+	}
+}
+
+func TestHandleLaunchFlagRemovesObsoleteStartupEntryWithoutOpeningChain(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	emitter := &spyMainEmitter{}
+	removed := ""
+	handleLaunchFlag([]string{"--launch=gone"}, func(id string) error {
+		removed = id
+		return nil
+	}, svc, emitter)
+	if removed != "gone" || len(emitter.Events()) != 0 {
+		t.Fatalf("obsolete autostart was not silently removed: removed=%q events=%v", removed, emitter.Events())
 	}
 }
 

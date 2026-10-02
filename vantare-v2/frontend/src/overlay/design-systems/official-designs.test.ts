@@ -36,6 +36,35 @@ describe("official-designs", () => {
     });
   });
 
+  it("keeps Signature and Broadcast as styles of Efficiency with compatible saved IDs", () => {
+    expect(designSystemRegistry.get("vantare-functional", 1).label).toBe("Efficiency");
+    expect(getOfficialDesign("standings-functional-compact")).toMatchObject({
+      name: "Signature", systemId: "vantare-functional",
+      isDefault: true, includesContent: false, visual: { templateId: "signature" },
+    });
+    expect(getOfficialDesign("standings-functional-broadcast")).toMatchObject({
+      name: "Broadcast", systemId: "vantare-functional",
+      isDefault: false, includesContent: false, visual: { templateId: "broadcast" },
+    });
+  });
+
+  it("offers the Functional Pedals background and overlay presentations", () => {
+    const presentations = listOfficialDesigns("pedals").filter((design) => design.systemId === "vantare-functional");
+    expect(presentations).toHaveLength(2);
+    expect(presentations[0]).toMatchObject({
+      id: "pedals-functional-signature",
+      name: "Con fondo",
+      isDefault: true,
+      visual: { transparentBackground: false },
+    });
+    expect(presentations[1]).toMatchObject({
+      id: "pedals-functional-overlay",
+      name: "Sin fondo · Solo barras",
+      visual: { transparentBackground: true },
+    });
+    expect(presentations[1]?.isDefault).toBeUndefined();
+  });
+
   it("registers both canonical Delta Crystal compositions", () => {
     expect(getOfficialDesign("delta-crystal-bar")).toMatchObject({
       widgetType: "delta",
@@ -95,14 +124,28 @@ describe("official-designs", () => {
       }
     }
     const enduranceTypes = new Set(["delta", "standings", "relative", "pedals"]);
+    const functionalTypes = new Set(
+      designSystemRegistry.get("vantare-functional", 1).widgets.map((entry) => entry.widgetType),
+    );
+    const iracingTypes = new Set(
+      designSystemRegistry.get("vantare-iracing", 1).widgets.map((entry) => entry.widgetType),
+    );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
+      if (definition.type === "fastest-lap") {
+        return ["fastest-lap:vantare-functional"];
+      }
       if (definition.type === "engineer-radio") {
-        return [`${definition.type}:vantare-crystal`];
+        return [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-functional`];
       }
       if (definition.type === "track-map") {
-        return [`${definition.type}:vantare-endurance`];
+        return [`${definition.type}:vantare-endurance`, `${definition.type}:vantare-functional`];
+      }
+      if (definition.type === "radar") {
+        return ["radar:vantare-functional"];
       }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
+      if (functionalTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-functional`);
+      if (iracingTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-iracing`);
       if (enduranceTypes.has(definition.type)) {
         pairs.push(`${definition.type}:vantare-endurance`);
       }

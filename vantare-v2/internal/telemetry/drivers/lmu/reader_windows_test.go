@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"unsafe"
 )
 
 func TestOpenSharedMemoryMapFailureUsesCloseReturnValue(t *testing.T) {
@@ -28,10 +29,10 @@ func TestOpenSharedMemoryMapFailureUsesCloseReturnValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			api := windowsAPI{
 				open:    func(*uint16) (uintptr, error) { return 10, nil },
-				mapView: func(uintptr) (uintptr, error) { return 0, mapFailure },
+				mapView: func(uintptr) (unsafe.Pointer, error) { return nil, mapFailure },
 				close:   func(uintptr) (uintptr, error) { return tt.closeResult, tt.closeErr },
 			}
-			_, err := openSharedMemoryWithAPI(api, func(uintptr) []byte { t.Fatal("view called after map failure"); return nil })
+			_, err := openSharedMemoryWithAPI(api, func(unsafe.Pointer) []byte { t.Fatal("view called after map failure"); return nil })
 			if !strings.Contains(err.Error(), mapFailure.Error()) {
 				t.Fatalf("error = %v", err)
 			}
@@ -49,10 +50,10 @@ func TestWindowsReaderCloseIsConcurrentIdempotentAndSnapshotFailsAfter(t *testin
 	var unmaps atomic.Int32
 	var closes atomic.Int32
 	api := windowsAPI{
-		unmap: func(uintptr) (uintptr, error) { unmaps.Add(1); return 1, syscall.Errno(0) },
+		unmap: func(unsafe.Pointer) (uintptr, error) { unmaps.Add(1); return 1, syscall.Errno(0) },
 		close: func(uintptr) (uintptr, error) { closes.Add(1); return 1, syscall.Errno(0) },
 	}
-	reader := &windowsReader{handle: 2, addr: 1, data: make([]byte, ObjectOutSize), api: api}
+	reader := &windowsReader{handle: 2, addr: unsafe.Pointer(new(byte)), data: make([]byte, ObjectOutSize), api: api}
 	var wait sync.WaitGroup
 	errs := make(chan error, 8)
 	for range 8 {
@@ -78,9 +79,9 @@ func TestWindowsReaderClosePropagatesUnmapAndHandleFailures(t *testing.T) {
 	unmapFailure := errors.New("unmap failed")
 	closeFailure := errors.New("handle close failed")
 	reader := &windowsReader{
-		handle: 2, addr: 1, data: make([]byte, ObjectOutSize),
+		handle: 2, addr: unsafe.Pointer(new(byte)), data: make([]byte, ObjectOutSize),
 		api: windowsAPI{
-			unmap: func(uintptr) (uintptr, error) { return 0, unmapFailure },
+			unmap: func(unsafe.Pointer) (uintptr, error) { return 0, unmapFailure },
 			close: func(uintptr) (uintptr, error) { return 0, closeFailure },
 		},
 	}

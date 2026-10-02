@@ -195,7 +195,7 @@
 
 **Objetivo:** Personalización visual sin penalizar perf.
 
-**Referencia visual:** tokens exportados desde [`hub_main_v5.html`](./hub_main_v5.html) → `themes/vantare-v5.json` (ver [`V2-DESIGN-REFERENCE.md`](./V2-DESIGN-REFERENCE.md)).
+**Referencia visual:** tokens exportados desde [`hub_main_v5.html`](../hub_main_v5.html) → `themes/vantare-v5.json` (ver [`V2-DESIGN-REFERENCE.md`](./V2-DESIGN-REFERENCE.md)).
 
 ### Tareas
 

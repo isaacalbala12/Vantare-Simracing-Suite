@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { DesignSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemDefinition } from "../../../overlay/core/design-system-definition";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
@@ -7,6 +7,7 @@ import { broadcastTowerDefinition } from "../../../overlay/widget-types/broadcas
 import { ALL_WIDGET_TYPES, type WidgetType, type WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
+import { pedalsTelemetryCompactDefinition } from "../../../overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-definition";
 import { WidgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import {
   buildAddWidgetCommand,
@@ -18,20 +19,34 @@ import {
 } from "./studio-catalog";
 import { FINAL_WIDGET_CATALOG_CARDINALITY } from "./studio-catalog-cardinality-fixture";
 
-const freeAccess: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const freePolicy: StudioPolicy = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
 };
 
-const paidAccess: AccessContext = {
-  planLabel: "paid_overlays",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+const engineerPolicy: StudioPolicy = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: true,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
 };
 
 function stubRenderer(): React.ReactElement {
@@ -95,28 +110,29 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 }
 
 describe("deriveStudioCatalog", () => {
-  it("keeps the 18 reference types plus the functional Engineer radio registration", () => {
-    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES);
-    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(20);
+  it("keeps the complete catalog including Engineer radio and fastest lap", () => {
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES.filter((type) => type !== "pedals-telemetry-compact"));
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(21);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions["input-telemetry"]).toEqual([
       "input-crystal-blade",
       "input-crystal-capsule",
       "input-crystal-dense",
     ]);
-    expect(deriveStudioCatalog()).toHaveLength(20);
+    expect(deriveStudioCatalog()).toHaveLength(21);
     expect(deriveStudioCatalog().map((entry) => entry.type)).toContain("input-telemetry");
   });
 
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
-    expect(catalog.map((entry) => entry.type)).toEqual(ALL_WIDGET_TYPES);
+    expect(catalog.map((entry) => entry.type)).toEqual(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes);
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },
-      requiredFeature: "overlays.basic",
+      requiredFeature: "overlays.advanced",
     });
     expect(catalog[0]?.compatibleSystems).toEqual([
+      { systemId: "vantare-functional", systemVersion: 1, label: "Efficiency" },
       { systemId: "vantare-crystal", systemVersion: 1, label: "Vantare Crystal" },
       { systemId: "vantare-endurance", systemVersion: 1, label: "Vantare Endurance" },
       { systemId: "vantare-original", systemVersion: 1, label: "Vantare Original" },
@@ -141,22 +157,43 @@ describe("deriveStudioCatalog", () => {
 });
 
 describe("catalog access", () => {
-  it("allows free users to add basic widgets and blocks advanced widgets", () => {
+  it("blocks delta for free, opens it with overlays rights, keeps engineer radio on engineer rights", () => {
     const delta = deriveStudioCatalog().find((entry) => entry.type === "delta");
     expect(delta).toBeDefined();
-    expect(canAddCatalogEntry(freeAccess, delta!)).toBe(true);
+    // Delta is premium (ISA-1097): Free sees the lock, paid adds it.
+    expect(canAddCatalogEntry(freePolicy, delta!)).toBe(false);
+    expect(canAddCatalogEntry(paidPolicy, delta!)).toBe(true);
+    expect(canAddCatalogEntry(engineerPolicy, delta!)).toBe(false);
+
+    const standings = deriveStudioCatalog().find((entry) => entry.type === "standings");
+    expect(canAddCatalogEntry(null, standings!)).toBe(true);
 
     const widgetRegistry = new WidgetTypeRegistry();
     widgetRegistry.register(createStubDefinition("relative"));
+    widgetRegistry.register(createStubDefinition("engineer-radio"));
     const designRegistry = new DesignSystemRegistry();
-    designRegistry.register(createTestDesignSystem(["relative"]));
-    const relative = deriveStudioCatalog(createIsolatedCatalogDeps(widgetRegistry, designRegistry))[0]!;
-    expect(canAddCatalogEntry(freeAccess, relative)).toBe(false);
-    expect(canAddCatalogEntry(paidAccess, relative)).toBe(true);
+    designRegistry.register(createTestDesignSystem(["relative", "engineer-radio"]));
+    const isolated = deriveStudioCatalog(createIsolatedCatalogDeps(widgetRegistry, designRegistry));
+    const relative = isolated.find((entry) => entry.type === "relative")!;
+    const radio = isolated.find((entry) => entry.type === "engineer-radio")!;
+    expect(canAddCatalogEntry(freePolicy, relative)).toBe(false);
+    expect(canAddCatalogEntry(paidPolicy, relative)).toBe(true);
+    // Overlays rights never grant Engineer; engineer-only keeps basic work going.
+    expect(canAddCatalogEntry(paidPolicy, radio)).toBe(false);
+    expect(canAddCatalogEntry(engineerPolicy, radio)).toBe(true);
+    expect(canAddCatalogEntry(engineerPolicy, relative)).toBe(false);
   });
 });
 
 describe("buildAddWidgetCommand", () => {
+  it("rejects adding the retired compact widget even through a stale catalogue action", () => {
+    expect(() => buildAddWidgetCommand({
+      session: "general", type: "pedals-telemetry-compact", widgets: [],
+      definition: pedalsTelemetryCompactDefinition,
+      layoutViewport: { width: 1920, height: 1080 },
+    })).toThrow(/retired/);
+  });
+
   it("creates widget/add with the next id and z-index", () => {
     const existing = [deltaDefinition.createDefault("delta-main")];
     existing[0]!.layout.zIndex = 3;

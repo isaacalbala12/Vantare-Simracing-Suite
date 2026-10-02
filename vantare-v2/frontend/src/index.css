@@ -1,6 +1,9 @@
 @import "./fonts.css";
 @import "tailwindcss";
 @import "./styles/orbit.tokens.css";
+@import "./styles/orbit.appearance.css";
+@import "./styles/orbit.appearance-palettes.css";
+@import "./styles/orbit.appearance-overrides.css";
 
 @theme {
   --font-sans: var(--v-font-sans);
@@ -15,6 +18,8 @@
   --color-orbit-ink: var(--orbit-ink);
   --color-orbit-ink-2: var(--orbit-ink-2);
   --color-orbit-ink-3: var(--orbit-ink-3);
+  --color-orbit-surface-1: var(--orbit-surface-1);
+  --color-orbit-surface-2: var(--orbit-surface-2);
   --color-orbit-line: var(--orbit-line);
   --color-orbit-carmine: var(--orbit-carmine);
   --color-orbit-red: var(--orbit-red);
@@ -392,6 +397,9 @@ body:not(.hub) #root {
 @import "./overlay/design-systems/vantare-original/tokens.css";
 @import "./overlay/design-systems/vantare-crystal/tokens.css";
 @import "./overlay/design-systems/vantare-endurance/tokens.css";
+@import "./overlay/design-systems/pedals-advanced.css";
+@import "./overlay/design-systems/vantare-efficiency/tokens.css";
+@import "./overlay/design-systems/vantare-iracing/iracing-tokens.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-sections-07-08.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-live-families.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-input.css";

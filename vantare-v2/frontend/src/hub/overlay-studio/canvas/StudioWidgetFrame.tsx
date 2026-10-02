@@ -15,9 +15,9 @@ import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
 import {
-  resolveStandingsRedlineFrameLayout,
-  resolveStandingsRedlineMinimumWidth,
-} from '../../../overlay/widget-types/standings/standings-redline-layout';
+  resolveStandingsFrameLayout,
+  resolveStandingsMinimumSize,
+} from '../../../overlay/widget-types/standings/standings-frame-layout';
 import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
@@ -57,6 +57,7 @@ export type StudioWidgetFrameProps = {
    */
   fitSelectionToContent?: boolean;
   layoutViewportWidth?: number;
+  layoutViewportHeight?: number;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -73,6 +74,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     diagnostics,
     fitSelectionToContent = false,
     layoutViewportWidth = DEFAULT_LAYOUT_VIEWPORT.width,
+    layoutViewportHeight = DEFAULT_LAYOUT_VIEWPORT.height,
   } = props;
   const { t } = useI18n();
   const runtime = useStudioTelemetryRuntime(widget.type);
@@ -82,13 +84,18 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStandingsRedlineFrameLayout(
+  const frameGeometry = resolveStandingsFrameLayout(
     widget,
     resolveStudioFrameGeometry(widget.id, layout, previewActive),
     layoutViewportWidth,
+    layoutViewportHeight,
   );
-  const effectiveMinimumWidth = resolveStandingsRedlineMinimumWidth(widget);
-  const layoutWasNormalized = effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth;
+  const effectiveMinimum = resolveStandingsMinimumSize(widget);
+  const effectiveMinimumWidth = effectiveMinimum?.width;
+  const effectiveMinimumHeight = effectiveMinimum?.height;
+  const layoutWasNormalized =
+    (effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth) ||
+    (effectiveMinimumHeight !== undefined && layout.h < effectiveMinimumHeight);
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -147,8 +154,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       data-testid={`studio-widget-frame-${widget.id}`}
       data-preview-active={previewActive ? 'true' : undefined}
       data-effective-minimum-width={effectiveMinimumWidth}
+      data-effective-minimum-height={effectiveMinimumHeight}
       data-layout-normalized={layoutWasNormalized ? 'true' : undefined}
       data-layout-viewport-width={layoutViewportWidth}
+      data-layout-viewport-height={layoutViewportHeight}
       className={frameClassName}
       style={frameStyle}
       role="button"
@@ -241,5 +250,6 @@ export const StudioWidgetFrame = memo(
     previous.onLostPointerCapture === next.onLostPointerCapture &&
     previous.diagnostics === next.diagnostics &&
     previous.fitSelectionToContent === next.fitSelectionToContent &&
-    previous.layoutViewportWidth === next.layoutViewportWidth,
+    previous.layoutViewportWidth === next.layoutViewportWidth &&
+    previous.layoutViewportHeight === next.layoutViewportHeight,
 );

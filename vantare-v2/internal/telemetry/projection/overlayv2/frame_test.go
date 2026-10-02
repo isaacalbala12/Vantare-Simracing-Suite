@@ -166,16 +166,16 @@ func withStringWidths(frame FrameV2, width int) {
 		frame.Standings[index].DriverName = name(index)
 		frame.Standings[index].ClassID = class
 	}
-	for index := range frame.Relative {
-		frame.Relative[index].VehicleID = vehicle(index)
-		frame.Relative[index].DisplayName = name(index)
-		frame.Relative[index].ClassID = class
+	for _, rows := range [][]RelativeRowV2{frame.Relative, frame.RelativeSettled, frame.RelativeSameClass} {
+		for index := range rows {
+			rows[index].VehicleID = vehicle(index)
+			rows[index].DisplayName = name(index)
+			rows[index].ClassID = class
+			rows[index].CarNumber = "007"
+			rows[index].BestLapSeconds = QValue[float64]{V: 90.123, Q: QualityFresh}
+		}
 	}
-	for index := range frame.RelativeSettled {
-		frame.RelativeSettled[index].VehicleID = vehicle(index)
-		frame.RelativeSettled[index].DisplayName = name(index)
-		frame.RelativeSettled[index].ClassID = class
-	}
+
 	if frame.Player.VehicleID != "" {
 		frame.Player.VehicleID = vehicle(0)
 	}
@@ -215,12 +215,13 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 	for index := 0; index < vehicles; index++ {
 		id := fmt.Sprintf("vehicle-%03d", index+1)
 		standings[index] = StandingRowV2{
+			Quality: StandingQualityV2{Q: QualityFresh}, CarNumber: "007", ClassGap: float64(index) * 1.234, ClassGapLaps: int32(index / 40), ClassGapReferencePosition: 1, Interval: 1.234, IntervalLaps: int32(index / 80),
 			VehicleID: id, Position: int32(index + 1), ClassPosition: int32(index%24 + 1),
 			ClassID: "hypercar", DriverName: fmt.Sprintf("Driver %03d", index+1),
 			GapSeconds: QValue[float64]{V: float64(index) * 1.234, Q: QualityFresh}, GapLaps: int32(index / 40),
 			PitState: "track", CompletedLaps: 127,
 			BestLapSeconds: QValue[float64]{V: 88.123, Q: QualityFresh}, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh},
-			LapDistance: QValue[float64]{V: float64(index) * 42.5, Q: QualityFresh}, GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
+			GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
 		}
 	}
 	// Productive cardinalities only: BuildRelative and the settler publish at
@@ -235,6 +236,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 	for index := 0; index < relativeCount; index++ {
 		id := fmt.Sprintf("vehicle-%03d", index+1)
 		row := RelativeRowV2{
+			Position: int32(index + 1), LapDelta: QValue[int32]{V: 1, Q: QualityFresh}, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh}, BestLapSeconds: QValue[float64]{V: 90.123, Q: QualityFresh}, CarNumber: "007",
 			VehicleID: id, GapSeconds: QValue[float64]{V: float64(index-8) * 0.314, Q: QualityFresh},
 			Side: "ahead", Authority: AuthorityDerived, DisplayName: fmt.Sprintf("Driver %03d", index+1),
 		}
@@ -258,7 +260,12 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		},
 		Controls:  ControlsV2{History: controls},
 		Standings: standings, Relative: relative, RelativeSettled: relativeSettled,
-		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
+		RelativeSameClass: append([]RelativeRowV2{}, relative...),
+		Delta: DeltaViewV2{References: []DeltaReferenceViewV2{
+			{Requested: DeltaReferencePersonalBest, Reference: DeltaReferencePersonalBest, Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Authority: AuthorityNative},
+			{Requested: DeltaReferenceSessionBest, Reference: DeltaReferenceSessionBest, Seconds: QValue[float64]{V: -.138, Q: QualityFresh}, Authority: AuthorityDerived},
+			{Requested: DeltaReferencePreviousLap, Reference: DeltaReferencePreviousLap, Seconds: QValue[float64]{V: -.038, Q: QualityFresh}, Authority: AuthorityDerived},
+		}, Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
 		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{

@@ -56,6 +56,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 50 | `damage.wheel_detached_count` | vehicle | count | [0,4] | appended | Count of detached wheels (0..4) from LMU wheel mDetached. |
 | 51 | `standings.lap_progress_time` | standings | seconds | unknown | appended | Simulator-observed temporal coordinate of a vehicle within the current circuit lap; signed finite source values preserve explicit quality. |
 | 52 | `standings.car_number` | standings | text | unsupported | appended | Source-supplied car number as a string ("007" preserved); REST-joined per-row display identity, never inferred from driver or vehicle names. |
+| 53 | `tyres.wear` | wheels | ratio | [0,1] | appended | Four observed LMU mWear fractions ordered FL/FR/RL/RR, scoped to the player; 1 means unworn and 0 fully worn. Not wheel detachment. |
 
 ## Tombstoned IDs
 

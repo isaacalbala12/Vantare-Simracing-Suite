@@ -89,7 +89,7 @@ export function StandingsLmuTemplate({
               >
                 <span className="ven-lmu-pos">{index + 1}</span>
                 <span className="ven-lmu-class">{shortClassLabel(row.vehicleClass)}</span>
-                <span className="ven-lmu-name">{initialSurname(row.driverName)}</span>
+                <span className="ven-lmu-name">{initialSurname(row.configuredDriverName ?? row.driverName)}</span>
                 <span className="ven-lmu-gap">
                   {row.pitText ? row.pitText : index === 0 ? "—" : formatLmuGap(row.gapText)}
                 </span>

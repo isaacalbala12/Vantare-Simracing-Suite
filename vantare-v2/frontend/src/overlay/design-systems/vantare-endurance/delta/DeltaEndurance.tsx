@@ -4,7 +4,7 @@ import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-mode
 import { parseDeltaEnduranceSettings } from "./delta-endurance-settings";
 import { DeltaRedlineTemplate } from "./DeltaRedlineTemplate";
 
-export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
+export function DeltaEndurance({ model, settings, motion = "full" }: WidgetRendererProps<DeltaViewModel>) {
   const parsed = parseDeltaEnduranceSettings(settings);
 
   if (parsed.templateId === "delta-redline") {
@@ -19,7 +19,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
         style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
         {/* showHeader drives the reference row: the expanded state of the design. */}
-        <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} />
+        <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} motion={motion} />
       </section>
     );
   }

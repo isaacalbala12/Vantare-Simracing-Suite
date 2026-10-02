@@ -183,6 +183,35 @@ métrica; con menos de tres corridas marca `INSUFICIENTE / NO PUBLICABLE` y con
 tres o más marca `✗` cuando supera 5 %. Para el juego muestra p50/p95/p99,
 frames perdidos y porcentaje.
 
+## Modos para la fase 0 de la arquitectura nativa (ISA-1421)
+
+**Perfil Eficiencia.** `testdata/bench/huella-eficiencia-3.json` repite los 3
+widgets, posiciones y Hz de Endurance con `vantare-functional`. Se usa con
+`huella.ps1 -Perfil testdata/bench/huella-eficiencia-3.json` (3 widgets
+esperados) igual que el de Endurance.
+
+**A0/A1 intercalado (frame time).** `huella-intercalado.ps1` ejecuta
+`huella.ps1` por bloques en orden ABBA (`A0 A1 A1 A0 A0 A1 …`, `-Bloques` par,
+mínimo 6 para veredicto) con el mismo LMU vivo y aborta si el juego se reinicia.
+Cada bloque es una corrida normal de `huella.ps1` (mismos gates: higiene,
+licencia, visibilidad en A1, PresentMon propio); reinicia la app Vantare, no el
+juego. El resumen `intercalado.md` (`huella-resumen.mjs --compare A0,A1
+--same-build`) da por rol/métrica la media ± desviación entre bloques de cada
+condición (ruido A/A), Δ = A1 − A0 y el veredicto: `DISTINGUIBLE` solo si
+|Δ| > 2·EE (error estándar de la diferencia); si no, `DENTRO DEL RUIDO`; con
+menos de 3 bloques por lado, `INSUFICIENTE`. El frame time incluye media, p50,
+p95 y p99 por bloque.
+
+**Procesos arbitrarios.** `huella-medir.ps1` mide procesos ya arrancados por
+nombre o PID (`-Procesos a,b`), con `-IncluirHijos` (descendientes) y
+`-IncluirDwm`, más el frame time del juego con PresentMon (o `-SinJuego`).
+No usa CDP ni WebView2 ni la higiene `vantare*.exe`. Emite el mismo CSV que
+`huella.ps1` (rol `app` = suma del conjunto por muestra, `dwm`, `game`; columna
+`processName` con el desglose y `exeSha256` con el binario medido), así que
+`huella-resumen.mjs` lo agrega tal cual y compara dos apps con
+`--compare wails,nativo`. Límites: dwm.exe no expone CPU sin consola elevada
+(memoria y GPU sí); no verifica visibilidad ni foreground del juego.
+
 ## Tabla baseline (§8)
 
 Estado inicial: vacía hasta ejecutar 180 s × 3. No completar con smokes.

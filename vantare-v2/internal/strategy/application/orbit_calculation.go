@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
@@ -18,7 +17,12 @@ import (
 // CalculateOrbit performs the historical Orbit use case through the Go
 // authorities. It is read-only, so repositoryVersion is only correlated back
 // to the caller and no snapshot is required.
-const orbitCalculationDeadline = 8 * time.Second
+//
+// No hay deadline de pared propio (ISA-834): el presupuesto del solver se
+// cuenta en candidatos e iteraciones y crece con el tamano de la carrera, asi
+// un plan legitimo nunca depende de lo cargada que este la maquina. Una
+// busqueda desbocada sigue acotada porque el solver muere al agotar su
+// presupuesto de trabajo (calculation_overflow), no por reloj.
 
 const (
 	orbitDefaultReserveLaps     = 0.8
@@ -32,8 +36,6 @@ func (service *Service[T]) CalculateOrbit(ctx context.Context, command Calculate
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, cancel := context.WithTimeout(ctx, orbitCalculationDeadline)
-	defer cancel()
 	calculated, err := calculateOrbitContext(ctx, command.Input)
 	if err != nil {
 		return Result[T]{}, err
@@ -466,7 +468,7 @@ func orbitSolverInput(
 			ServiceMode:     manual.PitServiceParallel,
 		},
 		Formation:            solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
-		Budget:               solver.ComputeBudget{P95Millis: 10_000},
+		Budget:               orbitSolverBudget(raceLaps),
 		FuelCapacityLiters:   orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
 		VECapacityPercent:    orbitVECapacity(planning),
 		TyreLifeLaps:         orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
@@ -482,6 +484,44 @@ func orbitSolverInput(
 		Discretization: solver.ServiceDiscretization{FuelLiters: orbitFuelServiceStep(averageFuel, planning), VEPercent: 1},
 	}
 	return input
+}
+
+// orbitSolverBudget traduce el tamano de la carrera en un presupuesto de
+// trabajo del solver (ISA-834). Las cotas se cuentan en candidatos e
+// iteraciones — el mismo resultado en cualquier maquina — en lugar de
+// segundos de pared: un plan legitimo conserva siempre su margen porque el
+// presupuesto crece con las vueltas, y la busqueda desbocada sigue muriendo
+// al agotar su cota (calculation_overflow). Los pisos reproducen los
+// defaults del solver (10M candidatos, 100M iteraciones) y el factor por
+// vuelta deja ~12-25x de margen sobre el trabajo observado en busquedas
+// legitimas (13 vueltas con ahorro y vida de neumatico: ~49k candidatos,
+// ~1M iteraciones).
+func orbitSolverBudget(raceLaps int64) solver.ComputeBudget {
+	const (
+		minimumCandidates = int64(10_000_000)
+		candidatesPerLap  = int64(100_000)
+		maximumCandidates = int64(200_000_000)
+		minimumIterations = int64(100_000_000)
+		iterationsPerLap  = int64(1_000_000)
+		maximumIterations = int64(1_000_000_000)
+	)
+	candidates := minimumCandidates
+	if raceLaps > maximumCandidates/candidatesPerLap {
+		candidates = maximumCandidates
+	} else if scaled := raceLaps * candidatesPerLap; scaled > candidates {
+		candidates = scaled
+	}
+	iterations := minimumIterations
+	if raceLaps > maximumIterations/iterationsPerLap {
+		iterations = maximumIterations
+	} else if scaled := raceLaps * iterationsPerLap; scaled > iterations {
+		iterations = scaled
+	}
+	return solver.ComputeBudget{
+		P95Millis:     10_000,
+		MaxCandidates: int(candidates),
+		MaxIterations: int(iterations),
+	}
 }
 
 func orbitFuelServiceStep(fuelPerLap float64, planning *strategydocument.PlanningInputs) float64 {

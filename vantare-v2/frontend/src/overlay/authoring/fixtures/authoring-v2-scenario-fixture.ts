@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import goldenV2Raw from "../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 import type {
   OverlayFrameV2,
@@ -10,7 +11,7 @@ import type { WidgetRuntimeInput } from "../../core/widget-definition";
 // El golden es la única semilla: si carece de frame, source o standings no
 // hay fixture honesto que construir y se falla rápido en la carga, sin
 // fallbacks undefined/[] sintéticos.
-const canonical = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+const canonical = decodeOverlayUpdateV2(JSON.parse(goldenV2Raw)) as OverlayUpdateV2;
 
 function requireCanonicalFrame(): OverlayFrameV2 {
   const frame = canonical.frame;
@@ -21,8 +22,8 @@ function requireCanonicalFrame(): OverlayFrameV2 {
     throw new Error("authoring-v2-scenario-fixture: el golden V2 de 20 carece de standings");
   }
   // Lo que C2a promete usar/preservar debe existir en la semilla: id del
-  // jugador, track de sesión y relative no vacío con side/authority del
-  // productor (se exigen, no se sintetizan).
+  // jugador, track de sesión y relative no vacío con side del productor.
+  // El lector valida authority; su ausencia tiene el default contractual derived.
   if (typeof frame.player?.id !== "string" || frame.player.id === "") {
     throw new Error("authoring-v2-scenario-fixture: el golden V2 de 20 carece de player.id");
   }
@@ -32,10 +33,10 @@ function requireCanonicalFrame(): OverlayFrameV2 {
   if (
     !Array.isArray(frame.relative) ||
     frame.relative.length === 0 ||
-    frame.relative.some((row) => !row.side || !row.authority)
+    frame.relative.some((row) => !row.side)
   ) {
     throw new Error(
-      "authoring-v2-scenario-fixture: el golden V2 de 20 carece de relative con side/authority de productor",
+      "authoring-v2-scenario-fixture: el golden V2 de 20 carece de relative con side de productor",
     );
   }
   return frame;

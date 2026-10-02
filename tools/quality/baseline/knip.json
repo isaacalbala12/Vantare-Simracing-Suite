@@ -1,0 +1,4016 @@
+{
+  "header": {
+    "analyzer": "knip",
+    "base_sha": "7cfb153e8c2b86d15cb09445334a574d1a529b5e",
+    "generated_at": "2026-09-14T23:31:03Z",
+    "tool_versions": {
+      "staticcheck": "2026.2.1",
+      "govet": "go1.25.0",
+      "deadcode": "v0.49.0",
+      "go-mod-tidy": "go1.25.0",
+      "knip": "6.34.0",
+      "dependency-cruiser": "18.2.0",
+      "jscpd": "5.1.2"
+    },
+    "scope_hash": "a7cc956dfefdd75e8e2aa1a9ac374638c4a1a44c28ef5e867b73c38908c730ce",
+    "versions_fingerprint": "3a4e2c5c3626628ae6e904fd8a01eb4722f582912af5571fe0c64a60a4efb9d8",
+    "configs": [
+      "frontend"
+    ],
+    "count": 499
+  },
+  "findings": [
+    {
+      "analyzer": "knip",
+      "rule": "binaries",
+      "path": "vantare-v2/frontend/scripts/calendar-visual-compare.mjs",
+      "msg_norm": "",
+      "symbol": "findstr",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "binaries",
+      "path": "vantare-v2/frontend/scripts/calendar-visual-compare.mjs",
+      "msg_norm": "",
+      "symbol": "netstat",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "binaries",
+      "path": "vantare-v2/frontend/scripts/calendar-visual-final.mjs",
+      "msg_norm": "",
+      "symbol": "findstr",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "binaries",
+      "path": "vantare-v2/frontend/scripts/calendar-visual-final.mjs",
+      "msg_norm": "",
+      "symbol": "netstat",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "devDependencies",
+      "path": "vantare-v2/frontend/package.json",
+      "msg_norm": "",
+      "symbol": "dependency-cruiser",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "devDependencies",
+      "path": "vantare-v2/frontend/package.json",
+      "msg_norm": "",
+      "symbol": "jscpd",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-store.ts",
+      "msg_norm": "",
+      "symbol": "CALENDAR_ERROR_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-store.ts",
+      "msg_norm": "",
+      "symbol": "CALENDAR_LOADED_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_REMINDER_MINUTES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_TIMEZONE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "eventDurationMs",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "eventEnd",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "formatCountdown",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "formatEventDate",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "hasCalendar",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-view-math.ts",
+      "msg_norm": "",
+      "symbol": "SPANISH_MONTHS_SHORT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/calendar/calendar-view-math.ts",
+      "msg_norm": "",
+      "symbol": "SPANISH_WEEKDAYS_FULL",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "ENGINEER_NOTIFICATION_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "ENGINEER_STATUS_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "ENGINEER_STATUS_REQUEST",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_VOICE_PREFS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "VOICE_STORAGE_KEY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/hub-suspend-guard.ts",
+      "msg_norm": "",
+      "symbol": "unregisterHubSuspendBlocker",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/launcher-orbit/launcher-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "CUSTOM_APP_ID_PREFIX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/orbit/app-zoom.ts",
+      "msg_norm": "",
+      "symbol": "APP_ZOOM_STEPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/orbit/app-zoom.ts",
+      "msg_norm": "",
+      "symbol": "normalizeAppZoom",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/orbit/orbit-zoom.ts",
+      "msg_norm": "",
+      "symbol": "ORBIT_ULTRAWIDE_WIDTH",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/orbit/orbit-zoom.ts",
+      "msg_norm": "",
+      "symbol": "ORBIT_ZOOM_CEILING",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/orbit/views.ts",
+      "msg_norm": "",
+      "symbol": "VIEWS_WITHOUT_CONTEXT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/canvas-geometry.ts",
+      "msg_norm": "",
+      "symbol": "GRID_SIZE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/canvas-geometry.ts",
+      "msg_norm": "",
+      "symbol": "MINIMUM_VISIBLE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/studio-wallpapers.ts",
+      "msg_norm": "",
+      "symbol": "WALLPAPER_BACKGROUND_PREFIX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/wallpaper-import.ts",
+      "msg_norm": "",
+      "symbol": "WALLPAPER_QUALITY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/widget-actions.ts",
+      "msg_norm": "",
+      "symbol": "DELETE_WIDGET_CONFIRM_KEY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/orbit/obs-url.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_OBS_PROFILE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-autosave.tsx",
+      "msg_norm": "",
+      "symbol": "STUDIO_AUTOSAVE_DELAY_MS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-context.ts",
+      "msg_norm": "",
+      "symbol": "useStudioStoreInstance",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "buildInitialHistory",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "createStudioStore",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "useStudioStoreInstance",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/studio-v3-i18n.ts",
+      "msg_norm": "",
+      "symbol": "OFFICIAL_DESIGNS_SECTION_LABEL_KEY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/studio-v3-i18n.ts",
+      "msg_norm": "",
+      "symbol": "STUDIO_V3_I18N_PREFIX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "ROADMAP_PROJECTS_FETCH_TIMEOUT_MS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "pickRoadmapProjectText",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings-orbit/settings-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_SETTINGS_SECTION",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings-orbit/settings-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "SETTINGS_SEARCH_INDEX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings-orbit/settings-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "normalizeForSearch",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/curation-upload-client.ts",
+      "msg_norm": "",
+      "symbol": "CurationUploadClientError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DIAGNOSTICS_ERROR_CODES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DIAGNOSTICS_OPERATIONS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/release-notes.ts",
+      "msg_norm": "",
+      "symbol": "toReleaseNote",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-contract.ts",
+      "msg_norm": "",
+      "symbol": "CHANNEL_LABELS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-contract.ts",
+      "msg_norm": "",
+      "symbol": "findChecksumAsset",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-contract.ts",
+      "msg_norm": "",
+      "symbol": "formatDate",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-store.ts",
+      "msg_norm": "",
+      "symbol": "sameNotificationSettings",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-store.ts",
+      "msg_norm": "",
+      "symbol": "useActiveOverlayProfileId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-store.ts",
+      "msg_norm": "",
+      "symbol": "useSettingsSaved",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/settings-store.ts",
+      "msg_norm": "",
+      "symbol": "useSettingsSnapshot",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/settings/useAppLog.ts",
+      "msg_norm": "",
+      "symbol": "LOG_LEVELS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_DRY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "EMPTY_STRATEGY_EVENTS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_ROSTER_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_ROSTER_REQUEST",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "ORBIT_CORNERS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "TYRE_CONDITION_FLOOR",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "TYRE_CONDITION_RANGE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "TYRE_WARN_USES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "TYRE_WEAR_PER_USE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/access-policy.ts",
+      "msg_norm": "",
+      "symbol": "FREE_ACCESS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/canvas-math.ts",
+      "msg_norm": "",
+      "symbol": "CANVAS_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/canvas-math.ts",
+      "msg_norm": "",
+      "symbol": "CANVAS_WIDTH",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/canvas-math.ts",
+      "msg_norm": "",
+      "symbol": "SNAP_PX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/canvas-math.ts",
+      "msg_norm": "",
+      "symbol": "WIDGET_MIN_SIZE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/canvas-math.ts",
+      "msg_norm": "",
+      "symbol": "WIDGET_RATIOS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/density.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_DENSITY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/density.ts",
+      "msg_norm": "",
+      "symbol": "normalizeDensity",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/license-debug-log.ts",
+      "msg_norm": "",
+      "symbol": "formatLicenseDebugReport",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/license-debug-log.ts",
+      "msg_norm": "",
+      "symbol": "getLicenseDebugEntries",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/license-debug-log.ts",
+      "msg_norm": "",
+      "symbol": "isWailsRuntimeMockActive",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/license-debug-log.ts",
+      "msg_norm": "",
+      "symbol": "subscribeLicenseDebug",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "getWidgetAppearance",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "getWidgetStyle",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "getWidgetStyleFromProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/supabase-auth.ts",
+      "msg_norm": "",
+      "symbol": "createOAuthAttempt",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/theme.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_THEME_ID",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/theme.ts",
+      "msg_norm": "",
+      "symbol": "normalizeThemeId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/wails-runtime-mock.ts",
+      "msg_norm": "",
+      "symbol": "Browser",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/lib/widget-factory.ts",
+      "msg_norm": "",
+      "symbol": "DEFAULT_WIDGET_SIZES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay-harness/harness-browser-view-store.server.ts",
+      "msg_norm": "",
+      "symbol": "clearServerHarnessBrowserViewProfiles",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay-harness/hub-profile-mock-state.ts",
+      "msg_norm": "",
+      "symbol": "getActiveHubProfileId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay-harness/parity-html.ts",
+      "msg_norm": "",
+      "symbol": "normalizeRendererHtml",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/authoring/fixtures/animation-scenes.ts",
+      "msg_norm": "",
+      "symbol": "ANIMATION_SCENE_IDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/authoring/fixtures/animation-scenes.ts",
+      "msg_norm": "",
+      "symbol": "SCENE_BASELINE_BEST_LAP",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/authoring/fixtures/animation-scenes.ts",
+      "msg_norm": "",
+      "symbol": "isAnimationSceneId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/design-system-registry.ts",
+      "msg_norm": "",
+      "symbol": "migrateSettingsSequential",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/inspector-control.ts",
+      "msg_norm": "",
+      "symbol": "EMPTY_INSPECTOR_CAPABILITY",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/inspector-control.ts",
+      "msg_norm": "",
+      "symbol": "InspectorControlValidationError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "PROFILE_SCHEMA_VERSION_V3",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "PROFILE_SCHEMA_VERSION_V4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "STUDIO_CANVAS_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "STUDIO_CANVAS_WIDTH",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "STUDIO_MINIMUM_VISIBLE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "adaptWidgetDefinitionToV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "serializeProfileDocumentV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/responsive-layout.ts",
+      "msg_norm": "",
+      "symbol": "MAX_FRAME_ASPECT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-definition.ts",
+      "msg_norm": "",
+      "symbol": "WIDGET_REQUIRED_FEATURE_BY_TYPE",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-design.ts",
+      "msg_norm": "",
+      "symbol": "WidgetDesignValidationError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-policy.ts",
+      "msg_norm": "",
+      "symbol": "BRAND_MODES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-visual-settings.ts",
+      "msg_norm": "",
+      "symbol": "isPlainObject",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-crystal/delta/delta-settings.ts",
+      "msg_norm": "",
+      "symbol": "DELTA_TEMPLATE_IDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/pedals/pedals-motion.ts",
+      "msg_norm": "",
+      "symbol": "BRAKE_ENGAGED",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/pedals/pedals-motion.ts",
+      "msg_norm": "",
+      "symbol": "PEAK_REVEAL_MARGIN",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/relative/relative-motion.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_THREAT_SECONDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/relative/relative-redline-shared.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_IMMINENT_SECONDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/relative/relative-redline-shared.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_PROXIMITY_HORIZON_SECONDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/relative/relative-redline-shared.ts",
+      "msg_norm": "",
+      "symbol": "classRank",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-layout.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-layout.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_RETIREMENT_GHOST_HEIGHT_PX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_TOWER_HEADERS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_TOWER_SELECTIONS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_TOWER_THEMES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-shared.ts",
+      "msg_norm": "",
+      "symbol": "classHierarchyIndex",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-motion.ts",
+      "msg_norm": "",
+      "symbol": "BATTLE_THRESHOLD_SECONDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-motion.ts",
+      "msg_norm": "",
+      "symbol": "classPositionsById",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts",
+      "msg_norm": "",
+      "symbol": "REDLINE_ROW_STRIDE_PX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/broadcast-tower/broadcast-tower-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "broadcastTowerDisplayedValuesV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/car-damage-visual/car-damage-visual-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_DAMAGE_VISUAL_INTENTIONAL_DIFFERENCES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/car-damage-visual/car-damage-visual-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "carDamageVisualDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/delta-advanced/delta-advanced-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_DELTA_ADVANCED_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/delta-trace/delta-trace-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_DELTA_TRACE_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/delta/delta-definition.ts",
+      "msg_norm": "",
+      "symbol": "DELTA_REFERENCES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/engineer-radio/engineer-radio-definition.ts",
+      "msg_norm": "",
+      "symbol": "buildEngineerRadioViewModel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/head-to-head/head-to-head-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_HEADTOHEAD_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/head-to-head/head-to-head-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "headToHeadDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/multiclass-relative/multiclass-relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_MULTICLASS_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/multiclass-relative/multiclass-relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "multiclassRelativeDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_PEDALS_TELEMETRY_COMPACT_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "pedalsTelemetryCompactDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "pedalsTelemetryDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/pedals/pedals-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_PEDALS_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/race-schedule/race-schedule-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_RACESCHEDULE_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/race-schedule/race-schedule-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "raceScheduleDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/racing-flags/racing-flags-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "racingFlagsDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_METRIC_IDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_RANGE_AHEAD",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_RANGE_BEHIND",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_COMPACT_NON_ROW_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_COMPACT_ROW_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_FILL_CLASS_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_FILL_FOOTER_PADDING",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_FILL_HEADER_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_FILL_ROW_MIN",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_NEIGHBOUR_REPLACEMENT_HOLD_MS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_REDLINE_INTERRUPTION_HOLD_MS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "createRelativeViewModelCommitAuthority",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "prepareRelativeViewModelV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "relativeViewModelStateEquals",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "resetRelativeViewModelState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "STANDINGS_METRIC_IDS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-formatting.ts",
+      "msg_norm": "",
+      "symbol": "formatStandingsColumnValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-formatting.ts",
+      "msg_norm": "",
+      "symbol": "formatStandingsGap",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-formatting.ts",
+      "msg_norm": "",
+      "symbol": "formatStandingsGapForMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-formatting.ts",
+      "msg_norm": "",
+      "symbol": "formatStandingsPit",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/track-map/track-map-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_TRACKMAP_DECLARED_GAPS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/track-map/track-map-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "trackMapDisplayedValues",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/track-weather/track-weather-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "trackWeatherDisplayedValuesV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_COLUMNS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RELATIVE_TEMPLATES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1-canonical.ts",
+      "msg_norm": "",
+      "symbol": "canonicalizeStrategyValueV1Internal",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "asDistanceMeters",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "asDurationSeconds",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "asTyreRemainingPercent",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor-store.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_EDITOR_DRAFT_ID",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_CORNERS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_EDITOR_VERSION",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "cornerLabel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "formatCondition",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "isConditionExact",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_MANUAL_PROTOCOL_V1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyManualCalculationError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "createWailsStrategyManualClient",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "STRATEGY_MANUAL_INPUT_VERSION",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "StrategyManualInputError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "createWailsStrategySolverClient",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "createWailsStrategyTyreClient",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "cornerLabel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/telemetry-transport/contracts.ts",
+      "msg_norm": "",
+      "symbol": "statusRequestEventName",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/telemetry-transport/overlay-frame-v2-store.ts",
+      "msg_norm": "",
+      "symbol": "OVERLAY_V2_SNAPSHOT_REQUEST_EVENT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/Toast.tsx",
+      "msg_norm": "",
+      "symbol": "ToastRegion",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "MINI_STAGE_HEIGHT",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "MINI_STAGE_WIDTH",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TOAST_MAX",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TOAST_TTL_MS",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TYRE_WARN_USES",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ToastRegion",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "formatCountdown",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "exports",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "formatHour",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "files",
+      "path": "vantare-v2/frontend/src/lib/wails-runtime-topbar-mock.ts",
+      "msg_norm": "",
+      "symbol": "src/lib/wails-runtime-topbar-mock.ts",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "files",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/_template/tokens.css",
+      "msg_norm": "",
+      "symbol": "src/overlay/design-systems/_template/tokens.css",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "Session",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/auth/LoginScreen.tsx",
+      "msg_norm": "",
+      "symbol": "LoginSessionTokens",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/auth/paywall-plans.ts",
+      "msg_norm": "",
+      "symbol": "PlanKey",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/components/orbit/CommandPalette.tsx",
+      "msg_norm": "",
+      "symbol": "CommandPaletteLabels",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/components/orbit/SideLauncher.tsx",
+      "msg_norm": "",
+      "symbol": "SideLauncherProfile",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/engineer-orbit/engineer-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "EngineerCategoryId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/chain-store-core.ts",
+      "msg_norm": "",
+      "symbol": "ChainStepStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-bridge.ts",
+      "msg_norm": "",
+      "symbol": "AppPickedPayload",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "AlreadyRunningPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "CancelPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "ExitPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "FailurePolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "LaunchStep",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "LauncherAppCategory",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "LauncherAvailability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "LauncherDiscovery",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-contract.ts",
+      "msg_norm": "",
+      "symbol": "RetryPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "AlreadyRunningPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "CancelPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "ExitPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "FailurePolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LaunchPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LaunchStep",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherActiveChain",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherApp",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherAppCategory",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherAvailability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherCommandError",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherDiscovery",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "LauncherSnapshot",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-state.ts",
+      "msg_norm": "",
+      "symbol": "RetryPolicy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-store-core.ts",
+      "msg_norm": "",
+      "symbol": "AppPickedListener",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/launcher/launcher-store-core.ts",
+      "msg_norm": "",
+      "symbol": "AppPickedPayload",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/navigation.ts",
+      "msg_norm": "",
+      "symbol": "NavIcon",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/orbit/views.ts",
+      "msg_norm": "",
+      "symbol": "OverlayState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/orbit/views.ts",
+      "msg_norm": "",
+      "symbol": "SaveState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/canvas-backgrounds.ts",
+      "msg_norm": "",
+      "symbol": "CanvasBackgroundId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "CanvasInteraction",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/widget-actions.ts",
+      "msg_norm": "",
+      "symbol": "WidgetOrderDirection",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/canvas/widget-content-box.ts",
+      "msg_norm": "",
+      "symbol": "Rect",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/catalog/studio-catalog.ts",
+      "msg_norm": "",
+      "symbol": "CompatibleSystemRef",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-document-store.ts",
+      "msg_norm": "",
+      "symbol": "LoadedStudioDocument",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-document-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioDocumentState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-document-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioRecoveryStore",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-document-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioStoreDeps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioDocumentContextValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioDocumentState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioPreviewContextValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioSaveState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioSeed",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioStore",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/overlay-studio/state/studio-store.ts",
+      "msg_norm": "",
+      "symbol": "StudioStoreDeps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/races-orbit/races-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "WeekCell",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/registry/design-system.ts",
+      "msg_norm": "",
+      "symbol": "WidgetComponent",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/registry/design-system.ts",
+      "msg_norm": "",
+      "symbol": "WidgetComponents",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProject",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectLocalizedText",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectProgress",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectTab",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectTask",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/projects-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapProjectsLoadStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/roadmap-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapDeliveredEntry",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/roadmap-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapDeliveredKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/roadmap-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapFeedbackDestination",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/roadmap/roadmap-data.ts",
+      "msg_norm": "",
+      "symbol": "RoadmapFeedbackType",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings-orbit/schedule-import-model.ts",
+      "msg_norm": "",
+      "symbol": "SchedulePreviewSeries",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings-orbit/settings-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "HotkeyKey",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/curation-upload-client.ts",
+      "msg_norm": "",
+      "symbol": "CurationQueueItem",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/curation-upload-client.ts",
+      "msg_norm": "",
+      "symbol": "CurationQueueState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/contracts.ts",
+      "msg_norm": "",
+      "symbol": "BackendDiagnosticsErrorCode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DiagnosticsCount",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DiagnosticsTelemetry",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/diagnostics/diagnostics-view-model.ts",
+      "msg_norm": "",
+      "symbol": "RequestStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/release-notes.ts",
+      "msg_norm": "",
+      "symbol": "ReleaseNoteSection",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/updater-events.ts",
+      "msg_norm": "",
+      "symbol": "Unsubscribe",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/updater-events.ts",
+      "msg_norm": "",
+      "symbol": "UpdaterEventListener",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/useAppLog.ts",
+      "msg_norm": "",
+      "symbol": "LogLevel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/settings/useStorageSettings.ts",
+      "msg_norm": "",
+      "symbol": "StorageLocation",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "StrategyEventSource",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-infographic.ts",
+      "msg_norm": "",
+      "symbol": "InfographicInput",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-infographic.ts",
+      "msg_norm": "",
+      "symbol": "InfographicStint",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-infographic.ts",
+      "msg_norm": "",
+      "symbol": "InfographicStop",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "RosterStrategy",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "StintPlan",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "StrategyOverride",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/strategy-orbit/strategy-recommended.ts",
+      "msg_norm": "",
+      "symbol": "RecommendedKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/testing-center/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DiagnosticEnvironment",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/hub/testing-center/contracts.ts",
+      "msg_norm": "",
+      "symbol": "DiagnosticPreview",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/i18n/I18nProvider.ts",
+      "msg_norm": "",
+      "symbol": "I18nContextValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/entitlements-refresh.ts",
+      "msg_norm": "",
+      "symbol": "DeviceResetReason",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/entitlements-refresh.ts",
+      "msg_norm": "",
+      "symbol": "EntitlementRefreshReason",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/license-debug-log.ts",
+      "msg_norm": "",
+      "symbol": "LicenseDebugEntry",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/license.ts",
+      "msg_norm": "",
+      "symbol": "LicenseContextValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "ColumnGroupConfig",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "DisplayMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "LayoutType",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "ProfileLayout",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "ProfileLoadedPayload",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "ProfileSourceMeta",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "SlotConfig",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "VisibleWhen",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "WidgetPropsMap",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/profile.ts",
+      "msg_norm": "",
+      "symbol": "WidgetVariantConfig",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/theme.ts",
+      "msg_norm": "",
+      "symbol": "ThemeColors",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/theme.ts",
+      "msg_norm": "",
+      "symbol": "ThemeEffects",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/lib/theme.ts",
+      "msg_norm": "",
+      "symbol": "ThemeFonts",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay-harness/overlay-parity-query.ts",
+      "msg_norm": "",
+      "symbol": "CrystalParityDesign",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay-harness/overlay-parity-query.ts",
+      "msg_norm": "",
+      "symbol": "HarnessSurface",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay-harness/overlay-parity-query.ts",
+      "msg_norm": "",
+      "symbol": "HarnessSystem",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay-harness/overlay-parity-query.ts",
+      "msg_norm": "",
+      "symbol": "HarnessVariant",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay-harness/overlay-parity-query.ts",
+      "msg_norm": "",
+      "symbol": "HarnessWidget",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/authoring/fixtures/authoring-v2-workshop-frame.ts",
+      "msg_norm": "",
+      "symbol": "WorkshopV2DevVariant",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/WidgetVisualHost.tsx",
+      "msg_norm": "",
+      "symbol": "WidgetDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/WidgetVisualHost.tsx",
+      "msg_norm": "",
+      "symbol": "WidgetDiagnosticCollector",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/design-system-definition.ts",
+      "msg_norm": "",
+      "symbol": "WidgetSystemInspectorCapability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/overlay-runtime-context.ts",
+      "msg_norm": "",
+      "symbol": "OverlayRuntimeSessionType",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/overlay-v2-view-models.ts",
+      "msg_norm": "",
+      "symbol": "OverlayV2ViewModelBuilder",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "DisplayMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "LoadedProfileDocumentV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "PreservedWidgetV3",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "ProfilePerformanceEffectsV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "ProfilePerformanceOverrideV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "ProfileSourceMeta",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "SessionLayoutV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "WidgetBehaviorV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "WidgetDesignProvenanceV3",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "WidgetInstanceV4",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/telemetry-rate-coordinator.ts",
+      "msg_norm": "",
+      "symbol": "TelemetryListener",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-definition.ts",
+      "msg_norm": "",
+      "symbol": "WidgetCapabilities",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-definition.ts",
+      "msg_norm": "",
+      "symbol": "WidgetInspectorCapability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-definition.ts",
+      "msg_norm": "",
+      "symbol": "WidgetRenderMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/core/widget-diagnostics.ts",
+      "msg_norm": "",
+      "symbol": "WidgetDiagnosticSurface",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-crystal/crystal-primitives.tsx",
+      "msg_norm": "",
+      "symbol": "CrystalStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-crystal/delta/delta-settings.ts",
+      "msg_norm": "",
+      "symbol": "DeltaTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-crystal/delta/delta-settings.ts",
+      "msg_norm": "",
+      "symbol": "DeltaTemplateId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/delta/delta-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "DeltaEnduranceTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/pedals/pedals-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "PedalsEnduranceTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/relative/relative-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "RelativeEnduranceTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/standings-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "StandingsEnduranceTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts",
+      "msg_norm": "",
+      "symbol": "GhostRow",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/design-systems/vantare-endurance/track-map/track-map-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "TrackMapEnduranceTemplateDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/edit/use-inplace-autosave.ts",
+      "msg_norm": "",
+      "symbol": "InPlaceAutosavePause",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "InplaceInteraction",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/delta-advanced/delta-advanced-view-model.ts",
+      "msg_norm": "",
+      "symbol": "DeltaAdvancedAvailability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/delta/delta-definition.ts",
+      "msg_norm": "",
+      "symbol": "DeltaReference",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/multiclass-relative/multiclass-relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "OverlayStandingRowV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RelativeClassScope",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RelativeMetricId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "RelativeRowHeightMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "RelativeViewModelCommitAuthority",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "RelativeViewModelTransition",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "StandingsClassScope",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widget-types/standings/standings-formatting.ts",
+      "msg_norm": "",
+      "symbol": "StandingsScoringRow",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RelativeColumnId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RelativeMetricId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RelativeMockSupport",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RelativeReleaseChannel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/relative-catalog.ts",
+      "msg_norm": "",
+      "symbol": "RelativeReliability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/standings-catalog.ts",
+      "msg_norm": "",
+      "symbol": "StandingsColumnId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/standings-catalog.ts",
+      "msg_norm": "",
+      "symbol": "StandingsMetricId",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/overlay/widgets/standings-catalog.ts",
+      "msg_norm": "",
+      "symbol": "StandingsReleaseChannel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyApplicationOperation",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyAvailabilityWindowV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyBacktestIntervalV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyClassPaceReasonV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyColdStartFailureV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyConfidenceLevelV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyDocumentV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyDriverV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyEvidenceV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyImportDispositionV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyInputProjectionV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyLegacyQuarantineItemV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyOrbitCalculationPaceV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyOrbitWeatherConditionV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyOrbitWeatherStintV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyProjectionFamilyV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyProvenanceKindV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyReferenceProfileV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyReferenceSampleV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategySessionCatalogItemV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategySessionClimateBucketV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreInventoryV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyVariantComparisonV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyVariantV2",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyWeatherScenarioV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ConfidenceLevel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ConfidenceV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "DistanceMeters",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "DurationSeconds",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ExecutionStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "PlanMode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ProvenanceKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ProvenanceV1",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "ReplanStatus",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "StrategyCapability",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "StrategyContractVersion",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "StrategyHashAlgorithm",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "TyreRemainingPercent",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "StrategyCompound",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "StrategyStint",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreCondition",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreOrigin",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyManualErrorCode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyManualResult",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyResourceResult",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyResourceSaving",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "StrategyInputCorrection",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "StrategyLapCorrection",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "StrategyManualInputErrorCode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "StrategyQuickInputs",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyComparison",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyReason",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyRiskLevel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategySolvedStint",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTotalRange",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyVariant",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyVariantKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-store.ts",
+      "msg_norm": "",
+      "symbol": "StrategyStoreSnapshot",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyPlanViolation",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreValidation",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "StrategyConfidence",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "StrategyConfidenceLevel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "StrategyProvenance",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "StrategyProvenanceKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/strategy/strategy-tyre.ts",
+      "msg_norm": "",
+      "symbol": "StrategyTyreState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/contracts.ts",
+      "msg_norm": "",
+      "symbol": "JSONValue",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/contracts.ts",
+      "msg_norm": "",
+      "symbol": "SnapshotKind",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/contracts.ts",
+      "msg_norm": "",
+      "symbol": "StatusPayload",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/contracts.ts",
+      "msg_norm": "",
+      "symbol": "StatusState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/freshness-watchdog.ts",
+      "msg_norm": "",
+      "symbol": "FreshnessMeasurement",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/overlay-frame-v2-store.ts",
+      "msg_norm": "",
+      "symbol": "OverlayFrameV2State",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/overlay-frame-v2-store.ts",
+      "msg_norm": "",
+      "symbol": "OverlayFrameV2StoreDiagnostics",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/overlay-wails-pull.ts",
+      "msg_norm": "",
+      "symbol": "OverlayWailsPullDiagnostics",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/store.ts",
+      "msg_norm": "",
+      "symbol": "DiagnosticCode",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/telemetry-transport/store.ts",
+      "msg_norm": "",
+      "symbol": "TransportDiagnostic",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/Button.tsx",
+      "msg_norm": "",
+      "symbol": "Size",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/ConfirmDialog.tsx",
+      "msg_norm": "",
+      "symbol": "ConfirmTone",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/Menu.tsx",
+      "msg_norm": "",
+      "symbol": "MenuItem",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/Seg.tsx",
+      "msg_norm": "",
+      "symbol": "SegOption",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/Trace.tsx",
+      "msg_norm": "",
+      "symbol": "TraceBand",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/Trace.tsx",
+      "msg_norm": "",
+      "symbol": "TraceChannel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "AccordionProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "AvailState",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "AvailabilityBoardProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ButtonProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ChainProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "CheckProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ChipProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ConfirmDialogProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ConfirmTone",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "CornerSlotProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "DonutProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "DotProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "DrawerProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "FaderProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "FeaturedProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "FieldProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "HorizontalTimelineProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "IconButtonProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "IconName",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "IconProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "InputProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "KbdProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "KeycapRowProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ListRowProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "MenuItem",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "MenuProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "MiniStageProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "NextRaceCardProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "NoteProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "PillProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SegMultiProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SegOption",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SegProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SelectOption",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SelectProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "Size",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "StatRowProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "StatTileProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "StateChipProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SubtleStatusProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "SurfaceProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TextareaProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ToastApi",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ToastEntry",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "ToggleProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "Tone",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TooltipProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TraceBand",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TraceChannel",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TraceProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TrackMapProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TyreChipProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TyreCompound",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "TyreItemProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/index.ts",
+      "msg_norm": "",
+      "symbol": "UnderlineTabsProps",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "knip",
+      "rule": "types",
+      "path": "vantare-v2/frontend/src/ui/orbit/viz-types.ts",
+      "msg_norm": "",
+      "symbol": "TyreCompound",
+      "content_hash": ""
+    }
+  ]
+}

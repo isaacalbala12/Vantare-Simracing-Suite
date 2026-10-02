@@ -35,6 +35,10 @@ type Settings struct {
 	Channel       Channel   `json:"channel"`
 	IgnoreVersion string    `json:"ignoreVersion,omitempty"`
 	LastCheckAt   time.Time `json:"lastCheckAt,omitempty"`
+	// LastSeenTag recuerda la release mas reciente que un chequeo real llego a
+	// ver. Un reinicio dentro del enfriamiento no consulta nada, pero este tag
+	// basta para saber que sigue habiendo una version pendiente que anunciar.
+	LastSeenTag string `json:"lastSeenTag,omitempty"`
 }
 
 // DefaultSettings returns stable channel defaults.

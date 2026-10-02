@@ -1,5 +1,9 @@
 # Widget Architecture
 
+> **Ámbito documental (2026-09-14):** Contrato de la etapa previa a Studio V3; sus reglas WidgetStudio/LayoutStudio y fuentes antiguas no gobiernan la UI actual.
+> [Referencia vigente](architecture.md).
+
+
 Documento canonico para workers que cambien widgets, editores de widgets, previews, runtime overlay o perfiles.
 
 Este documento no sustituye a:

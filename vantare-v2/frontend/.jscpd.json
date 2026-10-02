@@ -1,0 +1,8 @@
+{
+  "threshold": 0,
+  "reporters": ["json"],
+  "ignore": ["**/bindings/**", "**/dist/**", "**/node_modules/**", "**/generated/**", "**/*.test.ts", "**/*.test.tsx"],
+  "format": ["typescript", "javascript", "css"],
+  "min-lines": 5,
+  "min-tokens": 50
+}

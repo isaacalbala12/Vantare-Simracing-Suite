@@ -4,6 +4,9 @@
 Actualiza el calendario oficial LMU semanal para un hotfix.
 
 Lee primero:
+- Abre el hub https://app.notion.com/p/3fce51695c65834e80b381ec2d632192 y lee tarea y proyecto Notion.
+- Lee docs/vantare-program/notion-transition.md y AGENTS de origin/nightly actualizado. No amplíes el alcance.
+- Actualiza y relee Notion al empezar, bloquear, entregar y verificar merge: Estado, Agente, Proyecto, siguiente paso, PR, checks y SHA/canal. GitHub/ISA es el puente técnico que aún exige CI; no sustituye Notion. Si falla el acceso, conserva evidencia y comunica el bloqueo; no ejecutes trabajo dependiente.
 - AGENTS.md
 - docs/roadmap/plan.md
 - docs/calendar-weekly-hotfix/README.md
@@ -68,7 +71,7 @@ UI esperada:
 Archivos permitidos normalmente:
 - internal/calendar/seed/lmu-weekly-schedule.json
 - internal/calendar/official_schedule_test.go
-- la issue de GitHub y el handoff vivo correspondiente
+- la tarea Notion y el handoff técnico correspondiente
 - changelog existente, si aplica
 
 Si necesitas tocar estos archivos, reporta por que antes de hacerlo salvo bug claro:

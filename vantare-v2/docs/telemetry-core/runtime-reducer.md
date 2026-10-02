@@ -1,7 +1,8 @@
 # Reducer canónico single-writer
 
-Estado: implementación aislada de ISA-35 / TC-04A, pendiente de review y
-validación manual de Isaac. No existe wiring productivo.
+Estado: componente conectado mediante `TelemetryEngine` en `internal/app/telemetry_core_runtime.go` (contraste 2026-09-14). El runtime prepara reducer, derivaciones y coordinator y confirma dentro de una frontera común; no publica cada etapa por separado. Ver [engine.go](../../internal/telemetry/engine/engine.go) y [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md).
+
+Las reglas y resultados ISA-35 siguientes describen el componente y su corte original; no sustituir la frontera de commit del engine por el uso aislado de `Apply`/`Run`.
 
 ## Contrato
 

@@ -285,9 +285,6 @@ func TestBuildApprovedMalformedMenuRemainsUnknown(t *testing.T) {
 		mutate   func([]byte)
 	}{
 		{name: "vehicle count", evidence: "vehicle-count-invalid", mutate: func(buf []byte) { binary.LittleEndian.PutUint32(buf[1736:], maxVehicles+1) }},
-		{name: "non-finite source time", evidence: "session-values-invalid", mutate: func(buf []byte) {
-			binary.LittleEndian.PutUint64(buf[1700:], math.Float64bits(math.NaN()))
-		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -525,8 +522,6 @@ func TestParseRejectsInvalidActiveGridAtomically(t *testing.T) {
 			binary.LittleEndian.PutUint16(buf[scoring0+lmu13Layout.Scoring.CompletedLaps.Offset:], ^uint16(0))
 		}},
 		{name: "unknown sector", mutate: func(buf []byte) { buf[scoring0+lmu13Layout.Scoring.Sector.Offset] = 3 }},
-		{name: "non-finite current time", mutate: func(buf []byte) { binary.LittleEndian.PutUint64(buf[1700:], math.Float64bits(math.NaN())) }},
-		{name: "end precedes current", mutate: func(buf []byte) { binary.LittleEndian.PutUint64(buf[1708:], math.Float64bits(1)) }},
 		{name: "non-finite lap distance", mutate: func(buf []byte) {
 			binary.LittleEndian.PutUint64(buf[scoring0+lmu13Layout.Scoring.LapDistance.Offset:], math.Float64bits(math.Inf(1)))
 		}},
@@ -568,6 +563,43 @@ func TestParseRejectsInvalidActiveGridAtomically(t *testing.T) {
 				t.Fatalf("invalid grid published compatibility=%v vehicles=%d", got.Compatibility, len(got.Vehicles))
 			}
 			assertNoPublishedFields(t, got)
+		})
+	}
+}
+
+func TestParsePublishesTransientSessionScalarsAsInvalidFields(t *testing.T) {
+	fixture := knownBuffer(t)
+	for _, tt := range []struct {
+		name      string
+		mutate    func([]byte)
+		field     func(Observation) schema.Freshness
+		freshness schema.Freshness
+	}{
+		{name: "countdown current time", mutate: func(buf []byte) { binary.LittleEndian.PutUint64(buf[1700:], math.Float64bits(-30)) },
+			field: func(got Observation) schema.Freshness { return got.SourceTime.Freshness() }, freshness: schema.FreshnessInvalid},
+		{name: "non-finite current time", mutate: func(buf []byte) { binary.LittleEndian.PutUint64(buf[1700:], math.Float64bits(math.NaN())) },
+			field: func(got Observation) schema.Freshness { return got.SourceTime.Freshness() }, freshness: schema.FreshnessInvalid},
+		{name: "end precedes current", mutate: func(buf []byte) { binary.LittleEndian.PutUint64(buf[1708:], math.Float64bits(1)) },
+			field: func(got Observation) schema.Freshness { return got.EndTime.Freshness() }, freshness: schema.FreshnessInvalid},
+		{name: "unlimited maximum laps", mutate: func(buf []byte) { binary.LittleEndian.PutUint32(buf[1716:], ^uint32(0)) },
+			field: func(got Observation) schema.Freshness { return got.MaximumLaps.Freshness() }, freshness: schema.FreshnessInvalid},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := append([]byte(nil), fixture...)
+			tt.mutate(buf)
+			got, err := parseSupported(buf, time.Unix(0, 0).UTC())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Compatibility != CompatibilityKnown {
+				t.Fatalf("transient session scalar rejected compatibility=%v fingerprint=%q", got.Compatibility, got.Fingerprint)
+			}
+			if len(got.Vehicles) == 0 {
+				t.Fatal("transient session scalar dropped the active grid")
+			}
+			if freshness := tt.field(got); freshness != tt.freshness {
+				t.Fatalf("field freshness = %v, want %v", freshness, tt.freshness)
+			}
 		})
 	}
 }
@@ -801,6 +833,41 @@ func BenchmarkStableCopyAndParseTrackFixture(b *testing.B) {
 
 func parseSupported(buf []byte, received time.Time) (Observation, error) {
 	return parseWithBuild(buf, received, BuildEvidence{FileVersion: supportedLMUVersion})
+}
+
+func TestParsePlayerTyreWearFromLMUWheelFields(t *testing.T) {
+	buf := knownBuffer(t)
+	base, ok := lmu13Layout.TelemetryRows.rowBase(43)
+	if !ok {
+		t.Fatal("player telemetry row unavailable")
+	}
+	want := [4]float64{0.98, 0.91, 0.87, 0.93}
+	for index, offset := range []int{1000, 1260, 1520, 1780} {
+		binary.LittleEndian.PutUint64(buf[base+offset:], math.Float64bits(want[index]))
+	}
+	got, err := parseSupported(buf, time.Unix(0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, present := got.Vehicles[43].TyreWear.Value()
+	if !present || value != want {
+		t.Fatalf("player tyre wear = %v, present %v; want %v", value, present, want)
+	}
+	for _, other := range got.Vehicles[:43] {
+		if other.TyreWear.Freshness() != schema.FreshnessMissing {
+			t.Fatal("tyre wear published for another vehicle")
+		}
+	}
+	for _, invalidWear := range []float64{-0.1, 1.1, math.NaN()} {
+		binary.LittleEndian.PutUint64(buf[base+lmu13Layout.Telemetry.TyreWearRL.Offset:], math.Float64bits(invalidWear))
+		if field := readTyreWearField(buf, base); field.Freshness() != schema.FreshnessInvalid {
+			t.Fatalf("out-of-range tyre wear %v was not rejected", invalidWear)
+		}
+	}
+	binary.LittleEndian.PutUint64(buf[base+lmu13Layout.Telemetry.TyreWearRL.Offset:], math.Float64bits(0))
+	if field := readTyreWearField(buf, base); field.Freshness() != schema.FreshnessFresh {
+		t.Fatal("observed zero tyre fraction was lost")
+	}
 }
 
 func plausibleUnknownBuffer() []byte {

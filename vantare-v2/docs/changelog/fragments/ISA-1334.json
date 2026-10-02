@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1334",
+  "type": "feature",
+  "summary": "Nightly reúne las animaciones de Standings, Relative y Horizontal Standings Eficiencia y la señal de diferencia de vueltas de Relative en carrera.",
+  "technicalNotes": [
+    "Los tres trabajos fuente conservan su historia; Workshop filtra escenas por sistema y sesión y permite revisar sus pasos sincronizados.",
+    "La señal de vueltas utiliza la diferencia canónica del simulador y rechaza valores ausentes, malformados o sin calidad vigente antes de presentarlos.",
+    "El código de widgets coincide con el preview combinado aceptado, salvo la validación estricta de lapDelta y sus pruebas."
+  ],
+  "testing": [
+    "Pruebas de frontend, compilación, lint y ratchet de calidad sobre el árbol conjunto.",
+    "Pruebas de proyección Relative/overlayv2 y del contrato generado; comparación del código con el preview combinado."
+  ],
+  "knownLimitations": [
+    "Pendiente revisión visual de Horizontal Standings y verificación física en Windows/OBS con telemetría LMU real.",
+    "La integración inicial se limita a Nightly; testers/master y release requieren decisiones posteriores."
+  ]
+}

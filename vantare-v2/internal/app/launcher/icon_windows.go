@@ -549,19 +549,18 @@ var shortcutIndexCache = struct {
 }{}
 
 // vfunc returns the i-th slot of an object's vtable.
-func vfunc(p uintptr, index int) uintptr {
-	up := unsafe.Pointer(p)
-	vtablePtr := *(*unsafe.Pointer)(up)
+func vfunc(p unsafe.Pointer, index int) uintptr {
+	vtablePtr := *(*unsafe.Pointer)(p)
 	slotPtr := unsafe.Add(vtablePtr, uintptr(index)*unsafe.Sizeof(uintptr(0)))
 	return *(*uintptr)(slotPtr)
 }
 
-func comRelease(p uintptr) {
-	syscall.Syscall(vfunc(p, 2), 1, p, 0, 0)
+func comRelease(p unsafe.Pointer) {
+	syscall.Syscall(vfunc(p, 2), 1, uintptr(p), 0, 0)
 }
 
-func coCreateInstance(clsid, iid *syscall.GUID) (uintptr, bool) {
-	var out uintptr
+func coCreateInstance(clsid, iid *syscall.GUID) (unsafe.Pointer, bool) {
+	var out unsafe.Pointer
 	ret, _, _ := procCoCreateInstance.Call(
 		uintptr(unsafe.Pointer(clsid)),
 		0,
@@ -572,9 +571,9 @@ func coCreateInstance(clsid, iid *syscall.GUID) (uintptr, bool) {
 	return out, ret == 0
 }
 
-func queryInterface(p uintptr, iid *syscall.GUID) (uintptr, bool) {
-	var out uintptr
-	ret, _, _ := syscall.Syscall(vfunc(p, 0), 3, p, uintptr(unsafe.Pointer(iid)), uintptr(unsafe.Pointer(&out)))
+func queryInterface(p unsafe.Pointer, iid *syscall.GUID) (unsafe.Pointer, bool) {
+	var out unsafe.Pointer
+	ret, _, _ := syscall.Syscall(vfunc(p, 0), 3, uintptr(p), uintptr(unsafe.Pointer(iid)), uintptr(unsafe.Pointer(&out)))
 	return out, ret == 0
 }
 
@@ -597,13 +596,13 @@ func resolveLnkTarget(lnkPath string) string {
 	}
 
 	sl, ok := coCreateInstance(&clsidShellLink, &iidIShellLinkW)
-	if !ok || sl == 0 {
+	if !ok || sl == nil {
 		return ""
 	}
 	defer comRelease(sl)
 
 	pf, ok := queryInterface(sl, &iidIPersistFile)
-	if !ok || pf == 0 {
+	if !ok || pf == nil {
 		return ""
 	}
 	defer comRelease(pf)
@@ -613,13 +612,13 @@ func resolveLnkTarget(lnkPath string) string {
 		return ""
 	}
 	// IPersistFile::Load(this, pszFileName, dwMode)
-	if r, _, _ := syscall.Syscall(vfunc(pf, 5), 3, pf, uintptr(unsafe.Pointer(pathPtr)), 0); r != 0 {
+	if r, _, _ := syscall.Syscall(vfunc(pf, 5), 3, uintptr(pf), uintptr(unsafe.Pointer(pathPtr)), 0); r != 0 {
 		return ""
 	}
 
 	buf := make([]uint16, 260)
 	// IShellLinkW::GetPath(this, pszFile, cchMax, pfd, fFlags)
-	if r, _, _ := syscall.Syscall6(vfunc(sl, 3), 5, sl, uintptr(unsafe.Pointer(&buf[0])), 260, 0, 0, 0); r != 0 {
+	if r, _, _ := syscall.Syscall6(vfunc(sl, 3), 5, uintptr(sl), uintptr(unsafe.Pointer(&buf[0])), 260, 0, 0, 0); r != 0 {
 		return ""
 	}
 	return syscall.UTF16ToString(buf)
@@ -643,13 +642,13 @@ func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	}
 
 	sl, ok := coCreateInstance(&clsidShellLink, &iidIShellLinkW)
-	if !ok || sl == 0 {
+	if !ok || sl == nil {
 		return "", 0
 	}
 	defer comRelease(sl)
 
 	persist, ok := queryInterface(sl, &iidIPersistFile)
-	if !ok || persist == 0 {
+	if !ok || persist == nil {
 		return "", 0
 	}
 	defer comRelease(persist)
@@ -658,7 +657,7 @@ func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	if err != nil {
 		return "", 0
 	}
-	if r, _, _ := syscall.Syscall(vfunc(persist, 5), 3, persist, uintptr(unsafe.Pointer(pathPtr)), 0); r != 0 {
+	if r, _, _ := syscall.Syscall(vfunc(persist, 5), 3, uintptr(persist), uintptr(unsafe.Pointer(pathPtr)), 0); r != 0 {
 		return "", 0
 	}
 
@@ -667,7 +666,7 @@ func resolveLnkIconLocation(lnkPath string) (string, int32) {
 	if r, _, _ := syscall.Syscall6(
 		vfunc(sl, 16),
 		4,
-		sl,
+		uintptr(sl),
 		uintptr(unsafe.Pointer(&buf[0])),
 		260,
 		uintptr(unsafe.Pointer(&index)),
@@ -911,13 +910,13 @@ func getIconHighRes(path string) ([]byte, error) {
 
 	for _, list := range []int{shilJumbo, shilExtraLarge} {
 		for _, riid := range []syscall.GUID{iidIImageList, iidIImageList2} {
-			var pIL uintptr
+			var pIL unsafe.Pointer
 			r, _, _ := procSHGetImageList.Call(
 				uintptr(list),
 				uintptr(unsafe.Pointer(&riid)),
 				uintptr(unsafe.Pointer(&pIL)),
 			)
-			if r != 0 || pIL == 0 {
+			if r != 0 || pIL == nil {
 				continue
 			}
 			// IImageList::Release on cleanup.
@@ -925,7 +924,7 @@ func getIconHighRes(path string) ([]byte, error) {
 
 			var hIcon uintptr
 			// IImageList::GetIcon(this, iImage, uFlags, ppIcon) is vtable slot 10.
-			if gr, _, _ := syscall.Syscall6(vfunc(pIL, 10), 4, pIL, uintptr(index), uintptr(ildTransparent), uintptr(unsafe.Pointer(&hIcon)), 0, 0); gr != 0 {
+			if gr, _, _ := syscall.Syscall6(vfunc(pIL, 10), 4, uintptr(pIL), uintptr(index), uintptr(ildTransparent), uintptr(unsafe.Pointer(&hIcon)), 0, 0); gr != 0 {
 				continue
 			}
 			if hIcon == 0 {

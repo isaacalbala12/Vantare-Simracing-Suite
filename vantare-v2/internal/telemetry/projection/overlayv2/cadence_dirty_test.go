@@ -12,6 +12,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -55,6 +56,41 @@ func dirtyDiff(before, after derive.FinalState) DirtySet {
 	source := SourceContextV2{State: "connected"}
 	previous := observeDirtySignals(dirtyHeader(), before, source)
 	return observeDirtySignals(dirtyHeader(), after, source).diff(previous)
+}
+
+func TestTyreWearChangeInvalidatesDamageSection(t *testing.T) {
+	before := dirtyFinalState(1)
+	after := dirtyFinalState(1)
+	after.Observed.Vehicles[0].TyreWear = builderPresent([4]float64{0.99, 0.98, 0.97, 0.96})
+	if !dirtyDiff(before, after).Has(SectionDamage) {
+		t.Fatal("tyre wear change did not invalidate the damage frame section")
+	}
+}
+
+func TestRadarMovementInvalidatesSpotterSection(t *testing.T) {
+	before := dirtyFinalState(2)
+	before.Observed.Vehicles[0].WorldPosition = builderPresent(spatial.Position{X: 1, Z: 1})
+	before.Observed.Vehicles[1].WorldPosition = builderPresent(spatial.Position{X: 5, Z: 1})
+	after := dirtyFinalState(2)
+	after.Observed.Vehicles[0].WorldPosition = builderPresent(spatial.Position{X: 1, Z: 1})
+	after.Observed.Vehicles[1].WorldPosition = builderPresent(spatial.Position{X: 5, Z: 2})
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("nearby movement did not rebuild radar")
+	}
+}
+
+func TestRadarLapProgressInvalidatesSpotterSection(t *testing.T) {
+	before := dirtyFinalState(2)
+	after := dirtyFinalState(2)
+	after.Observed.Vehicles[1].CompletedLaps = builderPresent(standings.CompletedLaps(9))
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("lap count change did not rebuild radar colour")
+	}
+	after = dirtyFinalState(2)
+	after.Observed.TrackLength = builderPresent(standings.LapDistance(5000))
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("track length availability did not rebuild radar colour")
+	}
 }
 
 func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
@@ -132,6 +168,23 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			dirty: true,
 		},
 		{
+			name: "fresh car number changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].CarNumber = builderPresent(standings.CarNumber("007"))
+			},
+			dirty: true,
+		},
+		{
+			name: "stale car number remains omitted",
+			mutate: func(state *derive.FinalState) {
+				field, err := schema.NewField(standings.CarNumber("007"), schema.ProvenanceObserved, schema.FreshnessStale)
+				if err != nil {
+					panic(err)
+				}
+				state.Observed.Vehicles[1].CarNumber = field
+			},
+		},
+		{
 			name: "completed laps change",
 			mutate: func(state *derive.FinalState) {
 				state.Observed.Vehicles[2].CompletedLaps = builderPresent(standings.CompletedLaps(11))
@@ -169,6 +222,9 @@ func TestStandingsDirtySignalMatchesTheBuiltRows(t *testing.T) {
 		func(state *derive.FinalState) { state.Observed.Vehicles[1].InPit = builderPresent(pit.InPit(true)) },
 		func(state *derive.FinalState) {
 			state.Observed.Vehicles[2].LastLapTime = builderPresent(standings.LapTime(90.0))
+		},
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].CarNumber = builderPresent(standings.CarNumber("007"))
 		},
 		func(state *derive.FinalState) { state.Observed.Vehicles = state.Observed.Vehicles[:2] },
 	}
@@ -315,11 +371,11 @@ func TestRelativeWindowFarVehicleStaysClean(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
-	// Player is vehicle-000 at the front; window is 8 behind. Vehicle 090 is far.
+	// Player is vehicle-000 at the front; window is 8 behind. Vehicle 050 is outside both global and class windows.
 	before := cloneFinalState(base)
 	after := cloneFinalState(base)
 	for index := range after.Derived.Gaps.Vehicles {
-		if string(after.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-090" {
+		if string(after.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-050" {
 			field, _ := schema.NewField(standings.RelativeTime(-999.0), schema.ProvenanceDerived, schema.FreshnessFresh)
 			after.Derived.Gaps.Vehicles[index].Time = field
 		}
@@ -327,7 +383,7 @@ func TestRelativeWindowFarVehicleStaysClean(t *testing.T) {
 	// Also change observed fields of far vehicle that are projected if it were inside window,
 	// but since it is outside, the change should not dirty relative.
 	for index := range after.Observed.Vehicles {
-		if string(after.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-090" {
+		if string(after.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-050" {
 			after.Observed.Vehicles[index].DriverName = builderPresent(identity.DriverName("FarDriverChanged"))
 			after.Observed.Vehicles[index].VehicleClass = builderPresent(standings.VehicleClass("lmp2"))
 		}

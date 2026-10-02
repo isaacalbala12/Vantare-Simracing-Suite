@@ -12,6 +12,18 @@ func (s *Service) currentResult() *Result {
 	return cloneResult(s.current)
 }
 
+// currentResultLocked is currentResult for callers already holding policyMu.
+// Lock order is always policyMu -> currentMu; never take policyMu while
+// holding currentMu.
+func (s *Service) currentResultLocked() *Result {
+	if s == nil {
+		return nil
+	}
+	s.currentMu.RLock()
+	defer s.currentMu.RUnlock()
+	return cloneResult(s.current)
+}
+
 // AllowsTelemetryAnalysis is the dedicated access policy for historical
 // telemetry. Operational roles grant revocable internal access only; they are
 // checked separately and are never converted into commercial capabilities.
@@ -42,6 +54,7 @@ func cloneResult(source *Result) *Result {
 	result.Entitlements = append([]Entitlement(nil), source.Entitlements...)
 	result.Capabilities = append([]Capability(nil), source.Capabilities...)
 	result.OperationalRoles = append([]OperationalRole(nil), source.OperationalRoles...)
+	result.VerifiedGrants = append([]VerifiedGrant(nil), source.VerifiedGrants...)
 	if source.GraceEndsAt != nil {
 		graceEndsAt := *source.GraceEndsAt
 		result.GraceEndsAt = &graceEndsAt

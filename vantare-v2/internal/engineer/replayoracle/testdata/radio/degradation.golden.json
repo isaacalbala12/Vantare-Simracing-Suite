@@ -1,0 +1,199 @@
+{
+  "labVersion": 1,
+  "scenarioId": "degradation",
+  "outcomes": [
+    {
+      "sequence": 1,
+      "step": 0,
+      "atMs": 1000,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 2,
+      "step": 0,
+      "atMs": 1000,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 3,
+      "step": 0,
+      "atMs": 1000,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 4,
+      "step": 0,
+      "atMs": 1000,
+      "event": "held",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 5,
+      "step": 1,
+      "atMs": 1100,
+      "event": "spotter_unavailable",
+      "reason": "observation_not_ready"
+    },
+    {
+      "sequence": 6,
+      "step": 1,
+      "atMs": 1100,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-1-fuel.low_half_tank"
+    },
+    {
+      "sequence": 7,
+      "step": 1,
+      "atMs": 1100,
+      "event": "submitted",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-2-timings.gap_report"
+    },
+    {
+      "sequence": 8,
+      "step": 2,
+      "atMs": 1200,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 9,
+      "step": 2,
+      "atMs": 1200,
+      "event": "intents_reset",
+      "detail": "fuel.for_pit_now,fuel.laps_remaining_1,fuel.laps_remaining_2,fuel.laps_remaining_3,fuel.laps_remaining_4,fuel.low_1l,fuel.low_2l,fuel.low_half_tank"
+    },
+    {
+      "sequence": 10,
+      "step": 2,
+      "atMs": 1200,
+      "event": "dropped",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-2-timings.gap_report"
+    },
+    {
+      "sequence": 11,
+      "step": 2,
+      "atMs": 1200,
+      "event": "coalesced",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-3-timings.gap_report"
+    },
+    {
+      "sequence": 12,
+      "step": 3,
+      "atMs": 1300,
+      "event": "reset",
+      "reason": "source_unavailable"
+    },
+    {
+      "sequence": 13,
+      "step": 4,
+      "atMs": 1400,
+      "event": "snapshot_rejected",
+      "reason": "source_unavailable"
+    },
+    {
+      "sequence": 14,
+      "step": 6,
+      "atMs": 1600,
+      "event": "snapshot_rejected",
+      "reason": "stale_context"
+    },
+    {
+      "sequence": 15,
+      "step": 7,
+      "atMs": 1700,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-2-spotter.car_right"
+    },
+    {
+      "sequence": 16,
+      "step": 7,
+      "atMs": 1700,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-4-fuel.low_half_tank"
+    },
+    {
+      "sequence": 17,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-2-spotter.car_right"
+    },
+    {
+      "sequence": 18,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-2-spotter.car_right"
+    },
+    {
+      "sequence": 19,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-2-spotter.car_right"
+    },
+    {
+      "sequence": 20,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-4-fuel.low_half_tank"
+    },
+    {
+      "sequence": 21,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-4-fuel.low_half_tank"
+    },
+    {
+      "sequence": 22,
+      "step": 7,
+      "atMs": 1700,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-4-fuel.low_half_tank"
+    }
+  ],
+  "metrics": {
+    "samples": 3,
+    "p95MS": 0,
+    "maximumMS": 0
+  }
+}

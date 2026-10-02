@@ -1,3 +1,4 @@
+import { cx } from "./cx";
 export interface ToggleProps {
   pressed: boolean;
   onChange(v: boolean): void;
@@ -14,7 +15,7 @@ export function Toggle({ pressed, onChange, label, disabled, title, className }:
     <button
       aria-label={label}
       aria-pressed={pressed}
-      className={["orbit-toggle", className].filter(Boolean).join(" ")}
+      className={cx("orbit-toggle", className)}
       data-tip={title}
       data-tip-side="top"
       disabled={disabled}

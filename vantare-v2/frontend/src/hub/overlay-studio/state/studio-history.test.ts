@@ -211,6 +211,13 @@ describe("markStudioHistorySaved", () => {
     expect(saved.future).toHaveLength(0);
     expect(isStudioHistoryDirty(saved)).toBe(false);
   });
+
+  it("treats two NaN values in the same numeric field as equal", () => {
+    const history = createStudioHistory(buildDocument());
+    history.present.layouts.general.widgets[0].layout.x = NaN;
+    const acknowledged = structuredClone(history.present);
+    expect(isStudioHistoryDirty(markStudioHistorySaved(history, acknowledged))).toBe(false);
+  });
 });
 
 describe("discardStudioHistory", () => {

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface PillProps {
   children: ReactNode;
@@ -29,9 +30,7 @@ export function Pill({
       <span className="orbit-pill__label">{children}</span>
     </>
   );
-  const classes = ["orbit-pill", pulse ? "orbit-pill--pulse" : null, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-pill", pulse ? "orbit-pill--pulse" : null, className);
 
   if (onClick) {
     return (

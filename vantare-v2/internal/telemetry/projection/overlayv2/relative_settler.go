@@ -4,9 +4,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 const relativeSettledHold = 7 * time.Second
@@ -104,12 +102,12 @@ func sameRelativeIDs(left, right []string) bool {
 func rehydrateSettledRows(final derive.FinalState, accepted []RelativeRowV2) ([]RelativeRowV2, bool) {
 	vehicles := make(map[string]int, len(final.Observed.Vehicles))
 	positions := resolvedRelativePositions(final.Observed.Vehicles)
-	gaps := make(map[string]schema.Field[standings.RelativeTime], len(final.Derived.Gaps.Vehicles))
+	gaps := make(map[string]derive.VehicleGap, len(final.Derived.Gaps.Vehicles))
 	for i := range final.Observed.Vehicles {
 		vehicles[string(final.Observed.Vehicles[i].Identity.Vehicle)] = i
 	}
 	for _, gap := range final.Derived.Gaps.Vehicles {
-		gaps[string(gap.Vehicle)] = gap.Time
+		gaps[string(gap.Vehicle)] = gap
 	}
 	rows := make([]RelativeRowV2, 0, len(accepted))
 	for _, previous := range accepted {

@@ -1,5 +1,9 @@
 # ENG-06 — Runtime productivo y transporte preemptivo
 
+> **Ámbito documental (2026-09-14):** Referencia de entrega legacy. El servicio actual usa radio y familias nuevas por defecto; conserva ramas de rollback. No retirar este contrato sin retirar también sus consumidores.
+> [Referencia vigente](rework-spec.md).
+
+
 Estado: implementación WIP en la rama aislada de ISA-167. Los P1/P2 de la
 primera review independiente están corregidos; pendiente de re-review. Sin
 promoción, TTS/STT, UI nueva, Pit Manager ni Strategy.

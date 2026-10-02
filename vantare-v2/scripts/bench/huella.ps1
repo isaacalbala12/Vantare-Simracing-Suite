@@ -60,6 +60,7 @@ $outputDir = Resolve-BenchPath $Salida
 $processHelper = Resolve-BenchPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-BenchPath 'scripts/bench/huella-cdp.mjs' -MustExist
 $summaryHelper = Resolve-BenchPath 'scripts/bench/huella-resumen.mjs' -MustExist
+. (Join-Path $PSScriptRoot 'huella-comun.ps1')
 $distPath = Resolve-BenchPath 'frontend/dist' -MustExist
 if ([IO.Path]::GetExtension($exePath) -ne '.exe') { throw '-Exe debe apuntar a un ejecutable .exe.' }
 if ([IO.Path]::GetExtension($profilePath) -ne '.json') { throw '-Perfil debe apuntar a un perfil JSON.' }
@@ -243,29 +244,6 @@ function Get-OwnCimProcesses {
     })
 }
 
-function Get-GpuTotals {
-    $totals = @{}
-    try {
-        $samples = (Get-Counter -Counter @('\GPU Engine(*)\Utilization Percentage', '\GPU Process Memory(*)\Dedicated Usage') -ErrorAction Stop).CounterSamples
-        foreach ($sample in $samples) {
-            if ($sample.InstanceName -notmatch 'pid_(\d+)') { continue }
-            $processId = [int]$Matches[1]
-            if (-not $totals.ContainsKey($processId)) { $totals[$processId] = @{ Engine = 0.0; Dedicated = 0.0; Engines = [Collections.Generic.List[object]]::new(); Memory = [Collections.Generic.List[object]]::new() } }
-            if ($sample.Path -like '*Utilization Percentage') {
-                $totals[$processId].Engine += [double]$sample.CookedValue
-                $totals[$processId].Engines.Add([pscustomobject]@{ instance = $sample.InstanceName; percent = [double]$sample.CookedValue })
-            } elseif ($sample.Path -like '*Dedicated Usage') {
-                $totals[$processId].Dedicated += [double]$sample.CookedValue
-                $totals[$processId].Memory.Add([pscustomobject]@{ instance = $sample.InstanceName; dedicatedBytes = [double]$sample.CookedValue })
-            }
-        }
-        return [pscustomobject]@{ Valid = $true; Totals = $totals; Error = $null }
-    } catch {
-        Write-Warning "Contadores GPU no disponibles en esta muestra: $($_.Exception.Message)"
-        return [pscustomobject]@{ Valid = $false; Totals = @{}; Error = $_.Exception.Message }
-    }
-}
-
 function Get-VantareEtwSessions {
     $queryOutput = & logman.exe query -ets 2>&1
     $queryExitCode = $LASTEXITCODE
@@ -280,23 +258,6 @@ function Get-VantareEtwSessions {
         Write-Warning "logman query -ets terminó con código $queryExitCode; se conservaron las sesiones VantareHuella reconocibles de su salida."
     }
     return $sessions
-}
-
-function Stop-HuellaEtwSession([string]$Name) {
-    if (-not $Name) { return $true }
-    $null = & logman.exe stop $Name -ets 2>&1
-    if ($LASTEXITCODE -eq 0) { return $true }
-    if (Get-Command Stop-EtwTraceSession -ErrorAction SilentlyContinue) {
-        try {
-            Stop-EtwTraceSession -Name $Name -ErrorAction Stop
-            return $true
-        } catch { return $false }
-    }
-    return $false
-}
-
-function Format-Invariant([double]$Value) {
-    $Value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
 }
 
 function Update-ProcessClassification {
@@ -576,31 +537,12 @@ try {
 
     if ($presentMon -and -not $presentMon.HasExited) { $presentMon.WaitForExit(($Duracion + 30) * 1000) | Out-Null }
     if (Test-Path -LiteralPath $presentMonCsv) {
-        $presentMonFrames = @(Import-Csv -LiteralPath $presentMonCsv)
-        if ($presentMonFrames.Count -gt 0) {
-            $presentMonColumns = @($presentMonFrames[0].PSObject.Properties.Name)
-            if ('FrameTime' -notin $presentMonColumns -or 'DisplayedTime' -notin $presentMonColumns) {
-                throw 'CSV de PresentMon incompatible: se requieren FrameTime y DisplayedTime del contrato v2.'
-            }
-        }
-        $droppedFrames = 0
-        $validPresentMonFrames = 0
-        foreach ($frame in $presentMonFrames) {
-            [double]$frameValue = 0
-            if (-not [double]::TryParse([string]$frame.FrameTime, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$frameValue)) { continue }
-            $displayedTime = [string]$frame.DisplayedTime
-            [double]$displayedValue = 0
-            $dropped = if ($displayedTime -eq 'NA') {
-                1
-            } elseif ([double]::TryParse($displayedTime, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$displayedValue) -and $displayedValue -gt 0) {
-                0
-            } else {
-                throw "DisplayedTime inesperado en CSV PresentMon v2: '$displayedTime'."
-            }
-            $droppedFrames += $dropped
-            $validPresentMonFrames += 1
+        $pmFrames = Read-PresentMonFrames $presentMonCsv
+        $droppedFrames = $pmFrames.Dropped
+        $validPresentMonFrames = $pmFrames.Frames.Count
+        foreach ($frame in $pmFrames.Frames) {
             $rows.Add([pscustomobject][ordered]@{
-                timestamp = [string]$frame.CPUStartTime
+                timestamp = $frame.Timestamp
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
                 licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
@@ -608,8 +550,8 @@ try {
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
-                cpuPct = $null; gpuSampleValid = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
-                dropped = [string]$dropped
+                cpuPct = $null; gpuSampleValid = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant $frame.FrameTimeMs
+                dropped = [string]$frame.Dropped
             })
         }
         $gameFrametimeValid = $validPresentMonFrames -gt 0

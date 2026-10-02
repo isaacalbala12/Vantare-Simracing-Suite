@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { cx } from "./cx";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Alineado a la derecha y en mono (`.num`). */
@@ -8,9 +9,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({ numeric, unit, className, ...rest }: InputProps) {
-  const classes = ["orbit-input", numeric ? "orbit-input--num" : null, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-input", numeric ? "orbit-input--num" : null, className);
   const input = <input className={classes} type={rest.type ?? "text"} {...rest} />;
 
   if (!unit) return input;

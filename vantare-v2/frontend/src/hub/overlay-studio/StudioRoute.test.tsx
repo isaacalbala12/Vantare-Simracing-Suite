@@ -209,6 +209,28 @@ describe('StudioRoute', () => {
     });
   });
 
+  // Regresion ISA-1149: cuando la carga falla, history queda a null y el
+  // guard !document ganaba al de lastError — el usuario veia un spinner
+  // eterno en lugar del error.
+  it('muestra el error de carga en lugar de un spinner eterno', async () => {
+    const client: StudioProfileClient = {
+      load: vi.fn(async () => {
+        throw new Error('read failed');
+      }),
+      save: vi.fn(),
+    };
+    render(
+      <StudioRoute
+        client={client}
+        coordinator={createTelemetryRateCoordinator()}
+        liveAvailable={false}
+      />,
+    );
+    bootProfiles();
+    await screen.findByTestId('studio-route-load-error');
+    expect(screen.queryByTestId('studio-route-loading')).toBeNull();
+  });
+
   it('uses one bounded pull session for live Studio without global telemetry events', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       if (String(input).endsWith('/close')) {

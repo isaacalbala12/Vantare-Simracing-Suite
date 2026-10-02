@@ -17,11 +17,26 @@ import { LauncherStoreContext } from "./launcher-context";
 
 export type { AppPickedListener, AppPickedPayload, LauncherBridgeLike } from "./launcher-bridge";
 
+/** Proyección mínima de perfil para consumidores que solo listan perfiles. */
+export type LauncherProfileSummary = { id: string; name: string; steps: number };
+
+const projectProfiles = (s: LauncherSnapshot | null): LauncherProfileSummary[] =>
+  [...(s?.userProfiles ?? []), ...(s?.vantareProfiles ?? [])].map((p) => ({
+    id: p.id,
+    name: p.name,
+    steps: p.steps?.length ?? 0,
+  }));
+
+const profilesKey = (list: LauncherProfileSummary[]): string =>
+  list.map((p) => `${p.id}\u001f${p.name}\u001f${p.steps}`).join("\u001e");
+
 export type LauncherStore = {
   getSnapshot: () => LauncherSnapshot | null;
   subscribe: (listener: () => void) => () => void;
   getDiscoveryProgress: () => LauncherDiscoveryProgress | null;
   subscribeDiscoveryProgress: (listener: () => void) => () => void;
+  getProfiles: () => LauncherProfileSummary[];
+  subscribeProfiles: (listener: () => void) => () => void;
   discoverApps: (force?: boolean) => void;
   start: () => void;
   stop: () => void;
@@ -58,6 +73,22 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
   let unsubscribeBridge: (() => void) | null = null;
   const subscribers = new Set<() => void>();
   const progressSubscribers = new Set<() => void>();
+  const profilesSubscribers = new Set<() => void>();
+  let profilesCache: LauncherProfileSummary[] = [];
+  let profilesLastKey = "";
+
+  // El puente entrega snapshots deserializados de nuevo: cada publicación
+  // trae referencias nuevas aunque el contenido no cambie. El canal de
+  // perfiles solo notifica cuando la proyección {id,name,steps} cambia de
+  // verdad, así OrbitShell no repinta con cada paso de cadena.
+  const publishProfiles = (next: LauncherSnapshot | null) => {
+    const list = projectProfiles(next);
+    const key = profilesKey(list);
+    if (key === profilesLastKey) return;
+    profilesLastKey = key;
+    profilesCache = list;
+    profilesSubscribers.forEach((listener) => listener());
+  };
 
   const notify = () => {
     subscribers.forEach((subscriber) => subscriber());
@@ -74,6 +105,7 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
       started = true;
       unsubscribeBridge = bridge.subscribeSnapshot((nextSnapshot) => {
         snapshot = nextSnapshot;
+        publishProfiles(nextSnapshot);
         notify();
       });
       const unsubscribeProgress = bridge.subscribeDiscoveryProgress?.((next) => { discoveryProgress = next; if (!next.scanning) discoveryRequested = false; progressSubscribers.forEach((subscriber) => subscriber()); }) ?? (() => undefined);
@@ -89,10 +121,16 @@ export function createLauncherStore(bridge: LauncherBridgeLike = defaultBridge):
       snapshot = null;
       discoveryProgress = null;
       discoveryRequested = false;
+      publishProfiles(null);
       notify();
     },
     requestSnapshot: () => bridge.requestSnapshot(),
     getDiscoveryProgress: () => discoveryProgress,
+    getProfiles: () => profilesCache,
+    subscribeProfiles: (listener) => {
+      profilesSubscribers.add(listener);
+      return () => profilesSubscribers.delete(listener);
+    },
     subscribeDiscoveryProgress: (listener) => { progressSubscribers.add(listener); return () => progressSubscribers.delete(listener); },
     discoverApps: (force = false) => {
       if (discoveryRequested) return;
@@ -136,9 +174,7 @@ export function useLauncherSnapshot(): LauncherSnapshot | null {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }
 
-export function useLauncherSelector<T>(
-  selector: (snapshot: LauncherSnapshot | null) => T,
-): T {
-  const snapshot = useLauncherSnapshot();
-  return selector(snapshot);
+export function useLauncherProfiles(): LauncherProfileSummary[] {
+  const store = useLauncherStore();
+  return useSyncExternalStore(store.subscribeProfiles, store.getProfiles, store.getProfiles);
 }

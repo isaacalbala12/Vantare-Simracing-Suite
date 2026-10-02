@@ -4,13 +4,14 @@ import {
   type LoadedProfileDocumentV3,
   type ProfileDocumentV3,
 } from "../../../overlay/core/profile-document";
+import { STUDIO_PREMIUM_SAVE_DENIED_KEY } from "../studio-v3-i18n";
 import { migrateRetiredDesigns } from "../designs/design-utils";
 import { conformAspectLockedLayouts } from "../../../overlay/core/profile-layout-conform";
 
 export type StudioSaveResult =
   | { status: "saved"; document: ProfileDocumentV3; revision: string }
   | { status: "conflict"; message: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; widgetIds?: string[] };
 
 export interface StudioProfileClient {
   load(file: string): Promise<LoadedProfileDocumentV3>;
@@ -61,6 +62,14 @@ function readEventPayload(payload: unknown): Record<string, unknown> {
     }
   }
   return {};
+}
+
+function readWidgetIds(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const ids = value.filter((entry): entry is string => typeof entry === "string" && entry !== "");
+  return ids.length > 0 ? ids : undefined;
 }
 
 function readMigratedFrom(value: unknown): LoadedProfileDocumentV3["migratedFrom"] {
@@ -182,6 +191,22 @@ export function createStudioProfileClient(
           event: ERROR_EVENT,
           onMatch: (data, { resolve, cleanup }) => {
             cleanup();
+            // Native save denial during downgrade (ISA-1105): Go keeps its
+            // payload and adds code/widgetIds. Only that code maps to the
+            // existing translated notice; any other error keeps its message
+            // with no string matching and no reworked generic errors.
+            if (data.code === "widget-access-denied") {
+              const denied: Extract<StudioSaveResult, { status: "error" }> = {
+                status: "error",
+                message: STUDIO_PREMIUM_SAVE_DENIED_KEY,
+              };
+              const widgetIds = readWidgetIds(data.widgetIds);
+              if (widgetIds !== undefined) {
+                denied.widgetIds = widgetIds;
+              }
+              resolve(denied);
+              return;
+            }
             resolve({
               status: "error",
               message: String(data.message ?? "profile save failed"),

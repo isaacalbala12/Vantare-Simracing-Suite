@@ -6,7 +6,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { Button, Input, ListRow } from "../../../ui/orbit";
 import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
 import { buildAddWidgetCommand } from "../catalog/studio-catalog";
-import { useStudioDocument } from "../state/studio-store";
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from "../state/studio-store";
 import { fill, systemLabel, widgetLabel } from "./studio-orbit-model";
 
 /** Tirador de arrastre del prototipo (`.witem .grip`). */
@@ -83,8 +83,12 @@ function sortWidgets(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
  * navegable con teclado (`08-accesibilidad.md`).
  */
 export function StudioWidgetList(): React.ReactElement {
-  const { access, document, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } =
-    useStudioDocument();
+  const widgetPolicy = useStudioWidgetPolicy();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const { dispatch, selectWidget } = useStudioActions();
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -96,9 +100,9 @@ export function StudioWidgetList(): React.ReactElement {
       return ordered;
     }
     return ordered.filter((widget) =>
-      `${widgetLabel(widget)} ${widget.type} ${widget.id}`.toLowerCase().includes(normalized),
+      `${widgetLabel(widget, t)} ${widget.type} ${widget.id}`.toLowerCase().includes(normalized),
     );
-  }, [activeLayout?.widgets, query]);
+  }, [activeLayout?.widgets, query, t]);
 
   const handleAddWidget = (type: WidgetType) => {
     const definition = widgetTypeRegistry.get(type);
@@ -141,7 +145,7 @@ export function StudioWidgetList(): React.ReactElement {
         ) : null}
         {widgets.map((widget) => {
           const enabled = widget.behavior.enabled;
-          const name = widgetLabel(widget);
+          const name = widgetLabel(widget, t);
           return (
             <div
               className="orbit-studio-witem"
@@ -197,7 +201,7 @@ export function StudioWidgetList(): React.ReactElement {
       </div>
 
       <AddWidgetDialog
-        access={access}
+        policy={widgetPolicy}
         onAdd={handleAddWidget}
         onClose={() => setAddDialogOpen(false)}
         open={addDialogOpen}

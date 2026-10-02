@@ -1,5 +1,40 @@
 # Handoff vivo — Telemetry Core
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+## ISA-1388 — proyección espacial del radar (2026-09-25)
+
+La [issue #1388](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1388) coordina la ampliación del contrato Overlay V2 para el widget Radar. `FrameV2.radar` publica posiciones relativas al jugador solo con pose fresca, limita rivales a 30 m y 16 entradas, y usa la geometría del Spotter para el solapamiento. El transporte tipado conserva paridad con JSON canónico y el detector de cambios de la sección Spotter también detecta movimiento sin cambio de veredicto lateral. Goldens, generador TS y pruebas de proyección/transporte están actualizados. La validación física de la orientación y posiciones LMU en sesión activa sigue pendiente. La autoridad de producto para este widget reside en el seguimiento vivo de Asana del proyecto Overlay Studio.
+
+
+## VAN-727 — cierre adversarial local de facts round 2 — 2026-09-15
+
+Sobre `ROUND_BASE ae11bef7`, candidato original `b6462c4b` y continuación
+`43f86f0f`: las tres suites frontend completas pasan con Node 22.23.0; la
+comparación Go macOS de 137 paquetes conserva exactamente los mismos dos
+fallos de plataforma en base y candidata. Astra High pidió tres refuerzos de
+evidencia: transición `performance null/omitido` en ambos sentidos, benchmark
+F04 con objetos decodificados independientemente, y contratos directos de
+ownership/Prepare-sin-Commit. Quedaron cubiertos sin cambiar producto.
+
+F04 conserva ~2,95× con objetos independientes y cero reencuentros con la
+referencia retenida en 100 publicaciones verificadas. F07 confirma en 10 pares
+intercalados -42,23% tiempo, -49,14% bytes y 5→4 allocs en full/fresh, sin
+cambio significativo en los otros regímenes. El arnés combinado 12/12
+demuestra que la base omite `CarNumber` dinámico y el candidato reconstruye
+standings sin perder skips estáticos. Estado: apto para revisión de
+integración; Windows/Wails/LMU real sigue no ejecutado. Informe:
+`docs/analysis/perf-facts-round2/FINAL_REPORT.md`. Sin merge, push, PR, deploy
+ni release.
+
+Revisión final Astra High sobre `be070261`: **APPROVE**, P0–P3 pendientes =
+0. La tarea VAN-727 queda cerrada en Notion y permanece `Sin integrar`.
+
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

@@ -25,7 +25,10 @@ func TestFailureAndRetryPolicies(t *testing.T) {
 	if !ContinueAfterFailure(app.FailureContinue, false) {
 		t.Fatal("continue policy must continue")
 	}
-	if got := RetryAttempts(app.RetryAll, 9); got != 3 {
-		t.Fatalf("retry attempts should be capped at 3, got %d", got)
+	if got := RetryAttempts(app.RetryAll, 9); got != 0 {
+		t.Fatalf("retry all must not retry individual steps, got %d", got)
+	}
+	if got := FullRetryAttempts(9); got != 3 {
+		t.Fatalf("full retry attempts should be capped at 3, got %d", got)
 	}
 }

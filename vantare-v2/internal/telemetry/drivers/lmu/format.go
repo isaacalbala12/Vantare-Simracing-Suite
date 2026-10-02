@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 const (
@@ -77,6 +78,7 @@ type Observation struct {
 	EndTime        schema.Field[session.EndTime]
 	MaximumLaps    schema.Field[session.MaximumLaps]
 	TrackName      schema.Field[string]
+	TrackLength    schema.Field[standings.LapDistance]
 	SessionType    schema.Field[session.Type]
 	VehicleCount   schema.Field[schema.Count]
 	PlayerPresent  schema.Field[bool]
@@ -94,11 +96,20 @@ type Observation struct {
 	InPit          schema.Field[pit.InPit]
 	Fuel           schema.Field[energy.Fuel]
 	Damage         schema.Field[damage.State]
-	Vehicles       []VehicleObservation
-	REST           RESTObservation
-	MatrixVersion  uint16
-	Decisions      []FieldDecision
-	Conflicts      []ConflictDiagnostic
+	// AmbientTemp and TrackTemp carry the REST sessionInfo Celsius readings
+	// (ISA-1106, REST-joined like CarNumber: no SHM source, no matrix rule).
+	// SessionFlag carries the conservative global flag assertion: yellow
+	// only on positive evidence, missing otherwise, never green by absence.
+	AmbientTemp     schema.Field[weather.Temperature]
+	TrackTemp       schema.Field[weather.Temperature]
+	RainFraction    schema.Field[weather.Fraction]
+	WetnessFraction schema.Field[weather.Fraction]
+	SessionFlag     schema.Field[session.Flag]
+	Vehicles        []VehicleObservation
+	REST            RESTObservation
+	MatrixVersion   uint16
+	Decisions       []FieldDecision
+	Conflicts       []ConflictDiagnostic
 }
 
 // VehicleSourceID is the LMU slot ID for one continuously occupied row. It is
@@ -144,6 +155,7 @@ type VehicleObservation struct {
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
 	Damage           schema.Field[damage.State]
+	TyreWear         schema.Field[[4]float64]
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -176,13 +188,16 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	if !ok {
 		return rejectedObservation(result, profile, "session-string-invalid"), nil
 	}
+	// Los escalares de sesion no rechazan el frame (ISA-848): estados
+	// legitimos de LMU los dejan fuera de rango de forma transitoria —
+	// cuenta atras con currentTime negativo, ultima vuelta de una carrera a
+	// tiempo con endTime ya superado, o -1 en maximumLaps sin limite de
+	// vueltas. La coherencia del layout ya la prueban el recuento de
+	// vehiculos, el nombre de pista y la parrilla biyectiva; un escalar
+	// atipico se publica como campo invalido, no como observacion rechazada.
 	currentSeconds := readFloat64(buf, lmu13Layout.Session.CurrentTime.Offset)
-	currentTime, currentValid := durationFromSeconds(currentSeconds)
 	endSeconds := readFloat64(buf, lmu13Layout.Session.EndTime.Offset)
 	maximumLaps := readInt32(buf, lmu13Layout.Session.MaximumLaps.Offset)
-	if !currentValid || !finite(endSeconds) || endSeconds < currentSeconds || maximumLaps < 0 {
-		return rejectedObservation(result, profile, "session-values-invalid"), nil
-	}
 	grid, playerIndex, valid := parseActiveGrid(buf, int(vehicles))
 	if !valid {
 		return rejectedObservation(result, profile, "active-grid-invalid"), nil
@@ -197,11 +212,31 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, evidence, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
 	result.TrackName = observed(normalizeTrackName(track))
+	// LMUScoringInfo.mLapDist, audited header +88 (absolute 1720).
+	length := readFloat64(buf, lmu13Layout.Session.TrackLength.Offset)
+	if finite(length) && length > 0 {
+		result.TrackLength = observed(standings.LapDistance(length))
+	} else if length != 0 {
+		result.TrackLength = invalid[standings.LapDistance]()
+	}
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
 	result.SessionType = validateSessionType(readInt32(buf, lmu13Layout.Session.SessionType.Offset))
-	result.SourceTime = observed(currentTime)
-	result.EndTime = observed(session.EndTime(endSeconds))
-	result.MaximumLaps = observed(session.MaximumLaps(maximumLaps))
+	result.SourceTime = validateDuration(currentSeconds)
+	if vehicles > 0 {
+		rain := readFloat64(buf, lmu13Layout.Session.RainFraction.Offset)
+		result.RainFraction = invalid[weather.Fraction]()
+		if finite(rain) && rain >= 0 && rain <= 1 {
+			result.RainFraction = observed(weather.Fraction(rain))
+		}
+	}
+	result.EndTime = invalid[session.EndTime]()
+	if finite(endSeconds) && (!finite(currentSeconds) || endSeconds >= currentSeconds) {
+		result.EndTime = observed(session.EndTime(endSeconds))
+	}
+	result.MaximumLaps = invalid[session.MaximumLaps]()
+	if maximumLaps >= 0 {
+		result.MaximumLaps = observed(session.MaximumLaps(maximumLaps))
+	}
 	result.Vehicles = grid
 	if playerPresent {
 		publishPlayer(&result, grid[playerIndex])
@@ -431,6 +466,27 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 		row.DeltaBest = schema.MissingField[session.DeltaSeconds]()
 	}
 	row.Damage = readDamageField(buf, base)
+	row.TyreWear = readTyreWearField(buf, base)
+}
+
+// LMU mWear is the remaining fraction of each tyre, ordered FL/FR/RL/RR.
+// Reject the whole set when any wheel has no plausible measurement.
+func readTyreWearField(buf []byte, base int) schema.Field[[4]float64] {
+	fields := [4]layoutField{
+		lmu13Layout.Telemetry.TyreWearFL,
+		lmu13Layout.Telemetry.TyreWearFR,
+		lmu13Layout.Telemetry.TyreWearRL,
+		lmu13Layout.Telemetry.TyreWearRR,
+	}
+	var wear [4]float64
+	for index, field := range fields {
+		value := readFloat64(buf, base+field.Offset)
+		if !finite(value) || value < 0 || value > 1 {
+			return invalid[[4]float64]()
+		}
+		wear[index] = value
+	}
+	return observed(wear)
 }
 
 func readPositionField(buf []byte, offset int) schema.Field[spatial.Position] {

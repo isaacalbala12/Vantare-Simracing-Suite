@@ -4,14 +4,14 @@ import type { InspectorSectionId } from "../core/widget-definition";
 import type { LayoutViewport } from "../core/layout-viewport";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
-import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
+import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { LayoutSection } from "../../hub/overlay-studio/inspector/LayoutSection";
 import { DesignSection } from "../../hub/overlay-studio/inspector/DesignSection";
 import { ActionsSection } from "../../hub/overlay-studio/inspector/ActionsSection";
 import { resolveInspectorSections } from "../../hub/overlay-studio/inspector/inspector-sections";
 import { createWailsWidgetDesignClient } from "../../hub/overlay-studio/designs/widget-design-client";
-import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
+import { useStudioActions, useStudioDirty, useStudioSelector } from "../../hub/overlay-studio/state/studio-store";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useInplaceAutosave } from "./use-inplace-autosave";
 
@@ -25,7 +25,7 @@ export type InPlaceInspectorPanelProps = {
   side?: "left" | "right";
   /** True mientras se arrastra o redimensiona un widget: el panel se vuelve fantasma. */
   ghosted?: boolean;
-  access?: AccessContext;
+  policy: StudioPolicy;
   licenseLoading?: boolean;
   autosave: ReturnType<typeof useInplaceAutosave>;
 };
@@ -76,12 +76,17 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
     selectWidget,
     side = "right",
     ghosted = false,
-    access,
+    policy,
     licenseLoading = false,
     autosave,
   } = props;
   const { t } = useI18n();
-  const { canUndo, canRedo, dirty, saveState, savedDocument, discardAll } = useStudioDocument();
+  const canUndo = useStudioSelector((s) => (s.history?.past.length ?? 0) > 0);
+  const canRedo = useStudioSelector((s) => (s.history?.future.length ?? 0) > 0);
+  const dirty = useStudioDirty();
+  const saveState = useStudioSelector((s) => s.saveState);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { discardAll } = useStudioActions();
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const disabled = licenseLoading || autosave.paused !== null;
   const [hidden, setHidden] = useState(false);
@@ -178,7 +183,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
           widget={widget}
           session={session}
           widgets={widgets}
-          access={access ?? FREE_ACCESS}
+          policy={policy}
           dispatch={autosave.dispatch}
           designClient={designClient}
         />
@@ -216,7 +221,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
         widget={widget}
         session={session}
         runtimeContext={runtimeContext}
-        access={access ?? FREE_ACCESS}
+        policy={policy}
         disabled={disabled}
         dispatch={autosave.dispatch}
       />
@@ -442,6 +447,6 @@ export const MemoInPlaceInspectorPanel = memo(InPlaceInspectorPanel, (prev, next
   && prev.side === next.side
   && prev.ghosted === next.ghosted
   && prev.autosave.paused === next.autosave.paused
-  && prev.access === next.access
+  && prev.policy === next.policy
   && prev.licenseLoading === next.licenseLoading
 ));

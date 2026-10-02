@@ -17,3 +17,6 @@ func GetAppIconForAppBase64(id, exePath string) string { return "" }
 // resetShortcutIndex is a no-op on non-Windows platforms: there is no .lnk
 // index to invalidate.
 func resetShortcutIndex() {}
+
+// FlushIconDiskCache is a no-op on non-Windows platforms.
+func FlushIconDiskCache() {}

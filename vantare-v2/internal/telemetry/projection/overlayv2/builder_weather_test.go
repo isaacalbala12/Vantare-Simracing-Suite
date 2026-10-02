@@ -22,7 +22,7 @@ func TestBuildWeatherIsAlwaysMissingUntilADriverAdmitsIt(t *testing.T) {
 	}
 }
 
-func TestBuildStandingsExposesLapDistanceAndGroundPosition(t *testing.T) {
+func TestBuildStandingsKeepsMapCoordinatesWithoutUnusedLapDistance(t *testing.T) {
 	t.Parallel()
 	final, ok := builderFinalState(t, 2).Value()
 	if !ok {
@@ -33,8 +33,8 @@ func TestBuildStandingsExposesLapDistanceAndGroundPosition(t *testing.T) {
 		t.Fatalf("rows = %d, want 2", len(rows))
 	}
 	for _, row := range rows {
-		if row.LapDistance.Q != QualityFresh {
-			t.Fatalf("row %q lapDistance quality = %q, want fresh", row.VehicleID, row.LapDistance.Q)
+		if row.LapDistance != nil {
+			t.Fatalf("unused lap distance emitted: %+v", row.LapDistance)
 		}
 		if row.GroundPosition.Q != QualityFresh {
 			t.Fatalf("row %q groundPosition quality = %q, want fresh", row.VehicleID, row.GroundPosition.Q)
@@ -52,7 +52,7 @@ func TestBuildStandingsExposesLapDistanceAndGroundPosition(t *testing.T) {
 	if target == nil {
 		t.Fatal("vehicle-000 not found")
 	}
-	if target.LapDistance.Q != QualityMissing {
+	if target.LapDistance != nil {
 		t.Fatalf("missing lapDistance not preserved: %#v", target.LapDistance)
 	}
 }

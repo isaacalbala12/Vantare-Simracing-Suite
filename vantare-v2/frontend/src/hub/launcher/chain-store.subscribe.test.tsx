@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, fireEvent, screen } from "@testing-library/react";
+import { Events } from "@wailsio/runtime";
 
 type EventHandler = (event: { data?: unknown }) => void;
 const wailsHandlers = new Map<string, Set<EventHandler>>();
@@ -24,6 +25,8 @@ import {
   useChainState,
   useLastResult,
 } from "./chain-store";
+import { createLauncherStore, LauncherStoreProvider } from "./launcher-store";
+import type { LauncherSnapshot } from "./launcher-contract";
 
 function emitChainStep(payload: Record<string, unknown>) {
   wailsHandlers.get("launcher:chain:step")?.forEach((h) => h({ data: payload }));
@@ -41,6 +44,90 @@ describe("ChainRunnerProvider + selective subscription", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("shows profile and application names in decisions and completion", () => {
+    const snapshot = {
+      apps: [{ id: "lmu", displayName: "Le Mans Ultimate" }],
+      userProfiles: [{ id: "profile-123", name: "Carrera de prueba" }],
+      vantareProfiles: [],
+    } as LauncherSnapshot;
+    const launcherStore = createLauncherStore({
+      subscribeSnapshot: (listener) => { listener(snapshot); return () => undefined; },
+      requestSnapshot: () => undefined,
+      dispatchLauncherCommand: () => undefined,
+    });
+    render(
+      <LauncherStoreProvider store={launcherStore}>
+        <ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>
+      </LauncherStoreProvider>,
+    );
+
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "names", profileId: "profile-123", appId: "lmu", kind: "alreadyRunning",
+        message: "la aplicación ya está abierta", actions: ["reuse"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("Le Mans Ultimate ya está abierta");
+    expect(screen.getByRole("alertdialog").textContent).toContain("Perfil Carrera de prueba");
+    fireEvent.click(screen.getByRole("button", { name: "Reutilizar" }));
+
+    act(() => {
+      emitChainStep({ profileId: "profile-123", stepIndex: 0, appId: "lmu", status: "done" });
+      emitChainDone({ profileId: "profile-123", success: true });
+    });
+    expect(screen.getByText(/Perfil Carrera de prueba · 1\/1 apps lanzadas/)).toBeTruthy();
+  });
+
+  it("asks before continuing a failed chain and sends the selected decision", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:pending:get");
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "7", profileId: "creator", appId: "obs", kind: "failure",
+        message: "OBS falló", actions: ["continue", "stop"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("OBS falló");
+    fireEvent.click(screen.getByLabelText("Recordar esta decisión para el perfil"));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "7", action: "continue", remember: true,
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("offers reuse and cancel for an external application already running", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "8", profileId: "creator", appId: "obs", kind: "alreadyRunning",
+        message: "la aplicación ya está abierta", actions: ["reuse", "cancel"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("ya está abierta");
+    expect(screen.queryByRole("button", { name: "Reiniciar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reutilizar" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "8", action: "reuse", remember: false,
+    });
+  });
+
+  it("asks whether to close processes started by a stopped profile", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "9", profileId: "creator", appId: "", kind: "cancel",
+        message: "¿Cerrar las aplicaciones iniciadas por este perfil?",
+        actions: ["leave", "close-started"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("Perfil detenido");
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar lanzadas" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "9", action: "close-started", remember: false,
+    });
   });
 
   it("useChainState only re-renders when the subscribed profileId changes", () => {

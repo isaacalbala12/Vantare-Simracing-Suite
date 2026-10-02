@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
+import { cx } from "./cx";
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: IconName;
@@ -21,15 +22,7 @@ export function IconButton({
   className,
   ...rest
 }: IconButtonProps) {
-  const classes = [
-    "orbit-icon-btn",
-    `orbit-icon-btn--${size}`,
-    tone === "danger" ? "orbit-icon-btn--danger" : null,
-    on ? "is-on" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-icon-btn", `orbit-icon-btn--${size}`, tone === "danger" ? "orbit-icon-btn--danger" : null, on ? "is-on" : null, className);
 
   return (
     <button

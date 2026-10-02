@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -62,10 +63,10 @@ describe("fuel strategy v2 fuel history decoder (A2)", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = JSON.parse(readFileSync(path.resolve(
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }

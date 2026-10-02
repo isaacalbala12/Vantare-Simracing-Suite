@@ -556,7 +556,7 @@ describe("StudioCanvas", () => {
     const stage = screen.getByTestId("studio-canvas-stage");
     const scene = screen.getByTestId("studio-canvas-scene");
     expect(stage.className).not.toContain("osv3-bg-");
-    expect(scene.className).toContain("osv3-bg-gradient");
+    expect(scene.className).toContain("osv3-bg-theme");
     expect(screen.queryByTestId("studio-safe-area-overlay")).toBeNull();
 
     fireEvent.change(screen.getByTestId("studio-background-select"), {

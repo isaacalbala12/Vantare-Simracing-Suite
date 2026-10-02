@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1305",
+  "type": "change",
+  "summary": "Actualizada la base de escritorio a Wails v3 beta.24.",
+  "technicalNotes": [
+    "Backend Go, runtime frontend y CLI de CI/release alineados con beta.24; sin cambios de código productivo."
+  ],
+  "testing": [
+    "Suite Go completa: 126 paquetes con tests correctos.",
+    "Frontend: 466 archivos, 3772 tests correctos y 2 omitidos; build, tipos y lint correctos.",
+    "Build Windows canónica configurada abierta y aceptada por Isaac."
+  ],
+  "knownLimitations": [
+    "Sin mediciones de rendimiento ni matriz completa LMU/OBS; Streams y el spike macOS quedan fuera del alcance."
+  ]
+}

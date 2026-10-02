@@ -1,5 +1,171 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
+
+El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
+panel y cabecera a opacidad cero y columna contextual vacía. La causa visual
+era la animación vertical de entrada y la resolución de portales después del
+pintado. La rama `vantareapp/isa-1406-hub-navegacion-sin-salto`, basada en
+`origin/nightly@355e9cfe`, resuelve los portales antes de pintar y fija la
+entrada de vistas a 0 s, incluida Ajustes y Testing Center. La prueba de
+navegador dio RED antes del cambio y PASS después, incluida una pestaña interna
+de Ajustes. Frontend:
+486 archivos/4113 pruebas PASS (2 omitidas), typecheck, build y lint PASS.
+Falta verificar la sensación de navegación y el tiempo de datos en Wails real
+con sesión; el harness usa runtime simulado. [PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
+hacia `nightly`; sin integración ni promoción.
+
+## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
+
+Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.
+
+> **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
+> GitHub Issues conserva el puente técnico y su estado de entrega.
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas.
+
+## ISA-1388 — radar de proximidad (2026-09-25)
+
+Isaac solicita un radar para pilotos cercanos inspirado por TinyPedal, RaceLab y LMU. El seguimiento vivo está en [Asana · Radar](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218838171528031); la [issue #1388](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1388) define el alcance técnico. La [PR draft #1389](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1389) nace de la rama aislada `vantareapp/isa-1388-radar-proximidad`, reconciliada sobre Nightly `f0ccfbf2`, que incluye #1386.
+
+Primera entrega candidata: proyección Go de posiciones LMU frescas en el marco del jugador, radio de 30 m, hasta 16 rivales y clasificación de coches en paralelo con la geometría compartida del Spotter. La cadencia marca el radar sucio cuando cambia la posición aunque la alerta lateral no cambie. `FrameV2.radar` atraviesa transporte tipado y alimenta un único widget Eficiencia transparente para Studio, Desktop, OBS y Workshop. El ejemplo visual de Workshop contiene tres coches declaradamente ficticios y no suplanta la telemetría real.
+
+Revisión visual de Isaac: retirado el recuadro exterior y ampliados los coches de 12 × 26 a 16 × 32 px en el renderizador productivo. Workshop añade una escena espacial de cinco pasos con acercamiento, solapamiento por ambos lados y separación, interpolada y muestreada a los 10 Hz declarados del widget. Es una demostración de posiciones, no una captura LMU; queda en bucle para valorar el tamaño en movimiento. La escala visual final aún requiere aceptación de Isaac y la comprobación física LMU sigue pendiente.
+
+Nueva indicación solicitada por Isaac el 26/09: los coches a 10 m o menos reciben ámbar, los doblados por el jugador con progreso de vuelta completo y fresco usan azul oscuro, y un solapamiento conserva prioridad naranja. La identificación de doblados combina vueltas completadas, distancia dentro de vuelta y longitud de pista; al cruzar la línea sin un giro completo de diferencia no marca un doblado. Si esas señales faltan o están antiguas, no afirma esa condición. El contrato `RadarCarV2` añade `near` y `lapped`, la cadencia reacciona a vueltas y longitud de pista, y Workshop enseña ambos estados con datos de ejemplo. La prioridad de colores y el umbral son candidatos de revisión visual; LMU físico sigue pendiente. En esta iteración pasaron `go test ./...`, el check del contrato generado, TypeScript, lint, 486 archivos/4118 pruebas frontend (2 omitidas) y las 4 pruebas del presupuesto de frame. Una primera ejecución paralela de frontend sufrió un timeout en otro widget; la repetición con cuatro workers pasó completa. No se hizo build por la preferencia de Isaac de revisar cambios sin build por cada paso.
+
+Revisión solicitada el 27/09: la escena del radar se abre reproduciéndose y en bucle. Diez fases de ejemplo enseñan entrada y salida del radio, aproximación, proximidad ámbar, solapamiento izquierdo, doble y derecho, y un doblado en azul oscuro que pasa a borde ámbar y luego a aviso naranja al solaparse. Las coordenadas avanzan linealmente entre fases; el renderer productivo interpola visualmente las muestras de 10 Hz en 100 ms. Workshop mantiene esa transición durante la demostración aunque el navegador solicite movimiento reducido; fuera del Workshop respeta dicha preferencia. Son datos de demostración, no telemetría física LMU. Verificación: 57 pruebas focales, typecheck, lint, 486 archivos/4119 pruebas frontend (2 omitidas), 4 pruebas del presupuesto y reproducción visual en Workshop PASS. Sin build por la preferencia expresa de Isaac, sin push ni integración; falta validación física LMU/Windows/OBS.
+
+Comprobación actual: pruebas Go de proyección, transporte y replay PASS; TypeScript, lint y build PASS; 151 pruebas focales frontend y 4 pruebas del presupuesto de frame PASS tras la reconciliación. La pasada final de la suite frontend completa con cuatro workers pasó 486 archivos, 4109 pruebas y 2 omitidas. Las pasadas anteriores expusieron seis listas cardinales ya actualizadas y timeouts aislados de interfaz que pasaron por separado. La suite Go completa encontró una prueba temporal de Engineer Fuel que pasó aislada; el alcance radar está verde. CI de la PR #1389 sobre `fcd62003`: promotion, gate bloqueante, ratchet y GitGuardian PASS. Vista del Workshop 5174 revisada en navegador. Pendientes: revisión visual de Isaac y prueba física LMU/Windows/OBS. Sin integración de este radar ni promoción adicional.
+
+Isaac acepta la animación completa y autoriza integrar #1389 solo en `nightly` el 27/09. La rama incorpora `origin/nightly@050fe951`, que retiró el plan y digest de roadmap del repositorio por la publicación compartida; se conserva esa retirada y el seguimiento del radar en Asana. Pendientes los gates del HEAD reconciliado y la comprobación física LMU/Windows/OBS; no se afirma todavía el merge.
+
+Sobre el árbol reconciliado: `go test ./...`, `pnpm --dir frontend test` (485 archivos, 4109 pruebas y 2 omitidas; presupuesto 4/4), `typecheck`, `lint` y una build final PASS. El test frontend regeneró cinco capturas de Horizontal Standings ajenas al radar; se restauraron sin incorporarlas al cambio. Pendientes CI del nuevo HEAD y prueba física LMU/Windows/OBS.
+
+## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
+
+[VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+es la tarea viva del proyecto Hub / Orbit UI; [PR draft #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384)
+lleva la rama aislada `vantareapp/isa-1381-temas-paleta-ui` a revisión.
+Siete paletas con variantes claras/oscuras, modo Sistema, contraste, opacidad
+y fuentes se aplican al Hub y Studio sin modificar el diseño de los widgets.
+Studio ofrece `Tema actual`, catorce fondos fijos agrupados por paleta,
+Rejilla, Degradado, Negro y biblioteca propia; recuerda la selección manual.
+La tarjeta Próxima serie sigue los tokens de la paleta. En Wails real se
+comprobaron tarjeta Grises clara/oscura, escenario Grises claro/oscuro,
+selección fija Rosa/Oscuro y persistencia al volver a Studio; los widgets
+conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
+presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
+dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
+y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
+En `503483ca` el quality ratchet detectó 13 hallazgos jscpd al editar una
+hoja con clones históricos; se movió la corrección de la tarjeta a la hoja
+de paletas y se unificó la regla del escenario. La comprobación local del
+ratchet arroja cero hallazgos nuevos. El gate frontend de Windows señaló
+tres traducciones huérfanas del antiguo selector y se retiraron; la auditoría
+i18n y 26 pruebas focales pasan tras el ajuste. CI del nuevo candidato
+pendiente. Sin merge, promoción ni release.
+
+
+
+## ISA-1390 — versión en la cabecera de Orbit (2026-09-25)
+
+[Notion VAN-768](https://app.notion.com/p/3e6e51695c6581f78d55e9801c25c6ab) y [puente técnico #1390](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1390). Rama aislada `vantareapp/isa-1390-orbit-version-header`, base `origin/nightly@f0ccfbf2`. El indicador verde decorativo se elimina de la cabecera contextual; la versión se muestra cuando llega del runtime. La ruta existente es `app:version` desde Go a HubApp y ContextColumn. `VERSION` y `main.version` coinciden en `0.1.0.7`; el empaquetado de Windows inyecta la etiqueta de la build, incluido su canal. No se introduce una versión fija en frontend.
+
+Prueba de regresión: la cabecera carece del indicador y acepta una versión nueva en el mismo montaje. Reproducción roja antes del cambio; después, 36/36 pruebas focales, typecheck, lint y build pasan. El primer intento de suite completa agotó el tiempo en dos tests visuales ajenos durante carga concurrente; ambos pasaron aislados (5/5). La repetición con dos workers pasó: 484 archivos, 4106 pruebas, 2 omitidas; la prueba aparte de presupuesto de frames pasó 4/4. El hito `orbit-v1-12` y su digest derivado reflejan el ajuste sin dar por completado todo el hito. La [PR #1391](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1391) se fusionó en `nightly` como `98c245bfb1a11ce240605dc78e26e9758477fa25`: SHA remoto y controles posteriores de promoción y bloqueo aprobados, incluida build Wails de CI. Pendiente comprobación visual en ventana Wails real; sin `testers`, `master` ni release.
+
+## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)
+
+[Issue #1385](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1385). Isaac pidió adaptar la composición de cuatro filas del widget Crystal al fondo y la tipografía de Eficiencia. Rama/worktree aislados `vantareapp/isa-1385-car-damage-numbers-eficiencia` en `C:\tmp\vantare-isa1385-car-damage-numbers`. El trabajo local nació de `df6b4125` del mapa #1358, y antes del PR se reconcilió sobre `origin/nightly` `5c73013e`: el diff final contiene solo #1385.
+
+El renderer Eficiencia presenta Aero, Body, Susp y una sola fila Tyre, con el agregado de neumáticos ya usado por Crystal, preservando `showTyres`. Las filas usan Inter; Crystal no se modifica. Workshop revisado en `127.0.0.1:5173` a 140 × 148 con tres valores al 100 % y neumático ausente representado como «—». Isaac aceptó la composición de cuatro filas independientes. Por su preferencia no se hizo build tras cada iteración.
+
+Corrección tras la primera revisión de Isaac: el fondo del contenedor completo hacía que las filas parecieran un solo rectángulo. Se retiraron fondo, sombra y borde exterior; cada una de las cuatro filas tiene ahora su propio fondo y borde de Eficiencia, con espacio visible entre ellas. La revisión visual posterior en Workshop confirma cuatro recuadros independientes a 140 × 148. El ajuste afecta solo a CSS de Eficiencia; sin cambios de datos, Crystal o build.
+
+Auditoría para PR solicitada por Isaac: LMU lee `mDentSeverity[8]` del coche jugador, la fusión conserva frescura, Go publica `frame.damage.dents` y el registro de ViewModels V2 alimenta el renderer Eficiencia. Una prueba de contrato recorre el frame golden V2 hasta las cuatro filas. La revisión reprodujo y corrigió dos errores del ViewModel: cero daño observado se perdía como dato ausente, y una muestra antigua o fuente degradada podía aparecer como actual o ausente. Un `QValue` fresco sin ocho valores útiles ya no fabrica ocho ceros. Los porcentajes de Aero/Body/Susp siguen siendo la transformación existente `min(severidad/2, 1)`, no una calibración física nueva.
+
+Corrección solicitada por Isaac después de abrir la PR: el SDK local de LMU sí expone `TelemWheelV01.mWear` para FL/FR/RL/RR. `offsetof` con el propio header confirmó `+1000/+1260/+1520/+1780` en la fila. El lector valida 0..1 y transporta las cuatro fracciones con calidad propia por la fusión, el estado canónico y `frame.damage.tyreWear`; Car Damage Numbers muestra `max(1-mWear)` como desgaste de la peor rueda. La captura sanitizada preservará ahora estos bytes; las capturas históricas no los conservan, de modo que siguen sin acreditar la escala física. El golden del Workshop sí es una muestra de prueba declarada y enseña 13 % de desgaste; no se presenta como captura de LMU. Sin sesión LMU activa no hay prueba física de valores en carrera. La issue #1385 y el cuerpo de la PR draft explicitan el alcance revisado.
+
+Checks en la base reconciliada: `go test` de los paquetes LMU y Overlay V2, typecheck, lint frontend, build frontend y cuatro pruebas del presupuesto de frames pasaron. La suite completa de frontend aprobó 4098 pruebas y omitió 2, pero terminó roja porque `work/horizontal-standings-flags.visual.test.tsx` agotó 20 s al cerrar Chromium en `afterAll`; esa prueba ajena pasó aislada (5/5). No se presenta el conjunto como verde. La build final es única tras las iteraciones. Pendientes CI del PR y validación física LMU/Windows/OBS; sin merge, promoción ni release.
+
+[PR draft #1386](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1386) abierta hacia `nightly` con el diff exclusivo de #1385 y el fallo de la suite global declarado en la descripción. Rama remota publicada para revisión; CI y aceptación de la telemetría física siguen pendientes. No se ha autorizado ni realizado merge o promoción.
+
+Checks de la corrección `mWear`: `go test ./...` pasó; catálogo, parser LMU, sanitizador, frame y cadencia tienen pruebas focales verdes. Frontend: 29 pruebas focales y 4 de presupuesto de frame pasaron; lint, typecheck y una build final pasaron. La suite completa aprobó 4098 pruebas, omitió 2 y terminó roja por timeout de dos pruebas visuales ajenas (Endurance shell y clipping de Standings); ambas pasaron aisladas (5/5). Workshop en la misma URL muestra cuatro filas y 13 % en NEUM. sobre golden de demostración. El SDK y los tests de bytes prueban el cableado, pero aún no existe una captura física de `mWear` tomada en sesión activa tras esta admisión. El PR sigue draft, sin merge.
+
+25/09: Isaac autoriza expresamente integrar #1386 en `nightly` y acepta contrastar el desgaste con LMU en marcha después. Antes del merge, los controles remotos de promoción, gates bloqueantes, calidad y GitGuardian están verdes en `aeaa27a0`. La tarea [Notion VAN-767](https://app.notion.com/p/3e6e51695c65813fb751c943eb332000) registra esta decisión y el límite físico. Se clasifica #1385 como `roadmap:required` y se actualiza solo `milestones:functional-widget-design` y su digest derivado; el nuevo HEAD tendrá que superar CI antes de integrar. Este registro no declara todavía merge ni prueba física.
+
+## ISA-1355 — integración de datos, volantes y catálogo (2026-09-24)
+
+La [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356) reúne las tres entregas coordinadas en [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082). Sobre `bf2b12e9` (volantes) y `82883459` (renombre/compatibilidad), el tercer commit incorpora con `cherry-pick -x` el parche de datos `fb8590878d46988def86b55c2c0aa4add32c497b`, revisado contra sus cinco pruebas y consumidores. Rama `vantareapp/isa-1355-lmu-steering-wheels`, misma base `nightly f50ab4ab`; no hay conflicto semántico ni conversión de perfiles.
+
+El ViewModel distingue ceros de señales ausentes/invalidas, limita pedales a 0–1 y elimina datos anteriores en conexión, detección o parada. El embrague oculto y la dirección opcional no degradan la calidad del widget. El compacto hereda el vaciado de instrumentos; la conversión compartida de velocidad descarta valores no finitos. El primer ratchet detectó dos emplazamientos de una normalización duplicada con Pedals: por autorización del orquestador, ambos reutilizan `pedalValue` con reglas exactamente equivalentes. Se conserva el comportamiento anterior de Pedals y no se cambian políticas ni baseline.
+
+Verificación final tras esa reutilización: 159 pruebas focales; frontend completo con Node 22.23.2, **484 archivos / 4098 PASS / 2 omitidas**; typecheck, lint y build PASS; ratchet PASS, **NEW=0, MOVED=0, policy_changed=false**. La suite emite el aviso conocido de cancelación de fetch al cerrar happy-dom, sin fallo. Se restauran los cinco PNG incidentales de Horizontal Standings. La revisión visual anterior del selector/nombres sigue aplicando: este commit solo modifica adaptación de datos y documentación.
+
+Límites: producción sigue sin señal de dirección validada y con posición V2 ausente; la rotación de Workshop proviene del fixture. Pendientes revisión del orquestador, aceptación visual de Isaac, CI remoto del tercer commit y validación física LMU/Windows/OBS. Los dos primeros commits ya pasaron CI. No se modifica Workshop 5178 ni se integra, promociona o publica una release.
+
+## ISA-1355 — Pedales avanzados y compatibilidad del compacto (2026-09-24)
+
+Ampliación de [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082) en la [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356), segundo commit separado sobre `bf2b12e9`, misma rama/worktree aislados. Aprobado por el orquestador: el compacto sale de los catálogos de creación, pero conserva definición, manifests, IDs de diseños y contratos frontend/Go para perfiles guardados. No se convierte al principal porque sus banderas `showSpeed`/`showRpm`, tamaño y presentación iRacing son diferentes.
+
+`pedals-telemetry` se presenta como **Pedales avanzados**; `pedals-telemetry-compact` como **Pedales antiguos**. Etiquetas ES/EN/PT/IT, catálogo de añadir, nombres de tipo sin nombre personalizado en Orbit y rótulo Workshop actualizados. Los nombres que escribió el usuario se conservan. Hay 20 tipos seleccionables y 21 aceptados. Un enlace antiguo de Workshop al compacto sigue dibujándolo y muestra una opción deshabilitada/aviso; no lo ofrece desde las demás selecciones. El guardado no migra IDs ni borra ajustes. No se toca el Workshop 5178.
+
+Verificación: 483 archivos / 4093 pruebas aprobadas / 2 omitidas con Node 22.23.2; 109 pruebas focales y 103 adicionales tras el último ajuste de etiqueta. Perfiles mixtos V3→V4 y roundtrip conservan contenido, layout, visibilidad, memorias visuales, procedencia, política de rendimiento y volante Ligier; los tres sistemas antiguos renderizan en Studio/Desktop/OBS. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, sin cambios de política). Revisión en Safari 5188: nombre **Pedales avanzados**, volante visible y menú con 20 entradas sin compacto. Capturas locales `/tmp/vantare-wheel-review/pedals-advanced-renamed.png` y `pedals-advanced-catalogue.png`. La galería anterior contiene 32 figuras (5 filas de 6 y una de 2), verificadas contra los 31 IDs LMU más genérico.
+
+Pendientes: revisión final del orquestador, aceptación visual de Isaac, CI remoto del nuevo SHA y validación física LMU/Windows/OBS. La auditoría de telemetría va separada; no afirmar dirección física validada. Sin merge, promoción ni release.
+
+## ISA-1355 — volantes LMU intercambiables (2026-09-24)
+
+[Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082), puente [#1355](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1355). Worker GPT-6 Astra Max, rama `vantareapp/isa-1355-lmu-steering-wheels`, worktree `vantare-lmu-steering-wheels`, base `nightly f50ab4ab`. [Diseño](../../plans/2026-09-24-lmu-steering-wheels.md) y [catálogo/evidencia](../../analysis/lmu-steering-wheels.md).
+
+El renderer productivo `PedalsAdvancedEfficiency` de `pedals-telemetry` incorpora 31 opciones LMU y conserva el genérico inicial. Apariencia persistente V4, selector de Studio y parámetro/control de Workshop, nombres comerciales comunes y etiquetas en cuatro idiomas. SVG propios simplificados: no se certifican réplicas exactas ni cada variante histórica. No se alteran datos, giro físico, nombres de widgets ni registro del compact; la auditoría y migración están en ramas de otros agentes.
+
+172 pruebas focales finales con idiomas; suite completa Node 22.23.2: 482 archivos / 4080 PASS / 2 omitidas. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Node 26 alpha produjo errores de entorno en la primera suite; se repitió con el runtime estable sin debilitar pruebas. Revisión de Safari confirma selección Ferrari/BMW, tamaño y catálogo de 32 dibujos a 72 px. Preview aislado 5188; evidencia local temporal en `/tmp/vantare-wheel-review/`. Pendientes aceptación visual de Isaac, revisión independiente y validación física LMU/Windows/OBS; señal steering todavía ausente en la base. Preparado como candidato, sin merge a ningún canal.
+
+
+## ISA-1347 — contratos y correcciones de datos de widgets aceptados (2026-09-23)
+
+Seguimiento por instrucción explícita de Isaac en [Asana · Desarrollo](https://app.asana.com/0/1218742976551956/list). Correcciones Delta `1218777895248782`, Pedals `1218777754821855`, Standings `1218777832104952`, Relative `1218778048433037` y Horizontal `1218777895238689`, todas En curso y releídas tras actualizar. Se preserva la aceptación visual previa. [Puente #1347](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1347), base inicial `nightly 8b25d076`, rebasada linealmente sobre `origin/nightly@b725c402`, rama `vantareapp/isa-1347-widgets-data-contract`.
+
+[Contrato común](../../specs/2026-09-23-accepted-widgets-data-contract.md) y [plan](../../plans/isa-1347/PLAN.md). Tres workers GPT-6 en worktrees separados entregan correcciones; root integra y repite comprobaciones. Delta resuelve las tres referencias en Go; Pedals distingue ausencia de cero; Standings conserva calidad y referencias de clase/intervalo; Relative usa proximidad circular y progreso real para doblados; Horizontal conserva gaps en vueltas y ofrece el carrusel aceptado como control productivo. SOF fuera por decisión de Isaac. Bloque Vuelta ligado a vuelta actual del jugador, supuesto recomendado comunicado tras la consulta opcional.
+
+Humedad de pista REST 0–1 y severidad de lluvia nativa SHM 0–1 conectadas con caducidad por campo. [Autoridad meteorológica](../../analysis/isa-1347-weather-authority.md). Viento sin unidad probada, dirección y presión sin autoridad permanecen ausentes. Bandera REST requiere correlación positiva con una sesión activa. No confundir pruebas de fixtures con certificación del simulador activo.
+
+Producto validado en `95ad1dc3`, tras corregir los hallazgos de las revisiones independientes y el lector de posiciones Relative desconocidas. En ese árbol: frontend completo, 480 archivos, 4.037 PASS y 2 omitidas; Go focal de siete paquetes, tipos/generador, build frontend, build cruzado Windows, lint y ratchet aprobados (NEW=0, MOVED=0, policy_changed=false). Compactación sin pérdida ni aumento de presupuesto: 64.880 / 71.120 / 73.096 bytes. Backend/frontend requieren el mismo build; lector nuevo admite wire anterior. [Evidencia y límites](../../analysis/isa-1347-verification.md). Suite global Go en macOS sigue roja por fallos reproducidos en la base (diagnostics, SQLite y launcher), no se ocultan. La [PR #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352) se rebasó sobre `origin/nightly@b725c402` y se regeneró `roadmap.json`. El head remoto `c2999ac5` falló el gate compacto (1,906 ms frente a 1,5 ms). El siguiente head `5bf052c8` aprobó promoción, gates bloqueantes y GitGuardian, pero el ratchet reportó `jscpd NEW=2` en validaciones de forma repetidas. El ajuste local actual extrae `validQualityValueShape`; el scan directo solo conserva un duplicado cuyo hash ya figura en el baseline. Pruebas dirigidas 39/39; última muestra de rendimiento bajo carga: legacy 1,188 ms y compacto 1,440 ms; suite completa 481 archivos, 4.035 PASS y 2 omitidas al limitar Vitest a dos workers; build, typecheck y lint PASS. El CI remoto del seguimiento del ratchet aún está pendiente. Isaac solicitó explícitamente integrar la PR a Nightly el 2026-09-23; todavía no hay merge. Sin promoción adicional ni release. Próximo paso: publicar la corrección de duplicación, esperar todos los gates remotos y después continuar la verificación física en LMU/Windows/Desktop/OBS antes de cerrar las cinco correcciones de Asana.
+
+
+## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)
+
+Seguimiento por decisión explícita de Isaac en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738527745), En curso. Puente técnico [#1320](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1320). Base `nightly e6d7d2b5`, rama `vantareapp/isa-1320-relative-motion`.
+
+Isaac pide animaciones más suaves que Standings y elige «movimiento suave y una señal de color muy tenue». GPT-6 Sol implementa el renderer en worktree propio; GPT-6 Luna prepara escenas de Workshop aparte; GPT-6 Astra revisará el commit de producto independientemente. Deslizamiento de rivales sin rebote, jugador estable, cifras sin animación, fundidos breves al entrar/salir y color tenue únicamente ante cruce real. La telemetría ordinaria no debe reiniciar animaciones ni medir layout. Respetar modos de movimiento y limpiar efectos al cambiar sesión, fuente o geometría.
+
+La inspección inicial detecta reinicio de FLIP por cada modelo, ausencia de baseline inicial y descripciones de escenas que prometen efectos distintos del renderer. Se corrigen dentro de esta entrega. Implementación y escenas presentes en `c809d5e8`: deslizamiento de 220–300 ms, señal de color de hasta 4 %, entradas/salidas de 120 ms, huecos delante/detrás que estabilizan jugador y pie. Solo un cue por rival; cambios de cifras no reinician FLIP. Los cambios de tamaño o movimiento reaccionan aun conservando el mismo modelo. La revisión independiente GPT-6 Astra pasa 50 tests y comprobaciones WAAPI activas de StrictMode, escala 1,5, retarget, salida a mitad de movimiento y desmontaje. Root verifica 43 tests focales y comprueba los participantes visibles de todas las escenas en práctica, clasificación y carrera. La suite frontend completa del conjunto `c809d5e8` pasa 469 archivos y 3795 pruebas (2 omitidas). El refinamiento posterior `b7a19184` conserva opacidad en reentrada y cancela temporizadores; pasa 39 pruebas focales, typecheck, build, lint y ratchet (NEW=0, MOVED=0, policy_changed=false). La corrección `cf14f927` conserva también la opacidad en una segunda salida durante esa reentrada. Revisión independiente final GPT-6 Astra en `d869f521`: 7/7 pruebas Relative y diff limpio, sin hallazgos pendientes. Root repite build y ratchet sobre ese árbol final: PASS, NEW=0, MOVED=0, policy_changed=false; tipos y lint también pasan tras `cf14f927`. La suite completa antecede a esos refinamientos acotados; no se presenta como repetida sobre el último SHA. Pendiente aceptación visual de Isaac. El acceso automatizado al navegador ha estado bloqueado; no se afirma validación visual ni física. Sin autorización de integración para esta entrega. La PR #1306 de Standings permanece separada.
+
+### Idioma — integración verificada
+
+La PR [#1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) fue integrada por squash en `nightly` como `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`, después de la aceptación de Isaac. Head fuente `86249c3a`; checks remotos de promoción, blocking gates, ratchet y GitGuardian aprobados. Árbol remoto coincide con la entrega. Asana `1218757534554194` registra integración y conserva pendiente la revisión física Windows/OBS que Isaac hará en nightly. No se promovió a testers/master.
+
+## ISA-1332 — Horizontal Standings: animaciones (2026-09-23)
+
+Seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756818225223), En curso por petición de Isaac. [Puente técnico #1332](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1332). Base `nightly e6d7d2b5`; rama `vantareapp/isa-1332-horizontal-motion`. [Plan](../../plans/2026-09-23-isa-1332-horizontal-motion.md).
+
+Isaac confirma Relative y Pedals; ambas revisiones se marcan completadas en Asana, sin confundir Pedals con Pedals telemetry ni aceptación con integración remota. El horizontal carece de animaciones en su renderer Eficiencia y usa una clave dependiente de la posición. Se implementan identidad canónica, movimiento horizontal discreto, fundidos de presencia y señal tenue de posición, con cifras estables y sin trabajo de animación por telemetría numérica. GPT-6 Sol trabaja renderer/VM/pruebas; GPT-6 Luna, escenas; el orquestador revisa y compone. Próximo paso: verificar e incorporar al preview combinado, preservando Delta/Standings/Relative. Sin merge ni certificación física.
+
+### ISA-1332 — renderer verificado
+
+Renderer/VM de GPT-6 Sol en `6c67ed73`: IDs canónicos, desplazamiento horizontal de 250–360 ms, fundidos de 120 ms y señal verde/roja al 5 % durante 450 ms. Cifras no inician efectos; 100 muestras quietas y durante movimiento/entrada no añaden mediciones, timers ni animaciones. Modos reducidos, retarget a escala 1,5, salida durante entrada y StrictMode cubiertos. Worker: 44 pruebas focales, tipos/build/lint de archivos modificados PASS. Root: suite frontend completa sobre el renderer y documentación, 469 archivos, 3790 PASS y 2 omitidas; el warning AbortError de cierre del entorno DOM no produjo fallo. Se retiraron únicamente cinco PNG de revisión regenerados incidentalmente por la suite, manteniendo las referencias versionadas.
+
+GPT-6 Astra revisa independientemente los ocho archivos y pasa 40 pruebas: sin hallazgos bloqueantes. [Informe](../../analysis/isa-1332/motion-review.md). Los efectos React siguen ejecutándose y retornan antes de medir/animar; no se promete coste CPU nulo. Sin inspección visual de navegador/WAAPI físico. Próximo paso: incorporar y comprobar las escenas y el preview combinado.
+
+### ISA-1332 — entrega preparada para revisión visual
+
+Escenas de GPT-6 Luna `8d6f1239`: Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar. Filtro Eficiencia y pasos exactos en pausa; 65 pruebas focales y tipos PASS. Root compone el candidato fuente `4fcafa59`, idéntico al árbol comprobado `511489f0`: frontend completo 469 archivos, 3794 PASS y 2 omitidas; lint, build/TypeScript y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Contrato de roadmap verificado contra la issue viva: únicamente `milestones:functional-widget-design`. No se tocaron reglas, dependencias ni código Go; no se repitieron pruebas globales Go por ese alcance frontend.
+
+GPT-6 Sol integra en una copia del preview y resuelve los conflictos conservando los filtros por sistema/sesión, los pasos exactos y todas las escenas Relative/Standings. Preview limpio `752bc0cc`: 188 pruebas focales del conjunto, tipos/build y diff limpio PASS. Root revisa el diff respecto a `d3aea8bc`: el CSS modificado se limita a Horizontal Standings, sin recuperar las transformaciones Delta retiradas. El servidor existente 5177 sigue en el mismo directorio; su checkout pasa a `752bc0cc` únicamente tras comprobar la composición. La apertura de la pestaña se solicitó a Codex y quedó encolada; no equivale a inspección visual.
+
+Revisión manual: [Workshop · Secuencia completa](http://127.0.0.1:5177/workshop?widget=broadcast-tower&system=vantare-functional&session=race&scene=broadcast-tower-overtake-sequence&frame=0&brand=off) → Reproducir. Revisar después Inversión rápida y Salida y reentrada; repetir práctica/clasificación y movimiento reducido. Asana Horizontal Standings sigue En curso hasta aceptación de Isaac. Relative y Pedals están completados por su confirmación. Fuente `vantareapp/isa-1332-horizontal-motion` desde nightly `e6d7d2b5`; publicación como PR draft, sin merge ni promoción. El seguimiento Asana conserva la URL/SHA y el estado remoto actual tras publicar. Sin certificación visual nativa ni Windows/OBS.
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
@@ -37,6 +203,30 @@ servidor levantado a mano: `/health` 200, `/overlay?profile=` 200 HTML,
 `/api/profile-v3` 200 por filename/stem/id documental. Sin prueba en OBS
 real (requiere la app Wails completa). Hallazgo aparte: el paquete
 launcher no compila en darwin — issue #1167.
+
+## ISA-1140 — Cascadia Code a subset WOFF2 latino (2026-09-11)
+
+Issue
+[#1140](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1140),
+rama `vantareapp/isa-1140-fuente-subset`, worktree
+`/Users/isaacalbala/Desktop/vantare-isa1140`. Cierra la limitación que dejó
+ISA-940: aquella máquina no tenía `pyftsubset` y la fuente siguió como TTF.
+
+- `pyftsubset` (fontTools 4.65 + brotli en venv `/tmp`, sin dependencias del
+  proyecto) genera `CascadiaCode-subset.woff2` de 74 KB: Latin, Latin-1,
+  Extended-A/B, puntuación general, flechas, operadores matemáticos,
+  misceláneos técnicos, box-drawing/geométricos y Dingbats. Conserva el eje
+  variable `wght` 200–700 y las ligaduras `calt` (`=>`, `->`, `<=`, `!=`).
+- `fonts.css` apunta el `@font-face` al woff2. `CascadiaCode.ttf` queda en
+  el repo como fuente de regeneración, sin entrar al bundle: Vite solo emite
+  `dist/assets/CascadiaCode-subset-*.woff2` (74,17 kB).
+- Verificación: cmap cubre U+00C0–U+017F completo; todo carácter no-ASCII
+  usado en `src` que exista en la TTF sigue cubierto (los que no existían —
+  emoji, ⚙, ⚠, ↵ — caen al fallback como antes); 267 glifos de ligadura
+  conservados. Typecheck, lint, 3355 tests y build PASS.
+- Nota de contrato: la issue declara `roadmap:not-required` pero el diff es
+  código productivo; el validador en modo `audit` lo marcará sin bloquear.
+- Sin merge ni promoción; PR draft a `nightly`.
 
 ## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
 
@@ -168,6 +358,310 @@ lint focal PASS, `git diff --check` limpio. Pendiente de PR draft a nightly;
 sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
 colapsable/reubicable y layout numérico (C2), añadir widget y selector de
 sesión (C3), diseños y acciones de restauración (C4).
+
+## ISA-1098 — Efficiency integrada en Nightly (2026-09-12)
+
+Integración autorizada por Isaac el 2026-09-12. El smoke físico final usó la
+build diagnóstica Wails generada por `scripts/bench/build-measurement.ps1` con
+el `.env.local` externo autorizado, sin copiar ni mostrar valores. El binario
+`bin/vantare-isa1098-smoke.exe` mide 33.310.720 bytes y tiene SHA-256
+`F7064850C77B2BCB4716F391AAD869F601300213748B983BEEB2C14EFFAFB50C`.
+En la sesión Free, Studio guardó Efficiency Broadcast, lo pintó mediante el
+renderer productivo y restauró Signature. Dos ciclos reales abrir/detener
+acabaron en 394/52 ms y 366/56 ms, sin cierre de Vantare; Ajustes, Carreras y
+el regreso a Studio cargaron correctamente. El overlay montó sus tres frames,
+pero LMU no estaba emitiendo y mostró el diagnóstico canónico
+`Overlay V2 frame unavailable`: esta prueba no acredita bandera ni temperatura
+en sesión activa. La rama se reconcilia con `origin/nightly@9651733f`, que ya
+contiene #1165 y #1168; se conservan las implementaciones compartidas y
+granulares ya revisadas del candidato. Este mismo PR registra la integración
+a Nightly; no promociona a testers/master ni publica una release.
+
+Extensión de integración del 2026-09-12 autorizada por Isaac: el candidato
+incorpora las mejores implementaciones vigentes de #1157, #1168, #1163,
+#1161, #1118, #1170, #1117, #1122, #1158 y #1165 como bloques
+independientes. El runtime reutiliza el contexto y sus firmas cuando no cambia
+su contenido; settings, licencia y updater tienen un único fanout Wails por
+canal; Studio usa un store externo con selectores granulares; las rutas
+desmontables cancelan trabajo pendiente; SideRaces reduce su cadencia cuando
+la salida está lejos; y el mapper evita el slice temporal de calidad por
+vehículo. El Hub comparte una sola suscripción para overlays y calendario,
+carga sus páginas y los idiomas secundarios bajo demanda y obedece el
+presupuesto de efectos `noBlur`/`flat` publicado por Go. La adaptación de #1163 conserva
+`WidgetPolicyWire` como única autoridad Free/Pro y no recupera
+`AccessContext`. La variante de #1170 que exponía un slice global mutable se
+reemplazó por un array devuelto por valor con regresión específica. Se excluyen
+la conversión de fuente ya superada de #1118, el componente `ObsSetup` ya
+retirado y el PR #1132 por duplicar esos bloques. #1180 y #1182 permanecen
+separados porque cambian la apariencia de otras pantallas y no son una mejora
+del candidato Efficiency.
+
+Gate completo de la extensión ampliada: frontend 448 archivos, 3557 pruebas
+PASS y 2 omitidas; typecheck, lint y build web PASS; `go test ./...` PASS. El
+`AbortError` de happy-dom conserva exit 0. La división por página deja la shell
+principal en 69,48 kB y Studio en un chunk bajo demanda de 81,05 kB; no se
+declara todavía ahorro físico de CPU, GPU o memoria. Build Wails forzada con
+canal `nightly` desde el `.env.local` original autorizado: URL, anon key y
+registro público de licencia coinciden embebidos mediante su representación
+base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.957.632 bytes
+y tiene SHA-256
+`465444F142848FD2AFD4B4FD0B1DF05E535631170D25C43CE8CE351EF5049344`.
+La base se actualizó a `origin/nightly@079fbfe3`; su nuevo roadmap de beta y
+la integración oficial de #1170 se conservaron. La resolución mantiene
+`AllSections` devuelto por valor para no exponer el array global mutable del
+PR original, y el digest se regeneró desde `plan.md`. Esta build todavía requiere
+el smoke manual conjunto antes de integrar a Nightly y no acredita la
+equivalencia de bandera durante una sesión LMU activa.
+
+Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`
+en `a8eedecf`, conservando el editor in-place actual y adaptando su inspector,
+catálogo y guardado a `WidgetPolicy`. Después incorporó la rama completa y
+validada de #1127 en `d9a2c56d` y las señales REST LMU revisadas de #1106 en
+`0168a2a9`. El candidato reúne por tanto #1083, #1103, #1097, #1105, #1106 y
+#1127; no crea otro renderer, autoridad de licencia ni lector LMU.
+
+La resolución productiva del editor in-place pasó typecheck y 46 pruebas
+focales. El conjunto reconciliado pasa 104 pruebas focales de Efficiency,
+marca, política, transporte y edición; 3515 pruebas frontend (440 archivos,
+2 omitidas), `go test ./...`, typecheck, lint y build web. El ruido
+`AbortError` de happy-dom conserva exit 0 y la build mantiene el aviso ya
+inventariado de chunks mayores de 500 kB. `plan.md` declara los cuatro hitos
+afectados (`functional-widget-design`, `widget-access-branding`,
+`telemetry-live`, `overlay-tester-feedback`) y `roadmap.json` se regenera
+desde la base Nightly confiable.
+
+La build Wails configurada pasó con el procedimiento oficial y las tres
+variables públicas de `.env.local` quedaron embebidas (comparación booleana,
+sin imprimir valores). El ejecutable resultante mide 29.903.360 bytes y tiene
+SHA-256 `1854A0EA2FC723B8F16BADDFEDF5DF7B359F8DCA84800F2E06BF5BF53B55C3C4`.
+Sobre esa unidad se comprobó físicamente Efficiency Signature y Broadcast en
+Studio con la política paga vigente: marca apagada por defecto, cabecera y pie
+configurables y persistencia de Broadcast. Con el overlay abierto se hicieron
+dos guardados reales Signature -> Broadcast; ambos registraron
+`studio profile saved`, recrearon WebView2 y la app siguió respondiendo. El
+ciclo detener -> abrir -> detener acabó en `Abrir overlay`, también estable.
+El recorrido exacto Home `Abrir overlay` -> `Abrir Studio` detuvo el overlay y
+abrió el editor sin cierre ni bloqueo. Los perfiles y calendario tocados por
+el smoke se restauraron y el árbol tracked quedó limpio.
+
+La política Free permanece cubierta por regresiones automatizadas, pero no se
+presenta como prueba física: dos intentos portables sin `license-cache.json`
+continuaron viendo la sesión paga del perfil WebView2 compartido de producción.
+Aislarla exigiría cerrar sesión o mover datos reales del usuario, acciones que
+se descartaron. Durante el smoke se descubrió además un fallo separado: si el
+Hub está descargado, detener el último overlay cierra Vantare tras agotar dos
+segundos al apagar HTTP; queda aislado en #1178 y no se mezcla en #1098.
+
+Siguiente gate: una sesión LMU activa debe confirmar temperaturas y
+equivalencia de bandera REST. Ausencia, invalidez o caducidad permanecen
+neutras. PR #1107 continúa en draft; sin merge a Nightly, testers/master ni
+release.
+
+Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
+base reconciliada `e13756ef` (= `origin/nightly` verificado). Solo se
+reúnen commits aprobados, conservando historia con merges locales. Candidato
+preparado en rama de issue; el estado de publicación, PR y CI del SHA actual
+se consulta en la issue #1098. Sin merge a Nightly, testers/master ni release;
+comprobación física LMU activa pendiente.
+
+Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),
+`ec9d6d19` <- `6ae58f6e` (#1103 banderas y slots de sesión),
+`85f739ba` <- `3b490906` (#1097 política nativa, guards y transportes) y el
+merge de `cd334d14` (#1105 acceso y marca en React: nativa `3b490906`,
+frontend `cd334d14`). Policy, guards y cableado Wails/SSE de #1097 intactos;
+#1105 migra por completo a WidgetPolicy los 6 archivos access/catalog/orbit/store
+(sus versiones, sin declaraciones legacy huérfanas; denegaciones Free,
+delta/premium y delete/move preservadas). `WidgetVisualHost` une AMBAS props
+`authoringModel` (solo dev) y `brandVisible`; el renderer usa `visualModel` +
+`presentationSettings`, preservando Tower de autoría y marca. Plan elige solo
+el hunk actualizado de #1105, resto de Nightly intacto; handoff conserva AMBAS
+secciones. Los conflictos de este último merge los resolvió el padre; Muse no
+rediseñó ni arregló producto.
+
+Cruces resueltos semánticamente, sin copiar versiones enteras: Redline Tower y
+dorsales canónicos de PR #1102 preservados (cero ficheros borrados); ambos
+estilos Efficiency y pie/cabecera nuevos conservados; `WidgetVisualHost`
+sigue frontera única con ViewModels puros; canvas conserva preview DOM
+imperativa; IDs estables `vantare-functional`,
+`standings-functional-compact`, `standings-functional-broadcast`. Detalle:
+Workshop une overrides Redline + columna funcional y controles de estudio con
+aside de laboratorio; viewport une geometría Tower (482) con fluidez
+Redline/Functional; caracterización pasa a 67 diseños (Tower + 2 Functional);
+ViewModel une `trackName`/`totalRows` con `flag`/`sessionInfo`; golden une
+metadato Tower e información de sesión.
+
+Adaptación test-only detectada por focales: #1083 retiró
+`resolveStandingsRedlineFrameLayout/MoveLayout` y el test Tower de #1102 lo
+importaba (4 fallos). El test usa ahora el patrón vigente
+`resolveMinimumWidthFrameLayout(layout, resolveStandingsRedlineMinimumWidth(widget))`,
+misma aserción y mismos valores; sin cambios de producto ni tolerancias.
+
+Roadmap: `plan.md` solo añade los dos hitos exactos de #1098
+(`milestones:functional-widget-design` como feature,
+`milestones:widget-access-branding` como feature con el hunk actualizado de
+#1105: política nativa por widget, marca Free obligatoria y comprobación
+física/integración pendientes); ningún otro hito de la base cambia.
+`roadmap.json` regenerado con
+`.github/scripts/roadmap_digest.py --repo . --ref origin/nightly`, nunca a mano.
+
+Límite #1106 confirmado por revisión: BuildSession (bandera) y BuildWeather
+(temperaturas) publican missing porque no hay fuente canónica admitida;
+Efficiency muestra neutro/`—`; circuito/remaining/fuel.sessionLaps sí reales.
+No se arregla con otro lector ni se inventan datos. Sin animación.
+
+Evidencia del candidato final (logs en `vantare-v2/.task/isa-1098-evidence/`,
+carpeta ignorada; base `a9b8dd36`, código revisado `426f75b4`): React 439
+archivos / 3483 PASS / 2 omitidos (exit 0; ruido happy-dom heredado en
+stderr); tipos, build (aviso heredado de chunks >500 kB), lint, Go completo
+(cero FAIL) y build nativo PASS — 6 exit 0 confirmados por el padre. Gate de
+coherencia roadmap PASS, digest idempotente y gate de contrato de PR PASS
+(exactamente los dos IDs declarados). Revisión final aprobada sin hallazgos.
+Señal #1106 (bandera/temperaturas missing) y comprobación física conjunta
+Studio/guardado/Desktop/OBS pendientes; el harness no acredita Wails/LMU ni
+licencia real. Sin probar Wails/LMU aquí.
+
+## ISA-1105 — Acceso y marca por widget en React (cierre frontend 2026-09-10)
+
+Hijo de #1097 aprobado por Isaac. Rama
+`vantareapp/isa-1105-widget-access-branding-ui`, worktree
+`C:/tmp/vantare-isa1105/vantare-v2`, base `6ae58f6e` (#1103 sobre
+#1083@87cef39a); nativa #1097 en commit `3b490906`. Roles vigentes: Codex
+implementa, Muse mecánica/revisión acotada. Inicio dirty intencionado del
+primer corte #1097 (Delta advanced, borrar/mover/conservar bloqueados)
+preservado y completado.
+
+Consumo frontend de la política nativa `WidgetPolicyWire` (sin PII) con una
+sola autoridad: sin snapshot vigente rige Free básica, sin fallback legacy.
+Wails `widget-policy:get` → `widget-policy:snapshot` + `widget-policy:changed`
+(suscribir antes de pedir); OBS SSE `/api/widget-policy/stream` con snapshot
+autoritativo y `changed` solo mayor. Revisión menor solo tras reconexión
+reconocida; caducidad con temporizador acotado por tramos (2^31-1) que
+notifica, pide snapshot fresco y nunca prolonga premium. Studio filtra en
+catálogo/inspector/dispatch/guardado; Desktop/OBS filtran antes de crear
+`RuntimeWidgetFrame`/suscribir telemetría. Marca integrada Crystal/Efficiency
+obligatoria en Free (banda propia con cabecera oculta, dentro del marco
+calculado y sin recortes; Pedals lleva micro-chip discreto sin intersección
+con canales), oculta por defecto en pago con opt-in `showBrand`. Original sin
+cambios. Guardado nativo denegado (`code: widget-access-denied`) se mapea al
+aviso traducido existente, también en InPlace.
+
+Evidencia: 326 tests del bloque de lógica PASS (focales + consumo Desktop/OBS
+con downgrade vivo); P1 candado de marca y P2 aviso InPlace cerrados con
+33/33 focales (Appearance 8/8, InPlace 11/11, profile-client 14/14);
+typecheck PASS; geometría Chromium real Signature/Broadcast/Crystal con
+cabecera/pie ocultos y doctype fiel; 4 capturas auténticas en
+`C:/tmp/vantare-isa1105-captures/` (las 4 primeras descartadas por fixture en
+quirks; visual 9/10 en SSR/harness, prueba física pendiente); hito roadmap en
+`feature` con `roadmap.json` regenerado. Full, build y lint, una sola vez
+sobre el candidato conjunto #1098. Sin push/PR/merge, sin testers/master/
+release, sin LMU físico ni licencia real afirmados.
+
+## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
+
+Petición adicional de Isaac: diagonales según bandera, sin transición; dos datos
+configurables en cabecera y pie opcional fino. Implementación aislada sobre
+`87cef39a`, rama `vantareapp/isa-1103-efficiency-session-info`, worktree
+`C:/tmp/vantare-isa1103`. Signature mantiene 50 px de cabecera y Broadcast 46;
+el pie añade 22 px al marco compartido. Inspector y Workshop usan el manifest.
+El refresco de Standings reconoce también cambios de información sin posiciones.
+
+Límite confirmado: BuildSession/BuildWeather todavía publican flags/temperaturas
+como missing. No se crea otra fuente de LMU. Bandera desconocida/antigua neutra;
+datos ausentes «—». Vueltas estimadas desde `fuel.sessionLaps` canónico, nunca
+autonomía ni un cálculo nuevo en React. El escenario de diseño invalida la
+estimación del golden al sobrescribir su tiempo para no mostrar datos incoherentes.
+
+51 tests focales y 120 regresiones de host/marco/Studio pasan. Primera suite
+completa detectó 9 fallos explicados por la nueva altura, fixture sin weather y
+snapshot previo al nuevo VM; los 120 tests incluyen sus correcciones y la
+repetición completa posterior es verde (3377 PASS). Revisión independiente Muse
+1.3 Contributor aprobada sin bloqueantes; P2 238/258 cerrado. Detalle en
+[microplan ISA-1103](../../analysis/ISA-1103-efficiency-session-info.md).
+
+P2 cerrado: Signature estrecha (Posición+Piloto, 238 px) ocultaba los datos de
+cabecera. `resolveFunctionalHeaderInfoPlacement` (`inline`/`split`/`band`/`none`)
+desvía la información a una franja de 22 px reservada en el marco cuando no cabe
+en la zona libre; Signature conserva 50 px y Broadcast 46 px en ancho habitual,
+y slots `none` o cabecera oculta no añaden franja. Evidencia: focales 9/180
+PASS, suite 425 archivos con 3377 PASS y 2 omitidos (exit 0), typecheck/build/
+lint PASS con exit 0; logs en `C:/tmp/vantare-isa1103-*.log`. Navegador del
+orquestador sobre harness (no físico): Signature Pos+Nombre 238x394 con banda
+22 px (Sebring/20:03 sin solape), Broadcast Pos+Nombre 258x414 con banda, y sin
+banda (0 nodos, 392 px) con ambos datos en Ninguno. Sin cambios Go.
+No es aceptación física de Isaac. Pendientes prueba física conjunta e
+integración a Nightly.
+
+ISA-1097 continúa en su propio worktree: Delta premium y eliminación tras
+downgrade corregidos con 4 RED → 23 PASS. Política nativa/marca aún pendiente;
+la revisión identifica transporte sin PII para OBS y conservación de vencimientos
+verificados para expirar derechos en vivo. No se incluye ese código aquí.
+ISA-1083 tiene CI PASS en `87cef39a`, run 34431634439. Isaac ha pospuesto la
+comprobación física e integración hasta comprobar el conjunto. Sin merge/release.
+
+## ISA-1127 — ciclo de vida de la ventana overlay de escritorio (2026-09-11, en rama)
+
+Issue [#1127](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1127)
+(`area:overlays-runtime`, `roadmap:required` → `milestones:overlay-tester-feedback`),
+rama `vantareapp/isa-1127-overlay-lifecycle`, worktree
+`C:/tmp/vantare-isa1127-overlay-lifecycle`, PR draft
+[#1169](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1169) a
+`nightly`. Origen: en la comprobación física de ISA-1098 (Efficiency PR1107 +
+REST 1106) la app se cerró al abrir overlay + edición y los overlays no
+reaparecieron; la reproducción física no se consiguió y este corte **no
+afirma** cerrar ese crash. Lo que sí demuestran los tests con fakes son tres
+defectos reales del controlador, presentes también en Nightly:
+
+- Dos `Start` concurrentes crean dos ventanas nativas y la perdedora queda
+  huérfana (siempre encima, inalcanzable por `Stop`). En producción ya hay
+  Starts concurrentes: `refreshActiveOverlayAfterSave` recrea la ventana en
+  cada guardado de Studio mientras el usuario puede pulsar abrir.
+- `Stop` durante la creación en vuelo devuelve `running=false`, pero la
+  ventana creada se instala después y reaparece como fantasma.
+- `Close()` se invocaba bajo `c.mu`: un runtime nativo que despache el evento
+  de cierre en la pila del caller bloquearía `HandleWindowClosed` en deadlock
+  (el callback real de Wails en `main.go` ya lanza goroutine, así que el test
+  síncrono prueba robustez del contrato, no el crash físico).
+
+Corte mínimo: `internal/app/overlay_controller.go` añade `startMu` que
+serializa `Start`/`Stop` y cierra la ventana anterior fuera de `c.mu` en todos
+los caminos. `HandleWindowClosed` no cambia. Sin dependencias ni arquitectura
+nueva.
+
+Evidencia: 3 regresiones nuevas (`overlay_controller_lifecycle_test.go`)
+**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas:
+huérfana `closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el
+fix** bajo `-race`; los 8 tests existentes del controlador pasan. `go test
+./...` completo exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm
+build` para el embed de `frontend/dist`). `plan.md` actualizado
+(`overlay-tester-feedback`) y `roadmap.json` regenerado con
+`roadmap_digest.py --ref origin/nightly`. Fragmento de changelog
+`ISA-1127.json`.
+
+La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
+la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
+ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
+docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
+Validación física local completada con `bin/vantare.exe`, reconstruido por el
+procedimiento documentado (`wails3 task -f build`, canal `nightly`) desde el
+`.env.local` original autorizado: URL Supabase, anon key y registro público de
+licencia se cargaron solo en memoria y las tres coincidencias embebidas dieron
+`EMBED_MATCH=True`, sin imprimir valores. SHA256
+`FA10F5326052B115AF767B7AAB3A3E5090789F64855012D70C3821A3EFA55B8F`.
+
+En un arranque limpio, con una sola instancia y el servidor OBS escuchando en
+`127.0.0.1:39261`, se activó `Clean Overlay` y se reprodujo abrir overlay desde
+Hub → abrir Studio: Hub siguió respondiendo y Studio abrió en 189 ms, sin cierre
+de la app. Al entrar en Studio el overlay pasó a detenido, comportamiento
+observable que no equivale a una ventana huérfana. Desde Studio se abrió de
+nuevo el overlay y se realizaron dos guardados reales moviendo el widget
+`delta` y devolviéndolo: ambos alcanzaron `Guardado automáticamente`, cada uno
+creó un nuevo entorno WebView2 y el proceso siguió respondiendo. `Detener
+overlay` volvió a `Abrir overlay`; no hubo `panic`, `fatal` ni fallo de escucha
+en el log limpio. Los perfiles y el calendario tocados durante el smoke se
+restauraron después y el árbol tracked quedó limpio. Esta evidencia valida el
+flujo probado con `Clean Overlay`; no demuestra aún paridad de Efficiency+REST,
+Pro/Owner ni todos los perfiles. Sin promoción a nightly, testers, master ni
+release.
 
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
@@ -467,6 +961,392 @@ física nueva, retirada V1, merge o release en este corte documental.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
 ## Estado
+
+- **ISA-1083 — Efficiency / Eficiencia (2026-09-10):**
+  **Decisiones actuales:** Efficiency es un sistema con estilos Signature y
+  Broadcast. Studio lo traduce como Eficiencia (ES), Efficiency (EN), Eficiência
+  (PT) y Efficienza (IT). IDs persistidos conservados por compatibilidad.
+  Delta es de pago, confirmado por Isaac; su aplicación pertenece a ISA-1097.
+  CI del head `dd6a2c36` falló exclusivamente en el presupuesto temporal de
+  OverlayFrameV2: 1,5 ms frente a límite estricto <1,5 ms, test no modificado.
+  No se cambia el umbral; los checks del siguiente head siguen siendo necesarios.
+  **Revisión de nomenclatura:** P2 detectado y cerrado con regresión RED/GREEN:
+  los perfiles previos mostraban `Functional Signature/Broadcast · Preview` en
+  Orbit. La presentación ahora resuelve el catálogo oficial compatible; conserva
+  nombres de usuario, IDs y documentos. 31 tests focales PASS. Revisor independiente
+  sin bloqueantes. Suite final: 424 archivos, 3356 PASS y 2 omitidos, exit 0;
+  lint y build canónico Windows (incluye frontend/tipos) PASS. Binario local
+  sin configuración de servicios añadida; no certifica licencia real.
+  **Entrega del ajuste:** código en `5db70a08`, push verificado en PR #1100.
+  CI remota `34430760576` SUCCESS sobre ese código: Go, frontend, tipos y
+  Windows/Wails incluidos. El paso advisory de contrato roadmap señaló campos
+  ausentes en la ficha; #1083 y #1097 ya usan las secciones canónicas, y el
+  validador local contra el mismo HEAD y la issue viva pasa los dos IDs exactos.
+  Falta la prueba física antes de integrar; Nightly sigue en `b6b5754e`.
+  Workshop verificado en navegador con ambos estilos. Las herramientas de esta
+  sesión no controlan ventanas nativas; no confundir esta evidencia con la prueba
+  física pendiente de Studio/Desktop.
+  **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
+  [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
+  hacia Nightly. CI remota inicialmente pendiente al abrir; el resultado
+  actualizado está indicado arriba. Issue en `state:in-review`.
+  Worktree propio limpio. No hay merge ni release; #1098 registra la integración
+  y #1097 la política comercial posterior. Las notas de iteraciones inferiores
+  conservan su estado histórico y no sustituyen este corte.
+  **Ejecución aprobada 2026-09-10:** cerrar el widget y su integración a Nightly
+  por partes, luego unificar acceso y marca en ISA-1097. Plan vigente:
+  `docs/analysis/ISA-1083-delivery-plan.md`. Primero contrato Go de guardado y
+  selector normal de Studio; Workshop por sí solo no certifica estos recorridos.
+  La autorización sustituye las notas históricas sin merge autorizado; siguen
+  pendientes validación física y evidencia de integración (#1098). Revisión
+  independiente terminada sin bloqueantes tras corregir tres P2: cabecera tras
+  reordenación, anchos S/M/L y expansión junto al borde inferior. Expediente:
+  `design-evidence/functional/integration-review.md`. Suite completa posterior:
+  3345 PASS / 2 omitidos, exit 0; 22 focales tras el último ajuste de cabecera.
+  Persistencia
+  Go y selector normal de Studio terminados con regresiones RED/GREEN. Se corrige
+  el marco de perfiles de 340 px mediante geometría compartida, conservando el
+  preview DOM imperativo. 145 tests focales de geometría PASS; Go completo,
+  frontend previo a geometría (3330 PASS / 2 omitidos), build/tipos y lint PASS.
+  Isaac confirma disponibilidad sin pruebas concurrentes. La app abierta
+  procede de ISA-1072, no de esta entrega: no atribuirle la nueva implementación.
+  La segunda parte está trazada en #1097 con Delta de pago ya decidido.
+  **Ajuste posterior:** Isaac rechaza las marcas rojas junto a los pilotos de
+  Broadcast y valora positivamente el resto. Se elimina ese adorno CSS;
+  las dimensiones, textos, cápsulas, cabecera y Principal se conservan.
+  Ajuste verificado: 13 tests focales y build/typecheck PASS; navegador confirma
+  10 filas sin marcas, con los cuatro módulos a 594 × 370 px. Evidencia nueva:
+  `design-evidence/functional/standings-broadcast-clean.png`. Sin commit ni PR.
+  **Última decisión:** Isaac elige la opción Images 3 como principal y la 2 como
+  secundaria, ambas derivadas de la captura real de Joined01. Se trasladan al
+  renderer compartido como Signature y Broadcast. Signature conserva el ID
+  `standings-functional-compact`; Broadcast añade `standings-functional-broadcast`
+  al catálogo. Selector en Workshop, módulos conservados y mismo ViewModel.
+  Inter, filas de 30 px y selección neutra. Aceptación del React pendiente.
+  Principal 238–574 px / 350 px alto; Broadcast 258–594 px / 370 px alto.
+  Las 32 combinaciones y los estados de fuente pasan en navegador integrado.
+  Revisión final: 9,0/10 en ambas; se refinan motivo compacto y cápsulas de
+  Broadcast. Suite completa 3328 PASS / 2 omitidos, 51 focales posteriores,
+  build/typecheck y lint PASS. Guard de sistemas: tres fallos Endurance
+  heredados, sin ocultar. Sin Wails/LMU, commit, push, PR, CI remota o promoción.
+  Detalles, referencias elegidas y evidencia en el informe ISA-1083.
+  **Decisión previa:** Isaac prefiere el widget unido y rechaza la fila roja de
+  Fodor y la placa del 7. Joined01 reúne las columnas sin hueco ni rebaje de
+  cabecera; selección gris neutra continua y marca roja fina en el borde.
+  El 7 queda sin placa. Se conserva Inter y cristal suave; no cambian datos,
+  módulos ni otros renderizadores. Aceptación visual pendiente.
+  Revisor Joined01: **9,0/10**, las tres correcciones resueltas en React.
+  Navegador: 16 combinaciones y estados PASS, sin errores JS; Inter confirmado.
+  Suite completa: 3325 PASS, 2 fallos de espera y 2 omitidos; repetición de
+  ambos tests junto al estudio: 41 PASS. Se conservan ambos resultados en
+  el informe; la repetición focal no equivale a una suite completa verde.
+  Build/typecheck, lint y diff check PASS. Rama/base/HEAD sin cambios;
+  entrega local sin commit, push, PR, CI remota ni promoción.
+  **Corte anterior:** Isaac rechaza cifras desconectadas y aspecto plano.
+  Depth03 unifica todo en Inter y compone núcleo y extensión con una separación
+  de4px y cabecera secundaria rebajada7px; el jugador une ambas como una fila
+  vino continua. Mantiene carbón/blanco/rojo y glass suave. Revisor **9,0/10**;
+  aceptación de Isaac pendiente. Suite3327 PASS/2 omitidos,36 focales posteriores,
+  build/typecheck/lint PASS y16 combinaciones en navegador sin errores. Altura344px,
+  anchuras238–574px y nombres completos14px. Capturas finales e informe en
+  `docs/analysis/ISA-1083-functional-design.md`. Sin commit, push, PR o promoción.
+  Las notas y la incidencia CPU siguientes pertenecen al historial anterior.
+  **Última corrección:** Isaac considera React07 un avance, pero sus colores y
+  lenguaje no representan Vantare. Vantare01 sustituye azul/gris por carbón
+  neutro, blanco y rojo `#C1121F`; firma compacta de marca, posición del jugador
+  oblicua roja, lavado vino y nombres uppercase. Conserva cristal suave y módulos.
+  Vantare02 añade el isotipo real existente a la cabecera. Revisor: 8,825 global,
+  9 en identidad de marca; identificación resuelta y aceptación de Isaac pendiente.
+  Navegador16 combinaciones PASS, 238–574px, altura342px y nombres completos14px.
+  Build/lint PASS. Suite completa3326 PASS/2 omitidos/1 fallo de presupuesto CPU
+  del decoder V2 (1,562 frente a1,5ms), sin cambios en dicho decoder/test.
+  Repetición aislada del decoder junto al widget:14 PASS; no se declara suite
+  completa verde ni mejora de rendimiento. Typecheck final comprobado aparte.
+  **Decisión vigente:** Isaac rechaza las bases Images y pide diseñar directamente
+  en React desde la referencia de cristal suave; Images queda para detalles
+  posteriores. Se prioriza taste, funcionalidad y modularidad visual.
+  Rama `vantareapp/isa-1083-functional-standings`, base `b6b5754e`, worktree
+  `C:/tmp/vantare-isa1083`. Sistema opt-in registrado con un solo Standings sobre
+  WidgetVisualHost. Vista de estudio dentro de Workshop, cuatro módulos reales,
+  carrera/práctica, tres fondos y estados de fuente. Variante dev explícita con
+  datos de demostración; no altera golden ni perfiles. Anchura fluida sin escalar
+  texto: las 16 combinaciones conservan nombres íntegros y filas a tamaño nativo.
+  Tarea de revisión `01a08756-30ab-7682-af63-1df81364debe`: React01 7,4; React02
+  8,0; React03 8,275; React04 8,3; React05 8,6; React06/07 **8,675**. Historial
+  anterior a la corrección de marca: núcleo posición/piloto/GAP en carrera, vueltas/PIT como
+  extensión, tipografía híbrida y mejor vuelta protagonista en práctica.
+  No alcanza 9 y queda pendiente de aceptación visual de Isaac.
+  Suite frontend 3322 PASS/2 omitidos, build y lint PASS; 36 focales posteriores
+  y navegador sin errores. Guard de sistemas sigue señalando tres referencias
+  heredadas en tests Endurance; no se ocultan. Sin commit, push, PR, promoción,
+  merge o release ni evidencia física Wails/LMU. Detalles y límites en
+  `docs/analysis/ISA-1083-functional-design.md`.
+
+- **ISA-1120 — Eficiencia v2, direcciones en el Workshop (2026-09-11):**
+  Isaac pide iterar el diseño Eficiencia hacia una v2 a través del harness.
+  Rama `vantareapp/isa-1120-efficiency-v2` sobre
+  `origin/vantareapp/isa-1083-functional-standings` (Eficiencia aún no está en
+  Nightly), worktree `~/Desktop/vantare-isa1120` (macOS). Tres direcciones de
+  estudio conmutables en el Workshop —Torre, Podio y Foco— como piel
+  `data-study-style` enlazable por `study=` en la query; viven solo en
+  `overlay-workshop.css` y los controles del estudio, sobre el renderer
+  productivo compartido. Sin diseños oficiales, persistencia, tokens
+  productivos ni cambios de #1097/#1098/#1103. Typecheck, 18/18 tests focales
+  del parser/ruta, lint y diff-check PASS. Capturas y detalle en
+  `design-evidence/functional/v2-directions.md` (`efficiency-v2-*.png`).
+  Se añadieron tres direcciones más diferenciadas: Papel (piel CSS de
+  atmósfera clara), Muro y Escalera (renderers de estudio propios sobre el
+  mismo ViewModel). **Decisión de Isaac 2026-09-11: V1 y Foco son las dos
+  direcciones vigentes;** Torre, Podio, Papel, Muro y Escalera quedaron
+  descartadas y retiradas del harness (las capturas quedan como evidencia en
+  `design-evidence/functional/`). Además, a petición de Isaac, la v1
+  productiva dejó de marcar al jugador con el tick rojo y el texto «TÚ» — la
+  banda neutra (algo más marcada) es el único marcador — y Foco agranda las
+  etiquetas de columna. También: sombra del panel suavizada, separadores de
+  vuelta reanclados al número, y nueva banda inferior `.vf-footer` (pista/
+  aire/viento) que solo aparece cuando el frame V2 entrega esos campos — hoy
+  LMU no los soporta, así que la producción queda igual hasta que exista la
+  fuente. Traducir Foco a diseño oficial es otra entrega. Sin merge,
+  promoción ni release.
+
+- **ISA-1128 — Eficiencia ampliada a Relative, Delta y Pedals (2026-09-11):**
+  Isaac pide llevar el lenguaje Eficiencia al resto de widgets para evaluarlo
+  en el Workshop antes de catálogo. Rama `vantareapp/isa-1128-functional-widgets`
+  sobre `origin/vantareapp/isa-1120-efficiency-v2`, worktree
+  `~/Desktop/vantare-isa1128`. Tres renderers nuevos en
+  `design-systems/vantare-functional/` (`RelativeFunctional`,
+  `DeltaFunctional`, `PedalsFunctional`) sobre los ViewModels productivos:
+  Relative reutiliza cabecera+tabla con badge de posición del jugador, tick de
+  clase, hueco «A TI» en la fila del jugador y separador de columna de
+  vuelta; Delta cabe en el aspecto bloqueado 280×96 con la última vuelta a la
+  derecha de la cabecera (como el reloj de Standings), valor grande por tono y
+  pista de centro; Pedals dibuja tres canales C/B/T con rellenos y
+  porcentajes. El manifest funcional declara los cuatro widgets y la query
+  del Workshop (`system=vantare-functional`) deriva la compatibilidad del
+  manifest en vez de una lista duplicada. **Desviación de alcance
+  documentada:** el contrato del catálogo exige exactamente un diseño
+  oficial por par widget:sistema registrado, así que los tres pares llevan
+  diseño `Signature` (`isDefault`) y Eficiencia aparece en el selector de
+  sistemas de Studio **en esta rama** — sin merge ni promoción, la oferta al
+  usuario final sigue pendiente de la decisión de Isaac en la integración.
+  Fix lindante: `buildStandingsViewModelV2` leía `frame.weather` sin guardia
+  y reventaba en frames sin clima (fixture de host y cualquier frame V2 sin
+  el bloque); ahora es opcional. Checks: typecheck PASS, lint PASS, build
+  PASS, suite 427 ficheros / 3389 tests PASS (incluye los 4 tests de
+  caracterización de catálogo actualizados), `git diff --check` limpio.
+  Evidencia en `design-evidence/functional/efficiency-{relative,delta,pedals}.png`.
+  Además, el Workshop dejó de ser frágil: una URL rechazada ya no deja una
+  página muerta (abre el estado por defecto con el motivo visible), cambiar
+  de widget limpia escena/diseño/piel heredados y el selector de variantes
+  solo ofrece las del widget activo. La vista de estudio se generalizó:
+  cualquier selección `system=vantare-functional` abre el panel enfocado
+  (widget conmutable entre Standings/Relative/Delta/Pedals con aterrizaje en
+  la fixture más expresiva de cada uno, selector de sistema para salir de
+  Eficiencia, rótulo del escenario derivado del widget); Estilo, Dirección
+  v2 y Módulos siguen siendo solo de Standings. El playhead de escena se
+  reancla al cambiar de escena (ajuste en render, no efecto) para que el
+  `frame=` de la URL sea honesto. **Decisión de Isaac 2026-09-11: la vista de
+  estudio pasa a ser el único harness del Workshop.** El panel genérico
+  (header + fieldsets + sección de escenas) desaparece: el lateral cubre
+  widget, sistema, diseño, variante por widget, escena, estado, sesión,
+  ubicación, fondo, superficie, comparación y escala para cualquier sistema;
+  los bloques de Eficiencia (Estilo, Dirección v2, Módulos) solo aparecen en
+  Standings. El transporte de escena vive superpuesto abajo-izquierda del
+  escenario. Se corrigió el desbordamiento del select de escena (fieldset
+  min-content) y el aterrizaje `standings-functional-study` solo aplica con
+  Eficiencia (con otro sistema cae a `standings-multiclass`). **Capa demo del
+  Workshop:** el golden nombra a sus 20 coches `Driver 0NN` y deja delta,
+  embrague, dirección, history y clima sin valor; `buildWorkshopFrameV2`
+  aplica ahora una parrilla de muestra (20 nombres de resistencia sobre las
+  posiciones canónicas, asientos de escena conservados, nombres espejo en
+  relative/relativeSettled, delta +0.214, pedales completos, history de un
+  sector con frenada, clima de muestra) antes de variantes y escenas — solo
+  en el Workshop, sin tocar el golden ni producción; stale/error siguen
+  vacíos y honestos. Capturas del estudio en
+  `design-evidence/functional/study-{standings,relative,delta,pedals}.png`,
+  `harness-*.png` y `demo-*.png`. **Relative Eficiencia solo-filas (decisión
+  de Isaac, referencia iRacing):** sin cabecera de marca, sin fila de
+  etiquetas, sin decoración de esquina; `showHeader` deja de existir en
+  relative (delta/pedals lo conservan) y la variante dev
+  `relative-multiclass` recorta columnas a posición/clase/nombre/gap para no
+  pintar huecos declarados. **Barras de info (siguiente decisión de
+  Isaac):** el VM de relative publica campos meta opcionales — sessionLabel,
+  remainingText, trackText, playerBadgeText (P·clase) y clima — solo cuando
+  el frame V2 los entrega; el renderer pinta barra superior (pista · badge
+  del jugador) e inferior (sesión+reloj · ambiente) reutilizando el lenguaje
+  del footer de Standings. **Selector de marca (decisión de Isaac):** los
+  renderers de standings/delta/pedals leen `settings.brandVisible` — la
+  decisión inyectable del contrato ISA-1105 — y el Workshop expone
+  `brand=off` con el segmento "Marca" en el panel (autoridad local mientras
+  la política nativa con licencia llega por ISA-1098/1105, aún sin mergear
+  en nightly). **bestLap en la demo:** el golden lo trae `missing` en todas
+  las filas y la columna "Mejor vuelta" pintaba solo `—`; como no es un
+  hueco declarado, la capa demo lo deriva de lastLap con mejora determinista.
+  Evidencia `relative-rows-only.png`, `relative-bars.png` y
+  `standings-no-brand.png`. **Harness síncrono (decisión de Isaac, análisis
+  completo):** el widget ya no es producto de cuatro capas de parcheo ni de
+  un `prepared` diferido — `buildWorkshopWidget(query)` es el único punto
+  que decide la forma (forma → diseño → dev → sesión → marca → módulos, en
+  orden fijo) y corre síncrono en el render; el runtime es otra función
+  pura de la selección + playhead cuantizado. Los módulos del estudio
+  viven en la URL (`modules=…`) y todo estado es compartible. Fixture
+  inválido → error visible con controles vivos. Bug arrastrado resuelto: el
+  swap de columnas por sesión corría sobre cualquier widget funcional y
+  explotaba en Delta/Pedals (sin `content.columns`); ahora es solo de
+  Standings y hay regresión cubriendo los 12 combos widget×sesión.
+  **Panel simplificado:** una sola variante de standings funcional
+  (`standings-functional-study` — los módulos siempre aplican), fuera la
+  pseudo-opción "Ajustes por defecto del renderer" (sin designId se aplica
+  el diseño oficial por defecto, como en producto), cabecera sin marca
+  rediseñada como banda de información, y 15 pilotos mínimo en el estudio.
+  Pendiente: opción de Studio para máximo de pilotos con ventana
+  top-3 + jugador. **Delta rehecho** (Isaac: "el diseño es malo"): valor
+  con glifo de dirección ▲/▼, escala de instrumento ±2 s con marcas y
+  etiquetas, relleno degradado con brillo por tono. Evidencia
+  `delta-instrument.png` / `delta-instrument-nobrand.png`. Tras verlo,
+  Isaac pidió fuera la cabecera entera: el delta es instrumento puro
+  (valor + escala + pie ÚLT. VUELTA), `showHeader` retirado del
+  manifiesto; evidencia `delta-noheader.png`. **Segunda dirección Delta:**
+  `templateId: "capsule"` (tipo Crystal — fila en píldora, pista gruesa,
+  píldora de valor) junto a `instrument` por defecto; diseño oficial
+  `delta-functional-capsule`, elegible en Estilo. Evidencia
+  `delta-capsule.png`. **Sistema "iRacing"** (`vantare-iracing`, dev):
+  referencia clásica de sim racing. Primer widget:
+  `pedals-telemetry-compact` renombrado "Pedales avanzados" (4 locales) —
+  marcha ámbar, km/h + rpm, 3 barras verticales y volante que gira con
+  `player.steering` (recién mapeado al VM compacto). Diseño
+  `pedals-advanced-iracing`; evidencia `iracing-pedals-adv.png`.
+  **Slots de pie** (hasta 5) en standings/relative de Eficiencia vía
+  `footerSlots` + `slots=` en la URL — vocabulario compartido, resuelto
+  desde el VM (jugador + sesión + ambiente); reemplazan el pie ambiental.
+  **Auditoría del motor de animaciones**: `docs/analysis/ISA-1128-motion-engine-audit.md`
+  — la política de rendimiento Go llega al scheduler pero no a los
+  renderers; propuesta de MotionLevel + effects en el host.
+  **Pie adaptable (Isaac: "se desborda"):** la fila única con clip quedó
+  descartada — ahora los huecos doblan a segunda fila con letra escalada al
+  ancho (container query + clamp) y el renderer presupuesta filas sobre
+  `layout.h` real: la tabla cede en filas completas y el pie nunca se corta
+  (constantes espejo de `resolveFunctionalStandingsSize`; sin layout no se
+  recorta nada — tests y hosts antiguos intactos). **Motion Eficiencia +
+  eficiencia del motor:** `core/widget-motion.ts` comparte el patrón
+  prevRef+timers+layout-effect (`useWidgetMotion`, `MotionLevel`,
+  `resolveMotionLevel`); el host resuelve el presupuesto desde
+  `capabilities.performance` + prefers-reduced-motion y lo pasa a los
+  renderers como props `motion`/`effects` (niveles 4→reduced, 5→minimal).
+  `useDeltaMotion` migrado al helper (standings/relative de Endurance
+  conservan su orquestación con estado propio). Los tres renderers
+  funcionales animan: FLIP por índice renderizado, flash rise/fall
+  discreto en cambios de posición, cruce de cero y nueva referencia en
+  delta, fills con transición en pedales. `data-effects` (noBlur/flat)
+  apaga blur/sombras según política. **Harness corregido:** la parrilla del
+  estudio conserva los asientos de escena (Bovy 7, Bruni 10…) y
+  `applyScene` reordena el relative por gap tras un cruce — antes la
+  escena movía el dato pero la VM mantenía el orden viejo y nada se
+  animaba. Verificado en navegador: overtake/battle destellan y deslizan,
+  delta-cross-zero pulsa, relative-cross reordena con FLIP.
+  **Primera revisión adversarial del motor (10 P2, todos corregidos en
+  `c3f68d43`/`9918ec6f`/`7642df46`):** doble escala en el stride medido
+  (`getBoundingClientRect` devuelve px escalados; corregido con
+  `offsetHeight` y `RELATIVE_ROW_PX` 19.8→28), `data-motion-level` en las
+  raíces + gate CSS `transition/animation:none` en minimal, cancelación de
+  WAAPI/timers/attrs al bajar el nivel, cruce de relative por cambio de
+  `side` (no por delta de índice), timers con clave para no apagar el
+  flash siguiente, `flat` cubre efectos interiores del delta, tick del
+  transporte sin re-render cuando la muestra cuantizada no cambia,
+  interpolación de overrides discretos aterrizando en `t>=1`, y la
+  parrilla del estudio recupera el asiento visible de Laursen (P15).
+  **Segunda revisión adversarial (arquitectura, 4 P2, corregidos):**
+  `flipRows` compartido en `widget-motion.ts` — FLIP medido por id de
+  fila estable (rects normalizados por la escala del root, `from =
+  prevTop − top + inFlight`) que retargetea desde la posición visual en
+  vuelo y sobrevive a remounts de nodo (batalla Redline
+  block↔battle-box); `persist` en el contexto del hook se limpia al
+  romper la continuidad; memoria del último lado no neutro del delta
+  (perder→neutro→ganar marca el cruce) en functional y Endurance;
+  `useStandingsMotion` usa `flipRows`, cancela WAAPI/timers/attrs al
+  deshabilitarse y sus timers llevan clave (stepDeltas ya no apila
+  cadenas); `PedalsEndurance` emite `data-motion-level`; y el host se
+  suscribe a `prefers-reduced-motion` vía `useSyncExternalStore` — un
+  cambio en caliente baja a `minimal` en el mismo render sin esperar otro
+  frame. Fix colateral: los 3 errores preexistentes de `react-hooks/refs`
+  en `widget-motion.ts` (escrituras de ref en render) quedan dentro de un
+  layout effect. Verificado en Chromium: re-target con keyframes no-stride
+  (49.6px/23.6px), delta marca gaining y losing, relative marca fall+rise
+  sobre Bruni, y reduced-motion emulado a mitad de vuelo deja 0 WAAPI
+  corriendo y restaura `full` al quitarlo. En la parrilla golden
+  multiclase las escenas de estudio no producen reorden dentro de clase
+  (los asientos 7↔10 son de clases distintas), así que el FLIP de
+  Endurance queda cubierto por los tests de `flipRows` (remount por id,
+  retarget con transform en vuelo) más el teardown del hook — la escena
+  correcta para demostrarlo en navegador sigue pendiente. Checks:
+  typecheck PASS, lint PASS (archivo ya sin errores), build PASS, suite
+  3403/3404 (el único fallo es el i18n-audit preexistente por una clave
+  huérfana en studio-orbit, confirmado en HEAD limpio).
+  **Cierre de la auditoría (dos cabos sueltos, corregidos):**
+  escena nueva `standings-class-battle` — Birch (GTE P9) se pega a Pier
+  Guidi (GTE P6), la costura cristaliza en caja (2,5 s sostenidos) y el
+  adelantamiento intercambia las filas dentro de la misma clase con la
+  caja viva. Es la primera escena que reordena filas visibles en la
+  parrilla multiclase: el bloque hypercar (clase del jugador, siempre el
+  último) queda recortado por `fitStandingsRowsToHeight` a la altura
+  oficial (~620 px), así que las parejas antiguas eran invisibles y, sin
+  fila de jugador en el modelo recortado, `deriveBattlePairs` no podía
+  derivar nada. Verificado en Chromium con `height=940`: seam → box →
+  dissolve → swap dentro del wrapper con FLIP medido (6,3 px, retarget
+  1,4 px) → nueva costura invertida. Además `applyScene` ahora avisa una
+  vez por escena/piloto cuando un parche no resuelve ninguna fila (ni por
+  nombre ni por asiento) — el resbalón silencioso del hallazgo 10 deja
+  de ser silencioso. Y `useRelativeMotion` de Endurance, código muerto
+  con el bug de doble escala latente (medía `getBoundingClientRect` sin
+  normalizar), queda eliminado junto a sus tests: la plantilla Redline
+  Relative decidió no usar FLIP y nadie lo importaba. Checks: typecheck
+  PASS, lint PASS, build PASS, suite 3396/3397 (mismo i18n-audit
+  preexistente).
+  **PROMOCIONADO a nightly (2026-09-12, PR #1194, squash `1567a263`):**
+  revisión del diff completo previa al merge corrigió tres hallazgos
+  propios — clave i18n huérfana `overlay.inspector.pedals.showHeader`
+  retirada de los 4 locales studio-orbit (i18n-audit vuelve a verde),
+  `vantare-iracing` añadido al contrato Go V3
+  (`IsSupportedDesignSystemID` + round-trip de perfil) y lint de
+  `orbit-outside-harness.tsx` (fast-refresh, roto en ISA-1185). La
+  fusión con `nightly` integró el laboratorio tower de Redline
+  (ISA-1071): overrides `redline*` por `buildWorkshopWidget`, canvas de
+  referencia en `WorkshopSurface` y fieldset en
+  `FunctionalStudyControls`; `resolveStandingsRedlineMinimumWidth`
+  devuelve `undefined` en tema tower (marco físico fijo). CI completo
+  verde en ambos ciclos (suite 3476, Go, build Windows, Testing Center).
+  **Divergencia tras el squash de ISA-1183 (`eee3b99e`, #1191):** esa
+  rama se había separado tras la primera revisión adversarial y al
+  integrarse conservó sus versiones en los archivos compartidos —
+  nightly quedó autoconsistente y verde, pero sin la segunda/tercera
+  ronda descrita arriba: `flipRows` (retarget en vuelo, identidad por
+  `data-standings-row`), `persist`/memoria de lado del delta, teardown
+  y timers con clave de `useStandingsMotion`, `data-motion-level` en
+  `PedalsEndurance`, suscripción reactiva a `prefers-reduced-motion` en
+  el host, escena `standings-class-battle` + aviso de parches sin
+  resolver, retirada de `useRelativeMotion` muerto, el caso
+  `vantare-iracing` en `IsSupportedDesignSystemID` (frontend lo sigue
+  registrando → perfiles con pedales iRacing no persisten) y el lint de
+  `orbit-outside-harness.tsx`. **Divergencia resuelta:** el contrato Go
+  volvió a nightly en `257b5fe6` (PR #1206) y la segunda/tercera ronda se
+  reaterrizó en `6160caf8` (PR #1209) — `flipRows` por identidad de fila
+  con retarget desde posición visual y medidas normalizadas a la escala,
+  `ctx.persist`, reduced-motion reactivo vía `useSyncExternalStore`,
+  teardown + timers con clave, memoria de último lado no neutro del delta,
+  `data-motion-level` en Pedals Endurance, escena `standings-class-battle`
+  + aviso de parches sin resolver, y retirada de `useRelativeMotion`
+  muerto. `37b455be` se omitió (nightly resolvió el lint del harness orbit
+  por otro camino). En la resolución se conservó el nightly actual:
+  `StandingsFunctional` mantiene SessionInfo/`infoPlacement` y
+  `RelativeFunctional` el presupuesto escalado por
+  `resolveWidgetVisualGeometryForType`. Gates del reaterrizaje:
+  typecheck/lint/build PASS, suite 452 archivos / 3598 tests verdes.
+  Preexistentes en nightly verificados en checkout limpio y ajenos:
+  `internal/app/launcher` solo compila en Windows (corregido luego por
+  ISA-1183) y 2 tests de DiagnosticsBridge fallan en macOS. Pendiente:
+  validación física en OBS/WebView2 y la traducción de Foco a diseño
+  oficial (ISA-1183 ya entrega parte). Sin release ni promoción a
+  `testers`/`master`.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
@@ -1512,7 +2392,307 @@ abortar ante fallo; cerrar solo procesos iniciados por Vantare; perfil LMU
 externo opt-in; autostart una vez; módulos con estado; estadísticas locales;
 catálogo firmado/cacheado.
 
-Debe auditarse qué commits están realmente integrados antes de nuevo trabajo.
+### Auditoría de lanzamiento · 2026-09-24
+
+[Issue #1368](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1368)
+revisa el `origin/nightly` verificado en `6df485fe`. Estado: **no apto para
+lanzamiento** hasta cerrar sus gates. La pantalla Orbit manda el perfil dentro
+de `{profile: ...}`, pero Wails lo deserializa como perfil directo; crear y
+guardar fallan y `launcher:error` no se muestra. El ejecutor no aplica las
+políticas de proceso ya abierto, cancelación, salida ni primera espera. El
+comando de decisión solo responde con un evento y no gobierna la cadena. El
+cierre/reinicio comprueba el PID sin confirmar ruta o nombre reales. Atajo e
+inicio con Windows se editan, pero el guardado Orbit no activa sus handlers;
+el gestor de atajos tampoco conecta una pulsación con el lanzamiento. La
+cancelación borra la exclusión mutua antes de terminar la cadena.
+
+Evidencia: `go test ./internal/app/launcher/...` y `go test ./cmd/vantare/...`
+pasaron; 108 pruebas frontend enfocadas y `pnpm build` pasaron. `pnpm test`
+global y `go test -race` amplio no son gates válidos en esta máquina por
+agotamiento de memoria/paginación; race también encontró un compilador C
+incompatible. No hubo prueba física Wails/Steam/LMU ni del instalador. El
+siguiente corte debe reproducir y corregir estos fallos, pasar CI y comprobar
+en Windows real creación, ejecución, errores, recuperación, procesos, atajos,
+autostart y las aplicaciones comprometidas para el lanzamiento.
+
+Avance de la rama `vantareapp/isa-1368-launcher-release-audit`: el perfil de
+Orbit se envía con la forma que deserializa Wails; crear solo abre un borrador
+y cancelar no deja un perfil vacío. `launcher:error` se presenta en Orbit y un
+perfil sin pasos no se puede lanzar. La primera espera se aplica y es
+cancelable; la cancelación conserva la exclusión de la cadena hasta que termina.
+El cierre/reinicio requiere un PID observado en la sesión y un ejecutable
+consultado al sistema; un paso fallido no autoriza cierre y reiniciar valida
+la ruta antes de tocar el proceso. El catálogo ya no anida botones. Las
+regresiones focales, typecheck, build y lint pasan. `go test -p 1 ./...` no
+concluyó: quedó esperando en el paquete `internal/app` mientras otra prueba
+DuckDB seguía activa en la máquina; se interrumpió esta ejecución sin atribuir
+el problema al Launcher. **Sigue sin aptitud de lanzamiento:** las políticas `ask`,
+`alreadyRunning`, `cancel` y `exit` aún no gobiernan el ejecutor; el atajo y
+autostart editados no se activan al guardar; falta Wails/Steam/LMU físico y
+comprobar el artefacto instalable. No hay promoción ni release.
+
+Segundo avance de #1368: los atajos de perfil se cargan al arrancar y se
+reconstruyen tras guardar/borrar usando el gestor global que sí despacha la
+pulsación. El guardado rechaza combinaciones reservadas o en conflicto con
+Hub/u otros perfiles; el editor también bloquea nombres vacíos y atajos no
+admitidos. El flag de inicio de Windows se sincroniza al guardar, con rollback
+del perfil si falla la escritura del Run key, y se retira antes de borrar el
+perfil; un perfil normal sin autostart no requiere acceso al registro. El
+primer delay ahora se edita en `policy.firstStepDelay` y se muestra igual que
+lo ejecuta Go. 13 archivos/117 pruebas Launcher, build, typecheck y lint
+locales pasan. El CI del primer commit pasó el gate bloqueante, pero el
+ratchet detectó 10 fragmentos CSS reagrupados; el estilo del aviso se movió a
+una hoja nueva para que el archivo histórico permanezca idéntico a la base.
+La repetición de CI de este último cambio está pendiente. El `--launch` del
+Run key sigue sin invocarse en el arranque y varias entradas de perfil pueden
+abrir varias instancias; hay decisión de producto solicitada. Atajos y Run key
+no tienen aún prueba física tras reinicio. **No apto para lanzamiento.**
+
+Seguimiento del 24-09-2026 en #1368: el ratchet remoto de `765ce2af` pasó.
+Se añadieron pruebas de rollback cuando el Run key falla al crear o borrar un
+perfil, y se alineó la lista de atajos reservados de Go con la interfaz.
+También se reprodujo un fallo de la cadena: una app ausente permitía seguir
+al siguiente paso pese a `failure: stop`; el test falló antes de corregirlo.
+`go test ./internal/app/launcher ./cmd/vantare -count=1` pasó después.
+El HEAD `ea46ba05` está publicado en la PR draft #1369; sus gates remotos
+siguen en curso. Persisten las decisiones y pruebas físicas indicadas arriba.
+Una prueba adicional reprodujo que el watchdog de Orbit marcaba una cadena
+como fallida a los 30 s durante una espera configurada de 60 s. La señal
+`pending` ahora lleva el delay previsto y el watchdog espera ese plazo más
+su margen habitual. Pruebas Go focales, 11 frontend, typecheck, build y lint
+pasaron localmente; falta el CI del nuevo HEAD y validación visual real.
+El toast que relanza la cadena completa ya lo dice explícitamente; el evento
+legacy aún se llama `retry:failed` y el reintento solo de pasos fallidos sigue
+pendiente de implementación en ese corte.
+
+Tercer avance de #1368: `a22ff8e8` pasó gates bloqueantes, ratchet,
+promoción de ruta y GitGuardian en la PR draft #1369. El reintento del toast
+ahora selecciona solo pasos fallidos y no ejecutados; conserva los índices del
+perfil original en snapshot/Orbit, de modo que una app ya completada sigue
+mostrándose como tal. Reintentos sucesivos tampoco relanzan pasos completos.
+Un intento simultáneo devuelve error sin sustituir el progreso de la cadena
+activa. Las pruebas Go del orquestador y `cmd/vantare` pasaron localmente;
+también 11 pruebas frontend, build y lint. El nuevo HEAD aún debe pasar CI.
+Siguen pendientes la aplicación completa de políticas, el autostart de una
+instancia y la comprobación física de Wails/Steam/LMU/instalador. **NO-GO.**
+
+Cuarto avance de #1368: el HEAD `d277fbc4` pasó los gates bloqueantes, pero
+el ratchet remoto falló por `staticcheck NEW=1` en Linux; el workflow no subió
+`.last-run.json` porque `upload-artifact` excluye archivos ocultos y el log
+solo muestra el conteo. No se considera gate verde. En la rama local, la
+política `failure: ask` ya pausa la cadena, emite una solicitud con acciones
+cerradas y plazo de 2 minutos, y `launcher:decision:resolve` reanuda solo
+con una acción ofrecida. La decisión recordada se guarda antes de reanudar;
+cancelación o plazo vencido detienen la cadena y retiran el diálogo. Orbit
+presenta la pregunta y el watchdog respeta el plazo. Un fallo en el último
+paso termina sin preguntar si se continúa. Las pruebas Go focales repetidas,
+13 frontend, typecheck, build y lint pasaron localmente. Falta publicar este
+corte, resolver el hallazgo nuevo del ratchet y verificarlo en Wails real.
+
+Quinto avance de #1368: `8a4e5978` pasó el gate bloqueante completo (Go,
+frontend, lint y build Wails Windows), promoción de ruta, GitGuardian y ratchet
+de calidad (NEW=0, policy_changed=false). Una regresión posterior reprodujo
+que cancelar un perfil acababa sobrescribiendo `stopped` por `failed`, y Orbit
+ofrecía reintentar una cancelación voluntaria. El runner ahora emite el estado
+`stopped`; servicio y UI lo conservan y no muestran el toast de fallo. Tests
+Go y frontend focales y typecheck pasaron; el CI de este nuevo corte queda
+pendiente. Persisten las políticas de cancelación y salida de procesos,
+proceso ya abierto, autostart de una sola instancia y pruebas físicas. **NO-GO.**
+
+El guardado ahora rechaza activar autostart en un perfil sin pasos. La
+regresión falló antes del cambio y pasó después junto con `go test` focal de
+Launcher y `cmd/vantare`. Los borradores vacíos siguen siendo guardables sin
+autostart. La semántica de varios perfiles de inicio sigue pendiente de la
+decisión de Isaac.
+
+Sexto avance de #1368: la autoridad de cierre/reinicio de un ejecutable ahora
+conserva el PID, la ruta observada y la hora de creación real del proceso
+durante toda la sesión del servicio. La limpieza visual a los 30 segundos ya
+no descarta esa autoridad; el cierre/reinicio vuelve a consultar el proceso
+vivo y rechaza un PID reciclado aunque apunte al mismo ejecutable. Solo se
+registra un paso ejecutable terminado correctamente y cuya ruta coincide con
+el catálogo; el PID de `rundll32` usado por Steam no se considera el juego.
+Cerrar o reiniciar revoca la identidad anterior. Tests Go focales pasaron en
+Windows. Falta CI del nuevo HEAD, prueba física de cierre/reinicio y resolver
+el comportamiento de procesos al cancelar o salir. **NO-GO.**
+
+Un reinicio explícito ahora observa la identidad de la instancia nueva y la
+registra para permitir un cierre posterior, solo si ruta y hora de creación
+coinciden con el catálogo. Si no puede observarla, la instancia nueva no
+adquiere autoridad de cierre. Durante las pruebas se reprodujo además una
+regresión del descubrimiento de iconos: workers concurrentes podían emitir
+81 % y después 78 %. El servicio serializa y mantiene monótono el progreso;
+el test falló antes del arreglo y pasó 10 repeticiones después. Go y vet
+focales pasan. Falta CI remoto del HEAD final y comprobación física.
+
+Séptimo avance de #1368 (candidato local, aún sin publicar): la cadena consulta
+los procesos Windows por ruta completa y hora de creación antes de aplicar
+`alreadyRunning`. Reutilizar no concede autoridad de cierre; reiniciar solo
+se ofrece si todas las instancias coinciden con identidades iniciadas y
+registradas por Vantare. La decisión `ask` pausa la cadena y permite recordar
+reutilizar o reiniciar. Los tests de proceso real y de decisiones pasan en
+Windows, pero todavía falta la prueba física de una aplicación externa.
+
+El paso `steam-uri` deja de dar éxito por abrir `rundll32`: exige conocer el
+ejecutable del juego, espera hasta 2 minutos para observar su proceso y
+devuelve fallo si no aparece. El PID del manejador URI no se presenta como
+PID del juego ni se registra como proceso propio. Discovery intenta resolver
+el ejecutable también desde la ubicación del registro; Steam puede figurar
+instalado sin que el perfil sea lanzable si falta esa ruta. Orbit mantiene el
+estado de lanzamiento durante la espera. Pruebas rojas antes del cambio para
+discovery/disponibilidad, Go focal y vet PASS; 16 pruebas frontend dirigidas,
+typecheck, build y lint PASS. `go test -race` no se completó por la opción de clang
+`-Qunused-arguments` que el `gcc.exe` local no admite. El corte publicado
+`f43225ea` pasó gates bloqueantes (incluido build Wails Windows), promoción
+de ruta, ratchet de calidad y GitGuardian. Siguen pendientes autostart de una
+instancia, políticas
+de cancelación/salida/reintentos y revisión física Wails/Steam/LMU/instalador.
+**NO-GO**, sin merge, promoción ni release.
+
+Octavo avance de #1368 (candidato local): al cancelar un perfil, el runner
+espera a registrar su último paso antes de aplicar la política. `leave`
+conserva las aplicaciones; `close-started` actúa solo sobre procesos asociados
+a ese perfil e identidades observadas; `ask` ofrece ambas opciones en Orbit,
+caduca dejando abiertas las apps y puede recordar la respuesta. Las pruebas
+de cancelación y del diálogo pasan. Un reinicio explícito conserva la
+asociación al perfil si la nueva identidad está verificada; revoca siempre el
+PID anterior. Una respuesta tardía solo puede cerrar procesos nacidos antes
+de la cancelación, aunque el perfil se relance mientras espera. Aún falta
+validar el cierre con procesos reales y completar la
+política independiente `exit`.
+
+Revisión del instalador: `project.nsi` enviaba cierre normal a Vantare y,
+tras cinco segundos, ejecutaba `taskkill /F` por nombre. Eso podía saltarse
+una decisión de salida y matar una instancia todavía abierta. El candidato
+solicita el cierre normal y aborta la instalación si el ejecutable sigue en
+uso tras el plazo de espera existente de diez segundos; no fuerza el cierre.
+Queda pendiente construir y probar el instalador real con Vantare abierto,
+incluida una respuesta lenta al aviso de salida.
+
+Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
+contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe
+quedar abierta. El cierre explícito deja de usar `taskkill /T`, que podía
+alcanzar descendientes no iniciados directamente por Vantare, y actúa solo
+sobre el PID verificado. Los tests Go focales y vet pasan; falta comprobar
+este comportamiento con procesos reales durante la sesión visual acordada.
+
+Noveno avance de #1368 (candidato local): al cerrar Vantare se detienen y
+esperan las cadenas activas antes de decidir sobre los procesos que abrió
+esta sesión. Cada perfil aplica `exit: leave`, `close-started` o `ask`; la
+pregunta nativa de Windows propone cerrar solo identidades verificadas y deja
+las aplicaciones abiertas por defecto. Los procesos ya terminados no provocan
+un aviso. El cierre del Launcher se ejecuta al inicio del apagado, antes de
+consumir el presupuesto compartido de los demás servicios. El apagado anula
+las preguntas pendientes de cancelación y evita que una respuesta antigua
+aplique esa política después de asumir el control la política de salida.
+Las regresiones de salida, diálogo pendiente y exclusión de nuevas cadenas,
+`go test ./internal/app/launcher ./cmd/vantare -count=1 -timeout 90s` y
+`go vet` focal pasan. Falta publicar y verificar este HEAD en CI, además de
+probar el aviso y el cierre con Wails y procesos reales. El HEAD anterior
+`a27f2419` tiene ratchet, ruta y GitGuardian verdes; el gate bloqueante
+remoto continúa pendiente. **NO-GO**, sin merge, promoción ni release.
+
+Décimo avance de #1368 (candidato local): Orbit deja editar en modo avanzado
+las políticas ya operativas de aplicación abierta, fallo de paso,
+cancelación y salida. El formulario conserva las demás opciones al cambiar
+una política y ofrece etiquetas en es/en/pt/it. La regresión de controles
+ausentes falló primero y pasó después. Las 125 pruebas focales del Launcher,
+typecheck, build y lint frontend pasan. La suite frontend global se interrumpió
+tras timeouts de layout ajenos al Launcher al correr en paralelo con build y
+lint; las dos suites que fallaron pasaron aisladas (5 pruebas). Se espera el
+gate remoto para el veredicto de conjunto. La política de reintento sigue
+pendiente de concretar; Isaac tiene una pregunta abierta sobre qué debe
+significar `retry: all`. La UI y los procesos reales siguen sin revisión
+física; antes de computer use se avisará y esperará su confirmación.
+Una regresión posterior detectó que el editor dejaba guardar esperas
+fraccionarias aunque el contrato Go usa segundos enteros; ahora solo acepta
+enteros seguros no negativos. La prueba falló antes y pasó después con
+typecheck.
+
+Undécimo avance de #1368 (candidato local): el flag `--launch=<id>` se entrega
+ahora al Launcher al arrancar y Wails mantiene una sola instancia de Vantare.
+Las peticiones de otros valores Run recibidas mientras se cargan los ajustes
+se encolan y se procesan cuando el servicio está listo, conservando el orden;
+se descartan flags inválidos. Se sigue el contrato existente de múltiples
+perfiles marcados para inicio con Windows dentro de una instancia, sujeto a
+la respuesta de Isaac sobre esa preferencia. Si una cadena hace una pregunta
+antes de montar Orbit, el proveedor se suscribe y pide al backend las
+decisiones todavía pendientes; las resueltas no se reenvían. Las regresiones
+de cola y recuperación fallaron antes y pasan después. 126 pruebas focales
+Launcher frontend, Go focal, typecheck, build, lint y vet pasan. Faltan CI
+del HEAD publicado, arranque real de Windows y prueba de preguntas al entrar
+en el Hub. No se afirma aptitud de lanzamiento todavía.
+
+Duodécimo avance de #1368 (candidato local): el arranque con flag comprueba
+que el perfil aún existe y que cada paso apunta a un archivo local antes de
+abrir una cadena. Una ruta ausente o una carpeta se omiten con registro local,
+sin mostrar un error tardío al usuario. Si el perfil ya no existe, se retira
+su valor Run para que no reaparezca en cada inicio de Windows. La prueba del
+perfil obsoleto y las de ruta ausente/carpeta fallaron antes y pasan después;
+Go focal y vet pasan. El chequeo es de existencia/ruta, no certifica que el
+archivo sea un binario válido ni sustituye la prueba física del programa.
+
+Al revisar la instancia única se detectó que una segunda apertura manual,
+sin flag de perfil, se perdía si la primera instancia estaba minimizada.
+La segunda invocación vuelve a mostrar el Hub existente; si llega mientras
+se crea la ventana, la petición queda pendiente y se aplica una sola vez.
+La regresión falló antes y pasó después con Go focal y vet.
+
+El ratchet del HEAD `7cdbc9f4` encontró 10 duplicaciones CSS nuevas porque
+las reglas añadidas al editor modificaban `orbit-launcher.css`, cuyo encabezado
+histórico repite estilos de otras vistas. Las reglas nuevas viven ahora en
+`orbit-launcher-policy.css` y el archivo histórico recupera exactamente el
+contenido de la base. El mismo clasificador local de calidad devuelve
+`NEW=0` y 42 reagrupaciones verificadas por igualdad de blobs; las 10 del
+Launcher ya no son bloqueantes. Pasan 12 pruebas del editor, typecheck, build
+y lint. El HEAD publicado `0428a24b` pasó el ratchet remoto (NEW=0), el gate
+bloqueante completo (incluido build Wails Windows), la ruta de promoción y
+GitGuardian. **NO-GO** hasta resolver las decisiones de producto y verificar
+en Windows real el Hub, procesos, Steam/LMU y el instalador. Isaac pidió aviso
+y confirmación antes de la revisión mediante computer use; sigue pendiente.
+
+Decimotercer avance de #1368 (candidato en PR draft, 2026-09-25): Isaac decidió
+que solo un perfil puede iniciar con Windows y que `retry: all` repite todos
+los pasos desde el primero. El guardado desmarca los demás perfiles, sincroniza
+los valores Run y restaura la configuración anterior si falla el registro;
+al arrancar, los ajustes antiguos con varios perfiles marcados se reducen al
+primero. `retry: all` repite la cadena completa, mientras el aviso ofrece
+«Repetir todos los pasos» y «Repetir pasos fallidos» como acciones distintas.
+La revisión en navegador Codex detectó que Orbit no ofrecía la política de
+reintento en el editor avanzado; ya permite elegir `ask`/`failed`/`all` y
+de 1 a 3 intentos adicionales, con traducciones es/en/pt/it. La prueba
+falló antes del arreglo y pasa después. Los tests de regresión de perfil,
+rollback, migración, política y botones, los dos paquetes Go completos,
+typecheck y build frontend pasan localmente.
+La revisión posterior al primer push encontró que guardar un perfil normal
+volvía a sincronizar el Run de otro perfil ya marcado. La prueba reprodujo
+el fallo y el guardado ahora solo registra el perfil seleccionado y desregistra
+los que realmente pierden el inicio automático. Los dos paquetes Go vuelven
+a pasar tras la corrección.
+La cola de flags recibidos por la instancia única también comprueba el perfil
+seleccionado tras migrar los ajustes: un segundo valor Run antiguo no abre
+otra cadena. Se añadió la regresión de dos flags encolados en orden inverso.
+Los IDs de perfiles ya borrados siguen llegando al manejador previo para
+retirar su valor Run obsoleto; una regresión protege esa limpieza.
+Si el registro impide migrar dos perfiles marcados, la cola limita igualmente
+el lanzamiento al primero; el test reproduce ambos flags en orden inverso
+con los ajustes legacy todavía intactos.
+El HEAD de código `856b06eca8735cbc8179cbf045f272f8f3fe9acf` pasó el
+gate bloqueante remoto completo (Go, frontend y build Wails Windows), el
+ratchet, la ruta de promoción y GitGuardian. El handoff añade esta evidencia
+en un commit documental posterior, cuyos checks deben verificarse por separado.
+El commit documental `d817f55b24ad57a4012b352b80e1fec0444c2913` pasó
+también todos los checks de PR: gate bloqueante, ratchet, ruta de promoción y
+GitGuardian. Las cuatro suites locales del instalador Windows pasan: modelo
+transaccional NSIS, tamaño mínimo del ejecutable, preflight de release y
+empaquetado del runtime confiable. Usan fixtures; no se construyó ni instaló
+un candidato real porque este worktree carece de `bin/vantare.exe` y del
+runtime de release. El cambio documental que registra estas pruebas debe
+verificar sus propios checks remotos antes de considerarlos vigentes.
+La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
+prohibió por ahora usar computer use en el escritorio, pero permite una
+revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa
+evidencia física. Sin merge, promoción ni release.
 
 ## Hub
 
@@ -1525,7 +2705,7 @@ y recientes.
 - Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
   agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción
   a Testers requiere issue y aprobación propias; no abrir otro reader LMU.
-- Launcher: crear LAU-AUDIT antes de nuevas features.
+- Launcher: resolver los gates de #1368 antes de nuevas features o promoción.
 - Hub: crear HUB-POLISH después de characterization visual.
 - Checks: harness real, Playwright, transparencias, responsive, capturas,
   frontend test/build; no regenerar baselines para esconder fallos.
@@ -2223,3 +3403,325 @@ Evidencia Task 4 y cierre acumulado:
   frontend 441/441 archivos y 3.418/3.418 pruebas, Go completo, build y lint
   PASS; revisión adversarial de la rama ISA-968 APPROVE. S3 físico sigue
   pendiente sobre el nuevo HEAD.
+
+## Optimización UI Orbit — estado 2026-09-08
+
+Serie de issues de rendimiento tras la auditoría ISA-1111. Entregadas en rama
+aislada a `nightly` (pendiente review/merge):
+
+- #1153 useNow compartido (NextRaceCard/SideRaces), #1154 suscripción muerta
+  StrategyOrbitPage, #1156 canal granular launcher profiles, #1157 contexto
+  overlay estable + memo frames, #1158 i18n lazy (~102KB gzip), #1161 higiene
+  de desmontaje/timers/fetch.
+- #1164 (ISA-1140): subset Cascadia Code 379KB→~74KB woff2, TTF conservado
+  como fuente de regeneración.
+- #1165 (ISA-1150): la shell honra `performance:level` — `noBlur`/`flat`
+  apagan backdrop-filter y (flat) animaciones infinitas y sombras grandes
+  vía `:root[data-orbit-perf-effects]`, sin re-render.
+- #1168 (ISA-1147): fanout Wails por dominio fase 1 — `settings` (5→1
+  suscripción, store con canales granulares y dedup por valor en
+  notifications; ChainRunnerProvider dejaba de repintar el Hub entero por
+  evento) y `license` (4→1). Resto de dominios pendiente si aporta.
+- #1163 (ISA-1149): Studio con store externo + `useSyncExternalStore`.
+  B1: provider 506→~170 líneas, shim `useStudioDocument()` intacto. B2: los
+  10 consumidores de producción migrados a selectores granulares; el shim
+  queda para tests/consumidores futuros. 640 tests del área Studio verdes.
+- Descartadas tras verificación manual: #1134 manualChunks, #1135 Supabase
+  en path crítico (correcto), #1137 greeting (trivial), #1138 barrels
+  (tree-shaking ya funcionaba), #1139 (ya resuelta por #1122). Hallazgos Go
+  revisados: la mayoría eran diseño deliberado; los reales quedan en #1160.
+
+### Continuación (mismo día)
+
+- #1168 ampliada con fase 2: fanout del dominio updater (14 suscripciones
+  directas → máx. 9). El inventario del resto de Events.On confirmó que no
+  hay más dominios con duplicación que valga la pena — los de 2 sitios son
+  marginales.
+- #1170 (ISA-1160): los dos únicos hallazgos Go verificados — mapper sin
+  slice por vehículo (era stack-alloc; ahorro real es el trabajo por
+  vehículo, no GC) y AllSections alias del array de paquete (sí escapaba
+  a heap por tick; benchmark -1 alloc/op).
+- Review SWE-2 de #1163 encontró un bug preexistente: error de carga de
+  Studio inalcanzable tras spinner (guard !document ganaba a lastError).
+  Corregido con test de regresión.
+
+## ISA-1149/1140/1147/1150/1160 + ISA-1179/1181/1185 — Optimización y reestilo Orbit (2026-09-12)
+
+- PROMOCIONADO a nightly (verificado en origin/nightly, HEAD d2450cc5):
+  #1164 subset Cascadia WOFF2 (380→74KB), #1170 allocs Go en path caliente,
+  #1165 blur condicional por nivel de rendimiento, #1168 fanout Wails
+  settings+license+updater, #1163 store externo Studio con selectores
+  granulares (B1+B2) y fix de error de carga inalcanzable en StudioRouteEditor.
+- Reestilo Orbit entregado como drafts pendientes de autorización: #1180
+  (BetaWelcome, recordatorios calendario, globales, DowngradeModal sobre
+  ConfirmDialog del kit), #1182 (estados auxiliares Studio/Perfiles +
+  primitiva .orbit-alert), #1186 (editor in-place, subtítulos ingeniero,
+  HubToast, LanguageSelector + harness orbit-outside). Capturas de
+  verificación en el escritorio de Isaac.
+- Tras estas PRs los únicos consumidores legacy restantes son auth/*
+  (bloqueado por migración a Clerk) y settings/diagnostics/* (interno).
+  El overlay en juego queda como decisión de producto: es UI de widgets,
+  no de gestión.
+- Fase C del shim Studio documentada como opcional sin fecha: cero ganancia
+  de runtime hoy; los tests antiguos la ejercitan deliberadamente.
+
+## ISA-1098 — cierre conciliado de Efficiency y política común (2026-09-13)
+
+- Candidato `vantareapp/isa-1098-efficiency-integration`, PR #1107 a
+  `nightly`, conciliado con `origin/nightly@1aea57118f972c04144dc4546ff8cc16705e6e79`.
+  Isaac autorizó la integración a Nightly; testers, master y release quedan fuera.
+- La conciliación conserva el Standings Signature/Broadcast aprobado, cabecera
+  y pie configurables y acentos de bandera sin transición de color. Incorpora
+  el catálogo completo de 18 widgets Efficiency de #1191 y su motor vigente;
+  el movimiento de filas obedece el presupuesto publicado por Go.
+- `WidgetPolicyWire` queda como autoridad única para catálogo, Studio,
+  Desktop, OBS y marca. Free conserva Standings/Pedals y exige marca en
+  Crystal/Efficiency; los perfiles mantienen widgets bloqueados y sus ajustes.
+- Gates locales tras la conciliación: 109 pruebas focales PASS; 3601 pruebas
+  funcionales frontend PASS y 2 omitidas; typecheck, lint, build web y
+  `go test ./...` PASS. El benchmark de parseo dio 1,562 ms bajo carga
+  concurrente y pasó tres repeticiones aisladas sin cambios.
+- La build Wails canónica previa, con `.env.local` externo autorizado, validó
+  Free, cambio Signature/Broadcast, dos guardados y dos ciclos abrir/detener
+  (394/52 ms y 366/56 ms). LMU no estaba activo: temperaturas y equivalencia
+  de códigos REST de bandera permanecen pendientes de prueba física.
+- `plan.md` publica `functional-widget-design` y `widget-access-branding` como
+  entregados; `roadmap.json` se regenera desde la base confiable. CI del SHA
+  final y pertenencia al remoto Nightly son los últimos gates antes del cierre.
+
+## ISA-901 — centro de notificaciones y Spotter overlay-only (2026-09-15)
+
+- Candidato `vantareapp/isa-901-centro-notificaciones`, PR draft a `nightly`.
+  Depende de #900 (ya cerrada); paraguas #899. Sin merge ni promoción
+  implícita: la integración la autoriza Isaac.
+- `internal/notify.Center` es el store acotado (50) y la única autoridad de
+  avisos recientes; publica el snapshot completo en `notifications:center`
+  tras cada mutación y un webview reconectado pide `notifications:center:get`.
+  `revision` descarta entregas viejas. Contrato y matriz en ADR-0096.
+- Matriz por fuente: `updater`/`launcher` → hub+windows+history; `system`
+  (prueba manual) → hub+history sin Windows. Fuente silenciada aterriza leída
+  y sin toast. Acciones solo `navigate` con allowlist backend
+  (`settings:updates`, `launcher`): el frontend manda el id y el backend
+  revalida antes de emitir `notifications:center:navigate`.
+- Exclusión Spotter por construcción: `Source` es conjunto cerrado sin
+  `spotter`, así que `Publish` lo rechaza con `ErrSourceDenied`; ningún camino
+  del ingeniero toca el centro ni el toast. Su salida sigue siendo
+  overlay/subtítulos/audio.
+- `centerEmitter` reemplaza `notifyingEmitter`: `launcher:chain:done` ahora
+  produce registro del centro; `notify.Service.SendGated` es el canal Windows
+  (reutiliza preferencia+autorización+ventana oculta) en goroutine propia.
+  `LaunchFinished` quedó sin consumidores y se retiró.
+- UI: campana con badge en la topbar Orbit + panel (leído/limpiar/acción).
+  i18n en es/en/it/pt; las claves `notifications.record.*` las emite el
+  backend y un test de contrato cruza `notify_center.go` con los catálogos.
+- Evidencia: `go test -race ./internal/notify` PASS (un test de concurrencia
+  cazó y corrigió corrupción en el move-to-front del dedupe); 3600+ tests
+  frontend PASS; typecheck/lint/build web PASS; auditoría i18n 0 huérfanas;
+  `GOOS=windows go build ./cmd/vantare` PASS.
+- Pendiente humano: verificación visual de la campana en la app real
+  (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.
+
+## ISA-1221 — recuperación del trabajo local de widgets (2026-09-22)
+
+- [Tarea principal VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94), proyecto Overlay Studio. Isaac pide subir al remoto los cambios locales pendientes.
+- Rama `vantareapp/isa-1221-widgets-local-sync`, basada en `origin/nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`. Snapshot `44a33047af0a05c71ad7d550fa4a9f60ae90d456` conserva el trabajo de `vantare-isa1221-workshop` sobre `c3e6e44c`; el checkout original y su índice permanecen intactos.
+- Recupera Delta, Relative (orden delante de cercano a lejano), Standings compacto/podio, Pedals Eficiencia/iRacing, Fuel Strategy, aliases Efficiency y controles de Workshop, con documentos y capturas locales. Conserva las optimizaciones vigentes de nightly en host, coordinador y geometría. Redline tower mantiene su prueba explícita de viewport; las previews ordinarias usan la envolvente externa.
+- Frontend con Node 22.23.2 y dependencias del lockfile: 466 suites PASS, 3766 pruebas PASS y 2 omitidas. Build (incluye TypeScript) y lint verificados. Go overlayv2: tests y vet PASS. Las pruebas globales Go fallan en macOS por launcher Windows y diagnósticos/sqlite; reproducido también en la base nightly para los fallos de diagnósticos/sqlite.
+- Calidad: FAIL, 55 nuevos hallazgos bloqueantes (34 Knip, 18 duplicaciones, 3 ciclos de dependencias). Sin relajación de reglas ni baseline. Inventario en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. La recuperación se publica como borrador, no como entrega certificada.
+- Pendiente: resolver calidad, CI del SHA publicado, revisión visual de Isaac y certificación LMU real. Sin merge, testers, master ni release. Roadmap required: `milestones:functional-widget-design`; el porcentaje del área no avanza por publicar un borrador; digest basado en la nightly confiable.
+
+### ISA-1221 — corrección de los avisos revisados (2026-09-22)
+
+- Continúa [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94) / PR #1298. Corregidos los 55 avisos: ratchet PASS, NEW=0 y MOVED=0 en todos los analizadores, sin cambiar política/baseline/excepciones.
+- Resuelta además la aceptación de claves heredadas en IDs de perfiles; cobertura de normalizador y V3/V4 para sistema por defecto, widgets y memorias. Aliases y contratos persistidos conservados.
+- Suite frontend: 466 archivos, 3772 PASS y 2 omitidos. Build/TypeScript, lint y 69 focales finales PASS. Revisión independiente: sin bloqueantes, 83 pruebas PASS. Equivalencia estática CSS: 445 selectores activos sin cambios de declaraciones finales.
+- Informe completo y revisión previa en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. Sin nueva certificación visual ni LMU en vivo; PR en borrador, integración a nightly pendiente de aceptación.
+
+
+### ISA-1221 — integración inicial autorizada (2026-09-22)
+
+- Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
+- El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama y no forma parte de #1298; Isaac lo aprobó visualmente durante esta integración y se seguirá por separado.
+- Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.
+
+
+## 2026-09-22 · ISA-1315 inicio: idioma común sin trabajo por muestra
+
+Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigió separar toda resolución de traducciones de la telemetría. Seguimiento de widgets en [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), por su instrucción expresa; [#1315](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1315) conserva el puente CI. [Diseño y plan aprobado](../../plans/2026-09-22-isa-1315-widget-locale.md). Base nightly e41f703c, worktree aislado vantare-widget-locale, rama vantareapp/isa-1315-widget-locale. Próximo paso: implementación mediante worker y revisión independiente de persistencia/concurrencia. PR #1306 continúa separada; sin integración ni promoción de canales.
+
+
+### ISA-1315 · continuidad de la revisión GPT-6
+
+A petición expresa de Isaac, GPT-6 Sol retoma implementación y GPT-6 Astra revisa arquitectura y backend en checkout separado. El primer commit de implementación es 34bec633; no representa entrega final. La revisión detectó que la recuperación `.failed` podía aplicar tras reinicio un idioma rechazado: queda exigida corrección acotada y regresión. El frontend debe serializar elecciones rápidas porque Wails beta.24 ejecuta callbacks concurrentes.
+
+Base e41f703c + diseño67e9e9ce: frontend build PASS y quality PASS (NEW=0, MOVED=0). Fallos previos reproducidos en macOS: cmd/vantare depende de símbolos Windows; TestProfileRejectsAbsolutePathWindows devuelve404 en lugar de400. No se modifican esos fallos ajenos al alcance ni se presentan los controles globales Go como verdes. Próximo paso: completar frontend, comprobar los contadores con widgets reales y revisar el candidato final. Seguimiento principal sigue [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194).
+
+
+### ISA-1315 · cierre técnico de la rama
+
+Implementación de GPT-6 Sol en `34bec633`, `d4806bb9`, `8540c1b8` y `cc59e9fc`. GPT-6 Astra aprobó la infraestructura de `8540c1b8` después de corregir la recuperación `.failed`, la colisión de IDs entre ventanas, el rechazo de envío y los snapshots OBS inválidos. El último commit añade únicamente comprobaciones de contadores. El orquestador revisó el diff y la evidencia.
+
+Entrega: [PR draft #1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) a `nightly`, desde la base `e41f703c`. El seguimiento principal permanece en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), En curso hasta la revisión visual de Isaac. No hubo integración remota ni promoción de canales. Los controles remotos se iniciaron al publicar; consultar la PR para su resultado actual.
+
+Cambios: preferencia UI nativa persistida en SettingsService y eventos de idioma en cmd/server; contexto I18n en Hub, Desktop, OBS y Workshop; catálogos y presentación de Eficiencia; pruebas de autoridad, reconexión, concurrencia y rendimiento. Sin dependencias nuevas, cambios de política de calidad o modificación de códigos de sesión/telemetría. El roadmap modifica únicamente `milestones:functional-widget-design` y su JSON se generó desde `e41f703c`. Fragmento ISA-1315 añadido.
+
+Evidencia:
+
+- Frontend completo sobre `8540c1b8`: 468 archivos, 3779 tests PASS y 2 omitidos; build y lint PASS. En `cc59e9fc`, dos casos de rendimiento y lint PASS.
+- WidgetVisualHost real: 100 frames conservan el nodo, las resoluciones de sesión, las cargas de diccionario, las lecturas/escrituras de almacenamiento y las suscripciones/mensajes Wails. Cambiar idioma sí cambia la etiqueta y conserva el montaje. No se afirma coste CPU nulo durante una selección de idioma.
+- Reviewer independiente: 10 archivos y 86 tests PASS; Go focal con `-race` PASS. Persistencia, sidecar genérico y reinicio/concurrencia verificados.
+- Quality sobre `cc59e9fc`: aggregate PASS, NEW=0, MOVED=0, policy_changed=false; todos los analizadores terminaron. Un intento previo con Node 26 falló al parsear dependency-cruiser; la ejecución válida usa Node 22.23.2. No se modificaron reglas o baselines.
+- `go test ./...` se interrumpió tras unos seis minutos esperando launcher.test; no está verde. cmd/vantare no compila en Mac por símbolos Windows. TestProfileRejectsAbsolutePathWindows y dos pruebas de DiagnosticsBridge fallan también en la base `e41f703c`, reproducido por el orquestador. No se amplió el alcance para ocultarlos o corregirlos aquí.
+- Preview local de GPT-6 Luna: `2be30c59` combina idioma con motion `317d31c4` (PR #1306) y conserva los cambios aceptados. Build PASS, 172 pruebas focales PASS y después dos pruebas de contadores PASS; árbol limpio. El servidor del preview está activo en el puerto 5177. El merge local del preview no representa integración remota.
+
+Límites: sin verificación física Windows/OBS ni visual automatizada, por la restricción de acceso del navegador; no se eludió por otra herramienta. Workshop autónomo comparte el idioma de su origen del navegador, sin prometer sincronía con una app nativa separada. El catálogo completado es Eficiencia; otros sistemas conservan textos pendientes. Sigue el comportamiento previo de mantener el catálogo anterior mientras se carga otro: puede haber un breve desfase entre etiquetas estáticas de widgets y texto del Hub en la primera selección. Próximo paso: revisar el selector de idioma en Workshop y la sincronía física con Desktop/OBS.
+
+## ISA-1221 — Standings Eficiencia: animación intermedia para conducción (2026-09-22)
+
+- Seguimiento [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). Isaac aprueba la opción intermedia propuesta, expresamente no broadcast. Diseño y plan en `docs/specs/2026-09-22-standings-motion-design.md` y `docs/specs/standings-motion/PLAN.md`.
+- Rama/worktree `vantareapp/isa-1221-standings-motion` / `vantare-standings-motion` desde nightly `1101f735`. Conserva el ajuste Delta aprobado `e492aa88` y los arreglos de harness `5df46ab9`, recuperados como dependencias en `433d0169`; sus ramas remotas originales permanecen intactas. La integración anterior #1298 ya está verificada y no se repite.
+- Renderer compartido: desplazamiento continuo desde el primer cambio, chip de puestos por posición canónica (de clase en Multiclass), barrido de mejor vuelta personal y récord morado, distintivo del más rápido, PIT con entrada/salida suave y FLIP ligado a su fila. Las cifras no se transforman y la geometría de la tabla permanece estable. Máximo tres avisos simultáneos con prioridad récord/posición/mejora personal.
+- La VM V2 deriva autoridad numérica fresh y el mejor piloto del campo configurado completo, antes de rowCount/ventana. Sin falsos eventos por recorte ni valores ausentes. El modo reducido conserva desplazamientos; minimal actualiza directo. Motor compartido con inicialización opcional de medidas y limpieza de layout antes de perder la referencia DOM. Standings conserva los handles de sus animaciones para cancelar fila, PIT y barrido también si React ya retiró los nodos por desconexión, error o cambio de ventana; poda los finalizados en cada actualización.
+- Workshop añade escenas de mejora personal, récord y secuencia combinada a las de posiciones/PIT. En práctica/clasificación los cambios de mejor vuelta vuelven a ordenar el ejemplo. No se modifica la producción Go ni el golden canónico.
+- Validación local final: 468 suites / 3810 tests PASS y 2 omitidos. Build/TypeScript y lint PASS. Revisión independiente final PASS, 64 tests / 4 suites; corrigió fallback a posición con vuelta oculta, transiciones CSS en stale y cancelación al desmontar o retirar filas. Las tres regresiones de desconexión/error/ventana fallaron antes del arreglo y pasan después; el reviewer las reprodujo independientemente. Ratchet final PASS: NEW=0/MOVED=0, policy_changed=false, base nightly `1101f735`; sin modificaciones de política/baseline.
+- Workshop en `127.0.0.1:5177` sirve el nuevo worktree. Pendiente revisión visual de Isaac y comprobación LMU real. Sin merge, testers/master ni release. Batallas y transiciones de la ventana quedan para la revisión siguiente.
+- Verificación manual: en Carrera, activar Mejor vuelta y Estado en boxes, seleccionar **Secuencia combinada · conducción** y pulsar **Reproducir**. Después revisar cada escena individual y las mejoras de vuelta en Práctica/Clasificación. Se comprobó HTTP 200 y el directorio real del proceso; no se declara validación visual automatizada porque el navegador está bloqueado por la política de seguridad de la sesión. Go no cambió; la certificación Windows/LMU queda fuera de la validación local de macOS.
+
+### Segundo bloque autorizado: batallas y ventana (2026-09-22)
+
+- Isaac valora positivamente el primer bloque y pide ejecutar ahora los dos pendientes. Continúa VAN-41 / PR #1306. Diseño ampliado y plan registrados en `05349705`; worker `standings_battles_window` en worktree aislado `vantare-standings-motion-worker`, orquestador en `vantare-standings-motion`. Misma nightly base `1101f735`, aún vigente; sin promoción de canal.
+- Implementado por el worker en `78115bd9`, consolidado como `ed8d1985`: batalla discreta de rivales consecutivos de la misma clase con gaps frescos, prioridad al jugador y umbrales 0,8/1,2 s; entrada/salida de filas de la ventana en 200 ms con recolocación FLIP y PIT ligado al piloto. La presencia conserva opacidad y posición durante interrupciones/reentrada, compensa escala y cancela sus recursos al invalidar continuidad. Las filas salientes quedan fuera del layout, accesibilidad y presupuesto de avisos. El motor admite preservar fades de forma opcional sin cambiar sus otros consumidores. Sin inferir autoridad de texto ni añadir dependencias/contrato Go.
+- Workshop añade **Batalla cercana · conducción** (`standings-functional-battle`) y **Entrada y salida de ventana** (`standings-functional-window`): siete escenas en total. La segunda cambia la ventana realmente visible mediante un ancla efímera, conserva posiciones canónicas y prueba también PIT. Seleccionar Carrera, Normal o Multiclase y pulsar **Reproducir** en cada una. El servidor 5177 sirve este worktree actualizado; directorio y HTTP 200 verificados.
+- Validación: 121 pruebas focales / 6 suites del worker PASS; revisión independiente final sin hallazgos y 152 pruebas / 7 suites PASS, incluida reproducción de entrada→salida→reentrada→salida. Suite completa del candidato: 468 archivos, 3832 PASS y 2 omitidos. Build/TypeScript y lint PASS. Ratchet PASS, NEW=0/MOVED=0, policy_changed=false contra nightly `1101f735`; sin modificar políticas/baselines. Roadmap actualizado en los cuatro idiomas y digest regenerado desde la misma base confiable; fragmento de changelog válido.
+- El candidato se publica en la misma PR #1306; SHA remoto y estado definitivo de CI se registran y releen en VAN-41 y el proyecto Overlay Studio. Pendiente revisión visual de Isaac y LMU real; navegador no disponible por la política de seguridad de la sesión. Standings sigue sin aceptación final. Sin merge/promoción/release de este bloque.
+- CI del primer bloque `88b27f63`: calidad/GitGuardian/promoción PASS. Blocking gates falló por timeout de `TestRuntimeRoutesActionsButKeepsThemDisabled` en voiceinput, sin cambios en ese paquete frente a nightly. Diez ejecuciones locales de esa prueba pasan (macOS); el rerun remoto único del mismo SHA pasó Go, frontend y Windows/Wails. Fallo intermitente inicial conservado como evidencia, sin editar backend ni relajar controles. Los cambios del segundo bloque requieren sus propios checks.
+
+### Harness: revisión conjunta de batalla y ventana (2026-09-22)
+
+- Isaac pide incluir las dos animaciones en el harness. Las escenas individuales ya estaban servidas; se amplía **Secuencia combinada · conducción**, que tenía seleccionada, de cinco a doce fotogramas. Después de vueltas, posiciones y PIT muestra acercamiento/batalla/separación y ventanas P1→P7→P9→P1 (corregidas tras la revisión inferior), conservando las posiciones y la mejor vuelta alcanzadas.
+- La escena de ventana también aplica su recorte de demostración en V1, que normalmente presenta filas fijas. Conserva el estilo y Normal/Multiclase elegidos; no cambia el renderer productivo. Corregido el cálculo del reloj del harness: los límites exactos a 15/30 Hz no retroceden una muestra por redondeo. Las regresiones de batalla y ventana en la secuencia combinada fallaron antes y pasan después de estos ajustes.
+- Validación focal: 170 pruebas / 13 suites de autoría PASS; global: 468 archivos / 3836 pruebas PASS y 2 omitidas. Build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, policy_changed=false). El módulo servido por 5177 contiene la nueva secuencia. Roadmap en cuatro idiomas y digest desde nightly `1101f735` actualizados. El CI previo de `ce7c40b4` terminó completamente en verde; SHA remoto y checks propios del ajuste final se registran en VAN-41 / PR #1306. Revisión visual de Isaac y LMU real siguen pendientes.
+- Verificación manual: mantener Standings, Carrera y **Secuencia combinada · conducción**; pulsar **Reproducir** para empezar desde el principio. Con Mejor vuelta y Estado en boxes activos, revisar los doce pasos. Las escenas individuales siguen en el selector. Sin merge/promoción/release.
+
+### Revisión adversarial: pasos 8–12 del harness (2026-09-22)
+
+- **Afirmación revisada:** el último tramo de la secuencia combinada permite ver batalla y entrada/salida de la ventana con la selección de Isaac (Default, Normal, Carrera, 10 pilotos, alrededor de 4, gap/última vuelta/PIT/mejor vuelta).
+- **Refutado en `a079a948`:** P12 quedaba fuera de `rowCount=10`, desaparecía el jugador de referencia y el paso 12 repetía la ventana anterior; contador/leyenda se adelantaban medio intervalo a PIT/ventana; el marco centrado crecía 30 px y desplazaba toda la tarjeta 15 px; los gaps volvían a la base al empezar la ventana. Cuatro regresiones fallaron antes del arreglo. La revisión independiente `review_steps_8_12` reprodujo el salto con geometría explícita y no encontró recorte adicional con PIT activo; sus 45 pruebas previas no cubrían esta composición.
+- **Corrección `dde258cf`:** escenas P1→P7→P9→P1 y gaps conservados, contador/leyenda del paso actual, reproducción con timestamps ya muestreados y avance manual al fotograma exacto. El harness reserva sólo altura externa durante escenas con ventana, respeta tamaños explícitos y no modifica el renderer, motor o viewport productivo.
+- **Evidencia local:** 173 pruebas de autoría / 13 suites y 3839 globales / 468 archivos PASS (2 omitidas), build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, policy_changed=false). Revisión independiente final PASS: 83 pruebas / 4 suites, reserva externa estable a escalas 0,3/1/2, tamaño explícito de 700×240 respetado y avance/reproducción de escenas de 1700 ms comprobados. **Veredicto técnico:** PASS acotado al harness, sin nuevos hallazgos. El servidor 5177 sirve el mismo worktree candidato; no se afirma inspección visual porque el control del navegador no pudo verificar la política del administrador y denegó acceso.
+- **Estado y límites:** candidato sobre nightly `1101f735`; durante la revisión nightly avanzó a `ae5a1482` por Wails beta.24 (#1309), sin cambios en estas animaciones. Esta entrega mantiene su base y no integra esa actualización de plataforma. Roadmap del candidato generado desde su base confiable explícita. Pendientes aceptación visual de Isaac, LMU real y la integración autorizada con la base vigente; sin merge/promoción/release.
+- **Revisión manual:** pulsar Reproducir y observar pasos 8–12; el paso 9 mantiene la distancia y activa PIT, 10 centra P7, 11 centra P9 y 12 vuelve a P1. Confirmar que el podio y el marco no saltan verticalmente, cada ventana tiene jugador visible y los pasos coinciden con lo que se muestra.
+
+### ISA-1320 — verificación y revisión manual
+
+Cambios de producto: `RelativeFunctional.tsx`, `relative-presentation.ts`, `use-relative-motion.ts`, estilos Relative y presupuesto presentacional en el ViewModel V2. El motor común añade inicialización y seguimiento optativos, preservando consumidores existentes. Escenas y controles de Workshop filtran los antiguos guiones de Relative para Eficiencia y ofrecen cruces en ambos sentidos, entrada/salida/reentrada, inversión de 180 ms, datos cambiantes con filas quietas y secuencia completa.
+
+Revisión manual: seleccionar Relative/Eficiencia → Animaciones → Secuencia completa → Reproducir; después probar Inversión rápida y Datos cambian, filas quietas. Comprobar jugador/pie estables, señal tenue solo en cruces y cifras sin pulso. Repetir con preferencia de movimiento reducido y diferentes escalas. Los fixtures no certifican conducción real ni Windows/OBS. El preview local conserva también Delta/Standings de la PR #1306; esa composición local no implica que #1306 esté integrada en nightly.
+
+Entrega de revisión publicada: [PR draft #1323](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1323), rama `vantareapp/isa-1320-relative-motion`, código `cf14f927`, sin merge. Preview local limpio `cf18f9d6` activo en `http://127.0.0.1:5177/workshop?widget=relative&system=vantare-functional&session=practice&scene=relative-functional-sequence&frame=0`; combina con `2be30c59` y conserva las correcciones aceptadas de Delta/Standings. Validación del conjunto: 185 pruebas focales, tipos y build PASS; después de retirar dos reglas Delta antiguas introducidas al resolver el CSS, 14 pruebas Delta PASS y diff de Delta sin regresión respecto al preview anterior. CI remoto de la PR en curso; controles locales aprobados. Asana Relative permanece En curso, pendiente de la valoración visual de Isaac.
+
+### ISA-1320 — revisión de captura de Isaac, 22:22
+
+La captura posterior a la entrega muestra un error en el guion: las escenas Eficiencia nombraban Bruni/Birch pero los asientos de la parrilla eran Nico Pino/Mikkel Jensen. `a7449ce8` corrige exclusivamente captions y claves de las seis escenas; conserva las escenas legacy. La regresión recorre cada muestra en práctica, clasificación y carrera y comprueba los nombres de los pilotos realmente visibles. 52 pruebas focales de escenas/Workshop, typecheck, lint y diff limpio PASS.
+
+También se observa un hueco antes del pie en el paso inicial que retira al segundo rival trasero. La reserva visual tiene un slot vacío, pero la base anterior ya fijaba el alto de la tabla y el pie mediante flex; eliminar ese slot por sí solo no elimina el espacio. Isaac concreta después que falta el sexto rival y no se recupera; la causa y corrección quedan registradas a continuación. No se considera Relative confirmado ni completado.
+
+
+### ISA-1320 — sexto rival recuperado en Workshop
+
+Isaac confirma que falta uno de los seis rivales configurados. Reproducción independiente sobre el preview `0b9dee71`: la ruta montada conserva a Jensen en el paso 6, pero solo muestra 6 filas totales en lugar de 7. La preparación del fixture recortaba a 3 delante + jugador + 3 detrás antes de aplicar cruces y ausencias; perdía los candidatos necesarios para rellenar la ventana.
+
+`956f6990` conserva el campo disponible en las escenas Relative antes de aplicar sus cambios. La selección productiva existente elige los tres rivales más cercanos por lado. Sin cambios de geometría, motor de animación ni telemetría productiva. Prueba permanente con un único WidgetVisualHost montado: nueve pasos, siete identidades únicas, salida/reentrada de Jensen y nodo del jugador estable. Fuente: 48 pruebas focales, tipos, build y lint PASS.
+
+Preview `f2cde704` incorpora solo ese ajuste sobre `0b9dee71`, conserva Delta/Standings y pasa 75 pruebas focales. Revisión independiente de la ruta Workshop completa con la URL del usuario: nueve pasos y saltos hacia atrás mantienen siete filas; la aserción que fallaba antes pasa después. Vite 5177 continúa sirviendo el ajuste sin reiniciar. Estas son pruebas DOM, no certificación visual. Asana sigue En curso hasta aceptación de Isaac; sin merge de #1323.
+
+
+### ISA-1320 — orden espacial junto al jugador
+
+Isaac señala los rivales invertidos, citando el 18 frente al 16 por detrás en la secuencia, frame4. Confirmado delante: el contrato V2 entrega cerca→lejos, pero la presentación lo pintaba igual de arriba abajo; dejaba el rival lejano junto al jugador. `2cb3e2a3` selecciona primero los rivales cercanos dentro del presupuesto y después invierte solo el grupo delantero para mostrar lejos→cerca→jugador. Detrás mantiene cerca→lejos; sin reordenar telemetría, posición de carrera ni datos por muestra.
+
+La prueba DOM de orden falla antes y pasa después. 66 pruebas focales, tipos, build y lint PASS. Revisión independiente de ruta completa en práctica, clasificación y carrera: nueve pasos y saltos hacia atrás mantienen seis rivales, con gaps descendentes de arriba abajo en ambos grupos. Se conserva la identidad del jugador y el arreglo del sexto rival.
+
+El ejemplo trasero requiere distinguir clasificación y distancia: frame4 asigna18=−5,1s,17=−7s,16=−8,9s, por lo que18 es el más cercano según esos datos. Se ha preguntado a Isaac por el criterio esperado; no se inventan gaps ni se invierte detrás para cumplir el número de posición. Pendiente su valoración visual; Asana En curso, sin merge.
+
+
+### ISA-1320 — señal de diferencia de vueltas en carrera
+
+Isaac autoriza una señal discreta para entender por qué un coche peor clasificado puede circular delante del jugador. [Plan](../../plans/2026-09-22-isa-1320-relative-lap-signal.md). Etiqueta junto al nombre: −N indica menos vueltas que el jugador y +N más; unidad V/L/V/G en es/en/pt/it y descripción accesible completa. Solo carrera, fuente live, fase fresh y diferencia entera vigente; jugador, cero, datos antiguos/inválidos/ausentes y otras sesiones no generan etiqueta.
+
+Se reutiliza `derive.VehicleGap.Laps`, derivada de los datos de clasificación `LapsBehindLeader` del simulador. `RelativeRowV2.lapDelta` conserva valor y calidad en immediate y settled, y su fingerprint publica cambios de valor/calidad. No se calcula una segunda diferencia desde CompletedLaps, LapDistance, posiciones, clases o gaps temporales. El renderer solo presenta el valor; etiqueta memoizada y diccionarios estáticos, sin temporizadores ni lectura de geometría nueva. La señal se describe como diferencia de vueltas de clasificación; no certifica por sí sola cada transición física al doblar en una sesión LMU real.
+
+Backend 661f1ea9 + 6fdf4fd8: suite overlayv2, vet, contrato generado y tests de calidad/signo/cadencia/settled PASS; root revisa diff y ejecuta con race las suites completas overlayv2 y derive, PASS. UI 6e635540 y unidad corregida eafc2858: primera revisión focal92PASS, revisión independiente renderer/window/motion29PASS. Verificación final de UI en d26a8cb7: 99 pruebas focales, tipos, build y lint PASS. Root ratchet PASS, NEW=0/MOVED=0 y policy_changed=false. El refinamiento 27df6697 retira un recorte innecesario de seis líneas para conservar el campo completo; 28 pruebas de escenas/ventana PASS. Root verifica además la ruta Workshop montada: cuatro pruebas PASS en carrera/práctica/clasificación y cambio manual de paso, con siete filas y nodo del jugador estable. La escena combinada conserva AndréP1/GiovinazziP4−1V; la escena específica de diferencias de vueltas utiliza una clasificación intermedia coherente para mostrar ambos signos. Pendiente revisión visual de Isaac; no merge ni certificación Windows/OBS.
+
+## ISA-1334 — integración conjunta de widgets Eficiencia (2026-09-23)
+
+Isaac autoriza integrar en `nightly` el trabajo del día: Standings con animación de conducción ([#1306](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1306), `317d31c4`), Relative con movimiento y diferencia de vueltas ([#1323](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1323), `2e8061f5`) y Horizontal Standings ([#1333](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1333), `340455d2`). La rama `vantareapp/isa-1334-widgets-day-integration` conserva los tres commits fuente mediante merges explícitos sobre `nightly` `e6d7d2b5`, sin promover a testers/master ni publicar una versión. Durante CI, `nightly` incorporó además Fastest Lap mediante #1330 (`4bb11fdb`); la rama de integración absorbió esa base sin sustituir el widget ni sus escenas, y regeneró el roadmap desde el nuevo SHA protegido.
+
+Los conflictos de Workshop, escenas y motor de movimiento se resuelven preservando filtros por sistema y sesión, el fotograma manual exacto, las animaciones de los tres widgets y las etiquetas traducidas. La comparación con el preview aceptado `752bc0cc` deja idéntico el código de widgets; solo añade la validación estricta de `RelativeRowV2.lapDelta` y la muestra faltante del benchmark. Los archivos de idioma/telemetría de producción no se sustituyen por fixtures. El roadmap deriva del plan candidato y del JSON protegido de la base `origin/nightly`.
+
+La aceptación visual de Relative y Standings ya consta en sus entregas. Quedan revisión visual de Horizontal Standings, comprobación física Windows/OBS y validación con telemetría LMU real para las señales descritas en los planes de origen. Esta integración no afirma esas pruebas. Seguimiento principal en [Asana ISA-1334](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218766733477999); la [issue #1334](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1334) conserva el contrato técnico de CI.
+
+
+## 2026-09-22 · ISA-1328 · Aviso de vuelta rápida, candidato para revisión
+
+Isaac pide convertir en producto el concepto morado aprobado en marketing. Seguimiento principal, por su instrucción expresa: [Asana · Widget · Aviso de vuelta rápida](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535); [GitHub #1328](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1328) sirve como puente CI. Base `nightly` `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`; rama aislada `vantareapp/isa-1328-fastest-lap`. [Diseño y plan](../../plans/2026-09-22-isa-1328-fastest-lap.md).
+
+- Widget independiente `fastest-lap` de Eficiencia: cronómetro morado, panel oscuro, diagonales rojas, piloto y tiempo. Catálogo Studio, perfiles V3 y permisos Overlays Advanced; es/en/pt/it. Alcance inicial de clase propia, seleccionable sesión completa; duración 3–15 s (6 por defecto), piloto opcional.
+- Un renderer puro compartido por WidgetVisualHost. La presentación temporal local establece la referencia sin aviso al abrir, cambiar de sesión/epoch/alcance o reconectar. Solo mejoras observadas de tiempos frescos y positivos, a milisegundos; no empates, frames fuera de orden ni marcas heredadas al entrar/cambiar de piloto. Un único timer sustituible, sin polling, IPC, almacenamiento ni nuevas dependencias.
+- Se suscribe a cambios de tiempos/identidad por eventos incluso en el nivel mínimo de rendimiento. Posiciones/distancias sin cambios de tiempos no despiertan el widget. Sin benchmark físico ni afirmación de coste CPU cero.
+- Escena Workshop reproducible: baseline, mejora, caducidad, segunda mejora. El modo Studio muestra una previsualización persistente cuando hay una marca fresca; Desktop/OBS son temporales. Adelantar, retroceder y volver a reproducir reinician la referencia de demostración sin relajar el rechazo de muestras fuera de orden en producto.
+
+Evidencia: suite frontend completa (470 archivos, 3814 PASS, 2 omitidos); tras corregir el escenario, 44 pruebas focales PASS. Build/TypeScript y lint PASS. Go config y performance completos con `-race`, guardas de permisos y nuevo widget con `-race`, y `go vet` de paquetes modificados PASS. Quality PASS: NEW=0, MOVED=0, policy_changed=false. Roadmap modifica solo `milestones:functional-widget-design`; JSON generado con el script de la base y commits alcanzables desde `e6d7d2b5`. Fragmento ISA-1328.
+
+Verificación manual: navegador con componente real y datos de demostración; estado inicial silencioso, mejora visible 1:29.902, desaparición sin nuevas muestras, repetición tras retroceder, cambio es/en y composición 480×104 / previsualización 280×72. Preview local en `http://127.0.0.1:5188/workshop?widget=fastest-lap&system=vantare-functional&surface=studio&scene=fastest-lap-alert` (requiere servidor local activo).
+
+Límites: `go test -timeout 60s ./...` falla en macOS en cmd/vantare (símbolos Windows), launcher (timeout), ruta Windows, Diagnostics y SQLite; no se declara verde. `go vet ./...` también queda bloqueado por símbolos Windows; su ejecución focal y el ratchet Windows pasan. Pendientes revisión independiente y comprobación física LMU/Windows/OBS. Seguimiento en Asana permanece En curso con candidato entregado para revisión, porque el proyecto no tiene sección En revisión. No hay merge, promoción ni release; la siguiente acción es revisar el diseño y validar las señales en sesión real antes de autorizar integración.
+
+Entrega ISA-1328: [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330), implementación `dbc35180`, rama publicada y adjunta a la tarea Codex. Los checks remotos se iniciaron al publicar; consultar el estado actual en la PR. Asana se actualiza con esta misma evidencia y queda sin completar, pendiente de aceptación.
+
+
+### 2026-09-23 · ISA-1328 · tamaño real, personal/clase y ciclo de animación
+
+Isaac conserva el diseño y pide tamaño editable, récord personal y de su clase, y corregir animaciones. Ajuste en la misma rama aislada y [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330); seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). Sustituye la opción clase/sesión de la propuesta inicial por dos avisos activos por defecto. Mejor personal = sesión actual de la clasificación V2; si ambos récords coinciden, un único aviso de clase. Sin nueva autoridad de tiempos.
+
+- El viewport compartido entrega al renderer el ancho y alto reales, sin estirar la composición. Workshop ofrece controles visibles; mínimo 280×72, predeterminado 480×104. El perfil conserva layout y ambos controles de aviso.
+- Entrada reiniciada por ID de aviso, salida animada de 220 ms dentro de la duración configurada, un solo temporizador pendiente y limpieza en reinicios/desmontaje. Conserva motion off/minimal y prefers-reduced-motion.
+- Workshop distingue vista estática (Ver diseño) y reproducción temporal también en Studio. Fixture con personal, récord de rival de clase y doble récord; las etiquetas no adelantan eventos a mitad de fotograma.
+
+Evidencia actual: 470 archivos frontend PASS, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Prueba visual en navegador de 280×72 y 480×104, avisos personal/clase, prioridad de clase, reproducción automática en Studio y expiración sin nueva muestra. El aviso de fetch cancelado en teardown de happy-dom no causa fallo de suite (exit 0). Sin cambios Go; conserva la evidencia focal y los límites globales de macOS de la entrega anterior. Roadmap actualiza únicamente milestones:functional-widget-design y se regenera desde e6d7d2b5.
+
+Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Windows/OBS antes de autorizar integración. Asana permanece En curso y sin completar; no hay merge, promoción ni release.
+
+
+### 2026-09-23 · ISA-1328 · aceptación e integración inicial autorizada
+
+Isaac revisa los ajustes de tamaño, avisos personal/clase y animaciones en Workshop, los acepta y pide expresamente integrar la [PR #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330) en `nightly`. El código aceptado es `8411ecdb692e1444c110719c5834a2b46300c2fb`; este cierre solo registra la aceptación en documentación, roadmap y fragmento, sin cambiar producto.
+
+Se conserva la evidencia de 3832 pruebas frontend PASS (2 omitidas), build/TypeScript, lint y quality PASS. La incorporación se hace por PR normal con los controles remotos vigentes; el SHA de integración y su pertenencia a `origin/nightly` se registrarán y releerán en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). No se declara un merge antes de verificarlo. No hay revisión externa registrada; la aceptación visual es de Isaac. La validación física LMU/Windows/OBS continúa en Nightly y no se presenta como ya superada. Esta autorización no incluye Testers, Master, una release o un anuncio público.
+
+## 2026-09-25 · ISA-1368 · revisión física del Launcher
+
+La [PR draft #1369](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1369) se inició sobre `nightly` `5c73013e` y se reconcilió con `f0ccfbf2` en su rama aislada, sin merge a un canal ni promoción. Isaac autorizó usar el PC para verificar el candidato y pidió un único perfil de inicio con Windows y dos acciones separadas: repetir todos los pasos desde el primero o solo los fallidos. El entorno de prueba usó `C:\tmp\vantare-launcher-qa-20260925` como directorio de trabajo; no reutilizó perfiles ni cambió el inicio con Windows del usuario.
+
+En el ejecutable Wails real se reprodujeron y corrigieron tres fallos de interfaz: las cinco políticas avanzadas carecían de etiqueta visible, el selector de aplicaciones quedaba debajo del cajón de edición y el diálogo/aviso de una cadena enseñaban IDs internos en vez de nombres. Pruebas de regresión fallaron antes del arreglo y pasaron después. La versión recompilada mostró las etiquetas, permitió guardar un perfil nuevo y mostró «Le Mans Ultimate» y «QA LMU ya abierto» en el diálogo y el aviso. LMU ya estaba abierto con PID 12340; elegir «Reutilizar» completó el perfil sin cambiar ese PID.
+
+Con dos copias controladas de un ejecutable de Windows en el directorio QA se guardó una cadena de dos pasos; se retiró solo la segunda copia para provocar un fallo real de apertura. Wails mostró el primer paso listo, el segundo fallido, el nombre correcto y los botones independientes «Repetir pasos fallidos» y «Repetir todos los pasos». Se pulsaron ambos, pero el proceso del primer paso termina demasiado rápido para certificar visualmente el alcance exacto de cada repetición; ese contrato queda cubierto por las regresiones Go. La interacción física posterior se detuvo cuando el control del PC detectó actividad del usuario. No se tocó LMU ni se reinició Windows.
+
+Evidencia local del nuevo candidato: `pnpm --dir frontend test` PASS (483 archivos, 4117 pruebas, 2 omitidas; presupuesto de 4 pruebas PASS), typecheck PASS, lint PASS, `wails3 task windows:package:all` PASS con ejecutable, ZIP e instalador 0.1.0.7 y SHA256 verificados. La primera ejecución global tuvo un timeout en una prueba de layout ajena al Launcher; pasó aislada y la segunda ejecución global pasó íntegra. El instalador y el binario creados están sin firma. Quedan pendientes la prueba física de instalación/actualización, el inicio real de sesión de Windows con un único perfil, hotkeys tras reinicio, cancelación/salida con procesos iniciados por Vantare y la validación remota del nuevo HEAD. El puerto HTTP de la app y varios hotkeys estaban ocupados por otra instancia de Vantare del usuario en el PC; no se considera prueba de esas funciones. Estado: NO-GO para lanzamiento; sin release.
+Comprobación adicional: `go test ./internal/app/launcher ./cmd/vantare` PASS tras la revisión física. El comportamiento de ambos alcances de repetición permanece en sus pruebas Go; la observación visual de un proceso instantáneo no sustituye esa evidencia.
+
+Al avanzar `nightly`, GitHub marcó la PR en conflicto y no generó los workflows de CI de los SHA `961a2558`/`52478296`. La rama incorporó los commits `446001dd` y `f0ccfbf2`; solo colisionó `roadmap.json`, que se regeneró desde el plan combinado y `origin/nightly` con el script oficial (`--check` PASS). En la base combinada pasan el build frontend, `go test ./...`, 52 pruebas focales de Launcher, 10 pruebas de layout aisladas y lint. La suite frontend global local se interrumpió con timeouts de layout y un fallo del proceso bajo carga simultánea de otros tests del PC; no se declara PASS. La CI del merge debe ejecutarse sobre el SHA definitivo. El paquete Wails examinado físicamente pertenece al código anterior al merge; no hay nueva prueba visual de los cambios entrantes de calendario/telemetría.
+
+CI de `9bf95ae2`: los gates de canal y seguridad pasaron; el ratchet de calidad encontró una duplicación nueva de CSS al modificar `orbit-kit.css`, y el gate funcional siguió hasta PASS. La regla de elevación del selector se trasladó al estilo local del componente; la hoja CSS compartida vuelve a coincidir exactamente con la base. La clasificación oficial de duplicados sobre el nuevo árbol da NEW=0 tras verificar la procedencia de 42 hallazgos reagrupados; 14 pruebas del selector, typecheck y lint PASS. Pendiente repetir CI sobre el commit de corrección. No se declara aptitud de lanzamiento mientras falten los controles físicos descritos arriba.
+
+CI de `cd031150` sobre `f0ccfbf2`: calidad, promoción, seguridad y gates bloqueantes PASS, incluidos build frontend, contrato TypeScript de telemetría, Go, pruebas frontend globales, lint de cambios y build Wails Windows. Antes de cerrar, `nightly` avanzó a `98c245bf` (cabecera Orbit) y la PR volvió a tener conflicto únicamente en el JSON generado del roadmap; se incorpora esa base y se regenera el artefacto oficial. Las pruebas físicas del instalador y de una sesión nueva de Windows siguen pendientes de coordinar con Isaac.
+
+CI de `0a8d2f74` sobre `98c245bf`: calidad, promoción, seguridad y gates bloqueantes PASS, incluidos build frontend, pruebas Go y frontend, lint de cambios y build Wails Windows. La PR #1369 está limpia y combinable, pero sigue draft y sin integrar. El estado de lanzamiento permanece NO-GO por las pruebas físicas pendientes, no por un fallo conocido de CI.
+
+El 2026-09-26, a petición de Isaac, la revisión adicional usó exclusivamente el navegador integrado de Codex con Vite y `VITE_RUNTIME_MOCK=mock` en `127.0.0.1:5173`, sin ocupar el escritorio. Se vieron Launcher, catálogo, perfiles, editor avanzado y las cinco políticas con etiquetas accesibles. El selector de reintentos apareció por encima del cajón y permitió elegir «Todos los pasos» con límite adicional; al crear un perfil se pudo añadir un paso y seleccionar OBS Studio. No hubo errores de consola. El mock solo responde a `launcher:snapshot:get`: Guardar/Lanzar no persistieron ni ejecutaron procesos, de modo que esta sesión no prueba backend, registro Run, hotkeys ni instalador. La shell conserva intencionalmente un suelo de 1180 px y scroll interno en una vista de 390 px; no se considera prueba móvil de aceptación del Launcher Windows. Se cerraron el tab de QA y el servidor. `nightly` avanzó por documentación a `d09829c4`, se incorporó con roadmap regenerado y CI de `3336422c` PASS en todos los gates obligatorios; PR draft limpia y combinable. Sigue NO-GO hasta las pruebas físicas acordadas.
+
+Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026-09-26 a las 12:26:30; Vantare no estaba ejecutándose. Se encontró una entrada `HKCU\...\Run` llamada `Vantare.test-profile` que apuntaba a un `vantare.test.exe` temporal de `go-build` ya inexistente. Se verificó esa condición y se retiró solo esa entrada; quedaron cero entradas `Vantare.*`. Por tanto, este arranque no certifica el inicio automático de un perfil real. Desde el HEAD `d2900a12` se volvió a generar localmente el paquete oficial 0.1.0.7: ejecutable, ZIP, instalador y SHA256, con verificación de versión y runtime PASS; `git status` limpio tras el build. Ejecutable e instalador muestran `NotSigned`. La PR del mismo HEAD pasó todos los gates obligatorios. La prueba de instalación/actualización y la ejecución del candidato esperan la confirmación puntual exigida por computer-use; todavía no se han realizado. Estado comercial NO-GO, sin merge ni release.
+
+`nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.
+
+Isaac autorizó integrar #1369 en `nightly` para poder probar el Launcher. La PR pasó todos sus gates en `da304acc` y se integró por squash como `b6833bb5368a459688cc1d76f526ecf1c2aa1833`, sin diferencias de árbol entre el candidato y `origin/nightly`. El digest del roadmap posterior al merge y la ejecución `36252220712` pasaron: ruta de promoción y gate bloqueante completo, incluidos Go, frontend y build Wails Windows. La issue #1368 permanece abierta con `state:nightly` para instalación/actualización física, una sesión nueva de Windows con un solo perfil, hotkeys, políticas de cancelar/salir y validación Steam/LMU. El paquete local de `da304acc` coincide en código y contenido con `b6833bb5`, pero sigue sin firma y sin prueba de instalación. No hay promoción a `testers`/`master` ni release; el lanzamiento comercial permanece NO-GO.

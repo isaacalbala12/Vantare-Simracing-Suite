@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 var (
@@ -73,20 +74,30 @@ type VehicleState struct {
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
 	Damage           schema.Field[damage.State]
+	TyreWear         schema.Field[[4]float64]
 }
 
 // ObservedState is the complete state replaced by one atomic batch. The
 // catalog remains outside the runtime hot path by architecture; these typed
 // fields are the runtime counterparts of its canonical signal definitions.
+// AmbientTemp, TrackTemp and SessionFlag arrive REST-joined from the LMU
+// sessionInfo signal (ISA-1106, CarNumber precedent): they own presence and
+// freshness per field and never default to a usable value.
 type ObservedState struct {
-	SourceTime    schema.Field[time.Duration]
-	EndTime       schema.Field[session.EndTime]
-	MaximumLaps   schema.Field[session.MaximumLaps]
-	TrackName     schema.Field[string]
-	SessionType   schema.Field[session.Type]
-	VehicleCount  schema.Field[schema.Count]
-	PlayerPresent schema.Field[bool]
-	Vehicles      []VehicleState
+	SourceTime      schema.Field[time.Duration]
+	EndTime         schema.Field[session.EndTime]
+	MaximumLaps     schema.Field[session.MaximumLaps]
+	TrackName       schema.Field[string]
+	SessionType     schema.Field[session.Type]
+	VehicleCount    schema.Field[schema.Count]
+	PlayerPresent   schema.Field[bool]
+	AmbientTemp     schema.Field[weather.Temperature]
+	TrackTemp       schema.Field[weather.Temperature]
+	RainFraction    schema.Field[weather.Fraction]
+	WetnessFraction schema.Field[weather.Fraction]
+	SessionFlag     schema.Field[session.Flag]
+	Vehicles        []VehicleState
+	TrackLength     schema.Field[standings.LapDistance]
 }
 
 // Batch carries one complete observed state and its canonical ordering header.

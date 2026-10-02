@@ -72,6 +72,16 @@ describe("chain-store reducer", () => {
     expect(store.getLastResult("p2")).toBe("error");
   });
 
+  it("keeps a cancelled chain stopped and does not offer failure retry", () => {
+    const store = createChainStore();
+    store.handleStep({ profileId: "p", stepIndex: 0, appId: "lmu", status: "pending" });
+    store.handleDone("p", false, "stopped");
+    expect(store.getChain("p")?.overallStatus).toBe("stopped");
+    expect(store.getLastResult("p")).toBeUndefined();
+    store.handleStep({ profileId: "p", stepIndex: 0, appId: "lmu", status: "pending" });
+    expect(store.getChain("p")?.overallStatus).toBe("running");
+  });
+
   it("clears chain after 3s of done", () => {
     vi.useFakeTimers();
     const store = createChainStore();
@@ -161,6 +171,58 @@ describe("chain-store reducer", () => {
     // Avanzar 35s → el watchdog corre cada 5s, en t=35s la condición
     // now - lastEventAt > 30000 se cumple
     vi.advanceTimersByTime(35000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
+
+  it("keeps a planned 60s delay running until its deadline", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "pending",
+      delaySeconds: 60,
+    });
+    vi.advanceTimersByTime(65000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(30000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
+
+  it("keeps Steam launch pending while the game process is being verified", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "launching",
+      delaySeconds: 120,
+    });
+    vi.advanceTimersByTime(125000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(30000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
+
+  it("keeps a chain active while a user decision is pending", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({ profileId: "p1", stepIndex: 0, appId: "obs", status: "failed" });
+    store.handleDecisionRequired("p1", Date.now() + 120000);
+    vi.advanceTimersByTime(60000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(95000);
     expect(store.getChain("p1")?.overallStatus).toBe("error");
     store.shutdown();
     vi.useRealTimers();

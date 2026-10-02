@@ -1,6 +1,12 @@
 # Operaciones
 
-Comandos basicos para trabajar en `vantare-v2`.
+Comandos contrastados con el código y CI de nightly del 2026-09-14. Salvo indicación, ejecutar desde `vantare-v2`.
+
+## Requisitos y preparación
+
+Go según [go.mod](../go.mod) (1.25.0 en este corte), Node 22 y pnpm 9.1.0 como [CI](../../.github/workflows/branch-channel-gates.yml). Wails v3 usa la versión fijada en ese workflow. Windows 10/11 con WebView2 es el entorno objetivo del runtime LMU.
+
+Leer [AGENTS](../AGENTS.md) y la tarea/proyecto en Notion antes de editar. Obtener `origin/nightly`, comprobar HEAD y trabajar en rama/worktree propios.
 
 ## Estado del repo
 
@@ -14,12 +20,17 @@ Si hay cambios antes de empezar, no mezclarlos sin avisar.
 ## Instalar frontend
 
 ```powershell
-pnpm --dir frontend install
+cd ..
+pnpm install --frozen-lockfile
+cd vantare-v2
 ```
 
 ## Tests
 
+En un checkout limpio, compilar primero los assets que Go embebe:
+
 ```powershell
+pnpm --dir frontend build
 go test ./...
 pnpm --dir frontend test
 ```
@@ -63,7 +74,7 @@ Requisitos previos:
   su configuracion local; **no copies archivos `.env*` entre worktrees**. Para
   un build de artefactos, la receta oficial puede leer la ruta autorizada en su
   ubicacion original sin copiarla.
-- `pnpm --dir frontend install` si no hay `node_modules`.
+- Instalación desde la raíz con `pnpm install --frozen-lockfile` si no hay `node_modules`.
 
 Una pareja Supabase local permite comprobar login contra ese proyecto, pero no
 demuestra paridad real de licencia. Para ella hace falta tambien el registro
@@ -71,15 +82,17 @@ publico autorizado `VANTARE_LICENSE_PUBLIC_KEYS` y la configuracion de canal/CI
 (ver `docs/billing/bil-08-offline-credential-runbook.md`). Sin el registro, el
 verifier queda sin configurar y el estado puede permanecer `unconfigured`.
 
-### Ruta minima: solo backend, sin ventana Wails
+### App con assets compilados
 
-Util para probar telemetria o el servidor de overlays sin compilar el frontend.
-No hay UI ni sesion de usuario.
+Compila primero el frontend: Go lo embebe mediante [frontend/embed.go](../frontend/embed.go). El siguiente comando también abre Wails; no es un modo headless.
 
 ```powershell
-go run ./cmd/vantare -live=false -profile configs/example-racing.json   # mock sin LMU
-go run ./cmd/vantare -profile configs/example-racing.json               # live con LMU
+pnpm --dir frontend build
+go run ./cmd/vantare -live=false -profile configs/example-racing.json
+go run ./cmd/vantare -profile configs/example-racing.json
 ```
+
+La primera variante deshabilita el live y publica desconectado; la segunda intenta adquirir LMU. Ninguna convierte ausencia de fuente en datos de prueba. El diagnóstico sintético explícito pertenece a `lmu-debug -mock`, no al arranque de producto.
 
 ## Debug LMU
 

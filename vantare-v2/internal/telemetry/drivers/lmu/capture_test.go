@@ -66,6 +66,34 @@ func TestFrameSanitizerRebuildsFromZeroAndPreservesParserFacts(t *testing.T) {
 	assertDiagnosticPlayerScopeEqual(t, originalParsed, parsed)
 }
 
+func TestFrameSanitizerPreservesOnlyPlayerTyreWear(t *testing.T) {
+	input := knownBuffer(t)
+	playerBase, _ := lmu13Layout.TelemetryRows.rowBase(43)
+	opponentBase, _ := lmu13Layout.TelemetryRows.rowBase(0)
+	fields := [4]layoutField{lmu13Layout.Telemetry.TyreWearFL, lmu13Layout.Telemetry.TyreWearFR, lmu13Layout.Telemetry.TyreWearRL, lmu13Layout.Telemetry.TyreWearRR}
+	want := [4]float64{0.98, 0.91, 0.87, 0.93}
+	for index, field := range fields {
+		binary.LittleEndian.PutUint64(input[playerBase+field.Offset:], math.Float64bits(want[index]))
+		binary.LittleEndian.PutUint64(input[opponentBase+field.Offset:], math.Float64bits(0.55))
+	}
+	sanitizer, err := NewFrameSanitizer(BuildEvidence{FileVersion: supportedLMUVersion})
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := sanitizer.Sanitize(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, field := range fields {
+		if got := readFloat64(output, playerBase+field.Offset); got != want[index] {
+			t.Fatalf("player tyre %d = %v, want %v", index, got, want[index])
+		}
+		if got := readFloat64(output, opponentBase+field.Offset); got != 0 {
+			t.Fatalf("opponent tyre %d leaked %v", index, got)
+		}
+	}
+}
+
 func TestFrameSanitizerRejectsUnknownBuildFingerprintAndShortFrames(t *testing.T) {
 	if _, err := NewFrameSanitizer(BuildEvidence{}); !errors.Is(err, ErrUnsanitizableFrame) {
 		t.Fatalf("NewFrameSanitizer(unknown) error = %v", err)
@@ -936,7 +964,8 @@ func assertDiagnosticPlayerScopeEqual(t testing.TB, original, sanitized Observat
 			left.Gear != right.Gear || left.EngineRPM != right.EngineRPM || left.SpeedMPS != right.SpeedMPS ||
 			left.Throttle != right.Throttle || left.Brake != right.Brake || left.Clutch != right.Clutch ||
 			left.Fuel != right.Fuel || left.WorldPosition != right.WorldPosition ||
-			left.LocalVelocity != right.LocalVelocity || left.Orientation != right.Orientation {
+			left.LocalVelocity != right.LocalVelocity || left.Orientation != right.Orientation ||
+			left.TyreWear != right.TyreWear {
 			t.Fatalf("sanitized row %d changed numeric facts:\noriginal=%#v\nsanitized=%#v", index, left, right)
 		}
 	}
@@ -1056,7 +1085,9 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 	for _, field := range []layoutField{
 		lmu13Layout.Session.TrackName, lmu13Layout.Session.SessionType,
 		lmu13Layout.Session.CurrentTime, lmu13Layout.Session.EndTime,
-		lmu13Layout.Session.MaximumLaps, lmu13Layout.Session.VehicleCount,
+		lmu13Layout.Session.MaximumLaps,
+		lmu13Layout.Session.RainFraction, lmu13Layout.Session.VehicleCount,
+		lmu13Layout.Session.TrackLength,
 	} {
 		mark(field.Offset, field.width())
 	}
@@ -1104,6 +1135,8 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 			lmu13Layout.Telemetry.DentSeverity, lmu13Layout.Telemetry.WheelDetachedFL,
 			lmu13Layout.Telemetry.WheelDetachedFR, lmu13Layout.Telemetry.WheelDetachedRL,
 			lmu13Layout.Telemetry.WheelDetachedRR,
+			lmu13Layout.Telemetry.TyreWearFL, lmu13Layout.Telemetry.TyreWearFR,
+			lmu13Layout.Telemetry.TyreWearRL, lmu13Layout.Telemetry.TyreWearRR,
 		} {
 			mark(base+field.Offset, field.width())
 		}

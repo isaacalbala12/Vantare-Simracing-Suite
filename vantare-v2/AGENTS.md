@@ -14,32 +14,47 @@ Menos codigo es preferible cuando mantiene o mejora claridad, seguridad,
 pruebas y rendimiento. Si la complejidad supera claramente al problema, revisa
 y simplifica antes de ampliarla.
 
-## Issues
+## Notion primero: obligatorio desde 2026-09-14
 
-- El tracker es **GitHub Issues de este mismo repositorio**. Linear fue
-  retirado el 2026-08-20 y no queda ninguna dependencia operativa suya.
-- Los identificadores `ISA-N` corresponden al numero de issue de GitHub: una
-  issue nueva ya nace con su ISA-N. Los `ISA-N` migrados desde Linear
-  conservan su titulo `ISA-N · ...` y las labels `state:*` y `migrated:linear`.
-- Las ramas siguen la convencion `vantareapp/isa-N-slug`.
-- El tablero es el GitHub Project **Vantare**.
+Abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192) y leer la tarea y su proyecto
+antes de ejecutar, incluidas las issues importadas. Leer el contrato completo
+[docs/vantare-program/notion-transition.md](docs/vantare-program/notion-transition.md).
+Actualizar y releer Notion al empezar, bloquear, entregar y verificar integración.
+Una tarea no está entregada si su evidencia solo existe en GitHub o en el chat.
+
+### Compatibilidad técnica temporal con GitHub
+
+- GitHub conserva código, ramas, PR, CI, builds y releases. Su Project y labels
+  de estado son referencias históricas, no la cola de ejecución.
+- Los validadores actuales aún consultan una issue GitHub viva y usan ramas
+  `vantareapp/isa-N-slug`. Reutilizar la issue existente; si CI requiere una nueva,
+  crear primero la tarea Notion y enlazar la issue como puente técnico mínimo.
+  Mantener en ella el contrato de roadmap que consume CI, coherente con Notion.
+- Separar UUID/`VAN-N`, número GitHub e ISA histórico. GitHub #519 = ISA-233;
+  no obtener la identidad del título ni reutilizar VAN como ISA.
+- Linear fue retirado el 2026-08-20. No es una dependencia operativa.
+- El corte técnico exclusivo sigue pendiente; esto no pospone Notion como
+  autoridad de alcance, prioridades, dependencias y seguimiento.
 
 ## Fuentes de verdad y lectura obligatoria
 
 Antes de interpretar o ejecutar una tarea:
 
-1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
-2. Lee este archivo y `docs/roadmap/plan.md`.
+1. Lee la tarea Notion y su proyecto; verifica acceso de lectura/escritura.
+   Verifica raiz Git, rama, HEAD, worktree y `git status --short`; consulta
+   las instrucciones de `origin/nightly` actualizado si el checkout es antiguo.
+2. Lee este archivo y `docs/vantare-program/notion-transition.md`.
 3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
    Git, el tracker, CI, releases o estados.
 4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
    handoff vivo del proyecto.
-5. Lee la issue de GitHub, sus dependencias y el plan, ADR o microplan vigente.
+5. Lee dependencias y aceptación en Notion, la referencia GitHub que consume CI
+   y el plan, ADR o microplan vigente.
 6. Lee el codigo y los tests que demuestran el comportamiento actual.
 
 Las decisiones recientes del expediente canonico y la evidencia del runtime
-prevalecen sobre planes historicos. La issue de GitHub es la autoridad para alcance,
-dependencias, rama y estado; no sustituye los contratos de producto o
+prevalecen sobre planes historicos. La tarea Notion es la autoridad para alcance,
+dependencias y estado; GitHub demuestra rama, PR, CI e integración; no sustituye los contratos de producto o
 arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Reglas generales
@@ -58,10 +73,12 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
   worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion; refleja el mismo estado real en la issue de GitHub.
-- Todo trabajo nuevo debe estar cubierto por una issue de GitHub antes de
-  editar. Los hallazgos fuera de alcance se documentan como issues y no se
-  incorporan silenciosamente.
+  riesgos o siguiente accion. Notion contiene la continuidad operativa; Git
+  conserva la evidencia técnica versionada con enlace a la tarea.
+- Toda ejecución requiere tarea Notion antes de editar. Registrar Estado,
+  Proyecto, Agente, alcance, dependencias y siguiente paso. Los hallazgos fuera
+  de alcance van a Notion como pendientes; no se ejecutan sin alcance autorizado.
+  Releer después de escribir y registrar bloqueos de acceso sin simular éxito.
 - La delegacion tiene un solo nivel por defecto: el orquestador puede crear
   workers, pero un worker no puede crear subagentes ni delegar su tarea salvo
   autorizacion expresa y acotada del orquestador. No ejecutes dos agentes en
@@ -77,51 +94,15 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   Los HTML son contratos visuales; el fondo del escenario no forma parte del
   widget ni de sus capturas de paridad.
 - Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
-- Todo cambio de alcance o de plan futuro se refleja en
-  `vantare-v2/docs/roadmap/plan.md` **en el mismo PR** que lo introduce. Eso
-  incluye anadir, retirar o reordenar una fase, cambiar su estado, y todo
-  pendiente que quede a la espera de una decision de producto. `plan.md` es la
-  unica fuente manual del roadmap publico: `vantare-v2/docs/roadmap/roadmap.json`
-  lo genera `.github/scripts/roadmap_digest.py` y nunca se edita a mano. Si el
-  PR cambia el rumbo del producto y no toca `plan.md`, esta incompleto.
-- **Lo entregado tambien se refleja en `plan.md`, en el mismo PR.** La regla
-  anterior cubre lo que se planea; esta cubre lo que se cumple. Si tu PR
-  entrega algo que `plan.md` lista como pendiente, actualiza esa entrada en el
-  mismo PR: el hito pasa de `tipo: plan` a `feature`, `fix` o `release`, su
-  `cuerpo` se reescribe a lo que la app hace **hoy** (no a lo que faltaba), y
-  si la fase avanza, su `progreso` e `item` acompanan. Un hito entregado que
-  sigue anunciandose como plan es una mentira publicada: el roadmap lo pinta
-  en la app y el digest lo anuncia en Discord. Regenera despues el artefacto
-  con `python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly`.
-- Cada issue nueva declara exactamente una decision de roadmap mediante
-  `roadmap:required` o `roadmap:not-required`. La rama
-  `vantareapp/isa-N-*` liga la PR a la issue N; el texto `Closes #N` y la
-  plantilla de PR solo orientan y no conceden autoridad.
-- `roadmap:required` exige que la issue enumere tokens exactos
-  `phases:id`, `areas:id` o `milestones:id`. El mismo PR modifica
-  semanticamente exactamente esas entradas de `plan.md` y regenera
-  `roadmap.json` desde el JSON y el SHA de la base; los commits de la rama no
-  se presentan como ya entregados.
-- `roadmap:not-required` no es una autoexencion: CI solo la admite cuando el
-  diff completo contiene tests, `testdata/` o evidencia Markdown bajo
-  `docs/analysis/`, y prohíbe cambios en ambos ficheros de roadmap. Si aparece
-  codigo productivo, tooling, contratos, comportamiento o estado publico, la
-  issue se reclasifica como `roadmap:required`.
-- Las issues creadas por API tambien deben reproducir los campos visibles de
-  los Issue Forms. Elegir un formulario o aplicar una label no basta: el gate
-  consulta la issue viva y falla cerrado ante campos, labels o IDs ambiguos.
-- `bot/roadmap-digest` es la unica excepcion no ISA hacia `nightly` y solo
-  puede modificar el `roadmap.json` derivado. No tiene auto-merge. Los Forms y
-  `CODEOWNERS` solo son efectivos cuando llegan a la rama predeterminada y las
-  protecciones remotas exigen la review correspondiente.
-- ISA-860 deja inicialmente `ROADMAP_CONTRACT_MODE=audit`: el validador se
-  ejecuta y muestra fallos, pero no bloquea hasta migrar o cerrar las PR vivas
-  anteriores. Pasarlo a `enforce` requiere otra issue, inventario actualizado
-  y una identidad de autor distinta del Code Owner; una cuenta no puede aprobar
-  su propia PR. No se activa la review remota con un unico owner/autoria.
-- Cada issue vive bajo su **proyecto** (label `area:*`, columna del GitHub
-  Project **Vantare**) y, si esta comprometida para una version, bajo su
-  **milestone** de GitHub. El milestone agrupa las features que justifican una
+- El alcance, las dependencias y el estado operativo viven en la tarea Notion.
+  El roadmap público muestra varias vistas gráficas de una única publicación.
+  Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
+  compartida en Supabase tras comprobar la versión vigente. La app solo lee.
+  No hay editor en la app, archivo de contenido ni requisito de modificar el
+  roadmap en cada PR.
+- Cada tarea vive bajo su **Proyecto** y, si está comprometida para una versión,
+  su **Hito** en Notion. Conservar labels/milestones GitHub solo cuando los
+  consumidores técnicos actuales los necesitan. El hito agrupa las entregas de una
   promocion de canal: cuando se cierra al 100%, ese corte es **candidato** a
   subir de nightly a testers, y de testers a master tras su validacion. La
   promocion la dispara una persona, nunca el cierre automatico del milestone.
@@ -138,6 +119,24 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - Si hay cambios sin commit antes de empezar, identificalos y no los mezcles con tu tarea.
 - No leas, imprimas, copies ni versionees secretos o archivos `.env*`. Trabaja
   solo con nombres de variables y procedimientos sanitizados.
+
+## Orquestación y roles de modelos
+
+Cada modelo tiene un rol. Detalle, criterios de elección, modo ahorro y
+plantilla de encargo en la skill
+[`.claude/skills/orquestacion/SKILL.md`](.claude/skills/orquestacion/SKILL.md);
+léela antes de planificar o delegar.
+
+- **Advisors: Fable 5.1 (razonamiento medio) y GPT 6 Astra (max).** Solo si es
+  estrictamente necesario o para fijar la dirección al inicio de un plan.
+- **Orquestador y optimizador: Opus 5.5 (medio).** Planifica, reparte, optimiza,
+  hace el diseño visual nuevo y revisa todo lo que entregan los workers.
+- **Ejecutor principal: Sonnet 5.5 (medio).** Código a gran escala y réplicas o
+  paridad de diseños existentes; no diseño visual nuevo.
+- **Worker barato: DeepSeek V4.1 Flash** (DeepSeek Harness / opencode-go) **y
+  Muse Spark 1.3** (free y, al agotarse, contributor), **ambos en max.** Tareas
+  repetitivas o sencillas, y más carga cuando quede menos del 50 % de la cuota
+  de uso del plan.
 
 ## Preautorización inerte de la rama automática (ISA-318)
 
@@ -158,7 +157,8 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Autoridad y acciones externas
 
-Dentro de una issue aprobada, los agentes pueden crear o actualizar issues,
+Dentro de una tarea Notion aprobada, los agentes pueden actualizar Notion y
+las referencias técnicas necesarias, crear o actualizar
 ramas, worktrees, commits, pushes, PRs draft, CI, documentacion y reviews.
 
 Requieren autorizacion explicita de Isaac:
@@ -180,9 +180,10 @@ Requieren autorizacion explicita de Isaac:
 6. Ejecuta los checks aplicables.
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza el handoff y la issue de GitHub después de cada worker o cambio
-   material. Si cambia el alcance, el plan futuro o el estado público, actualiza
-   `docs/roadmap/plan.md` en el mismo PR.
+9. Actualiza y relee la tarea y continuidad del proyecto en Notion después de
+   cada worker o cambio material; enlaza el handoff técnico versionado. Si Isaac
+   pide cambiar el roadmap público, actualiza la publicación compartida según
+   `docs/roadmap-maintenance.md`.
 
 ## Stop conditions
 
@@ -195,7 +196,7 @@ Para y pide revision si:
 - Encuentras cambios previos que chocan con tu tarea.
 - No sabes como verificar el resultado.
 - Hay contradicciones entre documentos.
-- La base, rama o SHA no coincide con la issue.
+- La base, rama o SHA no coincide con la tarea Notion y su referencia técnica.
 - La accion requiere una autorizacion reservada a Isaac.
 
 ## Go
@@ -282,6 +283,7 @@ Para y pide revision si:
 
 Al terminar, informa:
 
+- URL/ID de la tarea Notion, proyecto, estado y última actualización verificada.
 - Archivos creados/modificados/movidos.
 - Tests o checks ejecutados y resultado.
 - Checks no ejecutados y motivo.

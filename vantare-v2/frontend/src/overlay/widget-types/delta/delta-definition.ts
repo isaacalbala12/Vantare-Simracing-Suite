@@ -1,12 +1,10 @@
+import { DELTA_REFERENCES, type DeltaReference, type DeltaContent } from "./delta-content";
 import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
 import type { DeltaViewModel } from "./delta-view-model";
 
-export const DELTA_REFERENCES = ["personal-best", "session-best", "previous-lap"] as const;
-export type DeltaReference = (typeof DELTA_REFERENCES)[number];
-export type DeltaContent = { reference?: DeltaReference };
 
 const DELTA_DEFAULT_LAYOUT = {
   x: 64,

@@ -1,3 +1,4 @@
+import { cx } from "./cx";
 export type TraceChannel = "speed" | "pedals" | "steer" | "delta";
 
 export interface TraceBand {
@@ -93,7 +94,7 @@ export function Trace({
   const zeroY = height / 2;
 
   return (
-    <div className={["orbit-trace", className].filter(Boolean).join(" ")} data-ch={channel}>
+    <div className={cx("orbit-trace", className)} data-ch={channel}>
       {title ? (
         <div aria-hidden="true" className="orbit-trace__k">
           {title}

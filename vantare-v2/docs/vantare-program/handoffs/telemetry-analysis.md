@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Analysis
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+
 ## Resultado
 
 Herramienta post-sesión que responde «¿cómo puedo ser más rápido?» con
@@ -10,7 +17,7 @@ visible es `Telemetría`.
 
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
-- Este handoff y el proyecto Linear del módulo.
+- Este handoff y el proyecto del tracker vigente según `../notion-transition.md`.
 - ADR 0004 y el handoff de Telemetry Core para contratos/recording.
 - La futura investigación, spec, HTML y plan aprobados reemplazarán el resumen
   de experiencia cuando aporten más detalle.

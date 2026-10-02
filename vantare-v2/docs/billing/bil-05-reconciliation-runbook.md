@@ -1,6 +1,6 @@
 # BIL-05 — runbook de reconciliación Polar
 
-Estado: implementación local; **no desplegada**. Venta pública NO-GO.
+Estado de entrega original BIL: implementación local; **no desplegada** en aquel corte. Consultar [estado y preparación actuales](README.md) antes de operar; este texto no verifica un despliegue ni habilita venta pública.
 
 ## Propósito
 
@@ -50,7 +50,7 @@ No mantener dos implementaciones.
 - `dryRun`: plan seguro calculado sin escribir.
 
 Los resultados solo incluyen contadores. Para investigar una quarantine usar
-las tablas server-only y el export sanitizado; no pegar PII en Linear.
+las tablas server-only y el export sanitizado; no pegar PII en Notion.
 
 ## Recuperación
 
@@ -68,7 +68,7 @@ deno test --no-lock --no-check --allow-env supabase/functions/_shared/polar.test
 supabase/tests/run-supabase-hardening-postgres.ps1
 ```
 
-El primer comando debe pasar 45 tests. El segundo valida clean/upgrade/restore
+El corte original registró 45 tests Deno. El segundo runner valida clean/upgrade/restore
 con 48 hardening + 53 inbox + 43 proyección + 17 reconciliación pgTAP, once
 regresiones adicionales de upgrade legacy, concurrencia y restores fail-closed.
 La carrera de reconciliación exige exactamente un `applied`, un `unchanged`,

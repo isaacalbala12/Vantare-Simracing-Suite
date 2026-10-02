@@ -7,11 +7,13 @@ import {
 } from "./design-system-registry";
 
 describe("designSystemRegistry", () => {
-  it("registers Original, Crystal and Endurance at version 1", () => {
+  it("registers Original, Crystal, Endurance, Functional and iRacing at version 1", () => {
     expect(designSystemRegistry.list().map((system) => system.id)).toEqual([
       "vantare-original",
       "vantare-crystal",
       "vantare-endurance",
+      "vantare-functional",
+      "vantare-iracing",
     ]);
     expect(designSystemRegistry.list().every((system) => system.version === 1)).toBe(true);
   });
@@ -31,6 +33,18 @@ describe("designSystemRegistry", () => {
     expect(designSystemRegistry.resolve("vantare-original", 1, "relative").widgetType).toBe(
       "relative",
     );
+  });
+
+  it("resolves Efficiency aliases to the stable registered system", () => {
+    const legacy = designSystemRegistry.get("vantare-functional", 1);
+    expect(designSystemRegistry.get("efficiency", 1)).toBe(legacy);
+    expect(designSystemRegistry.get("vantare-efficiency", 1)).toBe(legacy);
+    expect(designSystemRegistry.resolve("functional", 1, "relative")).toMatchObject({
+      systemId: "vantare-functional",
+      systemVersion: 1,
+      widgetType: "relative",
+    });
+    expect(legacy.label).toBe("Efficiency");
   });
 
   it("resolves Pedals for supported design systems", () => {

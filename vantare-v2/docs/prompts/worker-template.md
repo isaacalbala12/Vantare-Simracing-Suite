@@ -3,6 +3,17 @@
 Usa este prompt para Aider u otro agente implementador.
 
 ```markdown
+Abre primero el hub Notion: https://app.notion.com/p/3fce51695c65834e80b381ec2d632192
+Tarea Notion obligatoria: [URL REAL Y VAN]; Proyecto: [URL REAL].
+Lee tarea, proyecto, dependencias y aceptación, después AGENTS de origin/nightly
+actualizado y docs/vantare-program/notion-transition.md.
+Referencia GitHub/ISA para los gates actuales: [URL/ID SEPARADOS DEL VAN].
+Actualiza y relee Notion al empezar, bloquear, entregar y verificar integración:
+Estado, Agente, Proyecto, siguiente paso, PR, checks, riesgos y SHA/canal.
+El chat y GitHub no sustituyen esta escritura. Si falla Notion, conserva evidencia
+y comunica el bloqueo; no ejecutes trabajo dependiente ni declares seguimiento cerrado.
+No confundir integración con publicación ni ampliar el alcance autorizado.
+
 Actua como worker disciplinado en el repo `vantare-v2`.
 
 Objetivo:
@@ -13,7 +24,7 @@ Tipo de tarea:
 
 Antes de editar:
 1. Lee `AGENTS.md`.
-2. Lee `docs/roadmap/plan.md`.
+2. Lee la tarea Notion y el handoff vivo.
 3. Lee los docs especificos de esta tarea:
    - [LISTA]
 4. Ejecuta o informa:
@@ -38,7 +49,7 @@ Reglas:
 - No limpies codigo no relacionado.
 - Si necesitas tocar mas archivos de los previstos, para y explica.
 - Si cambias comportamiento, anade o actualiza tests.
-- Si algo no esta claro, deja `Open questions` en la issue de GitHub o en el handoff vivo, o pregunta.
+- Si algo no esta claro, deja `Open questions` en la tarea autoritativa o en el handoff vivo, o pregunta.
 
 Checks esperados:
 - [COMANDOS CONCRETOS]

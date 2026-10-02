@@ -1,5 +1,9 @@
 # ISA-694 — Estado actual y briefing de rework de Strategy Planner
 
+> **Ámbito documental (2026-09-14):** Diagnóstico histórico del rework del 2026-08-21; no describe el cálculo ni la persistencia actuales.
+> [Referencia vigente](../../docs/vantare-program/handoffs/strategy-planner.md).
+
+
 Fecha de corte: 2026-08-21
 
 Base auditada: `origin/nightly@2ab9741db4adc1e66443e8e6cb8063e60759f0e8`

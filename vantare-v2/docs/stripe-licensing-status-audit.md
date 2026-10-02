@@ -1,5 +1,9 @@
 # Auditoría de Stripe / Licencias / Pagos Reales — Estado e Implementación
 
+> **Ámbito documental (2026-09-14):** Auditoría del 2026-07-06; sus pendientes son un snapshot, no el backlog vivo.
+> [Referencia vigente](vantare-program/handoffs/platform-commercial.md).
+
+
 > Fecha: 2026-07-06.
 > Autor: auditoría técnica (orquestador).
 > Alcance: estado real de la capa de pagos, licencias paid/suite y soporte operativo de Vantare v2.

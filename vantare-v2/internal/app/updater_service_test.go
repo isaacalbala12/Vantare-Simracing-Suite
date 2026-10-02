@@ -2,8 +2,10 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -175,5 +177,73 @@ func TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation(t *testing.
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("InstallVerifiedVersionCtx did not return after context cancellation")
+	}
+}
+
+// Un reinicio dentro del enfriamiento no consulta nada, pero la ultima
+// release vista sigue siendo una version pendiente que anunciar.
+func TestUpdaterServiceThrottledCheckAnnouncesPersistedUpdate(t *testing.T) {
+	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+	seeded := fmt.Sprintf(`{"channel":%q,"lastCheckAt":%q,"lastSeenTag":"v9.9.9"}`,
+		updater.ChannelStable, time.Now().UTC().Format(time.RFC3339))
+	if err := os.WriteFile(settingsPath, []byte(seeded), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("throttled check hit the network")
+	}))
+	defer server.Close()
+	t.Setenv("VANTARE_RELEASES_URL", server.URL+"/releases")
+	svc, err := app.NewUpdaterService("v0.1.0", settingsPath, &spyEmitter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := svc.CheckUpdates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.Throttled {
+		t.Fatal("expected throttled check")
+	}
+	if !info.HasUpdate || info.LatestRelease.TagName != "v9.9.9" {
+		t.Fatalf("expected persisted update announcement, got %+v", info)
+	}
+}
+
+// Y a la inversa: el tag persistido no anuncia una version que ya corre ni
+// una que el usuario ignoro.
+func TestUpdaterServiceThrottledCheckSkipsStaleOrIgnoredPersistedTag(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		current       string
+		lastSeen      string
+		ignoreVersion string
+	}{
+		{name: "ya instalada", current: "v9.9.9", lastSeen: "v9.9.9"},
+		{name: "ignorada", current: "v0.1.0", lastSeen: "v9.9.9", ignoreVersion: "v9.9.9"},
+		{name: "mas vieja", current: "v0.2.0", lastSeen: "v0.1.9"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+			seeded := fmt.Sprintf(
+				`{"channel":%q,"ignoreVersion":%q,"lastCheckAt":%q,"lastSeenTag":%q}`,
+				updater.ChannelStable, tc.ignoreVersion,
+				time.Now().UTC().Format(time.RFC3339), tc.lastSeen)
+			if err := os.WriteFile(settingsPath, []byte(seeded), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			svc, err := app.NewUpdaterService(tc.current, settingsPath, &spyEmitter{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			info, err := svc.CheckUpdates()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.HasUpdate {
+				t.Fatalf("persisted tag %q should not announce over %q (ignore %q)",
+					tc.lastSeen, tc.current, tc.ignoreVersion)
+			}
+		})
 	}
 }

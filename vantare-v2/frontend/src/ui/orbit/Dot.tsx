@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { cx } from "./cx";
 
 export interface DotProps {
   variant?: "ok" | "gold" | "ring" | "ring-gold" | "neutral";
@@ -14,14 +15,7 @@ const TIER_TOKEN = {
 } as const;
 
 export function Dot({ variant = "neutral", tier, className }: DotProps) {
-  const classes = [
-    "orbit-dot",
-    variant === "neutral" ? null : `orbit-dot--${variant}`,
-    tier ? "orbit-dot--tier" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-dot", variant === "neutral" ? null : `orbit-dot--${variant}`, tier ? "orbit-dot--tier" : null, className);
 
   return (
     <i

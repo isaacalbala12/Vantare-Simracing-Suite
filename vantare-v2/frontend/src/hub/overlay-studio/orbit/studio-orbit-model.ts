@@ -7,6 +7,8 @@
  * la capa Orbit es presentacion y nada mas.
  */
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
+import { getOfficialDesign } from "../../../overlay/design-systems/official-designs";
 import type { StudioPreviewState } from "../state/studio-store";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 
@@ -19,8 +21,14 @@ export function fill(template: string, values: Record<string, string | number>):
   );
 }
 
-export function widgetLabel(widget: WidgetInstanceV3): string {
-  return widget.name?.trim() || widget.id;
+export function widgetLabel(widget: WidgetInstanceV3, t: Translate): string {
+  const name = widget.name?.trim();
+  if (name) return name;
+  // Rename the pedal types without rewriting saved IDs or custom names.
+  if (widget.type === "pedals-telemetry" || widget.type === "pedals-telemetry-compact") {
+    return t(widgetTypeRegistry.get(widget.type).labelKey);
+  }
+  return widget.id;
 }
 
 /** Nombre del sistema visual; si el catalogo no lo conoce se usa su id crudo. */
@@ -30,9 +38,19 @@ export function systemLabel(widget: WidgetInstanceV3, t: Translate): string {
   return label === key ? widget.visual.systemId : label;
 }
 
+function designLabel(widget: WidgetInstanceV3): string | undefined {
+  const provenance = widget.visual.provenance;
+  const official = provenance?.origin === "vantare" ? getOfficialDesign(provenance.designId) : undefined;
+  if (official?.widgetType === widget.type && official.systemId === widget.visual.systemId &&
+      official.systemVersion === widget.visual.systemVersion && official.configVersion === widget.visual.configVersion) {
+    return official.name;
+  }
+  return provenance?.designName?.trim();
+}
+
 /** "Vantare Crystal · Crystal Bar" — el diseno solo aparece si hay procedencia. */
 export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim();
+  const design = designLabel(widget);
   return [systemLabel(widget, t), design].filter(Boolean).join(" · ");
 }
 
@@ -96,7 +114,7 @@ export function layoutSummary(widget: WidgetInstanceV3, t: Translate): string {
  * unico que se sabe del widget.
  */
 export function inspectorMeta(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim() || systemLabel(widget, t);
+  const design = designLabel(widget) || systemLabel(widget, t);
   return fill(t("studio.inspector.meta"), {
     design,
     w: Math.round(widget.layout.w),
@@ -140,15 +158,6 @@ export function writeRightDockClosed(closed: boolean): void {
  * ventana el inspector vuelve como estaba.
  */
 export const STUDIO_AUTO_FOLD_INSPECTOR_WIDTH = 1400;
-
-/** Fondos del prototipo mapeados a los ids reales de `canvas-backgrounds`. */
-export const ORBIT_BACKGROUND_OPTIONS = [
-  { value: "grid", labelKey: "studio.toolbar.background.grid" },
-  { value: "gradient", labelKey: "studio.toolbar.background.gradient" },
-  { value: "solid-black", labelKey: "studio.toolbar.background.black" },
-] as const;
-
-export type OrbitBackgroundId = (typeof ORBIT_BACKGROUND_OPTIONS)[number]["value"];
 
 /** Pasos de zoom del prototipo; "fit" es el primero (`Ajustar`). */
 const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125, 150];

@@ -25,50 +25,45 @@ var deltaReferencePriority = [3]string{
 	DeltaReferencePreviousLap,
 }
 
-// BuildDelta resolves the delta reference in Go.
-//
-// Overlay v1 resolved it in the widget (delta-view-model.ts:111-118): it read
-// the requested reference from the widget content, picked the matching field
-// and fell back to `player.deltaSeconds` when no reference lap existed, without
-// ever telling the consumer which reference it actually used. Here the
-// resolution is explicit and observable:
-//
-//   - `Requested` is the reference the consumer asked for (a preference, so the
-//     frame is still one per tick and not one per widget);
-//   - `Available` lists the references that carry a usable value right now;
-//   - `Reference` is the effective one: the requested reference when it is
-//     available, otherwise the first available in the documented priority, and
-//     empty when none is;
-//   - `Seconds` is the value of the effective reference with its own quality.
-//
-// Trend stays empty: the canonical state carries the bounded delta history
-// (derive.SelfDelta.History) but no trend concept, and reconstructing one here
-// would create a second authority for something delta-trace already owns. It is
-// declared missing rather than invented.
-//
-// History is published on every frame, even when no reference is effective:
-// it is the measured series with its own quality derived from the delta
-// freshness, not a function of the resolved reference. Delta is a fast-tier
-// section rebuilt on every tick, so no dirty signal is needed to keep the
-// series current.
+// BuildDelta resolves all widget reference requests once per projection. The
+// legacy top-level selection follows the runtime preference; References lets
+// independent widgets select a Go-resolved payload without deriving or choosing
+// a fallback in React. Each response preserves its requested name; Reference
+// identifies the effective available comparison (priority: personal, session,
+// previous), and Seconds preserves that comparison's quality. When none is
+// usable, the effective reference/authority are empty and Seconds is missing.
+// History remains one shared canonical series even without a usable reference.
+// Trend stays empty because the canonical state has no trend concept.
 func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 {
 	preferences = normalizedPreferences(preferences)
 	candidates := deltaReferenceCandidates(final)
 	available := AvailableDeltaReferences(final)
 
-	requested := preferences.DeltaReference
+	result := DeltaViewV2{
+		Available:  available,
+		History:    buildDeltaHistory(final.Derived.Delta),
+		References: make([]DeltaReferenceViewV2, 0, len(deltaReferencePriority)),
+	}
+	for _, requested := range deltaReferencePriority {
+		resolved := resolveDeltaReference(requested, candidates, available)
+		result.References = append(result.References, resolved)
+		if requested == preferences.DeltaReference {
+			result.Requested = resolved.Requested
+			result.Reference = resolved.Reference
+			result.Seconds = resolved.Seconds
+			result.Authority = resolved.Authority
+		}
+	}
+	return result
+}
+
+func resolveDeltaReference(requested string, candidates map[string]schema.Field[session.DeltaSeconds], available []string) DeltaReferenceViewV2 {
+	result := DeltaReferenceViewV2{Requested: requested, Seconds: missingValue[float64]()}
 	effective := ""
 	if usableDeltaSeconds(candidates[requested]) {
 		effective = requested
 	} else if len(available) > 0 {
 		effective = available[0]
-	}
-
-	result := DeltaViewV2{
-		Seconds:   missingValue[float64](),
-		Requested: requested,
-		Available: available,
-		History:   buildDeltaHistory(final.Derived.Delta),
 	}
 	if effective == "" {
 		return result

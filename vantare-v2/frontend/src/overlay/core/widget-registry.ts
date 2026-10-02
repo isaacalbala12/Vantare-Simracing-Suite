@@ -5,6 +5,7 @@ import { pedalsDefinition } from "../widget-types/pedals/pedals-definition";
 import { pedalsTelemetryDefinition } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
 import { pedalsTelemetryCompactDefinition } from "../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-definition";
 import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
+import { fastestLapDefinition } from "../widget-types/fastest-lap/fastest-lap-definition";
 import { broadcastTowerDefinition } from "../widget-types/broadcast-tower/broadcast-tower-definition";
 import { headToHeadDefinition } from "../widget-types/head-to-head/head-to-head-definition";
 import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
@@ -20,6 +21,7 @@ import { carDamageVisualDefinition } from "../widget-types/car-damage-visual/car
 import { carDamageNumbersDefinition } from "../widget-types/car-damage-numbers/car-damage-numbers-definition";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 import { trackMapDefinition } from "../widget-types/track-map/track-map-definition";
+import { radarDefinition } from "../widget-types/radar/radar-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -76,6 +78,7 @@ widgetTypeRegistry.register(fuelStrategyDefinition);
 widgetTypeRegistry.register(pedalsTelemetryDefinition);
 widgetTypeRegistry.register(pedalsTelemetryCompactDefinition);
 widgetTypeRegistry.register(racingFlagsDefinition);
+widgetTypeRegistry.register(fastestLapDefinition);
 widgetTypeRegistry.register(deltaTraceDefinition);
 widgetTypeRegistry.register(raceScheduleDefinition);
 widgetTypeRegistry.register(headToHeadDefinition);
@@ -87,3 +90,4 @@ widgetTypeRegistry.register(carDamageVisualDefinition);
 widgetTypeRegistry.register(carDamageNumbersDefinition);
 widgetTypeRegistry.register(engineerRadioDefinition);
 widgetTypeRegistry.register(trackMapDefinition);
+widgetTypeRegistry.register(radarDefinition);

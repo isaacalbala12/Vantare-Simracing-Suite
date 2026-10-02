@@ -46,14 +46,14 @@ describe("LanguageSelector", () => {
     expect(select.value).toBe("es");
   });
 
-  it("reflects saved locale from localStorage", () => {
+  it("reflects saved locale from localStorage", async () => {
     localStorage.setItem(STORAGE_KEY, "en");
     render(
       <I18nProvider>
         <LanguageSelector />
       </I18nProvider>,
     );
-    const select = screen.getByTestId("language-selector") as HTMLSelectElement;
+    const select = (await screen.findByTestId("language-selector")) as HTMLSelectElement;
     expect(select.value).toBe("en");
   });
 

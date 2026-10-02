@@ -1,468 +1,90 @@
-/* Layout propio de la vista Roadmap — «Qué viene» (`06 · Roadmap`, D-R3-F-1).
-   El kit cubre superficie, destacado, plegable, chip de estado y estado sutil;
-   aquí solo vive la columna narrativa: los rótulos con línea, el bloque de la
-   fase en curso, la lista de lo próximo y la de hitos, que no son componentes
-   del kit. Sin barras de progreso ni porcentajes: la fuente los estima a mano
-   y pintarlos los vendía como medida. */
-
+/* Tres lecturas gráficas del mismo contenido publicado. */
 .orbit-rm {
-  display: flex;
-  flex-direction: column;
   width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
-  margin: 0 auto;
-  padding: 24px 0 20px;
-  font-family: var(--orbit-font-sans);
-}
-
-/* ------------------------------------------------------------- CABECERA */
-
-.orbit-rm__head {
-  display: flex;
-  flex: none;
-  gap: var(--orbit-space);
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.orbit-rm__head-copy {
-  flex: 1;
-  min-width: 0;
+  margin-inline: auto;
+  padding-block: 24px 20px;
 }
 
 .orbit-rm__head-copy h2 {
-  margin: 6px 0 0;
+  margin-block: 6px 0;
   color: var(--orbit-ink);
+  letter-spacing: -0.035em;
   font-size: var(--orbit-fs-page);
   font-weight: 690;
-  letter-spacing: -0.035em;
 }
-
 .orbit-rm__head-copy p {
-  max-width: 84ch;
-  margin: 7px 0 0;
-  color: var(--orbit-ink-2);
-  font-size: var(--orbit-fs-body);
-  line-height: 1.55;
-}
-
-.orbit-rm__actions {
-  display: flex;
-  flex: none;
-  gap: 10px;
-  align-items: center;
-}
-
-/* ------------------------------------------------------ COLUMNA DE LECTURA */
-
-/* Una sola superficie a lo ancho; dentro, la columna de lectura centrada. El
-   scroll vive aquí, no en la página (`03 · shell`). */
-.orbit-rm__reader {
-  flex: 1;
-  min-height: 0;
-  margin-top: var(--orbit-space);
-}
-
-.orbit-rm__reader .orbit-surface__body {
-  scrollbar-width: thin;
-  scrollbar-color: var(--orbit-scroll-thumb) var(--orbit-scroll-track);
-}
-
-.orbit-rm__reader .orbit-surface__body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.orbit-rm__reader .orbit-surface__body::-webkit-scrollbar-thumb {
-  border-radius: 4px;
-  background: var(--orbit-scroll-thumb);
-}
-
-.orbit-rm__column {
-  width: min(880px, 100%);
-  margin: 0 auto;
-  padding: 4px 0 40px;
-}
-
-.orbit-rm__section {
-  scroll-margin-top: 8px;
-  border-radius: var(--orbit-radius-control);
-  transition: background var(--orbit-fast) var(--orbit-ease);
-}
-
-.orbit-rm__section + .orbit-rm__section {
-  margin-top: 34px;
-}
-
-/* Resaltado al saltar desde la columna (`07 · motion`): un lavado carmín muy
-   suave, sin desplazamiento ni parpadeo. */
-.orbit-rm__section[data-focus="true"] {
-  background: color-mix(in srgb, var(--orbit-carmine) 7%, transparent);
-}
-
-/* Rótulo grande con línea: es lo que separa las tres secciones. */
-.orbit-rm__rule {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  margin: 0 0 16px;
-  color: var(--orbit-ink-2);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.orbit-rm__rule::after {
-  flex: 1;
-  height: 1px;
-  background: var(--orbit-line);
-  content: "";
-}
-
-.orbit-rm__empty {
-  margin: 0;
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-body);
-  line-height: 1.55;
-}
-
-/* ---------------------------------------------------------------- AHORA */
-
-.orbit-rm__now-head {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.orbit-rm__position {
-  flex: none;
-  color: var(--orbit-ink-3);
-  font: 700 var(--orbit-fs-secondary) var(--orbit-font-mono);
-}
-
-.orbit-rm__now-title {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-top: 8px;
-}
-
-.orbit-rm__now-title b {
-  color: var(--orbit-ink);
-  font-size: 22px;
-  font-weight: 690;
-  letter-spacing: -0.025em;
-}
-
-.orbit-rm__now-summary {
   max-width: 72ch;
-  margin: 10px 0 0;
+  margin-top: 7px;
   color: var(--orbit-ink-2);
-  font-size: var(--orbit-fs-body);
-  line-height: 1.6;
-}
-
-/* Checklist de la fase en curso. La fuente NO distingue highlights hechos de
-   pendientes —solo declara una lista—, así que la fila lleva viñeta carmín y
-   no una casilla marcada, que afirmaría algo que el JSON no dice. */
-.orbit-rm__checklist {
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__check {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-height: 44px;
-  padding: 4px 2px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  color: var(--orbit-ink);
-  font-size: var(--orbit-fs-body);
-  line-height: 1.5;
-}
-
-.orbit-rm__check:first-child {
-  border-top: 0;
-}
-
-.orbit-rm__check i {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--orbit-carmine);
-  box-shadow: 0 0 9px color-mix(in srgb, var(--orbit-carmine) 65%, transparent);
-}
-
-/* -------------------------------------------------------------- PRÓXIMO */
-
-.orbit-rm__next {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__next > li {
-  padding: 14px 2px 16px;
-  border-top: 1px solid var(--orbit-line);
-}
-
-.orbit-rm__next > li:first-child {
-  border-top: 0;
-}
-
-.orbit-rm__next-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
-.orbit-rm__next-head b {
-  color: var(--orbit-ink);
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-}
-
-.orbit-rm__target {
-  color: var(--orbit-ink-3);
-  font: 600 var(--orbit-fs-secondary) var(--orbit-font-mono);
-}
-
-.orbit-rm__bullets {
-  margin: 9px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__bullets li {
-  position: relative;
-  padding: 2px 0 2px 14px;
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
   line-height: 1.55;
-}
-
-.orbit-rm__bullets li::before {
-  position: absolute;
-  top: 10px;
-  left: 0;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--orbit-ink-muted);
-  content: "";
-}
-
-/* ---------------------------------------------------------------- HECHO */
-
-.orbit-rm__done {
-  border-bottom: 0;
-}
-
-.orbit-rm__done > summary {
-  border: 1px solid var(--orbit-line);
-}
-
-.orbit-rm__next--done > li:first-child {
-  padding-top: 6px;
-}
-
-/* ------------------------------------------- HITOS Y MARCA DE DERIVACIÓN */
-
-.orbit-rm__anchored {
-  margin-top: 22px;
-}
-
-.orbit-rm__anchored-head {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* Todo lo que no declara la fuente se marca. El anclaje de un hito sale de su
-   `type`, no de una relación escrita en el JSON. */
-.orbit-rm__derived {
-  padding: 2px 7px;
-  border: 1px dashed var(--orbit-line-strong, rgba(255, 255, 255, 0.16));
-  border-radius: 999px;
-  color: var(--orbit-ink-muted);
-  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.orbit-rm__note {
-  margin: 7px 0 0;
-  color: var(--orbit-ink-muted);
-  font-size: var(--orbit-fs-secondary);
-  line-height: 1.5;
-}
-
-.orbit-rm__stones {
-  display: flex;
-  flex-direction: column;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__stones li {
-  position: relative;
-  margin-left: 6px;
-  padding: 8px 0 9px 26px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.orbit-rm__stones li::before {
-  position: absolute;
-  top: 15px;
-  left: -6px;
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--orbit-rm-tone, var(--orbit-ink-muted));
-  border-radius: 50%;
-  background: var(--orbit-column-bg);
-  content: "";
-}
-
-.orbit-rm__stones li[data-state="done"] {
-  --orbit-rm-tone: var(--orbit-green);
-}
-
-.orbit-rm__stones li[data-state="done"]::before {
-  background: var(--orbit-green);
-}
-
-.orbit-rm__stones li[data-state="active"] {
-  --orbit-rm-tone: var(--orbit-red);
-}
-
-.orbit-rm__stones li[data-state="active"]::before {
-  box-shadow: 0 0 10px rgba(240, 71, 85, 0.7);
-}
-
-.orbit-rm__stones li[data-state="planned"] {
-  --orbit-rm-tone: var(--orbit-ember);
-}
-
-.orbit-rm__stones b {
-  display: block;
-  color: var(--orbit-ink);
   font-size: var(--orbit-fs-body);
-  font-weight: 700;
 }
+.orbit-rm__reader { min-width: 0; min-height: 0; margin-top: var(--orbit-space); }
+.orbit-rm__column { width: min(1160px, 100%); min-width: 0; margin: 0 auto; padding: 4px 0 40px; }
+.orbit-rm__empty { margin: 0; color: var(--orbit-ink-3); font-size: var(--orbit-fs-body); }
 
-.orbit-rm__stones span {
-  display: block;
-  margin-top: 3px;
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
-  line-height: 1.5;
+.orbit-rm__view-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.orbit-rm__view-button {
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  padding: 9px 14px;
+  background: var(--orbit-surface-2);
+  color: var(--orbit-ink-2);
+  font: inherit;
+  cursor: pointer;
 }
+.orbit-rm__view-button[aria-pressed="true"] { border-color: var(--orbit-carmine); color: var(--orbit-ink); background: var(--orbit-surface-3); }
+.orbit-rm__view-button:focus-visible { outline: 2px solid var(--orbit-carmine); outline-offset: 2px; }
 
-.orbit-rm__stones em {
-  display: inline-block;
-  margin-top: 5px;
-  color: var(--orbit-rm-tone, var(--orbit-ink-muted));
-  font: 750 var(--orbit-fs-micro) var(--orbit-font-mono);
-  font-style: normal;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+.orbit-rm__timeline-view { min-width: 0; }
+.orbit-rm__timeline { position: relative; display: flex; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; margin: 0; padding: 14px 0 18px; list-style: none; }
+.orbit-rm__timeline:focus-visible { outline: 2px solid var(--orbit-carmine); outline-offset: 2px; }
+.orbit-rm__timeline-item { position: relative; flex: 0 0 clamp(190px, 22vw, 230px); min-width: 0; scroll-snap-align: center; }
+.orbit-rm__timeline-item:not(:last-child)::before { position: absolute; right: -50%; bottom: 25px; left: 50%; height: 2px; background: var(--orbit-line); content: ""; }
+.orbit-rm__timeline-item--done:not(:last-child)::before { background: var(--orbit-green); opacity: 0.6; }
+.orbit-rm__timeline-item--now:not(:last-child)::before { background: var(--orbit-carmine); opacity: 0.7; }
+.orbit-rm__timeline-choice { display: flex; align-items: center; flex-direction: column; width: 100%; min-height: 150px; padding: 0 10px; border: 0; background: transparent; color: var(--orbit-ink); font: inherit; text-align: center; cursor: pointer; }
+.orbit-rm__timeline-choice:focus-visible { outline: 2px solid var(--orbit-carmine); outline-offset: -2px; border-radius: var(--orbit-radius-control); }
+.orbit-rm__timeline-choice .orbit-rm__stage { margin-bottom: 9px; }
+.orbit-rm__timeline-title { display: block; max-height: 3em; overflow: hidden; color: var(--orbit-ink); font-size: var(--orbit-fs-body); line-height: 1.5; }
+.orbit-rm__timeline-node { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; flex: none; margin-top: auto; border: 2px solid var(--orbit-line); border-radius: 50%; background: var(--orbit-surface-1); box-shadow: 0 0 0 6px var(--orbit-surface-1); color: var(--orbit-ink-2); font-size: 15px; font-weight: 800; }
+.orbit-rm__timeline-item--done .orbit-rm__timeline-node { border-color: var(--orbit-green); color: var(--orbit-green); }
+.orbit-rm__timeline-item--now .orbit-rm__timeline-node { border-color: var(--orbit-carmine); color: var(--orbit-carmine); }
+.orbit-rm__timeline-item[data-selected="true"] .orbit-rm__timeline-node { box-shadow: 0 0 0 6px var(--orbit-surface-1), 0 0 0 9px var(--orbit-line); }
+.orbit-rm__timeline-item--now[data-selected="true"] .orbit-rm__timeline-node { box-shadow: 0 0 0 6px var(--orbit-surface-1), 0 0 0 9px var(--orbit-carmine); }
+.orbit-rm__timeline-detail { min-height: 146px; margin-top: 24px; border: 1px solid var(--orbit-line); border-left: 3px solid var(--orbit-line); border-radius: var(--orbit-radius-control); padding: 25px 28px; background: var(--orbit-surface-2); }
+.orbit-rm__timeline-detail--done { border-left-color: var(--orbit-green); }
+.orbit-rm__timeline-detail--now { border-left-color: var(--orbit-carmine); }
+.orbit-rm__timeline-detail h3 { margin: 0; color: var(--orbit-ink); font-size: clamp(19px, 2vw, 24px); }
+.orbit-rm__timeline-detail p { max-width: 76ch; margin: 10px 0 0; color: var(--orbit-ink-2); line-height: 1.6; white-space: pre-wrap; }
+.orbit-rm__milestone { border: 1px solid var(--orbit-line); border-radius: var(--orbit-radius-control); padding: 17px 20px; background: var(--orbit-surface-2); }
+.orbit-rm__milestone strong { display: block; color: var(--orbit-ink); font-size: var(--orbit-fs-body); }
+.orbit-rm__milestone p { margin: 7px 0 0; color: var(--orbit-ink-2); line-height: 1.5; white-space: pre-wrap; }
+.orbit-rm__stage { display: block; margin-bottom: 7px; color: var(--orbit-ink-3); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 
-/* ------------------------------------------------------------- CONTEXTO */
+.orbit-rm__board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.orbit-rm__board-column { min-width: 0; border: 1px solid var(--orbit-line); border-radius: var(--orbit-radius-control); padding: 15px; background: var(--orbit-surface-2); }
+.orbit-rm__board-column h3 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 16px; color: var(--orbit-ink); font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.orbit-rm__board-column h3 span { color: var(--orbit-ink-3); }
+.orbit-rm__board-column .orbit-rm__milestone { margin-top: 10px; background: var(--orbit-surface-1); }
 
-.orbit-rm__context {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+.orbit-rm__distribution { display: grid; gap: 25px; border: 1px solid var(--orbit-line); border-radius: var(--orbit-radius-control); padding: 30px; background: var(--orbit-surface-2); }
+.orbit-rm__bar-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 24px; align-items: center; gap: 16px; color: var(--orbit-ink-2); }
+.orbit-rm__bar-row strong { color: var(--orbit-ink); text-align: right; }
+.orbit-rm__bar-track { height: 18px; overflow: hidden; border-radius: 5px; background: var(--orbit-surface-1); }
+.orbit-rm__bar { height: 100%; border-radius: 5px; background: var(--orbit-ink-3); }
+.orbit-rm__bar--done { background: var(--orbit-green); }
+.orbit-rm__bar--now { background: var(--orbit-carmine); }
+.orbit-rm__chart-note { margin: 0; color: var(--orbit-ink-3); font-size: 12px; }
 
-.orbit-rm__context-count {
-  flex: none;
-  color: var(--orbit-ink-3);
-  font: 700 var(--orbit-fs-secondary) var(--orbit-font-mono);
-}
-
-.orbit-rm__context-hint {
-  margin: 0;
-  padding: 0 4px;
-  color: var(--orbit-ink-muted);
-  font-size: var(--orbit-fs-secondary);
-  line-height: 1.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .orbit-rm__section {
-    transition: none;
-  }
-}
-
-/* ── Entregado recientemente ──────────────────────────────────────────────
-   Registro leído de los commits mergeados a nightly. Se lee como un
-   changelog compacto: un día, y bajo él sus entregas con el tipo por delante.
-   Deliberadamente más callado que las fases: es contexto, no dirección. */
-.orbit-rm__delivered {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__delivered > li + li {
-  margin-top: 14px;
-}
-
-.orbit-rm__delivered > li > b {
-  display: block;
-  color: var(--orbit-ink-muted);
-  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.orbit-rm__delivered ul {
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.orbit-rm__delivered ul li {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  padding: 4px 0;
-  border-top: 1px solid var(--orbit-line, rgba(255, 255, 255, 0.06));
-}
-
-.orbit-rm__delivered em {
-  flex: 0 0 auto;
-  min-width: 92px;
-  color: var(--orbit-rm-kind, var(--orbit-ink-muted));
-  font: 700 var(--orbit-fs-micro) var(--orbit-font-mono);
-  font-style: normal;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.orbit-rm__delivered em[data-kind="feat"] {
-  --orbit-rm-kind: var(--orbit-green);
-}
-
-.orbit-rm__delivered em[data-kind="fix"] {
-  --orbit-rm-kind: var(--orbit-red);
-}
-
-.orbit-rm__delivered em[data-kind="perf"] {
-  --orbit-rm-kind: var(--orbit-ember);
-}
-
-.orbit-rm__delivered span {
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
-  line-height: 1.5;
+@media (max-width: 760px) {
+  .orbit-rm__timeline-item { flex-basis: min(220px, 68vw); }
+  .orbit-rm__timeline-detail { min-height: 0; padding: 20px; }
+  .orbit-rm__board { grid-template-columns: 1fr; }
+  .orbit-rm__distribution { padding: 18px; }
+  .orbit-rm__bar-row { grid-template-columns: 70px minmax(0, 1fr) 20px; gap: 9px; }
 }

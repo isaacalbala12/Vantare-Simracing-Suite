@@ -12,19 +12,21 @@ const FILL_OPACITY_SPAN = 0.55;
 /**
  * Redline delta: a bipolar bar anchored at zero, the reading centred on it, and
  * the reference lap stated underneath. `model.progress` already arrives clamped
- * to [-1, 1] over a +-2s scale, so half the bar is one full-scale deflection.
+ * to [-1, 1] over a +-1.5s scale, so half the bar is one full-scale deflection.
  */
 export function DeltaRedlineTemplate({
   model,
   showReference,
+  motion = "full",
 }: {
   model: DeltaViewModel;
   showReference: boolean;
+  motion?: "full" | "reduced" | "minimal";
 }) {
   const magnitude = Math.min(1, Math.abs(model.progress));
   const direction = model.progress < 0 ? "gain" : model.progress > 0 ? "loss" : undefined;
   const rootRef = useRef<HTMLDivElement | null>(null);
-  useDeltaMotion(model, model.status === "ready", rootRef);
+  useDeltaMotion(model, model.status === "ready" && motion !== "minimal", rootRef);
 
   return (
     <div className="ven-dred-root" ref={rootRef}>

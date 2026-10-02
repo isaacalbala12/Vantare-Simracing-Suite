@@ -1,179 +1,30 @@
-# Versioning And Release Gates
+# Versionado y gates de release
 
-Documento de versionado y gates de lanzamiento.
+Vantare usa cuatro segmentos `major.phase.feature.patch`, con prefijo `v` en los tags. Las pre-releases añaden `-nightly.N` o `-testers.N`. Ejemplos de formato: `v0.4.2.0`, `v0.4.2.0-nightly.1`. No son instrucciones para publicar esas versiones.
 
-## Formato
+- `major`: 0 durante desarrollo/beta; 1 para el lanzamiento estable.
+- `phase`: etapa del roadmap.
+- `feature`: corte funcional de la etapa.
+- `patch`: corrección sin ampliar el alcance funcional.
 
-Vantare usa versionado `X.X.X.X` para tags de GitHub.
+## Versión de una build
 
-Formato:
+Leer [VERSION](../VERSION) del commit exacto. La versión instalada se comprueba en la app y en los metadatos de su release; la versión del checkout no demuestra qué build está publicada. [sync_version.go](../build/sync_version.go) sincroniza los recursos de build. La [receta de artefactos](release-artifacts.md) explica el proceso real y sus gates.
 
-```text
-major.phase.feature.patch
-```
+Los tags distribuidos son inmutables. Una corrección usa un tag nuevo. Los documentos, auditorías y reviews no crean versión, tag ni publicación por sí solos.
 
-Ejemplo:
+## Etapas y aceptación
 
-```text
-0.4.2.0
-```
+El [plan de beta y lanzamiento](plan-beta-publica-y-lanzamiento.md) mantiene la propuesta de etapas y sus dependencias; el [contrato de producto](vantare-program/product-contract.md) contiene las decisiones aprobadas. El [roadmap](roadmap/plan.md) es su expresión pública. Los rangos son planificación, no prueba de que una fase esté completada ni autorización de venta.
 
-Significado:
+Usar las [checklists de release](release-checklists.md) para registrar aceptación por build. Studio es un editor único con autoguardado; no se exige recuperar los antiguos WidgetStudio/LayoutStudio. Polar es la autoridad comercial; la apertura de venta requiere sus gates, no una elección pendiente entre proveedores.
 
-- `major`: `0` mientras el producto no es release estable; `1` para release.
-- `phase`: bloque grande de roadmap.
-- `feature`: corte funcional dentro de la fase.
-- `patch`: fix/hotfix/build sin cambiar alcance funcional.
+## Traza y publicación
 
-Tags recomendados:
+1. Tarea y aceptación en Notion; rama y PR en GitHub.
+2. Fragmentos de cambios visibles en `docs/changelog/fragments/ISA-N.json` y manifiesto del corte en `docs/releases/<tag>.json`.
+3. Checks, artefactos, SHA y canal comprobados; autorización aplicable antes de promover o publicar.
+4. [release.yml](../../.github/workflows/release.yml) valida el manifiesto y genera las notas mediante [release_notes.py](../../.github/scripts/release_notes.py). Un manifiesto o fragmento ausente bloquea; no hay fallback de notas genéricas desde `changelog.md`.
+5. Tags estables contenidos en `master`; pre-releases desde su rama homónima. [Canales y excepción de hotfix](branch-channels.md), [runbook](release-beta-operations-runbook.md), [comunicaciones](discord-communications.md).
 
-```text
-v0.1.1.0
-v0.1.2.0
-v0.4.0.0
-v1.0.0.0
-```
-
-## Version actual
-
-`v0.1.0.5` es la versión vigente del código (fuentes de verdad: `VERSION`, `cmd/vantare/main.go`, `build/config.yml`, `build/windows/info.json`, `build/windows/nsis/project.nsi`).
-
-Alcance de `v0.1.0.5`:
-
-- **Launcher (Windows)**: descubrimiento de apps y encadenado (chain) reforzados; embebido de icono de Windows (`icon_windows.go`) con stub multiplataforma; script NSIS del instalador extendido.
-- **Hub / UI**: paneles del launcher (apps, perfiles, editor de perfiles, estado); componente `AppBadge`; cableado de páginas `HubApp`/`Calendar`/`Engineer`; hook de estado de overlay studio.
-- **Servicios internos**: servicio de ajustes y configuración de calendario LMU actualizada.
-- **Documentación y tooling**: guías de marca/diseño, spec técnico del launcher y planes; scripts de paridad visual, definiciones MCP, agent-tools y utilidad de fingerprint.
-
-Nota histórica: versiones anteriores de la línea `0.3.x` (p. ej. `v0.3.10.0`) correspondían a una numeración interna ya supersededa y no representan la versión actual del producto. La línea vigente es `0.1.x`.
-
-Versiones previas relevantes de la línea `0.1.x`:
-
-`v0.1.0.4` — hotfix crítico: el backend no emitía `hub:profiles` tras crear/copiar/eliminar perfiles, por lo que la UI no refrescaba la lista de perfiles propios.
-
-## Regla de cierre por version
-
-Toda version funcional confirmada debe quedar trazada con:
-
-1. entrada publica en `docs/changelog.md`;
-2. commit Git con scope claro;
-3. push de la rama activa;
-4. tag Git `vX.X.X.X` pusheado al remoto.
-
-Si la version confirma una build/runtime usable, tambien se actualiza la version visible de la app (`cmd/vantare/main.go` y `build/config.yml`).
-
-Las tareas puramente documentales, analisis, planes y reviews no crean version/tag por si solas. Se commitean con scope documental y se agrupan bajo la siguiente version funcional cuando corresponda.
-
-Al pushear un tag `v*`, `.github/workflows/discord-release.yml` comprueba que el commit pertenece a `master`, lee la entrada de `docs/changelog.md` para ese tag y la publica usando exclusivamente `DISCORD_RELEASE_WEBHOOK_URL`.
-
-## Checkpoints confirmados
-
-| Version | Tipo | Alcance |
-|---|---|---|
-| `v0.1.0.4` | Runtime/build | Hotfix emision `hub:profiles` tras crear/copiar/eliminar perfil |
-| `v0.1.0.5` | Runtime/build | Launcher Windows, UI hub/launcher, settings service, docs y tooling |
-
-## Rango de versiones
-
-| Rango | Nombre | Estado |
-|---|---|---|
-| `0.1.X.X` | Pre-alpha/foundation | desarrollo interno |
-| `0.2.X.X` | Alpha privada producto usable | testers cercanos |
-| `0.3.X.X` | Alpha privada UI/widgets core | testers cercanos |
-| `0.4.X.X` | Beta privada testers I | testers externos controlados |
-| `0.5.X.X` | Beta privada testers II | cierre core LMU |
-| `0.6.X.X` | Beta publica de pago I | acceso/pago |
-| `0.7.X.X` | Beta publica de pago II | polish/layouts |
-| `0.8.X.X` | Beta publica de pago III | data blocks/OBS avanzado |
-| `0.9.X.X` | Release candidate | hardening |
-| `1.0.0.0` | Release estable | publico estable |
-
-## Gate 0.2.X.X
-
-Puede publicarse internamente si:
-
-- app arranca;
-- overlay desktop funciona;
-- perfiles guardan y cargan;
-- `LayoutStudio` mueve/redimensiona;
-- recomendado -> copia editable funciona o tiene plan inmediato;
-- mock/live/demo no confunde;
-- `WidgetStudio` y `LayoutStudio` mantienen responsabilidades separadas.
-
-## Gate 0.3.X.X
-
-Puede publicarse como alpha privada completa si:
-
-- `Relative` configurable esta cerrado;
-- `Standings` configurable esta cerrado excepto multiclase;
-- rework UI acotado de `WidgetStudio` esta aplicado;
-- no hay regresiones criticas de preview aislada;
-- tester cercano puede completar un flujo real sin asistencia tecnica fuerte.
-
-## Gate 0.4.X.X
-
-Puede publicarse a beta testers si:
-
-- hay build compartible;
-- hay instrucciones;
-- OBS setup local esta claro;
-- hotkeys basicas estan implementadas o pospuestas explicitamente;
-- delta best live esta implementado o pospuesto explicitamente por bug conocido;
-- feedback/bugs tienen canal definido.
-
-## Gate 0.5.X.X
-
-Puede cerrar beta privada si:
-
-- `Pedals` beta v1 esta cerrado;
-- recomendados beta estan pulidos;
-- smoke test completo pasa;
-- no hay P0/P1 abiertos;
-- P2 abiertos estan documentados y aceptados.
-
-## Gate 0.6.X.X
-
-Puede abrir beta publica de pago si:
-
-- Stripe o checkout externo esta decidido e integrado de forma suficiente;
-- acceso/licencia para beta esta decidido;
-- soporte y refund/feedback tienen proceso;
-- version y changelog son visibles;
-- producto no depende de asistencia manual para arrancar.
-
-## Gate 0.7.X.X
-
-Puede avanzar si:
-
-- layouts por sesion manuales son estables o pospuestos explicitamente;
-- themes/densidad/opacidad no rompen overlays existentes;
-- recomendados funcionan con cambios de layout.
-
-## Gate 0.8.X.X
-
-Puede avanzar si:
-
-- data blocks incluidos usan datos fiables;
-- metricas experimentales no aparecen como stable;
-- OBS avanzado/LAN no rompe OBS local.
-
-## Gate 0.9.X.X
-
-Puede declararse release candidate si:
-
-- performance validada;
-- instalacion/update clara;
-- regresiones visuales principales cubiertas;
-- docs usuario listas;
-- no hay P0/P1;
-- P2 conocidos tienen decision.
-
-## Gate 1.0.0.0
-
-Puede publicarse release estable si:
-
-- la promesa LMU-first se cumple;
-- pago/acceso funciona;
-- soporte basico esta preparado;
-- usuarios no necesitan leer docs tecnicos para usar el producto;
-- la app puede sostener reputacion publica.
+[Historia de versiones y gates anteriores](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/versioning-and-release-gates.md). Los checkpoints antiguos no describen la versión actual.

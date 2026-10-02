@@ -1,5 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { useI18n } from "../i18n/I18nProvider";
+import { Button } from "../ui/orbit/Button";
+import "../styles/orbit.tokens.css";
+import "../styles/orbit-kit.css";
 
 type HubErrorBoundaryProps = {
   children: ReactNode;
@@ -51,23 +54,23 @@ function HubErrorFallback({ error, errorInfo, onRetry }: HubErrorFallbackProps) 
   return (
     <div
       data-testid="hub-error-boundary"
-      className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white p-8"
+      className="flex h-screen items-center justify-center bg-orbit-canvas text-orbit-ink p-8"
     >
       <div className="max-w-lg w-full space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="font-sans font-bold text-xl tracking-tight text-vantare-red-400">
+          <h1 className="font-sans font-bold text-xl tracking-tight text-orbit-red">
             {t("hub.error.title")}
           </h1>
-          <p className="text-sm text-vantare-textMuted">{t("hub.error.body")}</p>
+          <p className="text-sm text-orbit-ink-2">{t("hub.error.body")}</p>
         </div>
 
-        <details className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-          <summary className="cursor-pointer text-xs font-mono uppercase tracking-widest text-vantare-textDim hover:text-white">
+        <details className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-4">
+          <summary className="cursor-pointer text-xs font-mono uppercase tracking-widest text-orbit-ink-3 hover:text-orbit-ink">
             {t("hub.error.detail")}
           </summary>
           <pre
             data-testid="hub-error-detail"
-            className="mt-3 max-h-60 overflow-auto text-[11px] font-mono text-vantare-textDim whitespace-pre-wrap break-all"
+            className="mt-3 max-h-60 overflow-auto text-[11px] font-mono text-orbit-ink-3 whitespace-pre-wrap break-all"
           >
             {error.message}
             {errorInfo?.componentStack
@@ -78,14 +81,14 @@ Component stack:${errorInfo.componentStack}`
           </pre>
         </details>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
           data-testid="hub-error-retry"
           onClick={onRetry}
-          className="w-full rounded-lg border border-white/10 bg-white/5 py-3 text-sm font-bold uppercase tracking-widest text-white hover:bg-white/10 transition-colors"
+          className="w-full justify-center"
         >
           {t("hub.error.retry")}
-        </button>
+        </Button>
       </div>
     </div>
   );

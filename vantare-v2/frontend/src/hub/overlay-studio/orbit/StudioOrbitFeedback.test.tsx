@@ -292,21 +292,24 @@ describe("contenido de standings en piel Orbit", () => {
     expect(section.querySelectorAll(".orbit-seg").length).toBeGreaterThan(0);
   });
 
-  it("cambia el numero de filas con el Seg y lo escribe en el documento", async () => {
+  it("cambia el numero de filas con el Select y lo escribe en el documento", async () => {
     renderStudio(buildDocument([standingsDefinition.createDefault("standings-1")]));
     await select("standings-1");
 
     const rows = await screen.findByTestId("studio-standings-row-count");
-    const five = within(rows).getByRole("button", { name: "5" });
-    expect(five.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(within(rows).getByRole("combobox", { name: "Filas" }));
 
-    fireEvent.click(five);
+    const list = await screen.findByRole("listbox");
+    const five = within(list).getAllByRole("option").find((option) => option.textContent?.trim() === "5");
+    expect(five?.getAttribute("aria-selected")).toBe("false");
+
+    fireEvent.click(five!);
     await waitFor(() => {
       expect(
         within(screen.getByTestId("studio-standings-row-count"))
-          .getByRole("button", { name: "5" })
-          .getAttribute("aria-pressed"),
-      ).toBe("true");
+          .getByRole("combobox", { name: "Filas" })
+          .textContent,
+      ).toBe("5");
     });
   });
 

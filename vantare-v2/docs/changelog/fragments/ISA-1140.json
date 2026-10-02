@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1140",
+  "type": "change",
+  "summary": "La fuente monoespaciada Cascadia Code se sirve como WOFF2 con subset latino (~74 KB en lugar de ~380 KB), reduciendo el peso del bundle sin perder acentos, símbolos técnicos ni ligaduras de código.",
+  "technicalNotes": [
+    "El @font-face de 'Cascadia Code' apunta a CascadiaCode-subset.woff2; CascadiaCode.ttf permanece en el repo únicamente como fuente para regenerar el subset y ya no entra en el bundle.",
+    "El subset conserva el eje variable wght 200-700, Latin/Latin-1/Extended-A/B, puntuación general, flechas, operadores matemáticos, misceláneos técnicos, box-drawing/geométricos, Dingbats y las ligaduras calt (=>, ->, <=, !=)."
+  ],
+  "testing": [
+    "Abrir contenido técnico en mono (telemetría, IDs, timestamps) y comprobar que renderiza con Cascadia Code, incluidos acentos y caracteres como ¿¡ñü.",
+    "Comprobar que las ligaduras de código como =>, -> y <= se dibujan igual que antes."
+  ],
+  "knownLimitations": [
+    "Los glifos que nunca estuvieron en Cascadia Code (emoji, ⚙, ⚠, ↵) siguen cayendo al fallback del sistema, igual que antes."
+  ]
+}

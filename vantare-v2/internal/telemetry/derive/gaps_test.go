@@ -53,11 +53,14 @@ func TestDeriveRelativeGapsKeepsClassificationLapDeltaSeparateFromTime(t *testin
 		gapVehicle("lapped-behind", 0, 1, schema.FreshnessFresh),
 	}
 	vehicles[3].LapsBehindLeader = derivedInput(standings.LapGap(0), schema.FreshnessFresh)
+	vehicles[1].CompletedLaps = derivedInput(standings.CompletedLaps(9), schema.FreshnessFresh)
 	vehicles[1].LapsBehindLeader = derivedInput(standings.LapGap(1), schema.FreshnessFresh)
+	vehicles[2].CompletedLaps = derivedInput(standings.CompletedLaps(9), schema.FreshnessFresh)
 	vehicles[2].LapsBehindLeader = derivedInput(standings.LapGap(1), schema.FreshnessFresh)
+	vehicles[4].CompletedLaps = derivedInput(standings.CompletedLaps(8), schema.FreshnessFresh)
 	vehicles[4].LapsBehindLeader = derivedInput(standings.LapGap(2), schema.FreshnessFresh)
 
-	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), vehicles)
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), vehicles, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	if gaps.Freshness != schema.FreshnessFresh || len(gaps.Vehicles) != len(vehicles) {
 		t.Fatalf("gap set = %+v", gaps)
 	}
@@ -71,10 +74,11 @@ func TestDeriveRelativeGapsKeepsClassificationLapDeltaSeparateFromTime(t *testin
 func TestDeriveRelativeGapsDoesNotLetClassificationPresenceControlTime(t *testing.T) {
 	player := gapVehicleWithProgress("player", 5.5, 0, schema.FreshnessFresh)
 	ahead := gapVehicleWithProgress("ahead", 6.75, 0, schema.FreshnessFresh)
+	player.CompletedLaps = schema.MissingField[standings.CompletedLaps]()
 	player.LapsBehindLeader = schema.MissingField[standings.LapGap]()
 	ahead.LapsBehindLeader = schema.MissingField[standings.LapGap]()
 
-	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead})
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead}, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	if len(gaps.Vehicles) != 2 {
 		t.Fatalf("gaps = %+v", gaps)
 	}
@@ -98,7 +102,7 @@ func TestDeriveRelativeGapsWithoutLapProgressTimeStaysMissing(t *testing.T) {
 	player.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
 	ahead.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
 
-	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead})
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead}, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	for _, gap := range gaps.Vehicles {
 		if gap.Vehicle != "ahead" {
 			continue
@@ -118,7 +122,7 @@ func TestDeriveRelativeGapsUsesCanonicalLapProgressAcrossClassificationLaps(t *t
 		gapVehicleWithProgress("behind-finish", 89.25, 0, schema.FreshnessFresh),
 	}
 
-	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), vehicles)
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), vehicles, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	assertGap(t, gaps, "ahead", 1.25, true, 7)
 	assertGap(t, gaps, "player", 0, true, 0)
 	assertGap(t, gaps, "behind-finish", -6.25, true, 7)
@@ -131,7 +135,7 @@ func TestDeriveRelativeGapsRejectsIncompatibleQualityAndNonFiniteValues(t *testi
 	missing := gapVehicle("missing", 0, 0, schema.FreshnessFresh)
 	missing.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
 
-	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, stale, invalid, missing})
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, stale, invalid, missing}, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	if gaps.Freshness != schema.FreshnessInvalid {
 		t.Fatalf("gap set freshness = %v, want invalid", gaps.Freshness)
 	}
@@ -141,7 +145,7 @@ func TestDeriveRelativeGapsRejectsIncompatibleQualityAndNonFiniteValues(t *testi
 }
 
 func TestDeriveRelativeGapsWithoutActivePlayerIsMissing(t *testing.T) {
-	gaps := deriveRelativeGaps("", derivedInput(false, schema.FreshnessFresh), []core.VehicleState{gapVehicle("other", 0, 0, schema.FreshnessFresh)})
+	gaps := deriveRelativeGaps("", derivedInput(false, schema.FreshnessFresh), []core.VehicleState{gapVehicle("other", 0, 0, schema.FreshnessFresh)}, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	if gaps.Freshness != schema.FreshnessMissing || len(gaps.Vehicles) != 0 {
 		t.Fatalf("gaps without player = %+v", gaps)
 	}
@@ -156,6 +160,8 @@ func gapVehicle(id identity.VehicleID, seconds standings.TimeGap, laps standings
 		EstimatedLapTime: derivedInput(standings.LapTime(90), freshness),
 		TimeBehindLeader: derivedInput(seconds, freshness),
 		LapsBehindLeader: derivedInput(laps, freshness),
+		CompletedLaps:    derivedInput(standings.CompletedLaps(10-laps), freshness),
+		LapDistance:      derivedInput(standings.LapDistance(0), freshness),
 	}
 }
 
@@ -209,7 +215,7 @@ func FuzzGapDerivationNeverPublishesUsableNonFiniteSeconds(f *testing.F) {
 	f.Fuzz(func(t *testing.T, playerSeconds, otherSeconds float64, playerLaps, otherLaps int32) {
 		player := gapVehicle("player", standings.TimeGap(playerSeconds), standings.LapGap(playerLaps), schema.FreshnessFresh)
 		other := gapVehicle("other", standings.TimeGap(otherSeconds), standings.LapGap(otherLaps), schema.FreshnessFresh)
-		gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, other})
+		gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, other}, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 		if len(gaps.Vehicles) != 2 {
 			return
 		}
@@ -237,6 +243,6 @@ func BenchmarkGapDerivation44Vehicles(b *testing.B) {
 	playerPresent := derivedInput(true, schema.FreshnessFresh)
 	b.ReportAllocs()
 	for index := 0; index < b.N; index++ {
-		deriveRelativeGaps("player", playerPresent, vehicles)
+		deriveRelativeGaps("player", playerPresent, vehicles, derivedInput(standings.LapDistance(2000), schema.FreshnessFresh))
 	}
 }

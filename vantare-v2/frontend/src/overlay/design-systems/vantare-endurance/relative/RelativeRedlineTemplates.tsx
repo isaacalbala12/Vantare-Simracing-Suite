@@ -95,7 +95,7 @@ function Identity({ row }: { row: RelativeRowViewModel }) {
   return (
     <span className="ven-rel-id">
       <span className="ven-rel-num">#{row.driverNumber}</span>
-      <span className="ven-rel-name">{initialSurname(row.driverName)}</span>
+      <span className="ven-rel-name">{initialSurname(row.configuredDriverName ?? row.driverName)}</span>
     </span>
   );
 }

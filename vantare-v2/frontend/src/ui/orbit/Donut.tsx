@@ -1,3 +1,4 @@
+import { cx } from "./cx";
 export interface DonutSlice {
   id: string;
   label: string;
@@ -32,7 +33,7 @@ export function Donut({ slices, centerLabel, centerValue, className }: DonutProp
   }, 0);
 
   return (
-    <div className={["orbit-donut-wrap", className].filter(Boolean).join(" ")}>
+    <div className={cx("orbit-donut-wrap", className)}>
       <div className="orbit-donut-ring">
         <svg
           aria-label={`${centerLabel}: ${centerValue}. ${slices

@@ -203,19 +203,24 @@ export function TestingCenterOrbitPage({
 
   useEffect(() => {
     if (!draftReady.current || !draftDirty || submitted || submitting) return;
+    let active = true;
     const timer = window.setTimeout(() => {
       const revision = draftRevision.current;
       setDraftState("saving");
       saveDraftSequentially(fields)
         .then((draft) => {
+          if (!active) return;
           setIdempotencyKey(draft.idempotencyKey);
           if (revision === draftRevision.current) setDraftState("saved");
         })
         .catch(() => {
-          if (revision === draftRevision.current) setDraftState("error");
+          if (active && revision === draftRevision.current) setDraftState("error");
         });
     }, 600);
-    return () => window.clearTimeout(timer);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [draftDirty, fields, saveDraftSequentially, submitted, submitting]);
 
   // Vista previa del diagnóstico: solo se pide cuando el usuario lo marca.

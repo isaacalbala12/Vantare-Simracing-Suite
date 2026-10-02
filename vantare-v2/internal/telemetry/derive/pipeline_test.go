@@ -53,7 +53,7 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 	if !reflect.DeepEqual(got.Derived.Algorithms, []AlgorithmVersion{
 		{ID: DerivationControlsHistory, Version: 1},
 		{ID: DerivationSessionRemaining, Version: 1},
-		{ID: DerivationRelativeGaps, Version: 2},
+		{ID: DerivationRelativeGaps, Version: 3},
 		{ID: DerivationSelfDelta, Version: 1},
 		{ID: DerivationFuelUsage, Version: 1},
 	}) {
@@ -159,6 +159,52 @@ func TestPipelineRejectsOrderAndCancellationAtomically(t *testing.T) {
 	}
 	if _, err := pipeline.Apply(context.Background(), observedSnapshot(t, 1, 2, "event", "session", "vehicle", schema.FreshnessFresh, .4, .5, .6)); err != nil {
 		t.Fatalf("retry after rollback: %v", err)
+	}
+}
+
+func TestPipelinePrepareDoesNotPublishBeforeCommit(t *testing.T) {
+	pipeline := NewPipeline(Config{MaxControlsHistory: 3})
+	first := observedSnapshot(t, 1, 1, "event", "session", "vehicle", schema.FreshnessFresh, .1, .2, .3)
+	if _, err := pipeline.Apply(context.Background(), first); err != nil {
+		t.Fatal(err)
+	}
+	before, ok := pipeline.Current()
+	if !ok {
+		t.Fatal("missing state before Prepare")
+	}
+
+	candidate, err := pipeline.Prepare(context.Background(), observedSnapshot(
+		t, 1, 2, "event", "session", "vehicle", schema.FreshnessFresh, .4, .5, .6,
+	))
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	prepared, ok := candidate.Snapshot().Value()
+	if !ok || len(prepared.Derived.ControlsHistory.Samples) != 2 {
+		t.Fatalf("prepared history = %+v, want two owned samples", prepared.Derived.ControlsHistory.Samples)
+	}
+
+	uncommitted, ok := pipeline.Current()
+	if !ok {
+		t.Fatal("Prepare removed the committed state")
+	}
+	uncommittedState, _ := uncommitted.Value()
+	if uncommitted.Header().Cursor.Sequence != 1 || len(uncommittedState.Derived.ControlsHistory.Samples) != 1 {
+		t.Fatalf("Prepare published before Commit: header=%+v history=%+v", uncommitted.Header(), uncommittedState.Derived.ControlsHistory.Samples)
+	}
+
+	pipeline.Commit(candidate)
+	committed, ok := pipeline.Current()
+	if !ok {
+		t.Fatal("Commit did not publish the candidate")
+	}
+	committedState, _ := committed.Value()
+	if committed.Header().Cursor.Sequence != 2 || len(committedState.Derived.ControlsHistory.Samples) != 2 {
+		t.Fatalf("committed candidate = header %+v history %+v", committed.Header(), committedState.Derived.ControlsHistory.Samples)
+	}
+	retained, _ := before.Value()
+	if before.Header().Cursor.Sequence != 1 || len(retained.Derived.ControlsHistory.Samples) != 1 {
+		t.Fatalf("later Commit mutated retained snapshot: header=%+v history=%+v", before.Header(), retained.Derived.ControlsHistory.Samples)
 	}
 }
 

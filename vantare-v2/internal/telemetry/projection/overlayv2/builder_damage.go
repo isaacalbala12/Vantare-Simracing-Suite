@@ -14,8 +14,10 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 			continue
 		}
 		freshness := current.Damage.Freshness()
+		tyreWear := buildTyreWear(current.TyreWear)
 		if freshness == schema.FreshnessMissing {
 			return DamageViewV2{
+				TyreWear:           tyreWear,
 				Dents:              missingValue[[]uint16](),
 				Overheating:        missingValue[bool](),
 				Detached:           missingValue[bool](),
@@ -25,6 +27,7 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		quality := qualityFromFreshness(freshness)
 		if freshness == schema.FreshnessInvalid {
 			return DamageViewV2{
+				TyreWear:           tyreWear,
 				Dents:              QValue[[]uint16]{Q: QualityInvalid},
 				Overheating:        QValue[bool]{Q: QualityInvalid},
 				Detached:           QValue[bool]{Q: QualityInvalid},
@@ -34,6 +37,7 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		value, present := current.Damage.Value()
 		if !present {
 			return DamageViewV2{
+				TyreWear:           tyreWear,
 				Dents:              missingValue[[]uint16](),
 				Overheating:        missingValue[bool](),
 				Detached:           missingValue[bool](),
@@ -45,6 +49,7 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 			dents[i] = uint16(s)
 		}
 		return DamageViewV2{
+			TyreWear:           tyreWear,
 			Dents:              QValue[[]uint16]{V: dents, Q: quality},
 			Overheating:        QValue[bool]{V: value.Overheating, Q: quality},
 			Detached:           QValue[bool]{V: value.Detached, Q: quality},
@@ -57,4 +62,19 @@ func BuildDamage(final derive.FinalState) DamageViewV2 {
 		Detached:           missingValue[bool](),
 		WheelDetachedCount: missingValue[uint8](),
 	}
+}
+
+func buildTyreWear(field schema.Field[[4]float64]) *QValue[[]float64] {
+	freshness := field.Freshness()
+	if freshness == schema.FreshnessMissing {
+		return nil
+	}
+	if freshness == schema.FreshnessInvalid {
+		return &QValue[[]float64]{Q: QualityInvalid}
+	}
+	value, present := field.Value()
+	if !present {
+		return nil
+	}
+	return &QValue[[]float64]{V: []float64{value[0], value[1], value[2], value[3]}, Q: qualityFromFreshness(freshness)}
 }

@@ -29,6 +29,19 @@ type Service struct {
 	emitter        EventEmitter
 	currentMu      sync.RWMutex
 	current        *Result
+	// Widget policy publication. policyMu guards the published snapshot, its
+	// sequence, the one-shot expiry timer and the sign-out flag. policyNow is
+	// an injectable clock for deterministic tests; nil means time.Now.
+	policyMu        sync.Mutex
+	policy          WidgetPolicy
+	policyPublished bool
+	policySeq       uint64
+	policyTimer     *time.Timer
+	policyNow       func() time.Time
+	// signedOut records an explicit logout. While set, the cached credential
+	// is never re-read to restore authority: only a new conclusive
+	// validation clears it.
+	signedOut bool
 }
 
 func NewService(cfg Config, emitter EventEmitter, fingerprint func() (string, error)) *Service {
@@ -57,41 +70,93 @@ func inconclusiveAnonymous(res *Result) bool {
 		errors.Is(res.Error, ErrMissingSession)
 }
 
-// ClearCurrent drops the authority this service holds. Signing out is the only
-// conclusive way to stop being someone, so it is the only caller.
+// ClearCurrent drops the authority this service holds and publishes an
+// explicit Free widget policy with an advanced sequence, so surfaces never
+// keep stale rights. Signing out is the only conclusive way to stop being
+// someone, so it is the only caller. The disk cache is left untouched, but
+// signedOut blocks re-reading it until a new conclusive validation arrives.
 func (s *Service) ClearCurrent() {
 	if s == nil {
 		return
 	}
+	// Same lock order as updateWidgetPolicy (policyMu -> currentMu): the
+	// forced Free publication is atomic with dropping the authority, so a
+	// concurrent snapshot can never publish a premium read afterwards.
+	s.policyMu.Lock()
 	s.currentMu.Lock()
 	s.current = nil
 	s.currentMu.Unlock()
+	s.signedOut = true
+	next, wire, _ := s.publishWidgetPolicyLocked(nil, s.policyClock(), true)
+	s.policyMu.Unlock()
+	if s.emitter != nil {
+		s.emitter.Emit(WidgetPolicyChangedEvent, wire)
+	}
+	_ = next
+}
+
+// storeResultLocked applies the inconclusive-anonymous guard. Callers hold
+// policyMu; it takes currentMu (policyMu -> currentMu order) and reports
+// whether the stored authority was replaced.
+func (s *Service) storeResultLocked(res *Result) bool {
+	// That tokenless anonymous used to overwrite an authenticated result, and
+	// with it the capabilities AllowsUpdateChannel reads. An owner then got a
+	// UI offering nightly -- the frontend ignores the very same event, on
+	// purpose -- while the backend refused it as "not authorized". The two have
+	// to agree, and the authenticated answer is the true one.
+	s.currentMu.Lock()
+	defer s.currentMu.Unlock()
+	replaced := !inconclusiveAnonymous(res) || s.current == nil || s.current.State == StateAnonymous
+	if replaced {
+		s.current = cloneResult(res)
+	}
+	return replaced
+}
+
+// licenseEventWire is the license:changed payload for a result.
+func licenseEventWire(res *Result) LicenseWire {
+	wire := res.ToWire()
+	if wire.LastValidated == "" {
+		wire.LastValidated = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+	return wire
 }
 
 func (s *Service) EmitChanged(res *Result) {
 	if s == nil || res == nil {
 		return
 	}
-	s.currentMu.Lock()
-	// That tokenless anonymous used to overwrite an authenticated result, and
-	// with it the capabilities AllowsUpdateChannel reads. An owner then got a
-	// UI offering nightly -- the frontend ignores the very same event, on
-	// purpose -- while the backend refused it as "not authorized". The two have
-	// to agree, and the authenticated answer is the true one.
-	if !inconclusiveAnonymous(res) || s.current == nil || s.current.State == StateAnonymous {
-		s.current = cloneResult(res)
+	// Store and publish under one policyMu section: the widget policy
+	// derives from the effective stored authority, never from the raw
+	// event, so an inconclusive anonymous that leaves current untouched
+	// publishes nothing. Wires go out after the unlock, in license-then-
+	// policy order.
+	var licenseWire LicenseWire
+	var policyWire WidgetPolicyWire
+	var changed bool
+	s.policyMu.Lock()
+	replaced := s.storeResultLocked(res)
+	stored := s.currentResultLocked()
+	var next WidgetPolicy
+	next, policyWire, changed = s.updateWidgetPolicyLocked(stored, s.policyClock(), false)
+	// Only a result carrying an identity lifts the sign-out block on the
+	// disk cache. A conclusive anonymous (failed validation, no subject)
+	// replaces current but must never re-arm cache restores after logout.
+	if replaced && res.UserID != "" {
+		s.signedOut = false
 	}
-	s.currentMu.Unlock()
+	licenseWire = licenseEventWire(res)
+	_ = next
+	s.policyMu.Unlock()
 	if s.emitter == nil {
 		return
 	}
-	// The event goes out either way: the frontend has its own guard, and in
-	// standalone mode this response is what resolves the loading state.
-	wire := res.ToWire()
-	if wire.LastValidated == "" {
-		wire.LastValidated = time.Now().UTC().Format(time.RFC3339Nano)
+	// The license event goes out either way: the frontend has its own guard,
+	// and in standalone mode this response is what resolves the loading state.
+	s.emitter.Emit(LicenseChangedEvent, licenseWire)
+	if changed {
+		s.emitter.Emit(WidgetPolicyChangedEvent, policyWire)
 	}
-	s.emitter.Emit(LicenseChangedEvent, wire)
 }
 
 func (s *Service) AllowsUpdateChannel(channel string) bool {
@@ -219,6 +284,19 @@ func mergeOnlineCapabilities(res *Result, online []Capability) error {
 		res.Capabilities = append(res.Capabilities, capability)
 	}
 	res.Capabilities = SortedCapabilities(res.Capabilities)
+	// Online capabilities arrive without a signed deadline, so they are
+	// recorded with an unknown one: they count while stored but can never
+	// drive a native expiry transition on their own.
+	granted := make(map[Capability]struct{}, len(res.VerifiedGrants)+len(online))
+	for _, grant := range res.VerifiedGrants {
+		granted[grant.Key] = struct{}{}
+	}
+	for _, capability := range online {
+		if _, ok := granted[capability]; !ok {
+			res.VerifiedGrants = append(res.VerifiedGrants, VerifiedGrant{Key: capability})
+			granted[capability] = struct{}{}
+		}
+	}
 	res.Entitlements = legacyEntitlements(res.Capabilities)
 	res.OperationalRoles = operationalRoles(res.Capabilities)
 	if len(res.Capabilities) > 0 {
@@ -317,6 +395,14 @@ func (s *Service) EmitCachedState() {
 	if s == nil || s.cache == nil || s.verifier == nil {
 		return
 	}
+	// After an explicit logout the cached credential must not restore
+	// authority on its own: only a new conclusive validation lifts this.
+	s.policyMu.Lock()
+	signedOut := s.signedOut
+	s.policyMu.Unlock()
+	if signedOut {
+		return
+	}
 	credential, err := s.cache.Read()
 	if err != nil {
 		return
@@ -329,7 +415,35 @@ func (s *Service) EmitCachedState() {
 	if err != nil || result == nil {
 		return
 	}
-	s.EmitChanged(result)
+	// Atomic commit with the logout guard: the re-check and the publication
+	// share one critical section, so a logout interleaved with the I/O above
+	// drops this result instead of restoring premium (and re-arming the
+	// cache) without a login. Re-checking outside and releasing the lock
+	// before publishing would leave the same TOCTOU window. A newer online
+	// authority cannot be clobbered here: the secure clock rejects older
+	// issuedAt during verification.
+	var licenseWire LicenseWire
+	var policyWire WidgetPolicyWire
+	var changed bool
+	s.policyMu.Lock()
+	if s.signedOut {
+		s.policyMu.Unlock()
+		return
+	}
+	s.storeResultLocked(result)
+	stored := s.currentResultLocked()
+	var next WidgetPolicy
+	next, policyWire, changed = s.updateWidgetPolicyLocked(stored, s.policyClock(), false)
+	licenseWire = licenseEventWire(result)
+	_ = next
+	s.policyMu.Unlock()
+	if s.emitter == nil {
+		return
+	}
+	s.emitter.Emit(LicenseChangedEvent, licenseWire)
+	if changed {
+		s.emitter.Emit(WidgetPolicyChangedEvent, policyWire)
+	}
 }
 
 func subjectFromJWT(token string) (string, error) {

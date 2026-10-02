@@ -1,116 +1,32 @@
-# TC-05B — Transporte local de proyecciones
+# Transporte local de proyecciones
 
-Fecha: 2026-07-29. Alcance: adapters/harness Go sin wiring productivo global.
+Contrato de navegación y límites contrastado el 2026-09-14. Las fuentes exactas son [telemetrytransport](../../internal/app/telemetrytransport/) y su conexión en [server.go](../../internal/server/server.go) y [main.go](../../cmd/vantare/main.go).
 
-## Contrato
+## Overlay V2
 
-`internal/app/telemetrytransport` transporta únicamente los `PayloadV1` de
-Overlay, Engineer, Strategy y Analysis. Los constructors públicos son tipados
-por producto; el helper genérico no es público. Un sello privado detecta si un
-caller sustituye payload o metadata después de construir el envelope.
+[Publisher](../../internal/app/telemetrytransport/publisher.go) transporta `overlay-v2`, retiene el último snapshot y mantiene entrega acotada latest-wins. No envuelve el antiguo `Hub` v1 ni usa su sello privado, acoplamiento de `statusRevision` o JSON Merge Patch RFC 7396.
 
-Cada `Hub` queda ligado a un `ProductID` cerrado (`overlay`, `engineer`,
-`strategy` o `analysis`). El envelope snapshot publica ese producto junto con
-`projectionVersion`, `epoch`, `sequence`, `kind` (`full` o `delta`),
-`capturedAt` UTC, `statusRevision` y el payload local. Un hub rechaza envelopes
-de otro producto. Rechaza además versión desconocida, cursor cero o discontinuo,
-epoch regresivo, reinicio de epoch que no empiece en secuencia 1, tiempo no UTC,
-JSON inválido, payload no objeto, campos reservados
-`raw/source/clock/observed/derived/finalState/canonicalVersion` y tamaños sobre
-el límite. El límite duro es 256 KiB y un harness solo puede reducirlo. No
-serializa `derive.FinalState`, schema, core ni raw.
+- Contrato del producto: [OverlayFrame/OverlayUpdate](../../internal/telemetry/projection/overlayv2/).
+- Límite duro específico: **72 KiB** en Go y TypeScript. El objetivo representativo de 64 KiB no es el límite de aceptación.
+- SSE de OBS: `/telemetry/overlay-v2/projection`, con eventos `telemetry:overlay-v2:snapshot` y `telemetry:overlay-v2:status`.
+- Desktop/Studio: consumidores Wails pull con lifecycle propio; ver [overlay-wails-pull.ts](../../frontend/src/telemetry-transport/overlay-wails-pull.ts).
+- Existe transporte por secciones con base/ACK y recuperación completa; ver [overlay_sections.go](../../internal/app/telemetrytransport/overlay_sections.go) y [ADR 0095](../adr/0095-overlay-incremental-sections.md). Su presencia no prueba activación en todas las superficies ni un ahorro medido.
 
-## Full, delta y resync
+## Otros contratos
 
-Cada publicación conserva siempre un full completo. Delta es opcional y usa
-JSON Merge Patch RFC 7396. Antes de aceptarlo, el hub lo aplica al full anterior
-y exige equivalencia JSON con el nuevo full.
+El transporte genérico conserva techo de 256 KiB y tipos de Engineer/Strategy/Analysis; no confundir tipos disponibles con rutas conectadas. En `server.go`, Strategy solo se registra si `StrategyPublicTransport` está habilitado y existe la proyección. Engineer conserva `/engineer/stream` para su bus; esto no es una ruta pública de facts canónicos.
 
-- Late join y reconnect reciben status actual y full actual.
-- Un consumidor continuo puede recibir delta.
-- Si pierde secuencia, cambia epoch o queda lento, recibe el último full.
-- Si delta se desactiva, todas las publicaciones siguen siendo correctas.
-- Un delta inválido/no equivalente se descarta y el full sigue publicándose.
-- El publisher nunca espera al consumidor: cada suscriptor conserva un único
-  slot latest-wins.
+Las rutas Overlay V1 y `/telemetry/stream` no se registran en el servidor actual. El servidor solo acepta loopback; no exponerlo a LAN con instrucciones de una guía antigua.
 
-## Status y hechos
+## Verificación del contrato
 
-Status usa un evento separado de bajo ritmo y específico del producto
-(`telemetry:<producto>:status`). Snapshot
-referencia su `statusRevision`. Si status avanza antes del siguiente snapshot,
-el hub invalida el snapshot pendiente anterior: late join observa status nuevo
-y espera el full de la misma revisión, nunca una pareja incoherente.
-
-Los hechos usan `FactEnvelope` y `telemetry:<producto>:fact`, con
-`factSequence` propio. Los adapters consumen una fuente pull-based ordenada:
-no coalescen hechos, no infieren su cursor desde snapshots y verifican
-continuidad exacta desde `after`. Gap, duplicado o regresión exigen resync.
-
-## Wails y SSE
-
-`ServeWails`/`ServeWailsFacts` y `SSEHandler`/`SSEFactsHandler` emiten nombres
-inequívocos (`telemetry:<producto>:projection|status|fact`) y el mismo JSON.
-Las rutas SSE son `/telemetry/<producto>/projection` y
-`/telemetry/<producto>/facts`; una ruta de otro producto devuelve 404. Son
-funciones bloqueantes, no crean goroutines y terminan por contexto/cierre. El
-owner de composition decide su lifecycle.
-
-SSE solo acepta requests loopback y no se registra aún en el servidor
-productivo. Wails tampoco se conecta al runtime productivo. TC-05C añadirá
-decoder/store TypeScript y harness compartido antes de migrar pantallas.
-
-## Verificación
+Desde `vantare-v2`:
 
 ```powershell
-go test ./internal/app/telemetrytransport -count=20
-go test -race ./internal/app/telemetrytransport -count=5
-go test ./internal/app/telemetrytransport -run '^$' -bench BenchmarkHubPublishSnapshot -benchmem -count=5
-go test ./internal/telemetry/... -count=1
-go test ./... -count=1
-pnpm --dir frontend test
-pnpm --dir frontend build
-git diff --check
+go test ./internal/app/telemetrytransport
+pnpm --dir frontend test -- src/telemetry-transport
 ```
 
-No corresponde Playwright: no hay UI, route productiva ni harness browser.
+Pruebas específicas de límites, bytes, secciones, reconnect y teardown viven junto al código. Informar el resultado real y completar la prueba física cuando cambie el runtime. No borrar el paquete como rollback: está conectado a producto.
 
-Rollback: eliminar el subpaquete y revertir estas notas. Al no existir wiring,
-persistencia o migración de datos, no requiere conversión ni cleanup runtime.
-
-## Overlay Projection v1 aditiva — ISA-129 D7
-
-D7 conserva `projectionVersion=1` y todas las claves base. Añade únicamente
-campos opcionales ya demostrados por el pipeline canónico:
-
-- sesión: end, remaining y maximum laps;
-- vehículos: piloto, clase, sector, distancia, tiempos de vuelta, penalties,
-  gaps e inventario fuel amount/capacity;
-- derivados: relative gap/lap delta y self-delta con referencia e historial.
-
-Cada muestra pública de delta incluye su `capturedAt` canónico en milisegundos
-UTC. `present` describe si el historial conserva muestras; `freshness` describe
-el delta actual. Por ello `present=true` con `missing`, `stale` o `invalid` es
-válido. El adapter puede conservar la traza ante `missing/stale`, pero quality
-impide declararla comparable como fresca. Nunca recalcula timestamps usando el
-frame exterior.
-
-El decoder TypeScript exige siempre las claves base. Si una clave D7 no existe,
-la normaliza a missing explícito; si existe con tipo, enum, presencia, calidad o
-número inválido, rechaza todo el payload. Extensiones futuras desconocidas y
-seguras se ignoran después de que el envelope haya pasado el límite de 256 KiB,
-profundidad y valores JSON finitos.
-
-La compatibilidad está ejecutada en cuatro direcciones con dos goldens:
-
-| Productor | Consumidor | Resultado |
-|---|---|---|
-| v1 pre-D7 | v1 pre-D7 | superficie base sin cambios |
-| v1 pre-D7 | v1 D7 | campos aditivos missing explícitos |
-| v1 D7 | v1 pre-D7 | claves aditivas ignoradas |
-| v1 D7 | v1 D7 | Go → JSON → transporte → decoder → adapter |
-
-No se añadieron capabilities nuevas: su enum era obligatorio en el consumidor
-antiguo y ampliarlo habría roto el cruce nuevo → antiguo. La disponibilidad se
-expresa por `Field` y quality metadata. D7 tampoco añade wiring Wails/SSE ni
-modifica renderizadores, ViewModels, CSS, canvas o runtime productivo.
+[Contrato histórico completo](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/telemetry-core/projection-transport.md). Sus resultados y su wiring corresponden al corte que declara.

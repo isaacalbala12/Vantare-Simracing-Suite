@@ -70,7 +70,7 @@ describe("profile v3 contract fixtures", () => {
 
   it.each([
     ["Endurance 3", huellaEndurance3, ["standings", "relative", "delta"]],
-    ["catálogo completo", huellaCompleto, ALL_WIDGET_TYPES],
+    ["catálogo completo anterior", huellaCompleto, ALL_WIDGET_TYPES.filter((type) => type !== "radar")],
   ])("validates benchmark profile %s with real widget contracts", (_label, fixture, expectedTypes) => {
     const parsed = parseProfileDocumentV3(fixture);
     expect(parsed.layouts.general.widgets.map((widget) => widget.type)).toEqual(expectedTypes);

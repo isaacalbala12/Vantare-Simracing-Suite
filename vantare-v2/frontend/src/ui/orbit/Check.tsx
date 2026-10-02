@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface CheckProps {
   checked: boolean;
@@ -23,7 +24,7 @@ export function Check({ checked, onChange, label, disabled, children, className,
       {...rest}
       aria-checked={checked}
       aria-label={label}
-      className={["orbit-check", className].filter(Boolean).join(" ")}
+      className={cx("orbit-check", className)}
       disabled={disabled}
       onClick={() => onChange?.(!checked)}
       role="checkbox"

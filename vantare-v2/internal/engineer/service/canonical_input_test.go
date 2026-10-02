@@ -179,6 +179,39 @@ func TestEngineerServiceConsumesCanonicalObservationWithoutOwningSource(t *testi
 	t.Fatal("canonical observation did not reach Spotter notification queue")
 }
 
+func TestEngineerStatusSeparatesConnectedSourceFromSpotterAvailability(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	observation := canonicalObservationAt(t, 1, 1, 1, 80, 100)
+	observation.Player.Orientation = engineerprojection.Field[engineerprojection.Orientation]{}
+	if err := svc.ConsumeObservation(observation); err != nil {
+		t.Fatal(err)
+	}
+	status := svc.Status()
+	if !status.Connected || status.SpotterAvailability.State != service.SpotterAvailabilityUnavailable || status.SpotterAvailability.Reason != "spatial" {
+		t.Fatalf("status = %+v, want connected source with unavailable Spotter", status)
+	}
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 80, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if status = svc.Status(); status.SpotterAvailability.State != service.SpotterAvailabilityReady {
+		t.Fatalf("recovered status = %+v, want ready Spotter", status)
+	}
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if status = svc.Status(); status.SpotterAvailability.State != service.SpotterAvailabilityDisabled {
+		t.Fatalf("disabled status = %+v", status)
+	}
+}
+
 func TestRadioSpotterDoesNotDuplicateLegacyProjection(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1131,6 +1164,11 @@ func canonicalObservation(t *testing.T, epoch, sequence uint64, lap int, fuel, c
 
 func canonicalObservationWithPenalty(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, penaltyCount int, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
+	return canonicalObservationWithState(t, epoch, sequence, lap, fuel, capacity, familySignals, penaltyCount, nil, rivalX...)
+}
+
+func canonicalObservationWithState(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, penaltyCount int, change func(*derive.FinalState), rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	sourceTime := time.Duration(sequence) * time.Second
 	clock := schema.NewClock(observedField(t, sourceTime), observedField(t, sourceTime), time.Now().UTC())
@@ -1180,6 +1218,9 @@ func canonicalObservationWithPenalty(t *testing.T, epoch, sequence uint64, lap i
 		VehicleCount:  observedField(t, schema.Count(len(vehicles))),
 		Vehicles:      vehicles,
 	}}
+	if change != nil {
+		change(&state)
+	}
 	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)
 		return value

@@ -1,6 +1,9 @@
 package service
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestPresentationStreamOrdersNotificationBeforeLaterClear(t *testing.T) {
 	service := NewEngineerService(nil)
@@ -19,12 +22,12 @@ func TestPresentationStreamOrdersNotificationBeforeLaterClear(t *testing.T) {
 		Source: "telemetry-core",
 	}
 	service.publishNotification(notification)
+	presentation := <-stream
 	service.mu.Lock()
 	service.advancePresentationLifecycleLocked()
 	service.emitStatusLocked()
 	service.mu.Unlock()
 
-	presentation := <-stream
 	clear := <-stream
 	if presentation.Kind != EngineerStreamPresentation || !presentation.Active || presentation.Presentation == nil {
 		t.Fatalf("presentation=%+v", presentation)
@@ -92,6 +95,40 @@ func TestPresentationStreamServerRestartStartsWithAuthoritativeSnapshot(t *testi
 	}
 	if empty.Sequence != 1 || empty.Generation != 0 {
 		t.Fatalf("restart cursor=%d/%d want fresh 1/0", empty.Sequence, empty.Generation)
+	}
+}
+
+func TestPresentationStreamGenerationAdvanceDrainsSlowSubscriber(t *testing.T) {
+	service := NewEngineerService(nil)
+	stream, unsubscribe := service.SubscribeStream()
+	defer unsubscribe()
+	initial := <-stream
+	if initial.Kind != EngineerStreamSnapshot {
+		t.Fatalf("initial=%+v want snapshot", initial)
+	}
+
+	for index := 0; index < 40; index++ {
+		service.publishNotification(EngineerNotification{
+			Version: 1, ID: fmt.Sprintf("stale-%d", index), Category: "fuel", Severity: "info",
+			TextKey: "fuel.low", Text: "Fuel low", Locale: "en",
+			Role: "engineer", Channel: "engineer", Priority: 50,
+			CreatedAt: service.policyClock.NowMS(), ExpiresAt: service.policyClock.NowMS() + 10_000,
+			Source: "telemetry-core",
+		})
+	}
+	// The buffer now holds stale-generation events and is full; without a drain
+	// the post-generation status is dropped and the stale stream is replayed.
+	service.mu.Lock()
+	service.advancePresentationLifecycleLocked()
+	service.emitStatusLocked()
+	service.mu.Unlock()
+
+	event := <-stream
+	if event.Kind != EngineerStreamStatus || event.Presentation != nil || event.Active {
+		t.Fatalf("first post-generation event=%+v want clean status", event)
+	}
+	if event.Generation != service.Status().PresentationLifecycle {
+		t.Fatalf("event generation=%d want %d", event.Generation, service.Status().PresentationLifecycle)
 	}
 }
 

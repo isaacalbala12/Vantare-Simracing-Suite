@@ -19,6 +19,15 @@ const first = new Date(2026, 7, 1);
 const now = new Date("2026-08-25T00:00:00Z");
 
 describe("clasificación de eventos del mes", () => {
+  it("separa semanal y especial según el tipo publicado, sin duplicarlos", () => {
+    const days = monthDays(entries, first, now);
+    const weeklyId = seed.series.find((item) => item.eventKind === "weekly")!.id;
+    const specialId = seed.series.find((item) => item.eventKind === "special")!.id;
+    expect(days.some((day) => day.weekly.some((item) => item.id === weeklyId))).toBe(true);
+    expect(days.some((day) => day.specialSeries.some((item) => item.id === specialId))).toBe(true);
+    expect(days.every((day) => !day.weekly.some((item) => item.id === specialId))).toBe(true);
+    expect(days.every((day) => !day.specialSeries.some((item) => item.id === weeklyId))).toBe(true);
+  });
   it("Día conserva solo especiales del día sin duplicar ocurrencias ocultas por el filtro", () => {
     const special = { ...occurrence, id: "imported", source: "import" };
     const events = [occurrence, special,

@@ -39,6 +39,7 @@ const (
 	WidgetTypePedalsTelemetry        WidgetTypeV3 = "pedals-telemetry"
 	WidgetTypePedalsTelemetryCompact WidgetTypeV3 = "pedals-telemetry-compact"
 	WidgetTypeRacingFlags            WidgetTypeV3 = "racing-flags"
+	WidgetTypeFastestLap             WidgetTypeV3 = "fastest-lap"
 	WidgetTypeDeltaTrace             WidgetTypeV3 = "delta-trace"
 	WidgetTypeRaceSchedule           WidgetTypeV3 = "race-schedule"
 	WidgetTypeHeadToHead             WidgetTypeV3 = "head-to-head"
@@ -55,9 +56,11 @@ const (
 type DesignSystemID string
 
 const (
-	DesignSystemVantareOriginal  DesignSystemID = "vantare-original"
-	DesignSystemVantareCrystal   DesignSystemID = "vantare-crystal"
-	DesignSystemVantareEndurance DesignSystemID = "vantare-endurance"
+	DesignSystemVantareOriginal   DesignSystemID = "vantare-original"
+	DesignSystemVantareCrystal    DesignSystemID = "vantare-crystal"
+	DesignSystemVantareEndurance  DesignSystemID = "vantare-endurance"
+	DesignSystemVantareFunctional DesignSystemID = "vantare-functional"
+	DesignSystemVantareIracing    DesignSystemID = "vantare-iracing"
 )
 
 type ProfileDocumentV3 struct {

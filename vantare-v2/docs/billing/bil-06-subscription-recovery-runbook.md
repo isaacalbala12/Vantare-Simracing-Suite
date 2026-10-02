@@ -1,6 +1,6 @@
 # BIL-06 — runbook de suscripciones y recuperación
 
-Estado: implementación local; **no desplegada**. Venta pública NO-GO.
+Estado de entrega original BIL: implementación local; **no desplegada** en aquel corte. Consultar [estado y preparación actuales](README.md) antes de operar; este texto no verifica un despliegue ni habilita venta pública.
 
 ## Qué protege este corte
 
@@ -78,7 +78,7 @@ deno test --node-modules-dir=auto --allow-env --allow-read --no-lock --no-check 
 supabase/tests/run-supabase-hardening-postgres.ps1
 ```
 
-Resultado esperado de este corte: 144 tests Deno y todas las matrices
+Resultado registrado en el corte original: 144 tests Deno y todas las matrices
 PostgreSQL clean/upgrade/restore, legacy y concurrencia en verde. Las funciones
 Stripe bajo `_deprecated` no forman parte de la superficie activa.
 

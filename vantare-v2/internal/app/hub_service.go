@@ -110,6 +110,10 @@ type HubService struct {
 	reconcilePolicy  func(*config.ProfileDocumentV4)
 	emitter          EventEmitter
 	overlay          OverlayRuntime
+	// policySource is the native widget-policy authority for save guards.
+	// Nil keeps the legacy behavior (no policy gate); production wires the
+	// license service via SetWidgetPolicySource.
+	policySource WidgetPolicySource
 }
 
 // NewHubService creates a hub service.
@@ -125,6 +129,12 @@ func NewHubService(profilesDir string, profileSvc *ProfileService, emitter Event
 // SetStudioProfileService wires the canonical V3 runtime profile service.
 func (s *HubService) SetStudioProfileService(svc *StudioProfileService) {
 	s.studioProfileSvc = svc
+}
+
+// SetWidgetPolicySource wires the native authority snapshot used by the save
+// guard (ISA-1097). See StudioProfileService.SetWidgetPolicySource.
+func (s *HubService) SetWidgetPolicySource(src WidgetPolicySource) {
+	s.policySource = src
 }
 
 // SetPerformancePolicyReconciler applies the effective app+profile policy
@@ -343,9 +353,9 @@ func (s *HubService) DeleteProfile(idOrFile string) error {
 		}
 		activeID := s.settingsSvc.Settings().ActiveOverlayProfileID
 		if activeID == idOrFile || activeID == resolvedID {
-			settings := s.settingsSvc.Settings()
-			settings.ActiveOverlayProfileID = ""
-			if saveErr := s.settingsSvc.Save(settings); saveErr != nil {
+			if saveErr := s.settingsSvc.Update(func(settings *AppSettings) {
+				settings.ActiveOverlayProfileID = ""
+			}); saveErr != nil {
 				return fmt.Errorf("clearing active profile setting: %w", saveErr)
 			}
 		}
@@ -390,9 +400,9 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 		return fmt.Errorf("loaded profile has no id")
 	}
 	if s.settingsSvc != nil {
-		settings := s.settingsSvc.Settings()
-		settings.ActiveOverlayProfileID = profile.ID
-		if err := s.settingsSvc.Save(settings); err != nil {
+		if err := s.settingsSvc.Update(func(settings *AppSettings) {
+			settings.ActiveOverlayProfileID = profile.ID
+		}); err != nil {
 			return fmt.Errorf("persisting active profile id: %w", err)
 		}
 	}
@@ -485,6 +495,18 @@ func (s *HubService) SaveProfile(profile *config.ProfileConfig) error {
 	path, err := s.findProfilePath(profile.ID)
 	if err != nil {
 		return err
+	}
+	// Native policy gate (ISA-1097): compare against the native file, never
+	// against a client-claimed snapshot. Additions and non-position edits of
+	// blocked widgets are denied; moves, deletions and preservation pass.
+	if s.policySource != nil {
+		native, loadErr := config.LoadFile(path)
+		if loadErr != nil {
+			return fmt.Errorf("reading native profile for policy check: %w", loadErr)
+		}
+		if err := checkLegacyProfileSave(s.policySource.CurrentWidgetPolicy(), native, profile); err != nil {
+			return err
+		}
 	}
 	if err := config.SaveFile(path, profile); err != nil {
 		return err

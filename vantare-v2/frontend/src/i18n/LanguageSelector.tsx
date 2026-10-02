@@ -9,7 +9,7 @@ export function LanguageSelector() {
     <div className="flex items-center gap-2">
       <label
         htmlFor={selectId}
-        className="text-[10px] font-bold uppercase tracking-[.08em] text-vantare-textDim"
+        className="text-[10px] font-bold uppercase tracking-[.08em] text-orbit-ink-3"
       >
         {t("language.selector.label")}
       </label>
@@ -18,7 +18,7 @@ export function LanguageSelector() {
         data-testid="language-selector"
         value={locale}
         onChange={(e) => setLocale(e.target.value as Locale)}
-        className="cursor-pointer rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[10px] font-semibold text-white"
+        className="cursor-pointer rounded-md border border-orbit-line bg-orbit-surface-1 px-2 py-1 text-[10px] font-semibold text-orbit-ink"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>

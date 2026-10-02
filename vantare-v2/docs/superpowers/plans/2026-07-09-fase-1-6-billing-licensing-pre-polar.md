@@ -4,7 +4,7 @@
 
 **Goal:** Preparar Vantare con un modelo de billing/licensing provider-agnostic (Polar-ready), eliminar endpoints fantasma de checkout/portal en frontend, y crear la migración SQL correcta — sin aplicar a remoto, sin integrar Polar.
 
-**Architecture:** El remoto usa el esquema viejo (`licenses`, `subscriptions`). El Go y el frontend usan el modelo nuevo (`user_entitlements`, `devices`, RPCs). Esta fase añade tablas nuevas de forma **additive** en [`supabase/migrations/`](supabase/migrations/) (raíz del monorepo, carpeta linkeada por CLI), archiva la migración muerta en `vantare-v2/`, y pone `BILLING_ENABLED=false` en frontend vía `billingClient`. No se borran tablas viejas ni se hace `db push`.
+**Architecture:** El remoto usa el esquema viejo (`licenses`, `subscriptions`). El Go y el frontend usan el modelo nuevo (`user_entitlements`, `devices`, RPCs). Esta fase añade tablas nuevas de forma **additive** en [`supabase/migrations/`](../../../../supabase/migrations) (raíz del monorepo, carpeta linkeada por CLI), archiva la migración muerta en `vantare-v2/`, y pone `BILLING_ENABLED=false` en frontend vía `billingClient`. No se borran tablas viejas ni se hace `db push`.
 
 **Tech Stack:** SQL/Postgres (Supabase), PL/pgSQL, React 19 + TypeScript + Vitest, Go `internal/license`, Supabase CLI (solo lectura en auditoría).
 
@@ -35,12 +35,12 @@
 - Respuesta extra (opcional, ignorada por Go hoy): `device_ok`, `provider_customer_id`, `billing_provider`
 - Device mismatch: RPC devuelve `active_device` = fingerprint **guardado en BD** (no el del cliente). Go compara en `fromSupabase` → `device-limit`, `deviceOK=false`. Premium bloqueado en `access-policy.ts`.
 - `POST /rest/v1/rpc/reset_active_device` mismo body
-- Código: [`vantare-v2/internal/license/supabase_client.go`](vantare-v2/internal/license/supabase_client.go), [`service.go`](vantare-v2/internal/license/service.go) L148-152
+- Código: [`vantare-v2/internal/license/supabase_client.go`](../../../internal/license/supabase_client.go), [`service.go`](../../../internal/license/service.go) L148-152
 
 ### Bugs actuales a corregir
 
-1. [`PaywallScreen.tsx`](vantare-v2/frontend/src/hub/auth/PaywallScreen.tsx) llama `/functions/v1/create-checkout-session` — **no existe**
-2. [`AccountSettings.tsx`](vantare-v2/frontend/src/hub/settings/AccountSettings.tsx) llama `/functions/v1/create-portal-session` y manda `userId` como `stripeCustomerId`
+1. [`PaywallScreen.tsx`](../../../frontend/src/hub/auth/PaywallScreen.tsx) llama `/functions/v1/create-checkout-session` — **no existe**
+2. `AccountSettings.tsx` (ruta histórica `vantare-v2/frontend/src/hub/settings/AccountSettings.tsx`, ausente en el corte actual) llama `/functions/v1/create-portal-session` y manda `userId` como `stripeCustomerId`
 3. `handleFrontendRequest` en `stripe-webhook/index.ts` **nunca se invoca** (código muerto)
 4. RPC planeado no registra device en primera validación — **corregir en SQL**
 

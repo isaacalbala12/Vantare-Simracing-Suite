@@ -4,7 +4,7 @@
 **Issue:** #725 (parte de ISA-694, fase F1.2)
 **Owner:** Telemetry Analysis (`internal/telemetryanalysis/strategyprojection`)
 **Consumidor:** Strategy Planner (`internal/strategy/*` solo consume, nunca produce)
-**Estado:** compile-only, versionado `strategyinputprojection.v2`
+**Estado:** contrato `strategyinputprojection.v2` con productor en `internal/telemetryanalysis/projectionproducer.go` y consumo por `internal/strategy/application/orbit_calculation.go` (contraste 2026-09-14). La presencia de cada familia sigue gobernada por este contrato; no implica disponibilidad de todos los datos.
 
 ## Objetivo
 

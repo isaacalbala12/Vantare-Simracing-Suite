@@ -1,4 +1,5 @@
 import { createElement, type HTMLAttributes, type ReactNode } from "react";
+import { cx } from "./cx";
 
 /** `title` se reescribe como `ReactNode` (cabecera), así que tapa el `title`
  *  nativo de `HTMLAttributes`: el kit no usa el atributo `title` del DOM. */
@@ -21,9 +22,7 @@ export function Surface({
   children,
   ...rest
 }: SurfaceProps) {
-  const classes = ["orbit-surface", fill ? "orbit-surface--fill" : null, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-surface", fill ? "orbit-surface--fill" : null, className);
 
   return createElement(
     as,

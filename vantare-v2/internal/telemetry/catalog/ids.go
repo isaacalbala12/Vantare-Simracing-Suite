@@ -57,4 +57,5 @@ const (
 	SignalDamageWheelDetachedCount
 	SignalStandingsLapProgressTime
 	SignalStandingsCarNumber
+	SignalTyreWear
 )

@@ -33,6 +33,9 @@ afterEach(() => {
   document.querySelectorAll(`#${SETTINGS_CONTEXT_SLOT_ID}`).forEach((node) => node.remove());
   delete document.body.dataset.density;
   delete document.body.dataset.reduceMotion;
+  delete document.documentElement.dataset.uiPalette;
+  delete document.documentElement.dataset.uiScheme;
+  delete document.documentElement.dataset.uiResolvedScheme;
   window.localStorage.clear();
   vi.restoreAllMocks();
 });
@@ -66,12 +69,12 @@ describe("modelo de Ajustes", () => {
   it("la búsqueda ignora mayúsculas y diacríticos y no inventa resultados", () => {
     const dict: Record<string, string> = {
       "settings.diag.core": "Telemetry Core",
-      "settings.app.theme": "Tema",
+      "settings.app.palette": "Paleta de colores",
     };
     const t = (key: string) => dict[key] ?? key;
 
-    expect(searchSettings("TEMA", t)).toEqual([
-      { section: "application", key: "settings.app.theme" },
+    expect(searchSettings("PALETA", t)).toEqual([
+      { section: "appearance", key: "settings.app.palette" },
     ]);
     // «TELEMETR» con mayúsculas encuentra «Telemetry Core».
     expect(searchSettings("TELEMETR", t)).toEqual([
@@ -116,10 +119,11 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByRole("status").textContent).toContain("Windows aceptó el envío");
   });
 
-  it("la columna lista exactamente las siete secciones visibles y nada más", () => {
+  it("la columna lista las ocho secciones visibles, incluida Apariencia", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
+    expect(rows.some((row) => row.textContent?.includes("Apariencia"))).toBe(true);
     expect(rows.map((row) => row.textContent?.split("Sesión")[0])).toBeTruthy();
     expect(rows[0].getAttribute("aria-selected")).toBe("true");
   });
@@ -150,7 +154,7 @@ describe("SettingsOrbitPage", () => {
   it("buscar un ajuste ofrece resultados que navegan a su sección", () => {
     mount("account");
     fireEvent.change(screen.getByTestId("orbit-settings-search"), {
-      target: { value: "tema" },
+      target: { value: "paleta" },
     });
 
     const results = screen.getByTestId("orbit-settings-search-results");
@@ -159,7 +163,7 @@ describe("SettingsOrbitPage", () => {
 
     // Elegir un resultado navega y devuelve la columna a las secciones.
     fireEvent.click(rows[0]);
-    expect(screen.getByTestId("orbit-settings-panel-application")).toBeTruthy();
+    expect(screen.getByTestId("orbit-settings-panel-appearance")).toBeTruthy();
     expect(screen.queryByTestId("orbit-settings-search-results")).toBeNull();
   });
 
@@ -184,6 +188,51 @@ describe("SettingsOrbitPage", () => {
     expect(window.localStorage.getItem("vantare.v03orbit.density")).toBe("compact");
   });
 
+  it("cambia la paleta y el modo al instante sin tocar el tema antiguo de los widgets", () => {
+    window.localStorage.setItem("vantare.theme", "vantare-lite");
+    mount("appearance");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-ocean"));
+    fireEvent.click(screen.getByTestId("orbit-settings-scheme-light"));
+
+    expect(document.documentElement.dataset.uiPalette).toBe("ocean");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("light");
+    expect(window.localStorage.getItem("vantare.ui.palette")).toBe("ocean");
+    expect(window.localStorage.getItem("vantare.ui.scheme")).toBe("light");
+    expect(window.localStorage.getItem("vantare.theme")).toBe("vantare-lite");
+    expect(screen.getByTestId("orbit-settings-theme-ocean").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("orbit-settings-scheme-light").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("permite elegir una variante directa, contraste, cristal y fuentes con vista previa", () => {
+    mount("appearance");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-iris-dark"));
+    fireEvent.change(screen.getByLabelText("Contraste"), { target: { value: "115" } });
+    fireEvent.change(screen.getByLabelText("Opacidad del cristal"), { target: { value: "95" } });
+    fireEvent.click(within(screen.getByTestId("orbit-settings-interface-font")).getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Segoe UI" }));
+    fireEvent.click(within(screen.getByTestId("orbit-settings-mono-font")).getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Consolas" }));
+
+    expect(document.documentElement.dataset.uiPalette).toBe("iris");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("dark");
+    expect(window.localStorage.getItem("vantare.ui.contrast")).toBe("115");
+    expect(window.localStorage.getItem("vantare.ui.glassOpacity")).toBe("95");
+    expect(window.localStorage.getItem("vantare.ui.interfaceFont")).toBe("segoe");
+    expect(window.localStorage.getItem("vantare.ui.monoFont")).toBe("consolas");
+    expect(screen.getByTestId("orbit-settings-font-preview").textContent).toContain("01:23.456");
+  });
+
+  it("ofrece dos variantes de grises y aplica la elección al instante", () => {
+    mount("appearance");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-mono-light"));
+    expect(document.documentElement.dataset.uiPalette).toBe("mono");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("light");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-mono-dark"));
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("dark");
+    expect(window.localStorage.getItem("vantare.ui.palette")).toBe("mono");
+    expect(window.localStorage.getItem("vantare.ui.scheme")).toBe("dark");
+  });
+
   it("el control de zoom cambia, persiste y restablece un único porcentaje", () => {
     mount("application");
     const value = screen.getByTestId("orbit-settings-zoom-value");
@@ -200,7 +249,7 @@ describe("SettingsOrbitPage", () => {
   });
 
   it("reducir animaciones marca el body y se guarda", () => {
-    mount("application");
+    mount("appearance");
     const row = screen.getByTestId("orbit-settings-reduce-motion");
     fireEvent.click(within(row).getByRole("button"));
 

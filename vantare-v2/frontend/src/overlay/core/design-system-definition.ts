@@ -8,6 +8,11 @@ export type WidgetRendererProps<TModel extends WidgetViewModelBase = WidgetViewM
   settings: Readonly<Record<string, unknown>>;
   renderMode: "studio" | "desktop" | "obs" | "harness";
   layout?: Pick<WidgetLayoutV3, "w" | "h">;
+  /** Presupuesto de movimiento: lo resuelve el host desde la política de
+   * rendimiento del frame y prefers-reduced-motion. Por defecto "full". */
+  motion?: "full" | "reduced" | "minimal";
+  /** Presupuesto de efectos publicado por Go (full/noBlur/flat). */
+  effects?: "full" | "noBlur" | "flat";
 };
 
 export type WidgetSystemInspectorCapability = Pick<

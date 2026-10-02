@@ -50,12 +50,18 @@ type Result struct {
 	Entitlements     []Entitlement
 	Capabilities     []Capability
 	OperationalRoles []OperationalRole
-	UserID           string
-	Email            string
-	DeviceOK         bool
-	GraceEndsAt      *time.Time
-	LastValidated    time.Time
-	Error            error
+	// VerifiedGrants records the signed capability deadlines the verifier
+	// already checked: one entry per grant in the credential claims, plus one
+	// per online capability merged without a known deadline. It never widens
+	// authority by itself; the native widget policy uses it to drop rights at
+	// the real expiry without another network round-trip.
+	VerifiedGrants []VerifiedGrant
+	UserID         string
+	Email          string
+	DeviceOK       bool
+	GraceEndsAt    *time.Time
+	LastValidated  time.Time
+	Error          error
 	// OnlineValidated is intentionally omitted from LicenseWire. It marks that
 	// Supabase authenticated this exact session during the current request, so
 	// only the native auth-session manager can decide whether to persist it.

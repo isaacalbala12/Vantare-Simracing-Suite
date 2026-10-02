@@ -68,7 +68,7 @@ func TestCadenceForScalesTiersAndKeepsOneSecondCeiling(t *testing.T) {
 func TestSafetyWidgetsStayEventDrivenAtEveryLevel(t *testing.T) {
 	for level := LevelMaximum; level <= LevelMinimum; level++ {
 		rates := WidgetHzFor(level)
-		for _, widget := range []string{"racing-flags", "engineer-radio"} {
+		for _, widget := range []string{"racing-flags", "engineer-radio", "fastest-lap"} {
 			if got := rates[widget].Signal(); got != "event" {
 				t.Errorf("nivel %d %s = %q, want event", level, widget, got)
 			}

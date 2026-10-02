@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Kbd } from "./Kbd";
+import { cx } from "./cx";
 
 export interface KeycapRowProps {
   title: string;
@@ -60,7 +61,7 @@ export function KeycapRow({
     </>
   );
 
-  const classes = ["orbit-hk-row", className].filter(Boolean).join(" ");
+  const classes = cx("orbit-hk-row", className);
   const flags = {
     "data-conflict": conflict ? "true" : undefined,
     "data-empty": empty ? "true" : undefined,

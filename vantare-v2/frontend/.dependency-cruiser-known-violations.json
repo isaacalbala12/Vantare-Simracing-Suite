@@ -1,0 +1,237 @@
+[
+  {
+    "type": "cycle",
+    "from": "src/hub/launcher/chain-context.ts",
+    "to": "src/hub/launcher/chain-store-core.ts",
+    "unresolvedTo": "./chain-store-core",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/hub/launcher/chain-store-core.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/hub/launcher/chain-context.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/hub/launcher/launcher-context.ts",
+    "to": "src/hub/launcher/launcher-store-core.ts",
+    "unresolvedTo": "./launcher-store-core",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/hub/launcher/launcher-store-core.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/hub/launcher/launcher-context.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/hub/launcher/launcher-state.ts",
+    "to": "src/hub/settings/settings-contract.ts",
+    "unresolvedTo": "../settings/settings-contract",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/hub/settings/settings-contract.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/hub/launcher/launcher-state.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/hub/overlay-studio/state/studio-context.ts",
+    "to": "src/hub/overlay-studio/state/studio-document-store.ts",
+    "unresolvedTo": "./studio-document-store",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/hub/overlay-studio/state/studio-document-store.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/hub/overlay-studio/state/studio-context.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/overlay/core/widget-definition.ts",
+    "to": "src/overlay/widget-types/relative/relative-view-model-v2.ts",
+    "unresolvedTo": "../widget-types/relative/relative-view-model-v2",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/overlay/widget-types/relative/relative-view-model-v2.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/overlay/widget-types/relative/relative-view-model.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/overlay/core/widget-definition.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/overlay/widget-types/race-schedule/race-schedule-definition.ts",
+    "to": "src/overlay/widget-types/race-schedule/race-schedule-view-model.ts",
+    "unresolvedTo": "./race-schedule-view-model",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/overlay/widget-types/race-schedule/race-schedule-view-model.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/overlay/widget-types/race-schedule/race-schedule-definition.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/overlay/widget-types/track-weather/track-weather-definition.ts",
+    "to": "src/overlay/widget-types/track-weather/track-weather-view-model.ts",
+    "unresolvedTo": "./track-weather-view-model",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "src/overlay/widget-types/track-weather/track-weather-view-model.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      },
+      {
+        "name": "src/overlay/widget-types/track-weather/track-weather-definition.ts",
+        "dependencyTypes": [
+          "local",
+          "type-only",
+          "import"
+        ]
+      }
+    ]
+  }
+]

@@ -2319,6 +2319,10 @@
     animation: none;
     transition: none;
   }
+  [data-widget-system="vantare-endurance"] .ven-red-slot[data-final="true"] b,
+  [data-widget-system="vantare-endurance"] .ven-red-slot[data-final="true"] small {
+    animation: none;
+  }
   [data-widget-system="vantare-endurance"] .ven-red-gap[data-leaving="true"],
   [data-widget-system="vantare-endurance"] .ven-red-gap[data-leaving="true"] b {
     animation: none;

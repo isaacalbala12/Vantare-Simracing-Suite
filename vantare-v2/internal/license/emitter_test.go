@@ -30,6 +30,18 @@ func (f *fakeEmitter) Last() (string, any) {
 	return f.names[i], f.data[i]
 }
 
+// findEvent returns the most recent payload emitted under name, if any.
+func (f *fakeEmitter) findEvent(name string) (any, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := len(f.names) - 1; i >= 0; i-- {
+		if f.names[i] == name {
+			return f.data[i], true
+		}
+	}
+	return nil, false
+}
+
 func TestValidateEmitsVerifiedLicense(t *testing.T) {
 	now := time.Now().UTC()
 	client := &mockSupabaseClient{}
@@ -40,10 +52,15 @@ func TestValidateEmitsVerifiedLicense(t *testing.T) {
 	if _, err := service.Validate(context.Background(), testJWT(testSubject)); err != nil {
 		t.Fatal(err)
 	}
-	name, data := emitter.Last()
-	wire, ok := data.(LicenseWire)
-	if emitter.Count() != 1 || name != LicenseChangedEvent || !ok || wire.State != "active" {
-		t.Fatalf("event = %d %s %#v", emitter.Count(), name, data)
+	data, ok := emitter.findEvent(LicenseChangedEvent)
+	wire, okWire := data.(LicenseWire)
+	if !ok || !okWire || wire.State != "active" {
+		t.Fatalf("license event = %#v", data)
+	}
+	policyData, ok := emitter.findEvent(WidgetPolicyChangedEvent)
+	policyWire, okWire := policyData.(WidgetPolicyWire)
+	if !ok || !okWire || !policyWire.OverlaysAdvanced || !policyWire.EngineerAI {
+		t.Fatalf("widget policy event = %#v", policyData)
 	}
 }
 
@@ -51,10 +68,15 @@ func TestValidateAnonymousEmitsAnonymousState(t *testing.T) {
 	emitter := &fakeEmitter{}
 	service := NewService(Config{}, emitter, nil)
 	_, _ = service.Validate(context.Background(), "")
-	_, data := emitter.Last()
-	wire, ok := data.(LicenseWire)
-	if !ok || wire.State != "anonymous" {
-		t.Fatalf("event = %#v", data)
+	data, ok := emitter.findEvent(LicenseChangedEvent)
+	wire, okWire := data.(LicenseWire)
+	if !ok || !okWire || wire.State != "anonymous" {
+		t.Fatalf("license event = %#v", data)
+	}
+	policyData, ok := emitter.findEvent(WidgetPolicyChangedEvent)
+	policyWire, okWire := policyData.(WidgetPolicyWire)
+	if !ok || !okWire || policyWire.OverlaysAdvanced || policyWire.EngineerAI {
+		t.Fatalf("widget policy event = %#v", policyData)
 	}
 }
 

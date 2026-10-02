@@ -15,12 +15,13 @@ import (
 )
 
 type exportedSymbol struct {
-	packagePath string
-	name        string
-	file        string
-	line        int
-	deprecated  bool
-	method      bool
+	packagePath  string
+	name         string
+	file         string
+	line         int
+	deprecated   bool
+	method       bool
+	jsonContract bool
 }
 
 func TestExportedSymbolsHaveProductionCaller(t *testing.T) {
@@ -118,7 +119,9 @@ func scanExportedProductionSymbols(repositoryRoot string) ([]exportedSymbol, map
 					continue
 				}
 				declarationPositions[declaration.Name.Pos()] = struct{}{}
-				symbols = append(symbols, newExportedSymbol(fileSet, repositoryRoot, parsed.packageDir, declaration.Name, declaration.Doc, declaration.Recv != nil))
+				symbol := newExportedSymbol(fileSet, repositoryRoot, parsed.packageDir, declaration.Name, declaration.Doc, declaration.Recv != nil)
+				symbol.jsonContract = wiringGuardJSONContract(parsed.file, declaration)
+				symbols = append(symbols, symbol)
 			case *ast.GenDecl:
 				for _, spec := range declaration.Specs {
 					for _, name := range exportedSpecNames(spec) {
@@ -232,7 +235,7 @@ func wiringGuardOwnedPackage(packagePath string) bool {
 }
 
 func wiringGuardAllowed(symbol exportedSymbol) bool {
-	if symbol.deprecated {
+	if symbol.deprecated || symbol.jsonContract {
 		return true
 	}
 	// 2026-08-19: Error and Unwrap are called through the standard error interfaces.

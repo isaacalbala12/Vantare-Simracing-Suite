@@ -155,7 +155,7 @@ func (s *EngineerService) queueLoop(ctx context.Context) {
 // the loop may immediately try the next pending candidate.
 func (s *EngineerService) dispatchNext(parent context.Context) bool {
 	s.mu.Lock()
-	if !s.running || !s.enabled || s.activeDelivery != nil || s.scheduler == nil {
+	if !s.running || !s.enabled || s.activeDelivery != nil || s.audioTestCancel != nil || s.scheduler == nil {
 		s.mu.Unlock()
 		return false
 	}
@@ -232,8 +232,29 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 	s.deliveryNext++
 	deliveryID := fmt.Sprintf("radio-delivery-%d", s.deliveryNext)
 	request := radio.Request{Version: radio.VersionV1, DeliveryID: deliveryID, DecidedAtMS: s.policyClock.NowMS(), Message: item.Message}
+	family := radioMessageFamily(item.Message)
+	mode := s.outputModes[family]
+	audioState := "disabled"
+	if outputHasAudio(mode) {
+		audioState = "pending"
+		if s.audioPlayer == nil {
+			audioState = "unavailable"
+		}
+	}
+	entry := DeliveryDiagnostic{ID: deliveryID, Lifecycle: s.presentationLifecycle, Intent: item.Message.Intent, Family: string(family), Mode: mode, SelectedAt: request.DecidedAtMS, UpdatedAt: request.DecidedAtMS, State: "selected", Audio: audioState}
+	if presented, resolveErr := s.radioResolver.Resolve(item.Message); resolveErr == nil {
+		entry.Text = presented.VisualText
+	}
+	s.deliveryJournal.add(entry)
 	session, err := radio.NewSession(request, s.policyClock, s.radioMetrics, func(ack radio.Acknowledgement) error {
 		if ack.State == radio.StateStarted {
+			// Observation/reset and the final started ACK must be atomic with
+			// respect to each other, including the family's cursor and cooldown.
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if cause := context.Cause(item.Context); cause != nil {
+				return cause
+			}
 			if item.Message.Priority == radio.PriorityP0 && s.spotterProducer != nil {
 				if err := s.spotterProducer.AcknowledgeStarted(item.Message, ack.AtMS); err != nil {
 					return err
@@ -244,24 +265,35 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 			}
 			item.Started()
 		}
+		s.deliveryJournal.update(deliveryID, func(d *DeliveryDiagnostic) {
+			d.State = string(ack.State)
+			d.Reason = string(ack.Reason)
+			d.UpdatedAt = ack.AtMS
+			if ack.State != radio.StateQueued && ack.State != radio.StateStarted && (d.Audio == "pending" || d.Audio == "ready") {
+				d.Audio = "not_attempted"
+			}
+		})
 		return nil
 	})
 	if err != nil {
 		item.Done()
+		s.deliveryJournal.update(deliveryID, func(d *DeliveryDiagnostic) {
+			d.State = "failed"
+			d.Reason = "invalid_request"
+			d.Audio = "not_attempted"
+		})
 		s.lastError = err.Error()
 		s.mu.Unlock()
 		return true
 	}
-	family := radioMessageFamily(item.Message)
-	mode := s.outputModes[family]
 	var cachedAudio radio.CachedAudioResolver
 	var player radio.AudioPlayer
 	if outputHasAudio(mode) && s.audioPlayer != nil {
-		cachedAudio = radioAudioResolver{router: s.audioRouter, resolver: s.audioResolver, locale: s.presentationLocale, intent: item.Message.Intent}
-		player = s.audioPlayer
+		cachedAudio = diagnosticRadioCache{delegate: radioAudioResolver{router: s.audioRouter, resolver: s.audioResolver, locale: s.presentationLocale, intent: item.Message.Intent}, journal: &s.deliveryJournal, id: deliveryID}
+		player = diagnosticRadioPlayer{delegate: s.audioPlayer, journal: &s.deliveryJournal, id: deliveryID}
 	}
 	port := radio.DualPort{
-		Resolver: s.radioResolver, UI: radioUIPublisher{service: s, family: family, priority: radioNotificationPriority(item.Message.Priority), source: item.Message.Source, visual: outputHasVisual(mode)},
+		Resolver: s.radioResolver, UI: radioUIPublisher{diagnosticID: deliveryID, service: s, family: family, priority: radioNotificationPriority(item.Message.Priority), source: item.Message.Source, visual: outputHasVisual(mode)},
 		Audio: cachedAudio, Player: player, Clock: s.policyClock,
 	}
 	cancel := func(cause error) {
@@ -478,11 +510,12 @@ func (resolver radioAudioResolver) ResolveCached(ctx context.Context, voiceText 
 }
 
 type radioUIPublisher struct {
-	service  *EngineerService
-	family   messagepolicy.Family
-	priority messagepolicy.Priority
-	source   string
-	visual   bool
+	diagnosticID string
+	service      *EngineerService
+	family       messagepolicy.Family
+	priority     messagepolicy.Priority
+	source       string
+	visual       bool
 }
 
 func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented radio.Presentation) error {
@@ -503,6 +536,9 @@ func (publisher radioUIPublisher) PublishRadio(ctx context.Context, presented ra
 		return nil
 	}
 	publisher.service.publishNotificationLocked(notification)
+	if publisher.service.visualPresentationEnabled {
+		publisher.service.deliveryJournal.update(publisher.diagnosticID, func(d *DeliveryDiagnostic) { d.Visual = true })
+	}
 	return nil
 }
 

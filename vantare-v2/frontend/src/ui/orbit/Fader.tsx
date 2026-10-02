@@ -1,3 +1,4 @@
+import { cx } from "./cx";
 export interface FaderProps {
   /** Posición 0–1. */
   value: number;
@@ -13,7 +14,7 @@ export function Fader({ value, className }: FaderProps) {
   return (
     <span
       aria-hidden="true"
-      className={["orbit-fader", className].filter(Boolean).join(" ")}
+      className={cx("orbit-fader", className)}
       data-testid="orbit-fader"
     >
       <i style={{ width: pct }} />

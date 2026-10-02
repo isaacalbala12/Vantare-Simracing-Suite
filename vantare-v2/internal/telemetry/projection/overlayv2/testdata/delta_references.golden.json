@@ -1,0 +1,46 @@
+{
+  "references": [
+    {
+      "requested": "personal-best",
+      "reference": "personal-best",
+      "seconds": {
+        "v": -0.238,
+        "q": "fresh"
+      },
+      "authority": "native"
+    },
+    {
+      "requested": "session-best",
+      "reference": "session-best",
+      "seconds": {
+        "v": 0.912,
+        "q": "stale"
+      },
+      "authority": "derived"
+    },
+    {
+      "requested": "previous-lap",
+      "reference": "previous-lap",
+      "seconds": {
+        "v": -0.71,
+        "q": "fresh"
+      },
+      "authority": "derived"
+    }
+  ],
+  "seconds": {
+    "v": -0.238,
+    "q": "fresh"
+  },
+  "reference": "personal-best",
+  "requested": "personal-best",
+  "available": [
+    "personal-best",
+    "session-best",
+    "previous-lap"
+  ],
+  "authority": "native",
+  "history": {
+    "q": "missing"
+  }
+}

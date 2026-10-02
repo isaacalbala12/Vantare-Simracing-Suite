@@ -117,6 +117,7 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalDamageWheelDetachedCount, "damage.wheel_detached_count", schema.DomainVehicle},
 		{SignalStandingsLapProgressTime, "standings.lap_progress_time", schema.DomainStandings},
 		{SignalStandingsCarNumber, "standings.car_number", schema.DomainStandings},
+		{SignalTyreWear, "tyres.wear", schema.DomainWheels},
 	}
 
 	got := All()
@@ -167,14 +168,15 @@ func TestCatalogISA129IDsAreStableAndAppendOnly(t *testing.T) {
 		SignalDamageWheelDetachedCount,
 		SignalStandingsLapProgressTime,
 		SignalStandingsCarNumber,
+		SignalTyreWear,
 	}
 	for index, id := range appended {
 		if want := SignalID(25 + index); id != want {
 			t.Fatalf("appended ID at index %d = %d, want %d", index, id, want)
 		}
 	}
-	if got := len(All()); got != 52 {
-		t.Fatalf("catalog definitions = %d, want 52", got)
+	if got := len(All()); got != 53 {
+		t.Fatalf("catalog definitions = %d, want 53", got)
 	}
 }
 

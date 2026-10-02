@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface SegOption<T extends string> {
   value: T;
@@ -26,9 +27,7 @@ export function Seg<T extends string>({
   label,
   className,
 }: SegProps<T>) {
-  const classes = ["orbit-seg", wide ? "orbit-seg--wide" : null, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-seg", wide ? "orbit-seg--wide" : null, className);
 
   return (
     <div aria-label={label} className={classes} role="group">
@@ -70,9 +69,7 @@ export function SegMulti<T extends string>({
   label,
   className,
 }: SegMultiProps<T>) {
-  const classes = ["orbit-seg", wide ? "orbit-seg--wide" : null, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-seg", wide ? "orbit-seg--wide" : null, className);
 
   return (
     <div aria-label={label} className={classes} role="group">

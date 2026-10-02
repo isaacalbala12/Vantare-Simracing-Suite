@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import { getStudioHotkey } from "./studio-hotkeys";
-import { useStudioDocument } from "./studio-store";
+import { useStudioActions, useStudioDirty, useStudioSelector } from "./studio-store";
 
 export const STUDIO_AUTOSAVE_DELAY_MS = 300;
 
@@ -15,7 +15,11 @@ export const STUDIO_AUTOSAVE_DELAY_MS = 300;
  */
 export function StudioAutosave(props: { delayMs?: number }): null {
   const { delayMs = STUDIO_AUTOSAVE_DELAY_MS } = props;
-  const { document, revision, dirty, saveState, save, undo, redo } = useStudioDocument();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const revision = useStudioSelector((s) => s.revision);
+  const dirty = useStudioDirty();
+  const saveState = useStudioSelector((s) => s.saveState);
+  const { save, undo, redo } = useStudioActions();
   const lastAttemptedDocumentRef = useRef<ProfileDocumentV3 | null>(null);
   const conflictPausedRef = useRef(false);
 

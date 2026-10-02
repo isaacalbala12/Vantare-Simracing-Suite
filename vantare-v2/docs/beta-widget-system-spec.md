@@ -1,5 +1,9 @@
 # Beta Widget System Spec
 
+> **Ámbito documental (2026-09-14):** Especificación histórica; no es una lista de capacidades implementadas ni un mandato de construir otro editor.
+> [Referencia vigente](overlays-studio/os-09-overlay-workshop-contract.md).
+
+
 Documento tecnico para workers que implementen el sistema beta de widgets.
 
 Este documento no es roadmap ni documento de producto. Su objetivo es evitar interpretaciones distintas entre agentes al implementar personalizacion avanzada de widgets.

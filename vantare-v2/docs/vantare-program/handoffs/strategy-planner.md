@@ -1,5 +1,12 @@
 # Handoff vivo — Strategy Planner
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+
 ## Resultado
 
 Un único producto que crea, compara, guarda, ejecuta y adapta planes para
@@ -9,7 +16,7 @@ son fases históricas.
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.
-- Este handoff y la issue de GitHub activa. Linear fue retirado el 2026-08-20;
+- La tarea y el proyecto Strategy Planner en Notion, y este handoff técnico. Linear fue retirado el 2026-08-20;
   las referencias posteriores a Linear se conservan solo como historial.
 - `docs/superpowers/specs/2026-07-13-strategy-planner-product-b-design.md` y
   `strategy-base.html` son referencias históricas que deben reauditarse.

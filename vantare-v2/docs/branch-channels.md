@@ -1,5 +1,13 @@
 # Canales de ramas y promociones
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
 ## Contrato canónico
 
 ```text
@@ -42,19 +50,11 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ## Automatización
 
-### Contrato de roadmap
+### Roadmap público
 
-- Las ramas `vantareapp/isa-N-*` y los hotfix ISA validan la issue N y su
-  decision `roadmap:required`/`roadmap:not-required` antes del merge.
-- `bot/roadmap-digest` es una excepcion exacta hacia `nightly`: solo puede
-  cambiar `vantare-v2/docs/roadmap/roadmap.json`, derivado del plan y del
-  estado base confiable. No puede modificar `plan.md`, no se autoanuncia como
-  entrega y no tiene auto-merge.
-- En `merge_group` se revalida la coherencia del arbol sintetico; no se intenta
-  recuperar una rama ISA que el evento no expone.
-- La ruta usa `pull_request`, `push` y `merge_group` con permisos de lectura.
-  Nunca ejecuta el candidato con `pull_request_target` ni concede autoridad a
-  texto libre de la issue.
+El contenido se edita visualmente en la app: Owner guarda un borrador privado
+y lo publica para todos. No hay rama automática ni gate de archivos de roadmap.
+Las ramas de código siguen las validaciones de canal descritas aquí.
 
 La proteccion efectiva requiere que el check `Validate promotion path` siga
 siendo obligatorio y que los cambios en `.github/`, `AGENTS.md` y
@@ -142,7 +142,7 @@ inventariada.
   en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
-- En los gates de canal de CI, las ramas Linear `isa-*` y `hotfix-isa-*` usan
+- En los gates de canal de CI, las ramas GitHub `isa-*` y `hotfix-isa-*` usan
   segmentos separados por guiones; un guion bajo solo es válido entre dos
   tokens alfanuméricos dentro del mismo segmento (por ejemplo, `merge_group`).
 - La única excepción es un hotfix crítico aprobado expresamente por Isaac:

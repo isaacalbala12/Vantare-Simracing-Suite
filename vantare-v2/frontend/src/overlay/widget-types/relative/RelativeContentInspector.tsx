@@ -3,6 +3,7 @@ import type { WidgetColumnWidthPreset } from "../shared/widget-column";
 import { Check, Field, Seg } from "../../../ui/orbit";
 import {
   moveRelativeColumn, parseRelativeContent, RELATIVE_COLUMN_TEMPLATES,
+  RELATIVE_RANGE_LIMIT,
   toggleRelativeColumn, updateRelativeColumn, updateRelativeFilters,
 } from "./relative-content";
 
@@ -11,6 +12,8 @@ const widths: { value: WidgetColumnWidthPreset; label: string }[] = [
   { value: "md", label: "Media" }, { value: "lg", label: "Ancha" }, { value: "auto", label: "Auto" },
 ];
 const aligns = [{ value: "left", label: "Izquierda" }, { value: "center", label: "Centro" }, { value: "right", label: "Derecha" }] as const;
+const nameFormats = [{ value: "full", label: "Completo" }, { value: "initial", label: "N. Apellido" }, { value: "surname", label: "Apellido" }] as const;
+const rangeOptions = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => index);
 
 export function RelativeContentInspector({ widget, disabled, onContentChange }: CustomInspectorProps): React.ReactElement {
   const content = parseRelativeContent(widget.content);
@@ -18,6 +21,12 @@ export function RelativeContentInspector({ widget, disabled, onContentChange }: 
   return (
     <div className="orbit-studio-ins__body" data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
       <div data-testid="studio-relative-filters">
+        <Field label="Delante">
+          <Seg label="Delante" value={String(content.rangeAhead)} wide options={rangeOptions.map((count) => ({ value: String(count), label: String(count), disabled }))} onChange={value => publish(updateRelativeFilters(content, { rangeAhead: Number(value) }))} />
+        </Field>
+        <Field label="Detrás">
+          <Seg label="Detrás" value={String(content.rangeBehind)} wide options={rangeOptions.map((count) => ({ value: String(count), label: String(count), disabled }))} onChange={value => publish(updateRelativeFilters(content, { rangeBehind: Number(value) }))} />
+        </Field>
         <Field label="Clase">
           <Seg label="Clase" value={content.classScope} wide options={[{ value: "all", label: "Todas", disabled }, { value: "sameClass", label: "Misma clase", disabled }]} onChange={value => publish(updateRelativeFilters(content, { classScope: value as "all" | "sameClass" }))} />
         </Field>
@@ -39,6 +48,7 @@ export function RelativeContentInspector({ widget, disabled, onContentChange }: 
               <div className="orbit-studio-cols__controls">
                 <Field label={`Ancho · ${name}`}><Seg label={`Ancho · ${name}`} value={column.widthPreset} options={widths.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { widthPreset: value as WidgetColumnWidthPreset }))} wide /></Field>
                 <Field label={`Alineación · ${name}`}><Seg label={`Alineación · ${name}`} value={column.style?.align ?? "center"} options={aligns.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { style: { align: value as "left" | "center" | "right" } }))} wide /></Field>
+                {column.metricId === "driverName" ? <Field label={`Nombre · ${name}`}><Seg label={`Nombre · ${name}`} value={nameFormats.some(option => option.value === column.format?.mode) ? String(column.format?.mode) : "full"} options={nameFormats.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { format: { mode: value } }))} wide /></Field> : null}
               </div>
             </li>
           );

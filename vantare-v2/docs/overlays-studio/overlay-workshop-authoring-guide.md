@@ -14,6 +14,8 @@ aplicación. No hay un segundo paso de traducción.
 
 ## Abrir el bucle rápido
 
+Ejecutar desde `vantare-v2/`, tras instalar dependencias según [operaciones](../operations.md). Las URLs usan el puerto de Vite; comprobar el mostrado por el servidor si 5173 está ocupado.
+
 1. Verifica rama y worktree (`git status --short` debe estar limpio).
 2. Ejecuta `corepack pnpm --dir frontend dev`.
 3. Abre una URL reproducible de `/workshop` (ver ejemplos abajo).
@@ -56,8 +58,10 @@ comprueba coherencia — un `design` cuyo `widgetType` o `systemId` no coincida 
 | Sistema visual | `frontend/src/overlay/design-systems/<sistema>/manifest.ts` | Registra renderer + controles de inspector + `parseSettings` por widget |
 | Renderer | `frontend/src/overlay/design-systems/<sistema>/<widget>/<Nombre>.tsx` | El componente real que se dibuja |
 | Estilos del sistema | `frontend/src/overlay/design-systems/<sistema>/tokens.css` | Tokens y reglas visuales |
-| Catálogo | `frontend/src/overlay/design-systems/official-designs.ts` | Los 41 diseños oficiales, escritos a mano |
-| Fixtures | `frontend/src/overlay/authoring/fixtures/authoring-fixtures.ts` | Datos deterministas por estado/escenario |
+| Catálogo | `frontend/src/overlay/design-systems/official-designs.ts` | Catálogo explícito; consultar registros y tests para disponibilidad por sistema |
+| Fixtures V2 | `frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-fixture.ts` | Escenarios deterministas de Overlay V2 |
+| Frame Workshop | `frontend/src/overlay/authoring/fixtures/authoring-v2-workshop-frame.ts` | Prepara el frame de la superficie de autoría |
+| Widget de escenario | `frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-widget.ts` | Prepara widget y configuración del escenario |
 
 Los renderers reciben ViewModels puros. **Nunca** acceden a persistencia,
 permisos, Wails/SSE ni posición en el canvas.
@@ -79,7 +83,7 @@ Cambiar cómo se ve un diseño que ya está en el catálogo.
 `design-systems/vantare-original/delta/DeltaOriginal.tsx` o las reglas `.vo-delta*`
 de `design-systems/vantare-original/tokens.css`.
 
-Checks: `vitest run src/overlay/design-systems/vantare-original/delta/DeltaOriginal.test.tsx`
+Checks desde `frontend/`: `pnpm exec vitest run src/overlay/design-systems/vantare-original/delta/DeltaOriginal.test.tsx`
 
 ### Trampa de selector: el root lleva su propio `data-widget-system`
 
@@ -102,7 +106,7 @@ espacio de más es la primera causa que debes descartar.
 ### Cómo se aplica el cambio de CSS
 
 `tokens.css` entra por `@import` desde `src/index.css`, que pasa por Tailwind v4.
-Un cambio en tokens **recarga la página completa** en vez de hacer un hot-update
+En el corte OS-09 se observó que un cambio en tokens **recargaba la página completa** en vez de hacer un hot-update
 aislado de CSS: verás `[vite] connecting… connected` en consola y no
 `[vite] css hot updated`. El servidor de Vite no se reinicia y el cambio se ve de
 inmediato, pero cualquier estado efímero de la página se pierde. Cuenta con ello
@@ -133,7 +137,7 @@ en vez de silencioso.
 `DeltaCrystal.tsx` despacha entre `DeltaBarCrystal.tsx` y `DeltaSimpleCrystal.tsx`.
 Los dos diseños viven en el catálogo como `delta-crystal-bar` y `delta-crystal-simple`.
 
-Checks: `vitest run src/overlay/design-systems/vantare-crystal/delta/` +
+Checks desde `frontend/`: `pnpm exec vitest run src/overlay/design-systems/vantare-crystal/delta/` +
 `src/overlay/design-systems/official-designs.test.ts`
 
 ## Receta 3 — Nuevo tipo funcional
@@ -146,13 +150,12 @@ Un widget que muestra un dato que ningún tipo existente cubre.
 3. Implementa un renderer **por cada sistema soportado**.
 4. Registra el widget en el `manifest.ts` de cada sistema y añade sus diseños a
    `official-designs.ts`.
-5. Añade fixture neutral en `authoring/fixtures/authoring-fixtures.ts` y tests.
+5. Añade el escenario a los adaptadores `authoring-v2-*` de `authoring/fixtures/` y sus tests; comprobar el consumo desde `OverlayWorkshopDevRoute.tsx`. No recuperar la fixture legacy eliminada.
 
 Si un tipo solo existe en un sistema, decláralo así y no fabriques un registro
-vacío en el otro. `engineer-radio` es el precedente real: solo `vantare-crystal`,
-y el parser de la query lo rechaza explícitamente con otro sistema.
+vacío en el otro. `engineer-radio` admite `vantare-crystal` y `vantare-functional`; el parser rechaza los demás. Ver `overlay-workshop-query.ts` y los manifests para la compatibilidad vigente.
 
-Checks: `vitest run src/overlay/core/overlay-workshop-characterization.test.ts` +
+Checks desde `frontend/`: `pnpm exec vitest run src/overlay/core/overlay-workshop-characterization.test.ts` +
 `src/overlay/design-systems/official-designs.test.ts` + `design-system:check`
 
 ## Receta 4 — Nuevo sistema visual
@@ -211,7 +214,7 @@ corepack pnpm --dir frontend design-system:check
 | "Cambia el color/espaciado de Delta Original" | `vantare-original/tokens.css` | `DeltaOriginal.test.tsx` |
 | "Delta Original sin cabecera" | `vantare-original/delta/DeltaOriginal.tsx` | `DeltaOriginal.test.tsx` |
 | "Otra composición de Delta Crystal" | `vantare-crystal/delta/delta-settings.ts` + nuevo `*Crystal.tsx` + `official-designs.ts` | `delta-settings.test.ts`, `official-designs.test.ts` |
-| "Un widget nuevo de presión de neumáticos" | `widget-types/*`, `widget-registry.ts`, `manifest.ts` ×2, `official-designs.ts`, fixtures | caracterización + catálogo + `design-system:check` |
+| "Un widget nuevo de presión de neumáticos" | `widget-types/*`, `widget-registry.ts`, `manifest.ts` por sistema soportado, `official-designs.ts`, fixtures | caracterización + catálogo + `design-system:check` |
 | "Un sistema visual nuevo" | `design-systems/<nuevo>/**`, `design-system-registry.ts` | todo lo anterior + `build` |
 
 ## Prohibiciones

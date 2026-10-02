@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { AnimationScene } from "./animation-scenes";
+import { getAnimationScene, type AnimationScene } from "./animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./scene-interpolation";
+import { buildWorkshopFrameV2 } from "./authoring-v2-workshop-frame";
 
 const scene: AnimationScene = {
   id: "test",
@@ -19,6 +20,47 @@ const gapAt = (ms: number, loop = false) =>
   interpolateSceneAt(scene, ms, loop).frame.cars?.A?.timeBehindLeader;
 
 describe("scene interpolation", () => {
+  it("moves radar samples through the productive frame while overlap changes at the keyframe", () => {
+    const radarScene = getAnimationScene("radar-nearby-traffic", "vantare-functional", "race")!;
+    const entering = interpolateSceneAt(radarScene, radarScene.frameMs, false).frame;
+    const quarter = interpolateSceneAt(radarScene, radarScene.frameMs * 1.25, false).frame;
+    const approaching = interpolateSceneAt(radarScene, radarScene.frameMs * 2, false).frame;
+    expect(quarter.radarCars?.[0]?.z).toBeCloseTo((entering.radarCars![0].z * 3 + approaching.radarCars![0].z) / 4);
+    const parallel = interpolateSceneAt(radarScene, radarScene.frameMs * 5, false).frame;
+    const runtime = buildWorkshopFrameV2({
+      session: "race", location: "track", state: "ready", widget: "radar",
+      system: "vantare-functional", variant: "default",
+      sceneId: radarScene.id, sceneState: parallel,
+    });
+    expect(runtime.overlayV2Frame?.radar.cars.map((car) => [car.id, car.near, car.lapped])).toEqual([
+      ["izquierda", true, false], ["derecha", true, false], ["doblado", false, true],
+    ]);
+    expect(runtime.overlayV2Frame?.radar.cars.filter((car) => car.overlap)).toHaveLength(2);
+    const closeLapped = buildWorkshopFrameV2({
+      session: "race", location: "track", state: "ready", widget: "radar",
+      system: "vantare-functional", variant: "default",
+      sceneId: radarScene.id, sceneState: interpolateSceneAt(radarScene, radarScene.frameMs * 6, false).frame,
+    });
+    expect(closeLapped.overlayV2Frame?.radar.cars.find((car) => car.id === "doblado")).toMatchObject({ near: true, lapped: true, overlap: false });
+    const overlappingLapped = interpolateSceneAt(radarScene, radarScene.frameMs * 7, false).frame;
+    expect(overlappingLapped.radarCars?.find((car) => car.id === "doblado")?.overlap).toBe(true);
+    expect(interpolateSceneAt(radarScene, 0, true).frame.radarCars).toEqual([]);
+    expect(interpolateSceneAt(radarScene, radarScene.frameMs * radarScene.frames.length, true).frame.radarCars).toEqual([]);
+  });
+  it("keeps the fastest-lap record discrete and restores the baseline at each complete loop", () => {
+    const lapScene = getAnimationScene("fastest-lap-alert")!;
+    const bestAt = (ms: number) => interpolateSceneAt(lapScene, ms, true).frame.cars?.["Antonio Giovinazzi"]?.bestLapTime;
+    expect(bestAt(0)).toBe(90.904);
+    expect(bestAt(7999)).toBe(90.904);
+    expect(bestAt(8000)).toBe(90.904);
+    expect(bestAt(16000)).toBe(89.902);
+    expect(bestAt(24000)).toBe(89.902);
+    expect(interpolateSceneAt(lapScene, 7999, true).keyframe).toBe(0);
+    expect(interpolateSceneAt(lapScene, 7999, true).frame.player?.bestLapSeconds).toBe(92.304);
+    expect(interpolateSceneAt(lapScene, 8000, true).frame.player?.bestLapSeconds).toBe(91.202);
+    expect(interpolateSceneAt(lapScene, 24000, true).frame.player?.bestLapSeconds).toBe(89.402);
+    expect(bestAt(32000)).toBe(90.904);
+  });
   it("holds the first keyframe at the start", () => {
     expect(gapAt(0)).toBe(10);
   });
@@ -87,9 +129,14 @@ describe("scene interpolation", () => {
     expect(interpolateSceneAt(scene, cycle + 500, true).keyframe).toBeLessThan(2);
   });
 
-  it("reports the keyframe being approached, so the caption leads the motion", () => {
+  it("keeps the step and caption with the current facts until the next keyframe", () => {
     expect(interpolateSceneAt(scene, 100, false).frame.caption).toBe("inicio");
-    expect(interpolateSceneAt(scene, 900, false).frame.caption).toBe("medio");
+    expect(interpolateSceneAt(scene, 900, false).frame.caption).toBe("inicio");
+    const beforePit = interpolateSceneAt(scene, 1900, false);
+    expect(beforePit.keyframe).toBe(1);
+    expect(beforePit.frame.caption).toBe("medio");
+    expect(beforePit.frame.cars?.A?.inPits).toBe(false);
+    expect(interpolateSceneAt(scene, 2000, false).keyframe).toBe(2);
   });
 
   it("states how long one pass takes", () => {
@@ -126,6 +173,13 @@ describe("sampling at the widget's telemetry rate", () => {
       distinct.add(sampleAtRate(ms, 15));
     }
     expect(distinct.size).toBe(15);
+  });
+
+  it.each([15, 30])("keeps exact keyframes at %i Hz without sampling ahead", (rate) => {
+    for (const ms of [1600, 8000, 14400, 16000]) {
+      expect(sampleAtRate(ms, rate)).toBe(ms);
+      expect(sampleAtRate(ms - 0.01, rate)).toBeLessThan(ms);
+    }
   });
 
   it("gives delta and pedals twice that", () => {

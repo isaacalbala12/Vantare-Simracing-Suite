@@ -30,3 +30,11 @@ Portar `CalendarPage.tsx` / `hub/calendar` a Orbit con las cinco vistas y el mot
 
 ## Referencias
 `06 § Carreras`, `04` (HorizontalTimeline, ListRow, Kbd), `13.3`, `14 races.*`, `configs/calendar-lmu.json`.
+
+## Ajuste visual aprobado por Isaac · 24/09/2026
+
+Las capturas de la build Wails sustituyen la disposición inicial de este briefing en estos puntos: el detalle empieza cerrado, se abre al seleccionar una serie y se puede cerrar; la lista gana todo el ancho mientras esté cerrado. Día conserva cada salida real y la organiza en franjas de 15 minutos. Mes permite abrir Día desde cualquier celda, además del número. Semanales y especiales usan colores distintos entre sí y de las diarias, basados en `eventKind`. Timeline muestra solo las salidas de la próxima hora como marcas breves, con zoom del eje de 1× a 2×. El rail activo y la fila seleccionada se reconocen por su fondo, sin barra vertical decorativa. La composición responde al zoom y a la anchura disponible.
+
+## Revisión de Isaac · 25/09/2026
+
+Día mantiene el desplazamiento inicial a la franja actual, pero sin teñir de rojo la fila completa. Semana enseña únicamente series semanales y eventos especiales; Día, Mes y Próximas siguen incluyendo las salidas diarias. En Timeline los nombres y puntos tienen margen y permanecen visibles al desplazarse; el eje se amplía hasta 4×, muestra el factor actual y ofrece botones para avanzar o retroceder horizontalmente en tramos de 15 minutos visibles, además del arrastre y la rueda con modificador. Se retira la línea roja de «ahora», que atravesaba los rótulos al desplazar el eje.

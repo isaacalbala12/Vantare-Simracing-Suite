@@ -9,6 +9,8 @@ export type RelativeRowViewModel = {
   vehicleClass: string;
   driverNumber: string;
   driverName: string;
+  /** Nombre ya formateado según `format.mode` de la columna Piloto; si falta, se muestra `driverName`. */
+  configuredDriverName?: string;
   gapText: string;
   bestLapText: string;
   lastLapText: string;
@@ -16,6 +18,10 @@ export type RelativeRowViewModel = {
   side: RelativeSide;
   tone: "ahead" | "behind" | "player" | "neutral";
   gapSeconds: number | null;
+  /** Per-cell provenance stays independent from source lifecycle. */
+  fieldQuality?: Partial<Record<string, "fresh" | "stale" | "missing" | "invalid">>;
+  /** Vueltas respecto al jugador; solo cuando el dato canónico está fresco en carrera. */
+  lapDelta?: number | null;
 };
 
 export type RelativeViewModel = WidgetViewModelBase & {
@@ -24,19 +30,32 @@ export type RelativeViewModel = WidgetViewModelBase & {
   presentationKey?: string;
   columns: readonly WidgetColumnV3[];
   rowHeightMode: RelativeContent["rowHeightMode"];
+  /** Visual slots around the player; selection remains in `rows`. */
+  rangeAhead?: number;
+  rangeBehind?: number;
   rows: readonly RelativeRowViewModel[];
+  /** Datos extra opcionales para las barras de información (estructura de la
+   *  referencia: meta arriba, reloj/ambiente abajo). Solo existen cuando la
+   *  fuente V2 los entrega — lo ausente se omite, nunca se inventa. */
+  sessionLabel?: string;
+  remainingText?: string;
+  trackText?: string;
+  playerBadgeText?: string;
+  ambientTempText?: string;
+  trackTempText?: string;
+  windText?: string;
 };
 
 export function resolveRelativeCellValue(row: RelativeRowViewModel, metricId: string): string {
   switch (metricId) {
     case "position":
-      return String(row.position);
+      return Number.isInteger(row.position) && row.position > 0 ? String(row.position) : "—";
     case "class":
       return row.vehicleClass;
     case "carNumber":
       return row.driverNumber;
     case "driverName":
-      return row.driverName;
+      return row.configuredDriverName ?? row.driverName;
     case "gap":
       return row.gapText;
     case "bestLap":

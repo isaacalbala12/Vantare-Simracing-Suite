@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import type { WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget-diagnostics";
@@ -13,6 +13,8 @@ export type RuntimeWidgetFrameProps = {
   profileId: string;
   telemetry: TelemetryRateCoordinator;
   renderMode: "desktop" | "obs";
+  /** Decisión pura de marca (política + preferencia), resuelta en la superficie. */
+  brandVisible?: boolean;
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
@@ -22,10 +24,29 @@ export type RuntimeWidgetFrameProps = {
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, brandVisible, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
+  );
+  const runtime = useMemo(
+    () => ({
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceScheduleEvents: raceSchedule?.events,
+      raceScheduleStatus: raceSchedule?.status,
+      ...runtimeTelemetry,
+      relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+    }),
+    [
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceSchedule?.events,
+      raceSchedule?.status,
+      runtimeTelemetry,
+      profileId,
+      widget.id,
+    ],
   );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
@@ -51,16 +72,10 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
         <WidgetVisualHost
           widget={widget}
           renderMode={renderMode}
+          brandVisible={brandVisible}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{
-            engineerPresentation,
-            engineerSubtitlesEnabled,
-            raceScheduleEvents: raceSchedule?.events,
-            raceScheduleStatus: raceSchedule?.status,
-            ...runtimeTelemetry,
-            relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
-          }}
+          runtime={runtime}
         />
       </WidgetVisualViewport>
     </div>
@@ -96,6 +111,7 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.profileId === right.profileId &&
   left.telemetry === right.telemetry &&
   left.renderMode === right.renderMode &&
+  left.brandVisible === right.brandVisible &&
   sameOrigin(left.layoutOrigin, right.layoutOrigin) &&
   left.onDiagnostic === right.onDiagnostic &&
   left.diagnostics === right.diagnostics &&

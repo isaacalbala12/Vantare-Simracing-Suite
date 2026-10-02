@@ -249,7 +249,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: vantare-v2/frontend/pnpm-lock.yaml
       - name: Install pinned Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha.98
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24
       - name: Install frontend dependencies
         run: pnpm --dir vantare-v2/frontend install --frozen-lockfile
       - name: Post-merge smoke and frontend build

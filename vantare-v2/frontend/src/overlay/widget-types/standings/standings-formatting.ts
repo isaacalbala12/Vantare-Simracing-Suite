@@ -1,11 +1,11 @@
 import type { WidgetColumnV3 } from "../shared/widget-column";
+import { formatDriverName } from "../shared/driver-name";
 
 export type StandingsSessionMode = "practice" | "qual" | "race" | "other";
 
 export type StandingsScoringRow = Record<string, unknown>;
 
 const PLACEHOLDER = "—";
-const DEFAULT_NAME_MAX_CHARS = 16;
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -21,28 +21,14 @@ function clampDecimals(value: unknown): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-function truncateText(value: string, maxChars: number): string {
-  if (maxChars <= 1) return "…";
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars - 1)}…`;
-}
-
 function formatStandingsDriverName(name: string | undefined, column: WidgetColumnV3): string {
-  const value = name ?? "?";
-  const format = column.format;
-  const mode = readString(format?.mode);
-  if (mode !== "truncate") return value;
-
-  const configuredMax = readNumber(format?.maxChars);
-  if (configuredMax != null && configuredMax < 2) return "…";
-  const maxChars = Math.max(2, Math.min(64, Math.round(configuredMax ?? DEFAULT_NAME_MAX_CHARS)));
-  return truncateText(value, maxChars);
+  return formatDriverName(name, column);
 }
 
-function formatStandingsLapTime(seconds: number | undefined, column: WidgetColumnV3): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "-";
+export function formatStandingsLapTime(seconds: number | undefined, column?: WidgetColumnV3): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return PLACEHOLDER;
 
-  const format = column.format;
+  const format = column?.format;
   const display = readString(format?.display) === "compact" ? "compact" : "full";
   const decimals = clampDecimals(format?.decimals);
 
@@ -88,6 +74,17 @@ export function formatRemainingTime(seconds: number | undefined): string {
   return `${pad(m)}:${pad(s)}`;
 }
 
+export function formatStandingsSecondsDifference(seconds: number | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds === 0) return PLACEHOLDER;
+  return `${seconds > 0 ? "+" : ""}${seconds.toFixed(2)}s`;
+}
+
+export function formatStandingsLapDifference(laps: number | undefined): string {
+  if (laps == null || !Number.isFinite(laps) || laps === 0) return PLACEHOLDER;
+  const magnitude = Math.abs(laps);
+  return `${laps > 0 ? "+" : "-"}${magnitude} ${magnitude === 1 ? "vuelta" : "vueltas"}`;
+}
+
 export function formatStandingsGap(
   row: StandingsScoringRow,
   classLeader: StandingsScoringRow | undefined,
@@ -99,13 +96,13 @@ export function formatStandingsGap(
   }
   const lapsDiff =
     Number(row.lapsBehindLeader ?? 0) - Number(classLeader?.lapsBehindLeader ?? 0);
-  if (lapsDiff > 0) {
-    return `+${lapsDiff}L`;
+  if (lapsDiff !== 0) {
+    return formatStandingsLapDifference(lapsDiff);
   }
   const timeDiff =
     Number(row.timeBehindLeader ?? 0) - Number(classLeader?.timeBehindLeader ?? 0);
-  if (timeDiff > 0) {
-    return `+${timeDiff.toFixed(3)}s`;
+  if (timeDiff !== 0) {
+    return formatStandingsSecondsDifference(timeDiff);
   }
   return PLACEHOLDER;
 }
@@ -167,10 +164,10 @@ export function formatStandingsColumnValue(
       return formatStandingsGapForMode(mode, row, classLeader);
     case "interval": {
       const interval = row.timeBehindNext;
-      if (typeof interval !== "number" || !Number.isFinite(interval) || interval <= 0) {
+      if (typeof interval !== "number" || !Number.isFinite(interval) || interval === 0) {
         return PLACEHOLDER;
       }
-      return `+${interval.toFixed(3)}s`;
+      return formatStandingsSecondsDifference(interval);
     }
     case "currentLap":
       return String(row.totalLaps ?? "");

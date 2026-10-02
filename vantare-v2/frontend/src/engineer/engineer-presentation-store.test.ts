@@ -30,6 +30,39 @@ describe("engineer presentation projection", () => {
     expect(() => parseEngineerPresentation({ ...presentation, version: 2 })).toThrow();
   });
 
+  it("accepts every producer the service publishes and keeps rejecting unknown sources", () => {
+    const voice = {
+      ...presentation,
+      id: "voice-turn-1",
+      category: "voice",
+      severity: "info",
+      textKey: "voice.query_answered",
+      role: "engineer" as const,
+      channel: "engineer" as const,
+      source: "voice-input" as const,
+    };
+    expect(parseEngineerPresentation(voice)).toEqual(voice);
+
+    // performance-sensor publishes visual-only presentations without voiceText.
+    const performance = {
+      version: 1,
+      id: "performance-level-2-1",
+      category: "performance",
+      severity: "info",
+      textKey: "performance.level.2",
+      text: presentation.text,
+      locale: "es",
+      role: "engineer" as const,
+      channel: "engineer" as const,
+      priority: 50,
+      createdAt: 1_000,
+      expiresAt: 6_000,
+      source: "performance-sensor" as const,
+    };
+    expect(parseEngineerPresentation(performance)).toEqual(performance);
+    expect(() => parseEngineerPresentation({ ...presentation, source: "strategy" })).toThrow();
+  });
+
   it("projects replacement and canonical expiry without a React-owned lifecycle", () => {
     let now = 1_000;
     let expiryCallback: (() => void) | undefined;

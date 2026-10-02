@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { Events } from "@wailsio/runtime";
+import "../../styles/orbit-launcher-alert.css";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   Button,
@@ -42,11 +44,15 @@ import {
   type LauncherOrbitApp,
 } from "./launcher-orbit-model";
 import { AppChainStep, AppMonogram } from "./AppMonogram";
+import {
+  LAUNCHER_CONTEXT_SLOT_ID,
+  LAUNCHER_TOPBAR_SLOT_ID,
+} from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-launcher.css";
 
-/** Huecos que la shell reserva para el Launcher (briefing 05). */
-export const LAUNCHER_CONTEXT_SLOT_ID = "orbit-launcher-context-slot";
-export const LAUNCHER_TOPBAR_SLOT_ID = "orbit-launcher-topbar-slot";
+/** Huecos que la shell reserva para el Launcher (briefing 05). Los ids viven
+    en `orbit-slot-ids` para que la shell no importe la página entera. */
+export { LAUNCHER_CONTEXT_SLOT_ID, LAUNCHER_TOPBAR_SLOT_ID };
 
 /** Lápiz de editar: el sprite Orbit no lo trae (precedente D-47). */
 function PencilMark() {
@@ -141,6 +147,12 @@ export function LauncherOrbitPage() {
   // del kit, nunca en un confirm() nativo.
   const [addingApp, setAddingApp] = useState(false);
   const [appToRemove, setAppToRemove] = useState<LauncherOrbitApp | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => Events.On("launcher:error", (event: unknown) => {
+    const message = (event as { data?: { message?: unknown } })?.data?.message;
+    if (typeof message === "string") setError(message);
+  }), []);
 
   // Misma detección real que el Launcher clásico: el store la salta si el
   // último escaneo sigue fresco (TTL), así que entrar aquí no relanza el disco.
@@ -230,11 +242,9 @@ export function LauncherOrbitPage() {
       description: "",
       steps: [],
     };
-    // El borrador se guarda en local **antes** de despachar: el editor abre en
-    // el mismo clic y deja de depender de que el backend devuelva el perfil.
+    // El borrador local abre el editor sin crear un perfil vacío al cancelar.
     setDraftProfile(blank);
     setEditingProfileId(id);
-    dispatchLauncherCommand("launcher:profile:save", { profile: blank });
   };
 
   const renderProfile = (profile: LaunchProfile, isFeatured: boolean) => {
@@ -271,6 +281,7 @@ export function LauncherOrbitPage() {
             </button>
             <Button
               data-testid={`orbit-launcher-run-${profile.id}`}
+              disabled={profile.steps.length === 0}
               onClick={() => launch(profile.id)}
               variant={isFeatured ? "primary" : "ghost"}
             >
@@ -483,6 +494,13 @@ export function LauncherOrbitPage() {
         </SubtleStatus>
       </header>
 
+      {error ? (
+        <div className="orbit-launcher__error" role="alert">
+          <span>{error}</span>
+          <button aria-label={t("launcher.error.dismiss")} onClick={() => setError("")} type="button">×</button>
+        </div>
+      ) : null}
+
       <StatRow className="orbit-launcher__stats">
         <StatTile
           label={t("launcher.stats.apps")}
@@ -550,6 +568,7 @@ export function LauncherOrbitPage() {
             ) : (
               visibleApps.map((app) => (
                 <ListRow
+                  as="div"
                   key={app.id}
                   leading={<AppMonogram app={app} g1={app.g1} g2={app.g2} size={39} text={app.abbreviation} />}
                   subtitle={`${t(app.categoryKey)} · ${t(app.methodKey)}`}
@@ -696,7 +715,7 @@ export function LauncherOrbitPage() {
           }}
           onSave={(updated) => {
             setDraftProfile((draft) => (draft?.id === updated.id ? updated : draft));
-            dispatchLauncherCommand("launcher:profile:save", { profile: updated });
+            dispatchLauncherCommand("launcher:profile:save", updated);
           }}
           open
           profile={editingProfile}

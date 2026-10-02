@@ -1,92 +1,22 @@
-# Vantare Engineer — OBS Setup
+# Engineer en OBS local
 
-> **Fase:** EN9.4.
-> **Worktree:** `codex/engineer-release`.
-> **Aplicable a:** OBS Browser Source consumiendo el bus de notificaciones de Vantare Engineer.
+Usar primero la [guía OBS del mismo PC](obs-local-setup.md). El servidor solo admite loopback; el plan de doble PC no es una función disponible. Añadir el widget `engineer-radio` al perfil que sirve el overlay y comprobar los permisos y el estado de Engineer en esa build.
 
-## 1. Endpoints
+## Contrato comprobado en código
 
-El servidor HTTP local de Vantare expone dos endpoints relacionados con Engineer:
+- [server.go](../internal/server/server.go) registra `/engineer/stream` y `/api/engineer/health`.
+- [engineer_sse.go](../internal/server/engineer_sse.go) publica SSE `event: engineer-stream` desde `SubscribeStream()`, con keep-alive cada 15 s. Un servicio no inicializado devuelve 503; un stream abierto no demuestra que haya mensajes ni audio disponible.
+- [ObsOverlayApp](../frontend/src/overlay/ObsOverlayApp.tsx) usa el adaptador/store de presentación Engineer. El widget actual es [engineer-radio](../frontend/src/overlay/widget-types/engineer-radio/engineer-radio-definition.ts); la antigua forma `EngineerNotification` no es el contrato del evento actual.
+- El endpoint de salud es diagnóstico. No demuestra paridad visual ni validación de LMU, voz o permisos.
 
-| Endpoint | Tipo | Propósito |
-|---|---|---|
-| `GET /engineer/stream` | SSE | Stream de notificaciones en vivo (lo que consume el widget en OBS). |
-| `GET /api/engineer/health` | JSON | Snapshot de salud del servicio (diagnóstico). |
+## Prueba manual por build
 
-La URL base es la misma que usa el overlay (ej. `http://127.0.0.1:39261` por defecto). Ver `docs/obs-local-setup.md` para los detalles del setup general de OBS.
+1. Abrir un perfil de prueba con `engineer-radio` y copiar su URL OBS local.
+2. Añadir esa URL como fuente de navegador en OBS y usar el tamaño del overlay.
+3. Con Engineer habilitado y una sesión LMU válida, provocar un aviso reproducible admitido por sus capacidades. Anotar evento, datos disponibles y resultado; una fixture de Workshop solo valida presentación.
+4. Confirmar que aparece el mensaje y desaparece cuando corresponde; comparar con la presentación en la app.
+5. Refrescar/cerrar la fuente OBS y reabrirla; comprobar recuperación. Desconectar la red física no corta una conexión loopback y no es una prueba de reconexión SSE.
 
-## 2. Stream SSE `/engineer/stream`
+No se ha ejecutado esta prueba física en la revisión documental. [Handoff Engineer](vantare-program/handoffs/engineer-spotter.md) contiene la evidencia por corte.
 
-### Comportamiento
-
-- `Content-Type: text/event-stream`
-- `Cache-Control: no-cache`
-- `Connection: keep-alive`
-- `X-Accel-Buffering: no`
-- Keep-alive cada 15 s (línea `:keep-alive\n\n`).
-- Cierra limpiamente cuando el cliente se desconecta (`r.Context().Done()`).
-- Devuelve `503 engineer service not available` si Ingeniero está deshabilitado o no inicializado.
-
-### Eventos emitidos
-
-```text
-event: engineer-notification
-data: {"id":"...","text":"Coche a la izquierda",...}
-
-```
-
-El campo `data` es un `EngineerNotification` serializado: `id`, `category`, `severity`, `textKey`, `text`, `priority`, `createdAt`, `expiresAt`, `source`.
-
-### Reconexión
-
-El `EventSource` del navegador reconecta automáticamente ante desconexión. OBS Browser Source hereda este comportamiento.
-
-## 3. Health endpoint `/api/engineer/health`
-
-Devuelve un snapshot JSON ligero para diagnóstico OBS o monitorización externa.
-
-```json
-{
-  "ok": true,
-  "source": "simulator",
-  "connected": true,
-  "enabled": true,
-  "subscribers": 1,
-  "dropCount": 0,
-  "lastError": ""
-}
-```
-
-- `200 OK` cuando `ok=true` (servicio habilitado y con source configurada).
-- `503 Service Unavailable` cuando `ok=false` (ej. Engineer deshabilitado).
-
-### Backpressure: `dropCount`
-
-Cuando un cliente SSE está saturado (canal lleno), el servicio descarta notificaciones para ese cliente y suma 1 a `dropCount`. No se reintenta (los eventos son puntuales y la siguiente notificación tapará el hueco visualmente). Si `dropCount` crece rápido, suele indicar un cliente OBS bloqueado o un widget que no se está renderizando.
-
-## 4. Configuración recomendada en OBS
-
-1. Crear `Browser Source` en OBS.
-2. URL del overlay: `http://127.0.0.1:39261/overlay?profile=tu-perfil`.
-3. Tamaño: el que tenga el widget `engineer-notifications` en el perfil.
-4. Refresh: el del perfil (no necesita ajustes adicionales).
-5. Si el widget no aparece, verificar:
-   - `/api/engineer/health` devuelve 200.
-   - El perfil contiene el widget `engineer-notifications`.
-   - Engineer está habilitado en el Hub.
-
-## 5. Checklist de verificación manual
-
-- [ ] Abrir la app, ir a `Ingeniero`, activar `Simulador`.
-- [ ] En OBS, añadir Browser Source con `http://127.0.0.1:39261/overlay?profile=...`.
-- [ ] Verificar que las notificaciones del spotter aparecen en OBS (ej. `Coche a la izquierda`).
-- [ ] Desconectar la red del PC de OBS unos segundos y reconectar. El stream debe reanudarse.
-- [ ] Verificar `GET http://127.0.0.1:39261/api/engineer/health` en navegador: JSON con `ok: true`.
-- [ ] Forzar muchos mensajes seguidos: `dropCount` puede crecer levemente (≤ unos pocos) y volver a 0 entre sesiones.
-- [ ] Cerrar OBS y volver a abrir: el stream debe reconectarse sin reiniciar la app.
-
-## 6. Limitaciones conocidas
-
-- No hay `Last-Event-ID` ni replay: si un cliente se desconecta, no recibe los eventos perdidos durante el gap.
-- No hay autenticación: el servidor HTTP está pensado para LAN local. Para OBS en doble PC, ver `docs/obs-lan-double-pc-plan.md`.
-- El `dropCount` es global del proceso; no se desglosa por suscriptor.
+[Guía EN9.4 original](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/engineer-obs-setup.md), con su contrato de notificaciones anterior.

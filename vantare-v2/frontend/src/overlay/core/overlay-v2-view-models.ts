@@ -8,6 +8,7 @@ import { buildFuelStrategyViewModelV2 } from "../widget-types/fuel-strategy/fuel
 import { buildPedalsTelemetryViewModelV2 } from "../widget-types/pedals-telemetry/pedals-telemetry-view-model-v2";
 import { buildInputTelemetryViewModelV2 } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 import { buildRacingFlagsViewModelV2 } from "../widget-types/racing-flags/racing-flags-view-model-v2";
+import { buildFastestLapViewModelV2 } from "../widget-types/fastest-lap/fastest-lap-view-model";
 import { buildDeltaAdvancedViewModelV2 } from "../widget-types/delta-advanced/delta-advanced-view-model-v2";
 import { buildDeltaTraceViewModelV2 } from "../widget-types/delta-trace/delta-trace-view-model-v2";
 import { buildPedalsViewModelV2 } from "../widget-types/pedals/pedals-view-model-v2";
@@ -15,6 +16,7 @@ import { buildPedalsTelemetryCompactViewModelV2 } from "../widget-types/pedals-t
 import { buildMulticlassRelativeViewModelV2 } from "../widget-types/multiclass-relative/multiclass-relative-view-model-v2";
 import { buildHeadToHeadViewModelV2 } from "../widget-types/head-to-head/head-to-head-view-model-v2";
 import { buildTrackMapViewModelV2 } from "../widget-types/track-map/track-map-view-model-v2";
+import { buildRadarViewModelV2 } from "../widget-types/radar/radar-view-model-v2";
 import { buildTrackWeatherViewModelV2 } from "../widget-types/track-weather/track-weather-view-model-v2";
 import { buildBroadcastTowerViewModelV2 } from "../widget-types/broadcast-tower/broadcast-tower-view-model-v2";
 import { buildCarDamageNumbersViewModelV2 } from "../widget-types/car-damage-numbers/car-damage-numbers-view-model-v2";
@@ -34,21 +36,21 @@ export type OverlayV2ViewModelEntry = Readonly<{
 function deltaBuilder(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
-  _content: Record<string, unknown>,
+  content: Record<string, unknown>,
 ): WidgetViewModelBase {
-  void _content;
-  return buildDeltaViewModelV2(frame, source);
+  return buildDeltaViewModelV2(frame, source, content as never);
 }
 
 export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewModelEntry> = new Map<
   WidgetType,
   OverlayV2ViewModelEntry
 >([
+  ["fastest-lap", { buildViewModelV2: (frame, source, content) => buildFastestLapViewModelV2(frame, source, content as never) }],
   [
     "standings",
     {
-      buildViewModelV2: (frame, source, content) =>
-        buildStandingsViewModelV2(frame, source, content as never),
+      buildViewModelV2: (frame, source, content, ctx) =>
+        buildStandingsViewModelV2(frame, source, content as never, ctx?.standingsWindow),
     },
   ],
   [
@@ -109,6 +111,7 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   ["multiclass-relative", { buildViewModelV2: (frame, source, content) => buildMulticlassRelativeViewModelV2(frame, source, content as never) }],
   ["head-to-head", { buildViewModelV2: (frame, source, content) => buildHeadToHeadViewModelV2(frame, source, content as never) }],
   ["track-map", { buildViewModelV2: (frame, source, content) => buildTrackMapViewModelV2(frame, source, content as never) }],
+  ["radar", { buildViewModelV2: (frame, source) => buildRadarViewModelV2(frame, source) }],
   ["broadcast-tower", { buildViewModelV2: (frame, source, content) => buildBroadcastTowerViewModelV2(frame, source, content as never) }],
   ["track-weather", { buildViewModelV2: (frame, source, content) => buildTrackWeatherViewModelV2(frame, source, content as never) }],
   ["car-damage-numbers", { buildViewModelV2: (frame, source, content) => buildCarDamageNumbersViewModelV2(frame, source, content as never) }],

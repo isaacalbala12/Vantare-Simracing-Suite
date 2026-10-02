@@ -253,7 +253,7 @@ describe("StudioWidgetFrame", () => {
   });
 
   it.each(widgetTypeRegistry.list())(
-    "scales unlocked $type content from a stable canonical width",
+    "fits unlocked $type content using its supported width policy",
     (definition) => {
       const widget = definition.createDefault(`${definition.type}-main`);
       widget.layout = {
@@ -267,19 +267,19 @@ describe("StudioWidgetFrame", () => {
 
       const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-main`);
       const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-main`);
-      const horizontalOnly = definition.capabilities.resizeMode === "horizontal-only";
-      const expectedScale = horizontalOnly ? 1 : 500 / definition.capabilities.defaultSize.width;
+      const fluidWidth = definition.capabilities.resizeMode === "horizontal-only" || definition.type === "fastest-lap";
+      const expectedScale = fluidWidth ? 1 : 500 / definition.capabilities.defaultSize.width;
       expect(frame.style.width).toBe("500px");
       expect(frame.style.height).toBe("180px");
       expect(screen.getByTestId(`studio-widget-visual-${definition.type}-main`)).toBeTruthy();
-      expect(viewport.style.width).toBe(`${horizontalOnly ? 500 : definition.capabilities.defaultSize.width}px`);
+      expect(viewport.style.width).toBe(`${fluidWidth ? 500 : definition.capabilities.defaultSize.width}px`);
       expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
       expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
     },
   );
 
   it.each(widgetTypeRegistry.list())(
-    "scales locked $type content without changing the document frame",
+    "fits locked $type content without changing the document frame",
     (definition) => {
       const widget = definition.createDefault(`${definition.type}-locked`);
       widget.layout = {
@@ -293,12 +293,12 @@ describe("StudioWidgetFrame", () => {
 
       const frame = screen.getByTestId(`studio-widget-frame-${definition.type}-locked`);
       const viewport = screen.getByTestId(`studio-widget-viewport-${definition.type}-locked`);
-      const horizontalOnly = definition.capabilities.resizeMode === "horizontal-only";
-      const expectedScale = horizontalOnly ? 1 : 500 / definition.capabilities.defaultSize.width;
+      const fluidWidth = definition.capabilities.resizeMode === "horizontal-only" || definition.type === "fastest-lap";
+      const expectedScale = fluidWidth ? 1 : 500 / definition.capabilities.defaultSize.width;
       expect(frame.style.width).toBe("500px");
       expect(frame.style.height).toBe("180px");
       expect(screen.getByTestId(`studio-widget-visual-${definition.type}-locked`)).toBeTruthy();
-      expect(viewport.style.width).toBe(`${horizontalOnly ? 500 : definition.capabilities.defaultSize.width}px`);
+      expect(viewport.style.width).toBe(`${fluidWidth ? 500 : definition.capabilities.defaultSize.width}px`);
       expect(Number.parseFloat(viewport.style.height)).toBeCloseTo(180 / expectedScale, 5);
       expect(viewport.style.transform).toBe(`scale(${expectedScale})`);
     },

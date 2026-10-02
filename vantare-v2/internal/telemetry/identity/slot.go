@@ -3,9 +3,8 @@ package identity
 const DefaultSlotGraceFrames uint64 = 30
 
 type SlotFingerprint struct {
-	SourceKey string
-	Driver    string
-	Class     string
+	Driver string
+	Class  string
 }
 
 type SlotOutcome struct {

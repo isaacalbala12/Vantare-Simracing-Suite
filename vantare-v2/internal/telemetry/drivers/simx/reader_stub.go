@@ -55,6 +55,7 @@ func (reader *Reader) frameAt(frame uint64) Observation {
 		ReceivedUTC:   reader.epoch.Add(time.Duration(frame) * TickInterval),
 		SourceTime:    fresh(elapsed),
 		TrackName:     fresh(TrackName),
+		TrackLength:   fresh(standings.LapDistance(TrackLengthMeters)),
 		SessionType:   fresh(session.TypeRace),
 		VehicleCount:  fresh(schema.Count(VehicleCount)),
 		PlayerPresent: fresh(true),

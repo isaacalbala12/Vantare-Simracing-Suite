@@ -102,7 +102,7 @@ export function useOrbitResponsiveZoom(): void {
     };
 
     const onZoomWheel = (event: WheelEvent) => {
-      if ((!event.ctrlKey && !event.metaKey) || event.altKey || event.deltaY === 0) return;
+      if (event.defaultPrevented || (!event.ctrlKey && !event.metaKey) || event.altKey || event.deltaY === 0) return;
       event.preventDefault();
 
       const delta = normalizedWheelDelta(event);

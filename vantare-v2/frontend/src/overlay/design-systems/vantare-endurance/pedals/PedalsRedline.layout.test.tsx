@@ -1,10 +1,11 @@
+import { decodeOverlayUpdateV2 } from "../../../../telemetry-transport/overlay-frame-v2-store";
 // @vitest-environment node
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { chromium } from "playwright";
-import { describe, expect, it } from "vitest";
+import { chromium, type Browser } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { OverlayUpdateV2 } from "../../../../generated/telemetry";
 import goldenV2Raw from "../../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import { createTelemetryRateCoordinator } from "../../../core/telemetry-rate-coordinator";
@@ -17,7 +18,7 @@ const FRAME_HEIGHT = 420;
 function renderRuntimeFrame(status: "ready" | "missing", brake?: number): string {
   const telemetry = createTelemetryRateCoordinator();
   if (status === "ready") {
-    const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+    const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
     if (brake !== undefined) {
       update.frame!.player.brake.v = brake;
     }
@@ -44,16 +45,26 @@ function renderRuntimeFrame(status: "ready" | "missing", brake?: number): string
 }
 
 describe("Pedals Redline frame geometry", () => {
+  // Un solo browser por fichero: cada it.each lanzaba el suyo (~5 arranques
+  // de Chromium serializados), y bajo un runner cargado uno solo de ellos
+  // agotaba el presupuesto del test (ISA-1025).
+  let browser: Browser;
+  beforeAll(async () => {
+    browser = await chromium.launch({ headless: true });
+  });
+  afterAll(async () => {
+    await browser?.close();
+  });
+
   it.each(["ready", "missing"] as const)(
     "keeps every visible descendant inside the productive 520x420 frame when %s",
     async (status) => {
       const css = readFileSync(join(__dirname, "../tokens.css"), "utf8");
-      const browser = await chromium.launch({ headless: true });
+      const context = await browser.newContext({
+        viewport: { width: FRAME_WIDTH, height: FRAME_HEIGHT },
+        deviceScaleFactor: 1,
+      });
       try {
-        const context = await browser.newContext({
-          viewport: { width: FRAME_WIDTH, height: FRAME_HEIGHT },
-          deviceScaleFactor: 1,
-        });
         const page = await context.newPage();
         await page.setContent(
           `<style>html,body{margin:0;background:transparent}${css}</style>`
@@ -85,7 +96,7 @@ describe("Pedals Redline frame geometry", () => {
         expect(result.outside).toEqual([]);
         expect(result.root === null).toBe(status === "missing");
       } finally {
-        await browser.close();
+        await context.close();
       }
     },
   );
@@ -96,12 +107,11 @@ describe("Pedals Redline frame geometry", () => {
     { name: "generic sans-serif fallback", fontOverride: ':root{--ven-font:sans-serif}' },
   ])("confines a saturated brake indication to its local well and slot with $name", async ({ name, fontOverride }) => {
     const css = readFileSync(join(__dirname, "../tokens.css"), "utf8");
-    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      viewport: { width: FRAME_WIDTH, height: FRAME_HEIGHT },
+      deviceScaleFactor: 1,
+    });
     try {
-      const context = await browser.newContext({
-        viewport: { width: FRAME_WIDTH, height: FRAME_HEIGHT },
-        deviceScaleFactor: 1,
-      });
       const page = await context.newPage();
       const html = (brake: number) =>
         `<style>html,body{margin:0;background:transparent}*{transition:none!important;animation:none!important}${css}${fontOverride}</style>`
@@ -201,7 +211,7 @@ describe("Pedals Redline frame geometry", () => {
       expect(result.value!.left).toBeGreaterThanOrEqual(result.slot.left);
       expect(result.value!.right).toBeLessThanOrEqual(result.slot.right);
     } finally {
-      await browser.close();
+      await context.close();
     }
   });
 });

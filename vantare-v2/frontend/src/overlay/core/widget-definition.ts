@@ -4,18 +4,20 @@ import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { RelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
+import type { StandingsWindowRuntime } from "../widget-types/standings/standings-window";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
 // microplans, so keep this map partial instead of inventing placeholder gates.
 export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, FeatureId>> = {
-  delta: "overlays.basic",
+  delta: "overlays.advanced",
   standings: "overlays.basic",
   pedals: "overlays.basic",
   relative: "overlays.advanced",
   "pedals-telemetry": "overlays.advanced",
   "pedals-telemetry-compact": "overlays.advanced",
   "racing-flags": "overlays.advanced",
+  "fastest-lap": "overlays.advanced",
   "broadcast-tower": "overlays.advanced",
   "head-to-head": "overlays.advanced",
   "input-telemetry": "overlays.advanced",
@@ -29,6 +31,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "car-damage-numbers": "overlays.advanced",
   "engineer-radio": "engineer.ai",
   "track-map": "overlays.advanced",
+  radar: "overlays.advanced",
 };
 
 export function getWidgetRequiredFeature(type: WidgetType): FeatureId {
@@ -75,6 +78,8 @@ export type WidgetRuntimeInput = {
   }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
+  /** Workshop-only presentation policy; never part of the telemetry frame. */
+  standingsWindow?: StandingsWindowRuntime;
   relativeViewModelState?: RelativeViewModelState;
   relativeViewModelNowMs?: () => number;
   relativeViewModelInstanceKey?: string;
@@ -103,6 +108,8 @@ export type WidgetTypeDefinition<
 > = {
   type: WidgetType;
   labelKey: string;
+  /** Kept for saved profiles, but no longer offered in creation catalogues. */
+  retired?: true;
   capabilities: WidgetCapabilities;
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;

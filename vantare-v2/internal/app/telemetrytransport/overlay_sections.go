@@ -48,8 +48,8 @@ func encodeOverlaySections(update overlayv2.UpdateV2) (*overlaySections, error) 
 		{"generatedAt", frame.GeneratedAt}, {"units", frame.Units},
 		{"session", frame.Session}, {"player", frame.Player}, {"controls", frame.Controls},
 		{"standings", frame.Standings}, {"relative", frame.Relative},
-		{"relativeSettled", frame.RelativeSettled}, {"delta", frame.Delta},
-		{"fuel", frame.Fuel}, {"spotter", frame.Spotter}, {"damage", frame.Damage},
+		{"relativeSettled", frame.RelativeSettled}, {"relativeSameClass", frame.RelativeSameClass}, {"delta", frame.Delta},
+		{"fuel", frame.Fuel}, {"spotter", frame.Spotter}, {"radar", frame.Radar}, {"damage", frame.Damage},
 		{"weather", frame.Weather}, {"capabilities", frame.Capabilities},
 	}
 	parts.fields = make([]overlaySection, len(values))

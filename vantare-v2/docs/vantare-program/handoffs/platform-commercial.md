@@ -1,5 +1,231 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
+
+[Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
+[referencia GitHub #1377](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1377).
+Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
+gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
+quiere un editor de formularios en la app. La publicación compartida debe verse
+para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`,
+sincronizada con `origin/nightly`; la base exacta se registra en la tarea y
+en el PR porque el canal sigue avanzando.
+
+### Contenido inicial preparado desde Asana
+
+Isaac fijó las fechas de los objetivos de Vantare 0.1 y aclaró el 2026-09-26
+que las tareas no son círculos separados: el gran hito es la versión. La
+primera publicación está preparada en
+[VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
+con dos hitos, identificadores estables y textos en los cuatro idiomas:
+
+1. **Vantare 0.1 · 5 de octubre de 2026.** Objetivos del 1 de octubre:
+   revisar Billing y acceso, y pulir Ajustes y Cuenta. Objetivos del 5:
+   confirmar Widgets V16, afinar Calendario, revisar Launcher, presentar el
+   Roadmap y abrir la alfa del Ingeniero. Las compras opcionales desde el 12
+   de octubre quedan dentro del objetivo Billing.
+2. **Vantare 0.2 · siguiente versión, sin fecha de lanzamiento fijada.** Solo
+   tres objetivos: Ingeniero beta 0.2 tras el primer mes (objetivo 5 de
+   noviembre), Strategy Planner alpha y widgets semanales. No anunciar temas
+   de UI en este hito.
+
+Las fechas del 1 y el 5 de octubre se verificaron de nuevo en el proyecto
+Asana «Vantare · 0.1 Lanzamiento». El proyecto Asana «Vantare · 0.2» aún no
+registra los tres objetivos de producto ni una fecha de salida; su alcance
+público procede de la instrucción directa de Isaac. Widgets V16 tiene 16
+subtareas, cuatro marcadas como completadas y dos tituladas «Daños»; por ello
+la publicación dice «catálogo V16» sin afirmar 16 widgets distintos o
+entregados. El contenido aún no está publicado: la base Supabase de producción
+no tiene la tabla ni las funciones `visual_roadmap_*`, y la migración de esta
+PR no se ha aplicado. La ruta documentada exige probarla en un entorno de
+prueba y obtener autorización para integrar la PR en Nightly antes de activar
+el nuevo almacenamiento.
+
+La implementación local retira `plan.md`, JSON, digest, formulario y gate del
+roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
+tablero y gráfico de distribución. Supabase conserva las publicaciones y expone
+solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
+Isaac precisó después que la línea temporal debe avanzar horizontalmente. La
+vista ahora conecta los hitos de izquierda a derecha y permite recorrerlos
+dentro del panel en escritorio y pantallas estrechas; las otras vistas no cambian.
+Después aprobó combinar el recorrido numerado de la tercera exploración visual
+con la limpieza de la segunda. La revisión en curso usa los hitos de la única
+publicación para numerar el recorrido y mostrar un solo detalle seleccionable;
+no añade datos de fases, fechas ni editor. Una captura del harness Orbit real a
+1920 y otra a 1280 px muestran la shell y el cambio de hito con datos de muestra.
+En este candidato, las 3 pruebas focales del roadmap, typecheck, build, lint y
+las 4 pruebas de presupuesto PASS. La suite unitaria amplia registró 4.047 PASS,
+2 omitidas y 2 timeouts en pruebas visuales ajenas al roadmap; sus ficheros
+focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). El gate
+remoto de `d23cad51` pasó (11m34s). Las capturas
+usan el mock de Wails y no prueban Supabase ni un runtime físico.
+La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
+presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
+posición horizontal de los hitos y que la página no desborda a 1440 y 390 px.
+Checks de la revisión gráfica: frontend completo 481 archivos, 4.049 pruebas
+PASS y 2 omitidas; presupuesto de frames 4/4 PASS; auditoría i18n con 0
+ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres
+capturas locales muestran las vistas con hitos del snapshot histórico anterior,
+solo como vista previa, sin publicar. Falta validar la migración SQL y la lectura
+compartida con Supabase real. El contenido inicial quedará vacío hasta la primera
+publicación técnicamente validada; no se importa el plan histórico automáticamente.
+
+[PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
+contra `nightly`, HEAD previo `d23cad51`. El CI de ese HEAD pasó gates
+bloqueantes, promoción y GitGuardian; `quality-check` quedó
+`REVIEW_REQUIRED` por cambios intencionados en workflows y `package.json`,
+con NEW=0/MOVED=0. Siguiente acción: revisar el contenido y las rutas de
+política, validar Supabase en un entorno de prueba y obtener la autorización
+de Isaac antes de integrar en Nightly. Sin merge, migración, publicación ni release.
+
+El 2026-09-26 Isaac autorizó continuar con la PR y la migración. La revisión
+de las rutas de política confirma que se retiran el validador y el workflow del
+digest anterior, y el script visual ligado a ese roadmap; el gate de canales
+sigue activo. Nightly avanzó de nuevo y se incorporó a la rama, conservando la
+eliminación intencionada de `plan.md` y `roadmap.json`. La migración debe pasar
+primero por Supabase de prueba y una lectura con rol público antes de aplicarla
+al proyecto de producción. La publicación de los dos hitos se verifica aparte
+de la integración de código.
+
+La primera ejecución en `vantare-staging` descubrió que Supabase concede
+`EXECUTE` explícito a `anon`, `authenticated` y `service_role` al crear
+funciones públicas: revocar solo a `PUBLIC` dejaba publicable el RPC. La
+migración ahora revoca también esos roles en `visual_roadmap_publish` y
+`visual_roadmap_valid`, y mantiene la lectura de `visual_roadmap_current` para
+`anon` y `authenticated`. En staging se verificó que `anon` no puede publicar
+(SQLSTATE 42501) ni leer la tabla, sí lee el documento exacto por el RPC;
+dos publicaciones dejan una fila `published` y una `superseded`. El SQL de
+producción todavía no se ha aplicado.
+
+## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
+
+[Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).
+Worktree `C:/tmp/vantare-isa1305`, rama `vantareapp/isa-1305-wails-beta24-smoke`, base Nightly `1101f73579ddaa8798b7d9948bae8b4e2a77d850`.
+Go, runtime frontend y los tres pins CLI de CI/release pasan a beta.24 sin adaptar código de producto. Build/tipos frontend, lint, 466 archivos/3772 tests frontend (2 omitidos), 126 paquetes Go con tests y build Windows production CGO=0 PASS.
+La build canónica configurada se generó, abrió y fue aceptada por Isaac: «va todo bien, puedes mergear». Se reutilizó el entorno público existente, sin leer/copiar `.env.local` ni imprimir valores; archivo Go temporal eliminado.
+Evidencia, hash del exe y límites: [informe ISA-1305](../../analysis/isa-1305-wails-beta24-smoke.md). No se afirma una matriz completa LMU/OBS ni mejora de rendimiento. El teardown frontend imprime un AbortError sin hacer fallar la suite.
+Revisión independiente `3afeb0c0`: ACCEPT. CI identificó `go-mod-tidy` como único hallazgo nuevo; normalizado el grafo, segunda comprobación sin diff. PR [#1309](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1309); controles del candidato final pendientes.
+Roadmap: `milestones:wails-v3-beta24`. Siguiente acción: PR, CI del candidato exacto y squash autorizado a Nightly; registrar allí el SHA remoto verificado. Sin testers/master/release. El spike macOS/Streams VAN-734 permanece separado.
+
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+## VAN-733 — Quality Linux y dependencias nativas de Wails (2026-09-20)
+
+[Tarea Notion](https://app.notion.com/p/3e1e51695c65819fbf23edeb5957cbcd),
+puente técnico GitHub #1296, rama
+`vantareapp/isa-1296-quality-linux-wails`, base `nightly@8a0620e8`.
+
+La PR documental #1295 demostró que `quality-check (ratchet)` alcanza cero
+hallazgos `NEW`, pero `govet/linux-dev` y `deadcode/linux-dev` terminan en
+`ERROR` porque el runner no prepara GTK4/WebKitGTK 6.0 para el grafo Wails.
+Isaac aprobó conservar la cobertura Linux e instalar las dependencias nativas
+en `quality-check` y `quality-audit`; no se excluirán paquetes, no se usará
+GTK3 y no se tocarán baselines. Diseño versionado en
+`docs/specs/2026-09-20-quality-linux-wails-analysis-design.md`.
+
+Isaac aprobó la especificación y el candidato quedó implementado en
+`6275db0c`: ambos jobs instalan las dos bibliotecas y exigen que `pkg-config`
+las resuelva antes de los analizadores. Una regresión de contrato falló primero
+en los dos jobs y pasa tras el cambio. No cambia baselines, versiones,
+selección de paquetes ni semántica del ratchet.
+
+Evidencia local: frontend build PASS; ratchet 29/29; negative 24/24; doctor
+sin issues; roadmap digest 23/23, contrato 21/21 y artefacto `--check` PASS.
+El validador contra la issue viva confirma exactamente
+`milestones:quality-linux-analysis`.
+El check completo local tiene cero `NEW`, cero errores de integridad y termina
+`REVIEW_REQUIRED` por los dos paths de política modificados, que es el estado
+esperado del candidato. El hito `quality-linux-analysis` permanece descrito
+como candidato pendiente de integración.
+
+PR draft #1297 abierta a `nightly`. En Ubuntu, el run `35516591473` instala y
+verifica GTK4/WebKitGTK 6.0; `govet/linux-dev` termina PASS con cero hallazgos y
+`deadcode/linux-dev` PASS con 3742 hallazgos informativos. Todos los analizadores
+quedan con cero `NEW` y sin errores de integridad; el único motivo del agregado
+`REVIEW_REQUIRED` son `.github/workflows/quality.yml` y
+`tools/quality/tests/test_negative.py`, ambos paths de política modificados por
+este arreglo. El run bloqueante `35516591462` pasa la topología, contratos,
+tests, frontend, Wails Windows y advisories. Los avisos futuros sobre Node 20 y
+la migración de `ubuntu-latest` a Ubuntu 26 quedan fuera de VAN-733 y no cambian
+estos resultados.
+
+Isaac autorizó la integración el 2026-09-20. En el momento de este cierre
+documental todavía no se ha hecho merge ni promoción; después de verificar el
+merge se registrarán SHA/canal en Notion y se reejecutará #1295 para demostrar
+el PASS ordinario sobre `nightly`.
+
+
+## VAN-725 — Depuración documental del repositorio (2026-09-14)
+
+[Tarea Notion](https://app.notion.com/p/3dbe51695c658147aec0cf0aee3f3bb9), puente técnico GitHub #1256. Base nightly `60b47b7c`, rama `vantareapp/isa-1256-documentacion-vigente`. [Informe y evidencia](../../analysis/documentation-audit-2026-09-14.md), [inventario de 994 textos](../../analysis/documentation-audit-2026-09-14.tsv).
+
+Se consolidan las entradas y 21 documentos sustituidos; el contenido anterior queda en Git por SHA. Las pasadas corrigen Wails, Studio/autoguardado, Workshop V2, OBS/Engineer SSE, transporte y autoridad LMU, Strategy/Analysis, Launcher, Billing, versionado y releases. Se conserva historia con ámbito explícito. Retirados dos logs y la skill vantare-core desautorizada. Sin código productivo ni cambios de gates; el hito documental sigue plan.
+
+Revisión independiente final PASS documental acotado, sin hallazgos accionables en el diff examinado. 115 tests de digest/contrato/notas/topología PASS; inventario de 994 rutas/hashes y barrido de 1.099 enlaces/126 anclas sin destinos ausentes. No se ha probado Windows/LMU/OBS ni Billing remoto.
+
+La CI del primer commit documental falló en `TestRuntimeRoutesActionsButKeepsThemDisabled` (voiceinput, timeout 30 s); ese código/test no cambia frente a la base. No se diagnostica aquí la causa ni se declara resuelto. El commit intermedio 45278c17 también detectó dos frases literales del runbook exigidas por el gate: restauradas sin tocar el test, con 45 casos PASS. La integración permanece bloqueada hasta pasar los gates aplicables. Notion conserva estado, SHA, PR y CI final observados; no hay merge ni promoción.
+
+## VAN-724 — Notion obligatorio para todos los agentes (2026-09-14)
+
+[Tarea principal](https://app.notion.com/p/3dbe51695c658138b19fe81c730d89a2).
+Puente técnico CI: GitHub #1213, rama `vantareapp/isa-1213-notion-primary-workflow`,
+base nightly `837a03d1457e4c675ff8a44977baf79ab294f5e3`.
+
+Isaac corrige la política anterior: Notion es la entrada y el seguimiento principal
+inmediato, también para issues existentes. Se exige lectura y escritura verificada
+al empezar, bloquear, entregar y verificar merge. Los AGENTS, plantillas e índices
+se alinean; el hub original contiene las bases. No hay sincronización automática.
+El corte técnico exclusivo sigue pendiente: los gates ISA/GitHub no se cambian.
+Evidencia de revisión, checks, PR y SHA integrado se registra en la tarea Notion.
+El registro de #1189 siguiente conserva la decisión histórica, sustituida por esta.
+
+## ISA-1189 — transición a Notion (2026-09-12)
+
+Isaac aprueba Notion como autoridad de desarrollo después de cerrar las entregas
+activas aceptadas e integradas en nightly, sin esperar testers/release. Autoriza
+mergear esta preparación documental a nightly. Estado del corte y lote único:
+[notion-transition.md](../notion-transition.md). Revisión documental individual:
+[notion-document-audit.md](../notion-document-audit.md).
+
+Se prepara la entrada raíz de agentes, se enrutan los documentos normativos y
+prompts al contrato por fases, se distinguen guías históricas y se retiran
+referencias operativas residuales a Linear. No se renumeran IDs históricos.
+Notion tiene portada y cuatro bases iniciales enlazadas en el contrato; no hay
+importación completa ni sincronización activa. Gates productivos sin cambios.
+
+Siguiente agente: cerrar/reconciliar el lote y, en paralelo mediante tareas de
+migración trazadas, importar y verificar el histórico, completar esquemas/vistas
+y adaptar controles de tareas, ramas y releases antes del corte. No ampliar
+programas de producto ni cerrar PR ajenas por su etiqueta. Registrar SHA/CI y
+nivel realmente alcanzado en la PR de #1189, que es la evidencia remota de esta
+entrega; su merge no cumple las puertas pendientes de activación.
+
+## ISA-1171 - Roadmap de etapas hacia beta pública y lanzamiento
+
+Decisión de Isaac 2026-09-11: la beta pública es un reinicio de la línea
+v0.1.0.0; la línea v0.1.x actual es formato de desarrollo y la documentación
+pública se reinicia antes de la apertura. Entregado en la rama
+`vantareapp/isa-1171-roadmap-beta-publica-lanzamiento` (PR #1172 draft a
+nightly, sin promoción): documento interno
+`docs/plan-beta-publica-y-lanzamiento.md` con etapas 0–5, rangos de versión,
+gates por etapa, matriz de módulos de lanzamiento y decisiones pendientes;
+`plan.md` añade las fases `insiders-program`, `public-beta`,
+`release-candidate` y `launch`, retitula `beta-foundation` a Beta inicial y
+renumera etiquetas de `engineer`/`ecosystem`; nueve hitos `plan` nuevos.
+Diff semántico verificado = los 16 IDs declarados. Digest regenerado desde
+`origin/nightly`; 23 tests del parser PASS y `--check` sin cambios. Segundo
+corte: sección "Criterios exactos de subida de versión" — tipos de bump,
+instrumento Gate Review (issue por transición, periodos sin regresión 7/14/21
+días, milestones de GitHub por versión), criterios medibles por transición
+0.1→0.2 … 0.9→1.0 y mecánica operativa del bump (version:sync, tag en master,
+hotfix por 4.º segmento). Pendiente: review de Isaac y decisiones abiertas
+listadas en el documento (versión de apertura, pago día 1, precios vigentes,
+firma, multisim, Linux, voz).
+
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente
 
 Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.
@@ -500,6 +726,89 @@ Telemetría, Engineer/audio/voz, Strategy, Calendario, Hotkeys, Privacidad,
 Actualizaciones, Diagnóstico y Acerca de. Scope global/perfil explícito;
 import/export sin secretos; reset no borra datos sin selección.
 
+- ISA-1381 implementa en rama aislada paletas Vantare, Océano e Iris para toda
+  la interfaz, incluido el chrome de Overlay Studio, con modo claro, oscuro y
+  sistema independiente. Se guardan en claves locales nuevas; `vantare.theme`
+  y los diseños de widgets permanecen separados. La referencia visual son las
+  tres capturas de T3 Code aportadas el 2026-09-24. La revisión visual en
+  navegador mock comprobó Ajustes y Studio y los seis pares de tokens; 484
+  archivos de tests frontend y 4 presupuestos de frames pasaron. El PR draft
+  #1384 apunta a `nightly` desde `vantareapp/isa-1381-temas-paleta-ui`. Los
+  checks de calidad, ruta y gates, incluido el build Wails de CI, pasaron para
+  `dea1d926`. El 2026-09-25 se compiló la app Wails de producción desde ese
+  commit con el `.env.local` autorizado del checkout principal, sin copiarlo ni
+  mostrar sus valores; se retiró el archivo Go temporal de configuración tras
+  la build. En la ventana Wails real (1280×800) se comprobaron Ajustes en
+  Océano/Claro e Iris/Oscuro, y Overlay Studio con ambas combinaciones: el
+  chrome cambia y el diseño de los widgets se conserva. La vista del canvas
+  usó el modo Mock; esto no valida telemetría LMU, login ni licencia. Se detectó
+  un solapamiento de la cabecera de Studio con el selector de perfil, registrado
+  por separado como #1387. No hay promoción ni release.
+
+- El 2026-09-25 Isaac amplió #1381 con dos variantes visibles por paleta,
+  contraste, opacidad y tipografías, según nuevas capturas de T3 Code. La rama
+  añade la sección propia Ajustes → Apariencia y conserva Zoom, idioma y
+  densidad en Aplicación. El contraste ajusta texto secundario y bordes de
+  Command Orbit; la opacidad ajusta paneles y cabecera; fuentes de interfaz y
+  cifras tienen vista previa. Las preferencias nuevas son locales y no tocan
+  `vantare.theme` ni los renderizadores de widgets. Suite frontend: 484 archivos,
+  4.101 tests correctos, 2 omitidos y 4 presupuestos de frames correctos;
+  typecheck, build y lint correctos. En Wails de producción a 1280×800 se
+  revisaron Apariencia, Iris/Oscuro y los deslizadores a 120 %/100 %. El modo
+  Iris/Oscuro persistió tras cerrar y reabrir el mismo ejecutable Wails. La
+  compilación usó `.env.local` autorizado sin exponer valores. El gate CI de
+  `0f939835` falló en `TestPlayerScriptMediaEvents/ended` por timeout de Go,
+  fuera de los archivos modificados aquí. Para `1942ee1b`, los checks remotos
+  de calidad, ruta, gates, pruebas frontend y build Wails pasaron; la prueba
+  Go anterior también pasó en esa ejecución. El PR #1384 continúa draft y sin
+  promoción.
+
+- El 2026-09-25 Isaac pidió completar las paletas con Rosa, Bosque y Ámbar y
+  añadir Grises en variante clara y oscura. #1381 y el hito público se
+  ampliaron a siete paletas y catorce variantes; el selector se reparte en
+  filas para conservar su legibilidad a 1280×800. Grises usa tokens neutros
+  también para acentos y estados de la interfaz. Las vistas previas de otros
+  temas siguen mostrando sus colores para permitir elegirlos. En la app Wails
+  de producción se revisaron Grises/Claro, Grises/Oscuro, Rosa/Claro,
+  Bosque/Oscuro y Ámbar/Oscuro. En Overlay Studio con Grises/Oscuro, el chrome
+  es neutro y las vistas previas de widgets conservan sus colores originales.
+  Los tests focales (45), typecheck, build, lint, auditoría i18n y los cuatro
+  presupuestos de frames pasaron. En la suite completa pasaron 4.105 pruebas,
+  dos quedaron omitidas y una prueba visual de Chromium agotó su límite de
+  20 s mientras corrían build y lint; la misma prueba pasó aislada en 8,9 s.
+  La app se compiló usando el `.env.local` autorizado sin exponer sus valores.
+  En `3bcd253d` pasaron los checks remotos de ruta, quality ratchet y gates
+  bloqueantes, incluidos Go, frontend y build Wails de Windows (runs
+  `36162293379` y `36162293431`). El PR #1384 sigue draft, sin merge,
+  promoción ni release. La rama de issue se reconcilió después con
+  `nightly@f0ccfbf2` al avanzar la base; `plan.md` conservó los hitos de
+  ambas ramas y `roadmap.json` se regeneró desde esa base.
+
+- [VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+  gobierna el alcance y seguimiento vivo de #1381. El 2026-09-25 Isaac
+  amplió #1381 a los fondos del escenario de Overlay
+  Studio y pidió corregir la tarjeta Próxima serie de Inicio. El fondo
+  predeterminado `Tema actual` toma los tokens de la paleta y del modo
+  claro/oscuro; el selector de la toolbar agrupa las catorce variantes fijas
+  por paleta y conserva Rejilla, Degradado, Negro y los fondos propios. La
+  elección manual se guarda en este equipo y persiste al volver a abrir
+  Studio; si una imagen propia guardada ya no existe, vuelve a Tema actual.
+  Solo cambia el escenario, no el renderizado de los widgets. El subagente
+  corrigió la tarjeta Próxima serie mediante tokens de interfaz; el
+  orquestador revisó el diff y la comprobó en Wails con Grises/Claro y
+  Grises/Oscuro. También comprobó en Wails el lienzo de Grises/Claro y
+  Grises/Oscuro con widgets rojos intactos, los siete grupos del selector,
+  la selección fija Rosa/Oscuro y la persistencia de Vantare/Claro al salir
+  y volver a Studio. La compilación Wails usó el `.env.local` autorizado sin
+  exponer valores. Typecheck, build, lint, auditoría i18n, 52 pruebas focales
+  del Studio y cuatro presupuestos de frames pasaron. En la suite local
+  completa pasaron 4.116 pruebas y dos quedaron omitidas; tres pruebas de
+  geometría ajenas agotaron 20 s bajo carga paralela y la prueba de Canvas
+  todavía tenía la expectativa del fondo anterior. Tras corregir esa
+  expectativa, las cuatro suites afectadas pasaron aisladas con un solo
+  worker (25 pruebas). La rama sigue aislada y el PR #1384 sigue draft; no
+  hubo merge, promoción ni release.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de
@@ -922,6 +1231,14 @@ promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.
 
+## VAN-765 / GitHub #1382 · Calendario visual (24/09/2026)
+
+Isaac señaló ocho problemas de presentación en la build Wails del Calendario. La tarea [VAN-765](https://app.notion.com/p/3e5e51695c6581e8b01dd36ff839ae7f) gobierna el alcance; #1382 es el puente de CI. Rama aislada `vantareapp/isa-1382-calendar-visual` desde `origin/nightly@5c73013e`; el checkout principal y la PR de tipografía #1378 permanecen separados. Decisión: detalle contextual cerrable, Día en franjas de 15 minutos preservando horas publicadas, Mes navegable por celda, colores según `eventKind`, Timeline de una hora y geometría adaptable. Tres pruebas nuevas reprodujeron los defectos antes del cambio. Después: 98 pruebas focales PASS, 2 omitidas; `typecheck`, `lint`, build frontend y build Wails producción/debug PASS. La build Wails real de prueba (1264 × 761, horario publicado del perfil existente, sin LMU conectado) mostró cinco vistas sin desbordamiento horizontal; Mes→Día, detalle abrir/cerrar y zoom 711→889 px/h se verificaron mediante CDP del propio WebView2. En zoom alto se reprodujo el desbordamiento impuesto por el suelo de 1180 px de la shell; el Calendario compacta sus columnas y reubica el tooltip de la campana. La primera CI de [PR draft #1383](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1383) falló por dos claves i18n huérfanas y nuevos hallazgos de knip/jscpd; se quitaron las claves, dos exports sin consumidores y la duplicación introducida en Mes. La build Wails final se comprobó en las cinco vistas con zoom de 0.963 a 1.445: la estructura no desborda horizontalmente en ampliación alta y conserva los controles; la vista previa abierta combina esta PR con la tipografía de #1378 sin mezclar sus ramas. El candidato de código `59c02651` pasó `Validate Vantare blocking gates`, `quality-check (ratchet)`, ruta de promoción y GitGuardian en la segunda CI; la auditoría manual opcional quedó omitida. La PR sigue draft para revisión visual de Isaac. Notion VAN-765 y GitHub #1382 registran el estado remoto vivo. Sin merge, promoción ni release.
+
+Revisión visual de Isaac, 25/09/2026: el sombreado rojo de Día seguía ocupando la franja actual; Semana repetía todas las diarias y el Timeline dejaba sus puntos pegados al borde, sin desplazamiento ni ampliación clara. La corrección elimina el sombreado y la línea roja de «ahora», reserva Semana a `eventKind` semanal/especial, mantiene siete cabeceras aunque no haya eventos, fija los rótulos del Timeline con 14 px de margen, añade desplazamiento horizontal por botones en tramos de 15 minutos y muestra zoom de 1× a 4×. La regresión de Semana falló antes del cambio; después pasan 75 pruebas focales, `typecheck`, lint completo, build frontend y la suite completa (4100 PASS, 2 omitidas, 4 de presupuesto PASS). En la build Wails final abierta con el perfil de prueba existente, CDP del WebView2 verificó 96 franjas en Día sin `data-now`, Semana con exactamente tres series publicadas y siete días, y Timeline con scrollWidth 861→1238 px a 1.56×; el botón derecho desplazó 262 px, equivalentes a 15 minutos, manteniendo fijo el rótulo. A zoom de app 1.445×, los controles permanecieron dentro de la superficie y sin desbordamiento del cuerpo. La línea roja se detectó cruzando los rótulos en una captura intermedia y se retiró del candidato final. La build de revisión combina visualmente la tipografía de PR #1378 mediante un import temporal ya retirado; la configuración local autorizada se usó como `envDir` sin leer ni copiar sus valores. La primera CI del commit `50da4945` falló solo por tres clones de jscpd reagrupados al tocar `orbit-races.css`; se devolvió esa hoja a su contenido original porque la eliminación del rojo ya la realiza la vista sin `data-now`. El clasificador local de calidad confirmó NEW=0 tras la restauración. La CI del código `082d6a73` pasó `Validate Vantare blocking gates`, `quality-check (ratchet)`, ruta de promoción y GitGuardian; la auditoría manual opcional quedó omitida. Pendiente: revisión visual de Isaac. Sin integración en Nightly.
+
+Isaac aprobó la integración de la PR #1383 con un ajuste final del zoom: en Timeline, `Ctrl + +` y `Ctrl + −`, los botones y la rueda avanzan en pasos de 0,05 entre 1× y 4×. La rueda consumida por el Timeline deja intacto el zoom global de la app. Las dos regresiones fallaron antes de editar y pasan después. Pruebas focales 66/66, tipos, lint, build frontend y presupuesto 4/4 PASS. La suite global en paralelo obtuvo 4099 PASS, 2 omitidas y dos timeouts de pruebas visuales; ambas pasaron aisladas con un worker (5/5). La repetición estable de toda la suite con dos workers pasó: 4101 PASS, 2 omitidas. Pendiente: CI del nuevo HEAD y verificar merge exacto en `nightly`.
+
 Estado Nightly previo integrado en esta reconciliación:
 
 2026-08-03, ISA-246 queda en `nightly@55fba3d` e ISA-247 implementa localmente
@@ -935,3 +1252,10 @@ cambiar idioma. Corregidos: listener de una publicacion sobrevive a navegacion
 hasta ACK/error y mantiene el recibo; cambiar traduccion conserva request pendiente.
 10 pruebas de flujo PASS. Fullfrontend previo: 3308 PASS/2 omitidas, build/lint
 PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.
+
+
+## VAN-737 / ISA-1301 — prueba negativa de política aislada (2026-09-22)
+
+- [Tarea Notion](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), dependencia de la integración de widgets #1298 autorizada por Isaac. Base nightly `1e9932c4`; rama `vantareapp/isa-1301-quality-policy-test`.
+- La prueba anterior asumía que cualquier PR modificaba la política; un check correcto PASS hacía fallar CI. Se sustituye por un repositorio Git temporal: control limpio PASS, cambios de política sin commit/con commit/untracked REVIEW_REQUIRED y hallazgo de analizador FAIL. El diff Git, el detector de política, el agregado y el exit del proceso son reales; solo se inyectan resultados de analizadores, cuyos binarios ya prueban las otras clases.
+- Sin cambios de producto, motor de calidad, reglas, baselines ni excepciones. Roadmap required: `milestones:quality-linux-analysis`. Revisión independiente y gates remotos previos a nightly; sin testers/master/release.

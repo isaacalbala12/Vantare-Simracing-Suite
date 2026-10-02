@@ -82,3 +82,20 @@ export function resolveColumnWidthPixels(column: WidgetColumnV3, fallback: numbe
 export function cloneWidgetColumns(columns: readonly WidgetColumnV3[]): WidgetColumnV3[] {
   return columns.map((column) => structuredClone(column));
 }
+
+export function updateWidgetColumn(
+  columns: readonly WidgetColumnV3[],
+  columnId: string,
+  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style" | "format">>,
+): WidgetColumnV3[] {
+  return columns.map((column) =>
+    column.id === columnId
+      ? {
+          ...column,
+          ...patch,
+          format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
+          style: { ...column.style, ...patch.style },
+        }
+      : column,
+  );
+}

@@ -48,8 +48,9 @@ describe("useFontsReady", () => {
     try {
       render(<Probe />);
       expect(screen.getByTestId("ready").textContent).toBe("no");
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      expect(screen.getByTestId("ready").textContent).toBe("si");
+      // El timer de seguridad del hook (30ms) termina disparando; esperar por
+      // señal evita depender de que 80ms basten en un runner cargado (ISA-949).
+      await vi.waitFor(() => expect(screen.getByTestId("ready").textContent).toBe("si"));
     } finally {
       restore();
     }

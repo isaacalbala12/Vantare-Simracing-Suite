@@ -23,12 +23,12 @@
 
 ## Orden obligatorio
 
-1. [Microplan 01 — Contratos, sistema→diseño y UX](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-01-contracts-design-ui.md)
-2. [Microplan 02 — Referencia, tokens y primitivas Crystal](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-02-reference-foundation.md)
-3. [Microplan 03 — Cuatro tipos actuales](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-03-core-widgets.md)
-4. [Microplan 04 — Widgets nuevos con datos live disponibles](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-04-live-widgets.md)
-5. [Microplan 05 — Widgets derivados y fuentes auxiliares](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-05-derived-widgets.md)
-6. [Microplan 06 — Catálogo, migración, paridad y cutover](/C:/Users/isaac/Desktop/Vantare-Overlays/vantare-v2/docs/superpowers/plans/2026-07-12-crystal-microplan-06-integration-cutover.md)
+1. [Microplan 01 — Contratos, sistema→diseño y UX](2026-07-12-crystal-microplan-01-contracts-design-ui.md)
+2. [Microplan 02 — Referencia, tokens y primitivas Crystal](2026-07-12-crystal-microplan-02-reference-foundation.md)
+3. [Microplan 03 — Cuatro tipos actuales](2026-07-12-crystal-microplan-03-core-widgets.md)
+4. [Microplan 04 — Widgets nuevos con datos live disponibles](2026-07-12-crystal-microplan-04-live-widgets.md)
+5. [Microplan 05 — Widgets derivados y fuentes auxiliares](2026-07-12-crystal-microplan-05-derived-widgets.md)
+6. [Microplan 06 — Catálogo, migración, paridad y cutover](2026-07-12-crystal-microplan-06-integration-cutover.md)
 
 ## Disponibilidad real de datos
 

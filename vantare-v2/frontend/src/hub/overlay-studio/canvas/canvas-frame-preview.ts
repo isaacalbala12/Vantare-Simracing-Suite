@@ -1,6 +1,7 @@
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import { resolveWidgetVisualGeometry } from "../../../overlay/core/widget-visual-geometry";
 import { resolveMinimumWidthFrameLayout } from "../../../overlay/widget-types/standings/standings-redline-layout";
+import { resolveMinimumHeightFrameLayout } from "../../../overlay/widget-types/standings/standings-frame-layout";
 
 type FramePreviewKind = "move" | "resize";
 
@@ -43,11 +44,18 @@ export function clearStudioFrameLayoutPreview(widgetId: string): void {
 
 function resolveEffectiveFrameLayout(frame: HTMLElement, layout: WidgetLayoutV3): WidgetLayoutV3 {
   const minimumWidth = Number(frame.dataset.effectiveMinimumWidth);
+  const minimumHeight = Number(frame.dataset.effectiveMinimumHeight);
   const viewportWidth = Number(frame.dataset.layoutViewportWidth);
-  return resolveMinimumWidthFrameLayout(
+  const viewportHeight = Number(frame.dataset.layoutViewportHeight);
+  const sized = resolveMinimumWidthFrameLayout(
     layout,
     Number.isFinite(minimumWidth) && minimumWidth > 0 ? minimumWidth : undefined,
     Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : undefined,
+  );
+  return resolveMinimumHeightFrameLayout(
+    sized,
+    Number.isFinite(minimumHeight) && minimumHeight > 0 ? minimumHeight : undefined,
+    Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : undefined,
   );
 }
 

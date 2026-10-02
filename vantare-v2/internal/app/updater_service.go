@@ -150,9 +150,19 @@ func (s *UpdaterService) checkUpdates(ctx context.Context, manual bool) (*update
 			cached.Throttled = true
 			return &cached, nil
 		}
+		// Arranque reciente dentro del enfriamiento: no hay memoria de proceso,
+		// pero el ultimo tag visto en disco sigue anunciando una version
+		// pendiente si es mas nueva que la que corre y no esta ignorada.
+		if tag := settings.LastSeenTag; tag != "" && tag != settings.IgnoreVersion &&
+			updater.ParseVersion(tag).IsNewerThan(updater.ParseVersion(s.updater.CurrentVersion())) {
+			info.LatestVersion = tag
+			info.LatestRelease = updater.Release{TagName: tag}
+			info.HasUpdate = true
+		}
 		return info, nil
 	}
 
+	settings.LastSeenTag = info.LatestRelease.TagName
 	if err := s.saveSettings(settings); err != nil {
 		return nil, err
 	}

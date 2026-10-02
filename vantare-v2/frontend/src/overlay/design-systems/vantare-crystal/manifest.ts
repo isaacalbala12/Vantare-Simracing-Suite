@@ -70,6 +70,13 @@ const standingsAppearanceControls = [
   },
   {
     kind: "toggle" as const,
+    id: "show-brand",
+    labelKey: "overlay.inspector.standings.showBrand",
+    path: "showBrand",
+    defaultValue: false,
+  },
+  {
+    kind: "toggle" as const,
     id: "compact-rows",
     labelKey: "overlay.inspector.standings.compactRows",
     path: "compactRows",
@@ -122,6 +129,13 @@ const relativeAppearanceControls = [
     labelKey: "overlay.inspector.relative.showHeader",
     path: "showHeader",
     defaultValue: true,
+  },
+  {
+    kind: "toggle" as const,
+    id: "show-brand",
+    labelKey: "overlay.inspector.relative.showBrand",
+    path: "showBrand",
+    defaultValue: false,
   },
   {
     kind: "color" as const,
@@ -220,6 +234,13 @@ const pedalsAppearanceControls = [
     labelKey: "overlay.inspector.pedals.transparentBackground",
     path: "transparentBackground",
     defaultValue: true,
+  },
+  {
+    kind: "toggle" as const,
+    id: "show-brand",
+    labelKey: "overlay.inspector.pedals.showBrand",
+    path: "showBrand",
+    defaultValue: false,
   },
   {
     kind: "color" as const,

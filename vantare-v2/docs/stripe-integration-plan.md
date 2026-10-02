@@ -1,5 +1,9 @@
 # Stripe Integration Plan — Release 02
 
+> **Ámbito documental (2026-09-14):** Plan histórico de Stripe; Polar es la autoridad comercial decidida y su readiness se verifica por separado.
+> [Referencia vigente](vantare-program/product-contract.md).
+
+
 > Date: 2026-06-26.
 > Scope: products, prices, checkout, webhooks, entitlement mapping, Discord role sync.
 > Status: design-only; code in Mini-Plan B.

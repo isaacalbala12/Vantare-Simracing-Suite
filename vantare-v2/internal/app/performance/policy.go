@@ -234,6 +234,7 @@ func WidgetHzFor(level Level) map[string]WidgetRate {
 	for index, name := range names {
 		result[name] = rates[index]
 	}
+	result["fastest-lap"] = Event()
 	return result
 }
 

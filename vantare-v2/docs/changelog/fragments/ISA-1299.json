@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1299",
+  "type": "fix",
+  "summary": "El ingeniero evita avisos de tiempos fuera de contexto y órdenes de parar por combustible sin fundamento.",
+  "technicalNotes": [
+    "Timings exige carrera y estado de boxes fiables; silencia el final cronometrado y cancela avisos pendientes cuando ese contexto deja de ser válido.",
+    "La orden automática de parar por combustible queda desactivada hasta demostrar necesidad y momento de aviso. Se conservan los avisos de litros y autonomía.",
+    "Cada corte sigue plan y contraste previo con CrewChief, desarrollo con regresiones y comparación posterior con la misma referencia."
+  ],
+  "testing": [
+    "Comprobar silencio de Timings en práctica, clasificación, boxes y con menos de 120 segundos en una carrera cronometrada; 120 segundos exactos no activa el silencio por final.",
+    "Con un aviso todavía pendiente, entrar en boxes: debe cancelarse. Si ya empezó, este cambio no debe interrumpirlo.",
+    "Comprobar que una autonomía inferior a cuatro vueltas no ordena entrar en boxes y que siguen apareciendo avisos de litros y autonomía."
+  ],
+  "knownLimitations": [
+    "La paridad completa de cadencias, sectores, rivales, flags y final por vueltas sigue pendiente en el plan T0–T8. Timings queda en silencio si EndTime no es usable, incluidas las carreras por vueltas cuyo driver no lo demuestra.",
+    "La orden automática de parar por combustible requiere un corte posterior con evidencia suficiente; no se sustituye por una estimación inventada.",
+    "Este corte no valida audio Windows ni una sesión física de Le Mans Ultimate."
+  ]
+}

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -25,12 +26,28 @@ describe("delta v2 view model", () => {
 
     expect(model.deltaText).toBe("-0.238");
     expect(model.tone).toBe("gaining");
-    expect(model.progress).toBeCloseTo(-0.119, 9);
+    expect(model.progress).toBeCloseTo(-0.238 / 1.5, 9);
     expect(model.splitText).toBe("-0.238");
     expect(deltaEffectiveReference(frame)).toBe("session-best");
     // The widget asked for the personal best and the frame could not honour it:
     // the model renders what the frame carries, it does not re-resolve.
     expect(deltaHonoursRequest(frame, CONTENT)).toBe(false);
+  });
+
+  it.each([
+    { seconds: 0.75, progress: 0.5 },
+    { seconds: -1.5, progress: -1 },
+    { seconds: 1.5, progress: 1 },
+    { seconds: 4.2, progress: 1 },
+    { seconds: -4.2, progress: -1 },
+  ])("maps $seconds s to progress $progress on the +-1.5 s scale", ({ seconds, progress }) => {
+    const frame = withDelta(golden(20), {
+      seconds: { v: seconds, q: "fresh" },
+      reference: "personal-best",
+      requested: "personal-best",
+      available: ["personal-best"],
+    });
+    expect(buildDeltaViewModelV2(frame, { state: "live" }).progress).toBe(progress);
   });
 
   it("formats a losing delta with an explicit sign and a fresh zero as 0.000", () => {
@@ -109,8 +126,8 @@ function withDelta(update: OverlayUpdateV2, delta: OverlayFrameV2["delta"]): Ove
 }
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return JSON.parse(readFileSync(path.resolve(
+  return structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
 }

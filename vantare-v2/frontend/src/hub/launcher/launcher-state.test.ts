@@ -7,8 +7,22 @@ import {
   getAppsFromSettings,
   getProfilesFromSettings,
   isProfileLaunchable,
+  isHotkeyAllowed,
   type LauncherAppEntry,
 } from "./launcher-state";
+
+describe("isHotkeyAllowed", () => {
+  it("accepts keys supported by the Windows hotkey manager", () => {
+    expect(isHotkeyAllowed("ctrl+alt+l")).toBe(true);
+    expect(isHotkeyAllowed("ctrl+shift+f9")).toBe(true);
+  });
+
+  it("rejects reserved, unsupported or malformed combinations", () => {
+    for (const combo of ["alt+f4", "alt+tab", "win+l", "ctrl+?", "meta+l", "ctrl+"]) {
+      expect(isHotkeyAllowed(combo)).toBe(false);
+    }
+  });
+});
 
 function makeApp(over: Partial<LauncherAppEntry>): LauncherAppEntry {
   return {
@@ -170,6 +184,11 @@ describe("estimateChainDuration", () => {
       avgChainDurationMs: 12345,
     };
     expect(estimateChainDuration(profile, [])).toBe(12345);
+  });
+
+  it("uses firstStepDelay instead of the first step's legacy delay", () => {
+    const profile = { id: "p", name: "P", steps: [{ appId: "lmu", delay: 10 }], policy: { alreadyRunning: "ask" as const, failure: "ask" as const, cancel: "ask" as const, exit: "ask" as const, retry: "ask" as const, maxRetries: 0, firstStepDelay: 3 } };
+    expect(estimateChainDuration(profile, [])).toBe(5000);
   });
 });
 

@@ -36,17 +36,14 @@ El cuerpo de la GitHub Release no se escribe a mano: lo genera `.github/scripts/
 
 El mismo texto es el que la app muestra al pasar el ratón por el aviso de actualización, así que es la única fuente: no hay una versión para GitHub y otra para el Hub.
 
-`release.yml` valida el manifiesto con `--check` antes de compilar nada y falla la publicación si falta el manifiesto, falta el fragmento de algún issue del corte, el canal no es válido o el resumen es un texto de relleno. Antes, un tag sin sección en `docs/changelog.md` solo producía un aviso y publicaba «Release <tag>».
+`release.yml` valida el manifiesto con `--check` antes de compilar las pre-releases. Para tags estables, la validación sucede al generar las notas después del build y antes de publicar. La publicación falla si falta el manifiesto, falta el fragmento de algún issue del corte, el canal no es válido o el resumen es un texto de relleno. Antes, un tag sin sección en `docs/changelog.md` solo producía un aviso y publicaba «Release <tag>».
 
 ## Desarrollo activo
 
-El digest diario resuelve su fuente en cascada, siempre en lectura:
-
-1. `vantare-v2/docs/roadmap/roadmap.json` (lo genera `roadmap_digest.py`, ISA-378). Se publican solo las fases con estado `in-progress`; `done`, `planned` y `future` se descartan. El nombre es `phaseLabel · title`, el progreso viene de `progress` (0-100) y el texto de `summary`; los campos localizados se leen en español. Si el archivo no existe o no parsea, se pasa al siguiente nivel sin fallar.
-2. Milestones abiertos de GitHub del propio repositorio: el progreso es `closed/total` de sus issues y el texto es la descripción del milestone.
-3. Si no hay ninguna de las dos, se publica el embed honesto de "sin novedades".
-
-Solo se publican nombre, progreso, URL y el texto del propio milestone o fase; las menciones masivas se neutralizan. El workflow no escribe en ninguna fuente.
+El digest diario consulta en lectura los milestones abiertos de GitHub del propio
+repositorio. El progreso es `closed/total` de sus issues y el texto es la
+descripción del milestone. Si no hay milestones disponibles, publica el embed
+honesto de "sin novedades". El workflow no escribe en ninguna fuente.
 
 ## Sistema visual compartido
 

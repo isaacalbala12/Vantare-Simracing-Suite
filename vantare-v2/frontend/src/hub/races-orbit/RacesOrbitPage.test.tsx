@@ -109,6 +109,10 @@ function pickFirstDayStart() {
   fireEvent.click(screen.getAllByTestId("orbit-races-ev-chip").find((chip) => chip.textContent?.includes("LMGT3 Fixed"))!);
   expect(within(screen.getByTestId("orbit-races-detail")).getByText("Salida elegida")).toBeTruthy();
 }
+function pickDefaultSeries() {
+  fireEvent.click(screen.getAllByTestId("orbit-races-next-row")
+    .find((row) => row.textContent?.includes("LMGT3 Fixed"))!);
+}
 
 const VIEWS = [
   { label: "Próximas", testId: "orbit-races-next" },
@@ -119,13 +123,34 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("abre el detalle solo tras elegir una serie y permite cerrarlo", () => {
+    setup();
+    expect(screen.queryByTestId("orbit-races-detail")).toBeNull();
+    fireEvent.click(screen.getAllByTestId("orbit-races-next-row")[0]);
+    expect(screen.getByTestId("orbit-races-detail")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("orbit-races-detail-close"));
+    expect(screen.queryByTestId("orbit-races-detail")).toBeNull();
+  });
+  it("ordena Día en franjas de quince minutos sin repetir cada salida", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Día" }));
+    const slots = screen.getAllByTestId("orbit-races-day-slot");
+    expect(slots).toHaveLength(96);
+    const occurrences = screen.getAllByTestId("orbit-races-ev-chip").map((chip) => chip.getAttribute("data-occurrence"));
+    expect(new Set(occurrences).size).toBe(occurrences.length);
+  });
+  it("permite abrir Día desde el fondo de una celda de Mes", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    fireEvent.click(screen.getAllByTestId("orbit-races-month-cell-open")[10]);
+    expect(screen.getByTestId("orbit-races-day")).toBeTruthy();
+  });
   it("el filtro no arrastra una hora elegida de otra serie", () => {
     setup(); pickFirstDayStart();
     fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
-    const detail = within(screen.getByTestId("orbit-races-detail"));
-    expect(detail.getByText("Hypercar Open")).toBeTruthy();
-    expect(detail.queryByText("Salida elegida")).toBeNull();
-    expect(detail.getByText("Próxima salida")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-races-detail")).toBeNull();
+    fireEvent.click(screen.getAllByTestId("orbit-races-ev-chip")[0]);
+    expect(within(screen.getByTestId("orbit-races-detail")).getByText("Hypercar Open")).toBeTruthy();
   });
   it("un nuevo destino de Inicio sustituye la selección manual anterior", () => {
     const view = setup({ target: "bronze-1" }); pickFirstDayStart();
@@ -152,7 +177,7 @@ describe("RacesOrbitPage", () => {
     const view = setup(); pickFirstDayStart();
     view.rerenderPage({ target: "gold-1" });
     view.rerenderPage({});
-    expect(within(screen.getByTestId("orbit-races-detail")).queryByText("Salida elegida")).toBeNull();
+    expect(screen.queryByTestId("orbit-races-detail")).toBeNull();
   });
   it("actualizar el seguimiento conserva una hora histórica todavía publicada", () => {
     const view = setup(); pickFirstDayStart();
@@ -163,6 +188,7 @@ describe("RacesOrbitPage", () => {
     setup({ calendar: { ...CALENDAR, series: [series({ id: "s", name: "Sesiones", sessions: [
       { name: "practice", durationMin: 3, estimated }, { name: "race", durationMin: 20, estimated: false },
     ] })] } });
+    fireEvent.click(screen.getAllByTestId("orbit-races-next-row")[0]);
     const detail = screen.getByTestId("orbit-races-detail");
     expect(detail.textContent).toContain(estimated ? "P ~3 · R 20" : "P 3 · R 20");
     expect(detail.textContent?.includes("~ duración estimada")).toBe(estimated);
@@ -235,13 +261,14 @@ describe("RacesOrbitPage", () => {
     setup();
     expect(within(screen.getByTestId("orbit-races-next")).getAllByRole("option").length)
       .toBeGreaterThan(2);
+    pickDefaultSeries();
     expect(screen.getByTestId("orbit-races-detail").textContent).toContain("LMGT3 Fixed");
 
     fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
 
     const rows = within(screen.getByTestId("orbit-races-next")).getAllByRole("option");
     expect(rows.every((row) => row.textContent?.includes("Hypercar Open"))).toBe(true);
-    expect(screen.getByTestId("orbit-races-detail").textContent).toContain("Hypercar Open");
+    expect(screen.queryByTestId("orbit-races-detail")).toBeNull();
   });
 
   it("los contadores del filtro salen de las series reales", () => {
@@ -265,19 +292,21 @@ describe("RacesOrbitPage", () => {
   });
 
   it("seguir una serie despacha el evento real del calendario", () => {
-    setup();
+    setup(); pickDefaultSeries();
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
     expect(mockEmit).toHaveBeenCalledWith("calendar:series:follow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
   });
 
   it("dejar de seguir despacha el evento contrario", () => {
     setup({ calendar: { ...CALENDAR, followedSeriesIds: ["bronze-1"] } });
+    pickDefaultSeries();
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
     expect(mockEmit).toHaveBeenCalledWith("calendar:series:unfollow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
   });
 
   it.each([false, true])("confirma el resultado guardado, no el clic (seguida: %s)", (following) => {
     const { unmount } = setup({ calendar: { ...CALENDAR, followedSeriesIds: following ? ["bronze-1"] : [] } });
+    pickDefaultSeries();
     const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
     fireEvent.click(button);
     const success = following ? "Has dejado de seguir LMGT3 Fixed." : "Serie seguida";
@@ -295,7 +324,7 @@ describe("RacesOrbitPage", () => {
   });
 
   it("un fallo permite reintentar e ignora una respuesta tardía anterior", () => {
-    setup();
+    setup(); pickDefaultSeries();
     const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
     fireEvent.click(button);
     const first = mockEmit.mock.calls[0][1];
@@ -314,7 +343,7 @@ describe("RacesOrbitPage", () => {
 
   it("un fallo del transporte libera el botón sin éxito", async () => {
     mockEmit.mockRejectedValueOnce(new Error("transport unavailable"));
-    setup();
+    setup(); pickDefaultSeries();
     await act(async () => { fireEvent.click(screen.getByTestId("orbit-races-follow")); });
     expect((screen.getByTestId("orbit-races-follow") as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText("Serie seguida")).toBeNull();
@@ -322,7 +351,7 @@ describe("RacesOrbitPage", () => {
   });
 
   it("mantiene la correlación al elegir otra serie e ignora resultados inválidos", () => {
-    setup();
+    setup(); pickDefaultSeries();
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
     const request = mockEmit.mock.calls[0][1];
     fireEvent.click(within(screen.getByTestId("orbit-races-next")).getAllByRole("option")
@@ -337,7 +366,7 @@ describe("RacesOrbitPage", () => {
 
   it("en Free el botón de seguir queda bloqueado con motivo", () => {
     plan = "free";
-    setup();
+    setup(); pickDefaultSeries();
     const follow = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
     expect(follow.disabled).toBe(true);
     expect(document.body.textContent).toContain("Free");
@@ -389,8 +418,19 @@ describe("RacesOrbitPage", () => {
   });
 
   it("un chip de Semana selecciona serie y hora en el detalle", () => {
-    setup();
+    setup({ calendar: {
+      ...CALENDAR,
+      series: [
+        ...CALENDAR.series,
+        series({ id: "weekly-1", name: "2.4h Road Atlanta", tier: "weekly", recurrence: { kind: "weekly", days: ["tue"], timesUTC: ["20:00"] } }),
+        series({ id: "special-1", name: "Grand Prix of Long Beach", tier: "weekly", eventKind: "special", recurrence: { kind: "weekly", days: ["sat"], timesUTC: ["10:00"] } }),
+      ],
+    } });
     fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    expect(screen.queryByText("LMGT3 Fixed")).toBeNull();
+    expect(screen.queryByText("Hypercar Open")).toBeNull();
+    expect(screen.getByText("2.4h Road Atlanta")).toBeTruthy();
+    expect(screen.getByText("Grand Prix of Long Beach")).toBeTruthy();
     const slot = screen.getAllByTestId("orbit-races-week-slot")[0];
     const hour = slot.textContent!;
     fireEvent.click(slot);
@@ -398,7 +438,10 @@ describe("RacesOrbitPage", () => {
   });
 
   it("la cabecera de un día de Semana abre Día en esa fecha", () => {
-    setup();
+    setup({ calendar: {
+      ...CALENDAR,
+      series: [...CALENDAR.series, series({ id: "weekly-1", name: "2.4h Road Atlanta", tier: "weekly", recurrence: { kind: "weekly", days: ["tue"], timesUTC: ["20:00"] } })],
+    } });
     fireEvent.click(screen.getByRole("button", { name: "Semana" }));
     const days = screen.getAllByTestId("orbit-races-week-day");
     fireEvent.click(days[days.length - 1]);
@@ -423,7 +466,14 @@ describe("RacesOrbitPage", () => {
     expect(screen.getByTestId("orbit-races-detail-at").textContent).toBeTruthy();
   });
 
-  it("el Timeline cambia de rango y de zoom dentro de sus límites", () => {
+  it("Día no sombrea de rojo la franja actual", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Día" }));
+    const current = screen.getAllByTestId("orbit-races-day-slot")[NOW.getHours() * 4];
+    expect(current.querySelector("[data-now]")).toBeNull();
+  });
+
+  it("el Timeline muestra una hora y adapta el eje al zoom", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
     const axis = () =>
@@ -435,25 +485,28 @@ describe("RacesOrbitPage", () => {
       );
 
     const base = axis();
-    fireEvent.click(
-      within(screen.getByTestId("orbit-races-tl-controls")).getByRole("button", { name: "12 h" }),
-    );
-    const wide = axis();
-    expect(wide).toBeGreaterThan(base);
-
+    expect(screen.queryByTestId("orbit-timeline-now")).toBeNull();
     fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
-    expect(axis()).toBeGreaterThan(wide);
+    expect(axis()).toBeCloseTo(base * 1.05);
+    fireEvent.keyDown(window, { key: "+", code: "Equal", ctrlKey: true });
+    expect(axis()).toBeCloseTo(base * 1.1);
+    fireEvent.keyDown(window, { key: "-", code: "Minus", ctrlKey: true });
+    expect(axis()).toBeCloseTo(base * 1.05);
     fireEvent.click(screen.getByTestId("orbit-races-zoom-fit"));
-    expect(axis()).toBe(wide);
+    expect(axis()).toBe(base);
     fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
-    expect(axis()).toBeLessThan(wide);
+    expect(axis()).toBe(base);
 
-    // El zoom nunca baja de "24 h caben" ni sube de 4×.
+    // Una hora cabe completa al alejar; el máximo amplía a cuatro veces.
     for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
     expect(axis()).toBe(base);
-    for (let i = 0; i < 20; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
-    // 4× exacto salvo el redondeo a píxel entero de `data-px-per-hour`.
+    for (let i = 0; i < 60; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
     expect(Math.abs(axis() - base * 4)).toBeLessThanOrEqual(2);
+    const scroller = screen.getByTestId("orbit-timeline");
+    fireEvent.click(screen.getByTestId("orbit-races-pan-right"));
+    expect(scroller.scrollLeft).toBeCloseTo(axis() / 4);
+    fireEvent.click(screen.getByTestId("orbit-races-pan-left"));
+    expect(scroller.scrollLeft).toBe(0);
   });
 
   it("el bloque marcado del Timeline rotula y queda por delante", () => {
@@ -476,7 +529,7 @@ describe("RacesOrbitPage", () => {
   });
 
   it("el detalle salta al Timeline y al Día", () => {
-    setup();
+    setup(); pickDefaultSeries();
     fireEvent.click(screen.getByTestId("orbit-races-see-timeline"));
     expect(screen.getByTestId("orbit-races-timeline")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-races-see-day"));

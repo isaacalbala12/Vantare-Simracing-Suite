@@ -1,5 +1,12 @@
 # Testing Center — triage y outbox v1
 
+> **Alcance de tracker:** las instrucciones de Linear de abajo son históricas
+> y no se ejecutan; Linear ya está retirado. Leer [la transición a Notion](../vantare-program/notion-transition.md).
+> Se preservan los contratos técnicos y de privacidad aplicables. Esta decisión
+> no activa Testing Center ni implementa un adaptador Notion; esos cambios exigen
+> su propio corte técnico verificado. No sustituir IDs o campos persistidos por texto.
+
+
 Estado: TAU-05A / ISA-222 implementado en rama de issue. No hay llamada de red,
 GitHub App, webhook, Codex, Discord, deploy ni migración remota.
 

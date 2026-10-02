@@ -158,6 +158,35 @@ func TestCachedProjectorRejectsUnknownSourceStateBeforeMutatingCache(t *testing.
 	}
 }
 
+func TestCachedProjectorBuildersCannotMutateInputSnapshot(t *testing.T) {
+	t.Parallel()
+
+	snapshot := builderFinalState(t, 2)
+	before, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("input snapshot has no owned value")
+	}
+	projector := NewCachedProjectorWithBuilders(
+		SectionCadence{},
+		SectionBuilders{
+			Standings: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) []StandingRowV2 {
+				final.Observed.Vehicles[0].Identity.Vehicle = "mutated-by-builder"
+				return nil
+			},
+		},
+	)
+	if _, err := projector.Project(snapshot, builderSourceContext(), DefaultPreferencesV2(), 1, cadenceOrigin); err != nil {
+		t.Fatalf("Project: %v", err)
+	}
+	after, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("builder invalidated the input snapshot")
+	}
+	if !reflect.DeepEqual(after, before) {
+		t.Fatal("injected builder mutated the input snapshot")
+	}
+}
+
 func TestSkippedSectionReusesTheSameSliceBacking(t *testing.T) {
 	t.Parallel()
 

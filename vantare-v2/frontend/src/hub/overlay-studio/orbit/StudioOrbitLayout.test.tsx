@@ -28,6 +28,7 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { I18nProvider } from "../../../i18n/I18nProvider";
@@ -81,9 +82,21 @@ function renderStudio(
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
+  // Studio mechanics tests run with overlays rights; denial itself is
+  // covered by the dedicated policy suites.
+  const paidPolicy: StudioPolicy = {
+    revision: 2,
+    overlaysBasic: true,
+    overlaysAdvanced: true,
+    engineerAI: false,
+    brandCrystal: "optional",
+    brandEfficiency: "optional",
+    brandOriginal: "none",
+  };
+
   const tree = (
     <I18nProvider>
-      <StudioProvider client={createClient(document)} initialFile="profile.json">
+      <StudioProvider client={createClient(document)} initialFile="profile.json" widgetPolicy={paidPolicy}>
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <StudioConfirmProvider>
             <StudioOrbitLayout
@@ -128,6 +141,43 @@ beforeEach(() => {
 });
 
 describe("StudioOrbitLayout", () => {
+  it("sigue el tema por defecto y permite fijar una variante de otra paleta", async () => {
+    renderStudio();
+    const select = await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement;
+    const stage = screen.getByTestId("orbit-studio-stage");
+    expect(select.value).toBe("theme");
+    expect(stage.className).toContain("osv3-bg-theme");
+    expect(select.querySelectorAll("optgroup")).toHaveLength(8);
+    expect(select.querySelector('optgroup[label="Tema Grises"] option[value="theme-mono-dark"]')).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: "theme-mono-dark" } });
+    expect(stage.className).toContain("osv3-bg-theme-mono-dark");
+    fireEvent.change(select, { target: { value: "theme" } });
+    expect(stage.className).toContain("osv3-bg-theme");
+  });
+
+  it("recuerda el fondo manual al reabrir Studio y descarta uno propio borrado", async () => {
+    const first = renderStudio();
+    const select = await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "theme-grove-light" } });
+    expect(window.localStorage.getItem(ORBIT_KEYS.studioBackground)).toBe("theme-grove-light");
+    first.unmount();
+    window.document.getElementById(STUDIO_CONTEXT_SLOT_ID)?.remove();
+    window.document.getElementById(STUDIO_TOPBAR_SLOT_ID)?.remove();
+
+    renderStudio();
+    expect((await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement).value)
+      .toBe("theme-grove-light");
+    cleanup();
+    window.document.getElementById(STUDIO_CONTEXT_SLOT_ID)?.remove();
+    window.document.getElementById(STUDIO_TOPBAR_SLOT_ID)?.remove();
+
+    window.localStorage.setItem(ORBIT_KEYS.studioBackground, "wallpaper:missing");
+    renderStudio();
+    expect((await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement).value)
+      .toBe("theme");
+  });
+
   it("sincroniza la selección entre lista, lienzo e inspector", async () => {
     renderStudio();
     const row = await screen.findByTestId("orbit-studio-widget-item-delta-main");

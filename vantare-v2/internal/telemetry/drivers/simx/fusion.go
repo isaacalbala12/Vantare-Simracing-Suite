@@ -84,6 +84,7 @@ func (state *Fusion) Merge(elapsed time.Duration, inputs ...Observation) (Observ
 	}
 	entry := slots.Get(SlotSynthetic)
 	result := entry.Value
+	result.TrackLength = fusion.FieldAt(elapsed, entry.Received, freshnessLimit, result.TrackLength)
 	ledger := fusion.NewLedger(authorityMatrix.Len(), 1)
 	for _, rule := range authorityMatrix.Rules() {
 		ledger.Decide(rule.Signal, SlotSynthetic, slotFreshness(elapsed, entry, rule), false)

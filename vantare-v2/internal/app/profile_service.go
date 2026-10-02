@@ -21,6 +21,10 @@ type ProfileService struct {
 	mgr         *window.Manager
 	emitter     EventEmitter // for profile:loaded, layout:saved events
 	profilesDir string       // directory to scan for cycling; empty means cycling disabled
+	// policySource is the native widget-policy authority for save guards.
+	// Nil keeps the legacy behavior (no policy gate); production wires the
+	// license service via SetWidgetPolicySource.
+	policySource WidgetPolicySource
 }
 
 // NewProfileService creates a profile service bound to the given JSON file.
@@ -37,6 +41,20 @@ func (s *ProfileService) SetProfilesDir(dir string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.profilesDir = dir
+}
+
+// SetWidgetPolicySource wires the native authority snapshot used by the save
+// guard (ISA-1097). See StudioProfileService.SetWidgetPolicySource.
+func (s *ProfileService) SetWidgetPolicySource(src WidgetPolicySource) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.policySource = src
+}
+
+func (s *ProfileService) widgetPolicySource() WidgetPolicySource {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.policySource
 }
 
 // Load reads the profile from disk and stores it in memory.
@@ -83,6 +101,16 @@ func (s *ProfileService) SaveProfile(p *config.ProfileConfig) error {
 	if path == "" {
 		return fmt.Errorf("profile path not configured")
 	}
+	// Native policy gate (ISA-1097): compare the candidate against the
+	// native in-memory profile, never against a client-claimed snapshot.
+	if source := s.widgetPolicySource(); source != nil {
+		s.mu.RLock()
+		baseline := config.CopyProfile(s.profile)
+		s.mu.RUnlock()
+		if err := checkLegacyProfileSave(source.CurrentWidgetPolicy(), baseline, candidate); err != nil {
+			return err
+		}
+	}
 	if err := config.SaveFile(path, candidate); err != nil {
 		return fmt.Errorf("save profile: %w", err)
 	}
@@ -123,6 +151,16 @@ func (s *ProfileService) SaveProfileState(widgets []config.WidgetConfig, variant
 	config.SetGeneralLayoutWidgets(candidate, widgets)
 	if variants != nil {
 		candidate.Variants = config.CopyProfileVariants(variants)
+	}
+	// Native policy gate (ISA-1097): layout-only moves of blocked widgets
+	// pass; anything beyond position on a blocked widget is denied.
+	if source := s.widgetPolicySource(); source != nil {
+		s.mu.RLock()
+		baseline := config.CopyProfile(s.profile)
+		s.mu.RUnlock()
+		if err := checkLegacyProfileSave(source.CurrentWidgetPolicy(), baseline, candidate); err != nil {
+			return err
+		}
 	}
 	if err := config.SaveFile(path, candidate); err != nil {
 		return err

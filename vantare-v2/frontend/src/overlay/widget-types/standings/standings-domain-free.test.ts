@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -11,7 +12,7 @@ const CONTENT = standingsDefinition.parseContent({
 });
 
 describe("standings v2 view model", () => {
-  it("preserves every nightly field while adding canonical Tower metadata", () => {
+  it("preserves every nightly field while adding canonical Tower metadata and session information", () => {
     const update = golden(1);
     if (!update.frame) throw new Error("golden frame missing");
     const expected = readFileSync(path.resolve(
@@ -20,13 +21,24 @@ describe("standings v2 view model", () => {
     ), "utf8").trim();
 
     const baseline = JSON.parse(expected);
-    expect(buildStandingsViewModelV2(update.frame, update.source, CONTENT)).toEqual({
+    const model = buildStandingsViewModelV2(update.frame, update.source, CONTENT);
+    expect(model).toEqual({
       ...baseline,
       trackName: update.frame.session.track.v,
       totalRows: 1,
+      lapText: "127",
+      playerRow: model.rows[0],
+      flag: "unknown",
+      sessionInfo: {
+        trackTemperature: { text: "—", stale: false }, airTemperature: { text: "—", stale: false },
+        estimatedLaps: { text: "≈79", stale: false }, totalLaps: { text: "—", stale: false },
+        track: { text: "Sebring", stale: false }, remaining: { text: "01:59:58", stale: false },
+        rain: { text: "—", stale: false }, wetness: { text: "—", stale: false },
+      },
       rows: baseline.rows.map((row: Record<string, unknown>, index: number) => ({
         ...row,
         classPosition: update.frame!.standings[index].classPosition,
+        vehicleClass: update.frame!.standings[index].classId,
       })),
     });
   });
@@ -121,8 +133,8 @@ describe("standings v2 view model", () => {
 });
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return JSON.parse(readFileSync(path.resolve(
+  return structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
 }

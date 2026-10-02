@@ -15,7 +15,7 @@ const PEDALS = [
   { key: "throttle", label: "THR", colorPath: "pedalThrottleColor" },
 ] as const;
 
-export function PedalsEndurance({ model, settings }: WidgetRendererProps<PedalsViewModel>) {
+export function PedalsEndurance({ model, settings, motion = "full" }: WidgetRendererProps<PedalsViewModel>) {
   const parsed = parsePedalsEnduranceSettings(settings);
   const isNeo = parsed.templateId === "pedals-neo";
 
@@ -26,6 +26,7 @@ export function PedalsEndurance({ model, settings }: WidgetRendererProps<PedalsV
         data-widget-renderer="pedals"
         data-status={model.status}
         data-template="pedals-redline"
+        data-motion-level={motion}
         className="ven-root ven-pedals ven-predw"
         style={
           {
@@ -75,6 +76,7 @@ export function PedalsEndurance({ model, settings }: WidgetRendererProps<PedalsV
         data-widget-renderer="pedals"
         data-status={model.status}
         data-template="pedals-neo"
+        data-motion-level={motion}
         className="ven-root ven-pedals ven-neop"
       >
         {model.statusMessage ? (
@@ -93,6 +95,7 @@ export function PedalsEndurance({ model, settings }: WidgetRendererProps<PedalsV
       data-widget-renderer="pedals"
       data-status={model.status}
       data-template="pedals-classic"
+      data-motion-level={motion}
       className="ven-root ven-pedals"
     >
       {model.statusMessage ? (

@@ -484,6 +484,8 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 	value.EndTime = copyFreshness(value.EndTime, freshness)
 	value.MaximumLaps = copyFreshness(value.MaximumLaps, freshness)
 	value.TrackName = copyFreshness(value.TrackName, freshness)
+	value.RainFraction = copyFreshness(value.RainFraction, freshness)
+	value.TrackLength = copyFreshness(value.TrackLength, freshness)
 	value.SessionType = copyFreshness(value.SessionType, freshness)
 	value.VehicleCount = copyFreshness(value.VehicleCount, freshness)
 	value.PlayerPresent = copyFreshness(value.PlayerPresent, freshness)

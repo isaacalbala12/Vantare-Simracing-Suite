@@ -1,0 +1,8 @@
+{
+  "entry": [
+    "src/entry.ts"
+  ],
+  "ignore": [
+    "node_modules"
+  ]
+}

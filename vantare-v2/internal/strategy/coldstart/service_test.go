@@ -471,3 +471,48 @@ func TestEmptyFailuresSerializeAsArrayNotNull(t *testing.T) {
 		t.Fatalf("progress = %s, want failures as an empty array", progress)
 	}
 }
+
+func TestSelectPendingBatchBoundsConcurrencyByEstimatedMemory(t *testing.T) {
+	t.Parallel()
+	candidate := func(locator string, size int64) telemetryanalysis.Candidate {
+		return telemetryanalysis.Candidate{Locator: locator, Size: size}
+	}
+	none := map[string]struct{}{}
+
+	small := int64(32 << 20) // ~512 MiB estimados
+	huge := maxImportBatchEstimatedBytes / importMemoryExpansionFactor / 2
+
+	batch := selectPendingBatch(
+		[]telemetryanalysis.Candidate{
+			candidate("huge-a", huge), candidate("huge-b", huge),
+			candidate("huge-c", huge), candidate("huge-d", huge), candidate("huge-e", huge),
+		},
+		none, none, maximumImportConcurrency,
+	)
+	if len(batch) != 2 {
+		t.Fatalf("huge batch = %d, want 2 (4 GiB estimados / 2 GiB por fichero)", len(batch))
+	}
+
+	batch = selectPendingBatch(
+		[]telemetryanalysis.Candidate{
+			candidate("small-a", small), candidate("small-b", small),
+			candidate("small-c", small), candidate("small-d", small),
+			candidate("small-e", small),
+		},
+		none, none, maximumImportConcurrency,
+	)
+	if len(batch) != 4 {
+		t.Fatalf("small batch = %d, want concurrency limit 4", len(batch))
+	}
+
+	batch = selectPendingBatch(
+		[]telemetryanalysis.Candidate{
+			candidate("unknown-a", 0), candidate("unknown-b", 0), candidate("unknown-c", 0),
+			candidate("unknown-d", 0), candidate("unknown-e", 0),
+		},
+		none, none, maximumImportConcurrency,
+	)
+	if len(batch) != 4 {
+		t.Fatalf("unknown-size batch = %d, want default estimate to keep limit 4", len(batch))
+	}
+}

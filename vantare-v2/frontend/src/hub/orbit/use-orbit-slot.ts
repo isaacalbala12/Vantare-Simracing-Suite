@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /**
  * Nodo de un hueco que la shell Orbit reserva para la pantalla activa.
@@ -11,7 +11,8 @@ import { useEffect, useState } from "react";
 export function useOrbitSlot(id: string): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
 
-  useEffect(() => {
+  // Resolver el hueco antes del primer pintado evita un fotograma vacío.
+  useLayoutEffect(() => {
     const find = () => setNode(document.getElementById(id));
     find();
     // La shell puede montar el hueco después (la columna se pliega y despliega),

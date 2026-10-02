@@ -47,6 +47,7 @@ func deriveRelativeGaps(
 	playerID identity.VehicleID,
 	playerPresent schema.Field[bool],
 	vehicles []core.VehicleState,
+	trackLength schema.Field[standings.LapDistance],
 ) GapSet {
 	if playerID == "" {
 		return GapSet{Freshness: schema.FreshnessMissing}
@@ -71,11 +72,11 @@ func deriveRelativeGaps(
 	}
 
 	result := GapSet{
-		Freshness: worstGapFreshness(singleQuality(player.LapsBehindLeader), singleQuality(player.LapProgressTime)),
+		Freshness: schema.FreshnessFresh,
 		Vehicles:  make([]VehicleGap, len(vehicles)),
 	}
 	for index, current := range vehicles {
-		result.Vehicles[index] = deriveVehicleGap(*player, current)
+		result.Vehicles[index] = deriveVehicleGap(*player, current, trackLength)
 		result.Freshness = worstGapFreshness(result.Freshness, relevantGapFreshness(result.Vehicles[index]))
 	}
 	return result
@@ -104,25 +105,9 @@ func worstGapFreshness(left, right schema.Freshness) schema.Freshness {
 	return left
 }
 
-func deriveVehicleGap(player, current core.VehicleState) VehicleGap {
+func deriveVehicleGap(player, current core.VehicleState, trackLength schema.Field[standings.LapDistance]) VehicleGap {
 	result := VehicleGap{Vehicle: current.Identity.Vehicle}
-	lapQuality, lapsUsable := exactFreshQuality(player.LapsBehindLeader, current.LapsBehindLeader)
-	if !lapsUsable {
-		if lapQuality == schema.FreshnessInvalid {
-			result.Laps = invalidDerived[standings.RelativeLaps]()
-		} else {
-			result.Laps = schema.MissingField[standings.RelativeLaps]()
-		}
-	} else {
-		playerLaps, _ := player.LapsBehindLeader.Value()
-		currentLaps, _ := current.LapsBehindLeader.Value()
-		difference := int64(playerLaps) - int64(currentLaps)
-		if difference < math.MinInt32 || difference > math.MaxInt32 {
-			result.Laps = invalidDerived[standings.RelativeLaps]()
-		} else {
-			result.Laps = mustDerived(standings.RelativeLaps(difference), lapQuality)
-		}
-	}
+	result.Laps = relativeProgressLaps(player, current, trackLength)
 
 	timeQuality, timeUsable := exactFreshQuality(player.LapProgressTime, current.LapProgressTime)
 	if !timeUsable {
@@ -222,4 +207,32 @@ func mustDerived[T comparable](value T, freshness schema.Freshness) schema.Field
 
 func isFinite(value float64) bool {
 	return !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
+// A rival is lapped relative to the player only after a full circuit of
+// progress separates them. Subtracting each car's deficit to a third car
+// (the leader) mislabels traffic around the leader's timing-line boundary.
+func relativeProgressLaps(player, current core.VehicleState, trackLength schema.Field[standings.LapDistance]) schema.Field[standings.RelativeLaps] {
+	quality, usable := exactFreshQuality(player.CompletedLaps, current.CompletedLaps)
+	distanceQuality, distancesUsable := exactFreshQuality(player.LapDistance, current.LapDistance)
+	lengthQuality := singleQuality(trackLength)
+	if !usable || !distancesUsable || quality != distanceQuality || quality != lengthQuality {
+		if quality == schema.FreshnessInvalid || distanceQuality == schema.FreshnessInvalid || lengthQuality == schema.FreshnessInvalid {
+			return invalidDerived[standings.RelativeLaps]()
+		}
+		return schema.MissingField[standings.RelativeLaps]()
+	}
+	length, lengthPresent := trackLength.Value()
+	playerDistance, _ := player.LapDistance.Value()
+	currentDistance, _ := current.LapDistance.Value()
+	playerLaps, _ := player.CompletedLaps.Value()
+	currentLaps, _ := current.CompletedLaps.Value()
+	if !lengthPresent || !isFinite(float64(length)) || length <= 0 || !isFinite(float64(playerDistance)) || !isFinite(float64(currentDistance)) || playerDistance < 0 || currentDistance < 0 || playerDistance >= length || currentDistance >= length || playerLaps < 0 || currentLaps < 0 {
+		return invalidDerived[standings.RelativeLaps]()
+	}
+	difference := float64(int64(currentLaps)-int64(playerLaps)) + float64(currentDistance-playerDistance)/float64(length)
+	if difference < math.MinInt32 || difference > math.MaxInt32 {
+		return invalidDerived[standings.RelativeLaps]()
+	}
+	return mustDerived(standings.RelativeLaps(math.Trunc(difference)), quality)
 }

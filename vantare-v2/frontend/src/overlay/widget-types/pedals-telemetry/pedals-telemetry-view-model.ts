@@ -9,6 +9,8 @@ export type PedalsTelemetryViewModel = WidgetViewModelBase & {
   speedKph?: number;
   rpm?: number;
   gear?: number;
+  /** Volante normalizado -1..1 (negativo = izquierda). */
+  steering?: number;
   playerPosition?: number;
   showPosition: boolean;
   showClutch: boolean;

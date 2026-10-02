@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1332",
+  "type": "feature",
+  "summary": "Horizontal Standings Eficiencia incorpora movimiento suave de tarjetas, fundidos de entrada y salida y señales tenues al cambiar posiciones.",
+  "technicalNotes": [
+    "La identidad canónica del piloto permanece estable al cambiar de puesto; no se usa posición o dorsal para animar.",
+    "Los cambios numéricos salen antes de medir geometría, programar temporizadores o iniciar animaciones. Las transiciones rápidas retoman posición y opacidad vigentes; se respetan escala, modos de movimiento y cambios de fuente/sesión.",
+    "Workshop ofrece Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar, limitadas a Eficiencia. Los pasos manuales aterrizan exactamente en la muestra elegida."
+  ],
+  "testing": [
+    "Pruebas del renderer y ViewModel, suite frontend y revisión independiente sobre la implementación de movimiento aprobadas.",
+    "100 muestras numéricas, también durante movimiento y entrada, no añaden lecturas de geometría, temporizadores ni animaciones.",
+    "Escenas y ruta real de Workshop probadas con DOM; sin acceso automatizado al navegador del usuario."
+  ],
+  "knownLimitations": [
+    "Pendiente aceptación visual de Isaac y verificación física en Windows/OBS; las pruebas DOM con geometría y WAAPI simuladas no las sustituyen.",
+    "Los efectos React siguen ejecutándose con salida temprana; no se promete coste CPU nulo.",
+    "La entrega en una rama y el preview local no equivalen a integración en Nightly."
+  ]
+}

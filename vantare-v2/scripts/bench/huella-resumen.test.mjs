@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { aggregateRuns, parseCsv, presentMonV2Frame, renderMarkdown, summarizeRun } from "./huella-resumen.mjs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { aggregateRuns, compareRuns, parseCsv, presentMonV2Frame, renderComparison, renderMarkdown, summarizeRun } from "./huella-resumen.mjs";
 
 test("agrega muestras por rol sin mezclar procesos", () => {
   const rows = parseCsv([
@@ -148,4 +150,53 @@ test("el banco limita el muestreo de procesos por tiempo de pared", async () => 
   assert.match(script, /AddSeconds\(\$Duracion\)/);
   assert.match(script, /while \(\(Get-Date\) -lt \$sampleDeadline\)/);
   assert.doesNotMatch(script, /for \(\$sampleIndex = 0; \$sampleIndex -lt \$Duracion/);
+});
+
+// Bloque de frame time: n frames que valen ms; siempre el mismo build.
+const block = (condition, ms) => ({
+  condition,
+  run: summarizeRun(parseCsv(["timestamp,role,frameTimeMs,dropped,buildSha256,distSha256",
+    ...ms.map((value, index) => `t${index},game,${value},0,sha,dist`)].join("\n"))),
+});
+
+test("compara A0/A1 intercalado: distingue un efecto mayor que el ruido A/A", () => {
+  const blocks = [block("A0", [10, 10]), block("A1", [12, 12]), block("A1", [12.1, 12.1]), block("A0", [10.1, 10.1]), block("A0", [9.9, 9.9]), block("A1", [11.9, 11.9])];
+  const mean = compareRuns(blocks, ["A0", "A1"], { sameBuild: true }).find((entry) => entry.stat === "mean" && entry.metric === "frameTimeMs");
+  assert.equal(mean.base.runs, 3);
+  assert.ok(Math.abs(mean.delta - 2) < 1e-9);
+  assert.equal(mean.status, "DISTINGUIBLE");
+  assert.match(renderComparison(["A0", "A1"], [mean], blocks.map((entry, index) => ({ ...entry, file: `b${index}.csv` }))), /DISTINGUIBLE/);
+});
+
+test("compara A0/A1: el ruido A/A alto deja el efecto dentro del ruido y pocos bloques es insuficiente", () => {
+  const noisy = [block("A0", [8, 8]), block("A1", [10, 10]), block("A1", [6, 6]), block("A0", [12, 12]), block("A0", [10, 10]), block("A1", [8, 8])];
+  assert.equal(compareRuns(noisy, ["A0", "A1"]).find((entry) => entry.stat === "mean").status, "DENTRO DEL RUIDO");
+  assert.equal(compareRuns(noisy.slice(0, 4), ["A0", "A1"]).find((entry) => entry.stat === "mean").status, "INSUFICIENTE");
+});
+
+test("compareRuns rechaza builds distintos con sameBuild y solo saca percentiles del frame time", () => {
+  const other = block("A1", [1]);
+  other.run.__metadata.buildSha256 = "otro";
+  assert.throws(() => compareRuns([block("A0", [1]), other], ["A0", "A1"], { sameBuild: true }), /builds distintos/);
+  const stats = compareRuns([block("A0", [1]), block("A1", [2])], ["A0", "A1"]).map((entry) => `${entry.metric}:${entry.stat}`);
+  assert.deepEqual(stats, ["frameTimeMs:mean", "dropped:mean", "frameTimeMs:p50", "frameTimeMs:p95", "frameTimeMs:p99"]);
+});
+
+test("la CLI --compare lee la condición de cada CSV y escribe la comparación", async () => {
+  const { mkdtemp, writeFile, readFile: read, rm } = await import("node:fs/promises");
+  const { execFileSync } = await import("node:child_process");
+  const { tmpdir } = await import("node:os");
+  const dir = await mkdtemp(path.join(tmpdir(), "huella-compare-"));
+  try {
+    const files = [["A0", 10], ["A1", 12], ["A1", 12.1], ["A0", 10.1], ["A0", 9.9], ["A1", 11.9]].map(([condition, ms], index) => {
+      const file = path.join(dir, `b${index}.csv`);
+      return writeFile(file, `timestamp,condition,role,frameTimeMs,dropped\nt1,${condition},game,${ms},0\nt2,${condition},game,${ms},0\n`).then(() => file);
+    });
+    const csvs = await Promise.all(files);
+    const output = path.join(dir, "out.md");
+    execFileSync("node", [fileURLToPath(new URL("huella-resumen.mjs", import.meta.url)), "--compare", "A0,A1", "--output", output, ...csvs]);
+    assert.match(await read(output, "utf8"), /# Huella mínima · A0 vs A1[\s\S]*frameTimeMs \| mean[\s\S]*DISTINGUIBLE/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

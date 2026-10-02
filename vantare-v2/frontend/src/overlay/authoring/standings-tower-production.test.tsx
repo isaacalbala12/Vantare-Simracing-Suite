@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { applyWidgetDesign } from "../core/widget-design";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
-import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
+import { resolveStandingsFrameLayout } from "../widget-types/standings/standings-frame-layout";
 import { StandingsEndurance } from "../design-systems/vantare-endurance/standings/StandingsEndurance";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
@@ -45,7 +45,7 @@ describe("Redline Tower productive selection", () => {
     const widget = original();
     widget.visual.appearanceOverrides = settings;
     widget.layout = { ...widget.layout, w: width, h: 1087 * width / 482 };
-    expect(resolveStandingsRedlineFrameLayout(widget, widget.layout, 1920)).toEqual(widget.layout);
+    expect(resolveStandingsFrameLayout(widget, widget.layout, 1920)).toEqual(widget.layout);
     const { container } = render(<WidgetVisualViewport widgetType="standings" visual={widget.visual} layout={widget.layout} testId="viewport">
       <StandingsEndurance model={REDLINE_TOWER_REFERENCE} settings={settings} layout={widget.layout} renderMode="desktop" />
     </WidgetVisualViewport>);

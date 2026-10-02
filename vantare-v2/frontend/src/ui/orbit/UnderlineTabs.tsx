@@ -1,3 +1,4 @@
+import { cx } from "./cx";
 export interface UnderlineTabsProps<T extends string> {
   tabs: { id: T; label: string }[];
   value: T;
@@ -16,7 +17,7 @@ export function UnderlineTabs<T extends string>({
   return (
     <div
       aria-label={label}
-      className={["orbit-utabs", className].filter(Boolean).join(" ")}
+      className={cx("orbit-utabs", className)}
       role="tablist"
     >
       {tabs.map((tab) => (

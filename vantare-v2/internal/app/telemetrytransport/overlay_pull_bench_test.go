@@ -145,7 +145,7 @@ func benchmarkOverlayUpdateV2(vehicles int) overlayv2.UpdateV2 {
 			PitState:       "none",
 			CompletedLaps:  int32(index % 60),
 			LastLapSeconds: overlayv2.QValue[float64]{V: 204.1234 + float64(index), Q: overlayv2.QualityFresh},
-			LapDistance:    overlayv2.QValue[float64]{V: 137.25 * float64(index+1), Q: overlayv2.QualityFresh},
+			LapDistance:    &overlayv2.QValue[float64]{V: 137.25 * float64(index+1), Q: overlayv2.QualityFresh},
 			GroundPosition: overlayv2.QValue[overlayv2.GroundPositionV2]{
 				V: overlayv2.GroundPositionV2{X: float64(index) * 13.75, Z: float64(index) * -20.75},
 				Q: overlayv2.QualityFresh,

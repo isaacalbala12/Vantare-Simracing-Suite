@@ -1,5 +1,5 @@
 import { useI18n } from "../../i18n/I18nProvider";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { ConfirmDialog } from "../../ui/orbit/ConfirmDialog";
 import type { Release } from "./settings-contract";
 
 type DowngradeModalProps = {
@@ -20,18 +20,23 @@ export function DowngradeModal({
 
   return (
     <ConfirmDialog
+      open
+      tone="danger"
       title={t("settings.downgrade.title")}
       cancelLabel={t("settings.downgrade.cancel")}
       confirmLabel={t("settings.downgrade.confirm")}
       onCancel={onCancel}
       onConfirm={onConfirm}
-      testId="settings-downgrade-overlay"
-    >
-      {t("settings.downgrade.bodyBefore")}{" "}
-      <strong className="text-white">{release.tag_name}</strong>,{" "}
-      {t("settings.downgrade.bodyMiddle")}{" "}
-      <strong className="text-white">{currentVersion}</strong>.{" "}
-      {t("settings.downgrade.bodyAfter")}
-    </ConfirmDialog>
+      data-testid="settings-downgrade-overlay"
+      body={
+        <>
+          {t("settings.downgrade.bodyBefore")}{" "}
+          <strong className="text-orbit-ink">{release.tag_name}</strong>,{" "}
+          {t("settings.downgrade.bodyMiddle")}{" "}
+          <strong className="text-orbit-ink">{currentVersion}</strong>.{" "}
+          {t("settings.downgrade.bodyAfter")}
+        </>
+      }
+    />
   );
 }

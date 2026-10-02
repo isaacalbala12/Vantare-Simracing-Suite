@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Monogram } from "./Monogram";
+import { cx } from "./cx";
 
 /** Estado por paso de una cadena de lanzamiento (`launcher-contract`). */
 export type ChainStepStatus = "pending" | "launching" | "ready" | "failed";
@@ -42,7 +43,7 @@ export function ChainStep({
 }: ChainStepProps) {
   return (
     <li
-      className={["orbit-chain-step", className].filter(Boolean).join(" ")}
+      className={cx("orbit-chain-step", className)}
       data-s={status}
       data-testid="orbit-chain-step"
     >
@@ -71,7 +72,7 @@ export function Chain({ label, children, className }: ChainProps) {
   return (
     <ol
       aria-label={label}
-      className={["orbit-chain", className].filter(Boolean).join(" ")}
+      className={cx("orbit-chain", className)}
     >
       {children}
     </ol>

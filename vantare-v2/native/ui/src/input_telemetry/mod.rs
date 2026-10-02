@@ -9,7 +9,7 @@ use gpui::{
     linear_gradient, point, px, quad,
 };
 use vantare_domain::{
-    Snapshot,
+    CarId, SessionId, Snapshot,
     format::Preferences,
     input_telemetry::{Sample, Trace, ViewModel},
 };
@@ -62,6 +62,7 @@ pub(crate) struct Widget {
     vm: ViewModel,
     from: [Option<f64>; 3],
     started: Option<Instant>,
+    identity: Option<(u64, SessionId, Option<CarId>)>,
     trace: Trace,
 }
 
@@ -73,6 +74,7 @@ impl Widget {
             vm: settings.project(&Snapshot::default(), prefs),
             from: [None; 3],
             started: None,
+            identity: None,
             trace: Trace::default(),
         }
     }
@@ -83,17 +85,31 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        self.ingest_at(snapshot, prefs, Instant::now())
+    }
+
+    fn ingest_at(&mut self, snapshot: &Snapshot, prefs: Preferences, now: Instant) -> bool {
+        let identity = (
+            snapshot.epoch,
+            snapshot.state.session.id,
+            snapshot.state.player.map(|p| p.car),
+        );
+        let reset = self.identity != Some(identity);
+        let was_moving = self.moving(now);
+        self.identity = Some(identity);
         let trace_changed = self.trace.push_with_window(
             snapshot,
             Duration::from_secs(u64::from(self.settings.history_seconds)),
         );
         let next = self.settings.project(snapshot, prefs);
-        if next.pedals != self.vm.pedals {
-            let now = Instant::now();
+        if reset {
+            self.from = next.pedals;
+            self.started = None;
+        } else if next.pedals != self.vm.pedals {
             self.from = self.pedals_at(now);
             self.started = Some(now);
         }
-        replace_if_changed(&mut self.vm, next) || trace_changed
+        replace_if_changed(&mut self.vm, next) || trace_changed || (reset && was_moving)
     }
 
     fn pedals_at(&self, now: Instant) -> [Option<f64>; 3] {
@@ -402,6 +418,101 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn first_photo_is_immediate_and_the_same_identity_keeps_its_linear_transition() {
+        let prefs = Preferences::default();
+        let now = Instant::now();
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/pedals.snapshot.json"))
+                .expect("foto de pedales");
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest_at(&snapshot, prefs, now);
+        assert_eq!(widget.pedals_at(now), widget.vm.pedals);
+        assert!(!widget.moving(now));
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .throttle = Quality::Reliable(0.25);
+        snapshot.sequence += 1;
+        let start = now + Duration::from_millis(100);
+        widget.ingest_at(&snapshot, prefs, start);
+        assert!(widget.moving(start));
+        assert_eq!(
+            widget.pedals_at(start + Duration::from_millis(40))[2],
+            Some(50.0)
+        );
+        assert_eq!(widget.pedals_at(start + TRANSITION)[2], Some(25.0));
+        assert!(!widget.moving(start + TRANSITION));
+        snapshot.state.player = None;
+        widget.ingest_at(&snapshot, prefs, start + TRANSITION);
+        assert_eq!(widget.pedals_at(start + TRANSITION), [None; 3]);
+        assert!(!widget.moving(start + TRANSITION));
+    }
+
+    #[test]
+    fn identity_changes_cut_input_motion_even_when_values_are_unchanged() {
+        use vantare_domain::{CarId, SessionId, SourceState, Telemetry};
+        let prefs = Preferences::default();
+        let now = Instant::now();
+        for source_state in [SourceState::Live, SourceState::Stale] {
+            for changed in 0..3 {
+                for throttle in [0.0, 0.5] {
+                    let mut snapshot = Snapshot {
+                        epoch: 1,
+                        sequence: 1,
+                        ..Snapshot::default()
+                    };
+                    snapshot.state.source_state = source_state;
+                    snapshot.state.session.id = SessionId(1);
+                    snapshot.state.player = Some(Player {
+                        car: CarId(1),
+                        telemetry: Telemetry {
+                            throttle: Quality::Reliable(1.0),
+                            ..Telemetry::default()
+                        },
+                        ..Player::default()
+                    });
+                    let mut widget = Widget::new(&Settings::default(), prefs);
+                    widget.ingest_at(&snapshot, prefs, now);
+                    let player = snapshot.state.player.as_mut().expect("jugador");
+                    player.telemetry.throttle = Quality::Reliable(0.0);
+                    snapshot.sequence = 2;
+                    snapshot.origin.received_at = Duration::from_millis(100);
+                    widget.ingest_at(&snapshot, prefs, now + Duration::from_millis(100));
+                    assert!(widget.moving(now + Duration::from_millis(120)));
+                    match changed {
+                        0 => snapshot.epoch += 1,
+                        1 => snapshot.state.session.id = SessionId(2),
+                        _ => snapshot.state.player.as_mut().expect("jugador").car = CarId(2),
+                    }
+                    snapshot
+                        .state
+                        .player
+                        .as_mut()
+                        .expect("jugador")
+                        .telemetry
+                        .throttle = Quality::Reliable(throttle);
+                    snapshot.sequence = 3;
+                    snapshot.origin.received_at = Duration::from_millis(120);
+                    let reset_at = now + Duration::from_millis(120);
+                    assert!(
+                        widget.ingest_at(&snapshot, prefs, reset_at),
+                        "repintar el corte"
+                    );
+                    assert_eq!(
+                        widget.pedals_at(reset_at),
+                        widget.vm.pedals,
+                        "no arrastrar entradas de otra identidad"
+                    );
+                    assert!(!widget.moving(reset_at));
+                }
+            }
+        }
+    }
+
     #[test]
     fn selected_history_window_changes_the_projected_observed_trace() {
         let snapshots = crate::workshop::snapshots_from_json(include_str!(

@@ -492,6 +492,16 @@ fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
 }
 
 impl CaptureState {
+    /// Acceso del usuario de la escena aprobada, independiente de licencias reales.
+    #[cfg(any(test, feature = "parity-capture"))]
+    pub fn locked_sections(&self) -> &'static [Section] {
+        if self.section == Section::Strategy {
+            &[Section::Engineer, Section::Analysis]
+        } else {
+            &[]
+        }
+    }
+
     pub fn parse(name: &str) -> Result<Self, String> {
         #[derive(Deserialize)]
         struct Screen {
@@ -568,6 +578,25 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rail_locks_only_belong_to_strategy_capture_scenes() {
+        for name in EXTRA_STRATEGY_CAPTURES {
+            let scene = CaptureState::parse(name).expect("escena Strategy");
+            assert_eq!(
+                scene.locked_sections(),
+                &[Section::Engineer, Section::Analysis]
+            );
+        }
+        for name in ["inicio-base", "engineer-base", "telemetria-base"] {
+            assert!(
+                CaptureState::parse(name)
+                    .expect("escena Hub")
+                    .locked_sections()
+                    .is_empty()
+            );
+        }
+    }
 
     #[test]
     fn telemetry_demo_and_traces_keep_the_same_frozen_scene() {

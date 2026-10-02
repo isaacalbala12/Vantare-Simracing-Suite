@@ -3,6 +3,14 @@ use super::{Command, Remote, Reply};
 use crate::orbit;
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Transition {
+    Idle,
+    Login,
+    Renewal,
+    Logout,
+}
+
 pub(super) struct State {
     configured: bool,
     session_checked: bool,
@@ -10,6 +18,7 @@ pub(super) struct State {
     error: Option<String>,
     policy: Option<vantare_ipc::control::Policy>,
     expires_at: Option<u64>,
+    transition: Transition,
 }
 
 pub(super) fn follow_up(pending: bool, cancel: &mut bool, check_session: bool) -> Option<Command> {
@@ -39,13 +48,62 @@ impl State {
             error: None,
             policy: None,
             expires_at: None,
+            transition: Transition::Idle,
         }
     }
 
     pub(super) fn requested(&mut self, command: &Command) {
         if matches!(command, Command::Logout | Command::AccountBegin) {
             self.invalidate();
+            self.transition = if matches!(command, Command::AccountBegin) {
+                Transition::Login
+            } else {
+                Transition::Logout
+            };
+            self.login_requested = true;
         }
+    }
+
+    pub(super) fn renewal_acknowledged(&mut self, reply: &Reply) -> Option<Command> {
+        if self.transition != Transition::Logout
+            && matches!(reply, Reply::License { policy, .. }
+                if policy.error.is_none() && policy.version == 1 && policy.revision > 0)
+        {
+            self.transition = Transition::Idle;
+            // LicenseRenew puede haber rotado OAuth en servicios. Releer su
+            // caducidad mediante IPC; AccountPoll no hace refresh ni renovación.
+            return Some(Command::AccountPoll);
+        }
+        None
+    }
+
+    pub(super) fn next_command(&mut self, reply: &Reply, cancel: &mut bool) -> Option<Command> {
+        let pending = matches!(reply, Reply::Account { pending: true, .. });
+        let check_session = matches!(
+            reply,
+            Reply::Status {
+                account_configured: true,
+                ..
+            }
+        );
+        if let Some(command) = follow_up(pending, cancel, check_session) {
+            self.requested(&command);
+            return Some(command);
+        }
+        if let Reply::Account {
+            signed_in,
+            pending: false,
+            error,
+            ..
+        } = reply
+            && self.transition == Transition::Login
+        {
+            self.transition = Transition::Renewal;
+            if *signed_in && error.is_none() {
+                return Some(Command::LicenseRenew);
+            }
+        }
+        None
     }
 
     fn invalidate(&mut self) {
@@ -91,12 +149,19 @@ impl State {
     }
 
     fn required(&self, signed_in: bool) -> bool {
-        self.configured && (!self.session_checked || !signed_in || self.login_requested)
+        self.configured
+            && (!self.session_checked
+                || !signed_in
+                || self.login_requested
+                || self.transition == Transition::Logout)
     }
 
     pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
-        if matches!(reply, Reply::Error { .. }) {
+        if matches!(reply, Reply::Error { .. } | Reply::Closed) {
             self.policy = None;
+            if self.transition == Transition::Login {
+                self.transition = Transition::Renewal;
+            }
         }
         match reply {
             Reply::Status {
@@ -115,6 +180,17 @@ impl State {
                 expires_at,
                 ..
             } => {
+                // Un callback tardío no revierte una solicitud explícita de logout.
+                if self.transition == Transition::Logout && *signed_in {
+                    self.error = error
+                        .as_ref()
+                        .map(|message| format!("No se pudo cerrar la sesión: {message}"));
+                    self.login_requested = error.is_none();
+                    return;
+                }
+                if self.transition == Transition::Logout {
+                    self.transition = Transition::Renewal;
+                }
                 self.invalidate();
                 self.expires_at = if *signed_in && !pending {
                     *expires_at
@@ -127,7 +203,13 @@ impl State {
                     .as_ref()
                     .map(|message| format!("No se pudo completar el acceso: {message}"));
             }
-            Reply::License { policy, .. } => self.policy = Some(policy.clone()),
+            Reply::License { policy, .. }
+                if self.transition == Transition::Idle
+                    && !self.login_requested
+                    && self.expires_at.is_some() =>
+            {
+                self.policy = Some(policy.clone());
+            }
             Reply::Closed => self.invalidate(),
             Reply::Error { message } if account => {
                 self.expires_at = None;
@@ -439,6 +521,159 @@ impl Remote {
 mod tests {
     use super::*;
 
+    fn account_reply(signed_in: bool, pending: bool, error: Option<String>) -> Reply {
+        Reply::Account {
+            signed_in,
+            pending,
+            expires_at: signed_in.then_some(10),
+            message: String::new(),
+            error,
+        }
+    }
+
+    #[test]
+    fn one_explicit_login_renews_once_but_restore_and_poll_never_renew() {
+        let mut state = State::from_build();
+        let restored = account_reply(true, false, None);
+        state.observe(&restored, true);
+        for _ in 0..3 {
+            assert!(state.next_command(&restored, &mut false).is_none());
+        }
+        state.requested(&Command::AccountBegin);
+        let pending = account_reply(false, true, None);
+        for _ in 0..3 {
+            state.observe(&pending, true);
+            assert!(matches!(
+                state.next_command(&pending, &mut false),
+                Some(Command::AccountPoll)
+            ));
+        }
+        state.observe(&restored, true);
+        assert!(matches!(
+            state.next_command(&restored, &mut false),
+            Some(Command::LicenseRenew)
+        ));
+        assert!(state.next_command(&restored, &mut false).is_none());
+        assert_eq!(
+            state.navigation(true, 1000).plan,
+            crate::shell::navigation::Plan::Unknown,
+            "OAuth success alone cannot unlock modules"
+        );
+        let rights = Reply::License {
+            policy: vantare_ipc::control::Policy {
+                version: 1,
+                revision: 1,
+                checked_at_ms: 1000,
+                overlays_advanced: true,
+                engineer: true,
+                ..vantare_ipc::control::Policy::default()
+            },
+            message: String::new(),
+        };
+        let failed = Reply::Error {
+            message: "fixture offline".into(),
+        };
+        state.observe(&failed, false);
+        assert!(state.next_command(&failed, &mut false).is_none());
+        state.observe(&rights, false); // Un heartbeat previo no es el ACK de renovar.
+        assert!(state.policy.is_none());
+        assert!(matches!(
+            state.renewal_acknowledged(&rights),
+            Some(Command::AccountPoll)
+        ));
+        state.observe(&rights, false);
+        assert_eq!(
+            state.navigation(true, 1000).plan,
+            crate::shell::navigation::Plan::Suite
+        );
+    }
+
+    #[test]
+    fn failed_login_or_logout_during_callback_never_renews_or_accepts_late_rights() {
+        let mut state = State::from_build();
+        state.configured = true; // Esta prueba representa un build con OAuth.
+        state.requested(&Command::AccountBegin);
+        let failed = account_reply(false, false, Some("denied fixture".into()));
+        state.observe(&failed, true);
+        assert!(state.next_command(&failed, &mut false).is_none());
+        state.requested(&Command::AccountBegin);
+        state.requested(&Command::Logout);
+        let completed = account_reply(true, false, None);
+        state.observe(&completed, true);
+        assert!(state.required(true));
+        let mut cancel = true;
+        assert!(matches!(
+            state.next_command(&completed, &mut cancel),
+            Some(Command::Logout)
+        ));
+        assert!(!cancel);
+        let late = Reply::License {
+            policy: vantare_ipc::control::Policy {
+                version: 1,
+                revision: 1,
+                checked_at_ms: 1000,
+                overlays_advanced: true,
+                engineer: true,
+                ..vantare_ipc::control::Policy::default()
+            },
+            message: String::new(),
+        };
+        state.observe(&late, false);
+        assert!(state.policy.is_none());
+        let closed = account_reply(false, false, None);
+        state.observe(&closed, true);
+        assert!(state.next_command(&closed, &mut false).is_none());
+        state.observe(&late, false);
+        assert!(
+            state.policy.is_none(),
+            "no license response can undo logout"
+        );
+        assert_eq!(
+            state.navigation(true, 1000).plan,
+            crate::shell::navigation::Plan::Unknown
+        );
+    }
+
+    #[test]
+    fn renewal_reloads_oauth_expiry_without_another_license_request() {
+        let mut state = State::from_build();
+        let expired = Reply::Account {
+            signed_in: true,
+            pending: false,
+            expires_at: Some(1),
+            message: String::new(),
+            error: None,
+        };
+        state.observe(&expired, true);
+        let rights = Reply::License {
+            policy: vantare_ipc::control::Policy {
+                version: 1,
+                revision: 1,
+                checked_at_ms: 2000,
+                engineer: true,
+                ..vantare_ipc::control::Policy::default()
+            },
+            message: String::new(),
+        };
+        assert!(matches!(
+            state.renewal_acknowledged(&rights),
+            Some(Command::AccountPoll)
+        ));
+        state.observe(&rights, false);
+        assert_eq!(
+            state.navigation(true, 2000).plan,
+            crate::shell::navigation::Plan::Unknown
+        );
+        let refreshed = account_reply(true, false, None);
+        state.observe(&refreshed, true);
+        assert!(state.next_command(&refreshed, &mut false).is_none());
+        state.observe(&rights, false); // Heartbeat de la política ya confirmada.
+        assert_eq!(
+            state.navigation(true, 2000).plan,
+            crate::shell::navigation::Plan::Engineer
+        );
+    }
+
     #[test]
     fn cancel_before_first_reply_or_completed_callback_always_sends_logout() {
         for pending in [false, true] {
@@ -471,6 +706,7 @@ mod tests {
                     error: None,
                     policy: None,
                     expires_at: None,
+                    transition: Transition::Idle,
                 };
                 assert_eq!(state.required(signed_in), configured && !signed_in);
             }
@@ -486,6 +722,7 @@ mod tests {
             error: None,
             policy: None,
             expires_at: None,
+            transition: Transition::Idle,
         };
         assert!(state.required(false));
         for signed_in in [true, false] {
@@ -529,6 +766,7 @@ mod tests {
             error: None,
             policy: None,
             expires_at: None,
+            transition: Transition::Idle,
         };
         let mut cancel = false;
         for pending in [true, false] {

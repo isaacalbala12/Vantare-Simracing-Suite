@@ -4,6 +4,10 @@ use super::{
     protocol::{Command, Reply},
 };
 use crate::orbit;
+use crate::{
+    Section,
+    shell::navigation::{Access, Plan},
+};
 use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 use std::sync::{
     Arc,
@@ -166,7 +170,7 @@ mod access;
 
 enum Area {
     Account,
-    Licenses,
+    Licenses { renew: bool },
     Roadmap,
     Report,
 }
@@ -202,6 +206,34 @@ pub struct Remote {
 
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
+
+const ACCOUNT_MODULES: [(Section, &str); 6] = [
+    (Section::Studio, "Overlays Studio"),
+    (Section::Launcher, "Launcher"),
+    (Section::Calendar, "Carreras y recordatorios"),
+    (Section::Strategy, "Estrategia"),
+    (Section::Engineer, "Ingeniero"),
+    (Section::Analysis, "Telemetría"),
+];
+
+fn account_plan_label(plan: Plan) -> &'static str {
+    match plan {
+        Plan::Overlays => "Overlays",
+        Plan::Engineer => "Engineer",
+        Plan::Suite => "Overlays + Engineer",
+        Plan::Unknown | Plan::Free => "Acceso sin verificar",
+    }
+}
+
+fn account_module_access(access: Access, demo: bool) -> [bool; 6] {
+    std::array::from_fn(|index| {
+        !access.blocked
+            && matches!(access.plan, Plan::Overlays | Plan::Engineer | Plan::Suite)
+            && access.lock(ACCOUNT_MODULES[index].0).is_none()
+            // La captura congelada anuncia Telemetría como «próximamente».
+            && !(demo && index == 5)
+    })
+}
 
 impl Remote {
     pub fn new(pipe: String, data: &std::path::Path, cx: &mut Context<Self>) -> Self {
@@ -363,7 +395,8 @@ impl Remote {
     fn dispatch(&mut self, command: Command) -> bool {
         self.active = match command {
             Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
-            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => Area::Licenses,
+            Command::LicenseRenew => Area::Licenses { renew: true },
+            Command::LicenseStatus | Command::DeviceReset => Area::Licenses { renew: false },
             Command::DraftLoad
             | Command::DraftSave { .. }
             | Command::DraftDiscard
@@ -407,10 +440,7 @@ impl Remote {
 
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
         self.access.requested(&command);
-        if self.busy
-            && (self.account.pending || self.access.login_requested)
-            && matches!(command, Command::Logout)
-        {
+        if self.busy && matches!(command, Command::Logout) {
             self.account.cancel_login = true;
             cx.notify();
             return;
@@ -432,8 +462,11 @@ impl Remote {
                             _ => None,
                         };
                         if let Some(reply) = reply {
-                            let check_session = matches!(reply, Reply::Status { account_configured: true, .. });
+                            let after_renew = if matches!(this.active, Area::Licenses { renew: true }) {
+                                this.access.renewal_acknowledged(&reply)
+                            } else { None };
                             this.access.observe(&reply, matches!(this.active, Area::Account));
+                            let next = this.access.next_command(&reply, &mut this.account.cancel_login).or(after_renew);
                             this.busy = false;
                             this.account.pending = false;
                             match reply {
@@ -468,8 +501,8 @@ impl Remote {
                                     this.account.pending = pending;
                                     this.message = message;
                                 }
-                                Reply::License { policy, message } => {
-                                    this.message = format!("{message} · Overlays avanzados: {} · Engineer: {}", if policy.current() && policy.overlays_advanced { "sí" } else { "no" }, if policy.current() && policy.engineer { "sí" } else { "no" });
+                                Reply::License { message, .. } => {
+                                    this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().plan));
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
                                 Reply::Draft { draft,message }=>{
@@ -484,7 +517,7 @@ impl Remote {
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
                             }
-                            if let Some(command) = access::follow_up(this.account.pending, &mut this.account.cancel_login, check_session) {
+                            if let Some(command) = next {
                                 this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
                                 this.dispatch(command);
                             }
@@ -563,7 +596,7 @@ impl Remote {
                 .when(self.busy, |button| button.opacity(orbit::DISABLED))
                 .on_click(cx.listener(|this, _, _, cx| {
                     if !this.busy {
-                        this.request(Command::LicenseStatus, cx);
+                        this.request(Command::LicenseRenew, cx);
                     }
                 })),
             )
@@ -599,7 +632,20 @@ impl Remote {
                 }))
             })
     }
-    fn account_badges(demo: bool, cx: &gpui::App) -> gpui::Div {
+    fn account_access(&self) -> Access {
+        if account_demo().is_some() {
+            // Fixture visual explícita; no alcanza la navegación ni el núcleo.
+            Access {
+                plan: Plan::Overlays,
+                ..Access::default()
+            }
+        } else {
+            self.navigation_access()
+        }
+    }
+
+    fn account_badges(&self, demo: bool, cx: &gpui::App) -> gpui::Div {
+        let plan = self.account_access().plan;
         div()
             .mt(px(8.0))
             .flex()
@@ -609,12 +655,12 @@ impl Remote {
                 if demo {
                     "● Overlays"
                 } else {
-                    "Plan no disponible"
+                    account_plan_label(plan)
                 },
-                if demo {
-                    orbit::Tone::Gold
-                } else {
+                if plan == Plan::Unknown {
                     orbit::Tone::Neutral
+                } else {
+                    orbit::Tone::Gold
                 },
                 cx,
             ))
@@ -707,26 +753,19 @@ impl Remote {
                         orbit::ink_3(cx),
                         cx,
                     ))
-                    .child(Self::account_badges(demo.is_some(), cx)),
+                    .child(self.account_badges(demo.is_some(), cx)),
             )
             .child(identity_actions)
     }
-    fn account_modules(demo: bool, cx: &gpui::App) -> gpui::Div {
-        let module_names = [
-            ("i-studio", "Overlays Studio", false),
-            ("i-launcher", "Launcher", false),
-            ("i-carreras", "Carreras y recordatorios", false),
-            ("i-estrategia", "Estrategia", false),
-            ("i-ingeniero", "Ingeniero", false),
-            ("i-telemetria", "Telemetría", true),
-        ];
+    fn account_modules(included: [bool; 6], demo: bool, cx: &gpui::App) -> gpui::Div {
         let mut modules = div()
             .relative()
             .mt(px(14.0))
             .flex()
             .flex_wrap()
             .gap(px(6.0));
-        for (icon, label, soon) in module_names {
+        for ((section, label), included) in ACCOUNT_MODULES.into_iter().zip(included) {
+            let soon = demo && section == Section::Analysis;
             modules = modules.child(
                 div()
                     .w(px(184.0))
@@ -740,7 +779,7 @@ impl Remote {
                             .rounded_full()
                             .bg(rgba(if soon {
                                 0xff9b_5724
-                            } else if demo && icon != "i-ingeniero" {
+                            } else if included {
                                 0x78d6_8b2e
                             } else {
                                 0xffff_ff0f
@@ -749,7 +788,7 @@ impl Remote {
                                 dot.border_1()
                                     .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5780, cx)))
                             })
-                            .when(demo && !soon && icon != "i-ingeniero", |dot| {
+                            .when(included, |dot| {
                                 dot.flex().items_center().justify_center().child(text(
                                     "✓",
                                     11.0,
@@ -764,7 +803,7 @@ impl Remote {
                             label,
                             12.5,
                             400,
-                            if icon == "i-ingeniero" {
+                            if !included && !soon {
                                 orbit::ink_muted(cx)
                             } else {
                                 crate::orbit::legacy_rgb(0x00d9_d5d5, cx)
@@ -783,9 +822,11 @@ impl Remote {
         }
         modules
     }
-    fn account_plan(cx: &gpui::App) -> gpui::Div {
+    fn account_plan(&self, cx: &gpui::App) -> gpui::Div {
         let demo = account_demo().is_some();
-        let modules = Self::account_modules(demo, cx);
+        let access = self.account_access();
+        let included = account_module_access(access, demo);
+        let modules = Self::account_modules(included, demo, cx);
         div()
             .relative()
             .flex_1()
@@ -816,7 +857,7 @@ impl Remote {
             .child(orbit::eyebrow("Plan activo", cx).line_height(px(18.0)))
             .child(
                 text(
-                    if demo { "Overlays" } else { "No disponible" },
+                    account_plan_label(access.plan),
                     26.0,
                     750,
                     orbit::ink(cx),
@@ -827,10 +868,13 @@ impl Remote {
             )
             .child(
                 text(
-                    if demo {
-                        "4 de 6 módulos incluidos"
+                    if access.plan == Plan::Unknown {
+                        "Módulos sin verificar".into()
                     } else {
-                        "— de 6 módulos incluidos"
+                        format!(
+                            "{} de 6 módulos incluidos",
+                            included.iter().filter(|included| **included).count()
+                        )
                     },
                     12.0,
                     400,
@@ -973,7 +1017,7 @@ impl Remote {
             .gap(px(21.0))
             .items_stretch()
             .child(self.account_identity(cx))
-            .child(Self::account_plan(cx));
+            .child(self.account_plan(cx));
         let details = div()
             .flex()
             .w_full()
@@ -1133,5 +1177,56 @@ impl Remote {
 impl Drop for Remote {
     fn drop(&mut self) {
         self.cancel();
+    }
+}
+
+#[cfg(test)]
+mod account_tests {
+    use super::*;
+
+    #[test]
+    fn plan_labels_and_module_counts_follow_the_same_policy_as_navigation() {
+        for (plan, label, included) in [
+            (Plan::Unknown, "Acceso sin verificar", [false; 6]),
+            (
+                Plan::Overlays,
+                "Overlays",
+                [true, true, true, true, false, true],
+            ),
+            (
+                Plan::Engineer,
+                "Engineer",
+                [false, true, true, true, true, true],
+            ),
+            (Plan::Suite, "Overlays + Engineer", [true; 6]),
+        ] {
+            let access = Access {
+                plan,
+                ..Access::default()
+            };
+            assert_eq!(account_plan_label(plan), label);
+            assert_eq!(account_module_access(access, false), included);
+            assert_eq!(
+                account_module_access(
+                    Access {
+                        blocked: true,
+                        ..access
+                    },
+                    false
+                ),
+                [false; 6]
+            );
+        }
+        assert_eq!(
+            account_module_access(
+                Access {
+                    plan: Plan::Overlays,
+                    ..Access::default()
+                },
+                true
+            ),
+            [true, true, true, true, false, false],
+            "the frozen demo is not a real policy"
+        );
     }
 }

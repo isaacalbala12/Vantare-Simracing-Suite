@@ -110,9 +110,32 @@ impl App {
                 message: "Política vigente del núcleo".into(),
             });
         }
-        if matches!(command, Command::DeviceReset) {
-            self.revoke_local()?;
+        if matches!(command, Command::LicenseRenew) {
+            // Sin configuración compilada no hay red, huella ni fallback de datos.
+            if self.config.supabase.is_none()
+                || self.config.anon_key.is_none_or(str::is_empty)
+                || self.config.license_keys.is_none_or(str::is_empty)
+            {
+                return Err(Error::Unconfigured);
+            }
+            let time = now()?;
+            self.ensure_oauth(time)?;
+            self.candidate_store()?;
+            let device = crate::license::installation::legacy_fingerprint()?;
+            crate::license_remote::renew(
+                &self.http,
+                &self.config,
+                self.account.as_ref().ok_or(Error::Authentication)?,
+                time,
+                &device,
+                self.license_store.as_ref().ok_or(Error::Storage)?,
+            )?;
+            return self.transfer_rights();
         }
+        if !matches!(command, Command::DeviceReset) {
+            return Err(Error::Protocol);
+        }
+        self.revoke_local()?;
         let time = now()?;
         self.ensure_data(time)?;
         let device = crate::license::installation::legacy_fingerprint()?;
@@ -127,23 +150,11 @@ impl App {
                 self.account.as_ref().ok_or(Error::Authentication)?,
                 time,
             );
-        if matches!(command, Command::DeviceReset) {
-            crate::license_remote::reset_device(&request, &device)?;
-            return Ok(Reply::License {
-                policy: self.core_command(vantare_ipc::control::Command::Read)?,
-                message: "Dispositivo liberado; solicite una credencial nueva".into(),
-            });
-        }
-        let keys = crate::license::Verifier::public_keys(
-            self.config.license_keys.ok_or(Error::Unconfigured)?,
-        )?;
-        crate::license_remote::renew(
-            &request,
-            &device,
-            &keys,
-            self.license_store.as_ref().ok_or(Error::Storage)?,
-        )?;
-        self.transfer_rights()
+        crate::license_remote::reset_device(&request, &device)?;
+        Ok(Reply::License {
+            policy: self.core_command(vantare_ipc::control::Command::Read)?,
+            message: "Dispositivo liberado; solicite una credencial nueva".into(),
+        })
     }
 
     fn logout_reply(&mut self) -> Result<Reply> {
@@ -175,17 +186,8 @@ impl App {
         if self.bridge.is_none() {
             return Err(Error::BridgeUnconfigured);
         }
-        self.ensure_account()?;
-        let account = self.account.as_mut().ok_or(Error::Authentication)?;
-        if account
-            .expires_at()
-            .is_some_and(|expires| expires <= now.saturating_add(60))
-        {
-            account.complete(
-                account.refresh()?.run(&self.http, now)?,
-                self.store.as_ref().ok_or(Error::Storage)?,
-            )?;
-        }
+        self.ensure_oauth(now)?;
+        let account = self.account.as_ref().ok_or(Error::Authentication)?;
         if self
             .data_session
             .as_ref()
@@ -197,6 +199,21 @@ impl App {
                     .ok_or(Error::BridgeUnconfigured)?
                     .authorize(&self.http, account, now)?,
             );
+        }
+        Ok(())
+    }
+
+    fn ensure_oauth(&mut self, now: u64) -> Result<()> {
+        self.ensure_account()?;
+        let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        if account
+            .expires_at()
+            .is_some_and(|expires| expires <= now.saturating_add(60))
+        {
+            account.complete(
+                account.refresh()?.run(&self.http, now)?,
+                self.store.as_ref().ok_or(Error::Storage)?,
+            )?;
         }
         Ok(())
     }
@@ -239,6 +256,32 @@ impl App {
         self.store = Some(store);
         self.account = Some(account);
         Ok(())
+    }
+
+    fn poll_account(&mut self) -> Result<Reply> {
+        self.ensure_account()?;
+        let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        if account.login_pending()
+            && let Some(ticket) = account.poll_login()?
+        {
+            let completion = ticket.run(&self.http, now()?)?;
+            let changed = account
+                .identity()
+                .is_some_and(|old| old != completion.identity());
+            // Otra identidad no hereda el candidate ni la autoridad anteriores.
+            // Revocar antes de persistir la nueva sesión; si falla, no sustituirla.
+            if changed && self.core.is_some() {
+                self.revoke_local()?;
+            }
+            self.account
+                .as_mut()
+                .ok_or(Error::Authentication)?
+                .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)?;
+        }
+        Ok(Self::account_reply(
+            self.account.as_ref().ok_or(Error::Authentication)?,
+            None,
+        ))
     }
 
     pub fn handle(&mut self, command: Command) -> Reply {
@@ -288,6 +331,7 @@ impl App {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
+            Command::AccountPoll => return self.poll_account(),
             _ => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
@@ -303,12 +347,6 @@ impl App {
                     return Err(error);
                 }
             }
-            Command::AccountPoll if account.login_pending() => {
-                if let Some(ticket) = account.poll_login()? {
-                    account.complete(ticket.run(&self.http, now()?)?, store)?;
-                }
-            }
-            Command::AccountPoll => {}
             Command::AccountRenew => {
                 account.complete(account.refresh()?.run(&self.http, now()?)?, store)?;
             }
@@ -494,7 +532,338 @@ pub fn now() -> Result<u64> {
 #[cfg(all(test, any(windows, unix)))]
 mod tests {
     use super::*;
-    use std::{io::Write, net::TcpStream};
+    use std::{io::Write, net::TcpStream, time::Duration};
+
+    #[test]
+    fn license_without_build_configuration_is_explicitly_unconfigured() {
+        for missing in 0..3 {
+            let mut config = BuildConfig::load();
+            config.supabase = Some(url::Url::parse("https://example.invalid/").expect("URL"));
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some("test-key-not-used");
+            match missing {
+                0 => config.supabase = None,
+                1 => config.anon_key = None,
+                _ => config.license_keys = None,
+            }
+            let mut app = App::new(config, std::env::temp_dir());
+            assert!(matches!(
+                app.execute(Command::LicenseRenew),
+                Err(Error::Unconfigured)
+            ));
+        }
+    }
+
+    #[test]
+    fn restore_and_poll_never_issue_remote_license_requests() {
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("app-restore-poll");
+        let account = crate::account::fixture(&server.base, &store);
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        for _ in 0..3 {
+            assert!(matches!(
+                app.handle(Command::AccountPoll),
+                Reply::Account {
+                    signed_in: true,
+                    pending: false,
+                    ..
+                }
+            ));
+        }
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-restore-poll", &["account"]);
+    }
+
+    #[test]
+    fn oauth_refresh_failure_stops_license_renewal_without_retry() {
+        let server = crate::test_http::Server::start(vec![(401, "{}".into())]);
+        let (root, store) = crate::test_store("app-refresh-failure");
+        let account = crate::account::fixture(&server.base, &store);
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        app.ensure_oauth(100).expect("current token needs no HTTP");
+        assert!(server.requests.try_recv().is_err());
+        assert_eq!(app.ensure_oauth(1000), Err(Error::Authentication));
+        let request = server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("refresh");
+        assert!(request.starts_with("POST /token "));
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-refresh-failure", &["account"]);
+    }
+
+    enum CoreStep {
+        Install,
+        Invalidate,
+        RejectInstall,
+        RejectInvalidate,
+    }
+
+    fn core_fixture(
+        device: String,
+        keys: &'static str,
+        steps: Vec<CoreStep>,
+    ) -> (vantare_ipc::control::CoreLink, std::thread::JoinHandle<()>) {
+        use std::sync::Arc;
+        use vantare_ipc::{
+            control,
+            transport::{Event, Listener},
+        };
+        let stop = Arc::new(Event::new().expect("event"));
+        let pipe_name = format!("nl-{}", &crate::random_id().expect("id")[..12]);
+        let link = control::CoreLink {
+            pipe: pipe_name.clone(),
+            image: std::env::current_exe().expect("image"),
+            nonce: crate::random_id().expect("nonce"),
+        };
+        let mut listener =
+            Listener::new(&pipe_name, stop, Duration::from_secs(3)).expect("listener");
+        let first = listener.instance().expect("instance");
+        let nonce = link.nonce.clone();
+        let core = std::thread::spawn(move || {
+            let mut first = Some(first);
+            for step in steps {
+                let mut pipe = first
+                    .take()
+                    .unwrap_or_else(|| listener.instance().expect("instance"));
+                pipe.accept().expect("core connection");
+                let request: control::Request = control::read(&mut pipe).expect("core request");
+                assert_eq!(request.nonce, nonce);
+                if matches!(step, CoreStep::Invalidate | CoreStep::RejectInvalidate) {
+                    assert!(matches!(request.command, control::Command::Invalidate));
+                } else {
+                    let control::Command::Install { credential } = request.command else {
+                        panic!("signed credential required")
+                    };
+                    let proof = crate::license::Verifier::public_keys(keys)
+                        .expect("keys")
+                        .proof(&credential, &device, "unused-v2-installation")
+                        .expect("signed v1");
+                    assert!(proof.grants().is_empty());
+                }
+                let error = matches!(step, CoreStep::RejectInstall | CoreStep::RejectInvalidate)
+                    .then_some("fixture rejection".to_owned());
+                // Fixture de transporte: no acredita grants ni runtime real.
+                control::write(
+                    &mut pipe,
+                    &control::Response {
+                        version: control::VERSION,
+                        sequence: request.sequence,
+                        policy: control::Policy {
+                            version: 1,
+                            revision: 1,
+                            checked_at_ms: control::wall_ms().expect("clock"),
+                            ..control::Policy::default()
+                        },
+                        error,
+                    },
+                )
+                .expect("core ACK");
+            }
+        });
+        (link, core)
+    }
+
+    #[test]
+    fn oauth_refresh_native_license_and_core_ack_precede_ipc_success_and_logout() {
+        let device = crate::license::installation::legacy_fingerprint().expect("local fingerprint");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let server = crate::test_http::Server::start(vec![
+            (200, serde_json::json!({"access_token":"rotated-local-access","refresh_token":"rotated-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+            (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
+            (200, serde_json::json!({"credential":credential,"online_capabilities":[]}).to_string()),
+        ]);
+        let (root, store) = crate::test_store("app-native-license-ack");
+        let account = crate::account::fixture(&server.base, &store);
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: Some("public-test-key"),
+            license_keys: Some(keys),
+            channel: Some("test"),
+            native_oauth: Some(crate::config::OAuthBuild {
+                issuer: server.base.clone(),
+                client_id: "public-fixture".into(),
+                redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
+            }),
+        };
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        let (link, core) = core_fixture(
+            device,
+            keys,
+            vec![
+                CoreStep::Install,
+                CoreStep::Invalidate,
+                CoreStep::RejectInstall,
+            ],
+        );
+        app.attach_core(link);
+        let reply = app.handle(Command::LicenseRenew);
+        assert!(
+            matches!(reply, Reply::License { .. }),
+            "success needs the core ACK"
+        );
+        for path in [
+            "POST /token ",
+            "GET /userinfo ",
+            "POST /functions/v1/native-license ",
+        ] {
+            let request = server
+                .requests
+                .recv_timeout(Duration::from_secs(3))
+                .expect("one HTTP operation");
+            assert!(request.starts_with(path));
+            if path.contains("native-license") {
+                assert!(
+                    request
+                        .to_lowercase()
+                        .contains("authorization: bearer rotated-local-access")
+                );
+            }
+        }
+        let candidate = app
+            .candidate_store()
+            .expect("store")
+            .load::<crate::license_remote::Candidate>("license-candidate")
+            .expect("candidate");
+        let reply = app.handle(Command::Logout);
+        assert!(matches!(
+            reply,
+            Reply::Account {
+                signed_in: false,
+                ..
+            }
+        ));
+        assert!(matches!(
+            app.candidate_store()
+                .expect("store")
+                .load::<crate::license_remote::Candidate>("license-candidate"),
+            Err(Error::NotFound)
+        ));
+        // Si llegase a disco una emisión tardía, el núcleo debe rechazarla.
+        app.candidate_store()
+            .expect("store")
+            .save("license-candidate", &candidate)
+            .expect("late fixture");
+        assert!(matches!(
+            app.handle(Command::TransferRights),
+            Reply::Error { .. }
+        ));
+        assert!(matches!(
+            app.handle(Command::LicenseRenew),
+            Reply::Error { .. }
+        ));
+        assert!(
+            server.requests.try_recv().is_err(),
+            "logout cannot restart OAuth or license HTTP"
+        );
+        core.join().expect("core fixture closed");
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-native-license-ack", &[]);
+    }
+
+    #[test]
+    fn switching_identity_revokes_before_saving_and_rejection_preserves_the_old_session() {
+        for rejected in [false, true] {
+            let device = crate::license::installation::legacy_fingerprint().expect("fingerprint");
+            let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+            let server = crate::test_http::Server::start(vec![
+                (200, serde_json::json!({"access_token":"new-local-access","refresh_token":"new-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+                (200, serde_json::json!({"sub":"other_fixture_user"}).to_string()),
+            ]);
+            let (root, store) = crate::test_store("app-account-switch");
+            let mut account = crate::account::fixture(&server.base, &store);
+            let login = account.begin_login().expect("login without browser");
+            let params: std::collections::HashMap<_, _> = login
+                .query_pairs()
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect();
+            let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
+            let mut socket = TcpStream::connect(("127.0.0.1", redirect.port().expect("port")))
+                .expect("callback");
+            write!(
+                socket,
+                "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                params["state"]
+            )
+            .expect("callback request");
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        account_id: credential.claims.subject.clone(),
+                        credential,
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous candidate");
+            let (link, core) = core_fixture(
+                device,
+                keys,
+                vec![if rejected {
+                    CoreStep::RejectInvalidate
+                } else {
+                    CoreStep::Invalidate
+                }],
+            );
+            app.attach_core(link);
+            let reply = app.handle(Command::AccountPoll);
+            assert!(
+                matches!(reply, Reply::Account { signed_in: true, pending: false, error, .. } if error.is_some() == rejected)
+            );
+            let expected = if rejected {
+                "user_fixture"
+            } else {
+                "other_fixture_user"
+            };
+            assert_eq!(
+                app.account
+                    .as_ref()
+                    .expect("account")
+                    .identity()
+                    .expect("identity")
+                    .subject,
+                expected
+            );
+            assert_eq!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok(),
+                rejected
+            );
+            for _ in 0..2 {
+                server
+                    .requests
+                    .recv_timeout(Duration::from_secs(3))
+                    .expect("OAuth only");
+            }
+            assert!(
+                server.requests.try_recv().is_err(),
+                "services polling never renews the license"
+            );
+            core.join().expect("core closed");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "app-account-switch", &[]);
+        }
+    }
 
     #[test]
     fn callback_error_keeps_ipc_pending_and_exchange_error_clears_it() {

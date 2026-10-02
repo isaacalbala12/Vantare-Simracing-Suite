@@ -1,13 +1,23 @@
 use crate::{
     Error, Result,
+    account::Account,
     bridge::DataRequest,
+    config::BuildConfig,
+    http::Http,
     license::{CredentialV1, Verifier},
     storage::Store,
 };
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(test, any(windows, unix)))]
-mod tests;
+pub(crate) mod tests;
+
+#[derive(Serialize)]
+struct Request<'a> {
+    version: u8,
+    #[serde(rename = "deviceFingerprint")]
+    device_fingerprint: &'a str,
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -32,31 +42,47 @@ pub fn candidate_context(base: Option<&str>, channel: Option<&str>) -> String {
 }
 
 pub fn renew(
-    request: &DataRequest<'_>,
+    http: &Http,
+    config: &BuildConfig,
+    account: &Account,
+    now: u64,
     device: &str,
-    verifier: &Verifier,
     store: &Store,
 ) -> Result<Candidate> {
-    if device.is_empty() || device.len() > 256 {
+    let endpoint = config
+        .supabase
+        .as_ref()
+        .ok_or(Error::Unconfigured)?
+        .join("functions/v1/native-license")
+        .map_err(|_| Error::Unconfigured)?;
+    let anon = config
+        .anon_key
+        .filter(|key| !key.is_empty())
+        .ok_or(Error::Unconfigured)?;
+    let verifier = Verifier::public_keys(config.license_keys.ok_or(Error::Unconfigured)?)?;
+    if device.len() != 64
+        || !device
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
         return Err(Error::InvalidCredential);
     }
-    let response = request.post(
-        "functions/v1/license-credential",
-        &serde_json::json!({"deviceFingerprint":device}),
-    )?;
-    if response.status == 409 {
-        #[derive(Deserialize)]
-        struct Rejected {
-            error: String,
-        }
-        if response
-            .json::<Rejected>()
-            .is_ok_and(|error| error.error == "device_limit")
-        {
-            return Err(Error::DeviceLimit);
-        }
+    let response = account.authorized(now, |bearer| {
+        http.post_json(
+            &endpoint,
+            &Request {
+                version: 1,
+                device_fingerprint: device,
+            },
+            Some(bearer),
+            Some(anon),
+        )?
+        .success()
+    })?;
+    if response.status != 200 {
+        return Err(Error::Protocol);
     }
-    let response: Response = response.success()?.json()?;
+    let response: Response = response.json()?;
     if response
         .online_capabilities
         .iter()
@@ -64,10 +90,13 @@ pub fn renew(
     {
         return Err(Error::Protocol);
     }
-    verifier.v1(&response.credential, request.account_id(), device)?;
+    // El servidor resuelve (issuer, sub OAuth) al UUID interno. Ese UUID solo
+    // adquiere autoridad tras verificar la firma y todos los claims v1.
+    let subject = &response.credential.claims.subject;
+    verifier.v1(&response.credential, subject, device)?;
     let candidate = Candidate {
+        account_id: subject.clone(),
         credential: response.credential,
-        account_id: request.account_id().into(),
         device: device.into(),
     };
     store.save("license-candidate", &candidate)?;

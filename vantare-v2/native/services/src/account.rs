@@ -177,6 +177,12 @@ pub struct Completion {
     session: Session,
 }
 
+impl Completion {
+    pub(crate) fn identity(&self) -> &Identity {
+        &self.session.identity
+    }
+}
+
 #[derive(Deserialize)]
 struct Tokens {
     access_token: Secret,

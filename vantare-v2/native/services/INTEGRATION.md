@@ -113,7 +113,7 @@ y necesita refresh token; si falta, registrar el bloqueo, sin simular renovació
 Los datos públicos verificados van a `C:/tmp/clerk-native.txt`, fuera de Git;
 no copiar, revelar ni guardar un secreto generado por Clerk.
 
-Falta además la URL/versión y propietario del puente explícito OAuth → datos:
+Para los recursos privados sigue pendiente la URL/versión y propietario del puente OAuth → datos:
 validar issuer/audience/scopes Clerk en servidor, resolver `(iss,sub)` a UUID
 interno (#909) y devolver recursos o bearer RLS de datos de hasta cinco minutos.
 Nunca mapear email/metadata editable ni enviar OAuth directamente a Supabase
@@ -121,8 +121,70 @@ como si fuera JWT de sesión Clerk. La API Vantare fina sigue siendo el destino;
 el puente compatible con los RPC actuales debe acordarse/desplegarse primero.
 No se presume despliegue de #911/#1173 ni #915/#1187. El hook de build
 `App::configure_bridge` sigue inactivo por defecto: no se inventaron valores ni
-Supabase Auth fallback. El login/almacén de cuenta no exige el puente de datos;
-licencias y recursos privados sí.
+Supabase Auth fallback. El login/almacén de cuenta y la renovación de licencia
+no exigen ese puente; reset de dispositivo e informes privados sí.
+
+### Licencia nativa simple · #1444 (2026-10-02)
+
+Isaac simplificó el [spec inicial](../../docs/superpowers/specs/2026-10-02-puente-cuenta-nativa-spec.md):
+para la licencia no hay bearer de datos, origen distinto ni claves nuevas.
+`LicenseRenew` usa exclusivamente POST a
+`<VANTARE_SUPABASE_URL>/functions/v1/native-license`, con
+`Authorization: Bearer <access token OAuth Clerk vigente>`,
+`apikey: <VANTARE_SUPABASE_ANON_KEY>` y body
+`{"version":1,"deviceFingerprint":"<64 hex minúsculas>"}`. No envía un ID token,
+session JWT ni un token de datos. No usa `configure_bridge` ni `ensure_data`.
+Reutiliza el refresh de `account.rs` cuando el access token está vencido o a
+menos de 60 segundos de vencer; un fallo no reintenta el POST de licencia.
+
+Sin URL, anon o trust roots compilados devuelve «servicio no configurado» antes
+de acceder a OAuth o a la huella del dispositivo. La respuesta 200 mantiene v1:
+`{"credential":<CredentialV1>,"online_capabilities":[...]}`. El servidor resuelve
+la identidad OAuth a UUID; el cliente verifica Ed25519, issuer, UUID, dispositivo
+y capabilities con el verificador existente antes de guardar el candidate.
+Ni el `sub` OAuth ni las capabilities online conceden derechos. Se entrega la
+misma credencial al núcleo; solo su ACK durable produce `Reply::License`.
+401 → `Authentication`, 403 → `Denied`, ambos conflictos 409 → `Conflict`,
+429/5xx → `Offline`, 400/413/otros códigos inesperados → `Protocol`.
+
+El Hub encadena una `LicenseRenew` tras completar un login pedido por el usuario;
+«Comprobar acceso» también renueva. Restaurar/pollear la sesión y el heartbeat
+`LicenseStatus` solo consultan estado. Tras el ACK de renovar se hace un
+`AccountPoll` local para releer la caducidad OAuth si servicios rotó el token;
+el heartbeat vuelve a proyectar la política vigente sin HTTP. Logout durante
+una operación invalida la proyección inmediatamente y se despacha al terminar
+la respuesta pendiente;
+un callback o política tardíos no recuperan acceso en el Hub. El auxiliar atiende
+comandos en serie; la revocación y su ACK siguen siendo autoridad del núcleo.
+Un heartbeat positivo anterior no sustituye al ACK de `LicenseRenew` tras un
+login explícito. Si el callback cambia `(issuer, subject)`, servicios revoca
+primero el candidate/derechos anteriores y solo entonces guarda la nueva sesión;
+un rechazo de revocación conserva la identidad anterior.
+Cuenta muestra «Overlays», «Engineer» u «Overlays + Engineer» a partir de esa
+política, sin deducir Pro/Owner. Política ausente, vieja, incompatible o con error
+muestra «Acceso sin verificar». El banco demo conserva sus datos congelados,
+que no acreditan permisos de una cuenta real.
+
+Este corte solo implementa cliente y Hub. `native-license`, mapping #909,
+schema, configuración Clerk/Supabase, build con configuración real, deploy y
+login remoto quedan a sus propietarios y requieren su propia verificación.
+No se modifican `configure_bridge`, reset remoto ni Testing Center.
+Notion no disponible: excepción explícita para #1444; ID/proyecto/estado allí
+sin verificar. El orquestador consolida el handoff compartido tras revisar el diff.
+Evidencia local (HTTP/IPC de prueba, gates y capturas): `C:/tmp/puente-evidence/`.
+
+Validación del cliente: fmt y Clippy del workspace sin warnings; nextest con
+1.015 pruebas pasadas y cuatro físicas omitidas; lifecycle aparte con cinco
+pruebas de Engineer y once del supervisor pasadas. Banco congelado del Hub:
+48 capturas idénticas al renderer previo y determinismo de Inicio verificado.
+Los 18 widgets productivos permanecen idénticos por SHA-256 y RGBA con umbral
+cero mediante `native/ui/compare.ps1`. Esto prueba ausencia de regresión frente
+al baseline nativo; persisten diferencias anteriores frente a Wails. Se miraron
+referencias, capturas y mapas, incluida una ampliación de Cuenta. La captura
+sin demo/configuración muestra «Acceso sin verificar» y «servicio no configurado».
+Para aceptar integración remota quedan login real, una llamada tras completarlo,
+renovación manual, restauración sin HTTP y logout con respuesta pendiente,
+contra el servidor y build configurados por sus propietarios.
 
 Variables públicas existentes de compilación (`option_env!`), nombres exactos:
 
@@ -138,8 +200,9 @@ Variables públicas existentes de compilación (`option_env!`), nombres exactos:
 | `VANTARE_CLERK_REDIRECT` | URI HTTP loopback registrada exactamente en Clerk. |
 | `VANTARE_VERSION` | Versión pública de informes; si falta, versión real del crate. |
 
-Los tres nombres nuevos activan la configuración de cuenta, pero no los remotos
-privados: éstos necesitan el puente anterior. No se piden claves privadas,
+Los tres nombres nuevos activan la configuración de cuenta. La licencia exige
+además URL/anon/trust roots anteriores; los demás recursos privados siguen
+necesitando el puente de datos. No se piden claves privadas,
 service_role, client secret ni tokens reales al worker ni en el repo/logs.
 
 ### Bloqueo del registro y QA real (worker Clerk, 2026-09-30)

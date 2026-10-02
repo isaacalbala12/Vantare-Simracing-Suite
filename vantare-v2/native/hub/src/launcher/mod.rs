@@ -2,7 +2,6 @@
 use std::path::PathBuf;
 mod engine;
 pub use engine::*;
-pub(crate) mod input;
 pub mod view;
 
 pub fn default_path() -> Result<PathBuf, String> {

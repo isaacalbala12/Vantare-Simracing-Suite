@@ -3,11 +3,10 @@ use super::{
     App, CATALOG, Document, LmuTrigger, Profile, Step, Store,
     chain::{Action, Chain, Decision, Progress},
     discovery::{self, Discovery, Sources},
-    input::Input,
     policy::{Close, Failure, Running},
     processes,
 };
-use crate::orbit::{self, button};
+use crate::orbit::{self, Input, button};
 use gpui::{
     Context, Entity, IntoElement, PathPromptOptions, Render, WeakEntity, Window, div, prelude::*,
 };

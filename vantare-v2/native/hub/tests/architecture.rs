@@ -35,7 +35,7 @@ fn every_current_hub_section_has_an_honest_entry_point() {
     assert_eq!(Section::ALL.len(), 14);
     for (index, section) in Section::ALL.iter().enumerate() {
         assert!(!section.label().is_empty());
-        assert!(!section.pending().is_empty());
+        assert!(!section.subtitle().is_empty());
         assert!(!Section::ALL[..index].contains(section));
     }
 }

@@ -30,28 +30,26 @@ selector/base IANA propio. Una medianoche inexistente devuelve error; una
 ambigua elige el primer instante real. Los tests usan transiciones explícitas
 de Madrid y Lord Howe sin modificar la zona global del proceso.
 
-## Engineer: `engineer::history`
+## Engineer: `engineer::model`
 
-`History::observe(&Status, observed_at_ms)` consume el estado nativo **ya
-validado**. No hace polling. Deduplica `(epoch, sequence)`, conserva hasta
-1000 mensajes y señala descartes por retención.
+`Model` consume el report nativo v2, verifica heartbeat y conexión, y conserva
+las entregas observadas por identidad de proceso/instancia/id. Actualiza el
+resultado de audio sin duplicar entregas; retiene hasta 1000 y cuenta descartes.
+El parser conserva lectura v1 como evidencia sin acreditar conexión vigente.
 
-`Entry { message: Message, observed_at_ms, cursor_gap }` conserva exactamente
-época, secuencia, intent, locale y texto. `Filter { current_cycle_only,
-family, query }` filtra por época actual observada, prefijo del intent y
-búsqueda sin distinción de mayúsculas. `HistoryView { rows, current_epoch,
-retained, evicted }` ordena mensajes recientes primero.
+`ObservedDelivery` conserva la entrega y el instante de observación del Hub.
+`history::Filter { current_cycle_only, family, query }` filtra por época actual,
+prefijo del intent y búsqueda sin distinción de mayúsculas; las filas van de
+más reciente a más antigua.
 
-`prepare_export(status)` produce una preview JSON congelada del estado completo
-recibido y **todo** el historial retenido. Cambios posteriores de polling o
+`prepare_export(now_ms)` produce una preview JSON v2 congelada del report y
+**todo** el historial retenido. Cambios posteriores de polling o
 filtros no alteran la cadena. Guardar el archivo pertenece al propietario UI.
 
-Límite contractual: el estado solo publica `last_message`, no deliveries,
-hora de emisión, ciclo de presentación, resultado de audio, latencias ni
-historial anterior. `observed_at_ms` es hora de observación, la época es la
-época nativa y `cursor_gap` señala salto de eventos, no número de radios
-perdidas. Puede perder mensajes entre polls; no afirmar historial completo ni
-recuperación durable. Ausencia de mensaje no inventa una época nueva.
+Límite contractual: cada report contiene una ventana acotada de entregas;
+el historial observado no sustituye al journal durable ni permite deducir
+mensajes omitidos entre polls. `observed_at_ms` es hora de observación del Hub.
+Consulta [el contrato vigente](engineer/MODEL.md) para frescura y campos ausentes.
 
 ## Telemetría: `analysis::insights`
 

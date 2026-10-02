@@ -399,6 +399,23 @@ mod tests {
         assert_eq!(
             model
                 .history(Filter {
+                    query: "FUEL",
+                    ..Filter::default()
+                })
+                .len(),
+            2
+        );
+        assert!(
+            model
+                .history(Filter {
+                    query: "missing",
+                    ..Filter::default()
+                })
+                .is_empty()
+        );
+        assert_eq!(
+            model
+                .history(Filter {
                     family: Some("fuel"),
                     ..Filter::default()
                 })
@@ -427,6 +444,17 @@ mod tests {
         }
         assert_eq!(model.history(Filter::default()).len(), MAX_MESSAGES);
         assert_eq!(model.evicted, 1);
+        assert_eq!(
+            model
+                .history(Filter::default())
+                .last()
+                .expect("más antigua")
+                .delivery
+                .id,
+            2
+        );
+        model.observe(None, 100);
+        assert_eq!(model.history(Filter::default()).len(), MAX_MESSAGES);
         let root = std::env::temp_dir().join(format!("hub-engineer-model-{}", std::process::id()));
         std::fs::create_dir(&root).expect("temp");
         let mut model = Model::new(&root.join("engineer.json"));

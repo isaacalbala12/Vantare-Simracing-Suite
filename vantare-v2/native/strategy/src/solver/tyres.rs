@@ -62,7 +62,7 @@ pub struct CompoundPace {
     pub curve: Vec<CurvePoint>,
 }
 impl CompoundPace {
-    pub(super) fn validate(&self, input: &Input) -> Result<(), String> {
+    pub(super) fn validate(&mut self, input: &Input) -> Result<(), String> {
         require(
             valid_compound(&self.compound) && self.presence == "valid",
             "compound/presence",
@@ -89,6 +89,7 @@ impl CompoundPace {
                 "compound curve point",
             )?;
         }
+        self.curve.sort_by_key(|point| point.lap_in_stint);
         for lap in 1..=input.race_laps {
             require(
                 input.base_lap_seconds.value + self.pace_delta_seconds + self.delta(lap) > 0.0,
@@ -98,24 +99,28 @@ impl CompoundPace {
         Ok(())
     }
     pub(super) fn delta(&self, lap: u32) -> f64 {
-        curve_delta(&self.curve, self.degradation_per_lap_seconds, lap, 0.0)
+        sorted_curve_delta(&self.curve, self.degradation_per_lap_seconds, lap, 0.0)
     }
 }
-pub(super) fn curve_delta(points: &[CurvePoint], slope: f64, lap: u32, tail_floor: f64) -> f64 {
+// Points belong to a prepared private model and are sorted by stint age.
+pub(super) fn sorted_curve_delta(
+    points: &[CurvePoint],
+    slope: f64,
+    lap: u32,
+    tail_floor: f64,
+) -> f64 {
     if points.is_empty() {
         return f64::from(lap - 1) * slope;
     }
-    let mut sorted: Vec<&CurvePoint> = points.iter().collect();
-    sorted.sort_by_key(|p| p.lap_in_stint);
-    let first = sorted[0];
-    let last = sorted[sorted.len() - 1];
+    let first = &points[0];
+    let last = &points[points.len() - 1];
     if lap <= first.lap_in_stint {
         return first.delta_seconds;
     }
     if lap > last.lap_in_stint {
         let mut tail = tail_floor.max(0.0);
-        if sorted.len() > 1 {
-            let prev = sorted[sorted.len() - 2];
+        if points.len() > 1 {
+            let prev = &points[points.len() - 2];
             tail = tail.max(
                 (last.delta_seconds - prev.delta_seconds)
                     / f64::from(last.lap_in_stint - prev.lap_in_stint),
@@ -123,8 +128,8 @@ pub(super) fn curve_delta(points: &[CurvePoint], slope: f64, lap: u32, tail_floo
         }
         return last.delta_seconds + f64::from(lap - last.lap_in_stint) * tail;
     }
-    for pair in sorted.windows(2) {
-        let (l, r) = (pair[0], pair[1]);
+    for pair in points.windows(2) {
+        let (l, r) = (&pair[0], &pair[1]);
         if lap <= r.lap_in_stint {
             return l.delta_seconds
                 + f64::from(lap - l.lap_in_stint) / f64::from(r.lap_in_stint - l.lap_in_stint)
@@ -234,12 +239,10 @@ impl TyreModel {
         }
         let mut model = Self::default();
         for c in compounds {
+            let mut c = c.clone();
             c.validate(input)?;
             require(
-                model
-                    .compounds
-                    .insert(c.compound.clone(), c.clone())
-                    .is_none(),
+                model.compounds.insert(c.compound.clone(), c).is_none(),
                 "duplicate compound parameter",
             )?;
         }

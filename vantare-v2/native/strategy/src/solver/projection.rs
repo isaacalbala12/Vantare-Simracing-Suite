@@ -161,6 +161,7 @@ pub(super) fn resolve(
             });
         }
     }
+    points.sort_by_key(|point| point.lap_in_stint);
     Ok((points, tail))
 }
 // The shared document validator predates open pit intervals. Normalize only

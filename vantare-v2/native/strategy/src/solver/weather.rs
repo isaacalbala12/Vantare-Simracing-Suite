@@ -101,6 +101,7 @@ impl WeatherModel {
             ..Self::default()
         };
         for p in &plan.bucket_parameters {
+            let mut p = p.clone();
             require(
                 valid_bucket(&p.bucket) && !model.parameters.contains_key(&p.bucket),
                 "weather bucket duplicate/invalid",
@@ -151,14 +152,14 @@ impl WeatherModel {
                 "weather profiles must cover every driver",
             )?;
             let mut seen = BTreeSet::new();
-            for cp in &p.compound_pace {
+            for cp in &mut p.compound_pace {
                 require(
-                    tyres.compounds.contains_key(&cp.compound) && seen.insert(&cp.compound),
+                    tyres.compounds.contains_key(&cp.compound) && seen.insert(cp.compound.clone()),
                     "weather compound unknown/duplicate",
                 )?;
                 cp.validate(input)?;
             }
-            model.parameters.insert(p.bucket.clone(), p.clone());
+            model.parameters.insert(p.bucket.clone(), p);
         }
         for c in &model.timeline {
             require(

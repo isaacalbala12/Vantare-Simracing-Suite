@@ -123,11 +123,11 @@ impl LocalRepository {
             return Err("repository_size_limit".into());
         }
         let (migrated, steps) = migrate_repository_json(&bytes)?;
+        let envelope = decode_envelope(&migrated)?;
+        validate_envelope(&envelope)?;
         if !steps.is_empty() {
             atomic_write(&path, &migrated)?;
         }
-        let envelope = decode_envelope(&migrated)?;
-        validate_envelope(&envelope)?;
         Ok(Some(envelope))
     }
 }
@@ -867,6 +867,26 @@ mod tests {
             "repository_version_conflict"
         );
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejected_v1_migration_preserves_original_file() {
+        let root = temp_root();
+        fs::create_dir_all(&root).expect("fixture directory");
+        let mut envelope = decode_envelope(include_bytes!(
+            "../../../testdata/oracle/repository-v1-go.json"
+        ))
+        .expect("v1 fixture");
+        envelope.generation = MAX_SAFE_GENERATION + 1;
+        envelope.content_hash = hash_envelope(&envelope).expect("valid v1 hash");
+        let original = encode_pretty_envelope(&envelope).expect("v1 bytes");
+        let path = root.join(FILE_NAME);
+        fs::write(&path, &original).expect("write fixture");
+        let repository = LocalRepository::open(&root).expect("open repository");
+        assert!(repository.load().is_err(), "unsafe generation rejected");
+        assert_eq!(fs::read(&path).expect("original remains"), original);
+        assert_eq!(fs::read_dir(&root).expect("directory").count(), 1);
+        fs::remove_dir_all(root).expect("remove fixture");
     }
 
     #[test]

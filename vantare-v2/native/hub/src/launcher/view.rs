@@ -125,6 +125,9 @@ impl Launcher {
             .collect();
         if create_profile {
             view.new_profile(None, window, cx);
+            if let Some(layer) = &view.form_layer {
+                layer.update(cx, |drawer, cx| drawer.capture_focus(window, cx));
+            }
         }
         view
     }

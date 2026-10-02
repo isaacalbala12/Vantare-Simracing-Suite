@@ -19,59 +19,7 @@ pub fn validate(request: &Request, nonce: &str, previous: u64) -> Result<()> {
     Ok(())
 }
 
-#[cfg(windows)]
-pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Result<()> {
-    use std::io::{Read, Write};
-    use std::sync::Arc;
-    use vantare_ipc::transport::{Event, Listener};
-    let stop = Arc::new(Event::new().map_err(|_| Error::Protocol)?);
-    let mut listener = Listener::new(
-        &options.pipe,
-        Arc::clone(&stop),
-        std::time::Duration::from_mins(5),
-    )
-    .map_err(|_| Error::Protocol)?;
-    let mut pipe = listener.instance().map_err(|_| Error::Protocol)?;
-    let nonce = crate::random_id()?;
-    // Bootstrap solo por stdout heredado privado, no log/CLI/pipe público.
-    writeln!(std::io::stdout(), "{nonce}").map_err(|_| Error::Protocol)?;
-    std::io::stdout().flush().map_err(|_| Error::Protocol)?;
-    let cancel = Arc::clone(&stop);
-    std::thread::spawn(move || {
-        let mut byte = [0_u8; 1];
-        // El padre solo mantiene stdin vivo; EOF o datos inesperados cierran.
-        let _read_result = std::io::stdin().read(&mut byte);
-        cancel.set();
-    });
-    pipe.accept().map_err(|_| Error::Protocol)?;
-    let peer = pipe.client_peer().map_err(|_| Error::Protocol)?;
-    if peer.pid != options.parent_pid || !peer.is_image(&options.parent_image) {
-        return Err(Error::Denied);
-    }
-    let mut sequence = 0;
-    while !stop.is_set() {
-        let request: Request = match protocol::read(&mut pipe) {
-            Ok(request) => request,
-            Err(_) if stop.is_set() => return Ok(()),
-            Err(_) => return Err(Error::Protocol),
-        };
-        validate(&request, &nonce, sequence)?;
-        sequence = request.sequence;
-        let closed = matches!(request.command, Command::Shutdown);
-        let response = Response {
-            version: protocol::VERSION,
-            sequence,
-            reply: handle(request.command),
-        };
-        protocol::write(&mut pipe, &response).map_err(|_| Error::Protocol)?;
-        if closed {
-            break;
-        }
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
+#[cfg(any(windows, unix))]
 pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Result<()> {
     use std::io::{Read, Write};
     use std::sync::Arc;

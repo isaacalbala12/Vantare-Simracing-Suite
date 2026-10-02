@@ -9,7 +9,6 @@ pub struct BuildConfig {
     pub anon_key: Option<&'static str>,
     pub license_keys: Option<&'static str>,
     pub channel: Option<&'static str>,
-    pub clerk_publishable_key: Option<&'static str>,
     pub native_oauth: Option<OAuthBuild>,
 }
 
@@ -28,18 +27,12 @@ impl BuildConfig {
             anon_key: option_env!("VANTARE_SUPABASE_ANON_KEY").filter(|s| !s.is_empty()),
             license_keys: option_env!("VANTARE_LICENSE_PUBLIC_KEYS").filter(|s| !s.is_empty()),
             channel: option_env!("VANTARE_BUILD_CHANNEL"),
-            clerk_publishable_key: option_env!("VITE_CLERK_PUBLISHABLE_KEY")
-                .filter(|s| !s.is_empty()),
             native_oauth: OAuthBuild::from_build_values(
                 option_env!("VANTARE_CLERK_ISSUER"),
                 option_env!("VANTARE_CLERK_CLIENT_ID"),
                 option_env!("VANTARE_CLERK_REDIRECT"),
             ),
         }
-    }
-
-    pub fn public_data_configured(&self) -> bool {
-        self.supabase.is_some() && self.anon_key.is_some()
     }
 
     /// Solo activa cuenta con issuer, client ID y redirect públicos válidos.

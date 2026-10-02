@@ -1,4 +1,5 @@
 //! Intento durable manual. Restaurar jamás envía; el consentimiento es efímero.
+use crate::protocol::DraftState;
 pub use crate::protocol::report_document::{Draft, Fields, Preview, Receipt};
 use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Store};
 use serde::{Deserialize, Serialize};
@@ -396,7 +397,7 @@ impl Reports {
         request: &DataRequest<'_>,
         preview_id: &str,
         store: &Store,
-    ) -> Result<(Receipt, bool)> {
+    ) -> Result<(Receipt, DraftState)> {
         request.check()?;
         let consent = self.consent.take().ok_or(Error::Canceled)?;
         if consent.preview.id != preview_id
@@ -465,9 +466,29 @@ impl Reports {
         attempt.phase = Phase::Confirmed(receipt.clone());
         store.save("report-attempt", &attempt)?;
         self.attempt = Some(attempt);
-        // Receipt is already durable. Failed draft cleanup is not a failed send.
-        let cleanup_pending = store.remove("report-draft").is_err();
-        Ok((receipt, cleanup_pending))
+        // El recibo ya es durable. Solo se limpia el borrador del envío confirmado.
+        let draft_state = match self.draft_state(store) {
+            Ok(DraftState::CleanupPending) if store.remove("report-draft").is_ok() => {
+                DraftState::Cleared
+            }
+            Ok(state) => state,
+            Err(_) => DraftState::CleanupPending, // No borrar un borrador sin identificar.
+        };
+        Ok((receipt, draft_state))
+    }
+
+    pub fn draft_state(&self, store: &Store) -> Result<DraftState> {
+        Ok(match load_draft(store)? {
+            None => DraftState::Cleared,
+            Some(draft)
+                if self.attempt.as_ref().is_some_and(|attempt| {
+                    attempt.payload.idempotency_key != draft.idempotency_key
+                }) =>
+            {
+                DraftState::Preserved
+            }
+            _ => DraftState::CleanupPending,
+        })
     }
 
     pub fn receipt(&self) -> Option<&Receipt> {

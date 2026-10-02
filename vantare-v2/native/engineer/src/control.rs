@@ -5,7 +5,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 
 #[path = "status.rs"]
 pub mod runtime;
@@ -63,9 +63,11 @@ impl Settings {
         Ok(())
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
-        let value = decode(bytes)?;
+        Self::parse_value(&decode(bytes)?)
+    }
+    fn parse_value(value: &Value) -> io::Result<Self> {
         fields(
-            &value,
+            value,
             &["version", "enabled", "locale", "voice", "families"],
         )?;
         let family = &value["families"];
@@ -118,7 +120,9 @@ impl Status {
         json!({"version":1, "active":self.active, "pid":self.pid, "settings":self.settings.json(), "assets":self.assets, "last_message":message, "error":self.error})
     }
     pub fn parse(bytes: &[u8]) -> io::Result<Self> {
-        let value = decode(bytes)?;
+        Self::parse_report(&decode(bytes)?).map(|report| report.status)
+    }
+    fn parse_report(value: &Value) -> io::Result<runtime::Report> {
         let version = number(&value["version"])?;
         let mut keys = vec![
             "version",
@@ -129,11 +133,13 @@ impl Status {
             "last_message",
             "error",
         ];
-        if version == u64::from(runtime::STATUS_VERSION) {
+        let runtime = if version == u64::from(runtime::STATUS_VERSION) {
             keys.push("runtime");
-            runtime::RuntimeStatus::parse(&value["runtime"])?;
-        }
-        fields(&value, &keys)?;
+            Some(runtime::RuntimeStatus::parse(&value["runtime"])?)
+        } else {
+            None
+        };
+        fields(value, &keys)?;
         let message = &value["last_message"];
         let last_message = if message.is_null() {
             None
@@ -158,9 +164,7 @@ impl Status {
                 .map_err(|_| invalid("versión inválida"))?,
             active: boolean(&value["active"])?,
             pid: u32::try_from(number(&value["pid"])?).map_err(|_| invalid("pid inválido"))?,
-            settings: Settings::parse(
-                &serde_json::to_vec(&value["settings"]).map_err(io::Error::other)?,
-            )?,
+            settings: Settings::parse_value(&value["settings"])?,
             assets,
             last_message,
             error: if value["error"].is_null() {
@@ -169,7 +173,6 @@ impl Status {
                 Some(string(&value["error"])?)
             },
         };
-        status.settings.validate()?;
         if ![1, runtime::STATUS_VERSION].contains(&status.version)
             || status.pid == 0
             || status.assets.len() != LOCALES.len()
@@ -179,7 +182,7 @@ impl Status {
         {
             return Err(invalid("estado de Engineer inválido"));
         }
-        Ok(status)
+        Ok(runtime::Report { status, runtime })
     }
 }
 
@@ -331,11 +334,14 @@ fn check_path(path: &Path) -> io::Result<()> {
 
 /// Ausencia inicial usa los ajustes CLI. JSON roto/archivo retirado conserva lo
 /// último válido y reintenta aun cuando una escritura parcial mantenga su mtime.
+/// Sin cambio de mtime, comprobar bytes cada segundo; reload fuerza la lectura.
 pub struct Document {
     path: PathBuf,
     bytes: Option<Vec<u8>>,
     stamp: Option<SystemTime>,
     loaded: bool,
+    checked_at: Option<Instant>,
+    error: Option<io::Error>,
     settings: Settings,
 }
 impl Document {
@@ -345,6 +351,8 @@ impl Document {
             bytes: None,
             stamp: None,
             loaded: false,
+            checked_at: None,
+            error: None,
             settings,
         }
     }
@@ -352,11 +360,35 @@ impl Document {
         &self.settings
     }
     pub fn poll(&mut self) -> io::Result<bool> {
+        self.poll_at(Instant::now())
+    }
+    fn poll_at(&mut self, now: Instant) -> io::Result<bool> {
         let stamp = modified(&self.path);
-        if self.loaded && stamp == self.stamp {
+        if self.loaded
+            && stamp == self.stamp
+            && self
+                .checked_at
+                .is_some_and(|at| now.saturating_duration_since(at) < Duration::from_secs(1))
+        {
+            return self.error.as_ref().map_or(Ok(false), |error| {
+                Err(io::Error::new(error.kind(), error.to_string()))
+            });
+        }
+        self.checked_at = Some(now);
+        self.stamp = stamp;
+        let result = self.read_settings();
+        // Mantener el error visible durante la espera sin repetir E/S por tick.
+        self.error = result
+            .as_ref()
+            .err()
+            .map(|error| io::Error::new(error.kind(), error.to_string()));
+        result
+    }
+    fn read_settings(&mut self) -> io::Result<bool> {
+        let bytes = read(&self.path)?;
+        if self.loaded && bytes == self.bytes {
             return Ok(false);
         }
-        let bytes = read(&self.path)?;
         let settings = match bytes.as_deref() {
             Some(bytes) => Settings::parse(bytes)?,
             None if self.bytes.is_none() => self.settings.clone(),
@@ -365,12 +397,11 @@ impl Document {
         let changed = self.settings != settings;
         self.settings = settings;
         self.bytes = bytes;
-        self.stamp = stamp;
         self.loaded = true;
         Ok(changed)
     }
     pub fn reload(&mut self) -> io::Result<()> {
-        self.loaded = false;
+        self.checked_at = None;
         self.poll().map(|_| ())
     }
     pub fn save(&mut self, settings: Settings) -> io::Result<()> {
@@ -380,6 +411,8 @@ impl Document {
         self.bytes = Some(bytes);
         self.settings = settings;
         self.stamp = modified(&self.path);
+        self.checked_at = Some(Instant::now());
+        self.error = None;
         self.loaded = true;
         Ok(())
     }
@@ -388,6 +421,107 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn valid_settings_with_unchanged_mtime_are_detected() {
+        let root = std::env::temp_dir().join(format!("engineer-same-mtime-{}", std::process::id()));
+        fs::create_dir(&root).expect("temporal");
+        let path = root.join("engineer.json");
+        fs::write(
+            &path,
+            serde_json::to_vec(&Settings::default().json()).expect("json"),
+        )
+        .expect("initial");
+        let mut document = Document::new(path.clone(), Settings::default());
+        let now = Instant::now();
+        document.poll_at(now).expect("first read");
+        let stamp = modified(&path).expect("mtime");
+        let changed = Settings {
+            enabled: false,
+            ..Default::default()
+        };
+        fs::write(&path, serde_json::to_vec(&changed.json()).expect("json")).expect("edit");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("open")
+            .set_modified(stamp)
+            .expect("same mtime");
+        assert!(
+            !document
+                .poll_at(now + Duration::from_millis(999))
+                .expect("bounded polling")
+        );
+        assert!(
+            document
+                .poll_at(now + Duration::from_secs(1))
+                .expect("detect edit")
+        );
+        assert_eq!(document.settings(), &changed);
+        fs::write(&path, b"{").expect("partial");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("open")
+            .set_modified(stamp)
+            .expect("same mtime");
+        let error = document
+            .poll_at(now + Duration::from_secs(2))
+            .expect_err("invalid file");
+        assert_eq!(document.settings(), &changed);
+        fs::write(
+            &path,
+            serde_json::to_vec(&Settings::default().json()).expect("json"),
+        )
+        .expect("repair");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("open")
+            .set_modified(stamp)
+            .expect("same mtime");
+        assert_eq!(
+            document
+                .poll_at(now + Duration::from_millis(2500))
+                .expect_err("cached error until next check")
+                .kind(),
+            error.kind()
+        );
+        assert!(
+            document
+                .poll_at(now + Duration::from_secs(3))
+                .expect("retry valid file")
+        );
+        assert_eq!(document.settings(), &Settings::default());
+        fs::write(&path, serde_json::to_vec(&changed.json()).expect("json"))
+            .expect("new stamp edit");
+        let next_stamp = stamp + Duration::from_secs(1);
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("open")
+            .set_modified(next_stamp)
+            .expect("new mtime");
+        assert!(
+            document
+                .poll_at(now + Duration::from_millis(3100))
+                .expect("mtime change is immediate")
+        );
+        fs::write(
+            &path,
+            serde_json::to_vec(&Settings::default().json()).expect("json"),
+        )
+        .expect("reload edit");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("open")
+            .set_modified(next_stamp)
+            .expect("same mtime");
+        document.reload().expect("explicit reload bypasses cadence");
+        assert_eq!(document.settings(), &Settings::default());
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
     #[test]
     fn roundtrip_invalid_conflict_and_partial_write_keep_last_valid() {
         let root = std::env::temp_dir().join(format!("engineer-control-{}", std::process::id()));

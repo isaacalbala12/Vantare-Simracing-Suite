@@ -50,10 +50,12 @@ impl State {
                 self.configured = *account_configured;
                 self.error = None;
             }
-            Reply::Account { pending, .. } => {
+            Reply::Account { pending, error, .. } => {
                 self.session_checked = true;
                 self.login_requested = *pending;
-                self.error = None;
+                self.error = error
+                    .as_ref()
+                    .map(|message| format!("No se pudo completar el acceso: {message}"));
             }
             Reply::Error { message } if account => {
                 self.login_requested = false;
@@ -415,6 +417,7 @@ mod tests {
                 pending: false,
                 expires_at: None,
                 message: String::new(),
+                error: None,
             };
             state.observe(&reply, true);
             assert_eq!(state.required(signed_in), !signed_in);
@@ -438,6 +441,37 @@ mod tests {
             true,
         );
         assert!(!state.required(false));
+    }
+
+    #[test]
+    fn account_error_keeps_polling_only_while_the_attempt_exists() {
+        let mut state = State {
+            configured: true,
+            session_checked: false,
+            login_requested: true,
+            error: None,
+        };
+        let mut cancel = false;
+        for pending in [true, false] {
+            let reply = Reply::Account {
+                signed_in: false,
+                expires_at: None,
+                pending,
+                message: "error de prueba".into(),
+                error: Some("error de prueba".into()),
+            };
+            state.observe(&reply, true);
+            assert_eq!(state.login_requested, pending);
+            assert!(state.error.is_some());
+            assert!(state.required(false));
+            assert_eq!(
+                matches!(
+                    follow_up(pending, &mut cancel, false),
+                    Some(Command::AccountPoll)
+                ),
+                pending
+            );
+        }
     }
 
     #[test]

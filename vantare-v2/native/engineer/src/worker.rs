@@ -193,13 +193,15 @@ impl RadioWorker {
             return self.tick(now, output); // Reentregar no rejuvenece una foto.
         }
         let (messages, clear) = self.families.evaluate(snapshot, applied, self.locale, now);
+        if clear {
+            self.queue.clear();
+        }
         if clear
             || self
                 .presentation
                 .as_ref()
                 .is_some_and(|message| !message.is_current(snapshot))
         {
-            self.queue.clear();
             self.cancel_audio()?;
             self.presentation = None;
             clear_output(output)?;

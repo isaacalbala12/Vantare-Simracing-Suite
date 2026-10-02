@@ -308,7 +308,8 @@ impl Account {
     }
 
     pub fn begin_login(&mut self) -> Result<Url> {
-        self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
+        // Un inicio explícito sustituye el anterior antes de reservar su puerto.
+        self.cancel_login()?;
         let port = self
             .oauth
             .redirect
@@ -343,6 +344,16 @@ impl Account {
             deadline: Instant::now() + Duration::from_mins(3),
         });
         Ok(url)
+    }
+
+    pub(crate) fn login_pending(&self) -> bool {
+        self.attempt.is_some()
+    }
+
+    pub(crate) fn cancel_login(&mut self) -> Result<()> {
+        self.attempt = None;
+        self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
+        Ok(())
     }
 
     pub fn poll_login(&mut self) -> Result<Option<Exchange>> {
@@ -452,8 +463,7 @@ impl Account {
     }
 
     pub fn logout(&mut self, store: &Store) -> Result<()> {
-        self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
-        self.attempt = None;
+        self.cancel_login()?;
         self.session = None;
         // Atomic tombstone survives a crash; no old refresh can restore the account.
         store.save("account", &Saved::SignedOut)

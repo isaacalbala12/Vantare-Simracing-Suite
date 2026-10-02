@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="400" viewBox="0 0 1672 400">
+  <!-- Shared editor lighting; independent of the garage crop and content. -->
+  <defs>
+    <radialGradient id="carmine" gradientUnits="userSpaceOnUse" cx="1411" cy="246" r="518" gradientTransform="translate(0 188.53) scale(1 .23359)">
+      <stop stop-color="#d52f49" stop-opacity=".169"/>
+      <stop offset="1" stop-color="#d52f49" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1672" height="400" fill="url(#carmine)"/>
+</svg>

@@ -163,9 +163,12 @@ impl Adapter for Acc {
             return Ok(None);
         }
         self.next_read = now + Duration::from_millis(5);
-        self.connect(now).map_err(|_| {
-            AdapterError::Rejected("no se pudo abrir broadcasting.json/socket ACC".into())
-        })?;
+        if let Err(error) = self.connect(now) {
+            // Config/socket son una fuente opcional: nunca omitir SHM por UDP.
+            // udp::config/registration sanitizan causas; no se registra su contenido.
+            eprintln!("broadcasting ACC: {error}; reconectando");
+            self.disconnect();
+        }
         let mut changed = false;
         // static primero en vivo: no publicar una página sin versión inicializada.
         for i in [2, 0, 1] {

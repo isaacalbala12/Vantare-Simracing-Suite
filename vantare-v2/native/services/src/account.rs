@@ -387,39 +387,27 @@ impl Account {
                 return Err(Error::TooLarge);
             }
         }
-        let request = std::str::from_utf8(&bytes).map_err(|_| Error::Protocol)?;
-        let line = request.lines().next().ok_or(Error::Protocol)?;
-        let parts: Vec<_> = line.split_whitespace().collect();
-        if parts.len() != 3
-            || parts[0] != "GET"
-            || !parts[1].starts_with('/')
-            || parts[1].starts_with("//")
-        {
-            return Err(Error::Protocol);
-        }
-        let callback = attempt
-            .redirect
-            .join(parts[1])
-            .map_err(|_| Error::Protocol)?;
-        let mut state = None;
-        let mut code = None;
-        for (key, value) in callback.query_pairs() {
-            match key.as_ref() {
-                "state" if state.is_none() => state = Some(value.into_owned()),
-                "code" if code.is_none() => code = Some(value.into_owned()),
-                _ => return Err(Error::Authentication),
-            }
-        }
-        if callback.path() != attempt.redirect.path()
-            || state.as_deref() != Some(attempt.state.expose())
-        {
-            return Err(Error::Authentication);
-        }
-        let code = Secret(
-            code.filter(|code| !code.is_empty() && code.len() <= 4096)
-                .ok_or(Error::Authentication)?,
+        let request = std::str::from_utf8(&bytes).map_err(|_| Error::Protocol);
+        let code = request.and_then(|request| callback_code(request, attempt, &self.oauth.issuer));
+        // El navegador siempre recibe una página; sin respuesta muestra ERR_EMPTY_RESPONSE.
+        let (status, body) = match &code {
+            Ok(_) => (
+                "200 OK",
+                "Sesión iniciada en Vantare. Puede cerrar esta ventana.",
+            ),
+            Err(_) => (
+                "400 Bad Request",
+                "Vantare no pudo completar el inicio de sesión. Vuelva a la aplicación e inténtelo de nuevo.",
+            ),
+        };
+        let reply = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n{body}",
+            body.len()
         );
-        socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 32\r\nConnection: close\r\nCache-Control: no-store\r\n\r\nPuede cerrar esta ventana ahora.").map_err(|_| Error::Protocol)?;
+        socket
+            .write_all(reply.as_bytes())
+            .map_err(|_| Error::Protocol)?;
+        let code = code?;
         let attempt = self.attempt.take().ok_or(Error::Canceled)?;
         Ok(Some(Exchange {
             oauth: self.oauth.clone(),
@@ -469,6 +457,46 @@ impl Account {
         // Atomic tombstone survives a crash; no old refresh can restore the account.
         store.save("account", &Saved::SignedOut)
     }
+}
+
+/// Valida la petición del redirect y devuelve el código. Parámetros extra del
+/// proveedor se ignoran; `iss` (RFC 9207), si llega, debe ser el issuer.
+fn callback_code(request: &str, attempt: &Attempt, issuer: &Url) -> Result<Secret> {
+    let line = request.lines().next().ok_or(Error::Protocol)?;
+    let parts: Vec<_> = line.split_whitespace().collect();
+    if parts.len() != 3
+        || parts[0] != "GET"
+        || !parts[1].starts_with('/')
+        || parts[1].starts_with("//")
+    {
+        return Err(Error::Protocol);
+    }
+    let callback = attempt
+        .redirect
+        .join(parts[1])
+        .map_err(|_| Error::Protocol)?;
+    let mut state = None;
+    let mut code = None;
+    for (key, value) in callback.query_pairs() {
+        match key.as_ref() {
+            "state" if state.is_none() => state = Some(value.into_owned()),
+            "code" if code.is_none() => code = Some(value.into_owned()),
+            "state" | "code" | "error" => return Err(Error::Authentication),
+            "iss" if value.trim_end_matches('/') != issuer.as_str().trim_end_matches('/') => {
+                return Err(Error::Authentication);
+            }
+            _ => {}
+        }
+    }
+    if callback.path() != attempt.redirect.path()
+        || state.as_deref() != Some(attempt.state.expose())
+    {
+        return Err(Error::Authentication);
+    }
+    Ok(Secret(
+        code.filter(|code| !code.is_empty() && code.len() <= 4096)
+            .ok_or(Error::Authentication)?,
+    ))
 }
 
 #[cfg(all(test, any(windows, unix)))]

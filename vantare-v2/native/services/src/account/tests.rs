@@ -71,7 +71,7 @@ fn explicit_login_restart_releases_the_fixed_callback_port() {
 }
 
 #[test]
-fn callback_waits_for_a_browser_that_connects_before_sending() {
+fn callback_waits_for_a_slow_browser_and_accepts_provider_extras() {
     let server = Server::start(vec![]);
     let (root, store) = crate::test_store("login-slow-browser");
     let mut account = Account::restore(oauth(&server), &store).expect("account");
@@ -84,12 +84,13 @@ fn callback_waits_for_a_browser_that_connects_before_sending() {
     let mut socket =
         TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("connect");
     let state = params["state"].clone();
+    let iss = server.base.as_str().to_owned();
     // Sleep justificado: reproduce el hueco real entre conectar y enviar.
     let writer = std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(300));
         write!(
             socket,
-            "GET /callback?state={state}&code=c HTTP/1.1\r\nHost: x\r\n\r\n"
+            "GET /callback?code=c&state={state}&iss={iss}&scope=openid HTTP/1.1\r\nHost: x\r\n\r\n"
         )
         .expect("callback");
         let mut reply = String::new();

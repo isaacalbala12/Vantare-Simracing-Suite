@@ -16,11 +16,18 @@ vantare-domain.workspace = true
 vantare-ipc.workspace = true
 # Misma revisión que el prototipo de paridad (ISA-1410).
 gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["font-kit"] }
 # Ya en Cargo.lock como transitivas de GPUI; se usan directamente.
 flume = "0.12"
 png = "0.18"
 raw-window-handle = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# El crate de plataforma desactiva sus backends por defecto; las ventanas Unix
+# de Linux admiten sesiones X11 y Wayland.
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["wayland", "x11"] }
 
 [lints]
 workspace = true

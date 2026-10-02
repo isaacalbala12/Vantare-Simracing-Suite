@@ -1,0 +1,22 @@
+{
+  "repositoryVersion": "strategy.repository.v1",
+  "hashAlgorithm": "sha256:strategy-repository-json-v1",
+  "generation": 7,
+  "drafts": [
+    {
+      "contractVersion": "strategy.v1",
+      "draftId": "fixture-draft",
+      "planId": "fixture-plan",
+      "variantId": "variant-1",
+      "name": "Fixture plan",
+      "mode": "manual",
+      "capabilities": ["manual_inputs"],
+      "provenance": {"kind": "manual", "sourceId": "fixture"},
+      "confidence": {"level": "high", "basis": "fixture"},
+      "updatedAt": "2026-08-02T03:00:00Z",
+      "payload": {"laps": 10}
+    }
+  ],
+  "revisions": [],
+  "contentHash": "293c8df977de65a61b166b6a66f80dc4cf121b0fc1597fac0f62150f9b3255ee"
+}

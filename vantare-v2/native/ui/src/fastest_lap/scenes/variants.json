@@ -1,0 +1,44 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/fastest-lap.snapshot.json",
+  "variants": [
+    {
+      "name": "no-driver",
+      "settings": {
+        "showDriver": false
+      }
+    },
+    {
+      "name": "personal-only",
+      "settings": {
+        "showClass": false
+      }
+    },
+    {
+      "name": "class-only",
+      "settings": {
+        "showPersonal": false
+      }
+    },
+    {
+      "name": "hidden",
+      "settings": {
+        "showPersonal": false,
+        "showClass": false
+      }
+    },
+    {
+      "name": "duration-3",
+      "settings": {
+        "durationSeconds": 3
+      }
+    },
+    {
+      "name": "duration-15",
+      "settings": {
+        "durationSeconds": 15
+      }
+    }
+  ]
+}

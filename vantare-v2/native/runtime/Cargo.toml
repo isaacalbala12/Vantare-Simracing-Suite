@@ -8,25 +8,31 @@ publish.workspace = true
 [dependencies]
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
+vantare-services.workspace = true
+serde = { version = "1", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }
 # Cuerpos REST de LMU (`/rest/watch/*`), decodificados con límites.
-serde_json = "1"
+# El codec de series debe recuperar exactamente los f64 originales (ISA-1429).
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # Cliente HTTP síncrono para el REST local de LMU (sin TLS ni gzip: solo 127.0.0.1).
 ureq = { version = "3.4", default-features = false }
 # Foto latest-wins: los lectores nunca bloquean al escritor (ver core/publish.rs).
 arc-swap = "1"
 
 # Lee el corpus temporal `.tar.gz` de 47 coches en streaming (1,17 GB
-# descomprimido, no se extrae a disco) para `--replay`.
+# descomprimido, no se extrae a disco) para `--replay`, y empaqueta en gzip el
+# corpus de ACC (`vantare-grabar-acc`).
 flate2 = "1"
 
-[dev-dependencies]
-# El test de conformidad verifica el SHA-256 del corpus.
+# SHA-256 del corpus: lo verifica el test de conformidad de LMU y lo escribe el
+# manifiesto de la grabadora de ACC.
 sha2 = "0.10"
 
 # Launcher `vantare`: Job Object, mutex de instancia única, señal de parada,
-# manejador de Ctrl+C y cierre de ventanas. Ya en Cargo.lock (la usa `ipc`).
+# manejador de Ctrl+C y cierre de ventanas. `vantare-grabar-acc` añade memoria
+# mapeada (páginas de ACC) y la carpeta Documentos del usuario. Ya en Cargo.lock.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Com", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Memory", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 # Escenarios de caída con procesos de verdad; el propio ejecutable de la prueba
 # hace de núcleo y overlays falsos (no hay binarios de prueba que distribuir).
@@ -36,3 +42,9 @@ harness = false
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+vantare-services = { workspace = true, features = ["network"] }
+base64 = "0.22"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
+getrandom = "0.3"

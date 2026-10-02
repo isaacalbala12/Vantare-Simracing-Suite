@@ -1,0 +1,27 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostraci\u00f3n, no captura LMU",
+  "snapshot": "../../../fixtures/input-telemetry.sequence.json",
+  "variants": [
+    {
+      "name": "no-clutch",
+      "settings": {
+        "showClutch": false
+      }
+    },
+    {
+      "name": "history-1",
+      "settings": {
+        "historySeconds": 1
+      },
+      "snapshot": "four-seconds.sequence.json"
+    },
+    {
+      "name": "history-8",
+      "settings": {
+        "historySeconds": 8
+      },
+      "snapshot": "eight-seconds.sequence.json"
+    }
+  ]
+}

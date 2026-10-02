@@ -1,0 +1,29 @@
+[package]
+name = "vantare-engineer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+vantare-domain.workspace = true
+vantare-ipc.workspace = true
+# Flows y cierre del proceso; no lee adaptadores ni Core.
+vantare-runtime = { path = "../runtime" }
+serde_json = "1"
+sha2 = "0.10"
+
+# WinMM (WAV/MCI) y SHA-256 CNG: ya está en el lock del padre. Sin decoder,
+# motor TTS, proceso PowerShell ni servicio de red.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_Media_Multimedia", "Win32_Security_Cryptography"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+vantare-services.workspace = true
+base64 = "0.22"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }
+getrandom = "0.3"

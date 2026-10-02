@@ -1,6 +1,6 @@
 //! Publicador y suscriptor sobre un named pipe real, cada uno en sus hilos.
 
-#![cfg(windows)]
+#![cfg(any(windows, unix))]
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
@@ -60,6 +60,21 @@ fn snapshots_arrive_in_order() {
     publisher.publish(snapshot(1, 2)).unwrap();
     assert_eq!(next(&mut subscriber), (1, 2));
     assert!(subscriber.next(Duration::from_millis(100)).is_none());
+}
+
+#[test]
+fn heartbeats_advance_activity_without_repeating_the_last_photo() {
+    let name = unique_name("activity");
+    let mut publisher = Publisher::new(&name, any_peer).expect("publicador");
+    let mut subscriber = Subscriber::connect(&name, any_peer).expect("suscriptor");
+    publisher.publish(snapshot(1, 1)).expect("foto");
+    assert_eq!(next(&mut subscriber), (1, 1));
+    let activity = subscriber.activity();
+    assert!(subscriber.next(Duration::from_secs(2)).is_none());
+    assert!(
+        subscriber.activity() > activity,
+        "latidos recibidos por un pipe real"
+    );
 }
 
 #[test]

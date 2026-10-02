@@ -1,0 +1,84 @@
+{
+  "goCommit": "bd28ed40dd7d2079de7bcfeb9ee9f9d06950cd52",
+  "sourceHashes": {
+    "internal/strategy/solver/bridge.go": "5977dd63e187cb6709f43053c6569ce5ddf9415caaf4732e8a2c59ded164b4a7",
+    "internal/strategy/solver/certified_free_service.go": "06c5ed85972f36115a67a491c6caab0eab1a60305ffe9965bcdcdee645b7e3be",
+    "internal/strategy/solver/certified_one_pit.go": "c34acdcccdb7823d7eae1a15583e8e807a956dbde0a198a2f6d6e4690ddd6b39",
+    "internal/strategy/solver/compare.go": "ea366ce01815d85fd9a5df4f511feaf79eab590297de1394f6d685ef3609d2ef",
+    "internal/strategy/solver/compound_pace.go": "71880bdf9d10a781e62314a3b39d0ddf5c4971f89345ea413ca6da0692474515",
+    "internal/strategy/solver/compute_budget.go": "fcdc9c1fb64318d86d369de8b5ae4bddce2cefa4e7db0796bf916e43c82e0076",
+    "internal/strategy/solver/driver_profile.go": "3f3d30b22f406821605baac9250bdf530f32265cf37d3f7ab0625d76f695e134",
+    "internal/strategy/solver/event_rules.go": "ce7105c6916339ac8e5ae0f43ee5dab1392009a98a01b4379f4f9b4df9d3f2a9",
+    "internal/strategy/solver/fuel_weight.go": "aad8b90a996903c58ffdd74a479e8643a771831d3aaa39f31b5f697627e59d84",
+    "internal/strategy/solver/replay_v2.go": "d9af93c7140c7342562cbe99084e97162a6453ac2d9de275a83e7975438c4870",
+    "internal/strategy/solver/reserve.go": "17cc8e85fe7f2a6c9f43a8e638e8de7b7c1680da2efcc8870da93f79e70c52fe",
+    "internal/strategy/solver/risk_variants.go": "9dc2912f4e75f10dca036dce39f53187750b10a79e32813a36e904e37758edab",
+    "internal/strategy/solver/saving_cost.go": "900bc861929f0aad23be9004f6c564ca6c54a35a00ec4ccbfb621f26e95816a6",
+    "internal/strategy/solver/simple_resource_search.go": "d49535d4f8465a63896a4dbc2889ae38fc3f404b806533de858fbde4637c03bd",
+    "internal/strategy/solver/solver.go": "8d7a4aae95f0fb9b3041db03fa15e4682bd00123762bf4751cda2ff9890a59c0",
+    "internal/strategy/solver/solver_v2.go": "94da0b0405a7fb1331edc5d944ed22b614b561d7bf6d94734d22150dadd3153a",
+    "internal/strategy/solver/solver_v2_solve.go": "a26ea7b71fc454b084b6ca20209694a8583b51323c395041df39eecee3830998",
+    "internal/strategy/solver/stint_pace_curve.go": "b1d11e632dd3c1b2e24d66f2637d63947e82b4acff49085b16125736ea5ee59d",
+    "internal/strategy/solver/tyre_search.go": "a4fa9ebcba0eb75e69a4ea4a0578d354867934237c972d577050943e57099a52",
+    "internal/strategy/solver/weather_scenarios.go": "1662a7148993a8ecf84ea84314afd2d0a9fd48e632d1bef0a6ad9860e260d970"
+  },
+  "files": {
+    "solver-boundaries.json": {
+      "sha256": "ffc4381a22b11eed559b7f1865d3bb575329401ba5b60872b75beeede8e65990",
+      "cases": 12
+    },
+    "solver-drivers.json": {
+      "sha256": "bd265ca498e403e6f028ba64d485edc94fad478610689014c40b89db8c73e533",
+      "cases": 19
+    },
+    "solver-extended.json": {
+      "sha256": "d79e06d9035a95029f3b08b616aefc2d3650533acacfb6946eaa842253c0b5cd",
+      "cases": 90
+    },
+    "solver-optimality.json": {
+      "sha256": "54ae7872160e8ce00e8de37c7288b8792ebc2ea745e0ad767c319c2cf9b74140",
+      "cases": 2
+    },
+    "solver-projection.json": {
+      "sha256": "ecfebedc664d34609e9b1bd5151bd398956343c1240cd484c8aabd4d499e36ce",
+      "cases": 16
+    },
+    "solver-resources.json": {
+      "sha256": "042a64d0535b953fb2e64e264d307a60dc94cefbbccff7a59b232e7d7a125c89",
+      "cases": 35
+    },
+    "solver-scenarios.json": {
+      "sha256": "e4707484b4f71d3eb30b3cdc42508570e7ddb1563b6232a7dd1aa275e28cd09b",
+      "cases": 3
+    },
+    "solver-tyres.json": {
+      "sha256": "9115aed478ebf7ce39c0ce7bc006dbb36d94eacaff44a7ca031c8c868b82217f",
+      "cases": 18
+    },
+    "solver-weather.json": {
+      "sha256": "8afbb08795533c5f5ab65952a7c3075e54deb9cee6cb5096562ced01e3fb417f",
+      "cases": 17
+    }
+  },
+  "comparedFields": [
+    "feasible",
+    "best (including pit cost input and breakdown)",
+    "expected",
+    "worstCase",
+    "reserve",
+    "resolvedInputs and variants when retained in fixture",
+    "replay evaluation, stint breakdown, reasons codes, reserves and final-lap start",
+    "scenario recommendation, regret, loss, timeline and threshold sensitivity"
+  ],
+  "excludedFields": [
+    "Go localized reasons/assumptions except risk messages",
+    "Go binding and cost-source metadata",
+    "Go consumption/pace sensitivity metadata",
+    "Go duration and search counters (different implementation)",
+    "candidate list cardinality (except selected variants)"
+  ],
+  "numericRelativeTolerance": 1e-10,
+  "nativeTimeTieRelativeTolerance": 1e-12,
+  "mixedCaseSeed": 1393,
+  "certificatePolicy": "No automatic fuel-weight initial-load optimum is asserted; enumeration completion and result parity are tested separately."
+}

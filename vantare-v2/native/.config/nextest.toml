@@ -1,0 +1,16 @@
+[profile.default]
+# `lifecycle` usa harness propio (no admite --list): se ejecuta aparte con
+# `cargo test --workspace --test lifecycle`.
+default-filter = 'not binary(lifecycle)'
+
+# Intermitentes conocidos: se reintentan solos; el resto falla a la primera.
+# Quitar cada línea al cerrar su issue (#1434 lanzador).
+[[profile.default.overrides]]
+filter = 'test(chains_run_real_processes_and_report_nonzero_exit_and_spawn_failure) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step)'
+retries = 2
+
+# Busca procesos con la imagen del binario de tests: con nextest cada test es un
+# proceso de ese binario, así que debe correr solo para encontrar el suyo.
+[[profile.default.overrides]]
+filter = 'test(win32_reads_actual_process_identity_and_registry_without_writing_them)'
+threads-required = 'num-test-threads'

@@ -1,0 +1,3 @@
+# rust-lld (incluido con rustup) enlaza bastante más rápido que link.exe.
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 104">
+  <defs><clipPath id="panel"><rect x="1" y="1" width="478" height="102" rx="11"/></clipPath></defs>
+  <!-- ::after: left 382.109 + borde del panel 1; skewX(-34deg) centrado en y=52. -->
+  <g clip-path="url(#panel)" fill="white">
+    <path d="M417.51 1h24l-68.8 102h-24z"/>
+    <path d="M465.51 1h24l-68.8 102h-24z"/>
+  </g>
+</svg>

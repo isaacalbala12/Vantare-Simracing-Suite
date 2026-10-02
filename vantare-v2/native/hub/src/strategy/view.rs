@@ -1,0 +1,804 @@
+//! Strategy composes Orbit controls; persistence and calculation stay in its owner.
+use super::assistant::AssistantStep;
+use super::editor_view::EditorTab;
+use super::*;
+use gpui::{AnyElement, ObjectFit, img, px, rgb, rgba};
+use orbit::{Choice, ChoiceChanged, ChoiceKind, OptionItem, Tone};
+
+pub(super) fn load_garage_veil() -> (Option<Arc<RenderImage>>, Option<String>) {
+    load_strategy_image(
+        include_bytes!("../../assets/strategy-garage-veil.svg"),
+        ImageFormat::Svg,
+        "velo del garaje de Strategy",
+    )
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum Page {
+    #[default]
+    Collection,
+    Assistant(AssistantStep),
+    Create,
+    Editor(EditorTab),
+    Stints,
+    Stops,
+}
+
+/// Orbit no expone tracking negativo; acumula el espaciado sin redondear cada letra.
+pub(super) fn heading(title: &str, line_height: f32, tracking: f32, cx: &gpui::App) -> gpui::Div {
+    div().flex().flex_col().children(title.lines().map(|line| {
+        div().flex().h(px(line_height)).children(line.chars().scan(
+            0.0_f32,
+            |advance, character| {
+                let previous = advance.round();
+                *advance += tracking;
+                Some(
+                    orbit::text(character.to_string(), 42.0, 700, orbit::ink(cx), cx)
+                        .line_height(px(line_height))
+                        .flex_none()
+                        .mr(px(advance.round() - previous)),
+                )
+            },
+        ))
+    }))
+}
+
+fn pending(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
+    button(id, &format!("{label} · pendiente"), cx)
+        .tab_stop(false)
+        .opacity(orbit::DISABLED)
+        .cursor(gpui::CursorStyle::Arrow)
+}
+fn column() -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .min_w_0()
+        .flex_1()
+        .gap(px(orbit::RADIUS_CONTROL))
+}
+fn row() -> gpui::Div {
+    div().flex().min_w_0().gap(px(orbit::RADIUS_CONTROL))
+}
+fn option(title: &str, help: &str, action: impl IntoElement, cx: &gpui::App) -> gpui::Div {
+    orbit::card("", cx).child(
+        orbit::card_body()
+            .gap(px(orbit::RADIUS_CONTROL))
+            .child(orbit::text(
+                title.to_owned(),
+                orbit::BODY,
+                700,
+                orbit::ink(cx),
+                cx,
+            ))
+            .child(orbit::text(
+                help.to_owned(),
+                orbit::BODY,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
+            .child(action),
+    )
+}
+fn context_new_selected(page: Page) -> bool {
+    !matches!(page, Page::Collection)
+}
+fn context_sidebar_visible(page: Page) -> bool {
+    matches!(page, Page::Assistant(_))
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GarageBackground {
+    Standard,
+    Career,
+    Detail,
+}
+fn garage_veil_visible(page: Page) -> bool {
+    matches!(
+        page,
+        Page::Editor(EditorTab::Plan) | Page::Stints | Page::Stops
+    )
+}
+fn garage_background_kind(page: Page) -> Option<GarageBackground> {
+    match page {
+        Page::Editor(EditorTab::Datos | EditorTab::Plan | EditorTab::Revisiones)
+        | Page::Stints
+        | Page::Stops => Some(GarageBackground::Detail),
+        Page::Editor(EditorTab::Carrera) => Some(GarageBackground::Career),
+        Page::Assistant(_) => Some(GarageBackground::Standard),
+        _ => None,
+    }
+}
+fn summary(event: &Value) -> String {
+    [
+        display(&event["cls"]["value"]),
+        display(&event["track"]["value"]),
+        format!(
+            "{} pilotos",
+            event["drivers"].as_array().map_or(0, Vec::len)
+        ),
+        format!(
+            "{} estrategias",
+            event["strategies"].as_array().map_or(0, Vec::len)
+        ),
+    ]
+    .into_iter()
+    .filter(|part| !part.is_empty())
+    .collect::<Vec<_>>()
+    .join(" · ")
+}
+
+impl Strategy {
+    pub(crate) fn context_sidebar_visible(&self) -> bool {
+        context_sidebar_visible(self.page)
+    }
+
+    pub(crate) fn garage_background(
+        &self,
+        viewport_width: f32,
+        cx: &gpui::App,
+    ) -> Option<AnyElement> {
+        let background = match garage_background_kind(self.page)? {
+            GarageBackground::Detail => {
+                let image = self.garage_detail.clone()?;
+                let scale = viewport_width / 1672.0;
+                let width = 1056.0 * scale;
+                let image_height = width * 762.0 / 2064.0;
+                Some(
+                    div()
+                        .absolute()
+                        .top(px(0.0))
+                        .right(px(0.0))
+                        .w(px(width))
+                        .h(px(272.0 * scale))
+                        .overflow_hidden()
+                        .child(
+                            img(image)
+                                .absolute()
+                                .left(px(0.0))
+                                .top(px(-10.0 * scale))
+                                .w(px(width))
+                                .h(px(image_height))
+                                .object_fit(ObjectFit::Fill),
+                        )
+                        .into_any_element(),
+                )
+            }
+            GarageBackground::Standard => {
+                let image = self.garage.clone()?;
+                let width = (viewport_width - 73.0).max(0.0);
+                Some(
+                    div()
+                        .absolute()
+                        .left(px(73.0))
+                        .top(px(0.0))
+                        .w(px(width))
+                        .h(px(width * 941.0 / 1672.0))
+                        .child(
+                            img(image)
+                                .absolute()
+                                .inset_0()
+                                .size_full()
+                                .object_fit(ObjectFit::Cover),
+                        )
+                        .child(
+                            div()
+                                .absolute()
+                                .inset_0()
+                                .bg(rgba(crate::orbit::legacy_rgba(0x0809_0b04, cx))),
+                        )
+                        .into_any_element(),
+                )
+            }
+            GarageBackground::Career => {
+                let image = self.garage.clone()?;
+                let scale = viewport_width / 1672.0 * (1475.0 / 1672.0);
+                let width = 1672.0 * scale;
+                let image_height = 941.0 * scale;
+                Some(
+                    div()
+                        .absolute()
+                        .top(px(0.0))
+                        .right(px(0.0))
+                        .w(px(width))
+                        .h(px(image_height - 15.0 * viewport_width / 1672.0))
+                        .overflow_hidden()
+                        .child(
+                            img(image)
+                                .absolute()
+                                .left(px(0.0))
+                                .top(px(-15.0 * viewport_width / 1672.0))
+                                .w(px(width))
+                                .h(px(image_height))
+                                .object_fit(ObjectFit::Cover),
+                        )
+                        .into_any_element(),
+                )
+            }
+        }?;
+        let editor = garage_veil_visible(self.page);
+        Some(
+            div()
+                .absolute()
+                .inset_0()
+                .child(background)
+                .when(editor, |layer| {
+                    layer.children(self.garage_veil.clone().map(|veil| {
+                        img(veil)
+                            .absolute()
+                            .top(px(0.0))
+                            .right(px(0.0))
+                            .w(px(viewport_width))
+                            .h(px(viewport_width * 672.0 / 1672.0))
+                    }))
+                })
+                .into_any_element(),
+        )
+    }
+
+    pub(super) fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
+        if let Err(error) = self.ensure_clean_form() {
+            self.outcome(Err(error), cx);
+            return;
+        }
+        self.page = page;
+        self.error = None;
+        cx.notify();
+    }
+    fn cancel_form(&mut self, cx: &mut Context<Self>) {
+        self.load_fields(cx);
+        self.page = Page::Assistant(AssistantStep::Reglas);
+        self.error = None;
+        cx.notify();
+    }
+    fn collection(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let continue_action = if let Some(event) = self.current_event() {
+            option(
+                &display(&event["name"]["value"]),
+                &summary(event),
+                button("strategy-continue", "Continuar", cx).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.navigate(Page::Editor(EditorTab::Carrera), cx);
+                    },
+                )),
+                cx,
+            )
+        } else {
+            option(
+                "Continuar",
+                "Abre un documento V2 guardado en este equipo.",
+                button("strategy-open", "Abrir documento", cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.open(cx))),
+                cx,
+            )
+        };
+        let mut saved = orbit::card_body().gap(px(orbit::RADIUS_CONTROL));
+        let events = self
+            .editor
+            .document
+            .as_ref()
+            .and_then(|doc| doc.value()["events"].as_array());
+        if let Some(events) = events.filter(|events| !events.is_empty()) {
+            for (index, event) in events.iter().enumerate() {
+                let variant = event["strategies"]
+                    .as_array()
+                    .and_then(|variants| {
+                        variants
+                            .iter()
+                            .position(|variant| variant["id"] == event["activeStrategyId"])
+                    })
+                    .unwrap_or(0);
+                saved = saved.child(
+                    orbit::list_row(
+                        "strategy-saved",
+                        &display(&event["name"]["value"]),
+                        &summary(event),
+                        index == self.event,
+                        true,
+                        cx,
+                    )
+                    .id(("strategy-saved", index))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.choose(index, variant, cx);
+                        if this.error.is_none() {
+                            this.page = Page::Editor(EditorTab::Carrera);
+                        }
+                    })),
+                );
+            }
+        } else {
+            saved = saved.child(orbit::empty_state(
+                "Sin estrategias guardadas",
+                "Crea tu estrategia o abre un documento V2 de este equipo.",
+                cx,
+            ));
+        }
+        column()
+            .child(orbit::card("Estrategia", cx).child(
+                orbit::card_body()
+                    .gap(px(orbit::RADIUS_CONTROL))
+                    .child(orbit::text(
+                        "Retoma la estrategia que tenías entre manos o arranca una nueva con el asistente.",
+                        orbit::BODY,
+                        400,
+                        orbit::ink_2(cx),
+                     cx))
+                    .child(
+                        row()
+                            .child(column().child(continue_action))
+                            .child(column().child(option(
+                                "Nueva estrategia",
+                                "Prepara la carrera con el asistente de cinco pasos.",
+                                button("strategy-new", "Nueva estrategia", cx).on_click(cx.listener(
+                                    |this, _, _, cx| {
+                                        this.automatic = false;
+                                        this.navigate(
+                                            Page::Assistant(AssistantStep::Inicio),
+                                            cx,
+                                        );
+                                    },
+                                )),
+                             cx))),
+                    ),
+            ))
+            .child(orbit::card("Carreras de Le Mans Ultimate", cx).child(
+                orbit::card_body()
+                    .child(orbit::empty_state(
+                        "Calendario · pendiente",
+                        "La selección de carreras todavía no tiene contrato nativo en Strategy.",
+                     cx))
+                    .child(pending("strategy-calendar", "Ver carreras", cx)),
+            ))
+            .child(orbit::card("Guardadas", cx).child(saved))
+            .child(Self::document_actions(cx))
+    }
+    fn document_actions(cx: &mut Context<Self>) -> gpui::Div {
+        row()
+            .flex_wrap()
+            .child(
+                button("strategy-open-document", "Abrir documento V2", cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.open(cx))),
+            )
+            .child(
+                button("strategy-save", "Guardar", cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.save(cx))),
+            )
+            .child(
+                button("strategy-save-as", "Guardar como", cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.save_as(cx))),
+            )
+            .child(
+                button("strategy-discard", "Descartar cambios", cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.discard(cx))),
+            )
+            .child(pending("strategy-migrate", "Migrar datos antiguos", cx))
+    }
+    pub(super) fn field(&self, index: usize, cx: &gpui::App) -> gpui::Div {
+        column()
+            .child(orbit::eyebrow(FIELDS[index].0, cx))
+            .child(self.inputs[index].clone())
+    }
+    fn event_form(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
+        if self.duration.is_none() {
+            let duration = cx.new(|cx| {
+                Choice::new(
+                    "Duración",
+                    ChoiceKind::Segmented,
+                    ["1 h", "2 h", "4 h", "6 h", "Personalizada"]
+                        .into_iter()
+                        .map(OptionItem::new)
+                        .collect(),
+                    None,
+                    window,
+                    cx,
+                )
+            });
+            cx.subscribe(&duration, |this, _, event: &ChoiceChanged, cx| {
+                if let Some(minutes) = DURATIONS.get(event.0) {
+                    this.fields[1] = minutes.to_string();
+                    this.form.dirty = true;
+                    this.sync_inputs(cx);
+                }
+                cx.notify();
+            })
+            .detach();
+            self.duration = Some(duration);
+        }
+        orbit::card("Crear mi estrategia", cx).child(
+            orbit::card_body()
+                .gap(px(orbit::RADIUS_CONTROL))
+                .child(orbit::text(
+                    "todo se puede cambiar después",
+                    orbit::SECONDARY,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+                .child(row().child(self.field(0, cx)).child(self.field(4, cx)))
+                .child(row().child(self.field(5, cx)).child(self.field(24, cx)))
+                .child(
+                    row()
+                        .child(
+                            column()
+                                .child(orbit::eyebrow("Duración", cx))
+                                .children(self.duration.clone())
+                                .child(self.inputs[1].clone())
+                                .child(orbit::chip("Manual", Tone::Neutral, cx)),
+                        )
+                        .child(column().child(self.field(2, cx)).child(orbit::chip(
+                            "Manual",
+                            Tone::Neutral,
+                            cx,
+                        ))),
+                )
+                .child(
+                    row()
+                        .child(column().child(self.field(3, cx)).child(orbit::chip(
+                            "Manual",
+                            Tone::Neutral,
+                            cx,
+                        )))
+                        .child(column().child(orbit::eyebrow("Equipo", cx)).child(pending(
+                            "strategy-team-name",
+                            "Equipo",
+                            cx,
+                        ))),
+                )
+                .child(orbit::eyebrow("Pilotos", cx))
+                .child(
+                    row()
+                        .child(self.field(26, cx))
+                        .child(self.field(27, cx))
+                        .child(self.field(10, cx))
+                        .child(self.field(11, cx)),
+                )
+                .child(pending("strategy-add-driver", "Añadir piloto", cx))
+                .child(
+                    row()
+                        .child(
+                            button("strategy-create-plan", "Crear y planificar", cx)
+                                .on_click(cx.listener(|this, _, _, cx| this.add_event(cx))),
+                        )
+                        .child(
+                            button("strategy-cancel-form", "Cancelar", cx)
+                                .on_click(cx.listener(|this, _, _, cx| this.cancel_form(cx))),
+                        ),
+                ),
+        )
+    }
+    fn variants(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let mut body = orbit::card_body();
+        if let Some(event) = self.current_event() {
+            for (index, variant) in event["strategies"]
+                .as_array()
+                .map_or(&[][..], Vec::as_slice)
+                .iter()
+                .enumerate()
+            {
+                let event = self.event;
+                body = body.child(
+                    orbit::list_row(
+                        "strategy-variant",
+                        &display(&variant["name"]["value"]),
+                        &display(&variant["note"]["value"]),
+                        index == self.variant,
+                        true,
+                        cx,
+                    )
+                    .id(("strategy-variant", index))
+                    .on_click(cx.listener(move |this, _, _, cx| this.choose(event, index, cx))),
+                );
+            }
+        }
+        orbit::card("Estrategias", cx).child(body)
+    }
+    fn field_group(&self, title: &str, range: std::ops::Range<usize>, cx: &gpui::App) -> gpui::Div {
+        orbit::card(title, cx).child(
+            orbit::card_body()
+                .gap(px(orbit::RADIUS_CONTROL))
+                .children(range.map(|index| self.field(index, cx))),
+        )
+    }
+    pub(super) fn workspace(&self, cx: &mut Context<Self>) -> gpui::Div {
+        column().child(self.variants(cx))
+            .child(orbit::callout("Cálculo manual escalar. Telemetría, forecast, pilotos múltiples, inventario, ahorro e incertidumbre · pendiente. Escribe todos los números; 0 desactiva VE/vida/reserva.", cx))
+            .child(row().child(column().child(self.field_group("Evento", 0..6, cx)).child(self.field_group("Variante", 6..9, cx)))
+                .child(column().child(self.field_group("Ritmo y recursos", 9..16, cx)).child(self.field_group("Boxes y reservas", 16..24, cx))))
+            .child(row().flex_wrap()
+                .child(button("strategy-confirm-event", "Confirmar evento y variante", cx).on_click(cx.listener(|this, _, _, cx| this.confirm_event(cx))))
+                .child(button("strategy-calculate", if self.running { "Calculando…" } else { "Confirmar entradas y calcular" }, cx)
+                    .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))))
+                .child(button("strategy-cancel", "Cancelar cálculo", cx).on_click(cx.listener(|this, _, _, cx| {
+                    this.invalidate();
+                    this.status = "Cálculo cancelado; no se conserva resultado parcial".into();
+                    cx.notify();
+                }))))
+            .child(self.result_card( cx)).child(Self::document_actions(cx))
+    }
+    fn context_identity(&self) -> (&'static str, String, String) {
+        let simulator = if self.current_event().is_some() && self.demo_car.is_some() {
+            "Le Mans Ultimate"
+        } else {
+            "Sin simulador seleccionado"
+        };
+        let (car, circuit) = self.current_event().map_or_else(
+            || {
+                (
+                    "Sin carrera seleccionada".to_owned(),
+                    "Sin circuito seleccionado".to_owned(),
+                )
+            },
+            |event| {
+                (
+                    self.demo_car
+                        .clone()
+                        .unwrap_or_else(|| display(&event["cls"]["value"])),
+                    display(&event["track"]["value"]),
+                )
+            },
+        );
+        (simulator, car, circuit)
+    }
+
+    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
+    pub(crate) fn context_sidebar(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let (simulator, car, circuit) = self.context_identity();
+        let selected_new = context_new_selected(self.page);
+        let new_strategy = div()
+            .id("strategy-context-new")
+            .role(gpui::Role::Button)
+            .aria_label("Nueva estrategia")
+            .aria_selected(selected_new)
+            .tab_index(0)
+            .w_full()
+            .h(px(46.0))
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .rounded(px(8.0))
+            .cursor_pointer()
+            .when(selected_new, |row| {
+                row.bg(rgb(orbit::surface_2(cx)))
+                    .border_l_2()
+                    .border_color(rgb(orbit::carmine(cx)))
+            })
+            .child(orbit::text(
+                "Nueva estrategia",
+                16.0,
+                400,
+                orbit::ink(cx),
+                cx,
+            ))
+            .on_click(cx.listener(|this, _, _, cx| {
+                if let Err(error) = this.ensure_clean_form() {
+                    this.error = Some(error);
+                } else {
+                    this.automatic = false;
+                    this.automatic_preparation = None;
+                    this.page = Page::Assistant(AssistantStep::Inicio);
+                    this.error = None;
+                }
+                cx.notify();
+            }));
+        let saved = div()
+            .id("strategy-context-saved")
+            .role(gpui::Role::Button)
+            .aria_label("Guardadas")
+            .aria_selected(!selected_new)
+            .tab_index(0)
+            .w_full()
+            .h(px(46.0))
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .rounded(px(8.0))
+            .cursor_pointer()
+            .child(
+                orbit::text("Guardadas", 16.0, 400, orbit::ink_2(cx), cx)
+                    .relative()
+                    .top(px(6.0)),
+            )
+            .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::Collection, cx)));
+        div()
+            .flex()
+            .flex_col()
+            .w_full()
+            .gap(px(0.0))
+            .mb(px(36.0))
+            .child(
+                orbit::tracked_text("ESTRATEGIA", 11.0, 400, orbit::ink_2(cx), 1.4, cx)
+                    .relative()
+                    .left(px(-1.0))
+                    .top(px(-2.0))
+                    .px(px(10.0))
+                    .py(px(4.0)),
+            )
+            .child(new_strategy)
+            .child(saved)
+            .child(
+                div()
+                    .mt(px(12.0))
+                    .pt(px(20.0))
+                    .border_t_1()
+                    .border_color(rgba(orbit::line_row(cx)))
+                    .child(
+                        orbit::tracked_text("TU CARRERA", 10.0, 500, orbit::ink_2(cx), 1.3, cx)
+                            .relative()
+                            .top(px(-1.0))
+                            .px(px(20.0))
+                            .pb(px(19.0)),
+                    )
+                    .child(Self::context_info_row(
+                        "i-launcher",
+                        "Simulador",
+                        simulator,
+                        cx,
+                    ))
+                    .child(Self::context_info_row(
+                        "i-estrategia",
+                        "Categoría / coche",
+                        &car,
+                        cx,
+                    ))
+                    .child(Self::context_info_row(
+                        "i-carreras",
+                        "Circuito / trazado",
+                        &circuit,
+                        cx,
+                    )),
+            )
+    }
+
+    fn context_info_row(icon: &'static str, label: &str, value: &str, cx: &gpui::App) -> gpui::Div {
+        div()
+            .h(px(70.0))
+            .px(px(14.0))
+            .flex()
+            .items_center()
+            .gap(px(18.0))
+            .border_1()
+            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
+            .border_color(rgba(orbit::line_row(cx)))
+            .child(orbit::icon(icon, 24.0, orbit::ink(cx)))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(5.0))
+                    .child(orbit::text(label, 12.0, 400, orbit::ink_2(cx), cx))
+                    .child(orbit::text(value.to_owned(), 12.0, 600, orbit::ink(cx), cx)),
+            )
+    }
+
+    pub(super) fn render_page(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let content = match self.page {
+            Page::Collection => self.collection(cx),
+            Page::Assistant(step) => {
+                self.assistant_page(step, f32::from(window.viewport_size().height), cx)
+            }
+            Page::Create => self.event_form(window, cx),
+            Page::Stints | Page::Stops => self.editor_page(
+                EditorTab::Plan,
+                f32::from(window.viewport_size().height),
+                cx,
+            ),
+            Page::Editor(EditorTab::Datos)
+                if self.data.sources_open() && self.capture_demo.is_some() =>
+            {
+                self.capture_sources_page(f32::from(window.viewport_size().height), cx)
+            }
+            Page::Editor(tab) => {
+                self.editor_page(tab, f32::from(window.viewport_size().height), cx)
+            }
+        };
+        column()
+            .id("strategy")
+            .when(
+                matches!(
+                    self.page,
+                    Page::Assistant(_) | Page::Editor(_) | Page::Stints | Page::Stops
+                ),
+                |page| page.h_full().min_h(px(0.0)),
+            )
+            .child(content)
+            .when_some(self.error.clone(), |page, error| {
+                page.child(orbit::callout(error, cx))
+            })
+            .when(matches!(self.page, Page::Collection), |page| {
+                page.child(orbit::text(
+                    self.status.clone(),
+                    orbit::SECONDARY,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+                .child(orbit::text(
+                    if self.editor.dirty() || self.form.dirty {
+                        "Cambios pendientes"
+                    } else {
+                        "Sin cambios pendientes"
+                    },
+                    orbit::SECONDARY,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+            })
+            .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn assistant_and_editor_routes_have_explicit_tabs() {
+        assert_eq!(AssistantStep::ALL.len(), 5);
+        assert_eq!(EditorTab::ALL.len(), 4);
+        assert_eq!(
+            Page::Assistant(AssistantStep::Pilotos),
+            Page::Assistant(AssistantStep::Pilotos)
+        );
+        assert_ne!(
+            Page::Editor(EditorTab::Carrera),
+            Page::Editor(EditorTab::Revisiones)
+        );
+    }
+
+    #[test]
+    fn context_navigation_tracks_the_strategy_and_saved_pages() {
+        assert!(!context_new_selected(Page::Collection));
+        assert!(context_new_selected(Page::Assistant(AssistantStep::Inicio)));
+        assert!(context_new_selected(Page::Editor(EditorTab::Carrera)));
+    }
+
+    #[test]
+    fn strategy_context_column_only_belongs_to_the_assistant() {
+        assert!(context_sidebar_visible(Page::Assistant(
+            AssistantStep::Inicio
+        )));
+        assert!(!context_sidebar_visible(Page::Editor(EditorTab::Carrera)));
+    }
+
+    #[test]
+    fn garage_lighting_matches_each_editor_reference() {
+        for page in [Page::Editor(EditorTab::Plan), Page::Stints, Page::Stops] {
+            assert!(garage_veil_visible(page));
+        }
+        for page in [
+            Page::Collection,
+            Page::Assistant(AssistantStep::Inicio),
+            Page::Editor(EditorTab::Carrera),
+            Page::Editor(EditorTab::Datos),
+            Page::Editor(EditorTab::Revisiones),
+        ] {
+            assert!(!garage_veil_visible(page));
+        }
+    }
+
+    #[test]
+    fn strategy_garage_background_only_covers_assistant_and_editor() {
+        assert_eq!(
+            garage_background_kind(Page::Assistant(AssistantStep::Inicio)),
+            Some(GarageBackground::Standard)
+        );
+        assert_eq!(
+            garage_background_kind(Page::Editor(EditorTab::Carrera)),
+            Some(GarageBackground::Career)
+        );
+        for page in [
+            Page::Editor(EditorTab::Datos),
+            Page::Editor(EditorTab::Plan),
+            Page::Editor(EditorTab::Revisiones),
+            Page::Stints,
+            Page::Stops,
+        ] {
+            assert_eq!(garage_background_kind(page), Some(GarageBackground::Detail));
+        }
+        assert_eq!(garage_background_kind(Page::Collection), None);
+    }
+}

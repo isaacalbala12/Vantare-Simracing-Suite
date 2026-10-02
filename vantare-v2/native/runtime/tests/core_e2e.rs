@@ -1,20 +1,25 @@
 //! Extremo a extremo: el binario `vantare-core` reproduce una captura real y un
 //! `Subscriber` de `ipc` (el mismo que usan los overlays) recibe las fotos por
 //! el pipe. Falta la captura = fallo, nunca se omite en silencio.
-#![cfg(windows)]
+#![cfg(any(windows, unix))]
 // Ayudantes de test: un `unwrap` que falla es un fallo del test.
 #![allow(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+#[cfg(windows)]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use vantare_domain::{Quality, Snapshot, SourceKind};
 use vantare_ipc::Subscriber;
+#[cfg(windows)]
 use vantare_runtime::adapter::open_replay;
+#[cfg(windows)]
 use vantare_runtime::service;
+
+mod support;
 
 fn testdata(file: &str) -> PathBuf {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -77,6 +82,83 @@ fn assert_one_growing_revision(got: &[Arc<Snapshot>]) {
         assert_eq!(pair[0].epoch, pair[1].epoch, "una sola época por arranque");
         assert!(pair[0].sequence < pair[1].sequence, "revisión creciente");
     }
+}
+
+#[test]
+fn the_core_process_emits_and_persists_source_fact_outside_acquisition() {
+    use vantare_domain::SourceState;
+    use vantare_runtime::flows::{Delivery, FactKind, RecordingStatus, client::EventClient, host};
+    struct Recording(PathBuf);
+    impl Drop for Recording {
+        fn drop(&mut self) {
+            if self.0.exists() {
+                std::fs::remove_file(&self.0).unwrap();
+            }
+        }
+    }
+    let recording = Recording(
+        std::env::temp_dir().join(format!("vantare-e2e-events-{}.jsonl", std::process::id())),
+    );
+    let pipe = pipe_name("events");
+    let expected = PathBuf::from(env!("CARGO_BIN_EXE_vantare-core"));
+    let client = EventClient::connect(&host::pipe_name(&pipe), None, move |peer| {
+        peer.is_image(&expected)
+    })
+    .unwrap();
+    let image = std::env::current_exe().unwrap();
+    let mut core = CoreProcess::spawn(
+        &pipe,
+        &testdata("lmu-fixture.bin"),
+        &[
+            "--build",
+            "1.3.0.0",
+            "--velocidad",
+            "0.2",
+            "--engineer-image",
+            image.to_str().unwrap(),
+            "--recording",
+            recording.0.to_str().unwrap(),
+        ],
+    );
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let mut received = false;
+    while Instant::now() < deadline {
+        let Some(frame) = client.next(Duration::from_millis(100)).unwrap() else {
+            continue;
+        };
+        assert_eq!(frame.recording, RecordingStatus::Active);
+        let cursor = match frame.delivery {
+            Some(Delivery::Fact(fact)) => {
+                assert_eq!(
+                    fact.kind,
+                    FactKind::SourceChanged {
+                        before: SourceState::Live,
+                        after: SourceState::Stale
+                    }
+                );
+                assert_eq!(fact.sequence, frame.snapshot.sequence);
+                assert_eq!(frame.durable, Some(fact.cursor));
+                assert_eq!(frame.snapshot.state.source_state, SourceState::Stale);
+                assert_eq!(frame.snapshot.state.cars.len(), 44);
+                received = true;
+                fact.cursor
+            }
+            None => frame.tail,
+            other => panic!("entrega inesperada: {other:?}"),
+        };
+        client.ack(cursor).unwrap();
+        if received {
+            break;
+        }
+    }
+    assert!(received, "hecho productivo de fuente desde captura real");
+    drop(client);
+    drop(core.0.stdin.take());
+    support::wait_for_success(&mut core.0);
+    assert!(
+        std::fs::read(&recording.0).unwrap().starts_with(b"[3,"),
+        "hecho v3 realmente confirmado"
+    );
 }
 
 #[test]
@@ -160,22 +242,11 @@ fn the_core_process_exits_in_order_when_its_stdin_reaches_eof() {
         "sigue vivo mientras stdin está abierto"
     );
 
-    let asked = Instant::now();
     drop(core.0.stdin.take());
-    let status = loop {
-        if let Some(status) = core.0.try_wait().unwrap() {
-            break status;
-        }
-        assert!(
-            asked.elapsed() < Duration::from_secs(3),
-            "no terminó tras el EOF"
-        );
-        std::thread::sleep(Duration::from_millis(10));
-    };
-    // Código 0: salida ordenada, no el corte por plazo (que sale con 1).
-    assert!(status.success(), "{status}");
+    support::wait_for_success(&mut core.0);
 }
 
+#[cfg(windows)]
 #[test]
 fn the_service_shuts_down_in_order_when_asked() {
     let pipe = pipe_name("shutdown");
@@ -204,4 +275,38 @@ fn the_service_shuts_down_in_order_when_asked() {
     let mut replay = open_replay(&testdata("lmu-fixture.bin"), Some("1.3.0.0")).unwrap();
     stop.store(true, Ordering::SeqCst);
     service::run(&mut replay, &pipe, 2, 1.0, &stop).unwrap();
+}
+
+#[cfg(windows)]
+#[test]
+fn an_added_widget_is_hydrated_even_after_replay_stops_producing_observations() {
+    use vantare_ipc::{Demand, Signal, SignalState};
+    let pipe = pipe_name("layout-demand");
+    let mut wanted = Demand::default();
+    wanted.request(Signal::Pedals, 16);
+    let mut subscriber = Subscriber::connect_requested(&pipe, wanted.clone(), |_| true).unwrap();
+    let _core = CoreProcess::spawn(&pipe, &testdata("lmu-fixture.bin"), &["--build", "1.3.0.0"]);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let stale = loop {
+        assert!(
+            Instant::now() < deadline,
+            "el replay no alcanzó estado obsoleto"
+        );
+        if let Some(photo) = subscriber.next_photo(Duration::from_millis(100))
+            && photo.snapshot.state.source_state == vantare_domain::SourceState::Stale
+        {
+            break photo;
+        }
+    };
+    wanted.request(Signal::Weather, 500);
+    wanted.request(Signal::ClassGaps, 250);
+    subscriber.set_demand(wanted.clone()).unwrap();
+    let photo = subscriber
+        .next_photo(Duration::from_secs(2))
+        .expect("nuevo widget sin adquisición nueva");
+    assert_eq!(photo.demand, wanted);
+    assert_eq!(photo.signal_state(Signal::Weather), SignalState::Requested);
+    assert_eq!(photo.signal_state(Signal::Delta), SignalState::NotRequested);
+    assert_eq!(photo.snapshot.origin, stale.snapshot.origin);
+    assert!(photo.snapshot.sequence > stale.snapshot.sequence);
 }

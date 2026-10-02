@@ -31,6 +31,46 @@ fn callback(url: &Url, state_override: Option<&str>) -> (TcpStream, String) {
 }
 
 #[test]
+fn explicit_login_restart_releases_the_fixed_callback_port() {
+    let server = Server::start(vec![]);
+    let (root, store) = crate::test_store("login-restart");
+    let reserved = TcpListener::bind(("127.0.0.1", 0)).expect("free port");
+    let port = reserved.local_addr().expect("address").port();
+    let mut config = oauth(&server);
+    config.redirect.set_port(Some(port)).expect("fixed port");
+    drop(reserved);
+    let mut account = Account::restore(config, &store).expect("account");
+    let first = account.begin_login().expect("first login");
+    let (_socket, _) = callback(&first, Some("wrong-state"));
+    assert!(matches!(account.poll_login(), Err(Error::Authentication)));
+    let restarted = account
+        .begin_login()
+        .expect("explicit restart on same port");
+    let (_socket, _) = callback(&first, None);
+    assert!(
+        matches!(account.poll_login(), Err(Error::Authentication)),
+        "old state is rejected"
+    );
+    let (_socket, _) = callback(&restarted, None);
+    assert!(account.poll_login().expect("new callback").is_some());
+    assert!(
+        TcpListener::bind(("127.0.0.1", port)).is_ok(),
+        "completed attempt releases listener"
+    );
+    account.begin_login().expect("login before expiry");
+    account.attempt.as_mut().expect("attempt").deadline = Instant::now();
+    assert!(matches!(account.poll_login(), Err(Error::Canceled)));
+    assert!(!account.login_pending());
+    assert!(
+        TcpListener::bind(("127.0.0.1", port)).is_ok(),
+        "expired attempt releases listener"
+    );
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "login-restart", &[]);
+}
+
+#[test]
 fn pkce_refresh_restore_logout_and_late_completion_are_bound_to_identity() {
     let access = crate::random_id().expect("test entropy");
     let refresh = crate::random_id().expect("test entropy");

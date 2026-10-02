@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 #[path = "report_document.rs"]
 pub mod report_document;
 #[path = "roadmap_document.rs"]
@@ -83,6 +83,7 @@ pub enum Reply {
         expires_at: Option<u64>,
         pending: bool,
         message: String,
+        error: Option<String>,
     },
     Error {
         message: String,

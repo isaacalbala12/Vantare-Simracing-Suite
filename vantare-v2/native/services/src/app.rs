@@ -18,7 +18,6 @@ pub struct App {
     http: Http,
     store: Option<Store>,
     account: Option<Account>,
-    login_pending: bool,
     roadmap_store: Option<Store>,
     roadmap: Option<crate::roadmap::Roadmap>,
     bridge: Option<crate::bridge::Config>,
@@ -37,7 +36,6 @@ impl App {
             http: Http::default(),
             store: None,
             account: None,
-            login_pending: false,
             roadmap_store: None,
             roadmap: None,
             bridge: None,
@@ -153,7 +151,6 @@ impl App {
         if self.core.is_some() {
             self.revoke_local()?;
         }
-        self.login_pending = false;
         self.data_session = None;
         if let Some(reports) = self.reports.as_mut() {
             reports.cancel_preview();
@@ -170,6 +167,7 @@ impl App {
             expires_at: None,
             pending: false,
             message: "Sesión cerrada y derechos locales revocados".into(),
+            error: None,
         })
     }
 
@@ -244,11 +242,21 @@ impl App {
     }
 
     pub fn handle(&mut self, command: Command) -> Reply {
+        let account_action = matches!(
+            command,
+            Command::AccountBegin | Command::AccountPoll | Command::AccountRenew | Command::Logout
+        );
         match self.execute(command) {
             Ok(reply) => reply,
-            Err(error) => Reply::Error {
-                message: error.to_string(),
-            },
+            Err(error) => {
+                if account_action && let Some(account) = self.account.as_ref() {
+                    Self::account_reply(account, Some(error))
+                } else {
+                    Reply::Error {
+                        message: error.to_string(),
+                    }
+                }
+            }
         }
     }
 
@@ -290,12 +298,13 @@ impl App {
                 // Only an explicit IPC login action opens the external browser.
                 // `explorer.exe <url>` trata las URL largas con parámetros como rutas
                 // y abre el Explorador; el manejador de protocolo abre el navegador.
-                open_login(&url)?;
-                self.login_pending = true;
+                if let Err(error) = open_login(&url) {
+                    account.cancel_login()?;
+                    return Err(error);
+                }
             }
-            Command::AccountPoll if self.login_pending => {
+            Command::AccountPoll if account.login_pending() => {
                 if let Some(ticket) = account.poll_login()? {
-                    self.login_pending = false;
                     account.complete(ticket.run(&self.http, now()?)?, store)?;
                 }
             }
@@ -305,19 +314,30 @@ impl App {
             }
             _ => return Err(Error::Protocol),
         }
-        Ok(Reply::Account {
+        Ok(Self::account_reply(account, None))
+    }
+
+    fn account_reply(account: &Account, error: Option<Error>) -> Reply {
+        let pending = account.login_pending();
+        Reply::Account {
             signed_in: account.identity().is_some(),
             expires_at: account.expires_at(),
-            pending: self.login_pending,
-            message: if self.login_pending {
-                "Complete el inicio de sesión en el navegador"
-            } else if account.identity().is_some() {
-                "Sesión Clerk protegida; derechos pendientes del núcleo"
-            } else {
-                "Sesión cerrada en este dispositivo"
-            }
-            .into(),
-        })
+            pending,
+            message: error.map_or_else(
+                || {
+                    if pending {
+                        "Complete el inicio de sesión en el navegador"
+                    } else if account.identity().is_some() {
+                        "Sesión Clerk protegida; derechos pendientes del núcleo"
+                    } else {
+                        "Sesión cerrada en este dispositivo"
+                    }
+                    .into()
+                },
+                |error| error.to_string(),
+            ),
+            error: error.map(|error| error.to_string()),
+        }
     }
 
     fn roadmap_reply(&mut self, refresh: bool) -> Result<Reply> {
@@ -469,6 +489,94 @@ pub fn now() -> Result<u64> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .map_err(|_| Error::Clock)
+}
+
+#[cfg(all(test, any(windows, unix)))]
+mod tests {
+    use super::*;
+    use std::{io::Write, net::TcpStream};
+
+    #[test]
+    fn callback_error_keeps_ipc_pending_and_exchange_error_clears_it() {
+        let server = crate::test_http::Server::start(vec![(503, "{}".into())]);
+        let (root, store) = crate::test_store("app-login-errors");
+        let mut account = crate::account::fixture(&server.base, &store);
+        account.logout(&store).expect("signed out fixture");
+        let login = account.begin_login().expect("begin without browser");
+        let params: std::collections::HashMap<_, _> = login
+            .query_pairs()
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        let mut socket =
+            TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("callback");
+        write!(
+            socket,
+            "GET /callback?state=wrong-state&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n"
+        )
+        .expect("request");
+        let response = crate::protocol::Response {
+            version: crate::protocol::VERSION,
+            sequence: 1,
+            reply: app.handle(Command::AccountPoll),
+        };
+        let mut wire = Vec::new();
+        crate::protocol::write(&mut wire, &response).expect("IPC response");
+        let decoded: crate::protocol::Response =
+            crate::protocol::read(&mut wire.as_slice()).expect("IPC read");
+        assert!(
+            matches!(
+                decoded.reply,
+                Reply::Account {
+                    pending: true,
+                    error: Some(_),
+                    ..
+                }
+            ),
+            "rejected callback must not abandon polling"
+        );
+        drop(socket);
+        let mut socket =
+            TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("callback");
+        write!(
+            socket,
+            "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            params["state"]
+        )
+        .expect("request");
+        assert!(
+            matches!(
+                app.handle(Command::AccountPoll),
+                Reply::Account {
+                    signed_in: false,
+                    pending: false,
+                    error: Some(_),
+                    ..
+                }
+            ),
+            "exchange failure leaves no listener"
+        );
+        assert!(matches!(
+            app.handle(Command::AccountPoll),
+            Reply::Account {
+                pending: false,
+                error: None,
+                ..
+            }
+        ));
+        assert!(TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).is_err());
+        server
+            .requests
+            .recv_timeout(std::time::Duration::from_secs(3))
+            .expect("one token request");
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-login-errors", &["account"]);
+    }
 }
 
 pub fn default_root() -> Result<PathBuf> {

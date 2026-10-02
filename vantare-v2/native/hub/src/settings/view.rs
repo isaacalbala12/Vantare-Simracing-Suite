@@ -755,7 +755,10 @@ fn hotkey_keycaps(keys: [&str; 3]) -> Div {
     keycaps
 }
 fn aligned_navigation(page: Page) -> bool {
-    matches!(page, Page::Diagnostics | Page::Hotkeys | Page::Privacy)
+    matches!(
+        page,
+        Page::Diagnostics | Page::Hotkeys | Page::Privacy | Page::Performance
+    )
 }
 
 impl Hub {

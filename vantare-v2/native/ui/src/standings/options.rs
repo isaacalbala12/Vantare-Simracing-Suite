@@ -37,7 +37,7 @@ impl Default for ColumnSetting {
     }
 }
 impl ColumnSetting {
-    pub fn column(&self) -> Option<Column> {
+    pub(crate) fn column(&self) -> Option<Column> {
         if !self.enabled {
             return None;
         }

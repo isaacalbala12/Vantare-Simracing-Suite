@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use vantare_domain::format::{self, Language, PLACEHOLDER, Preferences};
 use vantare_domain::{Capability, FlagKind, SourceState, standings};
 
-pub const ROW_HEIGHT: f32 = 30.0;
-pub const SESSION_HEADER_HEIGHT: f32 = 42.0;
-pub const COLUMN_HEADER_HEIGHT: f32 = 28.0;
-pub const FOOTER_HEIGHT: f32 = 22.0;
-pub const BRAND_BAND_HEIGHT: f32 = 22.0;
+pub(crate) const ROW_HEIGHT: f32 = 30.0;
+pub(crate) const SESSION_HEADER_HEIGHT: f32 = 42.0;
+pub(crate) const COLUMN_HEADER_HEIGHT: f32 = 28.0;
+pub(crate) const FOOTER_HEIGHT: f32 = 22.0;
+pub(crate) const BRAND_BAND_HEIGHT: f32 = 22.0;
 pub const PIT_RAIL_WIDTH: f32 = 34.0;
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ pub const PIT_RAIL_WIDTH: f32 = 34.0;
 // ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Metric {
+pub(crate) enum Metric {
     Position,
     DriverNumber,
     DriverName,
@@ -34,7 +34,7 @@ pub enum Metric {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Preset {
+pub(crate) enum Preset {
     Xs,
     Sm,
     Md,
@@ -53,14 +53,14 @@ impl Preset {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Align {
+pub(crate) enum Align {
     Left,
     Center,
     Right,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NameMode {
+pub(crate) enum NameMode {
     Full,
     Initial,
     Surname,
@@ -78,7 +78,7 @@ impl NameMode {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Column {
+pub(crate) struct Column {
     pub metric: Metric,
     pub preset: Preset,
     pub align: Option<Align>,
@@ -88,7 +88,7 @@ pub struct Column {
 
 /// Datos del pie que el `ViewModel` de `domain` ya trae.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum InfoMetric {
+pub(crate) enum InfoMetric {
     None,
     Track,
     EstimatedLaps,
@@ -96,7 +96,7 @@ pub enum InfoMetric {
 
 #[derive(Clone, Debug)]
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
-pub struct Config {
+pub(crate) struct Config {
     pub broadcast: bool,
     pub multiclass: bool,
     pub footer_slots: Vec<String>,
@@ -207,11 +207,11 @@ impl Config {
 }
 
 /// `resolveFunctionalColumnWidth` de producción (firma Signature).
-pub fn column_width(column: &Column) -> f32 {
+pub(crate) fn column_width(column: &Column) -> f32 {
     column_width_for(column, false)
 }
 
-pub fn column_width_for(column: &Column, broadcast: bool) -> f32 {
+pub(crate) fn column_width_for(column: &Column, broadcast: bool) -> f32 {
     let minimum = match column.metric {
         Metric::DriverName => {
             let base = if broadcast { 208.0 } else { 188.0 };
@@ -242,7 +242,7 @@ fn is_identity(metric: Metric) -> bool {
 }
 
 /// `resolveFunctionalIdentitySpan`.
-pub fn identity_span(columns: &[Column]) -> usize {
+pub(crate) fn identity_span(columns: &[Column]) -> usize {
     let first_metric = columns
         .iter()
         .position(|c| !is_identity(c.metric))
@@ -269,7 +269,7 @@ pub fn identity_span(columns: &[Column]) -> usize {
 // de datos ya llegan localizados desde `domain`.
 // ---------------------------------------------------------------------------
 
-pub struct Labels {
+pub(crate) struct Labels {
     pub position: &'static str,
     pub driver_number: &'static str,
     pub driver_name: &'static str,
@@ -288,7 +288,7 @@ pub struct Labels {
     pub estimated_laps: &'static str,
 }
 
-pub fn labels(language: Language) -> Labels {
+pub(crate) fn labels(language: Language) -> Labels {
     match language {
         Language::En => Labels {
             position: "POS",
@@ -360,7 +360,7 @@ impl Labels {
 // ---------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Row {
+pub(crate) struct Row {
     pub id: String,
     /// 0 si el dato no es fiable.
     pub position: i64,
@@ -382,14 +382,14 @@ pub struct Row {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
+pub(crate) enum Status {
     Ready,
     Stale,
     Disconnected,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Vm {
+pub(crate) struct Vm {
     pub status: Status,
     pub session_label: String,
     pub remaining_text: String,
@@ -550,7 +550,7 @@ fn gap_seconds(text: &str) -> Option<f64> {
 // Las banderas reflejan las decisiones de layout de `StandingsFunctional.tsx`.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug)]
-pub struct Plan {
+pub(crate) struct Plan {
     /// Columnas visibles sin `pit`.
     pub columns: Vec<Column>,
     pub pit_enabled: bool,
@@ -571,7 +571,7 @@ pub struct Plan {
     pub class_bands: Vec<(f32, String)>,
 }
 
-pub fn plan(config: &Config, vm: &Vm) -> Plan {
+pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
     let columns: Vec<Column> = config
         .columns
         .iter()

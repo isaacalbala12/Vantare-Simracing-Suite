@@ -3,10 +3,11 @@ use super::*;
 use chain::{Chain, Status};
 use discovery::{Discovery, Sources};
 #[cfg(windows)]
+use std::path::Path;
+#[cfg(windows)]
 use std::time::{Duration, Instant};
 use std::{
     fs,
-    path::Path,
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -620,6 +621,7 @@ impl Drop for ProcessCleanup {
     }
 }
 
+#[cfg(windows)]
 fn collect(chain: &Chain) -> Vec<chain::Progress> {
     let mut events = vec![];
     loop {

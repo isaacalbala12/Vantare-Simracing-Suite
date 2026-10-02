@@ -24,7 +24,7 @@ pub use replay::{
     resource_requirements_v2,
 };
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 
 use serde::{Deserialize, Serialize};
@@ -502,8 +502,25 @@ fn solve_v2_without_deadline(input: &Input) -> Result<SolverOutcome, String> {
     solve_internal(input, &AtomicBool::new(false), true, None)
 }
 
-#[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
+// Cancellation has precedence at entry and publication, including fast paths.
 fn solve_internal(
+    input: &Input,
+    cancel: &AtomicBool,
+    return_partial: bool,
+    deadline_millis: Option<u64>,
+) -> Result<SolverOutcome, String> {
+    if cancel.load(AtomicOrdering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    let outcome = solve_search(input, cancel, return_partial, deadline_millis)?;
+    if cancel.load(AtomicOrdering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    Ok(outcome)
+}
+
+#[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
+fn solve_search(
     input: &Input,
     cancel: &AtomicBool,
     return_partial: bool,
@@ -572,7 +589,7 @@ fn solve_internal(
     let mut work = 0;
     let mut iterations = 0;
     let mut frontier =
-        vec![HashMap::new(); usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1];
+        vec![BTreeMap::new(); usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1];
     let initial = Node {
         fuel: fuel.capacity,
         ve: ve.capacity,
@@ -910,6 +927,77 @@ fn single_fuel_decision(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numeric_budget_partial_is_deterministic() {
+        let fixtures: Value = serde_json::from_str(include_str!("../testdata/oracle/solver.json"))
+            .expect("scalar fixtures");
+        let mut input: Input = serde_json::from_value(fixtures[0]["input"].clone()).expect("input");
+        input.race_laps = 7;
+        input.fuel_capacity_liters.value = 6.0;
+        input.fuel_per_lap_liters.value = 2.0;
+        input.discretization.fuel_liters = 1.0;
+        input.ve_capacity_percent.value = 0.0;
+        input.ve_per_lap_percent.value = 0.0;
+        input.budget.p95_millis = 5000;
+        input.budget.max_iterations = 100_000;
+        input.budget.max_candidates = 500;
+        let first = solve_v2_without_deadline(&input).expect("partial plan");
+        assert_eq!(first.certificate.status, OptimalityStatus::NotProven);
+        assert_eq!(
+            first.certificate.reason.as_deref(),
+            Some("candidate_budget_exhausted")
+        );
+        assert_eq!(first.certificate.explored_work_items, 501);
+        assert!(first.result.feasible);
+        for _ in 0..50 {
+            let next = solve_v2_without_deadline(&input).expect("repeat plan");
+            assert_eq!(
+                serde_json::to_value(&next.result).expect("result JSON"),
+                serde_json::to_value(&first.result).expect("result JSON")
+            );
+            assert_eq!(next.cost_seconds, first.cost_seconds);
+            assert_eq!(
+                next.certificate.explored_work_items,
+                first.certificate.explored_work_items
+            );
+        }
+    }
+
+    #[test]
+    fn precancelled_scalar_paths_never_publish_a_plan() {
+        let fixtures: Value = serde_json::from_str(include_str!("../testdata/oracle/solver.json"))
+            .expect("scalar fixtures");
+        let base: Input = serde_json::from_value(fixtures[0]["input"].clone()).expect("input");
+        for capacity in [1.0, 6.0] {
+            for fast_path in [false, true] {
+                let mut input = base.clone();
+                input.fuel_capacity_liters.value = capacity;
+                input.fuel_per_lap_liters.value = 2.0;
+                input.discretization.fuel_liters = 1.0;
+                input.ve_capacity_percent.value = 0.0;
+                input.ve_per_lap_percent.value = 0.0;
+                input.pit_cost.tyre_seconds.value = if fast_path { 0.0 } else { 10.0 };
+                input.pit_cost.transit_seconds.value = 20.0;
+                let cancel = AtomicBool::new(true);
+                assert_eq!(
+                    solve_v2_cancellable(&input, &cancel).expect_err("cancelled"),
+                    "cancelled"
+                );
+                assert_eq!(
+                    solve_cancellable(&input, &cancel).expect_err("cancelled"),
+                    "cancelled"
+                );
+            }
+        }
+        let mut invalid = base;
+        invalid.race_laps = 0;
+        assert_eq!(
+            solve_v2_cancellable(&invalid, &AtomicBool::new(true))
+                .expect_err("cancel precedes validation"),
+            "cancelled"
+        );
+    }
 
     fn compare_fields(actual: &Value, expected: &Value, path: &str) {
         match (actual, expected) {

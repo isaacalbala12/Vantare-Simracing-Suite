@@ -254,8 +254,9 @@ fn delta_text(seconds: Option<f64>) -> String {
         return format::PLACEHOLDER.into();
     };
     let magnitude = seconds.abs();
+    // Exact binary ties at three decimals are odd multiples of 1/16.
     let scaled = magnitude * 1000.0;
-    let rounded = if scaled.fract() == 0.5 && scaled / 1000.0 == magnitude {
+    let rounded = if magnitude.rem_euclid(0.125) == 0.0625 {
         (scaled.floor() + 1.0) / 1000.0
     } else {
         magnitude

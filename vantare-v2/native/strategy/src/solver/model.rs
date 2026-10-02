@@ -460,7 +460,7 @@ impl Model {
         if !self.pace_points.is_empty() {
             eval.degradation_seconds = (1..=laps)
                 .map(|lap| {
-                    super::tyres::curve_delta(
+                    super::tyres::sorted_curve_delta(
                         &self.pace_points,
                         self.input.degradation_per_lap_seconds.value,
                         lap,

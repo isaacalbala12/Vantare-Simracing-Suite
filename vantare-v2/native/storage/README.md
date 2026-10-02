@@ -1,8 +1,11 @@
 # Almacenamiento de series — ISA-1429
 
 Crate y proceso bajo demanda: `vantare-storage <ruta.duckdb> [--read-only]`.
-Ningún paquete vivo depende de storage/DuckDB; `cargo build` conserva los
-cuatro default-members previos. Compilar explícitamente con `--offline -j 2`.
+Ningún paquete vivo depende de storage/DuckDB. El workspace tiene nueve
+miembros y ocho default-members; storage se excluye del build por defecto para
+no compilar DuckDB bundled. Compilarlo explícitamente con `--offline -j 4`
+o mediante los gates `--workspace`. El test de aislamiento descubre todos los
+miembros actuales y comprueba cada árbol salvo el propio storage.
 El único binding nuevo autorizado es duckdb `=1.10505.0`, bundled, sin features
 de extensiones. Las dependencias transitivas Arrow/TLS son propias del binding;
 el proceso desactiva autoinstall/autoload, acceso externo y usa dos threads,

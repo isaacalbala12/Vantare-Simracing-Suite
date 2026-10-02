@@ -372,3 +372,99 @@ fn empty_base_climate_bucket_uses_go_default_dry() {
         "empty bucket",
     );
 }
+
+fn shuffle_curves(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for (key, value) in map {
+                if matches!(key.as_str(), "curve" | "points") {
+                    if let Some(points) = value.as_array_mut() {
+                        points.sort_by_key(|p| {
+                            std::cmp::Reverse(p["lapInStint"].as_u64().expect("curve age"))
+                        });
+                    }
+                } else {
+                    shuffle_curves(value);
+                }
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                shuffle_curves(value);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[test]
+fn prepared_curves_are_sorted_once_without_changing_input_or_replay() {
+    for (fixture, name) in [
+        (
+            include_str!("../../testdata/oracle/solver-tyres.json"),
+            "tyres-curve",
+        ),
+        (
+            include_str!("../../testdata/oracle/solver-projection.json"),
+            "projection-curve-tail",
+        ),
+        (
+            include_str!("../../testdata/oracle/solver-weather.json"),
+            "weather-override-compound",
+        ),
+    ] {
+        let cases: Vec<Value> = serde_json::from_str(fixture).expect("fixture");
+        let mut case = cases
+            .into_iter()
+            .find(|case| case["name"] == name)
+            .expect("curve case");
+        if name == "weather-override-compound" {
+            let points = json!([
+                {"lapInStint":1,"deltaSeconds":0.5},
+                {"lapInStint":3,"deltaSeconds":1.5}
+            ]);
+            case["input"]["compoundPace"][0]["curve"] = points.clone();
+            case["input"]["compoundPace"][0]["degradationPerLapSeconds"] = json!(0.0);
+            case["input"]["weather"]["bucketParameters"][1]["compoundPace"][0]["curve"] = points;
+            case["input"]["weather"]["bucketParameters"][1]["compoundPace"][0]["degradationPerLapSeconds"] =
+                json!(0.0);
+        }
+        let ordered: Input = serde_json::from_value(case["input"].clone()).expect("input");
+        // Reorder only present curves; absent optional fields remain absent.
+        shuffle_curves(&mut case["input"]);
+        let shuffled: Input =
+            serde_json::from_value(case["input"].clone()).expect("shuffled input");
+        let original = json!(shuffled);
+        let model = model::Model::new(&shuffled).expect("valid unsorted curve");
+        for points in std::iter::once(&model.pace_points)
+            .chain(model.tyres.compounds.values().map(|cp| &cp.curve))
+            .chain(
+                model
+                    .weather
+                    .parameters
+                    .values()
+                    .flat_map(|bucket| bucket.compound_pace.iter().map(|cp| &cp.curve)),
+            )
+        {
+            assert!(
+                points
+                    .windows(2)
+                    .all(|p| p[0].lap_in_stint < p[1].lap_in_stint),
+                "{name}: prepared curve"
+            );
+        }
+        assert_eq!(json!(shuffled), original, "original document unchanged");
+        let decision: DecisionVector =
+            serde_json::from_value(semantic_decision(case["result"]["best"].clone()))
+                .expect("decision");
+        let expected = replay_decision_v2(&ordered, &decision).expect("ordered replay");
+        for _ in 0..5 {
+            let actual = replay_decision_v2(&shuffled, &decision).expect("shuffled replay");
+            assert_eq!(
+                json!(actual),
+                json!(expected),
+                "{name}: identical sums and interpolation"
+            );
+        }
+    }
+}

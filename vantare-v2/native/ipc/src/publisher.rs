@@ -66,11 +66,8 @@ impl Publisher {
         })
     }
 
-    /// Publica la foto más reciente. No espera a nadie: los suscriptores lentos
-    /// se saltan las intermedias.
-    ///
-    /// # Errors
-    /// [`Error::NotNewer`] si `(epoch, sequence)` no supera a la última publicada.
+    /// Observa la unión de demanda. Leer primero revisión y después máscara;
+    /// aplicar cada revisión al núcleo, incluso si la máscara no ha cambiado.
     pub fn demand_source(&self) -> DemandSource {
         DemandSource(
             Arc::clone(&self.shared.demands),
@@ -78,6 +75,11 @@ impl Publisher {
         )
     }
 
+    /// Publica la foto más reciente. No espera a nadie: los suscriptores lentos
+    /// se saltan las intermedias.
+    ///
+    /// # Errors
+    /// [`Error::NotNewer`] si `(epoch, sequence)` no supera a la última publicada.
     pub fn publish(&mut self, snapshot: Arc<Snapshot>) -> Result<(), Error> {
         let revision = Revision::of(&snapshot);
         if self.last.is_some_and(|last| !revision.follows(last)) {
@@ -154,11 +156,17 @@ fn accept_loop(mut listener: Listener, first: Pipe, shared: &Arc<Shared>) {
         }
         // La siguiente instancia se abre antes de atender a esta, para que un
         // segundo suscriptor no encuentre el pipe sin instancias libres.
-        let Ok(fresh) = listener.instance() else {
-            break;
+        let fresh = match listener.instance() {
+            Ok(fresh) => fresh,
+            Err(error) => {
+                eprintln!("IPC: aceptación detenida al crear instancia: {error}");
+                break;
+            }
         };
         let connected = std::mem::replace(&mut next, fresh);
-        clients.retain(|client| !client.is_finished());
+        for client in clients.extract_if(.., |client| client.is_finished()) {
+            join_client(client);
+        }
         if accepted.is_ok() && clients.len() < MAX_CLIENTS {
             let shared = Arc::clone(shared);
             clients.push(thread::spawn(move || {
@@ -168,7 +176,13 @@ fn accept_loop(mut listener: Listener, first: Pipe, shared: &Arc<Shared>) {
         }
     }
     for client in clients {
-        let _ = client.join();
+        join_client(client);
+    }
+}
+
+fn join_client(client: JoinHandle<()>) {
+    if client.join().is_err() {
+        eprintln!("IPC: hilo de suscriptor terminó con pánico");
     }
 }
 

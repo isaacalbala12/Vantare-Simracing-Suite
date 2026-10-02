@@ -234,6 +234,18 @@ fn serve(
     {
         return Err(io::ErrorKind::PermissionDenied.into());
     }
+    respond(request, state, latest, start, |response| {
+        control::write(pipe, response)
+    })
+}
+
+fn respond(
+    request: Request,
+    state: &Mutex<State>,
+    latest: &ArcSwap<Observed>,
+    start: Instant,
+    write: impl FnOnce(&Response) -> io::Result<()>,
+) -> io::Result<()> {
     let mut state = state
         .lock()
         .map_err(|_| io::Error::other("derechos no disponibles"))?;
@@ -254,16 +266,16 @@ fn serve(
     };
     let advanced = advance(&mut state, &latest.load(), tick, force);
     let result = if force { result.and(advanced) } else { result };
-    control::write(
-        pipe,
-        &Response {
-            version: control::VERSION,
-            sequence: request.sequence,
-            policy: state.policy.clone(),
-            error: result.err().map(|e| e.to_string()),
-        },
-    )
+    let response = Response {
+        version: control::VERSION,
+        sequence: request.sequence,
+        policy: state.policy.clone(),
+        error: result.err().map(|e| e.to_string()),
+    };
+    drop(state);
+    write(&response)
 }
+
 impl Drop for Host {
     fn drop(&mut self) {
         self.stop.set();
@@ -294,4 +306,55 @@ fn spawn_timer(
                 }
             }
         })
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn response_write_does_not_hold_the_policy_mutex() {
+        let state = Mutex::new(State {
+            owner: None,
+            policy: Policy::default(),
+            session: None,
+        });
+        let latest = ArcSwap::from_pointee(Observed {
+            snapshot: Arc::new(Snapshot::default()),
+            entered_at: None,
+        });
+        for command in [
+            Command::Read,
+            Command::Invalidate,
+            Command::Install {
+                credential: "test-only-invalid".into(),
+            },
+        ] {
+            let read = matches!(command, Command::Read);
+            respond(
+                Request {
+                    version: control::VERSION,
+                    sequence: 1,
+                    nonce: String::new(),
+                    command,
+                },
+                &state,
+                &latest,
+                Instant::now(),
+                |response| {
+                    // Un escritor detenido permite renovar la política; sin sleeps ni reloj real.
+                    let mut timer = state
+                        .try_lock()
+                        .expect("timer libre durante la escritura IPC");
+                    assert_eq!(response.version, control::VERSION);
+                    assert_eq!(response.sequence, 1);
+                    assert_eq!(response.error.is_none(), read);
+                    assert_eq!(response.policy.revision, timer.policy.revision);
+                    timer.policy.revision += 1;
+                    Ok(())
+                },
+            )
+            .expect("respuesta");
+        }
+    }
 }

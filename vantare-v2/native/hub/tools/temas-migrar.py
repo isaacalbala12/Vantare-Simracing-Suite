@@ -120,7 +120,7 @@ def needs_context_argument(error):
 def repair_context(diagnostics):
     edits = {}
     workspace = ROOT.parent.parent
-    for line in diagnostics.read_text().splitlines():
+    for line in diagnostics.read_text(encoding='utf-8').splitlines():
         try:
             item = json.loads(line)
         except ValueError:
@@ -135,7 +135,7 @@ def repair_context(diagnostics):
         path = (workspace / primary['file_name']).resolve()
         if not path.is_relative_to(ROOT) or not path.exists() or 'tests' in path.name:
             continue
-        source = path.read_text()
+        source = path.read_text(encoding='utf-8')
         # Reject stale diagnostics rather than applying their offsets to edited code.
         current_lines = source.splitlines()
         if any(current_lines[primary['line_start'] - 1 + i] != data['text']
@@ -177,10 +177,10 @@ def repair_context(diagnostics):
             prefix = ' ' if args.endswith(',') or not args else ', '
             edits.setdefault(path, set()).add((closing, closing, prefix + 'cx'))
     for path, replacements in edits.items():
-        source = path.read_text()
+        source = path.read_text(encoding='utf-8')
         for start, end, replacement in sorted(replacements, reverse=True):
             source = source[:start] + replacement + source[end:]
-        path.write_text(source)
+        path.write_text(source, encoding='utf-8')
     print(f'{sum(map(len, edits.values()))} ajustes de contexto; revisar y compilar')
 
 
@@ -251,12 +251,12 @@ def main():
         return 0
     total = 0
     for path in sorted(ROOT.rglob('*.rs')):
-        source, count = migrate(path.read_text(), path)
+        source, count = migrate(path.read_text(encoding='utf-8'), path)
         if count:
             print(f'{path.relative_to(ROOT)}: {count}')
             total += count
             if args.write:
-                path.write_text(source)
+                path.write_text(source, encoding='utf-8')
     print(f'{total} usos {"migrados" if args.write else "pendientes"}')
     return int(args.check and total > 0)
 

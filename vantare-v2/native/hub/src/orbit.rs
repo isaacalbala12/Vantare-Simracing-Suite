@@ -447,6 +447,15 @@ pub fn sans_family(w: u16, cx: &gpui::App) -> SharedString {
     }
 }
 
+/// Peso para texto que selecciona una cara Inter Wxxx estática.
+pub fn face_weight(requested: u16, cx: &gpui::App) -> FontWeight {
+    FontWeight(f32::from(
+        cx.global::<theme::Theme>()
+            .interface_font
+            .face_weight(requested),
+    ))
+}
+
 pub fn sans_override(original: &'static str, cx: &gpui::App) -> SharedString {
     if cx.global::<theme::Theme>().interface_font == theme::InterfaceFont::Inter {
         original.into()
@@ -683,7 +692,7 @@ pub fn topbar_with_actions(
                 .child(text("/", 12.0, 400, ink_muted(cx), cx))
                 .child(
                     text(title.to_owned(), 16.0, 650, ink(cx), cx)
-                        .font_weight(FontWeight::NORMAL)
+                        .font_weight(face_weight(650, cx))
                         .line_height(px(24.0)),
                 ),
         )

@@ -1,19 +1,23 @@
 # Hub nativo (ISA-1430)
 
 Proceso GPUI independiente, misma revisión y kit Eficiencia que `vantare-ui`.
-No usa Wails, runtime, credenciales ni servicios de red.
+No usa Wails ni importa el runtime. Consume DTO/IPC del supervisor para cuenta,
+licencias, roadmap y reportes; el supervisor posee la red y las credenciales.
 
 ```powershell
 cd native
 cargo run --offline -j 2 -p vantare-hub
 ```
 
-Todas las secciones del producto distribuido están en la navegación. Los
-paneles que indican pendiente no implementan el servicio ni conceden acceso.
+Todas las secciones del producto distribuido están en la navegación. La presencia
+de una sección no acredita acceso, conexión remota ni paridad funcional completa.
 
-El botón Cerrar Hub y cerrar su ventana terminan el proceso. El Hub no es
-hijo del launcher: consume el pipe IPC con Subscriber y cierra al observar
-un flanco no-Live→Live. Live exige origen `SourceKind::Live` **y**
+El botón Cerrar Hub, el cierre de ventana y el flanco no-Live→Live solicitan
+el mismo cierre protegido. Primero deben resolverse las decisiones del Launcher
+y guardarse los documentos: un formulario Strategy sin confirmar, un conflicto
+o un error de escritura mantiene el Hub abierto y muestra el error. La preservación
+de datos tiene prioridad incluso si el juego ya está activo; tras resolverlo,
+se puede cerrar manualmente. El Hub no es hijo del launcher. Live exige origen `SourceKind::Live` **y**
 `state.source_state == SourceState::Live` (DTO v4). Waiting, Stale, Lost y
 Replay no cierran; primera foto Live establece referencia y tampoco cierra.
 El cierre cancela el Subscriber, sin parar núcleo, overlays ni Engineer.
@@ -121,24 +125,33 @@ pulsar Cargar; fallo conserva la última agenda. Se ofrecen hasta 20 salidas
 de las siguientes 24 horas de series seguidas si la publicación es vigente.
 No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
 
-Notificaciones contiene errores locales reales, hasta 50, con dedupe,
-unread/read/clear y destinos cerrados. Vive durante el proceso, como el
-contrato Go; no tiene toasts ni emisores remotos. Ajustes guarda el formato
-del Workshop sobre su estado existente. Testing Center muestra únicamente
-contexto del snapshot local del Workshop; no genera ni envía un reporte.
-Cuenta/licencias, Strategy, análisis, Launcher y roadmap conservan sus
-dependencias explícitas en el microplan y en cada pantalla. Cuenta, licencias,
-roadmap y envío del Testing Center no se implementan por instrucción del
-orquestador; cada servicio tiene su pregunta concreta en el microplan.
+| Sección | Implementación actual y contrato |
+| --- | --- |
+| Notificaciones | Errores locales, dedupe, lectura y destinos cerrados; memoria del proceso. |
+| Ajustes | Preferencias locales de apariencia y Workshop; [contrato](src/settings/README.md). |
+| Testing Center | Editor del servicio de reportes y diagnóstico local separado; [contrato](src/testing/README.md). |
+| Cuenta / licencias / roadmap | DTO/IPC al supervisor, sin red ni credenciales en el Hub; `src/services`. |
+| Launcher | Catálogo, perfiles, cadenas y política de cierre; [contrato](src/launcher/README.md). |
+| Strategy | Documento y solver local, datos/revisiones y editor; `src/strategy.rs`. |
+| Análisis | Lectura acotada y cancelable mediante el helper de storage; `src/analysis`. |
+| Engineer | Report v2 con frescura, entregas observadas y ajustes para su propietario; [contrato](src/engineer/MODEL.md). |
 
-Engineer de fase 3 está integrado en el workspace y pertenece al launcher.
-Su contrato local ofrece CLI de arranque (locale/clip) y JSONL de radio/estado
-por stdout, pero no un canal Hub para leer el proceso existente o modificar
-sus ajustes. La sección conserva estado pendiente: no inventa configuración
-persistida ni muestra datos de Workshop como estado del Engineer. Pregunta:
-¿qué canal local del propietario publica radio/status al Hub y aplica
-locale/clips en el siguiente arranque o reinicio, manteniendo al Engineer
-bajo el launcher cuando el Hub termina? Ver `../engineer/README.md`.
+El proceso Engineer pertenece al supervisor y sigue independiente del Hub.
+Estas rutas implementadas no prueban login/envío remoto, juego, OBS o empaquetado.
+El worker de servicios publica su evento de cancelación antes de conectar o leer
+el saludo. El cierre lo señala y espera el join en el ejecutor de fondo; no bloquea
+el hilo UI durante el join. GPUI limita las futures de cierre a 200 ms; señalar
+el evento y cerrar el sender despierta también connect/hello y recv pendientes.
+Descartar una conexión no cancela al propietario, por
+lo que una reconexión conserva su evento hasta el cierre del Hub.
+La navegación, el rail, la paleta y el contenido usan la misma proyección de las
+capacidades del núcleo recibidas por Cuenta. Requiere sesión no caducada y política
+vigente sin error; logout, cierre del servicio o error revocan la proyección. El
+Hub consulta LicenseStatus por IPC una vez por segundo cuando el canal está libre;
+la política pierde vigencia a los dos segundos aunque no llegue otra respuesta.
+Los bits ausentes no acreditan Free ni Studio básico: ese dato no está en el DTO.
+Las restricciones de capturas/demo permanecen aisladas de la autoridad productiva.
+El microplan y los bloques fechados conservan la evidencia de los hitos anteriores.
 
 
 ## Verificación de proceso

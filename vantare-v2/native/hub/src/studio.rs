@@ -8,9 +8,9 @@ use crate::{
     },
 };
 use gpui::{
-    Context, Entity, EventEmitter, FocusHandle, FontWeight, IntoElement, MouseButton,
-    MouseMoveEvent, PathBuilder, Pixels, Point, Render, SharedString, Window, div,
-    linear_color_stop, linear_gradient, prelude::*, px, rgb,
+    Context, Entity, EventEmitter, FocusHandle, IntoElement, MouseButton, MouseMoveEvent,
+    PathBuilder, Pixels, Point, Render, SharedString, Window, div, linear_color_stop,
+    linear_gradient, prelude::*, px, rgb,
 };
 use std::path::PathBuf;
 use vantare_domain::{Snapshot, format::Preferences};
@@ -84,7 +84,8 @@ fn text(
     color: u32,
     cx: &gpui::App,
 ) -> gpui::Div {
-    orbit::text(content, size, weight.min(800), color, cx).font_weight(FontWeight::NORMAL)
+    orbit::text(content, size, weight.min(800), color, cx)
+        .font_weight(orbit::face_weight(weight.min(800), cx))
 }
 
 fn toggle_visibility(editor: &mut Editor, id: &str) -> Result<(), String> {

@@ -75,12 +75,23 @@ struct Hub {
 impl Hub {
     fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
         // Studio confirma cada edición; guarda también los borradores locales pendientes.
+        self.remote.update(cx, |remote, cx| remote.persist(cx))?;
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
         self.testing.update(cx, |testing, _| testing.persist())?;
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        if self.capture.is_none() {
+            let access = self.remote.update(cx, |remote, cx| {
+                remote.refresh_license(cx);
+                remote.navigation_access()
+            });
+            if self.shell.access != access {
+                self.shell.access = access;
+                cx.notify();
+            }
+        }
         if self
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
@@ -102,7 +113,8 @@ impl Hub {
                 cx.notify();
             }
             if close {
-                cx.quit();
+                // Live solicita el mismo cierre protegido que el botón y la ventana.
+                self.close(cx);
             }
         }
         let activity = self.subscriber.activity();
@@ -693,8 +705,15 @@ impl Hub {
         let launcher = create_launcher(launcher_store, demo.as_ref(), capture.as_ref(), window, cx);
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
-        let remote = cx.new(|cx| crate::services::view::Remote::new(service_pipe, cx));
-        cx.observe(&remote, |_, _, cx| cx.notify()).detach();
+        let remote =
+            cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
+        cx.observe(&remote, |this, remote, cx| {
+            if this.capture.is_none() {
+                this.shell.access = remote.read(cx).navigation_access();
+            }
+            cx.notify();
+        })
+        .detach();
         let strategy = cx.new(|cx| match &demo {
             Some(_) => Strategy::new_demo(
                 strategy_dir,

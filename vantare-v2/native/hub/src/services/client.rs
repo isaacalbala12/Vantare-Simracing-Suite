@@ -13,8 +13,8 @@ pub struct Client {
     sequence: u64,
 }
 impl Client {
-    pub fn start(binary: &Path, photo_pipe: &str) -> Result<Self, &'static str> {
-        let stop = Arc::new(Event::new().map_err(|_| "IPC no disponible")?);
+    /// El propietario publica este evento antes de iniciar el worker y lo señala al cerrar.
+    pub fn start(binary: &Path, photo_pipe: &str, stop: Arc<Event>) -> Result<Self, &'static str> {
         let mut pipe = control::connect_ready(
             &format!("{photo_pipe}-hub-services"),
             &stop,
@@ -61,16 +61,8 @@ impl Client {
         }
         Ok(response.reply)
     }
-    pub fn cancellation(&self) -> Arc<Event> {
-        Arc::clone(&self.stop)
-    }
     pub fn is_running(&self) -> bool {
         !self.stop.is_set()
-    }
-}
-impl Drop for Client {
-    fn drop(&mut self) {
-        self.stop.set();
     }
 }
 pub fn default_binary() -> Result<std::path::PathBuf, &'static str> {
@@ -80,3 +72,7 @@ pub fn default_binary() -> Result<std::path::PathBuf, &'static str> {
         .ok_or("supervisor no instalado")
 }
 pub const REQUEST_POLL: Duration = Duration::from_millis(250);
+
+#[cfg(test)]
+#[path = "client_tests.rs"]
+mod tests;

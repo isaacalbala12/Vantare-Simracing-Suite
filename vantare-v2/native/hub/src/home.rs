@@ -430,11 +430,13 @@ fn profile_info(
         .child(orbit::eyebrow("Perfil activo"))
         .child(
             title(name.to_owned(), 22.0, -0.03, 27.0)
+                .relative()
+                .top(px(1.0))
                 .flex_none()
                 .mt(px(4.0))
                 .mb(px(2.0)),
         )
-        .child(meta)
+        .child(meta.relative().top(px(-1.0)))
         .child(div().flex_1())
         .child(
             div()
@@ -446,7 +448,7 @@ fn profile_info(
                         .aria_label("Abrir Studio")
                         .child(text("Abrir Studio", 12.0, 600, 0x001c_1719))
                         .h(px(34.0))
-                        .px(px(13.0))
+                        .px(px(14.0))
                         .rounded(px(8.0)),
                     Section::Studio,
                 ))
@@ -454,7 +456,7 @@ fn profile_info(
                     row.child(
                         pending_overlay("home-overlay")
                             .h(px(34.0))
-                            .px(px(13.0))
+                            .px(px(16.0))
                             .rounded(px(8.0)),
                     )
                 }),
@@ -514,15 +516,22 @@ fn profile(
         .h(px(225.0))
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
-        .border_color(rgba(0xf047_5530))
+        .border_0()
+        .p(px(1.0))
         .bg(linear_gradient(
-            180.0,
-            linear_color_stop(rgb(0x0019_191e), 0.0),
-            linear_color_stop(rgb(0x0013_1317), 1.0),
+            115.0,
+            linear_color_stop(rgba(0xf047_559e), 0.0),
+            linear_color_stop(rgba(0xffff_ff0f), 1.0),
         ))
         .child(
             orbit::card_body()
                 .h_full()
+                .rounded(px(orbit::FEATURED_RADIUS - 1.0))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(rgb(0x0019_191e), 0.0),
+                    linear_color_stop(rgb(0x0013_1317), 1.0),
+                ))
                 .pl(px(24.0))
                 .pr(px(18.0))
                 .py(px(16.0))
@@ -755,7 +764,7 @@ pub fn render(
         .flex_col()
         .mt(px(-50.0))
         .pt(px(34.0))
-        .pb(px(15.0))
+        .pb(px(13.0))
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(

@@ -60,7 +60,10 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .rounded(px(12.0))
         .border_1()
         .border_color(
-            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+            if matches!(
+                calendar.view,
+                CalendarView::Month | CalendarView::Day | CalendarView::Week
+            ) {
                 gpui::rgba(orbit::LINE)
             } else {
                 rgb(orbit::LINE)
@@ -107,7 +110,10 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                         .font_weight(gpui::FontWeight(800.0)),
                 )
                 .child(
-                    if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+                    if matches!(
+                        calendar.view,
+                        CalendarView::Month | CalendarView::Day | CalendarView::Week
+                    ) {
                         super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
                             .h(px(55.0))
                             .mt(px(6.0))
@@ -206,7 +212,10 @@ fn card_header(
 ) -> Div {
     div()
         .h(px(
-            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+            if matches!(
+                calendar.view,
+                CalendarView::Month | CalendarView::Day | CalendarView::Week
+            ) {
                 61.0
             } else {
                 59.0
@@ -389,22 +398,12 @@ fn day_view(now: DateTime<Utc>) -> Div {
 
 fn week_title(monday: NaiveDate) -> String {
     let sunday = monday + Duration::days(6);
-    if monday.month() == sunday.month() {
-        format!(
-            "{} – {} de {}",
-            monday.day(),
-            sunday.day(),
-            month_name(sunday.month())
-        )
-    } else {
-        format!(
-            "{} de {} – {} de {}",
-            monday.day(),
-            month_name(monday.month()),
-            sunday.day(),
-            month_name(sunday.month())
-        )
-    }
+    format!(
+        "{} – {} de {}",
+        monday.day(),
+        sunday.day(),
+        month_name(sunday.month())
+    )
 }
 
 fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
@@ -640,7 +639,10 @@ fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .min_h_0()
         .overflow_hidden()
         .bg(rgb(
-            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+            if matches!(
+                calendar.view,
+                CalendarView::Month | CalendarView::Day | CalendarView::Week
+            ) {
                 0x000f_0f12
             } else {
                 orbit::SURFACE_1
@@ -666,7 +668,10 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex()
         .flex_col()
         .gap(px(
-            if matches!(calendar.view, CalendarView::Month | CalendarView::Day) {
+            if matches!(
+                calendar.view,
+                CalendarView::Month | CalendarView::Day | CalendarView::Week
+            ) {
                 18.0
             } else {
                 19.0
@@ -684,7 +689,10 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .id("calendar")
         .w_full()
         .when(
-            matches!(calendar.view, CalendarView::Month | CalendarView::Day),
+            matches!(
+                calendar.view,
+                CalendarView::Month | CalendarView::Day | CalendarView::Week
+            ),
             |page| page.mx(px(-1.0)).w_auto(),
         )
         .min_h(px(HUB_CONTENT_MIN_HEIGHT))
@@ -696,4 +704,23 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .overflow_hidden()
         .bg(rgb(orbit::CANVAS))
         .child(page)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn week_caption_matches_wails_across_month_and_year_boundaries() -> Result<(), String> {
+        for (date, expected) in [
+            ("2026-09-28", "28 – 4 de octubre"),
+            ("2026-12-28", "28 – 3 de enero"),
+            ("2026-10-05", "5 – 11 de octubre"),
+        ] {
+            let monday =
+                NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|error| error.to_string())?;
+            assert_eq!(week_title(monday), expected);
+        }
+        Ok(())
+    }
 }

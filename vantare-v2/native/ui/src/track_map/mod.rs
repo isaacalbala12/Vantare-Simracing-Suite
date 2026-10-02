@@ -5,8 +5,9 @@
 #[cfg(feature = "parity-capture")]
 mod scene;
 
+use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{
-    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Pixels, Point, Window, linear_color_stop,
+    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Pixels, Point, linear_color_stop,
     linear_gradient, point, px, quad,
 };
 use vantare_domain::format::Preferences;

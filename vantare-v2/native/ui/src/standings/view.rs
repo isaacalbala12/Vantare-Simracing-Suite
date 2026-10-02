@@ -6,11 +6,12 @@
 
 use super::model::{self, Align, Config, Labels, Metric, Plan, ROW_HEIGHT, Row, Status, Vm};
 use super::motion::{Frame, RowVis};
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{self, paint_rect, rect, tokens};
 use gpui::{
     App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, Hsla, PathBuilder, Pixels, Point,
-    Window, fill, linear_color_stop, linear_gradient, point, px, quad,
+    fill, linear_color_stop, linear_gradient, point, px, quad,
 };
 use std::{
     cell::{Cell, RefCell},

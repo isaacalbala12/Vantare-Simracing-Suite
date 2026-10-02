@@ -1,9 +1,10 @@
 use super::motion::Frame;
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
 use gpui::{
-    App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, Window, linear_color_stop,
-    linear_gradient, point, px, quad,
+    App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, linear_color_stop, linear_gradient,
+    point, px, quad,
 };
 use vantare_domain::delta::{Event, Tone, ViewModel};
 

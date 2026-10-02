@@ -2,9 +2,8 @@
 //! (embrague, freno, acelerador) con su rótulo y su valor. Geometría y colores
 //! del CSS de producción para el tamaño por defecto (120 x 160).
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, Window, linear_color_stop, linear_gradient, px, quad,
-};
+use crate::efficiency::preview::PaintWindow as Window;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::pedals::ViewModel;
 
 use crate::efficiency::text::{self, ink};

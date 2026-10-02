@@ -848,7 +848,7 @@ impl Hub {
     }
 
     /// `section_actions` pertenece a la sección; la campana y la versión son comunes.
-    /// Strategy v5 no muestra campana ni versión y usa una barra más baja.
+    /// Studio reserva esa ranura para sus acciones; Strategy v5 tampoco muestra campana.
     pub(super) fn topbar(
         &mut self,
         window: &Window,
@@ -875,7 +875,7 @@ impl Hub {
         } else {
             self.section
         };
-        let action = if self.section == Section::Strategy {
+        let action = if matches!(self.section, Section::Strategy | Section::Studio) {
             div().into_any_element()
         } else {
             let bell = self.notification_bell(cx);

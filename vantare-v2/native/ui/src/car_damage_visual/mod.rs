@@ -1,11 +1,12 @@
 //! Eficiencia: SVG y leyenda del renderer productivo, en coordenadas propias.
 
 use crate::app::{Paint, Wake, replace_if_changed};
+use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 use gpui::{
-    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Window, linear_color_stop,
-    linear_gradient, point, px, quad,
+    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, linear_color_stop, linear_gradient, point,
+    px, quad,
 };
 use vantare_domain::{
     Snapshot,

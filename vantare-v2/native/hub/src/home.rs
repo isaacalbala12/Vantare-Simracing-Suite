@@ -516,6 +516,22 @@ fn profile(
         .h(px(225.0))
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
+        .shadow(vec![
+            gpui::BoxShadow {
+                color: rgba(0x0000_006b).into(),
+                offset: gpui::point(px(0.0), px(32.0)),
+                blur_radius: px(91.0),
+                spread_radius: px(0.0),
+                inset: false,
+            },
+            gpui::BoxShadow {
+                color: rgba(0xd52f_490a).into(),
+                offset: gpui::point(px(0.0), px(0.0)),
+                blur_radius: px(42.0),
+                spread_radius: px(0.0),
+                inset: false,
+            },
+        ])
         .border_0()
         .p(px(1.0))
         .bg(linear_gradient(
@@ -585,7 +601,7 @@ fn profile_rows(demo: Option<&crate::demo::DemoData>) -> Div {
                 .relative()
                 .mx(px(4.0))
                 .mt(px(10.0))
-                .h(px(46.0))
+                .h(px(50.0))
                 .px(px(8.0))
                 .flex()
                 .items_center()
@@ -616,7 +632,7 @@ fn profile_rows(demo: Option<&crate::demo::DemoData>) -> Div {
                         .flex()
                         .flex_col()
                         .gap(px(2.0))
-                        .child(text(profile.name.clone(), 13.0, 650, orbit::INK))
+                        .child(text(profile.name.clone(), 13.0, 650, orbit::INK_2))
                         .child(text(
                             format!("{} widgets · configuración local", profile.widgets),
                             11.0,
@@ -663,7 +679,7 @@ fn lists(
                 .flex_1()
                 .flex_basis(gpui::relative(0.575))
                 .min_w_0()
-                .min_h(px(360.0))
+                .min_h(px(362.0))
                 .child(
                     div()
                         .h(px(50.0))
@@ -679,7 +695,7 @@ fn lists(
                                 .flex()
                                 .items_center()
                                 .gap(px(12.0))
-                                .child(text("Cadencia publicada", 12.0, 400, orbit::INK_3))
+                                .child(orbit::mono_text("Cadencia publicada", 12.0, orbit::INK_3))
                                 .child(navigate(
                                     div()
                                         .id("home-races")

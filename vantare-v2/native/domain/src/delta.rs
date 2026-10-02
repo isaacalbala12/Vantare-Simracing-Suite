@@ -157,8 +157,9 @@ fn delta_text(seconds: Option<f64>) -> String {
         return format::PLACEHOLDER.into();
     };
     // El formateador compartido aún no expone to_fixed; mismo empate JS a 3 decimales.
+    // Exact binary ties at three decimals are odd multiples of 1/16.
     let scaled = s.abs() * 1000.0;
-    let magnitude = if scaled.fract() == 0.5 && scaled / 1000.0 == s.abs() {
+    let magnitude = if s.abs().rem_euclid(0.125) == 0.0625 {
         (scaled.floor() + 1.0) / 1000.0
     } else {
         s.abs()

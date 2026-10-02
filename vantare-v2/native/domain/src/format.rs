@@ -43,7 +43,11 @@ fn whole(value: f64) -> u64 {
 fn to_fixed(value: f64, decimals: usize) -> String {
     let scale = 10f64.powi(decimals as i32);
     let scaled = value.abs() * scale;
-    let tie = (scaled.fract() - 0.5).abs() == 0.0 && scaled / scale == value.abs();
+    // An exact decimal tie must also be representable in binary: the
+    // magnitude is an odd multiple of 2^-(decimals + 1). Scaling by 10^d
+    // alone can round a neighbouring f64 into a false tie.
+    let period = 2_f64.powi(-(decimals as i32));
+    let tie = value.abs().rem_euclid(period) == period / 2.0;
     let text = if tie {
         format!("{:.*}", decimals, (scaled.floor() + 1.0) / scale)
     } else {
@@ -229,6 +233,21 @@ mod tests {
     };
 
     #[test]
+    fn to_fixed_matches_node_at_decimal_boundaries() {
+        let cases: &[(u64, usize, &str)] = &include!("../testdata/to_fixed_node.rs");
+        for &(bits, decimals, expected) in cases {
+            let value = f64::from_bits(bits);
+            assert_eq!(
+                to_fixed(value, decimals),
+                expected,
+                "{value:?} / {decimals}"
+            );
+        }
+        assert_eq!(seconds_difference(Some(0.015)), "+0.01s");
+        assert_eq!(seconds_difference(Some(-0.015)), "-0.01s");
+    }
+
+    #[test]
     fn to_fixed_rounds_ties_up_like_javascript() {
         assert_eq!(to_fixed(0.125, 2), "0.13");
         assert_eq!(to_fixed(2.5, 0), "3");
@@ -239,7 +258,8 @@ mod tests {
     #[test]
     fn lap_time_and_clock_match_production() {
         assert_eq!(lap_time(Some(102.198)), "1:42.198");
-        assert_eq!(lap_time(Some(119.9995)), "2:00.000");
+        assert_eq!(lap_time(Some(119.9995)), "1:59.999");
+        assert_eq!(lap_time(Some(119.9995_f64.next_up())), "2:00.000");
         assert_eq!(lap_time(Some(59.5)), "0:59.500");
         assert_eq!(lap_time(Some(0.0)), PLACEHOLDER);
         assert_eq!(lap_time(None), PLACEHOLDER);

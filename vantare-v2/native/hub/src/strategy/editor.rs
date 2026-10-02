@@ -25,7 +25,7 @@ const CAPTURE_DEMO: CaptureDemo = CaptureDemo {
     session_name: "2026-09-15_Imola_Race.duckdb",
 };
 
-pub(super) fn demo_control(value: &(impl ToString + ?Sized)) -> gpui::Div {
+pub(super) fn demo_control(value: &(impl ToString + ?Sized), cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .items_center()
@@ -36,9 +36,9 @@ pub(super) fn demo_control(value: &(impl ToString + ?Sized)) -> gpui::Div {
         .px(px(12.0))
         .rounded(px(7.0))
         .border_1()
-        .border_color(rgba(orbit::LINE_STRONG))
-        .bg(rgb(0x000b_0d0f))
-        .child(orbit::text(value.to_string(), 13.0, 400, orbit::INK).line_height(px(19.5)))
+        .border_color(rgba(orbit::line_strong(cx)))
+        .bg(rgb(crate::orbit::legacy_rgb(0x000b_0d0f, cx)))
+        .child(orbit::text(value.to_string(), 13.0, 400, orbit::ink(cx), cx).line_height(px(19.5)))
 }
 
 fn demo_selected_sessions() -> Value {
@@ -49,7 +49,11 @@ fn demo_selected_sessions() -> Value {
 }
 
 /// Acción clara Orbit: compuesta aquí porque `primary_button` fija el color del hijo.
-pub(super) fn white_button(id: &'static str, label: &str) -> gpui::Stateful<gpui::Div> {
+pub(super) fn white_button(
+    id: &'static str,
+    label: &str,
+    cx: &gpui::App,
+) -> gpui::Stateful<gpui::Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
@@ -62,12 +66,18 @@ pub(super) fn white_button(id: &'static str, label: &str) -> gpui::Stateful<gpui
         .px(px(14.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(rgb(orbit::PRIMARY_BG))
-        .bg(rgb(orbit::PRIMARY_BG))
+        .border_color(rgb(orbit::primary_bg(cx)))
+        .bg(rgb(orbit::primary_bg(cx)))
         .cursor_pointer()
-        .hover(|style| style.bg(rgb(orbit::INK)))
-        .focus_visible(|style| style.border_color(rgb(orbit::CARMINE)))
-        .child(orbit::text(label.to_owned(), 13.0, 500, 0x001c_1719))
+        .hover(|style| style.bg(rgb(orbit::ink(cx))))
+        .focus_visible(|style| style.border_color(rgb(orbit::carmine(cx))))
+        .child(orbit::text(
+            label.to_owned(),
+            13.0,
+            500,
+            cx.global::<crate::orbit::theme::Theme>().primary_ink,
+            cx,
+        ))
 }
 
 // La fixture se prepara con el contrato nativo, sin proyección ni resultado.
@@ -143,6 +153,7 @@ pub(super) fn secondary_button(
     id: &'static str,
     label: &str,
     size: f32,
+    cx: &gpui::App,
 ) -> gpui::Stateful<gpui::Div> {
     div()
         .id(id)
@@ -156,12 +167,12 @@ pub(super) fn secondary_button(
         .px(px(14.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(rgba(orbit::LINE_STRONG))
-        .bg(rgba(0xffff_ff04))
+        .border_color(rgba(orbit::line_strong(cx)))
+        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
         .cursor_pointer()
-        .hover(|style| style.bg(rgb(orbit::SURFACE_3)))
-        .focus_visible(|style| style.border_color(rgb(orbit::CARMINE)))
-        .child(orbit::text(label.to_owned(), size, 400, orbit::INK))
+        .hover(|style| style.bg(rgb(orbit::surface_3(cx))))
+        .focus_visible(|style| style.border_color(rgb(orbit::carmine(cx))))
+        .child(orbit::text(label.to_owned(), size, 400, orbit::ink(cx), cx))
 }
 
 fn career_row(
@@ -170,6 +181,7 @@ fn career_row(
     value: String,
     detail: String,
     action: impl IntoElement,
+    cx: &gpui::App,
 ) -> gpui::Div {
     div()
         .flex()
@@ -179,10 +191,10 @@ fn career_row(
         .px(px(18.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(rgba(orbit::LINE))
-        .bg(rgba(0x0b0d_0fe8))
-        .child(orbit::icon(icon, 20.0, orbit::INK_2))
-        .child(orbit::text(title.to_owned(), 16.0, 500, orbit::INK).w(px(86.0)))
+        .border_color(rgba(orbit::line(cx)))
+        .bg(rgba(crate::orbit::legacy_rgba(0x0b0d_0fe8, cx)))
+        .child(orbit::icon(icon, 20.0, orbit::ink_2(cx)))
+        .child(orbit::text(title.to_owned(), 16.0, 500, orbit::ink(cx), cx).w(px(86.0)))
         .child(
             div()
                 .flex()
@@ -190,8 +202,8 @@ fn career_row(
                 .flex_1()
                 .min_w_0()
                 .gap(px(4.0))
-                .child(orbit::text(value, 14.0, 700, orbit::INK))
-                .child(orbit::text(detail, 13.0, 400, orbit::INK_2)),
+                .child(orbit::text(value, 14.0, 700, orbit::ink(cx), cx))
+                .child(orbit::text(detail, 13.0, 400, orbit::ink_2(cx), cx)),
         )
         .child(action)
 }
@@ -254,13 +266,13 @@ impl Strategy {
                 Page::Stops => self.pit_editor_page(cx),
                 _ => self.plan_page(cx),
             }),
-            EditorTab::Revisiones => self.revisions_page(),
+            EditorTab::Revisiones => self.revisions_page(cx),
         };
         let mut tabs = div()
             .flex()
             .gap(px(8.0))
             .border_b_1()
-            .border_color(rgba(orbit::LINE));
+            .border_color(rgba(orbit::line(cx)));
         for (index, item) in EditorTab::ALL.into_iter().enumerate() {
             let selected = item == tab;
             let id = match item {
@@ -283,14 +295,19 @@ impl Strategy {
                     .items_center()
                     .justify_center()
                     .when(selected, |control| {
-                        control.border_b_2().border_color(rgb(orbit::CARMINE))
+                        control.border_b_2().border_color(rgb(orbit::carmine(cx)))
                     })
                     .child(
                         orbit::text(
                             item.label(),
                             16.0,
                             if selected { 600 } else { 400 },
-                            if selected { orbit::INK } else { orbit::INK_2 },
+                            if selected {
+                                orbit::ink(cx)
+                            } else {
+                                orbit::ink_2(cx)
+                            },
+                            cx,
                         )
                         .relative()
                         .top(px(-6.0)),
@@ -327,20 +344,25 @@ impl Strategy {
                     .pt(px(9.0))
                     .pb(px(0.0))
                     .child(
-                        secondary_button("strategy-back-assistant", "← Volver al asistente", 12.0)
-                            .opacity(0.65)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                if let Err(error) = this.ensure_clean_form() {
-                                    this.error = Some(error);
-                                } else {
-                                    this.edit_mode = false;
-                                    this.page = Page::Assistant(AssistantStep::Sesiones);
-                                    this.error = None;
-                                }
-                                cx.notify();
-                            }))
-                            .w(px(148.0))
-                            .h(px(38.0)),
+                        secondary_button(
+                            "strategy-back-assistant",
+                            "← Volver al asistente",
+                            12.0,
+                            cx,
+                        )
+                        .opacity(0.65)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if let Err(error) = this.ensure_clean_form() {
+                                this.error = Some(error);
+                            } else {
+                                this.edit_mode = false;
+                                this.page = Page::Assistant(AssistantStep::Sesiones);
+                                this.error = None;
+                            }
+                            cx.notify();
+                        }))
+                        .w(px(148.0))
+                        .h(px(38.0)),
                     )
                     .child(tabs)
                     .child(content.flex_1().min_h(px(0.0)))
@@ -359,14 +381,15 @@ impl Strategy {
             .flex_none()
             .gap(px(12.0))
             .border_t_1()
-            .border_color(rgba(orbit::LINE))
-            .bg(rgba(0x0809_0bf0))
+            .border_color(rgba(orbit::line(cx)))
+            .bg(rgba(crate::orbit::legacy_rgba(0x0809_0bf0, cx)))
             .px(px(0.0))
             .child(orbit::text(
                 "Originales intactos",
                 orbit::SECONDARY,
                 500,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             ))
             .child(
                 div()
@@ -381,35 +404,41 @@ impl Strategy {
                         },
                         12.0,
                         400,
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
+                        cx,
                     ))
                     .child(
-                        secondary_button("strategy-back-preparation", "Volver a preparación", 14.0)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                if let Err(error) = this.ensure_clean_form() {
-                                    this.error = Some(error);
-                                } else {
-                                    this.page = Page::Assistant(AssistantStep::Sesiones);
-                                    this.error = None;
-                                }
-                                cx.notify();
-                            }))
-                            .w(px(191.0))
-                            .h(px(46.0)),
+                        secondary_button(
+                            "strategy-back-preparation",
+                            "Volver a preparación",
+                            14.0,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if let Err(error) = this.ensure_clean_form() {
+                                this.error = Some(error);
+                            } else {
+                                this.page = Page::Assistant(AssistantStep::Sesiones);
+                                this.error = None;
+                            }
+                            cx.notify();
+                        }))
+                        .w(px(191.0))
+                        .h(px(46.0)),
                     )
                     .child(
                         if self.capture_demo().is_some() {
-                            white_button("strategy-save-draft", "Guardar revisión")
+                            white_button("strategy-save-draft", "Guardar revisión", cx)
                                 .tab_stop(false)
                                 .opacity(0.55)
                                 .cursor(gpui::CursorStyle::Arrow)
                         } else {
-                            button("strategy-save-draft", "Guardar borrador").on_click(cx.listener(
-                                |this, _, _, cx| {
+                            button("strategy-save-draft", "Guardar borrador", cx).on_click(
+                                cx.listener(|this, _, _, cx| {
                                     this.error = this.save_application_draft().err();
                                     cx.notify();
-                                },
-                            ))
+                                }),
+                            )
                         }
                         .w(px(161.0))
                         .h(px(46.0)),
@@ -422,10 +451,10 @@ impl Strategy {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(orbit::text("Editar carrera", 24.0, 700, orbit::INK))
+            .child(orbit::text("Editar carrera", 24.0, 700, orbit::ink(cx), cx))
             .child(self.workspace(cx))
             .child(
-                button("strategy-finish-edit", "Volver a Carrera").on_click(cx.listener(
+                button("strategy-finish-edit", "Volver a Carrera", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         if let Err(error) = this.ensure_clean_form() {
                             this.error = Some(error);
@@ -570,7 +599,7 @@ impl Strategy {
             && self.fields[8].trim() == "dry"
             && event.is_some_and(|event| event["source"]["value"] == "custom");
         let plan_action = if self.result.is_some() {
-            orbit::button("strategy-open-plan", "Ver Plan →").on_click(cx.listener(
+            orbit::button("strategy-open-plan", "Ver Plan →", cx).on_click(cx.listener(
                 |this, _, _, cx| {
                     this.page = Page::Editor(EditorTab::Plan);
                     this.error = None;
@@ -578,10 +607,10 @@ impl Strategy {
                 },
             ))
         } else if calculation_ready && !self.running {
-            white_button("strategy-calculate", "Calcular estrategia")
+            white_button("strategy-calculate", "Calcular estrategia", cx)
                 .on_click(cx.listener(|this, _, _, cx| this.calculate(cx)))
         } else {
-            white_button("strategy-calculate", "Calcular estrategia")
+            white_button("strategy-calculate", "Calcular estrategia", cx)
                 .tab_stop(false)
                 .opacity(if self.capture_demo().is_some() {
                     0.55
@@ -594,13 +623,13 @@ impl Strategy {
             .flex()
             .flex_col()
             .gap(px(0.0))
-            .child(super::view::heading(&title, 68.0, -1.15).mt(px(2.0)).ml(px(12.0)))
+            .child(super::view::heading(&title, 68.0, -1.15, cx).mt(px(2.0)).ml(px(12.0)))
             .child(orbit::text(
                 "Revisa la configuración de tu carrera y prepara la estrategia.",
                 16.0,
                 400,
-                orbit::INK_2,
-            ).ml(px(12.0)))
+                orbit::ink_2(cx),
+             cx).ml(px(12.0)))
             .child(
                 div()
                     .flex()
@@ -619,40 +648,40 @@ impl Strategy {
                                 "i-carreras",
                                 event_summary,
                                 event_detail,
-                                secondary_button("strategy-edit-event", "Editar", 14.0).on_click(cx.listener(
+                                secondary_button("strategy-edit-event", "Editar", 14.0, cx).on_click(cx.listener(
                                     |this, _, _, cx| {
                                         this.edit_mode = true;
                                         this.error = None;
                                         cx.notify();
                                     },
                                 )).w(px(112.0)).h(px(46.0)),
-                            ))
+                             cx))
                             .child(career_row(
                                 "Reglas",
                                 "i-ajustes",
                                 rules,
                                 format!("Capacidad · {tank} L"),
-                                secondary_button("strategy-edit-rules", "Editar", 14.0).on_click(cx.listener(
+                                secondary_button("strategy-edit-rules", "Editar", 14.0, cx).on_click(cx.listener(
                                     |this, _, _, cx| {
                                         this.edit_mode = true;
                                         this.error = None;
                                         cx.notify();
                                     },
                                 )).w(px(112.0)).h(px(46.0)),
-                            ))
+                             cx))
                             .child(career_row(
                                 "Pilotos",
                                 "i-cuenta",
                                 driver_names,
                                 "Ritmo pendiente de validar con sus sesiones.".to_owned(),
-                                secondary_button("strategy-edit-drivers", "Editar", 14.0).on_click(cx.listener(
+                                secondary_button("strategy-edit-drivers", "Editar", 14.0, cx).on_click(cx.listener(
                                     |this, _, _, cx| {
                                         this.edit_mode = true;
                                         this.error = None;
                                         cx.notify();
                                     },
                                 )).w(px(112.0)).h(px(46.0)),
-                            ))
+                             cx))
                             .child(
                                 div()
                                     .flex()
@@ -663,10 +692,10 @@ impl Strategy {
                                     .p(px(18.0))
                                     .rounded(px(12.0))
                                     .border_1()
-                                    .border_color(rgba(orbit::LINE))
-                                    .bg(rgba(0x0f12_14f7))
+                                    .border_color(rgba(orbit::line(cx)))
+                                    .bg(rgba(crate::orbit::legacy_rgba(0x0f12_14f7, cx)))
                                     .child(
-                                        orbit::eyebrow("FUENTE DE DATOS"),
+                                        orbit::eyebrow("FUENTE DE DATOS", cx),
                                     )
                                     .child(
                                         div()
@@ -674,7 +703,7 @@ impl Strategy {
                                             .items_center()
                                             .min_h(px(76.0))
                                             .gap(px(54.0))
-                                            .child(orbit::icon("i-telemetria", 20.0, orbit::INK_2))
+                                            .child(orbit::icon("i-telemetria", 20.0, orbit::ink_2(cx)))
                                             .child(
                                                 div()
                                                     .flex()
@@ -685,17 +714,17 @@ impl Strategy {
                                                         session_label,
                                                         16.0,
                                                         700,
-                                                        orbit::INK,
-                                                    ))
+                                                        orbit::ink(cx),
+                                                     cx))
                                                     .child(orbit::text(
                                                         source_detail,
                                                         13.0,
                                                         400,
-                                                        orbit::INK_2,
-                                                    )),
+                                                        orbit::ink_2(cx),
+                                                     cx)),
                                             )
                                             .child(
-                                                secondary_button("strategy-review-data", "Revisar", 14.0)
+                                                secondary_button("strategy-review-data", "Revisar", 14.0, cx)
                                                     .on_click(cx.listener(|this, _, _, cx| {
                                                         this.page = Page::Editor(EditorTab::Datos);
                                                         this.error = None;
@@ -705,8 +734,8 @@ impl Strategy {
                                                     .h(px(46.0)),
                                             ),
                                     )
-                                    .child(div().h(px(1.0)).bg(rgba(orbit::LINE)))
-                                    .child(orbit::eyebrow("OBSERVACIONES"))
+                                    .child(div().h(px(1.0)).bg(rgba(orbit::line(cx))))
+                                    .child(orbit::eyebrow("OBSERVACIONES", cx))
                                     .child(if note_pending {
                                         div()
                                             .flex()
@@ -717,16 +746,16 @@ impl Strategy {
                                                 "Pendiente de validar",
                                                 18.0,
                                                 700,
-                                                orbit::INK,
-                                            ))
+                                                orbit::ink(cx),
+                                             cx))
                                             .child(orbit::text(
                                                 note_detail,
                                                 14.0,
                                                 400,
-                                                orbit::INK_2,
-                                            ))
+                                                orbit::ink_2(cx),
+                                             cx))
                                     } else {
-                                        orbit::text(note_detail, 15.0, 600, orbit::INK_2)
+                                        orbit::text(note_detail, 15.0, 600, orbit::ink_2(cx), cx)
                                     }),
                             ),
                     )
@@ -742,15 +771,15 @@ impl Strategy {
                             .gap(px(10.0))
                             .rounded(px(14.0))
                             .border_1()
-                            .border_color(rgba(orbit::LINE))
-                            .bg(rgba(0x0b0d_0fe8))
+                            .border_color(rgba(orbit::line(cx)))
+                            .bg(rgba(crate::orbit::legacy_rgba(0x0b0d_0fe8, cx)))
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
                                     .gap(px(18.0))
-                                    .child(orbit::icon("i-estrategia", 20.0, orbit::INK_2))
-                                    .child(orbit::text("Plan de carrera", 24.0, 400, orbit::INK).line_height(px(30.0))),
+                                    .child(orbit::icon("i-estrategia", 20.0, orbit::ink_2(cx)))
+                                    .child(orbit::text("Plan de carrera", 24.0, 400, orbit::ink(cx), cx).line_height(px(30.0))),
                             )
                             .child(
                                 div()
@@ -766,7 +795,7 @@ impl Strategy {
                                             .flex_1()
                                             .min_w_0()
                                             .gap(px(7.0))
-                                            .child(orbit::text(plan_summary, 24.0, 700, orbit::INK).line_height(px(30.0)))
+                                            .child(orbit::text(plan_summary, 24.0, 700, orbit::ink(cx), cx).line_height(px(30.0)))
                                             .child(orbit::text(
                                                 if self.result.is_some() {
                                                     "Resultado del solver nativo."
@@ -775,8 +804,8 @@ impl Strategy {
                                                 },
                                                 14.0,
                                                 400,
-                                                orbit::INK_2,
-                                            ).line_height(px(21.0))),
+                                                orbit::ink_2(cx),
+                                             cx).line_height(px(21.0))),
                                     )
                                     .child(plan_action.w(px(178.0)).h(px(46.0)).flex_none()),
                             ),

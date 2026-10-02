@@ -1,7 +1,7 @@
 //! Capa modal/popover: contenido y acciones pertenecen al consumidor.
 use super::{
-    GUTTER, LINE_STRONG, MENU_Z, MODAL_Z, PALETTE_BACKDROP, PALETTE_W, POPOVER_MAX_H,
-    POPOVER_RADIUS, POPOVER_W, RADIUS, SURFACE_1, SURFACE_2, layer_shadow, state,
+    GUTTER, MENU_Z, MODAL_Z, PALETTE_W, POPOVER_MAX_H, POPOVER_RADIUS, POPOVER_W, RADIUS,
+    layer_shadow, line_strong, palette_backdrop, state, surface_1, surface_2,
 };
 use gpui::{
     AnyView, Context, EventEmitter, FocusHandle, IntoElement, Render, Window, anchored, deferred,
@@ -132,10 +132,10 @@ impl Render for Layer {
             .when(!modal, |s| s.max_h(px(POPOVER_MAX_H)))
             .overflow_y_scroll()
             .rounded(px(if modal { RADIUS } else { POPOVER_RADIUS }))
-            .shadow(layer_shadow(modal))
-            .bg(rgb(if modal { SURFACE_1 } else { SURFACE_2 }))
+            .shadow(layer_shadow(modal, cx))
+            .bg(rgb(if modal { surface_1(cx) } else { surface_2(cx) }))
             .border_1()
-            .border_color(rgba(LINE_STRONG))
+            .border_color(rgba(line_strong(cx)))
             .occlude()
             .capture_key_down(cx.listener(Self::key))
             .on_mouse_down_out(cx.listener(|this, _, window, cx| this.dismiss(window, cx)))
@@ -149,7 +149,7 @@ impl Render for Layer {
                     .items_center()
                     .justify_center()
                     .p(px(GUTTER))
-                    .bg(rgba(PALETTE_BACKDROP))
+                    .bg(rgba(palette_backdrop(cx)))
                     .occlude()
                     .child(panel),
             )

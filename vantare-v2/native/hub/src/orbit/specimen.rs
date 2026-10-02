@@ -6,8 +6,8 @@ struct DialogContent {
     check: Entity<Checkbox>,
 }
 impl Render for DialogContent {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        card("Capa común · Tab queda dentro").child(
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        card("Capa común · Tab queda dentro", cx).child(
             card_body()
                 .gap(px(RADIUS_CONTROL))
                 .child(self.field.clone())
@@ -16,7 +16,8 @@ impl Render for DialogContent {
                     "Esc o clic fuera devuelve el foco al origen.",
                     SECONDARY,
                     400,
-                    INK_3,
+                    ink_3(cx),
+                    cx,
                 )),
         )
     }
@@ -213,8 +214,8 @@ impl Specimen {
         })
         .detach();
     }
-    fn fields(&self) -> gpui::Div {
-        card("Campos y selección")
+    fn fields(&self, cx: &gpui::App) -> gpui::Div {
+        card("Campos y selección", cx)
             .flex_1()
             .min_w(px(COLUMN_W))
             .child(
@@ -224,6 +225,7 @@ impl Specimen {
                         "Idioma",
                         "Flechas · Enter · Esc",
                         self.select.clone(),
+                        cx,
                     ))
                     .child(self.input.clone())
                     .child(self.multiline.clone())
@@ -234,18 +236,19 @@ impl Specimen {
     }
     fn controls(&self, cx: &mut Context<Self>) -> gpui::Div {
         let modal =
-            button("kit-modal", "Abrir modal").on_click(cx.listener(|this, _, window, cx| {
+            button("kit-modal", "Abrir modal", cx).on_click(cx.listener(|this, _, window, cx| {
                 this.modal.update(cx, |layer, cx| {
                     layer.show(window, cx);
                 });
             }));
-        let popover =
-            button("kit-popover", "Abrir popover").on_click(cx.listener(|this, _, window, cx| {
+        let popover = button("kit-popover", "Abrir popover", cx).on_click(cx.listener(
+            |this, _, window, cx| {
                 this.popover.update(cx, |layer, cx| {
                     layer.show(window, cx);
                 });
-            }));
-        card("Controles y estados")
+            },
+        ));
+        card("Controles y estados", cx)
             .flex_1()
             .min_w(px(COLUMN_W))
             .child(
@@ -257,38 +260,40 @@ impl Specimen {
                         "Opacidad",
                         "Arrastrar · flechas · Home/End",
                         self.slider.clone(),
+                        cx,
                     ))
                     .child(setting_row(
                         "Zoom",
                         "Pasos de 5 · límites 50–150",
                         self.stepper.clone(),
+                        cx,
                     ))
                     .child(
                         div()
                             .flex()
                             .flex_wrap()
                             .gap(px(RADIUS_CHIP))
-                            .child(chip("Pro Plus", Tone::Gold))
-                            .child(chip("Nightly", Tone::Accent))
-                            .child(chip("Bronze", Tone::Bronze))
-                            .child(chip("Silver", Tone::Silver))
-                            .child(badge(3, Tone::Danger)),
+                            .child(chip("Pro Plus", Tone::Gold, cx))
+                            .child(chip("Nightly", Tone::Accent, cx))
+                            .child(chip("Bronze", Tone::Bronze, cx))
+                            .child(chip("Silver", Tone::Silver, cx))
+                            .child(badge(3, Tone::Danger, cx)),
                     )
                     .child(
                         div()
                             .flex()
                             .flex_wrap()
                             .gap(px(RADIUS_CHIP))
-                            .child(pill("Conectado", Tone::Success))
-                            .child(pill("Buscando", Tone::Warning))
-                            .child(pill("Sin fuente", Tone::Neutral)),
+                            .child(pill("Conectado", Tone::Success, cx))
+                            .child(pill("Buscando", Tone::Warning, cx))
+                            .child(pill("Sin fuente", Tone::Neutral, cx)),
                     )
                     .child(
                         div()
                             .flex()
                             .gap(px(RADIUS_CHIP))
-                            .child(profile_avatar("profile", "Isaac Albala", true, true))
-                            .child(profile_avatar("empty-profile", "", false, false)),
+                            .child(profile_avatar("profile", "Isaac Albala", true, true, cx))
+                            .child(profile_avatar("empty-profile", "", false, false, cx)),
                     )
                     .child(
                         div()
@@ -299,7 +304,7 @@ impl Specimen {
                     ),
             )
     }
-    fn records(&self) -> gpui::Div {
+    fn records(&self, cx: &gpui::App) -> gpui::Div {
         let table = Table {
             headers: ["Perfil", "Canal", "Estado"].map(String::from).into(),
             rows: vec![
@@ -307,9 +312,9 @@ impl Specimen {
                 ["Carrera", "Testers", "Pendiente"].map(String::from).into(),
             ],
         };
-        let table_view = match table.render() {
+        let table_view = match table.render(cx) {
             Ok(view) => view.into_any_element(),
-            Err(error) => callout(error).into_any_element(),
+            Err(error) => callout(error, cx).into_any_element(),
         };
         div()
             .flex()
@@ -317,12 +322,17 @@ impl Specimen {
             .items_start()
             .gap(px(RADIUS))
             .child(
-                card("Lista")
+                card("Lista", cx)
                     .flex_1()
                     .min_w(px(COLUMN_W))
                     .child(card_body().child(self.list.clone())),
             )
-            .child(card("Tabla").flex_1().min_w(px(COLUMN_W)).child(table_view))
+            .child(
+                card("Tabla", cx)
+                    .flex_1()
+                    .min_w(px(COLUMN_W))
+                    .child(table_view),
+            )
     }
 }
 impl Render for Specimen {
@@ -344,15 +354,16 @@ impl Render for Specimen {
             }))
             .size_full()
             .relative()
-            .bg(rgb(CANVAS))
-            .text_color(rgb(INK))
-            .font_family(weight(500))
+            .bg(rgb(canvas(cx)))
+            .text_color(rgb(ink(cx)))
+            .font_family(sans_family(500, cx))
             .flex()
             .flex_col()
             .child(topbar(
                 "KIT ORBIT",
                 "Specimen",
-                pill("Demostración local", Tone::Warning),
+                pill("Demostración local", Tone::Warning, cx),
+                cx,
             ))
             .child(
                 div()
@@ -367,6 +378,7 @@ impl Render for Specimen {
                         "COMPONENTES",
                         "Orbit",
                         "Tokens del Hub · estados y teclado · sin servicios ni persistencia",
+                        cx,
                     ))
                     .child(
                         div()
@@ -374,15 +386,16 @@ impl Render for Specimen {
                             .flex_wrap()
                             .items_start()
                             .gap(px(RADIUS))
-                            .child(self.fields())
+                            .child(self.fields(cx))
                             .child(self.controls(cx)),
                     )
-                    .child(self.records())
-                    .child(card("Estado vacío").child(empty_state(
+                    .child(self.records(cx))
+                    .child(card("Estado vacío", cx).child(empty_state(
                         "Sin resultados",
                         "Cambia los filtros para ampliar la búsqueda.",
+                        cx,
                     )))
-                    .child(text(self.status.clone(), SECONDARY, 400, INK_3)),
+                    .child(text(self.status.clone(), SECONDARY, 400, ink_3(cx), cx)),
             )
             .child(self.modal.clone())
             .child(self.popover.clone())
@@ -393,6 +406,7 @@ pub fn run_kit() -> Result<(), String> {
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
+        cx.set_global(super::theme::Theme::default());
         if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx) {
             *failure.borrow_mut() = Some(error);
             cx.quit();

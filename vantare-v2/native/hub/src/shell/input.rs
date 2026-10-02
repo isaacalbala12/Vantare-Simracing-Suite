@@ -281,10 +281,11 @@ impl Render for Input {
                 17.0,
                 400,
                 if self.value.is_empty() {
-                    orbit::INK_4
+                    orbit::ink_4(cx)
                 } else {
-                    orbit::INK
+                    orbit::ink(cx)
                 },
+                cx,
             ))
             .on_key_down(cx.listener(Self::key))
             .child(

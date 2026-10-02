@@ -620,6 +620,7 @@ impl Drop for ProcessCleanup {
     }
 }
 
+#[cfg(windows)]
 fn collect(chain: &Chain) -> Vec<chain::Progress> {
     let mut events = vec![];
     loop {

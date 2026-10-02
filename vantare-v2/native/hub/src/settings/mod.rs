@@ -9,6 +9,7 @@ use orbit::{Choice, ChoiceChanged, ChoiceKind, Input, OptionItem};
 use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
+pub(super) mod appearance;
 mod releases;
 #[cfg(test)]
 mod tests;
@@ -113,6 +114,10 @@ impl Page {
 }
 
 pub(super) struct State {
+    appearance: appearance::Store,
+    appearance_focus: [FocusHandle; 12],
+    appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
+    appearance_dragging: [bool; 2],
     page: Page,
     pub(super) scroll: gpui::ScrollHandle,
     pub(super) panel_scroll: gpui::ScrollHandle,
@@ -124,7 +129,6 @@ pub(super) struct State {
     units: Entity<Choice>,
     hub_language: Entity<Choice>,
     density: Entity<Choice>,
-    scheme: Entity<Choice>,
     font: Entity<Choice>,
     mono: Entity<Choice>,
     event_filter: Entity<Choice>,
@@ -156,6 +160,9 @@ fn choice(
             cx,
         );
         choice.set_enabled(enabled, cx);
+        if matches!(label, "Fuente de interfaz" | "Fuente monoespaciada") {
+            choice.reference_trigger();
+        }
         choice
     })
 }
@@ -241,6 +248,7 @@ impl State {
     }
     pub(super) fn new(
         prefs: Preferences,
+        appearance: appearance::Store,
         data: PathBuf,
         window: &mut Window,
         cx: &mut Context<Hub>,
@@ -255,11 +263,12 @@ impl State {
             cx.notify();
         })
         .detach();
+        let appearance_settings = appearance.settings;
         let (language, units) = Self::format_controls(prefs, window, cx);
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
-        Self {
+        let state = Self {
             page: Page::default(),
             scroll: gpui::ScrollHandle::new(),
             panel_scroll: gpui::ScrollHandle::new(),
@@ -287,21 +296,12 @@ impl State {
                 window,
                 cx,
             ),
-            scheme: choice(
-                "Apariencia",
-                ChoiceKind::Segmented,
-                &["Sistema", "Claro", "Oscuro"],
-                Some(2),
-                false,
-                window,
-                cx,
-            ),
             font: choice(
                 "Fuente de interfaz",
                 ChoiceKind::Dropdown,
                 &["Inter", "Segoe UI", "Arial"],
-                Some(0),
-                false,
+                Some(appearance_settings.interface_font as usize),
+                true,
                 window,
                 cx,
             ),
@@ -309,11 +309,15 @@ impl State {
                 "Fuente monoespaciada",
                 ChoiceKind::Dropdown,
                 &["Cascadia Code", "Consolas", "Courier New"],
-                Some(0),
-                false,
+                Some(appearance_settings.mono_font as usize),
+                true,
                 window,
                 cx,
             ),
+            appearance,
+            appearance_focus: std::array::from_fn(|_| cx.focus_handle()),
+            appearance_bounds: [None, None],
+            appearance_dragging: [false, false],
             event_filter,
             event_query,
             data,
@@ -322,7 +326,9 @@ impl State {
             status: None,
             update: updates::LocalUpdate::default(),
             update_busy: false,
-        }
+        };
+        appearance::wire(&state, window, cx);
+        state
     }
 }
 // Topbar 70 + cabecera/separación 152 + pie 24, según orbit-settings.css.

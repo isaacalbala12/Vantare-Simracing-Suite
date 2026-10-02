@@ -3,8 +3,12 @@ use crate::orbit;
 use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, Timelike, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb};
 
-const WEEKLY: u32 = 0x0081_96c6;
-const TODAY: u32 = 0x001e_191c;
+fn weekly_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x0081_96c6, cx)
+}
+fn today_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x001e_191c, cx)
+}
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
@@ -28,22 +32,23 @@ fn view_button(
         .rounded(px(8.0))
         .when(calendar.view == view, |button| {
             button
-                .bg(rgb(0x0033_171c))
+                .bg(rgb(crate::orbit::legacy_rgb(0x0033_171c, cx)))
                 .border_1()
-                .border_color(rgb(orbit::CARMINE_DARK))
+                .border_color(rgb(orbit::carmine_dark(cx)))
         })
         .when(calendar.view != view, |button| {
-            button.hover(|style| style.bg(rgb(orbit::SURFACE_2)))
+            button.hover(|style| style.bg(rgb(orbit::surface_2(cx))))
         })
         .child(orbit::text(
             label,
             12.0,
             500,
             if calendar.view == view {
-                orbit::INK
+                orbit::ink(cx)
             } else {
-                orbit::INK_3
+                orbit::ink_3(cx)
             },
+            cx,
         ))
         .on_click(cx.listener(move |this, _, _, cx| {
             this.view = view;
@@ -59,8 +64,16 @@ fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .p(px(4.0))
         .rounded(px(12.0))
         .border_1()
-        .border_color(rgb(orbit::LINE))
-        .bg(rgb(orbit::SURFACE_1))
+        .border_color(
+            if cx.global::<orbit::theme::Theme>().palette == orbit::theme::Palette::Vantare
+                && cx.global::<orbit::theme::Theme>().scheme == orbit::theme::Scheme::Dark
+            {
+                rgb(orbit::line(cx)).into()
+            } else {
+                gpui::Hsla::from(gpui::rgba(orbit::line(cx)))
+            },
+        )
+        .bg(rgb(orbit::surface_1(cx)))
         .children([
             view_button(
                 calendar,
@@ -96,13 +109,13 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                 .flex()
                 .flex_col()
                 .child(
-                    orbit::eyebrow("Calendario LMU")
-                        .font_family("Segoe UI Variable")
+                    orbit::eyebrow("Calendario LMU", cx)
+                        .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
                         .font_weight(gpui::FontWeight(800.0)),
                 )
                 .child(
-                    orbit::text("Calendario", 34.0, 690, orbit::INK)
-                        .font_family("Segoe UI Variable")
+                    orbit::text("Calendario", 34.0, 690, orbit::ink(cx), cx)
+                        .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
                         .mt(px(6.0)),
                 )
                 .child(
@@ -114,7 +127,8 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
                         },
                         13.5,
                         400,
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
+                        cx,
                     )
                     .mt(px(7.0))
                     .line_height(gpui::relative(1.55)),
@@ -123,21 +137,25 @@ fn page_header(calendar: &Calendar, cx: &mut Context<Calendar>, now: DateTime<Ut
         .child(views_control(calendar, cx))
 }
 
-fn mono(content: impl Into<gpui::SharedString>) -> Div {
+fn mono(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
     div()
-        .font_family("Cascadia Code")
+        .font_family(crate::orbit::mono_family(cx))
         .text_size(px(12.0))
         .font_weight(gpui::FontWeight(500.0))
-        .text_color(rgb(orbit::INK_3))
+        .text_color(rgb(orbit::ink_3(cx)))
         .child(content.into())
 }
 
-fn local_time(now: DateTime<Utc>) -> Div {
+fn local_time(now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let local = now.with_timezone(&Local);
-    mono(format!("{} · Europe/Madrid", local.format("%H:%M")))
+    mono(format!("{} · Europe/Madrid", local.format("%H:%M")), cx)
 }
 
-fn disabled_icon_button(id: &'static str, label: &'static str) -> gpui::Stateful<Div> {
+fn disabled_icon_button(
+    id: &'static str,
+    label: &'static str,
+    cx: &gpui::App,
+) -> gpui::Stateful<Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
@@ -149,20 +167,20 @@ fn disabled_icon_button(id: &'static str, label: &'static str) -> gpui::Stateful
         .justify_center()
         .rounded(px(orbit::RADIUS_CHIP))
         .opacity(orbit::DISABLED)
-        .child(orbit::text(label, 16.0, 500, orbit::INK_3))
+        .child(orbit::text(label, 16.0, 500, orbit::ink_3(cx), cx))
 }
 
-fn navigation(calendar: &Calendar) -> Div {
+fn navigation(calendar: &Calendar, cx: &gpui::App) -> Div {
     let mut actions = div().flex().items_center().gap(px(4.0));
     if calendar.view == CalendarView::Timeline {
         actions = actions
-            .child(disabled_icon_button("calendar-previous", "‹"))
-            .child(disabled_icon_button("calendar-next", "›"))
-            .child(orbit::text("1×", 11.0, 500, orbit::INK_2).w(px(40.0)))
-            .child(disabled_icon_button("calendar-zoom-out", "−"))
-            .child(disabled_icon_button("calendar-zoom-in", "+"))
+            .child(disabled_icon_button("calendar-previous", "‹", cx))
+            .child(disabled_icon_button("calendar-next", "›", cx))
+            .child(orbit::text("1×", 11.0, 500, orbit::ink_2(cx), cx).w(px(40.0)))
+            .child(disabled_icon_button("calendar-zoom-out", "−", cx))
+            .child(disabled_icon_button("calendar-zoom-in", "+", cx))
             .child(
-                orbit::button("calendar-zoom-fit", "Ajustar")
+                orbit::button("calendar-zoom-fit", "Ajustar", cx)
                     .h(px(32.0))
                     .px(px(12.0))
                     .rounded(px(8.0))
@@ -171,16 +189,16 @@ fn navigation(calendar: &Calendar) -> Div {
             );
     } else {
         actions = actions
-            .child(disabled_icon_button("calendar-previous", "‹"))
+            .child(disabled_icon_button("calendar-previous", "‹", cx))
             .child(
-                orbit::button("calendar-today", "Hoy")
+                orbit::button("calendar-today", "Hoy", cx)
                     .h(px(32.0))
                     .px(px(12.0))
                     .rounded(px(8.0))
                     .tab_stop(false)
                     .opacity(orbit::DISABLED),
             )
-            .child(disabled_icon_button("calendar-next", "›"));
+            .child(disabled_icon_button("calendar-next", "›", cx));
     }
     actions
 }
@@ -189,6 +207,7 @@ fn card_header(
     calendar: &Calendar,
     title: impl Into<gpui::SharedString>,
     now: DateTime<Utc>,
+    cx: &gpui::App,
 ) -> Div {
     div()
         .h(px(59.0))
@@ -199,14 +218,14 @@ fn card_header(
         .justify_between()
         .gap(px(16.0))
         .border_b_1()
-        .border_color(gpui::rgba(orbit::LINE_ROW))
-        .child(orbit::text(title, 15.0, 700, orbit::INK))
+        .border_color(gpui::rgba(orbit::line_row(cx)))
+        .child(orbit::text(title, 15.0, 700, orbit::ink(cx), cx))
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(local_time(now))
+                .child(local_time(now, cx))
                 .when(
                     matches!(
                         calendar.view,
@@ -215,21 +234,27 @@ fn card_header(
                             | CalendarView::Month
                             | CalendarView::Timeline
                     ),
-                    |actions| actions.child(navigation(calendar)),
+                    |actions| actions.child(navigation(calendar, cx)),
                 ),
         )
 }
 
-fn empty_panel(text: &str) -> Div {
+fn empty_panel(text: &str, cx: &gpui::App) -> Div {
     div()
         .flex_1()
         .min_h_0()
         .px(px(12.0))
         .py(px(20.0))
-        .child(orbit::text(text.to_owned(), 13.0, 400, orbit::INK_3))
+        .child(orbit::text(
+            text.to_owned(),
+            13.0,
+            400,
+            orbit::ink_3(cx),
+            cx,
+        ))
 }
 
-fn upcoming(calendar: &Calendar, now: DateTime<Utc>) -> Div {
+fn upcoming(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let (starts, _) = calendar.upcoming(now);
     let mut body = div().flex_1().min_h_0().px(px(12.0)).py(px(12.0));
     for (index, (at, name)) in starts.iter().enumerate() {
@@ -242,9 +267,12 @@ fn upcoming(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                 .justify_between()
                 .gap(px(16.0))
                 .border_b_1()
-                .border_color(gpui::rgba(orbit::LINE_ROW))
-                .child(orbit::text(name.clone(), 13.0, 600, orbit::INK_2))
-                .child(mono(at.with_timezone(&Local).format("%H:%M").to_string()))
+                .border_color(gpui::rgba(orbit::line_row(cx)))
+                .child(orbit::text(name.clone(), 13.0, 600, orbit::ink_2(cx), cx))
+                .child(mono(
+                    at.with_timezone(&Local).format("%H:%M").to_string(),
+                    cx,
+                ))
                 .id(("calendar-upcoming-row", index)),
         );
     }
@@ -294,7 +322,7 @@ fn day_title(date: NaiveDate, today: NaiveDate) -> String {
     )
 }
 
-fn day_view(now: DateTime<Utc>) -> Div {
+fn day_view(now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let local = now.with_timezone(&Local);
     let minute = local.minute() / 15 * 15;
     let aligned = local
@@ -322,7 +350,7 @@ fn day_view(now: DateTime<Utc>) -> Div {
     for index in 0..15 {
         let at = first + Duration::minutes(index * 15);
         let line_color = if at.minute() == 0 {
-            orbit::LINE_ROW
+            orbit::line_row(cx)
         } else {
             0xffff_ff09
         };
@@ -340,10 +368,10 @@ fn day_view(now: DateTime<Utc>) -> Div {
                         .border_color(gpui::rgba(line_color))
                         .pt(px(8.0))
                         .pr(px(8.0))
-                        .font_family("Cascadia Code")
+                        .font_family(crate::orbit::mono_family(cx))
                         .text_size(px(11.0))
                         .font_weight(gpui::FontWeight(600.0))
-                        .text_color(rgb(orbit::INK_3))
+                        .text_color(rgb(orbit::ink_3(cx)))
                         .child(at.format("%H:%M").to_string()),
                 )
                 .child(
@@ -363,7 +391,7 @@ fn day_view(now: DateTime<Utc>) -> Div {
             .right(px(22.0))
             .top(px(578.0))
             .h(px(1.0))
-            .bg(gpui::rgba(orbit::LINE_ROW)),
+            .bg(gpui::rgba(orbit::line_row(cx))),
     )
 }
 
@@ -387,14 +415,14 @@ fn week_title(monday: NaiveDate) -> String {
     }
 }
 
-fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
+fn week_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let today = now.with_timezone(&Local).date_naive();
     let Ok(monday) = views::week_anchor(today) else {
-        return empty_panel("No hay salidas esta semana.");
+        return empty_panel("No hay salidas esta semana.", cx);
     };
     let schedule = &calendar.schedule;
     let Ok(rows) = views::week_rows(schedule, views::Filter::default(), monday, now, &Local) else {
-        return empty_panel("No se pudo leer el horario.");
+        return empty_panel("No se pudo leer el horario.", cx);
     };
     let weekly: Vec<_> = rows
         .into_iter()
@@ -406,14 +434,14 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .flex_none()
         .flex()
         .border_b_1()
-        .border_color(gpui::rgba(orbit::LINE_ROW));
+        .border_color(gpui::rgba(orbit::line_row(cx)));
     header = header.child(div().w(px(160.0)).flex_none());
     for index in 0_u8..7 {
         let date = monday + Duration::days(i64::from(index));
         let color = if date == today {
-            orbit::CORAL
+            orbit::coral(cx)
         } else {
-            orbit::INK_2
+            orbit::ink_2(cx)
         };
         header = header.child(
             div()
@@ -422,12 +450,13 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                 .flex()
                 .items_center()
                 .justify_center()
-                .bg(rgb(orbit::SURFACE_1))
+                .bg(rgb(orbit::surface_1(cx)))
                 .child(orbit::text(
                     format!("{} {}", weekday(usize::from(index)), date.day()),
                     11.0,
                     500,
                     color,
+                    cx,
                 )),
         );
     }
@@ -438,7 +467,7 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
             .flex_none()
             .flex()
             .border_b_1()
-            .border_color(gpui::rgba(orbit::LINE_ROW));
+            .border_color(gpui::rgba(orbit::line_row(cx)));
         line = line.child(
             div()
                 .w(px(160.0))
@@ -447,8 +476,14 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(div().size(px(7.0)).rounded_full().bg(rgb(WEEKLY)))
-                .child(orbit::text(row.series.name.clone(), 12.0, 600, orbit::INK))
+                .child(div().size(px(7.0)).rounded_full().bg(rgb(weekly_color(cx))))
+                .child(orbit::text(
+                    row.series.name.clone(),
+                    12.0,
+                    600,
+                    orbit::ink(cx),
+                    cx,
+                ))
                 .overflow_hidden(),
         );
         for cell in row.cells {
@@ -460,12 +495,17 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                     .items_center()
                     .justify_start()
                     .px(px(8.0))
-                    .bg(rgb(if cell.today { TODAY } else { orbit::SURFACE_1 }))
+                    .bg(rgb(if cell.today {
+                        today_color(cx)
+                    } else {
+                        orbit::surface_1(cx)
+                    }))
                     .child(orbit::text(
                         if cell.total == 0 { "–" } else { "·" },
                         12.0,
                         400,
-                        orbit::INK_MUTED,
+                        orbit::ink_muted(cx),
+                        cx,
                     )),
             );
         }
@@ -474,11 +514,11 @@ fn week_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
     grid.mx(px(12.0)).mt(px(10.0))
 }
 
-fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
+fn month_view(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let local = now.with_timezone(&Local);
     let today = local.date_naive();
     let Some(anchor) = NaiveDate::from_ymd_opt(today.year(), today.month(), 1) else {
-        return empty_panel("Mes fuera de rango.");
+        return empty_panel("Mes fuera de rango.", cx);
     };
     let Ok(days) = views::month_days(
         &calendar.schedule,
@@ -487,7 +527,7 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         now,
         &Local,
     ) else {
-        return empty_panel("No se pudo leer el horario.");
+        return empty_panel("No se pudo leer el horario.", cx);
     };
     let mut grid = div().flex().flex_col().flex_1().min_h_0();
     let mut labels = div()
@@ -495,7 +535,7 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .flex_none()
         .flex()
         .border_b_1()
-        .border_color(gpui::rgba(orbit::LINE_ROW));
+        .border_color(gpui::rgba(orbit::line_row(cx)));
     for index in 0..7 {
         labels = labels.child(
             div()
@@ -504,8 +544,8 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                 .flex()
                 .items_center()
                 .justify_center()
-                .bg(rgb(orbit::SURFACE_1))
-                .child(orbit::text(weekday(index), 11.0, 600, orbit::INK_2)),
+                .bg(rgb(orbit::surface_1(cx)))
+                .child(orbit::text(weekday(index), 11.0, 600, orbit::ink_2(cx), cx)),
         );
     }
     grid = grid.child(labels);
@@ -515,29 +555,30 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
             .min_h(px(72.0))
             .flex()
             .border_b_1()
-            .border_color(gpui::rgba(orbit::LINE_ROW));
+            .border_color(gpui::rgba(orbit::line_row(cx)));
         for day in week {
             let color = if day.today {
-                orbit::INK
+                orbit::ink(cx)
             } else if day.other {
-                orbit::INK_MUTED
+                orbit::ink_muted(cx)
             } else {
-                orbit::INK_2
+                orbit::ink_2(cx)
             };
             let date = if day.today {
                 div()
                     .px(px(7.0))
                     .py(px(2.0))
                     .rounded(px(7.0))
-                    .bg(rgb(orbit::CARMINE))
+                    .bg(rgb(orbit::carmine(cx)))
                     .child(orbit::text(
                         day.day.day().to_string(),
                         11.0,
                         700,
-                        orbit::INK,
+                        orbit::ink(cx),
+                        cx,
                     ))
             } else {
-                orbit::text(day.day.day().to_string(), 11.0, 600, color)
+                orbit::text(day.day.day().to_string(), 11.0, 600, color, cx)
             };
             row = row.child(
                 div()
@@ -550,8 +591,8 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
                     .px(px(10.0))
                     .py(px(8.0))
                     .border_r_1()
-                    .border_color(gpui::rgba(orbit::LINE_ROW))
-                    .bg(rgb(orbit::SURFACE_1))
+                    .border_color(gpui::rgba(orbit::line_row(cx)))
+                    .bg(rgb(orbit::surface_1(cx)))
                     .child(date),
             );
         }
@@ -560,7 +601,7 @@ fn month_view(calendar: &Calendar, now: DateTime<Utc>) -> Div {
     grid.mx(px(12.0)).mt(px(10.0)).mb(px(12.0))
 }
 
-fn timeline(calendar: &Calendar, now: DateTime<Utc>) -> Div {
+fn timeline(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let starts = views::starts(
         &calendar.schedule,
         views::Filter::default(),
@@ -568,24 +609,28 @@ fn timeline(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         now + Duration::hours(1),
     );
     let Ok(starts) = starts else {
-        return empty_panel("No se pudo leer el horario.");
+        return empty_panel("No se pudo leer el horario.", cx);
     };
     if starts.is_empty() {
-        empty_panel("No hay salidas en la próxima hora.")
+        empty_panel("No hay salidas en la próxima hora.", cx)
     } else {
         let mut body = div().flex_1().min_h_0().px(px(12.0)).py(px(12.0));
         for start in starts {
             body = body.child(orbit::setting_row(
                 &start.series.name,
                 "",
-                mono(start.at.with_timezone(&Local).format("%H:%M").to_string()),
+                mono(
+                    start.at.with_timezone(&Local).format("%H:%M").to_string(),
+                    cx,
+                ),
+                cx,
             ));
         }
         body
     }
 }
 
-fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
+fn content(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let title: String = match calendar.view {
         CalendarView::Upcoming => "Próximas salidas".to_owned(),
         CalendarView::Day => {
@@ -606,11 +651,11 @@ fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         CalendarView::Timeline => "Próxima hora · una fila por serie".to_owned(),
     };
     let body = match calendar.view {
-        CalendarView::Upcoming => upcoming(calendar, now),
-        CalendarView::Day => day_view(now),
-        CalendarView::Week => week_view(calendar, now),
-        CalendarView::Month => month_view(calendar, now),
-        CalendarView::Timeline => timeline(calendar, now),
+        CalendarView::Upcoming => upcoming(calendar, now, cx),
+        CalendarView::Day => day_view(now, cx),
+        CalendarView::Week => week_view(calendar, now, cx),
+        CalendarView::Month => month_view(calendar, now, cx),
+        CalendarView::Timeline => timeline(calendar, now, cx),
     };
     div()
         .flex()
@@ -618,11 +663,11 @@ fn content(calendar: &Calendar, now: DateTime<Utc>) -> Div {
         .flex_1()
         .min_h_0()
         .overflow_hidden()
-        .bg(rgb(orbit::SURFACE_1))
+        .bg(rgb(orbit::surface_1(cx)))
         .border_1()
-        .border_color(gpui::rgba(orbit::LINE))
+        .border_color(gpui::rgba(orbit::line(cx)))
         .rounded(px(orbit::RADIUS))
-        .child(card_header(calendar, title, now))
+        .child(card_header(calendar, title, now, cx))
         .child(body)
 }
 
@@ -641,11 +686,11 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .gap(px(19.0))
         .pt(px(24.0))
         .pb(px(25.0))
-        .bg(rgb(orbit::CANVAS))
+        .bg(rgb(orbit::canvas(cx)))
         .child(page_header(calendar, cx, now))
-        .child(content(calendar, now))
+        .child(content(calendar, now, cx))
         .when_some(calendar.error.clone(), |page, error| {
-            page.child(orbit::callout(error))
+            page.child(orbit::callout(error, cx))
         });
     div()
         .id("calendar")
@@ -657,6 +702,6 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex()
         .flex_col()
         .overflow_hidden()
-        .bg(rgb(orbit::CANVAS))
+        .bg(rgb(orbit::canvas(cx)))
         .child(page)
 }

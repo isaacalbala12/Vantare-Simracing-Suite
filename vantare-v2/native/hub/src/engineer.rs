@@ -14,13 +14,27 @@ use gpui::{
 };
 use std::path::{Path, PathBuf};
 
-const TEXT: u32 = 0x00e6_e9ec;
-const MUTED: u32 = 0x00b8_c3cf;
-const CARD: u32 = 0x0017_1d25;
-const CARD_BORDER: u32 = 0x0042_4954;
-const CONTROL: u32 = 0x0026_313e;
-const CONTROL_BORDER: u32 = 0x0067_768a;
-const CHECK: u32 = 0x008d_c9ff;
+fn text_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x00e6_e9ec, cx)
+}
+fn muted_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x00b8_c3cf, cx)
+}
+fn card_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x0017_1d25, cx)
+}
+fn card_border_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x0042_4954, cx)
+}
+fn control_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x0026_313e, cx)
+}
+fn control_border_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x0067_768a, cx)
+}
+fn check_color(cx: &gpui::App) -> u32 {
+    orbit::legacy_rgb(0x008d_c9ff, cx)
+}
 
 #[allow(clippy::struct_excessive_bools)] // Estado independiente de captura, filtro y despliegue.
 pub struct Engineer {
@@ -127,58 +141,72 @@ fn engineer_capture_path(path: &Path) -> bool {
             })
 }
 
-fn text(value: impl Into<gpui::SharedString>, size: f32, weight: u16, color: u32) -> gpui::Div {
+fn text(
+    value: impl Into<gpui::SharedString>,
+    size: f32,
+    weight: u16,
+    color: u32,
+    cx: &gpui::App,
+) -> gpui::Div {
     // Mismas métricas Inter que el kit Eficiencia: Chrome redondea ascenso y
     // descenso y trunca el semi-interlineado; GPUI lo centra con fracciones.
     let line_height = size * 1.5;
     let native_line = line_height.round();
     let css_baseline = vantare_ui::efficiency::text::baseline(0.0, line_height, size);
     let native_baseline = f32::midpoint(native_line, size * (1984.0 - 494.0) / 2048.0);
-    orbit::text(value, size, weight, color)
+    orbit::text(value, size, weight, color, cx)
         .relative()
         .top(px(css_baseline - native_baseline))
         .line_height(px(native_line))
         // GPUI ajusta las cajas de texto a píxeles; CSS mantiene fracciones.
         // Las etiquetas/títulos de una línea conservan su alto lógico original.
         .when((12.7..13.1).contains(&size), |view| view.h(px(line_height)))
-        .font_weight(FontWeight::NORMAL)
+        .font_weight(
+            if cx.global::<orbit::theme::Theme>().interface_font
+                == orbit::theme::InterfaceFont::Inter
+            {
+                gpui::FontWeight::NORMAL
+            } else {
+                gpui::FontWeight(f32::from(weight))
+            },
+        )
 }
 
-fn paragraph(value: impl Into<gpui::SharedString>) -> gpui::Div {
-    text(value, 16.0, 400, TEXT)
+fn paragraph(value: impl Into<gpui::SharedString>, cx: &gpui::App) -> gpui::Div {
+    text(value, 16.0, 400, text_color(cx), cx)
         .my(px(8.0))
         .line_height(px(24.0))
 }
 
-fn section(title: &str) -> gpui::Div {
+fn section(title: &str, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
         .w_full()
-        .bg(rgb(CARD))
+        .bg(rgb(card_color(cx)))
         .border_1()
-        .border_color(rgb(CARD_BORDER))
+        .border_color(rgb(card_border_color(cx)))
         .rounded(px(8.0))
         .p(px(18.0))
-        .child(text(title.to_owned(), 19.0, 400, TEXT))
+        .child(text(title.to_owned(), 19.0, 400, text_color(cx), cx))
         .child(div().h(px(12.0)))
 }
 
-fn fact(label: &str, value: &str) -> gpui::Div {
+fn fact(label: &str, value: &str, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
         .flex_1()
         .min_w(px(190.0))
         .min_h(px(13.0 * 1.5 + 4.0 + 24.0))
-        .child(text(label.to_owned(), 13.0, 400, MUTED))
-        .child(text(value.to_owned(), 16.0, 400, TEXT).mt(px(4.0)))
+        .child(text(label.to_owned(), 13.0, 400, muted_color(cx), cx))
+        .child(text(value.to_owned(), 16.0, 400, text_color(cx), cx).mt(px(4.0)))
 }
 
-fn fact_row(items: &[(&str, &str)]) -> gpui::Div {
+fn fact_row(items: &[(&str, &str)], cx: &gpui::App) -> gpui::Div {
     let mut row = div().flex().w_full().gap(px(14.0));
     for (label, value) in items {
-        row = row.child(fact(label, value));
+        row = row.child(fact(label, value, cx));
     }
     for _ in items.len()..4 {
         row = row.child(div().flex_1().min_w(px(190.0)));
@@ -186,7 +214,12 @@ fn fact_row(items: &[(&str, &str)]) -> gpui::Div {
     row
 }
 
-fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::Div> {
+fn checkbox(
+    label: &str,
+    checked: bool,
+    disabled: bool,
+    cx: &gpui::App,
+) -> gpui::Stateful<gpui::Div> {
     let mark = div()
         .w(px(18.0))
         .h(px(18.0))
@@ -195,10 +228,14 @@ fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::
         .justify_center()
         .rounded(px(2.0))
         .border_1()
-        .border_color(rgb(if checked { CHECK } else { CONTROL_BORDER }))
-        .when(checked, |checkbox| checkbox.bg(rgb(CHECK)))
+        .border_color(rgb(if checked {
+            check_color(cx)
+        } else {
+            control_border_color(cx)
+        }))
+        .when(checked, |checkbox| checkbox.bg(rgb(check_color(cx))))
         .when(checked, |checkbox| {
-            checkbox.child(text("✓", 13.0, 700, CARD))
+            checkbox.child(text("✓", 13.0, 700, card_color(cx), cx))
         });
     div()
         .id(format!("engineer-checkbox-{label}"))
@@ -214,10 +251,10 @@ fn checkbox(label: &str, checked: bool, disabled: bool) -> gpui::Stateful<gpui::
         })
         .tab_stop(!disabled)
         .child(mark)
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
+        .child(text(label.to_owned(), 16.0, 400, text_color(cx), cx))
 }
 
-fn select_control(value: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
+fn select_control(value: &str, disabled: bool, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     div()
         .id(format!("engineer-select-{value}"))
         .role(gpui::Role::ComboBox)
@@ -233,39 +270,39 @@ fn select_control(value: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
         .gap(px(10.0))
         .h(px(40.0))
         .px(px(12.0))
-        .bg(rgb(CONTROL))
-        .text_color(rgb(TEXT))
+        .bg(rgb(control_color(cx)))
+        .text_color(rgb(text_color(cx)))
         .border_1()
-        .border_color(rgb(CONTROL_BORDER))
+        .border_color(rgb(control_border_color(cx)))
         .rounded(px(5.0))
-        .child(text(value.to_owned(), 16.0, 400, 0x00f1_f5fa))
-        .child(text("⌄", 14.0, 400, 0x00f1_f5fa))
+        .child(text(value.to_owned(), 16.0, 400, 0x00f1_f5fa, cx))
+        .child(text("⌄", 14.0, 400, 0x00f1_f5fa, cx))
 }
 
-fn labeled_select(label: &str, value: &str, disabled: bool) -> gpui::Div {
+fn labeled_select(label: &str, value: &str, disabled: bool, cx: &gpui::App) -> gpui::Div {
     div()
         .flex()
         .flex_col()
         .flex_1()
         .min_w(px(190.0))
         .gap(px(6.0))
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
-        .child(select_control(value, disabled).id(format!("engineer-output-{label}")))
+        .child(text(label.to_owned(), 16.0, 400, text_color(cx), cx))
+        .child(select_control(value, disabled, cx).id(format!("engineer-output-{label}")))
 }
 
-fn action_button(label: &str, disabled: bool) -> gpui::Stateful<gpui::Div> {
+fn action_button(label: &str, disabled: bool, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     div()
         .flex()
         .items_center()
         .justify_center()
         .h(px(40.0))
         .px(px(12.0))
-        .bg(rgb(CONTROL))
+        .bg(rgb(control_color(cx)))
         .border_1()
-        .border_color(rgb(CONTROL_BORDER))
+        .border_color(rgb(control_border_color(cx)))
         .rounded(px(5.0))
         .when(disabled, |button| button.opacity(0.55))
-        .child(text(label.to_owned(), 16.0, 400, TEXT))
+        .child(text(label.to_owned(), 16.0, 400, text_color(cx), cx))
         .id(format!("engineer-action-{label}"))
 }
 
@@ -341,7 +378,7 @@ impl Engineer {
         rows
     }
 
-    fn observed_facts(&self) -> gpui::Div {
+    fn observed_facts(&self, cx: &gpui::App) -> gpui::Div {
         use control::runtime::{Connection, Spotter, VoiceEngine};
         let view = self.model.view(self.model.now());
         let service = match view.health {
@@ -411,20 +448,26 @@ impl Engineer {
             .flex_col()
             .w_full()
             .gap(px(14.0))
-            .child(fact_row(&[
-                ("Servicio", service),
-                ("Telemetría", telemetry),
-                ("Spotter", spotter),
-                ("Reproductor real", player),
-            ]))
-            .child(fact_row(&[
-                ("Idioma · voz spotter / ingeniero", &locale_value),
-                ("Ciclo", &cycle),
-            ]))
+            .child(fact_row(
+                &[
+                    ("Servicio", service),
+                    ("Telemetría", telemetry),
+                    ("Spotter", spotter),
+                    ("Reproductor real", player),
+                ],
+                cx,
+            ))
+            .child(fact_row(
+                &[
+                    ("Idioma · voz spotter / ingeniero", &locale_value),
+                    ("Ciclo", &cycle),
+                ],
+                cx,
+            ))
     }
 
-    fn status_section(&self) -> gpui::Div {
-        let mut card = section("Estado observado");
+    fn status_section(&self, cx: &gpui::App) -> gpui::Div {
+        let mut card = section("Estado observado", cx);
         let view = self.model.view(self.model.now());
         let status_copy = if view.health == model::Health::Fresh {
             "Estado actualizado desde el servicio."
@@ -434,30 +477,31 @@ impl Engineer {
             "Esperando respuesta de Vantare…"
         };
         card = card
-            .child(paragraph(status_copy).mt(px(0.0)))
-            .child(self.observed_facts())
-            .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido."));
+            .child(paragraph(status_copy, cx).mt(px(0.0)))
+            .child(self.observed_facts( cx))
+            .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido.", cx));
         if let Some(error) = view.error {
             card = card.child(text(
                 format!("estado: {error}; se conserva la evidencia anterior"),
                 16.0,
                 400,
                 0x00ff_8c7d,
+                cx,
             ));
         }
         if view.running
             && let Some(report) = self.model.report()
             && let Some(error) = &report.status.error
         {
-            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d, cx));
         }
         if let Some(runtime) = view.runtime
             && let Some(error) = &runtime.voice.error
         {
-            card = card.child(text(format!("audio: {error}"), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(text(format!("audio: {error}"), 16.0, 400, 0x00ff_8c7d, cx));
         }
         if let Some(error) = &self.demo_error {
-            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            card = card.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d, cx));
         }
         card
     }
@@ -471,11 +515,15 @@ impl Engineer {
                 .id(format!("engineer-locale-{locale}"))
                 .px(px(12.0))
                 .py(px(8.0))
-                .bg(rgb(if selected { 0x0031_3d4a } else { CONTROL }))
+                .bg(rgb(if selected {
+                    0x0031_3d4a
+                } else {
+                    control_color(cx)
+                }))
                 .border_1()
-                .border_color(rgb(CONTROL_BORDER))
+                .border_color(rgb(control_border_color(cx)))
                 .rounded(px(5.0))
-                .child(text(locale.to_owned(), 16.0, 400, TEXT))
+                .child(text(locale.to_owned(), 16.0, 400, text_color(cx), cx))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.edit(|settings| settings.locale = locale.into(), cx);
                 }));
@@ -490,7 +538,8 @@ impl Engineer {
                 "Ajustes disponibles en el contrato nativo",
                 16.0,
                 700,
-                TEXT,
+                text_color(cx),
+                cx,
             ))
             .child(
                 div()
@@ -498,14 +547,14 @@ impl Engineer {
                     .flex_wrap()
                     .gap(px(16.0))
                     .child(
-                        checkbox("Voz local", settings.voice, false).on_click(cx.listener(
+                        checkbox("Voz local", settings.voice, false, cx).on_click(cx.listener(
                             |this, _, _, cx| {
                                 this.edit(|settings| settings.voice = !settings.voice, cx);
                             },
                         )),
                     )
                     .child(
-                        checkbox("Combustible", settings.families.fuel, false).on_click(
+                        checkbox("Combustible", settings.families.fuel, false, cx).on_click(
                             cx.listener(|this, _, _, cx| {
                                 this.edit(
                                     |settings| settings.families.fuel = !settings.families.fuel,
@@ -515,35 +564,37 @@ impl Engineer {
                         ),
                     )
                     .child(
-                        checkbox("Banderas", settings.families.flags, false).on_click(cx.listener(
-                            |this, _, _, cx| {
+                        checkbox("Banderas", settings.families.flags, false, cx).on_click(
+                            cx.listener(|this, _, _, cx| {
                                 this.edit(
                                     |settings| settings.families.flags = !settings.families.flags,
                                     cx,
                                 );
-                            },
-                        )),
+                            }),
+                        ),
                     )
                     .child(
-                        checkbox("Boxes", settings.families.pitstops, false).on_click(cx.listener(
-                            |this, _, _, cx| {
+                        checkbox("Boxes", settings.families.pitstops, false, cx).on_click(
+                            cx.listener(|this, _, _, cx| {
                                 this.edit(
                                     |settings| {
                                         settings.families.pitstops = !settings.families.pitstops;
                                     },
                                     cx,
                                 );
-                            },
-                        )),
+                            }),
+                        ),
                     )
-                    .child(checkbox("Vueltas", settings.families.laps, false).on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.edit(
-                                |settings| settings.families.laps = !settings.families.laps,
-                                cx,
-                            );
-                        }),
-                    )),
+                    .child(
+                        checkbox("Vueltas", settings.families.laps, false, cx).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.edit(
+                                    |settings| settings.families.laps = !settings.families.laps,
+                                    cx,
+                                );
+                            }),
+                        ),
+                    ),
             )
             .child(
                 div()
@@ -551,10 +602,10 @@ impl Engineer {
                     .items_center()
                     .flex_wrap()
                     .gap(px(8.0))
-                    .child(text("Idioma de radio", 16.0, 400, TEXT))
+                    .child(text("Idioma de radio", 16.0, 400, text_color(cx), cx))
                     .child(locales)
                     .child(
-                        action_button("Recargar ajustes", false).on_click(cx.listener(
+                        action_button("Recargar ajustes", false, cx).on_click(cx.listener(
                             |this, _, _, cx| {
                                 this.error = this.reload().err();
                                 cx.notify();
@@ -574,7 +625,7 @@ impl Engineer {
             .gap(px(16.0))
             .my(px(12.0))
             .child(
-                checkbox("Ingeniero de pista", settings.enabled, false).on_click(cx.listener(
+                checkbox("Ingeniero de pista", settings.enabled, false, cx).on_click(cx.listener(
                     |this, _, _, cx| this.edit(|settings| settings.enabled = !settings.enabled, cx),
                 )),
             )
@@ -583,19 +634,27 @@ impl Engineer {
                 view.runtime
                     .is_some_and(|runtime| runtime.spotter != control::runtime::Spotter::Disabled),
                 true,
+                cx,
             ))
             .child(checkbox(
                 "Subtítulos",
                 view.runtime
                     .is_some_and(|runtime| runtime.delivery.text_enabled),
                 true,
+                cx,
             ))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(text("Sensibilidad del spotter", 16.0, 400, TEXT))
+                    .child(text(
+                        "Sensibilidad del spotter",
+                        16.0,
+                        400,
+                        text_color(cx),
+                        cx,
+                    ))
                     .child(
                         select_control(
                             if self.demo.is_some() {
@@ -604,6 +663,7 @@ impl Engineer {
                                 "No disponible"
                             },
                             true,
+                            cx,
                         )
                         .w(px(154.0)),
                     ),
@@ -631,6 +691,7 @@ impl Engineer {
                     label,
                     self.model.capture_output(family).unwrap_or("No disponible"),
                     true,
+                    cx,
                 ));
             }
             for _ in categories.len()..4 {
@@ -647,28 +708,28 @@ impl Engineer {
             .flex_col()
             .w_full()
             .border_1()
-            .border_color(rgb(CARD_BORDER))
+            .border_color(rgb(card_border_color(cx)))
             .px(px(14.0))
             .pb(px(14.0))
             .child(deferred(
-                text("Módulos y salidas", 16.0, 400, TEXT)
+                text("Módulos y salidas", 16.0, 400, text_color(cx), cx)
                     .absolute()
                     .top(px(-12.0))
                     .left(px(14.0))
                     .px(px(6.0))
-                    .bg(rgb(CARD)),
+                    .bg(rgb(card_color(cx))),
             ))
             .child(controls)
             .child(outputs);
-        section("Configuración real")
+        section("Configuración real", cx)
             .child(fieldset)
-            .child(paragraph("La salida «Respuestas de voz» solo afecta a respuestas si la entrada de voz experimental está disponible; no activa el micrófono."))
-            .child(paragraph(if self.demo.is_some() { "Los valores muestran el estado confirmado por Vantare." } else { "Los ajustes nativos disponibles se guardan localmente. Las salidas sin contrato están deshabilitadas." }))
+            .child(paragraph("La salida «Respuestas de voz» solo afecta a respuestas si la entrada de voz experimental está disponible; no activa el micrófono.", cx))
+            .child(paragraph(if self.demo.is_some() { "Los valores muestran el estado confirmado por Vantare." } else { "Los ajustes nativos disponibles se guardan localmente. Las salidas sin contrato están deshabilitadas." }, cx))
     }
 
-    fn audio_section() -> gpui::Div {
-        section("Prueba del reproductor")
-            .child(paragraph("Desactiva el ingeniero para probar. El tono usa el mismo reproductor que la radio. La frase de prueba comprueba «Coche a la izquierda» en el idioma activo, sin simular tráfico.").mt(px(0.0)))
+    fn audio_section(cx: &gpui::App) -> gpui::Div {
+        section("Prueba del reproductor", cx)
+            .child(paragraph("Desactiva el ingeniero para probar. El tono usa el mismo reproductor que la radio. La frase de prueba comprueba «Coche a la izquierda» en el idioma activo, sin simular tráfico.", cx).mt(px(0.0)))
             .child(
                 div()
                     .flex()
@@ -676,10 +737,10 @@ impl Engineer {
                     .items_center()
                     .gap(px(16.0))
                     .my(px(12.0))
-                    .child(action_button("Probar sonido", true))
-                    .child(action_button("Probar frase en caché", true)),
+                    .child(action_button("Probar sonido", true, cx))
+                    .child(action_button("Probar frase en caché", true, cx)),
             )
-            .child(paragraph("«Completado» confirma que el reproductor terminó sin error. Comprueba tú si se ha oído por la salida correcta de Windows."))
+            .child(paragraph("«Completado» confirma que el reproductor terminó sin error. Comprueba tú si se ha oído por la salida correcta de Windows.", cx))
     }
 
     fn history_filters(
@@ -717,9 +778,9 @@ impl Engineer {
                     .flex()
                     .flex_col()
                     .gap(px(6.0))
-                    .child(text("Ciclos", 16.0, 400, TEXT))
+                    .child(text("Ciclos", 16.0, 400, text_color(cx), cx))
                     .child(
-                        select_control(cycle, current_cycle_disabled)
+                        select_control(cycle, current_cycle_disabled, cx)
                             .id("engineer-history-cycle")
                             .w(px(220.0))
                             .when(!current_cycle_disabled, |select| {
@@ -735,9 +796,9 @@ impl Engineer {
                     .flex()
                     .flex_col()
                     .gap(px(6.0))
-                    .child(text("Categoría", 16.0, 400, TEXT))
+                    .child(text("Categoría", 16.0, 400, text_color(cx), cx))
                     .child(
-                        select_control(family, false)
+                        select_control(family, false, cx)
                             .id("engineer-history-family")
                             .w(px(220.0))
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -757,13 +818,15 @@ impl Engineer {
                     ),
             )
             .child(
-                action_button("Preparar informe", false).on_click(cx.listener(|this, _, _, cx| {
-                    match this.model.prepare_export(this.model.now()) {
-                        Ok(preview) => this.export_preview = Some(preview),
-                        Err(error) => this.error = Some(format!("informe: {error}")),
-                    }
-                    cx.notify();
-                })),
+                action_button("Preparar informe", false, cx).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        match this.model.prepare_export(this.model.now()) {
+                            Ok(preview) => this.export_preview = Some(preview),
+                            Err(error) => this.error = Some(format!("informe: {error}")),
+                        }
+                        cx.notify();
+                    },
+                )),
             )
     }
 
@@ -778,9 +841,16 @@ impl Engineer {
                     if self.counters_open { "▾" } else { "▸" },
                     16.0,
                     400,
-                    TEXT,
+                    text_color(cx),
+                    cx,
                 ))
-                .child(text("Contadores y tiempos internos", 16.0, 400, TEXT))
+                .child(text(
+                    "Contadores y tiempos internos",
+                    16.0,
+                    400,
+                    text_color(cx),
+                    cx,
+                ))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.counters_open = !this.counters_open;
                     cx.notify();
@@ -791,21 +861,21 @@ impl Engineer {
             counters = counters
                 .child(paragraph(
                     "Solo entregas recibidas por el Hub. Puede haber huecos entre publicaciones; las expulsiones del proceso y del Hub no son una pérdida total exacta.",
-                ))
+                 cx))
                 .child(
                     div()
                         .flex()
                         .flex_wrap()
                         .gap(px(14.0))
-                        .child(fact("Mensajes retenidos", &retained.to_string()))
-                        .child(fact("Mensajes expulsados", &self.model.evicted.to_string()))
+                        .child(fact("Mensajes retenidos", &retained.to_string(), cx))
+                        .child(fact("Mensajes expulsados", &self.model.evicted.to_string(), cx))
                         .child(fact(
                             "Época del cursor",
                             &self.model.current_epoch.map_or_else(
                                 || "No disponible".into(),
                                 |epoch| epoch.to_string(),
                             ),
-                        )),
+                         cx)),
                 );
         }
         counters
@@ -816,9 +886,16 @@ impl Engineer {
             div()
                 .flex()
                 .flex_col()
-                .child(text("Vista previa del informe", 19.0, 700, TEXT))
+                .child(text(
+                    "Vista previa del informe",
+                    19.0,
+                    700,
+                    text_color(cx),
+                    cx,
+                ))
                 .child(paragraph(
                     "JSON local congelado con el estado observado y el historial retenido.",
+                    cx,
                 ))
                 .child(
                     div()
@@ -826,11 +903,11 @@ impl Engineer {
                         .w_full()
                         .max_h(px(340.0))
                         .overflow_y_scroll()
-                        .bg(rgb(0x0010_151b))
+                        .bg(rgb(crate::orbit::legacy_rgb(0x0010_151b, cx)))
                         .p(px(12.0))
                         .child(
                             div()
-                                .font_family("Cascadia Mono")
+                                .font_family(orbit::mono_override("Cascadia Mono", cx))
                                 .text_size(px(12.0))
                                 .child(preview.clone()),
                         ),
@@ -840,16 +917,14 @@ impl Engineer {
                         .flex()
                         .gap(px(16.0))
                         .my(px(12.0))
-                        .child(action_button("Descargar JSON", true))
-                        .child(action_button("Copiar JSON", true))
-                        .child(
-                            action_button("Cerrar vista previa", false).on_click(cx.listener(
-                                |this, _, _, cx| {
-                                    this.export_preview = None;
-                                    cx.notify();
-                                },
-                            )),
-                        ),
+                        .child(action_button("Descargar JSON", true, cx))
+                        .child(action_button("Copiar JSON", true, cx))
+                        .child(action_button("Cerrar vista previa", false, cx).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.export_preview = None;
+                                cx.notify();
+                            }),
+                        )),
                 )
         })
     }
@@ -857,20 +932,21 @@ impl Engineer {
     fn history_section(&mut self, cx: &mut Context<Self>) -> gpui::Div {
         let rows = self.history_rows();
         let rows_empty = rows.is_empty();
-        let mut card = section("Registro de entregas")
+        let mut card = section("Registro de entregas", cx)
             .child(paragraph(if self.demo.is_some() {
                 "Últimas 200 entregas seleccionadas por la radio. La salida configurada corresponde al momento del envío; los resultados visual y audio muestran lo que ocurrió. El registro se conserva entre ciclos hasta cerrar la app."
             } else {
                 "Últimas entregas observadas desde el estado publicado. Puede haber huecos entre publicaciones; este registro no equivale a todas las entregas de radio."
-            }).mt(px(0.0)));
+            }, cx).mt(px(0.0)));
         let current_cycle_disabled = self.model.current_epoch.is_none();
         card = card.child(self.history_filters(cx, current_cycle_disabled));
 
-        card = card.child(history_table(rows));
+        card = card.child(history_table(rows, cx));
 
         if rows_empty {
             card = card.child(paragraph(
                 "No hay mensajes observados en este filtro. No significa que el audio funcione.",
+                cx,
             ));
         }
         card = card.child(self.history_counters(cx));
@@ -886,7 +962,7 @@ impl Engineer {
     }
 }
 
-fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
+fn history_table(rows: Vec<HistoryRow>, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     // Anchos resultantes de table-layout:auto en el corpus Wails congelado.
     let widths = [90.0, 293.0, 154.0, 123.0, 168.0, 138.0];
     let headings = [
@@ -901,9 +977,12 @@ fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
         .flex()
         .w_full()
         .border_b_1()
-        .border_color(rgb(CARD_BORDER));
+        .border_color(rgb(card_border_color(cx)));
     for (label, width) in headings.into_iter().zip(widths) {
-        heading = heading.child(table_cell(text(label, 13.0, 700, MUTED), width));
+        heading = heading.child(table_cell(
+            text(label, 13.0, 700, muted_color(cx), cx),
+            width,
+        ));
     }
     let mut table = div()
         .id("engineer-history-table")
@@ -921,22 +1000,40 @@ fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
         let when = div()
             .flex()
             .flex_col()
-            .child(text(row.time, 16.0, 400, TEXT))
-            .child(text(format!("Ciclo {}", row.cycle), 12.8, 400, MUTED).mt(px(5.0)));
+            .child(text(row.time, 16.0, 400, text_color(cx), cx))
+            .child(
+                text(
+                    format!("Ciclo {}", row.cycle),
+                    12.8,
+                    400,
+                    muted_color(cx),
+                    cx,
+                )
+                .mt(px(5.0)),
+            );
         let message = div()
             .flex()
             .flex_col()
-            .child(text(row.text, 16.0, 400, TEXT))
-            .child(text(format!("{} · {}", row.family, row.intent), 12.8, 400, MUTED).mt(px(5.0)));
+            .child(text(row.text, 16.0, 400, text_color(cx), cx))
+            .child(
+                text(
+                    format!("{} · {}", row.family, row.intent),
+                    12.8,
+                    400,
+                    muted_color(cx),
+                    cx,
+                )
+                .mt(px(5.0)),
+            );
         let delivery = row.delivery;
         let result = if let Some(duration) = delivery.duration_ms {
             div()
                 .flex()
                 .flex_col()
-                .child(text("Completado", 16.0, 400, TEXT))
-                .child(text(format!("{duration} ms"), 12.8, 400, MUTED).mt(px(5.0)))
+                .child(text("Completado", 16.0, 400, text_color(cx), cx))
+                .child(text(format!("{duration} ms"), 12.8, 400, muted_color(cx), cx).mt(px(5.0)))
         } else {
-            text("No disponible", 16.0, 400, MUTED)
+            text("No disponible", 16.0, 400, muted_color(cx), cx)
         };
         table = table.child(
             div()
@@ -944,15 +1041,21 @@ fn history_table(rows: Vec<HistoryRow>) -> gpui::Stateful<gpui::Div> {
                 .w_full()
                 .min_h(px(row_height))
                 .border_b_1()
-                .border_color(rgb(CARD_BORDER))
+                .border_color(rgb(card_border_color(cx)))
                 .child(table_cell(when, widths[0]))
                 .child(table_cell(message, widths[1]))
-                .child(table_cell(text(delivery.mode, 16.0, 400, TEXT), widths[2]))
                 .child(table_cell(
-                    text(delivery.visual, 16.0, 400, TEXT),
+                    text(delivery.mode, 16.0, 400, text_color(cx), cx),
+                    widths[2],
+                ))
+                .child(table_cell(
+                    text(delivery.visual, 16.0, 400, text_color(cx), cx),
                     widths[3],
                 ))
-                .child(table_cell(text(delivery.audio, 16.0, 400, TEXT), widths[4]))
+                .child(table_cell(
+                    text(delivery.audio, 16.0, 400, text_color(cx), cx),
+                    widths[4],
+                ))
                 .child(table_cell(result, widths[5])),
         );
     }
@@ -979,9 +1082,9 @@ impl Render for Engineer {
         if self.capture_history {
             self.history_scroll.scroll_to_bottom();
         }
-        let status = self.status_section();
+        let status = self.status_section(cx);
         let configuration = self.configuration_section(cx);
-        let audio = Self::audio_section();
+        let audio = Self::audio_section(cx);
         let history = self.history_section(cx);
         let mut page = div()
             .id("engineer-page")
@@ -994,25 +1097,25 @@ impl Render for Engineer {
             .pl(px(24.0))
             .pr(px(34.0))
             .py(px(24.0))
-            .font_family("Inter W400")
+            .font_family(crate::orbit::sans_override("Inter W400", cx))
             .font_weight(FontWeight::NORMAL)
             .text_size(px(16.0))
-            .text_color(rgb(TEXT))
+            .text_color(rgb(text_color(cx)))
             .child(
                 div()
                     .flex()
                     .flex_col()
-                    .child(text("Ingeniero Vantare", 26.0, 400, TEXT))
+                    .child(text("Ingeniero Vantare", 26.0, 400, text_color(cx), cx))
                     .child(paragraph(
                         "Panel de pruebas: configura el ingeniero, comprueba el sonido y revisa cada entrega.",
-                    )),
+                     cx)),
             )
             .child(status)
             .child(configuration)
             .child(audio)
             .child(history);
         if let Some(error) = &self.error {
-            page = page.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d));
+            page = page.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d, cx));
         }
         surface::render(self, page, window, cx)
     }

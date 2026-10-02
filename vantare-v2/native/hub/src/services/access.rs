@@ -144,9 +144,9 @@ impl Remote {
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let button = if primary {
-            orbit::carmine_button(id, label)
+            orbit::carmine_button(id, label, cx)
         } else {
-            orbit::button(id, label)
+            orbit::button(id, label, cx)
         };
         button
             .w_full()
@@ -181,8 +181,8 @@ impl Remote {
             .tab_index(0)
             .cursor_pointer()
             .rounded(px(4.0))
-            .focus_visible(|style| style.border_1().border_color(rgb(orbit::CARMINE)))
-            .child(orbit::text(label, 12.0, 400, color))
+            .focus_visible(|style| style.border_1().border_color(rgb(orbit::carmine(cx))))
+            .child(orbit::text(label, 12.0, 400, color, cx))
             .on_click(cx.listener(move |this, _, _, cx| this.open_portal(page, cx)))
             .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -214,13 +214,17 @@ impl Remote {
                     .flex_col()
                     .items_center()
                     .gap(px(8.0))
-                    .child(orbit::icon("i-vantare", 48.0, orbit::CARMINE))
-                    .child(orbit::text("Welcome to Vantare", 20.0, 600, orbit::INK).mt(px(8.0)))
+                    .child(orbit::icon("i-vantare", 48.0, orbit::carmine(cx)))
+                    .child(
+                        orbit::text("Welcome to Vantare", 20.0, 600, orbit::ink(cx), cx)
+                            .mt(px(8.0)),
+                    )
                     .child(orbit::text(
                         "Sign in or create an account",
                         14.0,
                         400,
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
+                        cx,
                     )),
             );
         if waiting || checking {
@@ -232,7 +236,8 @@ impl Remote {
                 },
                 14.0,
                 400,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             ));
             if waiting {
                 body = body.child(
@@ -243,6 +248,7 @@ impl Remote {
                         } else {
                             "Cancelar"
                         },
+                        cx,
                     )
                     .on_click(cx.listener(|this, _, _, cx| this.request(Command::Logout, cx)))
                     .on_key_down(cx.listener(
@@ -259,8 +265,8 @@ impl Remote {
             body = body.child(self.access_choices(cx));
         }
         if let Some(error) = &self.access.error {
-            body = body.child(orbit::callout(error.clone())).child(
-                orbit::button("access-retry", "Reintentar")
+            body = body.child(orbit::callout(error.clone(), cx)).child(
+                orbit::button("access-retry", "Reintentar", cx)
                     .on_click(cx.listener(|this, _, _, cx| this.retry_access(cx)))
                     .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
                         if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -270,7 +276,9 @@ impl Remote {
                     })),
             );
         }
-        body = body.child(orbit::text("made by Vantare", 10.0, 600, orbit::INK_MUTED).mt(px(24.0)));
+        body = body.child(
+            orbit::text("made by Vantare", 10.0, 600, orbit::ink_muted(cx), cx).mt(px(24.0)),
+        );
         div()
             .id("hub-access")
             .track_focus(focus)
@@ -283,9 +291,9 @@ impl Remote {
             .justify_center()
             .overflow_y_scroll()
             .py(px(24.0))
-            .bg(rgb(orbit::CANVAS))
-            .text_color(rgb(orbit::INK))
-            .font_family("Inter W400")
+            .bg(rgb(orbit::canvas(cx)))
+            .text_color(rgb(orbit::ink(cx)))
+            .font_family(crate::orbit::sans_override("Inter W400", cx))
             .child(body)
     }
 
@@ -316,9 +324,9 @@ impl Remote {
                     .flex()
                     .items_center()
                     .gap(px(12.0))
-                    .child(div().flex_1().h(px(1.0)).bg(rgba(orbit::LINE)))
-                    .child(orbit::text("o", 10.0, 400, orbit::INK_3))
-                    .child(div().flex_1().h(px(1.0)).bg(rgba(orbit::LINE))),
+                    .child(div().flex_1().h(px(1.0)).bg(rgba(orbit::line(cx))))
+                    .child(orbit::text("o", 10.0, 400, orbit::ink_3(cx), cx))
+                    .child(div().flex_1().h(px(1.0)).bg(rgba(orbit::line(cx)))),
             )
             .child(self.access_button("access-email", "INICIAR SESIÓN CON EMAIL", false, cx))
             .child(
@@ -331,14 +339,14 @@ impl Remote {
                         "access-signup",
                         "¿No tienes cuenta? Crear cuenta",
                         Portal::SignUp,
-                        orbit::INK_2,
+                        orbit::ink_2(cx),
                         cx,
                     ))
                     .child(Self::portal_link(
                         "access-reset",
                         "¿Olvidaste tu contraseña?",
                         Portal::Reset,
-                        orbit::INK_3,
+                        orbit::ink_3(cx),
                         cx,
                     )),
             )
@@ -346,7 +354,8 @@ impl Remote {
                 "Google es el acceso recomendado para la beta pública.",
                 10.0,
                 400,
-                orbit::INK_3,
+                orbit::ink_3(cx),
+                cx,
             ))
     }
 }

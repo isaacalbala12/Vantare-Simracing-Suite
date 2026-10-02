@@ -1,5 +1,5 @@
 //! Composición de Engineer dentro de la shell; un solo árbol visual para uso y captura.
-use super::{Engineer, TEXT, text};
+use super::{Engineer, text, text_color};
 use gpui::{
     Context, Div, IntoElement, Pixels, Size, Window, anchored, canvas, deferred, div, point,
     prelude::*, px, rgb,
@@ -21,7 +21,7 @@ pub(super) fn render(
         // El harness Wails añade su franja sin reducir el 100vh de la shell.
         // La captura también conserva ese alto; el borde inferior queda recortado.
         .h(window.viewport_size().height - px(70.0))
-        .bg(rgb(crate::orbit::CANVAS))
+        .bg(rgb(crate::orbit::canvas(cx)))
         .overflow_y_scroll()
         .track_scroll(&engineer.history_scroll)
         .child(page);
@@ -60,12 +60,12 @@ pub(super) fn render(
                 ),
         ));
     if demo {
-        root = capture_chrome(root, engineer.content_left, window.viewport_size());
+        root = capture_chrome(root, engineer.content_left, window.viewport_size(), cx);
     }
     root
 }
 
-fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>) -> Div {
+fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>, cx: &gpui::App) -> Div {
     // Artefactos del harness Wails, exclusivamente en --capture engineer-*.
     // No desplazan la shell ni alteran los estados de usuario en uso normal.
     root.child(deferred(
@@ -73,13 +73,14 @@ fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>) -> Div {
             div()
                 .w(viewport.width)
                 .h(px(40.0))
-                .bg(rgb(0x0054_3f18))
+                .bg(rgb(crate::orbit::legacy_rgb(0x0054_3f18, cx)))
                 .p(px(8.0))
                 .child(text(
                     "Harness sintético · no valida LMU ni audio real",
                     16.0,
                     400,
-                    TEXT,
+                    text_color(cx),
+                    cx,
                 )),
         ),
     ))
@@ -93,20 +94,21 @@ fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>) -> Div {
                 .items_center()
                 .gap(px(10.0))
                 .px(px(26.0))
-                .bg(rgb(crate::orbit::CANVAS))
+                .bg(rgb(crate::orbit::canvas(cx)))
                 .border_b_1()
-                .border_color(rgb(0x001b_1c1e))
+                .border_color(rgb(crate::orbit::legacy_rgb(0x001b_1c1e, cx)))
                 .child(crate::orbit::tracked_text(
                     "TELEMETRY CORE",
                     10.5,
                     700,
-                    crate::orbit::INK_4,
+                    crate::orbit::ink_4(cx),
                     1.155,
+                    cx,
                 ))
-                .child(text("/", 12.0, 400, crate::orbit::INK_4))
-                .child(text("Ingeniero", 16.0, 700, TEXT))
+                .child(text("/", 12.0, 400, crate::orbit::ink_4(cx), cx))
+                .child(text("Ingeniero", 16.0, 700, text_color(cx), cx))
                 .child(
-                    crate::orbit::icon("i-campana", 14.0, crate::orbit::INK_4)
+                    crate::orbit::icon("i-campana", 14.0, crate::orbit::ink_4(cx))
                         .absolute()
                         .right(px(26.0))
                         .top(px(28.0)),
@@ -122,10 +124,15 @@ fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>) -> Div {
                 .items_center()
                 .justify_between()
                 .px(px(23.0))
-                .bg(rgb(0x000f_1012))
-                .child(text("Ingeniero", 14.0, 700, TEXT))
-                .child(crate::orbit::mono_text("v0.3.9", 10.0, crate::orbit::INK_4))
-                .child(text("‹", 16.0, 400, crate::orbit::INK_4)),
+                .bg(rgb(crate::orbit::legacy_rgb(0x000f_1012, cx)))
+                .child(text("Ingeniero", 14.0, 700, text_color(cx), cx))
+                .child(crate::orbit::mono_text(
+                    "v0.3.9",
+                    10.0,
+                    crate::orbit::ink_4(cx),
+                    cx,
+                ))
+                .child(text("‹", 16.0, 400, crate::orbit::ink_4(cx), cx)),
         ),
     ))
 }

@@ -26,6 +26,7 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         return orbit::empty_state(
             "Sin plan calculado",
             "Calcula una estrategia antes de editar las paradas.",
+            cx,
         )
         .into_any_element();
     };
@@ -40,9 +41,9 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
         .px(px(12.0))
         .pt(px(10.0))
         .gap(px(14.0))
-        .child(super::plan::edit_heading("Ajustar paradas"))
+        .child(super::plan::edit_heading("Ajustar paradas", cx))
         .child(
-            orbit::button("strategy-stops-back", "← Plan")
+            orbit::button("strategy-stops-back", "← Plan", cx)
                 .w(px(70.0))
                 .h(px(40.0))
                 .on_click(cx.listener(|this, _, _, cx| {
@@ -51,12 +52,12 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                 })),
         )
         .child(
-            super::plan::plan_card()
+            super::plan::plan_card(cx)
                 .p(px(18.0))
                 .flex()
                 .flex_col()
                 .gap(px(14.0))
-                .border_color(orbit::tint(orbit::CARMINE, 0.4))
+                .border_color(orbit::tint(orbit::carmine(cx), 0.4))
                 .child(
                     div()
                         .flex()
@@ -65,14 +66,18 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                         .gap(px(14.0))
                         .h(px(42.0))
                         .border_b_1()
-                        .border_color(rgba(orbit::LINE))
-                        .child(orbit::text("TOTAL", 11.0, 700, orbit::RED).line_height(px(21.6)))
+                        .border_color(rgba(orbit::line(cx)))
+                        .child(
+                            orbit::text("TOTAL", 11.0, 700, orbit::red(cx), cx)
+                                .line_height(px(21.6)),
+                        )
                         .child(
                             orbit::text(
                                 edited.pit_stop_laps.len().to_string(),
                                 18.0,
                                 700,
-                                orbit::INK,
+                                orbit::ink(cx),
+                                cx,
                             )
                             .line_height(px(21.6)),
                         )
@@ -80,7 +85,8 @@ pub(super) fn render_editor(this: &Strategy, cx: &mut Context<Strategy>) -> gpui
                             service_label(this, index),
                             12.0,
                             400,
-                            orbit::INK_2,
+                            orbit::ink_2(cx),
+                            cx,
                         )),
                 )
                 .child(stop_selector(edited, index, cx))
@@ -113,11 +119,11 @@ fn stop_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy
                 .px(px(14.0))
                 .rounded(px(8.0))
                 .border_1()
-                .border_color(rgba(orbit::LINE_STRONG))
-                .bg(rgb(0x000f_1212))
+                .border_color(rgba(orbit::line_strong(cx)))
+                .bg(rgb(crate::orbit::legacy_rgb(0x000f_1212, cx)))
                 .when(index == selected, |tab| {
-                    tab.border_color(rgb(orbit::RED))
-                        .bg(orbit::tint(orbit::CARMINE, 0.1))
+                    tab.border_color(rgb(orbit::red(cx)))
+                        .bg(orbit::tint(orbit::carmine(cx), 0.1))
                 })
                 .child(
                     div()
@@ -126,14 +132,21 @@ fn stop_selector(edited: &EditedPlan, selected: usize, cx: &mut Context<Strategy
                         .items_center()
                         .justify_center()
                         .rounded_full()
-                        .bg(rgb(0x000a_0c0e))
-                        .child(orbit::text((index + 1).to_string(), 16.0, 400, orbit::RED)),
+                        .bg(rgb(crate::orbit::legacy_rgb(0x000a_0c0e, cx)))
+                        .child(orbit::text(
+                            (index + 1).to_string(),
+                            16.0,
+                            400,
+                            orbit::red(cx),
+                            cx,
+                        )),
                 )
                 .child(orbit::text(
                     format!("Parada {}", index + 1),
                     16.0,
                     400,
-                    orbit::INK,
+                    orbit::ink(cx),
+                    cx,
                 ))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.plan_editor.stop = index;
@@ -180,9 +193,9 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
         .as_ref()
         .and_then(|edited| edited.pit_stop_laps.get(index))
         .copied();
-    super::plan::plan_card()
+    super::plan::plan_card(cx)
         .p(px(16.0))
-        .bg(rgb(0x0010_1415))
+        .bg(rgb(crate::orbit::legacy_rgb(0x0010_1415, cx)))
         .gap(px(16.0))
         .child(
             div()
@@ -190,14 +203,21 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                 .justify_between()
                 .items_center()
                 .child(
-                    orbit::text(format!("Parada {}", index + 1), 16.0, 700, orbit::INK)
-                        .line_height(px(20.0)),
+                    orbit::text(
+                        format!("Parada {}", index + 1),
+                        16.0,
+                        700,
+                        orbit::ink(cx),
+                        cx,
+                    )
+                    .line_height(px(20.0)),
                 )
                 .child(orbit::text(
                     lap.map_or_else(|| "Sin dato".into(), |lap| format!("Vuelta {lap}")),
                     12.0,
                     400,
-                    orbit::INK_2,
+                    orbit::ink_2(cx),
+                    cx,
                 )),
         )
         .when(this.capture_demo.is_none(), |card| {
@@ -208,7 +228,8 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                 "Valores anteriores: recalcula para actualizar los recursos.",
                 12.0,
                 400,
-                orbit::INK_2,
+                orbit::ink_2(cx),
+                cx,
             ))
         })
         .child(
@@ -222,8 +243,9 @@ fn stop_details(this: &Strategy, index: usize, cx: &mut Context<Strategy>) -> Di
                     tyres,
                     compound,
                     this.capture_demo.is_some(),
+                    cx,
                 ))
-                .child(cost_grid(&values)),
+                .child(cost_grid(&values, cx)),
         )
 }
 
@@ -233,6 +255,7 @@ fn stop_resources(
     tyres: Option<bool>,
     compound: &str,
     demo: bool,
+    cx: &gpui::App,
 ) -> Div {
     div()
         .flex()
@@ -242,14 +265,14 @@ fn stop_resources(
         .items_start()
         .pr(px(14.0))
         .border_r_1()
-        .border_color(rgba(orbit::LINE))
+        .border_color(rgba(orbit::line(cx)))
         .child(
             div()
                 .flex()
                 .flex_col()
                 .flex_1()
                 .gap(px(40.0))
-                .child(resource_value("Fuel añadido", fuel, "L"))
+                .child(resource_value("Fuel añadido", fuel, "L", cx))
                 .child(
                     div()
                         .flex()
@@ -260,7 +283,7 @@ fn stop_resources(
                                 .size(px(14.0))
                                 .rounded(px(3.0))
                                 .bg(rgb(if tyres == Some(true) {
-                                    orbit::CARMINE
+                                    orbit::carmine(cx)
                                 } else {
                                     0x0008_0b0c
                                 }))
@@ -268,10 +291,17 @@ fn stop_resources(
                                     if tyres == Some(true) { "✓" } else { "" },
                                     12.0,
                                     700,
-                                    orbit::INK,
+                                    orbit::ink(cx),
+                                    cx,
                                 )),
                         )
-                        .child(orbit::text(tyre_label(tyres), 13.0, 400, orbit::INK))
+                        .child(orbit::text(
+                            tyre_label(tyres),
+                            13.0,
+                            400,
+                            orbit::ink(cx),
+                            cx,
+                        ))
                         .opacity(if demo { 1.0 } else { orbit::DISABLED }),
                 ),
         )
@@ -281,14 +311,14 @@ fn stop_resources(
                 .flex_col()
                 .flex_1()
                 .gap(px(10.0))
-                .child(resource_value("Energía virtual añadida", energy, "%"))
+                .child(resource_value("Energía virtual añadida", energy, "%", cx))
                 .child(
                     div()
                         .flex()
                         .flex_col()
                         .gap(px(8.0))
-                        .child(orbit::text("Compuesto", 13.0, 400, orbit::INK_2))
-                        .child(super::datos::select_value(compound)),
+                        .child(orbit::text("Compuesto", 13.0, 400, orbit::ink_2(cx), cx))
+                        .child(super::datos::select_value(compound, cx)),
                 ),
         )
 }
@@ -301,7 +331,7 @@ fn tyre_label(tyres: Option<bool>) -> &'static str {
     }
 }
 
-fn cost_grid(values: &[String; 4]) -> Div {
+fn cost_grid(values: &[String; 4], cx: &gpui::App) -> Div {
     div()
         .flex()
         .flex_col()
@@ -313,19 +343,19 @@ fn cost_grid(values: &[String; 4]) -> Div {
                 .flex()
                 .gap(px(8.0))
                 .h(px(72.0))
-                .child(cost_metric("Tránsito", &values[0]))
-                .child(cost_metric("Servicio", &values[1])),
+                .child(cost_metric("Tránsito", &values[0], cx))
+                .child(cost_metric("Servicio", &values[1], cx)),
         )
         .child(
             div()
                 .flex()
                 .gap(px(8.0))
                 .h(px(74.0))
-                .child(cost_metric("Solape", &values[2]))
+                .child(cost_metric("Solape", &values[2], cx))
                 .child(
-                    cost_metric("Total", &values[3])
-                        .border_color(orbit::tint(orbit::CARMINE, 0.5))
-                        .bg(orbit::tint(orbit::CARMINE, 0.08)),
+                    cost_metric("Total", &values[3], cx)
+                        .border_color(orbit::tint(orbit::carmine(cx), 0.5))
+                        .bg(orbit::tint(orbit::carmine(cx), 0.08)),
                 ),
         )
 }
@@ -346,14 +376,14 @@ fn service_label(this: &Strategy, index: usize) -> &'static str {
     }
 }
 
-fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
+fn resource_value(label: &str, value: Option<f64>, unit: &str, cx: &gpui::App) -> Div {
     div()
         .flex()
         .flex_col()
         .flex_1()
         .min_w_0()
         .gap(px(8.0))
-        .child(orbit::text(label.to_owned(), 13.0, 400, orbit::INK_2).line_height(px(19.5)))
+        .child(orbit::text(label.to_owned(), 13.0, 400, orbit::ink_2(cx), cx).line_height(px(19.5)))
         .child(
             div()
                 .flex()
@@ -369,8 +399,8 @@ fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
                         .items_center()
                         .rounded(px(8.0))
                         .border_1()
-                        .border_color(rgba(orbit::LINE_STRONG))
-                        .bg(rgb(0x0008_0b0c))
+                        .border_color(rgba(orbit::line_strong(cx)))
+                        .bg(rgb(crate::orbit::legacy_rgb(0x0008_0b0c, cx)))
                         .child(orbit::text(
                             value.map_or_else(
                                 || "Sin dato".into(),
@@ -382,19 +412,26 @@ fn resource_value(label: &str, value: Option<f64>, unit: &str) -> Div {
                             ),
                             13.0,
                             400,
-                            orbit::INK,
+                            orbit::ink(cx),
+                            cx,
                         )),
                 )
-                .child(orbit::text(unit.to_owned(), 13.0, 400, orbit::INK_2)),
+                .child(orbit::text(
+                    unit.to_owned(),
+                    13.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                )),
         )
 }
 
-fn cost_metric(label: &str, value: &str) -> Div {
-    super::plan::plan_card()
+fn cost_metric(label: &str, value: &str, cx: &gpui::App) -> Div {
+    super::plan::plan_card(cx)
         .flex_1()
         .min_w_0()
         .p(px(14.0))
-        .child(super::plan::fact(label, value.to_owned()))
+        .child(super::plan::fact(label, value.to_owned(), cx))
 }
 
 fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> Div {
@@ -402,12 +439,12 @@ fn stop_controls(this: &Strategy, cx: &mut Context<Strategy>, index: usize) -> D
         .flex()
         .items_center()
         .gap(px(8.0))
-        .child(orbit::text("Mover parada", 12.0, 600, orbit::INK_2))
+        .child(orbit::text("Mover parada", 12.0, 600, orbit::ink_2(cx), cx))
         .children(
             [(-1, "− 1 vuelta"), (1, "+ 1 vuelta")]
                 .into_iter()
                 .map(|(delta, label)| {
-                    orbit::button("strategy-stop-move", label)
+                    orbit::button("strategy-stop-move", label, cx)
                         .id(("strategy-stop-move", (index * 2) + usize::from(delta > 0)))
                         .when(this.running, |button| button.opacity(orbit::DISABLED))
                         .on_click(cx.listener(move |this, _, _, cx| {

@@ -357,11 +357,12 @@ impl Launcher {
             decision.message.clone(),
             orbit::BODY,
             500,
-            orbit::INK,
+            orbit::ink(cx),
+            cx,
         ));
         for (index, &action) in decision.actions.iter().enumerate() {
             form = form.child(editor::form_button(
-                button(action.label(), action.label()),
+                button(action.label(), action.label(), cx),
                 &self.form_actions[index],
                 move |this, window, cx| this.answer_decision(action, window, cx),
                 cx,
@@ -730,7 +731,7 @@ impl Launcher {
             .id
             .as_deref()
             .is_some_and(|id| CATALOG.iter().any(|app| app.id == id));
-        orbit::card("Aplicación · borrador sin guardar").child(
+        orbit::card("Aplicación · borrador sin guardar", cx).child(
             orbit::card_body()
                 .when_some(self.error.clone(), |body, error| {
                     body.child(presentation::error_panel(error, cx))
@@ -739,11 +740,13 @@ impl Launcher {
                     "Nombre",
                     "Nombre visible en el catálogo",
                     draft.name.clone(),
+                    cx,
                 ))
                 .child(orbit::setting_row(
                     "Argumentos",
                     "Array JSON de strings; sin shell",
                     draft.args.clone(),
+                    cx,
                 ))
                 .child(orbit::setting_row(
                     "Ejecutable",
@@ -754,13 +757,13 @@ impl Launcher {
                         .gap_2()
                         .child(draft.executable.clone())
                         .child(editor::form_button(
-                            button("pick-app-path", "Elegir ejecutable"),
+                            button("pick-app-path", "Elegir ejecutable", cx),
                             &self.form_actions[0],
                             |this, _, cx| this.pick_executable(cx),
                             cx,
                         ))
                         .when(official, |row| {
-                            row.child(button("auto-app-path", "Usar descubrimiento").on_click(
+                            row.child(button("auto-app-path", "Usar descubrimiento", cx).on_click(
                                 cx.listener(|this, _, _, cx| {
                                     if let Some(draft) = &mut this.app_draft {
                                         draft.executable.update(cx, |field, cx| {
@@ -771,6 +774,7 @@ impl Launcher {
                                 }),
                             ))
                         }),
+                    cx,
                 ))
                 .child(self.app_actions(cx)),
         )
@@ -785,13 +789,13 @@ impl Launcher {
             .gap_2()
             .py_2()
             .child(editor::form_button(
-                button("save-app", "Guardar aplicación"),
+                button("save-app", "Guardar aplicación", cx),
                 &self.form_actions[2],
                 Self::commit_form,
                 cx,
             ))
             .child(editor::form_button(
-                button("discard-app", "Descartar borrador"),
+                button("discard-app", "Descartar borrador", cx),
                 &self.form_actions[1],
                 Self::close_form,
                 cx,
@@ -799,16 +803,14 @@ impl Launcher {
             .when_some(
                 draft.id.clone().filter(|id| id.starts_with("custom:")),
                 |row, id| {
-                    row.child(
-                        button("delete-app", "Eliminar aplicación").on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                if this.edit(|doc| doc.remove_app(&id), cx) {
-                                    this.close_form(window, cx);
-                                    this.scan(cx);
-                                }
-                            },
-                        )),
-                    )
+                    row.child(button("delete-app", "Eliminar aplicación", cx).on_click(
+                        cx.listener(move |this, _, window, cx| {
+                            if this.edit(|doc| doc.remove_app(&id), cx) {
+                                this.close_form(window, cx);
+                                this.scan(cx);
+                            }
+                        }),
+                    ))
                 },
             )
     }

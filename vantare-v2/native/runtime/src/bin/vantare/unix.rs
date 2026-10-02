@@ -26,11 +26,22 @@ struct BoundSocket {
     path: PathBuf,
     device: u64,
     inode: u64,
+    _lock: fs::File,
 }
 
 impl BoundSocket {
     fn bind(name: &str) -> io::Result<Self> {
         let path = socket_path(name)?;
+        // Cubre comprobar/eliminar/bind y sigue vivo hasta retirar el socket.
+        let lock = vantare_ipc::transport::lock_endpoint(&path.with_extension("lock")).map_err(
+            |error| {
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    io::ErrorKind::AddrInUse.into()
+                } else {
+                    error
+                }
+            },
+        )?;
         let listener = match UnixListener::bind(&path) {
             Ok(listener) => listener,
             Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
@@ -79,6 +90,7 @@ impl BoundSocket {
             path,
             device: metadata.dev(),
             inode: metadata.ino(),
+            _lock: lock,
         })
     }
 }
@@ -420,6 +432,79 @@ mod tests {
                 .expect("instancia posterior")
                 .is_some()
         );
+    }
+
+    #[test]
+    fn orphan_recovery_respects_a_contender_owner_lock() {
+        use std::os::unix::fs::OpenOptionsExt;
+        let name = unique_name("orphan-lock");
+        let path = socket_path(&name).expect("ruta");
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .open(path.with_extension("lock"))
+            .expect("lock de dueño");
+        lock.try_lock().expect("contendiente en recuperación");
+        drop(UnixListener::bind(&path).expect("socket huérfano"));
+        assert!(Instance::acquire(&name).expect("contendiente").is_none());
+        assert!(path.exists(), "el contendiente no borra el socket");
+        drop(lock);
+        let owner = Instance::acquire(&name).expect("recuperar").expect("dueño");
+        assert!(UnixStream::connect(&path).is_ok());
+        assert!(Instance::acquire(&name).expect("segundo").is_none());
+        drop(owner);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn simultaneous_orphan_recovery_has_exactly_one_owner() {
+        use std::sync::{Arc, Barrier};
+        let name = unique_name("orphan-race");
+        let path = socket_path(&name).expect("ruta");
+        drop(UnixListener::bind(&path).expect("huérfano"));
+        let ready = Arc::new(Barrier::new(3));
+        let workers: Vec<_> = (0..2)
+            .map(|_| {
+                let name = name.clone();
+                let ready = Arc::clone(&ready);
+                thread::spawn(move || {
+                    ready.wait();
+                    Instance::acquire(&name).expect("recuperación")
+                })
+            })
+            .collect();
+        ready.wait();
+        let owners: Vec<_> = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("contendiente"))
+            .collect();
+        assert_eq!(owners.iter().filter(|owner| owner.is_some()).count(), 1);
+        assert!(UnixStream::connect(&path).is_ok());
+        drop(owners);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn endpoint_and_lock_symlinks_are_rejected() {
+        for lock in [false, true] {
+            let name = unique_name("symlink");
+            let path = socket_path(&name).expect("ruta");
+            let link = if lock {
+                path.with_extension("lock")
+            } else {
+                path.clone()
+            };
+            let target = path.with_extension("target");
+            fs::write(&target, b"no tocar").expect("fichero propio");
+            std::os::unix::fs::symlink(&target, &link).expect("symlink propio");
+            assert!(Instance::acquire(&name).is_err());
+            assert_eq!(fs::read(&target).expect("destino intacto"), b"no tocar");
+            fs::remove_file(link).expect("limpiar symlink propio");
+            fs::remove_file(target).expect("limpiar destino propio");
+        }
     }
 
     #[test]

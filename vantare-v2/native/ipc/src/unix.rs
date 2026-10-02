@@ -202,6 +202,30 @@ struct Endpoint {
     // unlink permitiría a otro proceso bloquear un inode distinto con igual nombre.
     _lock: File,
 }
+
+/// Lock exclusivo durante toda la vida del endpoint. El directorio debe ser
+/// privado del usuario; no borrar el fichero al cerrar (conserva su inode).
+/// Rechaza symlinks, permisos ajenos y devuelve [`io::ErrorKind::WouldBlock`]
+/// si ya tiene dueño.
+pub fn lock_endpoint(path: &Path) -> io::Result<File> {
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path)?;
+    let metadata = lock.metadata()?;
+    if !metadata.is_file() || metadata.uid() != uid() || metadata.mode() & 0o777 != 0o600 {
+        return Err(io::ErrorKind::PermissionDenied.into());
+    }
+    lock.try_lock().map_err(|error| match error {
+        fs::TryLockError::WouldBlock => io::ErrorKind::WouldBlock.into(),
+        fs::TryLockError::Error(error) => error,
+    })?;
+    Ok(lock)
+}
 impl Drop for Endpoint {
     fn drop(&mut self) {
         // Seguimos teniendo el lock al retirar nuestro socket.
@@ -217,22 +241,7 @@ pub struct Listener {
 impl Listener {
     pub fn new(name: &str, stop: Arc<Event>, timeout: Duration) -> io::Result<Self> {
         let path = socket_path(name)?;
-        let lock = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .mode(0o600)
-            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-            .open(path.with_extension("lock"))?;
-        let metadata = lock.metadata()?;
-        if !metadata.is_file() || metadata.uid() != uid() || metadata.mode() & 0o777 != 0o600 {
-            return Err(io::ErrorKind::PermissionDenied.into());
-        }
-        // SAFETY: fd válido; flock no recibe punteros y el File conserva el lock.
-        if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-            return Err(io::Error::last_os_error());
-        }
+        let lock = lock_endpoint(&path.with_extension("lock"))?;
         match fs::symlink_metadata(&path) {
             Ok(metadata) => {
                 if !metadata.file_type().is_socket() || metadata.uid() != uid() {

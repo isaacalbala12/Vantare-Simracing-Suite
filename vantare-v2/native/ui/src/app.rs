@@ -144,39 +144,13 @@ impl Overlay {
     }
 }
 
-// El encargo permite Settings/constructores; los portes de variantes que exigen
-// editar ingest/paint siguen pendientes. No anunciar una opción ignorada como aplicada.
+// Estas claves legacy se conservan en el documento, pero no se proyectan.
 fn settings_limit(settings: &Settings) -> Option<&'static str> {
     match settings {
-        Settings::Delta(options) if options.template_id != "instrument" => {
-            Some("templateId persistido; el renderer actual solo pinta instrument")
-        }
-        Settings::Pedals(options) if options.transparent_background => {
-            Some("transparentBackground persistido; variante aún sin portar")
-        }
-        Settings::BroadcastTower(options) if options.driver_carousel => {
-            Some("driverCarousel persistido; variante aún sin portar")
-        }
-        Settings::PedalsTelemetry(options) if options.steering_wheel != "generic" => {
-            Some("steeringWheel persistido; el renderer actual solo pinta generic")
-        }
-        Settings::RacingFlags(options) if options.text_color != "#000000" => {
-            Some("textColor persistido; variante aún sin portar")
-        }
-        Settings::HeadToHead(options) if options.target != "ahead" => {
-            Some("target persistido; el renderer actual solo proyecta ahead")
-        }
         Settings::Standings(options)
-            if options.template_id != "signature"
-                || options.header_first != "none"
-                || options.header_second != "none"
-                || options.show_brand
-                || options.footer_slots.is_some()
-                || [&options.footer_first, &options.footer_second]
-                    .iter()
-                    .any(|value| !["none", "track", "estimatedLaps"].contains(&value.as_str())) =>
+            if options.header_first != "none" || options.header_second != "none" =>
         {
-            Some("opciones persistidas; variantes y métricas adicionales aún sin portar")
+            Some("headerFirst/headerSecond legacy persistidos; no se usan en la cabecera")
         }
         _ => None,
     }
@@ -718,6 +692,43 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn supported_variants_do_not_report_a_pending_port() {
+        for value in [
+            serde_json::json!({"kind":"delta", "templateId":"capsule"}),
+            serde_json::json!({"kind":"pedals", "transparentBackground":true}),
+            serde_json::json!({"kind":"broadcast-tower", "driverCarousel":true}),
+            serde_json::json!({"kind":"pedals-telemetry", "steeringWheel":"ferrari-499p"}),
+            serde_json::json!({"kind":"racing-flags", "textColor":"#abcdef"}),
+            serde_json::json!({"kind":"head-to-head", "target":"behind"}),
+            serde_json::json!({"kind":"standings", "templateId":"broadcast", "showBrand":true,
+                "footerFirst":"remaining", "footerSecond":"rain",
+                "footerSlots":["trackTemperature", "rain", "wetness"]}),
+        ] {
+            let settings: Settings = serde_json::from_value(value).expect("variante soportada");
+            assert_eq!(settings.normalized(), settings, "opciones aplicables");
+            assert_eq!(
+                settings_limit(&settings),
+                None,
+                "{}",
+                settings.kind().name()
+            );
+        }
+    }
+
+    #[test]
+    fn ignored_legacy_header_keys_still_report_their_actual_limit() {
+        for key in ["headerFirst", "headerSecond"] {
+            let mut value = serde_json::json!({"kind":"standings"});
+            value[key] = "track".into();
+            let settings: Settings = serde_json::from_value(value).expect("cabecera legacy");
+            assert_eq!(
+                settings_limit(&settings),
+                Some("headerFirst/headerSecond legacy persistidos; no se usan en la cabecera")
+            );
+        }
+    }
+
     #[test]
     fn preview_scale_does_not_resize_the_logical_widget_and_rejects_invalid_factors() {
         let mut overlay = super::Overlay::new(

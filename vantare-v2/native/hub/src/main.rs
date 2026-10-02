@@ -2,7 +2,34 @@
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
+
+fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
+    let (palette, scheme) = value
+        .split_once('-')
+        .ok_or("apariencia requiere paleta-esquema")?;
+    let palette = match palette {
+        "vantare" => Palette::Vantare,
+        "rose" => Palette::Rose,
+        "grove" => Palette::Grove,
+        "ocean" => Palette::Ocean,
+        "ember" => Palette::Ember,
+        "iris" => Palette::Iris,
+        "mono" => Palette::Mono,
+        _ => return Err("paleta de captura desconocida".into()),
+    };
+    let scheme = match scheme {
+        "dark" => Scheme::Dark,
+        "light" => Scheme::Light,
+        _ => return Err("esquema de captura debe ser dark o light".into()),
+    };
+    Ok(AppearanceSettings {
+        palette,
+        scheme,
+        ..Default::default()
+    })
+}
 
 fn persistence_paths(
     capture_root: Option<&Path>,
@@ -66,6 +93,7 @@ struct RawOptions {
     explicit_section: bool,
     capture_name: Option<String>,
     capture_output: Option<PathBuf>,
+    capture_appearance: Option<AppearanceSettings>,
     demo_requested: bool,
 }
 
@@ -84,6 +112,7 @@ impl RawOptions {
             explicit_section: false,
             capture_name: None,
             capture_output: None,
+            capture_appearance: None,
             demo_requested: false,
         };
         let mut args = args.iter();
@@ -98,6 +127,11 @@ impl RawOptions {
                 "--out" if parsed.capture_output.is_none() => {
                     parsed.capture_output =
                         Some(PathBuf::from(args.next().ok_or("falta PNG de salida")?));
+                }
+                "--appearance" if parsed.capture_appearance.is_none() => {
+                    parsed.capture_appearance = Some(capture_appearance(
+                        args.next().ok_or("falta apariencia de captura")?,
+                    )?);
                 }
                 "--workshop" if parsed.section == Section::Home => {
                     parsed.section = Section::Workshop;
@@ -172,10 +206,14 @@ impl RawOptions {
             explicit_section,
             capture_name,
             capture_output,
+            capture_appearance,
             demo_requested,
         } = self;
         if capture_name.is_some() != capture_output.is_some() {
             return Err("--capture requiere --out".into());
+        }
+        if capture_appearance.is_some() && capture_name.is_none() {
+            return Err("--appearance requiere --capture".into());
         }
         let capture = capture_name
             .as_deref()
@@ -236,6 +274,7 @@ impl RawOptions {
             demo,
             capture,
             capture_output,
+            capture_appearance,
         })
     }
 }
@@ -261,7 +300,8 @@ fn main() -> ExitCode {
             eprintln!(
                 "{error}
 uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
-     vantare-hub --capture PANTALLA --out PNG [--demo]"
+     vantare-hub --capture PANTALLA --out PNG [--demo] [--appearance PALETA-dark|PALETA-light]
+     paletas: vantare, rose, grove, ocean, ember, iris, mono"
             );
             return ExitCode::from(2);
         }
@@ -300,6 +340,80 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn capture_appearance_resolves_the_requested_palette_and_scheme() {
+        for (name, palette) in [
+            ("vantare", Palette::Vantare),
+            ("rose", Palette::Rose),
+            ("grove", Palette::Grove),
+            ("ocean", Palette::Ocean),
+            ("ember", Palette::Ember),
+            ("iris", Palette::Iris),
+            ("mono", Palette::Mono),
+        ] {
+            for (name_scheme, scheme) in [("dark", Scheme::Dark), ("light", Scheme::Light)] {
+                let options = parse(&[
+                    "--capture".into(),
+                    "inicio-base".into(),
+                    "--out".into(),
+                    "capture.png".into(),
+                    "--appearance".into(),
+                    format!("{name}-{name_scheme}"),
+                ])
+                .expect("apariencia de captura");
+                let settings = options.capture_appearance.expect("apariencia explícita");
+                assert_eq!(
+                    settings,
+                    AppearanceSettings {
+                        palette,
+                        scheme,
+                        ..Default::default()
+                    }
+                );
+                let theme = vantare_hub::orbit::theme::Theme::from_settings(settings);
+                assert_eq!((theme.palette, theme.scheme), (palette, scheme));
+            }
+        }
+        assert!(
+            parse(&["--demo".into()])
+                .expect("demo normal")
+                .capture_appearance
+                .is_none()
+        );
+        assert!(
+            parse(&[
+                "--capture".into(),
+                "inicio-base".into(),
+                "--out".into(),
+                "capture.png".into()
+            ])
+            .expect("captura predeterminada")
+            .capture_appearance
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn capture_appearance_rejects_invalid_repeated_and_non_capture_options() {
+        for tail in [
+            vec!["--appearance"],
+            vec!["--appearance", "unknown-dark"],
+            vec!["--appearance", "vantare"],
+            vec!["--appearance", "vantare-system"],
+            vec!["--appearance", "vantare-light-extra"],
+            vec!["--appearance", "vantare-dark", "--appearance", "mono-light"],
+        ] {
+            let args = ["--capture", "inicio-base", "--out", "capture.png"]
+                .into_iter()
+                .chain(tail)
+                .map(String::from)
+                .collect::<Vec<_>>();
+            assert!(parse(&args).is_err());
+        }
+        assert!(parse(&["--appearance".into(), "vantare-dark".into()]).is_err());
+        assert!(parse(&["--demo".into(), "--appearance".into(), "mono-light".into()]).is_err());
+    }
+
     #[test]
     fn options_select_local_data_and_scene_and_reject_incomplete_or_repeated_values() {
         let args = |items: &[&str]| {

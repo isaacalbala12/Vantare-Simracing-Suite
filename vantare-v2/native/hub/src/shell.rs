@@ -46,6 +46,7 @@ pub struct Options {
     pub demo: Option<crate::demo::DemoData>,
     pub capture: Option<crate::demo::CaptureState>,
     pub capture_output: Option<PathBuf>,
+    pub capture_appearance: Option<orbit::theme::AppearanceSettings>,
 }
 
 struct Hub {
@@ -789,7 +790,11 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture);
     }
-    let appearance = settings::appearance::Store::load(options.data_dir.join("appearance.json"))?;
+    let mut appearance =
+        settings::appearance::Store::load(options.data_dir.join("appearance.json"))?;
+    if let Some(settings) = options.capture.as_ref().and(options.capture_appearance) {
+        appearance.settings = settings;
+    }
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),

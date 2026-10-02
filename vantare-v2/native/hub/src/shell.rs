@@ -394,7 +394,7 @@ impl Render for Hub {
                     })
                     .child(content),
             );
-        div()
+        let frame = div()
             .id("hub")
             .track_focus(&self.focus)
             .tab_group()
@@ -435,8 +435,19 @@ impl Render for Hub {
             })
             .when_some(self.notifications.read(cx).popover(), |root, layer| {
                 root.child(div().absolute().inset_0().size_full().child(layer))
-            })
-            .into_any_element()
+            });
+        if self
+            .capture
+            .as_ref()
+            .is_some_and(|capture| capture.section == Section::Engineer)
+        {
+            div()
+                .size_full()
+                .child(frame.top(gpui::px(40.0)))
+                .into_any_element()
+        } else {
+            frame.into_any_element()
+        }
     }
 }
 

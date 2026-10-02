@@ -138,6 +138,12 @@ No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
 
 El proceso Engineer pertenece al supervisor y sigue independiente del Hub.
 Estas rutas implementadas no prueban login/envío remoto, juego, OBS o empaquetado.
+El worker de servicios publica su evento de cancelación antes de conectar o leer
+el saludo. El cierre lo señala y espera el join en el ejecutor de fondo; no bloquea
+el hilo UI durante el join. GPUI limita las futures de cierre a 200 ms; señalar
+el evento y cerrar el sender despierta también connect/hello y recv pendientes.
+Descartar una conexión no cancela al propietario, por
+lo que una reconexión conserva su evento hasta el cierre del Hub.
 El microplan y los bloques fechados conservan la evidencia de los hitos anteriores.
 
 

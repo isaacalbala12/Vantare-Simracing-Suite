@@ -1,4 +1,4 @@
-//! UI sin red ni tokens. Un worker posee el hijo y todo el I/O bloqueante.
+//! UI sin red ni tokens. Un worker cancelable posee la conexión IPC y el I/O bloqueante.
 use super::{
     client::{Client, REQUEST_POLL, default_binary},
     protocol::{Command, Reply},
@@ -6,13 +6,11 @@ use super::{
 use crate::orbit;
 use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 use std::sync::{
-    Arc, Mutex,
+    Arc,
     atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, SyncSender},
 };
 use vantare_ipc::transport::Event;
-
-type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 
 // Solo presentación del banco: no modifica credenciales, permisos ni IPC.
 fn account_demo() -> Option<&'static crate::demo::DemoData> {
@@ -185,7 +183,8 @@ pub struct Remote {
     send: Option<SyncSender<Command>>,
     receive: Option<Receiver<Reply>>,
     stop: Arc<AtomicBool>,
-    cancellation: Cancellation,
+    cancellation: Option<Arc<Event>>,
+    worker: Option<std::thread::JoinHandle<()>>,
     busy: bool,
     account: AccountState,
     access: access::State,
@@ -217,9 +216,21 @@ impl Remote {
             Ok(store) => editor.dirty = store.fields != crate::testing::empty_fields(),
             Err(error) => editor.message.clone_from(error),
         }
-        cx.on_app_quit(|this, _| {
+        cx.on_app_quit(|this, cx| {
             this.cancel();
-            async {}
+            let worker = this.worker.take();
+            let executor = cx.background_executor().clone();
+            async move {
+                if let Some(worker) = worker {
+                    executor
+                        .spawn(async move {
+                            if worker.join().is_err() {
+                                eprintln!("worker de servicios terminó con error");
+                            }
+                        })
+                        .await;
+                }
+            }
         })
         .detach();
         let mut remote = Self {
@@ -227,7 +238,8 @@ impl Remote {
             send: None,
             receive: None,
             stop: Arc::new(AtomicBool::new(false)),
-            cancellation: Arc::new(Mutex::new(None)),
+            cancellation: None,
+            worker: None,
             busy: false,
             account: AccountState::default(),
             access: access::State::from_build(),
@@ -257,24 +269,28 @@ impl Remote {
 
     pub fn cancel(&mut self) {
         self.stop.store(true, Ordering::Release);
-        if let Ok(cancellation) = self.cancellation.lock()
-            && let Some(event) = &*cancellation
-        {
+        if let Some(event) = &self.cancellation {
             event.set();
         }
         self.send = None;
     }
 
-    fn start(&mut self) {
+    fn start(&mut self) -> bool {
         if self.send.is_some() {
-            return;
+            return true;
         }
+        let Ok(event) = Event::new() else {
+            self.message = "IPC no disponible".into();
+            return false;
+        };
+        let cancellation = Arc::new(event);
+        // Publicado ANTES del spawn, connect_ready y lectura del saludo.
+        self.cancellation = Some(Arc::clone(&cancellation));
         let (send, commands) = mpsc::sync_channel(2);
         let (responses, receive) = mpsc::sync_channel(2);
         let pipe = self.pipe.clone();
         let stop = Arc::clone(&self.stop);
-        let cancellation = Arc::clone(&self.cancellation);
-        std::thread::spawn(move || {
+        self.worker = Some(std::thread::spawn(move || {
             let mut client = None;
             while !stop.load(Ordering::Acquire) {
                 let command = match commands.recv_timeout(REQUEST_POLL) {
@@ -290,9 +306,8 @@ impl Remote {
                         client = None;
                     }
                     if client.is_none() {
-                        let started = Client::start(&default_binary()?, &pipe)?;
-                        *cancellation.lock().map_err(|_| "servicios cancelado")? =
-                            Some(started.cancellation());
+                        let started =
+                            Client::start(&default_binary()?, &pipe, Arc::clone(&cancellation))?;
                         if stop.load(Ordering::Acquire) {
                             return Err("servicios cancelado");
                         }
@@ -316,9 +331,10 @@ impl Remote {
                     break;
                 }
             }
-        });
+        }));
         self.send = Some(send);
         self.receive = Some(receive);
+        true
     }
 
     fn dispatch(&mut self, command: Command) -> bool {
@@ -338,7 +354,15 @@ impl Remote {
         } else {
             None
         };
-        self.start();
+        if !self.start() {
+            self.access.observe(
+                &Reply::Error {
+                    message: self.message.clone(),
+                },
+                matches!(self.active, Area::Account),
+            );
+            return false;
+        }
         if self
             .send
             .as_ref()

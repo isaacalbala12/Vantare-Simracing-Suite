@@ -367,12 +367,37 @@ fn protocol_confirms_only_effective_commits_and_rejects_unknown_commands() {
 
 #[test]
 fn duckdb_is_not_in_any_live_package_dependency_tree() {
-    for package in [
-        "vantare-domain",
-        "vantare-ipc",
-        "vantare-ui",
-        "vantare-runtime",
-    ] {
+    let roots = std::process::Command::new(env!("CARGO"))
+        .args([
+            "tree",
+            "--offline",
+            "--workspace",
+            "--depth",
+            "0",
+            "--prefix",
+            "none",
+        ])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("workspace dependency roots");
+    assert!(
+        roots.status.success(),
+        "{}",
+        String::from_utf8_lossy(&roots.stderr)
+    );
+    let roots = String::from_utf8_lossy(&roots.stdout);
+    let packages = roots
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .collect::<Vec<_>>();
+    assert!(
+        packages.contains(&"vantare-storage"),
+        "workspace storage root"
+    );
+    for package in packages
+        .into_iter()
+        .filter(|package| *package != "vantare-storage")
+    {
         let output = std::process::Command::new(env!("CARGO"))
             .args([
                 "tree",

@@ -111,6 +111,12 @@ def functions(source):
             yield start, end, body, close
 
 
+def needs_context_argument(error):
+    counts = re.search(r'takes (\d+) arguments? but (\d+) arguments?', error['message'])
+    return bool(counts and int(counts[1]) == int(counts[2]) + 1
+                and ('gpui::App' in error['rendered'] or '&App' in error['rendered']))
+
+
 def repair_context(diagnostics):
     edits = {}
     workspace = ROOT.parent.parent
@@ -160,7 +166,7 @@ def repair_context(diagnostics):
             else:
                 prefix = ' ' if source[a+1:b].rstrip().endswith(',') or not source[a+1:b].strip() else ', '
                 edits.setdefault(path, set()).add((b, b, prefix + 'cx: &gpui::App'))
-        elif code == 'E0061' and ('gpui::App' in error['rendered'] or '&App' in error['rendered']):
+        elif code == 'E0061' and needs_context_argument(error):
             opening = mask.find('(', end)
             if opening < 0:
                 continue
@@ -226,6 +232,18 @@ def main():
         assert count == 1 and 'r##"orbit::INK"##' in result
         source = '#[cfg(test)] mod tests { fn a() { rgb(orbit::INK); } }'
         assert migrate(source, ROOT / 'orbit.rs') == (source, 0)
+        assert needs_context_argument({
+            'message': 'this function takes 2 arguments but 1 argument was supplied',
+            'rendered': 'missing &gpui::App',
+        })
+        assert not needs_context_argument({
+            'message': 'this method takes 1 argument but 2 arguments were supplied',
+            'rendered': 'extra argument; expected &gpui::App',
+        })
+        assert not needs_context_argument({
+            'message': 'this function takes 3 arguments but 1 argument was supplied',
+            'rendered': 'missing &gpui::App and another parameter',
+        })
         print('self-test OK')
         return 0
     if args.repair_context:

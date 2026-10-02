@@ -754,6 +754,22 @@ fn hotkey_keycaps(keys: [&str; 3]) -> Div {
     }
     keycaps
 }
+fn aligned_navigation(page: Page) -> bool {
+    matches!(
+        page,
+        Page::Diagnostics | Page::Hotkeys | Page::Privacy | Page::Performance
+    )
+}
+
+/// Actualizaciones (pulido-1) y las páginas alineadas (pulido-2) ajustan su fila.
+fn nav_row_height(page: Page) -> f32 {
+    match page {
+        Page::Updates => 48.0,
+        _ if aligned_navigation(page) => 50.0,
+        _ => 52.0,
+    }
+}
+
 impl Hub {
     fn settings_button(
         &self,
@@ -808,19 +824,21 @@ impl Hub {
             })
     }
     fn settings_search(&self, cx: &Context<Self>) -> Div {
+        let aligned = aligned_navigation(self.settings.page);
+        let updates = self.settings.page == Page::Updates;
         div()
-            .px(px(if self.settings.page == Page::Updates {
-                0.0
-            } else {
-                14.0
-            }))
-            .pt(px(if self.settings.page == Page::Updates {
+            .px(px(if aligned || updates { 0.0 } else { 14.0 }))
+            .pt(px(if updates {
                 23.0
+            } else if aligned {
+                20.0
             } else {
                 18.0
             }))
-            .pb(px(if self.settings.page == Page::Updates {
+            .pb(px(if updates {
                 8.0
+            } else if aligned {
+                9.0
             } else {
                 18.0
             }))
@@ -842,7 +860,11 @@ impl Hub {
     }
     pub(in crate::shell) fn settings_column(&self, window: &Window, cx: &mut Context<Self>) -> Div {
         let query = super::search_text(&self.settings.query.read(cx).value);
-        let mut rows = stack().gap_1();
+        let aligned = aligned_navigation(self.settings.page);
+        let row_height = nav_row_height(self.settings.page);
+        let mut rows = stack()
+            .gap(px(if aligned { 2.0 } else { 4.0 }))
+            .when(aligned, |rows| rows.px(px(2.0)));
         let mut found = false;
         for (index, (section, label, subtitle)) in
             [(Section::Account, "Cuenta", "Sesión, plan y dispositivos")]
@@ -854,13 +876,9 @@ impl Hub {
                 rows = rows.child(
                     orbit::nav_item(label, label, subtitle, self.settings.page == Page::Account)
                         .mx(px(0.0))
-                        .px(px(11.0))
+                        .px(px(if aligned { 8.0 } else { 11.0 }))
                         .py(px(7.0))
-                        .h(px(if self.settings.page == Page::Updates {
-                            48.0
-                        } else {
-                            52.0
-                        }))
+                        .h(px(row_height))
                         .track_focus(&self.settings.nav_focus[index])
                         .on_click(cx.listener(move |this, _, window, cx| {
                             this.settings.nav_focus[index].focus(window, cx);
@@ -889,13 +907,9 @@ impl Hub {
                         page == self.settings.page,
                     )
                     .mx(px(0.0))
-                    .px(px(11.0))
+                    .px(px(if aligned { 8.0 } else { 11.0 }))
                     .py(px(7.0))
-                    .h(px(if self.settings.page == Page::Updates {
-                        48.0
-                    } else {
-                        52.0
-                    }))
+                    .h(px(row_height))
                     .track_focus(&self.settings.nav_focus[focus_index])
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.settings.nav_focus[focus_index].focus(window, cx);
@@ -929,7 +943,12 @@ impl Hub {
         .w(px(orbit::column_width(f32::from(
             window.viewport_size().width,
         ))))
-        .child(div().px(px(24.0)).pt(px(24.0)).child(eyebrow("Secciones")))
+        .child(
+            div()
+                .px(px(if aligned { 9.0 } else { 24.0 }))
+                .pt(px(if aligned { 27.0 } else { 24.0 }))
+                .child(eyebrow("Secciones")),
+        )
         .child(self.settings_search(cx))
         .child(
             div()
@@ -1710,6 +1729,8 @@ impl Hub {
                             .flex()
                             .items_center()
                             .gap(px(10.0))
+                            .relative()
+                            .top(px(-7.0))
                             .child(disabled_button(
                                 "settings-hotkeys-reset",
                                 "Restablecer todos",
@@ -2059,7 +2080,7 @@ impl Hub {
             filters = filters.child(
                 div()
                     .h(px(29.0))
-                    .px(px(10.0))
+                    .px(px(12.0))
                     .rounded(px(8.0))
                     .flex()
                     .items_center()

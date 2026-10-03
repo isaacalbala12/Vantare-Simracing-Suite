@@ -38,6 +38,14 @@ esa revisión no inventa muestras del journal o las series. La detección del
 layout y el saludo tienen su propia latencia: no se promete recibir datos dentro
 de un único tick contado desde un clic del usuario.
 
+La cadencia no deduplica valores iguales: una revisión nueva puede entregar
+pedales constantes. Sin fotos entregables, el publicador mantiene el pipe con
+`Ping` cada segundo; la UI cuenta esos mensajes como actividad sin inventar
+fotos ni ampliar la demanda. Ese latido demuestra conexión, no frescura del
+simulador: el núcleo conserva su límite de 500 ms y un cambio de estado de
+fuente rehidrata lo pedido sin esperar la cadencia. El silencio real del pipe
+sigue pasando a `Lost` a los 5 s.
+
 Combustible y delta reinician su memoria al dejar de pedirse. Reactivarlos puede
 dar `Requested + Unavailable` hasta tener observaciones suficientes; nunca se
 estima consumo o delta atravesando un intervalo no observado por el derivador.

@@ -473,6 +473,45 @@ mod tests {
     }
 
     #[test]
+    fn unchanged_pedals_with_advancing_source_stay_fresh_beyond_pipe_timeout() {
+        let mut demand = vantare_ipc::Demand::default();
+        demand.request(vantare_ipc::Signal::Pedals, 5000);
+        let mut core = Core::new(1);
+        core.set_demand(demand);
+        for millis in (0..=6000).step_by(100) {
+            core.observe(observation(ms(millis), ms(millis), 0.0))
+                .expect("fuente viva, pedales constantes");
+            core.tick(ms(millis));
+            let photo = core.snapshot();
+            assert_eq!(photo.state.source_state, SourceState::Live);
+            assert_eq!(
+                photo
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("jugador")
+                    .telemetry
+                    .throttle,
+                Quality::Reliable(0.0)
+            );
+        }
+        core.tick(ms(6499));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Live);
+        core.tick(ms(6500));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+        assert_eq!(
+            core.snapshot()
+                .state
+                .player
+                .as_ref()
+                .expect("jugador")
+                .telemetry
+                .throttle,
+            Quality::Stale(0.0)
+        );
+    }
+
+    #[test]
     fn silence_and_frozen_clock_go_stale_then_recover_with_one_revision_counter() {
         let mut core = Core::new(1);
         let reader = core.subscribe();

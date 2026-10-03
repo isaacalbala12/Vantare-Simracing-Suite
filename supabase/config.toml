@@ -19,6 +19,12 @@ verify_jwt = false
 [functions.native-license]
 verify_jwt = false
 
+[functions.native-account-authorize]
+verify_jwt = false
+
+[functions.native-admin]
+verify_jwt = false
+
 [functions.testing-center-feedback]
 verify_jwt = true
 

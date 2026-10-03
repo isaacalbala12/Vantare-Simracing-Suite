@@ -1,5 +1,32 @@
 import { invalidDeployableDirectories } from "./verify-deploy-surface.ts";
 
+Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
+  const functions = ["native-account-authorize", "native-admin"];
+  if (
+    invalidDeployableDirectories(
+      functions.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
+    ).length
+  ) {
+    throw new Error("native beta functions rejected");
+  }
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  );
+  const wrapper = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  for (const name of functions) {
+    if (
+      !config.includes(`[functions.${name}]\nverify_jwt = false`) ||
+      wrapper.includes(`"${name}"`)
+    ) {
+      throw new Error(
+        "beta authentication config or isolated deployment changed",
+      );
+    }
+  }
+});
+
 Deno.test("deploy surface rejects legacy and unknown top-level functions", () => {
   const entries = [
     { name: "billing-webhook", isDirectory: true },

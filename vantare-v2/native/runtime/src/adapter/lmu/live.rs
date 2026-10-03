@@ -196,6 +196,173 @@ mod tests {
     }
 
     #[test]
+    fn a_frozen_clock_with_live_rest_preserves_data_until_rest_also_stops() {
+        let opens = Arc::new(Mutex::new(0));
+        let script: Script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+        let mut lmu = Lmu::with_source(scripted(opens, script), None);
+        let mut core = crate::core::Core::new(1);
+        lmu.translator
+            .rest
+            .accept_session(
+                br#"{"inRealtime":true,"gamePhase":5,"session":"PRACTICE1"}"#,
+                MS(0),
+            )
+            .unwrap();
+        core.step(&mut lmu, MS(0)).unwrap();
+        let original = core.snapshot().state.clone();
+        for at in (250..=6000).step_by(250) {
+            lmu.translator
+                .rest
+                .accept_session(
+                    br#"{"inRealtime":false,"gamePhase":5,"session":"PRACTICE1"}"#,
+                    MS(at),
+                )
+                .unwrap();
+            // Una ronda REST recibida provoca observe aunque SHM sea idéntico
+            // (take_rest devuelve true en producción, sin otro consumidor IPC).
+            core.observe(lmu.translator.observe(REAL_44, "1.3.0.0", MS(at)).unwrap())
+                .unwrap();
+            core.tick(MS(at));
+            if at >= 500 {
+                let snapshot = core.snapshot();
+                assert_eq!(
+                    snapshot.state.source_state,
+                    vantare_domain::SourceState::Paused,
+                    "en {at} ms"
+                );
+                let mut preserved = snapshot.state.clone();
+                preserved.source_state = original.source_state;
+                assert_eq!(
+                    preserved, original,
+                    "no cambia ningún dato durante la pausa"
+                );
+            }
+        }
+        core.step(&mut lmu, MS(6499)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        core.step(&mut lmu, MS(6500)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Stale
+        );
+        assert!(matches!(
+            core.snapshot().state.cars[0].position,
+            vantare_domain::Quality::Stale(_)
+        ));
+    }
+
+    #[test]
+    fn resuming_a_confirmed_pause_is_immediate_and_unrelated_rest_cannot_confirm_it() {
+        for (session, expected) in [
+            ("PRACTICE1", vantare_domain::SourceState::Paused),
+            ("RACE1", vantare_domain::SourceState::Stale),
+        ] {
+            let script: Script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+            let mut lmu =
+                Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+            let mut core = crate::core::Core::new(1);
+            core.step(&mut lmu, MS(0)).unwrap();
+            let body = format!(r#"{{"session":"{session}","inRealtime":false}}"#);
+            lmu.translator
+                .rest
+                .accept_session(body.as_bytes(), MS(500))
+                .unwrap();
+            core.step(&mut lmu, MS(500)).unwrap();
+            assert_eq!(core.snapshot().state.source_state, expected);
+            if expected == vantare_domain::SourceState::Paused {
+                let mut advanced = REAL_44.to_vec();
+                advanced[1700..1708].copy_from_slice(&112.8_f64.to_le_bytes());
+                *script.lock().unwrap() = Ok(advanced);
+                core.step(&mut lmu, MS(520)).unwrap();
+                assert_eq!(
+                    core.snapshot().state.source_state,
+                    vantare_domain::SourceState::Live
+                );
+                assert!(core.snapshot().state.cars[0].position.current().is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn resuming_scoring_does_not_hide_a_player_clock_that_remains_frozen() {
+        let mut frame = REAL_44.to_vec();
+        let player_clock = 128_468 + 43 * 1_888 + 12;
+        frame[player_clock..player_clock + 8].copy_from_slice(&112.6_f64.to_le_bytes());
+        let script: Script = Arc::new(Mutex::new(Ok(frame.clone())));
+        let mut lmu =
+            Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+        let mut core = crate::core::Core::new(1);
+        core.step(&mut lmu, MS(0)).unwrap();
+        lmu.translator
+            .rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(500))
+            .unwrap();
+        core.step(&mut lmu, MS(500)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        frame[1700..1708].copy_from_slice(&112.8_f64.to_le_bytes());
+        *script.lock().unwrap() = Ok(frame);
+        core.step(&mut lmu, MS(520)).unwrap();
+        let snapshot = core.snapshot();
+        assert_eq!(
+            snapshot.state.source_state,
+            vantare_domain::SourceState::Live
+        );
+        assert_eq!(
+            snapshot.state.capabilities.driver_inputs,
+            vantare_domain::Capability::WithData
+        );
+        assert!(matches!(
+            snapshot.state.player.as_ref().unwrap().telemetry.throttle,
+            vantare_domain::Quality::Stale(_)
+        ));
+    }
+
+    #[test]
+    fn independently_stalled_clocks_keep_latest_scoring_and_last_valid_player_when_paused() {
+        let mut frame = REAL_44.to_vec();
+        let player_clock = 128_468 + 43 * 1_888 + 12;
+        frame[player_clock..player_clock + 8].copy_from_slice(&112.6_f64.to_le_bytes());
+        let script: Script = Arc::new(Mutex::new(Ok(frame.clone())));
+        let mut lmu =
+            Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+        let mut core = crate::core::Core::new(1);
+        core.step(&mut lmu, MS(0)).unwrap();
+        let player = core.snapshot().state.player;
+        frame[1700..1708].copy_from_slice(&113.0_f64.to_le_bytes());
+        *script.lock().unwrap() = Ok(frame);
+        core.step(&mut lmu, MS(500)).unwrap();
+        let latest = core.snapshot();
+        assert_eq!(latest.state.source_state, vantare_domain::SourceState::Live);
+        assert_eq!(
+            latest.state.capabilities.driver_inputs,
+            vantare_domain::Capability::WithData
+        );
+        lmu.translator
+            .rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(1000))
+            .unwrap();
+        core.step(&mut lmu, MS(1000)).unwrap();
+        let paused = core.snapshot();
+        assert_eq!(
+            paused.state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        assert_eq!(paused.state.cars, latest.state.cars);
+        assert_eq!(paused.state.session, latest.state.session);
+        assert_eq!(paused.state.player, player);
+        assert_eq!(
+            paused.state.capabilities.driver_inputs,
+            vantare_domain::Capability::Fresh
+        );
+    }
+
+    #[test]
     fn an_absent_game_is_disconnected_and_probed_once_per_retry_interval() {
         let opens = Arc::new(Mutex::new(0));
         let mut lmu = Lmu::with_source(

@@ -99,6 +99,7 @@ impl Observed {
             state: match snapshot.state.source_state {
                 SourceState::Waiting => "waiting",
                 SourceState::Live => "live",
+                SourceState::Paused => "paused",
                 SourceState::Stale => "stale",
                 SourceState::Lost => "lost",
             },

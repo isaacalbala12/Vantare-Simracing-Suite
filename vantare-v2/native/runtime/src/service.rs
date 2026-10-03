@@ -131,6 +131,7 @@ fn drive_core_demanded<E>(
     let start = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
     let mut demand_revision = u64::MAX;
+    let mut freshness = vantare_ipc::freshness::state(&core.snapshot());
     while !stop.load(Ordering::Relaxed) {
         if let Some(demand) = demand {
             let revision = demand.revision();
@@ -150,6 +151,13 @@ fn drive_core_demanded<E>(
             Err(_) => {}
         }
         let snapshot = core.snapshot();
+        vantare_ipc::freshness::log_transition(
+            "core",
+            freshness,
+            &snapshot,
+            core.freshness_reason(),
+        );
+        freshness = vantare_ipc::freshness::state(&snapshot);
         if snapshot.sequence > sent {
             sent = snapshot.sequence;
             publish(core)?;

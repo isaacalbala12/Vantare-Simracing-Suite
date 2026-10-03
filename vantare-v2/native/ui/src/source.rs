@@ -77,6 +77,7 @@ fn start_feed<T: Send + 'static>(
             let start = Instant::now();
             let mut health = PipeHealth::default();
             let mut activity = subscriber.activity();
+            let mut freshness = vantare_ipc::freshness::state(&Snapshot::default());
             while tx.receiver_count() > 1 {
                 if let Some(handle) = &handle {
                     let next = handle.current();
@@ -106,6 +107,13 @@ fn start_feed<T: Send + 'static>(
                     })
                 };
                 if let Some(photo) = next {
+                    vantare_ipc::freshness::log_transition(
+                        "ui",
+                        freshness,
+                        &photo.snapshot,
+                        vantare_ipc::freshness::source_reason(photo.snapshot.state.source_state),
+                    );
+                    freshness = vantare_ipc::freshness::state(&photo.snapshot);
                     send_latest(&tx, &oldest, convert(photo));
                 }
             }
@@ -461,7 +469,20 @@ mod tests {
             pedals::project(&unchanged, Preferences::default()),
             fresh_inputs
         );
-        // El núcleo anuncia la fuente congelada: la cadencia no retrasa el estado.
+        // Pausar y perder la fuente rehidratan lo pedido sin esperar 5 s.
+        snapshot.sequence += 1;
+        snapshot.state.source_state = vantare_domain::SourceState::Paused;
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("pausa");
+        let paused = feed
+            .recv_timeout(Duration::from_secs(2))
+            .expect("estado de pausa");
+        assert_eq!(
+            paused.state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        assert_eq!(paused.state.player, unchanged.state.player);
         snapshot.sequence += 1;
         vantare_domain::degrade(&mut snapshot.state);
         snapshot.state.source_state = vantare_domain::SourceState::Stale;

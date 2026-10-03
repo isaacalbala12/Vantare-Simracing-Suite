@@ -87,3 +87,56 @@ de fixtures del manifiesto y paridad Go de clima/neumáticos, repetidos; no se
 modifica Hub/Strategy ni se declara el workspace verde. Opus debe resolver o
 aceptar explícitamente ese bloqueo antes de integración. GitHub #1427 es el
 puente técnico; Notion sigue sin acceso bajo la excepción dada para este worker.
+
+## Ronda 2 — contrato de pausa y diagnóstico (#1455)
+
+DTO **8** añade `SourceState::Paused`; el saludo del pipe exige v8 para no
+entregar un estado desconocido a consumidores v7. La lectura de escenas
+guardadas acepta v7 y las vuelve a serializar como v8; no se migran ni alteran
+las capturas canónicas.
+
+LMU confirma pausa cuando `mCurrentET` lleva 500 ms sin avance y REST responde
+con una sesión compatible consultada hace menos de 500 ms. El lector SHM
+verifica que el proceso de LMU sigue vivo antes y después de cada lectura.
+`gamePhase` e `inRealtime` no se interpretan como flags de pausa: la evidencia
+actual no demuestra esa equivalencia. Se usa el criterio autorizado de reloj
+detenido con REST vivo, sin añadir endpoints, consultas ni observadores IPC.
+La caché REST auxiliar mantiene su TTL de 2 s para sus otros datos; ese TTL
+no autoriza mantener una pausa.
+
+El núcleo conserva la última foto `Live` de la misma sesión y jugador, incluidas
+calidades, capacidades, posiciones, gaps, tiempos y orden. Si el reloj del jugador
+caduca antes que scoring, la reserva mantiene el scoring más reciente y el
+último jugador válido; la foto Live publicada sigue declarando ese fallo real.
+La confirmación de pausa renueva el plazo del núcleo; si cesa, vuelve a degradar
+a los 500 ms. REST
+caído desde el principio no cambia la caducidad SHM de 500 ms. Cerrar LMU sigue
+degradando inmediatamente al detectar la desconexión. Reanudar una pausa
+confirmada recupera `Live` al avanzar el reloj; un fallo real conserva la
+ventana de recuperación anterior. Los datos de otra sesión no se heredan.
+
+La pausa automática solo se confirma en vivo; REST grabado en un replay no
+prueba que un proceso esté vivo. Los estimadores y las series no añaden datos
+mientras están en pausa. Reanudar scoring no hace fresco un reloj del jugador
+que siga parado.
+
+El host visual común conserva la proyección de los 18 widgets mientras están
+en pausa, sin nuevas muestras en sus historias. Una ventana abierta durante
+pausa proyecta la foto conservada. El aviso `EN PAUSA` (`PAUSED` en inglés)
+ocupa una franja de 22 px debajo del widget; no tapa las filas ni sus datos.
+La cadencia y `Ping` no cambian: cada cambio de estado rehidrata solo lo pedido.
+No se fuerza demanda completa ni se aumenta su tráfico habitual.
+
+Cada transición de estado o frescura de inputs/posiciones observada en el bucle
+I/O del núcleo o en la UI deja una línea en stderr y en
+`%LOCALAPPDATA%/Vantare/native/logs/freshness.log`, con
+reloj, umbral, época, secuencia y PID. El núcleo puro sigue sin escribir disco.
+Fuera de Windows el registro usa el directorio temporal. Un fallo del registro
+no cambia la fuente. El journal conserva los códigos existentes y añade el
+código de fuente 4 para `Paused`.
+
+Límite: sin un flag de pausa verificado, un plugin SHM colgado con REST todavía
+sano es indistinguible de una pausa según este criterio. REST caducado, sesión
+incompatible o proceso cerrado no confirman pausa. La prueba física de pausar
+y reanudar debe registrarse sin manipular LMU desde el worker; grabadora y
+resultados están en `C:/tmp/isa-1455-evidence/`.

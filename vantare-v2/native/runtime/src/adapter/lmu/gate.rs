@@ -19,10 +19,13 @@ impl Gate {
     /// Caducado en `now` aunque nadie haya observado desde entonces.
     #[cfg(any(windows, test))]
     pub(super) fn is_stale_at(&self, now: Duration) -> bool {
-        self.stale
-            || self
-                .unchanged_since
-                .is_some_and(|since| now.saturating_sub(since) >= STALL_LIMIT)
+        self.stale || self.is_stalled_at(now)
+    }
+
+    /// Distingue reloj detenido de la ventana de recuperación tras un fallo.
+    pub(super) fn is_stalled_at(&self, now: Duration) -> bool {
+        self.unchanged_since
+            .is_some_and(|since| now.saturating_sub(since) >= STALL_LIMIT)
     }
 
     /// `now` es monotónico dentro de una ejecución; si retrocede (otro origen

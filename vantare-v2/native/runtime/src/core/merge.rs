@@ -65,7 +65,9 @@ pub(super) fn merge_requested(
     }
     sanitize(&mut state);
     derive_requested(&mut state, demand);
-    trackers.derive(&mut state, demand);
+    if state.source_state != SourceState::Paused {
+        trackers.derive(&mut state, demand);
+    }
     let sequence = match previous {
         Some(previous) if previous.epoch == epoch => previous.sequence + 1,
         _ => 1,

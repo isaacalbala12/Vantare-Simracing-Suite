@@ -210,7 +210,9 @@ impl RadioWorker {
             self.cancel_audio()?;
         }
         self.connection = match snapshot.state.source_state {
-            vantare_domain::SourceState::Live => Connection::Live,
+            vantare_domain::SourceState::Live | vantare_domain::SourceState::Paused => {
+                Connection::Live
+            }
             vantare_domain::SourceState::Stale => Connection::Stale,
             vantare_domain::SourceState::Lost => Connection::Disconnected,
             vantare_domain::SourceState::Waiting => Connection::Waiting,

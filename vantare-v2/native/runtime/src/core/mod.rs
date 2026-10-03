@@ -32,6 +32,14 @@ use publish::Publisher;
 /// publica como obsoleto (mismo límite que el `FreshnessGate` de ISA-1403).
 pub const STALL_LIMIT: Duration = Duration::from_millis(500);
 
+fn same_scope(a: &Snapshot, b: &Snapshot) -> bool {
+    a.origin.source == b.origin.source
+        && a.state.session.id == b.state.session.id
+        && a.state.session.track_name == b.state.session.track_name
+        && a.state.session.kind == b.state.session.kind
+        && a.state.player.as_ref().map(|p| p.car) == b.state.player.as_ref().map(|p| p.car)
+}
+
 #[derive(Debug)]
 pub enum Error {
     Adapter(AdapterError),
@@ -61,12 +69,15 @@ pub struct Core {
     demand: vantare_ipc::Demand,
     demand_pending: bool,
     current: Arc<Snapshot>,
+    /// Última foto viva, para no reconstruir ni reordenar datos durante pausa.
+    last_live: Option<Arc<Snapshot>>,
     publisher: Publisher,
     /// `received_at` de la última observación en que el reloj de la fuente
     /// avanzó (o la fuente no expone reloj).
     last_advance: Duration,
     last_source_time: Option<Duration>,
     stale: bool,
+    freshness_reason: &'static str,
     /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
     /// `domain`, porque no es una señal publicada.
     trackers: Trackers,
@@ -89,9 +100,11 @@ impl Core {
             demand_pending: false,
             publisher: Publisher::new(Arc::clone(&current)),
             current,
+            last_live: None,
             last_advance: Duration::ZERO,
             last_source_time: None,
             stale: false,
+            freshness_reason: "sin sesión admitida",
             trackers: Trackers::default(),
             events: Journal::volatile(epoch),
             series: Series::default(),
@@ -143,6 +156,10 @@ impl Core {
         Arc::clone(&self.current)
     }
 
+    pub fn freshness_reason(&self) -> &'static str {
+        self.freshness_reason
+    }
+
     pub fn subscribe(&mut self) -> Reader {
         self.publisher.subscribe()
     }
@@ -173,7 +190,9 @@ impl Core {
         self.demand_pending = false;
         let mut snapshot = (*self.current).clone();
         derive::derive_requested(&mut snapshot.state, &self.demand);
-        self.trackers.derive(&mut snapshot.state, &self.demand);
+        if snapshot.state.source_state != SourceState::Paused {
+            self.trackers.derive(&mut snapshot.state, &self.demand);
+        }
         snapshot.sequence += 1;
         // Reproyectar no es una adquisición: no añade muestras a series ni hechos.
         self.current = Arc::new(snapshot);
@@ -193,7 +212,7 @@ impl Core {
             Ok(None) => Ok(()),
             Err(error) => {
                 if error == AdapterError::Disconnected {
-                    self.publish_stale();
+                    self.publish_stale("adaptador desconectado; degradación inmediata");
                 }
                 Err(Error::Adapter(error))
             }
@@ -209,6 +228,8 @@ impl Core {
     /// [`Reject`] si no se admite; entonces no se publica nada ni cambia la revisión.
     pub fn observe(&mut self, observation: Observation) -> Result<(), Reject> {
         let origin = observation.origin;
+        let paused = observation.state.source_state == SourceState::Paused;
+        let advanced = origin.source_time.is_none() || origin.source_time != self.last_source_time;
         let mut snapshot = merge_requested(
             Some(&self.current),
             observation,
@@ -217,16 +238,35 @@ impl Core {
             &self.demand,
         )?;
         self.demand_pending = false;
-        if origin.source_time.is_none() || origin.source_time != self.last_source_time {
+        if paused || advanced {
             self.last_advance = origin.received_at;
         }
         self.last_source_time = origin.source_time;
-        // Si el reloj de la fuente está parado (juego en pausa, adaptador que
-        // sigue entregando la misma muestra), lo declarado fresco ya no lo es.
+        if paused
+            && let Some(live) = &self.last_live
+            && same_scope(live, &snapshot)
+        {
+            snapshot.state = live.state.clone();
+            snapshot.state.source_state = SourceState::Paused;
+        }
+        // Paused exige confirmaciones periódicas del adaptador. Su silencio
+        // vuelve a caducar a los mismos 500 ms; no cambia el límite del núcleo.
         self.stale = self.is_stale_at(origin.received_at);
+        self.freshness_reason = match snapshot.state.source_state {
+            SourceState::Paused => {
+                "SHM mCurrentET sin avance >=500ms; proceso vivo y REST de sesión <500ms"
+            }
+            SourceState::Stale if advanced && origin.source_time.is_some() => {
+                "adaptador: reloj SHM avanzando en recuperación de 2000ms tras caducar a 500ms"
+            }
+            SourceState::Stale => "adaptador: reloj SHM mCurrentET >=500ms sin pausa confirmada",
+            SourceState::Live => "reloj de fuente avanzando",
+            SourceState::Waiting | SourceState::Lost => "sin sesión admitida",
+        };
         if self.stale {
             degrade(&mut snapshot.state);
             snapshot.state.source_state = SourceState::Stale;
+            self.freshness_reason = "núcleo: origin.source_time sin avance >=500ms";
         }
         self.publish(snapshot);
         Ok(())
@@ -235,7 +275,12 @@ impl Core {
     /// Publica un snapshot obsoleto si la fuente lleva callada [`STALL_LIMIT`].
     pub fn tick(&mut self, now: Duration) {
         if self.is_stale_at(now) {
-            self.publish_stale();
+            let reason = if self.current.state.source_state == SourceState::Paused {
+                "núcleo: confirmación de pausa ausente >=500ms"
+            } else {
+                "núcleo: origin.source_time sin avance >=500ms"
+            };
+            self.publish_stale(reason);
         }
     }
 
@@ -243,19 +288,44 @@ impl Core {
         now.saturating_sub(self.last_advance) >= STALL_LIMIT
     }
 
-    fn publish_stale(&mut self) {
+    fn publish_stale(&mut self, reason: &'static str) {
         if self.stale || self.current.sequence == 0 {
             return; // ya obsoleto, o nada que degradar
         }
         self.stale = true;
+        self.freshness_reason = reason;
         let snapshot = stale(&self.current);
         self.publish(snapshot);
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
         self.events.observe(&self.current, &snapshot);
-        self.series.observe(&snapshot);
+        if snapshot.state.source_state != SourceState::Paused {
+            self.series.observe(&snapshot);
+        }
         self.current = Arc::new(snapshot);
+        if self.current.state.source_state == SourceState::Live {
+            let mut live = Arc::clone(&self.current);
+            // Los relojes de scoring y jugador no caducan en la misma vuelta.
+            // Guardar el scoring más reciente y el último jugador válido, sin
+            // publicar como frescas sus señales realmente caducadas en Live.
+            if self.current.state.capabilities.driver_inputs == vantare_domain::Capability::WithData
+                && let Some(previous) = &self.last_live
+                && same_scope(previous, &self.current)
+            {
+                let mut retained = (*self.current).clone();
+                retained.state.player.clone_from(&previous.state.player);
+                let from = &previous.state.capabilities;
+                let to = &mut retained.state.capabilities;
+                to.driver_inputs = from.driver_inputs;
+                to.powertrain = from.powertrain;
+                to.fuel = from.fuel;
+                to.delta = from.delta;
+                to.damage = from.damage;
+                live = Arc::new(retained);
+            }
+            self.last_live = Some(live);
+        }
         self.publisher.publish(Arc::clone(&self.current));
     }
 }
@@ -470,6 +540,48 @@ mod tests {
             .copied()
             .unwrap();
         assert!((delta + 0.1).abs() < 1e-9, "delta = {delta}");
+    }
+
+    #[test]
+    fn confirmed_pause_adds_no_lap_samples_and_does_not_create_a_gap() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 1, 100.0, 10.0, 0.1)).unwrap();
+        let samples = core.series().active().unwrap().samples.clone();
+        for at in (250..=6000).step_by(250) {
+            let mut paused = lap_photo(ms(at), 1, 100.0, 10.0, 0.1);
+            paused.origin.source_time = Some(ms(0));
+            paused.state.source_state = SourceState::Paused;
+            core.observe(paused).unwrap();
+            let block = core.series().active().unwrap();
+            assert_eq!(block.samples, samples);
+            assert!(!block.gap);
+        }
+    }
+
+    #[test]
+    fn pause_restores_the_last_live_photo_but_never_inherits_another_session() {
+        let mut core = Core::new(1);
+        core.observe(observation(ms(0), ms(0), 0.5)).unwrap();
+        let live = core.snapshot();
+        core.tick(ms(500));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+        let mut paused = observation(ms(600), ms(0), 0.9);
+        paused.state.source_state = SourceState::Paused;
+        core.observe(paused.clone()).unwrap();
+        let mut retained = core.snapshot().state.clone();
+        retained.source_state = SourceState::Live;
+        assert_eq!(retained, live.state);
+        paused.origin.received_at = ms(700);
+        paused.state.session.id = vantare_domain::SessionId(2);
+        core.observe(paused).unwrap();
+        let current = core.snapshot();
+        assert_eq!(current.state.session.id, vantare_domain::SessionId(2));
+        assert_eq!(
+            current.state.player.as_ref().unwrap().telemetry.throttle,
+            Quality::Reliable(0.9)
+        );
+        core.tick(ms(1200));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
     }
 
     #[test]

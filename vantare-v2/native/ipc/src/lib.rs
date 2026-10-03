@@ -21,6 +21,7 @@ mod demand;
 pub use demand::{Demand, Photo, Signal, SignalState};
 pub mod control;
 mod dto;
+pub mod freshness;
 pub mod launcher;
 /// Versión vigente del DTO de fotos (JSON).
 pub use dto::VERSION as DTO_VERSION;
@@ -65,7 +66,8 @@ pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
     Ok(serde_json::to_string(&dto::SnapshotDto::from(snapshot))?)
 }
 
-/// Lee una foto guardada con [`snapshot_to_json`].
+/// Lee una foto guardada con [`snapshot_to_json`], incluidas escenas v7.
+/// El pipe negocia únicamente v8: un lector v7 no conoce el estado Paused.
 ///
 /// # Errors
 /// [`Error::Json`] si el texto no es un DTO, [`Error::Version`] si es de una
@@ -73,6 +75,9 @@ pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
 /// se admite.
 pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
     let mut dto = serde_json::from_str::<dto::SnapshotDto>(text)?;
+    if dto.version == 7 {
+        dto.version = dto::VERSION;
+    }
     dto.restore(None, &Demand::all(), &Demand::all())?;
     Snapshot::try_from(dto)
 }
@@ -149,11 +154,12 @@ mod tests {
     }
 
     #[test]
-    fn v7_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v8_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
             SourceState::Live,
+            SourceState::Paused,
             SourceState::Stale,
             SourceState::Lost,
         ] {
@@ -161,7 +167,7 @@ mod tests {
             snapshot.state.source_state = state;
             let text = snapshot_to_json(&snapshot).expect("serializa");
             assert!(text.contains(&format!("\"version\":{DTO_VERSION}")));
-            assert_eq!(snapshot_from_json(&text).expect("v7"), snapshot);
+            assert_eq!(snapshot_from_json(&text).expect("v8"), snapshot);
         }
         let mut json: serde_json::Value =
             serde_json::from_str(&snapshot_to_json(&rich_snapshot(7, 42)).expect("serializa"))
@@ -171,6 +177,18 @@ mod tests {
             snapshot_from_json(&json.to_string()),
             Err(Error::Protocol(_))
         ));
+    }
+
+    #[test]
+    fn saved_v7_photos_remain_readable_without_accepting_v7_peers() {
+        let snapshot = rich_snapshot(1, 1);
+        let legacy =
+            snapshot_to_json(&snapshot)
+                .expect("v8")
+                .replacen("\"version\":8", "\"version\":7", 1);
+        assert_eq!(snapshot_from_json(&legacy).expect("escena v7"), snapshot);
+        assert!(!crate::codec::supports(7));
+        assert_eq!(crate::codec::negotiate(7, 7), None);
     }
 
     #[test]

@@ -167,6 +167,8 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         trend: Trend::Unknown,
         status_text: match (snapshot.state.source_state, prefs.language) {
             (SourceState::Live, _) => None,
+            (SourceState::Paused, Language::Es) => Some("EN PAUSA"),
+            (SourceState::Paused, Language::En) => Some("PAUSED"),
             (SourceState::Waiting, Language::Es) => Some("SIN DATOS"),
             (SourceState::Waiting, Language::En) => Some("NO DATA"),
             (SourceState::Stale, Language::Es) => Some("DATOS ANTIGUOS"),

@@ -270,6 +270,7 @@ fn source_code(state: SourceState) -> u8 {
         SourceState::Live => 1,
         SourceState::Stale => 2,
         SourceState::Lost => 3,
+        SourceState::Paused => 4,
     }
 }
 fn decode_source(value: &Value) -> io::Result<SourceState> {
@@ -278,6 +279,7 @@ fn decode_source(value: &Value) -> io::Result<SourceState> {
         1 => SourceState::Live,
         2 => SourceState::Stale,
         3 => SourceState::Lost,
+        4 => SourceState::Paused,
         _ => return Err(invalid()),
     })
 }
@@ -289,4 +291,26 @@ fn u32_value(value: &Value) -> io::Result<u32> {
 }
 fn invalid() -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, "hecho de journal inválido")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_pause_transition_survives_journal_recording_and_recovery() {
+        let event = Event::Fact(Fact {
+            cursor: Cursor { epoch: 1, index: 1 },
+            sequence: 2,
+            session: SessionId(1),
+            kind: FactKind::SourceChanged {
+                before: SourceState::Live,
+                after: SourceState::Paused,
+            },
+        });
+        assert_eq!(
+            Event::decode(&event.record()).expect("recuperar pausa"),
+            event
+        );
+    }
 }

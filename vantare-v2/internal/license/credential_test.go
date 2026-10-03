@@ -65,7 +65,7 @@ func TestCredentialEditAndRollbackAreDetected(t *testing.T) {
 		t.Fatalf("edit error = %v", err)
 	}
 	credential = signTestCredential(t, private, now, []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
-	if _, err := verifier.verifyOnline(credential, testSubject, "device-1"); err != nil {
+	if _, err := verifier.verifyOnline(credential, "device-1"); err != nil {
 		t.Fatal(err)
 	}
 	clock.state.LastSeenAt = now.Add(time.Hour)
@@ -101,14 +101,14 @@ func TestCredentialHighWatermarkCannotRegressDuringConcurrentValidation(t *testi
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := verifier.verifyOnline(older, testSubject, "device-1")
+		_, err := verifier.verifyOnline(older, "device-1")
 		errorsByCredential <- err
 	}()
 	<-clock.firstSaveStarted
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := verifier.verifyOnline(newer, testSubject, "device-1")
+		_, err := verifier.verifyOnline(newer, "device-1")
 		errorsByCredential <- err
 	}()
 
@@ -144,11 +144,28 @@ func TestCredentialInvalidClaimsDoNotAdvanceHighWatermark(t *testing.T) {
 		{Key: CapabilityPro, Perpetual: true},
 	}, testSubject, "device-1")
 
-	if _, err := verifier.verifyOnline(credential, testSubject, "device-1"); !errors.Is(err, ErrInvalidCredential) {
+	if _, err := verifier.verifyOnline(credential, "device-1"); !errors.Is(err, ErrInvalidCredential) {
 		t.Fatalf("verify error = %v", err)
 	}
 	if clock.found {
 		t.Fatal("invalid claims advanced the protected high-watermark")
+	}
+}
+
+func TestOnlineCredentialRequiresSignedInternalUUID(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	public, private, _ := ed25519.GenerateKey(nil)
+	verifier := NewCredentialVerifier(
+		map[string]ed25519.PublicKey{"test-key": public},
+		&memoryClock{},
+	)
+	verifier.now = func() time.Time { return now }
+	credential := signTestCredential(
+		t, private, now, nil, "user_isa909_clerk", "device-1",
+	)
+
+	if _, err := verifier.verifyOnline(credential, "device-1"); !errors.Is(err, ErrCredentialAccountMismatch) {
+		t.Fatalf("verify error = %v", err)
 	}
 }
 
@@ -181,7 +198,6 @@ func TestCredentialVerifiesDenoWebCryptoFixture(t *testing.T) {
 
 	result, err := verifier.verifyOnline(
 		credential,
-		testSubject,
 		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	)
 	if err != nil {
@@ -217,7 +233,7 @@ func TestOperationalRoleIsSignedAccessButNotACommercialPlan(t *testing.T) {
 		Key:         CapabilityOperationalNightlyTester,
 		PaidThrough: now.Add(72 * time.Hour).Format(time.RFC3339),
 	}}, testSubject, "device-1")
-	result, err := verifier.verifyOnline(credential, testSubject, "device-1")
+	result, err := verifier.verifyOnline(credential, "device-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +257,7 @@ func TestCredentialRejectsMultipleOperationalRoles(t *testing.T) {
 		{Key: CapabilityOperationalNightlyTester, PaidThrough: now.Add(72 * time.Hour).Format(time.RFC3339)},
 		{Key: CapabilityOperationalOwner, PaidThrough: now.Add(30 * 24 * time.Hour).Format(time.RFC3339)},
 	}, testSubject, "device-1")
-	if _, err := verifier.verifyOnline(credential, testSubject, "device-1"); !errors.Is(err, ErrInvalidCredential) {
+	if _, err := verifier.verifyOnline(credential, "device-1"); !errors.Is(err, ErrInvalidCredential) {
 		t.Fatalf("multiple operational roles error = %v", err)
 	}
 }
@@ -258,7 +274,7 @@ func TestExpiredOperationalRoleDoesNotGrantAccess(t *testing.T) {
 		Key:         CapabilityOperationalTester,
 		PaidThrough: now.Add(-time.Second).Format(time.RFC3339),
 	}}, testSubject, "device-1")
-	result, err := verifier.verifyOnline(credential, testSubject, "device-1")
+	result, err := verifier.verifyOnline(credential, "device-1")
 	if err != nil {
 		t.Fatal(err)
 	}

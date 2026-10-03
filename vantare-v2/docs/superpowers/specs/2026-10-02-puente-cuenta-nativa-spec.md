@@ -1,7 +1,8 @@
 # Spec SDD: cuenta nativa Clerk → licencia
 
 Fecha: 2026-10-02. [Issue #1444](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1444).
-Estado: propuesta para revisión de Opus; solo documentación, sin implementación ni deploy.
+Estado: diseño inicial conservado como antecedente; simplificación aprobada por Isaac
+en la sección final. Servidor preparado para revisión de Opus; sin deploy.
 Proyecto técnico: plataforma/cuenta/licencias y Hub nativo, bajo [ADR 0099](../../adr/0099-arquitectura-rust-nativa.md)
 y su [plan](../plans/2026-09-29-arquitectura-rust-nativa.md).
 Notion no está disponible: excepción explícita del encargo para trabajar con GitHub;
@@ -324,3 +325,157 @@ QA física o despliegue remoto. Evidencia de este worker: `C:/tmp/puente-evidenc
 Esta entrega modifica solo este spec. No cambia código, dependencias, schema,
 workflows, datos, Clerk/Supabase remotos ni el handoff compartido (lo consolida el
 orquestador). No acredita integración, despliegue, QA real ni actualización Notion.
+
+## Simplificación aprobada (2026-10-02)
+
+Isaac aprobó sustituir la sección 3 por una única Edge Function `native-license`.
+No hay bearer de datos, signing key importada ni origen Vantare separado. Las
+referencias a esos elementos en las secciones 4–6 describen el diseño inicial:
+el wiring Rust/Hub/build debe adaptarse en su entrega propia y no está incluido
+ni probado por este servidor. Notion no está disponible por excepción explícita
+del encargo; seguimiento allí pendiente, sin actualización inventada.
+
+### Contrato y autoridad
+
+`POST /functions/v1/native-license`, `Authorization: Bearer <OAuth access token>`,
+`apikey` anon y `Content-Type: application/json`. Body con exactamente dos campos:
+`{"version":1,"deviceFingerprint":"<64 hex minúsculas>"}`. Límite 1 KiB de body
+(declarado y recibido, también streaming) y 16 KiB de token. No admite identidad,
+email, accountId, capabilities ni claves del cliente. No se recorta la huella.
+Respuesta 200 exacta `{"credential":<CredentialV1>,"online_capabilities":[...]}`,
+con `Cache-Control: no-store`, igual que la emisión existente de v1.
+
+La validación se hace exclusivamente en servidor mediante
+`POST https://api.clerk.com/oauth_applications/access_tokens/verify`, body
+`{"access_token":"..."}`, con `CLERK_SECRET_KEY` en Authorization servidor.
+Sin redirects; plazo de verificación 4 s. La llamada se inyecta en tests; no se
+verificó ningún token real ni se consultó una cuenta. La [guía oficial de Clerk](https://clerk.com/docs/guides/configure/auth-strategies/oauth/verify-oauth-tokens)
+documenta esta llamada tanto para OAuth JWT como opaco. El
+[OpenAPI oficial, versión 2026-05-12](https://github.com/clerk/openapi-specs/blob/main/bapi/2026-05-12.yml#L13224-L13330)
+define dos respuestas 200: objeto `clerk_idp_oauth_access_token`, con `client_id`,
+`subject`, `scopes`, `revoked`, `expired` y `expiration`; o `{"active":false}`.
+La segunda se rechaza. Se exige client ID del servidor, usuario `user_` con 27
+caracteres de identificador, scopes `openid profile`, flags de revocación/vencimiento
+explícitos en false y vencimiento numérico futuro en segundos UTC. `expiration=null`
+no acredita el vencimiento exigido por este contrato: falla cerrado con 503. No
+se decodifican claims locales ni se usa userinfo/email como prueba alternativa.
+Clerk 400/404 se traduce a 401 del cliente; 401/403 de Clerk indican fallo de la
+credencial del servidor y producen 503; 429 se conserva. Respuesta desconocida,
+JSON malformado, excepción de red o configuración ausente producen 503.
+
+El issuer procede solo de `CLERK_ISSUER`, origen HTTPS canónico de la misma
+instancia que la secret key, nunca de la petición. Se permite una barra final en
+la configuración y se retira al entrar. El resolver reutiliza mappings previos
+con/sin esa barra sin modificarlos; dos UUID distintos para el mismo par canónico
+producen `account_conflict`, sin unión automática. Configurar una secret key de
+otra instancia con el issuer equivocado sería un error administrativo: deben
+verificarse juntos antes del deploy. El cliente no recibe ninguno de esos secretos.
+
+`private.resolve_account_identity(issuer,subject)` extrae el bootstrap de #909 y
+conserva su advisory lock transaccional, perfiles internos y mapping único.
+`private.resolve_current_account()` continúa como adaptador TPA/legacy. El
+claim de dispositivo también se comparte mediante `private.claim_account_device`:
+no cambia el dispositivo ya activo ni concede grants. El RPC
+`public.native_claim_license_device(issuer,subject,device_fingerprint)` está en
+`public` para poder enrutarlo con PostgREST, pero su EXECUTE es privado a
+`service_role`, revocado a PUBLIC/anon/authenticated; los helpers de `private`
+tampoco son ejecutables por service_role. Todos fijan `search_path=''`. El handler
+solo envía al RPC el par ya verificado. No fabrica `auth.jwt()` ni forwardea OAuth
+a PostgREST. La migración es `20261002130000_native_license_bridge.sql`, posterior
+a `20260828124540_clerk_account_bootstrap.sql` de #909.
+
+La emisión, lectura de grants/roles, normalización y firma Ed25519 se extraen a
+`supabase/functions/_shared/license-credential.ts`: ambos handlers llaman a las
+mismas funciones. Un test compara la respuesta completa con la ruta TPA y verifica
+su firma real con una clave efímera de test. Se mantienen las variables de firma
+existentes `OFFLINE_LICENSE_KEY_ID`/`OFFLINE_LICENSE_ED25519_PRIVATE_KEY` y la
+política comercial `POLAR_ENVIRONMENT`; no se añade dependencia ni segunda clave.
+
+Errores exactos `{"error":"...","message":"..."}`, siempre no-store:
+400 `invalid_request`; 401 `unauthorized`; 403 `forbidden`; 409 `device_limit` o
+`account_conflict`; 405 `method_not_allowed`; 413 `request_too_large`;
+429 `rate_limited`; 503 `bridge_unavailable`. Sin tokens, emails, bodies de OAuth
+ni UUIDs en logs. El 429 corresponde a Clerk; este corte no añade un rate limiter
+persistente propio ni cambia los límites del proveedor/gateway.
+
+### Configuración, pruebas y límites
+
+`[functions.native-license] verify_jwt=false`: el handler autentica antes del
+acceso privilegiado. La allowlist reconoce la función; el wrapper permite
+`-Functions @("native-license")` y el workflow una selección explícita equivalente.
+El despliegue comercial por defecto conserva sus cuatro funciones anteriores.
+El wrapper propaga el error PowerShell del guard directamente: no consulta el
+exit code residual de un comando nativo anterior para evaluar un script PowerShell.
+No se ejecutó el wrapper ni se despachó el workflow.
+
+La base #909 se actualizó con `origin/nightly@f29b5fee04022756f9ae59f19bf153f91eebe4ed`
+en `3f5e116328daecae99da0ee4287b54cf1bfe96ab`, con push normal a la rama de #913.
+El worktree antiguo `C:/tmp/vantare-isa909` sigue intacto: al estar ocupado el
+nombre local original, `C:/tmp/vw3-909` usa el sufijo local `-nightly`. #913
+permanece draft; no se integró en Nightly. Su gate local: Go ./... PASS, Deno
+396/396, frontend 4109 PASS/2 omitidas, build/lint PASS y presupuesto 4/4 PASS.
+Nightly retiró `plan.md`, `roadmap.json` y `.github/scripts/roadmap_digest.py`:
+se conservaron esas retiradas, sin recrear el roadmap antiguo ni publicar contenido.
+
+Tests nuevos: contrato/bytes/errores y fetch Clerk inyectado, igualdad de firma y
+grants, no logs sensibles, guard de despliegue aislado y pgTAP del RPC (mismo par,
+permisos efectivos, TPA, barra final, conflictos y dispositivo). La prueba de
+concurrencia usa dos sesiones PostgreSQL reales, una transacción abierta y una
+espera observable de advisory lock, no un mock. Su fichero `.psql` requiere un
+password exclusivamente de la base desechable y se ejecuta aparte del pgTAP normal.
+Ejemplos **solo locales**, después de aplicar las migraciones en una base vacía:
+
+```sh
+supabase test db supabase/tests/native_license_bridge_test.sql
+# Dentro del contenedor PostgreSQL desechable, con su contraseña de test:
+psql -X -v ON_ERROR_STOP=1 -v dblink_password="$TEST_DB_PASSWORD" \
+  -U postgres -d postgres -f /tmp/native_license_bridge_concurrency.psql
+```
+
+El runner existente `supabase/tests/run-supabase-hardening-postgres.ps1` incluye
+bootstrap local y la matriz #909. Para el nuevo corte, pgTAP principal funciona
+con `supabase test db`; la carrera también acepta el helper dblink de ese runner.
+Revisar que la salida contenga el plan final y ningún `not ok`: psql por sí solo
+no convierte los fallos de aserción pgTAP en exit no cero.
+
+**SQL no ejecutado:** Docker no está disponible en Windows y `ssh linux` no
+resuelve el host, tanto con Git SSH como con Windows OpenSSH. No se verificó
+Docker en Linux ni se presenta la concurrencia escrita como evidencia de PASS.
+Logs completos y copia/hash del OpenAPI quedan fuera de Git, en
+`C:/tmp/puente-servidor-evidence/`. Rust, Hub, login OAuth físico, ACK de derechos,
+CI del nuevo SHA, entorno Clerk/Supabase desplegado y grants reales no se probaron
+en este corte. Antes de autorizar uso real faltan revisión Opus y SQL en Linux.
+Gates finales del servidor: Deno 437 PASS/0 FAIL (40 del handler nativo y una
+regresión nueva de deploy), Go ./... PASS, formato Deno y ambos guards PASS.
+Lint de los tres archivos de implementación/test nuevos pasa excluyendo únicamente
+`no-import-prefix`: las importaciones HTTPS fijadas son el patrón existente del repo,
+no una dependencia nueva. No se ejecutó Cargo porque no se editó Rust en este corte.
+
+### Pasos remotos que el orquestador pedirá a Isaac, en orden
+
+1. Aceptar el diff de #913 actualizado y de #1444, completar SQL local en Linux
+   y los checks del SHA revisado. Solicitar por separado su integración en Nightly;
+   no promover testers/master ni marcar #913 ready desde este worker.
+2. Autorizar el entorno Supabase concreto y un preflight administrativo con
+   inventario de migraciones aplicadas, backup y rollback. Aplicar, solo tras esa
+   revisión, la migración #909 si falta y después
+   `20261002130000_native_license_bridge.sql` (y los prerrequisitos ausentes que
+   revele el inventario). Comprobar permisos del RPC y mapping idempotente.
+3. Autorizar la configuración de secretos **del servidor**: `CLERK_SECRET_KEY`
+   de la instancia elegida, `CLERK_NATIVE_CLIENT_ID` del cliente OAuth nativo y
+   `CLERK_ISSUER` canónico de esa misma instancia. Verificar además que las
+   variables Supabase, `POLAR_ENVIRONMENT` y las dos variables de firma existentes
+   están configuradas; crear/rotar cualquiera requiere su autorización. No
+   copiar secretos a cliente, Git, argumentos de terminal, logs o artifacts.
+4. Autorizar el deploy del SHA revisado: actualizar únicamente `license-credential`
+   si el corte #909/shared aún no está desplegado y luego únicamente `native-license`,
+   usando el wrapper guardado con selección explícita. No ejecutar el despliegue
+   comercial entero para habilitar este puente, ni tocar TPA/signing keys de datos.
+5. Autorizar QA Development real y sus efectos de bootstrap: login nativo del
+   cliente correcto → UUID → credencial v1 → validación/ACK núcleo. Comprobar cuenta
+   sin grants, segundo dispositivo (409), rechazo de token/scopes/cliente, logout
+   y servidor caído. Crear usuarios/grants/datos, si fuese necesario, requiere
+   autorización separada. Registrar entorno, SHA y evidencia sanitizada fuera de Git.
+6. Recuperar Notion y reconciliar tarea/proyecto/PR/checks/SHA/canal antes de
+   declarar seguimiento completado o publicación. Este worker no hizo deploy,
+   link/db push, cambios Clerk/Supabase, creación de secretos, PR ni merge remoto.

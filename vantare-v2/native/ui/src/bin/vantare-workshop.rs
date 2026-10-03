@@ -14,6 +14,9 @@
 //! otra: arrancar `vantare-core --replay <corpus>` y ejecutar `--guardar`, que
 //! guarda la primera foto fresca que reciba por el pipe del núcleo.
 
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -200,6 +203,9 @@ fn show(widgets: &[Kind], pos: (f32, f32), scene: Option<PathBuf>) -> Result<(),
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     vantare_services::diagnostics::install_panic_hook("vantare-workshop");
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(command) = parse(&args) else {

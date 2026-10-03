@@ -809,7 +809,7 @@ impl Launcher {
             if demo {
                 "v0.3.9"
             } else {
-                env!("CARGO_PKG_VERSION")
+                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
             },
             cx,
         )

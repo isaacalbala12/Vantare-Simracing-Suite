@@ -90,10 +90,17 @@ fn parse(args: &[String]) -> Result<Args, String> {
     })
 }
 
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 #[cfg(any(windows, unix))]
 fn main() -> std::process::ExitCode {
     use std::process::ExitCode;
     vantare_services::diagnostics::install_panic_hook("vantare-core");
+
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
 
     let args: Vec<String> = std::env::args().skip(1).collect();
     match parse(&args) {

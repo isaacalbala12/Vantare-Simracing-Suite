@@ -6,6 +6,9 @@
 //! feature `parity-capture`, `vantare-overlays --parity-capture <png>` captura
 //! Standings con la escena fija.
 
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -55,6 +58,9 @@ fn parse(args: &[String]) -> Option<(Option<usize>, Option<PathBuf>, Feed)> {
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     vantare_services::diagnostics::install_panic_hook("vantare-overlays");
     let args: Vec<String> = std::env::args().skip(1).collect();
     #[cfg(feature = "parity-capture")]

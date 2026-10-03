@@ -1,5 +1,8 @@
 #![deny(unsafe_code)]
 
+#[path = "../../packaging/version.rs"]
+mod product;
+
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
@@ -77,6 +80,9 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
 }
 
 fn main() {
+    if product::print_version() {
+        return;
+    }
     vantare_services::diagnostics::install_panic_hook("vantare-engineer");
     if let Err(error) = run() {
         eprintln!("Engineer: {error}");

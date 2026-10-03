@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 use vantare_services::{
@@ -56,6 +59,9 @@ fn run() -> vantare_services::Result<()> {
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     vantare_services::diagnostics::install_panic_hook("vantare-services");
     match run() {
         Ok(()) => ExitCode::SUCCESS,

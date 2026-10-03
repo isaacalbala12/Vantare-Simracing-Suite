@@ -28,9 +28,10 @@ pub fn production(
     engineer: std::path::PathBuf,
 ) -> std::io::Result<host::Host> {
     let channel = option_env!("VANTARE_BUILD_CHANNEL")
-        .filter(|channel| matches!(*channel, "nightly" | "testers" | "master"))
+        .filter(|channel| matches!(*channel, "nightly" | "testers" | "master" | "beta"))
         .unwrap_or("unknown");
-    let root = std::env::var_os("LOCALAPPDATA")
+    let root = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| std::env::var_os("LOCALAPPDATA"))
         .map(std::path::PathBuf::from)
         .ok_or_else(|| std::io::Error::other("directorio de derechos no disponible"))?
         .join("Vantare/native/rights")

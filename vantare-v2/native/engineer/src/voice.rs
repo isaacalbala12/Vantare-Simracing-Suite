@@ -97,7 +97,8 @@ impl Voice {
 pub fn default_cache_root() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        std::env::var_os("APPDATA")
+        std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+            .or_else(|| std::env::var_os("APPDATA"))
             .filter(|value| !value.is_empty())
             .map(|root| PathBuf::from(root).join("Vantare/Ingeniero/tts-cache/kokoro"))
     }

@@ -45,7 +45,7 @@ fn hex(value: &str, length: usize) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 fn channel(value: &str) -> bool {
-    matches!(value, "nightly" | "testers" | "master")
+    matches!(value, "nightly" | "testers" | "master" | "beta")
 }
 impl Generation {
     fn valid(&self) -> bool {
@@ -259,5 +259,40 @@ mod tests {
             LocalUpdate::Development
         );
         fs::remove_dir_all(root).expect("limpiar fixture propia");
+    }
+}
+
+#[derive(Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct BetaStatus {
+    pub schema: u32,
+    pub state: String,
+    pub message: String,
+    pub version: String,
+    #[serde(default)]
+    pub notes: String,
+}
+pub(super) fn beta_status() -> Option<BetaStatus> {
+    let root = std::env::var_os("VANTARE_BETA_ROOT")?;
+    let status: BetaStatus = read(&Path::new(&root).join("update-status.json"), 64 * 1024).ok()?;
+    (status.schema == 1
+        && status.message.len() <= 8192
+        && status.version.len() <= 32
+        && status.notes.len() <= 8192)
+        .then_some(status)
+}
+pub(super) fn request_restart() -> Result<(), String> {
+    let root = std::env::var_os("VANTARE_BETA_ROOT").ok_or("Instalación beta no disponible")?;
+    fs::write(Path::new(&root).join("restart-request"), b"restart")
+        .map_err(|error| format!("solicitar reinicio: {error}"))
+}
+pub(super) fn cancel_restart() -> Result<(), String> {
+    let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") else {
+        return Ok(());
+    };
+    match fs::remove_file(Path::new(&root).join("restart-request")) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("cancelar reinicio beta: {error}")),
     }
 }

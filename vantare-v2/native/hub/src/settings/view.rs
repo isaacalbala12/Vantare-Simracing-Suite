@@ -1088,7 +1088,7 @@ impl Hub {
             if self.demo.is_some() {
                 "v0.3.10"
             } else {
-                env!("CARGO_PKG_VERSION")
+                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
             },
             cx,
         )
@@ -1672,7 +1672,7 @@ impl Hub {
                  cx).mt(px(-8.0)).line_height(px(18.0))),
          cx)
     }
-    fn settings_updates(&self, cx: &gpui::App) -> Div {
+    fn settings_updates(&self, cx: &mut Context<Self>) -> Div {
         let (version, state, channel) = if let Some(demo) = &self.demo {
             (
                 demo.versions.current.clone(),
@@ -1683,7 +1683,10 @@ impl Hub {
             match &self.settings.update {
                 LocalUpdate::Unread => ("—".into(), "sin respuesta del actualizador".into(), None),
                 LocalUpdate::Development => (
-                    format!("v{}", env!("CARGO_PKG_VERSION")),
+                    format!(
+                        "v{}",
+                        option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
+                    ),
                     "build de desarrollo · sin instalación local detectada".to_owned(),
                     None,
                 ),
@@ -1693,14 +1696,16 @@ impl Hub {
                     previous,
                 } => (
                     format!("v{version}"),
-                    format!(
-                        "estado local leído · referencia anterior {}",
-                        if *previous { "presente" } else { "ausente" }
-                    ),
+                    if *previous {
+                        "La versión anterior se conserva por seguridad.".into()
+                    } else {
+                        "Primera instalación.".into()
+                    },
                     Some(match channel.as_str() {
                         "master" | "stable" => "Stable",
                         "testers" => "Testers",
                         "nightly" => "Nightly",
+                        "beta" => "Beta",
                         _ => "",
                     }),
                 ),
@@ -1711,25 +1716,77 @@ impl Hub {
                 ),
             }
         };
-        let news = section_surface(
-            "Novedades",
-            Some("docs/releases"),
-            self.settings_release_news(cx),
-            cx,
-        );
+        let news = if channel == Some("Beta") {
+            let notes = self
+                .settings
+                .beta_status
+                .as_ref()
+                .map(|status| status.notes.as_str())
+                .filter(|notes| !notes.is_empty())
+                .unwrap_or("Las novedades se mostrarán al recibir una actualización beta.");
+            section_surface(
+                "Novedades beta",
+                Some("GitHub Releases"),
+                section_body().child(text(notes.to_owned(), 13.0, 400, orbit::ink_2(cx), cx)),
+                cx,
+            )
+        } else {
+            section_surface(
+                "Novedades",
+                Some("docs/releases"),
+                self.settings_release_news(cx),
+                cx,
+            )
+        };
+        let beta = if self.demo.is_none() {
+            self.settings.beta_status.clone()
+        } else {
+            None
+        };
         stack()
+            .when_some(beta, |surface, status| {
+                surface.child(
+                    Self::settings_beta_notice(status, cx),
+                )
+            })
             .child(Self::settings_update_hero(
                 version,
                 state,
                 self.demo.is_some(),
                 cx,
             ))
-            .child(Self::settings_update_channels(
-                channel,
-                self.demo.is_some(),
-                cx,
-            ))
+            .child(if channel == Some("Beta") {
+                section_surface("Beta", Some("Actualizaciones automáticas al abrir y cada 6 horas"),
+                    section_body().child(text("Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.", 13.0, 400, orbit::ink_2(cx), cx)), cx)
+            } else {
+                Self::settings_update_channels(channel, self.demo.is_some(), cx)
+            })
             .child(Grayscale(news.into_any_element()))
+    }
+    fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
+        section_body()
+            .flex_row()
+            .flex_wrap()
+            .items_center()
+            .justify_between()
+            .child(text(status.message, 13.0, 400, orbit::ink_2(cx), cx).min_w_0())
+            .when(status.state == "ready", |body| {
+                body.child(
+                    reference_primary("beta-restart-now", "Reiniciar ahora", cx)
+                        .tab_stop(true)
+                        .aria_description("Aplicar la actualización y volver a abrir Vantare")
+                        .cursor_pointer()
+                        .on_click(cx.listener(
+                            |this, _, _, cx| match super::updates::request_restart() {
+                                Ok(()) => this.close(cx),
+                                Err(error) => {
+                                    this.settings.status = Some(error);
+                                    cx.notify();
+                                }
+                            },
+                        )),
+                )
+            })
     }
     fn settings_release_news(&self, cx: &gpui::App) -> Div {
         let mut body = section_body().mt(px(-0.5));
@@ -1852,27 +1909,25 @@ impl Hub {
                     ))
                     .child(text(state, 12.5, 400, orbit::ink_3(cx), cx).mt(px(4.0))),
             )
-            .child(
-                div()
-                    .flex()
-                    .flex_none()
-                    .items_center()
-                    .gap(px(12.0))
-                    .child(reference_primary(
-                        "settings-update-install",
-                        if demo {
-                            "Instalar v0.1.0.2"
-                        } else {
-                            "Instalar actualización"
-                        },
-                        cx,
-                    ))
-                    .child(reference_primary(
-                        "settings-update-check",
-                        "Buscar actualizaciones",
-                        cx,
-                    )),
-            )
+            .when(demo, |hero| {
+                hero.child(
+                    div()
+                        .flex()
+                        .flex_none()
+                        .items_center()
+                        .gap(px(12.0))
+                        .child(reference_primary(
+                            "settings-update-install",
+                            "Instalar v0.1.0.2",
+                            cx,
+                        ))
+                        .child(reference_primary(
+                            "settings-update-check",
+                            "Buscar actualizaciones",
+                            cx,
+                        )),
+                )
+            })
     }
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
         let mut channels = div().flex().w_full().gap(px(21.0));

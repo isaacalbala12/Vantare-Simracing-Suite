@@ -37,6 +37,9 @@ mod resident;
 #[cfg(windows)]
 mod triggers_win;
 
+#[path = "../../../../packaging/version.rs"]
+mod product;
+
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
@@ -470,7 +473,8 @@ fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
     let path = match explicit {
         Some(path) => path,
         None => PathBuf::from(
-            env::var_os("LOCALAPPDATA")
+            env::var_os("VANTARE_NATIVE_DATA_ROOT")
+                .or_else(|| env::var_os("LOCALAPPDATA"))
                 .ok_or_else(|| io::Error::other("LOCALAPPDATA no definido"))?,
         )
         .join("Vantare/native/launcher.json"),
@@ -594,6 +598,9 @@ fn signal_stop(instance: &str) -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     vantare_services::diagnostics::install_panic_hook("vantare");
     let args: Vec<String> = env::args().skip(1).collect();
     let bin_dir = env::current_exe()

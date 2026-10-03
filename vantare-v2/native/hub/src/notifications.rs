@@ -393,11 +393,20 @@ impl Notifications {
         cx.notify();
     }
     pub fn report(&mut self, key: &str, cause: String, cx: &mut Context<Self>) {
-        if let Err(error) = self.center.publish(
-            Record::local_error(key, cause),
-            chrono::Utc::now().timestamp_millis(),
-            false,
-        ) {
+        self.publish_local(Record::local_error(key, cause), cx);
+    }
+    pub fn update_ready(&mut self, message: String, cx: &mut Context<Self>) {
+        let mut record = Record::local_error("updater.ready", message);
+        record.source = Source::Updater;
+        record.severity = Severity::Info;
+        record.title_key = "Actualización lista".into();
+        self.publish_local(record, cx);
+    }
+    fn publish_local(&mut self, record: Record, cx: &mut Context<Self>) {
+        if let Err(error) =
+            self.center
+                .publish(record, chrono::Utc::now().timestamp_millis(), false)
+        {
             self.error = Some(error);
         }
         cx.notify();

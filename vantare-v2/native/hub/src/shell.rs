@@ -83,6 +83,7 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        self.poll_beta_update(cx);
         if self.capture.is_none() {
             let access = self.remote.update(cx, |remote, cx| {
                 remote.refresh_license(cx);
@@ -98,6 +99,7 @@ impl Hub {
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
         {
             self.close_requested = false;
+            self.cancel_beta_restart();
         }
         if !self.shell.access.visible(self.section) {
             self.section = Section::Home;
@@ -172,13 +174,31 @@ impl Hub {
             return false;
         }
         match self.save(cx) {
-            Ok(()) => true,
+            Ok(()) => {
+                if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
+                    let state = if self.previous_source == Some(true) {
+                        "live"
+                    } else {
+                        "idle"
+                    };
+                    if let Err(error) = std::fs::write(PathBuf::from(root).join("hub-exit"), state)
+                    {
+                        self.status = Some(format!("registrar cierre beta: {error}"));
+                        self.close_requested = false;
+                        self.cancel_beta_restart();
+                        cx.notify();
+                        return false;
+                    }
+                }
+                true
+            }
             Err(error) => {
                 self.notifications.update(cx, |center, cx| {
                     center.report("hub.save", error.clone(), cx);
                 });
                 self.status = Some(error);
                 self.close_requested = false;
+                self.cancel_beta_restart();
                 cx.notify();
                 false
             }
@@ -896,6 +916,17 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 hub
             }) {
                 *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
+                cx.quit();
+                return;
+            }
+            if options.capture.is_none()
+                && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
+                && let Err(error) = std::fs::write(
+                    PathBuf::from(root).join("hub-ready"),
+                    std::process::id().to_string(),
+                )
+            {
+                *failure.borrow_mut() = Some(format!("confirmar arranque beta: {error}"));
                 cx.quit();
                 return;
             }

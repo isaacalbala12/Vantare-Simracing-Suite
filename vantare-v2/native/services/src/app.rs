@@ -1033,7 +1033,8 @@ mod tests {
 pub fn default_root() -> Result<PathBuf> {
     #[cfg(windows)]
     {
-        std::env::var_os("LOCALAPPDATA")
+        std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+            .or_else(|| std::env::var_os("LOCALAPPDATA"))
             .map(|path| PathBuf::from(path).join("Vantare/native/services"))
             .ok_or(Error::Storage)
     }

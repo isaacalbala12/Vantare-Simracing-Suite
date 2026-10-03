@@ -1,3 +1,141 @@
+# Beta nativa — instalador y actualizaciones (#1454)
+
+El orquestador publica la beta; estos scripts **no publican ni usan tokens**.
+Windows x64, NTFS, PowerShell 5.1, NSIS para construir el instalador.
+El compilador NSIS predeterminado está en `Program Files (x86)/NSIS/makensis.exe`;
+`-NsisCompiler <ruta>` permite indicar otra instalación real (no un shim roto).
+No se añaden crates. Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar de todas formas» (aceptado por Isaac).
+
+## Instalar y desinstalar
+
+Doble clic en **VantareSetup.exe**. Instala sin administrador en
+`%LOCALAPPDATA%/Programs/Vantare Native Beta`, crea «Vantare Native Beta» y
+«Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.
+No crea acceso en el escritorio. «Aplicaciones instaladas» de Windows también
+permite desinstalar. La identidad de registro es `VantareNativeBeta`.
+Wails usa «Vantare Simracing Suite», otra carpeta y sus propios accesos.
+No se leen ni importan datos Wails durante la instalación.
+
+La desinstalación exige cerrar todos los procesos de esta instalación, retira
+los binarios y conserva `generations/<id>/data/`. No borra perfiles ni cuenta.
+Para reinstalar tras desinstalar, mueve la carpeta conservada a un respaldo y
+vuelve a ejecutar el instalador. Una instalación existente se actualiza desde
+el Hub; ejecutar Setup de nuevo la rechaza sin sobrescribir sus datos.
+
+El acceso de Inicio abre un host PowerShell de 64 bits oculto. NSIS usa
+[Sysnative](https://learn.microsoft.com/en-us/windows/win32/winprog64/file-system-redirector)
+para evitar la redirección WOW64; el acceso guardado apunta a System32 para Explorer x64.
+El host abre el supervisor nativo `vantare` (instancia `native-beta`, núcleo live
+y overlays) y el Hub conectado a él. Mantiene
+un lock de sesión único, comprueba actualizaciones al abrir y cada 6 horas
+mientras el Hub está abierto, y termina después del Hub. No hay tarea programada
+ni updater residente durante la carrera. Al cerrar el Hub fuera de Live se
+solicita el cierre protegido del supervisor beta; al entrar en Live se mantiene
+el supervisor con overlays y la actualización espera a que terminen. Abrir un exe directamente es una ruta
+diagnóstica; para recibir actualizaciones utiliza el acceso instalado.
+
+## Actualización automática
+
+El feed anónimo consulta las 100 Releases más recientes de
+`isaacalbala12/Vantare-Simracing-Suite`, selecciona la mayor versión numérica
+`native-beta-vMAJOR.MINOR.PATCH` con asset `vantare-native-beta.json`
+(incluidas prereleases, excluidos drafts). El repositorio debe ser público.
+La comprobación anónima dio HTTP 200 en el desarrollo local; no certifica una
+release beta publicada. Rate limit, falta de red o manifiesto ausente se muestran
+en Ajustes; no bloquean el uso de la versión instalada.
+
+Contrato cerrado del manifiesto:
+
+```json
+{
+  "schema": 1,
+  "product": "vantare-native",
+  "channel": "beta",
+  "version": "0.1.1",
+  "url": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip",
+  "sha256": "<64 hex minúsculas>",
+  "notes": "Cambios de la beta"
+}
+```
+
+El nombre del asset, tag, URL, canal, esquema, versión y SHA se verifican.
+El ZIP pasa además el inventario y hashes del candidato. Solo entonces queda
+en `staging/` y el Hub muestra **«Actualización lista, se aplicará al reiniciar»**
+y **«Reiniciar ahora»**. El botón utiliza el cierre protegido del Hub; no
+interrumpe un proceso de carrera. Al cerrar se aplica `Update` de `candidate.ps1`,
+que exige todos los escritores detenidos y copia datos a una generación nueva.
+Si algún proceso sigue usando los binarios, queda pendiente para otro arranque.
+
+El Hub confirma la creación de su ventana mediante `hub-ready`. Un marcador
+durable `boot-pending.json` sobrevive a interrupciones del supervisor. Si el Hub
+nuevo termina o no confirma en 45 s, se restaura la generación anterior con
+`Rollback`; en timeout se cierra únicamente el Hub nuevo que creó el supervisor.
+La confirmación prueba apertura, no login remoto, juego ni sesión prolongada.
+Las generaciones se conservan; no hay purga automática ni migración de esquema.
+El bootstrap schema 1 queda fijo durante Update; cambiar scripts instalados
+requiere reinstalación/revisión. SHA-256 prueba integridad sobre GitHub HTTPS;
+no se ofrece firma de artefactos.
+
+Los datos beta viven en la generación (`data/`); el Hub y sus hijos heredan
+`VANTARE_NATIVE_DATA_ROOT`. Layout, ajustes, servicios y derechos no se escriben
+en la ubicación Wails. Ajustes → Actualizaciones y los diagnósticos muestran
+versión de producto embebida; cada exe admite `--version` y muestra el canal.
+El servicio de informes de la base acepta solo `nightly/testers`: B2 debe
+habilitar el canal beta también en cliente/servidor antes de enviar informes.
+
+## Preparar publicación (sin publicar)
+
+Desde `vantare-v2`, en el SHA integrado y limpio:
+
+```powershell
+powershell -NoProfile -File native/packaging/publish-beta.ps1 `
+  -Version 0.1.1 -OutputDirectory C:/tmp/isa-1454-evidence/release-0.1.1 `
+  -Notes 'Notas revisadas por el orquestador'
+```
+
+Compila Release offline/locked con `-j 2`, verifica inventario Cargo y genera
+paquete, portable, `VantareSetup.exe`, sidecars y `vantare-native-beta.json`.
+Fija `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL=beta` para todos los binarios,
+restaurando el entorno al terminar. No compila Wails ni altera sus workflows.
+Imprime un comando `gh release create --prerelease`; **no lo ejecuta**.
+El orquestador revisa y publica el tag y los assets exactos. No usar `latest/download`
+porque la beta es prerelease. `-BuildProfile Debug -AllowDirty` sirve para QA local;
+no equivale a una candidata Release del SHA integrado.
+
+## Prueba local
+
+Construye dos salidas con versiones 0.1.0 y 0.1.1 mediante el script anterior.
+Luego, desde `vantare-v2`:
+
+```powershell
+powershell -NoProfile -File native/packaging/beta-tests.ps1 `
+  -Version010Directory C:/tmp/isa-1454-evidence/build-0.1.0 `
+  -Version011Directory C:/tmp/isa-1454-evidence/build-0.1.1 `
+  -EvidenceDirectory C:/tmp/isa-1454-evidence/roundtrip
+```
+
+Prueba comparación de versiones, contrato inválido, SHA erróneo, staging,
+Update real con conservación de datos, versiones de los once exe, fallo de
+arranque real y rollback reversible, y desinstalación preservando datos.
+Verifica también el bootstrap instalado y el hash en un proceso PowerShell 5.1
+sin `Get-FileHash`/autoload: el SHA se calcula en streaming mediante .NET.
+El harness heredado se ejecuta con `tests.ps1 -Channel beta -ArtifactsDirectory <salida> -EvidenceDirectory C:/tmp/isa-1454-evidence/phase7`, incluyendo corrupción e interrupción real en tres fronteras.
+El manifiesto local usa URI `file:` únicamente con `-LocalManifest`; el feed
+productivo rechaza esa URL. Para abrir una instalación local y comprobar el
+aviso/botón con la misma cadena automática:
+
+```powershell
+powershell -NoProfile -File native/packaging/beta.ps1 -Operation Run `
+  -Root C:/tmp/isa-1454-evidence/installed `
+  -LocalManifest C:/tmp/isa-1454-evidence/roundtrip/local-manifest.json
+```
+
+Evidencia fuera del repo. QA final debe repetirse sobre la integración B1–B4,
+Release, Windows limpio y otra GPU. MSVC/ICU siguen siendo límites de la fase 7:
+que el paquete cargue en este PC no certifica redistribución ni equipo limpio.
+
+---
+
 # Candidato offline — fase 7 (ISA-1432)
 
 Windows x64, PowerShell 5.1/.NET y volumen local con reemplazo atómico (NTFS).
@@ -8,14 +146,14 @@ Desde la raíz `vantare-v2`, con checkout limpio y dependencias Cargo cacheadas:
 
 ```powershell
 & native/packaging/candidate.ps1 -Operation Build -Version 0.0.0-local `
-  -Channel nightly -BuildProfile Debug -OutputDirectory native/target/phase7-build
+  -Channel nightly -BuildProfile Debug -OutputDirectory C:/tmp/isa-1454-evidence/phase7-build
 ```
 
 Compila todos los binarios del workspace (once en esta base), offline/locked con `-j 2`. `Release` es el
 perfil por defecto; `Debug` verifica packaging sin representar rendimiento de
 producto. Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
-los binarios aún no tienen versión de producto embebida.
+los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.
 
 La salida conserva `payload`, `portable-tree`, el paquete, portable e instalador
 script con sus SHA-256. El manifiesto enumera exactamente los once exe y sus sidecars SHA-256, el
@@ -27,11 +165,11 @@ Instalación por usuario en una carpeta vacía elegida expresamente (puede ser
 una carpeta de prueba; no escribe registro, servicios, asociaciones o AppData):
 
 ```powershell
-$package = 'native/target/phase7-build/vantare-native-amd64-package.zip'
+$package = 'C:/tmp/isa-1454-evidence/phase7-build/vantare-native-amd64-package.zip'
 $sha = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-& native/packaging/candidate.ps1 -Operation Install -Root native/target/phase7-install `
+& native/packaging/candidate.ps1 -Operation Install -Root C:/tmp/isa-1454-evidence/phase7-install `
   -Archive $package -ExpectedSha256 $sha -Channel nightly
-& native/target/phase7-install/candidate.ps1 -Operation Status -Root native/target/phase7-install
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation Status -Root C:/tmp/isa-1454-evidence/phase7-install
 ```
 
 El instalador es `vantare-native-installer.ps1` con operación Install y los
@@ -49,7 +187,7 @@ distribución comercial ni reemplazar assets Wails.
 Arranque explícito (replay real, no fuente sintética por defecto):
 
 ```powershell
-& native/target/phase7-install/candidate.ps1 -Operation Start -Root native/target/phase7-install `
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation Start -Root C:/tmp/isa-1454-evidence/phase7-install `
   -ApplicationArgs @('--', '--replay', (Resolve-Path testdata/lmu-fixture.bin).Path, '--build', '1.3.0.0', '--', '4')
 ```
 
@@ -63,9 +201,9 @@ grupo explícito de argumentos de overlays, Start pasa su ruta mediante
 Actualización y rollback, con todos los procesos de esta instalación cerrados:
 
 ```powershell
-& native/target/phase7-install/candidate.ps1 -Operation Update -Root native/target/phase7-install `
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation Update -Root C:/tmp/isa-1454-evidence/phase7-install `
   -Archive 'C:/ruta/local/vantare-native-amd64-package.zip' -ExpectedSha256 '<64 hex minúsculas confiables>'
-& native/target/phase7-install/candidate.ps1 -Operation Rollback -Root native/target/phase7-install
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation Rollback -Root C:/tmp/isa-1454-evidence/phase7-install
 ```
 
 Update exige el mismo canal/esquema y un paquete íntegro. Copia datos a una
@@ -90,10 +228,10 @@ no ejecutar un script nuevo automáticamente desde un ZIP.
 Importación explícita de Studio V4 (un solo perfil y monitor elegido):
 
 ```powershell
-& native/target/phase7-install/candidate.ps1 -Operation ImportLayout -Root native/target/phase7-install `
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation ImportLayout -Root C:/tmp/isa-1454-evidence/phase7-install `
   -ProfileFiles @((Resolve-Path native/packaging/fixtures/studio-v4.json).Path) `
   -MonitorBounds @(-2560, 100, 2560, 1440)
-& native/target/phase7-install/candidate.ps1 -Operation Rollback -Root native/target/phase7-install
+& C:/tmp/isa-1454-evidence/phase7-install/candidate.ps1 -Operation Rollback -Root C:/tmp/isa-1454-evidence/phase7-install
 ```
 
 Bounds son x/y globales y ancho/alto del monitor en las coordenadas usadas por
@@ -123,7 +261,8 @@ $env:CARGO_NET_OFFLINE = 'true'
 $env:CARGO_BUILD_JOBS = '2'
 cargo fmt --check
 cargo clippy --workspace --all-targets -j 2 -- -D warnings
-cargo test --workspace -j 2
+cargo nextest run --workspace -j 2
+cargo test --workspace --test lifecycle -j 2
 ```
 
 Faltan firma/SmartScreen, notices completos de terceros, redistribuible MSVC
@@ -135,10 +274,10 @@ Prueba local del mecanismo (con binarios reales de la salida indicada):
 
 ```powershell
 powershell -NoProfile -File native/packaging/tests.ps1 `
-  -ArtifactsDirectory native/target/phase7-build
+  -ArtifactsDirectory C:/tmp/isa-1454-evidence/phase7-build
 ```
 
-Las pruebas conservan sus carpetas bajo `native/target/phase7-tests-*` y no
+Las pruebas conservan sus carpetas fuera del repo (por defecto `%TEMP%/vantare-native-packaging-evidence/`; `-EvidenceDirectory` permite elegir otra ruta) y no
 necesitan Pester. El smoke solo verifica carga del exe y rechazo de argumentos,
 sin abrir juego, ventana GPUI ni red. La inspección PE local de Core/Overlays
 detecta `VCRUNTIME140.dll`; Overlays también importa `icuuc.dll`, DX11 y

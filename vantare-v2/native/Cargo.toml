@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy"]
+members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy", "admin"]
 # DuckDB bundled solo se compila al pedir storage o los gates --workspace.
+# Admin es privado: compilarlo explícitamente y excluirlo del instalador público.
 default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services", "strategy"]
 
 [workspace.package]

@@ -6409,6 +6409,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "vantare-admin"
+version = "0.0.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "image",
+ "serde",
+ "serde_json",
+ "ureq",
+ "url",
+ "vantare-hub",
+ "vantare-services",
+ "vantare-ui",
+]
+
+[[package]]
 name = "vantare-domain"
 version = "0.0.0"
 

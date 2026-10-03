@@ -20,10 +20,18 @@ export class CredentialAuthError extends Error {
   }
 }
 
+export const MODULE_CAPABILITIES = [
+  "vantare.module.analysis",
+  "vantare.module.calendar",
+  "vantare.module.engineer",
+  "vantare.module.strategy",
+] as const;
+
 const KNOWN_CAPABILITIES = new Set([
   "vantare.channel.nightly",
   "vantare.channel.testers",
   "vantare.edition.launch_v1",
+  ...MODULE_CAPABILITIES,
   "vantare.operational.nightly_tester",
   "vantare.operational.owner",
   "vantare.operational.tester",
@@ -89,6 +97,7 @@ export type CredentialStore = {
       deviceMatches: boolean;
       grants: StoredGrant[];
       operationalAssignments?: StoredOperationalAssignment[];
+      moduleRollout?: { module: string; enabled_for_all: boolean }[];
     }
   >;
 };
@@ -224,6 +233,16 @@ export function normalizeGrants(
     if (row.provider === "legacy" && row.environment === "legacy") continue;
     if (!KNOWN_CAPABILITIES.has(row.capability)) return { ok: false };
     if (row.environment !== environment) return { ok: false };
+    if (MODULE_CAPABILITIES.some((key) => key === row.capability)) {
+      if (
+        row.valid_until !== null || row.provider !== "vantare" ||
+        row.source_type !== "support"
+      ) {
+        return { ok: false };
+      }
+      grouped.set(row.capability, { perpetual: true, paidThrough: null });
+      continue;
+    }
     const isRecovery = row.provider === "vantare" &&
       row.source_type === "subscription_recovery";
     if (isRecovery) {
@@ -412,6 +431,27 @@ export async function issueCredential(
       409,
     );
   }
+  const rollout = loaded.moduleRollout ?? [];
+  if (
+    rollout.some((row) =>
+      !MODULE_CAPABILITIES.some((key) => key === row.module) ||
+      typeof row.enabled_for_all !== "boolean"
+    )
+  ) {
+    return errorResponse(
+      "invalid_module_rollout",
+      "Module rollout cannot be issued safely",
+      409,
+    );
+  }
+  for (const row of rollout) {
+    if (
+      row.enabled_for_all &&
+      !normalized.grants.some((grant) => grant.key === row.module)
+    ) {
+      normalized.grants.push({ key: row.module, perpetual: true });
+    }
+  }
   const operational = normalizeOperationalAssignments(
     loaded.operationalAssignments ?? [],
     now,
@@ -476,8 +516,12 @@ export async function loadCredentialAccount(
       "role,expires_at,policy_version",
     ).eq("user_id", accountId).eq("status", "active");
   if (operationalError) throw operationalError;
+  const { data: moduleRollout, error: rolloutError } = await admin
+    .from("module_rollout").select("module,enabled_for_all");
+  if (rolloutError) throw rolloutError;
   return {
     accountId,
+    moduleRollout: moduleRollout ?? [],
     deviceMatches: device?.fingerprint_hash === fingerprint,
     grants: (grants ?? []) as StoredGrant[],
     operationalAssignments:

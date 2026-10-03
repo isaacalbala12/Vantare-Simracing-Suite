@@ -1,6 +1,7 @@
 import { handleNativeLicenseRequest, type NativeLicenseDeps } from "./index.ts";
 import {
   handleLicenseCredentialRequest,
+  loadCredentialAccount,
   signCredential,
 } from "../_shared/license-credential.ts";
 
@@ -519,4 +520,164 @@ Deno.test("native never logs tokens, emails or UUIDs even when upstream throws t
     });
   }
   assert(logs === 0, "handler logged sensitive upstream data");
+});
+
+Deno.test("beta modules: per-account, rollout, unknown rejection and owner without module rows", async () => {
+  const modules = ["analysis", "calendar", "engineer", "strategy"];
+  for (const module of modules) {
+    const capability = `vantare.module.${module}`;
+    for (const global of [false, true]) {
+      const response = await handleNativeLicenseRequest(
+        request(),
+        deps({
+          load: () =>
+            Promise.resolve({
+              accountId,
+              deviceMatches: true,
+              grants: global ? [] : [{
+                capability,
+                valid_until: null,
+                provider: "vantare",
+                environment: "production",
+                source_type: "support",
+              }],
+              moduleRollout: [{ module: capability, enabled_for_all: global }],
+            }),
+        }),
+      );
+      assert(response.status === 200);
+      const result = await response.json();
+      assert(
+        JSON.stringify(result.credential.claims.capabilities) ===
+          JSON.stringify([{ key: capability, perpetual: true }]),
+      );
+    }
+  }
+  for (
+    const invalid of [
+      {
+        grants: [{
+          capability: "vantare.module.unknown",
+          valid_until: null,
+          provider: "vantare",
+          environment: "production",
+          source_type: "support",
+        }],
+      },
+      {
+        grants: [],
+        moduleRollout: [{
+          module: "vantare.module.unknown",
+          enabled_for_all: true,
+        }],
+      },
+      {
+        grants: [{
+          capability: "vantare.module.engineer",
+          valid_until: now.toISOString(),
+          provider: "vantare",
+          environment: "production",
+          source_type: "support",
+        }],
+      },
+    ]
+  ) {
+    const response = await handleNativeLicenseRequest(
+      request(),
+      deps({
+        load: () =>
+          Promise.resolve({ accountId, deviceMatches: true, ...invalid }),
+      }),
+    );
+    assert(response.status === 409);
+  }
+  const response = await handleNativeLicenseRequest(
+    request(),
+    deps({
+      load: () =>
+        Promise.resolve({
+          accountId,
+          deviceMatches: true,
+          grants: [],
+          operationalAssignments: state.operationalAssignments,
+        }),
+    }),
+  );
+  assert(response.status === 200);
+  const result = await response.json();
+  assert(result.credential.claims.capabilities.length === 1);
+  assert(
+    result.credential.claims.capabilities[0].key ===
+      "vantare.operational.owner",
+  );
+});
+
+Deno.test("disabled rollout adds nothing and overlaps are deduplicated", async () => {
+  for (const enabled of [false, true]) {
+    const response = await handleNativeLicenseRequest(
+      request(),
+      deps({
+        load: () =>
+          Promise.resolve({
+            accountId,
+            deviceMatches: true,
+            grants: [{
+              capability: "vantare.module.strategy",
+              valid_until: null,
+              provider: "vantare",
+              environment: "production",
+              source_type: "support",
+            }],
+            moduleRollout: [{
+              module: "vantare.module.strategy",
+              enabled_for_all: enabled,
+            }, { module: "vantare.module.analysis", enabled_for_all: false }],
+          }),
+      }),
+    );
+    assert(response.status === 200);
+    const result = await response.json();
+    assert(result.credential.claims.capabilities.length === 1);
+  }
+});
+
+Deno.test("credential loader reads rollout with admin and propagates query failures", async () => {
+  for (const fail of [false, true]) {
+    const queried: string[] = [];
+    const admin = {
+      from(table: string) {
+        queried.push(table);
+        const query = {
+          select: () => query,
+          eq: () => query,
+          maybeSingle: () =>
+            Promise.resolve({
+              data: { fingerprint_hash: fingerprint },
+              error: null,
+            }),
+          then(resolve: (value: unknown) => unknown) {
+            return Promise.resolve(resolve({
+              data: table === "module_rollout"
+                ? [{ module: "vantare.module.calendar", enabled_for_all: true }]
+                : [],
+              error: fail && table === "module_rollout"
+                ? new Error("rollout unavailable")
+                : null,
+            }));
+          },
+        };
+        return query;
+      },
+    } as unknown as Parameters<typeof loadCredentialAccount>[0];
+    let rejected = false;
+    try {
+      const loaded = await loadCredentialAccount(admin, accountId, fingerprint);
+      assert(loaded.moduleRollout?.[0].module === "vantare.module.calendar");
+      assert(loaded.deviceMatches);
+    } catch {
+      rejected = true;
+    }
+    assert(rejected === fail);
+    assert(queried.includes("module_rollout"));
+  }
 });

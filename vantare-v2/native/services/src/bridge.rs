@@ -1,5 +1,5 @@
 //! Puente explícito: OAuth Clerk -> API validante -> sesión de datos limitada.
-//! Contrato de servidor pendiente. No se envía OAuth a Supabase directamente.
+//! No se envía OAuth a `PostgREST` ni a `license-credential` directamente.
 use crate::{
     Error, Result,
     account::{Account, Identity, Secret},
@@ -14,6 +14,7 @@ pub struct Config {
     pub supabase: Url,
     pub anon_key: String,
 }
+
 pub struct DataSession {
     identity: Identity,
     generation: u128,
@@ -31,12 +32,30 @@ struct Response {
 }
 
 impl Config {
-    pub fn authorize(&self, http: &Http, account: &Account, now: u64) -> Result<DataSession> {
-        // In production the native OAuth bearer is never sent to the TPA origin.
-        #[cfg(not(test))]
-        if self.authorize.origin() == self.supabase.origin() {
+    fn authorize_target(&self) -> Result<()> {
+        if self.authorize.origin() == self.supabase.origin()
+            && (self.authorize.path() != "/functions/v1/native-account-authorize"
+                || self.authorize.query().is_some()
+                || self.authorize.fragment().is_some())
+        {
             return Err(Error::BridgeUnconfigured);
         }
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        crate::config::remote_url(self.authorize.as_str())?;
+        crate::config::remote_url(self.supabase.as_str())?;
+        self.authorize_target()?;
+        if self.anon_key.trim().is_empty() {
+            return Err(Error::BridgeUnconfigured);
+        }
+        Ok(())
+    }
+
+    pub fn authorize(&self, http: &Http, account: &Account, now: u64) -> Result<DataSession> {
+        // OAuth solo llega a la función validante; jamás a Storage o PostgREST.
+        self.authorize_target()?;
         let response: Response = account.authorized(now, |bearer| {
             http.post_json(
                 &self.authorize,
@@ -93,6 +112,9 @@ impl DataSession {
             "functions/v1/license-credential"
                 | "rest/v1/rpc/reset_active_device"
                 | "rest/v1/rpc/testing_center_submit_report"
+                | "rest/v1/rpc/testing_center_prepare_screenshot_batch"
+                | "rest/v1/rpc/testing_center_finalize_screenshot"
+                | "rest/v1/rpc/testing_center_submit_report_with_evidence"
         ) {
             return Err(Error::Protocol);
         }
@@ -133,6 +155,30 @@ pub struct DataRequest<'a> {
     now: u64,
 }
 impl DataRequest<'_> {
+    pub(crate) fn upload(&self, object: &str, bytes: &[u8]) -> Result<crate::http::Response> {
+        self.check()?;
+        // Solo nombres canónicos ya validados por screenshots::upload.
+        if !object.starts_with("v1/")
+            || object
+                .bytes()
+                .any(|b| !b.is_ascii_hexdigit() && !matches!(b, b'v' | b'/' | b'-'))
+        {
+            return Err(Error::Protocol);
+        }
+        let url = self
+            .config
+            .supabase
+            .join(&format!(
+                "storage/v1/object/testing-center-evidence/{object}"
+            ))
+            .map_err(|_| Error::Protocol)?;
+        self.http.upload_jpeg(
+            &url,
+            bytes,
+            self.session.token.expose(),
+            &self.config.anon_key,
+        )
+    }
     pub(crate) fn check(&self) -> Result<()> {
         if self.session.valid(self.account, self.now) {
             Ok(())
@@ -159,5 +205,61 @@ impl DataRequest<'_> {
             path,
             payload,
         )
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    use crate::test_http::Server;
+    #[test]
+    fn oauth_same_origin_only_reaches_exact_authorize_without_apikey() {
+        let server = Server::start(vec![
+            (200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":160}).to_string()),
+            (401, "{}".into()),
+        ]);
+        let (root, store) = crate::test_store("bridge-target");
+        let account = crate::account::fixture(&server.base, &store);
+        let http = Http::default();
+        let mut config = Config {
+            authorize: server.base.clone(),
+            supabase: server.base.clone(),
+            anon_key: "public-fixture".into(),
+        };
+        for path in [
+            "rest/v1/rpc/testing_center_submit_report",
+            "storage/v1/object/x",
+            "functions/v1/license-credential",
+            "functions/v1/native-account-authorize/",
+            "functions/v1/native-account-authorize?x=1",
+        ] {
+            config.authorize = server.base.join(path).expect("URL");
+            assert!(matches!(
+                config.authorize(&http, &account, 100),
+                Err(Error::BridgeUnconfigured)
+            ));
+        }
+        config.authorize = server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL");
+        assert!(config.authorize(&http, &account, 100).is_ok());
+        assert!(matches!(
+            config.authorize(&http, &account, 100),
+            Err(Error::Authentication)
+        ));
+        for _ in 0..2 {
+            let sent = server
+                .requests
+                .recv_timeout(std::time::Duration::from_secs(3))
+                .expect("HTTP");
+            assert!(sent.starts_with("POST /functions/v1/native-account-authorize HTTP/1.1"));
+            assert!(sent.to_lowercase().contains("authorization: bearer "));
+            assert!(!sent.to_lowercase().contains("apikey:"));
+            assert!(sent.ends_with("{\"version\":1}"));
+        }
+        server.finish();
+        drop(store);
+        crate::cleanup_store(&root, "bridge-target", &[]);
     }
 }

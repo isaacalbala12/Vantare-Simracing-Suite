@@ -5,6 +5,7 @@ use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Stor
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
+pub mod screenshots;
 
 const MODULES: [&str; 15] = [
     "hub",
@@ -63,7 +64,19 @@ fn draft_valid(draft: &Draft, required: bool) -> Result<()> {
     if serde_json::to_vec(draft)
         .map_err(|_| Error::Protocol)?
         .len()
-        > 16 * 1024
+        > 60 * 1024
+    {
+        return Err(Error::TooLarge);
+    }
+    if draft.screenshots.len() > 3
+        || draft.screenshots.iter().any(|image| {
+            image.jpeg.len() > 14 * 1024
+                || image.byte_size > screenshots::MAX_BYTES
+                || image.width == 0
+                || image.width > 1920
+                || image.height == 0
+                || image.height > 1920
+        })
     {
         return Err(Error::TooLarge);
     }
@@ -82,15 +95,17 @@ pub fn load_draft(store: &Store) -> Result<Option<Draft>> {
 }
 pub fn save_draft(store: &Store, fields: Fields) -> Result<Draft> {
     fields_valid(&fields, false)?;
-    if let Some(draft) = load_draft(store)?
+    let previous = load_draft(store)?;
+    if let Some(draft) = &previous
         && draft.fields == fields
     {
-        return Ok(draft);
+        return Ok(draft.clone());
     }
     let draft = Draft {
         schema_version: 1,
         idempotency_key: format!("draft_{}", crate::random_id()?),
         fields,
+        screenshots: previous.map_or_else(Vec::new, |draft| draft.screenshots),
     };
     draft_valid(&draft, false)?;
     store.save("report-draft", &draft)?;
@@ -250,6 +265,7 @@ impl Submission {
                     context_text: self.context_text.clone(),
                     module: self.module.clone(),
                 },
+                screenshots: Vec::new(),
             },
             Environment {
                 channel: self.channel.clone(),
@@ -283,6 +299,26 @@ struct Attempt {
     account_id: String,
     payload: Submission,
     phase: Phase,
+    #[serde(default)]
+    images: Vec<screenshots::Screenshot>,
+}
+impl Attempt {
+    fn digest(&self) -> Result<String> {
+        if self.images.is_empty() {
+            return self.payload.digest();
+        }
+        let images = self
+            .images
+            .iter()
+            .map(screenshots::Screenshot::digest)
+            .collect::<Result<Vec<_>>>()?;
+        Ok(format!(
+            "{:x}",
+            Sha256::digest(
+                serde_json::to_vec(&(&self.payload, images)).map_err(|_| Error::Protocol)?
+            )
+        ))
+    }
 }
 struct Consent {
     preview: Preview,
@@ -300,6 +336,7 @@ impl Reports {
         let attempt = match store.load::<Attempt>("report-attempt") {
             Ok(attempt) if attempt.version == 1 && crate::license::uuid(&attempt.account_id) => {
                 attempt.payload.validate().map_err(|_| Error::Storage)?;
+                screenshots::validate(&attempt.images).map_err(|_| Error::Storage)?;
                 if let Phase::Confirmed(receipt) = &attempt.phase {
                     valid_receipt(receipt).map_err(|_| Error::Storage)?;
                 }
@@ -324,11 +361,41 @@ impl Reports {
         draft: Draft,
         environment: Environment,
     ) -> Result<Preview> {
+        self.prepare_with_images(request, draft, environment, Vec::new())
+    }
+
+    pub fn prepare_with_images(
+        &mut self,
+        request: &DataRequest<'_>,
+        draft: Draft,
+        environment: Environment,
+        images: Vec<screenshots::Screenshot>,
+    ) -> Result<Preview> {
         request.check()?;
+        screenshots::validate(&images)?;
+        if draft
+            .screenshots
+            .iter()
+            .map(|p| &p.id)
+            .ne(images.iter().map(|i| &i.preview.id))
+        {
+            return Err(Error::Protocol);
+        }
         let payload = Submission::new(draft, environment)?;
+        let candidate = Attempt {
+            version: 1,
+            identity: request.binding().0.clone(),
+            account_id: request.account_id().into(),
+            payload,
+            phase: Phase::InFlight,
+            images,
+        };
+        let payload = &candidate.payload;
         if let Some(attempt) = &self.attempt {
-            if !matches!(attempt.phase, Phase::Confirmed(_))
-                && (attempt.payload.digest()? != payload.digest()?
+            // Un rechazo definitivo permite corregir el borrador. Un resultado
+            // incierto conserva exactamente lo que pudo llegar al servidor.
+            if !matches!(attempt.phase, Phase::Confirmed(_) | Phase::Rejected)
+                && (attempt.digest()? != candidate.digest()?
                     || attempt.account_id != request.account_id()
                     || &attempt.identity != request.binding().0)
             {
@@ -340,17 +407,7 @@ impl Reports {
                 return Err(Error::Conflict);
             }
         }
-        self.preview(
-            request,
-            Attempt {
-                version: 1,
-                identity: request.binding().0.clone(),
-                account_id: request.account_id().into(),
-                payload,
-                phase: Phase::InFlight,
-            },
-            false,
-        )
+        self.preview(request, candidate, false)
     }
 
     pub fn prepare_retry(&mut self, request: &DataRequest<'_>, channel: &str) -> Result<Preview> {
@@ -376,11 +433,24 @@ impl Reports {
     ) -> Result<Preview> {
         let preview = Preview {
             id: crate::random_id()?,
-            digest: attempt.payload.digest()?,
-            payload: serde_json::to_string_pretty(&attempt.payload).map_err(|_| Error::Protocol)?,
+            digest: attempt.digest()?,
+            payload: if attempt.images.is_empty() {
+                serde_json::to_string_pretty(&attempt.payload).map_err(|_| Error::Protocol)?
+            } else {
+                serde_json::to_string_pretty(&serde_json::json!({"reporte":attempt.payload,
+                    "capturas":attempt.images.iter().map(|image| serde_json::json!({
+                        "id":image.preview.id,"width":image.preview.width,"height":image.preview.height,
+                        "byteSize":image.preview.byte_size})).collect::<Vec<_>>()}))
+                    .map_err(|_| Error::Protocol)?
+            },
             account_id: attempt.account_id.clone(),
             channel: attempt.payload.channel.clone(),
             retry,
+            screenshots: attempt
+                .images
+                .iter()
+                .map(|image| image.preview.clone())
+                .collect(),
         };
         self.consent = Some(Consent {
             preview: preview.clone(),
@@ -410,6 +480,14 @@ impl Reports {
         }
         if !consent.preview.retry {
             let draft = load_draft(store)?.ok_or(Error::Canceled)?;
+            if draft.screenshots.iter().map(|p| &p.id).ne(consent
+                .attempt
+                .images
+                .iter()
+                .map(|i| &i.preview.id))
+            {
+                return Err(Error::Canceled);
+            }
             let previous = &consent.attempt.payload;
             let current = Submission::new(
                 draft,
@@ -419,7 +497,7 @@ impl Reports {
                     os_version: previous.os_version.clone(),
                 },
             )?;
-            if current.digest()? != consent.preview.digest {
+            if current.digest()? != consent.attempt.payload.digest()? {
                 return Err(Error::Canceled);
             }
         }
@@ -427,41 +505,25 @@ impl Reports {
         attempt.phase = Phase::InFlight;
         store.save("report-attempt", &attempt)?; // BEFORE HTTP; a crash becomes uncertain.
         self.attempt = Some(attempt.clone());
-        let response = request.post("rest/v1/rpc/testing_center_submit_report", &attempt.payload);
-        let receipt = match response {
-            Ok(response) if (200..=299).contains(&response.status) => {
-                response.json::<Vec<Receipt>>().and_then(|mut rows| {
-                    if rows.len() != 1 {
-                        return Err(Error::Protocol);
-                    }
-                    let receipt = rows.pop().ok_or(Error::Protocol)?;
-                    valid_receipt(&receipt)?;
-                    Ok(receipt)
-                })
-            }
-            Ok(response) => {
-                let status = response.status;
-                let error = response.success().err().unwrap_or(Error::Protocol);
-                attempt.phase = if status >= 500 || status == 429 {
-                    Phase::Uncertain
-                } else {
+        let receipt = match submit_attempt(request, &attempt) {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                attempt.phase = if matches!(
+                    error,
+                    Error::Authentication
+                        | Error::Denied
+                        | Error::TooLarge
+                        | Error::Protocol
+                        | Error::Conflict
+                ) {
                     Phase::Rejected
+                } else {
+                    Phase::Uncertain
                 };
                 store.save("report-attempt", &attempt)?;
                 self.attempt = Some(attempt);
-                return Err(if error == Error::Offline {
-                    Error::Uncertain
-                } else {
-                    error
-                });
+                return Err(error);
             }
-            Err(_) => Err(Error::Uncertain),
-        };
-        let Ok(receipt) = receipt else {
-            attempt.phase = Phase::Uncertain;
-            store.save("report-attempt", &attempt)?;
-            self.attempt = Some(attempt);
-            return Err(Error::Uncertain);
         };
         attempt.phase = Phase::Confirmed(receipt.clone());
         store.save("report-attempt", &attempt)?;
@@ -500,6 +562,58 @@ impl Reports {
             }
         })
     }
+}
+fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
+    let response = if attempt.images.is_empty() {
+        request.post("rest/v1/rpc/testing_center_submit_report", &attempt.payload)
+    } else {
+        screenshots::upload(
+            request,
+            &attempt.images,
+            &attempt.payload.channel,
+            &attempt.payload.idempotency_key,
+        )
+        .and_then(|batch| {
+            let mut body = serde_json::to_value(&attempt.payload).map_err(|_| Error::Protocol)?;
+            body["p_batch_id"] = batch.into();
+            request.post(
+                "rest/v1/rpc/testing_center_submit_report_with_evidence",
+                &body,
+            )
+        })
+    }
+    .map_err(|error| {
+        if error == Error::Offline {
+            Error::Uncertain
+        } else {
+            error
+        }
+    })?;
+    if !attempt.images.is_empty()
+        && response.status == 400
+        && response
+            .json::<serde_json::Value>()
+            .ok()
+            .is_some_and(|body| {
+                body["code"] == "55000" && body["message"] == "testing_center_evidence_not_ready"
+            })
+    {
+        return Err(Error::EvidencePending);
+    }
+    let response = response.success().map_err(|error| {
+        if error == Error::Offline {
+            Error::Uncertain
+        } else {
+            error
+        }
+    })?;
+    let mut rows: Vec<Receipt> = response.json().map_err(|_| Error::Uncertain)?;
+    if rows.len() != 1 {
+        return Err(Error::Uncertain);
+    }
+    let receipt = rows.pop().ok_or(Error::Uncertain)?;
+    valid_receipt(&receipt).map_err(|_| Error::Uncertain)?;
+    Ok(receipt)
 }
 fn valid_receipt(receipt: &Receipt) -> Result<()> {
     if !hex_id(&receipt.report_id, "report_")

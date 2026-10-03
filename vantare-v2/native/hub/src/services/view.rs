@@ -255,6 +255,17 @@ impl Remote {
             Ok(store) => editor.dirty = store.fields != crate::testing::empty_fields(),
             Err(error) => editor.message.clone_from(error),
         }
+        #[cfg(feature = "parity-capture")]
+        if let Some(path) = std::env::var_os("VANTARE_TESTING_CAPTURE_PREVIEW")
+            && let Ok(bytes) = crate::files::read(std::path::Path::new(&path), 32 * 1024)
+            && let Ok(preview) = serde_json::from_slice::<
+                super::protocol::report_document::ScreenshotPreview,
+            >(&bytes)
+        {
+            editor.screenshots = vec![preview];
+            editor.message =
+                "Vista previa de captura · fixture local de QA; sin envío remoto".into();
+        }
         cx.on_app_quit(|this, cx| {
             this.cancel();
             let worker = this.worker.take();
@@ -419,6 +430,8 @@ impl Remote {
             Command::DraftLoad
             | Command::DraftSave { .. }
             | Command::DraftDiscard
+            | Command::ReportCapture { .. }
+            | Command::ReportRemoveScreenshot { .. }
             | Command::ReportPrepare
             | Command::ReportRetryPrepare
             | Command::ReportSend { .. } => Area::Report,
@@ -485,6 +498,7 @@ impl Remote {
                             _ => None,
                         };
                         if let Some(reply) = reply {
+                            let failed = matches!(&reply, Reply::Error { .. });
                             let after_renew = if matches!(this.active, Area::Licenses { renew: true }) {
                                 this.access.renewal_acknowledged(&reply)
                             } else { None };
@@ -499,6 +513,7 @@ impl Remote {
                                         this.roadmap_message = message;
                                         this.stale = true;
                                     } else if matches!(this.active,Area::Report) {
+                                        this.editor.error=failed;
                                         this.editor.message=message;
                                         this.editor.preview=None;
                                     } else {
@@ -531,14 +546,9 @@ impl Remote {
                                     this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().verified));
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
-                                Reply::Draft { draft,message }=>{
-                                    if this.report_revision==Some(this.editor.revision) {
-                                        this.editor=crate::testing::Editor::new(draft.map_or_else(crate::testing::empty_fields,|draft|draft.fields),cx);
-                                        this.editor.message=message;
-                                    } else { this.editor.message="Texto cambiado durante la operación; guarde el nuevo borrador".into(); }
-                                },
+                                Reply::Draft { draft,message }=> this.report_draft(draft,message,cx),
                                 Reply::ReportPreview { preview }=>{
-                                    if this.report_revision==Some(this.editor.revision) { this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
+                                    if this.report_revision==Some(this.editor.revision) { this.editor.error=false; this.editor.screenshots.clone_from(&preview.screenshots); this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
                                     else { this.editor.message="Texto cambiado; vuelva a revisar el envío".into(); }
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
@@ -559,6 +569,26 @@ impl Remote {
             }
         })
         .detach();
+    }
+
+    fn report_draft(
+        &mut self,
+        draft: Option<super::protocol::report_document::Draft>,
+        message: String,
+        cx: &mut Context<Self>,
+    ) {
+        if self.report_revision == Some(self.editor.revision) {
+            let (fields, screenshots) = draft.map_or_else(
+                || (crate::testing::empty_fields(), Vec::new()),
+                |draft| (draft.fields, draft.screenshots),
+            );
+            self.editor = crate::testing::Editor::new(fields, cx);
+            self.editor.screenshots = screenshots;
+            self.editor.message = message;
+        } else {
+            self.editor.message =
+                "Texto cambiado durante la operación; guarde el nuevo borrador".into();
+        }
     }
 
     fn report_receipt(
@@ -1092,6 +1122,7 @@ impl Remote {
         if self.editor.dirty && matches!(command, Command::ReportPrepare) {
             self.editor.preview = None;
             self.editor.message = "Guarde los cambios antes de revisar el envío".into();
+            self.editor.error = true;
             cx.notify();
             return;
         }

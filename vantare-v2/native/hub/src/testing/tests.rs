@@ -49,6 +49,7 @@ fn report_send_requires_the_exact_reviewed_preview_and_fresh_consent() {
     use super::model::{Consent, can_send};
     use crate::services::protocol::report_document::Preview;
     let preview = Preview {
+        screenshots: Vec::new(),
         id: "preview-test".into(),
         digest: "digest-test".into(),
         payload: "texto revisado".into(),

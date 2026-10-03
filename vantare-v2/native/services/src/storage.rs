@@ -17,7 +17,8 @@ use crate::{Error, Result};
 #[cfg(windows)]
 mod windows;
 
-const MAX_BLOB: u64 = 128 * 1024;
+// Tres JPEG de hasta 400 KiB, serializados y protegidos con DPAPI.
+const MAX_BLOB: u64 = 2 * 1024 * 1024;
 
 pub struct Store {
     root: PathBuf,

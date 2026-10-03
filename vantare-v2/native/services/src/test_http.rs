@@ -50,12 +50,12 @@ impl Server {
                             .and_then(|value| value.trim().parse::<usize>().ok())
                     })
                     .unwrap_or(0);
-                assert!(len < 128 * 1024);
+                assert!(len <= 400 * 1024);
                 bytes.resize(header_end + len, 0);
                 socket
                     .read_exact(&mut bytes[header_end..])
                     .expect("body test");
-                tx.send(String::from_utf8(bytes).expect("request test"))
+                tx.send(String::from_utf8_lossy(&bytes).into_owned())
                     .expect("capture test");
                 write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}", body.len()).expect("response test");
             }

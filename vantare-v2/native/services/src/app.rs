@@ -50,8 +50,7 @@ impl App {
         if self.bridge.is_some() {
             return Err(Error::Conflict);
         }
-        crate::config::remote_url(config.authorize.as_str())?;
-        crate::config::remote_url(config.supabase.as_str())?;
+        config.validate()?;
         self.bridge = Some(config);
         Ok(())
     }
@@ -285,6 +284,7 @@ impl App {
     }
 
     pub fn handle(&mut self, command: Command) -> Reply {
+        let report_send = matches!(command, Command::ReportSend { .. });
         let account_action = matches!(
             command,
             Command::AccountBegin | Command::AccountPoll | Command::AccountRenew | Command::Logout
@@ -292,11 +292,20 @@ impl App {
         match self.execute(command) {
             Ok(reply) => reply,
             Err(error) => {
+                if report_send && error == Error::Authentication {
+                    // Un 401 del envío invalida el bearer de datos aún vigente;
+                    // el siguiente reintento vuelve a pasar por authorize.
+                    self.data_session = None;
+                }
                 if account_action && let Some(account) = self.account.as_ref() {
                     Self::account_reply(account, Some(error))
                 } else {
                     Reply::Error {
-                        message: error.to_string(),
+                        message: if report_send {
+                            report_error(error)
+                        } else {
+                            error.to_string()
+                        },
                     }
                 }
             }
@@ -320,9 +329,20 @@ impl App {
             Command::DraftLoad
             | Command::DraftSave { .. }
             | Command::DraftDiscard
+            | Command::ReportCapture { .. }
+            | Command::ReportRemoveScreenshot { .. }
             | Command::ReportPrepare
             | Command::ReportRetryPrepare
-            | Command::ReportSend { .. } => return self.report_reply(command),
+            | Command::ReportSend { .. } => {
+                // Fallar antes de abrir almacenamiento/red en comandos remotos.
+                // Guardar y cargar el borrador sigue disponible sin backend.
+                if matches!(command, Command::ReportPrepare | Command::ReportSend { .. })
+                    && self.bridge.is_none()
+                {
+                    return Err(Error::BridgeUnconfigured);
+                }
+                return self.report_reply(command);
+            }
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
@@ -418,6 +438,60 @@ impl App {
         })
     }
 
+    fn draft_reply(&mut self, command: Command) -> Result<Reply> {
+        let store = self.report_store.as_ref().ok_or(Error::Storage)?;
+        match command {
+            Command::DraftLoad => Ok(Reply::Draft {
+                draft: crate::report::load_draft(store)?,
+                message: "Borrador local; no se ha enviado".into(),
+            }),
+            Command::DraftSave { fields } => {
+                self.reports
+                    .as_mut()
+                    .ok_or(Error::Storage)?
+                    .cancel_preview();
+                Ok(Reply::Draft {
+                    draft: Some(crate::report::save_draft(store, fields)?),
+                    message: "Borrador protegido guardado; no se ha enviado".into(),
+                })
+            }
+            Command::DraftDiscard => {
+                self.reports
+                    .as_mut()
+                    .ok_or(Error::Storage)?
+                    .cancel_preview();
+                store.remove("report-draft")?;
+                store.remove("report-images")?;
+                Ok(Reply::Draft {
+                    draft: None,
+                    message:
+                        "Borrador eliminado; cualquier intento previo sigue pendiente de revisión"
+                            .into(),
+                })
+            }
+            Command::ReportCapture { .. } | Command::ReportRemoveScreenshot { .. } => {
+                self.reports
+                    .as_mut()
+                    .ok_or(Error::Storage)?
+                    .cancel_preview();
+                let draft = match command {
+                    Command::ReportCapture { fields } => {
+                        crate::report::save_draft(store, fields)?;
+                        crate::report::screenshots::capture(store)?
+                    }
+                    Command::ReportRemoveScreenshot { id, fields } => {
+                        crate::report::save_draft(store, fields)?;
+                        crate::report::screenshots::remove(store, &id)?
+                    }
+                    _ => return Err(Error::Protocol),
+                };
+                Ok(Reply::Draft { draft: Some(draft),
+                    message: "Revisa la captura antes de consentir el envío. Puedes quitarla; todavía no se ha subido.".into() })
+            }
+            _ => Err(Error::Protocol),
+        }
+    }
+
     fn report_reply(&mut self, command: Command) -> Result<Reply> {
         if self.reports.is_none() {
             let context = format!(
@@ -432,55 +506,32 @@ impl App {
             self.reports = Some(crate::report::Reports::restore(&store)?);
             self.report_store = Some(store);
         }
+        if matches!(
+            command,
+            Command::DraftLoad
+                | Command::DraftSave { .. }
+                | Command::DraftDiscard
+                | Command::ReportCapture { .. }
+                | Command::ReportRemoveScreenshot { .. }
+        ) {
+            return self.draft_reply(command);
+        }
         let store = self.report_store.as_ref().ok_or(Error::Storage)?;
-        match command {
-            Command::DraftLoad => {
-                return Ok(Reply::Draft {
-                    draft: crate::report::load_draft(store)?,
-                    message: "Borrador local; no se ha enviado".into(),
-                });
-            }
-            Command::DraftSave { fields } => {
-                self.reports
-                    .as_mut()
-                    .ok_or(Error::Storage)?
-                    .cancel_preview();
-                return Ok(Reply::Draft {
-                    draft: Some(crate::report::save_draft(store, fields)?),
-                    message: "Borrador protegido guardado; no se ha enviado".into(),
-                });
-            }
-            Command::DraftDiscard => {
-                self.reports
-                    .as_mut()
-                    .ok_or(Error::Storage)?
-                    .cancel_preview();
-                store.remove("report-draft")?;
-                return Ok(Reply::Draft {
-                    draft: None,
-                    message:
-                        "Borrador eliminado; cualquier intento previo sigue pendiente de revisión"
-                            .into(),
-                });
-            }
-            Command::ReportRetryPrepare => {
-                if let Some(receipt) = self
+        if matches!(command, Command::ReportRetryPrepare)
+            && let Some(receipt) = self
+                .reports
+                .as_ref()
+                .and_then(crate::report::Reports::receipt)
+        {
+            return Ok(Reply::ReportReceipt {
+                receipt: receipt.clone(),
+                draft_state: self
                     .reports
                     .as_ref()
-                    .and_then(crate::report::Reports::receipt)
-                {
-                    return Ok(Reply::ReportReceipt {
-                        receipt: receipt.clone(),
-                        draft_state: self
-                            .reports
-                            .as_ref()
-                            .ok_or(Error::Storage)?
-                            .draft_state(store)
-                            .unwrap_or(crate::protocol::DraftState::CleanupPending),
-                    });
-                }
-            }
-            _ => {}
+                    .ok_or(Error::Storage)?
+                    .draft_state(store)
+                    .unwrap_or(crate::protocol::DraftState::CleanupPending),
+            });
         }
         let now = now()?;
         self.ensure_data(now)?;
@@ -503,7 +554,12 @@ impl App {
                     self.config.channel.ok_or(Error::Unconfigured)?,
                 )?;
                 Ok(Reply::ReportPreview {
-                    preview: reports.prepare(&request, draft, environment)?,
+                    preview: reports.prepare_with_images(
+                        &request,
+                        draft.clone(),
+                        environment,
+                        crate::report::screenshots::load(store, &draft)?,
+                    )?,
                 })
             }
             Command::ReportRetryPrepare => Ok(Reply::ReportPreview {
@@ -522,6 +578,14 @@ impl App {
     }
 }
 
+pub(crate) fn report_error(error: Error) -> String {
+    if error == Error::Denied {
+        "Tu cuenta aún no está habilitada para enviar reportes. El borrador se conserva; solicita a Isaac el rol tester.".into()
+    } else {
+        error.to_string()
+    }
+}
+
 pub fn now() -> Result<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -533,6 +597,24 @@ pub fn now() -> Result<u64> {
 mod tests {
     use super::*;
     use std::{io::Write, net::TcpStream, time::Duration};
+
+    #[test]
+    fn report_without_bridge_fails_visibly_before_storage_or_network() {
+        let mut app = App::new(BuildConfig::load(), std::env::temp_dir());
+        for command in [
+            Command::ReportPrepare,
+            Command::ReportSend {
+                preview_id: "unused".into(),
+            },
+        ] {
+            let Reply::Error { message } = app.handle(command) else {
+                panic!("se requiere un error visible");
+            };
+            assert_eq!(message, Error::BridgeUnconfigured.to_string());
+        }
+        assert!(app.report_store.is_none());
+        assert!(app.account.is_none());
+    }
 
     #[test]
     fn license_without_build_configuration_is_explicitly_unconfigured() {

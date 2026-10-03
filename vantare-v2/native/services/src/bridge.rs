@@ -1,5 +1,5 @@
 //! Puente explícito: OAuth Clerk -> API validante -> sesión de datos limitada.
-//! Contrato de servidor pendiente. No se envía OAuth a Supabase directamente.
+//! No se envía OAuth a `PostgREST` ni a `license-credential` directamente.
 use crate::{
     Error, Result,
     account::{Account, Identity, Secret},
@@ -31,6 +31,15 @@ struct Response {
 }
 
 impl Config {
+    pub fn validate(&self) -> Result<()> {
+        crate::config::remote_url(self.authorize.as_str())?;
+        crate::config::remote_url(self.supabase.as_str())?;
+        if self.authorize.origin() == self.supabase.origin() || self.anon_key.trim().is_empty() {
+            return Err(Error::BridgeUnconfigured);
+        }
+        Ok(())
+    }
+
     pub fn authorize(&self, http: &Http, account: &Account, now: u64) -> Result<DataSession> {
         // In production the native OAuth bearer is never sent to the TPA origin.
         #[cfg(not(test))]

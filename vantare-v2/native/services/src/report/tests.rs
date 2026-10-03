@@ -51,6 +51,76 @@ fn environment() -> Environment {
 }
 
 #[test]
+fn unauthorized_submission_preserves_draft_and_exact_retry() {
+    let server = Server::start(vec![
+        (200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":160}).to_string()),
+        (401, "{}".into()),
+    ]);
+    let (root, store) = crate::test_store("report-401");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server.base.join("bridge").expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("bridge");
+    let request = session.request(&http, &config, &account, 100);
+    let draft = save_draft(&store, fields()).expect("draft");
+    let mut reports = Reports::restore(&store).expect("restore");
+    let preview = reports
+        .prepare(&request, draft.clone(), environment())
+        .expect("preview");
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::Authentication)
+    ));
+    assert_eq!(
+        load_draft(&store)
+            .expect("draft retained")
+            .expect("draft")
+            .idempotency_key,
+        draft.idempotency_key
+    );
+    let mut restored = Reports::restore(&store).expect("restart");
+    let retry = restored.prepare_retry(&request, "nightly").expect("retry");
+    assert_eq!(preview.payload, retry.payload);
+    assert!(matches!(
+        restored.attempt.as_ref().expect("durable").phase,
+        Phase::Rejected
+    ));
+    for _ in 0..2 {
+        server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("request");
+    }
+    server.finish();
+    // El listener ya está cerrado: caída de red real en loopback, sin POST
+    // recibido ni respuesta que pudiera confirmar el intento.
+    assert!(matches!(
+        restored.send(&request, &retry.id, &store),
+        Err(Error::Uncertain)
+    ));
+    let pending = Reports::restore(&store).expect("offline attempt durable");
+    assert!(matches!(
+        pending.attempt.as_ref().expect("attempt").phase,
+        Phase::Uncertain
+    ));
+    assert!(
+        load_draft(&store)
+            .expect("draft retained offline")
+            .is_some()
+    );
+    drop(store);
+    crate::cleanup_store(
+        &root,
+        "report-401",
+        &["account", "report-draft", "report-attempt"],
+    );
+}
+
+#[test]
 fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure() {
     let report_id = format!("report_{}", crate::random_id().expect("entropy"));
     let server=Server::start(vec![

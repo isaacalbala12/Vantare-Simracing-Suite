@@ -24,11 +24,15 @@ fn run() -> vantare_services::Result<()> {
         parent_image: PathBuf::from(&args[2]),
     };
     let config = BuildConfig::load();
+    let bridge = config.data_bridge();
     let root = match args.get(3) {
         Some(root) => PathBuf::from(root),
         None => vantare_services::app::default_root()?,
     };
     let mut app = App::new(config, root);
+    if let Some(bridge) = bridge {
+        app.configure_bridge(bridge)?;
+    }
     if managed {
         let core = vantare_ipc::control::read(&mut std::io::stdin())
             .map_err(|_| vantare_services::Error::Protocol)?;

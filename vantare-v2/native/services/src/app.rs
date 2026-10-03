@@ -50,8 +50,7 @@ impl App {
         if self.bridge.is_some() {
             return Err(Error::Conflict);
         }
-        crate::config::remote_url(config.authorize.as_str())?;
-        crate::config::remote_url(config.supabase.as_str())?;
+        config.validate()?;
         self.bridge = Some(config);
         Ok(())
     }
@@ -285,6 +284,7 @@ impl App {
     }
 
     pub fn handle(&mut self, command: Command) -> Reply {
+        let report_send = matches!(command, Command::ReportSend { .. });
         let account_action = matches!(
             command,
             Command::AccountBegin | Command::AccountPoll | Command::AccountRenew | Command::Logout
@@ -292,6 +292,11 @@ impl App {
         match self.execute(command) {
             Ok(reply) => reply,
             Err(error) => {
+                if report_send && error == Error::Authentication {
+                    // Un 401 del envío invalida el bearer de datos aún vigente;
+                    // el siguiente reintento vuelve a pasar por authorize.
+                    self.data_session = None;
+                }
                 if account_action && let Some(account) = self.account.as_ref() {
                     Self::account_reply(account, Some(error))
                 } else {
@@ -322,7 +327,16 @@ impl App {
             | Command::DraftDiscard
             | Command::ReportPrepare
             | Command::ReportRetryPrepare
-            | Command::ReportSend { .. } => return self.report_reply(command),
+            | Command::ReportSend { .. } => {
+                // Fallar antes de abrir almacenamiento/red en comandos remotos.
+                // Guardar y cargar el borrador sigue disponible sin backend.
+                if matches!(command, Command::ReportPrepare | Command::ReportSend { .. })
+                    && self.bridge.is_none()
+                {
+                    return Err(Error::BridgeUnconfigured);
+                }
+                return self.report_reply(command);
+            }
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
@@ -533,6 +547,24 @@ pub fn now() -> Result<u64> {
 mod tests {
     use super::*;
     use std::{io::Write, net::TcpStream, time::Duration};
+
+    #[test]
+    fn report_without_bridge_fails_visibly_before_storage_or_network() {
+        let mut app = App::new(BuildConfig::load(), std::env::temp_dir());
+        for command in [
+            Command::ReportPrepare,
+            Command::ReportSend {
+                preview_id: "unused".into(),
+            },
+        ] {
+            let Reply::Error { message } = app.handle(command) else {
+                panic!("se requiere un error visible");
+            };
+            assert_eq!(message, Error::BridgeUnconfigured.to_string());
+        }
+        assert!(app.report_store.is_none());
+        assert!(app.account.is_none());
+    }
 
     #[test]
     fn license_without_build_configuration_is_explicitly_unconfigured() {

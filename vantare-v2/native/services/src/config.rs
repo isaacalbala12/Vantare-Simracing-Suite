@@ -39,6 +39,22 @@ impl BuildConfig {
     pub fn native_account_configured(&self) -> bool {
         self.native_oauth.is_some()
     }
+
+    /// El puente de datos es independiente de native-license. Ausencia o
+    /// configuración inválida deja disponibles los borradores locales.
+    pub fn data_bridge(&self) -> Option<crate::bridge::Config> {
+        self.data_bridge_url(option_env!("VANTARE_ACCOUNT_BRIDGE_URL"))
+    }
+
+    fn data_bridge_url(&self, authorize: Option<&str>) -> Option<crate::bridge::Config> {
+        let config = crate::bridge::Config {
+            authorize: remote_url(authorize?).ok()?,
+            supabase: self.supabase.clone()?,
+            anon_key: self.anon_key?.into(),
+        };
+        config.validate().ok()?;
+        Some(config)
+    }
 }
 
 impl OAuthBuild {
@@ -84,6 +100,31 @@ pub fn remote_url(text: &str) -> Result<Url> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn data_bridge_requires_complete_public_configuration_and_distinct_origin() {
+        let mut config = BuildConfig::load();
+        config.supabase = Some(remote_url("https://data.example.invalid/").expect("URL"));
+        config.anon_key = Some("public-fixture");
+        let endpoint = Some("https://api.example.invalid/v1/native-account/authorize");
+        let bridge = config.data_bridge_url(endpoint).expect("puente completo");
+        assert_eq!(bridge.authorize.path(), "/v1/native-account/authorize");
+        assert_eq!(bridge.anon_key, "public-fixture");
+        for url in [
+            None,
+            Some("http://api.example.invalid"),
+            Some("https://data.example.invalid/authorize"),
+        ] {
+            assert!(config.data_bridge_url(url).is_none());
+        }
+        config.anon_key = Some(" ");
+        assert!(config.data_bridge_url(endpoint).is_none());
+        config.anon_key = None;
+        assert!(config.data_bridge_url(endpoint).is_none());
+        config.anon_key = Some("public-fixture");
+        config.supabase = None;
+        assert!(config.data_bridge_url(endpoint).is_none());
+    }
 
     #[test]
     fn configuration_rejects_secret_bearing_or_insecure_urls() {

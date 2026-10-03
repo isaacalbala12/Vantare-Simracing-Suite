@@ -158,7 +158,7 @@ export async function handleNativeLicenseRequest(
       loaded,
       deviceFingerprint,
       deps.environment ?? requirePolarEnvironment(),
-      { ...deps, now: () => now },
+      { ...deps, now: () => now, includeModules: true },
     );
     if (response.status === 409) {
       const body = await response.json();

@@ -413,7 +413,8 @@ export async function issueCredential(
   loaded: CredentialState,
   fingerprint: string,
   environment: BillingEnvironment,
-  deps: Pick<CredentialDeps, "now" | "sign"> = {},
+  deps: Pick<CredentialDeps, "now" | "sign"> & { includeModules?: boolean } =
+    {},
 ): Promise<Response> {
   if (!isUuid(loaded.accountId)) {
     return errorResponse(
@@ -431,7 +432,13 @@ export async function issueCredential(
       409,
     );
   }
-  const rollout = loaded.moduleRollout ?? [];
+  // Wails/Go still verifies the v1 closed set; module grants are native-only.
+  if (!deps.includeModules) {
+    normalized.grants = normalized.grants.filter((grant) =>
+      !MODULE_CAPABILITIES.some((key) => key === grant.key)
+    );
+  }
+  const rollout = deps.includeModules ? loaded.moduleRollout ?? [] : [];
   if (
     rollout.some((row) =>
       !MODULE_CAPABILITIES.some((key) => key === row.module) ||

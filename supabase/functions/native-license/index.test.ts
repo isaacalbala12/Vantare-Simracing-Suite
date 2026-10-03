@@ -681,3 +681,40 @@ Deno.test("credential loader reads rollout with admin and propagates query failu
     assert(queried.includes("module_rollout"));
   }
 });
+
+Deno.test("legacy Wails credential omits native modules from account and global rollout", async () => {
+  const moduleState = {
+    accountId,
+    deviceMatches: true,
+    grants: [{
+      capability: "vantare.module.engineer",
+      valid_until: null,
+      provider: "vantare",
+      environment: "production",
+      source_type: "support",
+    }],
+    moduleRollout: [{
+      module: "vantare.module.strategy",
+      enabled_for_all: true,
+    }],
+  };
+  const response = await handleLicenseCredentialRequest(
+    new Request("https://local.invalid/license-credential", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer fixture",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ deviceFingerprint: fingerprint }),
+    }),
+    {
+      environment: "production",
+      now: () => now,
+      store: { load: () => Promise.resolve(moduleState) },
+      sign: deps().sign,
+    },
+  );
+  assert(response.status === 200);
+  const result = await response.json();
+  assert(result.credential.claims.capabilities.length === 0);
+});

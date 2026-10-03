@@ -6433,6 +6433,7 @@ dependencies = [
 name = "vantare-hub"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "gpui",
  "gpui_platform",
@@ -6483,6 +6484,7 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "getrandom 0.3.4",
+ "image",
  "serde",
  "serde_json",
  "sha2",

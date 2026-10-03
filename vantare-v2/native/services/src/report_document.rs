@@ -1,4 +1,4 @@
-//! Contrato cerrado: solo texto del usuario, nunca tokens/logs/diagnósticos.
+//! Contrato cerrado: texto y miniaturas locales, nunca tokens/logs/diagnósticos.
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +16,18 @@ pub struct Draft {
     pub schema_version: u8,
     pub idempotency_key: String,
     pub fields: Fields,
+    #[serde(default)]
+    pub screenshots: Vec<ScreenshotPreview>,
+}
+/// Miniatura local; nunca se envía al servidor ni contiene rutas de usuario.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScreenshotPreview {
+    pub id: String,
+    pub jpeg: String,
+    pub width: u32,
+    pub height: u32,
+    pub byte_size: usize,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -26,6 +38,8 @@ pub struct Preview {
     pub account_id: String,
     pub channel: String,
     pub retry: bool,
+    #[serde(default)]
+    pub screenshots: Vec<ScreenshotPreview>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

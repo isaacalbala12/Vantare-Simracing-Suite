@@ -102,7 +102,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn data_bridge_requires_complete_public_configuration_and_distinct_origin() {
+    fn data_bridge_requires_complete_configuration_and_exact_edge_exception() {
         let mut config = BuildConfig::load();
         config.supabase = Some(remote_url("https://data.example.invalid/").expect("URL"));
         config.anon_key = Some("public-fixture");
@@ -110,6 +110,13 @@ mod tests {
         let bridge = config.data_bridge_url(endpoint).expect("puente completo");
         assert_eq!(bridge.authorize.path(), "/v1/native-account/authorize");
         assert_eq!(bridge.anon_key, "public-fixture");
+        assert!(
+            config
+                .data_bridge_url(Some(
+                    "https://data.example.invalid/functions/v1/native-account-authorize"
+                ))
+                .is_some()
+        );
         for url in [
             None,
             Some("http://api.example.invalid"),

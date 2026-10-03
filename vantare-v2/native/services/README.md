@@ -74,81 +74,109 @@ Compilar servicios con `VANTARE_ACCOUNT_BRIDGE_URL` (endpoint HTTPS completo),
 `VANTARE_SUPABASE_URL`, `VANTARE_SUPABASE_ANON_KEY`, `VANTARE_BUILD_CHANNEL`
 (`nightly` o `testers`), `VANTARE_VERSION` y la configuración pública OAuth
 `VANTARE_CLERK_ISSUER`, `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT`.
-No se leen aliases de entorno en ejecución: hay que recompilar el binario.
-El origen del authorize debe ser distinto al de Supabase, sin credenciales,
-query ni fragmento. Una configuración parcial/inválida deja el puente inactivo:
-«servicio no configurado: falta el puente de identidad». Los borradores locales
-siguen disponibles. HTTP tiene plazo global de 8 segundos y no sigue redirects.
+Son variables de **build**: cambiar el entorno de ejecución no cambia el binario.
+No se incluyen claves de firma, credenciales privadas ni secrets en el cliente.
 
-El envío usa solo el bearer de datos en
-`rest/v1/rpc/testing_center_submit_report`, nunca el OAuth Clerk. El usuario
-revisa el payload antes de consentir. El intento queda protegido antes del POST;
-401, 403, 5xx, desconexión y respuesta malformada conservan borrador/intento.
-Un 401 descarta la sesión de datos: el siguiente intento vuelve a autorizar.
-«Reintentar» recupera el mismo payload e idempotency key, incluso tras reiniciar;
-una cuenta/canal distintos no pueden enviarlo. El recibo confirmado evita volver
-a enviarlo. **El reintento es manual**, no hay monitor de conectividad ni cola
-automática: el contrato vigente exige una nueva preview/consentimiento efímero.
+El contrato administrativo v1 del orquestador (03/10/2026) fija producción en
+`olhwhfaczmrmooeaoqqf` y Clerk development. Configuración inicial de authorize:
 
-El reporte incluye acción/esperado/observado (descripción), módulo, versión,
-canal y sistema operativo. Texto: hasta 2048 bytes por descripción y 4096 de
-contexto, borrador hasta 16 KiB. Este corte **no adjunta logs, simulador ni
-capturas**, ni declara datos de una sesión que servicios no observa. El supervisor
-descarta stderr (`hub/src/launcher/chain.rs` y `services/src/process.rs`);
-no existe una fuente de logs compartida acotada y sanitizada que pueda reutilizarse
-dentro de este encargo. La RPC sí acepta diagnóstico/logs (payload de 64 KiB,
-100 entradas), con estructura cerrada `testing-center.diagnostic.v1`, digest
-SHA-256 y consentimiento. No tiene campo simulador ni captura: simulador podría
-ir en contexto cuando exista dato observado; capturas requieren el flujo separado
-prepare/upload/finalize/attach de la migración screenshot. No se modifica schema
-ni se inventa un diagnóstico vacío para presentar los requisitos como cubiertos.
-Captura, fuente real de logs con saneamiento y reintento automático requieren
-continuación coordinada del supervisor/IPC/Hub y revisión del contrato de consentimiento.
+```text
+VANTARE_ACCOUNT_BRIDGE_URL=https://olhwhfaczmrmooeaoqqf.supabase.co/functions/v1/native-account-authorize
+VANTARE_SUPABASE_URL=https://olhwhfaczmrmooeaoqqf.supabase.co/
+```
 
-Pasos pendientes de servidor para el orquestador (sin deploy en esta entrega):
+El mismo origen solo admite la ruta exacta
+`/functions/v1/native-account-authorize`, sin query, fragmento ni credenciales.
+Se comprueba también inmediatamente antes del POST, incluidos tests; variantes,
+Storage, otras Functions y PostgREST se rechazan antes de enviar OAuth.
+Authorize recibe `POST {"version":1}`, bearer OAuth Clerk y **ninguna apikey**.
+Devuelve UUID interno, bearer de datos y expiración de hasta 300 segundos.
+Todos los POST siguientes usan exclusivamente ese bearer de datos.
 
-1. La rama `isa-1444-puente-servidor`, revisada en
-   `04cb73bc89ecc4f7dded0cbeb0a29a96fe57dd04`, implementa `native-license`
-   (OAuth → licencia firmada), **no** `native-account-authorize`
-   (OAuth → bearer de datos). `license-credential` firma licencias para una
-   sesión de datos existente; Third-Party Auth no convierte el access token
-   OAuth nativo en un session JWT Clerk. No apuntar authorize a esos endpoints.
-2. Implementar el endpoint acordado en la spec de puente: POST `{"version":1}`,
-   bearer OAuth validado con la API oficial Clerk, binding de issuer/client/scopes/
-   caducidad y resolver compartido `(issuer, subject)` → UUID interno (sin email).
-   Respuesta exacta: `version:1`, `account_id` UUID, `data_access_token`,
-   `expires_at` Unix segundos, vigente como máximo 300 segundos. No basta
-   responder con la credencial Ed25519 de `native-license`.
-3. Acordar origen HTTPS distinto a Supabase y configurar verificación del bearer
-   de datos en gateway/PostgREST según la spec (firma, UUID, aud/role/iss/exp y
-   RLS). Claves privadas solo en backend, nunca build. Si se aloja como Edge,
-   `verify_jwt=false` para la entrada OAuth y dominio/proxy aprobado sin registrar
-   Authorization. Verificar alias, TTL, revocación y rechazo de otro usuario.
-4. Verificar en el entorno real migraciones/grants y membership activa de Testing
-   Center: `testers` admite tester/primary_tester/owner; `nightly` exige
-   primary_tester/owner. La beta «cualquier cuenta Clerk» no elimina esa guarda:
-   el login solo no habilita el envío. No conceder memberships desde el cliente.
-5. Inyectar la URL pública acordada en el build y ejecutar QA autorizada de
-   punta a punta con el artefacto recompilado. Deploy/config remotos y envío
-   real quedan a cargo del orquestador; aquí solo se usa HTTP loopback de tests.
+Para pasar al dominio, recompilar cambiando únicamente
+`VANTARE_ACCOUNT_BRIDGE_URL=https://vantare.app/v1/native-account/authorize`.
+Supabase/anon y el contrato no cambian; el orquestador debe configurar Cloudflare
+para reenviar esa ruta a la función validante sin redirecciones HTTP.
+`license-credential` y Third-Party Auth no sustituyen este intercambio.
+Una configuración parcial/inválida deja el puente inactivo y muestra
+«servicio no configurado: falta el puente de identidad»; conserva los borradores.
+HTTP tiene plazo global de 8 segundos por petición y no sigue redirects.
 
-Consulta de solo lectura al inventario del conector Supabase (2026-10-03): su
-proyecto activo `ombjshwzqgeisazijduq` devuelve 17 migraciones y cuatro Functions,
-sin `native-license` ni `native-account-authorize`; `license-credential` v4 tiene
-`verify_jwt=true`. Esto contradice las 30 migraciones y el despliegue de
-`native-license` comunicados por el orquestador. **No se acredita que el conector
-apunte al entorno del encargo**: contrastar project ref/versión del inventario
-con el despliegue real antes de compilar o probar. No se leyó ni modificó ninguna
-clave/config privada. La licencia real verificada por el orquestador no sustituye
-la prueba del puente de datos. Notion no disponible por excepción del encargo;
-seguimiento allí pendiente. Evidencia local fuera del repo:
-`C:/tmp/isa-1452-evidence/`. Sin dependencias nuevas, push, PR, merge ni release.
+#### Capturas y conservación
 
-Validación local #1452: fmt, Clippy sin warnings, 42 tests de servicios y
-1020 del workspace aprobados (cuatro ignorados de fuentes live que necesitan
-juegos/configuración real). Lifecycle: cinco de Engineer y los once escenarios
-de Runtime aprobados con `RUST_TEST_THREADS=2`. La primera ejecución de lifecycle
-con paralelismo predeterminado falló por timeouts; su log se conserva. No pasar
-`--test-threads 2` al harness propio de Runtime: interpreta `2` como filtro y
-puede salir con código 0 sin ejecutar escenarios. Usar la variable de entorno
-para limitar libtest y comprobar las once líneas de resultados de Runtime.
+«Capturar pantalla» guarda el texto actual y toma el **monitor principal** en
+Windows. Muestra una miniatura antes del consentimiento; se pueden añadir/quitar
+hasta tres imágenes. Cambiar texto o imágenes invalida la vista previa/consentimiento.
+No se sube nada hasta pulsar Enviar tras revisar y consentir el contenido exacto.
+Revisar y quitar imágenes que contengan datos personales: quitar EXIF no elimina
+información que esté dibujada en la pantalla.
+
+Se reutiliza `image 0.25.10`, ya fijado por GPUI, como dependencia directa con
+solo JPEG; no se añade otro paquete o versión al lockfile. JPEG a calidad 75,
+lado mayor como máximo 1920 px; si supera 400 KiB se reduce resolución manteniendo
+la calidad. Rechazo local si no alcanza el límite. Codificación desde RGB nuevo:
+sin EXIF, nombre original ni ruta de usuario. El envío contiene exclusivamente
+los nombres opacos `v1/<hash>/<batch UUID>/<evidence UUID>` del bucket privado.
+Las imágenes completas se guardan protegidas con DPAPI, no viajan por IPC.
+IPC admite hasta 128 KiB para tres miniaturas y el JSON escapado del reporte;
+almacenamiento protegido hasta 2 MiB para tres JPEG serializados y sus miniaturas.
+
+Con imágenes: `testing_center_prepare_screenshot_batch` → INSERT JPEG en
+`storage/v1/object/testing-center-evidence/...` (`x-upsert=false`) →
+`testing_center_finalize_screenshot` → `testing_center_submit_report_with_evidence`.
+Sin imágenes: `testing_center_submit_report`, sin cambiar su schema.
+Se validan UUID, posición, digest y ruta de cada slot; no se aceptan URLs remotas.
+Un objeto ya insertado tras perder conexión no se sobrescribe. Finalizar encola
+validación, **no** significa ready. Si attach devuelve
+`testing_center_evidence_not_ready` (55000), se explica que sigue en validación
+con borrador e intento conservados. Al reintentar se reutiliza manifest/key/JPEG;
+los slots ready no se vuelven a subir. Se debe desplegar un consumidor del outbox
+que valide tamaño, formato, dimensiones y hash y marque evidencia/batch ready.
+El cliente nunca concede ese estado.
+
+El intento se protege antes de cualquier HTTP. 401, 403, 413, 5xx, desconexión,
+validación pendiente y respuesta malformada conservan borrador/intento.
+401 invalida la sesión de datos para autorizar de nuevo. Sin membership tester:
+«Tu cuenta aún no está habilitada para enviar reportes» y se indica solicitar
+el rol a Isaac. Una cuenta/canal distintos no heredan el intento.
+«Reintentar» recupera contenido y capturas originales, incluso tras reiniciar,
+y requiere revisar y consentir de nuevo; **no hay reintento automático**.
+El recibo durable evita reenviar lo confirmado y no elimina un borrador posterior.
+
+Descripción (acción/esperado/observado), módulo, versión, canal y sistema operativo
+están cubiertos. Hasta 2048 bytes por texto y 4096 de contexto; borrador de 60 KiB
+incluyendo miniaturas. **Logs y simulador observado siguen fuera de este corte**:
+servicios no observa simuladores y el supervisor descarta stderr. No se inventan
+logs ni diagnóstico. La RPC admite un diagnóstico cerrado de 64 KiB/100 entradas,
+no un campo arbitrario de simulador; hace falta una fuente real acotada y sanitizada
+coordinada con el supervisor para cubrir el requisito inicial de logs.
+
+#### Pasos de servidor para el orquestador
+
+1. Desplegar la `native-account-authorize` del worker de servidor en el proyecto
+   fijado, con `verify_jwt=false`, validación Clerk/client/scopes y mapping #909.
+   Verificar emisión de un token aceptado por PostgREST (`authenticated`, UUID sub,
+   TTL máximo 300 s). Las claves de firma permanecen en servidor.
+2. Confirmar las RPC/migración `20260814154558_testing_center_screenshot_evidence.sql`,
+   bucket privado, RLS y **consumidor de validación** del outbox. En las rutas
+   revisadas de este checkout hay contrato/migración, pero no un consumidor listo
+   que demuestre el paso validating → ready. Coordinarlo con el worker de servidor;
+   sin ese paso, reportes con imágenes se conservarán pendientes.
+3. Habilitar tester y su membership `testers` desde `native-admin` con Isaac.
+   `nightly` exige primary_tester/owner: el login por sí solo no concede estos roles.
+4. Inyectar las variables públicas anteriores y recompilar el conjunto nativo
+   (Hub, supervisor y servicios comparten el DTO IPC ampliado).
+5. QA autorizada del orquestador: envío sin imagen, con imagen validada, cuenta sin
+   rol, expiración de bearer, desconexión/reinicio y reintento. **El worker no envía
+   reportes reales**, no despliega y no modifica memberships de producción.
+
+El inventario previo del conector apuntaba a otro ref (`ombjshwzqgeisazijduq`):
+no constituye evidencia del proyecto fijado en el contrato. Este cambio no afirma
+haber verificado el deploy actual. Notion no disponible por excepción explícita;
+seguimiento allí pendiente. Evidencia local en `C:/tmp/isa-1452-evidence/`.
+Las capturas del Hub con adjunto usan un fixture de QA y el renderer productivo:
+demuestran composición de UI, no Storage/Clerk/validación reales.
+
+Gates: fmt, Clippy, nextest workspace y lifecycle; compilación siempre `-j 2`.
+Para lifecycle usar `RUST_TEST_THREADS=2` y no argumentos de filtro: el harness
+propio de Runtime interpreta `--test-threads 2` como filtro `2`, omitiendo escenarios.

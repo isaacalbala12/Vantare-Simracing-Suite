@@ -5,11 +5,12 @@ use crate::{
     services::{
         protocol::{
             Command,
-            report_document::{Fields, Preview},
+            report_document::{Fields, Preview, ScreenshotPreview},
         },
         view::Remote,
     },
 };
+use base64::{Engine, engine::general_purpose::STANDARD};
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
 
 pub struct Editor {
@@ -17,13 +18,14 @@ pub struct Editor {
     values: [String; 5],
     module_choice: ChoiceState,
     consent: Entity<Checkbox>,
-    attachments: [Entity<Checkbox>; 3],
     approved: Option<Consent>,
     show_errors: bool,
     pub preview: Option<Preview>,
     pub message: String,
+    pub error: bool,
     pub revision: u64,
     pub dirty: bool,
+    pub screenshots: Vec<ScreenshotPreview>,
 }
 impl Editor {
     fn field_label(label: &str, cx: &gpui::App) -> gpui::Div {
@@ -103,18 +105,6 @@ impl Editor {
             cx.notify();
         })
         .detach();
-        let attachments = [
-            "Diagnóstico preparado",
-            "Replay de telemetría",
-            "Logs de producto",
-        ]
-        .map(|label| {
-            cx.new(|cx| {
-                let mut checkbox = Checkbox::new(label, false, cx);
-                checkbox.enabled = false;
-                checkbox
-            })
-        });
         for (index, field) in inputs.iter().enumerate() {
             cx.observe(field, move |this, input, cx| {
                 if input.entity_id() != this.editor.inputs[index].entity_id() {
@@ -144,13 +134,14 @@ impl Editor {
             values,
             module_choice,
             consent,
-            attachments,
             approved: None,
             show_errors: false,
             preview: None,
             message: "Borrador local: revise el texto antes de enviar".into(),
+            error: false,
             revision: 0,
             dirty: false,
+            screenshots: Vec::new(),
         }
     }
     fn sync_module_value(&mut self, cx: &mut Context<Remote>) {
@@ -400,82 +391,6 @@ impl Editor {
         body
     }
 
-    fn attachment_row(
-        &self,
-        index: usize,
-        label: &str,
-        help: &str,
-        cx: &Context<Remote>,
-    ) -> gpui::Stateful<gpui::Div> {
-        let attachment = self.attachments[index].read(cx);
-        let checked = attachment.checked;
-        // La primera fila conserva el aspecto del diagnóstico habilitado en Wails,
-        // aunque permanezca inerte mientras falte el contrato nativo de adjuntos.
-        let dimmed = index != 0;
-        let label_color = if dimmed {
-            orbit::ink_3(cx)
-        } else {
-            orbit::ink(cx)
-        };
-        div()
-            .id(("testing-attachment-row", index))
-            .role(gpui::Role::CheckBox)
-            .aria_label(label)
-            .aria_toggled(if checked {
-                gpui::Toggled::True
-            } else {
-                gpui::Toggled::False
-            })
-            .aria_description(
-                "Deshabilitado: este build no tiene contrato nativo para estos adjuntos.",
-            )
-            .tab_stop(false)
-            .w_full()
-            .flex()
-            .items_start()
-            .gap(px(13.0))
-            .pt(px(13.0))
-            .pb(px(15.0))
-            .border_b_1()
-            .border_color(rgba(orbit::line_row(cx)))
-            .when(dimmed, |row| row.opacity(0.6))
-            .child(
-                div()
-                    .size(px(18.0))
-                    .mt(px(2.0))
-                    .rounded(px(5.0))
-                    .border_1()
-                    .border_color(if checked {
-                        rgb(orbit::carmine(cx))
-                    } else {
-                        rgba(orbit::line_strong(cx))
-                    })
-                    .bg(if checked {
-                        rgb(orbit::carmine(cx))
-                    } else {
-                        rgba(crate::orbit::legacy_rgba(0xffff_ff08, cx))
-                    }),
-            )
-            .child(
-                div()
-                    .min_w_0()
-                    .flex_1()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        orbit::text(label, orbit::BODY, 650, label_color, cx)
-                            .font_weight(gpui::FontWeight::NORMAL)
-                            .line_height(px(20.25)),
-                    )
-                    .child(
-                        orbit::text(help, 11.0, 400, orbit::ink_muted(cx), cx)
-                            .mt(px(2.5))
-                            .line_height(px(15.95))
-                            .min_w_0(),
-                    ),
-            )
-    }
-
     fn disabled_action(
         label: &'static str,
         primary: bool,
@@ -584,19 +499,16 @@ impl Editor {
                 .mt(px(8.0))
                 .line_height(px(18.0)),
             );
-        for (index, (label, help)) in [
-            (
-                "Diagnóstico preparado",
-                "Genera una vista previa antes de enviar.",
-            ),
-            ("Replay de telemetría", "No disponible en este flujo."),
-            ("Logs de producto", "No hay búfer de logs disponible."),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            consent = consent.child(self.attachment_row(index, label, help, cx));
-        }
+        consent = consent.child(self.screenshot_card(cx)).child(
+            orbit::text(
+                "Logs y replay: no disponibles.",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            )
+            .mt(px(8.0)),
+        );
         let send = if ready {
             orbit::button("report-send", "Enviar reporte", cx)
                 .on_click(cx.listener(|this, _, _, cx| {
@@ -633,6 +545,86 @@ impl Editor {
         );
         consent
     }
+
+    fn screenshot_card(&self, cx: &mut Context<Remote>) -> gpui::Div {
+        let mut block = div()
+            .flex()
+            .flex_col()
+            .gap(px(6.0))
+            .mt(px(12.0))
+            .child(orbit::text(
+                format!("Capturas · {}/3", self.screenshots.len()),
+                14.0,
+                650,
+                orbit::ink(cx),
+                cx,
+            ));
+        for (index, preview) in self.screenshots.iter().enumerate() {
+            if let Ok(bytes) = STANDARD.decode(&preview.jpeg) {
+                let image = gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes);
+                block = block.child(
+                    gpui::img(std::sync::Arc::new(image))
+                        .w_full()
+                        .h(px(130.0))
+                        .object_fit(gpui::ObjectFit::Contain),
+                );
+            }
+            let id = preview.id.clone();
+            block = block
+                .child(orbit::text(
+                    format!(
+                        "{} × {} · {} KiB",
+                        preview.width,
+                        preview.height,
+                        preview.byte_size.div_ceil(1024)
+                    ),
+                    11.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+                .child(
+                    orbit::button(
+                        match index {
+                            0 => "report-remove-image-1",
+                            1 => "report-remove-image-2",
+                            _ => "report-remove-image-3",
+                        },
+                        "Quitar captura",
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.editor.clear_approval();
+                        let fields = this.editor.fields(cx);
+                        this.report_action(
+                            Command::ReportRemoveScreenshot {
+                                id: id.clone(),
+                                fields,
+                            },
+                            cx,
+                        );
+                    })),
+                );
+        }
+        if self.screenshots.len() < 3 {
+            block = block.child(
+                orbit::button("report-capture", "Capturar pantalla", cx).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.editor.clear_approval();
+                        let fields = this.editor.fields(cx);
+                        this.report_action(Command::ReportCapture { fields }, cx);
+                    },
+                )),
+            );
+        }
+        block.child(orbit::text(
+            "Monitor principal. Revisa la captura y quítala si contiene datos personales.",
+            11.0,
+            400,
+            orbit::ink_3(cx),
+            cx,
+        ))
+    }
     pub fn render(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
         let form = self.form(cx);
         let consent = self.consent_card(cx);
@@ -641,6 +633,9 @@ impl Editor {
             .flex()
             .flex_col()
             .gap(px(orbit::GUTTER / 2.0))
+            .when(self.error, |page| {
+                page.child(orbit::callout(self.message.clone(), cx))
+            })
             .child(
                 div()
                     .flex()
@@ -696,7 +691,7 @@ impl Editor {
                 ),
             );
         }
-        if self.message != "Borrador local: revise el texto antes de enviar" {
+        if !self.error && self.message != "Borrador local: revise el texto antes de enviar" {
             page = page.child(orbit::callout(self.message.clone(), cx));
         }
         page

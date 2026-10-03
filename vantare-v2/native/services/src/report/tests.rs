@@ -33,6 +33,15 @@ fn persist_inflight(store: &Store) {
         .expect("crash fixture");
 }
 
+fn assert_durable_receipt(store: &Store, report_id: &str) {
+    let persisted = Reports::restore(store).expect("durable receipt");
+    assert!(
+        persisted
+            .receipt()
+            .is_some_and(|receipt| receipt.report_id == report_id)
+    );
+}
+
 fn fields() -> Fields {
     Fields {
         action_text: "Abrí el panel".into(),
@@ -50,6 +59,204 @@ fn environment() -> Environment {
     }
 }
 
+fn authorization() -> (u16, String) {
+    (200,serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":160}).to_string())
+}
+fn screenshot_batch(image: &screenshots::Screenshot, state: &str) -> String {
+    serde_json::json!([{"batch_id":"550e8400-e29b-41d4-a716-446655440001","slots":[{
+        "position":1,"evidenceId":"550e8400-e29b-41d4-a716-446655440002",
+        "objectPath":"v1/0123456789abcdef0123456789abcdef/550e8400-e29b-41d4-a716-446655440001/550e8400-e29b-41d4-a716-446655440002",
+        "sha256":image.digest().expect("digest"),"state":state}]}]).to_string()
+}
+
+#[test]
+fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
+    let image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
+    let server = Server::start(vec![authorization(),
+        (200,screenshot_batch(&image,"prepared")),(200,"{}".into()),(200,"[]".into()),
+        (400,serde_json::json!({"code":"55000","message":"testing_center_evidence_not_ready"}).to_string()),
+        (200,screenshot_batch(&image,"ready")),
+        (200,serde_json::json!([{"report_id":format!("report_{}","a".repeat(64)),"report_state":"submitted","idempotent":false,"created_at":"2026-10-03T10:00:00Z"}]).to_string())]);
+    let (root, store) = crate::test_store("report-images");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    let mut draft = save_draft(&store, fields()).expect("draft");
+    draft.screenshots.push(image.preview.clone());
+    store
+        .save("report-images", &vec![image.clone()])
+        .expect("protected images");
+    store.save("report-draft", &draft).expect("draft");
+    let mut reports = Reports::restore(&store).expect("restore");
+    let preview = reports
+        .prepare_with_images(&request, draft, environment(), vec![image])
+        .expect("preview");
+    assert_eq!(preview.screenshots.len(), 1);
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::EvidencePending)
+    ));
+    assert!(load_draft(&store).expect("draft retained").is_some());
+    let mut restored = Reports::restore(&store).expect("restart");
+    let retry = restored.prepare_retry(&request, "nightly").expect("retry");
+    assert_eq!(retry.digest, preview.digest);
+    assert_eq!(retry.screenshots[0].jpeg, preview.screenshots[0].jpeg);
+    restored
+        .send(&request, &retry.id, &store)
+        .expect("confirmed");
+    assert!(load_draft(&store).expect("draft cleared").is_none());
+    for route in [
+        "/functions/v1/native-account-authorize",
+        "/rest/v1/rpc/testing_center_prepare_screenshot_batch",
+        "/storage/v1/object/testing-center-evidence/v1/",
+        "/rest/v1/rpc/testing_center_finalize_screenshot",
+        "/rest/v1/rpc/testing_center_submit_report_with_evidence",
+        "/rest/v1/rpc/testing_center_prepare_screenshot_batch",
+        "/rest/v1/rpc/testing_center_submit_report_with_evidence",
+    ] {
+        let sent = server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("HTTP");
+        assert!(sent.starts_with(&format!("POST {route}")));
+        if !route.contains("authorize") {
+            assert!(
+                sent.to_lowercase()
+                    .contains("authorization: bearer data-fixture")
+            );
+        }
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "report-images", &[]);
+}
+
+#[test]
+fn missing_tester_preserves_draft_and_submission() {
+    let server = Server::start(vec![
+        authorization(),
+        (
+            403,
+            "{\"message\":\"testing_center_membership_required\"}".into(),
+        ),
+    ]);
+    let (root, store) = crate::test_store("report-no-role");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    let draft = save_draft(&store, fields()).expect("draft");
+    let mut reports = Reports::restore(&store).expect("restore");
+    let preview = reports
+        .prepare(&request, draft.clone(), environment())
+        .expect("preview");
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::Denied)
+    ));
+    assert!(
+        crate::app::report_error(Error::Denied)
+            .starts_with("Tu cuenta aún no está habilitada para enviar reportes")
+    );
+    assert_eq!(
+        load_draft(&store)
+            .expect("draft retained")
+            .expect("draft")
+            .idempotency_key,
+        draft.idempotency_key
+    );
+    assert!(
+        Reports::restore(&store)
+            .expect("restart")
+            .prepare_retry(&request, "nightly")
+            .is_ok()
+    );
+    for _ in 0..2 {
+        server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("HTTP");
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "report-no-role", &[]);
+}
+
+#[test]
+fn screenshot_upload_rejection_retains_draft_without_attaching_report() {
+    let image =
+        screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
+    let server = Server::start(vec![
+        authorization(),
+        (200, screenshot_batch(&image, "prepared")),
+        (413, "{}".into()),
+    ]);
+    let (root, store) = crate::test_store("report-image-limit");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    let mut draft = save_draft(&store, fields()).expect("draft");
+    draft.screenshots.push(image.preview.clone());
+    store
+        .save("report-images", &vec![image.clone()])
+        .expect("images");
+    store.save("report-draft", &draft).expect("draft");
+    let mut reports = Reports::restore(&store).expect("restore");
+    let preview = reports
+        .prepare_with_images(&request, draft, environment(), vec![image])
+        .expect("preview");
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::TooLarge)
+    ));
+    assert!(load_draft(&store).expect("preserved").is_some());
+    let image_id = preview.screenshots[0].id.clone();
+    let corrected = screenshots::remove(&store, &image_id).expect("remove rejected image");
+    assert!(
+        reports
+            .prepare(&request, corrected, environment())
+            .expect("corrected preview")
+            .screenshots
+            .is_empty()
+    );
+    for _ in 0..3 {
+        server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("HTTP");
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "report-image-limit", &[]);
+}
+
 #[test]
 fn unauthorized_submission_preserves_draft_and_exact_retry() {
     let server = Server::start(vec![
@@ -60,7 +267,10 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("bridge").expect("URL"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -130,7 +340,10 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("bridge").expect("url"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("url"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -209,12 +422,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("retry submit");
     assert_text_only_retry(&first, &second, &retry);
-    let persisted = Reports::restore(&store).expect("durable receipt");
-    assert!(
-        persisted
-            .receipt()
-            .is_some_and(|receipt| receipt.report_id == report_id)
-    );
+    assert_durable_receipt(&store, &report_id);
     server.finish();
     drop(store);
     crate::cleanup_store(
@@ -236,7 +444,10 @@ fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("bridge").expect("url"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("url"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -310,7 +521,10 @@ fn edits_rotate_idempotency_and_consent_never_survives_logout_or_restored_accoun
     let mut account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("bridge").expect("url"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("url"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };
@@ -375,7 +589,10 @@ fn editing_after_preview_cancels_send_before_any_http_mutation() {
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
     let config = Config {
-        authorize: server.base.join("bridge").expect("url"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("url"),
         supabase: server.base.clone(),
         anon_key: "public-fixture".into(),
     };

@@ -123,6 +123,28 @@ impl Http {
                 .send_form(fields.iter().copied()),
         )
     }
+
+    pub fn upload_jpeg(
+        &self,
+        url: &Url,
+        bytes: &[u8],
+        bearer: &str,
+        anon: &str,
+    ) -> Result<Response> {
+        Self::validate_url(url)?;
+        if bytes.is_empty() || bytes.len() > crate::report::screenshots::MAX_BYTES {
+            return Err(Error::TooLarge);
+        }
+        Self::read(
+            self.agent
+                .post(url.as_str())
+                .header("Content-Type", "image/jpeg")
+                .header("Authorization", format!("Bearer {bearer}"))
+                .header("apikey", anon)
+                .header("x-upsert", "false")
+                .send(bytes),
+        )
+    }
 }
 
 // ureq reexporta http; evita añadir otra dependencia directa por el tipo respuesta.

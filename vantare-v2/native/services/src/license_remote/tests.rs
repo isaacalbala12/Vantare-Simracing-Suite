@@ -209,7 +209,10 @@ fn device_reset_keeps_the_explicit_data_bridge_contract() {
     let (root, store) = crate::test_store("device-reset-bridge");
     let account = account::fixture(&server.base, &store);
     let config = Config {
-        authorize: server.base.join("native-bridge").expect("test"),
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("test"),
         supabase: server.base.clone(),
         anon_key: "public-test-key".into(),
     };
@@ -220,7 +223,7 @@ fn device_reset_keeps_the_explicit_data_bridge_contract() {
         .requests
         .recv_timeout(Duration::from_secs(3))
         .expect("bridge");
-    assert!(authorization.starts_with("POST /native-bridge "));
+    assert!(authorization.starts_with("POST /functions/v1/native-account-authorize "));
     assert!(!authorization.contains("local-data-token"));
     let reset = server
         .requests

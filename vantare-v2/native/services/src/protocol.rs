@@ -7,7 +7,8 @@ pub const VERSION: u32 = 3;
 pub mod report_document;
 #[path = "roadmap_document.rs"]
 pub mod roadmap_document;
-pub const MAX_FRAME: usize = 64 * 1024;
+// Tres miniaturas + preview JSON del texto (con escape doble). Nunca JPEG completos.
+pub const MAX_FRAME: usize = 128 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
@@ -24,11 +25,22 @@ pub enum Command {
     RoadmapCached,
     RoadmapRefresh,
     DraftLoad,
-    DraftSave { fields: report_document::Fields },
+    DraftSave {
+        fields: report_document::Fields,
+    },
     DraftDiscard,
+    ReportCapture {
+        fields: report_document::Fields,
+    },
+    ReportRemoveScreenshot {
+        id: String,
+        fields: report_document::Fields,
+    },
     ReportPrepare,
     ReportRetryPrepare,
-    ReportSend { preview_id: String },
+    ReportSend {
+        preview_id: String,
+    },
     Shutdown,
 }
 
@@ -134,6 +146,25 @@ pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn three_thumbnails_and_escaped_preview_fit_the_bounded_ipc_frame() {
+        let preview = report_document::Preview {
+            id:"a".repeat(64),digest:"b".repeat(64),account_id:"550e8400-e29b-41d4-a716-446655440000".into(),
+            channel:"testers".into(),retry:false,
+            payload:serde_json::to_string_pretty(&serde_json::json!({"action":"\\".repeat(2048),
+                "expected":"\\".repeat(2048),"observed":"\\".repeat(2048),"context":"\\".repeat(4096)})).expect("preview"),
+            screenshots:(0..3).map(|_|report_document::ScreenshotPreview {
+                id:"a".repeat(64),jpeg:"a".repeat(14*1024),width:1920,height:1080,byte_size:400*1024
+            }).collect(),
+        };
+        let mut frame = Vec::new();
+        write(&mut frame, &Reply::ReportPreview { preview }).expect("bounded frame");
+        assert!(frame.len() > 64 * 1024 && frame.len() <= MAX_FRAME + 4);
+        assert!(matches!(
+            read::<Reply>(&mut frame.as_slice()).expect("read"),
+            Reply::ReportPreview { .. }
+        ));
+    }
     #[test]
     fn protocol_rejects_oversized_truncated_and_unknown_commands() {
         for bytes in [

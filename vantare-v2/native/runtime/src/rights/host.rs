@@ -205,6 +205,9 @@ fn advance(
         if let Err(error) = result {
             state.policy.overlays_advanced = false;
             state.policy.engineer = false;
+            state.policy.strategy = false;
+            state.policy.analysis = false;
+            state.policy.calendar = false;
             state.policy.error = Some(error.to_string());
             state.policy.checked_at_ms = now_ms;
             state.policy.live = is_live(&seen.snapshot);

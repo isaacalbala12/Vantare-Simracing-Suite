@@ -1,9 +1,21 @@
 use super::*;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
-use vantare_services::license::{Capability, ClaimsV2};
+use vantare_services::license::{Capability, ClaimsV1, ClaimsV2};
 
 fn signed(expiry: i64, issued: i64) -> (String, String) {
+    signed_modules(
+        expiry + 7200,
+        issued,
+        vec![Capability {
+            key: "vantare.operational.owner".into(),
+            paid_through: wall(expiry).to_rfc3339(),
+            perpetual: false,
+            scope_version: String::new(),
+        }],
+    )
+}
+fn signed_modules(expiry: i64, issued: i64, capabilities: Vec<Capability>) -> (String, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía local");
     let key = SigningKey::from_bytes(&seed);
@@ -15,14 +27,7 @@ fn signed(expiry: i64, issued: i64) -> (String, String) {
         device_key_id: "test-installation".into(),
         iat: u64::try_from(issued).expect("iat"),
         exp: u64::try_from(expiry).expect("exp"),
-        capabilities: vec![Capability {
-            key: "vantare.plan.pro".into(),
-            paid_through: DateTime::from_timestamp(expiry, 0)
-                .expect("expiry")
-                .to_rfc3339(),
-            perpetual: false,
-            scope_version: String::new(),
-        }],
+        capabilities,
     };
     let header = URL_SAFE_NO_PAD.encode(
         serde_json::to_vec(
@@ -47,6 +52,38 @@ fn devices() -> Devices {
         legacy: "test-legacy".into(),
         installation: "test-installation".into(),
     }
+}
+
+fn signed_v1(issued: i64, capabilities: Vec<Capability>) -> (String, String) {
+    let mut seed = [0; 32];
+    getrandom::fill(&mut seed).expect("entropía local");
+    let key = SigningKey::from_bytes(&seed);
+    let mut credential = CredentialV1 {
+        version: 1,
+        algorithm: "Ed25519".into(),
+        key_id: "test".into(),
+        claims: ClaimsV1 {
+            issuer: "vantare-license".into(),
+            subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+            device_fingerprint: devices().legacy,
+            issued_at: wall(issued).to_rfc3339(),
+            capabilities,
+        },
+        signature: String::new(),
+    };
+    // Fixture ASCII en el orden del contrato V1; no expone el firmador productivo.
+    let payload = format!(
+        r#"{{"version":1,"algorithm":"Ed25519","key_id":"test","claims":{}}}"#,
+        serde_json::to_string(&credential.claims).expect("claims")
+    );
+    credential.signature = URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes());
+    (
+        serde_json::to_string(&credential).expect("credencial V1"),
+        format!(
+            "test:{}",
+            URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
+        ),
+    )
 }
 fn test_root() -> std::path::PathBuf {
     std::env::var_os("VANTARE_TEST_EVIDENCE_DIR")
@@ -125,7 +162,7 @@ fn restart_preserves_same_absolute_deadline_even_across_two_restarts_and_local_i
                     Duration::from_secs(1),
                 )
                 .expect("fin exacto");
-            assert!(!policy.engineer && !policy.overlays_advanced);
+            assert!(!policy.engineer && policy.overlays_advanced);
         }
     }
     clean(&root);
@@ -169,7 +206,7 @@ fn first_live_mismatch_or_missing_identity_discards_saved_grace_permanently() {
             )
             .expect("primera sesión no coincide");
         assert!(
-            !policy.engineer && !policy.overlays_advanced,
+            !policy.engineer && policy.overlays_advanced,
             "caso {change}"
         );
         drop(owner);
@@ -603,4 +640,194 @@ fn fetch_credential(credential: &str) -> String {
     let response: serde_json::Value = serde_json::from_str(&text).expect("JSON");
     server.join().expect("HTTP terminado");
     response["credential"].as_str().expect("credential").into()
+}
+
+#[test]
+fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
+    let start = 1_790_800_000;
+    for (capability, expected) in [
+        (None, [false; 4]),
+        (Some("vantare.module.engineer"), [true, false, false, false]),
+        (Some("vantare.module.strategy"), [false, true, false, false]),
+        (Some("vantare.module.analysis"), [false, false, true, false]),
+        (Some("vantare.module.calendar"), [false, false, false, true]),
+        (Some("vantare.operational.owner"), [true; 4]),
+        (Some("vantare.operational.tester"), [true; 4]),
+        (Some("vantare.operational.nightly_tester"), [true; 4]),
+        (Some("vantare.plan.pro"), [false; 4]),
+        (Some("vantare.edition.launch_v1"), [false; 4]),
+    ] {
+        let grants = beta_grants(capability, start);
+        let (credential, keys) = signed_modules(start + 10, start - 1, grants);
+        let root = test_root();
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+        let anonymous = owner
+            .advance(&Snapshot::default(), wall(start), Duration::ZERO)
+            .expect("sin sesión");
+        assert!(!anonymous.overlays_advanced);
+        owner
+            .install(credential.clone(), wall(start), Duration::ZERO)
+            .expect("instalar");
+        let policy = owner
+            .advance(&Snapshot::default(), wall(start), Duration::ZERO)
+            .expect("vigente");
+        assert!(policy.overlays_advanced, "{capability:?}");
+        assert_eq!(
+            [
+                policy.engineer,
+                policy.strategy,
+                policy.analysis,
+                policy.calendar
+            ],
+            expected
+        );
+        assert_eq!(
+            policy.valid_until_ms,
+            Some(u64::try_from(start + 10).expect("fecha") * 1000)
+        );
+        export_capture_policy(capability, &policy);
+        // Caché válida tras restaurar, sin consulta de red ni derechos inventados.
+        drop(owner);
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(start + 1)).expect("caché");
+        assert!(
+            owner
+                .advance(&Snapshot::default(), wall(start + 1), Duration::ZERO)
+                .expect("caché vigente")
+                .overlays_advanced
+        );
+        let expired = owner
+            .advance(
+                &Snapshot::default(),
+                wall(start + 10),
+                Duration::from_secs(9),
+            )
+            .expect("caducidad exacta");
+        assert!(!expired.overlays_advanced);
+        assert_eq!(
+            [
+                expired.engineer,
+                expired.strategy,
+                expired.analysis,
+                expired.calendar
+            ],
+            [false; 4]
+        );
+        assert!(
+            owner
+                .install(
+                    format!("{credential}corrupt"),
+                    wall(start + 11),
+                    Duration::from_secs(10)
+                )
+                .is_err()
+        );
+        let error = owner.policy();
+        assert_eq!(
+            [
+                error.overlays_advanced,
+                error.engineer,
+                error.strategy,
+                error.analysis,
+                error.calendar
+            ],
+            [false; 5]
+        );
+        drop(owner);
+        clean(&root);
+    }
+}
+
+fn beta_grants(capability: Option<&str>, start: i64) -> Vec<Capability> {
+    capability
+        .into_iter()
+        .map(|key| Capability {
+            key: key.into(),
+            paid_through: if key.starts_with("vantare.operational.") || key == "vantare.plan.pro" {
+                wall(if key == "vantare.plan.pro" {
+                    start + 3
+                } else {
+                    start + 10
+                })
+                .to_rfc3339()
+            } else {
+                String::new()
+            },
+            perpetual: key.starts_with("vantare.module.") || key == "vantare.edition.launch_v1",
+            scope_version: if key == "vantare.edition.launch_v1" {
+                "launch_v1".into()
+            } else {
+                String::new()
+            },
+        })
+        .collect()
+}
+
+fn export_capture_policy(capability: Option<&str>, policy: &Policy) {
+    if let Some(directory) = std::env::var_os("VANTARE_BETA_POLICY_EVIDENCE") {
+        let name = match capability {
+            None => Some("sin-modulos"),
+            Some("vantare.operational.owner") => Some("owner"),
+            Some("vantare.module.strategy") => Some("solo-strategy"),
+            _ => None,
+        };
+        if let Some(name) = name {
+            let path = std::path::PathBuf::from(directory).join(format!("policy-{name}.json"));
+            std::fs::write(
+                path,
+                serde_json::to_vec_pretty(policy).expect("policy JSON"),
+            )
+            .expect("evidencia fuera del repo");
+        }
+    }
+}
+
+#[test]
+fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours() {
+    let start = 1_790_800_000;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("puerto local");
+    let address = listener.local_addr().expect("dirección");
+    drop(listener);
+    assert!(
+        ureq::get(&format!("http://{address}/native-license"))
+            .call()
+            .is_err(),
+        "servidor inalcanzable"
+    );
+    for (capability, legacy) in [
+        (None, true),
+        (Some("vantare.module.strategy"), true),
+        (None, false),
+        (Some("vantare.module.strategy"), false),
+    ] {
+        let grants = beta_grants(capability, start);
+        let (credential, keys) = if legacy {
+            signed_v1(start - 1, grants)
+        } else {
+            signed_modules(start + 3 * 86400, start - 1, grants)
+        };
+        let root = test_root();
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+        owner
+            .install(credential, wall(start), Duration::ZERO)
+            .expect("guardar credencial");
+        drop(owner);
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(start)).expect("caché sin red");
+        for seconds in [2 * 3600, 3 * 3600, 3 * 86400 - 1, 3 * 86400] {
+            let policy = owner
+                .advance(
+                    &Snapshot::default(),
+                    wall(start + seconds),
+                    Duration::from_secs(u64::try_from(seconds).expect("duración")),
+                )
+                .expect("sin red");
+            let active = legacy || seconds < 3 * 86400;
+            assert_eq!(policy.overlays_advanced, active);
+            assert_eq!(policy.strategy, capability.is_some() && active);
+            assert!(!policy.engineer && !policy.analysis && !policy.calendar);
+        }
+        drop(owner);
+        clean(&root);
+    }
 }

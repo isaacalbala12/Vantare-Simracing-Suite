@@ -1,29 +1,49 @@
 //! Navegación local de la shell. No verifica licencias ni concede derechos al núcleo.
 use crate::Section;
 
-/// Combinación para la matriz UI, proyectada de capacidades vigentes del núcleo.
-/// No acredita el nombre comercial del plan ni se lee de un archivo/env local.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Plan {
-    #[default]
-    Unknown,
-    Free,
-    Overlays,
-    Engineer,
-    Suite,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+// Capacidades independientes del contrato beta; no forman estados excluyentes.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Access {
-    pub plan: Plan,
+    pub verified: bool,
+    pub engineer: bool,
+    pub strategy: bool,
+    pub analysis: bool,
+    pub calendar: bool,
     pub blocked: bool,
-    /// Restricciones de la escena; no se compilan en el Hub de producción.
     #[cfg(feature = "parity-capture")]
     pub capture_locks: &'static [Section],
 }
 
 impl Access {
-    /// Una solicitud bloqueada conserva la sección activa.
+    pub fn from_policy(policy: &vantare_ipc::control::Policy, now_ms: u64) -> Self {
+        if policy.error.is_some() {
+            return Self {
+                blocked: true,
+                ..Self::default()
+            };
+        }
+        if !policy.current_at(now_ms) {
+            return Self::default();
+        }
+        Self {
+            verified: policy.overlays_advanced,
+            engineer: policy.engineer,
+            strategy: policy.strategy,
+            analysis: policy.analysis,
+            calendar: policy.calendar,
+            ..Self::default()
+        }
+    }
+
+    pub fn visible(self, section: Section) -> bool {
+        match section {
+            Section::Analysis => self.verified && !self.blocked && self.analysis,
+            Section::Calendar => self.verified && !self.blocked && self.calendar,
+            _ => true,
+        }
+    }
+    /// Una solicitud bloqueada u oculta conserva la sección activa.
     pub fn navigate(self, current: &mut Section, destination: Section) -> Result<(), &'static str> {
         if let Some(reason) = self.lock(destination) {
             return Err(reason);
@@ -31,38 +51,25 @@ impl Access {
         *current = destination;
         Ok(())
     }
-
-    /// Matriz de `access-policy.ts`: Studio básico admite Free; Strategy y
-    /// Telemetría admiten ambos planes de pago. Workshop es una herramienta local.
     pub fn lock(self, section: Section) -> Option<&'static str> {
         #[cfg(feature = "parity-capture")]
         if self.capture_locks.contains(&section) {
             return Some("No incluido en el acceso demo");
         }
-        let (allowed, required) = match section {
-            Section::Studio => (
-                self.plan != Plan::Unknown && self.plan != Plan::Engineer,
-                "Requiere Overlays",
-            ),
-            Section::Strategy | Section::Analysis => (
-                matches!(self.plan, Plan::Overlays | Plan::Engineer | Plan::Suite),
-                "Requiere Overlays o Engineer",
-            ),
-            Section::Engineer => (
-                matches!(self.plan, Plan::Engineer | Plan::Suite),
-                "Requiere Engineer",
-            ),
-            _ => return None,
-        };
         if self.blocked {
-            Some("Licencia bloqueada")
-        } else if self.plan == Plan::Unknown {
-            Some("Acceso sin verificar")
-        } else if allowed {
-            None
-        } else {
-            Some(required)
+            return Some("Licencia bloqueada");
         }
+        if !self.verified {
+            return Some("Acceso sin verificar");
+        }
+        let allowed = match section {
+            Section::Strategy => self.strategy,
+            Section::Engineer => self.engineer,
+            Section::Analysis => self.analysis,
+            Section::Calendar => self.calendar,
+            _ => true,
+        };
+        if allowed { None } else { Some("Próximamente") }
     }
 }
 
@@ -167,6 +174,7 @@ pub fn commands(access: Access, query: &str) -> Vec<Item> {
             .iter(),
         )
         .copied()
+        .filter(|section| access.visible(*section))
         .map(|section| Item {
             command: Command::Navigate(section),
             label: title(section).into(),
@@ -251,6 +259,84 @@ pub fn context(section: Section) -> &'static [Section] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn beta_modules_control_visibility_locks_and_direct_navigation() {
+        for (verified, engineer, strategy, analysis, calendar) in [
+            (false, false, false, false, false),
+            (true, false, false, false, false),
+            (true, true, false, false, false),
+            (true, false, true, false, false),
+            (true, false, false, true, false),
+            (true, false, false, false, true),
+            (true, true, true, true, true),
+        ] {
+            let access = Access {
+                verified,
+                engineer,
+                strategy,
+                analysis,
+                calendar,
+                ..Access::default()
+            };
+            for &section in Section::ALL {
+                let allowed = verified
+                    && match section {
+                        Section::Engineer => engineer,
+                        Section::Strategy => strategy,
+                        Section::Analysis => analysis,
+                        Section::Calendar => calendar,
+                        _ => true,
+                    };
+                let visible = match section {
+                    Section::Analysis => verified && analysis,
+                    Section::Calendar => verified && calendar,
+                    _ => true,
+                };
+                assert_eq!(access.visible(section), visible, "{section:?}");
+                let item = commands(access, "")
+                    .into_iter()
+                    .find(|item| item.command == Command::Navigate(section));
+                assert_eq!(item.is_some(), visible);
+                if let Some(item) = item {
+                    assert_eq!(item.locked.is_none(), allowed);
+                }
+                let mut current = Section::Home;
+                assert_eq!(access.navigate(&mut current, section).is_ok(), allowed);
+                assert_eq!(current, if allowed { section } else { Section::Home });
+                if verified && !allowed {
+                    assert_eq!(access.lock(section), Some("Próximamente"));
+                }
+                assert!(
+                    Access {
+                        blocked: true,
+                        ..access
+                    }
+                    .lock(section)
+                    .is_some()
+                );
+            }
+        }
+    }
+    #[test]
+    fn palette_filter_cursor_and_context_keep_their_contract() {
+        let access = Access {
+            verified: true,
+            ..Access::default()
+        };
+        assert_eq!(commands(access, "próximamente").len(), 2);
+        assert!(commands(access, "TELEMETRÍA").is_empty());
+        assert!(commands(access, "CALENDARIO").is_empty());
+        assert_eq!(move_cursor(0, false, 3), 2);
+        assert_eq!(move_cursor(2, true, 3), 0);
+        assert_eq!(move_cursor(9, true, 0), 0);
+        for &section in Section::ALL {
+            assert!(
+                context(section)
+                    .iter()
+                    .all(|destination| Section::ALL.contains(destination))
+            );
+        }
+    }
 
     #[test]
     fn launcher_palette_filters_names_preserves_ids_and_respects_access() {
@@ -258,11 +344,36 @@ mod tests {
             "actual-id".into(),
             "Mi rig".into(),
         )];
-        let items = launch_commands(Access::default(), "  RIG  ", &profiles);
+        let items = launch_commands(
+            Access {
+                verified: true,
+                engineer: true,
+                strategy: true,
+                analysis: true,
+                calendar: true,
+                ..Access::default()
+            },
+            "  RIG  ",
+            &profiles,
+        );
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].command, Command::LaunchProfile("actual-id".into()));
         assert!(items[0].locked.is_none());
-        assert!(launch_commands(Access::default(), "missing", &profiles).is_empty());
+        assert!(
+            launch_commands(
+                Access {
+                    verified: true,
+                    engineer: true,
+                    strategy: true,
+                    analysis: true,
+                    calendar: true,
+                    ..Access::default()
+                },
+                "missing",
+                &profiles
+            )
+            .is_empty()
+        );
         let access = Access {
             blocked: true,
             ..Default::default()
@@ -276,7 +387,9 @@ mod tests {
     #[test]
     fn filter_covers_label_meta_lock_case_trim_and_empty_results() {
         let access = Access {
-            plan: Plan::Free,
+            verified: true,
+            analysis: true,
+            calendar: true,
             ..Default::default()
         };
         assert!(
@@ -285,7 +398,7 @@ mod tests {
                 .any(|item| item.command == Command::Navigate(Section::Engineer))
         );
         assert!(
-            commands(access, "REQUIERE")
+            commands(access, "PRÓXIMAMENTE")
                 .iter()
                 .all(|item| item.locked.is_some())
         );
@@ -316,7 +429,11 @@ mod tests {
     #[test]
     fn capture_restrictions_block_navigation_without_granting_access() {
         let access = Access {
-            plan: Plan::Suite,
+            verified: true,
+            engineer: true,
+            strategy: true,
+            analysis: true,
+            calendar: true,
             capture_locks: &[Section::Engineer, Section::Analysis],
             ..Default::default()
         };
@@ -329,53 +446,12 @@ mod tests {
         assert!(access.lock(Section::Studio).is_none());
         assert!(
             Access {
-                plan: Plan::Unknown,
+                verified: false,
                 ..access
             }
             .lock(Section::Strategy)
             .is_some()
         );
-    }
-
-    #[test]
-    fn plan_matrix_matches_wails_and_unknown_never_grants_paid_navigation() {
-        for (plan, expected) in [
-            (Plan::Unknown, [false, false, false, false]),
-            (Plan::Free, [true, false, false, false]),
-            (Plan::Overlays, [true, true, false, true]),
-            (Plan::Engineer, [false, true, true, true]),
-            (Plan::Suite, [true, true, true, true]),
-        ] {
-            let access = Access {
-                plan,
-                ..Default::default()
-            };
-            for (section, allowed) in [
-                Section::Studio,
-                Section::Strategy,
-                Section::Engineer,
-                Section::Analysis,
-            ]
-            .into_iter()
-            .zip(expected)
-            {
-                assert_eq!(
-                    access.lock(section).is_none(),
-                    allowed,
-                    "{plan:?}/{section:?}"
-                );
-                assert!(
-                    Access {
-                        blocked: true,
-                        ..access
-                    }
-                    .lock(section)
-                    .is_some()
-                );
-            }
-            assert!(access.lock(Section::Home).is_none());
-            assert!(access.lock(Section::Workshop).is_none());
-        }
     }
 
     #[test]
@@ -390,7 +466,10 @@ mod tests {
     #[test]
     fn locked_navigation_preserves_the_active_section() {
         let mut current = Section::Calendar;
-        let access = Access::default();
+        let access = Access {
+            verified: true,
+            ..Access::default()
+        };
         assert!(access.navigate(&mut current, Section::Engineer).is_err());
         assert_eq!(current, Section::Calendar);
         access
@@ -419,16 +498,26 @@ mod tests {
                 Section::Testing
             ]
         );
-        let destinations: Vec<_> = commands(Access::default(), "")
-            .into_iter()
-            .filter_map(|item| {
-                if let Command::Navigate(section) = item.command {
-                    Some(section)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let destinations: Vec<_> = commands(
+            Access {
+                verified: true,
+                engineer: true,
+                strategy: true,
+                analysis: true,
+                calendar: true,
+                ..Access::default()
+            },
+            "",
+        )
+        .into_iter()
+        .filter_map(|item| {
+            if let Command::Navigate(section) = item.command {
+                Some(section)
+            } else {
+                None
+            }
+        })
+        .collect();
         assert_eq!(&destinations[..RAIL.len()], RAIL);
         assert_eq!(destinations.len(), Section::ALL.len());
         for &section in Section::ALL {

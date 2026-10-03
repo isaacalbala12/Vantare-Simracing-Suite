@@ -206,7 +206,12 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     assert!(services.state.lock().expect("state").client.is_some());
     let paid = control::request(&link, control::Command::Read).expect("policy");
     assert!(
-        paid.current() && paid.overlays_advanced && paid.engineer,
+        paid.current()
+            && paid.overlays_advanced
+            && !paid.engineer
+            && !paid.strategy
+            && !paid.analysis
+            && !paid.calendar,
         "política saneada: {paid:?}; namespaces de fixture: {}",
         std::fs::read_dir(root.join("services"))
             .expect("fixture")
@@ -225,7 +230,7 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     assert!(
         control::request(&link, control::Command::Read)
             .expect("sin helper")
-            .engineer
+            .overlays_advanced
     );
     snapshot.state.source_state = vantare_domain::SourceState::Waiting;
     core.publish(Arc::new(snapshot));
@@ -239,13 +244,13 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     assert!(
         !control::request(&link, control::Command::Read)
             .expect("revocado")
-            .engineer
+            .overlays_advanced
     );
     assert!(matches!(hub.request(Command::Shutdown), Reply::Closed));
     assert!(
         !control::request(&link, control::Command::Read)
             .expect("sin reactivación")
-            .engineer
+            .overlays_advanced
     );
     drop(hub);
     drop(services);

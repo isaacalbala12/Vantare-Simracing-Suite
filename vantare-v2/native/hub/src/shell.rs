@@ -99,6 +99,9 @@ impl Hub {
         {
             self.close_requested = false;
         }
+        if !self.shell.access.visible(self.section) {
+            self.section = Section::Home;
+        }
         if self.close_requested && self.can_close(cx) {
             cx.quit();
             return;
@@ -210,17 +213,21 @@ impl Hub {
                 self.demo.as_ref(),
                 f32::from(window.viewport_size().width) <= 1360.0,
                 |control, section| {
-                    control.on_click(cx.listener(move |this, _, _, cx| {
-                        if section == Section::Launcher {
-                            if let Some(id) = this.launcher.read(cx).default_profile_id() {
-                                this.launch_profile(&id, cx);
+                    control
+                        .when(!self.shell.access.visible(section), |control| {
+                            control.hidden()
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if section == Section::Launcher {
+                                if let Some(id) = this.launcher.read(cx).default_profile_id() {
+                                    this.launch_profile(&id, cx);
+                                } else {
+                                    this.navigate(section, cx);
+                                }
                             } else {
                                 this.navigate(section, cx);
                             }
-                        } else {
-                            this.navigate(section, cx);
-                        }
-                    }))
+                        }))
                 },
                 cx,
             )

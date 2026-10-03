@@ -291,6 +291,12 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     configure(&mut config)?;
+    let photo = configured_pipe(&mut config)?;
+    let rights = config
+        .engineer
+        .as_ref()
+        .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
+        .transpose()?;
 
     let mut services = vec![
         Service::new("núcleo", config.core, config.restarts),
@@ -299,7 +305,13 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
     if let Some(engineer) = config.engineer {
         services.push(Service::new("Engineer", engineer, config.restarts));
     }
-    let outcome = supervise(&mut services, &stop, &instance);
+    let outcome = supervise(
+        &mut services,
+        &stop,
+        &instance,
+        rights.as_ref(),
+        config.grace,
+    );
     let closed = shutdown(&mut services, config.grace);
     closed?;
     Ok(match outcome? {
@@ -317,14 +329,30 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
     })
 }
 
-fn supervise(services: &mut [Service], stop: &Stop, instance: &Instance) -> io::Result<Outcome> {
+fn supervise(
+    services: &mut [Service],
+    stop: &Stop,
+    instance: &Instance,
+    rights: Option<&vantare_ipc::control::Feed>,
+    grace: Duration,
+) -> io::Result<Outcome> {
     loop {
         if stop.is_set()? {
             return Ok(Outcome::Stopped);
         }
         instance.drain()?;
         let now = Instant::now();
+        let engineer_permitted = rights.is_some_and(|feed| super::engineer_allowed(&feed.policy()));
         for service in services.iter_mut() {
+            if service.name == "Engineer" && !engineer_permitted {
+                if service.child.is_some() {
+                    shutdown(std::slice::from_mut(service), grace)?;
+                    service.child = None;
+                    service.start_at = Some(now);
+                    service.restarts.attempts = 0;
+                }
+                continue;
+            }
             if service.child.is_none()
                 && service.start_at.is_some_and(|at| at <= now)
                 && let Err(error) = service.spawn()
@@ -355,6 +383,7 @@ fn supervise(services: &mut [Service], stop: &Stop, instance: &Instance) -> io::
         }
         let until_restart = services
             .iter()
+            .filter(|service| service.name != "Engineer" || engineer_permitted)
             .filter_map(|service| service.start_at)
             .min()
             .map(|at| at.saturating_duration_since(Instant::now()));
@@ -570,7 +599,14 @@ mod tests {
             .expect("dueño");
         let mut services = [shell(&["-c", "exit 0"], 0)];
         assert!(matches!(
-            supervise(&mut services, &stop, &instance).expect("supervisión"),
+            supervise(
+                &mut services,
+                &stop,
+                &instance,
+                None,
+                Duration::from_millis(100)
+            )
+            .expect("supervisión"),
             Outcome::Finished("proceso de prueba")
         ));
     }

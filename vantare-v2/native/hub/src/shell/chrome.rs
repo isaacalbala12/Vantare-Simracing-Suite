@@ -120,13 +120,6 @@ impl Hub {
             item.command != Command::Navigate(Section::Testing)
                 || self.shell.rail_sections.contains(&Section::Testing)
         });
-        if self.capture.is_some() {
-            for item in &mut items {
-                if item.command == Command::Navigate(Section::Analysis) {
-                    item.label.push_str(" · Próximamente");
-                }
-            }
-        }
         items.extend(navigation::launch_commands(
             self.shell.access,
             &self.shell.last_query,
@@ -248,9 +241,18 @@ impl Hub {
                 .iter()
                 .position(|focus| focus.is_focused(window))
         {
-            let next =
-                navigation::move_cursor(index, key.key == "down", self.shell.rail_focus.len());
-            self.shell.rail_focus[next].focus(window, cx);
+            let visible: Vec<_> = self
+                .shell
+                .rail_sections
+                .iter()
+                .enumerate()
+                .filter(|(_, section)| self.shell.access.visible(**section))
+                .map(|(index, _)| index)
+                .collect();
+            if let Some(position) = visible.iter().position(|visible| *visible == index) {
+                let next = navigation::move_cursor(position, key.key == "down", visible.len());
+                self.shell.rail_focus[visible[next]].focus(window, cx);
+            }
             self.reveal_rail_focus(window, cx);
             cx.stop_propagation();
         }
@@ -280,6 +282,9 @@ impl Hub {
             .items_center()
             .gap(px(8.0));
         for (index, &section) in self.shell.rail_sections.iter().enumerate() {
+            if !self.shell.access.visible(section) {
+                continue;
+            }
             items = items.child(
                 self.section_rail_button(section, cx)
                     .track_focus(&self.shell.rail_focus[index])
@@ -374,21 +379,6 @@ impl Hub {
             self.section == section,
             self.shell.access.lock(section),
             cx,
-        )
-        .when(
-            section == Section::Analysis && self.demo.is_some(),
-            |button| {
-                button.child(
-                    div()
-                        .absolute()
-                        .right(px(8.0))
-                        .top(px(8.0))
-                        .size(px(6.0))
-                        .rounded_full()
-                        .border_1()
-                        .border_color(rgb(orbit::ember(cx))),
-                )
-            },
         )
     }
 
@@ -509,8 +499,17 @@ impl Hub {
             .flex()
             .flex_col()
             .child(
-                Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas", strategy, cx)
-                    .when(strategy, |heading| heading.pb(px(9.0))),
+                Self::context_heading(
+                    "PRÓXIMAS CARRERAS",
+                    if self.shell.access.visible(Section::Calendar) {
+                        "Ver todas"
+                    } else {
+                        ""
+                    },
+                    strategy,
+                    cx,
+                )
+                .when(strategy, |heading| heading.pb(px(9.0))),
             )
             .child(
                 Self::context_row("Sin salidas próximas", "", None, cx)

@@ -5,8 +5,8 @@ use vantare_ipc::control::{Feed, Policy};
 
 struct Access(Feed);
 impl Global for Access {}
-pub(crate) fn allowed(kind: Kind, policy: &Policy) -> bool {
-    matches!(kind, Kind::Standings | Kind::Pedals) || (policy.current() && policy.overlays_advanced)
+pub(crate) fn allowed(_kind: Kind, policy: &Policy) -> bool {
+    policy.current() && policy.overlays_advanced
 }
 pub(crate) fn denied(kind: Kind, cx: &App) -> bool {
     // Workshop/paridad no instalan este global: son previsualizaciones locales.
@@ -38,26 +38,43 @@ pub(crate) fn install(feed: Option<Feed>, cx: &mut App) {
 mod tests {
     use super::*;
     #[test]
-    fn free_widgets_remain_available_and_paid_widgets_deny_stale_or_expired_policy() {
+    fn every_overlay_requires_a_valid_session_and_no_module_permission() {
         let mut policy = Policy::default();
-        assert!(allowed(Kind::Standings, &policy));
-        assert!(allowed(Kind::Pedals, &policy));
-        for kind in Kind::ALL
-            .iter()
-            .copied()
-            .filter(|kind| !matches!(kind, Kind::Standings | Kind::Pedals))
-        {
+        for &kind in Kind::ALL {
             assert!(!allowed(kind, &policy));
         }
         policy.version = vantare_ipc::control::VERSION;
         policy.revision = 1;
         policy.checked_at_ms = vantare_ipc::control::wall_ms().expect("wall");
         policy.overlays_advanced = true;
-        assert!(allowed(Kind::Radar, &policy));
-        policy.valid_until_ms = Some(policy.checked_at_ms);
-        assert!(!allowed(Kind::Radar, &policy));
-        policy.valid_until_ms = None;
-        policy.checked_at_ms -= 2001;
-        assert!(!allowed(Kind::Radar, &policy));
+        for &kind in Kind::ALL {
+            assert!(allowed(kind, &policy));
+        }
+        for denied in [
+            Policy {
+                valid_until_ms: Some(policy.checked_at_ms),
+                ..policy.clone()
+            },
+            Policy {
+                checked_at_ms: policy.checked_at_ms - 2001,
+                ..policy.clone()
+            },
+            Policy {
+                error: Some("fixture".into()),
+                ..policy.clone()
+            },
+            Policy {
+                overlays_advanced: false,
+                ..policy.clone()
+            },
+            Policy {
+                version: vantare_ipc::control::VERSION - 1,
+                ..policy
+            },
+        ] {
+            for &kind in Kind::ALL {
+                assert!(!allowed(kind, &denied));
+            }
+        }
     }
 }

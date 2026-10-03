@@ -316,6 +316,10 @@ impl Service {
     }
 }
 
+fn engineer_allowed(policy: &vantare_ipc::control::Policy) -> bool {
+    policy.current() && policy.overlays_advanced && policy.engineer
+}
+
 enum Outcome {
     Stopped,
     /// Un hijo terminó a propósito.
@@ -324,11 +328,26 @@ enum Outcome {
 }
 
 #[cfg(windows)]
-fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
+fn supervise(
+    services: &mut [Service],
+    stop: &Stop,
+    rights: Option<&vantare_ipc::control::Feed>,
+    grace: Duration,
+) -> io::Result<Outcome> {
     use std::os::windows::io::AsRawHandle;
     loop {
         let now = Instant::now();
+        let engineer_permitted = rights.is_some_and(|feed| engineer_allowed(&feed.policy()));
         for service in services.iter_mut() {
+            if service.name == "Engineer" && !engineer_permitted {
+                if service.child.is_some() {
+                    shutdown(std::slice::from_mut(service), grace);
+                    service.child = None;
+                    service.start_at = Some(now);
+                    service.restarts.attempts = 0;
+                }
+                continue;
+            }
             if service.child.is_none()
                 && service.start_at.is_some_and(|at| at <= now)
                 && let Err(error) = service.spawn()
@@ -350,9 +369,13 @@ fn supervise(services: &mut [Service], stop: &Stop) -> io::Result<Outcome> {
         }
         let timeout = services
             .iter()
+            .filter(|s| s.name != "Engineer" || engineer_permitted)
             .filter_map(|s| s.start_at)
             .min()
-            .map(|at| at.saturating_duration_since(Instant::now()));
+            .map(|at| at.saturating_duration_since(Instant::now()))
+            .map_or(Some(Duration::from_millis(250)), |delay| {
+                Some(delay.min(Duration::from_millis(250)))
+            });
         let Some(signaled) = win::wait_any(&handles, timeout)? else {
             continue; // toca reiniciar a alguien
         };
@@ -489,6 +512,18 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         None
     };
     let remote = start_remote_services(&mut config)?;
+    let photo = config
+        .core
+        .args
+        .windows(2)
+        .find(|pair| pair[0] == "--pipe")
+        .map(|pair| pair[1].clone())
+        .ok_or_else(|| io::Error::other("falta pipe del núcleo"))?;
+    let rights = config
+        .engineer
+        .as_ref()
+        .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
+        .transpose()?;
     let mut core = Service::new("núcleo", config.core, config.restarts);
     core.bootstrap = Some(remote.1);
     let mut services = vec![
@@ -498,7 +533,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     if let Some(engineer) = config.engineer {
         services.push(Service::new("Engineer", engineer, config.restarts));
     }
-    let outcome = supervise(&mut services, &stop);
+    let outcome = supervise(&mut services, &stop, rights.as_ref(), config.grace);
     drop(resident);
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     shutdown(&mut services, config.grace);
@@ -559,6 +594,50 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn engineer_start_requires_fresh_error_free_module_permission() {
+        use vantare_ipc::control::{self, Policy};
+        let now = control::wall_ms().expect("clock");
+        let policy = Policy {
+            version: control::VERSION,
+            revision: 1,
+            checked_at_ms: now,
+            overlays_advanced: true,
+            engineer: true,
+            ..Policy::default()
+        };
+        assert!(engineer_allowed(&policy));
+        for denied in [
+            Policy::default(),
+            Policy {
+                engineer: false,
+                ..policy.clone()
+            },
+            Policy {
+                overlays_advanced: false,
+                ..policy.clone()
+            },
+            Policy {
+                error: Some("fixture".into()),
+                ..policy.clone()
+            },
+            Policy {
+                checked_at_ms: now - 2000,
+                ..policy.clone()
+            },
+            Policy {
+                valid_until_ms: Some(now),
+                ..policy.clone()
+            },
+            Policy {
+                version: control::VERSION - 1,
+                ..policy
+            },
+        ] {
+            assert!(!engineer_allowed(&denied));
+        }
+    }
 
     #[test]
     fn startup_profile_uses_live_core_and_validated_profile_id() {

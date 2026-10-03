@@ -658,7 +658,7 @@ mod tests {
                         version: control::VERSION,
                         sequence: request.sequence,
                         policy: control::Policy {
-                            version: 1,
+                            version: control::VERSION,
                             revision: 1,
                             checked_at_ms: control::wall_ms().expect("clock"),
                             ..control::Policy::default()

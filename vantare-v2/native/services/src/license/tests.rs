@@ -430,3 +430,96 @@ fn legacy_fingerprint_is_stable_and_hashed() {
         first
     );
 }
+
+#[test]
+fn module_grants_are_perpetual_closed_and_scope_free() {
+    for key in CAPABILITIES
+        .iter()
+        .filter(|key| key.starts_with("vantare.module."))
+    {
+        let capability = Capability {
+            key: (*key).into(),
+            paid_through: String::new(),
+            perpetual: true,
+            scope_version: String::new(),
+        };
+        assert!(grants(std::slice::from_ref(&capability), None).is_ok());
+        for invalid in [
+            Capability {
+                perpetual: false,
+                ..capability.clone()
+            },
+            Capability {
+                paid_through: "2026-10-05T00:00:00Z".into(),
+                ..capability.clone()
+            },
+            Capability {
+                scope_version: "launch_v1".into(),
+                ..capability.clone()
+            },
+            Capability {
+                key: "vantare.module.unknown".into(),
+                ..capability.clone()
+            },
+        ] {
+            assert!(grants(&[invalid], None).is_err());
+        }
+    }
+    assert!(CAPABILITIES.windows(2).all(|keys| keys[0] < keys[1]));
+}
+
+#[cfg(any(windows, unix))]
+#[test]
+fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let cancelled = date("2026-09-30T10:00:00Z").expect("día 13");
+    let credential = v1(&signing, "2026-10-17T10:00:00Z");
+    let (root, store) = crate::test_store("offline-paid-period");
+    let mut authority = Authority::restore(&store).expect("autoridad");
+    authority
+        .install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("firma"),
+            cancelled,
+            Duration::ZERO,
+        )
+        .expect("instalar");
+    authority.persist(&store).expect("guardar");
+    drop(authority);
+    // Restauración local sin proveedor HTTP: el pago no depende de renovar OAuth.
+    let mut authority = Authority::restore(&store).expect("restaurar");
+    authority
+        .install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("caché firmada"),
+            cancelled,
+            Duration::ZERO,
+        )
+        .expect("binding");
+    for (seconds, active) in [
+        (3 * 3600, true),
+        (3 * 86400, true),
+        (17 * 86400 - 1, true),
+        (17 * 86400, false),
+        (17 * 86400 + 1, false),
+    ] {
+        let rights = authority
+            .rights(
+                cancelled + chrono::TimeDelta::seconds(seconds),
+                Duration::from_secs(u64::try_from(seconds).expect("duración")),
+            )
+            .expect("offline");
+        assert_eq!(
+            rights.iter().any(|right| right == "vantare.plan.pro"),
+            active
+        );
+        assert!(authority.credential_current());
+    }
+    drop(authority);
+    drop(store);
+    crate::cleanup_store(&root, "offline-paid-period", &["authority"]);
+}

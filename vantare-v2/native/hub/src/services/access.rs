@@ -67,7 +67,7 @@ impl State {
     pub(super) fn renewal_acknowledged(&mut self, reply: &Reply) -> Option<Command> {
         if self.transition != Transition::Logout
             && matches!(reply, Reply::License { policy, .. }
-                if policy.error.is_none() && policy.version == 1 && policy.revision > 0)
+                if policy.error.is_none() && policy.version == vantare_ipc::control::VERSION && policy.revision > 0)
         {
             self.transition = Transition::Idle;
             // LicenseRenew puede haber rotado OAuth en servicios. Releer su
@@ -123,32 +123,14 @@ impl State {
         signed_in: bool,
         now_ms: u64,
     ) -> crate::shell::navigation::Access {
-        use crate::shell::navigation::{Access, Plan};
+        use crate::shell::navigation::Access;
         if !signed_in || self.login_requested || !self.session_known() {
             return Access::default();
         }
         let Some(policy) = &self.policy else {
             return Access::default();
         };
-        if policy.error.is_some() {
-            return Access {
-                blocked: true,
-                ..Access::default()
-            };
-        }
-        if !policy.current_at(now_ms) {
-            return Access::default();
-        }
-        // Combinaciones para la matriz UI; nunca se deduce Free de derechos ausentes.
-        Access {
-            plan: match (policy.overlays_advanced, policy.engineer) {
-                (true, true) => Plan::Suite,
-                (true, false) => Plan::Overlays,
-                (false, true) => Plan::Engineer,
-                (false, false) => Plan::Unknown,
-            },
-            ..Access::default()
-        }
+        Access::from_policy(policy, now_ms)
     }
 
     fn required(&self, signed_in: bool) -> bool {
@@ -561,14 +543,13 @@ mod tests {
             Some(Command::LicenseRenew)
         ));
         assert!(state.next_command(&restored, &mut false).is_none());
-        assert_eq!(
-            state.navigation(true, 1000).plan,
-            crate::shell::navigation::Plan::Unknown,
+        assert!(
+            !state.navigation(true, 1000).verified,
             "OAuth success alone cannot unlock modules"
         );
         let rights = Reply::License {
             policy: vantare_ipc::control::Policy {
-                version: 1,
+                version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 1000,
                 overlays_advanced: true,
@@ -589,10 +570,7 @@ mod tests {
             Some(Command::AccountPoll)
         ));
         state.observe(&rights, false);
-        assert_eq!(
-            state.navigation(true, 1000).plan,
-            crate::shell::navigation::Plan::Suite
-        );
+        assert!(state.navigation(true, 1000).verified);
     }
 
     #[test]
@@ -616,7 +594,7 @@ mod tests {
         assert!(!cancel);
         let late = Reply::License {
             policy: vantare_ipc::control::Policy {
-                version: 1,
+                version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 1000,
                 overlays_advanced: true,
@@ -635,10 +613,7 @@ mod tests {
             state.policy.is_none(),
             "no license response can undo logout"
         );
-        assert_eq!(
-            state.navigation(true, 1000).plan,
-            crate::shell::navigation::Plan::Unknown
-        );
+        assert!(!state.navigation(true, 1000).verified);
     }
 
     #[test]
@@ -654,9 +629,10 @@ mod tests {
         state.observe(&expired, true);
         let rights = Reply::License {
             policy: vantare_ipc::control::Policy {
-                version: 1,
+                version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 2000,
+                overlays_advanced: true,
                 engineer: true,
                 ..vantare_ipc::control::Policy::default()
             },
@@ -668,18 +644,12 @@ mod tests {
         ));
         state.observe(&rights, false);
         // Un access token OAuth caducado no bloquea: decide la política del núcleo.
-        assert_eq!(
-            state.navigation(true, 2000).plan,
-            crate::shell::navigation::Plan::Engineer
-        );
+        assert!(state.navigation(true, 2000).verified);
         let refreshed = account_reply(true, false, None);
         state.observe(&refreshed, true);
         assert!(state.next_command(&refreshed, &mut false).is_none());
         state.observe(&rights, false); // Heartbeat de la política ya confirmada.
-        assert_eq!(
-            state.navigation(true, 2000).plan,
-            crate::shell::navigation::Plan::Engineer
-        );
+        assert!(state.navigation(true, 2000).verified);
     }
 
     #[test]
@@ -825,15 +795,12 @@ mod tests {
 #[cfg(test)]
 mod navigation_tests {
     use super::*;
-    use crate::{
-        Section,
-        shell::navigation::{Access, Command as NavigationCommand, Plan, commands},
-    };
+    use crate::{Section, shell::navigation::Access};
     use vantare_ipc::control::Policy;
 
     fn valid() -> Policy {
         Policy {
-            version: 1,
+            version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: 1000,
             overlays_advanced: true,
@@ -857,7 +824,7 @@ mod navigation_tests {
         state.observe(
             &Reply::License {
                 policy: Policy {
-                    version: 1,
+                    version: vantare_ipc::control::VERSION,
                     revision: 1,
                     checked_at_ms: 1000,
                     valid_until_ms: Some(9000),
@@ -872,39 +839,61 @@ mod navigation_tests {
         state
     }
     #[test]
-    fn observed_capabilities_reach_navigation_palette_and_content_locks() {
-        for (overlays, engineer, plan) in [
-            (true, false, Plan::Overlays),
-            (false, true, Plan::Engineer),
-            (true, true, Plan::Suite),
-            (false, false, Plan::Unknown),
+    fn policy_module_flags_project_independently() {
+        for flags in [
+            [false; 4],
+            [true, false, false, false],
+            [false, true, false, false],
+            [false, false, true, false],
+            [false, false, false, true],
+            [true; 4],
         ] {
-            let access = state(overlays, engineer).navigation(true, 1000);
-            assert_eq!(access.plan, plan);
-            for (section, allowed) in [
-                (Section::Studio, overlays),
-                (Section::Strategy, overlays || engineer),
-                (Section::Analysis, overlays || engineer),
-                (Section::Engineer, engineer),
-            ] {
-                assert_eq!(access.lock(section).is_none(), allowed);
-                let mut current = Section::Home;
-                assert_eq!(access.navigate(&mut current, section).is_ok(), allowed);
-                assert_eq!(current, if allowed { section } else { Section::Home });
-                let item = commands(access, "")
-                    .into_iter()
-                    .find(|item| item.command == NavigationCommand::Navigate(section))
-                    .expect("destino");
-                assert_eq!(item.locked.is_none(), allowed);
-            }
+            let mut state = state(true, false);
+            state.policy = Some(Policy {
+                engineer: flags[0],
+                strategy: flags[1],
+                analysis: flags[2],
+                calendar: flags[3],
+                ..valid()
+            });
+            let access = state.navigation(true, 1000);
+            assert_eq!(
+                [
+                    access.engineer,
+                    access.strategy,
+                    access.analysis,
+                    access.calendar
+                ],
+                flags
+            );
+            assert!(access.verified);
         }
+    }
+    #[test]
+    fn empty_valid_credential_policy_opens_all_beta_tools_and_keeps_modules_separate() {
+        let access = state(true, false).navigation(true, 1000);
+        assert!(access.verified);
+        for section in [
+            Section::Studio,
+            Section::Workshop,
+            Section::Launcher,
+            Section::Settings,
+            Section::Account,
+            Section::Testing,
+        ] {
+            assert!(access.lock(section).is_none(), "{section:?}");
+        }
+        assert_eq!(access.lock(Section::Engineer), Some("Próximamente"));
+        assert_eq!(access.lock(Section::Strategy), Some("Próximamente"));
+        assert!(!access.visible(Section::Analysis));
+        assert!(!access.visible(Section::Calendar));
     }
     #[test]
     fn logout_error_missing_session_and_expiry_never_grant_navigation() {
         let mut state = state(true, true);
-        assert_eq!(state.navigation(true, 2999).plan, Plan::Suite);
+        assert!(state.navigation(true, 2999).verified);
         for (signed_in, time) in [(false, 1000), (true, 999), (true, 3000), (true, 10000)] {
-            assert_eq!(state.navigation(signed_in, time).plan, Plan::Unknown);
+            assert!(!state.navigation(signed_in, time).verified);
         }
         state.observe(
             &Reply::Error {
@@ -912,10 +901,10 @@ mod navigation_tests {
             },
             false,
         );
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
         state = self::state(true, true);
         state.requested(&Command::Logout); // Antes del ACK.
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
@@ -927,7 +916,7 @@ mod navigation_tests {
             },
             true,
         );
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
@@ -939,7 +928,7 @@ mod navigation_tests {
             },
             true,
         );
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
     }
     #[test]
     fn oauth_expiry_keeps_fresh_policy_but_closed_reply_revokes_it() {
@@ -961,18 +950,18 @@ mod navigation_tests {
             },
             false,
         );
-        assert_eq!(state.navigation(true, 1999).plan, Plan::Suite);
+        assert!(state.navigation(true, 1999).verified);
         // Regresión: el candado volvía al caducar el access token OAuth (renovable).
-        assert_eq!(state.navigation(true, 2000).plan, Plan::Suite);
-        assert_eq!(state.navigation(false, 2000).plan, Plan::Unknown);
+        assert!(state.navigation(true, 2000).verified);
+        assert!(!state.navigation(false, 2000).verified);
         state.observe(&Reply::Closed, false);
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
     }
 
     #[test]
     fn rereading_the_same_session_keeps_the_policy_but_logout_drops_it() {
         let mut state = state(true, true);
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Suite);
+        assert!(state.navigation(true, 1000).verified);
         // Regresión: cada AccountPoll retiraba la política y el candado
         // aparecía al repintar (p. ej. al pasar el ratón por una pestaña).
         state.observe(
@@ -985,7 +974,7 @@ mod navigation_tests {
             },
             true,
         );
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Suite);
+        assert!(state.navigation(true, 1000).verified);
         state.observe(
             &Reply::Account {
                 signed_in: false,
@@ -996,14 +985,14 @@ mod navigation_tests {
             },
             true,
         );
-        assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+        assert!(!state.navigation(true, 1000).verified);
     }
 
     #[test]
     fn malformed_or_revoked_policy_cannot_turn_into_a_free_plan() {
         for policy in [
             Policy {
-                version: 2,
+                version: vantare_ipc::control::VERSION + 1,
                 ..valid()
             },
             Policy {
@@ -1028,7 +1017,7 @@ mod navigation_tests {
                 },
                 false,
             );
-            assert_eq!(state.navigation(true, 1000).plan, Plan::Unknown);
+            assert!(!state.navigation(true, 1000).verified);
         }
         assert_eq!(
             state(false, false).navigation(true, 1000),

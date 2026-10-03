@@ -51,6 +51,18 @@ pub(super) struct Cache {
 }
 
 impl Cache {
+    /// REST debe confirmar una sesión compatible dentro del mismo límite de
+    /// 500 ms que SHM. La caché auxiliar de 2 s no prueba que el juego siga vivo.
+    pub(super) fn session_alive(&self, now: Duration, floor: Duration) -> Option<&SessionInfo> {
+        let (info, started) = self.session.as_ref()?;
+        (*started >= floor
+            && now
+                .checked_sub(*started)
+                .is_some_and(|age| age < super::gate::STALL_LIMIT)
+            && info.kind.is_some())
+        .then_some(info)
+    }
+
     /// `started`: instante en que se inició la consulta, en el reloj del núcleo.
     pub(super) fn accept_standings(
         &mut self,

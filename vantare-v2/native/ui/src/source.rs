@@ -77,6 +77,7 @@ fn start_feed<T: Send + 'static>(
             let start = Instant::now();
             let mut health = PipeHealth::default();
             let mut activity = subscriber.activity();
+            let mut freshness = vantare_ipc::freshness::state(&Snapshot::default());
             while tx.receiver_count() > 1 {
                 if let Some(handle) = &handle {
                     let next = handle.current();
@@ -106,6 +107,13 @@ fn start_feed<T: Send + 'static>(
                     })
                 };
                 if let Some(photo) = next {
+                    vantare_ipc::freshness::log_transition(
+                        "ui",
+                        freshness,
+                        &photo.snapshot,
+                        vantare_ipc::freshness::source_reason(photo.snapshot.state.source_state),
+                    );
+                    freshness = vantare_ipc::freshness::state(&photo.snapshot);
                     send_latest(&tx, &oldest, convert(photo));
                 }
             }
@@ -410,6 +418,85 @@ pub fn local_feed() -> flume::Receiver<Arc<Snapshot>> {
 mod tests {
     use super::*;
     use vantare_domain::{format::Preferences, pedals, radar, standings};
+
+    #[test]
+    fn requested_feed_keeps_unchanged_values_alive_and_receives_source_staleness() {
+        let name = format!("vantare-test-quiet-feed-{}", std::process::id());
+        let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("núcleo de prueba");
+        let mut demand = Demand::default();
+        for signal in [
+            vantare_ipc::Signal::Pedals,
+            vantare_ipc::Signal::Clutch,
+            vantare_ipc::Signal::Powertrain,
+        ] {
+            demand.request(signal, 5000);
+        }
+        let feed = pipe_feed_requested(&name, demand).expect("único consumidor");
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while publisher.demand_source().mask() == 0 {
+            assert!(Instant::now() < deadline, "saludo pendiente");
+            thread::yield_now();
+        }
+        let mut snapshot = synthetic(0);
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("foto inicial");
+        let fresh = feed
+            .recv_timeout(Duration::from_secs(2))
+            .expect("hidratación");
+        assert_eq!(fresh.state.source_state, vantare_domain::SourceState::Live);
+        let fresh_inputs = pedals::project(&fresh, Preferences::default());
+        assert_eq!(fresh_inputs.status_text, None);
+        // E/S real: ningún dato solicitado cambia durante más de 5 s.
+        // El latido debe mantener PipeHealth vivo sin inventar fotos ni demanda.
+        assert!(matches!(
+            feed.recv_timeout(Duration::from_secs(6)),
+            Err(flume::RecvTimeoutError::Timeout)
+        ));
+        snapshot.sequence += 1;
+        snapshot.origin.source_time = Some(Duration::from_secs(20));
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("reloj vivo");
+        let unchanged = feed
+            .recv_timeout(Duration::from_secs(2))
+            .expect("mismos valores");
+        assert_eq!(
+            unchanged.state.source_state,
+            vantare_domain::SourceState::Live
+        );
+        assert_eq!(
+            pedals::project(&unchanged, Preferences::default()),
+            fresh_inputs
+        );
+        // Pausar y perder la fuente rehidratan lo pedido sin esperar 5 s.
+        snapshot.sequence += 1;
+        snapshot.state.source_state = vantare_domain::SourceState::Paused;
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("pausa");
+        let paused = feed
+            .recv_timeout(Duration::from_secs(2))
+            .expect("estado de pausa");
+        assert_eq!(
+            paused.state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        assert_eq!(paused.state.player, unchanged.state.player);
+        snapshot.sequence += 1;
+        vantare_domain::degrade(&mut snapshot.state);
+        snapshot.state.source_state = vantare_domain::SourceState::Stale;
+        publisher
+            .publish(Arc::new(snapshot))
+            .expect("fuente parada");
+        let stale = feed
+            .recv_timeout(Duration::from_secs(2))
+            .expect("estado de fuente");
+        assert_eq!(stale.state.source_state, vantare_domain::SourceState::Stale);
+        let stale_inputs = pedals::project(&stale, Preferences::default());
+        assert_eq!(stale_inputs.status_text, Some("DATOS ANTIGUOS"));
+        assert_eq!(stale_inputs.throttle, fresh_inputs.throttle);
+    }
 
     #[test]
     fn pipe_silence_emits_one_lost_copy_without_changing_revision() {

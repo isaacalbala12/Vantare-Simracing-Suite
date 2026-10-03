@@ -44,6 +44,7 @@ pub(super) struct Translator {
     pub(super) rest: rest::Cache,
     /// Última `Observation` publicada con datos caducados.
     emitted_stale: bool,
+    emitted_paused: bool,
     session: u64,
     signature: Option<(String, Kind)>,
     last_source_time: Option<Duration>,
@@ -66,6 +67,7 @@ impl Translator {
             emitted_telemetry_stale: false,
             rest: rest::Cache::default(),
             emitted_stale: false,
+            emitted_paused: false,
             session: 0,
             signature: None,
             last_source_time: None,
@@ -83,6 +85,7 @@ impl Translator {
     #[cfg(any(windows, test))]
     pub(super) fn needs_refresh(&self, now: Duration) -> bool {
         self.gate.is_stale_at(now) != self.emitted_stale
+            || (self.emitted_paused && self.rest.session_alive(now, self.floor).is_none())
             || (self.last_inputs.is_some()
                 && self.telemetry_gate.is_stale_at(now) != self.emitted_telemetry_stale)
     }
@@ -94,10 +97,46 @@ impl Translator {
         now: Duration,
     ) -> Result<Observation, Rejection> {
         let frame = frame::admit(buffer, build)?;
+        // Reanudar una pausa confirmada no es recuperarse de una fuente colgada.
+        if self.emitted_paused && frame.source_time != self.last_source_time {
+            self.gate = Gate::default();
+            let inputs = frame
+                .player
+                .and_then(|index| frame.vehicles[index].inputs.as_ref());
+            if inputs.is_some_and(|inputs| {
+                inputs.source_time.is_none()
+                    || self
+                        .last_inputs
+                        .as_ref()
+                        .is_none_or(|previous| previous.source_time != inputs.source_time)
+            }) {
+                self.telemetry_gate = Gate::default();
+            }
+        }
         let stale = self.gate.observe(now, frame.source_time);
         self.emitted_stale = stale;
         self.track_session(&frame, now, stale);
         let telemetry_stale = self.telemetry_stale(&frame, now);
+        // No se deduce pausa de gamePhase/inRealtime: también describen garaje
+        // y otras fases. SHM detenido + REST reciente de esta sesión + proceso
+        // vivo (comprobado en cada read_stable) es la confirmación disponible.
+        let paused = self.kind == SourceKind::Live
+            && !frame.vehicles.is_empty()
+            && frame.source_time.is_some()
+            && self.gate.is_stalled_at(now)
+            && self
+                .rest
+                .session_alive(now, self.floor)
+                .is_some_and(|info| {
+                    info.kind == frame.kind
+                        && info
+                            .track
+                            .as_ref()
+                            .is_none_or(|track| *track == frame.track)
+                });
+        self.emitted_paused = paused;
+        let stale = stale && !paused;
+        let telemetry_stale = telemetry_stale && !paused;
         self.frame_count += 1;
         let car_ids: Vec<CarId> = frame
             .vehicles
@@ -133,6 +172,8 @@ impl Translator {
             state: State {
                 source_state: if frame.vehicles.is_empty() {
                     vantare_domain::SourceState::Waiting
+                } else if paused {
+                    vantare_domain::SourceState::Paused
                 } else if stale {
                     vantare_domain::SourceState::Stale
                 } else {

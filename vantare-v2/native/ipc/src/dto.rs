@@ -11,7 +11,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -81,6 +81,7 @@ struct CapabilitiesDto {
 enum SourceStateDto {
     Waiting,
     Live,
+    Paused,
     Stale,
     Lost,
 }
@@ -462,6 +463,7 @@ impl SnapshotDto {
                 source_state: match s.state.source_state {
                     d::SourceState::Waiting => SourceStateDto::Waiting,
                     d::SourceState::Live => SourceStateDto::Live,
+                    d::SourceState::Paused => SourceStateDto::Paused,
                     d::SourceState::Stale => SourceStateDto::Stale,
                     d::SourceState::Lost => SourceStateDto::Lost,
                 },
@@ -686,6 +688,7 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
                 source_state: match s.source_state {
                     SourceStateDto::Waiting => d::SourceState::Waiting,
                     SourceStateDto::Live => d::SourceState::Live,
+                    SourceStateDto::Paused => d::SourceState::Paused,
                     SourceStateDto::Stale => d::SourceState::Stale,
                     SourceStateDto::Lost => d::SourceState::Lost,
                 },

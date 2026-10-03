@@ -264,13 +264,14 @@ pub struct Origin {
     pub received_at: Duration,
 }
 
-/// Estado del enlace. El núcleo publica Waiting/Live/Stale; Lost solo lo marca
+/// Estado del enlace. Paused conserva la última foto viva; Lost solo lo marca
 /// el consumidor cuando el pipe deja de entregar fotos (sin renumerarlas).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SourceState {
     #[default]
     Waiting,
     Live,
+    Paused,
     Stale,
     Lost,
 }

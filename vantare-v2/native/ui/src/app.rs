@@ -85,6 +85,8 @@ pub struct Overlay {
     wake_deadline: WakeDeadline,
     wake_task: Option<gpui::Task<()>>,
     preview_scale: f32,
+    paused: bool,
+    live_projection: bool,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -108,6 +110,8 @@ impl Overlay {
             wake_deadline: WakeDeadline::default(),
             wake_task: None,
             preview_scale: 1.0,
+            paused: false,
+            live_projection: false,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
@@ -116,7 +120,7 @@ impl Overlay {
     fn with_snapshot(settings: &Settings, prefs: Preferences, snapshot: Option<&Snapshot>) -> Self {
         let mut overlay = Self::configured(settings, prefs);
         if let Some(snapshot) = snapshot {
-            overlay.widget.ingest(snapshot, prefs);
+            overlay.project_snapshot(snapshot);
         }
         overlay
     }
@@ -145,7 +149,8 @@ impl Overlay {
     }
 
     pub fn wanted_size(&self) -> (f32, f32) {
-        self.widget.size()
+        let (width, height) = self.widget.size();
+        (width, height + if self.paused { 22.0 } else { 0.0 })
     }
 
     /// Solo el host de preview reduce/amplía el renderer. Las ventanas reales
@@ -163,9 +168,37 @@ impl Overlay {
         if crate::rights::denied(self.kind, cx) {
             return;
         }
-        if self.widget.ingest(snapshot, self.prefs) {
+        if self.project_snapshot(snapshot) {
             cx.notify();
         }
+    }
+
+    /// La pausa pertenece al host común. Los renderers conservan su última
+    /// proyección, incluidas historias y orden; una ventana recién abierta
+    /// puede proyectar la foto conservada, sin tratarla como desconectada.
+    fn project_snapshot(&mut self, snapshot: &Snapshot) -> bool {
+        let paused = snapshot.state.source_state == vantare_domain::SourceState::Paused;
+        if paused && self.paused {
+            return false;
+        }
+        let changed = self.paused != paused;
+        self.paused = paused;
+        if paused && self.live_projection {
+            return changed;
+        }
+        let projected = if paused {
+            let mut retained = snapshot.clone();
+            retained.state.source_state = vantare_domain::SourceState::Live;
+            self.widget.ingest(&retained, self.prefs)
+        } else {
+            self.widget.ingest(snapshot, self.prefs)
+        };
+        self.live_projection = paused
+            || (snapshot.state.source_state == vantare_domain::SourceState::Live
+                && snapshot.state.capabilities.driver_inputs
+                    != vantare_domain::Capability::WithData
+                && snapshot.state.capabilities.positions != vantare_domain::Capability::WithData);
+        changed || projected
     }
 
     #[cfg(feature = "parity-capture")]
@@ -214,6 +247,11 @@ impl Render for Overlay {
         #[cfg(feature = "paint-stats")]
         crate::stats::render(kind);
         let size = self.wanted_size();
+        let paused = self.paused;
+        let pause_label = match self.prefs.language {
+            vantare_domain::format::Language::Es => "EN PAUSA",
+            vantare_domain::format::Language::En => "PAUSED",
+        };
         let scale = self.preview_scale;
         let (paint, wake) = self.widget.frame(self.prefs);
         #[cfg(feature = "parity-capture")]
@@ -240,6 +278,25 @@ impl Render for Overlay {
                         );
                     }
                     paint(&mut window, cx);
+                    if paused {
+                        // Franja añadida fuera del widget: no tapa ningún dato.
+                        crate::efficiency::paint_rect(
+                            &mut window,
+                            0.0,
+                            size.1 - 22.0,
+                            size.0,
+                            22.0,
+                            crate::efficiency::col(0x101113, 0.95),
+                        );
+                        text::draw(
+                            &mut window,
+                            cx,
+                            pause_label,
+                            8.0,
+                            size.1 - 6.0,
+                            &text::ink(11.0, 600.0, 0.02, gpui::white()),
+                        );
+                    }
                 });
             },
         )
@@ -926,6 +983,62 @@ mod tests {
         released_rx
             .recv_timeout(Duration::from_secs(5))
             .expect("cancelación");
+    }
+
+    #[test]
+    fn pause_is_shared_by_every_widget_and_does_not_ingest_repeated_photos() {
+        let live =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto real guardada");
+        let mut paused = live.clone();
+        paused.state.source_state = vantare_domain::SourceState::Paused;
+        for &kind in Kind::ALL {
+            let settings = Settings::default_for(kind);
+            let mut overlay =
+                Overlay::with_snapshot(&settings, Preferences::default(), Some(&live));
+            let normal_size = overlay.wanted_size();
+            assert!(
+                overlay.project_snapshot(&paused),
+                "aviso de pausa en {kind:?}"
+            );
+            assert_eq!(overlay.wanted_size(), (normal_size.0, normal_size.1 + 22.0));
+            paused.sequence += 1;
+            assert!(
+                !overlay.project_snapshot(&paused),
+                "no añade historia ni repinta {kind:?}"
+            );
+            let opened = Overlay::with_snapshot(&settings, Preferences::default(), Some(&paused));
+            assert!(opened.paused, "abrir durante pausa en {kind:?}");
+            assert_eq!(opened.wanted_size(), overlay.wanted_size());
+            assert!(
+                overlay.project_snapshot(&live),
+                "quita aviso al reanudar {kind:?}"
+            );
+            assert_eq!(overlay.wanted_size(), normal_size);
+        }
+    }
+
+    #[test]
+    fn pausing_after_inputs_expire_restores_the_retained_pedals_without_an_old_data_notice() {
+        let live =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto guardada");
+        let mut overlay = Overlay::with_snapshot(
+            &Settings::default_for(Kind::Pedals),
+            Preferences::default(),
+            Some(&live),
+        );
+        let mut outdated = live.clone();
+        vantare_domain::degrade(&mut outdated.state);
+        outdated.state.source_state = vantare_domain::SourceState::Live;
+        assert!(overlay.project_snapshot(&outdated));
+        let mut paused = live.clone();
+        paused.state.source_state = vantare_domain::SourceState::Paused;
+        assert!(overlay.project_snapshot(&paused));
+        assert!(
+            !overlay.widget.ingest(&live, Preferences::default()),
+            "el ViewModel ya contiene los mismos datos y estado que la foto viva conservada"
+        );
     }
 
     #[test]

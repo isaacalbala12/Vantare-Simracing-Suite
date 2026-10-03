@@ -104,6 +104,8 @@ pub(crate) fn relative_seconds(car: &Car) -> Option<f64> {
 pub(crate) fn source_status(state: SourceState, prefs: Preferences) -> Option<String> {
     match (state, prefs.language) {
         (SourceState::Live, _) => None,
+        (SourceState::Paused, Language::Es) => Some("EN PAUSA"),
+        (SourceState::Paused, Language::En) => Some("PAUSED"),
         (SourceState::Waiting, Language::Es) => Some("SIN DATOS"),
         (SourceState::Waiting, Language::En) => Some("NO DATA"),
         (SourceState::Stale, Language::Es) => Some("DATOS ANTIGUOS"),

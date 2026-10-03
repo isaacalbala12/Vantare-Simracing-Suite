@@ -1,8 +1,12 @@
 ﻿#requires -Version 5.1
-param([Parameter(Mandatory = $true)][string]$ArtifactsDirectory)
+param(
+    [Parameter(Mandatory = $true)][string]$ArtifactsDirectory,
+    [ValidateSet('nightly', 'beta')][string]$Channel = 'nightly',
+    [string]$EvidenceDirectory = (Join-Path ([IO.Path]::GetTempPath()) 'vantare-native-packaging-evidence')
+)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Channel $Channel
 $script:Passed = 0
 
 function Assert-True([bool]$Condition, [string]$Message) {
@@ -38,44 +42,44 @@ function Set-TestManifest($Zip, [scriptblock]$Change) {
 $ArtifactsDirectory = Assert-NativePath $ArtifactsDirectory
 $script:Package = Join-Path $ArtifactsDirectory 'vantare-native-amd64-package.zip'
 $hash = Get-NativeHash $script:Package
-$script:TestRoot = Join-Path ([IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../target'))) ('phase7-tests-' + [guid]::NewGuid().ToString('N'))
+$script:TestRoot = Join-Path (Assert-NativePath $EvidenceDirectory) ('phase7-tests-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($script:TestRoot) | Out-Null
 Write-Output "Evidencia conservada en $script:TestRoot"
 
 $install = Join-Path $script:TestRoot 'installed with spaces'
-$state = Install-NativeCandidate $install $script:Package $hash 'nightly'
+$state = Install-NativeCandidate $install $script:Package $hash $Channel
 $active = Join-Path $install "generations/$($state.active.generation)"
-Assert-True ($state.channel -ceq 'nightly' -and $null -eq $state.previous) 'instalación nueva sin versión anterior'
+Assert-True ($state.channel -ceq $Channel -and $null -eq $state.previous) 'instalación nueva sin versión anterior'
 foreach ($bin in $script:NativeBins) {
     Assert-True ((Get-NativeHash (Join-Path $active "bin/$bin.exe")) -ceq (Get-NativeHash (Join-Path $ArtifactsDirectory "payload/bin/$bin.exe"))) "binario real instalado sin alteración: $bin"
     Assert-True ([IO.File]::ReadAllText((Join-Path $active "bin/$bin.exe.sha256")) -ceq "$(Get-NativeHash (Join-Path $active "bin/$bin.exe"))  $bin.exe`n") "sidecar de binario verificado: $bin"
 }
-Assert-Rejected { Install-NativeCandidate $install $script:Package $hash 'nightly' } 'no reinstala encima de datos activos'
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-hash') $script:Package ('0' * 64) 'nightly' } 'rechaza SHA externo incorrecto'
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'no-hash') $script:Package '' 'nightly' } 'exige SHA externo'
+Assert-Rejected { Install-NativeCandidate $install $script:Package $hash $Channel } 'no reinstala encima de datos activos'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-hash') $script:Package ('0' * 64) $Channel } 'rechaza SHA externo incorrecto'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'no-hash') $script:Package '' $Channel } 'exige SHA externo'
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'wrong-channel') $script:Package $hash 'testers' } 'rechaza canal distinto'
-Assert-Rejected { Install-NativeCandidate $ArtifactsDirectory $script:Package $hash 'nightly' } 'preserva carpeta ajena no vacía'
+Assert-Rejected { Install-NativeCandidate $ArtifactsDirectory $script:Package $hash $Channel } 'preserva carpeta ajena no vacía'
 
 $truncated = Join-Path $script:TestRoot 'truncated.zip'
 $bytes = [IO.File]::ReadAllBytes($script:Package)
 [IO.File]::WriteAllBytes($truncated, $bytes[0..127])
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'truncated') $truncated (Get-NativeHash $truncated) 'nightly' } 'ZIP truncado no activa estado'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'truncated') $truncated (Get-NativeHash $truncated) $Channel } 'ZIP truncado no activa estado'
 
 foreach ($member in @('../escape.exe', 'bin/vantare.exe:stream', 'bin/CON.exe', '.env', 'BIN/vantare.exe', '/escape.exe')) {
     $malicious = New-TestArchive ('invalid-' + [guid]::NewGuid().ToString('N')) { param($zip); $null = $zip.CreateEntry($member) }
-    Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot ([guid]::NewGuid().ToString('N'))) $malicious (Get-NativeHash $malicious) 'nightly' } "rechaza miembro no autorizado: $member"
+    Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot ([guid]::NewGuid().ToString('N'))) $malicious (Get-NativeHash $malicious) $Channel } "rechaza miembro no autorizado: $member"
 }
 $duplicate = New-TestArchive 'duplicate' { param($zip); $null = $zip.CreateEntry('bin/vantare.exe') }
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'duplicate') $duplicate (Get-NativeHash $duplicate) 'nightly' } 'rechaza miembros duplicados'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'duplicate') $duplicate (Get-NativeHash $duplicate) $Channel } 'rechaza miembros duplicados'
 $missing = New-TestArchive 'missing' { param($zip); $zip.GetEntry('bin/vantare.exe').Delete() }
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'missing') $missing (Get-NativeHash $missing) 'nightly' } 'rechaza paquete incompleto'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'missing') $missing (Get-NativeHash $missing) $Channel } 'rechaza paquete incompleto'
 $tampered = New-TestArchive 'tampered' {
     param($zip)
     $entry = $zip.GetEntry('bin/vantare-core.exe'); $entry.Delete()
     $writer = [IO.StreamWriter]::new($zip.CreateEntry('bin/vantare-core.exe').Open())
     try { $writer.Write('no es un ejecutable') } finally { $writer.Dispose() }
 }
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'tampered') $tampered (Get-NativeHash $tampered) 'nightly' } 'detecta archivo alterado aunque el SHA externo coincida'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'tampered') $tampered (Get-NativeHash $tampered) $Channel } 'detecta archivo alterado aunque el SHA externo coincida'
 $badSidecar = New-TestArchive 'bad-sidecar' {
     param($zip)
     $name = 'bin/vantare-hub.exe.sha256'
@@ -90,7 +94,7 @@ $badSidecar = New-TestArchive 'bad-sidecar' {
         try { $file.sha256 = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('checksum falso'))).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() }
     }
 }
-Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-sidecar') $badSidecar (Get-NativeHash $badSidecar) 'nightly' } 'sidecar de Hub alterado rechaza instalación'
+Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-sidecar') $badSidecar (Get-NativeHash $badSidecar) $Channel } 'sidecar de Hub alterado rechaza instalación'
 
 $portable = Join-Path $script:TestRoot 'portable'
 [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $ArtifactsDirectory 'vantare-native-portable-amd64.zip'), $portable)

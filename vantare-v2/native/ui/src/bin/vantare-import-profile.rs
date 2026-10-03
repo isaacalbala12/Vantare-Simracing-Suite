@@ -2,6 +2,9 @@
 #[path = "../profile_import.rs"]
 mod profile_import;
 
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 use profile_import::{MAX_PROFILE_BYTES, Monitor};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -69,6 +72,9 @@ fn import(
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     let args: Vec<_> = std::env::args().skip(1).collect();
     let usage =
         "uso: vantare-import-profile PERFIL-V4.json CARPETA-NUEVA MONITOR-X MONITOR-Y ANCHO ALTO";

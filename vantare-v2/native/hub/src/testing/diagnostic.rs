@@ -223,6 +223,7 @@ struct DataPath {
 pub struct Diagnostic {
     schema_version: u32,
     version: &'static str,
+    channel: &'static str,
     os: &'static str,
     arch: &'static str,
     generated_at_utc: i64,
@@ -237,7 +238,8 @@ impl Diagnostic {
     pub fn collect(root: &Path, data: &Path, observed: &Observed, now: Instant) -> Self {
         Self {
             schema_version: 1,
-            version: env!("CARGO_PKG_VERSION"),
+            version: option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+            channel: option_env!("VANTARE_BUILD_CHANNEL").unwrap_or("development"),
             os: std::env::consts::OS,
             arch: std::env::consts::ARCH,
             generated_at_utc: chrono::Utc::now().timestamp(),

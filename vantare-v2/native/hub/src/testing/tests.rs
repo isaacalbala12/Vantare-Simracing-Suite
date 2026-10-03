@@ -185,6 +185,7 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
         [
             "arch",
             "binaries",
+            "channel",
             "core",
             "dataPaths",
             "generatedAtUtc",

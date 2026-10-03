@@ -5,7 +5,7 @@ param(
     [string]$Root = $PSScriptRoot,
     [string]$Archive,
     [string]$ExpectedSha256,
-    [ValidateSet('nightly', 'testers', 'master')][string]$Channel = 'nightly',
+    [ValidateSet('nightly', 'testers', 'master', 'beta')][string]$Channel = 'nightly',
     [string]$Version = '0.0.0-local',
     [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
     [string]$OutputDirectory,
@@ -23,7 +23,13 @@ $script:NativeBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-h
 $script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
 
 function Get-NativeHash([string]$Path) {
-    (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    # Streaming .NET: el host instalado no depende del autoload de Get-FileHash.
+    $stream = [IO.File]::OpenRead((Assert-NativePath $Path))
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
 }
 
 function Assert-NativePath([string]$Path) {
@@ -106,7 +112,7 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
         $manifest.source_dirty -isnot [bool] -or
         $manifest.build_profile -cnotin @('Debug', 'Release') -or
         $manifest.version -cnotmatch '^[0-9]+(?:\.[0-9]+){2,3}(?:-[a-z0-9][a-z0-9.-]{0,63})?$' -or
-        $manifest.channel -cnotin @('nightly', 'testers', 'master') -or
+        $manifest.channel -cnotin @('nightly', 'testers', 'master', 'beta') -or
         ($ExpectedChannel -and $manifest.channel -cne $ExpectedChannel)) { throw 'Manifiesto, esquema o canal incompatible.' }
     foreach ($item in Get-ChildItem -LiteralPath $Directory -File -Recurse -Force) {
         $relative = $item.FullName.Substring($Directory.Length + 1).Replace('\', '/')
@@ -168,7 +174,7 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
 
 function Read-NativeState([string]$Directory) {
     $state = [IO.File]::ReadAllText((Join-Path $Directory 'state.json')) | ConvertFrom-Json
-    if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master')) { throw 'Estado de instalación inválido.' }
+    if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master', 'beta')) { throw 'Estado de instalación inválido.' }
     foreach ($reference in @($state.active, $state.previous)) {
         if ($null -eq $reference) { continue }
         if ($reference.generation -cnotmatch '^[0-9a-f]{32}$' -or $reference.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Referencia de generación inválida.' }
@@ -377,7 +383,18 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     try {
         $cargoArgs = @('build', '--offline', '--locked', '--workspace', '--bins', '-j', '2')
         if ($Profile -eq 'Release') { $cargoArgs += '--release' }
-        & cargo @cargoArgs
+        $oldVersion = $env:VANTARE_VERSION
+        $oldChannel = $env:VANTARE_BUILD_CHANNEL
+        try {
+            $env:VANTARE_VERSION = $CandidateVersion
+            $env:VANTARE_BUILD_CHANNEL = $CandidateChannel
+            & cargo @cargoArgs
+            $buildExit = $LASTEXITCODE
+        } finally {
+            $env:VANTARE_VERSION = $oldVersion
+            $env:VANTARE_BUILD_CHANNEL = $oldChannel
+        }
+        $global:LASTEXITCODE = $buildExit
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
@@ -390,6 +407,8 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     foreach ($bin in $script:NativeBins) {
         $source = Join-Path $metadata.target_directory ($Profile.ToLowerInvariant() + "/$bin.exe")
         Assert-NativePe $source
+        $embedded = & $source --version
+        if ($LASTEXITCODE -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")
         [IO.File]::WriteAllText((Join-Path $payload "bin/$bin.exe.sha256"), "$(Get-NativeHash $source)  $bin.exe`n", [Text.UTF8Encoding]::new($false))
     }

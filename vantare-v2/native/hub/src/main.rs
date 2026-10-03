@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+#[path = "../../packaging/version.rs"]
+mod product;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
@@ -308,6 +311,9 @@ fn parse(args: &[String]) -> Result<Options, String> {
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--kit"] {
         return match vantare_hub::orbit::run_kit() {

@@ -2,7 +2,8 @@ use std::{env, path::PathBuf};
 
 #[cfg(windows)]
 pub fn default_data_dir() -> Result<PathBuf, &'static str> {
-    env::var_os("LOCALAPPDATA")
+    env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| env::var_os("LOCALAPPDATA"))
         .map(PathBuf::from)
         .ok_or("LOCALAPPDATA no está definido")
 }

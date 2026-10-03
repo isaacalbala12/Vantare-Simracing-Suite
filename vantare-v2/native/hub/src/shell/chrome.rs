@@ -405,11 +405,10 @@ impl Hub {
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let width = orbit::column_width(f32::from(window.viewport_size().width));
-        let version = self
-            .demo
-            .as_ref()
-            .map(|demo| demo.versions.hub.as_str())
-            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let version = self.demo.as_ref().map_or(
+            option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+            |demo| demo.versions.hub.as_str(),
+        );
         self.context_column_with_content("Centro operativo", version, width, None, cx)
     }
 
@@ -434,11 +433,10 @@ impl Hub {
             f32::from(window.viewport_size().width) <= 1360.0,
             cx,
         );
-        let version = self
-            .demo
-            .as_ref()
-            .map(|demo| demo.versions.hub.as_str())
-            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let version = self.demo.as_ref().map_or(
+            option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+            |demo| demo.versions.hub.as_str(),
+        );
         let width = orbit::column_width(f32::from(window.viewport_size().width));
         self.context_column_with_content("Telemetría", version, width, Some(content), cx)
     }

@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+#[path = "../../../packaging/version.rs"]
+mod product;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 use vantare_services::{
@@ -38,6 +41,9 @@ fn run() -> vantare_services::Result<()> {
 }
 
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

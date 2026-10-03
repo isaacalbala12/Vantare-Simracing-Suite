@@ -429,6 +429,10 @@ impl Store {
         {
             return Self::load(path);
         }
+        // La beta mantiene datos propios; importar Wails requiere una acción explícita.
+        if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
+            return Self::load_with_wails(path, None);
+        }
         let source = migration::source()?;
         Self::load_with_wails(path, source.as_deref())
     }

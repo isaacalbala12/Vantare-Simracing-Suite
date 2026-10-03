@@ -189,7 +189,8 @@ impl Status {
 pub fn default_path() -> io::Result<PathBuf> {
     #[cfg(windows)]
     {
-        std::env::var_os("LOCALAPPDATA")
+        std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+            .or_else(|| std::env::var_os("LOCALAPPDATA"))
             .map(|root| PathBuf::from(root).join("Vantare/native/engineer.json"))
             .ok_or_else(|| invalid("LOCALAPPDATA no está definido"))
     }

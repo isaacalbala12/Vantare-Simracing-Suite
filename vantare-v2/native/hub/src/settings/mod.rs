@@ -139,6 +139,8 @@ pub(super) struct State {
     status: Option<String>,
     update: updates::LocalUpdate,
     update_busy: bool,
+    beta_status: Option<updates::BetaStatus>,
+    beta_checked: Instant,
 }
 
 fn choice(
@@ -326,6 +328,8 @@ impl State {
             status: None,
             update: updates::LocalUpdate::default(),
             update_busy: false,
+            beta_status: None,
+            beta_checked: Instant::now(),
         };
         appearance::wire(&state, window, cx);
         state
@@ -459,6 +463,32 @@ impl Hub {
         })
         .detach();
         cx.notify();
+    }
+    pub(super) fn cancel_beta_restart(&mut self) {
+        if let Err(error) = updates::cancel_restart() {
+            self.settings.status = Some(error);
+        }
+    }
+    pub(super) fn poll_beta_update(&mut self, cx: &mut Context<Self>) {
+        if self.capture.is_some()
+            || self.demo.is_some()
+            || self.settings.beta_checked.elapsed().as_secs() < 2
+        {
+            return;
+        }
+        self.settings.beta_checked = Instant::now();
+        let status = updates::beta_status();
+        if status != self.settings.beta_status {
+            if let Some(status) = &status
+                && status.state == "ready"
+            {
+                self.notifications.update(cx, |center, cx| {
+                    center.update_ready(status.message.clone(), cx);
+                });
+            }
+            self.settings.beta_status = status;
+            cx.notify();
+        }
     }
     fn refresh_settings_update(&mut self, cx: &mut Context<Self>) {
         if self.settings.update_busy {

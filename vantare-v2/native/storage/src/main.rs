@@ -1,7 +1,13 @@
 use std::io;
+#[path = "../../packaging/version.rs"]
+mod product;
+
 use std::path::PathBuf;
 
 fn main() {
+    if product::print_version() {
+        return;
+    }
     if let Err(error) = execute() {
         eprintln!("almacenamiento: {error}");
         std::process::exit(1);

@@ -106,6 +106,46 @@ fn dominates(l: &State, r: &State, m: &Model, risk: bool) -> bool {
     l.fuel >= r.fuel && l.ve >= r.ve && compare_state(l, r) != Ordering::Greater
 }
 
+// ponytail: bound retained histories instead of adding a new approximate
+// frontier/index. Reaching either limit returns NotProven, never NoSolution.
+const MAX_FRONTIER_STATES: usize = 4_096;
+const MAX_FRONTIER_DECISION_ITEMS: usize = 16_384;
+
+fn decision_items(state: &State) -> usize {
+    state.decision.stints.len() + state.decision.pit_stops.len()
+}
+
+fn cannot_improve(
+    end: u32,
+    seconds: f64,
+    m: &Model,
+    minimum_lap_seconds: Option<f64>,
+    incumbent: Option<(u32, f64)>,
+) -> bool {
+    let (Some(pace), Some((best_laps, best_seconds))) = (minimum_lap_seconds, incumbent) else {
+        return false;
+    };
+    let Some(duration) = m.dims.race_duration_seconds else {
+        return false;
+    };
+    // Ignore future pit/degradation/resource/driver costs. This is an
+    // optimistic upper bound on laps, including the lap crossing duration.
+    let mut upper = end;
+    for finish in end + 1..=m.input.race_laps {
+        let final_start = seconds + f64::from(finish - end - 1) * pace;
+        if time_cmp(final_start, duration) != Ordering::Less {
+            break;
+        }
+        upper = finish;
+    }
+    upper < best_laps
+        || (upper == best_laps
+            && time_cmp(
+                seconds + f64::from(best_laps.saturating_sub(end)) * pace,
+                best_seconds,
+            ) == Ordering::Greater)
+}
+
 #[allow(clippy::too_many_lines)] // One bounded walk owns budget, cancellation and proof completion.
 pub(super) fn solve(
     input: &Input,
@@ -139,10 +179,45 @@ pub(super) fn solve(
     let mut pruned = 0;
     let (mut work, mut iterations) = (0usize, 0usize);
     let mut reason = None;
-    let count = usize::try_from(input.race_laps).map_err(|e| e.to_string())? + 1;
-    let mut frontier: Vec<Vec<State>> = vec![vec![]; count];
+    let seed = if bound_certified {
+        None
+    } else {
+        super::seed::greedy(&m, cancel, &started, deadline_millis)?
+    };
+    let seed_finished_micros = started.elapsed().as_micros();
+    let mut first_incumbent_micros = seed.as_ref().map(|(_, micros)| *micros);
+    let mut incumbent = seed.as_ref().map(|(s, _)| {
+        (
+            s.decision.stints.iter().map(|s| s.laps).sum::<u32>(),
+            s.evaluation.total_seconds,
+        )
+    });
+    // These models have no negative or age-dependent pace adjustments.
+    // Other dimensions retain the original enumeration without this bound.
+    let minimum_lap_seconds = (!risk
+        && m.dims.weather.is_none()
+        && !m.tyres.enabled()
+        && m.dims.compound_pace.is_empty()
+        && m.pace_points.is_empty()
+        && m.fuel_weight == 0.0
+        && m.input.degradation_per_lap_seconds.value >= 0.0
+        && m.levels.iter().all(|l| l.time_cost_per_lap >= 0.0))
+    .then(|| {
+        m.drivers
+            .iter()
+            .map(|d| d.base)
+            .fold(f64::INFINITY, f64::min)
+    });
+    // Only populated laps consume memory; the horizon does not allocate an
+    // empty vector per lap. pop_first keeps the original lap ordering.
+    let mut frontier: std::collections::BTreeMap<u32, Vec<State>> =
+        std::collections::BTreeMap::default();
+    let mut frontier_peaks: std::collections::BTreeMap<u32, usize> =
+        std::collections::BTreeMap::default();
+    let mut expanded_states_by_lap = std::collections::BTreeMap::new();
+    let mut created_states = 0usize;
     for choice in m.tyres.initial() {
-        frontier[0].push(State {
+        frontier.entry(0).or_default().push(State {
             fuel_used: 0,
             ve_used: 0,
             drivers: super::drivers::DriverState::default(),
@@ -186,9 +261,19 @@ pub(super) fn solve(
     }
     let mut completed: Vec<State> = vec![];
     let mut safe_completed: Vec<State> = vec![];
-    'search: for lap in 0..if bound_certified { 0 } else { input.race_laps } {
-        let nodes = std::mem::take(&mut frontier[usize::try_from(lap).map_err(|e| e.to_string())?]);
+    let mut retained_states = frontier.get(&0).map_or(0, Vec::len);
+    frontier_peaks.insert(0, retained_states);
+    let mut retained_items = 0usize;
+    let mut peak_retained_states = retained_states;
+    let mut peak_retained_items = 0usize;
+    if bound_certified {
+        frontier.clear();
+    }
+    'search: while let Some((lap, nodes)) = frontier.pop_first() {
+        expanded_states_by_lap.insert(lap, nodes.len());
         for node in nodes {
+            retained_states -= 1;
+            retained_items -= decision_items(&node);
             for driver in &m.drivers {
                 if !m.sequence_allows(node.decision.stints.len(), &driver.id) {
                     continue;
@@ -284,6 +369,14 @@ pub(super) fn solve(
                             if completed_reason(&m, &after.decision).is_none() {
                                 let replayed = replay_model(&m, &after.decision, None, true)?;
                                 if replayed.feasible {
+                                    first_incumbent_micros
+                                        .get_or_insert_with(|| started.elapsed().as_micros());
+                                    let cost = replayed.evaluation.total_seconds;
+                                    if incumbent.is_none_or(|(n, t)| {
+                                        end > n || (end == n && time_cmp(cost, t) == Ordering::Less)
+                                    }) {
+                                        incumbent = Some((end, cost));
+                                    }
                                     if after.worst_feasible {
                                         safe_completed.push(after.clone());
                                         safe_completed.sort_by(compare_state);
@@ -325,6 +418,7 @@ pub(super) fn solve(
                                         break 'search;
                                     }
                                     let mut next = after.clone();
+                                    created_states += 1;
                                     let (pit, seconds) = m.pit(&PitDecision {
                                         lap: end,
                                         fuel_liters: amount(f),
@@ -345,9 +439,18 @@ pub(super) fn solve(
                                     }
                                     next.evaluation.pit_seconds += seconds;
                                     next.evaluation.total();
+                                    if cannot_improve(
+                                        end,
+                                        next.evaluation.total_seconds,
+                                        &m,
+                                        minimum_lap_seconds,
+                                        incumbent,
+                                    ) {
+                                        pruned += 1;
+                                        continue;
+                                    }
                                     next.decision.pit_stops.push(pit);
-                                    let target = &mut frontier
-                                        [usize::try_from(end).map_err(|e| e.to_string())?];
+                                    let target = frontier.entry(end).or_default();
                                     let mut dominated = false;
                                     for existing in target.iter() {
                                         iterations += 1;
@@ -387,12 +490,31 @@ pub(super) fn solve(
                                             }
                                             if dominates(&next, &existing, &m, risk) {
                                                 pruned += 1;
+                                                retained_states -= 1;
+                                                retained_items -= decision_items(&existing);
                                             } else {
                                                 retained.push(existing);
                                             }
                                         }
                                         *target = retained;
+                                        let items = decision_items(&next);
+                                        if m.dims.race_duration_seconds.is_some()
+                                            && (retained_states >= MAX_FRONTIER_STATES
+                                                || retained_items + items
+                                                    > MAX_FRONTIER_DECISION_ITEMS)
+                                        {
+                                            reason = Some("frontier_memory_budget_exhausted");
+                                            break 'search;
+                                        }
                                         target.push(next);
+                                        retained_states += 1;
+                                        retained_items += items;
+                                        peak_retained_states =
+                                            peak_retained_states.max(retained_states);
+                                        peak_retained_items =
+                                            peak_retained_items.max(retained_items);
+                                        let peak = frontier_peaks.entry(end).or_default();
+                                        *peak = (*peak).max(target.len());
                                     }
                                 }
                             }
@@ -408,8 +530,29 @@ pub(super) fn solve(
             "native_budget_exhausted: no se ha demostrado el óptimo",
         )?;
     }
+    if std::env::var_os("VANTARE_STRATEGY_TRACE").is_some() {
+        eprintln!(
+            "{}",
+            json!({"searchTrace": {"frontierPeaksByLap": frontier_peaks,
+            "expandedStatesByLap": expanded_states_by_lap,
+            "createdStates": created_states, "prunedStates": pruned, "comparisons": iterations,
+            "firstIncumbentMicros": first_incumbent_micros,
+            "seedFinishedMicros": seed_finished_micros,
+            "peakRetainedStates": peak_retained_states,
+            "peakRetainedDecisionItems": peak_retained_items,
+            "elapsedMicros": started.elapsed().as_micros()}})
+        );
+    }
     let mut candidates = Vec::new();
     let mut keys = std::collections::BTreeSet::new();
+    // Completed enumeration keeps its existing candidate/variant policy.
+    // The seed supplies an incumbent when that enumeration is interrupted.
+    if reason.is_some()
+        && let Some((seeded, _)) = seed
+    {
+        keys.insert(serde_json::to_string(&seeded.decision).map_err(|e| e.to_string())?);
+        candidates.push(seeded);
+    }
     for state in completed.into_iter().chain(safe_completed) {
         let key = serde_json::to_string(&state.decision).map_err(|e| e.to_string())?;
         if !keys.insert(key) {

@@ -12,6 +12,7 @@ mod projection;
 mod replay;
 mod scenarios;
 mod search;
+mod seed;
 pub use scenarios::*;
 mod weather;
 pub use weather::{RainThresholds, WeatherBucket, WeatherCondition, WeatherDriver, WeatherPlan};

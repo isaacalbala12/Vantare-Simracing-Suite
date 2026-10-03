@@ -12,6 +12,7 @@ parity-capture = []
 paint-stats = []
 
 [dependencies]
+vantare-services.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
 # Misma revisión que el prototipo de paridad (ISA-1410).

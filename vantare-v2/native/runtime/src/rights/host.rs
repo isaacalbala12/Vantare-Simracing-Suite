@@ -288,6 +288,27 @@ impl Drop for Host {
     }
 }
 
+fn new_usage_session(
+    snapshot: &Snapshot,
+    previous: &mut Option<(u64, u64)>,
+) -> Option<&'static str> {
+    if !is_live(snapshot) {
+        if snapshot.state.source_state != SourceState::Stale {
+            *previous = None;
+        }
+        return None;
+    }
+    if !matches!(snapshot.origin.source.simulator, "lmu" | "acc") {
+        return None;
+    }
+    let key = (snapshot.epoch, snapshot.state.session.id.0);
+    if *previous == Some(key) {
+        return None;
+    }
+    *previous = Some(key);
+    Some(snapshot.origin.source.simulator)
+}
+
 fn spawn_timer(
     state: Arc<Mutex<State>>,
     latest: Arc<ArcSwap<Observed>>,
@@ -297,7 +318,17 @@ fn spawn_timer(
     thread::Builder::new()
         .name("rights-owner".into())
         .spawn(move || {
+            let mut usage_session = None;
             while !stop.is_set() {
+                let observed = latest.load();
+                if let Some(simulator) = new_usage_session(&observed.snapshot, &mut usage_session) {
+                    // Este hilo ya posee I/O; nunca persistir en publish/adquisición.
+                    vantare_services::diagnostics::record_usage(
+                        &vantare_services::diagnostics::Usage::LiveSessionStarted {
+                            simulator: simulator.into(),
+                        },
+                    );
+                }
                 if let Ok(mut state) = state.lock() {
                     let _advanced = advance(&mut state, &latest.load(), start.elapsed(), false);
                 }
@@ -311,6 +342,25 @@ fn spawn_timer(
 #[cfg(test)]
 mod response_tests {
     use super::*;
+
+    #[test]
+    fn usage_session_is_once_per_live_session_without_replay_or_stale_events() {
+        let mut snapshot = Snapshot::default();
+        let mut previous = None;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.origin.source.simulator = "lmu";
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.source_state = SourceState::Stale;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.session.id.0 += 1;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+        snapshot.origin.source.kind = SourceKind::Replay;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+    }
 
     #[test]
     fn response_write_does_not_hold_the_policy_mutex() {

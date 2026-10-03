@@ -69,6 +69,7 @@ fn import(
 }
 
 fn main() -> ExitCode {
+    vantare_services::diagnostics::install_panic_hook("vantare-import-profile");
     let args: Vec<_> = std::env::args().skip(1).collect();
     let usage =
         "uso: vantare-import-profile PERFIL-V4.json CARPETA-NUEVA MONITOR-X MONITOR-Y ANCHO ALTO";

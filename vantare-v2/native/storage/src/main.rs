@@ -2,6 +2,7 @@ use std::io;
 use std::path::PathBuf;
 
 fn main() {
+    vantare_services::diagnostics::install_panic_hook("vantare-storage");
     if let Err(error) = execute() {
         eprintln!("almacenamiento: {error}");
         std::process::exit(1);

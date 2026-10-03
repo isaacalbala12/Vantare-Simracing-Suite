@@ -200,6 +200,7 @@ fn show(widgets: &[Kind], pos: (f32, f32), scene: Option<PathBuf>) -> Result<(),
 }
 
 fn main() -> ExitCode {
+    vantare_services::diagnostics::install_panic_hook("vantare-workshop");
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(command) = parse(&args) else {
         eprintln!("{USAGE}");

@@ -415,6 +415,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 }
 
 struct LiveScreens {
+    usage_widgets: Option<Vec<String>>,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
     prefs: Preferences,
@@ -455,6 +456,22 @@ fn reconcile_widgets<T>(
 
 impl LiveScreens {
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        let mut widget_types: Vec<_> = layout
+            .instances
+            .iter()
+            .filter(|i| i.visible)
+            .map(|i| i.settings.kind().name().to_owned())
+            .collect();
+        widget_types.sort();
+        widget_types.dedup();
+        if self.usage_widgets.as_ref() != Some(&widget_types) {
+            vantare_services::diagnostics::record_usage(
+                &vantare_services::diagnostics::Usage::LayoutWidgets {
+                    widget_types: widget_types.clone(),
+                },
+            );
+            self.usage_widgets = Some(widget_types);
+        }
         self.prefs = layout.preferences;
         self.required = layout.demand();
         self.widgets = reconcile_widgets(
@@ -627,6 +644,7 @@ fn run_layout_feed<T: Send + 'static>(
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
+            usage_widgets: None,
             screens: Vec::new(),
             widgets: HashMap::new(),
             prefs: document.layout().preferences,

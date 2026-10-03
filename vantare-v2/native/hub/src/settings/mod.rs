@@ -10,6 +10,7 @@ use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
+mod privacy;
 mod releases;
 #[cfg(test)]
 mod tests;
@@ -64,7 +65,7 @@ impl Page {
             Self::Performance => "Nivel global y perfil activo",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
-            Self::Privacy => "Consentimiento y cola de Strategy",
+            Self::Privacy => "Fallos, uso y contribución",
             Self::Diagnostics => "Fuentes, datos y registros",
         }
     }
@@ -83,7 +84,7 @@ impl Page {
             Self::Performance => "Elige cuánto trabajo hace Vantare durante la carrera.",
             Self::Updates => "Versión instalada, canal y novedades.",
             Self::Hotkeys => "Combinaciones globales registradas por la app.",
-            Self::Privacy => "Controla qué derivados de Strategy pueden salir de este equipo.",
+            Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
     }
@@ -103,7 +104,9 @@ impl Page {
             Self::Hotkeys => {
                 "toggle overlay siguiente perfil anterior cambiar referencia delta combinaciones"
             }
-            Self::Privacy => "consentimiento contribución cola strategy envíos borrado remoto",
+            Self::Privacy => {
+                "fallos uso diagnóstico posthog consentimiento contribución cola strategy envíos borrado remoto"
+            }
             Self::Diagnostics => {
                 "telemetry core overlay cpu memoria datos registros fuentes eventos informe"
             }
@@ -114,6 +117,8 @@ impl Page {
 }
 
 pub(super) struct State {
+    privacy: Result<privacy::Store, String>,
+    privacy_focus: [FocusHandle; 2],
     appearance: appearance::Store,
     appearance_focus: [FocusHandle; 12],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
@@ -175,6 +180,7 @@ fn units(index: usize) -> Option<Units> {
 
 impl State {
     pub(super) fn select_demo_page(&mut self, page: crate::demo::CaptureSettingsPage) {
+        self.privacy = privacy::Store::load(&self.data);
         self.page = match page {
             crate::demo::CaptureSettingsPage::Application => Page::Application,
             crate::demo::CaptureSettingsPage::Appearance => Page::Appearance,
@@ -269,6 +275,10 @@ impl State {
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
         let state = Self {
+            privacy: vantare_services::diagnostics::data_root()
+                .map_err(|error| error.to_string())
+                .and_then(|root| privacy::Store::load(&root)),
+            privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             page: Page::default(),
             scroll: gpui::ScrollHandle::new(),
             panel_scroll: gpui::ScrollHandle::new(),

@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+vantare-services.workspace = true
 # Autorización explícita del orquestador, ISA-1429: solo este proceso usa SQL.
 duckdb = { version = "=1.10505.0", features = ["bundled"] }
 vantare-runtime = { path = "../runtime" }

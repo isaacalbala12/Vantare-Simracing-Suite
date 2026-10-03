@@ -1,0 +1,120 @@
+# Vantare Admin · miniapp privada (#1456)
+
+Binario aparte del Hub, únicamente para el owner. No arranca núcleo, overlays,
+licencias ni Testing Center. El backend `native-admin` comprueba owner en cada
+petición y registra la auditoría; ocultar este ejecutable no concede seguridad.
+
+Desde `native/`:
+
+```powershell
+cargo build -p vantare-admin --release --bin vantare-admin -j 2
+./target/release/vantare-admin.exe
+./target/release/vantare-admin.exe --demo --screen users
+./target/release/vantare-admin.exe --demo --screen rollout
+./target/release/vantare-admin.exe --demo --screen reports
+```
+
+`--demo` no hace red, no abre Account/Store y no modifica datos reales. Muestra
+datos falsos identificados como DEMO, con una captura fixture falsa. Los cambios
+simulados desaparecen al cerrar. `--help` describe los argumentos.
+
+## Configuración pública de build
+
+- `VANTARE_ADMIN_URL`: URL HTTPS exacta de `/functions/v1/native-admin` o
+  `/v1/native-admin`. No acepta credenciales, query ni fragmento.
+- `VANTARE_SUPABASE_URL`: origen HTTPS de las capturas firmadas.
+- Configuración OAuth ya existente de `vantare-services`:
+  `VANTARE_CLERK_ISSUER`, `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT` y
+  `VANTARE_BUILD_CHANNEL`. Son valores públicos compilados, no secretos.
+  Deben coincidir con los del Hub que guardó la sesión existente.
+
+Reutiliza `Account`, descubrimiento OAuth, PKCE, callback, refresh y `Store` de
+`vantare-services`, incluida su carpeta y binding de sesión. No copia tokens ni
+implementa otro flujo OAuth. Cierra el Hub antes de administrar: ambos procesos
+usan el mismo almacén, que no coordina escrituras simultáneas. Cerrar sesión aquí
+revoca la sesión local compartida; no modifica roles ni concesiones.
+
+## Contrato de cliente (v1)
+
+POST con `Authorization: Bearer <OAuth>` y JSON `version: 1`, `action` y los
+campos del contrato `contrato-admin.md` §2. Sin `apikey`. No hay llamadas directas
+a tablas ni secretos Clerk/Supabase en el cliente.
+
+El contrato inicial no nombraba los campos de respuesta; estas son las claves
+explícitas que debe confirmar el worker servidor antes del despliegue:
+
+| Acción | Datos dentro de `{version:1, ok:true, ...}` |
+| --- | --- |
+| `search_accounts` | `accounts: User[]` |
+| `get_account` | `account: User` |
+| `get_rollout` | `rollout: [{module, enabled_for_all}]` (exactamente cuatro) |
+| `list_reports` | `reports: Report[]`, `cursor: string \| null` |
+| `get_report` | `report: Report`, con `screenshots: string[]` (URLs firmadas) |
+| mutaciones | Sin datos adicionales; después se relee el detalle/rollout |
+
+`User`: `account_id`, `email`, `name`, `created_at` (ISO), `last_seen_at`
+(ISO o null), `roles`, `modules`, `reports_count`.
+`Report`: `report_id`, `author` (correo), `module`, `app_version`, `text`,
+`created_at` (ISO), `status`, `has_screenshots`, `screenshots` (solo detalle).
+Módulos: `strategy`, `engineer`, `analysis`, `calendar`.
+Estados existentes: `draft`, `submitted`, `validated`, `duplicate_linked`,
+`incomplete`, `closed` (`20260802130100_testing_center_core.sql`).
+
+No adivina variantes del JSON: si el backend no coincide, muestra error de
+protocolo. 401 exige login; 403 deniega acceso y limpia datos privados; 429/5xx
+declaran desconexión. Un error de escritura puede tener resultado incierto:
+actualiza los datos antes de repetir. No hay reintentos automáticos de mutaciones.
+
+HTTPS obligatorio, timeout global de 8 s, redirects desactivados, JSON ≤512 KiB.
+Capturas: solo URLs firmadas del origen Supabase configurado y ruta del bucket
+`testing-center-evidence`, ≤10 MiB, máximo tres, PNG/JPEG, sin bearer ni apikey.
+Se descargan fuera del hilo GPUI y se muestran dentro de la app; solo memoria.
+Pulsa una captura (o Enter/Espacio al enfocarla) para ampliarla; «Volver al
+reporte» cierra el visor sin abrir aplicaciones externas.
+La decodificación también está acotada a 4096×4096 y 64 MiB; una imagen inválida
+no impide consultar el texto del reporte y muestra un error de captura.
+HTTP loopback está permitido únicamente en los tests de esta crate.
+
+## Empaquetado público (#1454)
+
+`admin` es miembro del workspace para los gates, pero **no** miembro por defecto.
+El publicador debe usar una lista explícita de binarios públicos y excluir
+`vantare-admin.exe`; nunca copiar `target/release/*.exe`. La compilación privada
+anterior produce un ejecutable para entregar a Isaac por separado. Esta tarea no
+cambia scripts del worker #1454 ni incluye Admin en un instalador.
+Si el publicador construye todo el workspace, puede usar
+`cargo build --workspace --exclude vantare-admin --release -j 2`; la lista de
+archivos del instalador sigue siendo explícita para no recoger binarios viejos.
+
+## Verificación y límites
+
+```powershell
+cargo check --workspace --all-targets -j 2
+cargo nextest run --workspace --build-jobs 2 -j 2 -E 'package(vantare-admin)'
+```
+
+Tests con servidor HTTP real local: acciones, bearer, 401, 403, errores, límites,
+URLs y descarga sin credenciales. Estado puro: confirmación/cancelación, guardando,
+error sin cambios optimistas, relectura tras ACK, limpieza al denegar acceso.
+UI: buscar usuario y seleccionarlo; confirmar/cancelar Tester y módulos; cambiar
+rollout con aviso global; filtrar reportes, abrir detalle/capturas y cambiar estado.
+
+Capturas físicas demo a 1280×800: `./admin/capture-demo.ps1` (binario debug ya
+compilado). Espera la reserva de pantalla y toma `Global\VantareParityCapture`.
+Lee/aplica primero `C:/tmp/fase2/notas-1456.md`; si existe, pasa su SHA256 en
+`-ReviewedNotesHash`. Conserva cada primera captura como `primera-<pantalla>.png`.
+No existe referencia Wails de esta miniapp nueva: se revisa estructura y
+legibilidad sobre Orbit; no se declara paridad por porcentaje.
+
+Pendientes de prueba contra el despliegue: respuestas definitivas del backend,
+login owner real, auditoría, caducidad/renovación de URLs y permisos reales.
+Demo y servidor local no demuestran eso. Ante una captura caducada vuelve a
+seleccionar el reporte para obtener URLs nuevas. Solo paginación hacia delante
+en reportes; búsquedas de usuarios limitadas a 50, afinar query si hay más.
+No hay borrado de cuentas/datos ni edición del rol owner. Sin Notion en este
+encargo por indicación de Isaac: seguimiento operativo pendiente de reconciliar
+por el orquestador en la tarea existente, sin duplicarla.
+
+El kit Orbit se reutiliza desde la biblioteca Hub existente; no se extraen ni
+duplican sus controles. Las dependencias ya estaban resueltas en el workspace;
+no se añade otro motor gráfico ni librería HTTP.

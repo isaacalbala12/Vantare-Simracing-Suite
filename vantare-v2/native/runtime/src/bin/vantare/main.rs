@@ -511,6 +511,16 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     } else {
         None
     };
+    vantare_services::diagnostics::record_usage(
+        &vantare_services::diagnostics::Usage::AppStarted {
+            version: option_env!("VANTARE_VERSION")
+                .unwrap_or(env!("CARGO_PKG_VERSION"))
+                .into(),
+            channel: option_env!("VANTARE_BUILD_CHANNEL")
+                .unwrap_or("unknown")
+                .into(),
+        },
+    );
     let remote = start_remote_services(&mut config)?;
     let photo = config
         .core
@@ -530,6 +540,21 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         core,
         Service::new("overlays", config.overlays, config.restarts),
     ];
+    let mut diagnostics = Vec::new();
+    if vantare_services::diagnostics::configured() {
+        let mut diagnostic = Service::new(
+            "diagnóstico",
+            Program {
+                path: std::env::current_exe()?.with_file_name("vantare-services.exe"),
+                args: vec!["--diagnostics".into()],
+            },
+            0,
+        );
+        match diagnostic.spawn() {
+            Ok(()) => diagnostics.push(diagnostic),
+            Err(error) => log(format_args!("diagnóstico no disponible: {error}")),
+        }
+    }
     if let Some(engineer) = config.engineer {
         services.push(Service::new("Engineer", engineer, config.restarts));
     }
@@ -537,6 +562,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     drop(resident);
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     shutdown(&mut services, config.grace);
+    shutdown(&mut diagnostics, config.grace);
     Ok(match outcome? {
         Outcome::Stopped => ExitCode::SUCCESS,
         Outcome::Finished(name) => {
@@ -568,6 +594,7 @@ fn signal_stop(instance: &str) -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
+    vantare_services::diagnostics::install_panic_hook("vantare");
     let args: Vec<String> = env::args().skip(1).collect();
     let bin_dir = env::current_exe()
         .ok()

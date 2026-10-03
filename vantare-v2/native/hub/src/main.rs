@@ -308,6 +308,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
 }
 
 fn main() -> ExitCode {
+    vantare_services::diagnostics::install_panic_hook("vantare-hub");
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--kit"] {
         return match vantare_hub::orbit::run_kit() {

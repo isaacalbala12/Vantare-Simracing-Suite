@@ -9,6 +9,7 @@ pub mod app;
 pub mod bridge;
 #[cfg(feature = "network")]
 pub mod config;
+pub mod diagnostics;
 pub mod error;
 #[cfg(feature = "network")]
 pub mod host;

@@ -77,6 +77,7 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
 }
 
 fn main() {
+    vantare_services::diagnostics::install_panic_hook("vantare-engineer");
     if let Err(error) = run() {
         eprintln!("Engineer: {error}");
         std::process::exit(1);

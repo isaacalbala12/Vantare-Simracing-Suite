@@ -2183,16 +2183,78 @@ impl Hub {
                  cx)),
          cx)
     }
-    fn settings_privacy(&self, compact: bool, cx: &gpui::App) -> Div {
+    fn settings_privacy(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         div()
             .flex()
             .flex_col()
             .w_full()
             .min_w_0()
             .gap(px(14.0))
+            .child(self.settings_privacy_diagnostics(cx))
             .child(Self::settings_privacy_consent(compact, cx))
             .child(self.settings_privacy_queue(cx))
             .child(self.settings_privacy_history(cx))
+    }
+    fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
+        let mut body = section_body();
+        match &self.settings.privacy {
+            Err(error) => body = body.child(section_note(error, cx)),
+            Ok(store) => {
+                for (index, usage, label, help, on) in [
+                    (
+                        0,
+                        false,
+                        "Enviar informes de fallos",
+                        "Binario, versión, mensaje y traza del fallo. Se ocultan las rutas de usuario de Windows.",
+                        store.value.crashes,
+                    ),
+                    (
+                        1,
+                        true,
+                        "Enviar datos de uso",
+                        "Inicio de la app, simulador al entrar en una sesión y tipos de widgets activos. Sin posiciones ni telemetría.",
+                        store.value.usage,
+                    ),
+                ] {
+                    let toggle = orbit::toggle(
+                        if usage {
+                            "settings-usage"
+                        } else {
+                            "settings-crashes"
+                        },
+                        label,
+                        on,
+                        true,
+                        cx,
+                    )
+                    .track_focus(&self.settings.privacy_focus[index])
+                    .tab_stop(true)
+                    .aria_toggled(if on {
+                        gpui::Toggled::True
+                    } else {
+                        gpui::Toggled::False
+                    })
+                    .aria_description(if on { "Activado" } else { "Desactivado" })
+                    .on_click(
+                        cx.listener(move |this, _, _, cx| this.settings_privacy_toggle(usage, cx)),
+                    )
+                    .on_key_down(cx.listener(
+                        move |this, event: &gpui::KeyDownEvent, _, cx| {
+                            if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                                this.settings_privacy_toggle(usage, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    ));
+                    body = body.child(section_row(label, help, toggle, cx));
+                }
+                body = body.child(section_note("Se usa un identificador aleatorio de instalación, separado de tu cuenta y licencia. Envío a PostHog en la UE. Puedes cambiar estas opciones en cualquier momento.", cx));
+                if !vantare_services::diagnostics::configured() {
+                    body = body.child(section_note("Este build aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
+                }
+            }
+        }
+        section_surface("Diagnóstico y uso", None, body, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {
         if self.demo.is_some() {

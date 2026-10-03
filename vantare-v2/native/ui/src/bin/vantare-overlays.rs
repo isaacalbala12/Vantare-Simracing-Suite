@@ -55,6 +55,7 @@ fn parse(args: &[String]) -> Option<(Option<usize>, Option<PathBuf>, Feed)> {
 }
 
 fn main() -> ExitCode {
+    vantare_services::diagnostics::install_panic_hook("vantare-overlays");
     let args: Vec<String> = std::env::args().skip(1).collect();
     #[cfg(feature = "parity-capture")]
     if let [flag, path] = args.as_slice()

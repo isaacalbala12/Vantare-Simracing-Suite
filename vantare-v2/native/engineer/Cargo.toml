@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+vantare-services.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
 # Flows y cierre del proceso; no lee adaptadores ni Core.
@@ -22,7 +23,6 @@ windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Medi
 workspace = true
 
 [dev-dependencies]
-vantare-services.workspace = true
 base64 = "0.22"
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }

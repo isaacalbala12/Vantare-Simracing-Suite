@@ -9,6 +9,7 @@ publish.workspace = true
 parity-capture = ["vantare-ui/parity-capture"]
 
 [dependencies]
+vantare-services.workspace = true
 vantare-ui = { path = "../ui" }
 vantare-domain.workspace = true
 vantare-ipc.workspace = true

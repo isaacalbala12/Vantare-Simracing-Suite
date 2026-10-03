@@ -6441,6 +6441,7 @@ dependencies = [
  "serde_json",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-services",
  "vantare-strategy",
  "vantare-ui",
 ]
@@ -6503,6 +6504,7 @@ dependencies = [
  "serde_json",
  "vantare-domain",
  "vantare-runtime",
+ "vantare-services",
 ]
 
 [[package]]
@@ -6528,6 +6530,7 @@ dependencies = [
  "serde_json",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-services",
 ]
 
 [[package]]

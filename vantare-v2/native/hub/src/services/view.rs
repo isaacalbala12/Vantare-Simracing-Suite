@@ -4,10 +4,7 @@ use super::{
     protocol::{Command, Reply},
 };
 use crate::orbit;
-use crate::{
-    Section,
-    shell::navigation::{Access, Plan},
-};
+use crate::{Section, shell::navigation::Access};
 use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 use std::sync::{
     Arc,
@@ -226,19 +223,18 @@ const ACCOUNT_MODULES: [(Section, &str); 6] = [
     (Section::Analysis, "Telemetría"),
 ];
 
-fn account_plan_label(plan: Plan) -> &'static str {
-    match plan {
-        Plan::Overlays => "Overlays",
-        Plan::Engineer => "Engineer",
-        Plan::Suite => "Overlays + Engineer",
-        Plan::Unknown | Plan::Free => "Acceso sin verificar",
+fn account_plan_label(verified: bool) -> &'static str {
+    if verified {
+        "Beta"
+    } else {
+        "Acceso sin verificar"
     }
 }
 
 fn account_module_access(access: Access, demo: bool) -> [bool; 6] {
     std::array::from_fn(|index| {
         !access.blocked
-            && matches!(access.plan, Plan::Overlays | Plan::Engineer | Plan::Suite)
+            && access.verified
             && access.lock(ACCOUNT_MODULES[index].0).is_none()
             // La captura congelada anuncia Telemetría como «próximamente».
             && !(demo && index == 5)
@@ -532,7 +528,7 @@ impl Remote {
                                 // La consulta periódica no pisa el resultado de una acción del usuario.
                                 Reply::License { .. } if background => {}
                                 Reply::License { message, .. } => {
-                                    this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().plan));
+                                    this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().verified));
                                 }
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
                                 Reply::Draft { draft,message }=>{
@@ -666,7 +662,9 @@ impl Remote {
         if account_demo().is_some() {
             // Fixture visual explícita; no alcanza la navegación ni el núcleo.
             Access {
-                plan: Plan::Overlays,
+                verified: true,
+                calendar: true,
+                strategy: true,
                 ..Access::default()
             }
         } else {
@@ -675,7 +673,7 @@ impl Remote {
     }
 
     fn account_badges(&self, demo: bool, cx: &gpui::App) -> gpui::Div {
-        let plan = self.account_access().plan;
+        let verified = self.account_access().verified;
         div()
             .mt(px(8.0))
             .flex()
@@ -685,12 +683,12 @@ impl Remote {
                 if demo {
                     "● Overlays"
                 } else {
-                    account_plan_label(plan)
+                    account_plan_label(verified)
                 },
-                if plan == Plan::Unknown {
-                    orbit::Tone::Neutral
-                } else {
+                if verified {
                     orbit::Tone::Gold
+                } else {
+                    orbit::Tone::Neutral
                 },
                 cx,
             ))
@@ -887,7 +885,7 @@ impl Remote {
             .child(orbit::eyebrow("Plan activo", cx).line_height(px(18.0)))
             .child(
                 text(
-                    account_plan_label(access.plan),
+                    account_plan_label(access.verified),
                     26.0,
                     750,
                     orbit::ink(cx),
@@ -898,13 +896,13 @@ impl Remote {
             )
             .child(
                 text(
-                    if access.plan == Plan::Unknown {
-                        "Módulos sin verificar".into()
-                    } else {
+                    if access.verified {
                         format!(
                             "{} de 6 módulos incluidos",
                             included.iter().filter(|included| **included).count()
                         )
+                    } else {
+                        "Módulos sin verificar".into()
                     },
                     12.0,
                     400,
@@ -1230,29 +1228,30 @@ impl Drop for Remote {
 #[cfg(test)]
 mod account_tests {
     use super::*;
-
     #[test]
-    fn plan_labels_and_module_counts_follow_the_same_policy_as_navigation() {
-        for (plan, label, included) in [
-            (Plan::Unknown, "Acceso sin verificar", [false; 6]),
+    fn account_modules_follow_navigation_permissions() {
+        for (access, expected) in [
+            (Access::default(), [false; 6]),
             (
-                Plan::Overlays,
-                "Overlays",
-                [true, true, true, true, false, true],
+                Access {
+                    verified: true,
+                    ..Access::default()
+                },
+                [true, true, false, false, false, false],
             ),
             (
-                Plan::Engineer,
-                "Engineer",
-                [false, true, true, true, true, true],
+                Access {
+                    verified: true,
+                    engineer: true,
+                    strategy: true,
+                    calendar: true,
+                    analysis: true,
+                    ..Access::default()
+                },
+                [true; 6],
             ),
-            (Plan::Suite, "Overlays + Engineer", [true; 6]),
         ] {
-            let access = Access {
-                plan,
-                ..Access::default()
-            };
-            assert_eq!(account_plan_label(plan), label);
-            assert_eq!(account_module_access(access, false), included);
+            assert_eq!(account_module_access(access, false), expected);
             assert_eq!(
                 account_module_access(
                     Access {
@@ -1264,16 +1263,7 @@ mod account_tests {
                 [false; 6]
             );
         }
-        assert_eq!(
-            account_module_access(
-                Access {
-                    plan: Plan::Overlays,
-                    ..Access::default()
-                },
-                true
-            ),
-            [true, true, true, true, false, false],
-            "the frozen demo is not a real policy"
-        );
+        assert_eq!(account_plan_label(true), "Beta");
+        assert_eq!(account_plan_label(false), "Acceso sin verificar");
     }
 }

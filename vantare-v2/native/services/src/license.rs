@@ -11,10 +11,14 @@ pub mod installation;
 
 const ISSUER: &str = "vantare-license";
 const AUDIENCE: &str = "vantare-native";
-pub const CAPABILITIES: [&str; 7] = [
+pub const CAPABILITIES: [&str; 11] = [
     "vantare.channel.nightly",
     "vantare.channel.testers",
     "vantare.edition.launch_v1",
+    "vantare.module.analysis",
+    "vantare.module.calendar",
+    "vantare.module.engineer",
+    "vantare.module.strategy",
     "vantare.operational.nightly_tester",
     "vantare.operational.owner",
     "vantare.operational.tester",
@@ -105,6 +109,7 @@ pub struct Verified {
     subject: String,
     device: String,
     issued_at: DateTime<Utc>,
+    expires_at: Option<DateTime<Utc>>,
     grants: Vec<Grant>,
 }
 #[derive(Clone)]
@@ -202,6 +207,7 @@ impl Verifier {
             subject: subject.into(),
             device: device.into(),
             issued_at: date(&claims.issued_at)?,
+            expires_at: None,
             grants: grants(&claims.capabilities, None)?,
         })
     }
@@ -251,6 +257,7 @@ impl Verifier {
             subject: subject.into(),
             device: installation_key.into(),
             issued_at,
+            expires_at: Some(expires_at),
             grants: grants(&claims.capabilities, Some(expires_at))?,
         })
     }
@@ -302,13 +309,17 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
                 || !((capability.key == "vantare.edition.launch_v1"
                     && capability.scope_version == "launch_v1")
                     || (capability.key == "vantare.channel.testers"
+                        && capability.scope_version.is_empty())
+                    || (capability.key.starts_with("vantare.module.")
                         && capability.scope_version.is_empty()))
             {
                 return Err(Error::InvalidCredential);
             }
             envelope
         } else {
-            if capability.key == "vantare.edition.launch_v1" || !capability.scope_version.is_empty()
+            if capability.key == "vantare.edition.launch_v1"
+                || capability.key.starts_with("vantare.module.")
+                || !capability.scope_version.is_empty()
             {
                 return Err(Error::InvalidCredential);
             }

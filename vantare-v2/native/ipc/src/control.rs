@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 const LIMIT: usize = 64 * 1024;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+// Capacidades independientes del contrato beta; no forman estados excluyentes.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Policy {
     pub version: u32,
     pub epoch: u64,
@@ -16,12 +18,16 @@ pub struct Policy {
     pub valid_until_ms: Option<u64>,
     pub overlays_advanced: bool,
     pub engineer: bool,
+    pub strategy: bool,
+    pub analysis: bool,
+    pub calendar: bool,
     pub live: bool,
     pub error: Option<String>,
 }
 impl Policy {
     pub fn current_at(&self, now_ms: u64) -> bool {
-        self.version == VERSION
+        self.error.is_none()
+            && self.version == VERSION
             && self.revision > 0
             && now_ms >= self.checked_at_ms
             && now_ms.saturating_sub(self.checked_at_ms) < 2_000

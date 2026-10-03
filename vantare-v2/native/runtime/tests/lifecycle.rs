@@ -82,6 +82,8 @@ fn fake_core(args: &[String]) -> ExitCode {
         &format!("core pid={} epoch={epoch}", std::process::id()),
     );
     let closed = stdin_closed();
+    let rights_stop = Arc::new(vantare_ipc::transport::Event::new().expect("rights stop"));
+    let rights_thread = fake_rights(&pipe, &status, Arc::clone(&rights_stop));
     let Ok(mut publisher) = Publisher::new(&pipe, |_| true) else {
         return ExitCode::FAILURE;
     };
@@ -99,8 +101,63 @@ fn fake_core(args: &[String]) -> ExitCode {
         thread::sleep(Duration::from_millis(10));
     }
     drop(publisher);
+    rights_stop.set();
+    rights_thread.join().expect("rights thread");
     note(&status, "closed core");
     ExitCode::SUCCESS
+}
+
+// Política sintética exclusiva de lifecycle: prueba el supervisor, no firma ni LMU.
+fn fake_rights(
+    photo: &str,
+    status: &str,
+    stop: Arc<vantare_ipc::transport::Event>,
+) -> thread::JoinHandle<()> {
+    use vantare_ipc::{
+        control::{self, Policy, Request, Response},
+        transport::{IO_TIMEOUT, Listener},
+    };
+    let mut listener = Listener::new(&control::pipe_name(photo), Arc::clone(&stop), IO_TIMEOUT)
+        .expect("rights listener");
+    let first = listener.instance().expect("rights instance");
+    let access_file = format!("{status}.engineer-access");
+    thread::spawn(move || {
+        let mut pending = Some(first);
+        let mut revision = 0;
+        while !stop.is_set() {
+            let Ok(mut pipe) = pending.take().map_or_else(|| listener.instance(), Ok) else {
+                break;
+            };
+            if pipe.accept().is_err() {
+                continue;
+            }
+            let Ok(request) = control::read::<Request>(&mut pipe) else {
+                continue;
+            };
+            revision += 1;
+            let mode = fs::read_to_string(&access_file).unwrap_or_else(|_| "deny".into());
+            let allowed = mode == "allow";
+            let policy = Policy {
+                version: control::VERSION,
+                epoch: 1,
+                revision,
+                checked_at_ms: control::wall_ms().expect("clock"),
+                overlays_advanced: true,
+                engineer: allowed,
+                error: (mode == "error").then(|| "fixture error".into()),
+                ..Policy::default()
+            };
+            let _response = control::write(
+                &mut pipe,
+                &Response {
+                    version: control::VERSION,
+                    sequence: request.sequence,
+                    policy,
+                    error: None,
+                },
+            );
+        }
+    })
 }
 
 fn fake_crash(args: &[String]) -> ExitCode {
@@ -613,6 +670,10 @@ fn children_die_with_the_launcher() {
 }
 
 fn launch_engineer(scenario: &Scenario, extra: &[&str], budget: u32) -> Launcher {
+    let access = format!("{}.engineer-access", scenario.file("status"));
+    if !std::path::Path::new(&access).exists() {
+        fs::write(&access, "allow").expect("permiso sintético del escenario");
+    }
     let me = env::current_exe().unwrap();
     let mut command = scenario.launcher_command(
         &[
@@ -630,6 +691,38 @@ fn launch_engineer(scenario: &Scenario, extra: &[&str], budget: u32) -> Launcher
         .args(["--", "fake-engineer", "--status", &scenario.file("status")])
         .args(extra);
     Launcher(command.spawn().unwrap())
+}
+
+fn engineer_policy_denies_start_and_revocation_preserves_other_children() {
+    let scenario = Scenario::new("engineer-policy");
+    let access = format!("{}.engineer-access", scenario.file("status"));
+    fs::write(&access, "deny").unwrap();
+    let mut launcher = launch_engineer(&scenario, &[], 2);
+    let core = scenario.wait_for("core", LONG, || scenario.starts("core").first().copied());
+    let overlays = scenario.wait_for("overlays", LONG, || {
+        scenario.starts("overlays").first().copied()
+    });
+    thread::sleep(Duration::from_millis(600)); // Observa varios polls del supervisor real.
+    assert!(
+        scenario.starts("engineer").is_empty(),
+        "sin permiso no nace"
+    );
+    fs::write(&access, "allow").unwrap();
+    let engineer = scenario.wait_for("permiso", LONG, || {
+        scenario.starts("engineer").first().copied()
+    });
+    fs::write(&access, "deny").unwrap();
+    scenario.wait_for("revocación", LONG, || (!alive(engineer.0)).then_some(()));
+    assert!(alive(core.0) && alive(overlays.0));
+    fs::write(&access, "allow").unwrap();
+    let engineer = scenario.wait_for("reactivación", LONG, || {
+        scenario.starts("engineer").get(1).copied()
+    });
+    fs::write(&access, "error").unwrap();
+    scenario.wait_for("error", LONG, || (!alive(engineer.0)).then_some(()));
+    assert!(alive(core.0) && alive(overlays.0));
+    scenario.stop();
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
 }
 
 fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
@@ -737,6 +830,10 @@ fn engineer_dies_in_the_same_job_when_launcher_is_killed() {
 
 fn run_scenarios(filters: &[String]) -> ExitCode {
     let mut scenarios: Vec<(&str, fn())> = vec![
+        (
+            "engineer_policy_denies_start_and_revocation_preserves_other_children",
+            engineer_policy_denies_start_and_revocation_preserves_other_children,
+        ),
         (
             "engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core",
             engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core,

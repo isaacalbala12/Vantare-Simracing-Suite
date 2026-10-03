@@ -192,6 +192,9 @@ impl Owner {
         if self.denied {
             self.policy.overlays_advanced = false;
             self.policy.engineer = false;
+            self.policy.strategy = false;
+            self.policy.analysis = false;
+            self.policy.calendar = false;
         }
         result
     }
@@ -199,6 +202,9 @@ impl Owner {
         self.denied = true;
         self.policy.overlays_advanced = false;
         self.policy.engineer = false;
+        self.policy.strategy = false;
+        self.policy.analysis = false;
+        self.policy.calendar = false;
         self.authority.invalidate(now, tick)?;
         self.authority.persist(&self.store)?; // ACK solo después de tombstone durable.
         self.binding = None;
@@ -251,6 +257,9 @@ impl Owner {
                     self.denied = true;
                     self.policy.overlays_advanced = false;
                     self.policy.engineer = false;
+                    self.policy.strategy = false;
+                    self.policy.analysis = false;
+                    self.policy.calendar = false;
                     self.policy.error = Some(error.to_string());
                     return Err(error);
                 }
@@ -272,21 +281,19 @@ impl Owner {
             Ok(Vec::new()) // Sin binding no hay reloj de derechos que avanzar.
         };
         let rights = result.as_ref().cloned().unwrap_or_default();
-        let paid = rights.iter().any(|right| {
-            matches!(
-                right.as_str(),
-                "vantare.plan.pro"
-                    | "vantare.edition.launch_v1"
-                    | "vantare.operational.owner"
-                    | "vantare.operational.tester"
-                    | "vantare.operational.nightly_tester"
-            )
-        });
+        let valid = result.is_ok() && !self.denied && self.authority.credential_current();
+        let operational = rights
+            .iter()
+            .any(|right| right.starts_with("vantare.operational."));
+        let module = |key: &str| valid && (operational || rights.iter().any(|right| right == key));
         self.policy.revision = self.policy.revision.checked_add(1).ok_or(Error::Protocol)?;
         self.policy.checked_at_ms =
             u64::try_from(now.timestamp_millis()).map_err(|_| Error::Clock)?;
-        self.policy.overlays_advanced = paid;
-        self.policy.engineer = paid;
+        self.policy.overlays_advanced = valid;
+        self.policy.engineer = module("vantare.module.engineer");
+        self.policy.strategy = module("vantare.module.strategy");
+        self.policy.analysis = module("vantare.module.analysis");
+        self.policy.calendar = module("vantare.module.calendar");
         self.policy.live = live;
         self.policy.error = result.as_ref().err().map(ToString::to_string).or_else(|| {
             if self.verifier.is_none() {
@@ -297,9 +304,18 @@ impl Owner {
                 None
             }
         });
+        let module_rights: Vec<_> = rights
+            .into_iter()
+            .filter(|key| {
+                key.starts_with("vantare.module.") || key.starts_with("vantare.operational.")
+            })
+            .collect();
         self.policy.valid_until_ms = self
             .authority
-            .next_deadline(&rights)
+            .next_deadline(&module_rights)
+            .into_iter()
+            .chain(self.authority.credential_deadline())
+            .min()
             .map(|end| u64::try_from(end.timestamp_millis()).map_err(|_| Error::Clock))
             .transpose()?;
         result?;

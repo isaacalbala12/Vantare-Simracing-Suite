@@ -227,6 +227,20 @@ impl Authority {
         self.confirmed_game = false;
     }
 
+    /// Sesión firmada, incluso sin concesiones. Usa el reloj ya observado por rights.
+    pub fn credential_current(&self) -> bool {
+        !self.invalidated
+            && self.verified.as_ref().is_some_and(|verified| {
+                verified
+                    .expires_at
+                    .is_none_or(|end| self.clock.last_seen.is_some_and(|now| now < end))
+            })
+    }
+
+    pub fn credential_deadline(&self) -> Option<DateTime<Utc>> {
+        self.verified.as_ref()?.expires_at
+    }
+
     /// Deadline efectivo ya aprobado: el consumidor no inventa gracia local.
     pub fn next_deadline(&self, rights: &[String]) -> Option<DateTime<Utc>> {
         self.verified

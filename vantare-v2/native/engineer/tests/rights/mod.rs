@@ -29,11 +29,9 @@ impl Fixture {
             iat: u64::try_from(now - 10).expect("iat"),
             exp: u64::try_from(now + 300).expect("exp"),
             capabilities: vec![Capability {
-                key: "vantare.plan.pro".into(),
-                paid_through: chrono::DateTime::from_timestamp(now + 300, 0)
-                    .expect("exp")
-                    .to_rfc3339(),
-                perpetual: false,
+                key: "vantare.module.engineer".into(),
+                paid_through: String::new(),
+                perpetual: true,
                 scope_version: String::new(),
             }],
         };

@@ -43,6 +43,27 @@ impl Drop for HelperScripts {
 }
 
 pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(), String> {
+    // Solo se compila en parity-capture: política de test congelada del núcleo,
+    // no credenciales ni una vía para conceder derechos al producto instalado.
+    let access = if let Some(path) = std::env::var_os("VANTARE_CAPTURE_POLICY") {
+        let bytes = fs::read(path).map_err(|error| format!("política de captura: {error}"))?;
+        let policy: vantare_ipc::control::Policy = serde_json::from_slice(&bytes)
+            .map_err(|error| format!("política de captura inválida: {error}"))?;
+        crate::shell::navigation::Access {
+            capture_locks: state.locked_sections(),
+            ..crate::shell::navigation::Access::from_policy(&policy, policy.checked_at_ms)
+        }
+    } else {
+        crate::shell::navigation::Access {
+            verified: true,
+            engineer: true,
+            strategy: true,
+            analysis: true,
+            calendar: true,
+            capture_locks: state.locked_sections(),
+            ..Default::default()
+        }
+    };
     let pid = std::process::id();
     let scripts = HelperScripts::new()?;
     fs::write(&scripts.runner, CAPTURE_PROCESS)
@@ -97,14 +118,7 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         });
     }
 
-    let result = shell::run_with_access(
-        options,
-        crate::shell::navigation::Access {
-            plan: crate::shell::navigation::Plan::Suite,
-            capture_locks: state.locked_sections(),
-            ..Default::default()
-        },
-    );
+    let result = shell::run_with_access(options, access);
     if result.is_err() {
         let _ = helper.kill();
     }

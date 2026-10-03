@@ -38,11 +38,23 @@ cambiar los tipos visibles no produce `layout_widgets`. Los replays no producen
 No hay otros eventos: ni clics, ni pantallas visitadas, ni autocapture, ni grabaciones
 de pantalla. No se adjuntan correo, ID Clerk, fingerprint de licencia, nombres de
 pilotos, rutas del layout, posiciones de widgets ni telemetría del simulador.
-Los mensajes de panic son texto de diagnóstico del código; las rutas Windows
-`C:\Users\<nombre>` (también otras unidades y mayúsculas) se sustituyen por
-`C:\Users\[usuario]` tanto en mensaje como en backtrace, antes de persistir y enviar.
-Esto no es un anonimizador general de texto libre: el código que produzca panics
-debe seguir evitando incluir datos personales o secretos en sus mensajes.
+### Qué se elimina antes de guardar y enviar
+
+Mensaje y backtrace se limpian **antes de escribir el fichero**, antes de truncarlos.
+Se sustituye el perfil real de `USERPROFILE`/`HOME`, incluso fuera de las ubicaciones
+habituales, y los patrones `C:\Users\<nombre>`, `/home/<nombre>` y `/Users/<nombre>`
+por `<usuario>`. La regla admite otras unidades Windows, mayúsculas/minúsculas,
+separadores `/` y `\` combinados, y barras escapadas de las trazas.
+Los correos electrónicos y cadenas con forma de JWT (`eyJ…`) o `Bearer …`
+se sustituyen por `<redactado>`. Se repite la limpieza al enviar, también para
+informes pendientes escritos por versiones anteriores. Binario y versión del
+informe pasan por la misma limpieza y límite de tamaño.
+
+Los campos de uso no admiten rutas ni correos: canal, simulador y tipos de widget
+son catálogos cerrados; versión tiene un alfabeto acotado y se rechaza si necesitaría
+esta limpieza (incluidos JWT). Un evento de uso inválido no se guarda ni se envía.
+Esto no es un anonimizador universal de texto libre: otros datos personales o
+secretos sin estos patrones deben seguir evitándose en el código que produce panics.
 
 ## Identificador y envío
 

@@ -1,5 +1,55 @@
 use super::*;
 
+pub(super) fn sensitive_text() -> String {
+    let mut text = r"C:\Users\WindowsUser\AppData\panic C:/Users/ForwardUser/src.rs /home/LinuxUser/src.rs /Users/MacUser/src.rs MailUser@example.test eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmaXh0dXJlIn0.c2lnbmF0dXJl Bearer fixture-token-123".to_owned();
+    for name in ["USERPROFILE", "HOME"] {
+        if let Some(profile) = std::env::var_os(name) {
+            text.push(' ');
+            text.push_str(profile.to_string_lossy().as_ref());
+            text.push(std::path::MAIN_SEPARATOR);
+            text.push_str("source.rs");
+        }
+    }
+    text
+}
+pub(super) fn assert_redacted(text: &str) {
+    for fragment in [
+        "WindowsUser",
+        "ForwardUser",
+        "LinuxUser",
+        "MacUser",
+        "MailUser@example.test",
+        "eyJhbGciOiJIUzI1NiJ9",
+        "fixture-token-123",
+    ] {
+        assert!(
+            !text.contains(fragment),
+            "no debe conservar datos de la fixture"
+        );
+    }
+    for name in ["USERPROFILE", "HOME"] {
+        if let Some(profile) = std::env::var_os(name) {
+            assert!(
+                !text.contains(profile.to_string_lossy().as_ref()),
+                "no debe conservar el perfil real"
+            );
+        }
+    }
+    assert!(text.contains("<usuario>"));
+    assert!(text.contains("<redactado>"));
+}
+#[test]
+fn personal_data_is_removed_before_writing_a_crash() {
+    let root = root();
+    write_crash(&root, "core", &sensitive_text(), &sensitive_text()).expect("crash");
+    let crash: Crash =
+        serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
+            .expect("json");
+    assert_redacted(&crash.message);
+    assert_redacted(&crash.backtrace);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
 #[test]
 fn usage_rejects_identifiers_outside_the_closed_catalog() {
     assert!(
@@ -42,19 +92,42 @@ fn identifier_is_uuid_v4_stable_and_shared_by_concurrent_writers() {
 }
 #[test]
 fn paths_are_cleaned_case_insensitively_without_changing_other_frames() {
-    assert_eq!(
-        clean_paths("C:/Users/Alice/a.rs"),
-        "C:/Users/[usuario]/a.rs"
-    );
+    assert_eq!(clean_paths("C:/Users/Alice/a.rs"), "<usuario>/a.rs");
     assert_eq!(
         clean_paths(r"C:\Users\Alice\a.rs D:\USERS\Bob\b.rs"),
-        r"C:\Users\[usuario]\a.rs D:\USERS\[usuario]\b.rs"
+        r"<usuario>\a.rs <usuario>\b.rs"
     );
     assert_eq!(clean_paths("frame 5: core::tick"), "frame 5: core::tick");
-    assert_eq!(
-        clean_paths(r"C:\\Users\\Alice\\a.rs"),
-        r"C:\Users\[usuario]\a.rs"
-    );
+    assert_eq!(clean_paths(r"C:\\Users\\Alice\\a.rs"), r"<usuario>\a.rs");
+}
+#[test]
+fn usage_rejects_paths_and_tokens_before_creating_a_file() {
+    let root = root();
+    fs::write(root.join(PRIVACY_FILE), br#"{"crashes":true,"usage":true}"#).expect("consent");
+    for usage in [
+        Usage::AppStarted {
+            version: r"C:\Users\fixture\version".into(),
+            channel: "beta".into(),
+        },
+        Usage::AppStarted {
+            version: "eyJfixture.payload.signature".into(),
+            channel: "beta".into(),
+        },
+        Usage::AppStarted {
+            version: "1.0.0".into(),
+            channel: "/home/fixture/channel".into(),
+        },
+        Usage::LiveSessionStarted {
+            simulator: "Bearer fixture-token".into(),
+        },
+        Usage::LayoutWidgets {
+            widget_types: vec!["/Users/fixture/widget".into()],
+        },
+    ] {
+        assert_eq!(enqueue_usage(&root, &usage), Err(Error::Protocol));
+    }
+    assert!(!root.join("usage").exists());
+    fs::remove_dir_all(root).expect("cleanup");
 }
 #[test]
 fn queue_is_bounded_and_privacy_failures_are_closed() {

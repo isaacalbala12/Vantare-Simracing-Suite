@@ -162,10 +162,15 @@ mod tests {
         write_crash(
             &root,
             "core",
-            r"C:\Users\tester\panic",
-            r"C:\Users\tester\source.rs",
+            &super::super::tests::sensitive_text(),
+            &super::super::tests::sensitive_text(),
         )
         .expect("crash");
+        let saved: Crash =
+            serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
+                .expect("json");
+        super::super::tests::assert_redacted(&saved.message);
+        super::super::tests::assert_redacted(&saved.backtrace);
         let server = Server::start(vec![
             (503, "{}".into()),
             (200, "{\"status\":0}".into()),
@@ -189,11 +194,50 @@ mod tests {
                 .requests
                 .recv_timeout(Duration::from_secs(3))
                 .expect("request");
-            assert!(!request.contains("tester"));
+            let body: serde_json::Value =
+                serde_json::from_str(request.split_once("\r\n\r\n").expect("body").1)
+                    .expect("json");
+            for field in ["message", "backtrace"] {
+                super::super::tests::assert_redacted(
+                    body["properties"][field].as_str().expect("text"),
+                );
+            }
             assert!(request.contains("\"event\":\"crash\""));
             assert!(request.contains("$process_person_profile"));
         }
         server.finish();
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn legacy_crash_is_redacted_before_sending() {
+        let root = super::super::tests::root();
+        fs::create_dir(root.join("crashes")).expect("dir");
+        let old = Crash {
+            binary: "core".into(),
+            version: "1.0.0".into(),
+            message: super::super::tests::sensitive_text(),
+            backtrace: super::super::tests::sensitive_text(),
+            timestamp: 1,
+        };
+        fs::write(
+            root.join("crashes/00.json"),
+            serde_json::to_vec(&old).expect("json"),
+        )
+        .expect("legacy file");
+        let server = Server::start(vec![(200, "{\"status\":1}".into())]);
+        flush(&root, &Http::default(), &server.base, Some("public-test")).expect("flush");
+        let request = server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("request");
+        let body: serde_json::Value =
+            serde_json::from_str(request.split_once("\r\n\r\n").expect("body").1).expect("json");
+        for field in ["message", "backtrace"] {
+            super::super::tests::assert_redacted(body["properties"][field].as_str().expect("text"));
+        }
+        server.finish();
+        assert!(!root.join("crashes/00.json").exists());
         fs::remove_dir_all(root).expect("cleanup");
     }
 

@@ -11,6 +11,7 @@ use std::{
 const FILE_LIMIT: u64 = 24 * 1024;
 const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
+mod redaction;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -135,29 +136,9 @@ pub fn anonymous_id(root: &Path) -> Result<String> {
     Ok(id)
 }
 
-/// Elimina perfiles Windows, también en mensajes y rutas con separadores escapados.
+/// Elimina perfiles Windows/Unix, correos y tokens antes de persistir y enviar.
 pub fn clean_paths(text: &str) -> String {
-    let text = text.replace("\\\\", "\\");
-    let lower = text.to_ascii_lowercase();
-    let mut result = String::new();
-    let mut from = 0;
-    while let Some(offset) = lower[from..]
-        .find(":\\users\\")
-        .into_iter()
-        .chain(lower[from..].find(":/users/"))
-        .min()
-    {
-        let start = from + offset;
-        result.push_str(&text[from..start + 8]);
-        let name = start + 8;
-        let end = text[name..]
-            .find(['\\', '/', '\n', '\r', '"', '\''])
-            .map_or(text.len(), |n| name + n);
-        result.push_str("[usuario]");
-        from = end;
-    }
-    result.push_str(&text[from..]);
-    result
+    redaction::clean(text)
 }
 fn bounded(text: &str, max: usize) -> String {
     let mut clean = clean_paths(text);
@@ -216,9 +197,10 @@ fn write_crash(root: &Path, binary: &str, message: &str, backtrace: &str) -> Res
         "crashes",
         &Crash {
             binary: bounded(binary, 64),
-            version: option_env!("VANTARE_VERSION")
-                .unwrap_or(env!("CARGO_PKG_VERSION"))
-                .into(),
+            version: bounded(
+                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+                64,
+            ),
             message: bounded(message, 1024),
             backtrace: bounded(backtrace, 8192),
             timestamp: timestamp()?,
@@ -275,6 +257,7 @@ impl Usage {
         match self {
             Self::AppStarted { version, channel } => {
                 version.len() <= 64
+                    && clean_paths(version) == *version
                     && version
                         .chars()
                         .all(|c| c.is_ascii_alphanumeric() || ".-+".contains(c))

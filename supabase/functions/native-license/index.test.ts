@@ -718,3 +718,42 @@ Deno.test("legacy Wails credential omits native modules from account and global 
   const result = await response.json();
   assert(result.credential.claims.capabilities.length === 0);
 });
+
+Deno.test("cancelled on day thirteen signs seventeen remaining paid days", async () => {
+  const { deriveSubscriptionTransition } = await import(
+    "../billing-webhook/subscription-lifecycle.ts"
+  );
+  const periodEnd = new Date(now.getTime() + 17 * 86400 * 1000).toISOString();
+  const transition = deriveSubscriptionTransition({
+    status: "canceled",
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: periodEnd,
+    remoteModifiedAt: now.toISOString(),
+    previous: null,
+    now,
+  });
+  assert(transition.commercialGrant.status === "active");
+  const response = await handleNativeLicenseRequest(
+    request(),
+    deps({
+      load: () =>
+        Promise.resolve({
+          accountId,
+          deviceMatches: true,
+          grants: [{
+            capability: "vantare.plan.pro",
+            valid_until: transition.commercialGrant.validUntil,
+            provider: "polar",
+            environment: "production",
+            source_type: "subscription",
+          }],
+        }),
+    }),
+  );
+  assert(response.status === 200);
+  const result = await response.json();
+  assert(result.credential.claims.capabilities[0].paid_through === periodEnd);
+  assert(
+    result.credential.claims.capabilities[0].paid_through !== now.toISOString(),
+  );
+});

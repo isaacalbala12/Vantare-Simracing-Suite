@@ -20,6 +20,8 @@ pub mod license;
 pub mod license_remote;
 #[cfg(any(windows, unix))]
 pub mod process;
+#[path = "../../packaging/version.rs"]
+pub mod product;
 pub mod protocol;
 #[cfg(feature = "network")]
 pub mod report;

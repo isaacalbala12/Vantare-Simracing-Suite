@@ -18,6 +18,8 @@ pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
+#[path = "../../packaging/version.rs"]
+pub mod product;
 pub mod scene;
 pub mod services;
 pub mod shell;

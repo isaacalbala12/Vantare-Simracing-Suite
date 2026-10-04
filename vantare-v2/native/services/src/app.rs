@@ -563,8 +563,10 @@ impl App {
                 })
             }
             Command::ReportRetryPrepare => Ok(Reply::ReportPreview {
-                preview: reports
-                    .prepare_retry(&request, self.config.channel.ok_or(Error::Unconfigured)?)?,
+                preview: reports.prepare_retry(
+                    &request,
+                    crate::report::rpc_channel(self.config.channel.ok_or(Error::Unconfigured)?),
+                )?,
             }),
             Command::ReportSend { preview_id } => {
                 let (receipt, draft_state) = reports.send(&request, &preview_id, store)?;

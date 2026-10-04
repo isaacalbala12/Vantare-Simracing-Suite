@@ -6,6 +6,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'config-tests.ps1') -EvidenceDirectory $EvidenceDirectory
 . (Join-Path $PSScriptRoot 'beta.ps1')
 $script:Passed = 0
 function Assert-Beta([bool]$Condition, [string]$Message) {

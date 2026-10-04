@@ -41,6 +41,9 @@ impl Store {
         if !metadata.is_dir() || metadata.file_type().is_symlink() {
             return Err(Error::Storage);
         }
+        // Windows devuelve el prefijo de ruta larga que necesitan las llamadas Win32.
+        #[cfg(windows)]
+        let root = fs::canonicalize(&root).map_err(|_| Error::Storage)?;
         #[cfg(windows)]
         {
             windows::private_acl(&root)?;
@@ -199,6 +202,29 @@ pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn beta_generation_supports_long_dpapi_paths() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-beta-installed-data-{}",
+            crate::random_id().expect("test")
+        ));
+        let data = root
+            .join("generations")
+            .join("g".repeat(32))
+            .join("data/Vantare/native/services");
+        let store = Store::open(&data, "beta-long-path").expect("abrir generación beta");
+        store.save("session", &"fixture").expect("guardar DPAPI");
+        store.save("session", &"updated").expect("reemplazar DPAPI");
+        drop(store);
+        let store = Store::open(&data, "beta-long-path").expect("reabrir");
+        assert_eq!(
+            store.load::<String>("session").expect("restaurar"),
+            "updated"
+        );
+        drop(store);
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn dpapi_corruption_and_wrong_context_fail_closed() {

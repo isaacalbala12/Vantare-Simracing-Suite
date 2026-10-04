@@ -80,8 +80,15 @@ Los datos beta viven en la generación (`data/`); el Hub y sus hijos heredan
 `VANTARE_NATIVE_DATA_ROOT`. Layout, ajustes, servicios y derechos no se escriben
 en la ubicación Wails. Ajustes → Actualizaciones y los diagnósticos muestran
 versión de producto embebida; cada exe admite `--version` y muestra el canal.
-El servicio de informes de la base acepta solo `nightly/testers`: B2 debe
-habilitar el canal beta también en cliente/servidor antes de enviar informes.
+PostHog (cola, privacidad e identificador anónimo) y `freshness.log` usan
+`data/Vantare/native/`; los borradores protegidos se guardan bajo
+`data/Vantare/native/services/<namespace>/` por el auxiliar del supervisor.
+Todos permanecen en la misma generación aislada. El Testing Center usa la
+membership RPC `testers` para una build `beta`, sin cambiar el esquema remoto.
+Su contexto visible añade el identificador anónimo y el canal de distribución;
+la preview y el reintento conservan el mismo payload. El límite de contexto de
+4096 bytes incluye estos metadatos: si se supera, el borrador se conserva y el
+envío se rechaza, sin recortar el texto.
 
 ## Preparar publicación (sin publicar)
 
@@ -89,7 +96,8 @@ Desde `vantare-v2`, en el SHA integrado y limpio:
 
 ```powershell
 powershell -NoProfile -File native/packaging/publish-beta.ps1 `
-  -Version 0.1.1 -OutputDirectory C:/tmp/isa-1454-evidence/release-0.1.1 `
+  -Version 0.1.0 -OutputDirectory C:/tmp/isa-1432-beta-build `
+  -ConfigFile C:/tmp/beta/build-config/beta-dev-clerk.env `
   -Notes 'Notas revisadas por el orquestador'
 ```
 
@@ -101,6 +109,34 @@ Imprime un comando `gh release create --prerelease`; **no lo ejecuta**.
 El orquestador revisa y publica el tag y los assets exactos. No usar `latest/download`
 porque la beta es prerelease. `-BuildProfile Debug -AllowDirty` sirve para QA local;
 no equivale a una candidata Release del SHA integrado.
+
+### Variables públicas finales de build
+
+`-ConfigFile` carga líneas literales `NOMBRE=valor` (comillas opcionales), sin
+expansión de PowerShell ni impresión de valores. Rechaza nombres desconocidos,
+duplicados, valores vacíos y claves privilegiadas; restaura el entorno al acabar.
+La configuración queda fuera del repositorio y del paquete. Lista cerrada:
+
+| Variable | Uso |
+| --- | --- |
+| `VANTARE_SUPABASE_URL` | Origen HTTPS del proyecto Supabase. |
+| `VANTARE_SUPABASE_ANON_KEY` | Clave pública anon/publishable; nunca service role. |
+| `VANTARE_LICENSE_PUBLIC_KEYS` | Claves públicas de verificación de licencia y sus kid. |
+| `VANTARE_CLERK_ISSUER` | Issuer OAuth Clerk. |
+| `VANTARE_CLERK_CLIENT_ID` | Client ID público nativo. |
+| `VANTARE_CLERK_REDIRECT` | Callback loopback registrado. |
+| `VANTARE_ACCOUNT_BRIDGE_URL` | Endpoint exacto `native-account-authorize`. |
+| `VANTARE_POSTHOG_KEY` | Clave pública PostHog UE; ausencia desactiva diagnóstico. |
+| `VANTARE_ADMIN_URL` | Endpoint owner, solo para la compilación separada de admin. |
+
+`VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL` los fija el builder desde `-Version`
+y el canal `beta`; no se aceptan en el fichero. `packaging/version.rs` es la
+fuente de identidad que usan binarios, PostHog y Testing Center. Las claves
+privadas de licencia y los secretos Clerk/Supabase viven solo en servidor.
+
+La miniapp `vantare-admin` se excluye de la compilación pública y del inventario
+del paquete; `beta.ps1` solo arranca supervisor y Hub. Se compila aparte según
+[`admin/README.md`](../admin/README.md), nunca se añade al instalador público.
 
 ## Prueba local
 

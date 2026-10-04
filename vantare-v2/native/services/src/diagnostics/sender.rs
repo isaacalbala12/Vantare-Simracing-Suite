@@ -62,7 +62,7 @@ fn flush_until(
                     // Puede estar escribiendo otro proceso: conservar para el siguiente ciclo.
                     Err(_) => continue,
                 };
-                let properties = serde_json::json!({"binary": bounded(&crash.binary,64), "version": bounded(&crash.version,64), "message": bounded(&crash.message,1024), "backtrace": bounded(&crash.backtrace,8192), "timestamp": crash.timestamp});
+                let properties = serde_json::json!({"binary": bounded(&crash.binary,64), "version": bounded(&crash.version,64), "channel": crate::product::CHANNEL, "message": bounded(&crash.message,1024), "backtrace": bounded(&crash.backtrace,8192), "timestamp": crash.timestamp});
                 ("crash".to_owned(), properties)
             } else {
                 let usage: Usage = match serde_json::from_slice(&bytes) {
@@ -202,6 +202,8 @@ mod tests {
                     body["properties"][field].as_str().expect("text"),
                 );
             }
+            assert_eq!(body["properties"]["version"], crate::product::VERSION);
+            assert_eq!(body["properties"]["channel"], crate::product::CHANNEL);
             assert!(request.contains("\"event\":\"crash\""));
             assert!(request.contains("$process_person_profile"));
         }

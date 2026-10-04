@@ -11,7 +11,7 @@ Deno.test("native account/admin are recognized without changing default commerci
   }
   const config = Deno.readTextFileSync(
     new URL("../../config.toml", import.meta.url),
-  );
+  ).replaceAll("\r\n", "\n");
   const wrapper = Deno.readTextFileSync(
     new URL("deploy-approved-functions.ps1", import.meta.url),
   );

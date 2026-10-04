@@ -517,12 +517,8 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     };
     vantare_services::diagnostics::record_usage(
         &vantare_services::diagnostics::Usage::AppStarted {
-            version: option_env!("VANTARE_VERSION")
-                .unwrap_or(env!("CARGO_PKG_VERSION"))
-                .into(),
-            channel: option_env!("VANTARE_BUILD_CHANNEL")
-                .unwrap_or("unknown")
-                .into(),
+            version: product::VERSION.into(),
+            channel: product::CHANNEL.into(),
         },
     );
     let remote = start_remote_services(&mut config)?;

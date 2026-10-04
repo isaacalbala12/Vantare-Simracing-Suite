@@ -116,6 +116,24 @@ pub struct Environment {
     pub channel: String,
     pub app_version: String,
     pub os_version: String,
+    pub installation: Option<String>,
+}
+
+/// La distribución beta usa la membership de testers del contrato RPC v1.
+pub(crate) fn rpc_channel(channel: &str) -> &str {
+    if channel == "beta" {
+        "testers"
+    } else {
+        channel
+    }
+}
+
+/// Metadatos visibles en la preview y estables en el intento durable/reintento.
+fn installation_context(root: &std::path::Path, channel: &str) -> Result<String> {
+    let id = crate::diagnostics::anonymous_id(root)?;
+    Ok(format!(
+        "Instalación anónima: {id}\nCanal de distribución: {channel}"
+    ))
 }
 
 #[cfg(windows)]
@@ -134,21 +152,25 @@ impl Environment {
         #[cfg(windows)]
         {
             Ok(Self {
-                channel: channel.into(),
-                app_version: option_env!("VANTARE_VERSION")
-                    .unwrap_or(env!("CARGO_PKG_VERSION"))
-                    .into(),
+                channel: rpc_channel(channel).into(),
+                app_version: crate::product::VERSION.into(),
                 os_version: windows::os_version()?,
+                installation: Some(installation_context(
+                    &crate::diagnostics::data_root()?,
+                    crate::product::CHANNEL,
+                )?),
             })
         }
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             Ok(Self {
-                channel: channel.into(),
-                app_version: option_env!("VANTARE_VERSION")
-                    .unwrap_or(env!("CARGO_PKG_VERSION"))
-                    .into(),
+                channel: rpc_channel(channel).into(),
+                app_version: crate::product::VERSION.into(),
                 os_version: unix_os_version()?,
+                installation: Some(installation_context(
+                    &crate::diagnostics::data_root()?,
+                    crate::product::CHANNEL,
+                )?),
             })
         }
         #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
@@ -218,6 +240,16 @@ struct Submission {
 impl Submission {
     fn new(draft: Draft, env: Environment) -> Result<Self> {
         draft_valid(&draft, true)?;
+        let mut context = draft.fields.context_text.trim().to_owned();
+        if let Some(installation) = &env.installation {
+            if !context.is_empty() {
+                context.push_str("\n\n");
+            }
+            context.push_str(installation);
+        }
+        if context.len() > 4096 || context.contains('\0') {
+            return Err(Error::TooLarge);
+        }
         if !matches!(env.channel.as_str(), "nightly" | "testers")
             || env.app_version.is_empty()
             || env.app_version.len() > 32
@@ -232,7 +264,7 @@ impl Submission {
             action_text: draft.fields.action_text.trim().into(),
             expected_text: draft.fields.expected_text.trim().into(),
             observed_text: draft.fields.observed_text.trim().into(),
-            context_text: draft.fields.context_text.trim().into(),
+            context_text: context,
             app_version: env.app_version,
             os_family: OS_FAMILY.into(),
             os_version: env.os_version,
@@ -271,6 +303,7 @@ impl Submission {
                 channel: self.channel.clone(),
                 app_version: self.app_version.clone(),
                 os_version: self.os_version.clone(),
+                installation: None,
             },
         )?;
         Ok(())
@@ -301,6 +334,8 @@ struct Attempt {
     phase: Phase,
     #[serde(default)]
     images: Vec<screenshots::Screenshot>,
+    #[serde(default)]
+    installation: Option<String>,
 }
 impl Attempt {
     fn digest(&self) -> Result<String> {
@@ -381,6 +416,7 @@ impl Reports {
         {
             return Err(Error::Protocol);
         }
+        let installation = environment.installation.clone();
         let payload = Submission::new(draft, environment)?;
         let candidate = Attempt {
             version: 1,
@@ -389,6 +425,7 @@ impl Reports {
             payload,
             phase: Phase::InFlight,
             images,
+            installation,
         };
         let payload = &candidate.payload;
         if let Some(attempt) = &self.attempt {
@@ -495,6 +532,7 @@ impl Reports {
                     channel: previous.channel.clone(),
                     app_version: previous.app_version.clone(),
                     os_version: previous.os_version.clone(),
+                    installation: consent.attempt.installation.clone(),
                 },
             )?;
             if current.digest()? != consent.attempt.payload.digest()? {

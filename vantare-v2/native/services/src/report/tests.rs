@@ -56,7 +56,28 @@ fn environment() -> Environment {
         channel: "nightly".into(),
         app_version: "native-fixture".into(),
         os_version: "Windows fixture".into(),
+        installation: None,
     }
+}
+
+#[test]
+fn installation_metadata_respects_context_limit_without_changing_the_draft() {
+    let (root, store) = crate::test_store("report-context-limit");
+    let mut fields = fields();
+    fields.context_text = "x".repeat(4096);
+    let draft = save_draft(&store, fields.clone()).expect("draft at limit");
+    let mut environment = environment();
+    environment.installation = Some(installation_context(&root, "beta").expect("installation"));
+    assert!(matches!(
+        Submission::new(draft, environment),
+        Err(Error::TooLarge)
+    ));
+    assert_eq!(
+        load_draft(&store).expect("load").expect("draft").fields,
+        fields
+    );
+    drop(store);
+    crate::cleanup_store(&root, "report-context-limit", &[]);
 }
 
 fn authorization() -> (u16, String) {
@@ -98,18 +119,46 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         .expect("protected images");
     store.save("report-draft", &draft).expect("draft");
     let mut reports = Reports::restore(&store).expect("restore");
+    let installation = installation_context(&root, "beta").expect("installation ID");
+    assert_eq!(
+        installation_context(&root, "beta").expect("stable ID"),
+        installation
+    );
+    let environment = Environment {
+        channel: rpc_channel("beta").into(),
+        app_version: crate::product::VERSION.into(),
+        installation: Some(installation.clone()),
+        ..environment()
+    };
     let preview = reports
-        .prepare_with_images(&request, draft, environment(), vec![image])
+        .prepare_with_images(&request, draft, environment, vec![image])
         .expect("preview");
     assert_eq!(preview.screenshots.len(), 1);
+    assert_eq!(preview.channel, "testers");
+    let payload: serde_json::Value = serde_json::from_str(&preview.payload).expect("JSON");
+    assert_eq!(
+        payload["reporte"]["p_context_text"],
+        format!("Tras reiniciar\n\n{installation}")
+    );
+    assert_eq!(payload["reporte"]["p_app_version"], crate::product::VERSION);
+    assert_eq!(
+        load_draft(&store)
+            .expect("original draft")
+            .expect("draft")
+            .fields,
+        fields()
+    );
     assert!(matches!(
         reports.send(&request, &preview.id, &store),
         Err(Error::EvidencePending)
     ));
     assert!(load_draft(&store).expect("draft retained").is_some());
     let mut restored = Reports::restore(&store).expect("restart");
-    let retry = restored.prepare_retry(&request, "nightly").expect("retry");
+    let retry = restored
+        .prepare_retry(&request, rpc_channel("beta"))
+        .expect("retry");
     assert_eq!(retry.digest, preview.digest);
+    assert_eq!(retry.payload, preview.payload);
     assert_eq!(retry.screenshots[0].jpeg, preview.screenshots[0].jpeg);
     restored
         .send(&request, &retry.id, &store)

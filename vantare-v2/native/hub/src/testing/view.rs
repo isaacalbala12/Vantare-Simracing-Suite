@@ -44,8 +44,10 @@ impl Testing {
         let capture = selected_capture_tab(&data).is_some();
         #[cfg(not(feature = "parity-capture"))]
         let capture = false;
-        let channel_label =
-            super::model::channel_label(option_env!("VANTARE_BUILD_CHANNEL"), capture);
+        let channel_label = super::model::channel_label(
+            option_env!("VANTARE_BUILD_CHANNEL").map(|_| crate::product::CHANNEL),
+            capture,
+        );
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
                 "Vistas de Testing Center",

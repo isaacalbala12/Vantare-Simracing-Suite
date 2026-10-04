@@ -1,5 +1,34 @@
 use super::*;
 
+#[cfg(all(windows, feature = "network"))]
+#[test]
+fn beta_data_root_child() {
+    if let Some(root) = std::env::var_os("VANTARE_TEST_BETA_ROOT") {
+        let native = PathBuf::from(root).join("Vantare/native");
+        assert_eq!(data_root().expect("diagnostics root"), native);
+        assert_eq!(
+            crate::app::default_root().expect("services root"),
+            native.join("services")
+        );
+    }
+}
+
+#[cfg(all(windows, feature = "network"))]
+#[test]
+fn beta_diagnostics_and_drafts_use_the_same_generation() {
+    let root = root();
+    let status = std::process::Command::new(std::env::current_exe().expect("test exe"))
+        .args(["--exact", "diagnostics::tests::beta_data_root_child"])
+        .env("VANTARE_TEST_BETA_ROOT", &root)
+        .env("VANTARE_NATIVE_DATA_ROOT", &root)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("child");
+    assert!(status.success());
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
 pub(super) fn sensitive_text() -> String {
     let mut text = r"C:\Users\WindowsUser\AppData\panic C:/Users/ForwardUser/src.rs /home/LinuxUser/src.rs /Users/MacUser/src.rs MailUser@example.test eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmaXh0dXJlIn0.c2lnbmF0dXJl Bearer fixture-token-123".to_owned();
     for name in ["USERPROFILE", "HOME"] {

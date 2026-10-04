@@ -143,6 +143,8 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
         assert!(!text.contains(secret), "filtra {secret}");
     }
     let value: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+    assert_eq!(value["diagnostic"]["version"], crate::product::VERSION);
+    assert_eq!(value["diagnostic"]["channel"], crate::product::CHANNEL);
     assert_eq!(value["privateText"], "omitted_for_privacy");
     assert_eq!(
         value["privateFieldsPresent"],

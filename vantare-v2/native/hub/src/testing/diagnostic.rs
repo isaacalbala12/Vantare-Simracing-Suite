@@ -239,8 +239,8 @@ impl Diagnostic {
     pub fn collect(root: &Path, data: &Path, observed: &Observed, now: Instant) -> Self {
         Self {
             schema_version: 1,
-            version: option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
-            channel: option_env!("VANTARE_BUILD_CHANNEL").unwrap_or("development"),
+            version: crate::product::VERSION,
+            channel: crate::product::CHANNEL,
             os: std::env::consts::OS,
             arch: std::env::consts::ARCH,
             generated_at_utc: chrono::Utc::now().timestamp(),

@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$Notes = '',
+    [string]$ConfigFile,
     [string]$NsisCompiler = "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
     [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
     [switch]$AllowDirty
@@ -14,7 +15,9 @@ $publishVersion = $Version
 $publishProfile = $BuildProfile
 $publishAllowDirty = $AllowDirty
 $publishOutput = $OutputDirectory
+$publishConfigFile = $ConfigFile
 . (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'build-config.ps1')
 $Version = $publishVersion
 $BuildProfile = $publishProfile
 $AllowDirty = $publishAllowDirty
@@ -22,7 +25,11 @@ $OutputDirectory = $publishOutput
 $null = Read-BetaVersion $Version
 $output = Assert-NativePath $OutputDirectory
 $compiler = Get-Command $NsisCompiler -ErrorAction Stop
-$artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty)
+$previousConfig = @{}
+try {
+    if ($publishConfigFile) { $previousConfig = Import-NativeBuildConfig $publishConfigFile }
+    $artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty)
+} finally { Restore-NativeBuildConfig $previousConfig }
 $manifest = [ordered]@{
     schema = 1; product = 'vantare-native'; channel = 'beta'; version = $Version
     url = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"

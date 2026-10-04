@@ -26,7 +26,7 @@ impl BuildConfig {
             supabase: option_env!("VANTARE_SUPABASE_URL").and_then(|value| remote_url(value).ok()),
             anon_key: option_env!("VANTARE_SUPABASE_ANON_KEY").filter(|s| !s.is_empty()),
             license_keys: option_env!("VANTARE_LICENSE_PUBLIC_KEYS").filter(|s| !s.is_empty()),
-            channel: option_env!("VANTARE_BUILD_CHANNEL"),
+            channel: option_env!("VANTARE_BUILD_CHANNEL").map(|_| crate::product::CHANNEL),
             native_oauth: OAuthBuild::from_build_values(
                 option_env!("VANTARE_CLERK_ISSUER"),
                 option_env!("VANTARE_CLERK_CLIENT_ID"),

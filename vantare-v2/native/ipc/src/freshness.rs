@@ -53,7 +53,8 @@ pub fn log_transition(
         snapshot.origin.received_at,
     );
     eprint!("{line}");
-    let root = std::env::var_os("LOCALAPPDATA")
+    let root = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| std::env::var_os("LOCALAPPDATA"))
         .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
         .join("Vantare/native/logs");
     let append = || -> io::Result<()> {

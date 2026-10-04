@@ -40,7 +40,9 @@ impl Privacy {
 /// Igual raíz que layout.json; no depende de UI, identidad ni licencia.
 pub fn data_root() -> Result<PathBuf> {
     #[cfg(windows)]
-    let base = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
+    let base = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| std::env::var_os("LOCALAPPDATA"))
+        .map(PathBuf::from);
     #[cfg(target_os = "linux")]
     let base = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
@@ -197,10 +199,7 @@ fn write_crash(root: &Path, binary: &str, message: &str, backtrace: &str) -> Res
         "crashes",
         &Crash {
             binary: bounded(binary, 64),
-            version: bounded(
-                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
-                64,
-            ),
+            version: bounded(crate::product::VERSION, 64),
             message: bounded(message, 1024),
             backtrace: bounded(backtrace, 8192),
             timestamp: timestamp()?,
@@ -263,7 +262,7 @@ impl Usage {
                         .all(|c| c.is_ascii_alphanumeric() || ".-+".contains(c))
                     && matches!(
                         channel.as_str(),
-                        "nightly" | "testers" | "master" | "beta" | "unknown"
+                        "nightly" | "testers" | "master" | "beta" | "development" | "unknown"
                     )
             }
             Self::LiveSessionStarted { simulator } => matches!(simulator.as_str(), "lmu" | "acc"),

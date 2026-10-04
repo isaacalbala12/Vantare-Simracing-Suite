@@ -52,6 +52,7 @@ pub struct Authority {
     confirmed_game: bool,
     invalidated: bool,
     anchor: Option<(DateTime<Utc>, Duration)>,
+    last_wall: Option<DateTime<Utc>>,
 }
 
 impl Authority {
@@ -73,11 +74,17 @@ impl Authority {
             verified: None,
             confirmed_game: false,
             anchor: None,
+            last_wall: None,
         })
     }
 
     fn observe(&mut self, wall: DateTime<Utc>, tick: Duration) -> Result<DateTime<Utc>> {
-        if self.clock.last_seen.is_some_and(|last| wall < last) {
+        // Comparar pared con pared: el reloj efectivo puede adelantarse por deriva.
+        if self
+            .last_wall
+            .or(self.clock.last_seen)
+            .is_some_and(|last| wall < last)
+        {
             return Err(Error::Clock);
         }
         let now = if let Some((anchor, start)) = self.anchor {
@@ -88,6 +95,8 @@ impl Authority {
             self.anchor = Some((wall, tick));
             wall
         };
+        let now = now.max(self.clock.last_seen.unwrap_or(now));
+        self.last_wall = Some(wall);
         self.clock.last_seen = Some(now);
         Ok(now)
     }

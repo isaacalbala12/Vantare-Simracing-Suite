@@ -1259,3 +1259,36 @@ PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.
 - [Tarea Notion](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), dependencia de la integración de widgets #1298 autorizada por Isaac. Base nightly `1e9932c4`; rama `vantareapp/isa-1301-quality-policy-test`.
 - La prueba anterior asumía que cualquier PR modificaba la política; un check correcto PASS hacía fallar CI. Se sustituye por un repositorio Git temporal: control limpio PASS, cambios de política sin commit/con commit/untracked REVIEW_REQUIRED y hallazgo de analizador FAIL. El diff Git, el detector de política, el agregado y el exit del proceso son reales; solo se inyectan resultados de analizadores, cuyos binarios ya prueban las otras clases.
 - Sin cambios de producto, motor de calidad, reglas, baselines ni excepciones. Roadmap required: `milestones:quality-linux-analysis`. Revisión independiente y gates remotos previos a nightly; sin testers/master/release.
+
+
+### #1464 — acceso nativo durante LMU Live (2026-10-05)
+
+Worker en `C:/tmp/vw3-1464/vantare-v2`, base recibida `376d9ae3`.
+La captura real `C:/tmp/acceso-evidence/inicio-diagnostic.png` muestra el Hub
+rechazando el acceso con «servicios cerrados durante el juego». A la vez, las
+trazas temporales del núcleo (`runtime-acceso-diagnostic.err.log`) verifican
+`overlays_advanced=true`, los cuatro módulos habilitados y `error=None`.
+Firma, binding y transferencia al núcleo funcionan en esta sesión; no hace
+falta cambiar roles para resolver este rechazo. No se consultaron ni cambiaron
+secretos, archivos DPAPI, roles o producción.
+
+Causa confirmada del Hub: el supervisor bloqueaba `Status` y `LicenseStatus`
+al cerrar services en Live. Ahora `Status` puede descubrir el acceso guardado
+y el heartbeat devuelve directamente la política del núcleo, sin reabrir el
+helper ni reinstalar candidatos. Regresión con helper/IPC reales: RED antes,
+PASS después. Se conserva el cierre de servicios de red durante el juego.
+
+También se reproduce con reloj inyectado un falso `Clock`: comparar pared con
+el tiempo efectivo adelantado por deriva rechazaba la segunda observación del
+mismo instante. Se comparan observaciones de pared entre sí y se conserva el
+tiempo efectivo monotónico, los vencimientos y la protección tras reinicio;
+sin cambios del formato persistido. No se ha reproducido físicamente el
+parpadeo original en esta sesión, por lo que no se atribuye a este segundo
+fallo sin evidencia. Las trazas temporales se retiraron del código.
+
+Gates: fmt y Clippy workspace/all-targets PASS; nextest 1088/1088 PASS con
+4 omisiones del perfil; lifecycle PASS, 0 fallos. Evidencia fuera del repo en
+`C:/tmp/acceso-evidence/`. Una repetición chocó con un temporal de Analysis
+basado en PID; la suite final completa pasó con TEMP/TMP aislados. Pendiente
+inmediato: recompilar Release con la configuración autorizada y validar la
+app real. Solo commits locales; sin push, PR, integración ni release.

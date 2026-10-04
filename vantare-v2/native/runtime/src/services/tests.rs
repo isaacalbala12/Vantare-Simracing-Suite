@@ -227,7 +227,10 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     snapshot.state.source_state = vantare_domain::SourceState::Live;
     snapshot.state.session.id = vantare_domain::SessionId(91);
     core.publish(Arc::new(snapshot.clone()));
-    assert!(matches!(hub.request(Command::Status), Reply::Error { .. }));
+    assert!(matches!(
+        hub.request(Command::RoadmapCached),
+        Reply::Error { .. }
+    ));
     assert!(
         services.state.lock().expect("state").client.is_none(),
         "helper cerrado y reaped"
@@ -321,4 +324,46 @@ fn without_a_license_the_hub_can_still_sign_in_during_a_live_session() {
     drop(services);
     drop(core);
     std::fs::remove_dir_all(root).expect("limpiar solo carpeta aleatoria del test");
+}
+
+#[test]
+fn live_cached_access_metadata_and_policy_survive_services_shutdown() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::new();
+    let mut hub = Session::open(&photo);
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    let mut snapshot = vantare_domain::Snapshot::default();
+    snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+    snapshot.state.source_state = vantare_domain::SourceState::Live;
+    snapshot.state.session.id = vantare_domain::SessionId(91);
+    core.publish(Arc::new(snapshot));
+    assert!(matches!(
+        hub.request(Command::RoadmapCached),
+        Reply::Error { .. }
+    ));
+    assert!(services.state.lock().expect("state").client.is_none());
+    let policy = control::request(&link, control::Command::Read).expect("policy");
+    assert!(policy.current() && policy.overlays_advanced);
+    let Reply::License { policy: read, .. } = hub.request(Command::LicenseStatus) else {
+        panic!("cached rights must remain readable in game")
+    };
+    assert!(read.current() && read.overlays_advanced);
+    assert!(
+        services.state.lock().expect("state").client.is_none(),
+        "policy heartbeat must not restart the helper or reinstall the candidate"
+    );
+    assert!(
+        matches!(hub.request(Command::Status), Reply::Status { .. }),
+        "startup must be able to discover the saved account"
+    );
+    assert!(matches!(hub.request(Command::Shutdown), Reply::Closed));
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("cleanup fixture");
 }

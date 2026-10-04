@@ -523,3 +523,78 @@ fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
     drop(store);
     crate::cleanup_store(&root, "offline-paid-period", &["authority"]);
 }
+
+#[test]
+fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
+    use authority::Authority;
+    let (root, store) = crate::test_store("clock-drift");
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let start = date("2026-09-30T10:30:00Z").expect("date");
+    let mut core = Authority::restore(&store).expect("core");
+    core.install(
+        verifier
+            .v1(&credential, SUBJECT, "test-device")
+            .expect("proof"),
+        start,
+        Duration::ZERO,
+    )
+    .expect("install");
+    // El host observa el mismo par wall/tick al entrar y al consultar derechos.
+    let wall = start + chrono::TimeDelta::milliseconds(999);
+    let tick = Duration::from_secs(1);
+    core.enter_game(7, wall, tick).expect("entry");
+    assert_eq!(
+        core.rights(wall, tick)
+            .expect("same observation is valid")
+            .len(),
+        1
+    );
+    assert_eq!(
+        core.rights(
+            wall + chrono::TimeDelta::microseconds(1),
+            tick + Duration::from_micros(1)
+        )
+        .expect("wall still advances")
+        .len(),
+        1
+    );
+    assert!(
+        matches!(
+            core.rights(
+                wall - chrono::TimeDelta::microseconds(1),
+                tick + Duration::from_micros(2)
+            ),
+            Err(Error::Clock)
+        ),
+        "actual wall rollback is denied"
+    );
+    // Fuera de juego no hay gracia; la deriva no alarga el vencimiento.
+    core.leave_game();
+    assert!(
+        core.rights(
+            start + chrono::TimeDelta::seconds(1799),
+            Duration::from_mins(30)
+        )
+        .expect("exact monotonic expiry")
+        .is_empty()
+    );
+    core.persist(&store).expect("persist");
+    let mut restored = Authority::restore(&store).expect("restore");
+    assert!(
+        matches!(
+            restored.install(
+                verifier
+                    .v1(&credential, SUBJECT, "test-device")
+                    .expect("proof"),
+                start,
+                Duration::ZERO
+            ),
+            Err(Error::Clock)
+        ),
+        "cold restart preserves rollback protection"
+    );
+    drop(store);
+    crate::cleanup_store(&root, "clock-drift", &["authority"]);
+}

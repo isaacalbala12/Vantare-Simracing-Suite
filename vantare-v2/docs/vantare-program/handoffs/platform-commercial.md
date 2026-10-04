@@ -1289,6 +1289,19 @@ fallo sin evidencia. Las trazas temporales se retiraron del código.
 Gates: fmt y Clippy workspace/all-targets PASS; nextest 1088/1088 PASS con
 4 omisiones del perfil; lifecycle PASS, 0 fallos. Evidencia fuera del repo en
 `C:/tmp/acceso-evidence/`. Una repetición chocó con un temporal de Analysis
-basado en PID; la suite final completa pasó con TEMP/TMP aislados. Pendiente
-inmediato: recompilar Release con la configuración autorizada y validar la
-app real. Solo commits locales; sin push, PR, integración ni release.
+basado en PID; la suite final completa pasó con TEMP/TMP aislados.
+
+Código local `4bdc00d44c88652a122e8d19ce14881cc9e29bdb`; Release recompilado
+con la configuración autorizada y `-j 2` (PASS). App de Isaac arrancada con
+este código: Hub muestra Inicio sin rechazo de acceso, los widgets dibujan
+LMU Live, y las capturas `inicio-final.png` / `inicio-final-60s.png`, separadas
+113 segundos, mantienen ese estado. Los mismos PID siguen activos; hashes
+de cinco binarios y listados de procesos en la carpeta de evidencia. Esto no
+es una observación continua ni certifica todos los módulos. Se hicieron tres
+arranques (dos reinicios), conservando la cuenta y todos los datos. La app
+queda abierta. Verificación de Isaac: abrir Cuenta/Studio, comprobar el acceso
+y observar los widgets al continuar en pista. Si vuelve el parpadeo, registrar
+esa sesión; su causa física original sigue sin atribución concluyente.
+Solo commits locales; sin push, PR, CI remota, integración ni release. No se
+modificaron roles ni servicios remotos. `docs/roadmap/plan.md` no existe en
+esta base recibida; no se creó un roadmap paralelo para este bug.

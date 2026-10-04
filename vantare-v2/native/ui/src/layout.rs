@@ -237,6 +237,11 @@ impl Document {
         &self.layout
     }
 
+    /// `false` si el fichero no existía al abrirlo (usuario nuevo).
+    pub fn exists(&self) -> bool {
+        self.bytes.is_some()
+    }
+
     /// Una lectura fallida se reintenta aunque conserve mtime (guardado parcial).
     /// El host deduplica sus errores; nunca se sustituye el último layout válido.
     pub fn poll(&mut self) -> Result<bool, Error> {

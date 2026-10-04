@@ -32,6 +32,8 @@ mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]
 mod stats;
+#[cfg(windows)]
+mod tray;
 pub mod workshop;
 
 include!("registry.rs");

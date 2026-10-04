@@ -75,6 +75,45 @@ pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))>
         .collect()
 }
 
+/// Layout inicial de un usuario nuevo (#1464) para el monitor `(x, y, ancho, alto)`:
+/// Standings a la izquierda, Relative a la derecha, Delta y Pedales abajo al
+/// centro. Los márgenes son proporcionales y dejan libre el centro de la vista.
+pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::Layout {
+    let (x, y, width, height) = monitor;
+    let (top, side, bottom) = (y + height * 0.08, width * 0.02, y + height * 0.94);
+    let delta = Kind::Delta.size();
+    let pedals = Kind::Pedals.size();
+    let delta_x = x + (width - delta.0) / 2.0;
+    let placed = [
+        ("standings", Kind::Standings, (x + side, top)),
+        (
+            "relative",
+            Kind::Relative,
+            (x + width - side - Kind::Relative.size().0, top),
+        ),
+        ("delta", Kind::Delta, (delta_x, bottom - delta.1)),
+        (
+            "pedals",
+            Kind::Pedals,
+            (delta_x + delta.0 + 20.0, bottom - pedals.1),
+        ),
+    ];
+    crate::layout::Layout {
+        instances: placed
+            .into_iter()
+            .map(|(id, kind, (x, y))| crate::layout::Instance {
+                id: id.into(),
+                x: x.round(),
+                y: y.round(),
+                visible: true,
+                opacity: 1.0,
+                settings: Settings::default_for(kind),
+            })
+            .collect(),
+        ..crate::layout::Layout::default()
+    }
+}
+
 /// Widget de una ventana: proyecta la instantánea y se pinta en un lienzo de su
 /// tamaño. No sabe si la ventana es suya o compartida con otros widgets.
 pub struct Overlay {
@@ -231,15 +270,10 @@ pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if crate::rights::denied(self.kind, cx) {
+            // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             return div()
                 .w(px(self.wanted_size().0 * self.preview_scale))
                 .h(px(self.wanted_size().1 * self.preview_scale))
-                .when(self.preview_scale != 1.0, |view| {
-                    view.text_size(window.rem_size() * self.preview_scale)
-                })
-                .bg(gpui::rgba(0x181818ee))
-                .text_color(gpui::white())
-                .child("Requiere licencia vigente")
                 .into_any_element();
         }
         #[cfg(feature = "paint-stats")]
@@ -352,8 +386,15 @@ impl Render for Screen {
         #[cfg(feature = "paint-stats")]
         crate::stats::frame();
         attach(&mut self.hwnd, window, self.origin);
+        // Un único aviso discreto en la esquina del primer widget, no uno por widget.
+        let notice = self
+            .widgets
+            .first()
+            .filter(|first| crate::rights::denied(first.view.read(cx).kind, cx))
+            .map(|first| license_notice(first.at));
         div()
             .size_full()
+            .children(notice)
             .children(self.widgets.iter().map(|placed| {
                 // Una vista cacheada se coloca y dimensiona por estilo, no por contenido.
                 let (w, h) = placed.view.read(cx).wanted_size();
@@ -374,6 +415,34 @@ impl Render for Screen {
                     )
             }))
     }
+}
+
+/// Pastilla Orbit/Eficiencia: panel oscuro, punto de acento y texto pequeño.
+fn license_notice(at: (f32, f32)) -> gpui::Div {
+    use crate::efficiency::tokens;
+    div()
+        .absolute()
+        .left(px(at.0))
+        .top(px(at.1))
+        .flex()
+        .items_center()
+        .gap(px(8.0))
+        .px(px(12.0))
+        .py(px(6.0))
+        .rounded_full()
+        .bg(crate::efficiency::col(tokens::PANEL, 0.92))
+        .border_1()
+        .border_color(crate::efficiency::col(tokens::INK, 0.08))
+        .font_family("Inter W500")
+        .text_size(px(12.0))
+        .text_color(crate::efficiency::col(tokens::MUTED, 1.0))
+        .child(
+            div()
+                .size(px(6.0))
+                .rounded_full()
+                .bg(crate::efficiency::col(tokens::LOSS, 1.0)),
+        )
+        .child("Inicia sesión en Vantare para ver tus overlays")
 }
 
 fn popup(bounds: Bounds<Pixels>) -> WindowOptions {
@@ -473,6 +542,9 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 
 struct LiveScreens {
     usage_widgets: Option<Vec<String>>,
+    /// Último layout aplicado y su ocultación desde la bandeja.
+    layout: crate::layout::Layout,
+    hidden: bool,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
     prefs: Preferences,
@@ -512,7 +584,16 @@ fn reconcile_widgets<T>(
 }
 
 impl LiveScreens {
+    /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
+    /// tocar el documento ni el estado de cada widget.
+    fn toggle(&mut self, cx: &mut App) {
+        self.hidden = !self.hidden;
+        let layout = self.layout.clone();
+        self.apply(&layout, cx);
+    }
+
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        self.layout.clone_from(layout);
         let mut widget_types: Vec<_> = layout
             .instances
             .iter()
@@ -600,7 +681,7 @@ impl LiveScreens {
             }
             let widgets = mine
                 .into_iter()
-                .filter(|(instance, _)| instance.visible)
+                .filter(|(instance, _)| instance.visible && !self.hidden)
                 .map(|(instance, at)| {
                     let view = self.widgets[&instance.id].view.clone();
                     PlacedOverlay {
@@ -695,6 +776,20 @@ fn run_layout_feed<T: Send + 'static>(
             return;
         }
         crate::rights::install(rights, cx);
+        if !document.exists()
+            && let Some(display) = cx.primary_display()
+        {
+            let bounds = display.bounds();
+            let monitor = (
+                f32::from(bounds.origin.x),
+                f32::from(bounds.origin.y),
+                f32::from(bounds.size.width),
+                f32::from(bounds.size.height),
+            );
+            if let Err(error) = document.save(&starter_layout(monitor)) {
+                eprintln!("layout inicial no guardado: {error}");
+            }
+        }
         // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
         // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
         cx.set_quit_mode(gpui::QuitMode::Explicit);
@@ -702,6 +797,8 @@ fn run_layout_feed<T: Send + 'static>(
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
             usage_widgets: None,
+            layout: crate::layout::Layout::default(),
+            hidden: false,
             screens: Vec::new(),
             widgets: HashMap::new(),
             prefs: document.layout().preferences,
@@ -713,6 +810,22 @@ fn run_layout_feed<T: Send + 'static>(
             demand.set(document.layout().demand());
         }
         screens.borrow_mut().apply(document.layout(), cx);
+        #[cfg(windows)]
+        match crate::tray::spawn() {
+            Ok(actions) => {
+                let tray_screens = screens.clone();
+                cx.spawn(async move |cx| {
+                    while let Ok(action) = actions.recv_async().await {
+                        cx.update(|cx| match action {
+                            crate::tray::Action::Toggle => tray_screens.borrow_mut().toggle(cx),
+                            crate::tray::Action::Quit => cx.quit(),
+                        });
+                    }
+                })
+                .detach();
+            }
+            Err(error) => eprintln!("icono de bandeja no disponible: {error}"),
+        }
         let feed_screens = screens.clone();
         cx.spawn(async move |cx| {
             while let Ok(snapshot) = snapshots.recv_async().await {
@@ -1259,6 +1372,49 @@ mod tests {
             (pedals.throttle, pedals.brake, pedals.clutch),
             (Some(0.75), Some(0.125), Some(0.06))
         );
+    }
+
+    #[test]
+    fn starter_layout_fits_the_monitor_without_overlaps_or_covering_the_center() {
+        for monitor in [
+            (0.0, 0.0, 1920.0, 1080.0),
+            (0.0, 0.0, 2560.0, 1440.0),
+            (-1280.0, 0.0, 3440.0, 1440.0),
+        ] {
+            let (mx, my, mw, mh) = monitor;
+            let layout = starter_layout(monitor);
+            let boxes: Vec<_> = layout
+                .instances
+                .iter()
+                .map(|instance| {
+                    let (w, h) = instance.settings.kind().size();
+                    (instance.x, instance.y, instance.x + w, instance.y + h)
+                })
+                .collect();
+            assert_eq!(boxes.len(), 4);
+            let overlaps = |a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)| {
+                a.0 < b.2 && b.0 < a.2 && a.1 < b.3 && b.1 < a.3
+            };
+            let center = (mx + mw * 0.3, my + mh * 0.3, mx + mw * 0.7, my + mh * 0.7);
+            for (index, &area) in boxes.iter().enumerate() {
+                assert!(
+                    area.0 >= mx && area.1 >= my && area.2 <= mx + mw && area.3 <= my + mh,
+                    "{monitor:?}: {area:?} fuera del monitor"
+                );
+                assert!(
+                    !overlaps(area, center),
+                    "{monitor:?}: {area:?} tapa el centro"
+                );
+                for &other in &boxes[index + 1..] {
+                    assert!(!overlaps(area, other), "{monitor:?}: {area:?} y {other:?}");
+                }
+            }
+            assert_eq!(
+                crate::layout::Layout::from_json(&serde_json::to_vec(&layout).expect("json"))
+                    .expect("documento válido"),
+                layout
+            );
+        }
     }
 
     #[test]

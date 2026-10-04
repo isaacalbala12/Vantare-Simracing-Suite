@@ -6547,6 +6547,7 @@ dependencies = [
  "vantare-domain",
  "vantare-ipc",
  "vantare-services",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

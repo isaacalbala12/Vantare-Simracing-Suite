@@ -25,6 +25,10 @@ raw-window-handle = "0.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[target.'cfg(windows)'.dependencies]
+# Ya en el workspace (runtime, ipc, services): icono de bandeja de los overlays.
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 # El crate de plataforma desactiva sus backends por defecto; las ventanas Unix
 # de Linux admiten sesiones X11 y Wayland.

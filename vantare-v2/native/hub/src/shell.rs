@@ -111,7 +111,8 @@ impl Hub {
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
-            let close = crate::lifecycle::should_close(self.previous_source, &snapshot);
+            let signing_in = self.remote.read(cx).holds_hub_in_game();
+            let close = crate::lifecycle::should_close(self.previous_source, &snapshot, signing_in);
             let observed = Some(crate::lifecycle::is_live(&snapshot));
             let changed = self.previous_source != observed;
             self.previous_source = observed;

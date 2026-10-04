@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex, TryLockError},
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use vantare_ipc::{
     Peer,
@@ -17,6 +17,25 @@ use vantare_services::{
 };
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
+/// Hasta cuándo hay un inicio de sesión o renovación en curso (#1464).
+type SigningIn = Arc<Mutex<Option<Instant>>>;
+/// Un OAuth abandonado no retiene los servicios en carrera para siempre.
+const SIGN_IN_WINDOW: Duration = Duration::from_mins(10);
+
+/// Huella mínima en carrera, salvo que cerrar deje al usuario sin acceso:
+/// sin licencia válida guardada o con un acceso a medias se sigue sirviendo.
+fn closes_for_game(policy: &control::Policy, signing_in: bool) -> bool {
+    policy.live && policy.overlays_advanced && !signing_in
+}
+fn signing_in(slot: &SigningIn) -> bool {
+    slot.lock()
+        .is_ok_and(|until| until.is_some_and(|until| Instant::now() < until))
+}
+fn set_signing_in(slot: &SigningIn, active: bool) {
+    if let Ok(mut until) = slot.lock() {
+        *until = active.then(|| Instant::now() + SIGN_IN_WINDOW);
+    }
+}
 pub fn pipe_name(photo: &str) -> String {
     format!("{photo}-hub-services")
 }
@@ -47,6 +66,7 @@ impl Host {
     ) -> io::Result<Self> {
         let stop = Arc::new(Event::new()?);
         let cancellation = Arc::new(Mutex::new(None));
+        let signing = Arc::new(Mutex::new(None));
         let state = Arc::new(Mutex::new(State { client: None }));
         let mut listener =
             Listener::new(&pipe_name(photo), Arc::clone(&stop), Duration::from_mins(5))?;
@@ -55,12 +75,14 @@ impl Host {
             Arc::clone(&state),
             Arc::clone(&stop),
             Arc::clone(&cancellation),
+            Arc::clone(&signing),
             options.core.clone(),
         )?;
         let server = {
             let state = Arc::clone(&state);
             let stop = Arc::clone(&stop);
             let cancellation = Arc::clone(&cancellation);
+            let signing = Arc::clone(&signing);
             thread::Builder::new()
                 .name("services-supervisor".into())
                 .spawn(move || {
@@ -79,7 +101,9 @@ impl Host {
                         {
                             continue;
                         }
-                        let _served = serve(&mut pipe, &state, &stop, &cancellation, &options);
+                        let _served =
+                            serve(&mut pipe, &state, &stop, &cancellation, &signing, &options);
+                        set_signing_in(&signing, false);
                         if let Ok(mut state) = state.lock() {
                             finish(&mut state);
                         }
@@ -111,6 +135,7 @@ fn serve(
     state: &Mutex<State>,
     stop: &Arc<Event>,
     cancellation: &Cancellation,
+    signing: &SigningIn,
     options: &Options,
 ) -> io::Result<()> {
     let nonce =
@@ -134,7 +159,14 @@ fn serve(
         sequence = request.sequence;
         let closed = matches!(request.command, Command::Shutdown);
         let reply = match state.lock() {
-            Ok(mut state) => handle(&mut state, options, request.command, cancellation, stop),
+            Ok(mut state) => handle(
+                &mut state,
+                options,
+                request.command,
+                cancellation,
+                signing,
+                stop,
+            ),
             Err(_) => failure("supervisor de servicios no disponible"),
         };
         protocol::write(
@@ -161,6 +193,35 @@ fn handle(
     options: &Options,
     command: Command,
     cancellation: &Cancellation,
+    signing: &SigningIn,
+    stop: &Arc<Event>,
+) -> Reply {
+    let access = matches!(
+        command,
+        Command::AccountBegin
+            | Command::AccountPoll
+            | Command::AccountRenew
+            | Command::LicenseRenew
+    );
+    if access {
+        set_signing_in(signing, true);
+    }
+    let reply = serve_command(state, options, command, cancellation, signing, stop);
+    if access {
+        // Solo un OAuth pendiente (callback esperando) sigue reteniendo los servicios.
+        set_signing_in(
+            signing,
+            matches!(reply, Reply::Account { pending: true, .. }),
+        );
+    }
+    reply
+}
+fn serve_command(
+    state: &mut State,
+    options: &Options,
+    command: Command,
+    cancellation: &Cancellation,
+    signing: &SigningIn,
     stop: &Arc<Event>,
 ) -> Reply {
     if matches!(command, Command::Shutdown) {
@@ -174,7 +235,7 @@ fn handle(
             return failure("núcleo de derechos no disponible");
         }
     };
-    if policy.live {
+    if closes_for_game(&policy, signing_in(signing)) {
         finish(state);
         return failure("servicios cerrados durante el juego");
     }
@@ -240,6 +301,7 @@ fn spawn_timer(
     state: Arc<Mutex<State>>,
     stop: Arc<Event>,
     cancellation: Cancellation,
+    signing: SigningIn,
     core: CoreLink,
 ) -> io::Result<JoinHandle<()>> {
     thread::Builder::new()
@@ -253,7 +315,7 @@ fn spawn_timer(
                     continue;
                 }
                 let live = control::request_cancelled(&core, control::Command::Read, &stop)
-                    .is_ok_and(|p| p.current() && p.live);
+                    .is_ok_and(|p| p.current() && closes_for_game(&p, signing_in(&signing)));
                 if live {
                     match state.try_lock() {
                         Ok(mut state) => finish(&mut state),

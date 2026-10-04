@@ -342,6 +342,12 @@ impl Remote {
         self.inflight == Inflight::User
     }
 
+    /// Pantalla de acceso o acción del usuario en vuelo (login, renovación):
+    /// entrar en pista no cierra el Hub (#1464).
+    pub fn holds_hub_in_game(&self) -> bool {
+        self.requires_access() || self.working()
+    }
+
     /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
     pub(crate) fn persist(&mut self, cx: &Context<Self>) -> Result<(), String> {
         let fields = self.editor.fields(cx);

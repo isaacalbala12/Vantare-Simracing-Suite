@@ -22,14 +22,17 @@ fn hub_and_overlays_receive_the_same_publisher_without_sharing_a_cursor() {
         .expect("waiting");
     assert_eq!(*overlays.next(wait).expect("foto overlays"), snapshot);
     let previous = hub.next(wait).expect("foto Hub");
-    assert!(!vantare_hub::lifecycle::should_close(None, &previous));
+    assert!(!vantare_hub::lifecycle::should_close(
+        None, &previous, false
+    ));
     snapshot.sequence += 1;
     snapshot.state.source_state = SourceState::Live;
     publisher.publish(Arc::new(snapshot.clone())).expect("live");
     let received = hub.next(wait).expect("flanco Hub");
     assert!(vantare_hub::lifecycle::should_close(
         Some(vantare_hub::lifecycle::is_live(&previous)),
-        &received
+        &received,
+        false
     ));
     assert_eq!(
         *overlays.next(wait).expect("overlays sigue recibiendo"),

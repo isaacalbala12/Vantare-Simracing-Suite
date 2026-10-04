@@ -103,6 +103,9 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_license(true)
+    }
+    fn with_license(licensed: bool) -> Self {
         let root = std::env::temp_dir().join(format!(
             "vt-svc-{}",
             vantare_services::random_id().expect("root")
@@ -134,9 +137,11 @@ impl Fixture {
             &vantare_services::license_remote::candidate_context(base.as_deref(), config.channel),
         )
         .expect("store");
-        store
-            .save("license-candidate", &candidate)
-            .expect("candidate durable");
+        if licensed {
+            store
+                .save("license-candidate", &candidate)
+                .expect("candidate durable");
+        }
         drop(store);
         let nonce = vantare_services::random_id().expect("bootstrap");
         let pid = std::process::id();
@@ -252,6 +257,66 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
             .expect("sin reactivación")
             .overlays_advanced
     );
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("limpiar solo carpeta aleatoria del test");
+}
+
+#[test]
+fn game_closes_services_only_with_a_saved_license_and_no_sign_in_in_progress() {
+    let licensed = control::Policy {
+        live: true,
+        overlays_advanced: true,
+        ..control::Policy::default()
+    };
+    assert!(closes_for_game(&licensed, false));
+    assert!(!closes_for_game(&licensed, true), "acceso a medias");
+    for policy in [
+        control::Policy {
+            overlays_advanced: false,
+            ..licensed.clone()
+        },
+        control::Policy {
+            live: false,
+            ..licensed
+        },
+    ] {
+        assert!(!closes_for_game(&policy, false));
+    }
+    let slot: SigningIn = Arc::new(Mutex::new(None));
+    assert!(!signing_in(&slot));
+    set_signing_in(&slot, true);
+    assert!(signing_in(&slot));
+    set_signing_in(&slot, false);
+    assert!(!signing_in(&slot));
+    *slot.lock().expect("slot") = Some(Instant::now());
+    assert!(!signing_in(&slot), "la ventana de acceso caduca");
+}
+
+#[test]
+fn without_a_license_the_hub_can_still_sign_in_during_a_live_session() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_license(false);
+    let mut snapshot = vantare_domain::Snapshot::default();
+    snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+    snapshot.state.source_state = vantare_domain::SourceState::Live;
+    snapshot.state.session.id = vantare_domain::SessionId(91);
+    core.publish(Arc::new(snapshot));
+    let policy = control::request(&link, control::Command::Read).expect("policy");
+    assert!(policy.live && !policy.overlays_advanced);
+    let mut hub = Session::open(&photo);
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    assert!(
+        services.state.lock().expect("state").client.is_some(),
+        "garaje/pista sin licencia no cierra los servicios"
+    );
+    assert!(matches!(hub.request(Command::Shutdown), Reply::Closed));
     drop(hub);
     drop(services);
     drop(core);

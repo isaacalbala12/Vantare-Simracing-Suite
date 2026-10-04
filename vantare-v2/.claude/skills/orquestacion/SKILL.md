@@ -58,25 +58,29 @@ los advisors solo para bloqueos.
 
 ## 3. Cómo invocar cada modelo
 
-**Vía preferente: T3 Code** (MCP `t3code` o CLI `t3cli`). Permite muchos
-workers en paralelo, cada uno con su modelo, esfuerzo y worktree:
-`t3cli start --stdin --provider <p> --model <m> --option <k>=<v> --worktree <ruta> --title "..."`,
-y `t3cli show|wait|transcript --thread <id>` para seguirlos.
+**Única vía: el orquestador de T3 Code** (MCP `t3-code`, herramienta
+`delegate_task`). Decisión de Isaac (2026-10-04): **ningún worker se lanza por
+CLI** (`codex exec`, `claude`, `opencode run`…) ni con subagentes `Agent`.
+Cada encargo se lanza con `delegate_task` en modo `async`, `runtimeMode:
+full-access`, un `clientRequestId` estable por ronda y el `taskId` guardado;
+se sigue con `task_status` y cada ronda nueva es otro `delegate_task` con el
+encargo original, lo hallado y las correcciones.
 
-| Modelo | Proveedor T3 Code y opciones |
+| Modelo | `target` de `delegate_task` |
 |---|---|
-| Opus 5.5 | `--provider claudeAgent --model claude-opus-5-5 --option effort=medium` |
-| Fable 5.1 (advisor) | `--provider claudeAgent --model claude-fable-5-1 --option effort=medium` |
-| GPT 6 Astra (advisor) | `--provider codex --model gpt-6-astra --reasoning-effort max` |
-| GPT 6.1 Sol (difícil) | CLI directa (T3 interrumpe turnos largos): `cd <worktree>/vantare-v2 && codex exec -m gpt-6.1-sol -c model_reasoning_effort=medium --dangerously-bypass-approvals-and-sandbox -o informe.md - < encargo.md > log 2>&1 &` |
-| DeepSeek V4.1 Flash (rápido) | `--provider opencode --model opencode-go/deepseek-v4.1-flash --option variant=max --option agent=build` |
+| GPT 6.1 Sol (difícil) | `{"providerInstanceId":"codex","model":"gpt-6.1-sol","options":{"reasoningEffort":"medium"}}` |
+| DeepSeek V4.1 Flash (rápido) | `{"providerInstanceId":"opencode","model":"opencode-go/deepseek-v4.1-flash","options":{"variant":"max","agent":"build"}}` |
+| Opus 5.5 (diseño, si Isaac lo pide) | `{"providerInstanceId":"claudeAgent","model":"claude-opus-5-5","options":{"effort":"medium"}}` |
+| Fable 5.1 (análisis/advisor) | `{"providerInstanceId":"claudeAgent","model":"claude-fable-5-1","options":{"effort":"medium"}}` |
+| GPT 6 Astra (advisor) | `{"providerInstanceId":"codex","model":"gpt-6-astra","options":{"reasoningEffort":"max"}}` |
 
-Alternativas: el MCP de T3 Code `delegate_task` con los mismos proveedores, y MCP `deepseek-harness` (`task_inbox` /
-`task_result`; **un solo worker a la vez**, solo bajo `C:/tmp`). El MCP
-`codex` falla en Windows (sandbox y prompts multilínea truncados): no usarlo.
+El hijo trabaja en el checkout del orquestador: en el encargo indica siempre el
+**worktree** exacto (`cd <ruta>` antes de cualquier comando) y la rama.
+Los encargos largos van en un fichero (`C:/tmp/...`) y el `task` solo dice
+«lee y sigue `<fichero>`», más el contexto de reanudación si lo hay.
 
-Si el MCP necesario no está disponible en la sesión, dilo y pide que se
-habilite; no sustituyas en silencio por otro modelo de otro rol.
+Si el MCP `t3-code` no está disponible en la sesión, dilo y pide que se
+habilite; no sustituyas en silencio por CLI ni por otro modelo de otro rol.
 
 ## 4. Reglas de delegación
 

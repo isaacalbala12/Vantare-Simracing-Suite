@@ -132,6 +132,18 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// Solo Workshop suministra un estilo de desarrollo; producto usa valores compilados.
+    pub(crate) fn standings_style(
+        &mut self,
+        style: Arc<crate::standings::style::Style>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Widget::Standings(widget) = &mut self.widget {
+            widget.set_style(style);
+            cx.notify();
+        }
+    }
+
     pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }

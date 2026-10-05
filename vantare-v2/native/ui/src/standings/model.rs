@@ -9,9 +9,13 @@ use vantare_domain::format::{self, Language, PLACEHOLDER, Preferences};
 use vantare_domain::{Capability, FlagKind, SourceState, standings};
 
 pub(crate) const ROW_HEIGHT: f32 = 30.0;
+#[cfg(test)]
 pub(crate) const SESSION_HEADER_HEIGHT: f32 = 42.0;
+#[cfg(test)]
 pub(crate) const COLUMN_HEADER_HEIGHT: f32 = 28.0;
+#[cfg(test)]
 pub(crate) const FOOTER_HEIGHT: f32 = 22.0;
+#[cfg(test)]
 pub(crate) const BRAND_BAND_HEIGHT: f32 = 22.0;
 pub const PIT_RAIL_WIDTH: f32 = 34.0;
 
@@ -97,6 +101,7 @@ pub(crate) enum InfoMetric {
 #[derive(Clone, Debug)]
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub(crate) struct Config {
+    pub style: std::sync::Arc<super::style::Style>,
     pub broadcast: bool,
     pub multiclass: bool,
     pub footer_slots: Vec<String>,
@@ -127,6 +132,7 @@ impl Config {
             max_chars: 16,
         };
         let mut config = Self {
+            style: super::style::Style::compiled(),
             broadcast: false,
             multiclass: false,
             footer_slots: Vec::new(),
@@ -167,29 +173,34 @@ impl Config {
             .map(|c| column_width_for(c, self.broadcast))
             .sum();
         let header = if self.broadcast {
-            24.0 + if self.show_session_header { 46.0 } else { 0.0 }
-        } else if identity_span(&enabled) == 0 {
-            COLUMN_HEADER_HEIGHT
+            self.style.geometry.broadcast_column_height
                 + if self.show_session_header {
-                    SESSION_HEADER_HEIGHT
+                    self.style.geometry.broadcast_header_height
+                } else {
+                    0.0
+                }
+        } else if identity_span(&enabled) == 0 {
+            self.style.geometry.column_header_height
+                + if self.show_session_header {
+                    self.style.geometry.session_header_height
                 } else {
                     0.0
                 }
         } else if self.show_session_header {
-            SESSION_HEADER_HEIGHT
+            self.style.geometry.session_header_height
         } else {
-            COLUMN_HEADER_HEIGHT
+            self.style.geometry.column_header_height
         };
         self.width = width.max(if self.broadcast { 258.0 } else { 238.0 });
         self.height = header
-            + rows as f32 * ROW_HEIGHT
+            + rows as f32 * self.style.geometry.row_height
             + if self.show_session_footer {
-                FOOTER_HEIGHT
+                self.style.geometry.footer_height
             } else {
                 0.0
             }
             + if !self.show_session_header && self.brand_visible == Some(true) {
-                BRAND_BAND_HEIGHT
+                self.style.geometry.brand_band_height
             } else {
                 0.0
             };
@@ -199,7 +210,7 @@ impl Config {
             return 0.0;
         }
         if self.footer_slots.is_empty() {
-            FOOTER_HEIGHT
+            self.style.geometry.footer_height
         } else {
             15.0 + self.footer_rows as f32 * 14.0
         }
@@ -586,46 +597,48 @@ pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
     let external = config.broadcast || span == 0 || unavailable || vm.rows.is_empty();
     let footer = config.footer_height();
     let brand_band = if !has_header && brand_visible {
-        BRAND_BAND_HEIGHT
+        config.style.geometry.brand_band_height
     } else {
         0.0
     };
     let loose_header = if external && has_header {
         if config.broadcast {
-            46.0
+            config.style.geometry.broadcast_header_height
         } else {
-            SESSION_HEADER_HEIGHT
+            config.style.geometry.session_header_height
         }
     } else {
         0.0
     };
     let table_header = if config.broadcast {
-        24.0
+        config.style.geometry.broadcast_column_height
     } else if !has_header || external || span == 0 {
-        COLUMN_HEADER_HEIGHT
+        config.style.geometry.column_header_height
     } else {
-        SESSION_HEADER_HEIGHT
+        config.style.geometry.session_header_height
     };
     let body = config.height - footer - brand_band - loose_header - table_header;
-    let fit = (body.max(0.0) / ROW_HEIGHT).floor() as usize;
+    let fit = (body.max(0.0) / config.style.geometry.row_height).floor() as usize;
     let mut row_tops = Vec::new();
     let mut class_bands = Vec::new();
     let mut top = 0.0;
     let mut previous = "";
     for row in vm.rows.iter().take(fit) {
         if config.multiclass && !row.vehicle_class.is_empty() && previous != row.vehicle_class {
-            if top + 28.0 + ROW_HEIGHT > body {
+            if top + config.style.geometry.class_band_height + config.style.geometry.row_height
+                > body
+            {
                 break;
             }
             class_bands.push((top, row.vehicle_class.clone()));
-            top += 28.0;
+            top += config.style.geometry.class_band_height;
             previous = &row.vehicle_class;
         }
-        if top + ROW_HEIGHT > body {
+        if top + config.style.geometry.row_height > body {
             break;
         }
         row_tops.push(top);
-        top += ROW_HEIGHT;
+        top += config.style.geometry.row_height;
     }
     let visible_rows = row_tops.len();
     let fixed: f32 = columns
@@ -645,11 +658,11 @@ pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
         .collect();
     let table_top = brand_band + loose_header;
     let head_row = if config.broadcast {
-        24.0
+        config.style.geometry.broadcast_column_height
     } else if span > 0 && !external && has_header {
-        SESSION_HEADER_HEIGHT + 1.0
+        config.style.geometry.session_header_height + 1.0
     } else {
-        COLUMN_HEADER_HEIGHT
+        config.style.geometry.column_header_height
     };
     Plan {
         columns,

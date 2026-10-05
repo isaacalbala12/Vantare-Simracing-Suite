@@ -117,7 +117,50 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
+struct LiveStyle {
+    path: PathBuf,
+    modified: Option<SystemTime>,
+    value: std::sync::Arc<crate::standings::style::Style>,
+    error: Option<String>,
+}
+
+impl LiveStyle {
+    fn new(path: PathBuf) -> Self {
+        let mut file = Self {
+            path,
+            modified: None,
+            value: crate::standings::style::Style::compiled(),
+            error: None,
+        };
+        file.reload();
+        file
+    }
+
+    fn reload(&mut self) {
+        self.modified = modified(&self.path);
+        match std::fs::read_to_string(&self.path)
+            .map_err(|e| e.to_string())
+            .and_then(|json| crate::standings::style::Style::from_json(&json))
+        {
+            Ok(style) => {
+                self.value = style;
+                self.error = None;
+            }
+            Err(error) => self.error = Some(format!("{}: {error}", self.path.display())),
+        }
+    }
+
+    fn poll(&mut self) -> bool {
+        if modified(&self.path) == self.modified {
+            return false;
+        }
+        self.reload();
+        true
+    }
+}
+
 struct Workshop {
+    style: LiveStyle,
     kind: Kind,
     scene: Scene,
     scenes: Vec<PathBuf>,
@@ -166,6 +209,7 @@ impl Workshop {
         // Recargar crea el mismo widget limpio: no concatena dos escenas de igual época.
         self.overlay = cx.new(|cx| {
             let mut overlay = Overlay::new(self.kind, Preferences::default());
+            overlay.standings_style(self.style.value.clone(), cx);
             for snapshot in &self.scene.snapshots {
                 overlay.ingest(snapshot, cx);
             }
@@ -241,8 +285,9 @@ impl Render for Workshop {
                 self.scene
                     .error
                     .clone()
+                    .or_else(|| self.style.error.clone())
                     .or_else(|| self.state_error.clone())
-                    .unwrap_or_else(|| "JSON en vivo · sondeo 150 ms".into()),
+                    .unwrap_or_else(|| "Escena y standings.json en vivo · sondeo 50 ms".into()),
             )
             .child(
                 div()
@@ -270,6 +315,11 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
     });
     let path = std::fs::canonicalize(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let scene = Scene::new(path)?;
+    let style_path = std::env::var_os("VANTARE_WORKSHOP_STYLES").map_or_else(
+        || PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/styles")),
+        PathBuf::from,
+    );
+    let style = LiveStyle::new(style_path.join("standings.json"));
     let scenes = scenes(&scene.path)?;
     let state_file = std::env::var_os("VANTARE_WORKSHOP_STATE").map(PathBuf::from);
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -292,12 +342,14 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                 focus.focus(window, cx);
                 let overlay = cx.new(|cx| {
                     let mut overlay = Overlay::new(kind, Preferences::default());
+                    overlay.standings_style(style.value.clone(), cx);
                     for snapshot in &scene.snapshots {
                         overlay.ingest(snapshot, cx);
                     }
                     overlay
                 });
                 let mut workshop = Workshop {
+                    style,
                     kind,
                     scene,
                     scenes,
@@ -310,10 +362,16 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                 cx.spawn(async move |this, cx| {
                     loop {
                         cx.background_executor()
-                            .timer(Duration::from_millis(150))
+                            .timer(Duration::from_millis(50))
                             .await;
                         if this
                             .update(cx, |this, cx| {
+                                if this.style.poll() {
+                                    this.overlay.update(cx, |overlay, cx| {
+                                        overlay.standings_style(this.style.value.clone(), cx);
+                                    });
+                                    cx.notify();
+                                }
                                 if this.scene.poll() {
                                     if this.scene.error.is_none() {
                                         this.replay(cx);
@@ -352,6 +410,35 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn style_reload_preserves_last_valid_values_and_recovers() {
+        let dir = std::env::temp_dir().join(format!("vantare-style-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directorio");
+        let path = dir.join("standings.json");
+        let original = include_str!("../styles/standings.json");
+        std::fs::write(&path, original).expect("estilo");
+        let mut file = LiveStyle::new(path.clone());
+        assert!(!file.poll());
+        let previous = file.value.clone();
+        std::fs::write(&path, "{").expect("escritura parcial");
+        file.modified = None;
+        assert!(file.poll());
+        assert!(file.error.is_some());
+        assert_eq!(file.value, previous);
+        std::fs::remove_file(&path).expect("retirar");
+        assert!(file.poll());
+        assert_eq!(file.value, previous);
+        let mut changed = serde_json::to_value(&*previous).expect("JSON");
+        changed["colors"]["panel"] = serde_json::json!("#123456");
+        changed["geometry"]["row_height"] = serde_json::json!(40);
+        std::fs::write(&path, changed.to_string()).expect("guardar");
+        assert!(file.poll());
+        assert!(file.error.is_none());
+        assert_eq!(file.value.colors.panel.0, 0x123456);
+        assert_eq!(file.value.geometry.row_height, 40.0);
+        std::fs::remove_dir_all(dir).expect("limpiar");
+    }
 
     #[test]
     fn scenes_accept_one_or_many_valid_dto_photos_in_order() {

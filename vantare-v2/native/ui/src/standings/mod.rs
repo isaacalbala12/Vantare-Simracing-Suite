@@ -22,6 +22,7 @@
 pub mod model;
 pub(crate) mod motion;
 pub mod options;
+pub(crate) mod style;
 pub(crate) mod view;
 
 use crate::app::Paint;
@@ -327,7 +328,7 @@ impl Widget {
                 .iter()
                 .filter(|row| !row.vehicle_class.is_empty() && classes.insert(&row.vehicle_class))
                 .count();
-            self.config.height += bands as f32 * 28.0;
+            self.config.height += bands as f32 * self.config.style.geometry.class_band_height;
         }
         let plan = model::plan(&self.config, &next);
         // Una columna oculta no debe cambiar la firma del contenido visible.
@@ -358,11 +359,28 @@ impl Widget {
 }
 
 impl Widget {
+    pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
+        self.config.style = style;
+        self.config.fit(self.config.row_count);
+        if self.config.multiclass {
+            let classes: std::collections::HashSet<_> = self
+                .vm
+                .rows
+                .iter()
+                .filter(|row| !row.vehicle_class.is_empty())
+                .map(|row| &row.vehicle_class)
+                .collect();
+            self.config.height +=
+                classes.len() as f32 * self.config.style.geometry.class_band_height;
+        }
+        self.plan = model::plan(&self.config, &self.vm);
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
         (
             self.config.width
                 + if self.plan.pit_enabled {
-                    model::PIT_RAIL_WIDTH
+                    self.config.style.geometry.pit_rail_width
                 } else {
                     0.0
                 },
@@ -459,6 +477,30 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn live_style_reflows_rows_and_rail_without_changing_data() {
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+                .expect("escena");
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&snapshot, prefs);
+        let rows = widget.vm.rows.clone();
+        let before = widget.size();
+        let tops = widget.plan.row_tops.clone();
+        let mut style = style::Style::default();
+        style.geometry.row_height = 40.0;
+        style.geometry.session_header_height = 50.0;
+        style.colors.panel = style::Color(0x123456);
+        widget.set_style(std::sync::Arc::new(style));
+        assert_eq!(widget.vm.rows, rows);
+        assert_eq!(widget.plan.visible_rows, tops.len());
+        assert_eq!(widget.size().0, before.0);
+        assert_eq!(widget.size().1, before.1 + 208.0);
+        assert_eq!(widget.plan.row_tops[1], 40.0);
+        assert_eq!(widget.config.style.colors.panel.0, 0x123456);
+    }
 
     #[test]
     fn variants_project_templates_content_footer_and_brand() {

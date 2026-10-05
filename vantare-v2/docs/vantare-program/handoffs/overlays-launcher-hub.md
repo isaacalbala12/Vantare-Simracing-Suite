@@ -1,5 +1,36 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
+
+Entrega aislada en `vantareapp/isa-1467-workshop-estilo-vivo`, base
+`a464e9fc95ff0af10508f88a53302a8803437b36`, worktree `C:/tmp/vw3-1467`.
+El brief de Isaac autoriza extraer valores visuales, conservando Rust + GPUI y
+el renderer productivo. `native/ui/styles/standings.json` contiene colores,
+geometría, tipografía, sombra y opacidades; el build compila esos valores.
+Solo `vantare-workshop --dev` lee y recarga el fichero cada 50 ms. Un JSON
+inválido conserva el último estilo válido y muestra el error; la recarga
+recalcula la geometría sin cambiar la escena ni reiniciar la ventana.
+
+Gates Windows PASS: check, Clippy `-D warnings`, fmt (incluidos módulos UI
+explícitos), Nextest 1092/1092 (4 omitidas) y lifecycle. La captura del renderer
+compilado con sus valores originales es idéntica a la base: 0/292160 píxeles,
+umbral 0. Frente a Wails: 7343/292160 (2,5133 %, umbral 8), igual que la base.
+Se revisaron referencia, captura y mapa; estructura y contenido coinciden.
+Evidencia en `C:/tmp/1467-evidence/`, incluida `ronda-1.png`; informe operativo
+en `C:/tmp/fase2/informe-1467.md`. Pendientes: guardar → píxel visible y
+verificación macOS por SSH en un worktree aislado. Los scripts
+`native/ui/workshop-en-vivo.sh` y `.ps1` compilan con perfil `prueba`, `-j 2` y
+abren Standings. La nota de Isaac de las 15:15 autoriza transferir esta rama
+al bare privado del Mac; no autoriza push a GitHub ni integración.
+
+`docs/roadmap/plan.md` no existe en esta base: se conserva su retirada previa,
+sin inventar otro roadmap. Las instrucciones actuales de Isaac fijan GitHub
+como tracker y prevalecen sobre referencias históricas a Notion/Asana.
+Sin push, PR, CI remoto, integración, promoción ni release. No se toca la beta
+`native-beta` ni telemetría live de Isaac. El spike de dylib queda
+cancelado por la nota de Isaac de las 15:15.
+
+
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 
 El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con

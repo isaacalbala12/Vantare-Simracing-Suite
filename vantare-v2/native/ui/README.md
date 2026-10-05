@@ -323,7 +323,7 @@ botones recorren `Kind::ALL` (registro `widgets!`) y `fixtures/*.snapshot.json`;
 una escena externa indicada por CLI también entra en la lista. El estado vive
 en el DTO JSON, incluidas calidad y capacidades; no hay generador paralelo.
 Tab/Shift+Tab cambia el foco, Enter/Espacio activa el botón.
-Guardar la escena recarga cada 150 ms; un JSON inválido muestra el error y
+Guardar la escena recarga cada 50 ms; un JSON inválido muestra el error y
 mantiene la última foto válida. La escena inicial debe ser válida. Sin `--escena`
 se usa la del widget si existe, o `lmu47`. `--captura` conserva su ruta y geometría;
 no admite combinarse con `--dev`.
@@ -350,6 +350,26 @@ Propuesta sin aplicar: medir `debug=0` en una tanda aislada con el mismo cambio 
 bajo la carga actual. No se cambió ningún perfil, flag ni dependencia.
 Gates finales: fmt/clippy/workspace tests PASS (`-j 2`, cuatro pruebas live
 omitidas); CLI con `parity-capture` 4/4 y pedales 755/19200 px (3,9323 %).
+
+### Workshop en vivo (#1467)
+
+1. Mac: desde `native/`, ejecuta `bash ui/workshop-en-vivo.sh`.
+2. Windows: desde `native/`, ejecuta `./ui/workshop-en-vivo.ps1`.
+3. Edita `ui/styles/standings.json`: colores, tamaños, espaciados, radios, sombras o fuentes.
+4. Guarda: lo ves al momento en Standings, sin recompilar ni reiniciar Workshop.
+5. Para volver al diseño original, restaura el JSON con Git y guarda.
+
+`fonts.family: null` conserva Inter registrada (pesos 400/500/600/650/700/750/800).
+Una familia instalada, por ejemplo `"Segoe UI"`, se selecciona por nombre.
+El archivo es completo y tipado: errores de nombre, campos ausentes o valores
+fuera de rango aparecen en Workshop; conserva el último estilo válido hasta
+la siguiente escritura válida. `VANTARE_WORKSHOP_STYLES` permite otro directorio
+con `standings.json` (también al ejecutar una copia del binario).
+
+Producto y capturas de paridad usan los valores compilados al construir desde
+ese mismo JSON; nunca leen el fichero de estilo en disco. Las otras familias
+siguen con sus valores actuales. Cambios de estructura Rust siguen necesitando
+compilar mediante `dev.ps1`; este cambio solo recarga valores visuales.
 
 ### Harness anterior y mediciones históricas
 

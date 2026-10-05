@@ -291,7 +291,7 @@ impl Hub {
                 |content| {
                     // Estos consumidores aun restan el espacio de la antigua cabecera.
                     // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                    let inset = if matches!(self.section, Section::Calendar | Section::Roadmap) {
+                    let inset = if self.section == Section::Roadmap {
                         135.0
                     } else {
                         0.0
@@ -309,6 +309,14 @@ impl Hub {
             .when(self.section == Section::Studio, |content| {
                 content.pt(gpui::px(0.0))
             })
+            .when(
+                matches!(self.section, Section::Testing | Section::Calendar),
+                |content| {
+                    content.pr(gpui::px(
+                        cx.global::<orbit::design::Tokens>().geometry.gutter / 2.0,
+                    ))
+                },
+            )
             .when(self.section == Section::Settings, |content| {
                 content.gap(gpui::px(16.0)).child(self.settings_header(cx))
             })
@@ -381,6 +389,12 @@ impl Hub {
                 }))
             }
             Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
+            Section::Testing => Some(self.testing.read(cx).topbar_controls().into_any_element()),
+            Section::Calendar => Some(
+                self.calendar
+                    .update(cx, |calendar, cx| calendar.topbar_controls(cx))
+                    .into_any_element(),
+            ),
             _ => None,
         }
     }
@@ -392,7 +406,20 @@ impl Hub {
         strategy_context_visible: bool,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
-        if self.section == Section::Studio {
+        if matches!(self.section, Section::Testing | Section::Calendar)
+            && self.shell.access.beta_lock(self.section).is_some()
+        {
+            return div().into_any_element();
+        }
+        if self.section == Section::Testing {
+            self.testing
+                .update(cx, |testing, cx| testing.context_column(cx))
+                .into_any_element()
+        } else if self.section == Section::Calendar {
+            self.calendar
+                .update(cx, |calendar, cx| calendar.context_column(cx))
+                .into_any_element()
+        } else if self.section == Section::Studio {
             self.studio.read(cx).context_column().into_any_element()
         } else if matches!(
             self.section,
@@ -636,6 +663,8 @@ fn wire_sections(
             this.notifications
                 .update(cx, |center, cx| center.report("hub.calendar", error, cx));
         }
+        // Seguimiento y reloj también repintan el carril del calendario.
+        cx.notify();
     })
     .detach();
     cx.observe(notifications, |this, center, cx| {

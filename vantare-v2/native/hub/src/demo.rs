@@ -541,6 +541,7 @@ impl CaptureState {
         if !screens.iter().any(|screen| screen.name == name)
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
             && !matches!(name, "launcher-reposo" | "launcher-lanzando")
+            && name != "calendario-beta-archivo"
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
@@ -549,7 +550,8 @@ impl CaptureState {
             "launcher-base" | "launcher-nuevo-perfil" | "launcher-reposo" | "launcher-lanzando" => {
                 Section::Launcher
             }
-            "calendario-base"
+            "calendario-beta-archivo"
+            | "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
             | "calendario-mes"

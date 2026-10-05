@@ -43,6 +43,58 @@ pub fn neo_card(cx: &gpui::App) -> Div {
             },
         ])
 }
+/// Tarjeta neo con acento suave, sin convertir el fondo en una acción primaria.
+pub fn neo_accent_card(cx: &gpui::App) -> Div {
+    let colors = &cx.global::<design::Tokens>().colors;
+    neo_card(cx).bg(linear_gradient(
+        120.0,
+        linear_color_stop(tint(colors.wine, 0.28), 0.0),
+        linear_color_stop(rgb(colors.neo_bottom), 1.0),
+    ))
+}
+/// Título y subtítulo de las pantallas beta, con la tipografía pública del tema.
+pub fn neo_page_header(title: &str, description: &str, cx: &gpui::App) -> Div {
+    let fonts = &cx.global::<design::Tokens>().fonts;
+    let size = fonts.title_size / 2.0;
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(4.0))
+        .min_w_0()
+        .child(
+            super::text(title.to_owned(), size, 700, super::ink(cx), cx)
+                .font_family(fonts.display.clone())
+                .line_height(px(size * 1.2)),
+        )
+        .child(
+            super::text(
+                description.to_owned(),
+                fonts.body_size,
+                400,
+                super::ink_2(cx),
+                cx,
+            )
+            .line_height(px(fonts.body_size * 1.4)),
+        )
+}
+/// Carril de layout C alineado con la primera tarjeta bajo la cabecera beta.
+pub fn neo_context_column(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
+    let tokens = cx.global::<design::Tokens>();
+    let header = tokens.fonts.title_size / 2.0 * 1.2 + tokens.fonts.body_size * 1.4 + 4.0;
+    div()
+        .id(id)
+        .h_full()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .gap(px(tokens.geometry.gap))
+        .p(px(tokens.geometry.gutter))
+        .pl(px(
+            (tokens.geometry.gap - tokens.geometry.gutter / 2.0).max(0.0)
+        ))
+        .pt(px(tokens.geometry.gutter + header + tokens.geometry.gap))
+        .overflow_y_scroll()
+}
 /// Variante compacta de la cabecera compartida de Orbit.
 pub fn neo_header(title: impl Into<SharedString>, icon_name: &'static str, cx: &gpui::App) -> Div {
     super::card_header(title, cx)

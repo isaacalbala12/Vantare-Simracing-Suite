@@ -371,6 +371,16 @@ ese mismo JSON; nunca leen el fichero de estilo en disco. Las otras familias
 siguen con sus valores actuales. Cambios de estructura Rust siguen necesitando
 compilar mediante `dev.ps1`; este cambio solo recarga valores visuales.
 
+**Verificación Windows (2026-10-05).** Capturas compiladas del renderer:
+0/292160 px distintos frente a `a464e9fc` (umbral 0); Wails 2,5133 % (umbral 8),
+igual que la base. Guardar → píxel del escritorio: 10/10 tandas <200 ms,
+mediana 53,79 ms, máximo 62,36 ms; `GetPixel`, sondeo de 2 ms, perfil `prueba`,
+mismo PID y binario durante todos los guardados. Escena fija de Workshop,
+sin medir CPU/RAM ni telemetría LMU. Capturas limpias y JSON inválido revisados:
+el último estilo válido se conserva. Evidencia fuera del repo en
+`C:/tmp/1467-evidence/`. Por SSH, los logs «ventana abierta» y «estilo aplicado»
+permiten comprobar el arranque y las recargas; no certifican píxeles en el Mac.
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

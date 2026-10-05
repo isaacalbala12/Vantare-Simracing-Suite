@@ -145,6 +145,10 @@ impl LiveStyle {
             Ok(style) => {
                 self.value = style;
                 self.error = None;
+                eprintln!(
+                    "Workshop en vivo: estilo aplicado · {}",
+                    self.path.display()
+                );
             }
             Err(error) => self.error = Some(format!("{}: {error}", self.path.display())),
         }
@@ -331,7 +335,7 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
         }
         let options = WindowOptions {
             titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Vantare Workshop — desarrollo".into()),
+                title: Some("Vantare — Workshop en vivo".into()),
                 ..Default::default()
             }),
             ..Default::default()
@@ -392,6 +396,8 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
         if let Err(error) = opened {
             *failure.borrow_mut() = Some(format!("abrir Workshop: {error}"));
             cx.quit();
+        } else {
+            eprintln!("Workshop en vivo: ventana abierta · {}", kind.name());
         }
         cx.on_window_closed(|cx, _| {
             if cx.windows().is_empty() {

@@ -17,8 +17,16 @@ compilado con sus valores originales es idéntica a la base: 0/292160 píxeles,
 umbral 0. Frente a Wails: 7343/292160 (2,5133 %, umbral 8), igual que la base.
 Se revisaron referencia, captura y mapa; estructura y contenido coinciden.
 Evidencia en `C:/tmp/1467-evidence/`, incluida `ronda-1.png`; informe operativo
-en `C:/tmp/fase2/informe-1467.md`. Pendientes: guardar → píxel visible y
-verificación macOS por SSH en un worktree aislado. Los scripts
+en `C:/tmp/fase2/informe-1467.md`. Guardar → píxel visible en Windows: 10/10 <200 ms, mediana 53,79 ms,
+máximo 62,36 ms (`GetPixel`, sondeo 2 ms, mismo proceso, sin recompilar).
+Se revisaron capturas limpias de cambios de fuente/color/geometría y del JSON
+inválido. El primer commit usable es `030d117d`; se ha transferido al bare
+privado del Mac y creado `/Users/isaacalbala/vw3-1467`, limpio. El build Mac
+comenzó con `-j 2`, sin otro Cargo/Rustc detectado; la conexión SSH dejó de
+responder durante el build y su resultado sigue pendiente. No se lanza un
+segundo build remoto. Los logs de ventana abierta y estilo aplicado permiten
+verificar arranque/recarga cuando vuelva la conexión; la prueba visual del Mac
+queda a Isaac. Los scripts
 `native/ui/workshop-en-vivo.sh` y `.ps1` compilan con perfil `prueba`, `-j 2` y
 abren Standings. La nota de Isaac de las 15:15 autoriza transferir esta rama
 al bare privado del Mac; no autoriza push a GitHub ni integración.
@@ -26,7 +34,8 @@ al bare privado del Mac; no autoriza push a GitHub ni integración.
 `docs/roadmap/plan.md` no existe en esta base: se conserva su retirada previa,
 sin inventar otro roadmap. Las instrucciones actuales de Isaac fijan GitHub
 como tracker y prevalecen sobre referencias históricas a Notion/Asana.
-Sin push, PR, CI remoto, integración, promoción ni release. No se toca la beta
+Sin push a GitHub, PR, CI remoto, integración, promoción ni release.
+Solo transferencia autorizada al bare privado Mac. No se toca la beta
 `native-beta` ni telemetría live de Isaac. El spike de dylib queda
 cancelado por la nota de Isaac de las 15:15.
 

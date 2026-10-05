@@ -21,13 +21,22 @@ Referencia e inventario en `C:/tmp/1467b-evidence/react.md`, capturas en
 en la ventana propia y mostró cambio de posición/caption. Informe operativo:
 `C:/tmp/fase2/informe-1467b.md`.
 
+La validación de escala 0,5 reprodujo un brillo PIT fuera del widget:
+`standings/view.rs` usaba una posición absoluta como offset de sombra.
+Se cambia únicamente ese offset a un vector cero. `ronda-3.png` conserva
+la reproducción y la captura corregida, ambas revisadas. La regresión es
+visual sobre una ventana real porque el efecto depende del pintado GPUI;
+no se añade un test que solo compare la constante de la implementación.
+
 No se declara IGUAL completo: faltan V1/Foco, idiomas pt/it, estado Error
 (el contrato nativo tiene Waiting), equivalentes de dents/históricos React,
 persistencia de los nuevos controles al recompilar y paridad de tamaño/
 columnas de Relative. Ancho/alto cambian el marco; no reproducen el escalado
 independiente X/Y de React. Las superficies comparan el mismo renderer y no
 simulan sus transportes. Persisten diferencias de controles/espaciado y el
-centrado de la zona PIT. El siguiente trabajo requiere decidir el alcance de
+centrado de la zona PIT. La comparación se apila verticalmente; la reproducción
+recorre keyframes y no interpola continuamente las señales como React.
+El siguiente trabajo requiere decidir el alcance de
 paridad del renderer/contrato; no se altera arquitectura para ocultarlo.
 
 Gates Windows finales PASS: check, Clippy `-D warnings`, fmt, Nextest

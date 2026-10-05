@@ -1635,7 +1635,7 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
                 },
                 &[BoxShadow {
                     color: col(style.colors.gold.0, style.opacity.pit_glow),
-                    offset: pt(0.0, 0.0),
+                    offset: point(px(0.0), px(0.0)),
                     blur_radius: px(style.geometry.pit_glow_blur),
                     spread_radius: px(0.0),
                     inset: false,

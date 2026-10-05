@@ -230,3 +230,37 @@ un entorno con `DUCKDB_LIB_DIR` definida antes de compilar o crear artefactos;
 retírala con `Remove-Item Env:DUCKDB_LIB_DIR` en la terminal de distribución.
 En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
 de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.
+
+## Workers: caché y limpieza (#1465)
+
+Sccache es opcional y se configura por terminal del worker, sin compartir `target/`
+ni imponerlo al ciclo interactivo de Isaac. Cada worktree conserva su target propio;
+la caché de sccache puede compartir resultados de dependencias. Gates usa la ruta
+relativa estable `target/gates`: sccache 0.18 incluye `CARGO_TARGET_DIR` en su clave.
+
+```powershell
+$env:RUSTC_WRAPPER = (Get-Command sccache -ErrorAction Stop).Source
+$env:CARGO_INCREMENTAL = '0'
+sccache --show-stats
+.\setup-duckdb.ps1 # Una vez por usuario/PC.
+.\gates.ps1 clippy
+.\gates.ps1 test
+.\gates.ps1 lifecycle
+sccache --show-stats
+```
+
+Los binarios, proc macros y build scripts no tienen por qué ser cacheables; cuenta
+los hits reales. La primera compilación llena la caché. Para editar widgets con el
+watcher de Workshop conserva incremental (`$env:CARGO_INCREMENTAL = '1'`): sccache
+no cachea compilación incremental. No fijes `CARGO_TARGET_DIR` a un target común.
+
+Para retirar artefactos antiguos del target del worker, desde **su** `native/`,
+cuando no haya un build en curso:
+
+```powershell
+cargo sweep --time 7 --dry-run .
+cargo sweep --time 7 .
+```
+
+Revisa primero el dry-run. Esto elimina artefactos regenerables, no reduce el
+conjunto mínimo requerido por un build. No limpies targets de otros worktrees.

@@ -18,7 +18,8 @@ Push-Location $PSScriptRoot
 try {
     $env:DUCKDB_LIB_DIR = $directory
     $env:PATH = "$directory;$env:PATH"
-    $env:CARGO_TARGET_DIR = Join-Path $PSScriptRoot 'target/gates'
+    # Ruta relativa estable: sccache incluye CARGO_TARGET_DIR en su clave.
+    $env:CARGO_TARGET_DIR = 'target/gates'
     $json = & cargo metadata --locked --offline --no-deps --format-version 1
     if ($LASTEXITCODE) { throw 'No se pudo leer el workspace para conservar sus features por defecto.' }
     $metadata = $json | ConvertFrom-Json

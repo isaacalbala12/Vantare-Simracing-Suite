@@ -119,11 +119,20 @@ impl Adapter for Lmu {
             return Ok(None);
         }
         self.next_read = now + READ_INTERVAL;
-        let rest_updated = self.take_rest(now);
+        let rest_updated = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::RestCache);
+            self.take_rest(now)
+        };
         let Some(running) = &mut self.source else {
             return Err(AdapterError::Disconnected);
         };
-        match (running.read)(&mut self.frame, &mut self.scratch) {
+        let read = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Shm);
+            (running.read)(&mut self.frame, &mut self.scratch)
+        };
+        match read {
             Ok(()) => {}
             // El productor escribía a la vez: se reintenta en la próxima llamada.
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(None),
@@ -138,6 +147,8 @@ impl Adapter for Lmu {
             return Ok(None);
         }
         let build = running.build.as_str();
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Translate);
         let observation = self
             .translator
             .observe(&self.frame, build, now)

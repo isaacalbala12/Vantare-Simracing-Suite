@@ -5,6 +5,9 @@
 pub mod adapter;
 pub mod core;
 pub mod flows;
+#[cfg(feature = "paint-stats")]
+#[path = "../../profiling.rs"]
+pub mod profiling;
 #[cfg(windows)]
 pub mod rights;
 #[cfg(windows)]

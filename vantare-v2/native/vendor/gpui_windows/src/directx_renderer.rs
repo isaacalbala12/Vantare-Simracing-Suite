@@ -243,6 +243,7 @@ impl DirectXRenderer {
 
     #[inline]
     fn present(&mut self) -> Result<()> {
+        let span = crate::profiling::begin(crate::profiling::Stage::Present);
         let result = unsafe {
             self.resources
                 .as_ref()
@@ -250,6 +251,8 @@ impl DirectXRenderer {
                 .swap_chain
                 .Present(0, DXGI_PRESENT(0))
         };
+        drop(span);
+        crate::profiling::report_if_due();
         result.ok().context("Presenting swap chain failed")
     }
 
@@ -351,6 +354,7 @@ impl DirectXRenderer {
         scene: &Scene,
         background_appearance: WindowBackgroundAppearance,
     ) -> Result<()> {
+        let _span = crate::profiling::begin(crate::profiling::Stage::GpuSubmit);
         self.pre_draw(&match background_appearance {
             WindowBackgroundAppearance::Opaque => [1.0f32; 4],
             _ => [0.0f32; 4],

@@ -261,7 +261,10 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
                             sent = Some(revision);
                             continue;
                         }
-                        let dto = SnapshotDto::selected(&snapshot, &delivered)?;
+                        let dto = {
+                            let _span = crate::profiling::begin(crate::profiling::Stage::Dto);
+                            SnapshotDto::selected(&snapshot, &delivered)?
+                        };
                         write_message(
                             &mut pipe,
                             &Message::DemandSnapshot {

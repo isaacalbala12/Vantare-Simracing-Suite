@@ -74,6 +74,14 @@ pub fn run_controlled(
     options: Options<'_>,
 ) -> Result<(), Error> {
     use crate::flows::host::{EventHost, pipe_name};
+    let measurement = std::env::var_os("VANTARE_MEASUREMENT_MODE");
+    if measurement.is_some() && options.recording.is_some() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "medición incompatible con recording",
+        )
+        .into());
+    }
     let rights = crate::rights::production(
         pipe,
         epoch,
@@ -84,6 +92,16 @@ pub fn run_controlled(
         peer.is_image(&options.engineer_image)
     })?;
     let mut core = Core::with_event_base(events.base())?;
+    if let Some(mode) = measurement {
+        let mode = mode.to_str().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "modo de medición no UTF-8",
+            )
+        })?;
+        core.set_measurement_mode(mode)?;
+        eprintln!("SOLO MEDICIÓN #1461: VANTARE_MEASUREMENT_MODE={mode}");
+    }
     let mut publisher = Publisher::new(pipe, |_| true)?;
     let demand = publisher.demand_source();
     drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
@@ -129,6 +147,8 @@ fn drive_core_demanded<E>(
     mut publish: impl FnMut(&Core) -> Result<(), E>,
 ) -> Result<(), E> {
     let start = Instant::now();
+    #[cfg(feature = "paint-stats")]
+    let mut report_at = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
     let mut demand_revision = u64::MAX;
     let mut freshness = vantare_ipc::freshness::state(&core.snapshot());
@@ -160,9 +180,16 @@ fn drive_core_demanded<E>(
         freshness = vantare_ipc::freshness::state(&snapshot);
         if snapshot.sequence > sent {
             sent = snapshot.sequence;
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Publish);
             publish(core)?;
         } else {
             thread::sleep(IDLE);
+        }
+        #[cfg(feature = "paint-stats")]
+        if report_at.elapsed() >= Duration::from_secs(1) {
+            crate::profiling::report();
+            report_at = Instant::now();
         }
     }
     Ok(())

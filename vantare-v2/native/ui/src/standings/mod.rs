@@ -329,7 +329,11 @@ impl Widget {
                 .count();
             self.config.height += bands as f32 * 28.0;
         }
-        let plan = model::plan(&self.config, &next);
+        let plan = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Layout);
+            model::plan(&self.config, &next)
+        };
         // Una columna oculta no debe cambiar la firma del contenido visible.
         if !self
             .config
@@ -343,7 +347,11 @@ impl Widget {
         }
         // El número de secuencia cambia siempre y no se ve: no cuenta.
         let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
-        let changed = next != self.vm || plan.visible_rows != self.plan.visible_rows;
+        let changed = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::VmDiff);
+            next != self.vm || plan.visible_rows != self.plan.visible_rows
+        };
 
         next.sequence = sequence;
         if changed {

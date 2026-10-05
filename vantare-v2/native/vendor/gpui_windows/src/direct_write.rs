@@ -277,6 +277,7 @@ impl PlatformTextSystem for DirectWriteTextSystem {
     }
 
     fn layout_line(&self, text: &str, font_size: Pixels, runs: &[FontRun]) -> LineLayout {
+        let _span = crate::profiling::begin(crate::profiling::Stage::TextLayout);
         self.state
             .write()
             .layout_line(&self.components, text, font_size, runs)

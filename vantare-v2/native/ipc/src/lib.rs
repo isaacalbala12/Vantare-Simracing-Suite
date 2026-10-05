@@ -16,6 +16,11 @@
 
 #![deny(unsafe_code)]
 
+// Instrumentación compartida, inerte sin VANTARE_PROFILE_PHASES=1.
+#[allow(dead_code)]
+#[path = "../../profiling.rs"]
+mod profiling;
+
 mod codec;
 mod demand;
 pub use demand::{Demand, Photo, Signal, SignalState};

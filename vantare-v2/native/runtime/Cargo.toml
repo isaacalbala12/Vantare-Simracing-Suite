@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# Consultas de CPU/reloj y marcas de fotos para diagnóstico local; no altera IPC.
+paint-stats = []
+
 [dependencies]
 vantare-domain.workspace = true
 vantare-ipc.workspace = true

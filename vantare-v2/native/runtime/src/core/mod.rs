@@ -64,6 +64,7 @@ impl std::error::Error for Error {
     }
 }
 
+#[allow(clippy::struct_excessive_bools)] // Interruptores de diagnóstico, apagados por defecto.
 pub struct Core {
     epoch: u64,
     demand: vantare_ipc::Demand,
@@ -83,6 +84,8 @@ pub struct Core {
     trackers: Trackers,
     events: Journal,
     series: Series,
+    measurement_skip_flows: bool,
+    measurement_skip_validation: bool,
 }
 
 impl Core {
@@ -108,6 +111,8 @@ impl Core {
             trackers: Trackers::default(),
             events: Journal::volatile(epoch),
             series: Series::default(),
+            measurement_skip_flows: false,
+            measurement_skip_validation: false,
         }
     }
 
@@ -134,6 +139,27 @@ impl Core {
 
     pub fn events(&self) -> &Journal {
         &self.events
+    }
+
+    /// Ablación de diagnóstico: solo se configura al arrancar el banco, nunca
+    /// por IPC. La ruta normal conserva validación y los tres flujos.
+    #[cfg(any(windows, test))]
+    pub(crate) fn set_measurement_mode(&mut self, mode: &str) -> io::Result<()> {
+        let (flows, validation) = match mode {
+            "normal" => (false, false),
+            "no-flows" => (true, false),
+            "no-validation" => (false, true),
+            "no-both" => (true, true),
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "modo de medición desconocido",
+                ));
+            }
+        };
+        self.measurement_skip_flows = flows;
+        self.measurement_skip_validation = validation;
+        Ok(())
     }
 
     pub fn series(&self) -> &Series {
@@ -207,7 +233,12 @@ impl Core {
     /// # Errors
     /// El error del adaptador o el rechazo de su observación.
     pub fn step(&mut self, adapter: &mut dyn Adapter, now: Duration) -> Result<(), Error> {
-        let result = match adapter.poll(now) {
+        let polled = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Poll);
+            adapter.poll(now)
+        };
+        let result = match polled {
             Ok(Some(observation)) => self.observe(observation).map_err(Error::Reject),
             Ok(None) => Ok(()),
             Err(error) => {
@@ -227,6 +258,8 @@ impl Core {
     /// # Errors
     /// [`Reject`] si no se admite; entonces no se publica nada ni cambia la revisión.
     pub fn observe(&mut self, observation: Observation) -> Result<(), Reject> {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Observe);
         let origin = observation.origin;
         let paused = observation.state.source_state == SourceState::Paused;
         let advanced = origin.source_time.is_none() || origin.source_time != self.last_source_time;
@@ -236,6 +269,7 @@ impl Core {
             self.epoch,
             &mut self.trackers,
             &self.demand,
+            !self.measurement_skip_validation,
         )?;
         self.demand_pending = false;
         if paused || advanced {
@@ -299,9 +333,17 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
-        self.events.observe(&self.current, &snapshot);
-        if snapshot.state.source_state != SourceState::Paused {
-            self.series.observe(&snapshot);
+        if !self.measurement_skip_flows {
+            {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Journal);
+                self.events.observe(&self.current, &snapshot);
+            }
+            if snapshot.state.source_state != SourceState::Paused {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Series);
+                self.series.observe(&snapshot);
+            }
         }
         self.current = Arc::new(snapshot);
         if self.current.state.source_state == SourceState::Live {
@@ -424,6 +466,66 @@ mod tests {
         obs.origin.source_time = Some(source);
         obs.origin.received_at = at;
         obs
+    }
+
+    #[test]
+    fn measurement_modes_preserve_standings_for_valid_observations() {
+        let obs = observation(ms(0), ms(0), 0.25);
+        let mut baseline = Core::new(3);
+        baseline.observe(obs.clone()).unwrap();
+        let expected = standings::project(&baseline.snapshot(), Preferences::default());
+        for mode in ["normal", "no-flows", "no-validation", "no-both"] {
+            let mut core = Core::new(3);
+            core.set_measurement_mode(mode).unwrap();
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(
+                standings::project(&core.snapshot(), Preferences::default()),
+                expected,
+                "{mode}"
+            );
+        }
+    }
+
+    #[test]
+    fn measurement_modes_isolate_flows_and_validation_but_keep_photos_and_staleness() {
+        for (mode, flows, validation) in [
+            ("normal", true, true),
+            ("no-flows", false, true),
+            ("no-validation", true, false),
+            ("no-both", false, false),
+        ] {
+            let mut core = Core::new(3);
+            core.set_measurement_mode(mode).unwrap();
+            let mut obs = observation(ms(0), ms(0), 0.25);
+            obs.state.cars[1].laps = Quality::Reliable(1);
+            obs.state.session.remaining_s = Quality::Reliable(f64::INFINITY);
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(core.series().active().is_some(), flows, "{mode}");
+            assert_eq!(
+                core.snapshot().state.session.remaining_s == Quality::Unavailable,
+                validation,
+                "{mode}"
+            );
+            let tail = core.events().tail();
+            obs.origin.source_time = Some(ms(100));
+            obs.origin.received_at = ms(100);
+            obs.state.cars[1].in_pits = Quality::Reliable(true);
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(core.events().tail().index > tail.index, flows, "{mode}");
+            obs.state.cars[2].id = obs.state.cars[0].id;
+            assert_eq!(core.observe(obs).is_err(), validation, "{mode}");
+            core.tick(ms(700));
+            assert_eq!(
+                core.snapshot().state.source_state,
+                SourceState::Stale,
+                "{mode}"
+            );
+            assert!(core.snapshot().sequence >= 3);
+        }
+        let mut core = Core::new(3);
+        assert!(core.set_measurement_mode("typo").is_err());
+        assert!(!core.measurement_skip_flows);
+        assert!(!core.measurement_skip_validation);
     }
 
     #[test]

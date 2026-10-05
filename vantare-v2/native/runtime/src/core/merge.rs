@@ -48,6 +48,7 @@ pub(super) fn merge(
         epoch,
         trackers,
         &vantare_ipc::Demand::all(),
+        true,
     )
 }
 
@@ -57,16 +58,25 @@ pub(super) fn merge_requested(
     epoch: u64,
     trackers: &mut Trackers,
     demand: &vantare_ipc::Demand,
+    validate: bool,
 ) -> Result<Snapshot, Reject> {
     let Observation { origin, mut state } = observation;
-    let mut seen = HashSet::with_capacity(state.cars.len());
-    if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
-        return Err(Reject::DuplicateCar(car.id));
+    if validate {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Validation);
+        let mut seen = HashSet::with_capacity(state.cars.len());
+        if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
+            return Err(Reject::DuplicateCar(car.id));
+        }
+        sanitize(&mut state);
     }
-    sanitize(&mut state);
-    derive_requested(&mut state, demand);
-    if state.source_state != SourceState::Paused {
-        trackers.derive(&mut state, demand);
+    {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Derive);
+        derive_requested(&mut state, demand);
+        if state.source_state != SourceState::Paused {
+            trackers.derive(&mut state, demand);
+        }
     }
     let sequence = match previous {
         Some(previous) if previous.epoch == epoch => previous.sequence + 1,

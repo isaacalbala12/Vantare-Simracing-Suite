@@ -101,14 +101,21 @@ pub(crate) fn supports(version: u32) -> bool {
 
 pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {
     let mut frame = vec![0; 4];
-    serde_json::to_writer(&mut frame, message)?;
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Serialize);
+        serde_json::to_writer(&mut frame, message)?;
+    }
     let len = frame.len() - 4;
     let header = match u32::try_from(len) {
         Ok(header) if len <= MAX_MESSAGE => header,
         _ => return Err(Error::TooLarge { len }),
     };
     frame[..4].copy_from_slice(&header.to_le_bytes());
-    w.write_all(&frame)?; // un solo write: un solo `WriteFile` en el pipe
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::IpcWrite);
+        w.write_all(&frame)?; // un solo write: un solo `WriteFile` en el pipe
+    }
+    crate::profiling::report_if_due();
     Ok(())
 }
 
@@ -121,7 +128,12 @@ pub(crate) fn read_message(r: &mut impl Read) -> Result<Message, Error> {
     }
     let mut body = vec![0; len];
     r.read_exact(&mut body)?;
-    Ok(serde_json::from_slice(&body)?)
+    let message = {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Decode);
+        serde_json::from_slice(&body)?
+    };
+    crate::profiling::report_if_due();
+    Ok(message)
 }
 
 #[cfg(test)]

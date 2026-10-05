@@ -3851,3 +3851,14 @@ escenas no cambió sus bytes. Comparación reparte dos columnas iguales.
 Fmt/check/clippy, Nextest 1097/1097 (4 omitidas), lifecycle12 y prueba PASS.
 Ronda-5 recompilada y mirada: datos, filas y caja coinciden; no certifica
 paridad píxel a píxel. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 3 (2026-10-05)
+Ajustes JSON versionados por worktree: widget, escena, fondo, escala,
+dimensiones, idioma es/en, dirección y settings. Reabrir sin argumentos y
+recompilar con dev.ps1 restauran la selección; CLI explícita conserva autoridad.
+Ficheros inválidos se conservan y muestran error. Test de archivo real PASS.
+Fmt/check/clippy, Nextest1098/1098 (4 skip), lifecycle12 y prueba PASS.
+Dos procesos 29160/24828 restauraron Relative/cross-ahead/solid/1.5x; sus
+capturas son idénticas. Ronda-6 React/GPUI mirada: misma caja y datos;
+chrome y transporte aún tienen diferencias visuales. Watcher completo de
+recompilación no se repitió en esta ronda. Sin push/PR/merge/release.

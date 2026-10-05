@@ -11,7 +11,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $native = Split-Path $PSScriptRoot
 $runDir = Join-Path ([IO.Path]::GetTempPath()) ('vantare-workshop-dev-' + [guid]::NewGuid())
-$state = Join-Path $runDir 'selection.txt'
 $built = Join-Path $native 'target/debug/vantare-workshop.exe'
 $running = $null
 $sequence = 0
@@ -68,14 +67,8 @@ function Start-Workshop {
     $info = [Diagnostics.ProcessStartInfo]::new($copy)
     $info.UseShellExecute = $false
     $info.WorkingDirectory = $native
-    $info.Environment['VANTARE_WORKSHOP_STATE'] = $state
     $info.ArgumentList.Add('--dev')
-    if (Test-Path -LiteralPath $state) {
-        $selection = @(Get-Content -LiteralPath $state)
-        if ($selection.Count -ne 2) { throw 'Selección guardada incompleta; se conserva la ventana anterior.' }
-        $info.ArgumentList.Add('--widget'); $info.ArgumentList.Add($selection[0])
-        $info.ArgumentList.Add('--escena'); $info.ArgumentList.Add($selection[1])
-    } else {
+    if ($sequence -eq 1) {
         if ($Widget) { $info.ArgumentList.Add('--widget'); $info.ArgumentList.Add($Widget) }
         if ($Escena) { $info.ArgumentList.Add('--escena'); $info.ArgumentList.Add($Escena) }
     }

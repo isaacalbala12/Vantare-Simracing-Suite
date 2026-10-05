@@ -13,6 +13,7 @@ use crate::{
     app::{self, Overlay},
 };
 
+mod state;
 mod view;
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures");
@@ -449,12 +450,31 @@ impl Workshop {
 
     fn persist(&mut self) {
         if let Some(path) = &self.state_file {
-            self.state_error = std::fs::write(
-                path,
-                format!("{}\n{}\n", self.kind.name(), self.scene.path.display()),
-            )
-            .err()
-            .map(|e| format!("guardar selección: {e}"));
+            let saved = state::Saved {
+                version: 1,
+                settings: self.settings.clone(),
+                scene: self.scene.path.clone(),
+                frame: self.playback.frame,
+                background: self.background.clone(),
+                scale: self.scale,
+                dimensions: self.dimensions,
+                study: self.study.clone(),
+                preset: self.preset.clone(),
+                surface: self.surface.clone(),
+                comparison: self
+                    .comparison
+                    .as_ref()
+                    .map(|_| self.comparison_surface.clone()),
+                language: if self.prefs.language == vantare_domain::format::Language::En {
+                    "en"
+                } else {
+                    "es"
+                }
+                .into(),
+                player_position: self.player_position,
+                name_mode: self.name_mode.clone(),
+            };
+            self.state_error = saved.save(path).err();
         }
     }
 
@@ -571,6 +591,7 @@ impl Workshop {
         self.playback.frame = frame.min(self.scene.snapshots.len() - 1);
         self.playback.elapsed = Duration::ZERO;
         self.replay(cx);
+        self.persist();
         cx.notify();
     }
 
@@ -652,7 +673,7 @@ impl Workshop {
                 }
                 Control::Location => self.in_pits = Some(value == "pits"),
                 Control::Width | Control::Height => {
-                    let wanted = self.overlay.read(cx).wanted_size();
+                    let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
                     let mut size = self.dimensions.unwrap_or(wanted);
                     let number = value.parse::<f32>().map_err(|e| format!("tamaño: {e}"))?;
                     if control == Control::Width {
@@ -745,8 +766,34 @@ impl Workshop {
 }
 
 /// Abre una ventana interactiva; las capturas siguen usando su host independiente.
-pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
-    let path = path.unwrap_or_else(|| default_path(kind));
+pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
+    let state_file = Some(state::path()?);
+    let mut state_error = None;
+    let mut saved = match state::Saved::load(state_file.as_ref().ok_or("ruta de ajustes ausente")?)
+    {
+        Ok(saved) => saved,
+        Err(error) => {
+            state_error = Some(error);
+            None
+        }
+    };
+    if path.is_some()
+        || kind.is_some_and(|kind| saved.as_ref().is_some_and(|s| s.settings.kind() != kind))
+    {
+        saved = None;
+    }
+    if let Some(previous) = &saved
+        && let Err(error) = Scene::new(&previous.scene)
+    {
+        state_error = Some(format!("restaurar escena: {error}"));
+        saved = None;
+    }
+    let kind = kind
+        .or_else(|| saved.as_ref().map(|s| s.settings.kind()))
+        .unwrap_or(Kind::Standings);
+    let path = path
+        .or_else(|| saved.as_ref().map(|s| s.scene.clone()))
+        .unwrap_or_else(|| default_path(kind));
     let path = std::fs::canonicalize(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let scene = Scene::new(&path)?;
     let style_path = std::env::var_os("VANTARE_WORKSHOP_STYLES").map_or_else(
@@ -759,7 +806,7 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
         .iter()
         .map(|p| Scene::new(p).map(|s| s.label))
         .collect::<Result<Vec<_>, _>>()?;
-    let state_file = std::env::var_os("VANTARE_WORKSHOP_STATE").map(PathBuf::from);
+
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
@@ -814,11 +861,34 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                     dragging: false,
                     overlay,
                     state_file,
-                    state_error: None,
+                    state_error,
                     focus,
                 };
+                if let Some(saved) = saved {
+                    workshop.settings = saved.settings.normalized();
+                    workshop.background = saved.background;
+                    workshop.scale = saved.scale;
+                    workshop.dimensions = saved.dimensions;
+                    workshop.study = saved.study;
+                    workshop.preset = saved.preset;
+                    workshop.surface = saved.surface;
+                    workshop.player_position = saved.player_position;
+                    workshop.name_mode = saved.name_mode;
+                    workshop.playback.frame = saved.frame.min(workshop.scene.snapshots.len() - 1);
+                    workshop.prefs.language = if saved.language == "en" {
+                        vantare_domain::format::Language::En
+                    } else {
+                        vantare_domain::format::Language::Es
+                    };
+                    if let Some(surface) = saved.comparison {
+                        workshop.comparison_surface = surface;
+                        workshop.comparison = Some(workshop.overlay.clone());
+                    }
+                }
                 workshop.replay(cx);
-                workshop.persist();
+                if workshop.state_error.is_none() {
+                    workshop.persist();
+                }
                 cx.spawn(async move |this, cx| {
                     loop {
                         cx.background_executor()

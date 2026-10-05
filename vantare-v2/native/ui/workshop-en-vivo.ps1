@@ -11,7 +11,7 @@ try {
     $exe=Join-Path $target 'prueba/vantare-workshop.exe'
     $env:VANTARE_WORKSHOP_STYLES=Join-Path $PSScriptRoot 'styles'
     Write-Output "Workshop en vivo: edita $PSScriptRoot/styles/standings.json y guarda."
-    & $exe --dev --widget standings
+    & $exe --dev
     if ($LASTEXITCODE) { throw 'Workshop en vivo terminó con un error.' }
 } finally {
     $env:VANTARE_WORKSHOP_STYLES=$previousStyles

@@ -756,24 +756,24 @@ impl Render for Workshop {
                         ]),
                         cx,
                     ))
-                    .child(
-                        self.numeric_field(
-                            Control::Width,
-                            "Ancho",
-                            self.dimensions
-                                .map_or(self.overlay.read(cx).wanted_size().0, |s| s.0),
-                            cx,
+                    .child(self.numeric_field(
+                        Control::Width,
+                        "Ancho",
+                        self.dimensions.map_or(
+                            preview_size(self.kind, self.overlay.read(cx).wanted_size()).0,
+                            |s| s.0,
                         ),
-                    )
-                    .child(
-                        self.numeric_field(
-                            Control::Height,
-                            "Alto",
-                            self.dimensions
-                                .map_or(self.overlay.read(cx).wanted_size().1, |s| s.1),
-                            cx,
+                        cx,
+                    ))
+                    .child(self.numeric_field(
+                        Control::Height,
+                        "Alto",
+                        self.dimensions.map_or(
+                            preview_size(self.kind, self.overlay.read(cx).wanted_size()).1,
+                            |s| s.1,
                         ),
-                    )
+                        cx,
+                    ))
                     .child(
                         button("natural-size".into(), "Aplicar tamaño declarado", false).on_click(
                             cx.listener(|this, _, _, cx| {

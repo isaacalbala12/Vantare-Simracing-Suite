@@ -34,7 +34,7 @@ const SAVE_TIMEOUT: Duration = Duration::from_secs(20);
 #[derive(Debug, PartialEq)]
 enum Command {
     Dev {
-        widget: Kind,
+        widget: Option<Kind>,
         scene: Option<PathBuf>,
     },
     #[cfg(feature = "parity-capture")]
@@ -117,7 +117,7 @@ fn parse(args: &[String]) -> Option<Command> {
             return None;
         }
         return Some(Command::Dev {
-            widget: single.or_else(|| Kind::ALL.first().copied())?,
+            widget: single,
             scene,
         });
     }
@@ -268,7 +268,7 @@ mod tests {
                     "s.json"
                 ])),
                 Some(Command::Dev {
-                    widget,
+                    widget: Some(widget),
                     scene: Some("s.json".into())
                 })
             );

@@ -27,6 +27,18 @@ try {
         if ([Environment]::GetEnvironmentVariable('VANTARE_POSTHOG_KEY', 'Process') -cne $expected) { throw 'Un rechazo alteró el entorno.' }
         $passed++
     }
+    # La identidad pública del producto también se carga y se restaura.
+    $versionBefore = [Environment]::GetEnvironmentVariable('VANTARE_VERSION', 'Process')
+    $channelBefore = [Environment]::GetEnvironmentVariable('VANTARE_BUILD_CHANNEL', 'Process')
+    [IO.File]::WriteAllText($file, "VANTARE_VERSION=0.0.0-test`nVANTARE_BUILD_CHANNEL=test`n")
+    $previous = Import-NativeBuildConfig $file
+    try {
+        if ($env:VANTARE_VERSION -cne '0.0.0-test' -or $env:VANTARE_BUILD_CHANNEL -cne 'test') { throw 'No se cargó la identidad pública de build.' }
+        $passed++
+    } finally { Restore-NativeBuildConfig $previous }
+    if ([Environment]::GetEnvironmentVariable('VANTARE_VERSION', 'Process') -cne $versionBefore -or
+        [Environment]::GetEnvironmentVariable('VANTARE_BUILD_CHANNEL', 'Process') -cne $channelBefore) { throw 'No se restauró la identidad pública anterior.' }
+    $passed++
     # .NET Framework trata vacío y ausente como la misma configuración desactivada.
     [Environment]::SetEnvironmentVariable('VANTARE_POSTHOG_KEY', $null, 'Process')
     [IO.File]::WriteAllText($file, 'VANTARE_POSTHOG_KEY=public-fixture')

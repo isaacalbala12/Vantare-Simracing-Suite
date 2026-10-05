@@ -542,3 +542,39 @@ PASS; `cargo nextest run --workspace --build-jobs 2 -j 2`: 914 PASS,
 -j 2`: 5 Engineer y 11 Launcher, 0 fallos. `git diff --check`: PASS.
 Los logs y hashes están fuera del repo. Sin push, PR, CI remoto, merge remoto,
 promoción ni release; los merges locales fueron solicitados expresamente.
+
+## #1470 · Escaparate y lanzamiento (Fase 2)
+
+Launcher abre con el perfil favorito (o el primero por nombre), sus aplicaciones
+como tarjetas y los perfiles debajo. Al seleccionar otro perfil cambia el
+escaparate; al lanzar se conserva el mismo contenedor y pasa a línea de tiempo.
+Progreso, estados y reintentos salen de los eventos reales de `Chain`, usando
+el último evento de cada paso. La barra compartida muestra las apps listas
+sobre el total. No se calculan tiempos estimados ficticios.
+
+El carril derecho muestra disponibilidad real, apps usadas, opciones persistidas
+por perfil e historial. Los desplegables y los interruptores usan Orbit. Durante
+una ejecución, cambiar preferencias solo afecta al siguiente lanzamiento: la
+cadena activa conserva su política. «Cerrar mis apps al salir de Vantare» usa
+la política `exit` existente; no promete cerrar apps al cerrar el juego.
+No se añade una opción de minimizar ventanas que el motor no soporta.
+
+«Aplicaciones · Historial» conserva la administración anterior: búsqueda,
+detección, rutas, alta manual, perfiles, estadísticas, historial y reintentos.
+«Probar sin el juego» ejecuta los pasos distintos de LMU con el mismo motor.
+Cancelar conserva la cancelación y propiedad de procesos existentes.
+
+Las escenas `launcher-reposo` y `launcher-lanzando` cargan `launcher-r7.json`
+exclusivamente en captura QA; bloquean la ejecución de procesos. Los estados
+listos de esa escena no cambian la detección productiva. La transición básica
+consiste en actualizar el mismo contenedor al recibir eventos; las animaciones
+finas quedan para una iteración posterior. Capturas y logs externos en
+`C:/tmp/1470-launcher-evidence/`; no certifican ejecución física LMU/OBS,
+paridad exacta por píxel, ni escalas Windows 125/150 %.
+
+Gates finales de este bloque: fmt/check/clippy PASS; nextest 1137/1137 PASS,
+seis skips del filtro existente; lifecycle 5+12 PASS; build prueba PASS.
+Las ocho capturas finales fueron inspeccionadas, con HTML|GPUI y comparación
+antes/después. El aviso parity-capture de `analysis/view.rs:989` es previo a
+este bloque. No se ejecutaron Release ni pruebas físicas de interacción,
+LMU/OBS o escalas mixtas; frontend y Go no se modificaron.

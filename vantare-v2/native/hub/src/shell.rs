@@ -274,7 +274,11 @@ impl Hub {
             .when(
                 matches!(
                     self.section,
-                    Section::Home | Section::Settings | Section::Account | Section::Licenses
+                    Section::Home
+                        | Section::Launcher
+                        | Section::Settings
+                        | Section::Account
+                        | Section::Licenses
                 ),
                 |content| content.h_full().min_h_0().min_w_0(),
             )
@@ -359,6 +363,9 @@ impl Hub {
     ) -> Option<gpui::AnyElement> {
         match self.section {
             Section::Launcher => {
+                if !self.launcher.read(cx).managing() {
+                    return None;
+                }
                 let available_width = f32::from(window.viewport_size().width)
                     - orbit::RAIL_W
                     - if self.shell.column_open {
@@ -389,13 +396,9 @@ impl Hub {
             self.studio.read(cx).context_column().into_any_element()
         } else if matches!(
             self.section,
-            Section::Settings | Section::Account | Section::Licenses
+            Section::Settings | Section::Account | Section::Licenses | Section::Launcher
         ) {
             div().into_any_element()
-        } else if self.section == Section::Launcher {
-            self.launcher
-                .update(cx, |launcher, cx| launcher.context_column(window, cx))
-                .into_any_element()
         } else if self.section == Section::Analysis {
             self.analysis_context_column(window, cx).into_any_element()
         } else if strategy_context_visible {
@@ -472,6 +475,7 @@ impl Render for Hub {
                                 !matches!(
                                     self.section,
                                     Section::Home
+                                        | Section::Launcher
                                         | Section::Settings
                                         | Section::Account
                                         | Section::Licenses
@@ -485,6 +489,7 @@ impl Render for Hub {
                             && !matches!(
                                 self.section,
                                 Section::Home
+                                    | Section::Launcher
                                     | Section::Settings
                                     | Section::Account
                                     | Section::Licenses
@@ -870,15 +875,26 @@ fn create_launcher(
     cx: &mut Context<Hub>,
 ) -> Entity<Launcher> {
     cx.new(|cx| match demo {
-        Some(demo) => Launcher::new_demo(
-            store,
-            demo,
-            capture
-                .as_ref()
-                .is_some_and(|capture| capture.launcher_new_profile),
-            window,
-            cx,
-        ),
+        Some(demo) => {
+            let mut launcher = Launcher::new_demo(
+                store,
+                demo,
+                capture
+                    .as_ref()
+                    .is_some_and(|capture| capture.launcher_new_profile),
+                window,
+                cx,
+            );
+            if let Some(capture) = capture.filter(|capture| {
+                matches!(
+                    capture.name.as_str(),
+                    "launcher-reposo" | "launcher-lanzando"
+                )
+            }) {
+                launcher.prepare_capture(capture.name == "launcher-lanzando");
+            }
+            launcher
+        }
         None => Launcher::new(store, cx),
     })
 }

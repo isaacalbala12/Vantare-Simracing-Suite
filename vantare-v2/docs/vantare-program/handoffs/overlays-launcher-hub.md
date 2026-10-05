@@ -4031,3 +4031,42 @@ consentimiento, diagnóstico y actualizador en una instalación QA aislada.
 `docs/roadmap/plan.md` no existe en esta base; coordinación del roadmap a cargo
 del orquestador. No hay push, PR, CI remota, merge, promoción ni release. La beta
 de Isaac no se ha tocado.
+
+### #1470 · Worker Launcher · Fase 2 (2026-10-05)
+
+Worktree `C:/tmp/vw3-1470-launcher/vantare-v2`, rama
+`vantareapp/isa-1470-launcher`, base `46244ea2`. Entrega aislada, sin integración.
+Escaparate favorito con tarjetas de apps y portadas de perfiles; al lanzar,
+el mismo contenedor muestra línea de tiempo/progreso y el carril derecho refleja
+los últimos eventos reales por paso. La barra compartida conserva N de M.
+Administración anterior accesible desde «Aplicaciones · Historial» y «Ver todas»;
+se conservan editor, detección/rutas, alta manual, estadísticas, diagnóstico,
+reintentos, políticas y propiedad de procesos. Selección por teclado y toggles
+con Enter/Espacio; dropdown usa el foco/teclado existentes de Orbit.
+
+Opciones guardadas por perfil; durante el lanzamiento se aplican la próxima vez.
+No se promete minimizar ventanas ni cerrar apps al cerrar LMU: `exit` significa
+salir de Vantare. La transición es básica; animaciones finas siguen pendientes.
+API compartida pequeña: `orbit::Choice::compact(width)` y cinco gradientes de app
+en `vantare_ui::theme`, con defaults compatibles y validación RGB.
+No se añade dependencia ni cambia motor, IPC, auth, permisos o servidor.
+
+Escenas QA nuevas `launcher-reposo`/`launcher-lanzando`, aisladas en
+`launcher-r7.json`; bloquean ejecución de procesos y usan detección QA lista.
+No cambian `inicio-base` ni datos productivos. Capturas externas HTML|GPUI,
+1440/1920/2560 y DeepSeek en `C:/tmp/1470-launcher-evidence/`, inspeccionadas.
+Se aplicaron las seis notas 22:25. No se afirma paridad exacta por píxel,
+ejecución física LMU/OBS, rendimiento, DPI 125/150 ni animaciones finales.
+
+Verificación manual pendiente de Isaac/orquestador: abrir Launcher, elegir otro
+perfil, editar y guardar; variar opciones y comprobar persistencia; lanzar con
+apps reales y observar N de M/reintentos/cancelación; volver a administración y
+probar búsqueda, rutas, detección y teclado. `docs/roadmap/plan.md` sigue ausente
+en esta base, ya comunicado; no se crea una fuente de roadmap alternativa.
+Gates finales: fmt/check/clippy PASS; nextest 1137/1137 PASS (834,701 s),
+seis skips del filtro existente; lifecycle 5+12 PASS. Build prueba PASS
+(32,52 s), con el aviso preexistente cx sin usar en analysis/view.rs:989.
+Ocho capturas finales inspeccionadas, HTML|GPUI y ronda-4 antes/después.
+Logs closure-* y build-final.log en la carpeta externa; git diff --check PASS.
+El commit local queda identificado en el informe del worker. Sin push/PR/CI remota,
+merge, promoción ni release; beta de Isaac intacta.

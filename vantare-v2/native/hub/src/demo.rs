@@ -282,6 +282,12 @@ impl DemoData {
         self.notifications.clear();
         if matches!(
             capture.name.as_str(),
+            "notificaciones-panel" | "notificaciones-vacio"
+        ) {
+            self.captured_at = "2026-10-05T16:30:00Z".into();
+        }
+        if matches!(
+            capture.name.as_str(),
             "inicio-base" | "launcher-reposo" | "launcher-lanzando"
         ) {
             self.launcher = serde_json::from_str(if capture.name == "inicio-base" {
@@ -542,11 +548,14 @@ impl CaptureState {
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
             && !matches!(name, "launcher-reposo" | "launcher-lanzando")
             && name != "calendario-beta-archivo"
+            && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
-            "shell-notificaciones-abiertas" => Section::Home,
+            "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio" => {
+                Section::Home
+            }
             "launcher-base" | "launcher-nuevo-perfil" | "launcher-reposo" | "launcher-lanzando" => {
                 Section::Launcher
             }
@@ -601,7 +610,10 @@ impl CaptureState {
             section,
             palette_query,
             column_open: name != "shell-columna-colapsada",
-            notifications_open: name == "shell-notificaciones-abiertas",
+            notifications_open: matches!(
+                name,
+                "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio"
+            ),
             launcher_new_profile: name == "launcher-nuevo-perfil",
             settings_page,
             strategy_page,
@@ -612,6 +624,24 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn notification_capture_clock_is_scoped_to_its_two_explicit_scenes() {
+        for name in ["notificaciones-panel", "notificaciones-vacio"] {
+            let capture = CaptureState::parse(name).expect("escena Notificaciones");
+            assert!(capture.notifications_open);
+            assert_eq!(capture.section, Section::Home);
+            let mut demo = DemoData::load().expect("datos QA");
+            demo.apply_capture(&capture).expect("aplicar escena");
+            assert_eq!(demo.captured_at, "2026-10-05T16:30:00Z");
+            assert!(demo.notifications.is_empty());
+        }
+        let mut demo = DemoData::load().expect("datos QA");
+        let original = demo.captured_at.clone();
+        demo.apply_capture(&CaptureState::parse("inicio-base").expect("Inicio"))
+            .expect("escena");
+        assert_eq!(demo.captured_at, original);
+    }
 
     #[test]
     fn rail_locks_only_belong_to_strategy_capture_scenes() {

@@ -117,6 +117,9 @@ impl Hub {
                 cx.notify();
             }
         }
+        self.notifications.update(cx, |notifications, cx| {
+            notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
+        });
         if self
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
@@ -264,7 +267,7 @@ impl Hub {
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
-                .update(cx, super::services::view::Remote::roadmap)
+                .update(cx, |remote, cx| remote.roadmap(window, cx))
                 .into_any_element(),
         }
     }
@@ -275,6 +278,8 @@ impl Hub {
                 matches!(
                     self.section,
                     Section::Home
+                        | Section::Roadmap
+                        | Section::Notifications
                         | Section::Studio
                         | Section::Launcher
                         | Section::Settings
@@ -289,21 +294,9 @@ impl Hub {
             .when(
                 !matches!(self.section, Section::Strategy | Section::Launcher),
                 |content| {
-                    // Estos consumidores aun restan el espacio de la antigua cabecera.
-                    // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                    let inset = if self.section == Section::Roadmap {
-                        135.0
-                    } else {
-                        0.0
-                    };
-                    content
-                        .gap(gpui::px(24.0))
-                        .p(gpui::px(
-                            cx.global::<orbit::design::Tokens>().geometry.gutter,
-                        ))
-                        .pt(gpui::px(
-                            cx.global::<orbit::design::Tokens>().geometry.gutter + inset,
-                        ))
+                    content.gap(gpui::px(24.0)).p(gpui::px(
+                        cx.global::<orbit::design::Tokens>().geometry.gutter,
+                    ))
                 },
             )
             .when(self.section == Section::Studio, |content| {
@@ -515,6 +508,8 @@ impl Render for Hub {
                                 !matches!(
                                     self.section,
                                     Section::Home
+                                        | Section::Roadmap
+                                        | Section::Notifications
                                         | Section::Studio
                                         | Section::Launcher
                                         | Section::Settings
@@ -530,6 +525,7 @@ impl Render for Hub {
                             && !matches!(
                                 self.section,
                                 Section::Home
+                                    | Section::Roadmap
                                     | Section::Launcher
                                     | Section::Settings
                                     | Section::Account
@@ -840,7 +836,18 @@ impl Hub {
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         })
         .detach();
-        let notifications = cx.new(|_| Notifications::from_center(notification_center));
+        let notifications = cx.new(|cx| {
+            let mut notifications = Notifications::from_center(notification_center);
+            notifications.set_tester(access.beta_visible(Section::Testing), cx);
+            #[cfg(feature = "parity-capture")]
+            if capture.is_some()
+                && let Some(demo) = &demo
+                && let Ok(now) = demo.fixed_now()
+            {
+                notifications.capture_clock(now);
+            }
+            notifications
+        });
         let calendar = cx.new(|_| calendar);
         let analysis = cx.new(|cx| {
             prepared_analysis.refresh(cx);
@@ -855,6 +862,9 @@ impl Hub {
         cx.observe(&remote, |this, remote, cx| {
             if this.capture.is_none() {
                 this.shell.access = remote.read(cx).navigation_access();
+                this.notifications.update(cx, |notifications, cx| {
+                    notifications.set_tester(this.shell.access.beta_visible(Section::Testing), cx);
+                });
             }
             cx.notify();
         })
@@ -978,6 +988,13 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
     };
+    #[cfg(feature = "parity-capture")]
+    let notifications = notifications.with_capture_scene(
+        options
+            .capture
+            .as_ref()
+            .map(|capture| capture.name.as_str()),
+    )?;
     let launcher = match options.demo.as_ref() {
         Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
         None => {

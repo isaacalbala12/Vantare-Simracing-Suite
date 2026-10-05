@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-05",
+  "currentPhase": "screens",
+  "phases": [
+    {
+      "id": "foundations",
+      "title": "Cimientos nativos",
+      "body": "Temas, tarjetas y navegación con acceso por rol.",
+      "progress": 100
+    },
+    {
+      "id": "screens",
+      "title": "Pantallas de la beta",
+      "body": "Estamos terminando el nuevo diseño del Hub.",
+      "progress": 75
+    },
+    {
+      "id": "validation",
+      "title": "Validación con testers",
+      "body": "Verificar las pantallas y los flujos reales de producto.",
+      "progress": 0
+    },
+    {
+      "id": "beta",
+      "title": "Beta para testers",
+      "body": "Beta para testers — objetivo: 12 de octubre.",
+      "progress": 0
+    }
+  ],
+  "areas": [
+    {
+      "id": "hub",
+      "title": "Hub",
+      "progress": 80
+    },
+    {
+      "id": "overlays",
+      "title": "Overlays",
+      "progress": 75
+    },
+    {
+      "id": "launcher",
+      "title": "Launcher",
+      "progress": 75
+    },
+    {
+      "id": "modules",
+      "title": "Módulos",
+      "progress": 25
+    }
+  ],
+  "items": [
+    {
+      "id": "hub-screens",
+      "section": "now",
+      "area": "hub",
+      "title": {
+        "es": "Pantallas del Hub",
+        "en": "Hub screens",
+        "pt": "Ecrãs do Hub",
+        "it": "Schermate Hub"
+      },
+      "body": {
+        "es": "Nueva navegación y pantallas de Roadmap, Cuenta, Ajustes y Notificaciones.",
+        "en": "New navigation and Roadmap, Account, Settings and Notifications screens.",
+        "pt": "Nova navegação e ecrãs de Roadmap, Conta, Definições e Notificações.",
+        "it": "Nuova navigazione e schermate Roadmap, Account, Impostazioni e Notifiche."
+      },
+      "progress": 80,
+      "date": null
+    },
+    {
+      "id": "studio",
+      "section": "now",
+      "area": "overlays",
+      "title": {
+        "es": "Overlays Studio",
+        "en": "Overlays Studio",
+        "pt": "Overlays Studio",
+        "it": "Overlays Studio"
+      },
+      "body": {
+        "es": "Layout, contenido y apariencia en un único editor.",
+        "en": "Layout, content and appearance in one editor.",
+        "pt": "Layout, conteúdo e aparência num único editor.",
+        "it": "Layout, contenuto e aspetto in un unico editor."
+      },
+      "progress": 75,
+      "date": null
+    },
+    {
+      "id": "launcher",
+      "section": "now",
+      "area": "launcher",
+      "title": {
+        "es": "Launcher nativo",
+        "en": "Native Launcher",
+        "pt": "Launcher nativo",
+        "it": "Launcher nativo"
+      },
+      "body": {
+        "es": "Rediseñar perfiles y cadenas sin perder las funciones existentes.",
+        "en": "Redesign profiles and chains while retaining existing behavior.",
+        "pt": "Redesenhar perfis e cadeias mantendo as funções existentes.",
+        "it": "Ridisegnare profili e catene mantenendo le funzioni esistenti."
+      },
+      "progress": 75,
+      "date": null
+    },
+    {
+      "id": "testing",
+      "section": "now",
+      "area": "modules",
+      "title": {
+        "es": "Testing Center y Calendario",
+        "en": "Testing Center and Calendar",
+        "pt": "Testing Center e Calendário",
+        "it": "Testing Center e Calendario"
+      },
+      "body": {
+        "es": "Pantallas de beta visibles solo para tester y owner.",
+        "en": "Beta screens visible only to testers and owners.",
+        "pt": "Ecrãs beta apenas para testers e owners.",
+        "it": "Schermate beta solo per tester e owner."
+      },
+      "progress": 25,
+      "date": null
+    },
+    {
+      "id": "validation",
+      "section": "next",
+      "area": "hub",
+      "title": {
+        "es": "Revisión y pruebas de la beta",
+        "en": "Beta review and testing",
+        "pt": "Revisão e testes beta",
+        "it": "Revisione e test beta"
+      },
+      "body": {
+        "es": "Revisar con testers la interfaz y los flujos reales.",
+        "en": "Review the interface and real workflows with testers.",
+        "pt": "Rever a interface e os fluxos reais com testers.",
+        "it": "Rivedere l’interfaccia e i flussi reali con i tester."
+      },
+      "progress": null,
+      "date": null
+    },
+    {
+      "id": "strategy-engineer",
+      "section": "later",
+      "area": "modules",
+      "title": {
+        "es": "Strategy y Engineer",
+        "en": "Strategy and Engineer",
+        "pt": "Strategy e Engineer",
+        "it": "Strategy e Engineer"
+      },
+      "body": {
+        "es": "Módulos de estrategia e ingeniero previstos después del pulido de la beta.",
+        "en": "Strategy and engineer modules planned after beta polish.",
+        "pt": "Módulos de estratégia e engenheiro previstos após o polimento da beta.",
+        "it": "Moduli strategia e ingegnere previsti dopo il perfezionamento della beta."
+      },
+      "progress": null,
+      "date": null
+    },
+    {
+      "id": "foundations",
+      "section": "done",
+      "area": "hub",
+      "title": {
+        "es": "Cimientos del rediseño",
+        "en": "Redesign foundations",
+        "pt": "Bases do redesign",
+        "it": "Basi del redesign"
+      },
+      "body": {
+        "es": "Cuatro temas, tipografía, tarjetas neo y navegación por rol.",
+        "en": "Four themes, typography, neo cards and role-based navigation.",
+        "pt": "Quatro temas, tipografia, cartões neo e navegação por função.",
+        "it": "Quattro temi, tipografia, schede neo e navigazione per ruolo."
+      },
+      "progress": 100,
+      "date": "2026-10-05"
+    }
+  ]
+}

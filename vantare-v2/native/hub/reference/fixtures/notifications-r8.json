@@ -1,0 +1,95 @@
+[
+  {
+    "v": 1,
+    "id": "",
+    "source": "launcher",
+    "severity": "info",
+    "occurredAt": 1791216120000,
+    "dedupeKey": "qa-launch",
+    "titleKey": "Perfil de prueba listo",
+    "textKey": "QA visual: cadena completada en la escena de referencia.",
+    "params": {},
+    "concreteCause": "",
+    "action": null,
+    "unread": false
+  },
+  {
+    "v": 1,
+    "id": "",
+    "source": "launcher",
+    "severity": "warning",
+    "occurredAt": 1791216060000,
+    "dedupeKey": "qa-retry",
+    "titleKey": "Aviso del Launcher",
+    "textKey": "QA visual: un paso requiere revisar su configuración.",
+    "params": {},
+    "concreteCause": "",
+    "action": {
+      "kind": "navigate",
+      "target": "launcher"
+    },
+    "unread": true
+  },
+  {
+    "v": 1,
+    "id": "",
+    "source": "beta",
+    "severity": "info",
+    "occurredAt": 1791216300000,
+    "dedupeKey": "qa-beta",
+    "titleKey": "Respuesta al informe de prueba",
+    "textKey": "QA visual: ejemplo de aviso Beta; sin conexión a informes reales.",
+    "params": {},
+    "concreteCause": "",
+    "action": null,
+    "unread": true
+  },
+  {
+    "v": 1,
+    "id": "",
+    "source": "updater",
+    "severity": "info",
+    "occurredAt": 1791217200000,
+    "dedupeKey": "qa-update",
+    "titleKey": "Actualización de prueba lista",
+    "textKey": "QA visual: revisa los ajustes del actualizador.",
+    "params": {},
+    "concreteCause": "",
+    "action": {
+      "kind": "navigate",
+      "target": "settings:updates"
+    },
+    "unread": true
+  },
+  {
+    "v": 1,
+    "id": "",
+    "source": "launcher",
+    "severity": "error",
+    "occurredAt": 1791142800000,
+    "dedupeKey": "qa-yesterday",
+    "titleKey": "El perfil de prueba falló",
+    "textKey": "QA visual: el historial conserva también los avisos leídos.",
+    "params": {},
+    "concreteCause": "",
+    "action": {
+      "kind": "navigate",
+      "target": "launcher"
+    },
+    "unread": false
+  },
+  {
+    "v": 1,
+    "id": "",
+    "source": "system",
+    "severity": "info",
+    "occurredAt": 1790848800000,
+    "dedupeKey": "qa-week",
+    "titleKey": "Notificación de prueba",
+    "textKey": "QA visual: mensaje del sistema de esta semana.",
+    "params": {},
+    "concreteCause": "",
+    "action": null,
+    "unread": false
+  }
+]

@@ -22,6 +22,7 @@ pub struct Layer {
     focus: FocusHandle,
     targets: Vec<FocusHandle>,
     restore: Option<FocusHandle>,
+    popover_size: Option<(f32, f32)>,
 }
 impl EventEmitter<Dismissed> for Layer {}
 impl Layer {
@@ -52,6 +53,7 @@ impl Layer {
             focus,
             targets,
             restore: None,
+            popover_size: None,
         }
     }
     pub fn show(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -78,6 +80,12 @@ impl Layer {
 
     pub fn set_targets(&mut self, targets: Vec<FocusHandle>) {
         self.targets = targets;
+    }
+    /// Geometría del consumidor; el valor por defecto conserva los demás popovers.
+    #[must_use]
+    pub fn with_popover_size(mut self, width: f32, max_height: f32) -> Self {
+        self.popover_size = Some((width.max(1.0), max_height.max(1.0)));
+        self
     }
     pub fn dismiss(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if !self.open {
@@ -126,10 +134,16 @@ impl Render for Layer {
             .tab_index(0)
             .tab_stop(false)
             .tab_group()
-            .w(px(if modal { PALETTE_W } else { POPOVER_W }))
+            .w(px(if modal {
+                PALETTE_W
+            } else {
+                self.popover_size.map_or(POPOVER_W, |size| size.0)
+            }))
             .max_w_full()
             .max_h_full()
-            .when(!modal, |s| s.max_h(px(POPOVER_MAX_H)))
+            .when(!modal, |s| {
+                s.max_h(px(self.popover_size.map_or(POPOVER_MAX_H, |size| size.1)))
+            })
             .overflow_y_scroll()
             .rounded(px(if modal { RADIUS } else { POPOVER_RADIUS }))
             .shadow(layer_shadow(modal, cx))

@@ -197,6 +197,7 @@ pub struct Remote {
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
+    pub(crate) manual_roadmap: crate::roadmap::State,
     stale: bool,
 }
 
@@ -303,6 +304,7 @@ impl Remote {
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
+            manual_roadmap: crate::roadmap::State::load(),
             stale: true,
         };
         remote.request(Command::Status, cx);
@@ -1041,7 +1043,7 @@ impl Remote {
     }
 
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
-    pub fn roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    pub fn published_roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         if !self.roadmap_requested && !self.busy() {
             self.roadmap_requested = true;
             self.request(Command::RoadmapCached, cx);

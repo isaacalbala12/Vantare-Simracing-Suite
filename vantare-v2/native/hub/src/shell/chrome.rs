@@ -720,7 +720,7 @@ impl Hub {
                 center.bell_bounds = Some(bounds);
                 if let Some(layer) = center.popover() {
                     let position = gpui::point(
-                        bounds.origin.x + bounds.size.width - px(orbit::POPOVER_W),
+                        bounds.origin.x + bounds.size.width - px(crate::notifications::PANEL_WIDTH),
                         bounds.origin.y + bounds.size.height + px(8.0),
                     );
                     layer.update(cx, |layer, cx| layer.set_popover_position(position, cx));

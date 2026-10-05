@@ -207,17 +207,21 @@ extraídos juntos en un directorio fuera del repo:
 
 ```powershell
 $env:DUCKDB_LIB_DIR = 'C:/tmp/vantare-duckdb-1.5.5'
-$env:PATH = "$env:DUCKDB_LIB_DIR;$env:PATH"
-$linked = @('--no-default-features', '--features', 'vantare-services/network')
-cargo clippy --workspace --all-targets -j 2 @linked -- -D warnings
-cargo nextest run --workspace -j 2 @linked
-cargo test --workspace --test lifecycle -j 2 @linked
+.\gates.ps1 clippy
+.\gates.ps1 test
+.\gates.ps1 lifecycle
 ```
 
-`network` se reactiva explícitamente: así se conservan los tests y el helper de
-red del workspace. `--no-default-features` desactiva el `bundled-duckdb` de storage;
-`DUCKDB_LIB_DIR` por sí sola no desactiva `bundled`. Los ejecutables que usen
+El script reactiva `/default` de todos los miembros excepto storage, incluidos
+los crates futuros: así no se apagan silenciosamente otros defaults. Si cambia
+el default de storage, falla y pide revisar la selección. `DUCKDB_LIB_DIR` por sí
+sola no desactiva `bundled`. Usa exclusivamente `native/target/gates`, dentro del
+worktree, para no mezclar artefactos de features distintas con el build habitual.
+Restaura el entorno al terminar; ese subdirectorio también cuenta en el disco del
+worktree. Los ejecutables que usen
 DuckDB necesitan esa DLL en `PATH` o junto al `.exe`. Para distribuir se sigue
-usando `cargo build --workspace --bins --release -j 2`, sin `@linked`.
+usando `cargo build --workspace --bins --release -j 2`. Candidate y MSIX rechazan
+un entorno con `DUCKDB_LIB_DIR` definida antes de compilar o crear artefactos;
+retírala con `Remove-Item Env:DUCKDB_LIB_DIR` en la terminal de distribución.
 En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
 de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.

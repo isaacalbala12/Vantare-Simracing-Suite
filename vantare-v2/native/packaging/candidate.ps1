@@ -370,6 +370,7 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
 }
 
 function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty) {
+    if (Test-Path Env:DUCKDB_LIB_DIR) { throw [InvalidOperationException]::new('Empaquetado exige DuckDB bundled; retira DUCKDB_LIB_DIR del entorno de desarrollo.') }
     $native = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $sourceSha = (& git -C $native rev-parse HEAD).Trim()
     if ($LASTEXITCODE) { throw 'No se puede identificar el SHA fuente.' }

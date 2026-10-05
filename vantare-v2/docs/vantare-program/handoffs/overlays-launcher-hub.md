@@ -3874,3 +3874,16 @@ posición20 y fila quietas. Tiempos React/GPUI no sincronizados; no prueba
 paridad temporal exacta ni rendimiento LMU. Corrección: registro nativo18,
 React22; faltan engineer-radio/race-schedule/delta-advanced/pedals-telemetry-compact.
 Sin push/PR/merge/release. Error y validación Mac final siguen pendientes.
+
+### RONDA 2 — bloque 5 parcial (2026-10-05)
+Error seleccionado oculta el renderer y muestra el texto del React en la
+caja del widget; Recibiendo/restablecer recuperan el renderer. No se inventa
+SourceState ni se toca runtime. Ronda-8 y recuperación miradas en proceso22476.
+Es comprobación UI manual, sin test UI automatizado añadido. Gates completos
+fmt/check/clippy, Nextest1099/1099 (4 omitidas), lifecycle12 y prueba PASS.
+Pendientes al corte: pt/it (Language y32 consumidores compartidos), cuatro
+renderers React ausentes, históricos/dents adicionales y paridad del chrome.
+X/Y de glifos conserva límite del bloque1. Mac00454fe4 compiló, abrió ventana
+GPUI y aceptó cambio/restauración de JSON con worktree limpio; por SSH no
+certifica presentación física. Se verificará el último HEAD tras este bloque.
+No hubo push/PR/merge/promoción/release ni modificaciones de dependencias.

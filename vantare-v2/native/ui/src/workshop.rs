@@ -315,6 +315,7 @@ struct Workshop {
     preset: String,
     comparison_surface: String,
     source: Option<vantare_domain::SourceState>,
+    source_error: bool,
     session: Option<vantare_domain::SessionKind>,
     in_pits: Option<bool>,
     playback: Playback,
@@ -698,6 +699,7 @@ impl Workshop {
                 Control::Background => self.background = value.into(),
                 Control::Scale => self.scale = value.parse().map_err(|e| format!("escala: {e}"))?,
                 Control::Source => {
+                    self.source_error = value == "error";
                     self.source = match value {
                         "stale" => Some(vantare_domain::SourceState::Stale),
                         "lost" => Some(vantare_domain::SourceState::Lost),
@@ -889,6 +891,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                     preset: "1080p".into(),
                     comparison_surface: "desktop".into(),
                     source: None,
+                    source_error: false,
                     session: None,
                     in_pits: None,
                     playback: Playback::new(Instant::now()),

@@ -673,17 +673,22 @@ impl Render for Workshop {
                     .child(self.picker(
                         Control::Source,
                         "Estado de la fuente",
-                        match self.source {
-                            Some(vantare_domain::SourceState::Stale) => "stale",
-                            Some(vantare_domain::SourceState::Lost) => "lost",
-                            Some(vantare_domain::SourceState::Waiting) => "waiting",
-                            _ => "live",
+                        if self.source_error {
+                            "error"
+                        } else {
+                            match self.source {
+                                Some(vantare_domain::SourceState::Stale) => "stale",
+                                Some(vantare_domain::SourceState::Lost) => "lost",
+                                Some(vantare_domain::SourceState::Waiting) => "waiting",
+                                _ => "live",
+                            }
                         },
                         options(&[
                             ("live", "Recibiendo"),
                             ("stale", "Datos antiguos"),
                             ("lost", "Desconectado"),
                             ("waiting", "Esperando datos"),
+                            ("error", "Error"),
                         ]),
                         cx,
                     ))
@@ -811,6 +816,7 @@ impl Render for Workshop {
                         this.study = "default".into();
                         this.dimensions = None;
                         this.source = None;
+                        this.source_error = false;
                         this.session = None;
                         this.in_pits = None;
                         this.comparison = None;
@@ -830,10 +836,21 @@ impl Render for Workshop {
             );
         let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
         let dimensions = self.dimensions.unwrap_or(wanted);
+        let content = |view: Entity<Overlay>| {
+            if self.source_error {
+                div()
+                    .text_size(px(16.0))
+                    .text_color(rgb(0xffffff))
+                    .child("Overlay V2 source error")
+                    .into_any_element()
+            } else {
+                view.into_any_element()
+            }
+        };
         let widget = div()
             .w(px(dimensions.0 * self.scale))
             .h(px(dimensions.1 * self.scale))
-            .child(self.overlay.clone());
+            .child(content(self.overlay.clone()));
         let mut previews = div()
             .w_full()
             .flex()
@@ -845,7 +862,7 @@ impl Render for Workshop {
                     div()
                         .w(px(dimensions.0 * self.scale))
                         .h(px(dimensions.1 * self.scale))
-                        .child(view.clone()),
+                        .child(content(view.clone())),
                 ),
             );
         }

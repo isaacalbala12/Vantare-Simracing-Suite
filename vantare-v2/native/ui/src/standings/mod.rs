@@ -329,11 +329,6 @@ impl Widget {
                 .count();
             self.config.height += bands as f32 * 28.0;
         }
-        let plan = {
-            #[cfg(feature = "paint-stats")]
-            let _span = crate::profiling::begin(crate::profiling::Stage::Layout);
-            model::plan(&self.config, &next)
-        };
         // Una columna oculta no debe cambiar la firma del contenido visible.
         if !self
             .config
@@ -345,16 +340,32 @@ impl Widget {
                 row.current_lap_text = vantare_domain::format::PLACEHOLDER.into();
             }
         }
+        if !self
+            .config
+            .columns
+            .iter()
+            .any(|column| column.metric == Metric::Interval)
+        {
+            for row in &mut next.rows {
+                row.interval_text = vantare_domain::format::PLACEHOLDER.into();
+            }
+        }
         // El número de secuencia cambia siempre y no se ve: no cuenta.
         let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
         let changed = {
             #[cfg(feature = "paint-stats")]
             let _span = crate::profiling::begin(crate::profiling::Stage::VmDiff);
-            next != self.vm || plan.visible_rows != self.plan.visible_rows
+            next != self.vm
         };
 
         next.sequence = sequence;
         if changed {
+            // El layout depende de la VM y de los ajustes fijos del widget.
+            let plan = {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Layout);
+                model::plan(&self.config, &next)
+            };
             let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
             self.motion
                 .update(&next, plan.visible_rows, lap_visible, Instant::now());
@@ -467,6 +478,72 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn hidden_interval_changes_do_not_request_repaint() {
+        let prefs = Preferences::default();
+        let mut snapshot = source::fixed();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        snapshot.sequence += 1;
+        snapshot.state.cars[3].gap_class_ahead =
+            vantare_domain::Quality::Reliable(vantare_domain::Gap::Time { seconds: 1.23 });
+        assert!(!widget.ingest(&snapshot, prefs), "intervalo oculto");
+
+        let settings = Settings {
+            columns: Some(serde_json::from_str(r#"[{"id":"interval","metricId":"interval"}]"#)
+                .expect("columna")),
+            ..Settings::default()
+        };
+        let mut visible = Widget::new(&settings, prefs);
+        visible.ingest(&snapshot, prefs);
+        snapshot.state.cars[3].gap_class_ahead =
+            vantare_domain::Quality::Reliable(vantare_domain::Gap::Time { seconds: 2.34 });
+        assert!(visible.ingest(&snapshot, prefs), "intervalo visible");
+    }
+
+    /// Diagnóstico de invalidaciones ocultas, sin ventana ni medición de CPU.
+    #[test]
+    #[ignore = "benchmark manual sin pantalla"]
+    fn benchmark_hidden_interval_projection() {
+        let prefs = Preferences::default();
+        let mut snapshot = source::fixed();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&snapshot, prefs);
+        let start = Instant::now();
+        let mut repaints = 0;
+        for sequence in 1..=10_000 {
+            snapshot.sequence = sequence;
+            snapshot.state.cars[3].gap_class_ahead = vantare_domain::Quality::Reliable(
+                vantare_domain::Gap::Time { seconds: if sequence % 2 == 0 { 1.23 } else { 2.34 } },
+            );
+            repaints += usize::from(std::hint::black_box(widget.ingest(&snapshot, prefs)));
+        }
+        eprintln!("hidden_interval samples=10000 repaints={repaints} elapsed_us={}", start.elapsed().as_micros());
+    }
+    /// Diagnóstico sin GPUI/ventana; no mide CPU del renderer ni del juego.
+    #[test]
+    #[ignore = "benchmark manual sin pantalla"]
+    fn benchmark_unchanged_standings_projection() {
+        let prefs = Preferences::default();
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/standings.snapshot.json"
+        )).expect("captura LMU");
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&snapshot, prefs);
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::report();
+        let start = Instant::now();
+        let mut repaints = 0;
+        for sequence in 1..=10_000 {
+            snapshot.sequence = sequence;
+            repaints += usize::from(std::hint::black_box(widget.ingest(&snapshot, prefs)));
+        }
+        eprintln!("unchanged_standings samples=10000 repaints={repaints} elapsed_us={}", start.elapsed().as_micros());
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::report();
+        assert_eq!(repaints, 0);
+    }
 
     #[test]
     fn variants_project_templates_content_footer_and_brand() {

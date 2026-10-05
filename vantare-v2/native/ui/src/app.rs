@@ -983,6 +983,80 @@ fn run_placed_authorized(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn identical_samples_request_no_repaint_for_all_widgets() {
+        let prefs = Preferences::default();
+        for &kind in Kind::ALL {
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let json = std::fs::read_to_string(path).expect("escena del widget");
+            let snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
+            let mut overlay = Overlay::new(kind, prefs);
+            overlay.project_snapshot(&snapshot);
+            let repaints = (0..100)
+                .filter(|_| overlay.project_snapshot(&snapshot))
+                .count();
+            assert_eq!(repaints, 0, "{}: misma muestra", kind.name());
+        }
+    }
+
+    #[test]
+    fn new_samples_with_unchanged_values_request_no_repaint_without_histories() {
+        for &kind in Kind::ALL {
+            if matches!(kind, Kind::InputTelemetry | Kind::DeltaTrace) {
+                continue;
+            }
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let json = std::fs::read_to_string(path).expect("escena del widget");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.project_snapshot(&snapshot);
+            for _ in 0..100 {
+                snapshot.sequence += 1;
+                snapshot.origin.received_at += Duration::from_millis(100);
+                assert!(
+                    !overlay.project_snapshot(&snapshot),
+                    "{}: mismos valores",
+                    kind.name()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn unchanged_values_still_extend_input_and_delta_histories() {
+        for kind in [Kind::InputTelemetry, Kind::DeltaTrace] {
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let json = std::fs::read_to_string(path).expect("escena del widget");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("foto");
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.project_snapshot(&snapshot);
+            snapshot.sequence += 1;
+            snapshot.origin.received_at += Duration::from_millis(100);
+            assert!(
+                overlay.project_snapshot(&snapshot),
+                "{}: nueva muestra",
+                kind.name()
+            );
+            assert!(
+                !overlay.project_snapshot(&snapshot),
+                "{}: duplicado",
+                kind.name()
+            );
+        }
+    }
+
+    #[test]
     fn layout_spatial_edits_and_visibility_preserve_the_same_widget_state() {
         let prefs = Preferences::default();
         let snapshots = crate::workshop::snapshots_from_json(include_str!(

@@ -1305,3 +1305,18 @@ esa sesión; su causa física original sigue sin atribución concluyente.
 Solo commits locales; sin push, PR, CI remota, integración ni release. No se
 modificaron roles ni servicios remotos. `docs/roadmap/plan.md` no existe en
 esta base recibida; no se creó un roadmap paralelo para este bug.
+## Beta nativa #1453 — corrección del ACK de PostHog (2026-10-05)
+
+Rama aislada `vantareapp/isa-1453-posthog-admin`, base `a464e9fc`.
+El endpoint EU aceptó `vantare_diag_1453_144911` a las 14:49:12 +02 con HTTP 200
+y `status: "Ok"`. El emisor esperaba solo `1`, conservaba el pendiente y podía
+reenviarlo. Ahora reconoce ambos ACK; regresión con servidor HTTP local.
+No cambia consentimiento, eventos allowlisted, UUID ni redacción.
+La configuración pública real de beta contiene `VANTARE_POSTHOG_KEY`; se carga
+con `native/packaging/build-config.ps1`, sin mostrar valores. Debe incorporarse
+al compilar; no se comprobó la clave del binario ya instalado de Isaac.
+Read-back del panel EU pendiente de Isaac; HTTP aceptado no lo sustituye.
+Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
+solo en Mac. No se declara promoción ni publicación.
+
+Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.

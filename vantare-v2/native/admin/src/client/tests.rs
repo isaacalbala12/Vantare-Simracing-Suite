@@ -50,6 +50,68 @@ fn serve(status: u16, body: Vec<u8>) -> (Client, thread::JoinHandle<String>) {
     (client, task)
 }
 
+// Wire fields copied from native_admin.sql and native-admin/index.ts, never
+// generated from client structs (which previously hid contract incompatibility).
+pub(crate) fn report_wire(id: &str, status: Status, detail: bool) -> serde_json::Value {
+    let payload = serde_json::json!({"module":"strategy","app_version":"0.4.0",
+        "action_text":"Cambiar sesión","expected_text":"Recalcular",
+        "observed_text":"Plan anterior","context_text":null});
+    let mut report = serde_json::json!({"report_id":id,"email":"ana@example.invalid",
+        "status":status,"created_at":"2026-10-03T09:30:00Z"});
+    if detail {
+        report["payload"] = payload;
+        report["screenshots"] = serde_json::json!([{"evidence_id":"image-1","url":"https://example.invalid/storage/v1/object/sign/testing-center-evidence/x?token=test","expires_at":1_800_000_000,"media_type":"image/jpeg","position":0}]);
+    } else {
+        report
+            .as_object_mut()
+            .expect("object")
+            .extend(payload.as_object().expect("payload").clone());
+        report["has_screenshots"] = true.into();
+    }
+    report
+}
+
+#[test]
+fn deployed_report_shapes_and_nullable_contacts_are_readable() {
+    let summary: Report =
+        serde_json::from_value(report_wire("report-1", Status::Submitted, false)).expect("list");
+    let detail: Report =
+        serde_json::from_value(report_wire("report-1", Status::Submitted, true)).expect("detail");
+    assert_eq!(summary.text, detail.text);
+    assert!(detail.text.contains("Esperado: Recalcular"));
+    assert!(detail.has_screenshots && detail.screenshots.len() == 1);
+    let user: User = serde_json::from_value(serde_json::json!({"account_id":"11111111-1111-4111-8111-111111111111","email":null,"name":null,"created_at":"2026-10-01T00:00:00Z","last_seen_at":null,"roles":[],"modules":["vantare.module.engineer"],"reports_count":0})).expect("nullable contact");
+    assert_eq!(user.modules, vec![Module::Engineer]);
+    assert_eq!(
+        serde_json::to_value(Module::Calendar).expect("module"),
+        "vantare.module.calendar"
+    );
+}
+
+#[test]
+fn search_limits_match_deployed_validation() {
+    for query in [" ", " ana", "ana ", &"a".repeat(201)] {
+        assert_eq!(
+            Action::SearchAccounts {
+                query: query.into(),
+                limit: 50,
+                cursor: None
+            }
+            .validate(),
+            Err(Error::Protocol)
+        );
+    }
+    assert!(
+        Action::SearchAccounts {
+            query: "Ana Martín".into(),
+            limit: 50,
+            cursor: None
+        }
+        .validate()
+        .is_ok()
+    );
+}
+
 #[test]
 fn local_contract_server_verifies_every_action_and_oauth_header() {
     let id = "11111111-1111-4111-8111-111111111111".to_owned();
@@ -57,6 +119,7 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
         Action::SearchAccounts {
             query: "Ana".into(),
             limit: 50,
+            cursor: None,
         },
         Action::GetAccount {
             account_id: id.clone(),
@@ -98,13 +161,12 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
             Action::GetAccount { .. } => response["account"] = serde_json::json!(demo.users[0]),
             Action::GetRollout => response["rollout"] = serde_json::json!(demo.rollout),
             Action::ListReports { .. } => {
-                response["reports"] = serde_json::json!(demo.reports);
-                response["cursor"] = serde_json::Value::Null;
+                response["reports"] =
+                    serde_json::json!([report_wire("report-1", Status::Submitted, false)]);
+                response["next_cursor"] = "report-1".into();
             }
             Action::GetReport { report_id } => {
-                let mut report = demo.reports[0].clone();
-                report.report_id.clone_from(report_id);
-                response["report"] = serde_json::json!(report);
+                response["report"] = report_wire(report_id, Status::Submitted, true);
             }
             _ => {}
         }
@@ -184,7 +246,8 @@ fn limits_and_url_guards_reject_before_network() {
             "test",
             &Action::SearchAccounts {
                 query: String::new(),
-                limit: 51
+                limit: 51,
+                cursor: None,
             }
         ),
         Err(Error::Protocol)

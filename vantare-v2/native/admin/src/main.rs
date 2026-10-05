@@ -5,10 +5,12 @@ use vantare_hub::orbit;
 
 fn run() -> Result<(), String> {
     let mut demo = false;
+    let mut diagnose = false;
     let mut screen = Screen::Users;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--diagnose-owner" => diagnose = true,
             "--demo" => demo = true,
             "--screen" => {
                 screen = match args.next().as_deref() {
@@ -19,11 +21,21 @@ fn run() -> Result<(), String> {
                 }
             }
             "--help" => {
-                println!("vantare-admin [--demo] [--screen users|rollout|reports]");
+                println!(
+                    "vantare-admin [--demo] [--screen users|rollout|reports] [--diagnose-owner]"
+                );
                 return Ok(());
             }
             _ => return Err("argumento desconocido; usa --help".into()),
         }
+    }
+    if diagnose {
+        if demo {
+            return Err("El diagnóstico real no se combina con --demo".into());
+        }
+        return vantare_services::app::default_root()
+            .and_then(|root| vantare_admin::session::diagnose_owner(&root))
+            .map_err(|error| format!("diagnóstico owner: {error:?}"));
     }
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();

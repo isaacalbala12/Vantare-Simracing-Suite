@@ -32,6 +32,7 @@ pub struct State {
     pub report: Option<Report>,
     pub filter: Option<Status>,
     pub cursor: Option<String>,
+    pub users_cursor: Option<String>,
 }
 impl State {
     pub fn new(demo: bool, screen: Screen) -> Self {
@@ -49,13 +50,14 @@ impl State {
             report: None,
             filter: None,
             cursor: None,
+            users_cursor: None,
         };
         if demo {
             state.users = vec![
                 User {
                     account_id: "11111111-1111-4111-8111-111111111111".into(),
-                    email: "ana@example.invalid".into(),
-                    name: "Ana Martín · DEMO".into(),
+                    email: Some("ana@example.invalid".into()),
+                    name: Some("Ana Martín · DEMO".into()),
                     created_at: "2026-10-01T10:00:00Z".into(),
                     last_seen_at: Some("2026-10-03T09:30:00Z".into()),
                     roles: vec!["tester".into()],
@@ -64,8 +66,8 @@ impl State {
                 },
                 User {
                     account_id: "22222222-2222-4222-8222-222222222222".into(),
-                    email: "pablo@example.invalid".into(),
-                    name: "Pablo Ruiz · DEMO".into(),
+                    email: Some("pablo@example.invalid".into()),
+                    name: Some("Pablo Ruiz · DEMO".into()),
                     created_at: "2026-10-02T10:00:00Z".into(),
                     last_seen_at: None,
                     roles: vec![],
@@ -133,6 +135,7 @@ impl State {
         self.report = None;
         self.rollout.clear();
         self.cursor = None;
+        self.users_cursor = None;
         self.confirmation = None;
     }
     pub fn visible_reports(&self) -> impl Iterator<Item = (usize, &Report)> {
@@ -147,11 +150,23 @@ impl State {
         response: &serde_json::Value,
     ) -> Result<Option<Action>> {
         let reload = match action {
-            Action::SearchAccounts { .. } => {
+            Action::SearchAccounts { query, .. } => {
                 let users: Vec<User> = field(response, "accounts")?;
                 if users.len() > 50 {
                     return Err(Error::TooLarge);
                 }
+                let cursor: Option<String> = if query.is_empty() {
+                    field(response, "next_cursor")?
+                } else {
+                    None
+                };
+                if cursor
+                    .as_ref()
+                    .is_some_and(|s| !vantare_services::license::uuid(s))
+                {
+                    return Err(Error::Protocol);
+                }
+                self.users_cursor = cursor;
                 self.users = users;
                 self.user = None;
                 None
@@ -188,7 +203,7 @@ impl State {
                 if reports.len() > 100 {
                     return Err(Error::TooLarge);
                 }
-                let cursor: Option<String> = field(response, "cursor")?;
+                let cursor: Option<String> = field(response, "next_cursor")?;
                 self.reports = reports;
                 self.cursor = cursor;
                 self.report = None;
@@ -282,6 +297,74 @@ impl State {
 mod tests {
     use super::*;
     #[test]
+    fn empty_search_lists_accounts_and_cursor_does_not_leak_to_filtered_search() {
+        let action = Action::SearchAccounts {
+            query: String::new(),
+            limit: 50,
+            cursor: None,
+        };
+        assert!(action.validate().is_ok());
+        let mut state = State::new(false, Screen::Users);
+        let next = "11111111-1111-4111-8111-111111111111";
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"accounts":[],"next_cursor":next}),
+            )
+            .expect("page");
+        assert_eq!(state.users_cursor.as_deref(), Some(next));
+        state
+            .accept(
+                &Action::SearchAccounts {
+                    query: "Ana".into(),
+                    limit: 50,
+                    cursor: None,
+                },
+                &serde_json::json!({"accounts":[]}),
+            )
+            .expect("filter");
+        assert!(state.users_cursor.is_none());
+        assert!(
+            Action::SearchAccounts {
+                query: "Ana".into(),
+                limit: 50,
+                cursor: Some(next.into())
+            }
+            .validate()
+            .is_err()
+        );
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"accounts":[],"next_cursor":null}),
+            )
+            .expect("last page");
+        assert!(state.users_cursor.is_none());
+    }
+    #[test]
+    fn deployed_next_cursor_advances_and_last_page_clears_it() {
+        let mut state = State::new(false, Screen::Reports);
+        let action = Action::ListReports {
+            status: None,
+            limit: 100,
+            cursor: None,
+        };
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"reports":[], "next_cursor":"report-1"}),
+            )
+            .expect("page");
+        assert_eq!(state.cursor.as_deref(), Some("report-1"));
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"reports":[], "next_cursor":null}),
+            )
+            .expect("last page");
+        assert_eq!(state.cursor, None);
+    }
+    #[test]
     fn confirmation_cancel_failure_and_ack_preserve_facts() {
         let mut s = State::new(true, Screen::Users);
         let original = s.user.clone();
@@ -360,7 +443,7 @@ mod tests {
                 &Action::GetReport {
                     report_id: report.report_id.clone(),
                 },
-                &serde_json::json!({"report":report}),
+                &serde_json::json!({"report":crate::client::tests::report_wire(&report.report_id, report.status, true)}),
             )
             .expect("confirmed server read");
         assert_eq!(state.reports[0].status, Status::Closed);

@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
     sync::mpsc,
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use vantare_services::{
     Error, Result,
@@ -19,6 +19,8 @@ pub enum Command {
     Login,
     Logout,
     Call(Action),
+    Timing(&'static str, u128),
+    Prefetch(Action),
 }
 pub enum Reply {
     Ready,
@@ -26,6 +28,7 @@ pub enum Reply {
     LoggedOut,
     Data(Action, serde_json::Value, Vec<Result<Vec<u8>>>),
     Failed(Error),
+    Prefetched(Action, Result<serde_json::Value>),
 }
 pub struct Worker {
     pub send: mpsc::Sender<Command>,
@@ -40,8 +43,27 @@ impl Worker {
             .spawn(move || {
                 let mut session: Option<Session> = None;
                 loop {
-                    match commands.recv_timeout(Duration::from_millis(100)) {
+                    let command = if session.as_ref().is_some_and(|s| s.pending) {
+                        commands.recv_timeout(Duration::from_millis(100))
+                    } else {
+                        commands
+                            .recv()
+                            .map_err(|_| mpsc::RecvTimeoutError::Disconnected)
+                    };
+                    match command {
                         Ok(command) => {
+                            if let Command::Timing(label, elapsed) = command {
+                                crate::diagnostics::record(label, elapsed, "ui");
+                                continue;
+                            }
+                            let label = match &command {
+                                Command::Restore => "restore",
+                                Command::Login => "login",
+                                Command::Logout => "logout",
+                                Command::Call(action) | Command::Prefetch(action) => action.label(),
+                                Command::Timing(..) => "timing",
+                            };
+                            let started = Instant::now();
                             let result = (|| {
                                 if session.is_none() {
                                     session = Some(Session::open(&root)?);
@@ -51,6 +73,14 @@ impl Worker {
                                     .ok_or(Error::Authentication)?
                                     .handle(command)
                             })();
+                            crate::diagnostics::record(
+                                label,
+                                started.elapsed().as_micros(),
+                                match &result {
+                                    Ok(Reply::Prefetched(_, Err(_))) | Err(_) => "error",
+                                    _ => "ok",
+                                },
+                            );
                             if replies.send(result.unwrap_or_else(Reply::Failed)).is_err() {
                                 break;
                             }
@@ -151,6 +181,13 @@ impl Session {
     }
     fn handle(&mut self, command: Command) -> Result<Reply> {
         match command {
+            Command::Timing(..) => Err(Error::Protocol),
+            Command::Prefetch(action) => {
+                let result = self
+                    .refresh()
+                    .and_then(|()| self.client.call(&self.account, now()?, &action));
+                Ok(Reply::Prefetched(action, result))
+            }
             Command::Login => {
                 let url = self.account.begin_login()?;
                 self.pending = true;
@@ -201,4 +238,193 @@ fn now() -> Result<u64> {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .map_err(|_| Error::Clock)
+}
+
+/// Owner-only read-back using this app's isolated session. No credentials printed.
+pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
+    let mut session = Session::open(root)?;
+    session.refresh()?;
+    println!("restore signed_in={}", session.account.identity().is_some());
+    diagnose_pages(&session)?;
+    let issuer = BuildConfig::load()
+        .native_oauth
+        .ok_or(Error::Unconfigured)?
+        .issuer;
+    let discovery: Discovery = session
+        .http
+        .get(
+            &issuer
+                .join(".well-known/openid-configuration")
+                .map_err(|_| Error::Unconfigured)?,
+            None,
+            None,
+        )?
+        .success()?
+        .json()?;
+    if discovery.userinfo_endpoint.origin() != issuer.origin()
+        || discovery.userinfo_endpoint.query().is_some()
+    {
+        return Err(Error::Unconfigured);
+    }
+    let profile: Profile = session.account.authorized(now()?, |bearer| {
+        session
+            .http
+            .get(&discovery.userinfo_endpoint, Some(bearer), None)?
+            .success()?
+            .json()
+    })?;
+    if session
+        .account
+        .identity()
+        .is_none_or(|identity| identity.subject != profile.sub)
+    {
+        return Err(Error::Authentication);
+    }
+    println!(
+        "profile email_present={} name_present={}",
+        profile.email.is_some(),
+        profile.name.is_some()
+    );
+    diagnose_searches(&session, profile)
+}
+#[derive(serde::Deserialize)]
+struct Discovery {
+    userinfo_endpoint: url::Url,
+}
+#[derive(serde::Deserialize)]
+struct Profile {
+    sub: String,
+    email: Option<String>,
+    name: Option<String>,
+}
+
+fn diagnose_pages(session: &Session) -> Result<()> {
+    let started = Instant::now();
+    let value = session.client.call(
+        &session.account,
+        now()?,
+        &Action::SearchAccounts {
+            query: String::new(),
+            limit: 1,
+            cursor: None,
+        },
+    )?;
+    let first: Vec<crate::client::User> = field(&value, "accounts")?;
+    let cursor: Option<String> = field(&value, "next_cursor")?;
+    println!(
+        "list_first ms={} count={} next_cursor={}",
+        started.elapsed().as_millis(),
+        first.len(),
+        cursor.is_some()
+    );
+    if let Some(cursor) = cursor {
+        let started = Instant::now();
+        let value = session.client.call(
+            &session.account,
+            now()?,
+            &Action::SearchAccounts {
+                query: String::new(),
+                limit: 50,
+                cursor: Some(cursor),
+            },
+        )?;
+        let next: Vec<crate::client::User> = field(&value, "accounts")?;
+        let cursor: Option<String> = field(&value, "next_cursor")?;
+        println!(
+            "list_next ms={} count={} next_cursor={} repeats_first={}",
+            started.elapsed().as_millis(),
+            next.len(),
+            cursor.is_some(),
+            next.iter()
+                .any(|row| first.iter().any(|p| p.account_id == row.account_id))
+        );
+    }
+    Ok(())
+}
+
+fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
+    let mut self_id = None;
+    for (kind, query) in [("email", profile.email), ("name", profile.name)] {
+        let Some(query) = query else { continue };
+        let action = Action::SearchAccounts {
+            query,
+            limit: 50,
+            cursor: None,
+        };
+        let started = Instant::now();
+        let value = session.client.call(&session.account, now()?, &action)?;
+        let users: Vec<crate::client::User> = field(&value, "accounts")?;
+        let found = users
+            .iter()
+            .find(|user| user.roles.iter().any(|role| role == "owner"));
+        if let Some(user) = found {
+            self_id = Some(user.account_id.clone());
+        }
+        println!(
+            "search_{kind} ms={} count={} contains_owner={}",
+            started.elapsed().as_millis(),
+            users.len(),
+            found.is_some()
+        );
+    }
+    if let Some(account_id) = self_id {
+        let started = Instant::now();
+        let value =
+            session
+                .client
+                .call(&session.account, now()?, &Action::GetAccount { account_id })?;
+        let user: crate::client::User = field(&value, "account")?;
+        println!(
+            "get_account ms={} owner={} email_present={}",
+            started.elapsed().as_millis(),
+            user.roles.iter().any(|role| role == "owner"),
+            user.email.is_some()
+        );
+        if let Some(query) = user.email {
+            let started = Instant::now();
+            let value = session.client.call(
+                &session.account,
+                now()?,
+                &Action::SearchAccounts {
+                    query,
+                    limit: 50,
+                    cursor: None,
+                },
+            )?;
+            let users: Vec<crate::client::User> = field(&value, "accounts")?;
+            println!(
+                "search_email ms={} count={} contains_owner={}",
+                started.elapsed().as_millis(),
+                users.len(),
+                users
+                    .iter()
+                    .any(|row| row.roles.iter().any(|role| role == "owner"))
+            );
+        }
+    }
+    for action in [
+        Action::GetRollout,
+        Action::ListReports {
+            status: None,
+            limit: 100,
+            cursor: None,
+        },
+    ] {
+        let started = Instant::now();
+        let value = session.client.call(&session.account, now()?, &action)?;
+        println!(
+            "{} ms={} rows={}",
+            action.label(),
+            started.elapsed().as_millis(),
+            value
+                .get(if matches!(action, Action::GetRollout) {
+                    "rollout"
+                } else {
+                    "reports"
+                })
+                .and_then(|v| v.as_array())
+                .map_or(0, Vec::len)
+        );
+    }
+    Ok(())
 }

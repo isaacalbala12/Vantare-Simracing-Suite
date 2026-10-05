@@ -20,8 +20,8 @@ simulados desaparecen al cerrar. `--help` describe los argumentos.
 
 ## Configuración pública de build
 
-- `VANTARE_ADMIN_URL`: URL HTTPS exacta de `/functions/v1/native-admin` o
-  `/v1/native-admin`. No acepta credenciales, query ni fragmento.
+- `VANTARE_ADMIN_URL` (opcional): URL HTTPS exacta de `/functions/v1/native-admin` o
+  `/v1/native-admin`. Sin variable usa el origen Supabase y `/functions/v1/native-admin`. No acepta credenciales, query ni fragmento.
 - `VANTARE_SUPABASE_URL`: origen HTTPS de las capturas firmadas.
 - Configuración OAuth ya existente de `vantare-services`:
   `VANTARE_CLERK_ISSUER`, `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT` y
@@ -29,10 +29,10 @@ simulados desaparecen al cerrar. `--help` describe los argumentos.
   Deben coincidir con los del Hub que guardó la sesión existente.
 
 Reutiliza `Account`, descubrimiento OAuth, PKCE, callback, refresh y `Store` de
-`vantare-services`, incluida su carpeta y binding de sesión. No copia tokens ni
-implementa otro flujo OAuth. Cierra el Hub antes de administrar: ambos procesos
-usan el mismo almacén, que no coordina escrituras simultáneas. Cerrar sesión aquí
-revoca la sesión local compartida; no modifica roles ni concesiones.
+`vantare-services`. El acceso de Escritorio usa una raíz aislada y no requiere
+cerrar el Hub. Si ejecutas el binario directamente sin configurar raíz, comparte
+el almacén por defecto con el Hub: cierra el Hub en ese caso. No copia tokens ni
+implementa otro flujo OAuth. Cerrar sesión no modifica roles ni concesiones.
 
 ## Contrato de cliente (v1)
 
@@ -40,23 +40,45 @@ POST con `Authorization: Bearer <OAuth>` y JSON `version: 1`, `action` y los
 campos del contrato `contrato-admin.md` §2. Sin `apikey`. No hay llamadas directas
 a tablas ni secretos Clerk/Supabase en el cliente.
 
-El contrato inicial no nombraba los campos de respuesta; estas son las claves
-explícitas que debe confirmar el worker servidor antes del despliegue:
+Claves del servidor `supabase/functions/native-admin` y su migración:
 
 | Acción | Datos dentro de `{version:1, ok:true, ...}` |
 | --- | --- |
 | `search_accounts` | `accounts: User[]` |
 | `get_account` | `account: User` |
 | `get_rollout` | `rollout: [{module, enabled_for_all}]` (exactamente cuatro) |
-| `list_reports` | `reports: Report[]`, `cursor: string \| null` |
-| `get_report` | `report: Report`, con `screenshots: string[]` (URLs firmadas) |
+| `list_reports` | `reports: Report[]`, `next_cursor: string \| null` |
+| `get_report` | `report` con `payload` y `screenshots: [{url, ...}]` firmadas |
 | mutaciones | Sin datos adicionales; después se relee el detalle/rollout |
+
+Usuarios carga al abrir la primera página de cuentas ya mapeadas a la instancia
+Clerk configurada, por alta descendente. `search_accounts` acepta `query: ""`,
+`limit` ≤50 y cursor UUID opcional; devuelve `next_cursor` null al terminar.
+«Siguiente página» avanza. Con texto se filtra el directorio por nombre/correo
+(hasta 50 coincidencias); limpiar el buscador vuelve al inicio.
+
+El filtro local responde al teclear y la consulta remota espera 300 ms sin
+cambios. Mientras llega la respuesta muestra «Buscando cuentas…». Las lecturas
+confirmadas de cuentas, módulos y páginas se guardan hasta 30 s en memoria y se
+refrescan en segundo plano cuando se consultan desde caché;
+«Actualizar» fuerza una lectura remota. La caché se borra al cerrar sesión,
+perder autorización o escribir; nunca se usa para ejecutar mutaciones.
+Al abrir Usuarios se precargan módulos; al abrir Módulos se precargan reportes.
+La red sigue fuera de GPUI y ambos sondeos se detienen en reposo.
+
+El acceso de Escritorio activa `RUST_LOG=vantare_admin=info`: tiempos sanitizados
+en `data/Vantare/native/services/admin-timings.log`, sin consultas, datos de cuenta,
+tokens ni URLs. `vantare_admin=trace` añade duración de construcción de la vista y
+espera hasta el siguiente frame GPUI (no mide presentación física DWM/GPU).
+`--diagnose-owner`, con Admin cerrada y su raíz aislada configurada, prueba lecturas
+reales de páginas y búsqueda por el nombre/correo de la propia cuenta: solo imprime
+tiempos, recuentos y booleanos. No modifica roles, módulos ni reportes.
 
 `User`: `account_id`, `email`, `name`, `created_at` (ISO), `last_seen_at`
 (ISO o null), `roles`, `modules`, `reports_count`.
-`Report`: `report_id`, `author` (correo), `module`, `app_version`, `text`,
-`created_at` (ISO), `status`, `has_screenshots`, `screenshots` (solo detalle).
-Módulos: `strategy`, `engineer`, `analysis`, `calendar`.
+Listado de reportes: `report_id`, `email`, `module`, `app_version`, campos de texto,
+`created_at` (ISO), `status`, `has_screenshots`. El detalle devuelve los campos de texto dentro de `payload` y objetos de capturas. Correos/nombres pueden ser null.
+Módulos de acceso: `vantare.module.strategy`, `vantare.module.engineer`, `vantare.module.analysis`, `vantare.module.calendar`.
 Estados existentes: `draft`, `submitted`, `validated`, `duplicate_linked`,
 `incomplete`, `closed` (`20260802130100_testing_center_core.sql`).
 
@@ -106,8 +128,7 @@ Lee/aplica primero `C:/tmp/fase2/notas-1456.md`; si existe, pasa su SHA256 en
 No existe referencia Wails de esta miniapp nueva: se revisa estructura y
 legibilidad sobre Orbit; no se declara paridad por porcentaje.
 
-Pendientes de prueba contra el despliegue: respuestas definitivas del backend,
-login owner real, auditoría, caducidad/renovación de URLs y permisos reales.
+Cliente contrastado con el código desplegado. Pendientes de prueba contra producción: login owner real, auditoría, caducidad/renovación de URLs y permisos reales.
 Demo y servidor local no demuestran eso. Ante una captura caducada vuelve a
 seleccionar el reporte para obtener URLs nuevas. Solo paginación hacia delante
 en reportes; búsquedas de usuarios limitadas a 50, afinar query si hay más.
@@ -118,3 +139,27 @@ por el orquestador en la tarea existente, sin duplicarla.
 El kit Orbit se reutiliza desde la biblioteca Hub existente; no se extraen ni
 duplican sus controles. Las dependencias ya estaban resueltas en el workspace;
 no se añade otro motor gráfico ni librería HTTP.
+
+## Compatibilidad beta (#1456, 2026-10-05)
+
+La búsqueda requiere un correo/nombre no vacío (máximo 200 bytes); al abrir
+Usuarios se espera a la búsqueda, sin petición vacía. Los módulos mostrados son
+accesos efectivos, incluyendo rol y rollout. Conceder/revocar modifica solo la
+concesión individual: una revocación puede mantener el acceso por otra vía.
+
+## Instalar como app privada en Windows (#1456)
+
+Después de compilar Admin con la configuración pública real, ejecuta una vez:
+
+```powershell
+./admin/instalar-escritorio.ps1
+```
+
+Copia el ejecutable, sus DLL presentes y el icono a `%LOCALAPPDATA%/Vantare Admin`.
+Crea «Vantare Admin» en el Escritorio y menú Inicio. Isaac abre ese acceso con
+doble clic, sin escribir comandos ni ver consola. El lanzador oculto crea el
+proceso con `CREATE_NO_WINDOW`; GPUI conserva su ventana normal. La sesión vive
+en `data/Vantare/native/services` dentro de esa instalación, separada de la beta.
+Reinstalar actualiza binario/icono/accesos y conserva la sesión. Cierra Admin
+antes de actualizar; no afecta al Hub, núcleo ni overlays. Es instalación privada,
+no se incorpora al instalador público ni configura un servicio o tarea residente.

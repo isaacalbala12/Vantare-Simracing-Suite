@@ -7,7 +7,10 @@ use gpui::{
     App, Context, Div, Entity, Image, ImageFormat, ImageSource, IntoElement, ParentElement, Render,
     Stateful, Styled, Window, div, img, prelude::*, px, rgb,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use vantare_hub::orbit::{self, Input};
 use vantare_services::Error;
 
@@ -17,6 +20,7 @@ enum Event {
     Search,
     Filter(Option<Status>),
     Next,
+    NextUsers,
     SelectUser(usize),
     SelectReport(usize),
     Propose(Action),
@@ -34,6 +38,15 @@ pub struct Admin {
     images: Vec<Arc<Image>>,
     image_error: Option<Error>,
     zoomed: Option<usize>,
+    request_started: Option<Instant>,
+    render_pending: Option<Instant>,
+    cache: crate::cache::ReadCache,
+    prefetch_pending: bool,
+    search_due: bool,
+    last_query: String,
+    search_subscription: Option<gpui::Subscription>,
+    debounce: Option<gpui::Task<()>>,
+    displayed_read: Option<Action>,
 }
 impl Admin {
     pub fn new(demo: bool, screen: Screen, cx: &mut Context<Self>) -> Self {
@@ -44,6 +57,15 @@ impl Admin {
             images: vec![],
             image_error: None,
             zoomed: None,
+            request_started: None,
+            render_pending: None,
+            cache: crate::cache::ReadCache::default(),
+            prefetch_pending: false,
+            search_due: false,
+            last_query: String::new(),
+            search_subscription: None,
+            debounce: None,
+            displayed_read: None,
         };
         if demo {
             this.demo_images();
@@ -56,18 +78,49 @@ impl Admin {
                 Err(error) => this.state.failed(error),
             }
         }
+        if this.state.busy {
+            Self::poll_replies(cx);
+        }
+        this.search_subscription = Some(cx.observe(&this.search, |this, input, cx| {
+            let query = input.read(cx).value.trim().to_owned();
+            if query == this.last_query || this.state.demo || !this.state.signed_in {
+                return;
+            }
+            this.last_query = query;
+            cx.notify();
+            this.debounce = Some(cx.spawn(async move |entity, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(300))
+                    .await;
+                let _ = entity.update(cx, |this, cx| {
+                    this.search_due = true;
+                    if !this.state.busy && this.state.screen == Screen::Users {
+                        this.search_due = false;
+                        this.event(Event::Search, cx);
+                    }
+                });
+            }));
+        }));
+        this
+    }
+    fn poll_replies(cx: &mut Context<Self>) {
         cx.spawn(async move |entity, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(100))
                     .await;
-                if entity.update(cx, Admin::poll).is_err() {
+                if !matches!(
+                    entity.update(cx, |this, cx| {
+                        this.poll(cx);
+                        this.state.busy || this.prefetch_pending
+                    }),
+                    Ok(true)
+                ) {
                     break;
                 }
             }
         })
         .detach();
-        this
     }
     fn demo_images(&mut self) {
         self.images.clear();
@@ -86,7 +139,24 @@ impl Admin {
         }
     }
     fn send(&mut self, command: Command) {
+        if let Command::Call(action) = &command {
+            self.displayed_read = if action.mutation() {
+                None
+            } else {
+                Some(action.clone())
+            };
+        }
+        self.request_started = Some(Instant::now());
         self.state.busy = true;
+        self.state.message = match &command {
+            Command::Call(Action::SearchAccounts { .. }) => "Buscando cuentas…",
+            Command::Call(Action::GetAccount { .. }) => "Cargando usuario…",
+            Command::Call(Action::GetRollout) => "Cargando módulos…",
+            Command::Call(Action::ListReports { .. }) => "Cargando reportes…",
+            Command::Call(Action::GetReport { .. }) => "Cargando reporte y capturas…",
+            _ => "Operación en curso…",
+        }
+        .into();
         if self
             .worker
             .as_ref()
@@ -102,29 +172,67 @@ impl Admin {
             cursor,
         }
     }
-    fn load(&mut self) {
+    fn load(&mut self, cx: &Context<Self>) {
+        let query = self.search.read(cx).value.trim().to_owned();
         let action = match self.state.screen {
             Screen::Users => Action::SearchAccounts {
-                query: String::new(),
+                query,
                 limit: 50,
+                cursor: None,
             },
             Screen::Rollout => Action::GetRollout,
             Screen::Reports => self.reports_action(None),
         };
-        self.send(Command::Call(action));
+        self.read(action);
+    }
+    fn read(&mut self, action: Action) {
+        self.displayed_read = Some(action.clone());
+        if let Some(value) = self.cache.get(&action, Instant::now()) {
+            self.render_pending = Some(Instant::now());
+            if let Err(error) = self.state.accept(&action, &value) {
+                self.state.failed(error);
+            } else {
+                self.state.message =
+                    "Datos guardados hace menos de 30 s · Actualizar consulta el servidor".into();
+            }
+            self.prefetch_read(action);
+        } else {
+            self.send(Command::Call(action));
+        }
+    }
+    fn prefetch(&mut self) {
+        let action = match self.state.screen {
+            Screen::Users | Screen::Reports => Action::GetRollout,
+            Screen::Rollout => self.reports_action(None),
+        };
+        if self.cache.get(&action, Instant::now()).is_none() {
+            self.prefetch_read(action);
+        }
+    }
+    fn prefetch_read(&mut self, action: Action) {
+        if !self.prefetch_pending
+            && let Some(worker) = &self.worker
+        {
+            self.prefetch_pending = worker.send.send(Command::Prefetch(action)).is_ok();
+        }
     }
     fn poll(&mut self, cx: &mut Context<Self>) {
         let reply = self.worker.as_ref().and_then(|w| w.receive.try_recv().ok());
         let Some(reply) = reply else {
             return;
         };
-        self.state.busy = false;
+        if !matches!(reply, Reply::Prefetched(..)) {
+            self.render_pending = self.request_started.take();
+            self.state.busy = false;
+        }
         match reply {
             Reply::Ready => {
                 self.state.signed_in = true;
-                self.load();
+                self.load(cx);
+                self.prefetch();
             }
             Reply::LoggedOut => {
+                self.cache.clear();
                 self.state.clear_private();
                 self.images.clear();
                 self.state.message = "Inicia sesión con la cuenta owner".into();
@@ -135,17 +243,36 @@ impl Admin {
                 self.state.message = "Esperando inicio de sesión en el navegador…".into();
             }
             Reply::Failed(error) => {
+                self.cache.clear();
                 self.state.failed(error);
                 if !self.state.signed_in {
                     self.images.clear();
                 }
             }
+            Reply::Prefetched(action, result) => {
+                self.accept_prefetch(action, result);
+            }
+            Reply::Data(..) if !self.state.signed_in => {}
             Reply::Data(action, value, images) => match self.state.accept(&action, &value) {
                 Ok(Some(reload)) => {
+                    self.cache.clear();
                     self.state.message = "Cambio aceptado; releyendo datos…".into();
                     self.send(Command::Call(reload));
                 }
                 Ok(None) => {
+                    self.cache
+                        .put(action.clone(), value.clone(), Instant::now());
+                    if matches!(action, Action::SearchAccounts { .. }) {
+                        for user in &self.state.users {
+                            self.cache.put(
+                                Action::GetAccount {
+                                    account_id: user.account_id.clone(),
+                                },
+                                serde_json::json!({"account":user}),
+                                Instant::now(),
+                            );
+                        }
+                    }
                     if matches!(action, Action::GetReport { .. }) {
                         self.zoomed = None;
                         self.image_error = None;
@@ -172,9 +299,76 @@ impl Admin {
                 Err(error) => self.state.failed(error),
             },
         }
+        if self.search_due
+            && self.state.signed_in
+            && !self.state.busy
+            && self.state.screen == Screen::Users
+        {
+            self.search_due = false;
+            self.load(cx);
+        }
         cx.notify();
     }
+    fn accept_prefetch(&mut self, action: Action, result: Result<serde_json::Value, Error>) {
+        self.prefetch_pending = false;
+        if !self.state.signed_in {
+            return;
+        }
+        match result {
+            Ok(value) => {
+                let mut validation = State::new(false, self.state.screen);
+                if validation.accept(&action, &value).is_ok() {
+                    if !self.state.busy
+                        && self.state.signed_in
+                        && self.displayed_read.as_ref() == Some(&action)
+                        && let Err(error) = self.state.accept(&action, &value)
+                    {
+                        self.state.failed(error);
+                    }
+                    self.cache.put(action, value, Instant::now());
+                    self.prefetch();
+                }
+            }
+            Err(error @ (Error::Authentication | Error::Denied | Error::Expired)) => {
+                let awaiting_command = self.state.busy;
+                self.cache.clear();
+                self.images.clear();
+                self.state.failed(error);
+                // Drain the active command's reply too; otherwise a late failure
+                // could be mistaken for the next login/command's response.
+                self.state.busy = awaiting_command;
+            }
+            Err(_) => {}
+        }
+    }
+    fn select_user(&mut self, index: usize) {
+        if let Some(user) = self.state.users.get(index).cloned() {
+            if self.state.demo {
+                self.state.user = Some(user);
+            } else {
+                self.state.user = None;
+                self.read(Action::GetAccount {
+                    account_id: user.account_id,
+                });
+            }
+        }
+    }
+    fn select_report(&mut self, index: usize) {
+        if let Some(report) = self.state.reports.get(index).cloned() {
+            self.images.clear();
+            if self.state.demo {
+                self.state.report = Some(report);
+                self.demo_images();
+            } else {
+                self.state.report = None;
+                self.send(Command::Call(Action::GetReport {
+                    report_id: report.report_id,
+                }));
+            }
+        }
+    }
     fn event(&mut self, event: Event, cx: &mut Context<Self>) {
+        let was_polling = self.state.busy || self.prefetch_pending;
         if self.state.busy && !matches!(event, Event::Cancel | Event::CloseImage) {
             return;
         }
@@ -189,15 +383,15 @@ impl Admin {
                 self.state.screen = screen;
                 if self.state.signed_in && !self.state.demo {
                     self.images.clear();
-                    self.load();
+                    self.load(cx);
+                    self.prefetch();
                 }
             }
             Event::Search => {
+                self.search_due = false;
+                self.debounce = None;
                 if !self.state.demo {
-                    self.send(Command::Call(Action::SearchAccounts {
-                        query: self.search.read(cx).value.clone(),
-                        limit: 50,
-                    }));
+                    self.load(cx);
                 }
             }
             Event::Filter(status) => {
@@ -215,31 +409,20 @@ impl Admin {
                     ));
                 }
             }
-            Event::SelectUser(index) => {
-                if let Some(user) = self.state.users.get(index).cloned() {
-                    if self.state.demo {
-                        self.state.user = Some(user);
-                    } else {
-                        self.state.user = None;
-                        self.send(Command::Call(Action::GetAccount {
-                            account_id: user.account_id,
-                        }));
-                    }
+            Event::NextUsers => {
+                if !self.state.demo && self.search.read(cx).value.trim().is_empty() {
+                    self.read(Action::SearchAccounts {
+                        query: String::new(),
+                        limit: 50,
+                        cursor: self.state.users_cursor.clone(),
+                    });
                 }
             }
+            Event::SelectUser(index) => {
+                self.select_user(index);
+            }
             Event::SelectReport(index) => {
-                if let Some(report) = self.state.reports.get(index).cloned() {
-                    self.images.clear();
-                    if self.state.demo {
-                        self.state.report = Some(report);
-                        self.demo_images();
-                    } else {
-                        self.state.report = None;
-                        self.send(Command::Call(Action::GetReport {
-                            report_id: report.report_id,
-                        }));
-                    }
-                }
+                self.select_report(index);
             }
             Event::Propose(action) => {
                 if let Err(error) = self.state.propose(action) {
@@ -248,7 +431,10 @@ impl Admin {
             }
             Event::Confirm => match self.state.confirm() {
                 Ok(action) if self.state.demo => self.state.demo_action(&action),
-                Ok(action) => self.send(Command::Call(action)),
+                Ok(action) => {
+                    self.cache.clear();
+                    self.send(Command::Call(action));
+                }
                 Err(error) => self.state.failed(error),
             },
             Event::Cancel => self.state.confirmation = None,
@@ -258,6 +444,7 @@ impl Admin {
                 }
             }
             Event::Logout => {
+                self.cache.clear();
                 if !self.state.demo {
                     self.state.clear_private();
                     self.images.clear();
@@ -265,14 +452,19 @@ impl Admin {
                 }
             }
             Event::Reload => {
+                self.cache.clear();
                 if !self.state.demo {
                     self.images.clear();
                     self.state.user = None;
                     self.state.report = None;
-                    self.load();
+                    self.load(cx);
+                    self.prefetch();
                 }
             }
             Event::CloseImage => self.zoomed = None,
+        }
+        if !was_polling && (self.state.busy || self.prefetch_pending) {
+            Self::poll_replies(cx);
         }
         cx.notify();
     }
@@ -293,6 +485,56 @@ impl Admin {
                     cx.stop_propagation();
                 }
             }))
+    }
+    fn confirmation_panel(&self, action: &Action, cx: &mut Context<Self>) -> Div {
+        let description = confirmation(action);
+        panel(cx)
+            .gap(px(12.0))
+            .border_color(rgb(orbit::coral(cx)))
+            .child(heading("Confirmar cambio", cx))
+            .child(description)
+            .child(
+                div()
+                    .flex()
+                    .gap(px(10.0))
+                    .child(self.button("confirm", "Confirmar y guardar", Event::Confirm, cx))
+                    .child(self.button("cancel", "Cancelar", Event::Cancel, cx)),
+            )
+    }
+    fn record_render(&mut self, started: Instant, window: &Window) {
+        if let Some(worker) = &self.worker {
+            if let Some(request) = self.render_pending.take() {
+                // Timings go to the services thread; no file I/O during render.
+                let _ = worker.send.send(Command::Timing(
+                    "request_to_render",
+                    request.elapsed().as_micros(),
+                ));
+            }
+            if crate::diagnostics::render_enabled() {
+                let _ = worker.send.send(Command::Timing(
+                    "render_tree",
+                    started.elapsed().as_micros(),
+                ));
+                let send = worker.send.clone();
+                window.on_next_frame(move |_, _| {
+                    let _ = send.send(Command::Timing(
+                        "render_to_frame",
+                        started.elapsed().as_micros(),
+                    ));
+                });
+            }
+        }
+    }
+    fn frame_timing(&self, label: &'static str, window: &Window) {
+        if crate::diagnostics::render_enabled()
+            && let Some(worker) = &self.worker
+        {
+            let started = Instant::now();
+            let send = worker.send.clone();
+            window.on_next_frame(move |_, _| {
+                let _ = send.send(Command::Timing(label, started.elapsed().as_micros()));
+            });
+        }
     }
     fn switch(
         &self,
@@ -324,10 +566,123 @@ impl Admin {
                     })),
             )
     }
+    fn user_row(
+        &self,
+        index: usize,
+        user: &crate::client::User,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        div()
+            .id(("user", index))
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .py(px(12.0))
+            .border_b_1()
+            .border_color(rgb(orbit::surface_3(cx)))
+            .child(
+                div()
+                    .w(px(220.0))
+                    .flex_shrink_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(4.0))
+                    .child(
+                        self.button(
+                            "user-select",
+                            user.name
+                                .as_deref()
+                                .or(user.email.as_deref())
+                                .unwrap_or("Sin nombre"),
+                            Event::SelectUser(index),
+                            cx,
+                        )
+                        .id(("select-user", index)),
+                    )
+                    .child(muted(
+                        user.email.as_deref().unwrap_or("Sin correo disponible"),
+                        cx,
+                    )),
+            )
+            .child(
+                div()
+                    .w(px(70.0))
+                    .flex_shrink_0()
+                    .child(if user.roles.is_empty() {
+                        "sin rol".into()
+                    } else {
+                        user.roles.join(", ")
+                    }),
+            )
+            .child(
+                div()
+                    .w(px(125.0))
+                    .flex_shrink_0()
+                    .child(if user.modules.is_empty() {
+                        "sin módulos".into()
+                    } else {
+                        user.modules
+                            .iter()
+                            .map(|m| m.label())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }),
+            )
+            .child(
+                div()
+                    .w(px(65.0))
+                    .flex_shrink_0()
+                    .child(user.reports_count.to_string()),
+            )
+            .child(div().w(px(145.0)).flex_shrink_0().child(
+                user.last_seen_at.as_deref().map_or_else(
+                    || "Sin datos".into(),
+                    |date| date.chars().take(16).collect::<String>().replace('T', " "),
+                ),
+            ))
+    }
     fn users(&self, cx: &mut Context<Self>) -> Div {
-        let query = self.search.read(cx).value.to_lowercase();
+        let query = self.search.read(cx).value.trim().to_lowercase();
+        let mut visible = 0;
+        let mut rows = div().flex().flex_col().min_w(px(700.0)).gap(px(8.0)).child(
+            div()
+                .flex()
+                .gap(px(12.0))
+                .child(div().w(px(220.0)).child(muted("NOMBRE / CORREO", cx)))
+                .child(div().w(px(70.0)).child(muted("ROL", cx)))
+                .child(div().w(px(125.0)).child(muted("MÓDULOS", cx)))
+                .child(div().w(px(65.0)).child(muted("REPORTES", cx)))
+                .child(div().w(px(145.0)).child(muted("ÚLTIMA VISITA", cx))),
+        );
+        for (index, user) in self.state.users.iter().enumerate() {
+            if !format!(
+                "{} {}",
+                user.email.as_deref().unwrap_or(""),
+                user.name.as_deref().unwrap_or("")
+            )
+            .to_lowercase()
+            .contains(&query)
+            {
+                continue;
+            }
+            visible += 1;
+            rows = rows.child(self.user_row(index, user, cx));
+        }
+        if visible == 0 {
+            rows = rows.child(muted(
+                if query.is_empty() && self.state.busy {
+                    "Cargando la lista de cuentas…"
+                } else if query.is_empty() {
+                    "No hay cuentas registradas en esta instancia."
+                } else {
+                    "Sin cuentas que coincidan con el filtro."
+                },
+                cx,
+            ));
+        }
         let mut list = panel(cx)
-            .w(px(470.0))
+            .flex_1()
+            .min_w_0()
             .gap(px(12.0))
             .child(
                 div()
@@ -336,58 +691,20 @@ impl Admin {
                     .child(div().flex_1().child(self.search.clone()))
                     .child(self.button("search", "Buscar", Event::Search, cx)),
             )
-            .child(muted("CORREO / NOMBRE · ROLES · MÓDULOS · REPORTES", cx));
-        for (index, user) in self.state.users.iter().enumerate() {
-            if self.state.demo
-                && !format!("{} {}", user.email, user.name)
-                    .to_lowercase()
-                    .contains(&query)
-            {
-                continue;
-            }
-            list = list.child(
-                div()
-                    .id(("user", index))
-                    .p(px(12.0))
-                    .rounded(px(8.0))
-                    .bg(rgb(orbit::surface_2(cx)))
-                    .cursor_pointer()
-                    .child(
-                        self.button("user-select", &user.name, Event::SelectUser(index), cx)
-                            .id(("select-user", index)),
-                    )
-                    .child(muted(&user.email, cx))
-                    .child(muted(
-                        &format!(
-                            "{} · {} · {} reportes",
-                            if user.roles.is_empty() {
-                                "sin rol".into()
-                            } else {
-                                user.roles.join(", ")
-                            },
-                            if user.modules.is_empty() {
-                                "sin módulos".into()
-                            } else {
-                                user.modules
-                                    .iter()
-                                    .map(|module| module.label())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            },
-                            user.reports_count
-                        ),
-                        cx,
-                    )),
-            );
+            .child(muted(
+                "Cuentas Vantare · alta más reciente primero · filtro por correo o nombre",
+                cx,
+            ))
+            .child(div().id("accounts-table").overflow_x_scroll().child(rows));
+        if self.state.users_cursor.is_some() && query.trim().is_empty() {
+            list = list.child(self.button("next-users", "Siguiente página", Event::NextUsers, cx));
         }
-        if self.state.users.is_empty() {
-            list = list.child(muted("Sin resultados. Busca por correo o nombre.", cx));
-        }
-        div()
-            .flex()
-            .gap(px(20.0))
-            .child(list)
-            .child(self.user_detail(cx))
+        div().flex().gap(px(20.0)).child(list).child(
+            div()
+                .w(px(320.0))
+                .flex_shrink_0()
+                .child(self.user_detail(cx)),
+        )
     }
     fn user_detail(&self, cx: &mut Context<Self>) -> Div {
         let mut detail = panel(cx)
@@ -396,8 +713,15 @@ impl Admin {
             .child(heading("Detalle de usuario", cx));
         if let Some(user) = &self.state.user {
             detail = detail
-                .child(user.name.clone())
-                .child(muted(&user.email, cx))
+                .child(
+                    user.name
+                        .clone()
+                        .unwrap_or_else(|| "Sin nombre disponible".into()),
+                )
+                .child(muted(
+                    user.email.as_deref().unwrap_or("Sin correo disponible"),
+                    cx,
+                ))
                 .child(muted(&format!("Alta: {}", user.created_at), cx))
                 .child(muted(
                     &format!(
@@ -417,21 +741,46 @@ impl Admin {
                     cx,
                 ))
                 .child(muted("El rol owner no se modifica desde esta app.", cx));
-            for module in Module::ALL {
-                detail = detail.child(self.switch(
-                    module.key(),
-                    module.label(),
-                    user.modules.contains(&module),
-                    Action::SetModule {
-                        account_id: user.account_id.clone(),
-                        module,
-                        enabled: !user.modules.contains(&module),
-                    },
+            for (index, module) in Module::ALL.into_iter().enumerate() {
+                let label = muted(
+                    &format!(
+                        "{} · acceso {}",
+                        module.label(),
+                        if user.modules.contains(&module) {
+                            "activo"
+                        } else {
+                            "inactivo"
+                        }
+                    ),
                     cx,
-                ));
+                );
+                let mut buttons = div().flex().items_center().gap(px(8.0));
+                for (enabled, label) in [(true, "Conceder"), (false, "Revocar")] {
+                    buttons = buttons.child(
+                        self.button(
+                            "module-grant",
+                            label,
+                            Event::Propose(Action::SetModule {
+                                account_id: user.account_id.clone(),
+                                module,
+                                enabled,
+                            }),
+                            cx,
+                        )
+                        .id(("module-grant", index * 2 + usize::from(enabled))),
+                    );
+                }
+                detail = detail.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.0))
+                        .child(label)
+                        .child(buttons),
+                );
             }
             detail = detail.child(muted(
-                "Concesiones individuales; un rollout global también da acceso.",
+                "Conceder/revocar cambia solo la concesión individual. El acceso también puede venir del rol, licencia o rollout global.",
                 cx,
             ));
         } else {
@@ -661,8 +1010,8 @@ impl Admin {
     }
 }
 impl Render for Admin {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let tabs = self.navigation(cx);
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let started = Instant::now();
         let body = if self.state.signed_in {
             match self.state.screen {
                 Screen::Users => self.users(cx),
@@ -674,6 +1023,12 @@ impl Render for Admin {
         };
         let mut root = div()
             .relative()
+            .on_mouse_move(
+                cx.listener(|this, _, window, _| this.frame_timing("hover_to_frame", window)),
+            )
+            .on_scroll_wheel(
+                cx.listener(|this, _, window, _| this.frame_timing("scroll_to_frame", window)),
+            )
             .size_full()
             .flex()
             .flex_col()
@@ -698,18 +1053,21 @@ impl Render for Admin {
                         cx,
                     )),
             )
-            .child(div().flex().justify_between().child(tabs).when(
-                self.state.signed_in && !self.state.demo,
-                |d| {
-                    d.child(
-                        div()
-                            .flex()
-                            .gap(px(10.0))
-                            .child(self.button("reload", "Actualizar", Event::Reload, cx))
-                            .child(self.button("logout", "Cerrar sesión", Event::Logout, cx)),
-                    )
-                },
-            ))
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .child(self.navigation(cx))
+                    .when(self.state.signed_in && !self.state.demo, |d| {
+                        d.child(
+                            div()
+                                .flex()
+                                .gap(px(10.0))
+                                .child(self.button("reload", "Actualizar", Event::Reload, cx))
+                                .child(self.button("logout", "Cerrar sesión", Event::Logout, cx)),
+                        )
+                    }),
+            )
             .child(
                 div()
                     .p(px(10.0))
@@ -730,30 +1088,12 @@ impl Render for Admin {
                     .child(body),
             );
         if let Some(action) = &self.state.confirmation {
-            let description = confirmation(action);
-            root = root.child(
-                panel(cx)
-                    .gap(px(12.0))
-                    .border_color(rgb(orbit::coral(cx)))
-                    .child(heading("Confirmar cambio", cx))
-                    .child(description)
-                    .child(
-                        div()
-                            .flex()
-                            .gap(px(10.0))
-                            .child(self.button(
-                                "confirm",
-                                "Confirmar y guardar",
-                                Event::Confirm,
-                                cx,
-                            ))
-                            .child(self.button("cancel", "Cancelar", Event::Cancel, cx)),
-                    ),
-            );
+            root = root.child(self.confirmation_panel(action, cx));
         }
         if let Some(image) = self.zoomed.and_then(|index| self.images.get(index)) {
             root = root.child(self.image_viewer(image.clone(), cx));
         }
+        self.record_render(started, window);
         root
     }
 }
@@ -794,8 +1134,8 @@ fn confirmation(action: &Action) -> String {
             module,
             enabled,
         } => format!(
-            "{} {} para {account_id}.",
-            if *enabled { "Activar" } else { "Desactivar" },
+            "{} concesión individual de {} para {account_id}. Revocarla no retira el acceso que venga de un rol, licencia o rollout global.",
+            if *enabled { "Conceder" } else { "Revocar" },
             module.label()
         ),
         Action::SetRollout {

@@ -117,6 +117,9 @@ impl Hub {
                 cx.notify();
             }
         }
+        self.notifications.update(cx, |notifications, cx| {
+            notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
+        });
         if self
             .launcher
             .update(cx, |launcher, _| launcher.take_exit_cancelled())
@@ -272,7 +275,10 @@ impl Hub {
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
             .when(
-                matches!(self.section, Section::Home | Section::Roadmap),
+                matches!(
+                    self.section,
+                    Section::Home | Section::Roadmap | Section::Notifications
+                ),
                 |content| content.h_full().min_h_0().min_w_0(),
             )
             .flex_1()
@@ -462,7 +468,10 @@ impl Render for Hub {
                             .flex_1()
                             .min_h_0()
                             .when(
-                                !matches!(self.section, Section::Home | Section::Roadmap),
+                                !matches!(
+                                    self.section,
+                                    Section::Home | Section::Roadmap | Section::Notifications
+                                ),
                                 gpui::StatefulInteractiveElement::overflow_y_scroll,
                             )
                             .when(self.section == Section::Settings, |content| {
@@ -771,7 +780,18 @@ impl Hub {
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         })
         .detach();
-        let notifications = cx.new(|_| Notifications::from_center(notification_center));
+        let notifications = cx.new(|cx| {
+            let mut notifications = Notifications::from_center(notification_center);
+            notifications.set_tester(access.beta_visible(Section::Testing), cx);
+            #[cfg(feature = "parity-capture")]
+            if capture.is_some()
+                && let Some(demo) = &demo
+                && let Ok(now) = demo.fixed_now()
+            {
+                notifications.capture_clock(now);
+            }
+            notifications
+        });
         let calendar = cx.new(|_| calendar);
         let analysis = cx.new(|cx| {
             prepared_analysis.refresh(cx);
@@ -786,6 +806,9 @@ impl Hub {
         cx.observe(&remote, |this, remote, cx| {
             if this.capture.is_none() {
                 this.shell.access = remote.read(cx).navigation_access();
+                this.notifications.update(cx, |notifications, cx| {
+                    notifications.set_tester(this.shell.access.beta_visible(Section::Testing), cx);
+                });
             }
             cx.notify();
         })
@@ -898,6 +921,13 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
     };
+    #[cfg(feature = "parity-capture")]
+    let notifications = notifications.with_capture_scene(
+        options
+            .capture
+            .as_ref()
+            .map(|capture| capture.name.as_str()),
+    )?;
     let launcher = match options.demo.as_ref() {
         Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
         None => {

@@ -3988,29 +3988,42 @@ medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
 promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
 orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
 
-### ISA-1470 - Fase 2, Roadmap (worker 1470-roadmap, 2026-10-06)
+### ISA-1470 - Fase 2, Roadmap y Notificaciones (worker 1470-roadmap, 2026-10-06)
 
-Entrega local en `vantareapp/isa-1470-roadmap`, worktree
+Bloque entregado localmente en `vantareapp/isa-1470-roadmap`, worktree
 `C:/tmp/vw3-1470-roadmap/vantare-v2`, base `46244ea2`.
-Roadmap visible para todos los usuarios del Hub, conservando login/política:
-fase/fases, tres columnas Ahora/Siguiente/Más adelante filtrables por área,
-progreso por áreas y entregas. Fuente manual `native/hub/roadmap/roadmap.json`
-incorporada al compilar, esquema y parser/tests estrictos; comparte
-`schemaVersion/items/Localized` con la publicación del servicio, cuyo acceso
-se conserva en Ver publicación con scroll y sin margen de cabecera antiguo.
-Textos públicos; porcentajes provisionales según nota00:10: fase75, Hub80,
-Overlays/Launcher75, Módulos25. Isaac los ajusta; no son telemetría/madurez.
+Roadmap: commit `c8635b58`. Notificaciones: segundo hito local de esta entrega;
+los SHAs completos están en el informe externo y la issue1470.
+Roadmap para todos los usuarios del Hub, conservando login/política:
+fase/fases, tablero Ahora/Siguiente/Más adelante filtrable, áreas y entregas.
+JSON manual `native/hub/roadmap/roadmap.json`, esquema y parser/tests estrictos,
+incorporado al compilar. Comparte `schemaVersion/items/Localized` con la
+publicación del servicio; conserva su acceso, scroll y cabecera correcta.
+Textos públicos; porcentajes editoriales provisionales según nota00:10:
+fase75, Hub80, Overlays/Launcher75, Módulos25. Isaac los ajusta; no telemetría.
 ClickUp no conectado. Esta base no contiene docs/roadmap/plan.md; el
 orquestador coordina su actualización antes de integrar. Digest intacto.
 
-Gates sobre el árbol de trabajo completo del bloque Roadmap+Notificaciones,
-antes de dividir commits: fmt/check/Clippy PASS, Nextest1137/1137 (6 omitidos
-por configuración vigente), lifecycle19/19 y esquema JSON PASS. BuildQA
-prueba/parity PASS; aviso previo en analysis/view.rs989, fuera de alcance.
-Capturas1920/1440/2560 y DeepSeek1920 inspeccionadas y comparadas con HTML:
-`C:/tmp/1470-roadmap-evidence/roadmap.png`, más tamaños/mapas/recortes.
+Campana sobre Center: contador, filtros, grupos civiles Hoy/Ayer/Esta semana,
+con antiguos/sin fecha, acciones cerradas, lectura individual/todas y vacío.
+Fechas convertidas por zona local de cada evento, incluido DST. Se conserva
+historial local de sesión máximo50, dismiss/foco, navegación y centro completo.
+Beta oculta sin acceso tester/owner; todavía sin productor Beta real conectado.
+Orbit solo añade geometría opcional Layer::with_popover_size, defaults intactos.
+Fixture/reloj QA solo en capturas explícitas con parity-capture; test de frontera
+asegura que notificaciones-panel es la única escena que recibe los avisos QA.
+
+Gates del árbol de trabajo completo antes de dividir commits por pantalla:
+fmt/check/Clippy PASS; Nextest1137/1137 (598.791s,6 omitidos por configuración
+vigente, incluidos casos manuales/live), lifecycle19/19 y JSON Schema PASS.
+Ocho tests añadidos; regresiones existentes conservadas/adaptadas a grupos de fecha.
+BuildQA prueba/parity PASS; aviso previo analysis/view.rs989, fuera de alcance.
+Evidencia `C:/tmp/1470-roadmap-evidence/`: capturas1920/1440/2560/DeepSeek1920
+miradas, comparativas HTML/GPUI, mapas, recortes, hashes y verificación manual.
+Defecto conocido: manchas del borde/sombra del popover en PNG nativo;
+recorte ampliado defecto-sombra-popover.png. Nota00:33 lo acepta para revisión
+visual posterior y prohíbe tocar el renderer ahora; causa no confirmada.
 No se afirma paridad de datos/píxel, interacción física, escala125/150,
-LMU live ni rendimiento. Beta/datos de Isaac intactos.
-Sin push, PR, CI remota, merge, promoción ni release.
-Notificaciones preparada para el siguiente commit local del mismo bloque;
-la entrega y revisión de la issue1470 completa siguen a cargo del orquestador.
+LMU live ni rendimiento. Beta/datos de Isaac intactos. Sin Go/frontend tocados.
+Issue1470 actualizada; sin push, PR, CI remota, merge, promoción ni release.
+Siguiente: review visual/integración por el orquestador y aceptación de Isaac.

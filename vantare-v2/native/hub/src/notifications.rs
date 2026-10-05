@@ -11,6 +11,7 @@ pub enum Source {
     Updater,
     Launcher,
     System,
+    Beta,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -93,7 +94,11 @@ impl Record {
         Self {
             v: 1,
             id: String::new(),
-            source: Source::System,
+            source: if key == "hub.launcher" {
+                Source::Launcher
+            } else {
+                Source::System
+            },
             severity: Severity::Error,
             occurred_at: 0,
             dedupe_key: key.into(),
@@ -101,7 +106,10 @@ impl Record {
             text_key: String::new(),
             params: BTreeMap::new(),
             concrete_cause: cause,
-            action: None,
+            action: (key == "hub.launcher").then(|| Action {
+                kind: "navigate".into(),
+                target: "launcher".into(),
+            }),
             unread: true,
         }
     }
@@ -113,6 +121,28 @@ pub struct Center {
     sequence: u64,
 }
 impl Center {
+    /// Exclusivamente escena visual explícita; nunca se llama en el Hub productivo.
+    #[cfg(any(test, feature = "parity-capture"))]
+    pub(crate) fn capture_fixture() -> Result<Self, String> {
+        let records: Vec<Record> =
+            serde_json::from_str(include_str!("../reference/fixtures/notifications-r8.json"))
+                .map_err(|error| format!("fixture Notificaciones: {error}"))?;
+        let mut center = Self::default();
+        for record in records {
+            let at = record.occurred_at;
+            let unread = record.unread;
+            center.publish(record, at, !unread)?;
+        }
+        Ok(center)
+    }
+    #[cfg(any(test, feature = "parity-capture"))]
+    pub(crate) fn with_capture_scene(self, scene: Option<&str>) -> Result<Self, String> {
+        if scene == Some("notificaciones-panel") {
+            Self::capture_fixture()
+        } else {
+            Ok(self)
+        }
+    }
     pub fn demo(
         data: &crate::demo::DemoData,
         at: chrono::DateTime<chrono::Utc>,
@@ -204,20 +234,30 @@ impl Center {
         }
         self.revision = self.revision.saturating_add(1);
     }
-    /// El orden de fuentes sigue su aviso más reciente; cada grupo conserva el historial.
-    fn groups(&self) -> Vec<(Source, Vec<&Record>)> {
-        let mut groups: Vec<(Source, Vec<&Record>)> = Vec::new();
-        for record in &self.records {
-            if let Some((_, records)) = groups
-                .iter_mut()
-                .find(|(source, _)| *source == record.source)
-            {
-                records.push(record);
-            } else {
-                groups.push((record.source, vec![record]));
-            }
-        }
-        groups
+    /// Agrupa por fecha civil local, conservando primero los avisos más recientes.
+    fn groups<Tz: chrono::TimeZone>(
+        &self,
+        filter: Filter,
+        tester: bool,
+        now: &chrono::DateTime<Tz>,
+    ) -> Vec<(&'static str, Vec<&Record>)> {
+        let mut records: Vec<_> = self
+            .records
+            .iter()
+            .filter(|record| filter.matches(record) && (tester || record.source != Source::Beta))
+            .collect();
+        records.sort_by_key(|record| std::cmp::Reverse(record.occurred_at));
+        ["Hoy", "Ayer", "Esta semana", "Anteriores", "Sin fecha"]
+            .into_iter()
+            .filter_map(|group| {
+                let records: Vec<_> = records
+                    .iter()
+                    .copied()
+                    .filter(|record| date_group(record.occurred_at, now) == group)
+                    .collect();
+                (!records.is_empty()).then_some((group, records))
+            })
+            .collect()
     }
     fn activate(&mut self, id: &str) -> Option<Section> {
         let destination = self
@@ -243,6 +283,9 @@ pub struct Notifications {
     pub bell_bounds: Option<gpui::Bounds<gpui::Pixels>>,
     pub bell_was_open: bool,
     focus: BTreeMap<String, FocusHandle>,
+    filter: Filter,
+    tester: bool,
+    now: Option<chrono::DateTime<chrono::Local>>,
 }
 #[derive(Clone)]
 enum Intent {
@@ -250,6 +293,55 @@ enum Intent {
     Clear,
     FullView,
     Activate(String),
+    Read(String),
+    Filter(Filter),
+}
+
+pub const PANEL_WIDTH: f32 = 452.0;
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+enum Filter {
+    #[default]
+    All,
+    Unread,
+    Launcher,
+    Beta,
+    System,
+}
+impl Filter {
+    fn label(self) -> &'static str {
+        match self {
+            Self::All => "Todas",
+            Self::Unread => "Sin leer",
+            Self::Launcher => "Launcher",
+            Self::Beta => "Beta",
+            Self::System => "Sistema",
+        }
+    }
+    fn matches(self, record: &Record) -> bool {
+        match self {
+            Self::All => true,
+            Self::Unread => record.unread,
+            Self::Launcher => record.source == Source::Launcher,
+            Self::Beta => record.source == Source::Beta,
+            Self::System => matches!(record.source, Source::System | Source::Updater),
+        }
+    }
+}
+fn date_group<Tz: chrono::TimeZone>(at: i64, now: &chrono::DateTime<Tz>) -> &'static str {
+    let Some(at) = chrono::DateTime::from_timestamp_millis(at) else {
+        return "Sin fecha";
+    };
+    // La zona aplica el offset de cada fecha, incluido el cambio de horario.
+    let days = now
+        .date_naive()
+        .signed_duration_since(at.with_timezone(&now.timezone()).date_naive())
+        .num_days();
+    match days {
+        ..=0 => "Hoy",
+        1 => "Ayer",
+        2..=6 => "Esta semana",
+        _ => "Anteriores",
+    }
 }
 
 /// La capa no mantiene viva su dueña: evita Notifications → Layer → Panel → Notifications.
@@ -257,21 +349,16 @@ struct Panel {
     notifications: WeakEntity<Notifications>,
 }
 impl Render for Panel {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self.notifications.upgrade() {
-            Some(notifications) => notifications.update(cx, |this, cx| this.history(true, cx)),
+            Some(notifications) => notifications.update(cx, |this, cx| {
+                this.history(true, f32::from(window.viewport_size().height) - 72.0, cx)
+            }),
             None => div(),
         }
     }
 }
 
-fn source_label(source: Source) -> &'static str {
-    match source {
-        Source::Updater => "Actualizador",
-        Source::Launcher => "Launcher",
-        Source::System => "Sistema",
-    }
-}
 fn severity(record: &Record, cx: &gpui::App) -> (&'static str, orbit::Tone) {
     match record.severity {
         Severity::Info => (
@@ -324,9 +411,26 @@ impl Notifications {
             ..Self::default()
         }
     }
+    pub(crate) fn set_tester(&mut self, tester: bool, cx: &mut Context<Self>) {
+        if self.tester != tester {
+            self.tester = tester;
+            if !tester && self.filter == Filter::Beta {
+                self.filter = Filter::All;
+            }
+            cx.notify();
+        }
+    }
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_clock(&mut self, now: chrono::DateTime<chrono::Utc>) {
+        self.now = Some(now.with_timezone(&chrono::Local));
+    }
 
     pub fn unread(&self) -> usize {
-        self.center.unread()
+        self.center
+            .records
+            .iter()
+            .filter(|record| record.unread && (self.tester || record.source != Source::Beta))
+            .count()
     }
     pub fn popover(&self) -> Option<Entity<orbit::Layer>> {
         self.layer.clone()
@@ -373,7 +477,7 @@ impl Notifications {
             return;
         };
         let position = gpui::point(
-            bounds.origin.x + bounds.size.width - px(orbit::POPOVER_W),
+            bounds.origin.x + bounds.size.width - px(PANEL_WIDTH),
             bounds.origin.y + bounds.size.height + px(orbit::MENU_PAD),
         );
         let layer = cx.new(|cx| {
@@ -385,6 +489,7 @@ impl Notifications {
                 window,
                 cx,
             )
+            .with_popover_size(PANEL_WIDTH, f32::from(window.viewport_size().height) - 72.0)
         });
         cx.subscribe(&layer, |_, _, _: &orbit::Dismissed, cx| cx.notify())
             .detach();
@@ -417,6 +522,12 @@ impl Notifications {
             Intent::Clear => self.center.clear(),
             Intent::FullView => self.destination = Some(Section::Notifications),
             Intent::Activate(id) => self.destination = self.center.activate(&id),
+            Intent::Read(id) => self.center.mark_read(&id),
+            Intent::Filter(filter) => {
+                if filter != Filter::Beta || self.tester {
+                    self.filter = filter;
+                }
+            }
         }
         if self.destination.is_some()
             && let Some(layer) = &self.layer
@@ -467,13 +578,77 @@ impl Notifications {
                 }
             }))
     }
+    fn record_actions(
+        record: &Record,
+        focus: &FocusHandle,
+        action_focus: &FocusHandle,
+        cx: &mut Context<Self>,
+    ) -> gpui::Div {
+        let id = record.id.clone();
+        let action_id = id.clone();
+        let read_id = id.clone();
+        let action_label = record.action.as_ref().map_or("Abrir", |action| {
+            if action.target == "launcher" {
+                "Ver Launcher"
+            } else {
+                "Ver ajustes"
+            }
+        });
+        div()
+            .flex()
+            .flex_wrap()
+            .gap(px(8.0))
+            .when(record.action.is_some(), |row| {
+                row.child(
+                    orbit::button(format!("notification-action-{id}"), action_label, cx)
+                        .track_focus(action_focus)
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            cx.stop_propagation();
+                            this.execute(Intent::Activate(action_id.clone()), window, cx);
+                        })),
+                )
+            })
+            .when(record.unread, |row| {
+                row.child(
+                    orbit::ghost_button(format!("notification-read-{id}"), "Marcar leído", cx)
+                        .track_focus(focus)
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            cx.stop_propagation();
+                            this.execute(Intent::Read(read_id.clone()), window, cx);
+                        })),
+                )
+            })
+            .when(!record.unread && record.action.is_none(), |row| {
+                row.child(orbit::text("Leído", 11.0, 400, orbit::ink_4(cx), cx))
+            })
+    }
+    fn record_time(record: &Record, cx: &gpui::App) -> gpui::Div {
+        orbit::text(time(record.occurred_at), 12.0, 400, orbit::ink_4(cx), cx)
+            .relative()
+            .when(record.unread, |stamp| {
+                stamp.child(
+                    orbit::status_dot(orbit::Tone::Accent, 8.0, cx)
+                        .absolute()
+                        .top(px(24.0))
+                        .right_0(),
+                )
+            })
+    }
     fn record_row(
         record: &Record,
         focus: &FocusHandle,
+        action_focus: &FocusHandle,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
         let id = record.id.clone();
-        let (severity, tone) = severity(record, cx);
+        let activate_id = id.clone();
+        let (_, tone) = severity(record, cx);
+        let icon = match record.source {
+            Source::Launcher => "v-launch",
+            Source::Updater => "v-download",
+            Source::Beta => "v-testing",
+            Source::System => "v-bell",
+        };
         let detail = [
             message(&record.text_key, &record.params),
             record.concrete_cause.clone(),
@@ -482,137 +657,229 @@ impl Notifications {
         .filter(|text| !text.is_empty())
         .collect::<Vec<_>>()
         .join(" · ");
-
-        orbit::list_row(
-            id.clone(),
-            &message(&record.title_key, &record.params),
-            &detail,
-            record.unread,
-            true,
-            cx,
-        )
-        .track_focus(focus)
-        .child(
-            div()
-                .flex()
-                .flex_wrap()
-                .items_center()
-                .gap(px(orbit::MENU_PAD))
-                .child(orbit::chip(severity, tone, cx))
-                .child(orbit::text(
-                    time(record.occurred_at),
-                    orbit::MICRO,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                ))
-                .child(orbit::text(
-                    if record.unread { "Sin leer" } else { "Leído" },
-                    orbit::MICRO,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                ))
-                .when(record.action.is_some(), |row| {
-                    row.child(orbit::text(
-                        "Abrir destino",
-                        orbit::MICRO,
-                        500,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
-                }),
-        )
-        .on_click(cx.listener(move |this, _, window, cx| {
-            this.execute(Intent::Activate(id.clone()), window, cx);
-        }))
+        div()
+            .id(id.clone())
+            .flex()
+            .gap(px(12.0))
+            .p(px(12.0))
+            .rounded(px(12.0))
+            .when(record.unread, |row| {
+                row.bg(orbit::tint(orbit::ink(cx), 0.035))
+            })
+            .child(
+                div()
+                    .size(px(34.0))
+                    .flex_none()
+                    .rounded(px(10.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(gpui::rgb(orbit::surface_3(cx)))
+                    .child(orbit::icon(
+                        icon,
+                        18.0,
+                        match tone {
+                            orbit::Tone::Danger => orbit::red(cx),
+                            orbit::Tone::Warning => orbit::ember(cx),
+                            _ => orbit::coral(cx),
+                        },
+                    )),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.0))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .gap(px(10.0))
+                            .child(
+                                orbit::text(
+                                    message(&record.title_key, &record.params),
+                                    14.0,
+                                    600,
+                                    orbit::ink(cx),
+                                    cx,
+                                )
+                                .flex_1()
+                                .min_w_0(),
+                            )
+                            .child(Self::record_time(record, cx)),
+                    )
+                    .child(
+                        orbit::text(detail, 13.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0)),
+                    )
+                    .child(Self::record_actions(record, focus, action_focus, cx)),
+            )
+            .cursor_pointer()
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.execute(Intent::Activate(activate_id.clone()), window, cx);
+            }))
     }
-    fn history(&mut self, compact: bool, cx: &mut Context<Self>) -> gpui::Div {
-        // Mantiene solo los controles del historial acotado, sin crecer por sesión.
+    #[allow(clippy::too_many_lines)] // Cabecera, filtros, historial desplazable y pie del mismo panel.
+    fn history(&mut self, compact: bool, height: f32, cx: &mut Context<Self>) -> gpui::Div {
         self.focus.retain(|id, _| {
             matches!(
                 id.as_str(),
                 "read-all" | "clear-notifications" | "full-notifications"
-            ) || self.center.records.iter().any(|record| record.id == *id)
+            ) || id.starts_with("notifications-filter-")
+                || self.center.records.iter().any(|record| {
+                    record.id == *id || id.strip_prefix("action-") == Some(record.id.as_str())
+                })
         });
-        let mut targets = Vec::new();
-        let unread = self.center.unread();
+        let unread = self.unread();
         let nonempty = !self.center.records.is_empty();
+        let mut targets = Vec::new();
         let read = self.tool(
             "read-all",
             "Marcar todo como leído",
             unread > 0,
             Intent::ReadAll,
-            compact,
+            true,
             cx,
         );
+        if unread > 0 {
+            targets.push(self.focus("read-all", cx));
+        }
+        let header = div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(10.0))
+            .child(
+                orbit::text("Notificaciones", 22.0, 600, orbit::ink(cx), cx)
+                    .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone()),
+            )
+            .child(orbit::pill(
+                &format!("{unread} sin leer"),
+                orbit::Tone::Neutral,
+                cx,
+            ))
+            .child(read);
+        let mut filters = div().flex().flex_wrap().gap(px(4.0));
+        for (id, filter) in [
+            ("all", Filter::All),
+            ("unread", Filter::Unread),
+            ("launcher", Filter::Launcher),
+            ("beta", Filter::Beta),
+            ("system", Filter::System),
+        ] {
+            if filter == Filter::Beta && !self.tester {
+                continue;
+            }
+            let key = format!("notifications-filter-{id}");
+            let focus = self.focus(&key, cx);
+            targets.push(focus.clone());
+            filters = filters.child(
+                orbit::ghost_button(key, filter.label(), cx)
+                    .track_focus(&focus)
+                    .when(self.filter == filter, |button| {
+                        button.bg(gpui::rgb(orbit::surface_3(cx)))
+                    })
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.execute(Intent::Filter(filter), window, cx);
+                    })),
+            );
+        }
+        let now = self.now.unwrap_or_else(chrono::Local::now);
+        let groups: Vec<_> = self
+            .center
+            .groups(self.filter, self.tester, &now)
+            .into_iter()
+            .map(|(group, records)| (group, records.into_iter().cloned().collect::<Vec<_>>()))
+            .collect();
+        let has_visible = !groups.is_empty();
+        let mut history = div()
+            .id("notifications-history")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .flex()
+            .flex_col()
+            .gap(px(8.0));
+        if groups.is_empty() {
+            history = history.child(
+                div()
+                    .min_h(px(220.0))
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(16.0))
+                    .child(orbit::icon("v-bell", 42.0, orbit::ink_3(cx)))
+                    .child(orbit::text("Todo al día", 16.0, 600, orbit::ink(cx), cx))
+                    .child(orbit::text(
+                        if nonempty {
+                            "No hay notificaciones en este filtro."
+                        } else {
+                            "Aquí verás tus avisos y lanzamientos."
+                        },
+                        13.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            );
+        }
+        for (group, records) in groups {
+            history =
+                history.child(orbit::text(group, 12.0, 400, orbit::ink_4(cx), cx).mt(px(12.0)));
+            for record in &records {
+                let focus = self.focus(&record.id, cx);
+                let action_focus = self.focus(&format!("action-{}", record.id), cx);
+                if record.action.is_some() {
+                    targets.push(action_focus.clone());
+                }
+                if record.unread {
+                    targets.push(focus.clone());
+                }
+                history = history.child(Self::record_row(record, &focus, &action_focus, cx));
+            }
+        }
         let clear = self.tool(
             "clear-notifications",
             "Limpiar",
             nonempty,
             Intent::Clear,
-            compact,
+            true,
             cx,
         );
-        for (id, enabled) in [("read-all", unread > 0), ("clear-notifications", nonempty)] {
-            if enabled {
-                targets.push(self.focus(id, cx));
-            }
+        if nonempty {
+            targets.push(self.focus("clear-notifications", cx));
         }
-        let tools = div()
+        let footer = div()
             .flex()
-            .flex_wrap()
-            .gap(px(orbit::MENU_PAD))
-            .child(read)
+            .items_center()
+            .justify_between()
+            .gap(px(10.0))
+            .border_t_1()
+            .border_color(gpui::rgba(orbit::line(cx)))
+            .pt(px(12.0))
+            .child(orbit::text(
+                "Historial de esta sesión · máximo 50",
+                12.0,
+                400,
+                orbit::ink_4(cx),
+                cx,
+            ))
             .child(clear);
-        let header = if compact {
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(orbit::tracked_text(
-                    "NOTIFICACIONES",
-                    10.5,
-                    800,
-                    orbit::ink_4(cx),
-                    1.155,
-                    cx,
-                ))
-                .child(tools)
-        } else {
-            tools
-        };
         let mut view = div()
             .flex()
             .flex_col()
-            .gap(px(orbit::MENU_PAD))
-            .p(px(if compact { 12.0 } else { orbit::FIELD_PAD }))
-            .child(header);
-        if self.center.records.is_empty() {
-            view = view.child(if compact {
-                orbit::text("Sin notificaciones.", 11.0, 400, orbit::ink_muted(cx), cx)
-                    .line_height(px(16.5))
-                    .my(px(6.0))
-            } else {
-                orbit::empty_state("Sin notificaciones.", "", cx)
-            });
-        }
-        // Clonar el máximo de 50 registros permite componer controles con su propio foco.
-        let groups: Vec<_> = self
-            .center
-            .groups()
-            .into_iter()
-            .map(|(source, records)| (source, records.into_iter().cloned().collect::<Vec<_>>()))
-            .collect();
-        for (source, records) in groups {
-            view = view.child(orbit::eyebrow(source_label(source), cx));
-            for record in records {
-                let id = record.id.clone();
-                let focus = self.focus(&id, cx);
-                targets.push(focus.clone());
-                view = view.child(Self::record_row(&record, &focus, cx));
-            }
-        }
+            .gap(px(12.0))
+            .p(px(20.0))
+            .max_h(px(height))
+            .when(has_visible, |view| view.h(px(height)))
+            .child(header)
+            .child(filters)
+            .child(history)
+            .child(footer);
         if compact && nonempty {
             view = view.child(self.tool(
                 "full-notifications",
@@ -633,17 +900,123 @@ impl Notifications {
     }
 }
 impl Render for Notifications {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div().flex().flex_col().gap(px(orbit::FIELD_PAD))
-            .child(orbit::card("Notificaciones", cx).child(self.history(false, cx)))
-            .child(orbit::callout("Historial local de esta sesión (máximo 50). Avisos del actualizador y notificación de prueba: pendiente.", cx))
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        orbit::neo_card(cx)
+            .size_full()
+            .min_h_0()
+            .p(px(0.0))
+            .child(self.history(false, f32::from(window.viewport_size().height) - 130.0, cx))
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn groups_follow_recency_and_keep_each_sources_order() {
+    fn qa_notifications_only_enter_the_explicit_capture_scene() {
+        for scene in [None, Some("inicio-base"), Some("notificaciones-vacio")] {
+            let center = Center::default()
+                .with_capture_scene(scene)
+                .expect("centro real");
+            assert!(center.records.is_empty());
+        }
+        let center = Center::default()
+            .with_capture_scene(Some("notificaciones-panel"))
+            .expect("escena QA explícita");
+        assert_eq!(center.records.len(), 6);
+        assert!(
+            center
+                .records
+                .iter()
+                .all(|record| record.text_key.starts_with("QA visual:"))
+        );
+    }
+    #[test]
+    fn filters_use_source_and_read_state_without_mutating_history() {
+        let mut record = Record::local_error("test", "aviso".into());
+        for (source, expected) in [
+            (Source::Launcher, [true, true, true, false, false]),
+            (Source::Beta, [true, true, false, true, false]),
+            (Source::System, [true, true, false, false, true]),
+            (Source::Updater, [true, true, false, false, true]),
+        ] {
+            record.source = source;
+            assert_eq!(
+                [
+                    Filter::All,
+                    Filter::Unread,
+                    Filter::Launcher,
+                    Filter::Beta,
+                    Filter::System
+                ]
+                .map(|filter| filter.matches(&record)),
+                expected
+            );
+        }
+        record.unread = false;
+        assert!(!Filter::Unread.matches(&record));
+        assert!(Filter::All.matches(&record));
+    }
+    #[test]
+    fn real_launcher_errors_are_filterable_and_keep_a_closed_navigation_action() {
+        let record = Record::local_error("hub.launcher", "fallo real".into());
+        assert!(Filter::Launcher.matches(&record));
+        assert_eq!(
+            record.action.expect("acción").destination(),
+            Ok(Section::Launcher)
+        );
+        assert!(Filter::System.matches(&Record::local_error("hub.calendar", "fallo".into())));
+    }
+    #[test]
+    fn beta_filter_and_counter_follow_role_and_read_all_clears_visible_unread() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-10-05T18:30:00+02:00").expect("reloj");
+        let mut center = Center::default();
+        center
+            .publish(
+                Record::local_error("system", "aviso".into()),
+                now.timestamp_millis(),
+                false,
+            )
+            .expect("publicar");
+        let mut beta = Record::local_error("beta", "aviso beta".into());
+        beta.source = Source::Beta;
+        center
+            .publish(beta, now.timestamp_millis(), false)
+            .expect("publicar");
+        assert!(center.groups(Filter::Beta, false, &now).is_empty());
+        assert_eq!(center.groups(Filter::All, false, &now)[0].1.len(), 1);
+        let mut notifications = Notifications::from_center(center);
+        assert_eq!(notifications.unread(), 1);
+        notifications.tester = true;
+        assert_eq!(notifications.unread(), 2);
+        notifications.center.mark_read("all");
+        assert_eq!(notifications.unread(), 0);
+        assert!(
+            notifications
+                .center
+                .groups(Filter::Unread, true, &now)
+                .is_empty()
+        );
+    }
+    #[test]
+    fn date_groups_follow_local_midnight_and_keep_older_or_invalid_records() {
+        let now = chrono::DateTime::parse_from_rfc3339("2026-10-05T00:30:00+02:00").expect("fecha");
+        for (date, group) in [
+            ("2026-10-04T22:15:00Z", "Hoy"),
+            ("2026-10-04T21:59:00Z", "Ayer"),
+            ("2026-10-01T12:00:00Z", "Esta semana"),
+            ("2026-09-20T12:00:00Z", "Anteriores"),
+            ("2026-10-06T12:00:00Z", "Hoy"),
+        ] {
+            let at = chrono::DateTime::parse_from_rfc3339(date)
+                .expect("fecha")
+                .timestamp_millis();
+            assert_eq!(date_group(at, &now), group);
+        }
+        assert_eq!(date_group(i64::MAX, &now), "Sin fecha");
+    }
+    #[test]
+    fn date_groups_keep_recency_and_source_filter_order() {
         let mut center = Center::default();
         for (key, source) in [
             ("one", Source::Launcher),
@@ -655,13 +1028,21 @@ mod tests {
             record.source = source;
             center.publish(record, 1, false).expect("publicar");
         }
-        let groups = center.groups();
+        let now = chrono::DateTime::parse_from_rfc3339("1970-01-01T01:00:00+00:00").expect("reloj");
+        let groups = center.groups(Filter::All, true, &now);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].0, "Hoy");
         assert_eq!(
-            groups.iter().map(|(source, _)| *source).collect::<Vec<_>>(),
-            [Source::Updater, Source::Launcher, Source::System]
+            groups[0]
+                .1
+                .iter()
+                .map(|record| record.dedupe_key.as_str())
+                .collect::<Vec<_>>(),
+            ["four", "three", "two", "one"]
         );
+        let launcher = center.groups(Filter::Launcher, true, &now);
         assert_eq!(
-            groups[1]
+            launcher[0]
                 .1
                 .iter()
                 .map(|record| record.dedupe_key.as_str())
@@ -669,7 +1050,7 @@ mod tests {
             ["three", "one"]
         );
         center.clear();
-        assert!(center.groups().is_empty());
+        assert!(center.groups(Filter::All, true, &now).is_empty());
     }
     #[test]
     fn activation_reads_only_the_selected_record_and_uses_the_allowlist() {

@@ -271,9 +271,13 @@ impl Hub {
 
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
-            .when(self.section == Section::Home, |content| {
-                content.h_full().min_h_0().min_w_0()
-            })
+            .when(
+                matches!(
+                    self.section,
+                    Section::Home | Section::Settings | Section::Account | Section::Licenses
+                ),
+                |content| content.h_full().min_h_0().min_w_0(),
+            )
             .flex_1()
             .flex()
             .flex_col()
@@ -301,7 +305,7 @@ impl Hub {
                 },
             )
             .when(self.section == Section::Settings, |content| {
-                content.child(self.settings_header(cx))
+                content.gap(gpui::px(16.0)).child(self.settings_header(cx))
             })
             .when_some(self.live_theme.error.clone(), |content, error| {
                 content.child(orbit::callout(error, cx))
@@ -369,6 +373,7 @@ impl Hub {
                 }))
             }
             Section::Studio => Some(self.studio.read(cx).topbar_controls().into_any_element()),
+            Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
             _ => None,
         }
     }
@@ -386,7 +391,7 @@ impl Hub {
             self.section,
             Section::Settings | Section::Account | Section::Licenses
         ) {
-            self.settings_column(window, cx).into_any_element()
+            div().into_any_element()
         } else if self.section == Section::Launcher {
             self.launcher
                 .update(cx, |launcher, cx| launcher.context_column(window, cx))
@@ -463,17 +468,27 @@ impl Render for Hub {
                             .min_w_0()
                             .flex_1()
                             .min_h_0()
-                            .when(self.section != Section::Home, |content| {
-                                content.overflow_y_scroll()
-                            })
-                            .when(self.section == Section::Settings, |content| {
-                                content.track_scroll(&self.settings.scroll)
-                            })
+                            .when(
+                                !matches!(
+                                    self.section,
+                                    Section::Home
+                                        | Section::Settings
+                                        | Section::Account
+                                        | Section::Licenses
+                                ),
+                                gpui::StatefulInteractiveElement::overflow_y_scroll,
+                            )
                             .child(content),
                     )
                     .when(
                         self.shell.column_open
-                            && self.section != Section::Home
+                            && !matches!(
+                                self.section,
+                                Section::Home
+                                    | Section::Settings
+                                    | Section::Account
+                                    | Section::Licenses
+                            )
                             && (self.section != Section::Strategy || strategy_context_visible),
                         |body| body.child(column),
                     ),

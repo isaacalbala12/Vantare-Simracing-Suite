@@ -3,9 +3,9 @@ use crate::testing::diagnostic::{ErrorCode, Module, SectionError};
 
 #[test]
 fn panel_reserves_header_and_footer_and_tracks_resized_viewport() {
-    assert!((panel_height(900.0) - 654.0).abs() < f32::EPSILON);
-    assert!((panel_height(720.0) - 474.0).abs() < f32::EPSILON);
-    assert!((panel_height(200.0) - 0.0).abs() < f32::EPSILON);
+    assert!((panel_height(900.0) - 740.0).abs() < f32::EPSILON);
+    assert!((panel_height(720.0) - 560.0).abs() < f32::EPSILON);
+    assert!((panel_height(120.0) - 0.0).abs() < f32::EPSILON);
 }
 
 #[test]

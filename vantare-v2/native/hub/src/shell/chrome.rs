@@ -871,7 +871,11 @@ impl Hub {
                 .into_any_element()
         };
         orbit::topbar_with_actions(
-            navigation::trail(breadcrumb),
+            if self.section == Section::Settings {
+                ""
+            } else {
+                navigation::trail(breadcrumb)
+            },
             navigation::title(breadcrumb),
             section_actions,
             action,

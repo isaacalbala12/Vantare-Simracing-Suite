@@ -721,15 +721,17 @@ pub fn topbar_with_actions(
                 .when(compact, gpui::Styled::flex_none)
                 .items_baseline()
                 .gap(px(10.0))
-                .child(tracked_text(
-                    trail.to_uppercase(),
-                    10.5,
-                    800,
-                    ink_4(cx),
-                    0.66,
-                    cx,
-                ))
-                .child(text("/", 12.0, 400, ink_muted(cx), cx))
+                .when(!trail.is_empty(), |path| {
+                    path.child(tracked_text(
+                        trail.to_uppercase(),
+                        10.5,
+                        800,
+                        ink_4(cx),
+                        0.66,
+                        cx,
+                    ))
+                    .child(text("/", 12.0, 400, ink_muted(cx), cx))
+                })
                 .child(
                     text(title.to_owned(), 16.0, 650, ink(cx), cx)
                         .font_weight(face_weight(650, cx))

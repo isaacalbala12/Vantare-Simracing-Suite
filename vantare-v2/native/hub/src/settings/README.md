@@ -1,4 +1,34 @@
-# Ajustes del Hub — ISA-1430
+# Ajustes del Hub — ISA-1470
+
+## Rediseño beta (fase 2)
+
+Siete pestañas en la topbar: General, Apariencia, Rendimiento en pista, Atajos,
+Actualizaciones, Privacidad y Diagnóstico. Cada página usa el layout C con
+scroll independiente en contenido y carril; Cuenta es un destino separado y
+Licencias redirige a Cuenta. Usa las tarjetas neo y tokens de los cimientos.
+
+Apariencia ofrece los cuatro temas productivos con miniaturas: Grafito carmín,
+DeepSeek Harness, Noche Le Mans y Piedra cálida. Conserva guardado atómico,
+conflictos, contraste, opacidad y fuentes. Privacidad mantiene ambos consentimientos
+PostHog; diagnóstico conserva preparación, filtro y copia sanitizada;
+Actualizaciones conserva metadatos, novedades y acciones de reinicio de beta.
+Cuenta conserva inicio/cierre de sesión y restablecimiento del dispositivo.
+Las licencias se presentan como Beta para testers, gratuita durante la beta;
+Strategy y Engineer se anuncian Próximamente sin modificar permisos del núcleo.
+
+Los controles sin implementación nativa siguen pendientes y no guardan datos.
+CPU, memoria, dispositivos remotos y exportación/eliminación no se inventan.
+Los atajos Ctrl L/K/B ya implementados se muestran junto a la referencia global.
+El banco --capture --demo continúa aislado por parity-capture.
+
+Verificación: recorrer las siete pestañas y Cuenta a 1440/1920/2560; seleccionar
+los cuatro temas y reabrir; alternar consentimiento en un directorio QA; preparar
+y copiar diagnóstico; revisar la instalación real en Actualizaciones. Las acciones
+de cuenta requieren servicios y sesión reales. Evidencia fuera del repo en
+C:/tmp/1470-ajustes-evidence. Las secciones siguientes son evidencia histórica
+de ISA-1430 y no describen el layout actual.
+
+# Antecedentes — ISA-1430
 
 Referencia: `frontend/src/hub/settings-orbit/`, `internal/app/settings_service.go`
 y fila Ajustes de `docs/analysis/2026-09-30-hub-paridad.md`.

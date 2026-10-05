@@ -22,7 +22,6 @@ mod view;
 enum Page {
     #[default]
     Application,
-    Account,
     Appearance,
     Performance,
     Updates,
@@ -40,17 +39,16 @@ impl Page {
         Self::Application,
         Self::Appearance,
         Self::Performance,
-        Self::Updates,
         Self::Hotkeys,
+        Self::Updates,
         Self::Privacy,
         Self::Diagnostics,
     ];
     fn label(self) -> &'static str {
         match self {
-            Self::Application => "Aplicación",
-            Self::Account => "Cuenta",
+            Self::Application => "General",
             Self::Appearance => "Apariencia",
-            Self::Performance => "Rendimiento",
+            Self::Performance => "Rendimiento en pista",
             Self::Updates => "Actualizaciones",
             Self::Hotkeys => "Atajos",
             Self::Privacy => "Privacidad",
@@ -60,7 +58,6 @@ impl Page {
     fn subtitle(self) -> &'static str {
         match self {
             Self::Application => "Interfaz y sistema",
-            Self::Account => "Sesión, plan y dispositivos",
             Self::Appearance => "Colores, contraste y fuentes",
             Self::Performance => "Nivel global y perfil activo",
             Self::Updates => "Versión, canal y novedades",
@@ -79,7 +76,6 @@ impl Page {
     fn description(self) -> &'static str {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
-            Self::Account => "Tu sesión, tu plan y lo que incluye.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Elige cuánto trabajo hace Vantare durante la carrera.",
             Self::Updates => "Versión instalada, canal y novedades.",
@@ -90,12 +86,11 @@ impl Page {
     }
     fn matches(self, query: &str) -> bool {
         let titles = match self {
-            Self::Account => "cuenta sesión plan módulos licencias dispositivos",
             Self::Application => {
-                "zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
+                "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
             }
             Self::Appearance => {
-                "paleta vantare rosa bosque océano ámbar iris grises contraste opacidad cristal fuentes animaciones"
+                "paleta grafito carmín deepseek harness noche le mans piedra cálida contraste opacidad cristal fuentes animaciones"
             }
             Self::Performance => {
                 "máximo alto equilibrado ahorro mínimo personalizado automático cadencia widgets hz coste"
@@ -124,11 +119,10 @@ pub(super) struct State {
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
     page: Page,
-    pub(super) scroll: gpui::ScrollHandle,
     pub(super) panel_scroll: gpui::ScrollHandle,
     panel_height: f32,
     nav_focus: Vec<FocusHandle>,
-    action_focus: [FocusHandle; 2],
+    action_focus: [FocusHandle; 4],
     query: Entity<Input>,
     language: Entity<Choice>,
     units: Entity<Choice>,
@@ -261,8 +255,7 @@ impl State {
         window: &mut Window,
         cx: &mut Context<Hub>,
     ) -> Self {
-        // Cuenta y Licencias son páginas de Ajustes, como en Wails. La shell
-        // conserva sus destinos públicos y este módulo compone su presentación.
+        // Licencias conserva su destino público, dentro de Cuenta en la beta.
         cx.observe_self(Hub::settings_account_destination).detach();
         let hub = cx.entity();
         cx.defer(move |cx| hub.update(cx, Hub::settings_account_destination));
@@ -282,10 +275,9 @@ impl State {
                 .and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             page: Page::default(),
-            scroll: gpui::ScrollHandle::new(),
             panel_scroll: gpui::ScrollHandle::new(),
             panel_height: panel_height(f32::from(window.viewport_size().height)),
-            nav_focus: (0..9).map(|_| cx.focus_handle()).collect(),
+            nav_focus: (0..Page::ALL.len()).map(|_| cx.focus_handle()).collect(),
             action_focus: std::array::from_fn(|_| cx.focus_handle()),
             query,
             language,
@@ -345,9 +337,9 @@ impl State {
         state
     }
 }
-// Topbar 70 + cabecera/separación 152 + pie 24, según orbit-settings.css.
+// Topbar 52 + márgenes/cabecera 108 del layout beta; usado por las novedades.
 fn panel_height(viewport_height: f32) -> f32 {
-    (viewport_height - 246.0).max(0.0)
+    (viewport_height - 160.0).max(0.0)
 }
 fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
     matches!(filter, 0 | 3)
@@ -375,14 +367,12 @@ fn search_text(value: &str) -> String {
 }
 impl Hub {
     fn settings_account_destination(&mut self, cx: &mut Context<Self>) {
-        if matches!(
-            self.section,
-            crate::Section::Account | crate::Section::Licenses
-        ) {
-            self.section = crate::Section::Settings;
-            self.select_settings_page(Page::Account, cx);
+        if self.section == crate::Section::Licenses {
+            self.section = crate::Section::Account;
+            cx.notify();
         }
     }
+
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
             Action::PrepareDiagnostic => self.prepare_settings_diagnostic(cx),
@@ -521,7 +511,6 @@ impl Hub {
     }
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
         self.settings.page = page;
-        self.settings.scroll = gpui::ScrollHandle::new();
         self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;
         if page == Page::Updates {

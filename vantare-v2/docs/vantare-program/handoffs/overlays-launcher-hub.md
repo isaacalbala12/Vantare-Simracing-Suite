@@ -34,7 +34,14 @@ Gates Windows finales PASS: check, Clippy `-D warnings`, fmt, Nextest
 1095/1095 (4 omitidas) y lifecycle (12 escenarios). Build prueba PASS.
 Exportador reejecutado con SHA idéntico; 43 escenas regeneradas idénticas.
 No se ejecutaron gates frontend porque sus archivos no cambiaron.
-Comprobación Mac pendiente en el momento de este commit de implementación.
+Código local `56e11e8f19214d4191a06343e257858966878e7e`, transferido por
+bundle privado al worktree Mac limpio y detached. `ui/workshop-en-vivo.sh`
+PASS sobre ese SHA: build incremental 10,60 s, ventana GPUI y tres cargas de
+estilo en PID 59560. JSON restaurado, proceso propio cerrado y worktree limpio.
+`mac-verification.json` registra el hash del binario; no es verificación de
+presentación física. Guardar → log 269,18 ms, sin afirmar latencia visual.
+Persiste el aviso heredado de `LiveScreens::toggle` sin uso en Mac; no se
+ejecutaron allí los gates completos ni una revisión visual de la pantalla.
 Sin push, PR, CI remoto, merge, promoción ni release. El roadmap manual no
 existe en esta base; no se recrea. La issue #1467 permanece abierta.
 

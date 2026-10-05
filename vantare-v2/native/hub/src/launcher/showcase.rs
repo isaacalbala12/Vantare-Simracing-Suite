@@ -191,6 +191,7 @@ pub(super) fn app_icon(app: &App, size: f32, cx: &gpui::App) -> Div {
         "simhub" => "v-sliders",
         "obs" => "v-camera",
         "spotify" => "v-music",
+        "discord" => "v-chat",
         "custom:vantare" => "mark",
         _ => return presentation::app_mark(app, size, cx),
     };
@@ -201,6 +202,7 @@ pub(super) fn app_icon(app: &App, size: f32, cx: &gpui::App) -> Div {
         "spotify" => gradients.app_music,
         "obs" => gradients.app_video,
         "simhub" => gradients.app_tools,
+        "discord" => [0x0068_73f5, 0x002e_3699],
         _ => gradients.button,
     };
     div()
@@ -386,10 +388,13 @@ impl Launcher {
         compact: bool,
         cx: &gpui::App,
     ) -> Stateful<Div> {
-        let mut row = div()
-            .flex()
-            .items_stretch()
-            .gap(px(if compact { 8.0 } else { 12.0 }));
+        let mut row = div().flex().items_stretch().gap(px(if running {
+            0.0
+        } else if compact {
+            8.0
+        } else {
+            12.0
+        }));
         for (index, step) in profile.steps.iter().enumerate() {
             let app = self
                 .store
@@ -399,13 +404,21 @@ impl Launcher {
                 .find(|app| app.id == step.app_id);
             let event = self.step_event(profile, index);
             let (label, tone) = self.step_state(profile, index);
+            let icon_size = if compact { 48.0 } else { 80.0 };
             let mut card = div()
+                .relative()
                 .flex_1()
                 .min_w_0()
                 .flex()
                 .flex_col()
                 .gap(px(if compact { 8.0 } else { 12.0 }))
-                .p(px(if compact { 10.0 } else { 18.0 }))
+                .p(px(if running {
+                    0.0
+                } else if compact {
+                    10.0
+                } else {
+                    18.0
+                }))
                 .rounded(px(18.0))
                 .when(!running, |card| {
                     card.border_1()
@@ -492,25 +505,35 @@ impl Launcher {
                     },
                 );
             }
-            row = row.child(card);
             if running && index + 1 < profile.steps.len() {
-                row = row.child(
+                let next_event = self.step_event(profile, index + 1);
+                let (next_label, _) = self.step_state(profile, index + 1);
+                card = card.child(
                     div()
-                        .w(px(32.0))
-                        .mt(px(if compact { 34.0 } else { 58.0 }))
-                        .h(px(3.0))
+                        .absolute()
+                        .left(gpui::relative(0.5))
+                        .right(gpui::relative(-0.5))
+                        .mx(px(icon_size / 2.0))
+                        .top(px(icon_size / 2.0 - 2.0))
+                        .h(px(4.0))
                         .rounded_full()
-                        .bg(rgb(
-                            if event.is_some_and(|event| {
+                        .bg(
+                            if next_event.is_some_and(|event| {
                                 event.status == super::super::chain::Status::Ready
                             }) {
-                                orbit::carmine(cx)
+                                orbit::gradient(
+                                    cx.global::<orbit::design::Tokens>().gradients.progress,
+                                    90.0,
+                                )
+                            } else if next_label == "Reintentando…" {
+                                orbit::gradient([0x00f4_ad28, 0x00e9_852a], 90.0)
                             } else {
-                                orbit::surface_3(cx)
+                                rgb(orbit::surface_3(cx)).into()
                             },
-                        )),
+                        ),
                 );
             }
+            row = row.child(card);
         }
         div()
             .id("launcher-steps")
@@ -919,6 +942,7 @@ impl Launcher {
         }
         row = row.child(
             button("showcase-new", "+ Nuevo perfil", cx)
+                .rounded(px(18.0))
                 .w(px(150.0))
                 .h_full()
                 .on_click(cx.listener(|this, _, window, cx| this.new_profile(None, window, cx))),
@@ -1013,6 +1037,7 @@ impl Launcher {
         }
         grid = grid.child(
             button("showcase-add-app", "+ Añadir app", cx)
+                .rounded(px(18.0))
                 .w(gpui::relative(0.31))
                 .h(px(if compact { 96.0 } else { 124.0 }))
                 .on_click(cx.listener(|this, _, window, cx| this.app_editor(None, window, cx))),

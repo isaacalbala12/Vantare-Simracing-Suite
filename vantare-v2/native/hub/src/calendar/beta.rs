@@ -16,6 +16,61 @@ fn classes(series: &Series) -> Vec<&str> {
             .collect()
     }
 }
+fn class_color(class: &str, cx: &gpui::App) -> u32 {
+    match class {
+        "Hypercar" => 0x00e1_4a54,
+        "LMP2" => 0x004c_8df6,
+        "LMP3" => 0x00a9_70f0,
+        "LMGT3" => 0x00e9_852a,
+        "GTE" | "LMGTE Am" => 0x00d6_b83a,
+        _ => orbit::ink_3(cx),
+    }
+}
+fn class_chip(class: &str, cx: &gpui::App) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(6.0))
+        .px(px(8.0))
+        .py(px(4.0))
+        .rounded_full()
+        .bg(rgb(orbit::surface_3(cx)))
+        .child(
+            div()
+                .size(px(7.0))
+                .rounded_full()
+                .bg(rgb(class_color(class, cx))),
+        )
+        .child(orbit::text(
+            class.to_owned(),
+            11.0,
+            400,
+            orbit::ink_2(cx),
+            cx,
+        ))
+}
+fn tier_style(tier: &str, cx: &gpui::App) -> (&'static str, u32, u32) {
+    match tier {
+        "beginner" => ("Bronze", 0x003a_2a20, 0x00e2_a877),
+        "intermediate" => ("Silver", 0x002e_3033, 0x00c9_ced4),
+        "advanced" => ("Gold", 0x003a_3220, 0x00e7_c86a),
+        "weekly" => ("Semanal", orbit::surface_3(cx), orbit::carmine(cx)),
+        _ => ("Sin nivel", orbit::surface_3(cx), orbit::ink_3(cx)),
+    }
+}
+fn tier_pill(tier: &str, cx: &gpui::App) -> Div {
+    let (label, background, foreground) = tier_style(tier, cx);
+    div()
+        .px(px(6.0))
+        .py(px(2.0))
+        .rounded(px(4.0))
+        .bg(if tier == "weekly" {
+            orbit::tint(foreground, 0.12)
+        } else {
+            rgb(background).into()
+        })
+        .child(orbit::text(label, 11.0, 600, foreground, cx))
+}
 fn includes(calendar: &Calendar, series: &Series) -> bool {
     calendar
         .tier_filter
@@ -98,9 +153,19 @@ fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         row = row.child(
             orbit::button(
                 gpui::SharedString::from(format!("calendar-class-{label}")),
-                &label,
+                "",
                 cx,
             )
+            .when_some(class.as_deref(), |button, class| {
+                button.gap(px(6.0)).child(
+                    div()
+                        .size(px(7.0))
+                        .rounded_full()
+                        .bg(rgb(class_color(class, cx))),
+                )
+            })
+            .aria_label(label.clone())
+            .child(orbit::text(label, 12.0, 500, orbit::ink_2(cx), cx))
             .when(calendar.class_filter == class, |button| {
                 button.bg(rgb(orbit::surface_3(cx)))
             })
@@ -124,9 +189,22 @@ fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         levels = levels.child(
             orbit::button(
                 gpui::SharedString::from(format!("calendar-tier-{label}")),
-                &label,
+                "",
                 cx,
             )
+            .aria_label(label.clone())
+            .child(orbit::text(
+                label.clone(),
+                12.0,
+                500,
+                tier.as_deref()
+                    .map_or(orbit::ink_2(cx), |tier| tier_style(tier, cx).2),
+                cx,
+            ))
+            .when_some(tier.as_deref(), |button, tier| {
+                let (_, background, foreground) = tier_style(tier, cx);
+                button.bg(rgb(background)).text_color(rgb(foreground))
+            })
             .when(calendar.tier_filter == tier, |button| {
                 button.bg(rgb(orbit::surface_3(cx)))
             })
@@ -153,61 +231,81 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
         .flex_none()
         .child(orbit::eyebrow("La siguiente que sigues", cx));
     if let Some(next) = next {
-        hero = hero.child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .gap(px(12.0))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .child(
-                            orbit::text(next.series.name.clone(), 30.0, 700, orbit::ink(cx), cx)
-                                .font_family(
-                                    cx.global::<orbit::design::Tokens>().fonts.display.clone(),
-                                ),
-                        )
-                        .child(orbit::text(
-                            format!(
-                                "{} · {}",
-                                next.series.track,
-                                classes(next.series).join(" · ")
-                            ),
-                            13.0,
-                            400,
-                            orbit::ink_2(cx),
-                            cx,
-                        )),
-                )
-                .child(
-                    div()
-                        .child(
-                            orbit::text(countdown(next.at, now), 38.0, 700, orbit::ink(cx), cx)
-                                .font_family(
-                                    cx.global::<orbit::design::Tokens>().fonts.display.clone(),
-                                ),
-                        )
-                        .child(orbit::text(
-                            {
-                                let at = next.at.with_timezone(&Local);
-                                format!(
-                                    "{} {:02}:{:02} · {}",
-                                    ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
-                                        [at.weekday().num_days_from_monday() as usize],
-                                    at.hour(),
-                                    at.minute(),
-                                    at.format("%Z")
+        hero = hero
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap(px(12.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                orbit::text(
+                                    next.series.name.clone(),
+                                    30.0,
+                                    700,
+                                    orbit::ink(cx),
+                                    cx,
                                 )
-                            },
-                            12.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )),
-                ),
-        );
+                                .font_family(
+                                    cx.global::<orbit::design::Tokens>().fonts.display.clone(),
+                                ),
+                            )
+                            .child(orbit::text(
+                                format!(
+                                    "{} · {}",
+                                    next.series.track,
+                                    classes(next.series).join(" · ")
+                                ),
+                                13.0,
+                                400,
+                                orbit::ink_2(cx),
+                                cx,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .child(
+                                orbit::text(countdown(next.at, now), 38.0, 700, orbit::ink(cx), cx)
+                                    .font_family(
+                                        cx.global::<orbit::design::Tokens>().fonts.display.clone(),
+                                    ),
+                            )
+                            .child(orbit::text(
+                                {
+                                    let at = next.at.with_timezone(&Local);
+                                    format!(
+                                        "{} {:02}:{:02} · {}",
+                                        ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+                                            [at.weekday().num_days_from_monday() as usize],
+                                        at.hour(),
+                                        at.minute(),
+                                        at.format("%Z")
+                                    )
+                                },
+                                12.0,
+                                400,
+                                orbit::ink_3(cx),
+                                cx,
+                            )),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(6.0))
+                    .children(
+                        classes(next.series)
+                            .into_iter()
+                            .map(|class| class_chip(class, cx)),
+                    )
+                    .child(tier_pill(&next.series.tier, cx)),
+            );
     } else {
         hero = hero.child(orbit::text(
             "Sigue una serie con horario vigente para ver su próxima salida.",
@@ -274,23 +372,34 @@ fn race_row(
                     orbit::ink(cx),
                     cx,
                 ))
-                .child(orbit::text(
-                    format!("{} · {}", row.series.license_label, row.series.track),
-                    12.0,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )),
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .flex_wrap()
+                        .gap(px(8.0))
+                        .child(tier_pill(&row.series.tier, cx))
+                        .child(orbit::text(
+                            row.series.track.clone(),
+                            12.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        )),
+                ),
         )
         .child(
-            orbit::text(
-                classes(row.series).join(" · "),
-                12.0,
-                400,
-                orbit::ink_2(cx),
-                cx,
-            )
-            .w(px(140.0)),
+            div()
+                .w(px(180.0))
+                .flex_none()
+                .flex()
+                .flex_wrap()
+                .gap(px(4.0))
+                .children(
+                    classes(row.series)
+                        .into_iter()
+                        .map(|class| class_chip(class, cx)),
+                ),
         )
         .child(orbit::text(
             row.series

@@ -4304,3 +4304,34 @@ scroll por tarjetas, rol no-tester y DPI125/150. Servicio real de Testing y
 catálogo renovado requieren campaña propia. Revisar el mosaico y capturas
 antes de aceptar o autorizar promoción. Entrega terminada localmente;
 revisión del orquestador/Isaac e integración de canal pendientes.
+
+### ISA-1470 — Fase 3, componentes y detalles visuales (1470-fix-componentes, 2026-10-06)
+
+Worker de implementación en `vantareapp/isa-1470-fix-componentes`, worktree
+`C:/tmp/vw3-1470-fix-componentes/vantare-v2`, base `e264cf435b5f41af306174c3d8ba7026573ef6ac`.
+Alcance cerrado: página Próximamente Strategy/Engineer sin acción y rutas Hub ocultas
+Workshop/Analysis; Apariencia crece sin recortar controles (las otras tarjetas conservan sus límites); secundarios pill y chevron SVG;
+contador separado en campana (también Studio), selección de Ajustes/Cuenta; conectores
+horizontales continuos del Launcher, iconos en baldosa y clases/niveles de Calendario.
+No cambia permisos del núcleo, servicios, catálogo ni datos del usuario.
+Estado: terminado localmente; revisión e integración pendientes. Primer commit de
+componentes/rutas `8ea77958a63bd7d2f1a53034da091663c158baa2`; segundo commit Launcher/Calendario/docs en HEAD
+(consultar `git log -2`; SHAs finales en informe externo y comentario de #1470).
+Gates del árbol final: check PASS12,10s, clippy -Dwarnings PASS14,50s,
+Nextest1153/1153 PASS (6 tests y 2 binarios omitidos por configuración del repo),
+lifecycle PASS17/17 (5 Hub + 12 UI); fmt/diff-check y schema del fragmento PASS.
+Build prueba/parity-capture PASS36,26s; conserva el warning previo de `cx` no usado
+en analysis/view.rs bajo esa feature. No se amplía el alcance para eliminarlo.
+24 capturas1920/1440 MIRADAS; antes/después `C:/tmp/1470-fix-componentes-evidence/ronda-1.png`.
+Apariencia ya muestra ambos selects completos; conexiones continuas sin verticales,
+iconos y chips de clase/nivel legibles. Workshop/Analysis arrancan en Inicio;
+regresión de navegación PASS también con permisos concedidos. Escenas QA aisladas,
+no evidencia de LMU o servicios reales. No se renueva el catálogo del calendario.
+Verificación manual: pulsar Estrategia/Ingeniero; revisar Apariencia y desplegables;
+marcar avisos y comprobar contador; entrar en Ajustes/Cuenta; lanzar perfil,
+revisar conectores e iconos; filtrar clases/niveles del Calendario a1920 y1440.
+Coordinar al unir: settings/view.rs tiene solo dos glifos aprobados por nota01:09;
+chrome.rs no modifica la fuente de versión del otro worker. El fragmento ISA-1470.json
+contiene solo este bloque y se combinará con la entrega paralela. plan.md ausente en
+esta base, ya registrado por 1470-union; no se crea otro roadmap. Sin push, PR,
+CI remota, merge, promoción ni release. Siguiente: revisión del diff/capturas por el orquestador/Isaac y unión aislada.

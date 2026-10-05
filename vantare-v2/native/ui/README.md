@@ -381,6 +381,13 @@ el último estilo válido se conserva. Evidencia fuera del repo en
 `C:/tmp/1467-evidence/`. Por SSH, los logs «ventana abierta» y «estilo aplicado»
 permiten comprobar el arranque y las recargas; no certifican píxeles en el Mac.
 
+**Verificación Mac (2026-10-05, Darwin arm64).** El script compiló en 3,09 s
+(incremental; primer build 7m12s), abrió la ventana GPUI y aceptó tres cargas
+de estilo en el mismo proceso sobre `ae6ccb70`. Guardar → log: 110,50 ms;
+JSON original restaurado al terminar. La revisión visual en su pantalla queda
+para Isaac. Build PASS con aviso heredado por `LiveScreens::toggle` sin uso;
+los gates completos se ejecutaron en Windows.
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

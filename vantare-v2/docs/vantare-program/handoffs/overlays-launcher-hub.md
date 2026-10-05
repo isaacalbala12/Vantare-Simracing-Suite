@@ -20,13 +20,17 @@ Evidencia en `C:/tmp/1467-evidence/`, incluida `ronda-1.png`; informe operativo
 en `C:/tmp/fase2/informe-1467.md`. Guardar → píxel visible en Windows: 10/10 <200 ms, mediana 53,79 ms,
 máximo 62,36 ms (`GetPixel`, sondeo 2 ms, mismo proceso, sin recompilar).
 Se revisaron capturas limpias de cambios de fuente/color/geometría y del JSON
-inválido. El primer commit usable es `030d117d`; se ha transferido al bare
-privado del Mac y creado `/Users/isaacalbala/vw3-1467`, limpio. El build Mac
-comenzó con `-j 2`, sin otro Cargo/Rustc detectado; la conexión SSH dejó de
-responder durante el build y su resultado sigue pendiente. No se lanza un
-segundo build remoto. Los logs de ventana abierta y estilo aplicado permiten
-verificar arranque/recarga cuando vuelva la conexión; la prueba visual del Mac
-queda a Isaac. Los scripts
+inválido. Commits de código: `030d117d` y `ae6ccb70`, transferidos al bare
+privado Mac. El worktree aislado `/Users/isaacalbala/vw3-1467` ejecutó el script
+Mac sobre `ae6ccb70`: build frío 7m12s, incremental 3,09s, ventana GPUI abierta
+y tres cargas de estilo aceptadas en el mismo PID 97771. Guardar → log:
+110,50 ms; esto no mide presentación física. JSON original restaurado y
+proceso propio cerrado. Logs y hash del binario en `mac-verification.json` y
+`mac-workshop.log`, dentro del banco de evidencia. El build Mac tiene un aviso
+heredado de la base por `LiveScreens::toggle` sin uso; no se ejecutaron allí
+los gates completos. La prueba visual del Mac queda a Isaac. En Windows el
+script también pasó de extremo a extremo (build, ventana, recarga y cierre).
+Los scripts
 `native/ui/workshop-en-vivo.sh` y `.ps1` compilan con perfil `prueba`, `-j 2` y
 abren Standings. La nota de Isaac de las 15:15 autoriza transferir esta rama
 al bare privado del Mac; no autoriza push a GitHub ni integración.

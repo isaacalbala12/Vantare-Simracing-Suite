@@ -332,7 +332,8 @@ fn next_race(
 }
 
 fn hero(
-    next: Div,
+    next: Option<Div>,
+    plan: bool,
     greeting: String,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
@@ -394,13 +395,15 @@ fn hero(
                                 .px(px(13.0))
                                 .rounded(px(8.0)),
                         )
-                        .child(navigate(
-                            quick_button("home-plan", "Crear plan", cx)
-                                .h(px(36.0))
-                                .px(px(13.0))
-                                .rounded(px(8.0)),
-                            Section::Strategy,
-                        ))
+                        .when(plan, |actions| {
+                            actions.child(navigate(
+                                quick_button("home-plan", "Crear plan", cx)
+                                    .h(px(36.0))
+                                    .px(px(13.0))
+                                    .rounded(px(8.0)),
+                                Section::Strategy,
+                            ))
+                        })
                         .child(navigate(
                             quick_button("home-launch", "Lanzar perfil", cx)
                                 .h(px(36.0))
@@ -410,7 +413,9 @@ fn hero(
                         )),
                 ),
         )
-        .child(next.when(compact, gpui::Styled::w_full))
+        .when_some(next, |hero, next| {
+            hero.child(next.when(compact, gpui::Styled::w_full))
+        })
 }
 
 fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
@@ -734,13 +739,12 @@ fn profile_rows(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
 }
 
 fn lists(
-    starts: &[Race],
+    starts: Option<&[Race]>,
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
     cx: &gpui::App,
 ) -> Div {
-    let race_list = race_rows(starts, navigate, cx);
     let profiles = profile_rows(demo, cx);
     div()
         .flex()
@@ -750,47 +754,55 @@ fn lists(
         .when(compact, |lists| {
             lists.flex_col().flex_none().items_stretch()
         })
-        .child(
-            orbit::card("", cx)
-                .flex_1()
-                .flex_basis(gpui::relative(0.575))
-                .min_w_0()
-                .min_h(px(362.0))
-                .when(compact, gpui::Styled::flex_none)
-                .child(
-                    div()
-                        .h(px(50.0))
-                        .px(px(20.0))
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .border_b_1()
-                        .border_color(gpui::rgba(orbit::line_row(cx)))
-                        .child(text("Próximas carreras", 15.0, 700, orbit::ink(cx), cx))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(12.0))
-                                .child(orbit::mono_text(
-                                    "Cadencia publicada",
-                                    12.0,
-                                    orbit::ink_3(cx),
-                                    cx,
-                                ))
-                                .child(navigate(
-                                    div()
-                                        .id("home-races")
-                                        .role(gpui::Role::Button)
-                                        .aria_label("Ver todas")
-                                        .tab_index(0)
-                                        .child(text("Ver todas", 12.0, 500, orbit::ink_3(cx), cx)),
-                                    Section::Calendar,
-                                )),
-                        ),
-                )
-                .child(race_list),
-        )
+        .when_some(starts, |lists, starts| {
+            lists.child(
+                orbit::card("", cx)
+                    .flex_1()
+                    .flex_basis(gpui::relative(0.575))
+                    .min_w_0()
+                    .min_h(px(362.0))
+                    .when(compact, gpui::Styled::flex_none)
+                    .child(
+                        div()
+                            .h(px(50.0))
+                            .px(px(20.0))
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .border_b_1()
+                            .border_color(gpui::rgba(orbit::line_row(cx)))
+                            .child(text("Próximas carreras", 15.0, 700, orbit::ink(cx), cx))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(12.0))
+                                    .child(orbit::mono_text(
+                                        "Cadencia publicada",
+                                        12.0,
+                                        orbit::ink_3(cx),
+                                        cx,
+                                    ))
+                                    .child(navigate(
+                                        div()
+                                            .id("home-races")
+                                            .role(gpui::Role::Button)
+                                            .aria_label("Ver todas")
+                                            .tab_index(0)
+                                            .child(text(
+                                                "Ver todas",
+                                                12.0,
+                                                500,
+                                                orbit::ink_3(cx),
+                                                cx,
+                                            )),
+                                        Section::Calendar,
+                                    )),
+                            ),
+                    )
+                    .child(race_rows(starts, navigate, cx)),
+            )
+        })
         .child(
             orbit::card("", cx)
                 .flex_1()
@@ -827,6 +839,7 @@ fn lists(
 /// de overlays aún no existen. Un layout sin identidad no se inventa como perfil.
 pub fn render(
     calendar: &Calendar,
+    access: crate::shell::navigation::Access,
     demo: Option<&crate::demo::DemoData>,
     compact: bool,
     navigate: impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
@@ -841,6 +854,8 @@ pub fn render(
         Ok(starts) => (starts, None),
         Err(error) => (vec![], Some(error)),
     };
+    // Sin Calendario (beta) no se anuncian carreras que no existen.
+    let races_visible = access.visible(Section::Calendar);
     let salute = if let Some(demo) = demo {
         let phrase = greeting(now.hour());
         phrase.replace("piloto", &demo.user.name)
@@ -856,7 +871,13 @@ pub fn render(
         .gap(px(21.0))
         .when(compact, gpui::Styled::flex_none)
         .child(profile(demo, &navigate, compact, cx))
-        .child(lists(&starts, demo, &navigate, compact, cx));
+        .child(lists(
+            races_visible.then_some(starts.as_slice()),
+            demo,
+            &navigate,
+            compact,
+            cx,
+        ));
     div()
         .id("home")
         .h_full()
@@ -871,21 +892,27 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            next_race(
-                target(&starts, &calendar.following.series_ids),
-                &navigate,
-                cx,
-            ),
+            races_visible.then(|| {
+                next_race(
+                    target(&starts, &calendar.following.series_ids),
+                    &navigate,
+                    cx,
+                )
+            }),
+            access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,
             compact,
             cx,
         ))
         .child(content)
-        .when_some(error, |view, error| view.child(orbit::callout(error, cx)))
-        .when_some(calendar.error.clone(), |view, error| {
+        .when_some(error.filter(|_| races_visible), |view, error| {
             view.child(orbit::callout(error, cx))
         })
+        .when_some(
+            calendar.error.clone().filter(|_| races_visible),
+            |view, error| view.child(orbit::callout(error, cx)),
+        )
 }
 
 #[cfg(test)]

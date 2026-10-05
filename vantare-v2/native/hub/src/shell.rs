@@ -231,6 +231,7 @@ impl Hub {
             Section::Testing => self.testing.clone().into_any_element(),
             Section::Home => crate::calendar::home::render(
                 self.calendar.read(cx),
+                self.shell.access,
                 self.demo.as_ref(),
                 f32::from(window.viewport_size().width) <= 1360.0,
                 |control, section| {

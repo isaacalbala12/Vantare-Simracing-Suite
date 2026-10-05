@@ -781,13 +781,13 @@ impl Launcher {
             favorites = favorites.child(
                 text(
                     "Sin favoritas: marca la estrella de una aplicación.",
-                    16.0,
+                    11.5,
                     400,
-                    orbit::ink(cx),
+                    orbit::ink_3(cx),
                     cx,
                 )
-                .line_height(px(24.0))
-                .mt(px(10.0)),
+                .line_height(px(17.25))
+                .mt(px(16.0)),
             );
         }
         favorites
@@ -848,54 +848,6 @@ impl Launcher {
                         ),
                 ),
         )
-        .child(
-            context_block(cx)
-                .child(context_heading_action(
-                    "Próximas carreras",
-                    text("Ver todas", 11.5, 400, orbit::ink_3(cx), cx),
-                    cx,
-                ))
-                .child(
-                    text(
-                        if demo {
-                            "Sin salidas próximas"
-                        } else {
-                            "Contexto de carreras no disponible"
-                        },
-                        16.0,
-                        400,
-                        orbit::ink(cx),
-                        cx,
-                    )
-                    .line_height(px(24.0))
-                    .mt(px(12.0)),
-                ),
-        )
-        .child(
-            context_block(cx)
-                .pt(px(16.0))
-                .mt(px(10.0))
-                .child(context_heading_action(
-                    "Perfil de overlay",
-                    chip(if demo { "DETENIDO" } else { "—" }, Tone::Neutral, cx),
-                    cx,
-                ))
-                .child(
-                    text(
-                        if demo {
-                            "Sin perfiles todavía"
-                        } else {
-                            "Contexto de overlay no disponible"
-                        },
-                        16.0,
-                        400,
-                        orbit::ink(cx),
-                        cx,
-                    )
-                    .line_height(px(24.0))
-                    .mt(px(12.0)),
-                ),
-        )
     }
 
     fn catalog(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
@@ -918,10 +870,9 @@ impl Launcher {
             .iter()
             .filter(|app| app.availability.found)
             .count();
-        let meta = if !self.demo_descriptions.is_empty() {
-            format!("07 jul, 19:40 · {detected} detectadas")
-        } else if let Some(when) = self.last_scan {
-            format!("{} · {detected} detectadas", when.format("%d/%m, %H:%M"))
+        // La fecha del escaneo ya está en la píldora de la cabecera.
+        let meta = if !self.demo_descriptions.is_empty() || self.last_scan.is_some() {
+            format!("{detected} detectadas")
         } else {
             format!("{} en catálogo", self.store.document.apps.len())
         };
@@ -1119,22 +1070,20 @@ impl Launcher {
                     );
                 })),
             )
-            .child(
-                icon_button(
-                    "launcher-app-remove",
-                    format!("Eliminar {}", app.name),
-                    trash_mark(),
-                    cx,
-                )
-                .when(removable, |button| {
-                    button.on_click(cx.listener(move |this, _, window, cx| {
+            // Las apps del catálogo no se eliminan: sin papelera muerta en cada fila.
+            .when(removable, |row| {
+                row.child(
+                    icon_button(
+                        "launcher-app-remove",
+                        format!("Eliminar {}", app.name),
+                        trash_mark(),
+                        cx,
+                    )
+                    .on_click(cx.listener(move |this, _, window, cx| {
                         this.request_app_removal(&removable_app, window, cx);
-                    }))
-                })
-                .when(!removable, |button| {
-                    button.tab_stop(false).opacity(orbit::DISABLED)
-                }),
-            )
+                    })),
+                )
+            })
     }
 
     pub(super) fn app_removal_confirmation(&self, cx: &Context<Self>) -> gpui::Div {
@@ -1843,7 +1792,7 @@ impl Launcher {
             .when(compact, |element| element.flex_col().flex_none())
             .child(
                 div()
-                    .w(px(338.0))
+                    .w(px(360.0))
                     .when(compact, gpui::Styled::w_full)
                     .h_full()
                     .when(compact, |catalog| catalog.h(px(620.0)))

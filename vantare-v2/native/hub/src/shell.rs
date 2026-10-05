@@ -264,16 +264,17 @@ impl Hub {
                 .into_any_element(),
             Section::Roadmap => self
                 .remote
-                .update(cx, super::services::view::Remote::roadmap)
+                .update(cx, |remote, cx| remote.roadmap(window, cx))
                 .into_any_element(),
         }
     }
 
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
-            .when(self.section == Section::Home, |content| {
-                content.h_full().min_h_0().min_w_0()
-            })
+            .when(
+                matches!(self.section, Section::Home | Section::Roadmap),
+                |content| content.h_full().min_h_0().min_w_0(),
+            )
             .flex_1()
             .flex()
             .flex_col()
@@ -282,10 +283,7 @@ impl Hub {
                 |content| {
                     // Estos consumidores aun restan el espacio de la antigua cabecera.
                     // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                    let inset = if matches!(
-                        self.section,
-                        Section::Calendar | Section::Studio | Section::Roadmap
-                    ) {
+                    let inset = if matches!(self.section, Section::Calendar | Section::Studio) {
                         135.0
                     } else {
                         0.0
@@ -463,9 +461,10 @@ impl Render for Hub {
                             .min_w_0()
                             .flex_1()
                             .min_h_0()
-                            .when(self.section != Section::Home, |content| {
-                                content.overflow_y_scroll()
-                            })
+                            .when(
+                                !matches!(self.section, Section::Home | Section::Roadmap),
+                                gpui::StatefulInteractiveElement::overflow_y_scroll,
+                            )
                             .when(self.section == Section::Settings, |content| {
                                 content.track_scroll(&self.settings.scroll)
                             })
@@ -473,7 +472,7 @@ impl Render for Hub {
                     )
                     .when(
                         self.shell.column_open
-                            && self.section != Section::Home
+                            && !matches!(self.section, Section::Home | Section::Roadmap)
                             && (self.section != Section::Strategy || strategy_context_visible),
                         |body| body.child(column),
                     ),

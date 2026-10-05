@@ -3987,3 +3987,30 @@ y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No ha
 medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
 promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
 orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
+
+### ISA-1470 - Fase 2, Roadmap (worker 1470-roadmap, 2026-10-06)
+
+Entrega local en `vantareapp/isa-1470-roadmap`, worktree
+`C:/tmp/vw3-1470-roadmap/vantare-v2`, base `46244ea2`.
+Roadmap visible para todos los usuarios del Hub, conservando login/política:
+fase/fases, tres columnas Ahora/Siguiente/Más adelante filtrables por área,
+progreso por áreas y entregas. Fuente manual `native/hub/roadmap/roadmap.json`
+incorporada al compilar, esquema y parser/tests estrictos; comparte
+`schemaVersion/items/Localized` con la publicación del servicio, cuyo acceso
+se conserva en Ver publicación con scroll y sin margen de cabecera antiguo.
+Textos públicos; porcentajes provisionales según nota00:10: fase75, Hub80,
+Overlays/Launcher75, Módulos25. Isaac los ajusta; no son telemetría/madurez.
+ClickUp no conectado. Esta base no contiene docs/roadmap/plan.md; el
+orquestador coordina su actualización antes de integrar. Digest intacto.
+
+Gates sobre el árbol de trabajo completo del bloque Roadmap+Notificaciones,
+antes de dividir commits: fmt/check/Clippy PASS, Nextest1137/1137 (6 omitidos
+por configuración vigente), lifecycle19/19 y esquema JSON PASS. BuildQA
+prueba/parity PASS; aviso previo en analysis/view.rs989, fuera de alcance.
+Capturas1920/1440/2560 y DeepSeek1920 inspeccionadas y comparadas con HTML:
+`C:/tmp/1470-roadmap-evidence/roadmap.png`, más tamaños/mapas/recortes.
+No se afirma paridad de datos/píxel, interacción física, escala125/150,
+LMU live ni rendimiento. Beta/datos de Isaac intactos.
+Sin push, PR, CI remota, merge, promoción ni release.
+Notificaciones preparada para el siguiente commit local del mismo bloque;
+la entrega y revisión de la issue1470 completa siguen a cargo del orquestador.

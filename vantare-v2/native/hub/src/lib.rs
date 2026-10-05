@@ -20,6 +20,7 @@ pub mod notifications;
 pub mod orbit;
 #[path = "../../packaging/version.rs"]
 pub mod product;
+pub mod roadmap;
 pub mod scene;
 pub mod services;
 pub mod shell;

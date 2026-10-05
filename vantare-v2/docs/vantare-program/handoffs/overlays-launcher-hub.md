@@ -3887,3 +3887,14 @@ X/Y de glifos conserva límite del bloque1. Mac00454fe4 compiló, abrió ventana
 GPUI y aceptó cambio/restauración de JSON con worktree limpio; por SSH no
 certifica presentación física. Se verificará el último HEAD tras este bloque.
 No hubo push/PR/merge/promoción/release ni modificaciones de dependencias.
+
+### Corte RONDA 2 — Mac y entrega (2026-10-05)
+Código b9419d3d verificado en Darwin arm64 mediante ui/workshop-en-vivo.sh:
+compilación, ventana GPUI y tres estilos aceptados (original/cambio/restauración),
+worktree limpio. Evidencia mac-verification-r2.json fuera del repo. No prueba
+visual física Mac ni gates completos de su workspace. Este cierre documental
+no altera código; se transfiere y repite el script sobre su HEAD final.
+Ronda-4 repetida y mirada sobre el ejecutable final: comparación en dos
+columnas iguales; rondas5–8 inspeccionadas. Persistencia antes/después idéntica.
+Entrega parcial y pendientes del bloque5 siguen vigentes; issue1467 abierta.
+Gates de cada bloque PASS. Sin CI remota, push, PR, merge, promoción ni release.

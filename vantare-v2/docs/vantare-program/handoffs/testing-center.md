@@ -85,3 +85,5 @@ native-beta. Escrituras solo cuenta propia y restaurando el estado, sin rollout
 global. Guía y checklist en `C:/tmp/mac-evidence/`.
 Gates completos Unix presentan fallos ajenos en UI; resultados propios y logs
 se reportan sin declarar verde el workspace. No se crea PR ni se promociona.
+
+Actualización #1456 (nota 15:24): instalación privada reproducible mediante native/admin/instalar-escritorio.ps1, en LOCALAPPDATA/Vantare Admin; accesos Escritorio/Inicio con icono y lanzador sin consola, sesión aislada y reinstalación conservando datos. Instalación 2x y arranque desde el acceso verificados. Binario Windows perfil prueba con config real OK; capturas físicas demo limpias de las tres pantallas revisadas (1280x800, DPI96), beta sin cambios. Mac: fmt y Clippy propios --no-deps OK; 69 tests propios y 10 lifecycle OK. E2E owner producción continúa pendiente del login de Isaac.

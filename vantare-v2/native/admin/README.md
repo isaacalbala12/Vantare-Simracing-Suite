@@ -123,3 +123,20 @@ La búsqueda requiere un correo/nombre no vacío (máximo 200 bytes); al abrir
 Usuarios se espera a la búsqueda, sin petición vacía. Los módulos mostrados son
 accesos efectivos, incluyendo rol y rollout. Conceder/revocar modifica solo la
 concesión individual: una revocación puede mantener el acceso por otra vía.
+
+## Instalar como app privada en Windows (#1456)
+
+Después de compilar Admin con la configuración pública real, ejecuta una vez:
+
+```powershell
+./admin/instalar-escritorio.ps1
+```
+
+Copia el ejecutable, sus DLL presentes y el icono a `%LOCALAPPDATA%/Vantare Admin`.
+Crea «Vantare Admin» en el Escritorio y menú Inicio. Isaac abre ese acceso con
+doble clic, sin escribir comandos ni ver consola. El lanzador oculto crea el
+proceso con `CREATE_NO_WINDOW`; GPUI conserva su ventana normal. La sesión vive
+en `data/Vantare/native/services` dentro de esa instalación, separada de la beta.
+Reinstalar actualiza binario/icono/accesos y conserva la sesión. Cierra Admin
+antes de actualizar; no afecta al Hub, núcleo ni overlays. Es instalación privada,
+no se incorpora al instalador público ni configura un servicio o tarea residente.

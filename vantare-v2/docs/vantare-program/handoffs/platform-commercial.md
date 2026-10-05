@@ -1318,3 +1318,5 @@ al compilar; no se comprobó la clave del binario ya instalado de Isaac.
 Read-back del panel EU pendiente de Isaac; HTTP aceptado no lo sustituye.
 Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
 solo en Mac. No se declara promoción ni publicación.
+
+Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.

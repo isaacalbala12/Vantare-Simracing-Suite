@@ -726,7 +726,13 @@ fn paint_session_header(
         } else {
             0.0
         })),
-        col(style.colors.ink.0, 0.22),
+        // GPUI mezcla el color de borde en el antialias aunque su ancho sea cero.
+        // Signature conserva el borde transparente; Focus sí muestra su borde.
+        if scene.config.study == "v2-focus" {
+            col(style.colors.ink.0, 0.22)
+        } else {
+            transparent()
+        },
         BorderStyle::default(),
     ));
     text::draw(

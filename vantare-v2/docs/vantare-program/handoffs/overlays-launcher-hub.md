@@ -3898,3 +3898,28 @@ Ronda-4 repetida y mirada sobre el ejecutable final: comparación en dos
 columnas iguales; rondas5–8 inspeccionadas. Persistencia antes/después idéntica.
 Entrega parcial y pendientes del bloque5 siguen vigentes; issue1467 abierta.
 Gates de cada bloque PASS. Sin CI remota, push, PR, merge, promoción ni release.
+### ISA-1470 - Fase 0, integración local del rediseño (2026-10-05)
+
+Issue GitHub #1470, worktree `C:/tmp/vw3-1470`, rama
+`vantareapp/isa-1470-hub-rediseno`, base `a464e9fc`. Merges locales expresamente
+pedidos por el brief: #1453 `b45fc499`, #1463 `a6006ef2`, #1461 `21fc7cc0`,
+#1467 `c57c2c43` y #1469 `84e88526`, en ese orden. El conflicto de Standings
+conserva las regresiones de invalidación y de estilo vivo. Los ocho archivos
+pendientes de #1469 se copiaron sin alterar su checkout; commit `39690eae`.
+
+Fmt/check/clippy y 1120/1120 pruebas Nextest filtradas PASS; el corpus ACC
+completo se ejecutó aparte (190308 fotos, 478,768 s) y lifecycle 5+12 PASS.
+La exclusión entre merges afecta solo a ese golden; no se modifica el corpus.
+La revisión de paridad encontró que un borde coloreado de ancho cero añadía
+seis píxeles en las esquinas del chip HYP. Signature vuelve a usar borde
+transparente; Focus conserva el suyo. La regresión se verifica con la captura
+real del renderer y `ui/compare.ps1`: 0/292160 píxeles, umbral 0, sin máscaras,
+frente a la base NATIVA congelada de #1467 en a464e9fc, mismo perfil prueba.
+La referencia Wails del repo conserva diferencias históricas: este cero no
+certifica paridad con Wails ni con el chrome completo del Workshop.
+Evidencia externa: `C:/tmp/1470-evidence/`, `f0-corner-fixed.log` y su PNG/diff.
+
+El cierre supera el límite de 60 minutos por corpus, gates repetidos y build
+frío de prueba. No se reducen checks para declarar el resultado. Fase 1 aún
+pendiente de validación. No hay push, PR, CI remota, promoción ni release;
+solo los cinco merges locales autorizados, con la beta de Isaac intacta.

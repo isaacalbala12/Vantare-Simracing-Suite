@@ -51,6 +51,12 @@ estilo en PID 59560. JSON restaurado, proceso propio cerrado y worktree limpio.
 presentación física. Guardar → log 269,18 ms, sin afirmar latencia visual.
 Persiste el aviso heredado de `LiveScreens::toggle` sin uso en Mac; no se
 ejecutaron allí los gates completos ni una revisión visual de la pantalla.
+La corrección PIT posterior es `a68316e426f822dcedd24a957f1ee97d918888bb`:
+todos los gates Windows se repitieron y pasaron sobre ella. Su transferencia
+al Mac quedó bloqueada por conexión cerrada y tres intentos SSH con timeout
+(17:07). La prueba Mac anterior NO valida este último SHA. Siguiente acción:
+restablecida la conexión, transferir el bundle final y repetir
+`ui/workshop-en-vivo.sh`; no se tocó ningún proceso ajeno para recuperarla.
 Sin push, PR, CI remoto, merge, promoción ni release. El roadmap manual no
 existe en esta base; no se recrea. La issue #1467 permanece abierta.
 

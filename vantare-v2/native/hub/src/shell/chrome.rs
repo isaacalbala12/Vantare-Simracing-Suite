@@ -81,9 +81,7 @@ impl Hub {
         }
     }
     pub(super) fn navigate(&mut self, section: Section, cx: &mut Context<Self>) {
-        if let Some(reason) = self.shell.access.beta_lock(section) {
-            self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
-        } else if let Err(reason) = self.shell.access.navigate(&mut self.section, section) {
+        if let Err(reason) = self.shell.access.beta_navigate(&mut self.section, section) {
             self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
         } else {
             self.shell.navigation_notice = None;
@@ -753,14 +751,30 @@ impl Hub {
             })
             .when(self.notifications.read(cx).unread() > 0, |bell| {
                 bell.child(
-                    orbit::badge(
-                        self.notifications.read(cx).unread(),
-                        orbit::Tone::Danger,
-                        cx,
-                    )
-                    .absolute()
-                    .top_0()
-                    .right_0(),
+                    div()
+                        .absolute()
+                        .top(gpui::px(-4.0))
+                        .right(gpui::px(-4.0))
+                        .min_w(gpui::px(18.0))
+                        .h(gpui::px(18.0))
+                        .px(gpui::px(3.0))
+                        .rounded_full()
+                        .border_2()
+                        .border_color(rgb(orbit::canvas(cx)))
+                        .bg(orbit::gradient(
+                            cx.global::<orbit::design::Tokens>().gradients.button,
+                            135.0,
+                        ))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(orbit::text(
+                            self.notifications.read(cx).unread().to_string(),
+                            10.0,
+                            600,
+                            0x00ff_ffff,
+                            cx,
+                        )),
                 )
             })
             .child({
@@ -797,7 +811,6 @@ impl Hub {
     }
 
     /// `section_actions` pertenece a la sección; la campana y la versión son comunes.
-    /// Studio reserva esa ranura para sus acciones; Strategy v5 tampoco muestra campana.
     pub(super) fn topbar(
         &mut self,
         window: &Window,
@@ -824,9 +837,7 @@ impl Hub {
         } else {
             self.section
         };
-        let action = if matches!(self.section, Section::Strategy | Section::Studio) {
-            div().into_any_element()
-        } else {
+        let action = {
             let bell = self.notification_bell(cx);
             div()
                 .flex()
@@ -871,7 +882,10 @@ impl Hub {
                 .into_any_element()
         };
         orbit::topbar_with_actions(
-            if self.section == Section::Settings {
+            if matches!(
+                self.section,
+                Section::Settings | Section::Strategy | Section::Engineer
+            ) {
                 ""
             } else {
                 navigation::trail(breadcrumb)
@@ -883,9 +897,6 @@ impl Hub {
             cx,
         )
         .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
-        .when(self.section == Section::Strategy, |bar| {
-            bar.h(px(orbit::STRATEGY_TOPBAR_H))
-        })
     }
 
     fn palette_rows(

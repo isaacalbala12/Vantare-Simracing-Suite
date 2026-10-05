@@ -231,17 +231,7 @@ impl Choice {
                 ink_2(cx),
                 cx,
             ))
-            .child(self.trigger_label(
-                "⌄",
-                if self.reference_trigger {
-                    16.0
-                } else {
-                    SECONDARY
-                },
-                if self.reference_trigger { 400 } else { 500 },
-                ink_3(cx),
-                cx,
-            ))
+            .child(super::icon("down", 14.0, ink_3(cx)))
             .on_click(cx.listener(|this, _, window, cx| {
                 if !this.state.enabled {
                     return;

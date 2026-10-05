@@ -316,7 +316,7 @@ fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stat
         .border_color(rgba(orbit::line(cx)))
         .bg(rgba(crate::orbit::legacy_rgba(0xf5f3_f207, cx)))
         .child(text(label, 14.0, 500, orbit::ink_2(cx), cx))
-        .child(text("⌄", 16.0, 400, orbit::ink_3(cx), cx))
+        .child(orbit::icon("down", 14.0, orbit::ink_3(cx)))
 }
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     div()
@@ -1882,7 +1882,7 @@ impl Hub {
                             } else if index > 0 {
                                 orbit::icon("i-lock", 13.0, orbit::ink_3(cx)).into_any_element()
                             } else {
-                                text("⌄", 16.0, 400, orbit::ink_3(cx), cx).into_any_element()
+                                orbit::icon("down", 14.0, orbit::ink_3(cx)).into_any_element()
                             }),
                     )
                     .child(

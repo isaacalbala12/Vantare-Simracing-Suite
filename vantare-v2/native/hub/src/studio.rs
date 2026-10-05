@@ -1441,13 +1441,16 @@ impl Studio {
                 card = card.child(
                     div()
                         .id(("studio-inspector-card", tab as usize))
-                        .max_h(px(match tab {
-                            Tab::Content => 140.0,
-                            Tab::Appearance => 110.0,
-                            Tab::Behavior => 90.0,
-                            Tab::Layout => 100.0,
-                        }))
-                        .overflow_y_scroll()
+                        .when(tab != Tab::Appearance, |body| {
+                            body.max_h(px(if tab == Tab::Content {
+                                140.0
+                            } else if tab == Tab::Behavior {
+                                90.0
+                            } else {
+                                100.0
+                            }))
+                            .overflow_y_scroll()
+                        })
                         .child(body),
                 );
                 if tab == Tab::Layout {

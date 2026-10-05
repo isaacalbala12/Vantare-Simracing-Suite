@@ -28,6 +28,9 @@ pub mod efficiency;
 pub mod layout;
 mod overlay;
 pub mod paths;
+#[cfg(feature = "paint-stats")]
+#[path = "../../profiling.rs"]
+pub mod profiling;
 mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]

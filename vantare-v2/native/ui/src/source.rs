@@ -91,7 +91,11 @@ fn start_feed<T: Send + 'static>(
                         health = PipeHealth::default();
                     }
                 }
-                let incoming = subscriber.next_photo(Duration::from_millis(50));
+                let incoming = {
+                    #[cfg(feature = "paint-stats")]
+                    let _span = crate::profiling::begin(crate::profiling::Stage::Feed);
+                    subscriber.next_photo(Duration::from_millis(50))
+                };
                 let current_activity = subscriber.activity();
                 if current_activity != activity {
                     health.heard(start.elapsed());

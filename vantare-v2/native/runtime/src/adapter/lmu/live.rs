@@ -11,9 +11,9 @@ use super::rest::Poller;
 use super::shm::RunningSource;
 use super::translate::Translator;
 
-/// Intervalo mínimo entre lecturas del frame: el simulador lo refresca a ~60 Hz
-/// y leer más rápido solo copia lo mismo. Es un mínimo, sin fase fija: el
-/// ritmo real lo marca el núcleo al llamar a `poll`.
+/// Periodo de lectura del frame: el simulador lo refresca a ~60 Hz.
+/// Una lectura por periodo, con fase fija en el reloj del núcleo;
+/// una llamada tardía salta periodos perdidos sin desplazar esa fase.
 const READ_INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 /// Espera entre intentos de abrir la fuente: recorrer los procesos no es barato.
 const RETRY_INTERVAL: Duration = Duration::from_secs(1);
@@ -118,12 +118,25 @@ impl Adapter for Lmu {
         } else if now < self.next_read {
             return Ok(None);
         }
-        self.next_read = now + READ_INTERVAL;
-        let rest_updated = self.take_rest(now);
+        let remaining = READ_INTERVAL.as_nanos() - now.as_nanos() % READ_INTERVAL.as_nanos();
+        // El resto está acotado por READ_INTERVAL (menos de un segundo).
+        let remaining =
+            u64::try_from(remaining).expect("intervalo de lectura menor que u64 nanosegundos");
+        self.next_read = now.saturating_add(Duration::from_nanos(remaining));
+        let rest_updated = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::RestCache);
+            self.take_rest(now)
+        };
         let Some(running) = &mut self.source else {
             return Err(AdapterError::Disconnected);
         };
-        match (running.read)(&mut self.frame, &mut self.scratch) {
+        let read = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Shm);
+            (running.read)(&mut self.frame, &mut self.scratch)
+        };
+        match read {
             Ok(()) => {}
             // El productor escribía a la vez: se reintenta en la próxima llamada.
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(None),
@@ -138,12 +151,22 @@ impl Adapter for Lmu {
             return Ok(None);
         }
         let build = running.build.as_str();
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Translate);
         let observation = self
             .translator
             .observe(&self.frame, build, now)
             .map_err(|rejection| AdapterError::Rejected(rejection.to_string()))?;
         std::mem::swap(&mut self.frame, &mut self.previous);
         Ok(Some(observation))
+    }
+
+    fn next_poll(&self) -> Option<Duration> {
+        Some(if self.source.is_some() {
+            self.next_read
+        } else {
+            self.retry_at
+        })
     }
 }
 
@@ -193,6 +216,20 @@ mod tests {
                 build: "1.3.0.0".to_owned(),
             })
         })
+    }
+
+    #[test]
+    fn late_reads_keep_the_phase_and_skip_missed_frames() {
+        let opens = Arc::new(Mutex::new(0));
+        let script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+        let mut lmu = Lmu::with_source(scripted(opens, script), None);
+        lmu.poll(Duration::ZERO).unwrap();
+        lmu.poll(READ_INTERVAL + MS(2)).unwrap();
+        assert_eq!(lmu.next_read, READ_INTERVAL * 2);
+        assert_eq!(lmu.next_poll(), Some(READ_INTERVAL * 2));
+        lmu.poll(READ_INTERVAL * 10 + MS(3)).unwrap();
+        assert_eq!(lmu.next_read, READ_INTERVAL * 11);
+        assert_eq!(lmu.poll(READ_INTERVAL * 10 + MS(4)), Ok(None));
     }
 
     #[test]

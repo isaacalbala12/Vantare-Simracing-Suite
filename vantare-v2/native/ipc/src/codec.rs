@@ -100,28 +100,53 @@ pub(crate) fn supports(version: u32) -> bool {
 }
 
 pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {
-    let mut frame = vec![0; 4];
-    serde_json::to_writer(&mut frame, message)?;
+    write_buffered(w, message, &mut Vec::new())
+}
+
+pub(crate) fn write_buffered(
+    w: &mut impl Write,
+    message: &Message,
+    frame: &mut Vec<u8>,
+) -> Result<(), Error> {
+    frame.clear();
+    frame.resize(4, 0);
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Serialize);
+        serde_json::to_writer(&mut *frame, message)?;
+    }
     let len = frame.len() - 4;
     let header = match u32::try_from(len) {
         Ok(header) if len <= MAX_MESSAGE => header,
         _ => return Err(Error::TooLarge { len }),
     };
     frame[..4].copy_from_slice(&header.to_le_bytes());
-    w.write_all(&frame)?; // un solo write: un solo `WriteFile` en el pipe
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::IpcWrite);
+        w.write_all(frame)?; // un solo write: un solo `WriteFile` en el pipe
+    }
+    crate::profiling::report_if_due();
     Ok(())
 }
 
 pub(crate) fn read_message(r: &mut impl Read) -> Result<Message, Error> {
+    read_buffered(r, &mut Vec::new())
+}
+
+pub(crate) fn read_buffered(r: &mut impl Read, body: &mut Vec<u8>) -> Result<Message, Error> {
     let mut header = [0; 4];
     r.read_exact(&mut header)?;
     let len = u32::from_le_bytes(header) as usize;
     if len > MAX_MESSAGE {
         return Err(Error::TooLarge { len });
     }
-    let mut body = vec![0; len];
-    r.read_exact(&mut body)?;
-    Ok(serde_json::from_slice(&body)?)
+    body.resize(len, 0);
+    r.read_exact(body)?;
+    let message = {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Decode);
+        serde_json::from_slice(body)?
+    };
+    crate::profiling::report_if_due();
+    Ok(message)
 }
 
 #[cfg(test)]
@@ -450,6 +475,43 @@ pub(crate) mod tests {
         assert_eq!(negotiate(1, 9), Some(dto::VERSION));
         assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
         assert_eq!(negotiate(0, 0), None);
+    }
+
+    #[test]
+    fn reused_buffers_preserve_wire_bytes_and_do_not_leak_a_previous_body() {
+        let messages = [
+            Message::Snapshot(SnapshotDto::from(&rich_snapshot(1, 1))),
+            Message::Ping,
+        ];
+        let mut encode = Vec::new();
+        let mut decode = Vec::new();
+        let mut capacities = None;
+        for message in messages {
+            // Referencia independiente: no llama al codec que se está probando.
+            let body = serde_json::to_vec(&message).unwrap();
+            let mut expected = u32::try_from(body.len()).unwrap().to_le_bytes().to_vec();
+            expected.extend_from_slice(&body);
+            let mut actual = Vec::new();
+            write_buffered(&mut actual, &message, &mut encode).unwrap();
+            assert_eq!(actual, expected);
+            let got = read_buffered(&mut Cursor::new(actual), &mut decode).unwrap();
+            assert_eq!(frame(&got), expected);
+            let current = (encode.capacity(), decode.capacity());
+            if let Some(previous) = capacities {
+                assert_eq!(
+                    current, previous,
+                    "Ping reutiliza la reserva del DTO grande"
+                );
+            }
+            capacities = Some(current);
+        }
+        let capacity = decode.capacity();
+        let header = u32::try_from(MAX_MESSAGE + 1).unwrap().to_le_bytes();
+        assert!(matches!(
+            read_buffered(&mut Cursor::new(header), &mut decode),
+            Err(Error::TooLarge { .. })
+        ));
+        assert_eq!(decode.capacity(), capacity, "rechazar antes de reservar");
     }
 
     #[test]

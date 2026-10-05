@@ -13,21 +13,46 @@ use crate::Kind;
 static COUNTS: [AtomicU64; Kind::ALL.len() * 2 + 1] =
     [const { AtomicU64::new(0) }; Kind::ALL.len() * 2 + 1];
 const FRAMES: usize = Kind::ALL.len() * 2;
+static INGEST: [AtomicU64; Kind::ALL.len()] = [const { AtomicU64::new(0) }; Kind::ALL.len()];
+
+pub fn ingest(kind: Kind) {
+    if !crate::profiling::enabled() {
+        return;
+    }
+    INGEST[kind as usize].fetch_add(1, Relaxed);
+}
 
 pub fn render(kind: Kind) {
+    if !crate::profiling::enabled() {
+        return;
+    }
     COUNTS[kind as usize * 2].fetch_add(1, Relaxed);
 }
 
 pub fn paint(kind: Kind) {
+    if !crate::profiling::enabled() {
+        return;
+    }
     COUNTS[kind as usize * 2 + 1].fetch_add(1, Relaxed);
 }
 
-pub fn frame() {
+pub fn frame(window: &gpui::Window) {
+    if !crate::profiling::enabled() {
+        return;
+    }
     COUNTS[FRAMES].fetch_add(1, Relaxed);
+    eprintln!(
+        "perf frame window={:?} clock={:?}",
+        window.window_handle().window_id(),
+        crate::profiling::clock()
+    );
 }
 
 /// Imprime cada segundo lo contado en ese segundo (suma de todas las ventanas).
 pub fn report() {
+    if !crate::profiling::enabled() {
+        return;
+    }
     thread::spawn(|| {
         loop {
             thread::sleep(Duration::from_secs(1));
@@ -43,6 +68,13 @@ pub fn report() {
                 );
             }
             println!("{line}");
+            for (i, kind) in Kind::ALL.iter().enumerate() {
+                let calls = INGEST[i].swap(0, Relaxed);
+                if calls > 0 {
+                    eprintln!("perf ingest widget={} calls={calls}", kind.name());
+                }
+            }
+            crate::profiling::report();
         }
     });
 }

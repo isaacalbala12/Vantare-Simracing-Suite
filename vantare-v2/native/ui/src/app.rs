@@ -126,6 +126,8 @@ pub struct Overlay {
     preview_scale: f32,
     paused: bool,
     live_projection: bool,
+    #[cfg(feature = "paint-stats")]
+    profile_photo: Option<(u64, u64)>,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -151,6 +153,8 @@ impl Overlay {
             preview_scale: 1.0,
             paused: false,
             live_projection: false,
+            #[cfg(feature = "paint-stats")]
+            profile_photo: None,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
@@ -204,10 +208,18 @@ impl Overlay {
 
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Project);
+        #[cfg(feature = "paint-stats")]
+        crate::stats::ingest(self.kind);
         if crate::rights::denied(self.kind, cx) {
             return;
         }
         if self.project_snapshot(snapshot) {
+            #[cfg(feature = "paint-stats")]
+            {
+                self.profile_photo = Some((snapshot.epoch, snapshot.sequence));
+            }
             cx.notify();
         }
     }
@@ -269,6 +281,8 @@ pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool
 
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Render);
         if crate::rights::denied(self.kind, cx) {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             return div()
@@ -288,11 +302,15 @@ impl Render for Overlay {
         };
         let scale = self.preview_scale;
         let (paint, wake) = self.widget.frame(self.prefs);
+        #[cfg(feature = "paint-stats")]
+        let profile_photo = self.profile_photo.take();
         #[cfg(feature = "parity-capture")]
         let backdrop = self.backdrop;
         let element = canvas(
             |_, _, _| (),
             move |bounds, (), window, cx| {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Paint);
                 #[cfg(feature = "paint-stats")]
                 crate::stats::paint(kind);
                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
@@ -332,6 +350,12 @@ impl Render for Overlay {
                         );
                     }
                 });
+                #[cfg(feature = "paint-stats")]
+                if crate::profiling::enabled()
+                    && let Some((epoch, sequence)) = profile_photo
+                {
+                    crate::profiling::photo("ui_paint", epoch, sequence);
+                }
             },
         )
         .w(px(size.0 * scale))
@@ -384,7 +408,7 @@ struct PlacedOverlay {
 impl Render for Screen {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
-        crate::stats::frame();
+        crate::stats::frame(window);
         attach(&mut self.hwnd, window, self.origin);
         // Un único aviso discreto en la esquina del primer widget, no uno por widget.
         let notice = self

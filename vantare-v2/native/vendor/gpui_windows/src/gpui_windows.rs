@@ -1,5 +1,10 @@
 #![cfg(target_os = "windows")]
 
+// Diagnóstico apagado por VANTARE_PROFILE_PHASES; no dependencia hacia ui.
+#[allow(dead_code)]
+#[path = "../../../profiling.rs"]
+mod profiling;
+
 mod clipboard;
 mod destination_list;
 mod dialog;

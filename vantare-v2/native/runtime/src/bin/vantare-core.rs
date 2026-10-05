@@ -198,7 +198,7 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::thread;
-    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use vantare_domain::Adapter;
     use vantare_ipc::Publisher;
@@ -241,33 +241,18 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         stop_on_eof.store(true, Ordering::Release);
     });
 
-    let started = Instant::now();
-    let mut sent = 0;
-    let mut last_error = String::new();
-    let mut demand_revision = u64::MAX;
-    while !stop.load(Ordering::Acquire) {
-        let revision = demand.revision();
-        if revision != demand_revision {
-            core.set_demand_mask(demand.mask());
-            demand_revision = revision;
-        }
-        match core.step(adapter.as_mut(), started.elapsed().mul_f64(speed)) {
-            Ok(()) => last_error.clear(),
-            Err(error) if error.to_string() != last_error => {
-                last_error = error.to_string();
-                eprintln!("núcleo: {last_error}");
-            }
-            Err(_) => {} // La causa ya se registró; no repetir el mismo diagnóstico en cada ciclo.
-        }
-        let snapshot = core.snapshot();
-        if snapshot.sequence > sent {
-            sent = snapshot.sequence;
+    vantare_runtime::service::drive_core_demanded(
+        &mut core,
+        adapter.as_mut(),
+        speed,
+        &stop,
+        Some(&demand),
+        |core| {
+            let snapshot = core.snapshot();
             events.publish(Arc::clone(&snapshot), core.events());
-            publisher.publish(snapshot)?;
-        } else {
-            thread::sleep(Duration::from_millis(2));
-        }
-    }
+            publisher.publish(snapshot)
+        },
+    )?;
     Ok(())
 }
 

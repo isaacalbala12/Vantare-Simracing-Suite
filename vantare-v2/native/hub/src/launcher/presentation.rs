@@ -335,7 +335,7 @@ fn monogram(label: &str, size: f32, first: u32, second: u32, cx: &gpui::App) -> 
         .child(label.to_owned())
 }
 
-fn app_mark(app: &App, size: f32, cx: &gpui::App) -> gpui::Div {
+pub(super) fn app_mark(app: &App, size: f32, cx: &gpui::App) -> gpui::Div {
     if app.id == "motec" {
         // Misma marca SVG que frontend/src/hub/launcher/brand-assets.ts.
         return div()
@@ -417,7 +417,7 @@ impl Launcher {
                     .find(|app| app.id == step.app_id)
                     .map_or_else(
                         || orbit::pill(&step.app_id, Tone::Warning, cx),
-                        |app| app_mark(app, 28.0, cx).w_full().flex_1(),
+                        |app| super::showcase::app_icon(app, 28.0, cx),
                     )
             }))
     }
@@ -537,14 +537,14 @@ pub(super) fn error_panel(message: String, cx: &Context<Launcher>) -> gpui::Div 
     panel
 }
 
-fn matches_query(query: &str, values: &[&str]) -> bool {
+pub(super) fn matches_query(query: &str, values: &[&str]) -> bool {
     let query = query.trim().to_lowercase();
     values
         .iter()
         .any(|value| value.to_lowercase().contains(&query))
 }
 
-fn category(app: &App) -> &'static str {
+pub(super) fn category(app: &App) -> &'static str {
     CATALOG
         .iter()
         .find(|entry| entry.id == app.id)
@@ -573,7 +573,7 @@ pub(super) fn launchable(profile: &Profile, discovered: &Discovery, busy: bool) 
 }
 
 impl Launcher {
-    fn profile_matches(&self, profile: &Profile, query: &str) -> bool {
+    pub(super) fn profile_matches(&self, profile: &Profile, query: &str) -> bool {
         matches_query(query, &[&profile.name])
             || profile.steps.iter().any(|step| {
                 self.store
@@ -1157,43 +1157,6 @@ impl Launcher {
                 linear_color_stop(rgb(background_start), 0.0),
                 linear_color_stop(rgb(background_end), 1.0),
             ))
-            .child(
-                div()
-                    .absolute()
-                    .top(px(8.0))
-                    .bottom(px(8.0))
-                    .left_0()
-                    .w(px(3.0))
-                    .rounded(px(1.5))
-                    .when(featured, |bar| {
-                        bar.shadow(vec![gpui::BoxShadow {
-                            color: rgba(0xf047_5580).into(),
-                            offset: gpui::point(px(0.0), px(0.0)),
-                            blur_radius: px(18.0),
-                            spread_radius: px(0.0),
-                            inset: false,
-                        }])
-                    })
-                    .bg(linear_gradient(
-                        180.0,
-                        linear_color_stop(
-                            rgb(if featured {
-                                orbit::coral(cx)
-                            } else {
-                                orbit::ink_4(cx)
-                            }),
-                            0.0,
-                        ),
-                        linear_color_stop(
-                            rgb(if featured {
-                                orbit::carmine(cx)
-                            } else {
-                                orbit::surface_3(cx)
-                            }),
-                            1.0,
-                        ),
-                    )),
-            )
             .flex()
             .flex_col()
             .child(self.profile_card_header(profile, featured, cx))
@@ -1615,7 +1578,7 @@ impl Launcher {
                 cx,
             ))
     }
-    fn progress_panel(&self, cx: &Context<Self>) -> gpui::Div {
+    pub(super) fn progress_panel(&self, cx: &Context<Self>) -> gpui::Div {
         let mut progress = orbit::card_body();
         for (index, event) in self.progress.iter().enumerate() {
             progress = progress.child(orbit::list_row(
@@ -1761,11 +1724,14 @@ impl Launcher {
 
 impl Render for Launcher {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         if let Some(layer) = &self.form_layer {
             let targets = self.form_targets(cx);
             layer.update(cx, |layer, _| layer.set_targets(targets));
         }
+        if self.page == LauncherPage::Showcase {
+            return self.showcase(window, cx).into_any_element();
+        }
+        let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let detected = self
             .discovered
             .apps
@@ -1790,9 +1756,9 @@ impl Render for Launcher {
         let mut page = div()
             .id("launcher")
             .size_full()
-            .h(px(
-                f32::from(window.viewport_size().height) - orbit::TOPBAR_H
-            ))
+            .h(px(f32::from(window.viewport_size().height)
+                - cx.global::<orbit::design::Tokens>().geometry.topbar
+                - 40.0))
             .flex_1()
             .min_h_0()
             .flex()
@@ -1815,7 +1781,25 @@ impl Render for Launcher {
         for warning in &self.discovered.warnings {
             page = page.child(orbit::callout(warning.clone(), cx));
         }
-        page
+        div()
+            .size_full()
+            .flex()
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(
+                        button("launcher-back", "← Perfiles", cx).on_click(cx.listener(
+                            |this, _, _, cx| {
+                                this.page = LauncherPage::Showcase;
+                                cx.notify();
+                            },
+                        )),
+                    )
+                    .child(page),
+            )
+            .child(self.context_column(window, cx))
+            .into_any_element()
     }
 }
 

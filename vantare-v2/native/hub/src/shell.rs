@@ -271,9 +271,10 @@ impl Hub {
 
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
-            .when(self.section == Section::Home, |content| {
-                content.h_full().min_h_0().min_w_0()
-            })
+            .when(
+                matches!(self.section, Section::Home | Section::Launcher),
+                |content| content.h_full().min_h_0().min_w_0(),
+            )
             .flex_1()
             .flex()
             .flex_col()
@@ -355,6 +356,9 @@ impl Hub {
     ) -> Option<gpui::AnyElement> {
         match self.section {
             Section::Launcher => {
+                if !self.launcher.read(cx).managing() {
+                    return None;
+                }
                 let available_width = f32::from(window.viewport_size().width)
                     - orbit::RAIL_W
                     - if self.shell.column_open {
@@ -388,9 +392,7 @@ impl Hub {
         ) {
             self.settings_column(window, cx).into_any_element()
         } else if self.section == Section::Launcher {
-            self.launcher
-                .update(cx, |launcher, cx| launcher.context_column(window, cx))
-                .into_any_element()
+            div().into_any_element()
         } else if self.section == Section::Analysis {
             self.analysis_context_column(window, cx).into_any_element()
         } else if strategy_context_visible {
@@ -463,9 +465,10 @@ impl Render for Hub {
                             .min_w_0()
                             .flex_1()
                             .min_h_0()
-                            .when(self.section != Section::Home, |content| {
-                                content.overflow_y_scroll()
-                            })
+                            .when(
+                                !matches!(self.section, Section::Home | Section::Launcher),
+                                gpui::StatefulInteractiveElement::overflow_y_scroll,
+                            )
                             .when(self.section == Section::Settings, |content| {
                                 content.track_scroll(&self.settings.scroll)
                             })
@@ -473,7 +476,7 @@ impl Render for Hub {
                     )
                     .when(
                         self.shell.column_open
-                            && self.section != Section::Home
+                            && !matches!(self.section, Section::Home | Section::Launcher)
                             && (self.section != Section::Strategy || strategy_context_visible),
                         |body| body.child(column),
                     ),
@@ -855,15 +858,26 @@ fn create_launcher(
     cx: &mut Context<Hub>,
 ) -> Entity<Launcher> {
     cx.new(|cx| match demo {
-        Some(demo) => Launcher::new_demo(
-            store,
-            demo,
-            capture
-                .as_ref()
-                .is_some_and(|capture| capture.launcher_new_profile),
-            window,
-            cx,
-        ),
+        Some(demo) => {
+            let mut launcher = Launcher::new_demo(
+                store,
+                demo,
+                capture
+                    .as_ref()
+                    .is_some_and(|capture| capture.launcher_new_profile),
+                window,
+                cx,
+            );
+            if let Some(capture) = capture.filter(|capture| {
+                matches!(
+                    capture.name.as_str(),
+                    "launcher-reposo" | "launcher-lanzando"
+                )
+            }) {
+                launcher.prepare_capture(capture.name == "launcher-lanzando");
+            }
+            launcher
+        }
         None => Launcher::new(store, cx),
     })
 }

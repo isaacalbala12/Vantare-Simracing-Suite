@@ -105,12 +105,38 @@ pub struct Shadow {
     pub y: f32,
 }
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Gradients {
     pub hero: [u32; 2],
     pub button: [u32; 2],
     pub progress: [u32; 2],
     pub active: [u32; 2],
+    #[serde(default = "game_gradient")]
+    pub app_game: [u32; 2],
+    #[serde(default = "voice_gradient")]
+    pub app_voice: [u32; 2],
+    #[serde(default = "tools_gradient")]
+    pub app_tools: [u32; 2],
+    #[serde(default = "video_gradient")]
+    pub app_video: [u32; 2],
+    #[serde(default = "music_gradient")]
+    pub app_music: [u32; 2],
+}
+// Colores aprobados de las apps; los defaults conservan JSON de autoría anteriores.
+fn game_gradient() -> [u32; 2] {
+    [0x002f_6ad8, 0x0012_2e6a]
+}
+fn voice_gradient() -> [u32; 2] {
+    [0x00e9_852a, 0x008f_450b]
+}
+fn tools_gradient() -> [u32; 2] {
+    [0x008a_4ce0, 0x0040_207a]
+}
+fn video_gradient() -> [u32; 2] {
+    [0x005a_5d64, 0x0026_272b]
+}
+fn music_gradient() -> [u32; 2] {
+    [0x0022_c35d, 0x000e_6b30]
 }
 impl gpui::Global for Tokens {}
 impl Tokens {
@@ -180,6 +206,11 @@ impl Tokens {
         .chain(tokens.gradients.button.iter())
         .chain(tokens.gradients.progress.iter())
         .chain(tokens.gradients.active.iter())
+        .chain(tokens.gradients.app_game.iter())
+        .chain(tokens.gradients.app_voice.iter())
+        .chain(tokens.gradients.app_tools.iter())
+        .chain(tokens.gradients.app_video.iter())
+        .chain(tokens.gradients.app_music.iter())
         .any(|color| *color > 0xff_ffff)
         {
             return Err("tema: color RGB fuera de rango".into());
@@ -279,6 +310,23 @@ pub fn register_fonts(cx: &gpui::App) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn app_gradients_keep_older_authoring_json_and_reject_invalid_rgb() {
+        let mut json: serde_json::Value =
+            serde_json::from_str(include_str!("../themes/grafito-carmin.json"))
+                .expect("tema aprobado");
+        for key in ["appGame", "appVoice", "appTools", "appVideo", "appMusic"] {
+            json["gradients"]
+                .as_object_mut()
+                .expect("degradados")
+                .remove(key);
+        }
+        let legacy = Tokens::from_json(&json.to_string()).expect("JSON anterior compatible");
+        assert_eq!(legacy.gradients.app_game, game_gradient());
+        assert_eq!(legacy.gradients.app_tools, tools_gradient());
+        json["gradients"]["appGame"] = serde_json::json!([0x0100_0000, 0]);
+        assert!(Tokens::from_json(&json.to_string()).is_err());
+    }
     #[test]
     fn all_compiled_themes_are_valid_and_deepseek_uses_the_reference_tokens() {
         for design in Design::ALL {

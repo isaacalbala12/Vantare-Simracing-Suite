@@ -46,7 +46,24 @@ struct ProfileDraft {
     steps: Vec<StepDraft>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Capture {
+    None,
+    Resting,
+    Running,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LauncherPage {
+    Showcase,
+    Manage,
+}
+
 pub struct Launcher {
+    page: LauncherPage,
+    capture: Capture,
+    showcase_controls: Option<showcase::Controls>,
+    selected_profile: Option<String>,
     store: Store,
     processes: processes::Shared,
     pending_decision: Option<Decision>,
@@ -91,6 +108,8 @@ fn parse_args(value: &str) -> Result<Vec<String>, String> {
 mod editor;
 #[path = "presentation.rs"]
 mod presentation;
+#[path = "showcase.rs"]
+mod showcase;
 
 impl Launcher {
     pub fn form_layer(
@@ -161,6 +180,10 @@ impl Launcher {
 
     fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
+            page: LauncherPage::Showcase,
+            capture: Capture::None,
+            showcase_controls: None,
+            selected_profile: None,
             store,
             processes: std::sync::Arc::new(std::sync::Mutex::new(processes::Processes::default())),
             pending_decision: None,
@@ -541,7 +564,9 @@ impl Launcher {
     }
 
     pub fn launch_progress(&self) -> Option<(usize, usize)> {
-        self.chain.as_ref()?;
+        if self.chain.is_none() && self.capture != Capture::Running {
+            return None;
+        }
         let profile = self.last_profile.as_ref()?;
         self.profile_progress(&profile.id)
     }
@@ -631,6 +656,9 @@ impl Launcher {
         selected: Vec<usize>,
         cx: &mut Context<Self>,
     ) {
+        if self.capture != Capture::None {
+            return;
+        }
         match Chain::start_selected(
             self.store.document.clone(),
             profile.clone(),
@@ -639,6 +667,8 @@ impl Launcher {
             selected,
         ) {
             Ok(chain) => {
+                self.page = LauncherPage::Showcase;
+                self.selected_profile = Some(profile.id.clone());
                 self.last_profile = Some(profile);
                 self.chain = Some(chain);
                 self.progress.clear();

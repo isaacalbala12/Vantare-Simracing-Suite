@@ -39,6 +39,7 @@ pub struct Choice {
     scroll: gpui::ScrollHandle,
     trigger_bounds: Option<gpui::Bounds<gpui::Pixels>>,
     reference_trigger: bool,
+    compact_width: Option<f32>,
 }
 impl EventEmitter<ChoiceChanged> for Choice {}
 impl Choice {
@@ -71,10 +72,15 @@ impl Choice {
             scroll: gpui::ScrollHandle::new(),
             trigger_bounds: None,
             reference_trigger: false,
+            compact_width: None,
         }
     }
     pub fn reference_trigger(&mut self) {
         self.reference_trigger = true;
+    }
+    /// Variante estrecha para opciones contextuales; conserva menú, foco y teclado.
+    pub fn compact(&mut self, width: f32) {
+        self.compact_width = Some(width.clamp(72.0, FIELD_W));
     }
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus.clone()
@@ -201,6 +207,9 @@ impl Choice {
         let trigger = field("choice-trigger", cx)
             .relative()
             .w(px(FIELD_W))
+            .when_some(self.compact_width, |field, width| {
+                field.w(px(width)).min_w(px(width)).h(px(30.0)).px(px(8.0))
+            })
             .tab_stop(false)
             .cursor_pointer()
             .justify_between()
@@ -211,7 +220,13 @@ impl Choice {
             })
             .child(self.trigger_label(
                 value.to_owned(),
-                if self.reference_trigger { 14.0 } else { BODY },
+                if self.compact_width.is_some() {
+                    12.0
+                } else if self.reference_trigger {
+                    14.0
+                } else {
+                    BODY
+                },
                 500,
                 ink_2(cx),
                 cx,

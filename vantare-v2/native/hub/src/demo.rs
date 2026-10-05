@@ -280,10 +280,16 @@ impl DemoData {
     pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
         self.profile.present = capture.name == "inicio-base";
         self.notifications.clear();
-        if capture.name == "inicio-base" {
-            self.launcher =
-                serde_json::from_str(include_str!("../reference/fixtures/home-r7-launcher.json"))
-                    .map_err(|error| format!("fixture visual Inicio: {error}"))?;
+        if matches!(
+            capture.name.as_str(),
+            "inicio-base" | "launcher-reposo" | "launcher-lanzando"
+        ) {
+            self.launcher = serde_json::from_str(if capture.name == "inicio-base" {
+                include_str!("../reference/fixtures/home-r7-launcher.json")
+            } else {
+                include_str!("../reference/fixtures/launcher-r7.json")
+            })
+            .map_err(|error| format!("fixture visual Inicio: {error}"))?;
             if self.launcher.profiles.iter().any(|profile| {
                 profile
                     .last_ready_steps
@@ -534,12 +540,15 @@ impl CaptureState {
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
         if !screens.iter().any(|screen| screen.name == name)
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
+            && !matches!(name, "launcher-reposo" | "launcher-lanzando")
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
             "shell-notificaciones-abiertas" => Section::Home,
-            "launcher-base" | "launcher-nuevo-perfil" => Section::Launcher,
+            "launcher-base" | "launcher-nuevo-perfil" | "launcher-reposo" | "launcher-lanzando" => {
+                Section::Launcher
+            }
             "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
@@ -828,6 +837,21 @@ mod tests {
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
         crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
+        Ok(())
+    }
+
+    #[test]
+    fn launcher_showcase_scenes_use_isolated_valid_profiles() -> Result<(), String> {
+        for name in ["launcher-reposo", "launcher-lanzando"] {
+            let capture = CaptureState::parse(name)?;
+            assert_eq!(capture.section, Section::Launcher);
+            let mut demo = DemoData::load()?;
+            demo.apply_capture(&capture)?;
+            assert!(demo.overlay_profile().is_none());
+            assert_eq!(demo.launcher.profiles[0].name, "Carrera LMU");
+            assert_eq!(demo.launcher.profiles[0].steps.len(), 4);
+            crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/showcase.json"), &demo)?;
+        }
         Ok(())
     }
 }

@@ -534,13 +534,15 @@ impl CaptureState {
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
         if !screens.iter().any(|screen| screen.name == name)
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
+            && name != "calendario-beta-archivo"
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
             "shell-notificaciones-abiertas" => Section::Home,
             "launcher-base" | "launcher-nuevo-perfil" => Section::Launcher,
-            "calendario-base"
+            "calendario-beta-archivo"
+            | "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
             | "calendario-mes"

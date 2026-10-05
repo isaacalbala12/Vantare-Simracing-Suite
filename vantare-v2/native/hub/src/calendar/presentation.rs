@@ -9,8 +9,6 @@ fn weekly_color(cx: &gpui::App) -> u32 {
 fn today_color(cx: &gpui::App) -> u32 {
     orbit::legacy_rgb(0x001e_191c, cx)
 }
-const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
-const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
 fn view_button(
     calendar: &Calendar,
@@ -24,17 +22,13 @@ fn view_button(
         .role(gpui::Role::Button)
         .aria_label(label)
         .tab_index(0)
-        .h(px(31.0))
+        .h(px(44.0))
         .px(px(12.0))
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(8.0))
         .when(calendar.view == view, |button| {
-            button
-                .bg(rgb(crate::orbit::legacy_rgb(0x0033_171c, cx)))
-                .border_1()
-                .border_color(rgb(orbit::carmine_dark(cx)))
+            button.border_b_2().border_color(rgb(orbit::carmine(cx)))
         })
         .when(calendar.view != view, |button| {
             button.hover(|style| style.bg(rgb(orbit::surface_2(cx))))
@@ -56,102 +50,26 @@ fn view_button(
         }))
 }
 
-fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
-    div()
-        .flex()
-        .items_center()
-        .gap(px(2.0))
-        .p(px(4.0))
-        .rounded(px(12.0))
-        .border_1()
-        .border_color(if calendar.view == CalendarView::Upcoming {
-            rgb(orbit::line(cx))
-        } else {
-            gpui::rgba(orbit::line(cx))
-        })
-        .bg(rgb(orbit::surface_1(cx)))
-        .children([
-            view_button(
-                calendar,
-                cx,
-                CalendarView::Upcoming,
-                "Próximas",
-                "calendar-upcoming",
-            ),
-            view_button(calendar, cx, CalendarView::Day, "Día", "calendar-day"),
-            view_button(calendar, cx, CalendarView::Week, "Semana", "calendar-week"),
-            view_button(calendar, cx, CalendarView::Month, "Mes", "calendar-month"),
-            view_button(
-                calendar,
-                cx,
-                CalendarView::Timeline,
-                "Timeline",
-                "calendar-timeline",
-            ),
-        ])
-}
-
-fn page_header(
-    calendar: &Calendar,
-    compact: bool,
-    cx: &mut Context<Calendar>,
-    now: DateTime<Utc>,
-) -> Div {
-    let current = matches!(calendar.schedule.is_current(now), Ok(true));
-    div()
-        .flex()
-        .items_end()
-        .justify_between()
-        .gap(px(20.0))
-        .when(compact, |element| element.flex_col().items_stretch())
-        .child(
-            div()
-                .flex_1()
-                .when(compact, gpui::Styled::flex_none)
-                .min_w_0()
-                .flex()
-                .flex_col()
-                .child(
-                    orbit::eyebrow("Calendario LMU", cx)
-                        .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
-                        .font_weight(gpui::FontWeight(800.0)),
-                )
-                .child(
-                    if matches!(
-                        calendar.view,
-                        CalendarView::Month
-                            | CalendarView::Day
-                            | CalendarView::Week
-                            | CalendarView::Timeline
-                    ) {
-                        super::home::title("Calendario".into(), 34.0, -0.035, 51.0)
-                            .h(px(55.0))
-                            .mt(px(6.0))
-                            .into_any_element()
-                    } else {
-                        orbit::text("Calendario", 34.0, 690, orbit::ink(cx), cx)
-                            .font_family(crate::orbit::sans_override("Segoe UI Variable", cx))
-                            .mt(px(6.0))
-                            .into_any_element()
-                    },
-                )
-                .child(
-                    orbit::text(
-                        if current {
-                            "Horario UTC activo. Consulta las próximas salidas."
-                        } else {
-                            "Horario caducado. Actualiza para consultar próximas salidas."
-                        },
-                        13.5,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    )
-                    .mt(px(7.0))
-                    .line_height(gpui::relative(1.55)),
-                ),
-        )
-        .child(views_control(calendar, cx))
+pub(super) fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
+    div().flex().items_center().gap(px(2.0)).children([
+        view_button(
+            calendar,
+            cx,
+            CalendarView::Upcoming,
+            "Próximas",
+            "calendar-upcoming",
+        ),
+        view_button(calendar, cx, CalendarView::Day, "Día", "calendar-day"),
+        view_button(calendar, cx, CalendarView::Week, "Semana", "calendar-week"),
+        view_button(calendar, cx, CalendarView::Month, "Mes", "calendar-month"),
+        view_button(
+            calendar,
+            cx,
+            CalendarView::Timeline,
+            "Timeline",
+            "calendar-timeline",
+        ),
+    ])
 }
 
 fn mono(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
@@ -165,7 +83,14 @@ fn mono(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
 
 fn local_time(now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let local = now.with_timezone(&Local);
-    mono(format!("{} · Europe/Madrid", local.format("%H:%M")), cx)
+    mono(
+        format!(
+            "{} · {}",
+            local.format("%H:%M"),
+            local.format("%Z (UTC%:z)")
+        ),
+        cx,
+    )
 }
 
 fn disabled_icon_button(
@@ -654,68 +579,34 @@ fn content(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
         CalendarView::Month => month_view(calendar, now, cx),
         CalendarView::Timeline => timeline(calendar, now, cx),
     };
-    div()
-        .flex()
-        .flex_col()
+    orbit::neo_card(cx)
+        .p(px(0.0))
+        .gap(px(0.0))
         .flex_1()
         .min_h_0()
         .overflow_hidden()
-        .bg(rgb(if calendar.view == CalendarView::Upcoming {
-            orbit::surface_1(cx)
-        } else {
-            0x000f_0f12
-        }))
-        .border_1()
-        .border_color(gpui::rgba(orbit::line(cx)))
-        .rounded(px(orbit::RADIUS))
         .child(card_header(calendar, title, now, cx))
         .child(body)
 }
 
-pub(super) fn render(
-    calendar: &mut Calendar,
-    compact: bool,
-    cx: &mut Context<Calendar>,
-) -> Stateful<Div> {
+pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
-    let (_, error) = calendar.upcoming(now);
-    if let Some(error) = error {
-        calendar.error = Some(error);
-    }
-    let page = div()
-        .flex_1()
-        .min_h_0()
-        .w_full()
-        .flex()
-        .flex_col()
-        .gap(px(if calendar.view == CalendarView::Upcoming {
-            19.0
-        } else {
-            18.0
-        }))
-        .pt(px(24.0))
-        .pb(px(25.0))
-        .bg(rgb(orbit::canvas(cx)))
-        .child(page_header(calendar, compact, cx, now))
-        .child(content(calendar, now, cx))
-        .when_some(calendar.error.clone(), |page, error| {
-            page.child(orbit::callout(error, cx))
-        });
     div()
         .id("calendar")
         .w_full()
-        .when(calendar.view != CalendarView::Upcoming, |page| {
-            page.mx(px(-1.0)).w_auto()
-        })
-        .min_h(px(HUB_CONTENT_MIN_HEIGHT))
-        .mt(px(-SHELL_HEADER_OVERLAP))
-        .flex_1()
         .min_w_0()
         .flex()
         .flex_col()
-        .overflow_hidden()
-        .bg(rgb(orbit::canvas(cx)))
-        .child(page)
+        .gap(px(16.0))
+        .child(orbit::neo_page_header(
+            "Calendario LMU",
+            "Carreras diarias y semanales · hora local del equipo",
+            cx,
+        ))
+        .child(content(calendar, now, cx))
+        .when_some(calendar.error.clone(), |page, error| {
+            page.child(orbit::callout(error, cx))
+        })
 }
 
 #[cfg(test)]

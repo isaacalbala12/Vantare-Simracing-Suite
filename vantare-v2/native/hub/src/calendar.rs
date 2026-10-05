@@ -8,7 +8,7 @@ pub mod home;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
 #[cfg(feature = "parity-capture")]
 use chrono::{Local, Timelike};
-use gpui::{Context, IntoElement, Render, Window};
+use gpui::{Context, IntoElement, Render, Styled, Window};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -32,6 +32,10 @@ pub struct Series {
     pub name: String,
     pub track: String,
     pub vehicle_class: String,
+    #[serde(default)]
+    pub classes: Vec<VehicleClass>,
+    #[serde(default)]
+    pub race_duration_min: Option<u32>,
     pub license_label: String,
     #[serde(default)]
     pub tier: String,
@@ -40,6 +44,10 @@ pub struct Series {
     #[serde(default)]
     start_offset_minute: i64,
     recurrence: Recurrence,
+}
+#[derive(Deserialize)]
+pub struct VehicleClass {
+    pub name: String,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -195,6 +203,9 @@ pub struct Calendar {
     saved: Option<Vec<u8>>,
     demo_now: Option<DateTime<Utc>>,
     view: CalendarView,
+    class_filter: Option<String>,
+    tier_filter: Option<String>,
+    clock_started: bool,
     pub error: Option<String>,
     pub status: String,
 }
@@ -213,7 +224,7 @@ impl CalendarView {
     #[cfg(feature = "parity-capture")]
     fn from_capture_name(name: &str) -> Option<Self> {
         match name {
-            "calendario-base" => Some(Self::Upcoming),
+            "calendario-base" | "calendario-beta-archivo" => Some(Self::Upcoming),
             "calendario-dia" => Some(Self::Day),
             "calendario-semana" => Some(Self::Week),
             "calendario-mes" => Some(Self::Month),
@@ -250,6 +261,7 @@ fn capture_clock(now: DateTime<Utc>) -> DateTime<Utc> {
     }
 }
 
+mod beta;
 mod presentation;
 
 impl Calendar {
@@ -283,6 +295,9 @@ impl Calendar {
             saved,
             demo_now: None,
             view: CalendarView::default(),
+            class_filter: None,
+            tier_filter: None,
+            clock_started: false,
             error: None,
             status: "Catálogo local empaquetado; sin consultar servicios".into(),
         })
@@ -299,6 +314,23 @@ impl Calendar {
         #[cfg(feature = "parity-capture")]
         {
             calendar.view = capture_view();
+            if std::env::args().any(|arg| arg == "calendario-beta-archivo") {
+                // Escena QA explícita: catálogo oficial archivado y reloj dentro de su publicación.
+                calendar.demo_now = Some(
+                    calendar.schedule.window()?.0 + Duration::hours(16) - Duration::minutes(13),
+                );
+                if let Some(series) = calendar
+                    .schedule
+                    .series
+                    .iter()
+                    .find(|series| series.tier == "weekly")
+                {
+                    calendar.following.series_ids = vec![series.id.clone()];
+                }
+                calendar.status =
+                    "QA · catálogo oficial archivado · reloj congelado; no es el horario actual"
+                        .into();
+            }
         }
         Ok(calendar)
     }
@@ -351,9 +383,43 @@ impl Calendar {
     }
 }
 
+impl Calendar {
+    pub(crate) fn topbar_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
+        presentation::views_control(self, cx)
+    }
+    pub(crate) fn context_column(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        beta::context_column(self, cx)
+    }
+}
 impl Render for Calendar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        presentation::render(self, f32::from(window.viewport_size().width) <= 1360.0, cx)
+        if !self.clock_started && self.demo_now.is_none() {
+            self.clock_started = true;
+            cx.spawn(async move |this, cx| {
+                loop {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_secs(30))
+                        .await;
+                    if this.update(cx, |_, cx| cx.notify()).is_err() {
+                        break;
+                    }
+                }
+            })
+            .detach();
+        }
+        let height = (f32::from(window.viewport_size().height)
+            - cx.global::<crate::orbit::design::Tokens>().geometry.topbar
+            - 2.0 * cx.global::<crate::orbit::design::Tokens>().geometry.gutter)
+            .max(0.0);
+        if self.view == CalendarView::Upcoming {
+            beta::render(self, cx)
+                .h(gpui::px(height))
+                .into_any_element()
+        } else {
+            presentation::render(self, cx)
+                .min_h(gpui::px(height))
+                .into_any_element()
+        }
     }
 }
 #[cfg(test)]
@@ -385,6 +451,9 @@ mod tests {
             saved: None,
             demo_now: None,
             view: CalendarView::Upcoming,
+            class_filter: None,
+            tier_filter: None,
+            clock_started: false,
             error: None,
             status: String::new(),
         };

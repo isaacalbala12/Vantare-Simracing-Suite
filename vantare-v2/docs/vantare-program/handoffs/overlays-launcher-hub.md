@@ -4031,3 +4031,44 @@ La incidencia os error 112 quedó resuelta al liberar espacio el orquestador
 (nota 23:56). La política rechazó borrar caché propia; el worker no borró nada
 ni cambió de método. No push/PR/merge/release. E2E servidor con usuario real,
 teclado/IME y DPI físico pendientes: se conserva native-beta intacta.
+
+
+### ISA-1470 - Fase 2, Calendario (2026-10-06)
+
+Mismo worker/base que Testing Center. Próximas usa el catálogo oficial local,
+la recurrencia UTC y el seguimiento persistido existentes. Añade filtros por
+clase/nivel, una salida por serie, cuenta atrás de la siguiente serie seguida,
+tabla con scroll propio y carril de semana/vigencia/series seguidas. Fecha y hora
+se convierten a la zona real del equipo, sin afirmar Europe/Madrid por defecto.
+Día/Semana/Mes/Timeline conservan su contenido, navegación y tests; se retiran
+las compensaciones geométricas de la cabecera antigua y se usan tarjetas neo.
+El reloj productivo notifica cada 30 s y se recoge al desaparecer la entidad.
+
+Seguir guarda la selección local con la detección de conflicto existente; no
+promete avisos. Recordatorios, sonido y lanzamiento automático no tienen
+servicio nativo: aparecen Próximamente. Actualizar horario conserva la recarga
+del archivo oficial local, sin red nueva ni horario fabricado. El seed empaquetado
+es de 25 agosto -> 1 septiembre 2026: está caducado para la beta de octubre. La
+pantalla lo declara y no muestra sus carreras como salidas actuales. Renovar
+el catálogo oficial corresponde al responsable del servicio/calendario.
+
+Escena calendario-beta-archivo detrás de parity-capture: catálogo archivado
+real, reloj QA dentro de esa publicación y una selección semanal explícita.
+Su carril indica QA / reloj congelado / no es el horario actual. No modifica
+el reloj ni los datos productivos. Capturas a 1440/1920/2560 + DeepSeek Harness,
+Semana y catálogo caducado inspeccionados. HTML|GPUI en
+C:/tmp/1470-testing-evidence/calendario.png; ronda-2.png conserva antes/después.
+No certifican paridad pixel exacta, calendario actual ni rendimiento LMU.
+
+Árbol final de ambas pantallas: fmt/check/clippy -Dwarnings, build prueba,
+Nextest1132/1132 (6 skips del filtro existente) y lifecycle5+12 PASS. Tres
+regresiones nuevas PASS. Compilación test3m28s / ejecución718,168s / ACC597,771s.
+Incidencia disco resuelta por el orquestador, sin borrado por el worker.
+No se debilita corpus ni expectativas. Logs finales en la carpeta de evidencia.
+
+Verificación manual pendiente del orquestador: rol tester/owner y usuario sin
+rol; envío real de un informe con captura/quitar/consentimiento; recuperación
+tras reinicio; filtros y seguimiento con catálogo oficial renovado; teclado/IME,
+scroll a 1440 y DPI 125/150 %. La beta native-beta de Isaac permanece intacta.
+No build Release distribuible, push, PR, CI remota, merge, promoción ni release.
+plan.md no existe en la base; la coordinación del roadmap queda en el orquestador.

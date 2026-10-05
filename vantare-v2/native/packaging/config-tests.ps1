@@ -39,12 +39,15 @@ try {
     if ([Environment]::GetEnvironmentVariable('VANTARE_VERSION', 'Process') -cne $versionBefore -or
         [Environment]::GetEnvironmentVariable('VANTARE_BUILD_CHANNEL', 'Process') -cne $channelBefore) { throw 'No se restauró la identidad pública anterior.' }
     $passed++
-    # .NET Framework trata vacío y ausente como la misma configuración desactivada.
-    [Environment]::SetEnvironmentVariable('VANTARE_POSTHOG_KEY', $null, 'Process')
+    # Una variable ausente debe volver a estar ausente (no presente con valor vacío).
+    Remove-Item Env:VANTARE_POSTHOG_KEY -ErrorAction SilentlyContinue
     [IO.File]::WriteAllText($file, 'VANTARE_POSTHOG_KEY=public-fixture')
     $previous = Import-NativeBuildConfig $file
     Restore-NativeBuildConfig $previous
-    if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable('VANTARE_POSTHOG_KEY', 'Process'))) { throw 'No se restauró la configuración desactivada.' }
+    if ($null -ne [Environment]::GetEnvironmentVariable('VANTARE_POSTHOG_KEY', 'Process')) { throw 'No se restauró la ausencia de configuración.' }
     $passed++
     Write-Output "$passed comprobaciones de configuración PASS."
-} finally { [Environment]::SetEnvironmentVariable('VANTARE_POSTHOG_KEY', $original, 'Process') }
+} finally {
+    if ($null -eq $original) { Remove-Item Env:VANTARE_POSTHOG_KEY -ErrorAction SilentlyContinue }
+    else { [Environment]::SetEnvironmentVariable('VANTARE_POSTHOG_KEY', $original, 'Process') }
+}

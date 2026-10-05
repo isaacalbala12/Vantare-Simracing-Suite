@@ -41,5 +41,8 @@ function Import-NativeBuildConfig([string]$Path) {
 }
 
 function Restore-NativeBuildConfig($Previous) {
-    foreach ($name in $Previous.Keys) { [Environment]::SetEnvironmentVariable($name, $Previous[$name], 'Process') }
+    foreach ($name in $Previous.Keys) {
+        if ($null -eq $Previous[$name]) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+        else { [Environment]::SetEnvironmentVariable($name, $Previous[$name], 'Process') }
+    }
 }

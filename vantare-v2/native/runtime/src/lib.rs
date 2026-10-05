@@ -10,7 +10,6 @@ pub mod flows;
 pub mod profiling;
 #[cfg(windows)]
 pub mod rights;
-#[cfg(windows)]
 pub mod service;
 #[cfg(windows)]
 pub mod services;

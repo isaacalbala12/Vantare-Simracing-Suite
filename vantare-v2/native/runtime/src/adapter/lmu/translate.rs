@@ -138,22 +138,19 @@ impl Translator {
         let stale = stale && !paused;
         let telemetry_stale = telemetry_stale && !paused;
         self.frame_count += 1;
-        let car_ids: Vec<CarId> = frame
-            .vehicles
-            .iter()
-            .map(|vehicle| self.car_id(vehicle))
-            .collect();
-        let numbers = self.car_numbers(&frame, now);
         let cars: Vec<Car> = frame
             .vehicles
             .iter()
-            .zip(car_ids.iter().zip(numbers))
-            .map(|(vehicle, (id, number))| self.car(vehicle, *id, number, stale))
+            .map(|vehicle| {
+                let id = self.car_id(vehicle);
+                let number = self.car_number(vehicle, now);
+                self.car(vehicle, id, number, stale)
+            })
             .collect();
         let player = frame.player.map(|index| {
             player(
                 &frame.vehicles[index],
-                car_ids[index],
+                cars[index].id,
                 stale,
                 telemetry_stale,
             )
@@ -218,24 +215,18 @@ impl Translator {
         stale
     }
 
-    /// Número de carrera de cada coche, casado por hueco y por etiqueta: si la
+    /// Número de carrera del coche, casado por hueco y por etiqueta: si la
     /// etiqueta REST no coincide con la del frame, el hueco se reutilizó.
-    fn car_numbers(&self, frame: &Frame, now: Duration) -> Vec<String> {
-        let entries = self.rest.car_numbers(now, self.floor);
-        frame
-            .vehicles
+    fn car_number(&self, vehicle: &Vehicle, now: Duration) -> String {
+        self.rest
+            .car_numbers(now, self.floor)
             .iter()
-            .map(|vehicle| {
-                entries
-                    .iter()
-                    .find(|entry| {
-                        entry.slot == vehicle.slot
-                            && !entry.vehicle.is_empty()
-                            && entry.vehicle == vehicle.name.trim()
-                    })
-                    .map_or_else(String::new, |entry| entry.number.clone())
+            .find(|entry| {
+                entry.slot == vehicle.slot
+                    && !entry.vehicle.is_empty()
+                    && entry.vehicle == vehicle.name.trim()
             })
-            .collect()
+            .map_or_else(String::new, |entry| entry.number.clone())
     }
 
     /// Nueva sesión si el circuito o el tipo cambian con datos frescos, o si el

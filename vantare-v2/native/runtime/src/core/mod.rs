@@ -318,6 +318,12 @@ impl Core {
         }
     }
 
+    /// Plazo ya vigente: el servicio no debe dormir más allá de la degradación.
+    pub(crate) fn freshness_deadline(&self) -> Option<Duration> {
+        (!self.stale && self.current.sequence != 0)
+            .then(|| self.last_advance.saturating_add(STALL_LIMIT))
+    }
+
     fn is_stale_at(&self, now: Duration) -> bool {
         now.saturating_sub(self.last_advance) >= STALL_LIMIT
     }
@@ -728,6 +734,7 @@ mod tests {
     #[test]
     fn silence_and_frozen_clock_go_stale_then_recover_with_one_revision_counter() {
         let mut core = Core::new(1);
+        assert_eq!(core.freshness_deadline(), None);
         let reader = core.subscribe();
         let mut adapter = Script::default();
         adapter
@@ -738,8 +745,10 @@ mod tests {
 
         // Sin nada nuevo: fresco hasta el límite, obsoleto en él, una sola vez.
         core.step(&mut adapter, ms(499)).unwrap();
+        assert_eq!(core.freshness_deadline(), Some(ms(500)));
         assert_eq!(reader.latest().sequence, 1);
         core.step(&mut adapter, ms(500)).unwrap();
+        assert_eq!(core.freshness_deadline(), None);
         core.step(&mut adapter, ms(900)).unwrap();
         let old = reader.latest();
         assert_eq!(old.sequence, 2);

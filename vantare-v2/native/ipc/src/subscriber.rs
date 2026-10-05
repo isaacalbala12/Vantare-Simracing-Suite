@@ -208,8 +208,9 @@ fn session(
     }
     activity.fetch_add(1, Ordering::Relaxed);
     let mut previous: Option<crate::dto::SnapshotDto> = None;
+    let mut body = Vec::new();
     loop {
-        match read_message(&mut pipe)? {
+        match crate::codec::read_buffered(&mut pipe, &mut body)? {
             Message::Ping => {}
             Message::Snapshot(mut dto) => {
                 if demand.is_some() {

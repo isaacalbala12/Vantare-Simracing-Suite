@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use vantare_domain::Snapshot;
 
 use crate::Error;
-use crate::codec::{Message, Revision, negotiate, read_message, write_message};
+use crate::codec::{Message, Revision, negotiate, read_message};
 use crate::dto::SnapshotDto;
 use crate::latest::{Slot, Wait};
 use crate::pipe::{Event, IO_TIMEOUT, Listener, Peer, Pipe};
@@ -199,9 +199,12 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
     else {
         return Err(Error::Protocol("se esperaba Hello"));
     };
+    let mut frame = Vec::new();
+    let mut transmit =
+        |message: &Message| crate::codec::write_buffered(&mut pipe, message, &mut frame);
     let Some(version) = negotiate(min_version, max_version) else {
         let reason = format!("versiones {min_version}..={max_version} no soportadas");
-        write_message(&mut pipe, &Message::Reject { reason })?;
+        transmit(&Message::Reject { reason })?;
         return Err(Error::Version { got: max_version });
     };
     // Registrar antes de responder, pero no servir una foto anterior a la demanda.
@@ -215,7 +218,7 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
     };
     let requested = demand.clone().unwrap_or_else(crate::Demand::all);
     let _lease = shared.register(&requested)?;
-    write_message(&mut pipe, &Message::Welcome { version })?;
+    transmit(&Message::Welcome { version })?;
     let start = Instant::now();
     let mut last_message = start;
     let mut cadence = crate::demand::Cadence::default();
@@ -232,7 +235,7 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
         match shared.latest.wait(seen, HEARTBEAT) {
             Wait::Closed => return Ok(()),
             Wait::Timeout => {
-                write_message(&mut pipe, &Message::Ping)?;
+                transmit(&Message::Ping)?;
                 last_message = Instant::now();
             }
             Wait::Value(snapshot, generation) => {
@@ -255,7 +258,7 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
                         let delivered = cadence.due(&requested, start.elapsed(), reset);
                         if delivered.is_empty() {
                             if last_message.elapsed() >= HEARTBEAT {
-                                write_message(&mut pipe, &Message::Ping)?;
+                                transmit(&Message::Ping)?;
                                 last_message = Instant::now();
                             }
                             sent = Some(revision);
@@ -265,19 +268,13 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
                             let _span = crate::profiling::begin(crate::profiling::Stage::Dto);
                             SnapshotDto::selected(&snapshot, &delivered)?
                         };
-                        write_message(
-                            &mut pipe,
-                            &Message::DemandSnapshot {
-                                snapshot: dto,
-                                requested: requested.clone(),
-                                delivered,
-                            },
-                        )?;
+                        transmit(&Message::DemandSnapshot {
+                            snapshot: dto,
+                            requested: requested.clone(),
+                            delivered,
+                        })?;
                     } else {
-                        write_message(
-                            &mut pipe,
-                            &Message::Snapshot(SnapshotDto::from(&*snapshot)),
-                        )?;
+                        transmit(&Message::Snapshot(SnapshotDto::from(&*snapshot)))?;
                     }
                     last_message = Instant::now();
                     sent = Some(revision);
@@ -296,7 +293,7 @@ mod tests {
     use vantare_domain::Quality;
 
     use super::*;
-    use crate::codec::{MAX_MESSAGE, hello};
+    use crate::codec::{MAX_MESSAGE, hello, write_message};
     use crate::pipe::connect;
 
     fn start(tag: &str) -> (Publisher, String) {

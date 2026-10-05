@@ -6,12 +6,15 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use vantare_domain::{Adapter, Snapshot};
+#[cfg(windows)]
 use vantare_ipc::{Error, Publisher};
 
 use crate::core::Core;
 
 /// Espera cuando una vuelta no ha producido nada nuevo.
 const IDLE: Duration = Duration::from_millis(2);
+/// No aplazar el cierre, la demanda ni la vigilancia de frescura más de un frame.
+const MAX_WAIT: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 /// Sirve por `\\.\pipe\<pipe>` lo que produce `adapter` hasta que `stop` se
 /// levante. El reloj del núcleo es el tiempo transcurrido por `speed`: con 1,0
@@ -24,6 +27,7 @@ const IDLE: Duration = Duration::from_millis(2);
 ///
 /// # Errors
 /// Si el pipe no se puede abrir (p. ej. otro núcleo ya lo tiene) o `ipc` falla al publicar.
+#[cfg(windows)]
 pub fn run(
     adapter: &mut dyn Adapter,
     pipe: &str,
@@ -36,6 +40,7 @@ pub fn run(
 }
 
 /// Recording opt-in; su dueño de E/S nunca ejecuta en adquisición.
+#[cfg(windows)]
 pub fn run_with_events(
     adapter: &mut dyn Adapter,
     pipe: &str,
@@ -59,12 +64,14 @@ pub fn run_with_events(
     )
 }
 
+#[cfg(windows)]
 pub struct Options<'a> {
     pub recording: Option<&'a std::path::Path>,
     pub engineer_image: std::path::PathBuf,
     pub rights_nonce: Option<String>,
 }
 
+#[cfg(windows)]
 pub fn run_controlled(
     adapter: &mut dyn Adapter,
     pipe: &str,
@@ -125,20 +132,17 @@ pub fn drive<E>(
     stop: &AtomicBool,
     mut publish: impl FnMut(Arc<Snapshot>) -> Result<(), E>,
 ) -> Result<(), E> {
-    drive_core(core, adapter, speed, stop, |core| publish(core.snapshot()))
+    drive_core_demanded(core, adapter, speed, stop, None, |core| {
+        publish(core.snapshot())
+    })
 }
 
-fn drive_core<E>(
-    core: &mut Core,
-    adapter: &mut dyn Adapter,
-    speed: f64,
-    stop: &AtomicBool,
-    publish: impl FnMut(&Core) -> Result<(), E>,
-) -> Result<(), E> {
-    drive_core_demanded(core, adapter, speed, stop, None, publish)
-}
-
-fn drive_core_demanded<E>(
+/// Bucle compartido por ambos transportes; el callback publica foto y eventos
+/// del mismo corte. La composición de derechos sigue siendo de Windows.
+///
+/// # Errors
+/// El primer error de `publish`.
+pub fn drive_core_demanded<E>(
     core: &mut Core,
     adapter: &mut dyn Adapter,
     speed: f64,
@@ -178,13 +182,20 @@ fn drive_core_demanded<E>(
             core.freshness_reason(),
         );
         freshness = vantare_ipc::freshness::state(&snapshot);
-        if snapshot.sequence > sent {
+        let idle = snapshot.sequence <= sent;
+        if !idle {
             sent = snapshot.sequence;
             #[cfg(feature = "paint-stats")]
             let _span = crate::profiling::begin(crate::profiling::Stage::Publish);
             publish(core)?;
-        } else {
-            thread::sleep(IDLE);
+        }
+        let next = adapter.next_poll().map(|next| {
+            core.freshness_deadline()
+                .map_or(next, |deadline| next.min(deadline))
+        });
+        let wait = poll_wait(next, start.elapsed(), speed, idle);
+        if !wait.is_zero() {
+            thread::sleep(wait);
         }
         #[cfg(feature = "paint-stats")]
         if report_at.elapsed() >= Duration::from_secs(1) {
@@ -193,4 +204,32 @@ fn drive_core_demanded<E>(
         }
     }
     Ok(())
+}
+
+fn poll_wait(next: Option<Duration>, elapsed: Duration, speed: f64, idle: bool) -> Duration {
+    next.map_or(if idle { IDLE } else { Duration::ZERO }, |next| {
+        next.saturating_sub(elapsed.mul_f64(speed))
+            .div_f64(speed)
+            .min(MAX_WAIT)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn waits_follow_the_source_clock_without_delaying_stop_or_legacy_sources() {
+        assert_eq!(
+            poll_wait(Some(MAX_WAIT), Duration::ZERO, 2.0, false),
+            MAX_WAIT.div_f64(2.0)
+        );
+        assert_eq!(
+            poll_wait(Some(Duration::from_secs(1)), Duration::ZERO, 1.0, false),
+            MAX_WAIT
+        );
+        assert_eq!(poll_wait(Some(IDLE), MAX_WAIT, 1.0, true), Duration::ZERO);
+        assert_eq!(poll_wait(None, Duration::ZERO, 1.0, true), IDLE);
+        assert_eq!(poll_wait(None, Duration::ZERO, 1.0, false), Duration::ZERO);
+    }
 }

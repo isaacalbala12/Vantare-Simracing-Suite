@@ -184,6 +184,10 @@ pub fn with_origin<R>(origin: (f32, f32), f: impl FnOnce() -> R) -> R {
 /// Texto del kit en ventanas comunes o dentro de un widget escalado.
 pub trait TextWindow {
     fn for_text(&mut self) -> (&mut Window, f32);
+    fn for_text_axes(&mut self) -> (&mut Window, (f32, f32)) {
+        let (window, scale) = self.for_text();
+        (window, (scale, scale))
+    }
 }
 
 impl TextWindow for Window {
@@ -195,6 +199,10 @@ impl TextWindow for Window {
 impl TextWindow for super::preview::PaintWindow<'_> {
     fn for_text(&mut self) -> (&mut Window, f32) {
         let scale = self.preview_scale();
+        (self, scale)
+    }
+    fn for_text_axes(&mut self) -> (&mut Window, (f32, f32)) {
+        let scale = self.preview_axes();
         (self, scale)
     }
 }
@@ -212,20 +220,20 @@ pub fn draw(
         return;
     }
     let (ox, oy) = origin();
-    let (window, scale) = window.for_text();
+    let (window, (scale_x, scale)) = window.for_text_axes();
     let scaled_ink = TextInk {
         size: ink.size * scale,
         tracking: ink.tracking * scale,
         ..*ink
     };
     let ink = if scale == 1.0 { ink } else { &scaled_ink };
-    let (x, base_y) = (x * scale + ox, base_y * scale + oy);
+    let (x, base_y) = (x * scale_x + ox, base_y * scale + oy);
     let line = shape(window, text, ink);
     let ascent = f32::from(line.ascent);
     let descent = f32::from(line.descent);
     let line_height = px(ascent + descent);
     let top = base_y - ascent;
-    if ink.tracking == 0.0 {
+    if ink.tracking == 0.0 && scale_x == scale {
         let _ = line.paint(
             point(px(x), px(top)),
             line_height,
@@ -240,7 +248,10 @@ pub fn draw(
     for (index, (byte, ch)) in text.char_indices().enumerate() {
         let x0 = f32::from(cursor.x_offset());
         let piece = cursor.take_until(byte + ch.len_utf8());
-        let origin: Point<Pixels> = point(px(x + x0 + ink.tracking * index as f32), px(top));
+        let origin: Point<Pixels> = point(
+            px(x + (x0 + ink.tracking * index as f32) * scale_x / scale),
+            px(top),
+        );
         let _ = piece.paint(origin, line_height, TextAlign::Left, None, window, cx);
     }
 }

@@ -14,30 +14,37 @@ use gpui::{
 struct Transform {
     origin: Point<Pixels>,
     scale: f32,
+    scale_y: f32,
 }
 
 impl Transform {
     fn point(self, point: Point<Pixels>) -> Point<Pixels> {
-        if self.scale == 1.0 {
+        if self.scale == 1.0 && self.scale_y == 1.0 {
             point
         } else {
-            self.origin + (point - self.origin) * self.scale
+            gpui::point(
+                self.origin.x + (point.x - self.origin.x) * self.scale,
+                self.origin.y + (point.y - self.origin.y) * self.scale_y,
+            )
         }
     }
 
     fn bounds(self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
-        if self.scale == 1.0 {
+        if self.scale == 1.0 && self.scale_y == 1.0 {
             bounds
         } else {
             Bounds::new(
                 self.point(bounds.origin),
-                bounds.size.map(|v| v * self.scale),
+                gpui::size(
+                    bounds.size.width * self.scale,
+                    bounds.size.height * self.scale_y,
+                ),
             )
         }
     }
 
     fn quad(self, mut quad: PaintQuad) -> PaintQuad {
-        if self.scale != 1.0 {
+        if self.scale != 1.0 || self.scale_y != 1.0 {
             quad.bounds = self.bounds(quad.bounds);
             quad.corner_radii = quad.corner_radii.map(|v| *v * self.scale);
             quad.border_widths = quad.border_widths.map(|v| *v * self.scale);
@@ -54,15 +61,27 @@ pub struct PaintWindow<'a> {
 }
 
 impl<'a> PaintWindow<'a> {
-    pub(crate) fn new(window: &'a mut Window, origin: Point<Pixels>, scale: f32) -> Self {
+    pub(crate) fn new(
+        window: &'a mut Window,
+        origin: Point<Pixels>,
+        scale: f32,
+        scale_y: f32,
+    ) -> Self {
         Self {
             window,
-            transform: Transform { origin, scale },
+            transform: Transform {
+                origin,
+                scale,
+                scale_y,
+            },
         }
     }
 
     pub fn preview_scale(&self) -> f32 {
-        self.transform.scale
+        self.transform.scale_y
+    }
+    pub fn preview_axes(&self) -> (f32, f32) {
+        (self.transform.scale, self.transform.scale_y)
     }
 
     pub fn paint_quad(&mut self, quad: PaintQuad) {
@@ -177,6 +196,22 @@ mod tests {
     use gpui::{BorderStyle, Edges, point, px, quad, size};
 
     #[test]
+    fn independent_axes_scale_bounds_and_keep_widget_origin() {
+        let origin = point(px(30.0), px(50.0));
+        let transform = Transform {
+            origin,
+            scale: 2.0,
+            scale_y: 0.5,
+        };
+        let result = transform.bounds(Bounds::new(
+            origin + point(px(10.0), px(20.0)),
+            size(px(100.0), px(80.0)),
+        ));
+        assert_eq!(result.origin, origin + point(px(20.0), px(10.0)));
+        assert_eq!(result.size, size(px(200.0), px(40.0)));
+    }
+
+    #[test]
     fn scales_position_size_borders_and_last_pixel_inside_the_frame() {
         let (width, height) = crate::Overlay::new(
             crate::Kind::Standings,
@@ -187,7 +222,11 @@ mod tests {
             // Standings junto al borde derecho del overlay, con origen de ventana no nulo.
             let stage = point(px(398.0), px(298.0));
             let origin = stage + point(px(1920.0 - width - 20.0), px(40.0)) * scale;
-            let transform = Transform { origin, scale };
+            let transform = Transform {
+                origin,
+                scale,
+                scale_y: scale,
+            };
             let source = Bounds::new(origin, size(px(width), px(height)));
             let result = transform.quad(quad(
                 source,
@@ -215,6 +254,7 @@ mod tests {
         let transform = Transform {
             origin: point(px(-14.2), px(72.7)),
             scale: 1.0,
+            scale_y: 1.0,
         };
         let bounds = Bounds::new(point(px(-6.9), px(18.123)), size(px(0.42), px(10.75)));
         assert_eq!(transform.bounds(bounds), bounds);

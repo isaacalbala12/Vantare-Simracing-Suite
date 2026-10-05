@@ -3829,3 +3829,15 @@ Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026
 `nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.
 
 Isaac autorizó integrar #1369 en `nightly` para poder probar el Launcher. La PR pasó todos sus gates en `da304acc` y se integró por squash como `b6833bb5368a459688cc1d76f526ecf1c2aa1833`, sin diferencias de árbol entre el candidato y `origin/nightly`. El digest del roadmap posterior al merge y la ejecución `36252220712` pasaron: ruta de promoción y gate bloqueante completo, incluidos Go, frontend y build Wails Windows. La issue #1368 permanece abierta con `state:nightly` para instalación/actualización física, una sesión nueva de Windows con un solo perfil, hotkeys, políticas de cancelar/salir y validación Steam/LMU. El paquete local de `da304acc` coincide en código y contenido con `b6833bb5`, pero sigue sin firma y sin prueba de instalación. No hay promoción a `testers`/`master` ni release; el lanzamiento comercial permanece NO-GO.
+
+### Continuación RONDA 2 — bloque 1 (2026-10-05)
+
+Dirección V1/Default/Foco en el Workshop sobre el mismo renderer. Foco elimina
+ornamento y usa chip al contorno; Default conserva la ventana del jugador.
+Comparación horizontal y dimensiones que escalan las primitivas en X/Y.
+Regresión de ejes independientes añadida. Check, Clippy, fmt, Nextest
+1096/1096 (4 omitidas), lifecycle12 y build prueba PASS. Captura ronda-4
+mirada en C:/tmp/1467b-evidence. Límite: glifos usan tamaño Y y espaciado X;
+GPUI no ofrece aquí deformación anisotrópica de glifos. No es paridad exacta.
+SSH Mac vuelve a responder; validación del HEAD final pendiente. Sin push,
+PR, merge, promoción ni release. Roadmap manual ausente en esta base.

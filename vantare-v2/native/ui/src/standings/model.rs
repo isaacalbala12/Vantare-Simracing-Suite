@@ -102,6 +102,7 @@ pub(crate) enum InfoMetric {
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub(crate) struct Config {
     pub style: std::sync::Arc<super::style::Style>,
+    pub study: String,
     pub broadcast: bool,
     pub multiclass: bool,
     pub footer_slots: Vec<String>,
@@ -133,6 +134,7 @@ impl Config {
         };
         let mut config = Self {
             style: super::style::Style::compiled(),
+            study: "v1".into(),
             broadcast: false,
             multiclass: false,
             footer_slots: Vec::new(),

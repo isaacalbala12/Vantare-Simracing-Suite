@@ -447,6 +447,12 @@ impl Render for Workshop {
                     &[("true", "Con marca"), ("false", "Sin marca")],
                     cx,
                 )))
+                .child(group("Dirección").child(Self::segments(
+                    Control::Study,
+                    &self.study,
+                    &[("v1", "V1"), ("default", "Default"), ("v2-focus", "Foco")],
+                    cx,
+                )))
                 .child(group("Clasificación").child(self.setting(
                     "classificationMode",
                     "Clasificación",
@@ -797,6 +803,7 @@ impl Render for Workshop {
                         this.prefs = Preferences::default();
                         this.background = "grid".into();
                         this.scale = 1.0;
+                        this.study = "default".into();
                         this.dimensions = None;
                         this.source = None;
                         this.session = None;
@@ -822,6 +829,15 @@ impl Render for Workshop {
             .w(px(dimensions.0 * self.scale))
             .h(px(dimensions.1 * self.scale))
             .child(self.overlay.clone());
+        let mut previews = div().flex().items_center().gap(px(24.0)).child(widget);
+        if let Some(view) = &self.comparison {
+            previews = previews.child(
+                div()
+                    .w(px(dimensions.0 * self.scale))
+                    .h(px(dimensions.1 * self.scale))
+                    .child(view.clone()),
+            );
+        }
         let mut stage = div()
             .id("stage")
             .relative()
@@ -848,16 +864,7 @@ impl Render for Workshop {
                     .text_color(rgb(0xb9b9bd))
                     .child(format!("{} / ESTUDIO 01", self.kind.name().to_uppercase())),
             )
-            .child(widget);
-        if let Some(view) = &self.comparison {
-            stage = stage.child(
-                div()
-                    .mt(px(24.0))
-                    .w(px(dimensions.0 * self.scale))
-                    .h(px(dimensions.1 * self.scale))
-                    .child(view.clone()),
-            );
-        }
+            .child(previews);
         if self.scene.snapshots.len() > 1 {
             stage =
                 stage.child(

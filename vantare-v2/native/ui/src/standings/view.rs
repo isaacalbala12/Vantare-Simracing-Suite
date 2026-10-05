@@ -320,7 +320,7 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
         );
         text::draw(window, cx, "VANTARE", 34.0, 15.0, &brand);
     }
-    if plan.has_header {
+    if plan.has_header && config.study != "v2-focus" {
         paint_flag_ribbon(style, window, vm.flag.as_ref(), width, config.broadcast);
     }
 
@@ -523,7 +523,9 @@ fn paint_session_header(
     cx: &mut App,
 ) {
     let style = &*scene.config.style;
-    let Scene { vm, plan, .. } = scene;
+    let Scene {
+        config, vm, plan, ..
+    } = scene;
     let mut x = left + 10.0;
     let mid = top
         + if scene.config.broadcast {
@@ -604,7 +606,14 @@ fn paint_session_header(
             context_top,
             1.0,
             context_h,
-            col(style.colors.ink.0, 0.23),
+            col(
+                style.colors.ink.0,
+                if config.study == "v2-focus" {
+                    0.10
+                } else {
+                    0.23
+                },
+            ),
         );
         let text_x = x + 1.0 + 10.0;
         text::draw(
@@ -666,7 +675,14 @@ fn paint_session_header(
         style.fonts.badge_size,
         style.fonts.bold_weight,
         0.02,
-        col(style.colors.white.0, 1.0),
+        col(
+            if scene.config.study == "v2-focus" {
+                0xd6d6da
+            } else {
+                style.colors.white.0
+            },
+            1.0,
+        ),
     );
     let chip_text_w = text::width(window, &class_text, &class_ink);
     let chip_w = chip_text_w + 12.0;
@@ -682,11 +698,35 @@ fn paint_session_header(
         },
         linear_gradient(
             145.0,
-            linear_color_stop(col(style.colors.class_start.0, 1.0), 0.0),
-            linear_color_stop(col(style.colors.class_end.0, 1.0), 1.0),
+            linear_color_stop(
+                col(
+                    style.colors.class_start.0,
+                    if scene.config.study == "v2-focus" {
+                        0.0
+                    } else {
+                        1.0
+                    },
+                ),
+                0.0,
+            ),
+            linear_color_stop(
+                col(
+                    style.colors.class_end.0,
+                    if scene.config.study == "v2-focus" {
+                        0.0
+                    } else {
+                        1.0
+                    },
+                ),
+                1.0,
+            ),
         ),
-        Edges::all(px(0.0)),
-        transparent(),
+        Edges::all(px(if scene.config.study == "v2-focus" {
+            1.0
+        } else {
+            0.0
+        })),
+        col(style.colors.ink.0, 0.22),
         BorderStyle::default(),
     ));
     text::draw(
@@ -879,6 +919,9 @@ fn paint_column_label(
                 .round(),
                 &label_ink,
             );
+            if scene.config.study == "v2-focus" {
+                return;
+            }
             // Subrayado de 17 x 1 (centrado bajo la etiqueta en gap).
             let ux = if column.metric == Metric::Gap {
                 lx + label_w / 2.0 - 8.5
@@ -917,6 +960,24 @@ fn paint_row(
     let pace = vm.pace_session;
     let opacity = vis.alpha;
     let paint = |window: &mut Window, cx: &mut App| {
+        if config.study == "default"
+            && !config.multiclass
+            && !row.is_player
+            && vm
+                .rows
+                .iter()
+                .take(3)
+                .any(|candidate| candidate.id == row.id)
+        {
+            paint_rect(
+                window,
+                0.0,
+                top,
+                width,
+                style.geometry.row_height,
+                col(style.colors.white.0, 0.03),
+            );
+        }
         // Fondo de fila (jugador) y flash de subida/bajada.
         if row.is_player {
             if config.broadcast {
@@ -964,7 +1025,7 @@ fn paint_row(
         }
         // Separadores (inset box-shadow). `tr:last-child td { box-shadow: none }`
         // gana al resalte del jugador: la ultima fila no lleva ninguno.
-        if !last {
+        if !last && config.study != "v2-focus" {
             if row.is_player {
                 paint_rect(
                     window,

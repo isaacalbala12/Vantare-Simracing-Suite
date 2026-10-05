@@ -359,6 +359,10 @@ impl Widget {
 }
 
 impl Widget {
+    pub(crate) fn set_study(&mut self, study: &str) {
+        self.config.study = study.into();
+    }
+
     pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
         self.config.style = style;
         self.config.fit(self.config.row_count);

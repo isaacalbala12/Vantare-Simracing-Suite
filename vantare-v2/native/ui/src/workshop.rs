@@ -224,6 +224,7 @@ enum Control {
     Language,
     Background,
     Scale,
+    Study,
     Source,
     Session,
     Location,
@@ -304,6 +305,7 @@ struct Workshop {
     open: Option<Control>,
     background: String,
     scale: f32,
+    study: String,
     dimensions: Option<(f32, f32)>,
     surface: String,
     preset: String,
@@ -491,6 +493,9 @@ impl Workshop {
             .map(|index| self.snapshot(index))
             .collect();
         let mut settings = self.settings.clone();
+        if let Settings::Standings(settings) = &mut settings {
+            settings.player_window &= self.study == "default";
+        }
         if let Settings::Standings(settings) = &mut settings
             && settings.player_window
             && let Some(snapshot) = snapshots.last()
@@ -509,12 +514,31 @@ impl Workshop {
                 .min(3 + settings.window_around + usize::from(index >= 3));
         }
         let prefs = self.prefs;
-        let style = self.style.value.clone();
+        let mut style = (*self.style.value).clone();
+        if self.study == "v2-focus" {
+            style.fonts.brand_size = 9.0;
+            style.fonts.clock_size = 13.0;
+            style.fonts.column_label_size = 10.0;
+            style.colors.column_label.0 = 0x9a9aa0;
+            style.opacity.frame = 0.08;
+            style.opacity.top_frame = 0.14;
+            style.geometry.player_marker_width = 0.0;
+            style.geometry.chip_radius = 3.0;
+            style.geometry.chip_cut_radius = 3.0;
+        }
+        let style = std::sync::Arc::new(style);
         let scale = self.scale;
+        let dimensions = self.dimensions;
+        let study = self.study.clone();
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.standings_style(style.clone(), cx);
-            if let Err(error) = overlay.set_preview_scale(scale) {
+            overlay.standings_study(&study);
+            let size = overlay.wanted_size();
+            let target = dimensions.unwrap_or(size);
+            if let Err(error) =
+                overlay.set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
+            {
                 eprintln!("Workshop: {error}");
             }
             for snapshot in &snapshots {
@@ -594,6 +618,7 @@ impl Workshop {
                         vantare_domain::format::Language::Es
                     };
                 }
+                Control::Study => self.study = value.into(),
                 Control::Background => self.background = value.into(),
                 Control::Scale => self.scale = value.parse().map_err(|e| format!("escala: {e}"))?,
                 Control::Source => {
@@ -756,6 +781,7 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                     open: None,
                     background: "grid".into(),
                     scale: 1.0,
+                    study: "default".into(),
                     dimensions: None,
                     surface: "studio".into(),
                     preset: "1080p".into(),
@@ -788,14 +814,7 @@ pub fn run(kind: Kind, path: Option<PathBuf>) -> Result<(), String> {
                             .update(cx, |this, cx| {
                                 this.tick(Instant::now(), cx);
                                 if this.style.poll() {
-                                    this.overlay.update(cx, |overlay, cx| {
-                                        overlay.standings_style(this.style.value.clone(), cx);
-                                    });
-                                    if let Some(view) = &this.comparison {
-                                        view.update(cx, |overlay, cx| {
-                                            overlay.standings_style(this.style.value.clone(), cx);
-                                        });
-                                    }
+                                    this.replay(cx);
                                     cx.notify();
                                 }
                                 if this.scene.poll() {

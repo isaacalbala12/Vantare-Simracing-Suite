@@ -56,6 +56,8 @@ def convert(frame, index, widget):
             car['relative_laps'] = quality(row.get('lapDelta'))
             if widget in ('relative', 'multiclass-relative'):
                 car['last_lap_s'] = quality(row.get('lastLap'))
+                class_id = row.get('classId')
+                car['class'] = [classes[class_id], class_id] if class_id in classes else None
     st['capabilities'].update(powertrain='fresh', fuel='fresh', delta='fresh' if player['delta_best_s'] != 'unavailable' else 'with_data', weather='fresh')
     history = fuel.get('history', {})
     if history.get('q') == 'fresh':

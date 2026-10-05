@@ -3841,3 +3841,13 @@ mirada en C:/tmp/1467b-evidence. Límite: glifos usan tamaño Y y espaciado X;
 GPUI no ofrece aquí deformación anisotrópica de glifos. No es paridad exacta.
 SSH Mac vuelve a responder; validación del HEAD final pendiente. Sin push,
 PR, merge, promoción ni release. Roadmap manual ausente en esta base.
+
+### RONDA 2 — bloque 2 (2026-10-05)
+Relative usa en Workshop el tamaño compacto 430×256 y columnas del React;
+se conserva el tamaño productivo. Corregida la elipsis vacía de clase y la
+alineación de nombres. Las 22 selecciones tienen escena válida; cross-ahead
+se capturó en fase 3. El importador prioriza classId explícito; regenerar 43
+escenas no cambió sus bytes. Comparación reparte dos columnas iguales.
+Fmt/check/clippy, Nextest 1097/1097 (4 omitidas), lifecycle12 y prueba PASS.
+Ronda-5 recompilada y mirada: datos, filas y caja coinciden; no certifica
+paridad píxel a píxel. Sin push/PR/merge/release.

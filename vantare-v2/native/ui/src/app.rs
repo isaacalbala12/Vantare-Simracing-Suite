@@ -226,6 +226,12 @@ impl Overlay {
         Ok(())
     }
 
+    pub(crate) fn workshop_layout(&mut self) {
+        if let Widget::Relative(widget) = &mut self.widget {
+            widget.workshop_layout();
+        }
+    }
+
     pub(crate) fn standings_study(&mut self, study: &str) {
         if let Widget::Standings(widget) = &mut self.widget {
             widget.set_study(study);

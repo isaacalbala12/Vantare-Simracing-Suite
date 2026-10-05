@@ -115,6 +115,7 @@ pub(crate) struct Widget {
     settings: Settings,
     footer: Vec<vantare_domain::standings::InfoCell>,
     footer_rows: usize,
+    workshop: bool,
     motion: Motion,
     boundary: Option<(u64, u64, Preferences)>,
 }
@@ -130,14 +131,30 @@ impl Widget {
             settings: settings.normalized(),
             footer: Vec::new(),
             footer_rows: 1,
+            workshop: false,
             motion: Motion::default(),
             boundary: None,
         }
     }
 
-    #[allow(clippy::unused_self)] // Contrato del registro.
+    pub(crate) fn workshop_layout(&mut self) {
+        self.workshop = true;
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
-        self.settings.size()
+        if self.workshop {
+            let footer = if self.footer.is_empty() {
+                BAND
+            } else {
+                (15.0 + self.footer_rows as f32 * 14.0) * SCALE
+            };
+            (
+                SIZE.0,
+                BAND + self.settings.slot_count() as f32 * ROW + footer,
+            )
+        } else {
+            self.settings.size()
+        }
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
@@ -737,7 +754,13 @@ fn paint_configured_row(
             -0.02,
             col(tokens::INK, visual.opacity * if stale { 0.6 } else { 1.0 }),
         );
-        let baseline = y + (height - ROW) / 2.0 + 18.25 * SCALE;
+        let baseline = y
+            + (height - ROW) / 2.0
+            + if column.metric_id == "driverName" {
+                20.0
+            } else {
+                18.25
+            } * SCALE;
         if (column.metric_id == "class" && !has_position)
             || (column.metric_id == "position" && has_class)
         {
@@ -756,6 +779,11 @@ fn paint_configured_row(
                 14.0 * SCALE,
                 col(color, visual.opacity),
             );
+        }
+        // Clase es un tick, nunca una celda de texto vacía recortada con elipsis.
+        if column.metric_id == "class" {
+            x += w;
+            continue;
         }
         if column.style.align.as_deref() == Some("left")
             || (column.metric_id == "driverName" && column.style.align.is_none())

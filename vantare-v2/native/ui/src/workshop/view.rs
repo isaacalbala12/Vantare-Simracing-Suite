@@ -778,6 +778,8 @@ impl Render for Workshop {
                         button("natural-size".into(), "Aplicar tamaño declarado", false).on_click(
                             cx.listener(|this, _, _, cx| {
                                 this.dimensions = None;
+                                this.replay(cx);
+                                this.persist();
                                 cx.notify();
                             }),
                         ),
@@ -823,19 +825,25 @@ impl Render for Workshop {
                         }
                     })),
             );
-        let wanted = self.overlay.read(cx).wanted_size();
+        let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
         let dimensions = self.dimensions.unwrap_or(wanted);
         let widget = div()
             .w(px(dimensions.0 * self.scale))
             .h(px(dimensions.1 * self.scale))
             .child(self.overlay.clone());
-        let mut previews = div().flex().items_center().gap(px(24.0)).child(widget);
+        let mut previews = div()
+            .w_full()
+            .flex()
+            .items_center()
+            .child(div().flex_1().flex().justify_center().child(widget));
         if let Some(view) = &self.comparison {
             previews = previews.child(
-                div()
-                    .w(px(dimensions.0 * self.scale))
-                    .h(px(dimensions.1 * self.scale))
-                    .child(view.clone()),
+                div().flex_1().flex().justify_center().child(
+                    div()
+                        .w(px(dimensions.0 * self.scale))
+                        .h(px(dimensions.1 * self.scale))
+                        .child(view.clone()),
+                ),
             );
         }
         let mut stage = div()

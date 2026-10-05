@@ -332,6 +332,11 @@ fn default_settings(kind: Kind) -> Settings {
             brand_visible: Some(true),
             ..Default::default()
         })
+    } else if kind == Kind::Relative {
+        Settings::Relative(crate::relative::Settings {
+            columns: Some(default_columns(kind)),
+            ..Default::default()
+        })
     } else {
         Settings::default_for(kind)
     }
@@ -342,10 +347,8 @@ fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> 
         &[
             ("position", "xs", true),
             ("class", "auto", true),
-            ("carNumber", "sm", true),
             ("driverName", "lg", true),
             ("gap", "md", true),
-            ("lastLap", "lg", true),
         ]
     } else {
         &[
@@ -383,6 +386,14 @@ fn default_path(kind: Kind) -> PathBuf {
         }
     }
     Path::new(FIXTURES).join("lmu47.snapshot.json")
+}
+
+fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
+    if kind == Kind::Relative {
+        (430.0, size.1 * 430.0 / size.0)
+    } else {
+        size
+    }
 }
 
 impl Workshop {
@@ -530,12 +541,15 @@ impl Workshop {
         let scale = self.scale;
         let dimensions = self.dimensions;
         let study = self.study.clone();
+        let kind = self.kind;
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
+            overlay.workshop_layout();
             overlay.standings_style(style.clone(), cx);
             overlay.standings_study(&study);
             let size = overlay.wanted_size();
-            let target = dimensions.unwrap_or(size);
+            let natural = preview_size(kind, size);
+            let target = dimensions.unwrap_or(natural);
             if let Err(error) =
                 overlay.set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
             {
@@ -861,6 +875,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn workshop_relative_uses_react_columns_and_compact_height() {
+        let settings = default_settings(Kind::Relative);
+        let Settings::Relative(relative) = &settings else {
+            panic!("Relative");
+        };
+        let columns = relative.columns.as_ref().expect("columns");
+        assert_eq!(
+            columns
+                .iter()
+                .map(|c| c.metric_id.as_str())
+                .collect::<Vec<_>>(),
+            ["position", "class", "driverName", "gap"]
+        );
+        let mut overlay = Overlay::configured(&settings, Preferences::default());
+        let production = overlay.wanted_size();
+        overlay.workshop_layout();
+        let preview = preview_size(Kind::Relative, overlay.wanted_size());
+        assert_eq!(preview.0, 430.0);
+        assert!((preview.1 - 256.0).abs() < 0.01);
+        assert_eq!(production, crate::relative::SIZE);
+        for kind in Kind::ALL {
+            Scene::new(&default_path(*kind)).expect("every selector opens a valid scene");
+        }
+    }
+
+    #[test]
     fn playback_honors_pause_phase_duration_end_and_loop_without_skipping_on_resume() {
         let start = Instant::now();
         let mut playback = Playback::new(start);
@@ -939,6 +979,13 @@ mod tests {
             .find(|car| car.driver.name == "Antonio Giovinazzi")
             .expect("piloto delante");
         assert_eq!(ahead.relative_s.current(), Some(&4.2));
+        let nico = relative.snapshots[0]
+            .state
+            .cars
+            .iter()
+            .find(|car| car.driver.name == "Nico Pino")
+            .expect("Nico Pino");
+        assert_eq!(nico.class.as_ref().expect("clase declarada").name, "lmp2");
         let scene =
             Scene::new(&Path::new(FIXTURES).join("standings-functional-position.scene.json"))
                 .expect("posición");

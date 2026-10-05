@@ -13,6 +13,7 @@ use crate::{
     app::{self, Overlay},
 };
 
+mod interpolation;
 mod state;
 mod view;
 
@@ -247,6 +248,7 @@ struct Playback {
     looping: bool,
     elapsed: Duration,
     last_tick: Instant,
+    last_sample: Option<(usize, u64)>,
 }
 
 impl Playback {
@@ -257,6 +259,7 @@ impl Playback {
             looping: false,
             elapsed: Duration::ZERO,
             last_tick: now,
+            last_sample: None,
         }
     }
 
@@ -519,6 +522,7 @@ impl Workshop {
     }
 
     fn replay(&mut self, cx: &mut Context<Self>) {
+        self.playback.last_sample = None;
         // Retroceder/editar reconstruye el renderer para no inferir eventos del futuro.
         let snapshots: Vec<_> = (0..=self.playback.frame)
             .map(|index| self.snapshot(index))
@@ -590,6 +594,7 @@ impl Workshop {
         self.playback.playing = false;
         self.playback.frame = frame.min(self.scene.snapshots.len() - 1);
         self.playback.elapsed = Duration::ZERO;
+        self.playback.last_sample = None;
         self.replay(cx);
         self.persist();
         cx.notify();
@@ -598,31 +603,65 @@ impl Workshop {
     fn play(&mut self, cx: &mut Context<Self>) {
         self.playback.playing = !self.playback.playing;
         if self.playback.playing {
-            self.playback.frame = 0;
-            self.playback.elapsed = Duration::ZERO;
+            if self.playback.frame + 1 == self.scene.snapshots.len() {
+                self.playback.frame = 0;
+                self.playback.elapsed = Duration::ZERO;
+                self.playback.last_sample = None;
+                self.replay(cx);
+            }
             self.playback.last_tick = Instant::now();
-            self.replay(cx);
         }
         cx.notify();
     }
 
     fn tick(&mut self, now: Instant, cx: &mut Context<Self>) {
-        if let Some(restart) =
-            self.playback
-                .advance(now, self.scene.frame_ms, self.scene.snapshots.len())
-        {
-            if restart {
-                self.replay(cx);
-            } else {
-                let snapshot = self.snapshot(self.playback.frame);
-                self.overlay
-                    .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
-                if let Some(view) = &self.comparison {
-                    view.update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
-                }
-            }
-            cx.notify();
+        let advanced = self
+            .playback
+            .advance(now, self.scene.frame_ms, self.scene.snapshots.len());
+        if advanced == Some(true) {
+            self.replay(cx);
         }
+        if !self.playback.playing && advanced.is_none() {
+            return;
+        }
+        let hz = match self.kind {
+            Kind::Standings | Kind::Relative => 15.0,
+            Kind::DeltaTrace
+            | Kind::Delta
+            | Kind::Pedals
+            | Kind::PedalsTelemetry
+            | Kind::InputTelemetry => 30.0,
+            Kind::CarDamageNumbers | Kind::CarDamageVisual | Kind::FuelStrategy => 5.0,
+            Kind::TrackWeather | Kind::TrackMap => 2.0,
+            _ => 10.0,
+        };
+        let sample = (self.playback.elapsed.as_secs_f64() * hz).floor() as u64;
+        let key = (self.playback.frame, sample);
+        if self.playback.last_sample == Some(key) {
+            return;
+        }
+        self.playback.last_sample = Some(key);
+        let from = self.snapshot(self.playback.frame);
+        let next = if self.playback.frame + 1 < self.scene.snapshots.len() {
+            self.playback.frame + 1
+        } else if self.playback.looping {
+            0
+        } else {
+            self.playback.frame
+        };
+        let progress = (sample as f64 / hz * 1000.0 / self.scene.frame_ms as f64).min(1.0);
+        let snapshot = interpolation::snapshot(
+            &from,
+            &self.snapshot(next),
+            progress,
+            self.kind == Kind::Radar,
+        );
+        self.overlay
+            .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+        if let Some(view) = &self.comparison {
+            view.update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+        }
+        cx.notify();
     }
 
     fn select(&mut self, control: Control, value: &str, cx: &mut Context<Self>) {
@@ -636,6 +675,7 @@ impl Workshop {
                     self.settings = default_settings(kind);
                     self.scene = scene;
                     self.playback.frame = 0;
+                    self.playback.elapsed = Duration::ZERO;
                     self.playback.playing = false;
                     self.dimensions = None;
                     self.player_position = None;
@@ -644,6 +684,7 @@ impl Workshop {
                 Control::Scene => {
                     self.scene.select(PathBuf::from(value));
                     self.playback.frame = 0;
+                    self.playback.elapsed = Duration::ZERO;
                     self.playback.playing = false;
                 }
                 Control::Language => {
@@ -892,7 +933,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 cx.spawn(async move |this, cx| {
                     loop {
                         cx.background_executor()
-                            .timer(Duration::from_millis(50))
+                            .timer(Duration::from_millis(16))
                             .await;
                         if this
                             .update(cx, |this, cx| {

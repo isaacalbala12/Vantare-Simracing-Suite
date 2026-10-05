@@ -54,7 +54,10 @@ impl Workshop {
 
     fn slider(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let entity = cx.entity();
-        let fraction = self.playback.frame as f32 / (self.scene.snapshots.len() - 1).max(1) as f32;
+        let phase = self.playback.elapsed.as_secs_f32() * 1000.0 / self.scene.frame_ms as f32;
+        let fraction = ((self.playback.frame as f32 + phase)
+            / (self.scene.snapshots.len() - 1).max(1) as f32)
+            .min(1.0);
         div()
             .id("phase-slider")
             .tab_index(0)
@@ -659,7 +662,7 @@ impl Render for Workshop {
                     .child(
                         button("run".into(), "▶ Reproducir", false).on_click(cx.listener(
                             |this, _, _, cx| {
-                                this.playback.playing = false;
+                                this.park(0, cx);
                                 this.play(cx);
                             },
                         )),
@@ -901,7 +904,7 @@ impl Render for Workshop {
                                         if self.playback.playing {
                                             "❙❙ Pausa"
                                         } else {
-                                            "▶ Reproducir de nuevo"
+                                            "▶ Reproducir"
                                         },
                                         false,
                                     )

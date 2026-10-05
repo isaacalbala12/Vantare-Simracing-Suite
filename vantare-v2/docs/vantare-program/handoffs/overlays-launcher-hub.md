@@ -3845,7 +3845,7 @@ PR, merge, promoción ni release. Roadmap manual ausente en esta base.
 ### RONDA 2 — bloque 2 (2026-10-05)
 Relative usa en Workshop el tamaño compacto 430×256 y columnas del React;
 se conserva el tamaño productivo. Corregida la elipsis vacía de clase y la
-alineación de nombres. Las 22 selecciones tienen escena válida; cross-ahead
+alineación de nombres. Las 18 selecciones nativas tienen escena válida; cross-ahead
 se capturó en fase 3. El importador prioriza classId explícito; regenerar 43
 escenas no cambió sus bytes. Comparación reparte dos columnas iguales.
 Fmt/check/clippy, Nextest 1097/1097 (4 omitidas), lifecycle12 y prueba PASS.
@@ -3862,3 +3862,15 @@ Dos procesos 29160/24828 restauraron Relative/cross-ahead/solid/1.5x; sus
 capturas son idénticas. Ronda-6 React/GPUI mirada: misma caja y datos;
 chrome y transporte aún tienen diferencias visuales. Watcher completo de
 recompilación no se repitió en esta ronda. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 4 (2026-10-05)
+Interpolación local del Workshop: easing React, radar lineal y muestreo por
+cadencia del widget registrado. Gaps/delta/pedales/reloj continuos; posición,
+boxes y vueltas cambian al llegar. Ausencias y Stale no se rellenan. Pausa
+conserva fase; Reproducir del panel empieza desde cero. Historias no se inventan.
+Fmt/check/clippy, Nextest1099/1099 (4 skip), lifecycle12 y prueba PASS.
+Ronda-7 y muestras temprana/tardía miradas: Nico −0.6→−0.3 dentro de fase1,
+posición20 y fila quietas. Tiempos React/GPUI no sincronizados; no prueba
+paridad temporal exacta ni rendimiento LMU. Corrección: registro nativo18,
+React22; faltan engineer-radio/race-schedule/delta-advanced/pedals-telemetry-compact.
+Sin push/PR/merge/release. Error y validación Mac final siguen pendientes.

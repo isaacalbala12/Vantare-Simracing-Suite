@@ -226,38 +226,23 @@ fn card_header(
     now: DateTime<Utc>,
     cx: &gpui::App,
 ) -> Div {
-    div()
-        .h(px(if calendar.view == CalendarView::Upcoming {
-            59.0
-        } else {
-            61.0
-        }))
-        .flex_none()
-        .px(px(20.0))
-        .flex()
-        .items_center()
-        .justify_between()
-        .gap(px(16.0))
-        .border_b_1()
-        .border_color(gpui::rgba(orbit::line_row(cx)))
-        .child(orbit::text(title, 15.0, 700, orbit::ink(cx), cx))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .child(local_time(now, cx))
-                .when(
-                    matches!(
-                        calendar.view,
-                        CalendarView::Day
-                            | CalendarView::Week
-                            | CalendarView::Month
-                            | CalendarView::Timeline
-                    ),
-                    |actions| actions.child(navigation(calendar, cx)),
+    orbit::card_header(title, cx).child(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .child(local_time(now, cx))
+            .when(
+                matches!(
+                    calendar.view,
+                    CalendarView::Day
+                        | CalendarView::Week
+                        | CalendarView::Month
+                        | CalendarView::Timeline
                 ),
-        )
+                |actions| actions.child(navigation(calendar, cx)),
+            ),
+    )
 }
 
 fn empty_panel(text: &str, cx: &gpui::App) -> Div {

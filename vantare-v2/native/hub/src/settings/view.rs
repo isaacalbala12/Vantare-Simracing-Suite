@@ -8,7 +8,7 @@ use gpui::{
     Context, Div, IntoElement, Window, div, linear_color_stop, linear_gradient, prelude::*, px,
     rgb, rgba,
 };
-use orbit::{Tone, setting_row};
+use orbit::{Tone, eyebrow, setting_row};
 
 // El texto hereda 1,5 em del Hub Wails; las excepciones del CSS son explícitas.
 fn text(
@@ -76,20 +76,6 @@ fn paragraph(content: &str, size: f32, weight: u16, color: u32, cx: &gpui::App) 
         })
 }
 
-fn tracked_text(
-    content: &str,
-    size: f32,
-    weight: u16,
-    color: u32,
-    tracking: f32,
-    cx: &gpui::App,
-) -> Div {
-    div().flex().gap(px(tracking)).children(
-        content
-            .chars()
-            .map(|ch| text(ch.to_string(), size, weight, color, cx).flex_none()),
-    )
-}
 // El kit de texto compartido conserva el kerning antes de aplicar el tracking.
 // Div por carácter redondea cada avance y ensancha títulos largos.
 fn page_title(label: &'static str) -> Div {
@@ -160,17 +146,6 @@ fn mono_tracked(content: String, size: f32, weight: f32, tracking: f32, color: u
             },
         )
         .size_full(),
-    )
-}
-
-fn eyebrow(content: &str, cx: &gpui::App) -> Div {
-    tracked_text(
-        &content.to_uppercase(),
-        11.0,
-        700,
-        orbit::ink_3(cx),
-        0.44,
-        cx,
     )
 }
 
@@ -261,27 +236,10 @@ fn section_body() -> Div {
     div().flex().flex_col().px(px(21.0)).py(px(21.0))
 }
 fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
-    div()
-        .flex()
-        .flex_col()
-        .min_w_0()
-        .overflow_hidden()
-        .rounded(px(orbit::RADIUS))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
+    orbit::panel(cx)
         .child(
-            div()
-                .min_h(px(60.0))
-                .px(px(20.0))
-                .py(px(13.0))
-                .flex()
-                .items_center()
-                .gap(px(12.0))
-                .border_b_1()
-                .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
+            orbit::card_header(title.to_owned(), cx)
                 .flex_wrap()
-                .child(text(title, 15.0, 700, orbit::ink(cx), cx).flex_none())
                 .when_some(meta, |head, value| {
                     let meta = if title == "Nivel de rendimiento" {
                         section_status(
@@ -725,7 +683,7 @@ fn performance_choice(
                 linear_color_stop(rgba(crate::orbit::legacy_rgba(0x0e0f_11ff, cx)), 0.7),
             )
         } else {
-            gpui::Background::from(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
+            gpui::Background::from(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
         })
         .child(
             div()
@@ -793,7 +751,7 @@ fn performance_mode(
                 linear_color_stop(rgba(crate::orbit::legacy_rgba(0x0e0f_11ff, cx)), 0.7),
             )
         } else {
-            gpui::Background::from(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
+            gpui::Background::from(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
         })
         .child(
             div()
@@ -821,45 +779,6 @@ fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::State
         orbit::small_button(id, label, cx),
         "Pendiente: sin contrato nativo",
     )
-}
-fn hotkey_keycaps(keys: [&str; 3], cx: &gpui::App) -> Div {
-    let mut keycaps = div().flex().flex_none().items_center().gap(px(4.0));
-    for (key_index, key) in keys.into_iter().enumerate() {
-        if key_index > 0 {
-            keycaps = keycaps.child(div().px(px(3.0)).child(text(
-                "+",
-                16.0,
-                400,
-                orbit::ink_muted(cx),
-                cx,
-            )));
-        }
-        keycaps = keycaps.child(
-            div()
-                .min_w(px(30.0))
-                .h(px(28.0))
-                .px(px(9.0))
-                .flex()
-                .items_center()
-                .justify_center()
-                .rounded(px(7.0))
-                .border_1()
-                .border_color(rgba(orbit::line_strong(cx)))
-                .border_b(px(2.5))
-                .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff38, cx)))
-                .bg(linear_gradient(
-                    180.0,
-                    linear_color_stop(rgb(orbit::surface_3(cx)), 0.0),
-                    linear_color_stop(rgb(orbit::surface_2(cx)), 1.0),
-                ))
-                .child(
-                    text(key, 12.0, 700, orbit::ink_2(cx), cx)
-                        .font_family(crate::orbit::mono_family(cx))
-                        .font_weight(gpui::FontWeight(700.0)),
-                ),
-        );
-    }
-    keycaps
 }
 fn aligned_navigation(page: Page) -> bool {
     matches!(
@@ -2029,7 +1948,7 @@ impl Hub {
         .into_iter()
         .enumerate()
         {
-            let keycaps = hotkey_keycaps(keys, cx);
+            let keycaps = orbit::keycaps(keys, cx);
             body = body.child(
                 section_row_hint(label, help, keycaps, 11.5, cx)
                     .id(("settings-hotkey", index))
@@ -2393,7 +2312,7 @@ impl Hub {
                     .rounded(px(orbit::RADIUS))
                     .border_1()
                     .border_color(rgba(orbit::line(cx)))
-                    .bg(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
+                    .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
                     .child(
                         text(label.to_uppercase(), 11.0, 700, orbit::ink_3(cx), cx)
                             .line_height(px(13.2)),

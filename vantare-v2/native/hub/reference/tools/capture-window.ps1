@@ -51,6 +51,7 @@ public class HubReferenceWindow {
  public delegate bool EnumProc(IntPtr h,IntPtr p);
  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc callback,IntPtr p);
  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h,StringBuilder text,int capacity);
+ [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h,IntPtr hdc,uint f);
  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,int data,UIntPtr extra);
  public static IntPtr Find(uint pid) {
@@ -118,7 +119,10 @@ try {
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output))
     $bitmap = [Drawing.Bitmap]::new($width,$height)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
-    $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size)
+    $hdc = $graphics.GetHdc()
+    $printed = [HubReferenceWindow]::PrintWindow($handle,$hdc,3)
+    $graphics.ReleaseHdc($hdc)
+    if (-not $printed) { $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size) }
     $bitmap.Save($output,[Drawing.Imaging.ImageFormat]::Png)
     Write-Output "${width} x ${height}; DPI 96; PID $ProcessId; $output"
 } finally {

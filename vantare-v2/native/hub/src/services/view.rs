@@ -59,32 +59,10 @@ fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {
 }
 
 fn account_surface(title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
-    div()
-        .flex()
-        .flex_col()
-        .min_w_0()
-        .overflow_hidden()
-        .rounded(px(orbit::RADIUS))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
-        .child(
-            div()
-                .min_h(px(60.0))
-                .px(px(20.0))
-                .py(px(13.0))
-                .flex()
-                .items_center()
-                .gap(px(12.0))
-                .border_b_1()
-                .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-                .child(text(title, 15.0, 700, orbit::ink(cx), cx).line_height(px(18.0)))
-                .child(div().flex_1())
-                .child(
-                    text(meta, 12.0, 500, orbit::ink_3(cx), cx)
-                        .font_family(crate::orbit::mono_family(cx)),
-                ),
-        )
+    orbit::panel(cx)
+        .child(orbit::card_header(title.to_owned(), cx).child(
+            text(meta, 12.0, 500, orbit::ink_3(cx), cx).font_family(crate::orbit::mono_family(cx)),
+        ))
         .child(body)
 }
 
@@ -746,7 +724,7 @@ impl Remote {
             .rounded(px(orbit::RADIUS))
             .border_1()
             .border_color(rgba(orbit::line(cx)))
-            .bg(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
+            .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
             .child(
                 div()
                     .size(px(64.0))

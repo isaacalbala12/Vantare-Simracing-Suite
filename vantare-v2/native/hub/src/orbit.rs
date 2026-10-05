@@ -169,6 +169,15 @@ pub const DOT: f32 = 6.0;
 pub const PILL_DOT: f32 = 8.0;
 pub const FOCUS_WIDTH: f32 = 2.0;
 pub const DISABLED: f32 = 0.45;
+pub const CARD_HEADER_H: f32 = 60.0;
+pub const CARD_PAD_X: f32 = 20.0;
+pub const CARD_TITLE: f32 = 15.0;
+/// Fondo de panel heredado de Wails (`#101114` al 79 %).
+pub const PANEL_BG: u32 = 0x1011_14c9;
+pub const KEYCAP_H: f32 = 26.0;
+pub const KEYCAP_MIN_W: f32 = 27.0;
+pub const KEYCAP_RADIUS: f32 = 7.0;
+pub const KEYCAP_TEXT: f32 = 11.5;
 pub const MENU_Z: usize = 30;
 pub const MODAL_Z: usize = 100;
 pub const MENU_SHADOW_Y: f32 = 24.0;
@@ -738,15 +747,42 @@ pub fn card(title: &str, cx: &gpui::App) -> Div {
         .border_color(rgba(line(cx)))
         .rounded(px(RADIUS))
         .when(!title.is_empty(), |card| {
-            card.child(
-                div()
-                    .px(px(20.0))
-                    .py(px(18.0))
-                    .border_b_1()
-                    .border_color(rgba(line(cx)))
-                    .child(text(title.to_owned(), 15.0, 700, ink(cx), cx)),
-            )
+            card.child(card_header(title.to_owned(), cx))
         })
+}
+
+/// Panel con borde (Ajustes, Cuenta, catálogo): misma superficie en todo el Hub.
+pub fn panel(cx: &gpui::App) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .min_w_0()
+        .overflow_hidden()
+        .rounded(px(RADIUS))
+        .border_1()
+        .border_color(rgba(line(cx)))
+        .bg(rgba(legacy_rgba(PANEL_BG, cx)))
+}
+
+/// Cabecera de tarjeta: título a la izquierda; lo que se añada con `.child`
+/// queda a la derecha.
+pub fn card_header(title: impl Into<SharedString>, cx: &gpui::App) -> Div {
+    div()
+        .flex_none()
+        .min_h(px(CARD_HEADER_H))
+        .px(px(CARD_PAD_X))
+        .py(px(13.0))
+        .flex()
+        .items_center()
+        .justify_between()
+        .gap(px(12.0))
+        .border_b_1()
+        .border_color(rgba(line_row(cx)))
+        .child(
+            text(title, CARD_TITLE, 700, ink(cx), cx)
+                .font_weight(face_weight(700, cx))
+                .line_height(px(18.0)),
+        )
 }
 
 /// Cuerpo con relleno para colocar filas dentro de una [`card`].
@@ -877,6 +913,31 @@ pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
         .tab_stop(false)
         .cursor_default()
         .aria_description(reason.to_owned())
+}
+
+/// Combinación de teclas («Ctrl + K»): el único estilo de tecla del Hub.
+pub fn keycaps<S: Into<SharedString>>(keys: impl IntoIterator<Item = S>, cx: &gpui::App) -> Div {
+    let mut row = div().flex().flex_none().items_center().gap(px(6.0));
+    for (index, key) in keys.into_iter().enumerate() {
+        if index > 0 {
+            row = row.child(text("+", KEYCAP_TEXT, 500, ink_muted(cx), cx));
+        }
+        row = row.child(
+            div()
+                .min_w(px(KEYCAP_MIN_W))
+                .h(px(KEYCAP_H))
+                .px(px(6.5))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(KEYCAP_RADIUS))
+                .border_1()
+                .border_color(rgba(line_strong(cx)))
+                .bg(rgba(legacy_rgba(0xffff_ff06, cx)))
+                .child(mono_text(key, KEYCAP_TEXT, ink_2(cx), cx)),
+        );
+    }
+    row
 }
 
 /// Botón principal (claro sobre oscuro, `--orbit-primary-*`).

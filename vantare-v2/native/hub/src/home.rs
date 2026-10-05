@@ -150,25 +150,6 @@ fn pending_overlay(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
     )
 }
 
-fn keycap(label: &'static str, cx: &gpui::App) -> Div {
-    div()
-        .min_w(px(27.0))
-        .h(px(26.0))
-        .px(px(6.5))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(6.5))
-        .border_1()
-        .border_color(rgba(orbit::line_strong(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-        .font_family(crate::orbit::mono_family(cx))
-        .text_size(px(12.0))
-        .font_weight(FontWeight::NORMAL)
-        .text_color(rgb(orbit::ink_3(cx)))
-        .child(label)
-}
-
 /// Ejecuta el mismo Ctrl+K que la shell, incluido foco, cierre y teclado.
 /// No monta otra paleta ni mantiene otro estado de búsqueda.
 #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
@@ -270,15 +251,7 @@ fn command(cx: &gpui::App) -> Stateful<Div> {
                             .mt(px(4.0)),
                         ),
                 )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(4.0))
-                        .child(keycap("Ctrl", cx))
-                        .child(text("+", 10.0, 500, orbit::ink_muted(cx), cx).px(px(3.0)))
-                        .child(keycap("K", cx)),
-                ),
+                .child(orbit::keycaps(["Ctrl", "K"], cx)),
         )
 }
 
@@ -618,65 +591,25 @@ fn race_rows(
     race_list
 }
 
-fn profile_rows(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
+fn profile_rows(
+    demo: Option<&crate::demo::DemoData>,
+    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
+    cx: &gpui::App,
+) -> Div {
     let mut profiles = orbit::card_body().flex_1().min_h_0();
     if let Some(profile) = demo.and_then(crate::demo::DemoData::overlay_profile) {
-        profiles = profiles.child(
-            div()
-                .relative()
-                .mx(px(4.0))
-                .mt(px(10.0))
-                .h(px(50.0))
-                .px(px(8.0))
-                .flex()
-                .items_center()
-                .gap(px(10.0))
-                .rounded(px(11.0))
-                .bg(linear_gradient(
-                    90.0,
-                    linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_491c, cx)), 0.0),
-                    linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
-                ))
-                .when(profile.active, |row| {
-                    row.child(
-                        div()
-                            .absolute()
-                            .left(px(-13.0))
-                            .top(px(14.0))
-                            .w(px(3.0))
-                            .h(px(18.0))
-                            .flex_none()
-                            .rounded_full()
-                            .bg(rgb(orbit::red(cx))),
-                    )
-                })
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(2.0))
-                        .child(text(profile.name.clone(), 13.0, 650, orbit::ink_2(cx), cx))
-                        .child(text(
-                            format!("{} widgets · configuración local", profile.widgets),
-                            11.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )),
-                )
-                .when(profile.active, |row| {
-                    row.child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(6.0))
-                            .child(text("✓", 14.0, 700, orbit::green(cx), cx))
-                            .child(text("Activo", 12.0, 500, orbit::green(cx), cx)),
-                    )
-                }),
-        );
+        let state = if profile.active { " · activo" } else { "" };
+        profiles = profiles.child(navigate(
+            orbit::list_row(
+                "home-profile",
+                &profile.name,
+                &format!("{} widgets · configuración local{state}", profile.widgets),
+                profile.active,
+                true,
+                cx,
+            ),
+            Section::Studio,
+        ));
     } else {
         profiles = profiles.child(div().w_full().flex().justify_center().child(text(
             "Sin perfiles todavía",
@@ -696,7 +629,7 @@ fn lists(
     compact: bool,
     cx: &gpui::App,
 ) -> Div {
-    let profiles = profile_rows(demo, cx);
+    let profiles = profile_rows(demo, navigate, cx);
     div()
         .flex()
         .flex_1()
@@ -714,42 +647,27 @@ fn lists(
                     .min_h(px(362.0))
                     .when(compact, gpui::Styled::flex_none)
                     .child(
-                        div()
-                            .h(px(50.0))
-                            .px(px(20.0))
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .border_b_1()
-                            .border_color(gpui::rgba(orbit::line_row(cx)))
-                            .child(text("Próximas carreras", 15.0, 700, orbit::ink(cx), cx))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(12.0))
-                                    .child(orbit::mono_text(
-                                        "Cadencia publicada",
-                                        12.0,
-                                        orbit::ink_3(cx),
-                                        cx,
-                                    ))
-                                    .child(navigate(
-                                        div()
-                                            .id("home-races")
-                                            .role(gpui::Role::Button)
-                                            .aria_label("Ver todas")
-                                            .tab_index(0)
-                                            .child(text(
-                                                "Ver todas",
-                                                12.0,
-                                                500,
-                                                orbit::ink_3(cx),
-                                                cx,
-                                            )),
-                                        Section::Calendar,
-                                    )),
-                            ),
+                        orbit::card_header("Próximas carreras", cx).child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(12.0))
+                                .child(orbit::mono_text(
+                                    "Cadencia publicada",
+                                    12.0,
+                                    orbit::ink_3(cx),
+                                    cx,
+                                ))
+                                .child(navigate(
+                                    div()
+                                        .id("home-races")
+                                        .role(gpui::Role::Button)
+                                        .aria_label("Ver todas")
+                                        .tab_index(0)
+                                        .child(text("Ver todas", 12.0, 500, orbit::ink_3(cx), cx)),
+                                    Section::Calendar,
+                                )),
+                        ),
                     )
                     .child(race_rows(starts, navigate, cx)),
             )
@@ -763,24 +681,15 @@ fn lists(
                 .flex()
                 .flex_col()
                 .child(
-                    div()
-                        .h(px(50.0))
-                        .px(px(20.0))
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .border_b_1()
-                        .border_color(gpui::rgba(orbit::line_row(cx)))
-                        .child(text("Perfiles", 15.0, 700, orbit::ink(cx), cx))
-                        .child(navigate(
-                            div()
-                                .id("home-profiles")
-                                .role(gpui::Role::Button)
-                                .aria_label("Gestionar")
-                                .tab_index(0)
-                                .child(text("Gestionar", 12.0, 500, orbit::ink_3(cx), cx)),
-                            Section::Studio,
-                        )),
+                    orbit::card_header("Perfiles", cx).child(navigate(
+                        div()
+                            .id("home-profiles")
+                            .role(gpui::Role::Button)
+                            .aria_label("Gestionar")
+                            .tab_index(0)
+                            .child(text("Gestionar", 12.0, 500, orbit::ink_3(cx), cx)),
+                        Section::Studio,
+                    )),
                 )
                 .child(profiles),
         )

@@ -996,7 +996,8 @@ pub fn list_row(
         })
         .when(!enabled, |s| s.opacity(DISABLED))
         .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
-        .child(text(label.to_owned(), BODY, 650, ink(cx), cx))
+        // La cara Inter ya trae el peso: pedirlo otra vez sintetiza negrita.
+        .child(text(label.to_owned(), BODY, 650, ink(cx), cx).font_weight(face_weight(650, cx)))
         .child(text(detail.to_owned(), SECONDARY, 400, ink_3(cx), cx))
 }
 pub fn empty_state(title: &str, help: &str, cx: &gpui::App) -> Div {

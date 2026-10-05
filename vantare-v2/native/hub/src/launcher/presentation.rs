@@ -100,31 +100,9 @@ fn tracked_line(
     })
 }
 
-pub(super) fn eyebrow(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> gpui::Div {
-    let content: gpui::SharedString = content.into();
-    tracked_text(content.to_uppercase(), 11.0, 800, orbit::ink_3(cx), 0.99)
-}
+pub(super) use crate::orbit::eyebrow;
 
-fn chip(label: &str, tone: Tone, cx: &gpui::App) -> gpui::Div {
-    if orbit::is_mono(cx) {
-        return orbit::chip(label, tone, cx);
-    }
-    div()
-        .h(px(26.0))
-        .px(px(10.0))
-        .rounded(px(8.0))
-        .flex_none()
-        .flex()
-        .items_center()
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff09, cx)))
-        .child(tracked_text(
-            label.to_uppercase(),
-            10.0,
-            700,
-            tone.color(cx),
-            0.6,
-        ))
-}
+use crate::orbit::chip;
 
 #[derive(gpui::IntoElement)]
 struct SvgMark {
@@ -292,15 +270,7 @@ fn launch_button(featured: bool, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
 }
 
 fn policy_chip(label: &str, cx: &gpui::App) -> gpui::Div {
-    div()
-        .flex_none()
-        .h(px(26.0))
-        .px(px(8.0))
-        .flex()
-        .items_center()
-        .rounded(px(8.0))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff09, cx)))
-        .child(tracked_text(label, 10.0, 700, orbit::ink_3(cx), 0.6))
+    chip(label, Tone::Neutral, cx)
 }
 
 fn app_palette(id: &str) -> (u32, u32) {
@@ -889,17 +859,10 @@ impl Launcher {
                 cx,
             ));
         }
-        div()
+        orbit::panel(cx)
             .id("launcher-app-catalog")
-            .flex()
-            .flex_col()
             .flex_1()
             .min_h_0()
-            .overflow_hidden()
-            .rounded(px(18.0))
-            .border_1()
-            .border_color(rgba(orbit::line(cx)))
-            .bg(rgba(crate::orbit::legacy_rgba(0x1011_14c9, cx)))
             .child(Self::catalog_heading(meta, cx))
             .child(
                 div()
@@ -914,35 +877,11 @@ impl Launcher {
     }
 
     fn catalog_heading(meta: String, cx: &gpui::App) -> gpui::Div {
-        div()
-            .h(px(60.0))
-            .flex_none()
-            .flex()
-            .items_center()
-            .px(px(20.0))
-            .border_b_1()
-            .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-            .child(
-                div()
-                    .w_full()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(10.0))
-                    .child(
-                        text("Aplicaciones", 15.0, 700, orbit::ink(cx), cx)
-                            .flex_1()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .text_ellipsis(),
-                    )
-                    .child(
-                        text(meta, 12.0, 500, orbit::ink_3(cx), cx)
-                            .font_family(crate::orbit::mono_family(cx))
-                            .flex_none(),
-                    ),
-            )
+        orbit::card_header("Aplicaciones", cx).child(
+            text(meta, 12.0, 500, orbit::ink_3(cx), cx)
+                .font_family(crate::orbit::mono_family(cx))
+                .flex_none(),
+        )
     }
 
     fn catalog_add_app_action(cx: &Context<Self>) -> gpui::Stateful<gpui::Div> {
@@ -1605,26 +1544,7 @@ impl Launcher {
                 .first()
                 .map_or("", |profile| profile.hotkey.as_str())
         });
-        let mut shortcut = div().flex().items_center().gap(px(8.0));
-        for (index, key) in keys.iter().enumerate() {
-            if index > 0 {
-                shortcut = shortcut.child(text("+", 18.0, 700, orbit::ink_4(cx), cx));
-            }
-            shortcut = shortcut.child(
-                div()
-                    .h(px(26.0))
-                    .min_w(px(27.0))
-                    .px(px(6.0))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded(px(7.0))
-                    .border_1()
-                    .border_color(rgba(orbit::line_strong(cx)))
-                    .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-                    .child(orbit::mono_text(key.clone(), 11.0, orbit::ink_3(cx), cx)),
-            );
-        }
+        let mut shortcut = orbit::keycaps(keys.iter().cloned(), cx);
         if keys.is_empty() {
             shortcut = shortcut.child("—");
         }

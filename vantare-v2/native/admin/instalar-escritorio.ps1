@@ -22,6 +22,7 @@ $launcher = Join-Path $destination 'abrir.ps1'
 @'
 $ErrorActionPreference = 'Stop'
 $env:VANTARE_NATIVE_DATA_ROOT = Join-Path $PSScriptRoot 'data'
+$env:RUST_LOG = 'vantare_admin=info'
 $start = [Diagnostics.ProcessStartInfo]::new()
 $start.FileName = Join-Path $PSScriptRoot 'vantare-admin.exe'
 $start.WorkingDirectory = $PSScriptRoot

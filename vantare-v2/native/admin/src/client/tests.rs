@@ -90,11 +90,12 @@ fn deployed_report_shapes_and_nullable_contacts_are_readable() {
 
 #[test]
 fn search_limits_match_deployed_validation() {
-    for query in ["", " ", " ana", "ana ", &"a".repeat(201)] {
+    for query in [" ", " ana", "ana ", &"a".repeat(201)] {
         assert_eq!(
             Action::SearchAccounts {
                 query: query.into(),
-                limit: 50
+                limit: 50,
+                cursor: None
             }
             .validate(),
             Err(Error::Protocol)
@@ -103,7 +104,8 @@ fn search_limits_match_deployed_validation() {
     assert!(
         Action::SearchAccounts {
             query: "Ana Martín".into(),
-            limit: 50
+            limit: 50,
+            cursor: None
         }
         .validate()
         .is_ok()
@@ -117,6 +119,7 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
         Action::SearchAccounts {
             query: "Ana".into(),
             limit: 50,
+            cursor: None,
         },
         Action::GetAccount {
             account_id: id.clone(),
@@ -243,7 +246,8 @@ fn limits_and_url_guards_reject_before_network() {
             "test",
             &Action::SearchAccounts {
                 query: String::new(),
-                limit: 51
+                limit: 51,
+                cursor: None,
             }
         ),
         Err(Error::Protocol)

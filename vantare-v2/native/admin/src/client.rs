@@ -167,6 +167,8 @@ pub enum Action {
     SearchAccounts {
         query: String,
         limit: u8,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cursor: Option<String>,
     },
     GetAccount {
         account_id: String,
@@ -201,6 +203,19 @@ pub enum Action {
     },
 }
 impl Action {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::SearchAccounts { .. } => "search_accounts",
+            Self::GetAccount { .. } => "get_account",
+            Self::SetTester { .. } => "set_tester",
+            Self::SetModule { .. } => "set_module",
+            Self::GetRollout => "get_rollout",
+            Self::SetRollout { .. } => "set_rollout",
+            Self::ListReports { .. } => "list_reports",
+            Self::GetReport { .. } => "get_report",
+            Self::SetReportStatus { .. } => "set_report_status",
+        }
+    }
     pub fn mutation(&self) -> bool {
         matches!(
             self,
@@ -213,11 +228,17 @@ impl Action {
     pub fn validate(&self) -> Result<()> {
         let bounded = |s: &str| !s.trim().is_empty() && s.len() <= 256;
         let valid = match self {
-            Self::SearchAccounts { query, limit } => {
-                !query.is_empty()
-                    && query == query.trim()
+            Self::SearchAccounts {
+                query,
+                limit,
+                cursor,
+            } => {
+                query == query.trim()
                     && query.len() <= 200
                     && (1..=50).contains(limit)
+                    && cursor
+                        .as_ref()
+                        .is_none_or(|s| query.is_empty() && vantare_services::license::uuid(s))
             }
             Self::ListReports { limit, cursor, .. } => {
                 (1..=100).contains(limit) && cursor.as_ref().is_none_or(|s| bounded(s))

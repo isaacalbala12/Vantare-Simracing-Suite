@@ -88,7 +88,7 @@ se reportan sin declarar verde el workspace. No se crea PR ni se promociona.
 
 Actualización #1456 (nota 15:24): instalación privada reproducible mediante native/admin/instalar-escritorio.ps1, en LOCALAPPDATA/Vantare Admin; accesos Escritorio/Inicio con icono y lanzador sin consola, sesión aislada y reinstalación conservando datos. Instalación 2x y arranque desde el acceso verificados. Binario Windows perfil prueba con config real OK; capturas físicas demo limpias de las tres pantallas revisadas (1280x800, DPI96), beta sin cambios. Mac: fmt y Clippy propios --no-deps OK; 69 tests propios y 10 lifecycle OK. E2E owner producción continúa pendiente del login de Isaac.
 
-## Ronda 2 Admin #1456 — servidor listo para revisión (2026-10-05)
+## Ronda 2 Admin #1456 — listado y respuesta local (2026-10-05)
 
 La búsqueda real por nombre y correo de Isaac devuelve una cuenta owner. La
 lista inicial vacía era el flujo de búsqueda obligatoria; Isaac pide listado
@@ -100,6 +100,25 @@ revocación OAuth, presupuesto y auditoría siguen comprobándose en cada petici
 Logs sanitizados separan las fases del servidor. No hay caché de autenticación.
 Dos regresiones fallaron antes; después Deno Admin/authorize 70/70 y lint/fmt OK.
 Tests pgTAP de páginas añadidos; NO ejecutados: sin PostgreSQL/Docker local.
-Evidencia: C:/tmp/mac-evidence/r2-server-*.log. Despliegue y verificación de fases
-pendientes del orquestador; cliente de caché/debounce/listado todavía en curso.
+Servidor 06c9f761 desplegado por el orquestador según nota 15:58. E2E con la
+sesión aislada de Isaac: primera página devuelve una cuenta owner y cursor null;
+nombre y correo encuentran esa cuenta. Solo hay una cuenta real: no se demostró
+navegación entre dos páginas pobladas. Lectura de fases por MCP Supabase denegada;
+falta extracto sanitizado del orquestador.
+
+Cliente: tabla al abrir, filtro local inmediato, debounce remoto 300 ms, caché de
+lecturas 30 s/64 entradas, precarga de módulos/reportes y refresco de fondo.
+Actualizar, mutaciones, logout y denegación invalidan la caché. Respuestas tardías
+tras perder autorización se descartan. No hay reintento automático de precarga
+fallida. Worker bloquea en reposo y GPUI solo sondea respuestas pendientes.
+RUST_LOG escribe tiempos sanitizados fuera del hilo UI.
+
+Capturas reales: C:/tmp/mac-evidence/ronda-2.png. Hasta construcción de render,
+lecturas cacheadas finales: detalle5,68ms/módulos4,90ms/reportes4,74ms/lista6,23ms.
+Consultas remotas aún ~0,74–1,8s: <300ms no se cumple en carga fría. Hover p95
+7,97ms/siguiente frame GPUI p95 9,71ms: no son DWM/GPU ni prueba de listas largas.
+Workspace1094/1094 (4 skips de plataforma), lifecycle, fmt, check y Clippy PASS;
+tras revisión final, Admin14/14 PASS y binario prueba con config real PASS.
+CPU, instalación y límites: C:/tmp/mac-evidence/entrega-r2.md y
+C:/tmp/fase2/informe-mac.md. No se atribuye mejora CPU sin comparación controlada.
 Sin push, PR, integración o release. plan.md no existe en la base recibida.

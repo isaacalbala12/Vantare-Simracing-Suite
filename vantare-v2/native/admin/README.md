@@ -29,10 +29,10 @@ simulados desaparecen al cerrar. `--help` describe los argumentos.
   Deben coincidir con los del Hub que guardó la sesión existente.
 
 Reutiliza `Account`, descubrimiento OAuth, PKCE, callback, refresh y `Store` de
-`vantare-services`, incluida su carpeta y binding de sesión. No copia tokens ni
-implementa otro flujo OAuth. Cierra el Hub antes de administrar: ambos procesos
-usan el mismo almacén, que no coordina escrituras simultáneas. Cerrar sesión aquí
-revoca la sesión local compartida; no modifica roles ni concesiones.
+`vantare-services`. El acceso de Escritorio usa una raíz aislada y no requiere
+cerrar el Hub. Si ejecutas el binario directamente sin configurar raíz, comparte
+el almacén por defecto con el Hub: cierra el Hub en ese caso. No copia tokens ni
+implementa otro flujo OAuth. Cerrar sesión no modifica roles ni concesiones.
 
 ## Contrato de cliente (v1)
 
@@ -50,6 +50,29 @@ Claves del servidor `supabase/functions/native-admin` y su migración:
 | `list_reports` | `reports: Report[]`, `next_cursor: string \| null` |
 | `get_report` | `report` con `payload` y `screenshots: [{url, ...}]` firmadas |
 | mutaciones | Sin datos adicionales; después se relee el detalle/rollout |
+
+Usuarios carga al abrir la primera página de cuentas ya mapeadas a la instancia
+Clerk configurada, por alta descendente. `search_accounts` acepta `query: ""`,
+`limit` ≤50 y cursor UUID opcional; devuelve `next_cursor` null al terminar.
+«Siguiente página» avanza. Con texto se filtra el directorio por nombre/correo
+(hasta 50 coincidencias); limpiar el buscador vuelve al inicio.
+
+El filtro local responde al teclear y la consulta remota espera 300 ms sin
+cambios. Mientras llega la respuesta muestra «Buscando cuentas…». Las lecturas
+confirmadas de cuentas, módulos y páginas se guardan hasta 30 s en memoria y se
+refrescan en segundo plano cuando se consultan desde caché;
+«Actualizar» fuerza una lectura remota. La caché se borra al cerrar sesión,
+perder autorización o escribir; nunca se usa para ejecutar mutaciones.
+Al abrir Usuarios se precargan módulos; al abrir Módulos se precargan reportes.
+La red sigue fuera de GPUI y ambos sondeos se detienen en reposo.
+
+El acceso de Escritorio activa `RUST_LOG=vantare_admin=info`: tiempos sanitizados
+en `data/Vantare/native/services/admin-timings.log`, sin consultas, datos de cuenta,
+tokens ni URLs. `vantare_admin=trace` añade duración de construcción de la vista y
+espera hasta el siguiente frame GPUI (no mide presentación física DWM/GPU).
+`--diagnose-owner`, con Admin cerrada y su raíz aislada configurada, prueba lecturas
+reales de páginas y búsqueda por el nombre/correo de la propia cuenta: solo imprime
+tiempos, recuentos y booleanos. No modifica roles, módulos ni reportes.
 
 `User`: `account_id`, `email`, `name`, `created_at` (ISO), `last_seen_at`
 (ISO o null), `roles`, `modules`, `reports_count`.

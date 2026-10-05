@@ -2,6 +2,44 @@
 
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
+### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente
+
+Parte de `fe12dcbbf00003e983931e10ac7d3948eb8aae7d`, mismo worktree/rama.
+El panel GPUI ahora tiene 248 px, scroll propio, selección del widget y sus
+Settings, idiomas es/en, sesión, fuente, ubicación, fondo, escala, dimensiones,
+comparación y restablecer. Las 43 escenas React se exportan con Playwright
+existente y se convierten al DTO IPC; son demostraciones, nunca prueba LMU.
+La reproducción añade fases, pausa, anterior/siguiente, bucle y deslizador.
+Retroceder reconstruye el renderer productivo desde el inicio; la recarga de
+estilo conserva el mismo proceso. No hay WebView ni renderer alternativo.
+
+Se reprodujo y corrigió la colisión de IDs `#dev-1`; se añadieron regresiones
+para IDs únicos/estables, tiempos Standings sin overwrite Relative, signo
+relativo, playback y último documento válido ante escritura parcial.
+Referencia e inventario en `C:/tmp/1467b-evidence/react.md`, capturas en
+`react/` y `gpui/`, rondas 1 y 2 revisadas visualmente. La fase 2 se accionó
+en la ventana propia y mostró cambio de posición/caption. Informe operativo:
+`C:/tmp/fase2/informe-1467b.md`.
+
+No se declara IGUAL completo: faltan V1/Foco, idiomas pt/it, estado Error
+(el contrato nativo tiene Waiting), equivalentes de dents/históricos React,
+persistencia de los nuevos controles al recompilar y paridad de tamaño/
+columnas de Relative. Ancho/alto cambian el marco; no reproducen el escalado
+independiente X/Y de React. Las superficies comparan el mismo renderer y no
+simulan sus transportes. Persisten diferencias de controles/espaciado y el
+centrado de la zona PIT. El siguiente trabajo requiere decidir el alcance de
+paridad del renderer/contrato; no se altera arquitectura para ocultarlo.
+
+Gates Windows finales PASS: check, Clippy `-D warnings`, fmt, Nextest
+1095/1095 (4 omitidas) y lifecycle (12 escenarios). Build prueba PASS.
+Exportador reejecutado con SHA idéntico; 43 escenas regeneradas idénticas.
+No se ejecutaron gates frontend porque sus archivos no cambiaron.
+Comprobación Mac pendiente en el momento de este commit de implementación.
+Sin push, PR, CI remoto, merge, promoción ni release. El roadmap manual no
+existe en esta base; no se recrea. La issue #1467 permanece abierta.
+
+### Entrega de estilo en vivo anterior
+
 Entrega aislada en `vantareapp/isa-1467-workshop-estilo-vivo`, base
 `a464e9fc95ff0af10508f88a53302a8803437b36`, worktree `C:/tmp/vw3-1467`.
 El brief de Isaac autoriza extraer valores visuales, conservando Rust + GPUI y

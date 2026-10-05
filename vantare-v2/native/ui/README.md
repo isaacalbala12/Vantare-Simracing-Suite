@@ -447,6 +447,32 @@ todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
 (3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
 (el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).
 
+## Panel del Workshop (#1467, ronda 2)
+
+El Workshop GPUI usa un panel lateral de 248 px y un escenario centrado,
+con selección de widget, idioma es/en, sesión, Settings del widget, módulos,
+nombre, pie, fuente, ubicación, fondo, escala, dimensiones y comparación.
+Las superficies comparten el renderer productivo; no simulan transportes OBS
+o Desktop. Las escenas con varias fases tienen anterior/siguiente, pausa,
+bucle y deslizador; cambiar de fase reconstruye el estado desde el principio.
+Guardar `styles/standings.json` sigue recargando el estilo en el mismo proceso.
+
+`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React,
+no telemetría real. `workshop-sources.json` registra procedencia y límites.
+Para regenerarlas con el frontend levantado:
+
+```powershell
+node native/ui/export-workshop-scenes.mjs http://127.0.0.1:5197 C:/tmp/workshop-scenes.json
+python native/ui/import-workshop-scenes.py C:/tmp/workshop-scenes.json
+```
+
+Se conservan señales ausentes como ausentes. Los contratos nativos no tienen
+equivalente para `dents`, ciertos históricos React o los estilos V1/Foco;
+la importación no afirma paridad completa de esos estados. La selección
+widget/archivo se conserva con el script en vivo; los controles del panel
+se restablecen al reiniciar el binario. La comparación visual de la ronda
+queda en `C:/tmp/1467b-evidence/`.
+
 ## Layout nativo (#1427 → #1430)
 
 Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\native\layout.json`; `--layout <ruta>` permite probar `ui/fixtures/layout.json` (con `--fuente local` solo para QA sintética). Sondeo cada 500 ms, último JSON válido ante errores; ID, posición global, visibilidad, opacidad y `settings.kind` en kebab-case, resto camelCase. Las instancias ocultas conservan el HWND del monitor; eliminar todas las instancias tampoco termina el proceso. El orden del vector es el orden de pintado. Sin escala ni importación V4.

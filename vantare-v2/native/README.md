@@ -201,16 +201,21 @@ una DLL adicional. Para gates/workers se puede enlazar el binario oficial de
 **DuckDB 1.5.5**, correspondiente a `duckdb = 1.10505.0`, sin compilar C++.
 No se cambia la versión de la dependencia ni se descargan bibliotecas al compilar.
 
-Desde `native/`, con `duckdb.lib` y `duckdb.dll` del archivo oficial
+Desde `native/`, instala una vez por usuario el archivo oficial
 [`libduckdb-windows-amd64.zip`](https://github.com/duckdb/duckdb/releases/tag/v1.5.5)
-extraídos juntos en un directorio fuera del repo:
+en el directorio compartido fuera del repo:
 
 ```powershell
-$env:DUCKDB_LIB_DIR = 'C:/tmp/vantare-duckdb-1.5.5'
+.\setup-duckdb.ps1 # Una vez por usuario/PC; zip oficial y SHA-256 fijado.
 .\gates.ps1 clippy
 .\gates.ps1 test
 .\gates.ps1 lifecycle
 ```
+
+La ubicación compartida por defecto es `$env:LOCALAPPDATA/Vantare/duckdb-1.5.5`.
+También admite un archivo oficial ya descargado con `setup-duckdb.ps1 -ArchivePath`;
+siempre verifica el mismo hash antes de extraer únicamente la DLL y la biblioteca.
+Para una ubicación distinta, usa `gates.ps1 -DuckDbDirectory` o `DUCKDB_LIB_DIR`.
 
 El script reactiva `/default` de todos los miembros excepto storage, incluidos
 los crates futuros: así no se apagan silenciosamente otros defaults. Si cambia

@@ -6,7 +6,8 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-if (-not $DuckDbDirectory) { throw 'Indica -DuckDbDirectory con la biblioteca oficial DuckDB 1.5.5.' }
+if (-not $DuckDbDirectory) { $DuckDbDirectory = Join-Path $env:LOCALAPPDATA 'Vantare/duckdb-1.5.5' }
+if (-not (Test-Path -LiteralPath $DuckDbDirectory)) { throw 'Ejecuta .\setup-duckdb.ps1 una vez para instalar DuckDB 1.5.5.' }
 $directory = (Resolve-Path -LiteralPath $DuckDbDirectory).Path
 if (-not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.lib')) -or
     -not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.dll'))) { throw 'Se necesitan duckdb.lib y duckdb.dll oficiales (Windows).' }

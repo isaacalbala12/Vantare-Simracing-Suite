@@ -36,3 +36,7 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32
 
 [lints]
 workspace = true
+
+[build-dependencies]
+# Ya utilizada por UI: compila los valores de estilo sin lectura de disco en producto.
+serde_json = '1'

@@ -323,7 +323,7 @@ botones recorren `Kind::ALL` (registro `widgets!`) y `fixtures/*.snapshot.json`;
 una escena externa indicada por CLI también entra en la lista. El estado vive
 en el DTO JSON, incluidas calidad y capacidades; no hay generador paralelo.
 Tab/Shift+Tab cambia el foco, Enter/Espacio activa el botón.
-Guardar la escena recarga cada 150 ms; un JSON inválido muestra el error y
+Guardar la escena recarga cada 50 ms; un JSON inválido muestra el error y
 mantiene la última foto válida. La escena inicial debe ser válida. Sin `--escena`
 se usa la del widget si existe, o `lmu47`. `--captura` conserva su ruta y geometría;
 no admite combinarse con `--dev`.
@@ -350,6 +350,43 @@ Propuesta sin aplicar: medir `debug=0` en una tanda aislada con el mismo cambio 
 bajo la carga actual. No se cambió ningún perfil, flag ni dependencia.
 Gates finales: fmt/clippy/workspace tests PASS (`-j 2`, cuatro pruebas live
 omitidas); CLI con `parity-capture` 4/4 y pedales 755/19200 px (3,9323 %).
+
+### Workshop en vivo (#1467)
+
+1. Mac: desde `native/`, ejecuta `bash ui/workshop-en-vivo.sh`.
+2. Windows: desde `native/`, ejecuta `./ui/workshop-en-vivo.ps1`.
+3. Edita `ui/styles/standings.json`: colores, tamaños, espaciados, radios, sombras o fuentes.
+4. Guarda: lo ves al momento en Standings, sin recompilar ni reiniciar Workshop.
+5. Para volver al diseño original, restaura el JSON con Git y guarda.
+
+`fonts.family: null` conserva Inter registrada (pesos 400/500/600/650/700/750/800).
+Una familia instalada, por ejemplo `"Segoe UI"`, se selecciona por nombre.
+El archivo es completo y tipado: errores de nombre, campos ausentes o valores
+fuera de rango aparecen en Workshop; conserva el último estilo válido hasta
+la siguiente escritura válida. `VANTARE_WORKSHOP_STYLES` permite otro directorio
+con `standings.json` (también al ejecutar una copia del binario).
+
+Producto y capturas de paridad usan los valores compilados al construir desde
+ese mismo JSON; nunca leen el fichero de estilo en disco. Las otras familias
+siguen con sus valores actuales. Cambios de estructura Rust siguen necesitando
+compilar mediante `dev.ps1`; este cambio solo recarga valores visuales.
+
+**Verificación Windows (2026-10-05).** Capturas compiladas del renderer:
+0/292160 px distintos frente a `a464e9fc` (umbral 0); Wails 2,5133 % (umbral 8),
+igual que la base. Guardar → píxel del escritorio: 10/10 tandas <200 ms,
+mediana 53,79 ms, máximo 62,36 ms; `GetPixel`, sondeo de 2 ms, perfil `prueba`,
+mismo PID y binario durante todos los guardados. Escena fija de Workshop,
+sin medir CPU/RAM ni telemetría LMU. Capturas limpias y JSON inválido revisados:
+el último estilo válido se conserva. Evidencia fuera del repo en
+`C:/tmp/1467-evidence/`. Por SSH, los logs «ventana abierta» y «estilo aplicado»
+permiten comprobar el arranque y las recargas; no certifican píxeles en el Mac.
+
+**Verificación Mac (2026-10-05, Darwin arm64).** El script compiló en 3,09 s
+(incremental; primer build 7m12s), abrió la ventana GPUI y aceptó tres cargas
+de estilo en el mismo proceso sobre `ae6ccb70`. Guardar → log: 110,50 ms;
+JSON original restaurado al terminar. La revisión visual en su pantalla queda
+para Isaac. Build PASS con aviso heredado por `LiveScreens::toggle` sin uso;
+los gates completos se ejecutaron en Windows.
 
 ### Harness anterior y mediciones históricas
 
@@ -409,6 +446,32 @@ cambio de una constante de color en `pedals.rs`, `radar.rs` y `standings/view.rs
 todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
 (3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
 (el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).
+
+## Panel del Workshop (#1467, ronda 2)
+
+El Workshop GPUI usa un panel lateral de 248 px y un escenario centrado,
+con selección de widget, idioma es/en, sesión, Settings del widget, módulos,
+nombre, pie, fuente, ubicación, fondo, escala, dimensiones y comparación.
+Las superficies comparten el renderer productivo; no simulan transportes OBS
+o Desktop. Las escenas con varias fases tienen anterior/siguiente, pausa,
+bucle y deslizador; cambiar de fase reconstruye el estado desde el principio.
+Guardar `styles/standings.json` sigue recargando el estilo en el mismo proceso.
+
+`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React,
+no telemetría real. `workshop-sources.json` registra procedencia y límites.
+Para regenerarlas con el frontend levantado:
+
+```powershell
+node native/ui/export-workshop-scenes.mjs http://127.0.0.1:5197 C:/tmp/workshop-scenes.json
+python native/ui/import-workshop-scenes.py C:/tmp/workshop-scenes.json
+```
+
+Se conservan señales ausentes como ausentes. Los contratos nativos no tienen
+equivalente para `dents`, ciertos históricos React o los estilos V1/Foco;
+la importación no afirma paridad completa de esos estados. La selección
+widget/archivo se conserva con el script en vivo; los controles del panel
+se restablecen al reiniciar el binario. La comparación visual de la ronda
+queda en `C:/tmp/1467b-evidence/`.
 
 ## Layout nativo (#1427 → #1430)
 

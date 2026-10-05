@@ -124,6 +124,7 @@ pub struct Overlay {
     wake_deadline: WakeDeadline,
     wake_task: Option<gpui::Task<()>>,
     preview_scale: f32,
+    preview_scale_y: f32,
     paused: bool,
     live_projection: bool,
     #[cfg(feature = "paint-stats")]
@@ -134,6 +135,18 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// Solo Workshop suministra un estilo de desarrollo; producto usa valores compilados.
+    pub(crate) fn standings_style(
+        &mut self,
+        style: Arc<crate::standings::style::Style>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Widget::Standings(widget) = &mut self.widget {
+            widget.set_style(style);
+            cx.notify();
+        }
+    }
+
     pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }
@@ -151,6 +164,7 @@ impl Overlay {
             wake_deadline: WakeDeadline::default(),
             wake_task: None,
             preview_scale: 1.0,
+            preview_scale_y: 1.0,
             paused: false,
             live_projection: false,
             #[cfg(feature = "paint-stats")]
@@ -203,7 +217,29 @@ impl Overlay {
             return Err("la escala de preview debe ser finita y positiva");
         }
         self.preview_scale = scale;
+        self.preview_scale_y = scale;
         Ok(())
+    }
+
+    pub(crate) fn set_preview_axes(&mut self, x: f32, y: f32) -> Result<(), &'static str> {
+        if !x.is_finite() || !y.is_finite() || x <= 0.0 || y <= 0.0 {
+            return Err("las escalas de preview deben ser finitas y positivas");
+        }
+        self.preview_scale = x;
+        self.preview_scale_y = y;
+        Ok(())
+    }
+
+    pub(crate) fn workshop_layout(&mut self) {
+        if let Widget::Relative(widget) = &mut self.widget {
+            widget.workshop_layout();
+        }
+    }
+
+    pub(crate) fn standings_study(&mut self, study: &str) {
+        if let Widget::Standings(widget) = &mut self.widget {
+            widget.set_study(study);
+        }
     }
 
     /// Proyecta la instantánea y repinta solo si el ViewModel cambió.
@@ -287,7 +323,7 @@ impl Render for Overlay {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             return div()
                 .w(px(self.wanted_size().0 * self.preview_scale))
-                .h(px(self.wanted_size().1 * self.preview_scale))
+                .h(px(self.wanted_size().1 * self.preview_scale_y))
                 .into_any_element();
         }
         #[cfg(feature = "paint-stats")]
@@ -301,6 +337,7 @@ impl Render for Overlay {
             vantare_domain::format::Language::En => "PAUSED",
         };
         let scale = self.preview_scale;
+        let scale_y = self.preview_scale_y;
         let (paint, wake) = self.widget.frame(self.prefs);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
@@ -315,7 +352,7 @@ impl Render for Overlay {
                 crate::stats::paint(kind);
                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
                 text::with_origin(origin, || {
-                    let mut window = PaintWindow::new(window, bounds.origin, scale);
+                    let mut window = PaintWindow::new(window, bounds.origin, scale, scale_y);
                     #[cfg(feature = "parity-capture")]
                     if let Some(color) = backdrop {
                         // La marca fuera del recorte confirma la pasada sin asumir
@@ -359,7 +396,7 @@ impl Render for Overlay {
             },
         )
         .w(px(size.0 * scale))
-        .h(px(size.1 * scale));
+        .h(px(size.1 * scale_y));
         // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
         match wake {
             Wake::Frame => window.request_animation_frame(),

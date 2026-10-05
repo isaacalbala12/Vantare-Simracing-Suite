@@ -53,7 +53,8 @@ pub fn baseline(top: f32, line_height: f32, size: f32) -> f32 {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Ink {
+pub struct TextInk<'a> {
+    pub family: Option<&'a str>,
     pub size: f32,
     pub weight: f32,
     /// `letter-spacing` en px.
@@ -61,9 +62,13 @@ pub struct Ink {
     pub color: Hsla,
 }
 
+/// Los consumidores existentes conservan el tipo estático y Copy.
+pub type Ink = TextInk<'static>;
+
 /// Tipografía con tracking en em, como `letter-spacing` en el CSS del producto.
 pub fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
     Ink {
+        family: None,
         size,
         weight,
         tracking: tracking_em * size,
@@ -72,7 +77,7 @@ pub fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
 }
 
 /// (texto, tamano, peso, color) -> linea modelada.
-type Key = (String, u32, u32, [u32; 4]);
+type Key = (String, u32, u32, [u32; 4], Option<String>);
 
 thread_local! {
     /// Esquina del widget en la ventana: los widgets pintan en coordenadas propias
@@ -91,7 +96,7 @@ fn font(weight: f32) -> Font {
     }
 }
 
-fn shape(window: &Window, text: &str, ink: &Ink) -> ShapedLine {
+fn shape(window: &Window, text: &str, ink: &TextInk<'_>) -> ShapedLine {
     let color = [
         ink.color.h.to_bits(),
         ink.color.s.to_bits(),
@@ -103,13 +108,21 @@ fn shape(window: &Window, text: &str, ink: &Ink) -> ShapedLine {
         ink.size.to_bits(),
         ink.weight.to_bits(),
         color,
+        ink.family.map(str::to_owned),
     );
     let cached = CACHE.with(|c| c.borrow().get(&key).cloned());
     // El color va en las runs del ShapedLine, asi que forma parte de la clave.
     cached.unwrap_or_else(|| {
         let run = TextRun {
             len: text.len(),
-            font: font(ink.weight),
+            font: {
+                let mut font = font(ink.weight);
+                if let Some(family) = &ink.family {
+                    font.family = (*family).to_owned().into();
+                    font.weight = FontWeight(ink.weight);
+                }
+                font
+            },
             color: ink.color,
             background_color: None,
             underline: None,
@@ -133,7 +146,7 @@ fn shape(window: &Window, text: &str, ink: &Ink) -> ShapedLine {
 }
 
 /// Ancho CSS del texto (incluye el espaciado tras el ultimo caracter).
-pub fn width(window: &Window, text: &str, ink: &Ink) -> f32 {
+pub fn width(window: &Window, text: &str, ink: &TextInk<'_>) -> f32 {
     if text.is_empty() {
         return 0.0;
     }
@@ -142,7 +155,7 @@ pub fn width(window: &Window, text: &str, ink: &Ink) -> f32 {
 }
 
 /// Recorta con `…` hasta que el texto quepa en `max` px (text-overflow).
-pub fn fit(window: &Window, text: &str, ink: &Ink, max: f32) -> String {
+pub fn fit(window: &Window, text: &str, ink: &TextInk<'_>, max: f32) -> String {
     if width(window, text, ink) <= max + 0.01 {
         return text.to_string();
     }
@@ -171,6 +184,10 @@ pub fn with_origin<R>(origin: (f32, f32), f: impl FnOnce() -> R) -> R {
 /// Texto del kit en ventanas comunes o dentro de un widget escalado.
 pub trait TextWindow {
     fn for_text(&mut self) -> (&mut Window, f32);
+    fn for_text_axes(&mut self) -> (&mut Window, (f32, f32)) {
+        let (window, scale) = self.for_text();
+        (window, (scale, scale))
+    }
 }
 
 impl TextWindow for Window {
@@ -184,6 +201,10 @@ impl TextWindow for super::preview::PaintWindow<'_> {
         let scale = self.preview_scale();
         (self, scale)
     }
+    fn for_text_axes(&mut self) -> (&mut Window, (f32, f32)) {
+        let scale = self.preview_axes();
+        (self, scale)
+    }
 }
 
 /// Pinta el texto con la linea de base en `base_y` y su borde izquierdo en `x`.
@@ -193,26 +214,26 @@ pub fn draw(
     text: &str,
     x: f32,
     base_y: f32,
-    ink: &Ink,
+    ink: &TextInk<'_>,
 ) {
     if text.is_empty() {
         return;
     }
     let (ox, oy) = origin();
-    let (window, scale) = window.for_text();
-    let scaled_ink = Ink {
+    let (window, (scale_x, scale)) = window.for_text_axes();
+    let scaled_ink = TextInk {
         size: ink.size * scale,
         tracking: ink.tracking * scale,
         ..*ink
     };
     let ink = if scale == 1.0 { ink } else { &scaled_ink };
-    let (x, base_y) = (x * scale + ox, base_y * scale + oy);
+    let (x, base_y) = (x * scale_x + ox, base_y * scale + oy);
     let line = shape(window, text, ink);
     let ascent = f32::from(line.ascent);
     let descent = f32::from(line.descent);
     let line_height = px(ascent + descent);
     let top = base_y - ascent;
-    if ink.tracking == 0.0 {
+    if ink.tracking == 0.0 && scale_x == scale {
         let _ = line.paint(
             point(px(x), px(top)),
             line_height,
@@ -227,7 +248,10 @@ pub fn draw(
     for (index, (byte, ch)) in text.char_indices().enumerate() {
         let x0 = f32::from(cursor.x_offset());
         let piece = cursor.take_until(byte + ch.len_utf8());
-        let origin: Point<Pixels> = point(px(x + x0 + ink.tracking * index as f32), px(top));
+        let origin: Point<Pixels> = point(
+            px(x + (x0 + ink.tracking * index as f32) * scale_x / scale),
+            px(top),
+        );
         let _ = piece.paint(origin, line_height, TextAlign::Left, None, window, cx);
     }
 }

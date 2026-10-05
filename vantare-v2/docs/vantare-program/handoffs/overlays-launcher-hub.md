@@ -1,5 +1,109 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
+
+### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente
+
+Parte de `fe12dcbbf00003e983931e10ac7d3948eb8aae7d`, mismo worktree/rama.
+El panel GPUI ahora tiene 248 px, scroll propio, selección del widget y sus
+Settings, idiomas es/en, sesión, fuente, ubicación, fondo, escala, dimensiones,
+comparación y restablecer. Las 43 escenas React se exportan con Playwright
+existente y se convierten al DTO IPC; son demostraciones, nunca prueba LMU.
+La reproducción añade fases, pausa, anterior/siguiente, bucle y deslizador.
+Retroceder reconstruye el renderer productivo desde el inicio; la recarga de
+estilo conserva el mismo proceso. No hay WebView ni renderer alternativo.
+
+Se reprodujo y corrigió la colisión de IDs `#dev-1`; se añadieron regresiones
+para IDs únicos/estables, tiempos Standings sin overwrite Relative, signo
+relativo, playback y último documento válido ante escritura parcial.
+Referencia e inventario en `C:/tmp/1467b-evidence/react.md`, capturas en
+`react/` y `gpui/`, rondas 1 y 2 revisadas visualmente. La fase 2 se accionó
+en la ventana propia y mostró cambio de posición/caption. Informe operativo:
+`C:/tmp/fase2/informe-1467b.md`.
+
+La validación de escala 0,5 reprodujo un brillo PIT fuera del widget:
+`standings/view.rs` usaba una posición absoluta como offset de sombra.
+Se cambia únicamente ese offset a un vector cero. `ronda-3.png` conserva
+la reproducción y la captura corregida, ambas revisadas. La regresión es
+visual sobre una ventana real porque el efecto depende del pintado GPUI;
+no se añade un test que solo compare la constante de la implementación.
+
+No se declara IGUAL completo: faltan V1/Foco, idiomas pt/it, estado Error
+(el contrato nativo tiene Waiting), equivalentes de dents/históricos React,
+persistencia de los nuevos controles al recompilar y paridad de tamaño/
+columnas de Relative. Ancho/alto cambian el marco; no reproducen el escalado
+independiente X/Y de React. Las superficies comparan el mismo renderer y no
+simulan sus transportes. Persisten diferencias de controles/espaciado y el
+centrado de la zona PIT. La comparación se apila verticalmente; la reproducción
+recorre keyframes y no interpola continuamente las señales como React.
+El siguiente trabajo requiere decidir el alcance de
+paridad del renderer/contrato; no se altera arquitectura para ocultarlo.
+
+Gates Windows finales PASS: check, Clippy `-D warnings`, fmt, Nextest
+1095/1095 (4 omitidas) y lifecycle (12 escenarios). Build prueba PASS.
+Exportador reejecutado con SHA idéntico; 43 escenas regeneradas idénticas.
+No se ejecutaron gates frontend porque sus archivos no cambiaron.
+Código local `56e11e8f19214d4191a06343e257858966878e7e`, transferido por
+bundle privado al worktree Mac limpio y detached. `ui/workshop-en-vivo.sh`
+PASS sobre ese SHA: build incremental 10,60 s, ventana GPUI y tres cargas de
+estilo en PID 59560. JSON restaurado, proceso propio cerrado y worktree limpio.
+`mac-verification.json` registra el hash del binario; no es verificación de
+presentación física. Guardar → log 269,18 ms, sin afirmar latencia visual.
+Persiste el aviso heredado de `LiveScreens::toggle` sin uso en Mac; no se
+ejecutaron allí los gates completos ni una revisión visual de la pantalla.
+La corrección PIT posterior es `a68316e426f822dcedd24a957f1ee97d918888bb`:
+todos los gates Windows se repitieron y pasaron sobre ella. Su transferencia
+al Mac quedó bloqueada por conexión cerrada y tres intentos SSH con timeout
+(17:07). La prueba Mac anterior NO valida este último SHA. Siguiente acción:
+restablecida la conexión, transferir el bundle final y repetir
+`ui/workshop-en-vivo.sh`; no se tocó ningún proceso ajeno para recuperarla.
+Sin push, PR, CI remoto, merge, promoción ni release. El roadmap manual no
+existe en esta base; no se recrea. La issue #1467 permanece abierta.
+
+### Entrega de estilo en vivo anterior
+
+Entrega aislada en `vantareapp/isa-1467-workshop-estilo-vivo`, base
+`a464e9fc95ff0af10508f88a53302a8803437b36`, worktree `C:/tmp/vw3-1467`.
+El brief de Isaac autoriza extraer valores visuales, conservando Rust + GPUI y
+el renderer productivo. `native/ui/styles/standings.json` contiene colores,
+geometría, tipografía, sombra y opacidades; el build compila esos valores.
+Solo `vantare-workshop --dev` lee y recarga el fichero cada 50 ms. Un JSON
+inválido conserva el último estilo válido y muestra el error; la recarga
+recalcula la geometría sin cambiar la escena ni reiniciar la ventana.
+
+Gates Windows PASS: check, Clippy `-D warnings`, fmt (incluidos módulos UI
+explícitos), Nextest 1092/1092 (4 omitidas) y lifecycle. La captura del renderer
+compilado con sus valores originales es idéntica a la base: 0/292160 píxeles,
+umbral 0. Frente a Wails: 7343/292160 (2,5133 %, umbral 8), igual que la base.
+Se revisaron referencia, captura y mapa; estructura y contenido coinciden.
+Evidencia en `C:/tmp/1467-evidence/`, incluida `ronda-1.png`; informe operativo
+en `C:/tmp/fase2/informe-1467.md`. Guardar → píxel visible en Windows: 10/10 <200 ms, mediana 53,79 ms,
+máximo 62,36 ms (`GetPixel`, sondeo 2 ms, mismo proceso, sin recompilar).
+Se revisaron capturas limpias de cambios de fuente/color/geometría y del JSON
+inválido. Commits de código: `030d117d` y `ae6ccb70`, transferidos al bare
+privado Mac. El worktree aislado `/Users/isaacalbala/vw3-1467` ejecutó el script
+Mac sobre `ae6ccb70`: build frío 7m12s, incremental 3,09s, ventana GPUI abierta
+y tres cargas de estilo aceptadas en el mismo PID 97771. Guardar → log:
+110,50 ms; esto no mide presentación física. JSON original restaurado y
+proceso propio cerrado. Logs y hash del binario en `mac-verification.json` y
+`mac-workshop.log`, dentro del banco de evidencia. El build Mac tiene un aviso
+heredado de la base por `LiveScreens::toggle` sin uso; no se ejecutaron allí
+los gates completos. La prueba visual del Mac queda a Isaac. En Windows el
+script también pasó de extremo a extremo (build, ventana, recarga y cierre).
+Los scripts
+`native/ui/workshop-en-vivo.sh` y `.ps1` compilan con perfil `prueba`, `-j 2` y
+abren Standings. La nota de Isaac de las 15:15 autoriza transferir esta rama
+al bare privado del Mac; no autoriza push a GitHub ni integración.
+
+`docs/roadmap/plan.md` no existe en esta base: se conserva su retirada previa,
+sin inventar otro roadmap. Las instrucciones actuales de Isaac fijan GitHub
+como tracker y prevalecen sobre referencias históricas a Notion/Asana.
+Sin push a GitHub, PR, CI remoto, integración, promoción ni release.
+Solo transferencia autorizada al bare privado Mac. No se toca la beta
+`native-beta` ni telemetría live de Isaac. El spike de dylib queda
+cancelado por la nota de Isaac de las 15:15.
+
+
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 
 El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
@@ -3725,3 +3829,72 @@ Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026
 `nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.
 
 Isaac autorizó integrar #1369 en `nightly` para poder probar el Launcher. La PR pasó todos sus gates en `da304acc` y se integró por squash como `b6833bb5368a459688cc1d76f526ecf1c2aa1833`, sin diferencias de árbol entre el candidato y `origin/nightly`. El digest del roadmap posterior al merge y la ejecución `36252220712` pasaron: ruta de promoción y gate bloqueante completo, incluidos Go, frontend y build Wails Windows. La issue #1368 permanece abierta con `state:nightly` para instalación/actualización física, una sesión nueva de Windows con un solo perfil, hotkeys, políticas de cancelar/salir y validación Steam/LMU. El paquete local de `da304acc` coincide en código y contenido con `b6833bb5`, pero sigue sin firma y sin prueba de instalación. No hay promoción a `testers`/`master` ni release; el lanzamiento comercial permanece NO-GO.
+
+### Continuación RONDA 2 — bloque 1 (2026-10-05)
+
+Dirección V1/Default/Foco en el Workshop sobre el mismo renderer. Foco elimina
+ornamento y usa chip al contorno; Default conserva la ventana del jugador.
+Comparación horizontal y dimensiones que escalan las primitivas en X/Y.
+Regresión de ejes independientes añadida. Check, Clippy, fmt, Nextest
+1096/1096 (4 omitidas), lifecycle12 y build prueba PASS. Captura ronda-4
+mirada en C:/tmp/1467b-evidence. Límite: glifos usan tamaño Y y espaciado X;
+GPUI no ofrece aquí deformación anisotrópica de glifos. No es paridad exacta.
+SSH Mac vuelve a responder; validación del HEAD final pendiente. Sin push,
+PR, merge, promoción ni release. Roadmap manual ausente en esta base.
+
+### RONDA 2 — bloque 2 (2026-10-05)
+Relative usa en Workshop el tamaño compacto 430×256 y columnas del React;
+se conserva el tamaño productivo. Corregida la elipsis vacía de clase y la
+alineación de nombres. Las 18 selecciones nativas tienen escena válida; cross-ahead
+se capturó en fase 3. El importador prioriza classId explícito; regenerar 43
+escenas no cambió sus bytes. Comparación reparte dos columnas iguales.
+Fmt/check/clippy, Nextest 1097/1097 (4 omitidas), lifecycle12 y prueba PASS.
+Ronda-5 recompilada y mirada: datos, filas y caja coinciden; no certifica
+paridad píxel a píxel. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 3 (2026-10-05)
+Ajustes JSON versionados por worktree: widget, escena, fondo, escala,
+dimensiones, idioma es/en, dirección y settings. Reabrir sin argumentos y
+recompilar con dev.ps1 restauran la selección; CLI explícita conserva autoridad.
+Ficheros inválidos se conservan y muestran error. Test de archivo real PASS.
+Fmt/check/clippy, Nextest1098/1098 (4 skip), lifecycle12 y prueba PASS.
+Dos procesos 29160/24828 restauraron Relative/cross-ahead/solid/1.5x; sus
+capturas son idénticas. Ronda-6 React/GPUI mirada: misma caja y datos;
+chrome y transporte aún tienen diferencias visuales. Watcher completo de
+recompilación no se repitió en esta ronda. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 4 (2026-10-05)
+Interpolación local del Workshop: easing React, radar lineal y muestreo por
+cadencia del widget registrado. Gaps/delta/pedales/reloj continuos; posición,
+boxes y vueltas cambian al llegar. Ausencias y Stale no se rellenan. Pausa
+conserva fase; Reproducir del panel empieza desde cero. Historias no se inventan.
+Fmt/check/clippy, Nextest1099/1099 (4 skip), lifecycle12 y prueba PASS.
+Ronda-7 y muestras temprana/tardía miradas: Nico −0.6→−0.3 dentro de fase1,
+posición20 y fila quietas. Tiempos React/GPUI no sincronizados; no prueba
+paridad temporal exacta ni rendimiento LMU. Corrección: registro nativo18,
+React22; faltan engineer-radio/race-schedule/delta-advanced/pedals-telemetry-compact.
+Sin push/PR/merge/release. Error y validación Mac final siguen pendientes.
+
+### RONDA 2 — bloque 5 parcial (2026-10-05)
+Error seleccionado oculta el renderer y muestra el texto del React en la
+caja del widget; Recibiendo/restablecer recuperan el renderer. No se inventa
+SourceState ni se toca runtime. Ronda-8 y recuperación miradas en proceso22476.
+Es comprobación UI manual, sin test UI automatizado añadido. Gates completos
+fmt/check/clippy, Nextest1099/1099 (4 omitidas), lifecycle12 y prueba PASS.
+Pendientes al corte: pt/it (Language y32 consumidores compartidos), cuatro
+renderers React ausentes, históricos/dents adicionales y paridad del chrome.
+X/Y de glifos conserva límite del bloque1. Mac00454fe4 compiló, abrió ventana
+GPUI y aceptó cambio/restauración de JSON con worktree limpio; por SSH no
+certifica presentación física. Se verificará el último HEAD tras este bloque.
+No hubo push/PR/merge/promoción/release ni modificaciones de dependencias.
+
+### Corte RONDA 2 — Mac y entrega (2026-10-05)
+Código b9419d3d verificado en Darwin arm64 mediante ui/workshop-en-vivo.sh:
+compilación, ventana GPUI y tres estilos aceptados (original/cambio/restauración),
+worktree limpio. Evidencia mac-verification-r2.json fuera del repo. No prueba
+visual física Mac ni gates completos de su workspace. Este cierre documental
+no altera código; se transfiere y repite el script sobre su HEAD final.
+Ronda-4 repetida y mirada sobre el ejecutable final: comparación en dos
+columnas iguales; rondas5–8 inspeccionadas. Persistencia antes/después idéntica.
+Entrega parcial y pendientes del bloque5 siguen vigentes; issue1467 abierta.
+Gates de cada bloque PASS. Sin CI remota, push, PR, merge, promoción ni release.

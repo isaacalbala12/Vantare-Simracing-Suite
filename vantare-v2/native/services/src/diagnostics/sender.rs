@@ -83,8 +83,9 @@ fn flush_until(
             // Disable person profiles for these installation-level events.
             properties["$process_person_profile"] = false.into();
             let response = http.post_json(endpoint, &serde_json::json!({"api_key": key, "event": event, "distinct_id": distinct_id, "properties": properties}), None, None)?.success()?;
-            // Capture API confirms accepted ingestion with {"status": 1}.
-            if response.json::<serde_json::Value>()?["status"] != 1 {
+            // EU capture returns "Ok"; older capture endpoints return 1.
+            let status = response.json::<serde_json::Value>()?["status"].clone();
+            if status != 1 && status != "Ok" {
                 return Err(Error::Protocol);
             }
             fs::remove_file(path).map_err(|_| Error::Storage)?;
@@ -155,6 +156,18 @@ mod tests {
     use super::*;
     use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
     use crate::test_http::Server;
+
+    #[test]
+    fn accepted_eu_capture_removes_pending_event() {
+        let root = super::super::tests::root();
+        write_crash(&root, "core", "diagnostic", "trace").expect("enqueue");
+        let server = Server::start(vec![(200, r#"{"status":"Ok"}"#.into())]);
+        flush(&root, &Http::default(), &server.base, Some("public-test"))
+            .expect("EU accepted capture");
+        assert!(!root.join("crashes/00.json").exists());
+        server.finish();
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn sends_and_removes_only_confirmed_crashes() {

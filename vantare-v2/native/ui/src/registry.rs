@@ -43,6 +43,30 @@ macro_rules! widgets {
         impl Kind {
             pub const ALL: &'static [Self] = &[$(Self::$kind),+];
 
+            /// Nombre de producto; los identificadores de persistencia no cambian.
+            pub fn label(self) -> &'static str {
+                match self {
+                    Self::Standings => "Standings",
+                    Self::Radar => "Radar",
+                    Self::Pedals => "Pedales",
+                    Self::Delta => "Delta",
+                    Self::CarDamageVisual => "Daños del coche",
+                    Self::InputTelemetry => "Telemetría de entrada",
+                    Self::MulticlassRelative => "Relative multiclase",
+                    Self::BroadcastTower => "Torre de posiciones",
+                    Self::DeltaTrace => "Historial de delta",
+                    Self::TrackMap => "Mapa del circuito",
+                    Self::TrackWeather => "Tiempo en pista",
+                    Self::CarDamageNumbers => "Daños detallados",
+                    Self::HeadToHead => "Cara a cara",
+                    Self::FuelStrategy => "Fuel y stint",
+                    Self::PedalsTelemetry => "Telemetría de pedales",
+                    Self::Relative => "Relative",
+                    Self::RacingFlags => "Banderas",
+                    Self::FastestLap => "Vuelta rápida",
+                }
+            }
+
             pub fn name(self) -> &'static str {
                 match self { $(Self::$kind => $name),+ }
             }

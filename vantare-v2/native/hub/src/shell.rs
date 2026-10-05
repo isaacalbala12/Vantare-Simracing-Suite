@@ -275,6 +275,7 @@ impl Hub {
                 matches!(
                     self.section,
                     Section::Home
+                        | Section::Studio
                         | Section::Launcher
                         | Section::Settings
                         | Section::Account
@@ -290,10 +291,7 @@ impl Hub {
                 |content| {
                     // Estos consumidores aun restan el espacio de la antigua cabecera.
                     // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                    let inset = if matches!(
-                        self.section,
-                        Section::Calendar | Section::Studio | Section::Roadmap
-                    ) {
+                    let inset = if matches!(self.section, Section::Calendar | Section::Roadmap) {
                         135.0
                     } else {
                         0.0
@@ -308,6 +306,9 @@ impl Hub {
                         ))
                 },
             )
+            .when(self.section == Section::Studio, |content| {
+                content.pt(gpui::px(0.0))
+            })
             .when(self.section == Section::Settings, |content| {
                 content.gap(gpui::px(16.0)).child(self.settings_header(cx))
             })
@@ -379,7 +380,6 @@ impl Hub {
                         .into_any_element()
                 }))
             }
-            Section::Studio => Some(self.studio.read(cx).topbar_controls().into_any_element()),
             Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
             _ => None,
         }
@@ -460,6 +460,19 @@ impl Render for Hub {
             .min_w_0()
             .min_h_0()
             .child(topbar)
+            .when(self.section == Section::Studio, |main| {
+                main.child(
+                    div()
+                        .px(gpui::px(32.0))
+                        .pt(gpui::px(32.0))
+                        .pb(gpui::px(24.0))
+                        .flex_none()
+                        .child(
+                            self.studio
+                                .update(cx, |studio, cx| studio.topbar_actions(cx)),
+                        ),
+                )
+            })
             .child(
                 div()
                     .flex_1()
@@ -475,6 +488,7 @@ impl Render for Hub {
                                 !matches!(
                                     self.section,
                                     Section::Home
+                                        | Section::Studio
                                         | Section::Launcher
                                         | Section::Settings
                                         | Section::Account
@@ -494,6 +508,8 @@ impl Render for Hub {
                                     | Section::Account
                                     | Section::Licenses
                             )
+                            && (self.section != Section::Studio
+                                || self.studio.read(cx).inspector_visible())
                             && (self.section != Section::Strategy || strategy_context_visible),
                         |body| body.child(column),
                     ),
@@ -787,6 +803,9 @@ impl Hub {
             foundations::Previews::new(&home_snapshot, prefs, preview_fixtures.as_ref(), cx);
         workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         cx.observe(&studio, |this, studio, cx| {
+            if this.section == Section::Studio {
+                cx.notify();
+            }
             let prefs = studio.read(cx).preferences();
             this.workshop
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));

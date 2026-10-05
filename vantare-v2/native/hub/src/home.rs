@@ -142,10 +142,12 @@ fn quick_button(id: &'static str, label: &'static str, cx: &gpui::App) -> Statef
         .child(text(label, 12.0, 400, orbit::ink_3(cx), cx))
 }
 
+/// Falta el contrato de control de overlays: se muestra, pero no finge funcionar.
 fn pending_overlay(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
-    quick_button(id, "Abrir overlay", cx)
-        .tab_stop(false)
-        .cursor_default()
+    orbit::disabled(
+        quick_button(id, "Abrir overlay", cx),
+        "Pendiente: el Hub aún no controla el overlay",
+    )
 }
 
 fn keycap(label: &'static str, cx: &gpui::App) -> Div {
@@ -332,7 +334,8 @@ fn next_race(
 }
 
 fn hero(
-    next: Div,
+    next: Option<Div>,
+    plan: bool,
     greeting: String,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
@@ -388,19 +391,15 @@ fn hero(
                                 .rounded(px(8.0)),
                             Section::Studio,
                         ))
-                        .child(
-                            pending_overlay("home-quick-overlay", cx)
-                                .h(px(36.0))
-                                .px(px(13.0))
-                                .rounded(px(8.0)),
-                        )
-                        .child(navigate(
-                            quick_button("home-plan", "Crear plan", cx)
-                                .h(px(36.0))
-                                .px(px(13.0))
-                                .rounded(px(8.0)),
-                            Section::Strategy,
-                        ))
+                        .when(plan, |actions| {
+                            actions.child(navigate(
+                                quick_button("home-plan", "Crear plan", cx)
+                                    .h(px(36.0))
+                                    .px(px(13.0))
+                                    .rounded(px(8.0)),
+                                Section::Strategy,
+                            ))
+                        })
                         .child(navigate(
                             quick_button("home-launch", "Lanzar perfil", cx)
                                 .h(px(36.0))
@@ -410,7 +409,9 @@ fn hero(
                         )),
                 ),
         )
-        .child(next.when(compact, gpui::Styled::w_full))
+        .when_some(next, |hero, next| {
+            hero.child(next.when(compact, gpui::Styled::w_full))
+        })
 }
 
 fn profile_metadata(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
@@ -510,60 +511,19 @@ fn profile_info(
         )
 }
 
-fn profile_preview(has_profile: bool, cx: &gpui::App) -> Div {
-    orbit::card("", cx)
-        .w(px(340.0))
-        .h(px(191.25))
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .overflow_hidden()
-        .rounded(px(14.0))
-        .bg(rgb(crate::orbit::legacy_rgb(0x000d_0e10, cx)))
-        .relative()
-        .children([90.0, 180.0, 270.0].map(|left| {
-            div()
-                .absolute()
-                .left(px(left))
-                .top_0()
-                .w(px(1.0))
-                .h_full()
-                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        }))
-        .children([90.0, 180.0].map(|top| {
-            div()
-                .absolute()
-                .left_0()
-                .top(px(top))
-                .h(px(1.0))
-                .w_full()
-                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        }))
-        .when(has_profile, |preview| {
-            preview.child(text(
-                "Vista previa · no disponible",
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-        })
-}
-
 fn profile(
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
     cx: &gpui::App,
 ) -> Div {
-    // Falta una API de Studio que exponga su layout/renderers y una escala de
-    // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
+    // Sin API de Studio para miniaturas no se pinta una vista previa vacía;
+    // no se crea otra lectura ni un renderer de cajas.
     let profile = demo.and_then(crate::demo::DemoData::overlay_profile);
     let name = profile.map_or("Sin perfil activo", |profile| profile.name.as_str());
     let meta = profile_metadata(demo, cx);
     orbit::card("", cx)
-        .h(px(225.0))
+        .h(px(172.0))
         .when(compact, gpui::Styled::h_auto)
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
@@ -617,10 +577,6 @@ fn profile(
                                 .when(compact, |element| {
                                     element.h_auto().flex_none().gap(px(12.0))
                                 }),
-                        )
-                        .child(
-                            profile_preview(profile.is_some(), cx)
-                                .when(compact, gpui::Styled::w_full),
                         ),
                 ),
         )
@@ -734,13 +690,12 @@ fn profile_rows(demo: Option<&crate::demo::DemoData>, cx: &gpui::App) -> Div {
 }
 
 fn lists(
-    starts: &[Race],
+    starts: Option<&[Race]>,
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
     cx: &gpui::App,
 ) -> Div {
-    let race_list = race_rows(starts, navigate, cx);
     let profiles = profile_rows(demo, cx);
     div()
         .flex()
@@ -750,47 +705,55 @@ fn lists(
         .when(compact, |lists| {
             lists.flex_col().flex_none().items_stretch()
         })
-        .child(
-            orbit::card("", cx)
-                .flex_1()
-                .flex_basis(gpui::relative(0.575))
-                .min_w_0()
-                .min_h(px(362.0))
-                .when(compact, gpui::Styled::flex_none)
-                .child(
-                    div()
-                        .h(px(50.0))
-                        .px(px(20.0))
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .border_b_1()
-                        .border_color(gpui::rgba(orbit::line_row(cx)))
-                        .child(text("Próximas carreras", 15.0, 700, orbit::ink(cx), cx))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(12.0))
-                                .child(orbit::mono_text(
-                                    "Cadencia publicada",
-                                    12.0,
-                                    orbit::ink_3(cx),
-                                    cx,
-                                ))
-                                .child(navigate(
-                                    div()
-                                        .id("home-races")
-                                        .role(gpui::Role::Button)
-                                        .aria_label("Ver todas")
-                                        .tab_index(0)
-                                        .child(text("Ver todas", 12.0, 500, orbit::ink_3(cx), cx)),
-                                    Section::Calendar,
-                                )),
-                        ),
-                )
-                .child(race_list),
-        )
+        .when_some(starts, |lists, starts| {
+            lists.child(
+                orbit::card("", cx)
+                    .flex_1()
+                    .flex_basis(gpui::relative(0.575))
+                    .min_w_0()
+                    .min_h(px(362.0))
+                    .when(compact, gpui::Styled::flex_none)
+                    .child(
+                        div()
+                            .h(px(50.0))
+                            .px(px(20.0))
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .border_b_1()
+                            .border_color(gpui::rgba(orbit::line_row(cx)))
+                            .child(text("Próximas carreras", 15.0, 700, orbit::ink(cx), cx))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(12.0))
+                                    .child(orbit::mono_text(
+                                        "Cadencia publicada",
+                                        12.0,
+                                        orbit::ink_3(cx),
+                                        cx,
+                                    ))
+                                    .child(navigate(
+                                        div()
+                                            .id("home-races")
+                                            .role(gpui::Role::Button)
+                                            .aria_label("Ver todas")
+                                            .tab_index(0)
+                                            .child(text(
+                                                "Ver todas",
+                                                12.0,
+                                                500,
+                                                orbit::ink_3(cx),
+                                                cx,
+                                            )),
+                                        Section::Calendar,
+                                    )),
+                            ),
+                    )
+                    .child(race_rows(starts, navigate, cx)),
+            )
+        })
         .child(
             orbit::card("", cx)
                 .flex_1()
@@ -827,6 +790,7 @@ fn lists(
 /// de overlays aún no existen. Un layout sin identidad no se inventa como perfil.
 pub fn render(
     calendar: &Calendar,
+    access: crate::shell::navigation::Access,
     demo: Option<&crate::demo::DemoData>,
     compact: bool,
     navigate: impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
@@ -841,6 +805,8 @@ pub fn render(
         Ok(starts) => (starts, None),
         Err(error) => (vec![], Some(error)),
     };
+    // Sin Calendario (beta) no se anuncian carreras que no existen.
+    let races_visible = access.visible(Section::Calendar);
     let salute = if let Some(demo) = demo {
         let phrase = greeting(now.hour());
         phrase.replace("piloto", &demo.user.name)
@@ -856,7 +822,13 @@ pub fn render(
         .gap(px(21.0))
         .when(compact, gpui::Styled::flex_none)
         .child(profile(demo, &navigate, compact, cx))
-        .child(lists(&starts, demo, &navigate, compact, cx));
+        .child(lists(
+            races_visible.then_some(starts.as_slice()),
+            demo,
+            &navigate,
+            compact,
+            cx,
+        ));
     div()
         .id("home")
         .h_full()
@@ -871,21 +843,27 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            next_race(
-                target(&starts, &calendar.following.series_ids),
-                &navigate,
-                cx,
-            ),
+            races_visible.then(|| {
+                next_race(
+                    target(&starts, &calendar.following.series_ids),
+                    &navigate,
+                    cx,
+                )
+            }),
+            access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,
             compact,
             cx,
         ))
         .child(content)
-        .when_some(error, |view, error| view.child(orbit::callout(error, cx)))
-        .when_some(calendar.error.clone(), |view, error| {
+        .when_some(error.filter(|_| races_visible), |view, error| {
             view.child(orbit::callout(error, cx))
         })
+        .when_some(
+            calendar.error.clone().filter(|_| races_visible),
+            |view, error| view.child(orbit::callout(error, cx)),
+        )
 }
 
 #[cfg(test)]

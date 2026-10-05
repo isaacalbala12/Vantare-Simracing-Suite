@@ -301,7 +301,7 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                         title == "Últimos eventos" && value == "8 en esta sesión",
                         |head| {
                             head.child(
-                                small_button("settings-demo-copy-events", "Copiar", cx)
+                                orbit::small_button("settings-demo-copy-events", "Copiar", cx)
                                     .tab_stop(false),
                             )
                         },
@@ -359,23 +359,7 @@ fn section_status(content: &str, color: u32, cx: &gpui::App) -> Div {
             cx,
         ))
 }
-fn small_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label)
-        .flex_none()
-        .h(px(34.0))
-        .px(px(12.0))
-        .rounded(px(10.0))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(text(label, 12.0, 600, orbit::ink_3(cx), cx))
-}
+
 fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     div()
         .id(id)
@@ -833,10 +817,10 @@ fn performance_mode(
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
 }
 fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    small_button(id, label, cx)
-        .tab_stop(false)
-        .opacity(0.55)
-        .aria_description("Pendiente: sin contrato nativo")
+    orbit::disabled(
+        orbit::small_button(id, label, cx),
+        "Pendiente: sin contrato nativo",
+    )
 }
 fn hotkey_keycaps(keys: [&str; 3], cx: &gpui::App) -> Div {
     let mut keycaps = div().flex().flex_none().items_center().gap(px(4.0));
@@ -909,7 +893,7 @@ impl Hub {
             reference_primary(id, label, cx)
                 .aria_description("Preparar informe de diagnóstico local")
         } else {
-            small_button(id, label, cx)
+            orbit::small_button(id, label, cx)
         })
         .track_focus(&self.settings.action_focus[action as usize])
         .tab_stop(enabled)
@@ -2246,9 +2230,15 @@ impl Hub {
             .min_w_0()
             .gap(px(14.0))
             .child(self.settings_privacy_diagnostics(cx))
-            .child(Self::settings_privacy_consent(compact, cx))
-            .child(self.settings_privacy_queue(cx))
-            .child(self.settings_privacy_history(cx))
+            // La contribución solo envía paquetes de Strategy: sin Strategy (beta) sobra.
+            .when(
+                self.shell.access.lock(Section::Strategy).is_none(),
+                |page| {
+                    page.child(Self::settings_privacy_consent(compact, cx))
+                        .child(self.settings_privacy_queue(cx))
+                        .child(self.settings_privacy_history(cx))
+                },
+            )
     }
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();
@@ -2447,7 +2437,7 @@ impl Hub {
                     } else {
                         self.settings.data.display().to_string()
                     },
-                    small_button("settings-data-open", "Abrir", cx)
+                    orbit::small_button("settings-data-open", "Abrir", cx)
                         .tab_stop(false)
                         .aria_description("Sin acción nativa para abrir esta carpeta"),
                     12.0,
@@ -2460,7 +2450,7 @@ impl Hub {
                     } else {
                         "Sin contrato nativo de registro del Hub."
                     },
-                    small_button("settings-logs-open", "Abrir", cx)
+                    orbit::small_button("settings-logs-open", "Abrir", cx)
                         .tab_stop(false)
                         .aria_description("Sin ruta de registros disponible"),
                     12.0,

@@ -1658,12 +1658,14 @@ impl Studio {
                 .rounded(px(orbit::RADIUS_CONTROL)).border_1().border_color(gpui::rgba(orbit::line(cx)))
                 .bg(rgb(orbit::surface_2(cx))).child(orbit::mono_text(url, 11.0, orbit::ink_2(cx), cx).whitespace_nowrap()))
             .child(div().flex().flex_wrap().gap(px(8.0))
-                .child(orbit::primary_button("copy-obs-url", "", cx).aria_label("Copiar URL · pendiente")
-                    .w(px(96.0)).h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
-                    .child(text("Copiar URL", 12.0, 600, cx.global::<crate::orbit::theme::Theme>().primary_ink, cx)))
-                .child(button("copy-obs-instructions", "", cx).aria_label("Copiar instrucciones · pendiente")
-                    .w(px(153.0)).h(px(35.0)).px(px(12.0)).tab_stop(false).cursor_default()
-                    .child(text("Copiar instrucciones", 12.0, 600, orbit::ink_3(cx), cx)))))
+                .child(orbit::disabled(orbit::primary_button("copy-obs-url", "", cx).aria_label("Copiar URL")
+                    .w(px(96.0)).h(px(35.0)).px(px(12.0))
+                    .child(text("Copiar URL", 12.0, 600, cx.global::<crate::orbit::theme::Theme>().primary_ink, cx)),
+                    "Pendiente: sin URL de navegador para OBS"))
+                .child(orbit::disabled(button("copy-obs-instructions", "", cx).aria_label("Copiar instrucciones")
+                    .w(px(153.0)).h(px(35.0)).px(px(12.0))
+                    .child(text("Copiar instrucciones", 12.0, 600, orbit::ink_3(cx), cx)),
+                    "Pendiente: sin URL de navegador para OBS"))))
     }
 
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {

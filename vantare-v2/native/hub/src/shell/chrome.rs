@@ -497,17 +497,8 @@ impl Hub {
             .flex()
             .flex_col()
             .child(
-                Self::context_heading(
-                    "PRÓXIMAS CARRERAS",
-                    if self.shell.access.visible(Section::Calendar) {
-                        "Ver todas"
-                    } else {
-                        ""
-                    },
-                    strategy,
-                    cx,
-                )
-                .when(strategy, |heading| heading.pb(px(9.0))),
+                Self::context_heading("PRÓXIMAS CARRERAS", "Ver todas", strategy, cx)
+                    .when(strategy, |heading| heading.pb(px(9.0))),
             )
             .child(
                 Self::context_row("Sin salidas próximas", "", None, cx)
@@ -529,10 +520,13 @@ impl Hub {
         }
         column.child(
             blocks
-                .child(
-                    Self::context_block("races", races, cx)
-                        .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
-                )
+                // Sin Calendario (beta) no se anuncian carreras que no existen.
+                .when(self.shell.access.visible(Section::Calendar), |blocks| {
+                    blocks.child(
+                        Self::context_block("races", races, cx)
+                            .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
+                    )
+                })
                 .child(
                     Self::context_block("overlay", overlay, cx)
                         .when(strategy, |block| block.h(px(82.0)).pt(px(15.0)).pb(px(0.0))),
@@ -765,9 +759,9 @@ impl Hub {
             .items_center()
             .justify_between()
             .gap(px(8.0))
-            .px(px(0.0))
+            .px(px(9.0))
             .pb(px(4.0))
-            .child(orbit::text(title, 16.0, 400, orbit::ink(cx), cx))
+            .child(orbit::text(title, 12.5, 400, orbit::ink_3(cx), cx))
             .when(!subtitle.is_empty(), |row| {
                 row.child(orbit::text(subtitle, 11.0, 400, orbit::ink_3(cx), cx))
             })

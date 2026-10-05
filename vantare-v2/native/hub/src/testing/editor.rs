@@ -391,90 +391,6 @@ impl Editor {
         body
     }
 
-    fn disabled_action(
-        label: &'static str,
-        primary: bool,
-        cx: &gpui::App,
-    ) -> gpui::Stateful<gpui::Div> {
-        let background = if primary {
-            orbit::primary_bg(cx)
-        } else {
-            0xffff_ff06
-        };
-        let ink = if primary {
-            cx.global::<crate::orbit::theme::Theme>().primary_ink
-        } else {
-            orbit::ink_3(cx)
-        };
-        div()
-            .id(if primary {
-                "report-send"
-            } else {
-                "report-discard"
-            })
-            .role(gpui::Role::Button)
-            .aria_label(label)
-            .aria_description(if primary {
-                "Deshabilitado: requiere una vista previa y consentimiento vigentes."
-            } else {
-                "Deshabilitado: no hay un borrador que descartar."
-            })
-            .tab_stop(false)
-            .h(px(orbit::CONTROL_H))
-            .w_full()
-            .px(px(14.0))
-            .flex()
-            .items_center()
-            .justify_center()
-            .rounded(px(orbit::RADIUS_CONTROL))
-            .bg(if primary {
-                rgb(background)
-            } else {
-                rgba(background)
-            })
-            .when(!primary, |button| {
-                button.border_1().border_color(rgba(orbit::line(cx)))
-            })
-            .when(primary, |button| {
-                button.shadow(vec![gpui::BoxShadow {
-                    color: rgba(0x0000_0059).into(),
-                    offset: gpui::point(px(0.0), px(13.0)),
-                    blur_radius: px(34.0),
-                    spread_radius: px(0.0),
-                    inset: false,
-                }])
-            })
-            .opacity(0.55)
-            .child(orbit::text(label, orbit::SECONDARY, 600, ink, cx))
-    }
-
-    fn discard_action(cx: &mut Context<Remote>) -> gpui::Stateful<gpui::Div> {
-        div()
-            .id("report-discard")
-            .role(gpui::Role::Button)
-            .aria_label("Descartar borrador")
-            .tab_stop(true)
-            .cursor_pointer()
-            .h(px(orbit::CONTROL_H))
-            .w_full()
-            .px(px(14.0))
-            .flex()
-            .items_center()
-            .justify_center()
-            .rounded(px(orbit::RADIUS_CONTROL))
-            .border_1()
-            .border_color(rgba(orbit::line(cx)))
-            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-            .child(orbit::text(
-                "Descartar borrador",
-                orbit::SECONDARY,
-                600,
-                orbit::ink_3(cx),
-                cx,
-            ))
-            .on_click(cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)))
-    }
-
     fn consent_card(&self, cx: &mut Context<Remote>) -> gpui::Div {
         let ready = can_send(self.preview.as_ref(), self.approved.as_ref(), self.dirty);
         let mut consent = orbit::card_body()
@@ -509,30 +425,36 @@ impl Editor {
             )
             .mt(px(8.0)),
         );
+        // El primario solo se atenúa: nunca destaca más deshabilitado que activo.
+        let send = orbit::primary_button("report-send", "Enviar reporte", cx).w_full();
         let send = if ready {
-            orbit::button("report-send", "Enviar reporte", cx)
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if can_send(
-                        this.editor.preview.as_ref(),
-                        this.editor.approved.as_ref(),
-                        this.editor.dirty,
-                    ) && let Some(preview) = &this.editor.preview
-                    {
-                        let preview_id = preview.id.clone();
-                        // El consentimiento se consume inmediatamente para evitar reusar el clic.
-                        this.editor.approved = None;
-                        this.report_action(Command::ReportSend { preview_id }, cx);
-                        cx.notify();
-                    }
-                }))
-                .into_any_element()
+            send.on_click(cx.listener(|this, _, _, cx| {
+                if can_send(
+                    this.editor.preview.as_ref(),
+                    this.editor.approved.as_ref(),
+                    this.editor.dirty,
+                ) && let Some(preview) = &this.editor.preview
+                {
+                    let preview_id = preview.id.clone();
+                    // El consentimiento se consume inmediatamente para evitar reusar el clic.
+                    this.editor.approved = None;
+                    this.report_action(Command::ReportSend { preview_id }, cx);
+                    cx.notify();
+                }
+            }))
         } else {
-            Self::disabled_action("Enviar reporte", true, cx).into_any_element()
+            orbit::disabled(
+                send,
+                "Deshabilitado: requiere una vista previa y consentimiento vigentes.",
+            )
         };
+        let discard = orbit::button("report-discard", "Descartar borrador", cx).w_full();
         let discard = if self.dirty {
-            Self::discard_action(cx).into_any_element()
+            discard.on_click(
+                cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)),
+            )
         } else {
-            Self::disabled_action("Descartar borrador", false, cx).into_any_element()
+            orbit::disabled(discard, "Deshabilitado: no hay un borrador que descartar.")
         };
         consent = consent.child(
             div()

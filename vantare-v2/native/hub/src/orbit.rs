@@ -841,6 +841,44 @@ pub fn button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
         .child(text(label.to_owned(), 13.0, 600, ink(cx), cx))
 }
 
+/// Botón compacto de fila (Ajustes, Cuenta): discreto en reposo, responde a hover y foco.
+pub fn small_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label.to_owned())
+        .tab_index(0)
+        .flex_none()
+        .h(px(34.0))
+        .px(px(12.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(10.0))
+        .border_1()
+        .border_color(rgba(line(cx)))
+        .bg(rgba(legacy_rgba(0xffff_ff04, cx)))
+        .cursor_pointer()
+        .hover(|s| s.bg(rgb(surface_2(cx))).border_color(rgba(line_strong(cx))))
+        .focus_visible(|s| s.border_color(rgb(carmine(cx))))
+        .child(
+            text(label.to_owned(), 12.0, 600, ink_2(cx), cx)
+                .font_weight(face_weight(600, cx))
+                .line_height(px(18.0)),
+        )
+}
+
+/// Control inactivo: atenuado, fuera del tabulador y sin cursor de clic.
+/// `reason` se lee por accesibilidad; no añade texto visible. GPUI no deja
+/// retirar un hover ya puesto: el del botón base sigue, pero atenuado.
+pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
+    control
+        .opacity(DISABLED)
+        .tab_stop(false)
+        .cursor_default()
+        .aria_description(reason.to_owned())
+}
+
 /// Botón principal (claro sobre oscuro, `--orbit-primary-*`).
 pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
     button_base(id, label, cx)

@@ -145,24 +145,6 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
         )
 }
 
-fn account_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label)
-        .flex_none()
-        .h(px(34.0))
-        .px(px(12.0))
-        .rounded(px(10.0))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(text(label, 12.0, 650, orbit::ink_3(cx), cx).line_height(px(18.0)))
-}
-
 #[path = "access.rs"]
 mod access;
 
@@ -628,11 +610,11 @@ impl Remote {
                 .flex_col()
                 .gap(px(6.0))
                 .child(
-                    account_button("services-account-check", "Comprobar acceso", cx)
+                    orbit::small_button("services-account-check", "Comprobar acceso", cx)
                         .tab_stop(false),
                 )
                 .child(
-                    account_button("services-sign-out", "Cerrar sesión", cx)
+                    orbit::small_button("services-sign-out", "Cerrar sesión", cx)
                         .tab_stop(false)
                         .aria_description("Datos de demostración; acciones deshabilitadas"),
                 );
@@ -645,7 +627,7 @@ impl Remote {
             .flex_col()
             .gap(px(6.0))
             .child(
-                account_button(
+                orbit::small_button(
                     "services-account-check",
                     if self.working() {
                         "Comprobando…"
@@ -663,7 +645,7 @@ impl Remote {
                 })),
             )
             .child(if signed_in {
-                account_button("services-sign-out", "Cerrar sesión", cx)
+                orbit::small_button("services-sign-out", "Cerrar sesión", cx)
                     .tab_stop(!self.working())
                     .when(self.working(), |button| button.opacity(orbit::DISABLED))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -672,7 +654,7 @@ impl Remote {
                         }
                     }))
             } else {
-                account_button(
+                orbit::small_button(
                     "services-login",
                     if self.account.pending {
                         "Esperando…"
@@ -1062,7 +1044,7 @@ impl Remote {
                     "El servicio de licencias solo declara si este equipo está verificado; no publica la lista de dispositivos, así que aquí no se inventa ninguno. «Restablecer dispositivo» libera el equipo activo (1 vez cada 24 h).",
                  cx))
                 .child(
-                    account_button("services-device-reset", "Restablecer dispositivo", cx)
+                    orbit::small_button("services-device-reset", "Restablecer dispositivo", cx)
                         .tab_stop(!self.working() && !demo)
                         .when(self.working(), |button| button.opacity(orbit::DISABLED))
                         .on_click(cx.listener(|this, _, _, cx| {

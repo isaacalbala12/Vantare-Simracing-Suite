@@ -43,3 +43,23 @@ debug = 0
 # El solver de Strategy es cálculo puro con plazo real: optimizado también en debug/tests.
 [profile.dev.package.vantare-strategy]
 opt-level = 3
+
+# Build para pruebas manuales, no para distribución ni mediciones de rendimiento.
+[profile.prueba]
+inherits = "release"
+opt-level = 0
+debug = "line-tables-only"
+lto = false
+codegen-units = 256
+incremental = true
+
+# GPUI y el resto de dependencias mantienen la optimización de Release.
+[profile.prueba.package."*"]
+opt-level = 3
+debug = 0
+codegen-units = 16
+incremental = false
+
+# El solver conserva el mismo requisito que en dev/test.
+[profile.prueba.package.vantare-strategy]
+opt-level = 3

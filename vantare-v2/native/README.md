@@ -240,7 +240,8 @@ una dependencia requiere volver a activar sus símbolos. Release no cambia.
 Sccache es opcional y se configura por terminal del worker, sin compartir `target/`
 ni imponerlo al ciclo interactivo de Isaac. Cada worktree conserva su target propio;
 la caché de sccache puede compartir resultados de dependencias. Gates usa la ruta
-relativa estable `target/gates`: sccache 0.18 incluye `CARGO_TARGET_DIR` en su clave.
+relativa estable `target/gates`: sccache 0.18 incluye `CARGO_TARGET_DIR` en su clave
+([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
 
 ```powershell
 $env:RUSTC_WRAPPER = (Get-Command sccache -ErrorAction Stop).Source
@@ -268,3 +269,26 @@ cargo sweep --time 7 .
 
 Revisa primero el dry-run. Esto elimina artefactos regenerables, no reduce el
 conjunto mínimo requerido por un build. No limpies targets de otros worktrees.
+
+## Build para probar con Isaac (#1465)
+
+Desde `native/`, con la configuración pública real cargada por el mismo loader
+del empaquetado (se valida como datos; nunca se ejecuta ni se imprimen valores):
+
+```powershell
+.\gates.ps1 prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
+```
+
+Produce los once binarios públicos en `target/gates/prueba/`, excluye admin y
+copia la DLL oficial de DuckDB junto a los ejecutables. Dev/test y prueba tienen
+perfiles distintos; el target de gates sigue separado del Release de distribución.
+El perfil hereda Release, sin LTO, con optimización baja e incremental en el código
+propio; GPUI/dependencias y Strategy conservan optimización alta. El script restaura
+configuración, PATH, target e incremental incluso si falla. Sccache es opcional;
+su primera carga para este perfil no sustituye el build en frío.
+
+Para arrancar el Hub: `./target/gates/prueba/vantare-hub.exe`. Conserva esta copia
+caliente para pruebas de producto. No distribuyas este perfil ni lo uses para
+comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundled.
+Las reglas de herencia y overrides son las estándar de
+[Cargo](https://doc.rust-lang.org/cargo/reference/profiles.html).

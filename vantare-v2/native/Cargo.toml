@@ -35,6 +35,11 @@ gpui_windows = { path = "vendor/gpui_windows" }
 [profile.dev]
 debug = "line-tables-only"
 
+# Los crates propios conservan fichero/línea; las dependencias no generan símbolos.
+# Test hereda dev. Release mantiene su configuración de distribución.
+[profile.dev.package."*"]
+debug = 0
+
 # El solver de Strategy es cálculo puro con plazo real: optimizado también en debug/tests.
 [profile.dev.package.vantare-strategy]
 opt-level = 3

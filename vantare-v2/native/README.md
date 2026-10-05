@@ -233,6 +233,10 @@ de bibliotecas del cargador de su sistema; esta variante se verificó en Windows
 
 ## Workers: caché y limpieza (#1465)
 
+Dev/test omiten símbolos de las dependencias (`profile.dev.package."*".debug = 0`).
+Los crates propios conservan fichero y línea en sus trazas; depurar internamente
+una dependencia requiere volver a activar sus símbolos. Release no cambia.
+
 Sccache es opcional y se configura por terminal del worker, sin compartir `target/`
 ni imponerlo al ciclo interactivo de Isaac. Cada worktree conserva su target propio;
 la caché de sccache puede compartir resultados de dependencias. Gates usa la ruta

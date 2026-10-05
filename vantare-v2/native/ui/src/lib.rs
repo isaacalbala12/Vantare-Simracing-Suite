@@ -35,6 +35,7 @@ mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]
 mod stats;
+pub mod theme;
 #[cfg(windows)]
 mod tray;
 pub mod workshop;

@@ -868,6 +868,17 @@ pub fn small_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<D
         )
 }
 
+/// Control inactivo: atenuado, fuera del tabulador y sin cursor de clic.
+/// `reason` se lee por accesibilidad; no añade texto visible. GPUI no deja
+/// retirar un hover ya puesto: el del botón base sigue, pero atenuado.
+pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
+    control
+        .opacity(DISABLED)
+        .tab_stop(false)
+        .cursor_default()
+        .aria_description(reason.to_owned())
+}
+
 /// Botón principal (claro sobre oscuro, `--orbit-primary-*`).
 pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
     button_base(id, label, cx)

@@ -142,10 +142,12 @@ fn quick_button(id: &'static str, label: &'static str, cx: &gpui::App) -> Statef
         .child(text(label, 12.0, 400, orbit::ink_3(cx), cx))
 }
 
+/// Falta el contrato de control de overlays: se muestra, pero no finge funcionar.
 fn pending_overlay(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
-    quick_button(id, "Abrir overlay", cx)
-        .tab_stop(false)
-        .cursor_default()
+    orbit::disabled(
+        quick_button(id, "Abrir overlay", cx),
+        "Pendiente: el Hub aún no controla el overlay",
+    )
 }
 
 fn keycap(label: &'static str, cx: &gpui::App) -> Div {
@@ -389,12 +391,6 @@ fn hero(
                                 .rounded(px(8.0)),
                             Section::Studio,
                         ))
-                        .child(
-                            pending_overlay("home-quick-overlay", cx)
-                                .h(px(36.0))
-                                .px(px(13.0))
-                                .rounded(px(8.0)),
-                        )
                         .when(plan, |actions| {
                             actions.child(navigate(
                                 quick_button("home-plan", "Crear plan", cx)
@@ -515,60 +511,19 @@ fn profile_info(
         )
 }
 
-fn profile_preview(has_profile: bool, cx: &gpui::App) -> Div {
-    orbit::card("", cx)
-        .w(px(340.0))
-        .h(px(191.25))
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .overflow_hidden()
-        .rounded(px(14.0))
-        .bg(rgb(crate::orbit::legacy_rgb(0x000d_0e10, cx)))
-        .relative()
-        .children([90.0, 180.0, 270.0].map(|left| {
-            div()
-                .absolute()
-                .left(px(left))
-                .top_0()
-                .w(px(1.0))
-                .h_full()
-                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        }))
-        .children([90.0, 180.0].map(|top| {
-            div()
-                .absolute()
-                .left_0()
-                .top(px(top))
-                .h(px(1.0))
-                .w_full()
-                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
-        }))
-        .when(has_profile, |preview| {
-            preview.child(text(
-                "Vista previa · no disponible",
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-        })
-}
-
 fn profile(
     demo: Option<&crate::demo::DemoData>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     compact: bool,
     cx: &gpui::App,
 ) -> Div {
-    // Falta una API de Studio que exponga su layout/renderers y una escala de
-    // incrustación en Overlay. No se crea otra lectura ni un renderer de cajas.
+    // Sin API de Studio para miniaturas no se pinta una vista previa vacía;
+    // no se crea otra lectura ni un renderer de cajas.
     let profile = demo.and_then(crate::demo::DemoData::overlay_profile);
     let name = profile.map_or("Sin perfil activo", |profile| profile.name.as_str());
     let meta = profile_metadata(demo, cx);
     orbit::card("", cx)
-        .h(px(225.0))
+        .h(px(172.0))
         .when(compact, gpui::Styled::h_auto)
         .flex_none()
         .rounded(px(orbit::FEATURED_RADIUS))
@@ -622,10 +577,6 @@ fn profile(
                                 .when(compact, |element| {
                                     element.h_auto().flex_none().gap(px(12.0))
                                 }),
-                        )
-                        .child(
-                            profile_preview(profile.is_some(), cx)
-                                .when(compact, gpui::Styled::w_full),
                         ),
                 ),
         )

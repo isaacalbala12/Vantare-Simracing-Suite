@@ -817,12 +817,10 @@ fn performance_mode(
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
 }
 fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    orbit::small_button(id, label, cx)
-        .tab_stop(false)
-        .opacity(0.55)
-        .cursor_default()
-        .hover(|style| style)
-        .aria_description("Pendiente: sin contrato nativo")
+    orbit::disabled(
+        orbit::small_button(id, label, cx),
+        "Pendiente: sin contrato nativo",
+    )
 }
 fn hotkey_keycaps(keys: [&str; 3], cx: &gpui::App) -> Div {
     let mut keycaps = div().flex().flex_none().items_center().gap(px(4.0));
@@ -2232,9 +2230,15 @@ impl Hub {
             .min_w_0()
             .gap(px(14.0))
             .child(self.settings_privacy_diagnostics(cx))
-            .child(Self::settings_privacy_consent(compact, cx))
-            .child(self.settings_privacy_queue(cx))
-            .child(self.settings_privacy_history(cx))
+            // La contribución solo envía paquetes de Strategy: sin Strategy (beta) sobra.
+            .when(
+                self.shell.access.lock(Section::Strategy).is_none(),
+                |page| {
+                    page.child(Self::settings_privacy_consent(compact, cx))
+                        .child(self.settings_privacy_queue(cx))
+                        .child(self.settings_privacy_history(cx))
+                },
+            )
     }
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();

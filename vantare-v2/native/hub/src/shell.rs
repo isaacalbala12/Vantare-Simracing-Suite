@@ -300,6 +300,11 @@ impl Hub {
                         ))
                 },
             )
+            .when(self.section == Section::Testing, |content| {
+                content.pr(gpui::px(
+                    cx.global::<orbit::design::Tokens>().geometry.gutter / 2.0,
+                ))
+            })
             .when(self.section == Section::Settings, |content| {
                 content.child(self.settings_header(cx))
             })
@@ -368,6 +373,7 @@ impl Hub {
                         .into_any_element()
                 }))
             }
+            Section::Testing => Some(self.testing.read(cx).topbar_controls().into_any_element()),
             Section::Studio => Some(self.studio.read(cx).topbar_controls().into_any_element()),
             _ => None,
         }
@@ -380,7 +386,14 @@ impl Hub {
         strategy_context_visible: bool,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
-        if self.section == Section::Studio {
+        if self.section == Section::Testing && self.shell.access.beta_lock(self.section).is_some() {
+            return div().into_any_element();
+        }
+        if self.section == Section::Testing {
+            self.testing
+                .update(cx, |testing, cx| testing.context_column(cx))
+                .into_any_element()
+        } else if self.section == Section::Studio {
             self.studio.read(cx).context_column().into_any_element()
         } else if matches!(
             self.section,

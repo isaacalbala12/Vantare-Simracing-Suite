@@ -13,6 +13,8 @@ use crate::{
 use base64::{Engine, engine::general_purpose::STANDARD};
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
 
+const FIELD_HEIGHTS: [f32; 4] = [38.0, 48.0, 96.0, 48.0];
+
 pub struct Editor {
     inputs: [Entity<Input>; 5],
     values: [String; 5],
@@ -87,6 +89,7 @@ impl Editor {
             cx.new(|cx| {
                 if index < 4 {
                     Input::multiline(values[index].clone(), labels[index], cx)
+                        .with_height(px(FIELD_HEIGHTS[index]))
                 } else {
                     Input::new(values[index].clone(), labels[index], cx)
                 }
@@ -154,11 +157,15 @@ impl Editor {
         }
     }
     pub fn fields(&self, cx: &Context<Remote>) -> Fields {
+        let context = &self.inputs[3].read(cx).value;
         Fields {
             action_text: self.inputs[0].read(cx).value.clone(),
             expected_text: self.inputs[1].read(cx).value.clone(),
             observed_text: self.inputs[2].read(cx).value.clone(),
-            context_text: self.inputs[3].read(cx).value.clone(),
+            context_text: super::model::with_report_kind(
+                context,
+                context.starts_with("Tipo: Sugerencia\n"),
+            ),
             module: self.inputs[4].read(cx).value.clone(),
         }
     }
@@ -173,7 +180,7 @@ impl Editor {
             .child(Self::field_label(label, cx).h(px(17.0)))
             .child(
                 div()
-                    .h(px(78.0))
+                    .h(px(FIELD_HEIGHTS[index]))
                     .relative()
                     .min_h(px(0.0))
                     .flex()
@@ -349,6 +356,8 @@ impl Editor {
             || !fields.expected_text.is_empty()
             || !fields.observed_text.is_empty();
         let module = div()
+            .flex_1()
+            .min_w_0()
             .flex()
             .flex_col()
             .gap(px(8.0))
@@ -358,16 +367,62 @@ impl Editor {
             .px(px(21.0))
             .py(px(21.0))
             .gap(px(orbit::GUTTER / 2.0))
-            .child(module)
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap(px(12.0))
+                    .child(module)
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(4.0))
+                            .children([false, true].into_iter().map(|suggestion| {
+                                let label = if suggestion {
+                                    "Sugerencia"
+                                } else {
+                                    "Algo falla"
+                                };
+                                orbit::button(
+                                    if suggestion {
+                                        "report-suggestion"
+                                    } else {
+                                        "report-bug"
+                                    },
+                                    label,
+                                    cx,
+                                )
+                                .when(
+                                    self.inputs[3]
+                                        .read(cx)
+                                        .value
+                                        .starts_with("Tipo: Sugerencia\n")
+                                        == suggestion,
+                                    |button| button.bg(rgb(orbit::surface_3(cx))),
+                                )
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        let context = this.editor.inputs[3].read(cx).value.clone();
+                                        let value =
+                                            super::model::with_report_kind(&context, suggestion);
+                                        this.editor.inputs[3]
+                                            .update(cx, |input, cx| input.set_value(value, cx));
+                                        cx.notify();
+                                    },
+                                ))
+                            })),
+                    ),
+            )
+            .child(self.field(0, "Título · qué hiciste", cx))
+            .child(self.field(2, "Texto · qué ocurrió o qué propones", cx))
             .child(
                 div()
                     .flex()
                     .gap(px(orbit::GUTTER / 2.0))
-                    .child(self.field(0, "Qué hiciste", cx))
-                    .child(self.field(1, "Qué esperabas", cx)),
-            )
-            .child(self.field(2, "Qué ocurrió", cx))
-            .child(self.field(3, "Contexto adicional · opcional", cx));
+                    .child(self.field(1, "Qué esperabas", cx))
+                    .child(self.field(3, "Contexto adicional · opcional", cx)),
+            );
         if self.dirty {
             body = body.child(div().flex().justify_end().child(
                 orbit::button("report-save", "Guardar borrador", cx).on_click(cx.listener(
@@ -393,40 +448,36 @@ impl Editor {
 
     fn consent_card(&self, cx: &mut Context<Remote>) -> gpui::Div {
         let ready = can_send(self.preview.as_ref(), self.approved.as_ref(), self.dirty);
-        let mut consent = orbit::card_body()
-            .px(px(21.0))
-            .py(px(21.0))
-            .pb(px(22.0))
-            .child(Self::tracked_label("Consentimiento", orbit::ink_3(cx), 0.09).mt(px(6.0)))
+        let mut consent = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .child(self.screenshot_card(cx))
             .child(
-                orbit::text("Datos adjuntos", 15.0, 650, orbit::ink(cx), cx)
-                    .font_weight(gpui::FontWeight::NORMAL)
-                    .mt(px(7.0))
-                    .line_height(px(22.5)),
-            )
-            .child(
-                orbit::text(
-                    "Nada se adjunta sin selección explícita y vista previa.",
-                    orbit::SECONDARY,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )
-                .mt(px(8.0))
-                .line_height(px(18.0)),
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .justify_between()
+                    .gap(px(8.0))
+                    .child(orbit::text(
+                        format!(
+                            "{} · {} · versión y equipo añadidos por el servicio",
+                            crate::product::VERSION,
+                            std::env::consts::OS
+                        ),
+                        11.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    ))
+                    .child(orbit::disabled(
+                        orbit::button("report-logs", "Adjuntar registro · Próximamente", cx),
+                        "El servicio nativo todavía no permite adjuntar registros.",
+                    )),
             );
-        consent = consent.child(self.screenshot_card(cx)).child(
-            orbit::text(
-                "Logs y replay: no disponibles.",
-                11.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            )
-            .mt(px(8.0)),
-        );
         // El primario solo se atenúa: nunca destaca más deshabilitado que activo.
-        let send = orbit::primary_button("report-send", "Enviar reporte", cx).w_full();
+        let send = orbit::play_button("report-send", "Enviar informe", 38.0, false, cx);
         let send = if ready {
             send.on_click(cx.listener(|this, _, _, cx| {
                 if can_send(
@@ -448,7 +499,7 @@ impl Editor {
                 "Deshabilitado: requiere una vista previa y consentimiento vigentes.",
             )
         };
-        let discard = orbit::button("report-discard", "Descartar borrador", cx).w_full();
+        let discard = orbit::button("report-discard", "Descartar borrador", cx);
         let discard = if self.dirty {
             discard.on_click(
                 cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)),
@@ -459,11 +510,11 @@ impl Editor {
         consent = consent.child(
             div()
                 .flex()
-                .flex_col()
                 .gap(px(10.0))
-                .mt(px(17.0))
-                .child(send)
-                .child(discard),
+                .mt(px(8.0))
+                .justify_end()
+                .child(discard)
+                .child(send),
         );
         consent
     }
@@ -481,18 +532,20 @@ impl Editor {
                 orbit::ink(cx),
                 cx,
             ));
+        let mut images = div().flex().gap(px(10.0));
         for (index, preview) in self.screenshots.iter().enumerate() {
+            let mut tile = div().flex_1().min_w_0().flex().flex_col().gap(px(5.0));
             if let Ok(bytes) = STANDARD.decode(&preview.jpeg) {
                 let image = gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes);
-                block = block.child(
+                tile = tile.child(
                     gpui::img(std::sync::Arc::new(image))
                         .w_full()
-                        .h(px(130.0))
+                        .h(px(100.0))
                         .object_fit(gpui::ObjectFit::Contain),
                 );
             }
             let id = preview.id.clone();
-            block = block
+            tile = tile
                 .child(orbit::text(
                     format!(
                         "{} × {} · {} KiB",
@@ -527,7 +580,9 @@ impl Editor {
                         );
                     })),
                 );
+            images = images.child(tile);
         }
+        block = block.child(images);
         if self.screenshots.len() < 3 {
             block = block.child(
                 orbit::button("report-capture", "Capturar pantalla", cx).on_click(cx.listener(
@@ -547,40 +602,16 @@ impl Editor {
             cx,
         ))
     }
-    pub fn render(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
-        let form = self.form(cx);
-        let consent = self.consent_card(cx);
-        let mut page = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .gap(px(orbit::GUTTER / 2.0))
+    pub fn render(&self, _compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
+        let mut page = orbit::neo_card(cx)
+            .flex_none()
+            .gap(px(8.0))
+            .child(orbit::neo_header("Nuevo informe", "v-testing", cx))
             .when(self.error, |page| {
                 page.child(orbit::callout(self.message.clone(), cx))
             })
-            .child(
-                div()
-                    .flex()
-                    .items_start()
-                    .gap(px(21.0))
-                    .when(compact, |element| element.flex_col().items_stretch())
-                    .child(
-                        orbit::card("", cx)
-                            .bg(orbit::tint(0x0010_1114, 0.79))
-                            .flex_1()
-                            .when(compact, gpui::Styled::flex_none)
-                            .min_w_0()
-                            .child(form),
-                    )
-                    .child(
-                        orbit::card("", cx)
-                            .bg(orbit::tint(0x0010_1114, 0.79))
-                            .w(px(280.0))
-                            .when(compact, gpui::Styled::w_full)
-                            .flex_none()
-                            .child(consent),
-                    ),
-            );
+            .child(self.form(cx).p(px(0.0)))
+            .child(self.consent_card(cx));
         if let Some(preview) = &self.preview {
             page = page.child(
                 orbit::card("Vista previa del envío", cx).child(

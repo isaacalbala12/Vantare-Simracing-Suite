@@ -157,3 +157,24 @@ siguen pendientes de verificación manual del orquestador.
 privados, configuraciones de prueba ni ejecutables. Toda modificación pertenece
 a `testing/` o a la conexión mínima en `shell.rs`. Sin push, PR, merge, release
 ni subagentes; revisión e integración pendientes del orquestador.
+
+## ISA-1470 — pantalla beta nativa (2026-10-05)
+
+El formulario se presenta en una tarjeta neo: módulo, tipo Algo falla/Sugerencia,
+título/acción, texto observado, resultado esperado y contexto. El contrato v1
+requiere esos tres textos; el tipo se conserva como prefijo explícito del contexto,
+sin modificar el servidor. Las miniaturas JPEG comprimidas conservan vista previa,
+peso y Quitar. Preparar, consentimiento ligado al digest y envío pasan por el
+servicio existente; prepare → upload → finalize → attach no cambia.
+
+Mis informes usa únicamente recibos reales de esta sesión y del intento recuperado:
+ID, título disponible, módulo, fecha y estado exacto confirmado al enviar. Reintentos
+no duplican filas; cerrar sesión vacía la lista. No retiene otra copia del texto
+privado ni miniaturas. No afirma consultar cambios posteriores del servidor.
+
+El carril derecho muestra el número de recibos, conversación pendiente y consejos.
+Historial remoto, conversaciones y adjuntar registros aún no están expuestos por
+el servicio nativo; la UI lo declara, sin controles que prometan enviar esos datos.
+Las herramientas privadas, diagnóstico/exportación, borrador, recuperación y pestaña
+Validar siguen disponibles. La shell conserva la denegación para quien no es tester
+u owner. `orbit::Input::with_height` permite ajustar altura conservando texto/IME.

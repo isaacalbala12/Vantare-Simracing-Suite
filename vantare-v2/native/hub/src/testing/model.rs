@@ -80,3 +80,35 @@ pub(super) fn can_send(preview: Option<&Preview>, consent: Option<&Consent>, dir
         (!dirty || preview.retry) && consent == Some(&Consent::from(preview))
     })
 }
+
+/// El contrato v1 no tiene un campo tipo: se conserva como texto explícito de contexto.
+pub(super) fn with_report_kind(context: &str, suggestion: bool) -> String {
+    let text = context
+        .strip_prefix("Tipo: Sugerencia\n")
+        .or_else(|| context.strip_prefix("Tipo: Algo falla\n"))
+        .unwrap_or(context);
+    format!(
+        "Tipo: {}\n{text}",
+        if suggestion {
+            "Sugerencia"
+        } else {
+            "Algo falla"
+        }
+    )
+}
+#[cfg(test)]
+mod kind_tests {
+    use super::with_report_kind;
+    #[test]
+    fn changing_kind_preserves_context_without_stacking_markers() {
+        assert_eq!(with_report_kind("", false), "Tipo: Algo falla\n");
+        let initial = "Sesión real\nPasos y datos";
+        let suggestion = with_report_kind(initial, true);
+        assert_eq!(suggestion, "Tipo: Sugerencia\nSesión real\nPasos y datos");
+        assert_eq!(with_report_kind(&suggestion, true), suggestion);
+        assert_eq!(
+            with_report_kind(&suggestion, false),
+            "Tipo: Algo falla\nSesión real\nPasos y datos"
+        );
+    }
+}

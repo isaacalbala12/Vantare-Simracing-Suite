@@ -122,3 +122,19 @@ tras revisión final, Admin14/14 PASS y binario prueba con config real PASS.
 CPU, instalación y límites: C:/tmp/mac-evidence/entrega-r2.md y
 C:/tmp/fase2/informe-mac.md. No se atribuye mejora CPU sin comparación controlada.
 Sin push, PR, integración o release. plan.md no existe en la base recibida.
+
+
+## Hub beta #1470 — formulario y recibos de sesión (2026-10-05)
+
+El formulario productivo GPUI usa acción como título y observado como texto;
+conserva esperado/contexto porque el contrato v1 los exige. Tipo Algo falla /
+Sugerencia se guarda como marcador explícito de contexto, sin nuevo schema.
+Los recibos reales de envío/reintento aparecen en Mis informes, deduplicados
+por ID, con el estado/fecha del servidor. Lista limitada a la sesión: no existe
+consulta de historial ni conversación en el servicio nativo. Registros,
+conversación e historial remoto quedan pendientes, sin datos inventados.
+JPEG comprimido, vista previa, quitar y prepare/upload/finalize/attach mantienen
+el protocolo anterior; no se toca backend, auth ni la política tester/owner.
+Pruebas nuevas cubren cambio de tipo y deduplicación sin duplicar texto privado.
+Evidencia y estado de gates: sección Fase 2 Testing Center del handoff vivo
+`overlays-launcher-hub.md` y C:/tmp/1470-testing-evidence/.

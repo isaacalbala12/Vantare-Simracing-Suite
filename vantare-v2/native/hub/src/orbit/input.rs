@@ -179,6 +179,7 @@ pub struct Input {
     lines: Vec<(usize, ShapedLine, Point<Pixels>)>,
     line_height: Pixels,
     dragging: bool,
+    preferred_height: Option<Pixels>,
 }
 impl Deref for Input {
     type Target = TextState;
@@ -201,7 +202,14 @@ impl Input {
             lines: vec![],
             line_height: gpui::px(FIELD_TEXT * 1.5),
             dragging: false,
+            preferred_height: None,
         }
+    }
+    /// Ajusta la altura visual sin cambiar texto, selección ni modo multilínea.
+    #[must_use]
+    pub fn with_height(mut self, height: Pixels) -> Self {
+        self.preferred_height = Some(height.max(gpui::px(CONTROL_H)));
+        self
     }
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus.clone()
@@ -503,6 +511,7 @@ impl Render for Input {
             .aria_value(self.value.clone())
             .cursor(gpui::CursorStyle::IBeam)
             .when(multiline, |s| s.h(gpui::px(TEXTAREA_H)))
+            .when_some(self.preferred_height, gpui::Styled::h)
             .when(!self.enabled, |s| s.opacity(DISABLED))
             .overflow_hidden()
             .on_mouse_down(

@@ -147,6 +147,31 @@ enum Inflight {
     Background,
     User,
 }
+fn remember_receipt(
+    receipts: &mut Vec<(
+        super::protocol::report_document::Fields,
+        super::protocol::report_document::Receipt,
+    )>,
+    fields: super::protocol::report_document::Fields,
+    receipt: super::protocol::report_document::Receipt,
+) {
+    if let Some((_, saved)) = receipts
+        .iter_mut()
+        .find(|(_, saved)| saved.report_id == receipt.report_id)
+    {
+        *saved = receipt;
+    } else {
+        // La lista necesita título/módulo; no retiene una segunda copia de texto privado ni adjuntos.
+        receipts.push((
+            super::protocol::report_document::Fields {
+                action_text: fields.action_text,
+                module: fields.module,
+                ..Default::default()
+            },
+            receipt,
+        ));
+    }
+}
 pub struct Remote {
     pipe: String,
     send: Option<SyncSender<Command>>,
@@ -164,6 +189,10 @@ pub struct Remote {
     active: Area,
     report_revision: Option<u64>,
     pub(crate) editor: crate::testing::Editor,
+    pub(crate) report_receipts: Vec<(
+        super::protocol::report_document::Fields,
+        super::protocol::report_document::Receipt,
+    )>,
     recovery: Result<crate::testing::recovery::Recovery, String>,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
@@ -259,6 +288,7 @@ impl Remote {
             active: Area::Account,
             report_revision: None,
             editor,
+            report_receipts: Vec::new(),
             recovery,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
@@ -502,6 +532,9 @@ impl Remote {
                                     message,
                                     ..
                                 } => {
+                                    if !signed_in {
+                                        this.report_receipts.clear();
+                                    }
                                     this.account.signed_in = signed_in;
                                     this.account.pending = pending;
                                     this.message = message;
@@ -565,6 +598,15 @@ impl Remote {
     ) {
         use super::protocol::DraftState;
         let changed = self.report_revision != Some(self.editor.revision);
+        let fields = if changed {
+            super::protocol::report_document::Fields {
+                action_text: "Título no disponible".into(),
+                ..Default::default()
+            }
+        } else {
+            self.editor.fields(cx)
+        };
+        remember_receipt(&mut self.report_receipts, fields, receipt.clone());
         if !changed && draft_state == DraftState::Cleared {
             self.editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
         }
@@ -1262,5 +1304,38 @@ mod account_tests {
         }
         assert_eq!(account_plan_label(true), "Beta");
         assert_eq!(account_plan_label(false), "Acceso sin verificar");
+    }
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::remember_receipt;
+    use crate::services::protocol::report_document::{Fields, Receipt};
+    #[test]
+    fn server_receipts_keep_identity_state_and_date_without_duplicating_retries() {
+        let mut receipts = vec![];
+        let fields = Fields {
+            action_text: "Título enviado".into(),
+            observed_text: "Texto privado".into(),
+            module: "hub".into(),
+            ..Default::default()
+        };
+        let receipt = Receipt {
+            report_id: "report_0123456789abcdef".into(),
+            report_state: "submitted".into(),
+            idempotent: false,
+            created_at: "2026-10-05T20:00:00Z".into(),
+        };
+        remember_receipt(&mut receipts, fields, receipt.clone());
+        let mut retry = receipt.clone();
+        retry.idempotent = true;
+        remember_receipt(&mut receipts, Fields::default(), retry);
+        assert_eq!(receipts.len(), 1);
+        assert_eq!(receipts[0].0.action_text, "Título enviado");
+        assert_eq!(receipts[0].0.module, "hub");
+        assert!(receipts[0].0.observed_text.is_empty());
+        assert_eq!(receipts[0].1.report_state, receipt.report_state);
+        assert_eq!(receipts[0].1.created_at, receipt.created_at);
+        assert!(receipts[0].1.idempotent);
     }
 }

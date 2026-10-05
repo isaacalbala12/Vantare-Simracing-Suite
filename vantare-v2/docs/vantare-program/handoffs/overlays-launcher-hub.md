@@ -3987,3 +3987,47 @@ y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No ha
 medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
 promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
 orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
+
+
+### ISA-1470 - Fase 2, Testing Center (2026-10-05)
+
+Worker `1470-testing`, rama `vantareapp/isa-1470-testing`, base `46244ea2`.
+Testing Center usa las tarjetas neo y el layout C de F1: formulario y Mis
+informes a la izquierda; recibos de sesión, conversación pendiente y ayuda a
+la derecha. Conserva el candado de tester/owner y el mensaje del shell para
+otros roles. Las pestañas y las herramientas locales existentes siguen disponibles.
+
+El contrato nativo v1 exige acción, esperado y observado: el título usa acción,
+el texto usa observado y se mantienen esperado/contexto. El tipo se codifica
+explícitamente en contexto, sin ampliar el protocolo. El editor conserva el
+texto al cambiar de tipo. Versión/equipo siguen añadidos por el servicio; la
+etiqueta muestra la build/OS actuales. No se habilitan registros: el servicio
+rechaza ese adjunto, de modo que la UI dice Próximamente. Capturas JPEG, vista
+previa y quitar conservan prepare -> upload -> finalize -> attach, consentimiento
+e invalidación de la vista previa ante una edición. No se modifica el backend.
+
+Mis informes contiene exclusivamente recibos reales obtenidos al enviar o
+recuperar un intento durante la sesión. Deduplica por report_id, conserva título,
+módulo, fecha y estado del servidor; submitted se presenta como Enviado. No
+retiene una segunda copia del cuerpo privado ni adjuntos y se vacía al salir.
+No hay consulta de historial/cambios posteriores ni conversaciones en este
+servicio: se indica el límite y no se fabrican estados, métricas o respuestas.
+
+API genérica mínima añadida a Orbit: Input::with_height mantiene edición,
+selección e IME; neo_page_header y neo_context_column alinean las pantallas beta;
+neo_accent_card permite un acento de fondo suave con tokens del tema.
+
+Evidencia externa: C:/tmp/1470-testing-evidence/, primeras capturas conservadas,
+1440x900/1920x1080/2560x1440 y DeepSeek Harness. Imágenes inspeccionadas; la captura
+muestra un formulario real vacío y cero recibos, sin acceso a datos de Isaac.
+A 1440 la lista inferior se alcanza por scroll o por la pestaña Mis informes.
+Build prueba final, fmt/check/clippy -Dwarnings PASS. Nextest workspace
+1132/1132 PASS (6 skips del filtro existente, dos binarios lifecycle separados):
+compilación 3m28s y ejecución 718,168 s; corpus ACC 597,771 s, sin reducirlo.
+Lifecycle 5+12 PASS. Tres regresiones nuevas PASS: tipo, recibos y calendario.
+No es una medición de rendimiento LMU. Build captura tiene el aviso preexistente
+de cx sin usar en analysis/view.rs bajo parity-capture, sin cambios en ese archivo.
+La incidencia os error 112 quedó resuelta al liberar espacio el orquestador
+(nota 23:56). La política rechazó borrar caché propia; el worker no borró nada
+ni cambió de método. No push/PR/merge/release. E2E servidor con usuario real,
+teclado/IME y DPI físico pendientes: se conserva native-beta intacta.

@@ -193,3 +193,31 @@ llegan fotos con revisión creciente y el número de coches de la captura.
 `rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
 gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
 Windows, cuya validación se ejecuta en el entorno Windows del orquestador.
+
+## DuckDB precompilado para desarrollo (#1465)
+
+El build habitual conserva `bundled-duckdb` por defecto: distribución no necesita
+una DLL adicional. Para gates/workers se puede enlazar el binario oficial de
+**DuckDB 1.5.5**, correspondiente a `duckdb = 1.10505.0`, sin compilar C++.
+No se cambia la versión de la dependencia ni se descargan bibliotecas al compilar.
+
+Desde `native/`, con `duckdb.lib` y `duckdb.dll` del archivo oficial
+[`libduckdb-windows-amd64.zip`](https://github.com/duckdb/duckdb/releases/tag/v1.5.5)
+extraídos juntos en un directorio fuera del repo:
+
+```powershell
+$env:DUCKDB_LIB_DIR = 'C:/tmp/vantare-duckdb-1.5.5'
+$env:PATH = "$env:DUCKDB_LIB_DIR;$env:PATH"
+$linked = @('--no-default-features', '--features', 'vantare-services/network')
+cargo clippy --workspace --all-targets -j 2 @linked -- -D warnings
+cargo nextest run --workspace -j 2 @linked
+cargo test --workspace --test lifecycle -j 2 @linked
+```
+
+`network` se reactiva explícitamente: así se conservan los tests y el helper de
+red del workspace. `--no-default-features` desactiva el `bundled-duckdb` de storage;
+`DUCKDB_LIB_DIR` por sí sola no desactiva `bundled`. Los ejecutables que usen
+DuckDB necesitan esa DLL en `PATH` o junto al `.exe`. Para distribuir se sigue
+usando `cargo build --workspace --bins --release -j 2`, sin `@linked`.
+En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
+de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.

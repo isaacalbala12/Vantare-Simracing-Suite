@@ -639,6 +639,7 @@ pub struct Checkbox {
     pub enabled: bool,
     label: &'static str,
     focus: FocusHandle,
+    switch: bool,
 }
 impl EventEmitter<Checked> for Checkbox {}
 impl Checkbox {
@@ -648,6 +649,13 @@ impl Checkbox {
             enabled: true,
             label,
             focus: cx.focus_handle(),
+            switch: false,
+        }
+    }
+    pub fn switch(label: &'static str, checked: bool, cx: &mut Context<Self>) -> Self {
+        Self {
+            switch: true,
+            ..Self::new(label, checked, cx)
         }
     }
     pub fn focus_handle(&self) -> FocusHandle {
@@ -664,6 +672,34 @@ impl Checkbox {
 }
 impl Render for Checkbox {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.switch {
+            return div()
+                .flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .gap(px(FIELD_PAD))
+                .child(text(self.label, BODY, 500, ink_2(cx), cx))
+                .child(
+                    super::toggle("orbit-switch", self.label, self.checked, self.enabled, cx)
+                        .aria_toggled(if self.checked {
+                            gpui::Toggled::True
+                        } else {
+                            gpui::Toggled::False
+                        })
+                        .track_focus(&self.focus.clone().tab_stop(self.enabled))
+                        .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                            this.activate(event.keystroke.key.as_str(), cx);
+                        }))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            if this.enabled {
+                                this.focus.focus(window, cx);
+                                this.activate("space", cx);
+                            }
+                        })),
+                )
+                .into_any_element();
+        }
         div()
             .id("orbit-checkbox")
             .role(gpui::Role::CheckBox)
@@ -719,6 +755,7 @@ impl Render for Checkbox {
                     }),
             )
             .child(text(self.label, BODY, 650, ink(cx), cx))
+            .into_any_element()
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

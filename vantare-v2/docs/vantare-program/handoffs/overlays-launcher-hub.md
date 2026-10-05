@@ -3987,3 +3987,47 @@ y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No ha
 medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
 promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
 orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
+
+### ISA-1470 - Fase 2, Studio (2026-10-05)
+
+Worker `1470-studio`, worktree `C:/tmp/vw3-1470-studio/vantare-v2`, rama
+`vantareapp/isa-1470-studio`, base `46244ea2`. Studio adopta la distribución C:
+barra superior de layout/modo/guardado/OBS, lienzo flexible 16:9 con selección y
+medidas, tira horizontal de widgets, catálogo existente y barra Probar con.
+Inspector Contenido/Apariencia/En pista/Posición y tamaño, con OBS en la última
+tarjeta y scroll interno para los ajustes largos. La shell cambia solo su
+geometría Studio. Orbit y tokens compartidos; sin renderer ni dependencia nueva.
+
+Se conservan documento, persistencia atómica, historial, añadir/duplicar/eliminar,
+orden Z, visibilidad, búsqueda (al abrir el catálogo), ajustes productivos, zoom y
+drag de CanvasFrame con commit al soltar/cancelación al perder foco. Las nuevas
+regresiones verifican arrastre ajustado, disco/reapertura, undo a tres tamaños,
+cobertura de ejemplos y separación de la fuente real.
+
+Notas del orquestador 22:40 aplicadas: nombres legibles en Kind::label sin cambiar
+IDs; Checkbox::switch reutiliza el interruptor Orbit y el mismo evento Checked;
+Opacidad es slider 0–100 %. Sin caja vacía ni jerga de Snapshot/QA en la UI.
+Ejemplo usa las 18 muestras existentes incrustadas, exclusivamente al seleccionarlo;
+En vivo utiliza la última foto real, incluso tras recibir datos en modo Ejemplo.
+Esta excepción explícita del orquestador prevalece sobre la restricción inicial
+del brief a fixtures QA. No se introduce fallback ni se altera el documento.
+
+Límites previos comprobados: no hay dimensiones persistidas/resize libre nativo,
+servidor Browser Source/publicación OBS, control del overlay desde Hub, varios
+layouts ni escenarios productivos. Esos controles están deshabilitados con motivo
+accesible. OBS conserva las instrucciones de captura de ventana. Las posiciones
+iniciales de la escena de revisión son solo parity-capture y --capture/--demo.
+No se toca la beta de Isaac ni sus datos. No se afirma rendimiento ni LMU live.
+
+Capturas revisadas 1440/1920/2560 y tema DeepSeek Harness. Comparación HTML|GPUI:
+`C:/tmp/1470-studio-evidence/studio.png`; antes/después: `ronda-3.png`.
+Gates finales PASS: fmt, check, Clippy, Nextest 1132/1132 (6 excluidos por la
+configuración existente) y lifecycle sin fallos. Compilación Prueba PASS; aviso
+previo de cx sin usar en analysis/view.rs solo bajo parity-capture, fuera del
+bloque. El SHA local de esta entrega se registra en el informe del orquestador
+y en la issue. Regresiones adicionales de Ejemplo validan datos Fuel/Delta y
+la separación de la fuente real. No se ejecutan gates Go/frontend porque no
+cambian esos componentes. Prueba física LMU/OBS y escalas Windows 125/150 %
+pendientes; la captura QA no las demuestra. plan.md no existe en esta base; límite
+registrado por el orquestador, sin crear otra fuente manual de roadmap.
+Sin push, PR, CI remota, merge, promoción ni release.

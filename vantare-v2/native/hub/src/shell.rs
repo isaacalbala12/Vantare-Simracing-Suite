@@ -271,9 +271,10 @@ impl Hub {
 
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
-            .when(self.section == Section::Home, |content| {
-                content.h_full().min_h_0().min_w_0()
-            })
+            .when(
+                matches!(self.section, Section::Home | Section::Studio),
+                |content| content.h_full().min_h_0().min_w_0(),
+            )
             .flex_1()
             .flex()
             .flex_col()
@@ -282,10 +283,7 @@ impl Hub {
                 |content| {
                     // Estos consumidores aun restan el espacio de la antigua cabecera.
                     // Conservamos su geometria hasta que sus propietarios retiren ese margen.
-                    let inset = if matches!(
-                        self.section,
-                        Section::Calendar | Section::Studio | Section::Roadmap
-                    ) {
+                    let inset = if matches!(self.section, Section::Calendar | Section::Roadmap) {
                         135.0
                     } else {
                         0.0
@@ -300,6 +298,9 @@ impl Hub {
                         ))
                 },
             )
+            .when(self.section == Section::Studio, |content| {
+                content.pt(gpui::px(0.0))
+            })
             .when(self.section == Section::Settings, |content| {
                 content.child(self.settings_header(cx))
             })
@@ -368,7 +369,6 @@ impl Hub {
                         .into_any_element()
                 }))
             }
-            Section::Studio => Some(self.studio.read(cx).topbar_controls().into_any_element()),
             _ => None,
         }
     }
@@ -452,6 +452,19 @@ impl Render for Hub {
             .min_w_0()
             .min_h_0()
             .child(topbar)
+            .when(self.section == Section::Studio, |main| {
+                main.child(
+                    div()
+                        .px(gpui::px(32.0))
+                        .pt(gpui::px(32.0))
+                        .pb(gpui::px(24.0))
+                        .flex_none()
+                        .child(
+                            self.studio
+                                .update(cx, |studio, cx| studio.topbar_actions(cx)),
+                        ),
+                )
+            })
             .child(
                 div()
                     .flex_1()
@@ -463,9 +476,10 @@ impl Render for Hub {
                             .min_w_0()
                             .flex_1()
                             .min_h_0()
-                            .when(self.section != Section::Home, |content| {
-                                content.overflow_y_scroll()
-                            })
+                            .when(
+                                !matches!(self.section, Section::Home | Section::Studio),
+                                gpui::StatefulInteractiveElement::overflow_y_scroll,
+                            )
                             .when(self.section == Section::Settings, |content| {
                                 content.track_scroll(&self.settings.scroll)
                             })
@@ -474,6 +488,8 @@ impl Render for Hub {
                     .when(
                         self.shell.column_open
                             && self.section != Section::Home
+                            && (self.section != Section::Studio
+                                || self.studio.read(cx).inspector_visible())
                             && (self.section != Section::Strategy || strategy_context_visible),
                         |body| body.child(column),
                     ),
@@ -767,6 +783,9 @@ impl Hub {
             foundations::Previews::new(&home_snapshot, prefs, preview_fixtures.as_ref(), cx);
         workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         cx.observe(&studio, |this, studio, cx| {
+            if this.section == Section::Studio {
+                cx.notify();
+            }
             let prefs = studio.read(cx).preferences();
             this.workshop
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));

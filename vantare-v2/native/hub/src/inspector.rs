@@ -11,16 +11,16 @@ pub enum Tab {
 }
 impl Tab {
     pub const ALL: [Self; 4] = [
-        Self::Layout,
         Self::Content,
-        Self::Behavior,
         Self::Appearance,
+        Self::Behavior,
+        Self::Layout,
     ];
     pub fn label(self) -> &'static str {
         match self {
-            Self::Layout => "Layout",
+            Self::Layout => "Posición y tamaño",
             Self::Content => "Contenido",
-            Self::Behavior => "Comportamiento",
+            Self::Behavior => "En pista",
             Self::Appearance => "Apariencia",
         }
     }

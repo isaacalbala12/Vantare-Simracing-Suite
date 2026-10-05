@@ -74,6 +74,26 @@ select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-00
   '{"module":"vantare.module.engineer","enabled_for_all":true}','production')$$,'set rollout');
 select is((select enabled_for_all from public.module_rollout where module = 'vantare.module.engineer'),true,'rollout persisted');
 select is((select count(distinct action)::integer from public.admin_audit_log),9,'all nine actions wrote audit');
+create temporary table admin_page_probe(result jsonb);
+insert into admin_page_probe select public.native_admin_execute('00000000-0000-4000-8000-000000001456',
+  'https://clerk.admin.test','search_accounts','{"query":"","limit":1}','production');
+select is((select jsonb_array_length(result->'accounts') from admin_page_probe),1,'account page obeys limit');
+select ok((select result->>'next_cursor' is not null from admin_page_probe),'more mapped accounts yield cursor');
+select is((select result->'accounts'->0->>'account_id' from admin_page_probe),
+  (select p.id::text from public.profiles p where exists(select 1 from public.account_identities i
+    where i.account_id = p.id and i.issuer in ('https://clerk.admin.test','https://clerk.admin.test/'))
+    order by p.created_at desc,p.id desc limit 1),'page uses stable signup/id order');
+select is(jsonb_array_length(public.native_admin_execute('00000000-0000-4000-8000-000000001456',
+  'https://clerk.admin.test','search_accounts',jsonb_build_object('query','','limit',50,
+  'cursor',(select result->>'next_cursor' from admin_page_probe)),'production')->'accounts'),
+  (select count(distinct account_id)::integer - 1 from public.account_identities
+    where issuer in ('https://clerk.admin.test','https://clerk.admin.test/')),'next page neither skips nor repeats accounts');
+select is(public.native_admin_execute('00000000-0000-4000-8000-000000001456',
+  'https://clerk.admin.test','search_accounts','{"query":"","limit":50}','production')->>'next_cursor',
+  null::text,'last account page clears cursor');
+select throws_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456',
+  'https://clerk.admin.test','search_accounts','{"query":"","limit":1,"cursor":"invalid"}','production')$$,
+  '22023','native_admin_invalid','RPC validates cursor independently of Edge');
 select ok((select before_value is not null and after_value is not null from public.admin_audit_log where action = 'set_tester' limit 1),'mutation snapshots audited');
 select throws_ok($$update public.admin_audit_log set target = 'tampered'$$, 'P0001','operational_access_audit_is_append_only','audit append-only trigger');
 

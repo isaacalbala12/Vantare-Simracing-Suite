@@ -8,6 +8,21 @@ owner/bloqueado: 403. Body JSON cerrado de 8 KiB; bearer 16 KiB; solo POST; todo
 `{version:1,ok:false,error}`. No hay eliminación de cuentas/datos ni efectos
 externos Clerk.
 
+`search_accounts` también admite `query: ""`: devuelve cuentas Vantare ya
+mapeadas al issuer configurado, ordenadas por alta descendente y UUID
+descendente para desempatar. `limit` 1–50 y `cursor` UUID opcional;
+`next_cursor` es null en la última página. No crea cuentas ni consulta todo el
+directorio de Clerk. La búsqueda con texto conserva el contrato anterior; no
+admite cursor y devuelve hasta 50 coincidencias. Para el listado vacío, la
+migración `20261005160000_native_admin_account_pages.sql` debe preceder al
+despliegue Edge.
+
+Cada petición registra `native_admin_timing` con acción, duración total y fases
+(OAuth, perfil actor, resolución, permiso/presupuesto, búsqueda Clerk, RPC y
+enriquecimiento), sin datos personales ni credenciales. El perfil del actor se
+reutiliza para enriquecer su detalle, sin omitir la validación de bloqueo/owner.
+No se cachea la autenticación ni la revocación de OAuth.
+
 | Acción              | Campos además de version/action                          | Resultado                                                                                |
 | ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `search_accounts`   | `query` (1–200 bytes), `limit` opcional 1–50, defecto 50 | `accounts:[{account_id,email,name,created_at,last_seen_at,roles,modules,reports_count}]` |

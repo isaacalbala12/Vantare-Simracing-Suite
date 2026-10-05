@@ -87,3 +87,19 @@ Gates completos Unix presentan fallos ajenos en UI; resultados propios y logs
 se reportan sin declarar verde el workspace. No se crea PR ni se promociona.
 
 Actualización #1456 (nota 15:24): instalación privada reproducible mediante native/admin/instalar-escritorio.ps1, en LOCALAPPDATA/Vantare Admin; accesos Escritorio/Inicio con icono y lanzador sin consola, sesión aislada y reinstalación conservando datos. Instalación 2x y arranque desde el acceso verificados. Binario Windows perfil prueba con config real OK; capturas físicas demo limpias de las tres pantallas revisadas (1280x800, DPI96), beta sin cambios. Mac: fmt y Clippy propios --no-deps OK; 69 tests propios y 10 lifecycle OK. E2E owner producción continúa pendiente del login de Isaac.
+
+## Ronda 2 Admin #1456 — servidor listo para revisión (2026-10-05)
+
+La búsqueda real por nombre y correo de Isaac devuelve una cuenta owner. La
+lista inicial vacía era el flujo de búsqueda obligatoria; Isaac pide listado
+paginado al abrir. `search_accounts` con query vacía y cursor UUID lista solo
+cuentas ya mapeadas al issuer, ordenadas por alta/UUID descendentes. La migración
+20261005160000 precede al despliegue Edge. No se crean identidades objetivo.
+El perfil actor validado se reutiliza en enriquecimiento; bloqueo, owner,
+revocación OAuth, presupuesto y auditoría siguen comprobándose en cada petición.
+Logs sanitizados separan las fases del servidor. No hay caché de autenticación.
+Dos regresiones fallaron antes; después Deno Admin/authorize 70/70 y lint/fmt OK.
+Tests pgTAP de páginas añadidos; NO ejecutados: sin PostgreSQL/Docker local.
+Evidencia: C:/tmp/mac-evidence/r2-server-*.log. Despliegue y verificación de fases
+pendientes del orquestador; cliente de caché/debounce/listado todavía en curso.
+Sin push, PR, integración o release. plan.md no existe en la base recibida.

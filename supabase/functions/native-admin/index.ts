@@ -6,7 +6,6 @@ import {
   nativeBearer,
   nativeConfig,
   NativeError,
-  requireUnblocked,
   resolveNativeAccount,
   verifyNativeOAuth,
 } from "../_shared/native-auth.ts";
@@ -52,7 +51,7 @@ export function validateAdminRequest(
     throw new NativeError(400, "invalid_request");
   }
   const fields: Record<string, string[]> = {
-    search_accounts: ["query", "limit"],
+    search_accounts: ["query", "limit", "cursor"],
     get_account: ["account_id"],
     set_tester: ["account_id", "enabled"],
     set_module: ["account_id", "module", "enabled"],
@@ -70,7 +69,9 @@ export function validateAdminRequest(
     switch (action) {
       case "search_accounts":
         if (params.limit === undefined) params.limit = 50;
-        return boundedText(params.query, 200) &&
+        return (params.query === "" || boundedText(params.query, 200)) &&
+          (params.cursor === undefined ||
+            (params.query === "" && isUuid(params.cursor))) &&
           Number.isInteger(params.limit) && Number(params.limit) >= 1 &&
           Number(params.limit) <= 50;
       case "get_account":
@@ -221,6 +222,17 @@ export async function handleNativeAdmin(
     jsonResponse({ version: 1, ...value }, status, {
       "Cache-Control": "no-store",
     });
+  const started = performance.now();
+  const phases: Record<string, number> = {};
+  let timingAction = "rejected";
+  async function timed<T>(phase: string, work: () => Promise<T>): Promise<T> {
+    const at = performance.now();
+    try {
+      return await work();
+    } finally {
+      phases[phase] = Math.round(performance.now() - at);
+    }
+  }
   try {
     if (request.method !== "POST") {
       throw new NativeError(405, "method_not_allowed");
@@ -240,32 +252,50 @@ export async function handleNativeAdmin(
       );
     }
     const { action, params } = validateAdminRequest(parsed.value);
+    timingAction = action;
     let identity;
     try {
-      identity = await verifyNativeOAuth(token, deps);
+      identity = await timed(
+        "verify_oauth",
+        () => verifyNativeOAuth(token, deps),
+      );
     } catch (error) {
       if (error instanceof NativeError && error.status === 403) {
         throw new NativeError(401, "unauthorized");
       }
       throw error;
     }
-    await requireUnblocked(identity.subject, deps);
-    const actor = await (deps.resolve ?? resolveNativeAccount)(
-      identity.issuer,
-      identity.subject,
+    const actorUser = await timed("actor_profile", async () =>
+      clerkUser(
+        await clerkGet(`users/${encodeURIComponent(identity.subject)}`, deps),
+      ));
+    if (actorUser.id !== identity.subject) {
+      throw new NativeError(503, "bridge_unavailable");
+    }
+    if (actorUser.banned || actorUser.locked) {
+      throw new NativeError(403, "forbidden");
+    }
+    const actor = await timed(
+      "resolve_account",
+      () =>
+        (deps.resolve ?? resolveNativeAccount)(
+          identity.issuer,
+          identity.subject,
+        ),
     );
-    if (!(await (deps.begin ?? begin)(actor))) {
+    if (!(await timed("owner_budget", () => (deps.begin ?? begin)(actor)))) {
       throw new NativeError(429, "rate_limited");
     }
     const users = new Map<string, ClerkUser>();
-    if (action === "search_accounts") {
-      const found = await directory(
-        new URLSearchParams({
-          query: String(params.query),
-          limit: String(params.limit),
-        }),
-        deps,
-      );
+    if (action === "search_accounts" && params.query !== "") {
+      const found = await timed("search_clerk", () =>
+        directory(
+          new URLSearchParams({
+            query: String(params.query),
+            limit: String(params.limit),
+          }),
+          deps,
+        ));
       const query = String(params.query).toLocaleLowerCase();
       for (const user of found) {
         if (
@@ -280,18 +310,25 @@ export async function handleNativeAdmin(
       params.subjects = [...users.keys()];
       delete params.query;
     }
-    const result = await (deps.execute ?? execute)(
-      actor,
-      nativeConfig(deps).issuer,
-      action,
-      params,
-      deps.environment ?? requirePolarEnvironment(),
+    // Reuse the actor profile only for enrichment, AFTER fixing search subjects.
+    // Adding it before subjects would incorrectly return the owner in every search.
+    users.set(actorUser.id, actorUser);
+    const result = await timed(
+      "postgres_action",
+      () =>
+        (deps.execute ?? execute)(
+          actor,
+          nativeConfig(deps).issuer,
+          action,
+          params,
+          deps.environment ?? requirePolarEnvironment(),
+        ),
     );
     if (
       ["search_accounts", "get_account", "list_reports", "get_report"].includes(
         action,
       )
-    ) await enrich(result, users, deps);
+    ) await timed("enrich_clerk", () => enrich(result, users, deps));
     if (action === "get_report") {
       const report = objectValue(result.report);
       if (
@@ -332,6 +369,16 @@ export async function handleNativeAdmin(
       }
     }
     return respond({ ok: false, error: failure.code }, failure.status);
+  } finally {
+    // Fixed phase/action names only: no identities, emails, bodies, tokens or URLs.
+    console.info(
+      JSON.stringify({
+        event: "native_admin_timing",
+        action: timingAction,
+        total_ms: Math.round(performance.now() - started),
+        phases,
+      }),
+    );
   }
 }
 

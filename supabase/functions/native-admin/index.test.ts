@@ -24,6 +24,100 @@ function deps(overrides: AdminDeps = {}): AdminDeps {
 const module = "vantare.module.engineer";
 const reportId = "report-beta-test";
 const imagePath = `v1/${"a".repeat(32)}/${account}/${account}`;
+Deno.test("empty query lists mapped accounts with cursor and no Clerk search", async () => {
+  let directoryCalls = 0;
+  let profileCalls = 0;
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "search_accounts",
+      query: "",
+      limit: 1,
+      cursor: account,
+    }),
+    deps({
+      fetch: (url) => {
+        if (String(url).includes("users?")) directoryCalls++;
+        if (String(url).includes("users/")) profileCalls++;
+        return Promise.resolve(
+          Response.json(String(url).endsWith("verify") ? claims : user),
+        );
+      },
+      execute: (_actor, _issuer, action, params) => {
+        assert(
+          action === "search_accounts" && params.query === "" &&
+            params.cursor === account && !("subjects" in params),
+        );
+        return Promise.resolve({
+          accounts: [{ account_id: account, clerk_subject: subject }],
+          next_cursor: account,
+        });
+      },
+    }),
+  );
+  assert(response.status === 200);
+  const body = await response.json();
+  assert(
+    body.accounts.length === 1 && body.next_cursor === account &&
+      body.accounts[0].email === user.email_addresses[0].email_address,
+  );
+  assert(directoryCalls === 0 && profileCalls === 1);
+});
+Deno.test("own account reuses the validated actor profile", async () => {
+  let profileCalls = 0;
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "get_account", account_id: account }),
+    deps({
+      fetch: (url) => {
+        if (!String(url).endsWith("verify")) profileCalls++;
+        return Promise.resolve(Response.json(
+          String(url).endsWith("verify")
+            ? claims
+            : String(url).includes("users?")
+            ? [user]
+            : user,
+        ));
+      },
+      execute: () =>
+        Promise.resolve({
+          account: { account_id: account, clerk_subject: subject },
+        }),
+    }),
+  );
+  assert(response.status === 200);
+  assert(
+    (await response.json()).account.email ===
+      user.email_addresses[0].email_address,
+  );
+  assert(profileCalls === 1);
+});
+Deno.test("cached actor profile does not add owner to an unmatched search", async () => {
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "search_accounts",
+      query: "unmatched",
+      limit: 50,
+    }),
+    deps({
+      fetch: (url) =>
+        Promise.resolve(Response.json(
+          String(url).endsWith("verify")
+            ? claims
+            : String(url).includes("users?")
+            ? []
+            : user,
+        )),
+      execute: (_actor, _issuer, _action, params) => {
+        assert(Array.isArray(params.subjects) && params.subjects.length === 0);
+        return Promise.resolve({ accounts: [] });
+      },
+    }),
+  );
+  assert(
+    response.status === 200 && (await response.json()).accounts.length === 0,
+  );
+});
 const happy = [
   ["search_accounts", { query: "tester", limit: 50 }, {
     accounts: [{
@@ -171,6 +265,17 @@ for (
       enabled: "true",
     }],
     ["null limit", { action: "search_accounts", query: "a", limit: null }],
+    ["invalid account cursor", {
+      action: "search_accounts",
+      query: "",
+      cursor: "not-a-uuid",
+    }],
+    ["cursor on filtered search", {
+      action: "search_accounts",
+      query: "tester",
+      cursor: account,
+    }],
+    ["whitespace-only search", { action: "search_accounts", query: " " }],
   ] as const
 ) {
   Deno.test(`admin rejects ${name}`, async () => {

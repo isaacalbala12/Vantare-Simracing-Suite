@@ -643,6 +643,7 @@ fn fetch_credential(credential: &str) -> String {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // Matriz única de credenciales firmadas y sus capacidades independientes.
 fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
     let start = 1_790_800_000;
     for (capability, expected) in [
@@ -672,6 +673,16 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
             .advance(&Snapshot::default(), wall(start), Duration::ZERO)
             .expect("vigente");
         assert!(policy.overlays_advanced, "{capability:?}");
+        assert_eq!(
+            policy.tester,
+            capability.is_some_and(|key| matches!(
+                key,
+                "vantare.operational.owner"
+                    | "vantare.operational.tester"
+                    | "vantare.operational.nightly_tester"
+            )),
+            "{capability:?}"
+        );
         assert_eq!(
             [
                 policy.engineer,

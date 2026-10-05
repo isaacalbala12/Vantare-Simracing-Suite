@@ -119,7 +119,7 @@ impl Page {
 pub(super) struct State {
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
-    appearance: appearance::Store,
+    pub(super) appearance: appearance::Store,
     appearance_focus: [FocusHandle; 12],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],

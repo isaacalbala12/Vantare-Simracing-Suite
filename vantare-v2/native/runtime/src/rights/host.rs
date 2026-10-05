@@ -208,6 +208,7 @@ fn advance(
             state.policy.strategy = false;
             state.policy.analysis = false;
             state.policy.calendar = false;
+            state.policy.tester = false;
             state.policy.error = Some(error.to_string());
             state.policy.checked_at_ms = now_ms;
             state.policy.live = is_live(&seen.snapshot);

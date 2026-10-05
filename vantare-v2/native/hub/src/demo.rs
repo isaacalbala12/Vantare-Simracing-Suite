@@ -88,6 +88,8 @@ pub struct DemoLauncher {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct DemoLauncherApp {
+    #[serde(default)]
+    pub executable_path: Option<std::path::PathBuf>,
     pub id: String,
     pub display_name: String,
     pub abbreviation: String,
@@ -106,6 +108,14 @@ pub struct DemoLauncherProfile {
     pub favorite: bool,
     pub steps: Vec<DemoLauncherStep>,
     pub retry_limit: u8,
+    #[serde(default)]
+    pub launch_count: u64,
+    #[serde(default)]
+    pub last_launched_at: Option<String>,
+    #[serde(default)]
+    pub avg_chain_duration_ms: u64,
+    #[serde(default)]
+    pub last_ready_steps: Option<usize>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -267,9 +277,22 @@ pub struct DemoVersions {
 
 impl DemoData {
     /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
-    pub fn apply_capture(&mut self, capture: &CaptureState) {
+    pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
         self.profile.present = capture.name == "inicio-base";
         self.notifications.clear();
+        if capture.name == "inicio-base" {
+            self.launcher =
+                serde_json::from_str(include_str!("../reference/fixtures/home-r7-launcher.json"))
+                    .map_err(|error| format!("fixture visual Inicio: {error}"))?;
+            if self.launcher.profiles.iter().any(|profile| {
+                profile
+                    .last_ready_steps
+                    .is_some_and(|ready| ready > profile.steps.len())
+            }) {
+                return Err("fixture Inicio: progreso fuera de los pasos".into());
+            }
+        }
+        Ok(())
     }
 
     pub fn overlay_profile(&self) -> Option<&DemoProfile> {
@@ -791,16 +814,20 @@ mod tests {
             "shell-notificaciones-abiertas",
         ] {
             let mut demo = DemoData::load()?;
-            demo.apply_capture(&CaptureState::parse(name)?);
+            demo.apply_capture(&CaptureState::parse(name)?)?;
             assert!(demo.overlay_profile().is_none(), "{name}");
             assert!(demo.notifications.is_empty(), "{name}");
             assert_eq!(demo.user.name, "test");
             assert_eq!(demo.launcher.profiles.len(), 2);
         }
         let mut home = DemoData::load()?;
-        home.apply_capture(&CaptureState::parse("inicio-base")?);
+        home.apply_capture(&CaptureState::parse("inicio-base")?)?;
         assert!(home.overlay_profile().is_some());
         assert!(home.notifications.is_empty());
+        assert_eq!(home.launcher.profiles.len(), 3);
+        assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
+        assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
+        crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
         Ok(())
     }
 }

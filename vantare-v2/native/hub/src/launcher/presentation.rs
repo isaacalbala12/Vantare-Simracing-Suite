@@ -357,6 +357,7 @@ fn app_mark(app: &App, size: f32, cx: &gpui::App) -> gpui::Div {
         "obs" => "OBS".to_owned(),
         "simhub" => "SH".to_owned(),
         "spotify" => "SP".to_owned(),
+        "custom:vantare" => "A".to_owned(),
         _ => app.name.chars().take(2).collect::<String>().to_uppercase(),
     };
     let (first, second) = app_palette(&app.id);
@@ -401,6 +402,25 @@ fn profile_mark(name: &str, featured: bool, size: f32, cx: &gpui::App) -> gpui::
         (crate::orbit::cyan(cx), 0x002a_5b8f)
     };
     monogram(&profile_initials(name), size, first, second, cx)
+}
+
+impl Launcher {
+    pub fn profile_app_chips(&self, profile: &Profile, cx: &gpui::App) -> gpui::Div {
+        div()
+            .flex()
+            .gap(px(6.0))
+            .children(profile.steps.iter().map(|step| {
+                self.store
+                    .document
+                    .apps
+                    .iter()
+                    .find(|app| app.id == step.app_id)
+                    .map_or_else(
+                        || orbit::pill(&step.app_id, Tone::Warning, cx),
+                        |app| app_mark(app, 28.0, cx).w_full().flex_1(),
+                    )
+            }))
+    }
 }
 
 fn app_method(app: &App) -> String {

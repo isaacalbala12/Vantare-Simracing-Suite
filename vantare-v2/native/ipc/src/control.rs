@@ -3,8 +3,20 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 const LIMIT: usize = 64 * 1024;
+pub const VERSION_ERROR: &str =
+    "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
+
+/// Incompatibilidad local del protocolo; nunca incluye mensajes arbitrarios del peer.
+#[derive(Debug)]
+pub struct VersionMismatch;
+impl std::fmt::Display for VersionMismatch {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(VERSION_ERROR)
+    }
+}
+impl std::error::Error for VersionMismatch {}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -21,6 +33,8 @@ pub struct Policy {
     pub strategy: bool,
     pub analysis: bool,
     pub calendar: bool,
+    #[serde(default)]
+    pub tester: bool,
     pub live: bool,
     pub error: Option<String>,
 }
@@ -137,7 +151,10 @@ pub fn request_cancelled(
         },
     )?;
     let response: Response = read(&mut pipe)?;
-    if response.version != VERSION || response.sequence != 1 || response.policy.version != VERSION {
+    if response.version != VERSION || response.policy.version != VERSION {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+    }
+    if response.sequence != 1 {
         return Err(io::ErrorKind::InvalidData.into());
     }
     if response.error.is_some() {
@@ -208,14 +225,33 @@ impl Feed {
             .spawn(move || {
                 let mut cursor = (0, 0);
                 while !cancel.is_set() {
-                    let policy = request_cancelled(&link, Command::Read, &cancel)
-                        .ok()
-                        .filter(|p| {
-                            p.current()
-                                && (p.epoch > cursor.0
-                                    || (p.epoch == cursor.0 && p.revision >= cursor.1))
-                        });
-                    if let Some(p) = &policy {
+                    let policy = match request_cancelled(&link, Command::Read, &cancel) {
+                        Ok(policy)
+                            if policy.current()
+                                && (policy.epoch > cursor.0
+                                    || (policy.epoch == cursor.0
+                                        && policy.revision >= cursor.1)) =>
+                        {
+                            Some(policy)
+                        }
+                        Err(error)
+                            if error.get_ref().is_some_and(
+                                <dyn std::error::Error + Send + Sync + 'static>::is::<
+                                    VersionMismatch,
+                                >,
+                            ) =>
+                        {
+                            Some(Policy {
+                                version: VERSION,
+                                error: Some(VersionMismatch.to_string()),
+                                ..Policy::default()
+                            })
+                        }
+                        _ => None,
+                    };
+                    if let Some(p) = &policy
+                        && p.error.is_none()
+                    {
                         cursor = (p.epoch, p.revision);
                     }
                     if let Ok(mut slot) = target.lock() {
@@ -241,7 +277,7 @@ impl Feed {
             .lock()
             .ok()
             .and_then(|p| p.clone())
-            .filter(Policy::current)
+            .filter(|policy| policy.error.is_some() || policy.current())
             .unwrap_or_default()
     }
     /// Arranque del consumidor sin UI: espera acotada al primer resultado,

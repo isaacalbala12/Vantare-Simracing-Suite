@@ -231,6 +231,14 @@ fn serve_command(
     }
     let policy = match control::request_cancelled(&options.core, control::Command::Read, stop) {
         Ok(p) if p.current() => p,
+        Err(error)
+            if error.get_ref().is_some_and(
+                <dyn std::error::Error + Send + Sync>::is::<control::VersionMismatch>,
+            ) =>
+        {
+            finish(state);
+            return failure(control::VERSION_ERROR);
+        }
         _ => {
             finish(state);
             return failure("núcleo de derechos no disponible");

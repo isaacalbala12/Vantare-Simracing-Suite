@@ -13,6 +13,7 @@ use gpui::{
 pub(super) struct State {
     pub access: Access,
     pub column_open: bool,
+    pub sidebar_open: bool,
     pub palette_open: bool,
     pub navigation_notice: Option<String>,
     notification_subscription: Option<gpui::Subscription>,
@@ -24,9 +25,9 @@ pub(super) struct State {
     close_focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     scroll: ScrollHandle,
-    rail_scroll: ScrollHandle,
-    rail_focus: Vec<FocusHandle>,
-    rail_sections: Vec<Section>,
+    pub(super) rail_scroll: ScrollHandle,
+    pub(super) rail_focus: Vec<FocusHandle>,
+    pub(super) rail_sections: Vec<Section>,
 }
 
 impl State {
@@ -44,17 +45,11 @@ impl State {
         for input in [&query, &context_query] {
             cx.observe(input, |_, _, cx| cx.notify()).detach();
         }
-        let rail_sections: Vec<_> = navigation::RAIL
-            .iter()
-            .copied()
-            .filter(|section| {
-                *section != Section::Testing
-                    || capture.is_none_or(|capture| capture.section == Section::Testing)
-            })
-            .collect();
+        let rail_sections = navigation::BETA_RAIL.to_vec();
         let rail_focus = rail_sections.iter().map(|_| cx.focus_handle()).collect();
         Self {
             access,
+            sidebar_open: true,
             column_open: capture.is_none_or(|capture| capture.column_open),
             palette_open: capture.is_some_and(|capture| capture.palette_query.is_some()),
             navigation_notice: None,
@@ -75,8 +70,20 @@ impl State {
 }
 
 impl Hub {
+    pub(super) fn launch_favorite(&mut self, cx: &mut Context<Self>) {
+        if self.launcher.read(cx).launch_progress().is_some() {
+            return;
+        }
+        if let Some(id) = self.launcher.read(cx).default_profile_id() {
+            self.launch_profile(&id, cx);
+        } else {
+            self.navigate(Section::Launcher, cx);
+        }
+    }
     pub(super) fn navigate(&mut self, section: Section, cx: &mut Context<Self>) {
-        if let Err(reason) = self.shell.access.navigate(&mut self.section, section) {
+        if let Some(reason) = self.shell.access.beta_lock(section) {
+            self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
+        } else if let Err(reason) = self.shell.access.navigate(&mut self.section, section) {
             self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
         } else {
             self.shell.navigation_notice = None;
@@ -85,7 +92,7 @@ impl Hub {
         cx.notify();
     }
 
-    fn toggle_palette(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn toggle_palette(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.shell.palette_open {
             self.close_palette(window, cx);
             return;
@@ -115,7 +122,7 @@ impl Hub {
     }
 
     fn palette_commands(&self, cx: &Context<Self>) -> Vec<navigation::Item> {
-        let mut items = navigation::commands(self.shell.access, &self.shell.last_query);
+        let mut items = navigation::beta_commands(self.shell.access, &self.shell.last_query);
         items.retain(|item| {
             item.command != Command::Navigate(Section::Testing)
                 || self.shell.rail_sections.contains(&Section::Testing)
@@ -182,6 +189,17 @@ impl Hub {
             return;
         }
         let key = &event.keystroke;
+        if key.modifiers.control && key.key.eq_ignore_ascii_case("b") {
+            self.shell.sidebar_open = !self.shell.sidebar_open;
+            cx.notify();
+            cx.stop_propagation();
+            return;
+        }
+        if key.modifiers.control && key.key.eq_ignore_ascii_case("l") {
+            self.launch_favorite(cx);
+            cx.stop_propagation();
+            return;
+        }
         if (key.modifiers.control || key.modifiers.platform) && key.key.eq_ignore_ascii_case("k") {
             self.toggle_palette(window, cx);
             cx.stop_propagation();
@@ -246,7 +264,7 @@ impl Hub {
                 .rail_sections
                 .iter()
                 .enumerate()
-                .filter(|(_, section)| self.shell.access.visible(**section))
+                .filter(|(_, section)| self.shell.access.beta_visible(**section))
                 .map(|(index, _)| index)
                 .collect();
             if let Some(position) = visible.iter().position(|visible| *visible == index) {
@@ -271,122 +289,21 @@ impl Hub {
     }
 
     pub(super) fn rail(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut items = div()
-            .id("rail-sections")
-            .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
-            .track_scroll(&self.shell.rail_scroll)
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(px(8.0));
-        for (index, &section) in self.shell.rail_sections.iter().enumerate() {
-            if !self.shell.access.visible(section) {
-                continue;
-            }
-            items = items.child(
-                self.section_rail_button(section, cx)
-                    .track_focus(&self.shell.rail_focus[index])
-                    .on_click(cx.listener(move |this, _, _, cx| this.navigate(section, cx))),
-            );
-        }
-        div()
-            .w(px(if self.section == Section::Strategy {
-                72.0
-            } else {
-                orbit::RAIL_W
-            }))
-            .h_full()
-            .flex_none()
-            .flex()
-            .flex_col()
-            .items_center()
-            .pt(px(9.0))
-            .pb(px(16.0))
-            .gap(px(8.0))
-            .bg(rgb(orbit::rail_bg(cx)))
-            .border_r_1()
-            .border_color(rgba(orbit::line(cx)))
-            .child(items)
-            .child(
-                div()
-                    .flex_none()
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .gap(px(9.0))
-                    .child(
-                        orbit::rail_button(
-                            "toggle-column",
-                            "i-panel",
-                            if self.shell.column_open {
-                                "Ocultar contexto"
-                            } else {
-                                "Mostrar contexto"
-                            },
-                            false,
-                            None,
-                            cx,
-                        )
-                        .aria_expanded(self.shell.column_open)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.shell.column_open = !this.shell.column_open;
-                            cx.notify();
-                        })),
-                    )
-                    .child(
-                        orbit::rail_button(
-                            "palette",
-                            "i-comando",
-                            "Comandos · Ctrl+K",
-                            false,
-                            None,
-                            cx,
-                        )
-                        .aria_keyshortcuts("Control+K")
-                        .on_click(
-                            cx.listener(|this, _, window, cx| this.toggle_palette(window, cx)),
-                        ),
-                    )
-                    .child(
-                        orbit::rail_button(
-                            "settings",
-                            "i-ajustes",
-                            "Ajustes",
-                            matches!(
-                                self.section,
-                                Section::Settings | Section::Account | Section::Licenses
-                            ),
-                            None,
-                            cx,
-                        )
-                        .on_click(
-                            cx.listener(|this, _, _, cx| this.navigate(Section::Settings, cx)),
-                        ),
-                    )
-                    .child(orbit::avatar(false, &self.avatar_initial(), cx).on_click(
-                        cx.listener(|this, _, _, cx| this.navigate(Section::Account, cx)),
-                    )),
-            )
+        self.redesign_rail(cx)
     }
-
-    fn section_rail_button(&self, section: Section, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
-        orbit::rail_button(
-            navigation::title(section),
-            navigation::icon(section),
-            navigation::title(section),
-            self.section == section,
-            self.shell.access.lock(section),
-            cx,
+    pub(super) fn avatar_initial(&self) -> String {
+        self.demo.as_ref().map_or_else(
+            || "·".into(),
+            |demo| {
+                demo.user
+                    .full_name
+                    .split_whitespace()
+                    .take(2)
+                    .filter_map(|name| name.chars().next())
+                    .flat_map(char::to_uppercase)
+                    .collect()
+            },
         )
-    }
-
-    fn avatar_initial(&self) -> String {
-        self.demo
-            .as_ref()
-            .and_then(|demo| demo.user.name.chars().next())
-            .map_or_else(|| "·".into(), |initial| initial.to_uppercase().to_string())
     }
 
     pub(super) fn context_column(
@@ -394,7 +311,7 @@ impl Hub {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
-        let width = orbit::column_width(f32::from(window.viewport_size().width));
+        let width = (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
         let version = self.demo.as_ref().map_or(
             option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
             |demo| demo.versions.hub.as_str(),
@@ -427,7 +344,7 @@ impl Hub {
             option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
             |demo| demo.versions.hub.as_str(),
         );
-        let width = orbit::column_width(f32::from(window.viewport_size().width));
+        let width = (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
         self.context_column_with_content("Telemetría", version, width, Some(content), cx)
     }
 
@@ -521,12 +438,15 @@ impl Hub {
         column.child(
             blocks
                 // Sin Calendario (beta) no se anuncian carreras que no existen.
-                .when(self.shell.access.visible(Section::Calendar), |blocks| {
-                    blocks.child(
-                        Self::context_block("races", races, cx)
-                            .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
-                    )
-                })
+                .when(
+                    self.shell.access.beta_visible(Section::Calendar),
+                    |blocks| {
+                        blocks.child(
+                            Self::context_block("races", races, cx)
+                                .when(strategy, |block| block.h(px(70.0)).pt(px(12.0)).pb(px(0.0))),
+                        )
+                    },
+                )
                 .child(
                     Self::context_block("overlay", overlay, cx)
                         .when(strategy, |block| block.h(px(82.0)).pt(px(15.0)).pb(px(0.0))),
@@ -900,7 +820,7 @@ impl Hub {
             })
             .map(|demo| demo.versions.pending.clone());
         let breadcrumb = if matches!(self.section, Section::Account | Section::Licenses) {
-            Section::Settings
+            Section::Account
         } else {
             self.section
         };
@@ -912,6 +832,19 @@ impl Hub {
                 .flex()
                 .items_center()
                 .gap(px(10.0))
+                .child(orbit::pill(
+                    if self.previous_source == Some(true) {
+                        "LMU conectado"
+                    } else {
+                        "Esperando simulador"
+                    },
+                    if self.previous_source == Some(true) {
+                        orbit::Tone::Success
+                    } else {
+                        orbit::Tone::Neutral
+                    },
+                    cx,
+                ))
                 .child(bell)
                 .when_some(pending, |row, version| {
                     row.child(

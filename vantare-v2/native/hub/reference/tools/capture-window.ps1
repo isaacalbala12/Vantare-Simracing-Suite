@@ -88,15 +88,19 @@ try {
     [HubReferenceWindow]::Focus($handle)
     $outer = New-Object HubReferenceWindow+RECT
     $client = New-Object HubReferenceWindow+RECT
-    if (-not [HubReferenceWindow]::GetWindowRect($handle,[ref]$outer) -or
-        -not [HubReferenceWindow]::GetClientRect($handle,[ref]$client)) { throw 'No se pudo medir la ventana' }
-    if (-not [HubReferenceWindow]::MoveWindow($handle,0,0,$width+($outer.R-$outer.L-$client.R),$height+($outer.B-$outer.T-$client.B),$true)) {
-        throw 'No se pudo ajustar el área cliente'
+    # GPUI recalcula el marco tras el primer resize; vuelve a medirlo antes de corregir.
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        if (-not [HubReferenceWindow]::GetWindowRect($handle,[ref]$outer) -or
+            -not [HubReferenceWindow]::GetClientRect($handle,[ref]$client)) { throw 'No se pudo medir la ventana' }
+        if (-not [HubReferenceWindow]::MoveWindow($handle,0,0,$width+($outer.R-$outer.L-$client.R),$height+($outer.B-$outer.T-$client.B),$true)) {
+            throw 'No se pudo ajustar el área cliente'
+        }
+        Start-Sleep -Milliseconds 300
+        if ([HubReferenceWindow]::GetClientRect($handle,[ref]$client) -and $client.R -eq $width -and $client.B -eq $height) { break }
     }
-    Start-Sleep -Milliseconds 600
     if ([HubReferenceWindow]::GetDpiForWindow($handle) -ne 96) { throw 'El monitor no está a DPI 100 %' }
     if (-not [HubReferenceWindow]::GetClientRect($handle,[ref]$client) -or $client.R -ne $width -or $client.B -ne $height) {
-        throw "El área cliente no mide ${width} x ${height}"
+        throw "El área cliente mide $($client.R) x $($client.B), se esperaban ${width} x ${height}"
     }
     $origin = New-Object HubReferenceWindow+POINT
     if (-not [HubReferenceWindow]::ClientToScreen($handle,[ref]$origin)) { throw 'No se pudo localizar el área cliente' }

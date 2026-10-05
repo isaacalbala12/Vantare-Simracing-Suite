@@ -10,6 +10,7 @@ pub struct Access {
     pub strategy: bool,
     pub analysis: bool,
     pub calendar: bool,
+    pub tester: bool,
     pub blocked: bool,
     #[cfg(feature = "parity-capture")]
     pub capture_locks: &'static [Section],
@@ -32,10 +33,27 @@ impl Access {
             strategy: policy.strategy,
             analysis: policy.analysis,
             calendar: policy.calendar,
+            tester: policy.tester,
             ..Self::default()
         }
     }
 
+    pub fn beta_visible(self, section: Section) -> bool {
+        match section {
+            Section::Workshop | Section::Analysis | Section::Licenses => false,
+            Section::Testing | Section::Calendar => self.verified && !self.blocked && self.tester,
+            _ => true,
+        }
+    }
+    pub fn beta_lock(self, section: Section) -> Option<&'static str> {
+        if matches!(section, Section::Strategy | Section::Engineer) {
+            return Some("Próximamente");
+        }
+        if !self.beta_visible(section) {
+            return Some("No disponible en la navegación beta");
+        }
+        self.lock(section)
+    }
     pub fn visible(self, section: Section) -> bool {
         match section {
             Section::Analysis => self.verified && !self.blocked && self.analysis,
@@ -85,19 +103,45 @@ pub const RAIL: &[Section] = &[
     Section::Testing,
 ];
 
+pub const BETA_RAIL: &[Section] = &[
+    Section::Home,
+    Section::Launcher,
+    Section::Studio,
+    Section::Roadmap,
+    Section::Testing,
+    Section::Calendar,
+    Section::Strategy,
+    Section::Engineer,
+];
+pub fn beta_commands(access: Access, query: &str) -> Vec<Item> {
+    commands(access, query)
+        .into_iter()
+        .filter(|item| match item.command {
+            Command::Navigate(section) => access.beta_visible(section),
+            _ => true,
+        })
+        .map(|mut item| {
+            if let Command::Navigate(section) = item.command {
+                item.locked = access.beta_lock(section);
+            }
+            item
+        })
+        .collect()
+}
+
 pub fn icon(section: Section) -> &'static str {
     match section {
-        Section::Home => "i-vantare",
-        Section::Studio | Section::Workshop => "i-studio",
-        Section::Launcher => "i-launcher",
-        Section::Calendar => "i-carreras",
-        Section::Strategy => "i-estrategia",
-        Section::Engineer => "i-ingeniero",
+        Section::Home => "v-home",
+        Section::Studio | Section::Workshop => "v-studio",
+        Section::Launcher => "v-launch",
+        Section::Calendar => "v-calendar",
+        Section::Strategy => "v-strategy",
+        Section::Engineer => "v-engineer",
         Section::Analysis => "i-telemetria",
-        Section::Testing => "i-flask",
-        Section::Roadmap => "i-roadmap",
+        Section::Testing => "v-testing",
+        Section::Roadmap => "v-roadmap",
         Section::Settings => "i-ajustes",
-        Section::Notifications => "i-campana",
+        Section::Notifications => "v-bell",
         Section::Account | Section::Licenses => "i-cuenta",
     }
 }
@@ -187,7 +231,7 @@ pub fn commands(access: Access, query: &str) -> Vec<Item> {
                 command: Command::Save,
                 label: "Guardar perfil".into(),
                 meta: "Overlays Studio",
-                icon: "i-studio",
+                icon: "v-studio",
                 locked: None,
             },
             Item {
@@ -220,7 +264,7 @@ pub fn launch_commands(
             command: Command::LaunchProfile(profile.id.clone()),
             label: format!("Lanzar {}", profile.name),
             meta: "Perfil de Launcher",
-            icon: "i-launcher",
+            icon: "v-launch",
             locked: access.lock(Section::Launcher),
         })
         .filter(|item| item.matches(query.trim()))
@@ -531,5 +575,71 @@ mod tests {
             context(Section::Settings),
             &[Section::Account, Section::Settings, Section::Licenses]
         );
+    }
+}
+
+#[cfg(test)]
+mod beta_tests {
+    use super::*;
+    #[test]
+    fn beta_sections_follow_the_verified_role_not_a_purchased_module() {
+        for (role, tester, calendar) in [
+            ("usuario", false, false),
+            ("tester", true, true),
+            ("owner", true, true),
+            ("nightly_tester", true, true),
+            ("calendario comprado", false, true),
+        ] {
+            let policy = vantare_ipc::control::Policy {
+                version: vantare_ipc::control::VERSION,
+                revision: 1,
+                checked_at_ms: 10_000,
+                overlays_advanced: true,
+                tester,
+                calendar,
+                engineer: true,
+                strategy: true,
+                ..Default::default()
+            };
+            let access = Access::from_policy(&policy, 10_001);
+            for section in [Section::Testing, Section::Calendar] {
+                assert_eq!(access.beta_visible(section), tester, "{role}: {section:?}");
+            }
+            for section in [Section::Workshop, Section::Analysis, Section::Licenses] {
+                assert!(!access.beta_visible(section), "{role}");
+            }
+            for section in [
+                Section::Home,
+                Section::Launcher,
+                Section::Studio,
+                Section::Account,
+                Section::Settings,
+                Section::Roadmap,
+                Section::Notifications,
+            ] {
+                assert!(access.beta_visible(section), "{role}");
+            }
+            for section in [Section::Strategy, Section::Engineer] {
+                assert_eq!(access.beta_lock(section), Some("Próximamente"));
+            }
+            let menu = beta_commands(access, "");
+            assert!(!menu.iter().any(|item| matches!(
+                item.command,
+                Command::Navigate(Section::Workshop | Section::Analysis | Section::Licenses)
+            )));
+            assert_eq!(
+                menu.iter()
+                    .any(|item| item.command == Command::Navigate(Section::Testing)),
+                tester,
+                "{role}"
+            );
+            assert!(
+                !Access {
+                    blocked: true,
+                    ..access
+                }
+                .beta_visible(Section::Testing)
+            );
+        }
     }
 }

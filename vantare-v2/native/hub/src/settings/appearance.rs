@@ -1,6 +1,6 @@
 //! Configuración local de apariencia; escritura atómica con detección de conflictos.
 use super::{Hub, State};
-use crate::orbit::theme::{self, AppearanceSettings, InterfaceFont, MonoFont, Scheme};
+use crate::orbit::theme::{self, AppearanceSettings, InterfaceFont, MonoFont};
 use gpui::{Context, Window};
 use std::path::PathBuf;
 
@@ -88,6 +88,12 @@ impl Hub {
     ) {
         match self.settings.appearance.save(settings) {
             Ok(()) => {
+                if let Err(error) = self.live_theme.select(settings.design) {
+                    self.settings.status = Some(error);
+                    cx.notify();
+                    return;
+                }
+                cx.set_global(self.live_theme.value.clone());
                 theme::apply(self.settings.appearance.settings, window.appearance(), cx);
                 self.settings.status = None;
             }
@@ -114,38 +120,12 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        use theme::Palette;
-        let Some(palette) = [
-            Palette::Vantare,
-            Palette::Rose,
-            Palette::Grove,
-            Palette::Ocean,
-            Palette::Ember,
-            Palette::Iris,
-            Palette::Mono,
-        ]
-        .get(index)
-        .copied() else {
+        let Some(design) = crate::orbit::design::Design::ALL.get(index).copied() else {
             return;
         };
         let mut settings = self.settings.appearance.settings;
-        settings.palette = palette;
-        self.settings_appearance_apply(settings, window, cx);
-    }
-    pub(super) fn settings_scheme(
-        &mut self,
-        index: usize,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(scheme) = [Scheme::System, Scheme::Light, Scheme::Dark]
-            .get(index)
-            .copied()
-        else {
-            return;
-        };
-        let mut settings = self.settings.appearance.settings;
-        settings.scheme = scheme;
+        settings.design = design;
+        settings.scheme = theme::Scheme::Dark;
         self.settings_appearance_apply(settings, window, cx);
     }
     pub(super) fn settings_slider_pointer(
@@ -192,6 +172,7 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::orbit::theme::Scheme;
     fn directory(label: &str) -> PathBuf {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -210,6 +191,7 @@ mod tests {
         assert_eq!(first.settings.scheme, Scheme::Dark);
         let mut other = Store::load(path.clone()).expect("second reader");
         let settings = AppearanceSettings {
+            design: crate::orbit::design::Design::DeepseekHarness,
             palette: theme::Palette::Ocean,
             scheme: Scheme::System,
             contrast: 115,

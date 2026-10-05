@@ -9,6 +9,20 @@ use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
 
 fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
+    use vantare_hub::orbit::design::Design;
+    let design = match value {
+        "grafito-carmin" => Some(Design::GrafitoCarmin),
+        "deepseek-harness" => Some(Design::DeepseekHarness),
+        "noche-le-mans" => Some(Design::NocheLeMans),
+        "piedra-calida" => Some(Design::PiedraCalida),
+        _ => None,
+    };
+    if let Some(design) = design {
+        return Ok(AppearanceSettings {
+            design,
+            ..Default::default()
+        });
+    }
     let (palette, scheme) = value
         .split_once('-')
         .ok_or("apariencia requiere paleta-esquema")?;
@@ -372,6 +386,21 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
 mod tests {
     use super::*;
 
+    #[test]
+    fn capture_accepts_the_four_shared_designs() {
+        for (name, design) in [
+            "grafito-carmin",
+            "deepseek-harness",
+            "noche-le-mans",
+            "piedra-calida",
+        ]
+        .into_iter()
+        .zip(vantare_hub::orbit::design::Design::ALL)
+        {
+            assert_eq!(capture_appearance(name).expect("tema").design, design);
+        }
+        assert!(capture_appearance("tema-desconocido").is_err());
+    }
     #[test]
     fn capture_size_is_explicit_validated_and_capture_only() {
         let capture = ["--capture", "inicio-base", "--out", "capture.png"];

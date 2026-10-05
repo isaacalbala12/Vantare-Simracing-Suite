@@ -8,6 +8,11 @@ use gpui::{
 };
 
 mod controls;
+mod dates;
+pub use dates::activity_time;
+pub mod design;
+mod neo;
+pub use neo::*;
 mod input;
 mod layer;
 mod specimen;
@@ -274,7 +279,10 @@ pub const FEATURED_RADIUS: f32 = 25.0;
 
 pub fn stage(cx: &gpui::App) -> theme::StageBackground {
     let theme = cx.global::<theme::Theme>();
-    if theme.palette == theme::Palette::Vantare && theme.scheme == theme::Scheme::Dark {
+    if cx.try_global::<design::Tokens>().is_none()
+        && theme.palette == theme::Palette::Vantare
+        && theme.scheme == theme::Scheme::Dark
+    {
         // El lienzo nativo anterior usaba superficies Orbit; conserva paridad.
         theme::StageBackground {
             accent: theme.carmine,
@@ -450,7 +458,14 @@ pub fn avatar(active: bool, initial: &str, cx: &gpui::App) -> Stateful<Div> {
 
 pub fn sans_family(w: u16, cx: &gpui::App) -> SharedString {
     match cx.global::<theme::Theme>().interface_font {
-        theme::InterfaceFont::Inter => format!("Inter W{w}").into(),
+        theme::InterfaceFont::Inter => {
+            if let Some(tokens) = cx.try_global::<design::Tokens>()
+                && tokens.fonts.body != "Inter W400"
+            {
+                return tokens.fonts.body.clone().into();
+            }
+            format!("Inter W{w}").into()
+        }
         theme::InterfaceFont::Segoe => "Segoe UI".into(),
         theme::InterfaceFont::Arial => "Arial".into(),
     }
@@ -513,7 +528,10 @@ pub fn tracked_text(
 
 pub fn primary_label(cx: &gpui::App) -> u32 {
     let theme = cx.global::<theme::Theme>();
-    if theme.palette == theme::Palette::Vantare && theme.scheme == theme::Scheme::Dark {
+    if cx.try_global::<design::Tokens>().is_none()
+        && theme.palette == theme::Palette::Vantare
+        && theme.scheme == theme::Scheme::Dark
+    {
         theme.ink
     } else {
         theme.primary_ink
@@ -530,7 +548,7 @@ fn accent_label(cx: &gpui::App) -> u32 {
     }
 }
 
-pub fn mono_override(original: &'static str, cx: &gpui::App) -> &'static str {
+pub fn mono_override<'a>(original: &'static str, cx: &'a gpui::App) -> &'a str {
     if cx.global::<theme::Theme>().mono_font == theme::MonoFont::Cascadia {
         original
     } else {
@@ -538,7 +556,12 @@ pub fn mono_override(original: &'static str, cx: &gpui::App) -> &'static str {
     }
 }
 
-pub fn mono_family(cx: &gpui::App) -> &'static str {
+pub fn mono_family(cx: &gpui::App) -> &str {
+    if cx.global::<theme::Theme>().mono_font == theme::MonoFont::Cascadia
+        && let Some(tokens) = cx.try_global::<design::Tokens>()
+    {
+        return &tokens.fonts.mono;
+    }
     match cx.global::<theme::Theme>().mono_font {
         theme::MonoFont::Cascadia => "Cascadia Code",
         theme::MonoFont::Consolas => "Consolas",
@@ -678,7 +701,9 @@ pub fn topbar_with_actions(
 ) -> Div {
     let wrap_actions = compact && section_actions.is_some();
     div()
-        .h(px(TOPBAR_H))
+        .h(px(cx
+            .try_global::<design::Tokens>()
+            .map_or(TOPBAR_H, |tokens| tokens.geometry.topbar)))
         .when(wrap_actions, |bar| {
             bar.flex_wrap().h_auto().min_h(px(TOPBAR_H)).py(px(12.0))
         })
@@ -852,25 +877,31 @@ pub fn toggle(
 }
 
 /// Botón secundario (borde fino, fondo de superficie).
-fn button_base(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
     div()
         .id(id)
         .role(gpui::Role::Button)
         .aria_label(label.to_owned())
         .tab_index(0)
-        .h(px(CONTROL_H))
+        .h(px(cx
+            .try_global::<design::Tokens>()
+            .map_or(CONTROL_H, |tokens| {
+                tokens.geometry.control_height
+            })))
         .px(px(16.0))
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(RADIUS_CONTROL))
+        .rounded(px(cx
+            .try_global::<design::Tokens>()
+            .map_or(RADIUS_CONTROL, |tokens| tokens.geometry.control_radius)))
         .bg(rgb(surface_2(cx)))
         .border_1()
         .border_color(rgba(line_strong(cx)))
         .cursor_pointer()
 }
 
-pub fn button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+pub fn button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
     button_base(id, label, cx)
         .hover(|s| s.bg(rgb(surface_3(cx))))
         .focus_visible(|s| s.border_color(rgb(carmine(cx))))
@@ -959,6 +990,9 @@ pub fn carmine_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful
             linear_color_stop(rgb(carmine(cx)), 0.0),
             linear_color_stop(rgb(carmine_dark(cx)), 1.0),
         ))
+        .when_some(cx.try_global::<design::Tokens>(), |button, tokens| {
+            button.bg(gradient(tokens.gradients.button, 180.0))
+        })
         .border_color(rgb(carmine(cx)))
         .hover(|style| style.bg(rgb(carmine(cx))))
         .focus_visible(|style| style.border_2().border_color(rgb(ink(cx))))

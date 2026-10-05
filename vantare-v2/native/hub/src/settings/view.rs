@@ -339,64 +339,6 @@ fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stat
         .child(text(label, 14.0, 500, orbit::ink_2(cx), cx))
         .child(text("⌄", 16.0, 400, orbit::ink_3(cx), cx))
 }
-fn reference_schemes(selected: usize, hub: &Hub, cx: &mut Context<Hub>) -> Div {
-    let mut schemes = div().flex().flex_none().gap(px(6.0));
-    for (index, label) in ["Sistema", "Claro", "Oscuro"].into_iter().enumerate() {
-        schemes = schemes.child(
-            div()
-                .id(("settings-scheme", index))
-                .role(gpui::Role::Button)
-                .aria_label(label)
-                .aria_selected(index == selected)
-                .track_focus(&hub.settings.appearance_focus[7 + index])
-                .tab_index(0)
-                .cursor_pointer()
-                .on_click(
-                    cx.listener(move |hub, _, window, cx| hub.settings_scheme(index, window, cx)),
-                )
-                .on_key_down(
-                    cx.listener(move |hub, event: &gpui::KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            hub.settings_scheme(index, window, cx);
-                            cx.stop_propagation();
-                        }
-                    }),
-                )
-                .h(px(34.0))
-                .px(px(12.0))
-                .flex()
-                .items_center()
-                .rounded(px(9.0))
-                .border_1()
-                .border_color(if index == selected {
-                    rgb(orbit::carmine(cx))
-                } else {
-                    rgba(orbit::line(cx))
-                })
-                .bg(if index == selected {
-                    linear_gradient(
-                        90.0,
-                        linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_491c, cx)), 0.0),
-                        linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
-                    )
-                } else {
-                    gpui::Background::from(rgb(orbit::surface_1(cx)))
-                })
-                .child(text(
-                    label,
-                    16.0,
-                    400,
-                    if index == selected {
-                        orbit::ink(cx)
-                    } else {
-                        orbit::ink_2(cx)
-                    },
-                    cx,
-                )),
-        );
-    }
-    schemes
-}
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     div()
         .id(id)
@@ -1300,31 +1242,24 @@ impl Hub {
     }
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
-        let colors = [
-            ("Vantare", 0x00f6_e8e8, 0x00a9_1d3e),
-            ("Rosa", 0x00f8_dbe9, 0x00a8_316c),
-            ("Bosque", 0x00db_f0e1, 0x0026_714d),
-            ("Océano", 0x00d9_eff5, 0x0024_6a91),
-            ("Ámbar", 0x00f7_e4d4, 0x00a6_5b30),
-            ("Iris", 0x00e8_def8, 0x0066_46a8),
-            ("Grises", 0x00e9_e9e9, 0x0030_3030),
-        ];
         let settings = self.settings.appearance.settings;
-        let scheme_index = match settings.scheme {
-            orbit::theme::Scheme::System => 0,
-            orbit::theme::Scheme::Light => 1,
-            orbit::theme::Scheme::Dark => 2,
-        };
-        let selected_scheme = Some(scheme_index);
+        let selected_scheme = Some(2);
         let mut palettes = div().w_full().mt(px(16.0)).flex().flex_wrap().gap(px(6.0));
-        for (index, (name, light, dark)) in colors.into_iter().enumerate() {
+        for (index, design) in orbit::design::Design::ALL.into_iter().enumerate() {
+            let tokens = match design.compiled() {
+                Ok(tokens) => tokens,
+                Err(error) => {
+                    palettes = palettes.child(orbit::callout(error, cx));
+                    continue;
+                }
+            };
             palettes = palettes.child(
                 palette_card(
                     index,
-                    name,
-                    light,
-                    dark,
-                    index == settings.palette as usize,
+                    &tokens.name,
+                    tokens.colors.text,
+                    tokens.colors.accent,
+                    index == settings.design as usize,
                     selected_scheme,
                     cx,
                 )
@@ -1360,8 +1295,8 @@ impl Hub {
                  cx))
                 .child(section_row(
                     "Apariencia",
-                    "Elige claro, oscuro o sigue el ajuste de Windows.",
-                    reference_schemes(scheme_index, self, cx),
+                    "Cada tema define sus superficies oscuras y su contraste.",
+                    orbit::pill("Oscuro", orbit::Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Contraste",

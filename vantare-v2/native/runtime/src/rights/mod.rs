@@ -196,6 +196,7 @@ impl Owner {
             self.policy.strategy = false;
             self.policy.analysis = false;
             self.policy.calendar = false;
+            self.policy.tester = false;
         }
         result
     }
@@ -206,6 +207,7 @@ impl Owner {
         self.policy.strategy = false;
         self.policy.analysis = false;
         self.policy.calendar = false;
+        self.policy.tester = false;
         self.authority.invalidate(now, tick)?;
         self.authority.persist(&self.store)?; // ACK solo después de tombstone durable.
         self.binding = None;
@@ -261,6 +263,7 @@ impl Owner {
                     self.policy.strategy = false;
                     self.policy.analysis = false;
                     self.policy.calendar = false;
+                    self.policy.tester = false;
                     self.policy.error = Some(error.to_string());
                     return Err(error);
                 }
@@ -295,6 +298,15 @@ impl Owner {
         self.policy.strategy = module("vantare.module.strategy");
         self.policy.analysis = module("vantare.module.analysis");
         self.policy.calendar = module("vantare.module.calendar");
+        self.policy.tester = valid
+            && rights.iter().any(|right| {
+                matches!(
+                    right.as_str(),
+                    "vantare.operational.owner"
+                        | "vantare.operational.tester"
+                        | "vantare.operational.nightly_tester"
+                )
+            });
         self.policy.live = live;
         self.policy.error = result.as_ref().err().map(ToString::to_string).or_else(|| {
             if self.verifier.is_none() {

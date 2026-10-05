@@ -28,10 +28,12 @@ use crate::{
 use crate::testing::{self, Testing, diagnostic::Module as TestingModule};
 mod assets;
 mod chrome;
+mod foundations;
 mod input;
 pub mod navigation;
 #[path = "settings/mod.rs"]
 mod settings;
+mod sidebar;
 
 pub struct Options {
     pub controlled: bool,
@@ -67,6 +69,9 @@ struct Hub {
     remote: Entity<crate::services::view::Remote>,
     testing: Entity<Testing>,
     settings: settings::State,
+    live_theme: orbit::design::LiveTheme,
+    home_previews: foundations::Previews,
+    home_profile: Entity<orbit::Choice>,
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
@@ -83,6 +88,24 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        match self
+            .live_theme
+            .poll(self.settings.appearance.settings.design)
+        {
+            Ok(true) => {
+                cx.set_global(self.live_theme.value.clone());
+                orbit::theme::apply(
+                    self.settings.appearance.settings,
+                    gpui::WindowAppearance::Dark,
+                    cx,
+                );
+            }
+            Err(error) => {
+                self.live_theme.error = Some(error);
+                cx.notify();
+            }
+            Ok(false) => {}
+        }
         self.poll_beta_update(cx);
         if self.capture.is_none() {
             let access = self.remote.update(cx, |remote, cx| {
@@ -109,6 +132,7 @@ impl Hub {
             return;
         }
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
+            self.home_previews.ingest(&snapshot, cx);
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
             let signing_in = self.remote.read(cx).holds_hub_in_game();
@@ -208,7 +232,7 @@ impl Hub {
 
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
-        if let Some(reason) = self.shell.access.lock(self.section) {
+        if let Some(reason) = self.shell.access.beta_lock(self.section) {
             return orbit::callout(
                 format!(
                     "{} · {reason}. Abre Cuenta para consultar el acceso.",
@@ -229,31 +253,7 @@ impl Hub {
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(window, cx).into_any_element(),
             Section::Testing => self.testing.clone().into_any_element(),
-            Section::Home => crate::calendar::home::render(
-                self.calendar.read(cx),
-                self.shell.access,
-                self.demo.as_ref(),
-                f32::from(window.viewport_size().width) <= 1360.0,
-                |control, section| {
-                    control
-                        .when(!self.shell.access.visible(section), |control| {
-                            control.hidden()
-                        })
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            if section == Section::Launcher {
-                                if let Some(id) = this.launcher.read(cx).default_profile_id() {
-                                    this.launch_profile(&id, cx);
-                                } else {
-                                    this.navigate(section, cx);
-                                }
-                            } else {
-                                this.navigate(section, cx);
-                            }
-                        }))
-                },
-                cx,
-            )
-            .into_any_element(),
+            Section::Home => self.foundation_home(window, cx).into_any_element(),
             Section::Account => self
                 .remote
                 .update(cx, |remote, cx| remote.account(window, cx))
@@ -271,6 +271,9 @@ impl Hub {
 
     fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
         div()
+            .when(self.section == Section::Home, |content| {
+                content.h_full().min_h_0().min_w_0()
+            })
             .flex_1()
             .flex()
             .flex_col()
@@ -289,12 +292,19 @@ impl Hub {
                     };
                     content
                         .gap(gpui::px(24.0))
-                        .p(gpui::px(orbit::GUTTER))
-                        .pt(gpui::px(orbit::GUTTER + inset))
+                        .p(gpui::px(
+                            cx.global::<orbit::design::Tokens>().geometry.gutter,
+                        ))
+                        .pt(gpui::px(
+                            cx.global::<orbit::design::Tokens>().geometry.gutter + inset,
+                        ))
                 },
             )
             .when(self.section == Section::Settings, |content| {
                 content.child(self.settings_header(cx))
+            })
+            .when_some(self.live_theme.error.clone(), |content, error| {
+                content.child(orbit::callout(error, cx))
             })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status, cx))
@@ -396,7 +406,7 @@ impl Hub {
 impl Render for Hub {
     #[allow(clippy::too_many_lines)] // Compone el marco común y la visibilidad del editor Strategy en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.remote.read(cx).requires_access() {
+        if self.capture.is_none() && self.remote.read(cx).requires_access() {
             return self
                 .remote
                 .update(cx, |remote, cx| remote.access_screen(&self.focus, cx))
@@ -422,6 +432,14 @@ impl Render for Hub {
         let strategy_context_visible =
             self.section == Section::Strategy && self.strategy.read(cx).context_sidebar_visible();
         let column = self.section_column(window, strategy_context_visible, cx);
+        let context_width =
+            (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
+        let column = div()
+            .w(gpui::px(context_width))
+            .h_full()
+            .flex_none()
+            .overflow_hidden()
+            .child(column);
         let topbar = topbar.when(f32::from(window.viewport_size().width) <= 1360.0, |bar| {
             bar.flex_wrap().h_auto().min_h(gpui::px(orbit::TOPBAR_H))
         });
@@ -436,14 +454,29 @@ impl Render for Hub {
             .child(topbar)
             .child(
                 div()
-                    .id("hub-content")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
-                    .when(self.section == Section::Settings, |content| {
-                        content.track_scroll(&self.settings.scroll)
-                    })
-                    .child(content),
+                    .flex()
+                    .child(
+                        div()
+                            .id("hub-content")
+                            .min_w_0()
+                            .flex_1()
+                            .min_h_0()
+                            .when(self.section != Section::Home, |content| {
+                                content.overflow_y_scroll()
+                            })
+                            .when(self.section == Section::Settings, |content| {
+                                content.track_scroll(&self.settings.scroll)
+                            })
+                            .child(content),
+                    )
+                    .when(
+                        self.shell.column_open
+                            && self.section != Section::Home
+                            && (self.section != Section::Strategy || strategy_context_visible),
+                        |body| body.child(column),
+                    ),
             );
         let background = if self.section == Section::Strategy {
             self.strategy
@@ -466,11 +499,6 @@ impl Render for Hub {
             .font_family(crate::orbit::sans_override("Inter W400", cx))
             .when_some(background, gpui::ParentElement::child)
             .child(rail)
-            .when(
-                self.shell.column_open
-                    && (self.section != Section::Strategy || strategy_context_visible),
-                |root| root.child(column),
-            )
             .child(main)
             .when(self.section == Section::Launcher, |root| {
                 root.when_some(
@@ -674,7 +702,9 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
 struct Loaded {
+    preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
+    live_theme: orbit::design::LiveTheme,
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
@@ -691,6 +721,7 @@ struct Loaded {
 }
 
 impl Hub {
+    #[allow(clippy::too_many_lines)] // Conecta las entidades ya existentes y sus observadores.
     fn build(
         loaded: Loaded,
         section: Section,
@@ -700,7 +731,9 @@ impl Hub {
         cx: &mut Context<Self>,
     ) -> Self {
         let Loaded {
+            preview_fixtures,
             appearance,
+            live_theme,
             prepared,
             studio: prepared_studio,
             calendar,
@@ -715,14 +748,23 @@ impl Hub {
             demo,
             capture,
         } = loaded;
+        cx.set_global(live_theme.value.clone());
         orbit::theme::install(appearance.settings, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
         focus.focus(window, cx);
         let workshop = create_workshop(prepared, cx);
         let snapshot = workshop.read(cx).scene.snapshot().clone();
-        let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot, cx));
+        let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot.clone(), cx));
         let prefs = studio.read(cx).preferences();
+        // Solo QA explícita usa la escena de autoría; el producto espera fotos IPC reales.
+        let home_snapshot = if capture.is_some() || demo.is_some() {
+            snapshot.clone()
+        } else {
+            vantare_domain::Snapshot::default()
+        };
+        let home_previews =
+            foundations::Previews::new(&home_snapshot, prefs, preview_fixtures.as_ref(), cx);
         workshop.update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         cx.observe(&studio, |this, studio, cx| {
             let prefs = studio.read(cx).preferences();
@@ -737,6 +779,7 @@ impl Hub {
             prepared_analysis
         });
         let launcher = create_launcher(launcher_store, demo.as_ref(), capture.as_ref(), window, cx);
+        let home_profile = foundations::profile_choice(&launcher, window, cx);
         wire_sections(&calendar, &notifications, &launcher, cx);
         let engineer = create_engineer(engineer, cx);
         let remote =
@@ -792,6 +835,9 @@ impl Hub {
             remote,
             testing,
             settings,
+            live_theme,
+            home_previews,
+            home_profile,
             notifications,
             status: None,
             subscriber,
@@ -839,9 +885,10 @@ pub fn run(options: Options) -> Result<(), String> {
 
 /// La integración de cuenta entrega derechos ya resueltos. Esta shell no
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
+#[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
 pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
-        demo.apply_capture(capture);
+        demo.apply_capture(capture)?;
     }
     let mut appearance =
         settings::appearance::Store::load(options.data_dir.join("appearance.json"))?;
@@ -862,7 +909,14 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
         }
     };
+    let live_theme = orbit::design::LiveTheme::new(appearance.settings.design)?;
     let loaded = Loaded {
+        preview_fixtures: options
+            .capture
+            .as_ref()
+            .map(|_| foundations::capture_photos())
+            .transpose()?,
+        live_theme,
         appearance,
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,
@@ -892,14 +946,28 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
             cx.set_global(orbit::theme::Theme::default());
-            if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx) {
+            if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)
+                .and_then(|()| orbit::design::register_fonts(cx))
+            {
                 *failure.borrow_mut() = Some(error);
                 cx.quit();
                 return;
             }
+            // Los tamaños QA están acotados a 8192 por el parser; evita el límite de tracking del monitor.
+            #[allow(clippy::cast_precision_loss)]
+            let minimum = options.capture.as_ref().and(options.capture_size).map_or(
+                gpui::size(gpui::px(1280.0), gpui::px(800.0)),
+                |(width, height)| gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
+            );
             let window_options = WindowOptions {
-                window_min_size: Some(gpui::size(gpui::px(900.0), gpui::px(600.0))),
+                window_min_size: Some(minimum),
+                kind: if options.capture.is_some() {
+                    gpui::WindowKind::PopUp
+                } else {
+                    gpui::WindowKind::Normal
+                },
                 titlebar: Some(gpui::TitlebarOptions {
+                    appears_transparent: options.capture.is_some(),
                     title: Some("Vantare Hub — nativo".into()),
                     ..Default::default()
                 }),

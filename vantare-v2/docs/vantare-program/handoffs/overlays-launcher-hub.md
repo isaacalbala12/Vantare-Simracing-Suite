@@ -3923,3 +3923,67 @@ El cierre supera el límite de 60 minutos por corpus, gates repetidos y build
 frío de prueba. No se reducen checks para declarar el resultado. Fase 1 aún
 pendiente de validación. No hay push, PR, CI remota, promoción ni release;
 solo los cinco merges locales autorizados, con la beta de Isaac intacta.
+
+### ISA-1470 - Fase 1, cimientos del Hub (2026-10-05)
+
+Sobre F0 `0f06ad5c`, sin promoción de canal. Bloque público UI `aacc0908`. La API compartida es
+`vantare_ui::theme::{Design, Tokens, LiveTheme, register_fonts}`. Sus cuatro JSON
+viven en `native/ui/themes/`: Grafito carmín por defecto, DeepSeek Harness con
+los neutros de la referencia, Noche Le Mans y Piedra cálida (ambos oscuros).
+Release/prueba incorpora los JSON; debug observa mtime. `for_authoring` permite
+Workshop --dev incluso en perfil prueba. El consumidor instala `value` en GPUI,
+refresca y presenta `error`; una escritura parcial conserva el último tema válido.
+Rajdhani y Space Mono, con OFL, viven en `native/ui/assets/fonts/`; registrar tras
+Inter. El tema se persiste atómicamente en appearance.json con detección de conflicto.
+Los estilos de widgets conservan su autoridad independiente.
+
+Hub consume esos tokens mediante Orbit: tarjeta neo, cabecera, filas, botones,
+play circular, keycaps, progreso, avatar y los SVG Pit aprobados. Reutiliza los
+controles existentes y sus estados, sin renderer paralelo ni dependencia nueva.
+`orbit::activity_time(value, now)` es el helper común de fechas españolas, con
+reloj inyectable y pruebas de cambio de día y conversión de zona. La shell usa
+barra 272/76, Ctrl+B, Ctrl+L, breadcrumb/estado LMU/campana y contexto a la derecha.
+Inicio implementa el layout C con selector de perfiles del Launcher y miniaturas
+del renderer productivo. Los lanzamientos pasan por el controlador existente;
+no se añade ejecución ni autoridad. Strategy/Engineer quedan Próximamente;
+Workshop/Analysis se ocultan en la shell beta. Licencias permanece dentro de Cuenta.
+
+Contrato LOCAL de derechos IPC: versión 2 -> 3, nuevo `Policy.tester`, derivado
+solo de credenciales verificadas válidas con derechos exactos
+`vantare.operational.owner`, `vantare.operational.tester` o
+`vantare.operational.nightly_tester` (categoría tester ya admitida por el núcleo).
+Comprar Calendario no concede rol. Testing/Calendario solo se pintan con ese rol
+verificado. Invalidación/expiración lo revocan. No cambia servidor ni licencia remota.
+Versiones distintas producen `VersionMismatch` tipado, deniegan permisos y muestran
+un aviso cerrado de reiniciar núcleo/Hub/overlays de la misma build. La regresión
+usa servidores en otro proceso y recoge sus hijos incluso ante fallo. Matrices de
+credencial firmada y navegación cubren usuario, tester, owner y módulo comprado.
+
+Evidencia externa: `C:/tmp/1470-evidence/f1-inicio.png` (HTML | GPUI), rondas 1–3,
+1440x900/1920x1080/2560x1440, tema DeepSeek y Apariencia; imágenes inspeccionadas.
+Las notas 21:20 y 21:40 están aplicadas. Estado mide su contenido; favorito compacto
+no desborda; candado dentro del chip; actividad desplaza dentro de la tarjeta.
+Los PNG muestran datos de QA explícitos del renderer vigente, no telemetría en vivo.
+Solo `inicio-base` carga home-r7-launcher.json. Su app manual usa una ruta QA
+inexistente y discovery no la marca launchable; no se usa en producto. Sin captura,
+Inicio empieza vacío y recibe fotos IPC reales; no fabrica estado conectado ni CPU.
+La ruta de captura queda detrás de parity-capture, omite login solo en --capture y
+usa ventana exacta a DPI96; respeta pantalla-ocupada/mutex y solo recoge su instancia.
+La ventana productiva conserva login verificado y usa mínimo 1280x800.
+
+Paridad final del renderer Workshop/Standings: 0/292160 px, umbral por canal 0,
+contra base nativa congelada a464e9fc; no certifica Wails ni chrome completo.
+Fmt/check/clippy PASS; lifecycle 5+12 PASS. Nextest completo 1129/1129 PASS
+(580,112 s; ACC 190308 fotos, 479,569 s), seis skips del filtro existente; los
+dos binarios lifecycle se verifican por separado. Build prueba PASS, con un aviso
+preexistente de cx sin usar en analysis/view.rs bajo parity-capture.
+No se cambian el corpus ni sus expectativas; quedan registrados los dos fallos QA
+corregidos (fixture de shell y nombre de tubería Feed), sin debilitar tests.
+
+Siguiente: las seis pantallas de Fase 2 consumen esta API y Orbit. Sus vistas
+anteriores no se declaran rediseñadas aquí. Verificar manualmente selección/reinicio
+de tema, autoría JSON válida/parcial/recuperada, Ctrl+B/Ctrl+L, navegación por rol
+y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No hay
+medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
+promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
+orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.

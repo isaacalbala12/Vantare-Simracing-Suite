@@ -21,7 +21,7 @@ impl Store {
                 .map(|app| App {
                     id: app.id.clone(),
                     name: app.display_name.clone(),
-                    executable: None,
+                    executable: app.executable_path.clone(),
                     args: vec![],
                     favorite: false,
                 })

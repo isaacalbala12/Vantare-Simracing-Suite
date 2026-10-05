@@ -58,6 +58,7 @@ pub enum MonoFont {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppearanceSettings {
+    pub design: super::design::Design,
     pub palette: Palette,
     pub scheme: Scheme,
     pub contrast: u8,
@@ -69,6 +70,7 @@ pub struct AppearanceSettings {
 impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
+            design: super::design::Design::default(),
             palette: Palette::Vantare,
             scheme: Scheme::Dark,
             contrast: 100,
@@ -170,6 +172,49 @@ impl Default for Theme {
 }
 
 impl Theme {
+    pub fn apply_design(&mut self, tokens: &vantare_ui::theme::Tokens) {
+        let c = &tokens.colors;
+        self.scheme = Scheme::Dark;
+        self.stage = StageBackground {
+            accent: c.accent,
+            top: c.neo_top,
+            base: c.base,
+        };
+        self.canvas = c.base;
+        self.surface_0 = c.window;
+        self.surface_1 = c.l1;
+        self.surface_2 = c.l2;
+        self.surface_3 = c.l3;
+        self.rail_bg = c.sidebar;
+        self.column_bg = c.base;
+        self.panel_bg = (c.l1 << 8) | 0xff;
+        self.topbar_bg = (c.sidebar << 8) | 0xff;
+        self.ink = c.text;
+        self.ink_2 = c.text2;
+        self.ink_3 = c.text3;
+        self.ink_muted = c.caption;
+        self.ink_4 = c.caption;
+        self.ink_5 = c.caption;
+        self.white = c.text;
+        self.primary_bg = c.text;
+        self.primary_ink = c.on_primary;
+        self.carmine = c.accent;
+        self.coral = c.accent_bright;
+        self.carmine_dark = c.accent_dark;
+        self.accent_rgb = c.accent;
+        self.wine = c.wine;
+        self.green = c.ok;
+        self.ember = c.warn;
+        self.red = c.error;
+        self.danger = c.error;
+        self.danger_rgb = c.error;
+        self.line = c.line;
+        self.line_strong = c.line2;
+        self.line_row = c.line;
+        self.line_chip = c.line;
+        self.line_pill = c.line2;
+    }
+
     /// Resuelve `system` como oscuro, igual que el fallback de Wails cuando no
     /// hay información del sistema. El llamador puede elegir explícitamente luz.
     pub fn resolve(palette: Palette, scheme: Scheme, contrast: u8, glass: u8) -> Self {
@@ -1054,7 +1099,20 @@ pub fn system_settings(
 }
 
 pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, cx: &mut gpui::App) {
-    let resolved = Theme::from_settings(system_settings(settings, appearance));
+    let base = if cx.try_global::<super::design::Tokens>().is_some() {
+        AppearanceSettings {
+            contrast: 100,
+            glass_opacity: 80,
+            ..settings
+        }
+    } else {
+        settings
+    };
+    let mut resolved = Theme::from_settings(system_settings(base, appearance));
+    if let Some(tokens) = cx.try_global::<super::design::Tokens>() {
+        resolved.apply_design(tokens);
+        resolved.apply_accessibility(settings.contrast, settings.glass_opacity);
+    }
     cx.set_global(settings);
     cx.set_global(resolved);
     cx.refresh_windows();

@@ -60,6 +60,7 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
             strategy: true,
             analysis: true,
             calendar: true,
+            tester: true,
             capture_locks: state.locked_sections(),
             ..Default::default()
         }

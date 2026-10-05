@@ -452,7 +452,7 @@ impl Render for Screen {
             .widgets
             .first()
             .filter(|first| crate::rights::denied(first.view.read(cx).kind, cx))
-            .map(|first| license_notice(first.at));
+            .map(|first| license_notice(first.at, crate::rights::notice(cx)));
         div()
             .size_full()
             .children(notice)
@@ -479,7 +479,7 @@ impl Render for Screen {
 }
 
 /// Pastilla Orbit/Eficiencia: panel oscuro, punto de acento y texto pequeño.
-fn license_notice(at: (f32, f32)) -> gpui::Div {
+fn license_notice(at: (f32, f32), message: &'static str) -> gpui::Div {
     use crate::efficiency::tokens;
     div()
         .absolute()
@@ -503,7 +503,7 @@ fn license_notice(at: (f32, f32)) -> gpui::Div {
                 .rounded_full()
                 .bg(crate::efficiency::col(tokens::LOSS, 1.0)),
         )
-        .child("Inicia sesión en Vantare para ver tus overlays")
+        .child(message)
 }
 
 fn popup(bounds: Bounds<Pixels>) -> WindowOptions {

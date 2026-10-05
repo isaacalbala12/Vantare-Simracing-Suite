@@ -59,15 +59,15 @@ fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {
 }
 
 fn account_surface(title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
-    orbit::panel(cx)
-        .child(orbit::card_header(title.to_owned(), cx).child(
+    orbit::neo_card(cx)
+        .child(orbit::neo_header(title.to_owned(), "v-lock", cx).child(
             text(meta, 12.0, 500, orbit::ink_3(cx), cx).font_family(crate::orbit::mono_family(cx)),
         ))
         .child(body)
 }
 
 fn account_body() -> gpui::Div {
-    div().flex().flex_col().px(px(21.0)).py(px(21.0))
+    div().flex().flex_col().gap(px(4.0))
 }
 
 fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui::Div {
@@ -178,14 +178,14 @@ const ACCOUNT_MODULES: [(Section, &str); 6] = [
     (Section::Studio, "Overlays Studio"),
     (Section::Launcher, "Launcher"),
     (Section::Calendar, "Carreras y recordatorios"),
-    (Section::Strategy, "Estrategia"),
-    (Section::Engineer, "Ingeniero"),
+    (Section::Strategy, "Strategy"),
+    (Section::Engineer, "Engineer"),
     (Section::Analysis, "Telemetría"),
 ];
 
 fn account_plan_label(verified: bool) -> &'static str {
     if verified {
-        "Beta"
+        "Beta para testers"
     } else {
         "Acceso sin verificar"
     }
@@ -199,6 +199,16 @@ fn account_module_access(access: Access, demo: bool) -> [bool; 6] {
             // La captura congelada anuncia Telemetría como «próximamente».
             && !(demo && index == 5)
     })
+}
+
+fn account_module_status(section: Section, included: bool) -> &'static str {
+    if matches!(section, Section::Strategy | Section::Engineer) {
+        "Próximamente"
+    } else if included {
+        "Incluido"
+    } else {
+        "Sin verificar"
+    }
 }
 
 impl Remote {
@@ -668,44 +678,22 @@ impl Remote {
         }
     }
 
-    fn account_badges(&self, demo: bool, cx: &gpui::App) -> gpui::Div {
-        let verified = self.account_access().verified;
-        div()
-            .mt(px(8.0))
-            .flex()
-            .flex_wrap()
-            .gap(px(6.0))
-            .child(orbit::chip(
-                if demo {
-                    "● Overlays"
-                } else {
-                    account_plan_label(verified)
-                },
-                if verified {
-                    orbit::Tone::Gold
-                } else {
-                    orbit::Tone::Neutral
-                },
-                cx,
-            ))
-            .child(orbit::chip(
-                if demo {
-                    "Stable"
-                } else {
-                    "Canal no disponible"
-                },
-                orbit::Tone::Neutral,
-                cx,
-            ))
-            .child(div().w_full().flex().items_start().child(orbit::chip(
-                if demo {
-                    "Este dispositivo"
-                } else {
-                    "Dispositivo sin verificar"
-                },
-                orbit::Tone::Neutral,
-                cx,
-            )))
+    fn account_badges(&self, cx: &gpui::App) -> gpui::Div {
+        let access = self.account_access();
+        let verified = access.verified && !access.blocked;
+        div().mt(px(8.0)).child(orbit::pill(
+            if verified {
+                "Beta para testers · activa"
+            } else {
+                "Acceso sin verificar"
+            },
+            if verified {
+                orbit::Tone::Success
+            } else {
+                orbit::Tone::Neutral
+            },
+            cx,
+        ))
     }
     fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
         let demo = account_demo();
@@ -715,7 +703,7 @@ impl Remote {
             .flex_1()
             .flex_basis(gpui::relative(1.3 / 2.3))
             .min_w_0()
-            .min_h(px(212.0))
+            .min_h(px(124.0))
             .px(px(22.0))
             .py(px(20.0))
             .flex()
@@ -724,7 +712,10 @@ impl Remote {
             .rounded(px(orbit::RADIUS))
             .border_1()
             .border_color(rgba(orbit::line(cx)))
-            .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
+            .bg(orbit::gradient(
+                cx.global::<orbit::design::Tokens>().gradients.hero,
+                120.0,
+            ))
             .child(
                 div()
                     .size(px(64.0))
@@ -770,156 +761,65 @@ impl Remote {
                         if demo.is_some() {
                             "tes•••@example.com"
                         } else {
-                            "Sin correo en la credencial local"
+                            "Tu sesión de Vantare"
                         },
                         12.5,
                         400,
                         orbit::ink_3(cx),
                         cx,
                     ))
-                    .child(self.account_badges(demo.is_some(), cx)),
+                    .child(self.account_badges(cx)),
             )
             .child(identity_actions)
     }
-    fn account_modules(included: [bool; 6], demo: bool, cx: &gpui::App) -> gpui::Div {
-        let mut modules = div()
-            .relative()
-            .mt(px(14.0))
-            .flex()
-            .flex_wrap()
-            .gap(px(6.0));
-        for ((section, label), included) in ACCOUNT_MODULES.into_iter().zip(included) {
-            let soon = demo && section == Section::Analysis;
+    fn account_modules(included: [bool; 6], cx: &gpui::App) -> gpui::Div {
+        let mut modules = div().flex().flex_col().w_full().gap(px(4.0));
+        for (index, (section, label)) in ACCOUNT_MODULES.into_iter().enumerate() {
+            if section == Section::Analysis {
+                continue;
+            }
+            let soon = matches!(section, Section::Strategy | Section::Engineer);
+            let (icon, description) = match section {
+                Section::Studio => ("v-studio", "Editor de layouts y widgets"),
+                Section::Launcher => ("v-launch", "Perfiles y aplicaciones"),
+                Section::Calendar => ("v-calendar", "Horario y recordatorios para testers"),
+                Section::Strategy => ("v-strategy", "Plan de paradas y combustible"),
+                _ => ("v-engineer", "Ingeniero de radio con voz"),
+            };
             modules = modules.child(
                 div()
-                    .w(px(184.0))
-                    .flex_none()
                     .flex()
                     .items_center()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .size(px(16.0))
-                            .rounded_full()
-                            .bg(rgba(if soon {
-                                0xff9b_5724
-                            } else if included {
-                                0x78d6_8b2e
-                            } else {
-                                0xffff_ff0f
-                            }))
-                            .when(soon, |dot| {
-                                dot.border_1()
-                                    .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5780, cx)))
-                            })
-                            .when(included, |dot| {
-                                dot.flex().items_center().justify_center().child(text(
-                                    "✓",
-                                    11.0,
-                                    700,
-                                    orbit::green(cx),
-                                    cx,
-                                ))
-                            }),
-                    )
-                    .child(
-                        text(
-                            label,
-                            12.5,
-                            400,
-                            if !included && !soon {
-                                orbit::ink_muted(cx)
-                            } else {
-                                crate::orbit::legacy_rgb(0x00d9_d5d5, cx)
-                            },
-                            cx,
-                        )
-                        .line_height(px(15.0)),
-                    )
-                    .when(soon, |module| {
-                        module.child(
-                            text("· próximamente", 10.5, 500, orbit::ink_3(cx), cx)
-                                .whitespace_nowrap(),
-                        )
-                    }),
+                    .justify_between()
+                    .gap(px(12.0))
+                    .child(orbit::summary_row(label, description, icon, cx).flex_1())
+                    .child(orbit::pill(
+                        account_module_status(section, included[index]),
+                        if !soon && included[index] {
+                            orbit::Tone::Success
+                        } else {
+                            orbit::Tone::Neutral
+                        },
+                        cx,
+                    )),
             );
         }
         modules
     }
     fn account_plan(&self, cx: &gpui::App) -> gpui::Div {
-        let demo = account_demo().is_some();
         let access = self.account_access();
-        let included = account_module_access(access, demo);
-        let modules = Self::account_modules(included, demo, cx);
-        div()
-            .relative()
-            .flex_1()
-            .flex_basis(gpui::relative(1.0 / 2.3))
-            .min_w_0()
-            .min_h(px(212.0))
-            .overflow_hidden()
-            .px(px(22.0))
-            .py(px(20.0))
-            .rounded(px(orbit::RADIUS))
-            .border_1()
-            .border_color(rgba(crate::orbit::legacy_rgba(0xf047_5533, cx)))
-            .bg(linear_gradient(
-                135.0,
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4924, cx)), 0.0),
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0xff9b_570a, cx)), 1.0),
-            ))
-            .child(
-                div()
-                    .absolute()
-                    .top(px(-70.0))
-                    .right(px(-60.0))
-                    .size(px(150.0))
-                    .rounded_full()
-                    .border(px(22.0))
-                    .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx))),
-            )
-            .child(orbit::eyebrow("Plan activo", cx).line_height(px(18.0)))
-            .child(
-                text(
-                    account_plan_label(access.verified),
-                    26.0,
-                    750,
-                    orbit::ink(cx),
-                    cx,
-                )
-                .line_height(px(39.0))
-                .mt(px(4.0)),
-            )
-            .child(
-                text(
-                    if access.verified {
-                        format!(
-                            "{} de 6 módulos incluidos",
-                            included.iter().filter(|included| **included).count()
-                        )
-                    } else {
-                        "Módulos sin verificar".into()
-                    },
-                    12.0,
-                    400,
-                    0x00c9_c4c6,
-                    cx,
-                )
-                .line_height(px(18.0))
-                .mt(px(3.0)),
-            )
-            .child(modules)
+        orbit::neo_card(cx)
+            .child(orbit::neo_header("Módulos", "v-lock", cx))
+            .child(text("Acceso gratuito durante la beta. Strategy y Engineer estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
+            .child(Self::account_modules(account_module_access(access, account_demo().is_some()), cx))
     }
     fn account_session(&self, cx: &gpui::App) -> gpui::Div {
         let demo = account_demo().is_some();
         let signed_in = self.account.signed_in;
         account_surface(
-            "Sesión",
-            "credencial local",
+            "Estado de la cuenta",
+            "Tu sesión",
             account_body()
-                .px(px(23.0))
-                .pt(px(23.0))
-                .pb(px(25.0))
                 .child(account_value(
                     "Estado",
                     if demo {
@@ -937,21 +837,21 @@ impl Remote {
                     if demo {
                         "30/9/2026, 16:00:32"
                     } else {
-                        "La credencial no lo declara"
+                        "No disponible"
                     },
                     false,
                     cx,
                 ))
                 .child(account_value(
-                    "Caducidad offline",
-                    "La credencial no lo declara",
+                    "Durante la beta",
+                    "Acceso gratuito para testers",
                     false,
                     cx,
                 ))
                 .child(
                     account_value(
-                        "Canales disponibles",
-                        if demo { "Stable" } else { "—" },
+                        "Canal",
+                        if demo { "Testers" } else { "No disponible" },
                         false,
                         cx,
                     )
@@ -963,6 +863,8 @@ impl Remote {
     }
     fn account_devices(&self, cx: &mut Context<Self>) -> gpui::Div {
         let demo = account_demo().is_some();
+        let access = self.account_access();
+        let verified = access.verified && !access.blocked;
         let device = div()
             .flex()
             .items_center()
@@ -972,7 +874,7 @@ impl Remote {
             .py(px(10.0))
             .rounded(px(12.0))
             .border_1()
-            .border_color(rgba(if demo { 0x78d6_8b33 } else { 0xffff_ff0d }))
+            .border_color(rgba(if verified { 0x78d6_8b33 } else { 0xffff_ff0d }))
             .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff04, cx)))
             .child(
                 div()
@@ -996,10 +898,10 @@ impl Remote {
                     .gap(px(3.0))
                     .child(text("Este dispositivo", 13.0, 650, orbit::ink(cx), cx))
                     .child(text(
-                        if demo {
-                            "verificado por el servicio de licencias"
+                        if verified {
+                            "Acceso verificado en este equipo"
                         } else {
-                            "estado no disponible en esta sesión"
+                            "Acceso sin verificar"
                         },
                         11.5,
                         400,
@@ -1007,19 +909,19 @@ impl Remote {
                         cx,
                     )),
             )
-            .child(div().size(px(6.0)).rounded_full().bg(rgb(if demo {
+            .child(div().size(px(6.0)).rounded_full().bg(rgb(if verified {
                 orbit::green(cx)
             } else {
                 orbit::ink_muted(cx)
             })));
         account_surface(
             "Dispositivos",
-            if demo { "1" } else { "—" },
+            "Este equipo",
             account_body()
                 .items_start().gap(px(10.0))
                 .child(device)
                 .child(account_note(
-                    "El servicio de licencias solo declara si este equipo está verificado; no publica la lista de dispositivos, así que aquí no se inventa ninguno. «Restablecer dispositivo» libera el equipo activo (1 vez cada 24 h).",
+                    "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.",
                  cx))
                 .child(
                     orbit::small_button("services-device-reset", "Restablecer dispositivo", cx)
@@ -1034,50 +936,46 @@ impl Remote {
          cx)
         .flex_1()
     }
-    fn account_page(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        // Wails apila hero y detalles a 1360 px (orbit-settings.css).
-        let compact = f32::from(window.viewport_size().width) <= 1360.0;
-        let hero = div()
-            .flex()
-            .when(compact, gpui::Styled::flex_col)
-            .w_full()
-            .gap(px(21.0))
-            .items_stretch()
-            .child(
-                self.account_identity(cx)
-                    .when(compact, |element| element.flex_none().w_full()),
-            )
-            .child(
-                self.account_plan(cx)
-                    .when(compact, |element| element.flex_none().w_full()),
-            );
-        let details = div()
-            .flex()
-            .when(compact, gpui::Styled::flex_col)
-            .w_full()
-            .gap(px(21.0))
-            .items_start()
-            .child(
-                self.account_session(cx)
-                    .when(compact, |element| element.flex_none().w_full()),
-            )
-            .child(
-                self.account_devices(cx)
-                    .when(compact, |element| element.flex_none().w_full()),
-            );
+    fn account_page(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        let center = div().flex().flex_col().gap(px(16.0)).w_full()
+            .child(self.account_identity(cx).flex_none().w_full().min_h(px(124.0)))
+            .child(orbit::neo_card(cx).child(orbit::neo_header("Licencias · Acceso beta", "v-lock", cx))
+                .child(text(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, 700, orbit::ink(cx), cx))
+                .child(text("Gratuita durante la beta. Tu sesión y licencia se validan mediante el servicio de cuenta.", 13.0, 400, orbit::ink_2(cx), cx)))
+            .child(self.account_plan(cx))
+            .when(account_demo().is_none(), |page| page.child(orbit::callout(self.message.clone(), cx)));
+        let rail = div().flex().flex_col().gap(px(16.0)).w_full()
+            .child(self.account_session(cx).flex_none())
+            .child(self.account_devices(cx).flex_none())
+            .child(orbit::neo_card(cx).child(orbit::neo_header("Tus datos", "v-shield", cx))
+                .child(text("Tus perfiles, overlays y ajustes se guardan en este equipo. El servicio de cuenta valida el acceso beta.", 13.0, 400, orbit::ink_2(cx), cx))
+                .child(text("Exportación y eliminación de cuenta: pendientes del contrato nativo. No se borran datos desde esta pantalla.", 12.0, 400, orbit::ink_3(cx), cx)));
         div()
-            .flex()
-            .flex_col()
+            .flex_1()
+            .min_h_0()
             .w_full()
-            .min_w_0()
-            .mt(px(0.0))
-            .line_height(gpui::relative(1.5))
-            .gap(px(21.0))
-            .child(hero)
-            .child(details)
-            .when(account_demo().is_none(), |page| {
-                page.child(orbit::callout(self.message.clone(), cx))
-            })
+            .flex()
+            .gap(px(16.0))
+            .child(
+                div()
+                    .id("account-main-scroll")
+                    .flex_1()
+                    .flex_basis(gpui::relative(2.0 / 3.0))
+                    .min_w_0()
+                    .h_full()
+                    .overflow_y_scroll()
+                    .child(center),
+            )
+            .child(
+                div()
+                    .id("account-rail-scroll")
+                    .flex_1()
+                    .flex_basis(gpui::relative(1.0 / 3.0))
+                    .min_w_0()
+                    .h_full()
+                    .overflow_y_scroll()
+                    .child(rail),
+            )
     }
 
     pub fn account(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
@@ -1226,6 +1124,20 @@ impl Drop for Remote {
 mod account_tests {
     use super::*;
     #[test]
+    fn beta_modules_remain_upcoming_even_with_verified_module_rights() {
+        for section in [Section::Strategy, Section::Engineer] {
+            for included in [false, true] {
+                assert_eq!(account_module_status(section, included), "Próximamente");
+            }
+        }
+        assert_eq!(account_module_status(Section::Studio, true), "Incluido");
+        assert_eq!(
+            account_module_status(Section::Launcher, false),
+            "Sin verificar"
+        );
+    }
+
+    #[test]
     fn account_modules_follow_navigation_permissions() {
         for (access, expected) in [
             (Access::default(), [false; 6]),
@@ -1260,7 +1172,7 @@ mod account_tests {
                 [false; 6]
             );
         }
-        assert_eq!(account_plan_label(true), "Beta");
+        assert_eq!(account_plan_label(true), "Beta para testers");
         assert_eq!(account_plan_label(false), "Acceso sin verificar");
     }
 }

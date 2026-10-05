@@ -3987,3 +3987,47 @@ y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No ha
 medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
 promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
 orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
+## ISA-1470 — Fase 2, Ajustes y Cuenta (1470-ajustes)
+
+Entrega aislada sobre `46244ea2`, rama `vantareapp/isa-1470-ajustes`, worktree
+`C:/tmp/vw3-1470-ajustes/vantare-v2`. Sin cambios de IPC, permisos, dependencias
+ni comandos de servicios. Ajustes ofrece General, Apariencia, Rendimiento en pista, Atajos,
+Actualizaciones, Privacidad y Diagnóstico en la topbar; Cuenta es un destino
+propio y Licencias se presenta dentro de Cuenta. Ambas pantallas usan layout C,
+tarjetas neo y scroll independiente en contenido y carril.
+
+General conserva los controles y añade grupos Overlays/Canal con preferencias
+reales del layout y el mismo consentimiento de uso de Privacidad. Apariencia
+presenta los cuatro temas productivos con miniaturas; mantiene guardado atómico,
+contraste, opacidad y fuentes. Atajos muestra Ctrl L/K/B del Hub y la referencia
+global pendiente. Rendimiento conserva los niveles de referencia; su tabla
+anuncia objetivos pendientes y nunca los presenta como una política efectiva.
+Actualizaciones conserva lectura local, novedades y reinicio de beta. Diagnóstico
+conserva preparación, filtros y copia sanitizada. Cuenta conserva sesión y reset
+de dispositivo, anuncia Beta para testers gratuita y Strategy/Engineer Próximamente
+incluso con derechos firmados para esos módulos; la regresión cubre ese caso.
+
+Los datos que el servicio no expone permanecen no disponibles. No se inventan
+métricas, dispositivos, claves beta ni historial de envíos en producción. Exportar
+y eliminar cuenta siguen pendientes de contrato nativo. El banco de capturas
+continúa aislado por parity-capture/--capture --demo; no es telemetría LMU real.
+Evidencia externa: `C:/tmp/1470-ajustes-evidence/`. Referencias rondas 6/7/8
+inspeccionadas; comparaciones HTML/GPUI1920, capturas1440/2560 y DeepSeek1920
+conservadas. Correcciones22:46: topbar sin ruta redundante y tabs con scroll
+horizontal; buscador visible; hero con tokens del tema; Cuenta sin jerga ni
+repetir el título beta. Novedades/aporte omitidos sin datos reales en ese contrato.
+Orbit admite ruta vacía sin alterar otras pantallas. Gates del árbol conjunto final,
+siempre por cola y -j2: fmt PASS, check PASS10,31s, Clippy PASS22,79s;
+Nextest1130/1130,6 skipped existentes (compilación3m30s, ejecución813,607s);
+lifecycle5+12 casos PASS. Buildprueba con parity-capture PASS25s; conserva el
+warning heredado de analysis/view.rs:989 (cx sin usar, solo con esa feature).
+El destino legacy Licencias también se capturó dentro de Cuenta. Cuatro temas y
+detalle1440 de fuentes/animaciones/eventos inspeccionados. No se afirma paridad
+exacta, runtime de servicios con sesión real ni rendimiento LMU live. No se
+corrieron gates Go/frontend porque no se tocaron sus fuentes/contratos.
+Siguiente acción: revisión del orquestador y verificación manual de sesión,
+consentimiento, diagnóstico y actualizador en una instalación QA aislada.
+
+`docs/roadmap/plan.md` no existe en esta base; coordinación del roadmap a cargo
+del orquestador. No hay push, PR, CI remota, merge, promoción ni release. La beta
+de Isaac no se ha tocado.

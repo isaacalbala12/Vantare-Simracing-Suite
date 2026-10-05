@@ -102,12 +102,14 @@ impl Admin {
             cursor,
         }
     }
-    fn load(&mut self) {
+    fn load(&mut self, cx: &Context<Self>) {
+        let query = self.search.read(cx).value.trim().to_owned();
+        if self.state.screen == Screen::Users && query.is_empty() {
+            self.state.message = "Escribe un correo o nombre y pulsa Buscar".into();
+            return;
+        }
         let action = match self.state.screen {
-            Screen::Users => Action::SearchAccounts {
-                query: String::new(),
-                limit: 50,
-            },
+            Screen::Users => Action::SearchAccounts { query, limit: 50 },
             Screen::Rollout => Action::GetRollout,
             Screen::Reports => self.reports_action(None),
         };
@@ -122,7 +124,7 @@ impl Admin {
         match reply {
             Reply::Ready => {
                 self.state.signed_in = true;
-                self.load();
+                self.load(cx);
             }
             Reply::LoggedOut => {
                 self.state.clear_private();
@@ -189,15 +191,12 @@ impl Admin {
                 self.state.screen = screen;
                 if self.state.signed_in && !self.state.demo {
                     self.images.clear();
-                    self.load();
+                    self.load(cx);
                 }
             }
             Event::Search => {
                 if !self.state.demo {
-                    self.send(Command::Call(Action::SearchAccounts {
-                        query: self.search.read(cx).value.clone(),
-                        limit: 50,
-                    }));
+                    self.load(cx);
                 }
             }
             Event::Filter(status) => {
@@ -269,7 +268,7 @@ impl Admin {
                     self.images.clear();
                     self.state.user = None;
                     self.state.report = None;
-                    self.load();
+                    self.load(cx);
                 }
             }
             Event::CloseImage => self.zoomed = None,
@@ -339,9 +338,13 @@ impl Admin {
             .child(muted("CORREO / NOMBRE · ROLES · MÓDULOS · REPORTES", cx));
         for (index, user) in self.state.users.iter().enumerate() {
             if self.state.demo
-                && !format!("{} {}", user.email, user.name)
-                    .to_lowercase()
-                    .contains(&query)
+                && !format!(
+                    "{} {}",
+                    user.email.as_deref().unwrap_or(""),
+                    user.name.as_deref().unwrap_or("")
+                )
+                .to_lowercase()
+                .contains(&query)
             {
                 continue;
             }
@@ -353,10 +356,21 @@ impl Admin {
                     .bg(rgb(orbit::surface_2(cx)))
                     .cursor_pointer()
                     .child(
-                        self.button("user-select", &user.name, Event::SelectUser(index), cx)
-                            .id(("select-user", index)),
+                        self.button(
+                            "user-select",
+                            user.name
+                                .as_deref()
+                                .or(user.email.as_deref())
+                                .unwrap_or("Sin nombre"),
+                            Event::SelectUser(index),
+                            cx,
+                        )
+                        .id(("select-user", index)),
                     )
-                    .child(muted(&user.email, cx))
+                    .child(muted(
+                        user.email.as_deref().unwrap_or("Sin correo disponible"),
+                        cx,
+                    ))
                     .child(muted(
                         &format!(
                             "{} · {} · {} reportes",
@@ -396,8 +410,15 @@ impl Admin {
             .child(heading("Detalle de usuario", cx));
         if let Some(user) = &self.state.user {
             detail = detail
-                .child(user.name.clone())
-                .child(muted(&user.email, cx))
+                .child(
+                    user.name
+                        .clone()
+                        .unwrap_or_else(|| "Sin nombre disponible".into()),
+                )
+                .child(muted(
+                    user.email.as_deref().unwrap_or("Sin correo disponible"),
+                    cx,
+                ))
                 .child(muted(&format!("Alta: {}", user.created_at), cx))
                 .child(muted(
                     &format!(
@@ -417,21 +438,38 @@ impl Admin {
                     cx,
                 ))
                 .child(muted("El rol owner no se modifica desde esta app.", cx));
-            for module in Module::ALL {
-                detail = detail.child(self.switch(
-                    module.key(),
-                    module.label(),
-                    user.modules.contains(&module),
-                    Action::SetModule {
-                        account_id: user.account_id.clone(),
-                        module,
-                        enabled: !user.modules.contains(&module),
-                    },
+            for (index, module) in Module::ALL.into_iter().enumerate() {
+                let mut row = div().flex().items_center().gap(px(8.0)).child(muted(
+                    &format!(
+                        "{} · acceso {}",
+                        module.label(),
+                        if user.modules.contains(&module) {
+                            "activo"
+                        } else {
+                            "inactivo"
+                        }
+                    ),
                     cx,
                 ));
+                for (enabled, label) in [(true, "Conceder"), (false, "Revocar")] {
+                    row = row.child(
+                        self.button(
+                            "module-grant",
+                            label,
+                            Event::Propose(Action::SetModule {
+                                account_id: user.account_id.clone(),
+                                module,
+                                enabled,
+                            }),
+                            cx,
+                        )
+                        .id(("module-grant", index * 2 + usize::from(enabled))),
+                    );
+                }
+                detail = detail.child(row);
             }
             detail = detail.child(muted(
-                "Concesiones individuales; un rollout global también da acceso.",
+                "Conceder/revocar cambia solo la concesión individual. El acceso también puede venir del rol, licencia o rollout global.",
                 cx,
             ));
         } else {
@@ -794,8 +832,8 @@ fn confirmation(action: &Action) -> String {
             module,
             enabled,
         } => format!(
-            "{} {} para {account_id}.",
-            if *enabled { "Activar" } else { "Desactivar" },
+            "{} concesión individual de {} para {account_id}. Revocarla no retira el acceso que venga de un rol, licencia o rollout global.",
+            if *enabled { "Conceder" } else { "Revocar" },
             module.label()
         ),
         Action::SetRollout {

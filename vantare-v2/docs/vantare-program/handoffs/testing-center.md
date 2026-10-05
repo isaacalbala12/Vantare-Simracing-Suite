@@ -68,3 +68,20 @@ La siguiente promoción a Testers requiere feedback Pro Plus y la aprobación
 reservada a Isaac.
 No reenviar eventos
 `repository_dispatch` ni activar correcciones automáticas.
+## Beta nativa #1456 — Admin compatible con native-admin (2026-10-05)
+
+Rama aislada `vantareapp/isa-1453-posthog-admin`, base `a464e9fc`.
+Cliente adaptado al servidor versionado en `supabase/functions/native-admin`
+y `20261003201000_native_admin.sql`: capacidades `vantare.module.*`, contactos
+nullable, búsqueda no vacía, `next_cursor`, texto de payload y objetos de URLs
+firmadas. Sin `VANTARE_ADMIN_URL`, deriva la ruta exacta del origen Supabase.
+La búsqueda inicial pide introducir correo/nombre, sin enviar una query vacía.
+El servidor devuelve módulos efectivos, no concesiones individuales: la UI
+muestra ese acceso y permite Conceder/Revocar explícitamente; revocar no elimina
+acceso por rol o rollout. Confirmación y relectura tras ACK se conservan.
+No se cambia servidor ni se despliega. E2E owner pendiente: el orquestador
+confirmó owner activo de Isaac (nota 15:04); Isaac inicia sesión en raíz aislada; no usar tokens de
+native-beta. Escrituras solo cuenta propia y restaurando el estado, sin rollout
+global. Guía y checklist en `C:/tmp/mac-evidence/`.
+Gates completos Unix presentan fallos ajenos en UI; resultados propios y logs
+se reportan sin declarar verde el workspace. No se crea PR ni se promociona.

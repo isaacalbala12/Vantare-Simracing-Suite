@@ -6,9 +6,13 @@ use vantare_services::{Error, Result, account::Account};
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Module {
+    #[serde(rename = "vantare.module.strategy")]
     Strategy,
+    #[serde(rename = "vantare.module.engineer")]
     Engineer,
+    #[serde(rename = "vantare.module.analysis")]
     Analysis,
+    #[serde(rename = "vantare.module.calendar")]
     Calendar,
 }
 impl Module {
@@ -68,8 +72,8 @@ impl Status {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct User {
     pub account_id: String,
-    pub email: String,
-    pub name: String,
+    pub email: Option<String>,
+    pub name: Option<String>,
     pub created_at: String,
     pub last_seen_at: Option<String>,
     pub roles: Vec<String>,
@@ -81,7 +85,7 @@ pub struct Rollout {
     pub module: Module,
     pub enabled_for_all: bool,
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Report {
     pub report_id: String,
     pub author: String,
@@ -91,8 +95,71 @@ pub struct Report {
     pub created_at: String,
     pub status: Status,
     pub has_screenshots: bool,
-    #[serde(default)]
     pub screenshots: Vec<String>,
+}
+
+// The list flattens payload fields; detail returns payload and signed image objects.
+impl<'de> Deserialize<'de> for Report {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Payload {
+            module: Option<String>,
+            app_version: Option<String>,
+            action_text: Option<String>,
+            expected_text: Option<String>,
+            observed_text: Option<String>,
+            context_text: Option<String>,
+        }
+        #[derive(Deserialize)]
+        struct Screenshot {
+            url: String,
+        }
+        #[derive(Deserialize)]
+        struct Wire {
+            report_id: String,
+            email: Option<String>,
+            created_at: String,
+            status: Status,
+            has_screenshots: Option<bool>,
+            #[serde(default)]
+            screenshots: Vec<Screenshot>,
+            payload: Option<Payload>,
+            #[serde(flatten)]
+            summary: Payload,
+        }
+        let wire = Wire::deserialize(deserializer)?;
+        let payload = wire.payload.unwrap_or(wire.summary);
+        let text = [
+            ("Acción", payload.action_text),
+            ("Esperado", payload.expected_text),
+            ("Observado", payload.observed_text),
+            ("Contexto", payload.context_text),
+        ]
+        .into_iter()
+        .filter_map(|(label, text)| {
+            text.filter(|s| !s.is_empty())
+                .map(|s| format!("{label}: {s}"))
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+        Ok(Self {
+            report_id: wire.report_id,
+            author: wire.email.unwrap_or_else(|| "sin correo disponible".into()),
+            module: payload.module.unwrap_or_else(|| "sin módulo".into()),
+            app_version: payload.app_version.unwrap_or_else(|| "sin versión".into()),
+            text,
+            created_at: wire.created_at,
+            status: wire.status,
+            has_screenshots: wire.has_screenshots.unwrap_or(!wire.screenshots.is_empty()),
+            screenshots: wire
+                .screenshots
+                .into_iter()
+                .map(|image| image.url)
+                .collect(),
+        })
+    }
 }
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(tag = "action", rename_all = "snake_case")]
@@ -146,7 +213,12 @@ impl Action {
     pub fn validate(&self) -> Result<()> {
         let bounded = |s: &str| !s.trim().is_empty() && s.len() <= 256;
         let valid = match self {
-            Self::SearchAccounts { query, limit } => query.len() <= 256 && (1..=50).contains(limit),
+            Self::SearchAccounts { query, limit } => {
+                !query.is_empty()
+                    && query == query.trim()
+                    && query.len() <= 200
+                    && (1..=50).contains(limit)
+            }
             Self::ListReports { limit, cursor, .. } => {
                 (1..=100).contains(limit) && cursor.as_ref().is_none_or(|s| bounded(s))
             }
@@ -174,12 +246,15 @@ pub struct Client {
 }
 impl Client {
     pub fn from_build() -> Result<Self> {
-        let endpoint = vantare_services::config::remote_url(
-            option_env!("VANTARE_ADMIN_URL").ok_or(Error::Unconfigured)?,
-        )?;
         let evidence = vantare_services::config::BuildConfig::load()
             .supabase
             .ok_or(Error::Unconfigured)?;
+        let endpoint = match option_env!("VANTARE_ADMIN_URL") {
+            Some(value) => vantare_services::config::remote_url(value)?,
+            None => evidence
+                .join("/functions/v1/native-admin")
+                .map_err(|_| Error::Unconfigured)?,
+        };
         Self::new(endpoint, evidence)
     }
     fn new(endpoint: Url, evidence_origin: Url) -> Result<Self> {
@@ -316,4 +391,4 @@ fn body_error(error: &ureq::Error) -> Error {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -54,8 +54,8 @@ impl State {
             state.users = vec![
                 User {
                     account_id: "11111111-1111-4111-8111-111111111111".into(),
-                    email: "ana@example.invalid".into(),
-                    name: "Ana Martín · DEMO".into(),
+                    email: Some("ana@example.invalid".into()),
+                    name: Some("Ana Martín · DEMO".into()),
                     created_at: "2026-10-01T10:00:00Z".into(),
                     last_seen_at: Some("2026-10-03T09:30:00Z".into()),
                     roles: vec!["tester".into()],
@@ -64,8 +64,8 @@ impl State {
                 },
                 User {
                     account_id: "22222222-2222-4222-8222-222222222222".into(),
-                    email: "pablo@example.invalid".into(),
-                    name: "Pablo Ruiz · DEMO".into(),
+                    email: Some("pablo@example.invalid".into()),
+                    name: Some("Pablo Ruiz · DEMO".into()),
                     created_at: "2026-10-02T10:00:00Z".into(),
                     last_seen_at: None,
                     roles: vec![],
@@ -188,7 +188,7 @@ impl State {
                 if reports.len() > 100 {
                     return Err(Error::TooLarge);
                 }
-                let cursor: Option<String> = field(response, "cursor")?;
+                let cursor: Option<String> = field(response, "next_cursor")?;
                 self.reports = reports;
                 self.cursor = cursor;
                 self.report = None;
@@ -282,6 +282,29 @@ impl State {
 mod tests {
     use super::*;
     #[test]
+    fn deployed_next_cursor_advances_and_last_page_clears_it() {
+        let mut state = State::new(false, Screen::Reports);
+        let action = Action::ListReports {
+            status: None,
+            limit: 100,
+            cursor: None,
+        };
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"reports":[], "next_cursor":"report-1"}),
+            )
+            .expect("page");
+        assert_eq!(state.cursor.as_deref(), Some("report-1"));
+        state
+            .accept(
+                &action,
+                &serde_json::json!({"reports":[], "next_cursor":null}),
+            )
+            .expect("last page");
+        assert_eq!(state.cursor, None);
+    }
+    #[test]
     fn confirmation_cancel_failure_and_ack_preserve_facts() {
         let mut s = State::new(true, Screen::Users);
         let original = s.user.clone();
@@ -360,7 +383,7 @@ mod tests {
                 &Action::GetReport {
                     report_id: report.report_id.clone(),
                 },
-                &serde_json::json!({"report":report}),
+                &serde_json::json!({"report":crate::client::tests::report_wire(&report.report_id, report.status, true)}),
             )
             .expect("confirmed server read");
         assert_eq!(state.reports[0].status, Status::Closed);

@@ -20,8 +20,8 @@ simulados desaparecen al cerrar. `--help` describe los argumentos.
 
 ## Configuración pública de build
 
-- `VANTARE_ADMIN_URL`: URL HTTPS exacta de `/functions/v1/native-admin` o
-  `/v1/native-admin`. No acepta credenciales, query ni fragmento.
+- `VANTARE_ADMIN_URL` (opcional): URL HTTPS exacta de `/functions/v1/native-admin` o
+  `/v1/native-admin`. Sin variable usa el origen Supabase y `/functions/v1/native-admin`. No acepta credenciales, query ni fragmento.
 - `VANTARE_SUPABASE_URL`: origen HTTPS de las capturas firmadas.
 - Configuración OAuth ya existente de `vantare-services`:
   `VANTARE_CLERK_ISSUER`, `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT` y
@@ -40,23 +40,22 @@ POST con `Authorization: Bearer <OAuth>` y JSON `version: 1`, `action` y los
 campos del contrato `contrato-admin.md` §2. Sin `apikey`. No hay llamadas directas
 a tablas ni secretos Clerk/Supabase en el cliente.
 
-El contrato inicial no nombraba los campos de respuesta; estas son las claves
-explícitas que debe confirmar el worker servidor antes del despliegue:
+Claves del servidor `supabase/functions/native-admin` y su migración:
 
 | Acción | Datos dentro de `{version:1, ok:true, ...}` |
 | --- | --- |
 | `search_accounts` | `accounts: User[]` |
 | `get_account` | `account: User` |
 | `get_rollout` | `rollout: [{module, enabled_for_all}]` (exactamente cuatro) |
-| `list_reports` | `reports: Report[]`, `cursor: string \| null` |
-| `get_report` | `report: Report`, con `screenshots: string[]` (URLs firmadas) |
+| `list_reports` | `reports: Report[]`, `next_cursor: string \| null` |
+| `get_report` | `report` con `payload` y `screenshots: [{url, ...}]` firmadas |
 | mutaciones | Sin datos adicionales; después se relee el detalle/rollout |
 
 `User`: `account_id`, `email`, `name`, `created_at` (ISO), `last_seen_at`
 (ISO o null), `roles`, `modules`, `reports_count`.
-`Report`: `report_id`, `author` (correo), `module`, `app_version`, `text`,
-`created_at` (ISO), `status`, `has_screenshots`, `screenshots` (solo detalle).
-Módulos: `strategy`, `engineer`, `analysis`, `calendar`.
+Listado de reportes: `report_id`, `email`, `module`, `app_version`, campos de texto,
+`created_at` (ISO), `status`, `has_screenshots`. El detalle devuelve los campos de texto dentro de `payload` y objetos de capturas. Correos/nombres pueden ser null.
+Módulos de acceso: `vantare.module.strategy`, `vantare.module.engineer`, `vantare.module.analysis`, `vantare.module.calendar`.
 Estados existentes: `draft`, `submitted`, `validated`, `duplicate_linked`,
 `incomplete`, `closed` (`20260802130100_testing_center_core.sql`).
 
@@ -106,8 +105,7 @@ Lee/aplica primero `C:/tmp/fase2/notas-1456.md`; si existe, pasa su SHA256 en
 No existe referencia Wails de esta miniapp nueva: se revisa estructura y
 legibilidad sobre Orbit; no se declara paridad por porcentaje.
 
-Pendientes de prueba contra el despliegue: respuestas definitivas del backend,
-login owner real, auditoría, caducidad/renovación de URLs y permisos reales.
+Cliente contrastado con el código desplegado. Pendientes de prueba contra producción: login owner real, auditoría, caducidad/renovación de URLs y permisos reales.
 Demo y servidor local no demuestran eso. Ante una captura caducada vuelve a
 seleccionar el reporte para obtener URLs nuevas. Solo paginación hacia delante
 en reportes; búsquedas de usuarios limitadas a 50, afinar query si hay más.
@@ -118,3 +116,10 @@ por el orquestador en la tarea existente, sin duplicarla.
 El kit Orbit se reutiliza desde la biblioteca Hub existente; no se extraen ni
 duplican sus controles. Las dependencias ya estaban resueltas en el workspace;
 no se añade otro motor gráfico ni librería HTTP.
+
+## Compatibilidad beta (#1456, 2026-10-05)
+
+La búsqueda requiere un correo/nombre no vacío (máximo 200 bytes); al abrir
+Usuarios se espera a la búsqueda, sin petición vacía. Los módulos mostrados son
+accesos efectivos, incluyendo rol y rollout. Conceder/revocar modifica solo la
+concesión individual: una revocación puede mantener el acceso por otra vía.

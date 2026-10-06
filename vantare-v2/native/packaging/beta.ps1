@@ -22,8 +22,40 @@ function Read-BetaVersion([string]$Value) {
     [version]$Value
 }
 
-function Read-BetaManifest([string]$Json, [bool]$Local = $false) {
+function Invoke-BetaManifestTool([string]$Executable, [string]$Json, [string]$KeyFile = '') {
+    if (-not $Executable -or -not (Test-Path -LiteralPath $Executable -PathType Leaf)) { throw 'Falta el verificador de la instalación beta.' }
+    $info = New-Object Diagnostics.ProcessStartInfo
+    $info.FileName = [IO.Path]::GetFullPath($Executable)
+    $info.Arguments = '--verify-update'
+    if ($KeyFile) {
+        $keyPath = [IO.Path]::GetFullPath($KeyFile)
+        if ($keyPath.Contains('"')) { throw 'Ruta de clave inválida.' }
+        $info.Arguments = '--sign-update "' + $keyPath + '"'
+    }
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardInput = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $info.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $process = [Diagnostics.Process]::Start($info)
+    try {
+        # Sobres base64 ASCII; el firmador recibe JSON codificado como UTF-8.
+        $bytes = [Text.Encoding]::UTF8.GetBytes($Json)
+        $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+        $process.StandardInput.Close()
+        $output = $process.StandardOutput.ReadToEndAsync()
+        $errors = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit(30000)) { $process.Kill(); throw 'La firma del manifiesto excedió el tiempo permitido.' }
+        if ($process.ExitCode -ne 0) { throw 'Manifiesto rechazado: firma inválida o clave pública sin configurar.' }
+        $output.GetAwaiter().GetResult()
+        $null = $errors.GetAwaiter().GetResult()
+    } finally { $process.Dispose() }
+}
+
+function Read-BetaManifest([string]$Json, [bool]$Local = $false, [string]$Verifier = '') {
     if ($Json.Length -gt 65536) { throw 'Manifiesto remoto demasiado grande.' }
+    $Json = Invoke-BetaManifestTool $Verifier $Json
     $manifest = $Json | ConvertFrom-Json
     $fields = @('schema', 'product', 'channel', 'version', 'url', 'sha256', 'notes')
     if (@(Compare-Object $fields @($manifest.PSObject.Properties.Name) -CaseSensitive).Count) { throw 'Campos del manifiesto incompatibles.' }
@@ -63,7 +95,7 @@ function Save-BetaDownload([uri]$Url, [string]$Destination) {
     } finally { $response.Dispose() }
 }
 
-function Get-BetaRemoteManifest {
+function Get-BetaRemoteManifest([string]$Verifier) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $headers = @{ 'User-Agent' = 'Vantare-Native-Beta'; Accept = 'application/vnd.github+json' }
     $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$script:BetaRepository/releases?per_page=100" -Headers $headers -TimeoutSec 30
@@ -79,9 +111,9 @@ function Get-BetaRemoteManifest {
     }
     if ($null -eq $best) { throw 'No hay release native-beta con manifiesto publicado.' }
     $response = Invoke-WebRequest -UseBasicParsing -Uri $best.url -TimeoutSec 30 -Headers $headers
-    $manifest = Read-BetaManifest $response.Content
+    $manifest = Read-BetaManifest $response.Content $false $Verifier
     if ("native-beta-v$($manifest.version)" -cne $best.tag) { throw 'Versión del manifiesto distinta del tag.' }
-    $manifest
+    $response.Content
 }
 
 function Write-BetaJson([string]$Path, $Value) {
@@ -120,11 +152,16 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
         if ($state.channel -cne 'beta') { throw 'El actualizador beta no cambia de canal.' }
         $active = Join-Path $directory "generations/$($state.active.generation)"
         $current = Read-NativeManifest $active 'beta'
+        $verifier = Join-Path $active 'bin/vantare-services.exe'
         if ($ManifestFile) {
             $path = Assert-NativePath $ManifestFile
             if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
-            $manifest = Read-BetaManifest ([IO.File]::ReadAllText($path)) $true
-        } else { $manifest = Get-BetaRemoteManifest }
+            $signedJson = [IO.File]::ReadAllText($path)
+            $manifest = Read-BetaManifest $signedJson $true $verifier
+        } else {
+            $signedJson = Get-BetaRemoteManifest $verifier
+            $manifest = Read-BetaManifest $signedJson $false $verifier
+        }
         if ((Read-BetaVersion $manifest.version) -le (Read-BetaVersion $current.version)) { return $false }
         $staging = Join-Path $directory 'staging'
         [IO.Directory]::CreateDirectory($staging) | Out-Null
@@ -142,7 +179,7 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
         if ((Get-NativeHash $zip) -cne $manifest.sha256) { throw 'Staging alterado: SHA incorrecto.' }
         # Verifica inventario, hashes, canal y schema antes de anunciar la actualización.
         Assert-BetaPackage $staging $zip $manifest
-        Write-BetaJson (Join-Path $staging 'pending.json') $manifest
+        Write-BetaJson (Join-Path $staging 'pending.json') ($signedJson | ConvertFrom-Json)
         Set-BetaStatus $directory 'ready' 'Actualización lista, se aplicará al reiniciar' $manifest.version $manifest.notes
         $true
     } finally { $lock.Dispose() }
@@ -153,9 +190,9 @@ function Apply-BetaUpdate([string]$Directory) {
     $pending = Join-Path $directory 'staging/pending.json'
     if (-not (Test-Path -LiteralPath $pending)) { return $false }
     if ((Get-Item -LiteralPath $pending).Length -gt 65536) { throw 'Manifiesto pendiente demasiado grande.' }
-    $manifest = Read-BetaManifest ([IO.File]::ReadAllText($pending)) $true
     $state = Read-NativeState $directory
     $active = Join-Path $directory "generations/$($state.active.generation)"
+    $manifest = Read-BetaManifest ([IO.File]::ReadAllText($pending)) $true (Join-Path $active 'bin/vantare-services.exe')
     $current = Read-NativeManifest $active 'beta'
     if ((Read-BetaVersion $manifest.version) -le (Read-BetaVersion $current.version)) {
         Remove-Item -LiteralPath $pending

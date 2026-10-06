@@ -74,7 +74,7 @@ La confirmación prueba apertura, no login remoto, juego ni sesión prolongada.
 Las generaciones se conservan; no hay purga automática ni migración de esquema.
 El bootstrap schema 1 queda fijo durante Update; cambiar scripts instalados
 requiere reinstalación/revisión. SHA-256 prueba integridad sobre GitHub HTTPS;
-no se ofrece firma de artefactos.
+el manifiesto del feed exige firma Ed25519; no se ofrece Authenticode.
 
 Los datos beta viven en la generación (`data/`); el Hub y sus hijos heredan
 `VANTARE_NATIVE_DATA_ROOT`. Layout, ajustes, servicios y derechos no se escriben
@@ -97,6 +97,7 @@ Desde `vantare-v2`, en el SHA integrado y limpio:
 ```powershell
 powershell -NoProfile -File native/packaging/publish-beta.ps1 `
   -Version 0.1.0 -OutputDirectory C:/tmp/isa-1432-beta-build `
+  -SigningKeyFile <ruta-privada-elegida-por-Isaac> `
   -ConfigFile C:/tmp/beta/build-config/beta-dev-clerk.env `
   -Notes 'Notas revisadas por el orquestador'
 ```
@@ -318,3 +319,40 @@ necesitan Pester. El smoke solo verifica carga del exe y rechazo de argumentos,
 sin abrir juego, ventana GPUI ni red. La inspección PE local de Core/Overlays
 detecta `VCRUNTIME140.dll`; Overlays también importa `icuuc.dll`, DX11 y
 `d3dcompiler_47.dll`. Que carguen en este PC no prueba Windows 10 limpio.
+
+## Firma del manifiesto (#1472)
+
+**Pendiente de Isaac antes de distribuir:** rellenar `PUBLIC_KEY_BASE64` en
+`native/services/src/update_manifest.rs` con su clave PÚBLICA Ed25519 de 32
+bytes en base64. Está vacío a propósito: sin él se rechazan todas las
+actualizaciones y la herramienta de publicación falla. No hay clave de test,
+clave obtenida del feed ni parámetro para reemplazar la clave del verificador.
+Reconstruir el paquete inicial y el instalador después de poner esa clave.
+Instalaciones con el bootstrap antiguo sin firma necesitan reinstalación.
+
+El JSON anterior es el contenido firmado, no el asset publicado. El asset
+`vantare-native-beta.json` tiene exactamente `payload` (bytes UTF-8 del JSON
+en base64) y `signature` (firma Ed25519 de esos bytes en base64). Reescribir el
+JSON dentro del payload invalida la firma. El verificador es `vantare-services`
+de la generación instalada, verificada por los hashes del inventario.
+Se comprueba la firma antes del staging y otra vez al aplicar; pending.json
+conserva el sobre firmado. `-LocalManifest` también exige firma.
+
+Isaac custodia su semilla privada de 32 bytes binarios fuera del repo. Esta
+implementación no genera ninguna clave privada real ni la imprime. Pasar
+`-SigningKeyFile <ruta-privada-elegida>` a `publish-beta.ps1`; el archivo se lee
+solo en el proceso firmador, con buffers zeroize. No ponerlo en logs ni Git.
+Para firmar por separado un JSON revisado:
+
+```powershell
+pwsh -File native/packaging/sign-beta-manifest.ps1 -Manifest <json-revisado> -Output <asset-firmado> -ServicesExecutable <vantare-services.exe> -SigningKeyFile <ruta-privada>
+```
+
+El script también acepta la ruta desde `VANTARE_UPDATE_SIGNING_KEY_FILE`.
+No es una variable con el valor secreto. Solo escribe el sobre firmado y lo
+verifica con la clave pública embebida antes de guardarlo. Firma de manifiesto
+y SHA-256 autenticado del ZIP no sustituyen Authenticode/SmartScreen.
+Las pruebas Rust generan sus claves de test en memoria y comprueban ausencia
+de firma, cambio de contenido, clave ajena y campos desconocidos.
+El smoke beta anterior usa manifiestos sin firma y requiere adaptación con
+artefactos firmados por Isaac para probar una actualización positiva real.

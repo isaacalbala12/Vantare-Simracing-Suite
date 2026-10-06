@@ -1,5 +1,34 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1472 — confianza de perfiles importados (2026-10-07)
+
+Entrega local `984909ea` en `vantareapp/isa-1472-seguridad-decisiones`, base
+`d4a4e73a`, pendiente de revisión e integración. Hub y supervisor usan la
+misma barrera previa a cualquier programa: rutas/argumentos efectivos y
+«Confiar y lanzar» / «Cancelar». Reutiliza el diálogo de decisiones existente,
+con SHA-256 por ID/contenido y comandos resueltos en `launcher-trust/` de la
+generación de datos. Cambiar contenido o rutas vuelve a pedir revisión; las
+estadísticas no. El origen Wails antiguo se conserva al cargar, editar y
+duplicar. Atajos, LMU, inicio con Windows y reintentos no eluden la revisión;
+sin respuesta no ejecutan. No se bloquean scripts legítimos ni se cierra
+ninguna aplicación ajena. Un perfil creado por el usuario no requiere esto.
+
+Regresiones: espera antes de cualquier Child, cancelación sin confianza,
+confianza recordada, cambio de argumentos/rutas y duplicación histórica sin
+marcar perfiles locales. Suite completa 1188/1188 + seis omisiones previas;
+revalidación final Hub/supervisor 302/302, fmt/check/clippy y lifecycle PASS.
+Standings Release propio 0/292160 px, umbral 0, referencia/captura/diff
+inspeccionados. Dos capturas Debug tuvieron un píxel delta 1; se conservan.
+Sin cambios en renderizadores. Evidencia `C:/tmp/1472-decisiones-evidence/`.
+
+Verificación manual pendiente en un entorno aislado: lanzar un perfil ya
+importado, revisar y cancelar; aceptar y repetir; cambiar un argumento o
+ruta y comprobar la nueva revisión. No se probaron LMU vivo ni DPI ni se
+controlaron programas reales del usuario. Sin push/PR/merge/promoción/release.
+La clave pública y el roundtrip firmado del actualizador quedan para Isaac;
+continuidad completa de auditoría y servicios en el handoff de plataforma.
+
+
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
 ### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente

@@ -1,5 +1,57 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1472 — decisiones de seguridad de Isaac (2026-10-07)
+
+Entrega local en `vantareapp/isa-1472-seguridad-decisiones`, worktree
+`C:/tmp/vw3-1472-decisiones`, base `d4a4e73a`. Implementación:
+`984909ea` revisión de perfiles, `7193b868` manifiesto firmado y `b3111fd0`
+crashes con campos cerrados. Pendiente de revisión del orquestador e Isaac;
+no integrado, promocionado ni publicado. Sin push, PR o CI remota.
+
+El actualizador exige el sobre Ed25519 antes de descargar y al aplicar,
+incluido modo local. Reutiliza licencia/services; no hay dependencias nuevas.
+**Isaac debe rellenar `PUBLIC_KEY_BASE64` en
+`native/services/src/update_manifest.rs` antes de distribuir y reconstruir
+el instalador inicial.** Vacío deliberado, sin clave de test/fallback en
+producción. El firmador recibe la ruta privada elegida por Isaac, no genera
+claves reales ni las imprime. Procedimiento en `native/packaging/README.md`.
+El bootstrap antiguo necesita reinstalación para pasar al feed firmado.
+No se ejecutó actualización positiva firmada/NSIS: falta la clave real por
+instrucción explícita. La firma con claves generadas dentro de los tests y el
+rechazo del bootstrap real PowerShell 5.1 están verificados.
+
+Los crashes enviados contienen código, versión conocida (o `unknown` para
+metadatos antiguos), SO y hasta 64 direcciones numéricas. No mensajes, rutas,
+binarios libres, timestamp ni UUID estable. La proyección protege también las
+colas antiguas; el hook local y Testing Center voluntario conservan su
+comportamiento. Fuera de Windows la pila es vacía. No es certificación integral
+de seguridad, SmartScreen/Authenticode ni validación de cuentas de producción.
+
+`cargo install cargo-audit --locked` y auditoría de `native/Cargo.lock`:
+cargo-audit 0.22.2, **0 vulnerabilidades**, DB
+`ef6173cbc5c50ec8166f9a5b28f07834144373ee`. Avisos pendientes, sin modificar
+dependencias: `paste 1.0.15` (RUSTSEC-2024-0436), `rustybuzz 0.20.1`
+(RUSTSEC-2026-0206), `ttf-parser 0.25.1` (RUSTSEC-2026-0192), sin mantenimiento;
+`yoke-derive 0.8.3`, yanked. No equivalen a vulnerabilidades demostradas ni se
+silencian. Evidencia íntegra `C:/tmp/1472-decisiones-evidence/audit.json`.
+
+Gates por la cola: fmt/check/clippy `-D warnings` PASS; nextest completo
+1188/1188, seis omisiones previas; tras el ajuste de perfiles históricos,
+check/clippy finales y 302/302 tests de Hub/supervisor PASS; lifecycle 5+12
+PASS. Standings Release propio: **0/292160 px**, umbral 0; captura, referencia
+y diff inspeccionados. Debug tuvo un píxel delta 1 en dos rondas; se conservan
+las capturas y logs, no se alteró la referencia. No hubo cambios en UI de
+Standings. Logs, hashes y capturas fuera del repo en
+`C:/tmp/1472-decisiones-evidence/`; informe de cierre
+`C:/tmp/fase2/informe-1472-decisiones.md`. No Go/TS/CSS modificados ni LMU vivo,
+DPI, instalador final o CI remota verificados. `docs/roadmap/plan.md` no existe
+en esta base; no se inventó otro roadmap ni se anunció disponibilidad pública.
+
+Siguiente acción: revisar los cuatro commits locales; Isaac provisiona su
+clave pública y custodia privada, reconstruir y verificar roundtrip firmado
+con el instalador antes de autorizar una promoción a nightly.
+
+
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),

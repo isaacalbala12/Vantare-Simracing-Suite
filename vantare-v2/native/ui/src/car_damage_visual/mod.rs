@@ -14,7 +14,7 @@ use vantare_domain::{
     format::Preferences,
 };
 
-const SIZE: (f32, f32) = (150.0, 191.0);
+const SIZE: (f32, f32) = (180.0, 201.0);
 
 fn fill(damage: Option<f64>) -> Hsla {
     match damage {
@@ -29,9 +29,12 @@ fn polygon(window: &mut Window, points: &[(f32, f32)], y: f32, color: Hsla) {
         (PathBuilder::fill(), color),
         (PathBuilder::stroke(px(1.0)), col(tokens::INK, 0.15)),
     ] {
-        builder.move_to(point(px(ox + 15.0 + points[0].0), px(oy + y + points[0].1)));
+        builder.move_to(point(
+            px(ox + (SIZE.0 - 120.0) / 2.0 + points[0].0),
+            px(oy + y + points[0].1),
+        ));
         for &(x, py) in &points[1..] {
-            builder.line_to(point(px(ox + 15.0 + x), px(oy + y + py)));
+            builder.line_to(point(px(ox + (SIZE.0 - 120.0) / 2.0 + x), px(oy + y + py)));
         }
         builder.close();
         match builder.build() {
@@ -43,7 +46,7 @@ fn polygon(window: &mut Window, points: &[(f32, f32)], y: f32, color: Hsla) {
 
 fn suspension(window: &mut Window, y: f32, color: Hsla) {
     let (ox, oy) = text::origin();
-    let pt = |x, py| point(px(ox + 15.0 + x), px(oy + y + py));
+    let pt = |x, py| point(px(ox + (SIZE.0 - 120.0) / 2.0 + x), px(oy + y + py));
     // El quad de GPUI ajusta sus bordes a píxel; el trazo SVG de 1 px
     // necesita conservar medio píxel a cada lado de la geometría original.
     for (mut builder, color) in [
@@ -132,18 +135,8 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     } else {
         let label = ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
         let value = ink(14.0, 700.0, 0.0, col(tokens::INK, 1.0));
-        let widths = std::array::from_fn::<_, 3, _>(|i| {
-            text::width(window, vm.labels[i], &label).max(text::width(
-                window,
-                &vm.percentages[i],
-                &value,
-            ))
-        });
         let start = usize::from(!vm.show_aero);
-        let count = 3 - start;
-        let wrapped = widths[start..].iter().sum::<f32>() + (count - 1) as f32 * 14.0 > 126.0;
-        // Chrome ajusta el origen del viewport SVG a píxel físico.
-        let y = ((SIZE.1 - if wrapped { 160.0 } else { 129.0 }) / 2.0).round();
+        let y = 8.0;
         polygon(
             window,
             &[
@@ -164,33 +157,26 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             fill(vm.damage[0]),
         );
         suspension(window, y, fill(vm.damage[2]));
-        let first_count = if wrapped { 2 } else { count };
-        let first_width = widths[start..start + first_count].iter().sum::<f32>()
-            + (first_count - 1) as f32 * 14.0;
-        let mut x = (SIZE.0 - first_width) / 2.0;
-        for (i, width) in widths.into_iter().enumerate().skip(start) {
-            let top = y + 90.0 + if wrapped && i == start + 2 { 29.0 } else { 0.0 };
-            if wrapped && i == start + 2 {
-                x = (SIZE.0 - width) / 2.0;
-            }
-            let center = x + width / 2.0;
+        // Each item owns a separate 29 px row: no locale-dependent wrapping.
+        for i in start..3 {
+            let top = 103.0 + (i - start) as f32 * 29.0;
+            let label_text = text::fit(window, vm.labels[i], &label, 80.0);
             text::draw(
                 window,
                 cx,
-                vm.labels[i],
-                center - text::width(window, vm.labels[i], &label) / 2.0,
-                text::baseline(top, 11.0, 11.0).round(),
+                &label_text,
+                12.0,
+                text::baseline(top, 29.0, 11.0).round(),
                 &label,
             );
             text::draw(
                 window,
                 cx,
                 &vm.percentages[i],
-                center - text::width(window, &vm.percentages[i], &value) / 2.0,
-                text::baseline(top + 13.0, 15.0, 14.0).round(),
+                SIZE.0 - 12.0 - text::width(window, &vm.percentages[i], &value),
+                text::baseline(top, 29.0, 14.0).round(),
                 &value,
             );
-            x += width + 14.0;
         }
     }
     paint_frame(window, SIZE.0, SIZE.1);

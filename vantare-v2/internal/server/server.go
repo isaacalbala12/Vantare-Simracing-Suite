@@ -182,6 +182,50 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// loopbackHosts returns the set of Host header values this server accepts:
+// the loopback names it is allowed to bind (see ValidateAddr) plus whatever
+// host the configured address actually uses.
+//
+// El header Host es la unica defensa contra DNS rebinding en un servidor de
+// loopback: el navegador resuelve evil.com a 127.0.0.1, la peticion llega con
+// Host: evil.com y, sin esta comprobacion, se considera mismo origen y CORS
+// deja de proteger nada. Aceptar solo nombres de loopback cierra esa via.
+func loopbackHosts(addr string) map[string]bool {
+	hosts := map[string]bool{
+		"localhost": true,
+		"127.0.0.1": true,
+		"::1":       true,
+	}
+	if host, _, err := net.SplitHostPort(addr); err == nil && host != "" {
+		hosts[strings.ToLower(host)] = true
+	}
+	return hosts
+}
+
+// hostAllowed reports whether the request Host header names one of the
+// accepted loopback hosts. El puerto se ignora: la app puede escuchar en un
+// puerto distinto de 39261 (-http) y OBS usa el que se le indique.
+func hostAllowed(r *http.Request, allowed map[string]bool) bool {
+	host := r.Host
+	if value, _, err := net.SplitHostPort(host); err == nil {
+		host = value
+	}
+	// Un punto final es valido en DNS (localhost.) y no debe ser un bypass.
+	host = strings.Trim(strings.TrimSuffix(strings.ToLower(host), "."), "[]")
+	return allowed[host]
+}
+
+// hostGuard rechaza las peticiones cuyo Host no sea de loopback.
+func hostGuard(next http.Handler, allowed map[string]bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !hostAllowed(r, allowed) {
+			http.Error(w, "invalid host", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // EventEmitter is the subset of app.EventEmitter used by the server to forward
 // OAuth tokens to the Wails frontend.
 type EventEmitter interface {
@@ -200,6 +244,7 @@ type Server struct {
 	authAttempts *authAttemptStore
 	rateLimiter  *rateLimiter
 	addr         string
+	allowedHosts map[string]bool
 }
 
 type ServerConfig struct {
@@ -235,6 +280,7 @@ func New(cfg ServerConfig) *Server {
 		authAttempts: newAuthAttemptStore(),
 		rateLimiter:  newRateLimiter(10, 1*time.Minute),
 		addr:         cfg.Addr,
+		allowedHosts: loopbackHosts(cfg.Addr),
 	}
 
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -272,7 +318,7 @@ func New(cfg ServerConfig) *Server {
 	if cfg.Addr != "" {
 		s.srv = &http.Server{
 			Addr:    cfg.Addr,
-			Handler: securityHeaders(mux),
+			Handler: s.Handler(),
 		}
 	}
 
@@ -292,8 +338,10 @@ func (s *Server) handleCalendar(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+// Handler returns the full middleware chain. El guardia de Host va por fuera
+// del mux para que ninguna ruta, presente o futura, quede sin comprobacion.
 func (s *Server) Handler() http.Handler {
-	return securityHeaders(s.mux)
+	return securityHeaders(hostGuard(s.mux, s.allowedHosts))
 }
 
 // Addr returns the actual bound address, or "" if the server has not started.

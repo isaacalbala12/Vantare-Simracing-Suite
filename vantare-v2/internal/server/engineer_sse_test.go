@@ -22,7 +22,7 @@ func (d dummyEmitter) Emit(name string, data any) {}
 
 func TestEngineerStreamNoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/engineer/stream", nil)
+	req := newLoopbackRequest(http.MethodGet, "/engineer/stream", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -81,7 +81,7 @@ func TestEngineerStreamEmitsEvents(t *testing.T) {
 // TestEngineerHealth_NoService: /api/engineer/health devuelve 503 si no hay servicio.
 func TestEngineerHealth_NoService(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/engineer/health", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -98,7 +98,7 @@ func TestEngineerHealth_WaitsForCanonicalObservation(t *testing.T) {
 	defer engSvc.Stop()
 
 	srv := server.New(server.ServerConfig{EngineerSvc: engSvc})
-	req := httptest.NewRequest(http.MethodGet, "/api/engineer/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/engineer/health", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {

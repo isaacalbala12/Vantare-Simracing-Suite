@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -20,7 +19,7 @@ func TestUILocaleStreamSnapshotThenChangeAndDisconnect(t *testing.T) {
 	server := New(ServerConfig{UILocale: svc})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	request := httptest.NewRequest("GET", UILocaleStreamRoute, nil).WithContext(ctx)
+	request := loopbackRequest("GET", UILocaleStreamRoute, nil).WithContext(ctx)
 	request.RemoteAddr = "127.0.0.1:50000"
 	response := newPolicyStreamRecorder()
 	done := make(chan struct{})

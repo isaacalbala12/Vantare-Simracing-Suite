@@ -98,7 +98,7 @@ func fastPolicyPoll(t *testing.T) {
 }
 
 func TestWidgetPolicyStreamRequiresSource(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
 	request.RemoteAddr = "127.0.0.1:45678"
 	recorder := httptest.NewRecorder()
 	widgetPolicyStreamHandler(nil).ServeHTTP(recorder, request)
@@ -109,7 +109,7 @@ func TestWidgetPolicyStreamRequiresSource(t *testing.T) {
 
 func TestWidgetPolicyStreamLoopbackOnly(t *testing.T) {
 	svc := license.NewService(license.Config{}, nil, nil)
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
 	request.RemoteAddr = "192.0.2.1:45678"
 	recorder := httptest.NewRecorder()
 	widgetPolicyStreamHandler(svc).ServeHTTP(recorder, request)
@@ -122,7 +122,7 @@ func TestWidgetPolicyStreamSnapshotThenChange(t *testing.T) {
 	fastPolicyPoll(t)
 	svc := license.NewService(license.Config{}, nil, nil)
 	requestCtx, cancelRequest := context.WithCancel(context.Background())
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil).WithContext(requestCtx)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil).WithContext(requestCtx)
 	request.RemoteAddr = "127.0.0.1:45678"
 	writer := newPolicyStreamRecorder()
 	done := make(chan struct{})
@@ -187,7 +187,7 @@ func TestWidgetPolicyStreamReconnectGetsFreshSnapshot(t *testing.T) {
 	svc := license.NewService(license.Config{}, nil, nil)
 	result := ResultForPolicyStream()
 	svc.EmitChanged(&result)
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
 	request.RemoteAddr = "127.0.0.1:45678"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -216,7 +216,7 @@ func TestWidgetPolicyStreamWireHasNoPII(t *testing.T) {
 	svc := license.NewService(license.Config{}, nil, nil)
 	result := ResultForPolicyStream()
 	svc.EmitChanged(&result)
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
 	request.RemoteAddr = "127.0.0.1:45678"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -256,7 +256,7 @@ func TestWidgetPolicyStreamRestartSnapshotIsAuthoritative(t *testing.T) {
 	if freshRevision >= oldRevision {
 		t.Fatalf("restarted revision = %d, want smaller than %d", freshRevision, oldRevision)
 	}
-	request := httptest.NewRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
+	request := loopbackRequest(http.MethodGet, WidgetPolicyStreamRoute, nil)
 	request.RemoteAddr = "127.0.0.1:45678"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

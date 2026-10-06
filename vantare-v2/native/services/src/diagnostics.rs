@@ -166,6 +166,8 @@ struct Crash {
     message: String,
     backtrace: String,
     timestamp: u64,
+    #[serde(default)]
+    frames: Vec<u64>,
 }
 fn queue(root: &Path, folder: &str, value: &impl Serialize) -> Result<()> {
     let bytes = serde_json::to_vec(value).map_err(|_| Error::Protocol)?;
@@ -190,7 +192,7 @@ fn queue(root: &Path, folder: &str, value: &impl Serialize) -> Result<()> {
     }
     Err(Error::TooLarge)
 }
-fn write_crash(root: &Path, binary: &str, message: &str, backtrace: &str) -> Result<()> {
+fn write_crash(root: &Path, _binary: &str, _message: &str, _backtrace: &str) -> Result<()> {
     if !Privacy::load(root)?.crashes {
         return Ok(());
     }
@@ -198,30 +200,44 @@ fn write_crash(root: &Path, binary: &str, message: &str, backtrace: &str) -> Res
         root,
         "crashes",
         &Crash {
-            binary: bounded(binary, 64),
+            binary: "native".into(),
             version: bounded(crate::product::VERSION, 64),
-            message: bounded(message, 1024),
-            backtrace: bounded(backtrace, 8192),
+            message: "native_panic".into(),
+            backtrace: String::new(),
             timestamp: timestamp()?,
+            frames: capture_stack(),
         },
     )
+}
+
+// Direcciones numéricas, nunca símbolos, mensajes ni rutas del compilador/usuario.
+#[cfg(windows)]
+#[allow(unsafe_code)] // Frontera Win32 acotada al buffer propio de esta función.
+fn capture_stack() -> Vec<u64> {
+    let mut frames = [std::ptr::null_mut(); 64];
+    // SAFETY: array válido de 64 punteros, cota idéntica, sin hash de salida.
+    let count = unsafe {
+        windows_sys::Win32::System::Diagnostics::Debug::RtlCaptureStackBackTrace(
+            0,
+            64,
+            frames.as_mut_ptr(),
+            std::ptr::null_mut(),
+        )
+    };
+    frames[..usize::from(count)]
+        .iter()
+        .map(|frame| *frame as usize as u64)
+        .collect()
+}
+#[cfg(not(windows))]
+fn capture_stack() -> Vec<u64> {
+    Vec::new()
 }
 
 fn install_at(root: PathBuf, binary: &'static str) {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        let message = info
-            .payload()
-            .downcast_ref::<String>()
-            .map(String::as_str)
-            .or_else(|| info.payload().downcast_ref::<&str>().copied())
-            .unwrap_or("panic sin mensaje textual");
-        if let Err(error) = write_crash(
-            &root,
-            binary,
-            message,
-            &std::backtrace::Backtrace::force_capture().to_string(),
-        ) {
+        if let Err(error) = write_crash(&root, binary, "", "") {
             eprintln!("diagnóstico local: {error}");
         }
         previous(info);

@@ -1,5 +1,5 @@
 use super::{
-    Crash, FILE_LIMIT, Privacy, QUEUE_LIMIT, Usage, anonymous_id, bounded, configured, data_root,
+    Crash, FILE_LIMIT, Privacy, QUEUE_LIMIT, Usage, anonymous_id, configured, data_root,
     read_bounded,
 };
 use crate::{Error, Result, http::Http};
@@ -62,7 +62,13 @@ fn flush_until(
                     // Puede estar escribiendo otro proceso: conservar para el siguiente ciclo.
                     Err(_) => continue,
                 };
-                let properties = serde_json::json!({"binary": bounded(&crash.binary,64), "version": bounded(&crash.version,64), "channel": crate::product::CHANNEL, "message": bounded(&crash.message,1024), "backtrace": bounded(&crash.backtrace,8192), "timestamp": crash.timestamp});
+                // También los archivos antiguos pasan por esta proyección cerrada.
+                let version = if crash.version == crate::product::VERSION {
+                    crate::product::VERSION
+                } else {
+                    "unknown"
+                };
+                let properties = serde_json::json!({"code": "native_panic", "version": version, "os": std::env::consts::OS, "stack": crash.frames.into_iter().take(64).collect::<Vec<_>>()});
                 ("crash".to_owned(), properties)
             } else {
                 let usage: Usage = match serde_json::from_slice(&bytes) {
@@ -79,7 +85,11 @@ fn flush_until(
                 )
             };
             let mut properties = properties;
-            let distinct_id = anonymous_id(root)?;
+            let distinct_id = if folder == "crashes" {
+                "native-crash".to_owned()
+            } else {
+                anonymous_id(root)?
+            };
             // Disable person profiles for these installation-level events.
             properties["$process_person_profile"] = false.into();
             let response = http.post_json(endpoint, &serde_json::json!({"api_key": key, "event": event, "distinct_id": distinct_id, "properties": properties}), None, None)?.success()?;
@@ -182,8 +192,8 @@ mod tests {
         let saved: Crash =
             serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
                 .expect("json");
-        super::super::tests::assert_redacted(&saved.message);
-        super::super::tests::assert_redacted(&saved.backtrace);
+        assert_eq!(saved.message, "native_panic");
+        assert!(saved.backtrace.is_empty());
         let server = Server::start(vec![
             (503, "{}".into()),
             (200, "{\"status\":0}".into()),
@@ -210,13 +220,11 @@ mod tests {
             let body: serde_json::Value =
                 serde_json::from_str(request.split_once("\r\n\r\n").expect("body").1)
                     .expect("json");
-            for field in ["message", "backtrace"] {
-                super::super::tests::assert_redacted(
-                    body["properties"][field].as_str().expect("text"),
-                );
-            }
+            assert!(body["properties"].get("message").is_none());
+            assert!(body["properties"].get("backtrace").is_none());
+            assert_eq!(body["properties"]["code"], "native_panic");
             assert_eq!(body["properties"]["version"], crate::product::VERSION);
-            assert_eq!(body["properties"]["channel"], crate::product::CHANNEL);
+            assert_eq!(body["properties"]["os"], std::env::consts::OS);
             assert!(request.contains("\"event\":\"crash\""));
             assert!(request.contains("$process_person_profile"));
         }
@@ -229,11 +237,18 @@ mod tests {
         let root = super::super::tests::root();
         fs::create_dir(root.join("crashes")).expect("dir");
         let old = Crash {
-            binary: "core".into(),
-            version: "1.0.0".into(),
-            message: super::super::tests::sensitive_text(),
-            backtrace: super::super::tests::sensitive_text(),
+            binary: "Nombre privado del usuario".into(),
+            version: "Nombre privado del usuario".into(),
+            message: format!(
+                "Nombre privado del usuario {}",
+                super::super::tests::sensitive_text()
+            ),
+            backtrace: format!(
+                "Nombre privado del usuario {}",
+                super::super::tests::sensitive_text()
+            ),
             timestamp: 1,
+            frames: vec![1234],
         };
         fs::write(
             root.join("crashes/00.json"),
@@ -248,8 +263,25 @@ mod tests {
             .expect("request");
         let body: serde_json::Value =
             serde_json::from_str(request.split_once("\r\n\r\n").expect("body").1).expect("json");
-        for field in ["message", "backtrace"] {
-            super::super::tests::assert_redacted(body["properties"][field].as_str().expect("text"));
+        let properties = body["properties"].as_object().expect("properties");
+        let mut fields: Vec<_> = properties.keys().map(String::as_str).collect();
+        fields.sort_unstable();
+        assert_eq!(
+            fields,
+            ["$process_person_profile", "code", "os", "stack", "version"]
+        );
+        assert_eq!(properties["stack"], serde_json::json!([1234]));
+        assert_eq!(properties["version"], "unknown");
+        assert_eq!(body["distinct_id"], "native-crash");
+        assert!(!request.contains("Nombre privado del usuario"));
+        for fragment in [
+            "WindowsUser",
+            "ForwardUser",
+            "LinuxUser",
+            "MacUser",
+            "fixture-token-123",
+        ] {
+            assert!(!request.contains(fragment));
         }
         server.finish();
         assert!(!root.join("crashes/00.json").exists());

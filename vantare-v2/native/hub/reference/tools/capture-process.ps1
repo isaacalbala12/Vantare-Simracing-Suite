@@ -13,15 +13,20 @@ $marker = 'C:\tmp\fase2\pantalla-ocupada'
 $mutex = [System.Threading.Mutex]::new($false, 'Global\VantareParityCapture')
 $ownsMutex = $false
 $target = $null
+function Test-ForeignTurn {
+    if (-not (Test-Path -LiteralPath $marker)) { return $false }
+    $turn = $env:VANTARE_CAPTURE_TURN
+    return -not ($turn -and (Get-Content -LiteralPath $marker -Raw).Trim() -ceq $turn)
+}
 try {
     while ($true) {
-        while (Test-Path -LiteralPath $marker) {
+        while (Test-ForeignTurn) {
             [Console]::Error.WriteLine("Esperando pantalla ocupada antes de abrir Hub: $Screen")
             Start-Sleep -Seconds 60
         }
         try { [void]$mutex.WaitOne(); $ownsMutex = $true }
         catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
-        if (-not (Test-Path -LiteralPath $marker)) { break }
+        if (-not (Test-ForeignTurn)) { break }
         $mutex.ReleaseMutex()
         $ownsMutex = $false
     }

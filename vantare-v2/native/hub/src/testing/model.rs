@@ -1,23 +1,15 @@
 use crate::services::protocol::report_document::{Fields, Preview};
 
-/// La escena de paridad declara Nightly; fuera de ella manda la build.
-pub(super) fn channel_label(channel: Option<&str>, capture: bool) -> String {
-    if capture {
-        "Nightly".into()
-    } else {
-        channel
-            .filter(|value| !value.trim().is_empty())
-            .map_or_else(
-                || "Canal no disponible".into(),
-                |value| match value.trim() {
-                    "stable" | "master" => "Estable".into(),
-                    "nightly" => "Nightly".into(),
-                    "testers" => "Testers".into(),
-                    "beta" => "Beta".into(),
-                    _ => "Canal no disponible".into(),
-                },
-            )
+/// Mismo canal de build que Actualizaciones, también en las capturas QA.
+pub(super) fn channel_label(channel: Option<&str>) -> String {
+    match channel.map(str::trim) {
+        Some("stable" | "master") => "Estable",
+        Some("nightly") => "Nightly",
+        Some("testers") => "Testers",
+        Some("beta") => "Beta",
+        _ => "Canal no disponible",
     }
+    .into()
 }
 
 // Lista cerrada del servicio nativo y nombres del producto Wails.

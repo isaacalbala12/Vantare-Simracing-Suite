@@ -1,5 +1,4 @@
 use super::model::{Consent, MODULES, can_send, field_errors};
-use crate::orbit::typography;
 use crate::{
     orbit::{self, Checkbox, ChoiceState, Input, OptionItem},
     services::{
@@ -31,30 +30,7 @@ pub struct Editor {
 }
 impl Editor {
     fn field_label(label: &str, cx: &gpui::App) -> gpui::Div {
-        Self::tracked_label(label, orbit::ink_4(cx), 0.1)
-    }
-
-    fn tracked_label(label: &str, color: u32, tracking: f32) -> gpui::Div {
-        let label = label.to_owned();
-        // La cara estática W800 ya contiene el peso; modelar conserva el kerning.
-        div().h(px(16.5)).child(
-            gpui::canvas(
-                |_, _, _| (),
-                move |bounds, (), window, cx| {
-                    let ink = typography::ink(11.0, 800.0, tracking, rgb(color).into());
-                    typography::draw(
-                        window,
-                        cx,
-                        &label,
-                        bounds.origin.x.into(),
-                        typography::baseline(bounds.origin.y.into(), 16.5, 11.0),
-                        &ink,
-                    );
-                },
-            )
-            .w_full()
-            .h_full(),
-        )
+        orbit::text(label.to_owned(), 12.0, 600, orbit::ink_2(cx), cx)
     }
 
     pub(super) fn clear_approval(&mut self) {
@@ -186,26 +162,7 @@ impl Editor {
                     .flex()
                     .flex_col()
                     .overflow_hidden()
-                    .child(self.inputs[index].clone())
-                    // El kit fija la altura del Input. El trazo conserva el detalle
-                    // visual de Wails; redimensionar requiere soporte del kit común.
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .right_0()
-                            .size(px(13.0))
-                            .children((0_u8..3).flat_map(|line| {
-                                (0..=line).map(move |offset| {
-                                    div()
-                                        .absolute()
-                                        .right(px(2.0 + f32::from(offset) * 3.0))
-                                        .bottom(px(2.0 + f32::from(line - offset) * 3.0))
-                                        .size(px(1.0))
-                                        .bg(rgb(orbit::ink_3(cx)))
-                                })
-                            })),
-                    ),
+                    .child(self.inputs[index].clone()),
             )
             .when(self.show_errors, |view| {
                 view.when_some(field_errors(&self.fields(cx))[index], |view, error| {
@@ -625,7 +582,7 @@ impl Editor {
                         .child(orbit::text(
                             format!(
                                 "Tu cuenta · canal {}{}",
-                                super::model::channel_label(Some(&preview.channel), false),
+                                super::model::channel_label(Some(&preview.channel)),
                                 if preview.retry {
                                     " · reintento con contenido original"
                                 } else {

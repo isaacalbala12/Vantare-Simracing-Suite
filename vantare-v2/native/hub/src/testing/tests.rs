@@ -13,19 +13,15 @@ use vantare_domain::{Snapshot, SourceKind, SourceState};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
-fn missing_build_channel_does_not_claim_the_demo_channel() {
+fn testing_uses_build_channel_without_a_capture_override() {
     use super::model::channel_label;
     for missing in [None, Some(""), Some(" ")] {
-        assert_eq!(channel_label(missing, false), "Canal no disponible");
-        assert_eq!(channel_label(missing, true), "Nightly");
+        assert_eq!(channel_label(missing), "Canal no disponible");
     }
-    assert_eq!(channel_label(Some("testers"), false), "Testers");
-    assert_eq!(channel_label(Some("nightly"), false), "Nightly");
-    assert_eq!(channel_label(Some("stable"), false), "Estable");
-    assert_eq!(
-        channel_label(Some("not-a-channel"), false),
-        "Canal no disponible"
-    );
+    assert_eq!(channel_label(Some("testers")), "Testers");
+    assert_eq!(channel_label(Some("nightly")), "Nightly");
+    assert_eq!(channel_label(Some("stable")), "Estable");
+    assert_eq!(channel_label(Some("not-a-channel")), "Canal no disponible");
 }
 
 #[test]

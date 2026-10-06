@@ -185,39 +185,15 @@ pub const KEYCAP_RADIUS: f32 = 7.0;
 pub const KEYCAP_TEXT: f32 = 11.5;
 pub const MENU_Z: usize = 30;
 pub const MODAL_Z: usize = 100;
-pub const MENU_SHADOW_Y: f32 = 24.0;
-pub const MENU_SHADOW_BLUR: f32 = 70.0;
-pub const PALETTE_SHADOW_Y: f32 = 44.0;
-pub const PALETTE_SHADOW_BLUR: f32 = 143.0;
 #[cfg(test)]
 pub const MENU_SHADOW_COLOR: u32 = 0x0000_0099;
 #[cfg(test)]
 pub const PALETTE_SHADOW_COLOR: u32 = 0x0000_00a8;
 
-pub(crate) fn layer_shadow(modal: bool, cx: &gpui::App) -> Vec<gpui::BoxShadow> {
-    vec![gpui::BoxShadow {
-        color: rgba(if modal {
-            palette_shadow_color(cx)
-        } else {
-            menu_shadow_color(cx)
-        })
-        .into(),
-        offset: gpui::point(
-            px(0.0),
-            px(if modal {
-                PALETTE_SHADOW_Y
-            } else {
-                MENU_SHADOW_Y
-            }),
-        ),
-        blur_radius: px(if modal {
-            PALETTE_SHADOW_BLUR
-        } else {
-            MENU_SHADOW_BLUR
-        }),
-        spread_radius: px(0.0),
-        inset: false,
-    }]
+// Panels have opaque backgrounds and borders. External blur is deliberately
+// absent: it produces transparent grain/cut halos in Windows composition.
+pub(crate) fn layer_shadow(_modal: bool, _cx: &gpui::App) -> Vec<gpui::BoxShadow> {
+    Vec::new()
 }
 
 #[cfg(test)]

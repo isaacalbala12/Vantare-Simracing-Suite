@@ -4755,3 +4755,46 @@ plan.md ausente en esta base; no se crea otro roadmap. Sin gates frontend
 (sin TS/CSS), CI remota ni LMU vivo. Rama remota ausente verificada.
 Solo merges locales autorizados, sin push/PR/promoción/release ni cambios a la
 beta de Isaac/checkout principal; siguiente: revisión aislada del orquestador.
+
+### Corte #1470 r5 — LISTA A (render), 2026-10-07
+
+Worker aislado `vantareapp/isa-1470-r5-render`, base `40a4ddc9`, worktree
+`C:/tmp/vw3-1470-r5-render`. Sin push, PR, merge, promoción ni release.
+Lista B y suciedad del checkout principal preservadas.
+
+B1: fuera halos difusos externos de paleta/popovers/drawer; velo del drawer
+del color de superficie. El renderer existente comunica Opaque/Transparent
+por padding de GlobalParams (48 bytes), conserva cobertura sin dithering en
+ventanas opacas y el render previo de degradados en overlays transparentes.
+Mezcla sin división0/0 y cobertura de sombras limitada a[0,1]. Sin dependencia
+ni renderer nuevo. Captura RGBA original con checker que rechaza alfa<255:
+autotest acepta255/rechaza254/0; paleta r4 rechazada con1058px.
+18 capturas finales1920/1440 MIRADAS, todas opacas. B1 antes/después
+drawer36484/26754→0/0, paleta1058/849→0/0, notificaciones1619/1056→0/0.
+Standings0/292160px, threshold0/maxpercent0/delta0; mapa/referencia MIRADOS.
+La retirada global del dithering falló143279px; se descartó, sin relajar gate.
+
+I1 Actividad hasta abajo, vacío centrado, fundido y hasta8 registros existentes.
+La escena tiene3; no se inventan6–8 eventos. I6 cadena sin hueco del hero,
+historial3filas y Aplicaciones/Historial separados; Opciones conserva controles
+mediante scroll a1440, perfiles en lanzamiento mantienen198px. Pills terminales
+Bien/Lento/Falló solo para resultado observado de sesión, con regresión de
+reintento recuperado; persistencia no guarda resultado histórico. P2 inicial
+neutra MoTeC/Pro, P3 tarjetas iguales/subtítulos1línea, P11 Avanzado12/600/tracking0.
+
+Gates finales del código definitivo PASS: fmt/check/clippy por cola,
+-j2/target/gates propio; Nextest1183/1183 en622,786s, seis skips configurados,
+golden ACC501,372s; lifecycle5Hub+12UI PASS. Logs verified-*.log.
+Build QA beta.1/Testers PASS, warning cx previo solo parity-capture.
+Evidencia `C:/tmp/1470-r5-render-evidence/`; informe vivo
+`C:/tmp/fase2/informe-1470-r5-render.md`. Capturas RGB24 descartadas: ocultaban
+el fallo de alfa pero mantenían grano; capturador original preservado.
+
+Pendiente aceptación del orquestador/Isaac, ventana normal SIN captura/DPI125
+(intento aislado: Ventana no disponible), pills antiguas sin datos terminales,
+6–8 eventos reales, LMU/OBS/Mac/rendimiento. Favorito/Abriendo se solapan en
+cubierta compacta durante lanzamiento: hallazgo para revisión #1470.
+Manual: CtrlK, Notificaciones y editar perfil a100/125%; revisar halos y bordes;
+Aplicaciones/Historial/Volver, tres filas, cadena4pasos y scroll de Opciones.
+Go/frontend/CI remota no ejecutados (sin cambios/push). plan.md ausente en esta
+base, sin roadmap alternativo. Siguiente: revisar entrega aislada y sus límites.

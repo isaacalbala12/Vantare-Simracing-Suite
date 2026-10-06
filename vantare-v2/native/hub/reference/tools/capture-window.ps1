@@ -128,6 +128,7 @@ try {
     $graphics.ReleaseHdc($hdc)
     if (-not $printed) { $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size) }
     $bitmap.Save($output,[Drawing.Imaging.ImageFormat]::Png)
+    & "$PSScriptRoot/assert-opaque.ps1" -Path $output
     Write-Output "${width} x ${height}; DPI 96; PID $ProcessId; $output"
 } finally {
     if ($graphics) { $graphics.Dispose() }

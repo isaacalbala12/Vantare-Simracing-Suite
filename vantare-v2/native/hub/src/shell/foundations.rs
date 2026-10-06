@@ -503,6 +503,7 @@ impl Hub {
         let now = chrono::Local::now().fixed_offset();
         let activity_rows = div()
             .id("home-activity-list")
+            .flex_1()
             .min_h_0()
             .overflow_y_scroll()
             .children(
@@ -510,6 +511,8 @@ impl Hub {
                     .read(cx)
                     .saved_profiles()
                     .iter()
+                    .filter(|profile| profile.last_launched_at.is_some())
+                    .take(8)
                     .filter_map(|profile| {
                         profile.last_launched_at.as_ref().map(|at| {
                             div()
@@ -535,8 +538,8 @@ impl Hub {
             );
         let activity = orbit::neo_card(cx)
             .flex_1()
-            .self_start()
-            .max_h_full()
+            .min_w_0()
+            .min_h_0()
             .child(
                 div()
                     .flex()
@@ -549,7 +552,10 @@ impl Hub {
                         ),
                     ),
             )
-            .child(activity_rows)
+            .when(
+                self.launcher.read(cx).saved_profiles().iter().any(|p| p.last_launched_at.is_some()),
+                |card| card.child(orbit::scroll_fade(activity_rows, cx.global::<orbit::design::Tokens>().colors.neo_bottom)),
+            )
             .when(
                 !self
                     .launcher
@@ -558,7 +564,7 @@ impl Hub {
                     .iter()
                     .any(|p| p.last_launched_at.is_some()),
                 |card| {
-                    card.child(div().min_h(px(220.0)).flex().flex_col().items_center().justify_center().gap(px(16.0))
+                    card.child(div().flex_1().min_h_0().flex().flex_col().items_center().justify_center().gap(px(16.0))
                         .child(orbit::icon("clock", 40.0, orbit::ink_3(cx)))
                         .child(orbit::text("Tu actividad empieza con un lanzamiento", 16.0, 600, orbit::ink(cx), cx).text_center())
                         .child(orbit::text("Lanza un perfil desde Launcher. Su último lanzamiento aparecerá aquí.", 14.0, 400, orbit::ink_3(cx), cx).max_w(px(320.0)).text_center()))

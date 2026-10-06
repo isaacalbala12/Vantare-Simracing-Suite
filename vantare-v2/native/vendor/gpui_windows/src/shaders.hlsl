@@ -6,7 +6,8 @@ cbuffer GlobalParams: register(b0) {
     float grayscale_enhanced_contrast;
     float subpixel_enhanced_contrast;
     uint is_bgr;
-    uint3 global_pad;
+    uint opaque_window;
+    uint2 global_pad;
 };
 
 cbuffer BatchParams: register(b1) {
@@ -250,6 +251,9 @@ float gaussian(float x, float sigma) {
 float4 over(float4 below, float4 above) {
     float4 result;
     float alpha = above.a + below.a * (1.0 - above.a);
+    if (alpha == 0.0) {
+        return float4(0., 0., 0., 0.);
+    }
     result.rgb = (above.rgb * above.a + below.rgb * below.a * (1.0 - above.a)) / alpha;
     result.a = alpha;
     return result;
@@ -392,11 +396,13 @@ float4 gradient_color(Background background,
                 }
             }
 
+            // Preserve coverage for opaque app windows; transparent overlay
+            // windows retain their existing gradient rendering.
             // Dither to reduce banding in gradients (especially dark/alpha).
             // Triangular-distributed noise breaks up 8-bit quantization steps.
             // ±2/255 for RGB (enough for dark-on-dark compositing),
             // ±3/255 for alpha (needs more because alpha × dark color = tiny steps).
-            {
+            if (opaque_window == 0u) {
                 float2 seed = position * 0.6180339887; // golden ratio spread
                 float r1 = frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
                 float r2 = frac(sin(dot(seed, float2(39.3460, 11.135))) * 24634.6345);
@@ -941,6 +947,7 @@ float4 shadow_fragment(ShadowFragmentInput input): SV_TARGET {
         }
     }
 
+    alpha = saturate(alpha); // Quadrature must not exceed unit coverage.
     if (shadow.inset != 0u) {
         // The inset shadow is the complement of the (blurred) hole rect, clipped to the element.
         // `saturate(0.5 - d)` gives a 1-pixel antialiased edge: d <= -0.5 -> 1, d >= 0.5 -> 0.

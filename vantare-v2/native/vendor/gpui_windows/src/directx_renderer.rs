@@ -217,7 +217,8 @@ impl DirectXRenderer {
                 grayscale_enhanced_contrast: self.font_info.grayscale_enhanced_contrast,
                 subpixel_enhanced_contrast: self.font_info.subpixel_enhanced_contrast,
                 is_bgr: self.font_info.is_bgr as u32,
-                _pad: [0; 3],
+                opaque_window: u32::from(clear_color[3] == 1.0),
+                _pad: [0; 2],
             }],
         )?;
         unsafe {
@@ -1077,8 +1078,11 @@ struct GlobalParams {
     grayscale_enhanced_contrast: f32,
     subpixel_enhanced_contrast: f32,
     is_bgr: u32,
-    _pad: [u32; 3],
+    opaque_window: u32,
+    _pad: [u32; 2],
 }
+
+const _: () = assert!(std::mem::size_of::<GlobalParams>() == 48);
 
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C, align(16))]

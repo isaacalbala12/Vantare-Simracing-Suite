@@ -145,6 +145,44 @@ mod tests {
     use crate::test_http::Server;
     use std::time::Duration;
     #[test]
+    fn a_corrupt_document_is_quarantined_and_the_service_still_starts() {
+        let (root, store) = crate::test_store("roadmap-quarantine");
+        // Publicacion con id que no es uuid: JSON valido, contenido invalido.
+        let corrupt: Cached = serde_json::from_value(serde_json::json!({
+            "version": 1,
+            "fetched_at": 1,
+            "publication": {
+                "id": "no-es-un-uuid",
+                "published_at": "2026-09-30T10:00:00Z",
+                "document": {"schemaVersion": 1, "items": []}
+            }
+        }))
+        .expect("construir cache invalida");
+        store
+            .save("roadmap", &corrupt)
+            .expect("guardar cache invalida");
+
+        // Antes: Err en cada arranque. Ahora: arranca sin cache...
+        let roadmap = Roadmap::restore(&store).expect("debe arrancar");
+        assert!(roadmap.publication().is_none());
+
+        // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
+        // arranque tampoco tropieza.
+        assert!(
+            matches!(store.load::<Cached>("roadmap"), Err(Error::NotFound)),
+            "el documento invalido debe quedar apartado"
+        );
+        assert!(
+            Roadmap::restore(&store)
+                .expect("segundo arranque")
+                .publication()
+                .is_none()
+        );
+        drop(store);
+        std::fs::remove_dir_all(root).expect("limpiar");
+    }
+
+    #[test]
     fn last_valid_publication_survives_offline_future_schema_empty_and_restart() {
         let publication = serde_json::json!({"id":"550e8400-e29b-41d4-a716-446655440000","published_at":"2026-09-30T10:00:00Z","document":{"schemaVersion":1,"items":[]}});
         let mut incompatible = publication.clone();
@@ -229,13 +267,20 @@ mod tests {
         publication.document.items[0].title.es = "ñ".repeat(121);
         assert!(validate(&publication).is_err());
     }
+    /// El vector real es una FRACCION de segundo arbitrariamente larga, no un
+    /// desplazamiento horario: `chrono::DateTime::parse_from_rfc3339` acepta la
+    /// primera y RECHAZA el segundo. Comprobado con una sonda sobre las dos
+    /// formas, y por eso la version anterior de esta prueba no verificaba nada.
+    ///
+    /// La prueba se justifica sola: mide el tamano del conjunto sin la cota y
+    /// exige que supere el marco del protocolo.
     #[test]
-    fn timestamp_is_bounded_and_a_full_publication_stays_inside_the_frame() {
-        let text = |count: usize| crate::protocol::roadmap_document::Localized {
+    fn a_long_fractional_second_is_the_vector_that_overflows_the_frame() {
+        let texto = |count: usize| crate::protocol::roadmap_document::Localized {
             es: "x".repeat(count),
-            en: String::new(),
-            pt: String::new(),
-            it: String::new(),
+            en: "y".repeat(count),
+            pt: "z".repeat(count),
+            it: "w".repeat(count),
         };
         let mut publication: Publication = serde_json::from_value(serde_json::json!({
             "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -243,69 +288,75 @@ mod tests {
             "document": {"schemaVersion": 1, "items": []}
         }))
         .expect("test");
-        publication.document.items = (0..8)
+        publication.document.items = (0..40)
             .map(|index| crate::protocol::roadmap_document::Item {
-                id: format!("550e8400-e29b-41d4-a716-44665544000{index}"),
+                id: format!("550e8400-e29b-41d4-a716-4466554400{index:02}"),
                 section: "now".into(),
-                title: text(120),
-                body: text(600),
+                title: texto(30),
+                body: texto(180),
             })
             .collect();
         assert!(
             validate(&publication).is_ok(),
-            "un documento lleno dentro de los limites debe pasar"
-        );
-        assert!(
-            serde_json::to_vec(&publication).expect("serializar").len()
-                < crate::protocol::MAX_FRAME,
-            "un conjunto valido debe caber en el marco"
+            "el documento lleno debe estar dentro de todos los limites"
         );
 
-        // `parse_from_rfc3339` acepta desplazamientos largos, asi que el
-        // timestamp era el unico campo sin cota y desbordaba el marco: la
-        // respuesta se rechazaba al escribir y el servicio moria con la cache
-        // ya envenenada.
-        publication.published_at = format!("2026-09-30T10:00:00+{}:00", "0".repeat(25_000));
+        // El vector. Un desplazamiento largo NO sirve: chrono lo rechaza el solo.
+        publication.published_at = format!(
+            "2026-09-30T10:00:00.{}Z",
+            "0".repeat(crate::protocol::MAX_FRAME)
+        );
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_ok(),
+            "chrono acepta la fraccion larga: es el vector que hay que cerrar"
+        );
+        let sin_cota = serde_json::to_vec(&Cached {
+            version: 1,
+            publication: publication.clone(),
+            fetched_at: 0,
+        })
+        .expect("serializar");
+        assert!(
+            sin_cota.len() > crate::protocol::MAX_FRAME,
+            "sin la cota el conjunto debe superar el marco, y mide {}",
+            sin_cota.len()
+        );
+        // Y con la cota se rechaza.
+        assert!(validate(&publication).is_err(), "la cota debe rechazarlo");
+    }
+
+    /// El test anterior lo decide `MAX_PUBLICATION_BYTES`, no la cota del
+    /// timestamp: con el documento al tope, el conjunto ya supera 56 KiB por si
+    /// solo. Este caso AISLA la cota del timestamp: el conjunto queda por debajo
+    /// de `MAX_PUBLICATION_BYTES` y solo `MAX_TIMESTAMP_CHARS` puede rechazarlo.
+    /// Comprobado quitando esa cota: este test falla y el otro no.
+    #[test]
+    fn the_timestamp_cap_is_what_rejects_a_long_fraction_on_a_small_document() {
+        let mut publication: Publication = serde_json::from_value(serde_json::json!({
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "published_at": "2026-09-30T10:00:00Z",
+            "document": {"schemaVersion": 1, "items": []}
+        }))
+        .expect("test");
+        publication.published_at = format!("2026-09-30T10:00:00.{}Z", "0".repeat(25_000));
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_ok(),
+            "chrono acepta la fraccion larga"
+        );
+        let conjunto = serde_json::to_vec(&Cached {
+            version: 1,
+            publication: publication.clone(),
+            fetched_at: 0,
+        })
+        .expect("serializar");
+        assert!(
+            conjunto.len() < MAX_PUBLICATION_BYTES,
+            "el conjunto debe quedar por debajo de la cota de conjunto para aislar la del timestamp, y mide {}",
+            conjunto.len()
+        );
         assert!(
             validate(&publication).is_err(),
-            "un published_at de 25.000 digitos debe rechazarse"
-        );
-    }
-    /// Un documento invalido apartaba el servicio para siempre: cada arranque
-    /// devolvia `Err` y la unica salida era borrar el fichero a mano.
-    #[test]
-    fn a_corrupt_document_is_quarantined_and_the_service_still_starts() {
-        let (_root, store) = crate::test_store("roadmap-quarantine");
-        // Publicacion con id que no es uuid: JSON valido, contenido invalido.
-        let corrupt: Cached = serde_json::from_value(serde_json::json!({
-            "version": 1,
-            "fetched_at": 1,
-            "publication": {
-                "id": "no-es-un-uuid",
-                "published_at": "2026-09-30T10:00:00Z",
-                "document": {"schemaVersion": 1, "items": []}
-            }
-        }))
-        .expect("construir cache invalida");
-        store
-            .save("roadmap", &corrupt)
-            .expect("guardar cache invalida");
-
-        // Antes: Err en cada arranque. Ahora: arranca sin cache...
-        let roadmap = Roadmap::restore(&store).expect("debe arrancar");
-        assert!(roadmap.publication().is_none());
-
-        // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
-        // arranque tampoco tropieza.
-        assert!(
-            matches!(store.load::<Cached>("roadmap"), Err(Error::NotFound)),
-            "el documento invalido debe quedar apartado"
-        );
-        assert!(
-            Roadmap::restore(&store)
-                .expect("segundo arranque")
-                .publication()
-                .is_none()
+            "solo la cota del timestamp puede rechazar este caso"
         );
     }
 }

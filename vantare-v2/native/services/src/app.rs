@@ -299,6 +299,12 @@ impl App {
                 }
                 if account_action && let Some(account) = self.account.as_ref() {
                     Self::account_reply(account, Some(error))
+                } else if error == Error::DeviceLimit {
+                    // Acción concreta y distinta de cualquier otro fallo: el
+                    // texto sigue saliendo del único mapeo (`error.rs`).
+                    Reply::DeviceLimit {
+                        message: error.to_string(),
+                    }
                 } else {
                     Reply::Error {
                         message: if report_send {
@@ -854,6 +860,80 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-native-license-ack", &[]);
+    }
+
+    #[test]
+    fn a_device_limit_reaches_ipc_as_its_own_reply_and_not_as_generic_text() {
+        let device = crate::license::installation::legacy_fingerprint().expect("huella local");
+        let (_, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let server = crate::test_http::Server::start(vec![
+            (200, serde_json::json!({"access_token":"rotated-local-access","refresh_token":"rotated-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+            (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
+            (
+                409,
+                serde_json::json!({"error":"device_limit","message":"generic"}).to_string(),
+            ),
+        ]);
+        let (root, store) = crate::test_store("app-device-limit");
+        let account = crate::account::fixture(&server.base, &store);
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: Some("public-test-key"),
+            license_keys: Some(keys),
+            channel: Some("test"),
+            native_oauth: Some(crate::config::OAuthBuild {
+                issuer: server.base.clone(),
+                client_id: "public-fixture".into(),
+                redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
+            }),
+        };
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        let reply = app.handle(Command::LicenseRenew);
+        assert_eq!(
+            match &reply {
+                Reply::DeviceLimit { message } => message.clone(),
+                other => panic!("409 device_limit llegó como {other:?}"),
+            },
+            Error::DeviceLimit.to_string(),
+            "el texto sigue saliendo del único mapeo de errores"
+        );
+        // El marco IPC conserva la distinción que el Hub consume.
+        let mut wire = Vec::new();
+        crate::protocol::write(
+            &mut wire,
+            &crate::protocol::Response {
+                version: crate::protocol::VERSION,
+                sequence: 1,
+                reply,
+            },
+        )
+        .expect("marco IPC");
+        assert!(
+            matches!(
+                crate::protocol::read::<crate::protocol::Response>(&mut wire.as_slice())
+                    .expect("DTO IPC")
+                    .reply,
+                Reply::DeviceLimit { .. }
+            ),
+            "el límite de dispositivos no puede llegar como fallo genérico"
+        );
+        for path in [
+            "POST /token ",
+            "GET /userinfo ",
+            "POST /functions/v1/native-license ",
+        ] {
+            let request = server
+                .requests
+                .recv_timeout(Duration::from_secs(3))
+                .expect("una operación HTTP");
+            assert!(request.starts_with(path));
+        }
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-device-limit", &["account"]);
     }
 
     #[test]

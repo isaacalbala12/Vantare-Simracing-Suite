@@ -4593,3 +4593,39 @@ Segundo hito: Host loopback en Go heredado, checkout fijado, secretos solo en el
 Tercer hito: capacidades del Hub (11), desconocidas ignoradas, cotas y cuarentena solo de JSON/versión/validación; errores de E/S se conservan y screenshots::validate permanece.
 Cuarto hito: cotas de identidades/lecturas/tar y pruebas codec/LMU; rights/mod.rs conserva íntegro el Hub y se recolocan CLOCK_WRAP_FROM/read_bounded.
 Quinto hito: Reader::text de ACC sanea U+202E, con test unitario; no se incorpora el fuzz de 863 líneas.
+Sexto hito (#9+#10 juntos): allowlist solo para enlaces de PUBLIC/ProgramData, los del usuario se confían; DeviceLimit tipado, botón principal y test semántico de cuarentena del roadmap repuesto.
+
+Validación final (cola `compilar.ps1`, Rust `-j 2`): fmt/check/clippy
+`-D warnings` PASS (`final5`), Nextest 1181 PASS y 6 omitidos preexistentes,
+lifecycle PASS (`final6`), `go test ./...` PASS. Go necesitó el `frontend/dist`
+ya construido del checkout principal para el embed; no se modificó frontend.
+`packaging/tests.ps1` PASS: 174 comprobaciones en Debug y 174 en Release.
+Release público real, con `parity-capture` para QA, compilado/empaquetado con
+exit 0; candidato local `0.0.0-local`, `source_sha=136a90fa`, `source_dirty=true`.
+No es una release publicada ni un paquete construido desde un commit limpio.
+Arranque desde `C:/tmp/1472-paquete` PASS: ventana en 3,81 s, datos propios,
+captura `primera-paquete.png` inspeccionada; sin renombrar fuentes del repo.
+Standings F1 PASS: 0/292160 píxeles, umbral 0; captura, referencia y diff
+inspeccionados: misma cabecera, siete filas, nombres/datos y pie Sebring.
+Hash PNG de ambos: `2b63ea4a40309fedd14337073a289c8767bd3f48c450c3fce0945a2ca34ba7df`.
+El vector heredado del test de timestamp se adaptó al `MAX_FRAME` del Hub
+(128 KiB); conserva la exigencia de superar el marco real, sin debilitarla.
+Fallos previos conservados: identidad IPC de la junction, limpieza de locks,
+disco lleno, test de timestamp con marco antiguo y enlace de exe aún vivo.
+Debug abortó por una aserción de accesibilidad de GPUI antes de abrir; Release
+abrió. La primera prueba Release con ventana oculta no midió apertura visible;
+la repetición con ventana normal y la misma copia verificada por hash sí pasó.
+Queda el warning Release de `analysis/view.rs` (`cx`), fuera del diff.
+Por falta de espacio, evidencia voluminosa y paquetes propios están en
+`E:/tmp/1472-integracion-evidence/` y `E:/tmp/1472-integracion-package-release/`;
+logs/capturas/lista de 51 archivos en `C:/tmp/1472-integracion-evidence/`.
+Manual: abrir el Hub copiado con datos aislados, recorrer Taller y guardar una
+escena; repetir con selección obsoleta. Un `.lock` residual permite guardar;
+un lock activo conserva el rechazo. Verificar enlaces compartidos/usuario y
+el botón de DeviceLimit con el flujo real de renovación antes de promoción.
+Sin LMU vivo, DPI ni DeviceLimit real; no se acredita rendimiento o servicios
+reales. La cuarentena de installation y los hallazgos de voz/radio de la revisión
+quedan fuera del alcance seleccionado para el orquestador.
+Sin gates frontend (no cambió TS/CSS), CI remota, push, PR, merge, promoción,
+release ni acción externa fuera del alcance. Siguiente: revisión aislada del
+orquestador; no integrar en nightly sin autorización de Isaac.

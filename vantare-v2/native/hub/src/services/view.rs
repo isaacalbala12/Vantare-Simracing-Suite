@@ -190,6 +190,9 @@ pub struct Remote {
     queued: Option<Command>,
     account: AccountState,
     access: access::State,
+    /// El servicio distinguió un límite de dispositivos (`Reply::DeviceLimit`):
+    /// la salida es liberar el activo, no reintentar a ciegas.
+    device_limit: bool,
     license_polled_at: Option<std::time::Instant>,
     message: String,
     active: Area,
@@ -299,6 +302,7 @@ impl Remote {
             queued: None,
             account: AccountState::default(),
             access: access::State::from_build(),
+            device_limit: false,
             license_polled_at: None,
             message: "Cuenta no disponible".into(),
             active: Area::Account,
@@ -436,6 +440,11 @@ impl Remote {
     }
 
     fn dispatch(&mut self, command: Command) -> bool {
+        // Otra acción de licencia del usuario releva al límite anterior; la
+        // consulta periódica de política no lo hace.
+        if matches!(command, Command::LicenseRenew | Command::DeviceReset) {
+            self.device_limit = false;
+        }
         self.active = match command {
             Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
             Command::LicenseRenew => Area::Licenses { renew: true },
@@ -483,6 +492,9 @@ impl Remote {
         }
     }
 
+    // Ramifica por área y por variante del protocolo; ya se extrajo a `Reply` y
+    // a `access` todo lo que no era reparto de mensajes.
+    #[allow(clippy::too_many_lines)]
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
         self.access.requested(&command);
         if self.inflight == Inflight::Background {
@@ -532,6 +544,12 @@ impl Remote {
                                     } else {
                                         this.message = message;
                                     }
+                                }
+                                // El límite de dispositivos ya llega distinguido del
+                                // resto de fallos: habilita la salida concreta.
+                                Reply::DeviceLimit { message } => {
+                                    this.device_limit = true;
+                                    this.message = message;
                                 }
                                 Reply::Roadmap {
                                     publication,
@@ -974,14 +992,20 @@ impl Remote {
                     "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.",
                  cx))
                 .child(
-                    orbit::small_button("services-device-reset", "Restablecer dispositivo", cx)
-                        .tab_stop(!self.working() && !demo)
-                        .when(self.working(), |button| button.opacity(orbit::DISABLED))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            if !this.busy() && account_demo().is_none() {
-                                this.request(Command::DeviceReset, cx);
-                            }
-                        })),
+                    // Con el límite alcanzado, liberar el activo es la salida: se
+                    // reutiliza el botón principal de Orbit, sin texto nuevo.
+                    (if self.device_limit {
+                        orbit::carmine_button("services-device-reset", "Restablecer dispositivo", cx)
+                    } else {
+                        orbit::small_button("services-device-reset", "Restablecer dispositivo", cx)
+                    })
+                    .tab_stop(!self.working() && !demo)
+                    .when(self.working(), |button| button.opacity(orbit::DISABLED))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if !this.busy() && account_demo().is_none() {
+                            this.request(Command::DeviceReset, cx);
+                        }
+                    })),
                 ),
          cx)
         .flex_1()

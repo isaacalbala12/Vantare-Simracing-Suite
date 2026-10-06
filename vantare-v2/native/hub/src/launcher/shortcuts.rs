@@ -88,6 +88,14 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
 }
 
 #[cfg(windows)]
+fn accepts_target(link: &Path, target: &Path, shared_roots: &[PathBuf]) -> bool {
+    !shared_roots
+        .iter()
+        .any(|root| super::under_ascii_case(link, root))
+        || super::is_trusted_install_path(target)
+}
+
+#[cfg(windows)]
 pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     use std::{
         io::{BufReader, Read},
@@ -162,13 +170,61 @@ pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     }
     let paths: Vec<String> =
         serde_json::from_slice(&bytes).map_err(|e| format!("respuesta de shortcuts: {e}"))?;
-    Ok(paths
+    if paths.len() != links.len() {
+        return Err("respuesta de shortcuts incompleta".into());
+    }
+    let shared_roots: Vec<_> = ["PUBLIC", "ProgramData"]
         .into_iter()
+        .filter_map(std::env::var_os)
         .map(PathBuf::from)
-        .filter(|path| is_local_path(path) && is_executable(path))
+        .collect();
+    Ok(links
+        .iter()
+        .zip(paths)
+        .filter_map(|(link, target)| {
+            let target = PathBuf::from(target);
+            (is_local_path(&target)
+                && is_executable(&target)
+                && accepts_target(link, &target, &shared_roots))
+            .then_some(target)
+        })
         .collect())
 }
 #[cfg(not(windows))]
 pub(crate) fn resolve(_links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     Ok(Vec::new())
+}
+
+#[cfg(all(test, windows))]
+mod trust_tests {
+    use super::*;
+
+    #[test]
+    fn only_shared_shortcuts_restrict_targets_and_user_games_on_other_drives_are_trusted() {
+        let shared = [
+            PathBuf::from(r"C:\Users\Public"),
+            PathBuf::from(r"C:\ProgramData"),
+        ];
+        let game = Path::new(r"D:\Games\obs64.exe");
+        for link in [
+            r"C:\Users\Isaac\Desktop\obs.lnk",
+            r"C:\Users\Isaac\AppData\Roaming\Microsoft\Windows\Start Menu\obs.lnk",
+        ] {
+            assert!(accepts_target(Path::new(link), game, &shared));
+        }
+        for link in [
+            r"c:\users\PUBLIC\Desktop\obs.lnk",
+            r"C:\ProgramData\Microsoft\Windows\Start Menu\obs.lnk",
+        ] {
+            assert!(!accepts_target(Path::new(link), game, &shared));
+            let trusted = PathBuf::from(std::env::var_os("ProgramFiles").expect("Windows"))
+                .join("obs/obs64.exe");
+            assert!(accepts_target(Path::new(link), &trusted, &shared));
+        }
+        assert!(accepts_target(
+            Path::new(r"C:\Users\Publicity\Desktop\obs.lnk"),
+            game,
+            &shared
+        ));
+    }
 }

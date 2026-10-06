@@ -142,7 +142,12 @@ impl State {
     }
 
     pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
-        if matches!(reply, Reply::Error { .. } | Reply::Closed) {
+        // El límite de dispositivos sigue siendo un fallo de renovación: conserva
+        // el cierre fail-closed y solo añade la distinción tipada.
+        if matches!(
+            reply,
+            Reply::Error { .. } | Reply::DeviceLimit { .. } | Reply::Closed
+        ) {
             self.policy = None;
             if self.transition == Transition::Login {
                 self.transition = Transition::Renewal;

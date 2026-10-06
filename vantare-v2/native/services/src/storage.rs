@@ -166,10 +166,17 @@ impl Store {
     /// a que alguien borre el fichero a mano. Renombrarlo conserva la evidencia
     /// para diagnostico y permite seguir con el valor por defecto.
     ///
-    /// Es a proposito que NO se use con `installation`: alli el camino de
-    /// "no existe" genera una identidad nueva, asi que apartar el fichero
-    /// regalaria un dispositivo limpio y alimentaria el replay de credencial.
-    /// Tampoco con el recargado posterior al login, que no es un `restore`.
+    /// Es a proposito que NO se use con `installation`, pero el motivo verificado
+    /// NO es que regale un dispositivo limpio: en la configuracion desplegada
+    /// borrar ese fichero no da nada -no hay re-enrolamiento, el servidor rechaza
+    /// cualquier campo extra, `devices.user_id` es UNIQUE y gana el primer
+    /// dispositivo, y `binding`/`authority` viven en OTRO almacen-. El motivo real
+    /// es que aqui el unico camino a una identidad nueva es ENOENT: 14 formas
+    /// de corrupcion devuelven `Err` y ninguna acuna identidad. Lo que si falta es
+    /// desacoplar `legacy` de `installation`, porque hoy comparten un unico
+    /// `Result` y un `installation` corrupto deja el nucleo SIN NINGUN derecho,
+    /// incluido el camino v1 que no usa ese fichero.
+    /// Tampoco se usa con el recargado posterior al login, que no es un `restore`.
     pub fn quarantine(&self, name: &str) {
         let Ok(path) = self.path(name) else {
             return;

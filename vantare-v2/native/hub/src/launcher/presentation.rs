@@ -273,19 +273,6 @@ fn policy_chip(label: &str, cx: &gpui::App) -> gpui::Div {
     chip(label, Tone::Neutral, cx)
 }
 
-fn app_palette(id: &str) -> (u32, u32) {
-    match id {
-        "lmu" => (0x00f0_4755, 0x0077_162c),
-        "obs" => (0x004a_4f5c, 0x001f_2229),
-        "crewchief" => (0x00f0_a63a, 0x008a_4a12),
-        "discord" => (0x0072_89da, 0x003a_4a99),
-        "spotify" => (0x001d_b954, 0x000e_5a2b),
-        "motec" => (0x005c_cbd5, 0x001f_5f6a),
-        "simhub" => (0x00c9_a2ff, 0x005b_3aa0),
-        _ => (0x004a_4750, 0x0026_242b),
-    }
-}
-
 fn monogram(label: &str, size: f32, first: u32, second: u32, cx: &gpui::App) -> gpui::Div {
     div()
         .size(px(size))
@@ -336,27 +323,19 @@ fn monogram(label: &str, size: f32, first: u32, second: u32, cx: &gpui::App) -> 
 }
 
 pub(super) fn app_mark(app: &App, size: f32, cx: &gpui::App) -> gpui::Div {
-    if app.id == "motec" {
-        // Misma marca SVG que frontend/src/hub/launcher/brand-assets.ts.
-        return div()
-            .size(px(size))
-            .flex_none()
-            .rounded(px(if size >= 39.0 { 11.0 } else { 8.0 }))
-            .bg(rgb(orbit::surface_2(cx)))
-            .overflow_hidden()
-            .flex()
-            .items_center()
-            .justify_center()
-            .child(svg_mark(include_str!("motec.svg"), size * 0.74));
-    }
     match app.id.as_str() {
         "lmu" | "crewchief" | "discord" | "obs" | "simhub" | "spotify" | "custom:vantare" => {
             super::showcase::app_icon(app, size, cx)
         }
         _ => {
-            let abbreviation = app.name.chars().take(2).collect::<String>().to_uppercase();
-            let (first, second) = app_palette(&app.id);
-            monogram(&abbreviation, size, first, second, cx)
+            let initial = app.name.chars().take(1).collect::<String>().to_uppercase();
+            monogram(
+                &initial,
+                size,
+                orbit::surface_3(cx),
+                orbit::surface_2(cx),
+                cx,
+            )
         }
     }
 }
@@ -1712,6 +1691,24 @@ impl Render for Launcher {
         }
         if self.page == LauncherPage::Showcase {
             return self.showcase(window, cx).into_any_element();
+        }
+        if self.page == LauncherPage::History {
+            return div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .p(px(24.0))
+                .gap(px(16.0))
+                .child(
+                    button("launcher-history-back", "Volver al Launcher", cx)
+                        .self_start()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.page = LauncherPage::Showcase;
+                            cx.notify();
+                        })),
+                )
+                .child(self.showcase_history(cx))
+                .into_any_element();
         }
         let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let detected = self

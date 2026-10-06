@@ -193,13 +193,6 @@ impl Render for LauncherDrawer {
             .bg(rgb(orbit::surface_1(cx)))
             .border_l_1()
             .border_color(rgba(orbit::line(cx)))
-            .shadow(vec![gpui::BoxShadow {
-                color: rgba(0x0000_00e6).into(),
-                offset: gpui::point(px(-28.0), px(0.0)),
-                blur_radius: px(60.0),
-                spread_radius: px(-30.0),
-                inset: false,
-            }])
             .capture_key_down(cx.listener(Self::key))
             .on_mouse_down_out(cx.listener(|this, _, window, cx| this.dismiss(window, cx)))
             .child(self.header(cx))
@@ -237,7 +230,7 @@ impl Render for LauncherDrawer {
                 .size_full()
                 .flex()
                 .justify_end()
-                .bg(rgba(0x0000_0099))
+                .bg(rgba((orbit::surface_1(cx) << 8) | 0x99))
                 .occlude()
                 .child(panel),
         )
@@ -971,10 +964,10 @@ impl Launcher {
                             .cursor_pointer()
                             .child(tracked_text(
                                 if advanced { "Básico" } else { "Avanzado" },
-                                10.0,
-                                700,
+                                12.0,
+                                600,
                                 orbit::ink_3(cx),
-                                1.8,
+                                0.0,
                             ))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 let Some(draft) = &mut this.profile_draft else {

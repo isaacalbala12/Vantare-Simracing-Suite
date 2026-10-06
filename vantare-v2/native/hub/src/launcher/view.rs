@@ -57,6 +57,7 @@ enum Capture {
 enum LauncherPage {
     Showcase,
     Manage,
+    History,
 }
 
 pub struct Launcher {

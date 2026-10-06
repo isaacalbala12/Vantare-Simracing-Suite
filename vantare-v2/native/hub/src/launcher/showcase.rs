@@ -137,6 +137,30 @@ fn step_state(events: &[Progress], step: usize) -> (&'static str, Tone) {
     }
 }
 
+fn run_result(events: &[Progress]) -> Option<(&'static str, Tone)> {
+    use super::super::chain::Status;
+    let result = events
+        .iter()
+        .rev()
+        .find(|event| event.status == Status::Done)?;
+    if !result.success {
+        Some(("Falló", Tone::Danger))
+    } else if events.iter().any(|event| event.status == Status::Waiting)
+        || events
+            .iter()
+            .filter(|event| event.status == Status::Launching)
+            .count()
+            > events
+                .iter()
+                .filter(|event| event.status == Status::Ready)
+                .count()
+    {
+        Some(("Lento", Tone::Warning))
+    } else {
+        Some(("Bien", Tone::Success))
+    }
+}
+
 fn toggle_quick(profile: &mut Profile, option: usize) {
     let mut policy = profile.effective_policy();
     match option {
@@ -404,17 +428,13 @@ impl Launcher {
         compact: bool,
         cx: &gpui::App,
     ) -> Stateful<Div> {
-        let mut row = div()
-            .flex()
-            .items_center()
-            .when(running, gpui::Styled::items_stretch)
-            .gap(px(if running {
-                0.0
-            } else if compact {
-                8.0
-            } else {
-                12.0
-            }));
+        let mut row = div().flex().items_stretch().gap(px(if running {
+            0.0
+        } else if compact {
+            8.0
+        } else {
+            12.0
+        }));
         for (index, step) in profile.steps.iter().enumerate() {
             let app = self
                 .store
@@ -426,7 +446,11 @@ impl Launcher {
             let (label, tone) = self.step_state(profile, index);
             let icon_size = if compact { 48.0 } else { 80.0 };
             if !running && index > 0 {
-                row = row.child(orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx).flex_none());
+                row = row.child(
+                    orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx)
+                        .flex_none()
+                        .self_center(),
+                );
             }
             let mut card = div()
                 .relative()
@@ -499,19 +523,22 @@ impl Launcher {
                     orbit::ink(cx),
                     cx,
                 ))
-                .child(orbit::text(
-                    match step.app_id.as_str() {
-                        "lmu" => "Abre el juego y espera al menú",
-                        "crewchief" => "Tu ingeniero de voz",
-                        "simhub" => "Telemetría para el volante",
-                        "custom:vantare" => "Tus widgets sobre el juego",
-                        _ => "Abre la aplicación del perfil",
-                    },
-                    if compact { 10.0 } else { 12.0 },
-                    400,
-                    orbit::ink_2(cx),
-                    cx,
-                ))
+                .child(
+                    orbit::text(
+                        match step.app_id.as_str() {
+                            "lmu" => "Abre el juego y espera al menú",
+                            "crewchief" => "Tu ingeniero de voz",
+                            "simhub" => "Telemetría para el volante",
+                            "custom:vantare" => "Tus widgets sobre el juego",
+                            _ => "Abre la aplicación del perfil",
+                        },
+                        if compact { 10.0 } else { 12.0 },
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    )
+                    .truncate(),
+                )
                 .when(running, |card| {
                     card.child(orbit::pill(
                         if running || event.is_some() {
@@ -712,6 +739,8 @@ impl Launcher {
             .flex_1()
             .min_h_0()
             .gap(px(8.0))
+            .justify_start()
+            .when(!running, gpui::Styled::flex_none)
             .p(px(if compact { 20.0 } else { 32.0 }))
             .bg(orbit::gradient(
                 cx.global::<orbit::design::Tokens>().gradients.hero,
@@ -815,8 +844,10 @@ impl Launcher {
                     })),
             )
         })
-        .child(div().flex_1())
-        .child(self.showcase_steps(profile, running, compact, cx))
+        .child(
+            self.showcase_steps(profile, running, compact, cx)
+                .mt(px(12.0)),
+        )
         .when(running, |card| card.child(div().flex_1()))
         .when(running, |card| card.child(self.showcase_quick(profile, cx)))
     }
@@ -1039,8 +1070,11 @@ impl Launcher {
         );
         div()
             .id("showcase-profiles")
-            .flex_none()
-            .h(px(198.0))
+            .flex_1()
+            .min_h(px(198.0))
+            .when(self.launch_progress().is_some(), |row| {
+                row.flex_none().h(px(198.0))
+            })
             .overflow_x_scroll()
             .child(row)
     }
@@ -1089,7 +1123,7 @@ impl Launcher {
                     .when(running && step.is_none(), |card| card.opacity(0.45))
                     .w(gpui::relative(0.31))
                     .min_w_0()
-                    .h(px(if compact { 96.0 } else { 124.0 }))
+                    .h(px(if compact { 96.0 } else { 112.0 }))
                     .px(px(4.0))
                     .flex_col()
                     .justify_center()
@@ -1097,7 +1131,7 @@ impl Launcher {
                     .border_1()
                     .border_color(rgba(orbit::line(cx)))
                     .rounded(px(16.0))
-                    .child(app_icon(app, if compact { 36.0 } else { 44.0 }, cx))
+                    .child(app_icon(app, if compact { 32.0 } else { 36.0 }, cx))
                     .child(
                         orbit::text(
                             app.name.clone(),
@@ -1129,7 +1163,7 @@ impl Launcher {
             button("showcase-add-app", "+ Añadir app", cx)
                 .rounded(px(18.0))
                 .w(gpui::relative(0.31))
-                .h(px(if compact { 96.0 } else { 124.0 }))
+                .h(px(if compact { 96.0 } else { 112.0 }))
                 .on_click(cx.listener(|this, _, window, cx| this.app_editor(None, window, cx))),
         );
         orbit::neo_card(cx)
@@ -1165,9 +1199,17 @@ impl Launcher {
             )
     }
 
-    fn showcase_options(&self, profile: &Profile, compact: bool, cx: &mut Context<Self>) -> Div {
+    fn showcase_options(
+        &self,
+        profile: &Profile,
+        compact: bool,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         let mut card = orbit::neo_card(cx)
-            .flex_none()
+            .id("showcase-options-scroll")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
             .p(px(if compact { 16.0 } else { 20.0 }))
             .gap(px(6.0))
             .child(orbit::neo_header(
@@ -1195,7 +1237,8 @@ impl Launcher {
                 card = card.child(
                     div()
                         .w_full()
-                        .h(px(if compact { 36.0 } else { 44.0 }))
+                        .h(px(if compact { 32.0 } else { 36.0 }))
+                        .flex_none()
                         .flex()
                         .items_center()
                         .gap(px(8.0))
@@ -1210,11 +1253,13 @@ impl Launcher {
         }
         card
     }
-    fn showcase_history(&self, cx: &mut Context<Self>) -> Div {
+    pub(super) fn showcase_history(&self, cx: &mut Context<Self>) -> Div {
         let mut card = orbit::neo_card(cx)
             .flex_1()
             .min_h_0()
             .gap(px(12.0))
+            .min_h(px(270.0))
+            .p(px(16.0))
             .child(orbit::neo_header("Últimas veces", "clock", cx));
         let mut rows = div().flex().flex_col().gap(px(8.0));
         let mut profiles: Vec<_> = self
@@ -1226,15 +1271,33 @@ impl Launcher {
             .collect();
         profiles.sort_by(|a, b| b.last_launched_at.cmp(&a.last_launched_at));
         for profile in profiles {
-            rows = rows.child(orbit::summary_row(
-                profile.name.clone(),
-                orbit::activity_time(
-                    profile.last_launched_at.as_deref().unwrap_or_default(),
-                    chrono::Local::now().fixed_offset(),
-                ),
-                "v-launch",
-                cx,
-            ));
+            let result = self
+                .last_profile
+                .as_ref()
+                .filter(|last| last.id == profile.id)
+                .and_then(|_| run_result(&self.progress));
+            rows = rows.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::summary_row(
+                            profile.name.clone(),
+                            orbit::activity_time(
+                                profile.last_launched_at.as_deref().unwrap_or_default(),
+                                chrono::Local::now().fixed_offset(),
+                            ),
+                            "v-launch",
+                            cx,
+                        )
+                        .flex_1()
+                        .min_w_0(),
+                    )
+                    .when_some(result, |row, (label, tone)| {
+                        row.child(orbit::pill(label, tone, cx))
+                    }),
+            );
         }
         if !self.progress.is_empty() && self.chain.is_none() && self.capture == Capture::None {
             rows = rows.child(self.progress_panel(cx));
@@ -1262,37 +1325,44 @@ impl Launcher {
         let gap = tokens.geometry.gap;
         let gutter = tokens.geometry.gutter;
         let profile = self.showcase_profile();
-        let heading = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .child(
-                div()
-                    .child(orbit::text("Launcher", 28.0, 600, orbit::ink(cx), cx))
-                    .child(orbit::text(
-                        "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
-                        14.0,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
-            )
-            .child(
-                div()
-                    .flex()
-                    .gap(px(8.0))
-                    .child(
-                        button("showcase-manage", "Aplicaciones · Historial", cx).on_click(
+        let heading =
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .child(orbit::text("Launcher", 28.0, 600, orbit::ink(cx), cx))
+                        .child(orbit::text(
+                            "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
+                            14.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        )),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .gap(px(8.0))
+                        .child(
+                            button("showcase-manage", "Aplicaciones", cx).on_click(cx.listener(
+                                |this, _, _, cx| {
+                                    this.page = LauncherPage::Manage;
+                                    cx.notify();
+                                },
+                            )),
+                        )
+                        .child(button("showcase-history-open", "Historial", cx).on_click(
                             cx.listener(|this, _, _, cx| {
-                                this.page = LauncherPage::Manage;
+                                this.page = LauncherPage::History;
                                 cx.notify();
                             }),
-                        ),
-                    )
-                    .child(button("showcase-new-top", "+ Nuevo perfil", cx).on_click(
-                        cx.listener(|this, _, window, cx| this.new_profile(None, window, cx)),
-                    )),
-            );
+                        ))
+                        .child(button("showcase-new-top", "+ Nuevo perfil", cx).on_click(
+                            cx.listener(|this, _, window, cx| this.new_profile(None, window, cx)),
+                        )),
+                );
         let mut center = div()
             .flex_1()
             .min_w_0()
@@ -1377,6 +1447,45 @@ impl Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn run_pills_require_a_terminal_result_and_keep_recovered_retries() {
+        use super::super::super::chain::Status;
+        let event = |status, success| Progress {
+            step: Some(0),
+            status,
+            pid: None,
+            message: String::new(),
+            success,
+            decision: None,
+        };
+        let cases = [
+            (vec![], None),
+            (vec![event(Status::Launching, false)], None),
+            (
+                vec![
+                    event(Status::Launching, false),
+                    event(Status::Ready, true),
+                    event(Status::Done, true),
+                ],
+                Some("Bien"),
+            ),
+            (
+                vec![
+                    event(Status::Launching, false),
+                    event(Status::Failed, false),
+                    event(Status::Launching, false),
+                    event(Status::Ready, true),
+                    event(Status::Done, true),
+                ],
+                Some("Lento"),
+            ),
+            (vec![event(Status::Done, false)], Some("Falló")),
+        ];
+        for (events, expected) in cases {
+            assert_eq!(run_result(&events).map(|(label, _)| label), expected);
+        }
+    }
+
     #[test]
     fn dropdowns_preserve_custom_delay_and_other_policy_preferences() {
         let mut profile = Profile::new("p".into(), "Perfil".into());

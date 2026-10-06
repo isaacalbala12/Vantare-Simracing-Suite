@@ -802,7 +802,7 @@ impl Strategy {
                                             .child(orbit::text(plan_summary, 24.0, 700, orbit::ink(cx), cx).line_height(px(30.0)))
                                             .child(orbit::text(
                                                 if self.result.is_some() {
-                                                    "Resultado del solver nativo."
+                                                    "Resultado del cálculo de estrategia."
                                                 } else {
                                                     "El cálculo estará disponible al completar y validar las entradas de carrera."
                                                 },

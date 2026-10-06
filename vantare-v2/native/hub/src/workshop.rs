@@ -315,7 +315,7 @@ impl Workshop {
             .child(study_section("Widget", cx)
                 .child(choice(1, "Widget"))
                 .child(choice(2, "Sistema de diseño").mt(px(10.0)))
-                .child(study_note("Fixture: default", cx)))
+                .child(study_note("Escena de ejemplo", cx)))
             .child(study_section("Sesión", cx).child(study_segments("session", &["Práctica", "Clasificación", "Carrera"], 2, cx)))
             .child(study_section("Marca", cx).child(study_segments("brand", &["Con marca", "Sin marca"], 0, cx)))
             .child(study_section("Dirección v2", cx).child(study_segments("direction", &["V1", "Default", "Foco"], 1, cx)))
@@ -345,7 +345,7 @@ impl Workshop {
                 .child(study_label("Resolución", cx).child(study_readonly("resolution", "1080p · 1920×1080", cx)))
                 .child(study_label("Ancho", cx).mt(px(10.0)).child(study_readonly("width", "410", cx)))
                 .child(study_label("Alto", cx).mt(px(8.0)).child(study_readonly("height", "302", cx)))
-                .child(study_button("apply-size", "Aplicar tamaño declarado", cx).w(px(131.0)).mt(px(10.0)).tab_stop(false).cursor_default().aria_description("Tamaño fijo del renderer nativo")))
+                .child(study_button("apply-size", "Aplicar tamaño declarado", cx).w(px(131.0)).mt(px(10.0)).tab_stop(false).cursor_default().aria_description("Tamaño fijo del widget")))
             .child(div().mt(px(30.0))
                 .child(study_button("workshop-tools", "Escenario de diseño", cx).h(px(12.0)).relative().pl(px(12.0)).justify_start().border_0().text_color(rgb(crate::orbit::legacy_rgb(0x00c4_c4c8, cx))).child(div().absolute().left_0().top(px(4.0)).size(px(5.0)).rounded_full().bg(rgb(crate::orbit::legacy_rgb(0x00c1_121f, cx)))).on_click(cx.listener(|this, _, _, cx| { this.tools_open = !this.tools_open; cx.notify(); })))
                 .child(study_note("Datos de demostración. El widget usa el mismo componente que la aplicación.", cx).mt(px(8.0)).mb(px(0.0)).line_height(px(17.0)))
@@ -361,7 +361,7 @@ impl Workshop {
         if self.tools_open {
             panel = panel.child(self.toolbar(cx)).child(self.playback(cx))
                 .child(orbit::callout(self.scene.error.clone().unwrap_or_else(|| self.status.clone()), cx))
-                .child(study_note("La sesión, opciones de Standings y tamaño se editan en Studio. Este panel conserva su estado de referencia; esas opciones aún no tienen control nativo en Workshop.", cx));
+                .child(study_note("La sesión, opciones de Standings y tamaño se editan en Studio. Este panel conserva su estado de referencia; esas opciones se configuran en Studio.", cx));
         }
         div()
             .id("workshop-controls")
@@ -1116,7 +1116,7 @@ fn study_readonly(id: &'static str, value: &str, cx: &gpui::App) -> gpui::Statef
         .tab_stop(false)
         .cursor_default()
         .opacity(0.72)
-        .aria_description("Opción de referencia no disponible en Workshop nativo")
+        .aria_description("Próximamente")
         .child(orbit::text(value.to_owned(), 11.0, 400, 0x00de_dee2, cx))
         .when(
             matches!(id, "location" | "surface" | "resolution"),

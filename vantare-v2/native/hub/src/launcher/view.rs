@@ -161,7 +161,7 @@ impl Launcher {
                             step: Some(step),
                             status: super::chain::Status::Ready,
                             pid: None,
-                            message: "Fixture de QA Inicio ronda 7".into(),
+                            message: "Perfil de ejemplo".into(),
                             success: true,
                             decision: None,
                         })

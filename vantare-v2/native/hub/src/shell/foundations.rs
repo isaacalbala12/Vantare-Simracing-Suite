@@ -268,7 +268,7 @@ impl Hub {
                 )
                 .when(!compact, |button| {
                     button.child(orbit::text(
-                        "«abre el Studio con Standings neo»",
+                        "«abre el editor con Standings»",
                         14.0,
                         400,
                         orbit::ink_3(cx),

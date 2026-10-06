@@ -1165,7 +1165,7 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(12.0))
-            .child(eyebrow("Políticas nativas", cx))
+            .child(eyebrow("Opciones de lanzamiento", cx))
             .child(editor_field("Atajo global", draft.hotkey.clone(), cx))
             .child(editor_field(
                 "Iniciar con Windows",

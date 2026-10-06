@@ -5,7 +5,7 @@
   "phases": [
     {
       "id": "foundations",
-      "title": "Cimientos nativos",
+      "title": "Base de Vantare",
       "body": "Temas, tarjetas y navegación con acceso por rol.",
       "progress": 100
     },
@@ -81,7 +81,7 @@
         "it": "Overlays Studio"
       },
       "body": {
-        "es": "Layout, contenido y apariencia en un único editor.",
+        "es": "Diseño, contenido y apariencia en un único editor.",
         "en": "Layout, content and appearance in one editor.",
         "pt": "Layout, conteúdo e aparência num único editor.",
         "it": "Layout, contenuto e aspetto in un unico editor."
@@ -94,7 +94,7 @@
       "section": "now",
       "area": "launcher",
       "title": {
-        "es": "Launcher nativo",
+        "es": "Inicio de aplicaciones",
         "en": "Native Launcher",
         "pt": "Launcher nativo",
         "it": "Launcher nativo"
@@ -151,7 +151,7 @@
       "section": "later",
       "area": "modules",
       "title": {
-        "es": "Strategy y Engineer",
+        "es": "Estrategia e Ingeniero",
         "en": "Strategy and Engineer",
         "pt": "Strategy e Engineer",
         "it": "Strategy e Engineer"

@@ -128,7 +128,13 @@ fn mono_tracked(content: String, size: f32, weight: f32, tracking: f32, color: u
 }
 
 fn stack() -> Div {
-    div().flex().flex_col().w_full().min_w_0().gap(px(21.0))
+    div()
+        .flex()
+        .flex_col()
+        .w_full()
+        .min_w_0()
+        .min_h_0()
+        .gap(px(21.0))
 }
 fn columns(compact: bool) -> Div {
     div()
@@ -215,6 +221,7 @@ fn section_body() -> Div {
 }
 fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
     orbit::neo_card(cx)
+        .flex_shrink_0()
         .gap(px(12.0))
         .child(
             orbit::neo_header(title.to_owned(), "gear", cx)
@@ -232,7 +239,6 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                         )
                     } else {
                         text(value, 12.0, 500, orbit::ink_3(cx), cx)
-                            .font_family(crate::orbit::mono_family(cx))
                     };
                     head.child(div().flex_1()).child(meta.flex_none()).when(
                         title == "Últimos eventos" && value == "8 en esta sesión",
@@ -245,7 +251,12 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                     )
                 }),
         )
-        .child(body)
+        .child(
+            body.id(format!("settings-body-{title}"))
+                .flex_grow(1.0)
+                .min_h_0()
+                .overflow_y_scroll(),
+        )
 }
 fn section_note(content: &str, cx: &gpui::App) -> Div {
     div()
@@ -287,14 +298,7 @@ fn section_status(content: &str, color: u32, cx: &gpui::App) -> Div {
             0x78d6_8b38
         }))
         .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-        .child(section_text(
-            &content.to_uppercase(),
-            10.0,
-            750,
-            color,
-            13.0,
-            cx,
-        ))
+        .child(section_text(content, 10.0, 750, color, 13.0, cx))
 }
 
 fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
@@ -303,7 +307,7 @@ fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stat
         .role(gpui::Role::Button)
         .aria_label(label)
         .tab_stop(false)
-        .aria_description("Pendiente: sin contrato nativo")
+        .aria_description("Próximamente")
         .w(px(168.0))
         .h(px(39.0))
         .px(px(13.0))
@@ -324,7 +328,7 @@ fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Sta
         .role(gpui::Role::Button)
         .aria_label(label)
         .tab_stop(false)
-        .aria_description("Pendiente: sin contrato nativo")
+        .aria_description("Próximamente")
         .flex_none()
         .h(px(39.0))
         .px(px(14.0))
@@ -433,7 +437,7 @@ fn disabled_toggle(
         .role(gpui::Role::Switch)
         .aria_label(label)
         .tab_stop(false)
-        .aria_description("Pendiente: sin contrato nativo")
+        .aria_description("Próximamente")
         .w(px(44.0))
         .h(px(24.0))
         .flex_none()
@@ -554,7 +558,7 @@ fn performance_choice(
         .role(gpui::Role::Button)
         .aria_label(title)
         .aria_selected(selected)
-        .aria_description("Pendiente: sin contrato nativo")
+        .aria_description("Próximamente")
         .tab_stop(false)
         .flex_1()
         .min_w_0()
@@ -592,7 +596,11 @@ fn performance_choice(
                         .size(px(7.0))
                         .rounded_full()
                         .border_1()
-                        .border_color(rgb(orbit::ink_3(cx))),
+                        .border_color(rgb(orbit::ink_3(cx)))
+                        .when(selected, |mark| {
+                            mark.bg(rgb(orbit::carmine(cx)))
+                                .border_color(rgb(orbit::carmine(cx)))
+                        }),
                 ),
         )
         .child(meter)
@@ -671,10 +679,7 @@ fn performance_mode(
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
 }
 fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    orbit::disabled(
-        orbit::small_button(id, label, cx),
-        "Pendiente: sin contrato nativo",
-    )
+    orbit::disabled(orbit::small_button(id, label, cx), "Próximamente")
 }
 impl Hub {
     fn settings_button(
@@ -815,9 +820,9 @@ impl Hub {
                 "No hay una medición de CPU, memoria o coste por fotograma disponible. Los niveles automáticos están pendientes.",
             ),
             Page::Hotkeys => (
-                "Antes de cambiar uno",
-                "v-keys",
-                "Los atajos del Hub funcionan con su ventana activa. El registro y la reasignación global están pendientes.",
+                "Botones del volante",
+                "v-wheel",
+                "Próximamente podrás asignar acciones a tu volante.",
             ),
             Page::Privacy => (
                 "Qué sale de tu equipo",
@@ -825,19 +830,19 @@ impl Hub {
                 "El envío de fallos y uso anónimo depende de tu consentimiento. Los informes de Testing Center solo se envían al confirmarlos.",
             ),
             Page::Updates => (
-                "Canales",
-                "v-download",
-                "Nightly recibe cambios en desarrollo. Testers recibe el conjunto validado. Estable llega tras la beta.",
+                "Historial",
+                "clock",
+                "Próximamente podrás consultar las versiones instaladas anteriormente.",
             ),
             Page::Diagnostics => (
                 "Paquete de diagnóstico",
                 "v-monitor",
-                "Informe local sanitizado: versión, binarios y estado observado. No incluye credenciales ni telemetría cruda.",
+                "Prepara un informe del estado de Vantare, sin contraseñas ni datos de la carrera.",
             ),
             Page::Application => (
                 "Huella en pista",
                 "v-gauge",
-                "Los overlays reciben telemetría del núcleo. No hay métricas de CPU o memoria disponibles en esta pantalla.",
+                "El consumo de CPU y memoria se mostrará cuando haya una medición disponible.",
             ),
         };
         rail = rail.child(
@@ -853,95 +858,144 @@ impl Hub {
                     )
                 }),
         );
-        if self.settings.page == Page::Privacy {
-            rail = rail.child(orbit::neo_card(cx).child(orbit::neo_header("Lo que permanece local", "v-lock", cx))
-                .child(text("Perfiles, overlays y grabaciones permanecen en este equipo. La contribución de Strategy es independiente y explícita.", 13.0, 400, orbit::ink_2(cx), cx)));
+        let sections: &[(&str, &str, &str)] = match self.settings.page {
+            Page::Performance => &[
+                (
+                    "Por perfil",
+                    "v-launch",
+                    "Próximamente podrás elegir un nivel para cada perfil.",
+                ),
+                (
+                    "Últimos 10 minutos",
+                    "clock",
+                    "Próximamente · el historial de consumo aún no está disponible.",
+                ),
+            ],
+            Page::Hotkeys => &[
+                (
+                    "Antes de cambiar uno",
+                    "v-keys",
+                    "Comprueba si otra aplicación ya usa la combinación. Los atajos del Hub funcionan con su ventana activa.",
+                ),
+                (
+                    "Prueba un atajo",
+                    "v-keys",
+                    "Con Vantare en primer plano, pulsa Ctrl K para abrir la búsqueda.",
+                ),
+            ],
+            Page::Updates => &[
+                (
+                    "Canales",
+                    "v-download",
+                    "Nightly recibe cambios en pruebas. Testers recibe el conjunto validado. Estable llegará tras la beta.",
+                ),
+                (
+                    "Si algo va mal",
+                    "v-shield",
+                    "Reinicia Vantare. Si el problema continúa, prepara un informe en Diagnóstico.",
+                ),
+            ],
+            Page::Privacy => &[
+                (
+                    "Lo que nunca sale",
+                    "v-lock",
+                    "Tus contraseñas y claves de acceso no se incluyen en los informes de diagnóstico.",
+                ),
+                (
+                    "Lo último que salió",
+                    "clock",
+                    "Próximamente · el historial de envíos aún no está disponible aquí.",
+                ),
+            ],
+            Page::Diagnostics => &[
+                (
+                    "Tu equipo",
+                    "v-monitor",
+                    "El informe incluye la versión de Vantare y el estado observado en este equipo.",
+                ),
+                (
+                    "Problemas frecuentes",
+                    "v-shield",
+                    "Si no llegan datos, comprueba que el simulador esté abierto y en pista. Para un fallo repetido, adjunta un informe.",
+                ),
+            ],
+            Page::Appearance | Page::Application => &[],
+        };
+        for (index, (title, icon, note)) in sections.iter().enumerate() {
+            rail = rail.child(
+                orbit::neo_card(cx)
+                    .when(index + 1 == sections.len(), |card| {
+                        card.flex_grow(1.0).min_h_0()
+                    })
+                    .child(orbit::neo_header(*title, icon, cx))
+                    .child(text(*note, 13.0, 400, orbit::ink_2(cx), cx)),
+            );
         }
         if self.settings.page == Page::Appearance {
             rail = rail.child(
                 orbit::neo_card(cx)
                     .flex_1()
+                    .min_h_0()
                     .child(orbit::neo_header("Vista previa", "v-palette", cx))
                     .child(
                         orbit::neo_card(cx)
                             .child(orbit::neo_header("Vantare", "v-home", cx))
                             .child(orbit::progress(0.65, cx))
                             .child(orbit::pill("Tema actual", Tone::Neutral, cx)),
-                    )
-                    .child(orbit::summary_row(
-                        "Interfaz",
-                        "Colores y contraste aplicados al Hub",
-                        "v-palette",
-                        cx,
-                    ))
-                    .child(orbit::keycap("01:23.456", cx)),
-            );
-        } else {
-            rail = rail.child(
-                orbit::neo_card(cx)
-                    .child(orbit::neo_header("Versión", "v-download", cx))
-                    .child(text(
-                        match (&self.demo, &self.settings.update) {
-                            (Some(demo), _) => demo.versions.current.as_str(),
-                            (_, LocalUpdate::Package { version, .. }) => version.as_str(),
-                            (_, LocalUpdate::Development) => {
-                                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
-                            }
-                            _ => "—",
-                        },
-                        22.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(
-                        orbit::small_button("settings-open-updates", "Actualizaciones", cx)
-                            .on_click(cx.listener(|hub, _, _, cx| {
-                                hub.select_settings_page(Page::Updates, cx);
-                            })),
                     ),
             );
-            rail = rail.child(
-                orbit::neo_card(cx)
-                    .child(orbit::neo_header("Diagnóstico", "v-monitor", cx))
-                    .child(self.settings_button(
-                        "settings-rail-prepare",
-                        if self.settings.busy {
-                            "Preparando…"
-                        } else {
-                            "Preparar informe"
-                        },
-                        Action::PrepareDiagnostic,
-                        cx,
-                    ))
-                    .child(self.settings_button(
-                        "settings-rail-copy",
-                        "Copiar informe",
-                        Action::CopyDiagnostic,
-                        cx,
-                    )),
-            );
-            rail = rail.child(
-                orbit::neo_card(cx)
-                    .flex_1()
-                    .child(orbit::neo_header("Atajos del Hub", "v-keys", cx))
-                    .children(
-                        [
-                            ("Lanzar perfil", "Ctrl L"),
-                            ("Buscar", "Ctrl K"),
-                            ("Contraer barra", "Ctrl B"),
-                        ]
-                        .map(|(label, key)| {
-                            div()
-                                .flex()
-                                .justify_between()
-                                .items_center()
-                                .min_h(px(42.0))
-                                .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
-                                .child(orbit::keycap(key, cx))
-                        }),
-                    ),
-            );
+        }
+        if self.settings.page == Page::Application {
+            rail = rail
+                .child(
+                    orbit::neo_card(cx)
+                        .child(orbit::neo_header("Versión", "v-download", cx))
+                        .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
+                        .child(
+                            orbit::small_button("settings-open-updates", "Actualizaciones", cx)
+                                .on_click(cx.listener(|hub, _, _, cx| {
+                                    hub.select_settings_page(Page::Updates, cx);
+                                })),
+                        ),
+                )
+                .child(
+                    orbit::neo_card(cx)
+                        .child(orbit::neo_header("Diagnóstico", "v-monitor", cx))
+                        .child(self.settings_button(
+                            "settings-rail-prepare",
+                            "Preparar informe",
+                            Action::PrepareDiagnostic,
+                            cx,
+                        ))
+                        .child(self.settings_button(
+                            "settings-rail-copy",
+                            "Copiar informe",
+                            Action::CopyDiagnostic,
+                            cx,
+                        )),
+                )
+                .child(
+                    orbit::neo_card(cx)
+                        .flex_1()
+                        .min_h_0()
+                        .child(orbit::neo_header("Atajos del Hub", "v-keys", cx))
+                        .children(
+                            [
+                                ("Lanzar perfil", "Ctrl L"),
+                                ("Buscar", "Ctrl K"),
+                                ("Contraer barra", "Ctrl B"),
+                            ]
+                            .map(|(label, key)| {
+                                div()
+                                    .flex()
+                                    .justify_between()
+                                    .items_center()
+                                    .min_h(px(42.0))
+                                    .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
+                                    .child(orbit::keycap(key, cx))
+                            }),
+                        ),
+                );
         }
         rail
     }
@@ -963,19 +1017,28 @@ impl Hub {
             self.settings.panel_scroll.scroll_to_bottom();
         }
         let content = stack()
+            .h_full()
+            .min_h_0()
             .gap(px(16.0))
             .when_some(self.settings.status.clone(), |view, status| {
                 view.child(orbit::callout(status, cx))
             })
-            .child(match self.settings.page {
-                Page::Application => self.settings_application(true, cx),
-                Page::Appearance => self.settings_appearance(cx),
-                Page::Performance => self.settings_performance(true, cx),
-                Page::Updates => self.settings_updates(cx),
-                Page::Hotkeys => self.settings_hotkeys(cx),
-                Page::Privacy => self.settings_privacy(true, cx),
-                Page::Diagnostics => self.settings_diagnostics(true, cx),
-            });
+            .child(
+                match self.settings.page {
+                    Page::Application => self.settings_application(true, cx),
+                    Page::Appearance => self.settings_appearance(cx),
+                    Page::Performance => self.settings_performance(true, cx),
+                    Page::Updates => self.settings_updates(cx),
+                    Page::Hotkeys => Self::settings_hotkeys(cx),
+                    Page::Privacy => self.settings_privacy(true, cx),
+                    Page::Diagnostics => self.settings_diagnostics(true, cx),
+                }
+                .h_full()
+                .min_h_0()
+                .id("settings-page-scroll")
+                .overflow_y_scroll()
+                .track_scroll(&self.settings.panel_scroll),
+            );
         let rail = self.settings_rail(cx);
         div()
             .id("settings-panel")
@@ -991,8 +1054,7 @@ impl Hub {
                     .flex_basis(gpui::relative(2.0 / 3.0))
                     .min_w_0()
                     .h_full()
-                    .overflow_y_scroll()
-                    .track_scroll(&self.settings.panel_scroll)
+                    .overflow_hidden()
                     .child(content),
             )
             .child(
@@ -1101,27 +1163,27 @@ impl Hub {
             section_body()
                 .child(section_row(
                     "Idioma de widgets",
-                    "Se guarda en el layout compartido de Overlay Studio.",
+                    "Se guarda con el diseño de Overlay Studio.",
                     self.settings.language.clone(),
                     cx,
                 ))
                 .child(section_row(
                     "Unidades de widgets",
-                    "Preferencias reales del layout activo.",
+                    "Unidades del diseño activo.",
                     self.settings.units.clone(),
                     cx,
                 )),
             cx,
         );
         let channel = self.settings_general_channel(cx);
-        view = stack()
-            .gap(px(16.0))
-            .child(view)
-            .child(overlays)
-            .child(section_surface("Canal", None, channel, cx));
+        view = stack().gap(px(16.0)).child(view).child(overlays).child(
+            section_surface("Canal", None, channel, cx)
+                .flex_1()
+                .min_h_0(),
+        );
         if open_language {
             // El banco incluye un estado con el selector abierto. Las opciones
-            // se dibujan como vista de referencia inerte porque el Hub nativo
+            // se dibujan como vista de referencia inerte porque el Hub
             // todavía no guarda el idioma de interfaz.
             view = view.relative().child(
                 div()
@@ -1247,12 +1309,12 @@ impl Hub {
                  cx))
                 .child(section_row(
                     "Avisos de actualización",
-                    "Banner en la shell cuando hay una versión nueva.",
+                    "Aviso cuando hay una versión nueva.",
                     disabled_toggle("settings-notify-update", "Avisos de actualización", true, cx),
                  cx))
                 .child(section_row(
                     "Avisos del Launcher",
-                    "Toast cuando termina una cadena de arranque.",
+                    "Aviso cuando terminan de abrirse tus aplicaciones.",
                     disabled_toggle("settings-notify-launcher", "Avisos del Launcher", true, cx),
                  cx))
                 .child(section_row(
@@ -1273,7 +1335,7 @@ impl Hub {
                     .border_b_0(),
                 )
                 .child(section_note(
-                    "Las preferencias de inicio, bandeja y avisos todavía están pendientes en la app nativa.",
+                    "Las preferencias de inicio, bandeja y avisos estarán disponibles próximamente.",
                  cx)),
          cx)
         .flex_1()
@@ -1392,7 +1454,7 @@ impl Hub {
                 .child(section_note(
                     "La apariencia de los widgets del overlay se configura por separado en Overlay Studio.",
                  cx)),
-             cx))
+             cx).flex_1().min_h_0())
     }
     fn settings_slider(&self, index: usize, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let settings = self.settings.appearance.settings;
@@ -1499,8 +1561,15 @@ impl Hub {
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(12.0));
         for (index, (name, rate, description)) in choices.into_iter().enumerate() {
             levels = levels.child(
-                performance_choice(index, name, rate, description, false, cx)
-                    .when(compact, |element| element.h_auto().min_h(px(167.0))),
+                performance_choice(
+                    index,
+                    name,
+                    rate,
+                    description,
+                    self.demo.is_some() && index == 2,
+                    cx,
+                )
+                .when(compact, |element| element.h_auto().min_h(px(167.0))),
             );
         }
         let custom_auto = div()
@@ -1522,26 +1591,26 @@ impl Hub {
                 performance_mode(
                     "Automático",
                     "Próximamente",
-                    "Vantare mide tu PC en carrera y se ajusta solo (entre Alto y Mínimo).",
-                    true,
+                    "El ajuste automático estará disponible más adelante.",
+                    false,
                     cx,
                 )
                 .when(compact, |element| element.h_auto().min_h(px(100.0))),
             );
-        stack().child(section_surface(
+        stack().h_full().child(section_surface(
             "Nivel de rendimiento",
-            Some(if self.demo.is_some() { "Activo ahora · Equilibrado · 40 fps · elegido por ti" } else { "Sin estado de rendimiento nativo" }),
+            Some(if self.demo.is_some() { "Activo ahora · Equilibrado · 40 fps · elegido por ti" } else { "Nivel activo no disponible" }),
             section_body()
                 .gap(px(12.0))
                 .child(custom_auto)
                 .child(levels)
                 .child(text(
-                    "Niveles de referencia. La selección y el ajuste automático todavía no están disponibles en la app nativa.",
+                    "Niveles de referencia. Elegir un nivel y ajustar el consumo automáticamente estará disponible próximamente.",
                     orbit::SECONDARY,
                     400,
                     orbit::ink_3(cx),
                  cx).mt(px(-8.0)).line_height(px(18.0))),
-         cx)).child(Self::settings_performance_table(cx))
+         cx)).child(Self::settings_performance_table(cx).flex_grow(1.0).min_h(px(240.0)))
     }
     fn settings_performance_table(cx: &gpui::App) -> Div {
         let mut rows = div().flex().flex_col().gap(px(8.0));
@@ -1554,7 +1623,7 @@ impl Hub {
                 "Cadencia objetivo",
                 ["Monitor", "60 fps", "40 fps", "30 fps", "20 fps"],
             ),
-            ("Estado nativo", ["Pendiente"; 5]),
+            ("Disponibilidad", ["Pendiente"; 5]),
         ] {
             rows = rows.child(
                 div()
@@ -1572,78 +1641,37 @@ impl Hub {
         }
         section_surface(
             "Qué cambia en cada nivel",
-            Some("Objetivos del diseño"),
+            Some("Valores de referencia"),
             rows,
             cx,
         )
     }
 
     fn settings_updates(&self, cx: &mut Context<Self>) -> Div {
-        let (version, state, channel) = if let Some(demo) = &self.demo {
-            (
-                demo.versions.current.clone(),
-                format!("Stable · {} disponible", demo.versions.pending),
-                Some("Stable"),
-            )
-        } else {
-            match &self.settings.update {
-                LocalUpdate::Unread => ("—".into(), "sin respuesta del actualizador".into(), None),
-                LocalUpdate::Development => (
-                    format!(
-                        "v{}",
-                        option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
-                    ),
-                    "build de desarrollo · sin instalación local detectada".to_owned(),
-                    None,
-                ),
-                LocalUpdate::Package {
-                    version,
-                    channel,
-                    previous,
-                } => (
-                    format!("v{version}"),
-                    if *previous {
-                        "La versión anterior se conserva por seguridad.".into()
-                    } else {
-                        "Primera instalación.".into()
-                    },
-                    Some(match channel.as_str() {
-                        "master" | "stable" => "Stable",
-                        "testers" => "Testers",
-                        "nightly" => "Nightly",
-                        "beta" => "Beta",
-                        _ => "",
-                    }),
-                ),
-                LocalUpdate::Invalid => (
-                    "—".into(),
-                    "estado local inválido o no legible".into(),
-                    None,
-                ),
+        let version = crate::version_label().to_owned();
+        let channel = match crate::product::CHANNEL {
+            "master" | "stable" => Some("Estable"),
+            "testers" => Some("Testers"),
+            "nightly" => Some("Nightly"),
+            "beta" => Some("Beta"),
+            _ => None,
+        };
+        let state = match &self.settings.update {
+            LocalUpdate::Package { previous: true, .. } => {
+                "La versión anterior se conserva por seguridad."
             }
-        };
-        let news = if channel == Some("Beta") {
-            let notes = self
-                .settings
-                .beta_status
-                .as_ref()
-                .map(|status| status.notes.as_str())
-                .filter(|notes| !notes.is_empty())
-                .unwrap_or("Las novedades se mostrarán al recibir una actualización beta.");
-            section_surface(
-                "Novedades beta",
-                Some("GitHub Releases"),
-                section_body().child(text(notes.to_owned(), 13.0, 400, orbit::ink_2(cx), cx)),
-                cx,
-            )
-        } else {
-            section_surface(
-                "Novedades",
-                Some("docs/releases"),
-                self.settings_release_news(cx),
-                cx,
-            )
-        };
+            LocalUpdate::Invalid => "No se pudo comprobar la instalación.",
+            _ => "Versión instalada en este equipo.",
+        }
+        .to_owned();
+        let news = section_surface(
+            "Notas de versión",
+            None,
+            Self::settings_release_news(cx),
+            cx,
+        )
+        .flex_1()
+        .min_h_0();
         let beta = if self.demo.is_none() {
             self.settings.beta_status.clone()
         } else {
@@ -1667,7 +1695,7 @@ impl Hub {
             } else {
                 Self::settings_update_channels(channel, self.demo.is_some(), cx)
             })
-            .child(Grayscale(news.into_any_element()))
+            .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
     }
     fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
         section_body()
@@ -1694,7 +1722,7 @@ impl Hub {
                 )
             })
     }
-    fn settings_release_news(&self, cx: &gpui::App) -> Div {
+    fn settings_release_news(cx: &gpui::App) -> Div {
         let mut body = section_body().mt(px(-0.5));
         match super::releases::news() {
             Ok(releases) => {
@@ -1770,7 +1798,7 @@ impl Hub {
                                     .rounded_full()
                                     .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
                                     .child(div().flex().gap(px(0.8)).children(
-                                        release.channel.to_uppercase().chars().map(|ch| {
+                                        release.kind.chars().map(|ch| {
                                             text(ch.to_string(), 10.0, 750, orbit::ink_3(cx), cx)
                                                 .w(px(6.0))
                                                 .font_family(crate::orbit::mono_family(cx))
@@ -1783,14 +1811,7 @@ impl Hub {
             }
             Err(error) => body = body.child(section_note(error, cx)),
         }
-        // Wails reparte el espacio restante de Novedades y desplaza su cuerpo.
-        div().child(
-            div()
-                .id("settings-release-news")
-                .h(px((self.settings.panel_height - 367.0).max(80.0)))
-                .overflow_y_scroll()
-                .child(body),
-        )
+        body
     }
     fn settings_update_hero(version: String, state: String, demo: bool, cx: &gpui::App) -> Div {
         div()
@@ -1824,7 +1845,7 @@ impl Hub {
                         .gap(px(12.0))
                         .child(reference_primary(
                             "settings-update-install",
-                            "Instalar v0.1.0.2",
+                            "Actualización disponible",
                             cx,
                         ))
                         .child(reference_primary(
@@ -1838,10 +1859,10 @@ impl Hub {
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
         let mut channels = div().flex().w_full().gap(px(21.0));
         for (index, (name, description)) in [
-            ("Stable", "Versiones probadas para todo el mundo."),
+            ("Estable", "Versiones probadas para todo el mundo."),
             (
                 "Testers",
-                "Candidatas a Stable con el Testing Center activo.",
+                "Candidatas a Estable con el Testing Center activo.",
             ),
             ("Nightly", "Cada cambio publicado. Puede romperse."),
         ]
@@ -1904,14 +1925,10 @@ impl Hub {
                     )
                     .child(
                         text(
-                            if demo {
-                                [
-                                    "v0.1.0.2 · 2/6/2026",
-                                    "v0.1.0.7-testers.1 · 3/6/2026",
-                                    "v0.1.0.7-nightly.11 · 5/6/2026",
-                                ][index]
+                            if active {
+                                "Canal instalado"
                             } else {
-                                "sin versión publicada"
+                                "Canal no seleccionado"
                             },
                             11.0,
                             600,
@@ -1924,7 +1941,7 @@ impl Hub {
         }
         channels
     }
-    fn settings_hotkeys(&self, cx: &gpui::App) -> Div {
+    fn settings_hotkeys(cx: &gpui::App) -> Div {
         let hub_keys = section_body().children(
             [
                 ("Lanzar perfil favorito", "Ctrl L"),
@@ -1943,24 +1960,24 @@ impl Hub {
         let mut body = section_body();
         for (index, (label, help, keys)) in [
             (
-                "Toggle overlay",
+                "Mostrar u ocultar overlay",
                 "Muestra u oculta el overlay activo.",
-                ["Ctrl", "Shift", "V"],
+                ["Ctrl", "Mayús", "V"],
             ),
             (
                 "Siguiente perfil",
                 "Cambia al siguiente perfil guardado.",
-                ["Ctrl", "Shift", "→"],
+                ["Ctrl", "Mayús", "→"],
             ),
             (
                 "Perfil anterior",
                 "Cambia al perfil anterior.",
-                ["Ctrl", "Shift", "←"],
+                ["Ctrl", "Mayús", "←"],
             ),
             (
                 "Cambiar referencia Delta",
                 "Rota la referencia del widget Delta.",
-                ["Ctrl", "Shift", "D"],
+                ["Ctrl", "Mayús", "D"],
             ),
         ]
         .into_iter()
@@ -1976,7 +1993,7 @@ impl Hub {
                     .when(index == 3, gpui::Stateful::<Div>::border_b_0),
             );
         }
-        stack().mt(px(7.0)).child(section_surface("En el Hub", None, hub_keys, cx))
+        stack().h_full().mt(px(7.0)).child(section_surface("En el Hub", None, hub_keys, cx))
             .child(
                 div()
                     .flex()
@@ -1993,7 +2010,7 @@ impl Hub {
                             .gap(px(7.0))
                             .child(eyebrow("Atajos globales", cx).line_height(px(13.2)))
                             .child(text(
-                                "Combinaciones de referencia. El registro y la reasignación global todavía no están disponibles en el Hub nativo.",
+                                "Combinaciones de referencia. El registro y la reasignación global todavía no están disponibles en el Hub.",
                                 orbit::BODY,
                                 400,
                                 orbit::ink_2(cx),
@@ -2014,13 +2031,10 @@ impl Hub {
                     ),
             )
             .child(
-                div()
-                    .w_full()
-                    .max_w(px(490.0))
-                    .child(section_surface("Overlay", Some("4 combinaciones"), body, cx)),
+                section_surface("En pista · Próximamente", Some("4 combinaciones de referencia"), body, cx).flex_1().min_h_0(),
             )
             .child(section_note(
-                if self.demo.is_some() { "La app registra estas cuatro combinaciones y ninguna más. Los grupos «Launcher y carrera», «Studio» y «Global» del prototipo no tienen atajos registrados todavía, así que no se pintan." } else { "El Hub nativo todavía no registra atajos globales. Las combinaciones se muestran como referencia y no se pueden reasignar aquí." },
+                "Los atajos en pista estarán disponibles más adelante. Por ahora, usa los atajos del Hub con su ventana activa.",
              cx))
     }
     fn settings_privacy_consent(compact: bool, cx: &gpui::App) -> Div {
@@ -2032,11 +2046,11 @@ impl Hub {
                 cx,
             ))
             .child(privacy_bullet(
-                "Combinación del catálogo y semana ISO, nunca fecha u hora exactas.",
+                "Tipo de carrera y semana, sin fecha ni hora exactas.",
                 cx,
             ))
             .child(privacy_bullet(
-                "Un identificador administrativo separado para cuota y borrado.",
+                "Una referencia para gestionar tus aportes y borrarlos si lo solicitas.",
                 cx,
             ));
         let never_bullets = div()
@@ -2075,7 +2089,7 @@ impl Hub {
             None,
             section_body()
                 .child(text(
-                    "Si aceptas, Vantare puede preparar y subir automáticamente paquetes seudonimizados de Strategy. Cada paquete queda visible e inspeccionable antes del envío.",
+                    "Próximamente podrás compartir resúmenes de carrera para mejorar las recomendaciones de estrategia. Podrás revisar qué se comparte.",
                     16.0,
                     400,
                     orbit::ink(cx),
@@ -2084,7 +2098,7 @@ impl Hub {
                     .child(shared.when(compact, gpui::Styled::flex_none))
                     .child(never.when(compact, gpui::Styled::flex_none)))
                 .child(section_note(
-                    "Los paquetes son seudonimizados, no anónimos. Los secretos de subida y borrado se generan al aceptar y permanecen en el almacén protegido de Windows.",
+                    "Tus aportes usarán una referencia que permita borrarlos, sin mostrar tu identidad a otros usuarios.",
                  cx))
                 .child(
                     div()
@@ -2109,7 +2123,7 @@ impl Hub {
                         .flex()
                         .items_start()
                         .child(section_status(
-                            "Sin consentimiento activo: no se prepara ni envía nada",
+                            "Sin consentimiento · no se envían aportes",
                             orbit::ember(cx),
                          cx)),
                 ),
@@ -2128,7 +2142,7 @@ impl Hub {
                     if self.demo.is_some() {
                         "Todavía no hay paquetes preparados."
                     } else {
-                        "La cola de Strategy no está disponible en el Hub nativo."
+                        "La cola de Strategy no está disponible en el Hub."
                     },
                     cx,
                 ))
@@ -2152,10 +2166,10 @@ impl Hub {
             None,
             section_body()
                 .child(section_note(
-                    if self.demo.is_some() { "No hay solicitudes de borrado remoto registradas." } else { "No hay un contrato nativo para consultar borrados remotos." },
+                    if self.demo.is_some() { "No hay solicitudes de borrado remoto registradas." } else { "El historial de solicitudes de borrado estará disponible próximamente." },
                  cx))
                 .child(section_note(
-                    "El borrado alcanza bundles, copias, índices, cachés e informes derivados. Los agregados irreversibles de cohortes ya publicadas no se pueden retirar individualmente.",
+                    "El borrado elimina tus aportes y sus copias. Los resultados conjuntos ya publicados no pueden retirarse por separado.",
                  cx)),
          cx)
     }
@@ -2166,14 +2180,17 @@ impl Hub {
             .w_full()
             .min_w_0()
             .gap(px(14.0))
-            .child(self.settings_privacy_diagnostics(cx))
+            .child(self.settings_privacy_diagnostics(cx).when(
+                self.shell.access.lock(Section::Strategy).is_some(),
+                |card| card.flex_grow(1.0).min_h_0(),
+            ))
             // La contribución solo envía paquetes de Strategy: sin Strategy (beta) sobra.
             .when(
                 self.shell.access.lock(Section::Strategy).is_none(),
                 |page| {
                     page.child(Self::settings_privacy_consent(compact, cx))
                         .child(self.settings_privacy_queue(cx))
-                        .child(self.settings_privacy_history(cx))
+                        .child(self.settings_privacy_history(cx).flex_1().min_h_0())
                 },
             )
     }
@@ -2187,7 +2204,7 @@ impl Hub {
                         0,
                         false,
                         "Enviar informes de fallos",
-                        "Binario, versión, mensaje y traza del fallo. Se ocultan las rutas de usuario de Windows.",
+                        "Versión de Vantare y detalles del fallo. Se ocultan tus carpetas personales.",
                         store.value.crashes,
                     ),
                     (
@@ -2230,7 +2247,7 @@ impl Hub {
                     ));
                     body = body.child(section_row(label, help, toggle, cx));
                 }
-                body = body.child(section_note("Se usa un identificador aleatorio de instalación, separado de tu cuenta y licencia. Envío a PostHog en la UE. Puedes cambiar estas opciones en cualquier momento.", cx));
+                body = body.child(section_note("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", cx));
                 if !vantare_services::diagnostics::configured() {
                     body = body.child(section_note("Este build aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
                 }
@@ -2257,27 +2274,30 @@ impl Hub {
             .filter(|error| super::event_matches(error, filter, &query))
             .map(|error| {
                 vec![
-                    error.observed_at_utc.to_string(),
+                    chrono::DateTime::from_timestamp(error.observed_at_utc, 0).map_or_else(
+                        || "Hora no disponible".into(),
+                        |time| time.format("%H:%M:%S").to_string(),
+                    ),
                     "Error".into(),
                     error.module.label().into(),
-                    format!("{:?}", error.code),
+                    error.code.label().into(),
                 ]
             })
             .collect();
         let mut events = section_body();
         if rows.is_empty() {
             events = events.child(section_note(
-                "El backend de esta sesión no publica su registro al hub, así que aquí no hay nada que enseñar. El informe de diagnóstico sí incluye el estado completo.",
+                "Todavía no hay eventos registrados en esta sesión. Puedes preparar un informe de diagnóstico.",
              cx));
         } else {
             events = events.child(self.settings.event_filter.clone());
             events = events.child(self.settings.event_query.clone());
             let table = orbit::Table {
                 headers: vec![
-                    "UTC".into(),
+                    "Hora (UTC)".into(),
                     "Nivel".into(),
                     "Módulo".into(),
-                    "Código".into(),
+                    "Mensaje".into(),
                 ],
                 rows,
             };
@@ -2286,31 +2306,33 @@ impl Hub {
                 Err(error) => events = events.child(orbit::callout(error, cx)),
             }
         }
-        section_surface("Últimos eventos", Some("sesión actual"), events, cx).flex_1()
+        section_surface("Últimos eventos", Some("sesión actual"), events, cx)
+            .flex_1()
+            .min_h(px(240.0))
     }
-    fn settings_statistics(demo: bool, cx: &gpui::App) -> Div {
+    fn settings_statistics(demo: bool, connected: bool, cx: &gpui::App) -> Div {
         let tiles = if demo {
             [
                 (
-                    "Telemetry Core",
-                    "LMU conectado",
-                    "fuente en vivo y disponible",
+                    "Telemetría",
+                    if connected { "Conectado" } else { "Esperando" },
+                    if connected {
+                        "Datos del simulador disponibles"
+                    } else {
+                        "Esperando simulador"
+                    },
                 ),
                 ("Overlay", "Detenido", "sin perfil activo"),
-                (
-                    "CPU · memoria",
-                    "—",
-                    "esperando la primera muestra del backend",
-                ),
-                (
-                    "Datos locales",
-                    "45 MB",
-                    "3 carpetas medidas por el backend",
-                ),
+                ("CPU · memoria", "—", "Esperando datos del simulador"),
+                ("Datos locales", "45 MB", "3 carpetas revisadas"),
             ]
         } else {
             [
-                ("Telemetry Core", "—", "sin fuente conectada"),
+                (
+                    "Telemetría",
+                    if connected { "Conectado" } else { "Esperando" },
+                    "Conexión con el simulador",
+                ),
                 ("Overlay", "—", "sin perfil activo"),
                 ("CPU · memoria", "—", "muestreo no disponible"),
                 ("Datos locales", "—", "medición no disponible"),
@@ -2331,17 +2353,14 @@ impl Hub {
                     .border_1()
                     .border_color(rgba(orbit::line(cx)))
                     .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
-                    .child(
-                        text(label.to_uppercase(), 11.0, 700, orbit::ink_3(cx), cx)
-                            .line_height(px(13.2)),
-                    )
+                    .child(text(label, 11.0, 700, orbit::ink_3(cx), cx).line_height(px(13.2)))
                     .child(
                         mono_tracked(
                             value.to_owned(),
                             22.0,
                             700.0,
                             -0.66,
-                            if demo && label == "Telemetry Core" {
+                            if connected && label == "Telemetría" {
                                 orbit::green(cx)
                             } else {
                                 orbit::ink(cx)
@@ -2361,8 +2380,8 @@ impl Hub {
     }
     fn settings_diagnostics(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         let demo = self.demo.is_some();
-        let stats =
-            Self::settings_statistics(demo, cx).when(compact, |stats| stats.grid().grid_cols(2));
+        let stats = Self::settings_statistics(demo, self.previous_source == Some(true), cx)
+            .when(compact, |stats| stats.grid().grid_cols(2));
         let data = section_surface(
             "Datos y registros",
             None,
@@ -2376,7 +2395,7 @@ impl Hub {
                     },
                     orbit::small_button("settings-data-open", "Abrir", cx)
                         .tab_stop(false)
-                        .aria_description("Sin acción nativa para abrir esta carpeta"),
+                        .aria_description("Abrir esta carpeta estará disponible próximamente"),
                     12.0,
                     cx,
                 ))
@@ -2385,7 +2404,7 @@ impl Hub {
                     if demo {
                         "C:\\Users\\piloto\\AppData\\Local\\Vantare\\logs"
                     } else {
-                        "Sin contrato nativo de registro del Hub."
+                        "El registro aún no está disponible."
                     },
                     orbit::small_button("settings-logs-open", "Abrir", cx)
                         .tab_stop(false)
@@ -2424,13 +2443,11 @@ impl Hub {
             cx,
         )
         .flex_1();
-        let mut view = stack().child(stats).child(
+        let mut view = stack().h_full().child(stats).child(
             columns(compact)
+                .flex_1()
                 .child(data.when(compact, gpui::Styled::flex_none))
-                .child(
-                    self.settings_events(cx)
-                        .when(compact, gpui::Styled::flex_none),
-                ),
+                .child(self.settings_events(cx).flex_1()),
         );
         for detail in self.settings_diagnostic_report(cx) {
             view = view.child(detail);
@@ -2484,34 +2501,38 @@ impl Hub {
         let filters = Self::settings_event_filters(cx);
         rows = rows.child(div().flex().mb(px(8.0)).child(filters));
         for (index, (time, level, message)) in [
-            ("16:00:24", "INFO", "launcher: Le Mans Ultimate started"),
+            ("16:00:24", "Info", "Inicio · Le Mans Ultimate abierto"),
             (
                 "16:00:02",
-                "AVISO",
-                "warning: hotkey Ctrl+Alt+O already registered by another app",
+                "Aviso",
+                "Atajos · Ctrl+Alt+O ya lo usa otra aplicación",
             ),
-            ("15:59:35", "INFO", "updater: channel nightly selected"),
+            (
+                "15:59:35",
+                "Info",
+                "Actualizaciones · Canal Nightly seleccionado",
+            ),
             (
                 "15:59:00",
-                "ERROR",
-                "storage error: telemetry session chunk could not be written",
+                "Error",
+                "Grabaciones · No se pudo guardar una parte de la sesión",
             ),
             (
                 "15:58:38",
-                "INFO",
-                "overlay: profile 'Racing' loaded with 7 widgets",
+                "Info",
+                "Overlays · Perfil de carrera cargado con 7 widgets",
             ),
             (
                 "15:58:04",
-                "AVISO",
-                "warning: configs directory not found — hub profile CRUD disabled",
+                "Aviso",
+                "Perfiles · No se encontró la carpeta de ajustes; no se pueden editar perfiles",
             ),
-            ("15:57:45", "INFO", "telemetry: LMU shared memory attached"),
             (
-                "15:57:32",
-                "INFO",
-                "HTTP server: listening on 127.0.0.1:39261",
+                "15:57:45",
+                "Info",
+                "Telemetría · Conexión con LMU preparada",
             ),
+            ("15:57:32", "Info", "Vantare · Conexión local preparada"),
         ]
         .into_iter()
         .enumerate()
@@ -2524,7 +2545,7 @@ impl Hub {
                     .px(px(6.0))
                     .py(px(4.0))
                     .rounded(px(5.0))
-                    .bg(rgba(if level == "ERROR" {
+                    .bg(rgba(if level == "Error" {
                         0xff6a_5f14
                     } else if index % 2 == 0 {
                         orbit::line_row(cx)
@@ -2550,8 +2571,8 @@ impl Hub {
                                 700.0,
                                 0.4,
                                 match level {
-                                    "ERROR" => orbit::coral(cx),
-                                    "AVISO" => orbit::ember(cx),
+                                    "Error" => orbit::coral(cx),
+                                    "Aviso" => orbit::ember(cx),
                                     _ => orbit::ink_3(cx),
                                 },
                             )),
@@ -2567,7 +2588,9 @@ impl Hub {
                     ),
             );
         }
-        section_surface("Últimos eventos", Some("8 en esta sesión"), rows, cx).flex_1()
+        section_surface("Últimos eventos", Some("8 en esta sesión"), rows, cx)
+            .flex_1()
+            .min_h(px(240.0))
     }
     fn settings_diagnostic_report(&self, cx: &mut Context<Self>) -> Vec<Div> {
         let Some(diagnostic) = &self.settings.diagnostic else {
@@ -2577,13 +2600,29 @@ impl Hub {
         let mut body = section_body();
         for binary in &diagnostic.binaries {
             body = body.child(setting_row(
-                binary.name,
-                binary.state,
+                match binary.name {
+                    "vantare-hub.exe" => "Hub",
+                    "vantare.exe" => "Inicio de Vantare",
+                    "vantare-core.exe" => "Datos de carrera",
+                    "vantare-overlays.exe" => "Overlays en pista",
+                    "vantare-engineer.exe" => "Ingeniero",
+                    "vantare-storage.exe" => "Grabaciones",
+                    "vantare-workshop.exe" => "Taller de widgets",
+                    "vantare-grabar-lmu.exe" => "Grabación de LMU",
+                    "vantare-grabar-acc.exe" => "Grabación de ACC",
+                    _ => "Componente de Vantare",
+                },
+                match binary.state {
+                    "present" => "Disponible",
+                    "missing" => "No instalado",
+                    "unreadable" => "No se pudo revisar",
+                    _ => "No disponible",
+                },
                 orbit::chip(
                     if binary.sha256.is_some() {
-                        "SHA-256 calculado"
+                        "Huella calculada"
                     } else {
-                        "Hash no disponible"
+                        "Huella no disponible"
                     },
                     Tone::Neutral,
                     cx,
@@ -2598,7 +2637,7 @@ impl Hub {
             cx,
         ));
         match serde_json::to_string_pretty(diagnostic) {
-            Ok(json) => {
+            Ok(_) => {
                 let copy = self.settings_button(
                     "settings-diagnostic-copy",
                     "Copiar informe",
@@ -2606,15 +2645,15 @@ impl Hub {
                     cx,
                 );
                 report.push(section_surface(
-                    "Contenido sanitizado",
+                    "Contenido del informe",
                     None,
                     section_body()
-                        .child(text(json, orbit::SECONDARY, 400, orbit::ink_2(cx), cx))
+                        .child(text("Incluye la versión de Vantare, el estado de la conexión y los componentes revisados. No incluye contraseñas ni datos de la carrera.", orbit::SECONDARY, 400, orbit::ink_2(cx), cx))
                         .child(copy),
                     cx,
                 ));
             }
-            Err(_) => report.push(orbit::callout("No se pudo serializar el diagnóstico.", cx)),
+            Err(_) => report.push(orbit::callout("No se pudo preparar el informe.", cx)),
         }
         report
     }

@@ -793,14 +793,9 @@ impl Launcher {
             .iter()
             .filter(|app| app.availability.found)
             .count();
-        let demo = !self.demo_descriptions.is_empty();
         orbit::column(
             "Launcher",
-            if demo {
-                "v0.3.9"
-            } else {
-                option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
-            },
+            crate::version_label(),
             cx,
         )
         .w(px(orbit::column_width(f32::from(

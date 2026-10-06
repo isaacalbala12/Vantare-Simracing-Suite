@@ -99,7 +99,7 @@ fn capture_chrome(root: Div, left: Pixels, viewport: Size<Pixels>, cx: &gpui::Ap
                 .border_b_1()
                 .border_color(rgb(crate::orbit::legacy_rgb(0x001b_1c1e, cx)))
                 .child(crate::orbit::tracked_text(
-                    "TELEMETRY CORE",
+                    "Telemetría",
                     10.5,
                     700,
                     crate::orbit::ink_4(cx),

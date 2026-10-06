@@ -60,9 +60,15 @@ fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {
 
 fn account_surface(title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
     orbit::neo_card(cx)
-        .child(orbit::neo_header(title.to_owned(), "v-lock", cx).child(
-            text(meta, 12.0, 500, orbit::ink_3(cx), cx).font_family(crate::orbit::mono_family(cx)),
-        ))
+        .child(
+            orbit::neo_header(title.to_owned(), "v-lock", cx).child(text(
+                meta,
+                12.0,
+                500,
+                orbit::ink_3(cx),
+                cx,
+            )),
+        )
         .child(body)
 }
 
@@ -205,11 +211,11 @@ const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
 const ACCOUNT_MODULES: [(Section, &str); 6] = [
-    (Section::Studio, "Overlays Studio"),
-    (Section::Launcher, "Launcher"),
+    (Section::Studio, "Editor de overlays"),
+    (Section::Launcher, "Lanzador"),
     (Section::Calendar, "Carreras y recordatorios"),
-    (Section::Strategy, "Strategy"),
-    (Section::Engineer, "Engineer"),
+    (Section::Strategy, "Estrategia"),
+    (Section::Engineer, "Ingeniero"),
     (Section::Analysis, "Telemetría"),
 ];
 
@@ -263,8 +269,7 @@ impl Remote {
             >(&bytes)
         {
             editor.screenshots = vec![preview];
-            editor.message =
-                "Vista previa de captura · fixture local de QA; sin envío remoto".into();
+            editor.message = "Vista previa de captura · ejemplo local; no se enviará".into();
         }
         cx.on_app_quit(|this, cx| {
             this.cancel();
@@ -295,7 +300,7 @@ impl Remote {
             account: AccountState::default(),
             access: access::State::from_build(),
             license_polled_at: None,
-            message: "servicio no configurado".into(),
+            message: "Cuenta no disponible".into(),
             active: Area::Account,
             report_revision: None,
             editor,
@@ -408,7 +413,7 @@ impl Remote {
                     }
                     client
                         .as_mut()
-                        .ok_or("servicios desconectado")?
+                        .ok_or("Conexión interrumpida")?
                         .request(command)
                 })();
                 let reply = match result {
@@ -467,7 +472,7 @@ impl Remote {
             self.inflight = Inflight::User;
             true
         } else {
-            self.message = "servicios ocupado".into();
+            self.message = "Operación en curso".into();
             self.access.observe(
                 &Reply::Error {
                     message: self.message.clone(),
@@ -501,7 +506,7 @@ impl Remote {
                         let reply = match this.receive.as_ref().map(Receiver::try_recv) {
                             Some(Ok(reply)) => Some(reply),
                             Some(Err(mpsc::TryRecvError::Disconnected)) => Some(Reply::Error {
-                                message: "servicios desconectado".into(),
+                                message: "Conexión interrumpida".into(),
                             }),
                             _ => None,
                         };
@@ -629,8 +634,9 @@ impl Remote {
             DraftState::CleanupPending => " · borrador pendiente de limpiar",
         };
         self.editor.message = format!(
-            "Recibo guardado: {} · {}{}",
-            receipt.report_id, receipt.created_at, draft_message
+            "Informe enviado · {}{}",
+            orbit::activity_time(&receipt.created_at, chrono::Local::now().fixed_offset()),
+            draft_message
         );
     }
 
@@ -824,7 +830,7 @@ impl Remote {
             }
             let soon = matches!(section, Section::Strategy | Section::Engineer);
             let (icon, description) = match section {
-                Section::Studio => ("v-studio", "Editor de layouts y widgets"),
+                Section::Studio => ("v-studio", "Editor de diseños y widgets"),
                 Section::Launcher => ("v-launch", "Perfiles y aplicaciones"),
                 Section::Calendar => ("v-calendar", "Horario y recordatorios para testers"),
                 Section::Strategy => ("v-strategy", "Plan de paradas y combustible"),
@@ -854,8 +860,8 @@ impl Remote {
         let access = self.account_access();
         orbit::neo_card(cx)
             .child(orbit::neo_header("Módulos", "v-lock", cx))
-            .child(text("Acceso gratuito durante la beta. Strategy y Engineer estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
-            .child(Self::account_modules(account_module_access(access, account_demo().is_some()), cx))
+            .child(text("Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
+            .child(Self::account_modules(account_module_access(access, account_demo().is_some()), cx).id("account-modules-scroll").flex_grow(1.0).min_h_0().overflow_y_scroll())
     }
     fn account_session(&self, cx: &gpui::App) -> gpui::Div {
         let demo = account_demo().is_some();
@@ -981,19 +987,72 @@ impl Remote {
         .flex_1()
     }
     fn account_page(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        let center = div().flex().flex_col().gap(px(16.0)).w_full()
-            .child(self.account_identity(cx).flex_none().w_full().min_h(px(124.0)))
-            .child(orbit::neo_card(cx).child(orbit::neo_header("Licencias · Acceso beta", "v-lock", cx))
-                .child(text(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, 700, orbit::ink(cx), cx))
-                .child(text("Gratuita durante la beta. Tu sesión y licencia se validan mediante el servicio de cuenta.", 13.0, 400, orbit::ink_2(cx), cx)))
-            .child(self.account_plan(cx))
-            .when(account_demo().is_none(), |page| page.child(orbit::callout(self.message.clone(), cx)));
-        let rail = div().flex().flex_col().gap(px(16.0)).w_full()
+        let center = div()
+            .flex()
+            .flex_col()
+            .gap(px(16.0))
+            .w_full()
+            .h_full()
+            .min_h_0()
+            .child(
+                self.account_identity(cx)
+                    .flex_none()
+                    .w_full()
+                    .min_h(px(124.0)),
+            )
+            .child(
+                orbit::neo_card(cx)
+                    .child(orbit::neo_header("Licencias · Acceso beta", "v-lock", cx))
+                    .child(text(
+                        account_plan_label(
+                            self.account_access().verified && !self.account_access().blocked,
+                        ),
+                        24.0,
+                        700,
+                        orbit::ink(cx),
+                        cx,
+                    ))
+                    .child(text(
+                        "Acceso gratuito durante la beta para testers.",
+                        13.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    )),
+            )
+            .child(self.account_plan(cx).flex_grow(1.0).min_h_0())
+            .when(account_demo().is_none(), |page| {
+                page.child(orbit::callout(self.message.clone(), cx))
+            });
+        let rail = div()
+            .flex()
+            .flex_col()
+            .gap(px(16.0))
+            .w_full()
+            .h_full()
+            .min_h_0()
             .child(self.account_session(cx).flex_none())
             .child(self.account_devices(cx).flex_none())
-            .child(orbit::neo_card(cx).child(orbit::neo_header("Tus datos", "v-shield", cx))
-                .child(text("Tus perfiles, overlays y ajustes se guardan en este equipo. El servicio de cuenta valida el acceso beta.", 13.0, 400, orbit::ink_2(cx), cx))
-                .child(text("Exportación y eliminación de cuenta: pendientes del contrato nativo. No se borran datos desde esta pantalla.", 12.0, 400, orbit::ink_3(cx), cx)));
+            .child(
+                orbit::neo_card(cx)
+                    .flex_1()
+                    .min_h_0()
+                    .child(orbit::neo_header("Tus datos", "v-shield", cx))
+                    .child(text(
+                        "Tus perfiles, overlays y ajustes se guardan en este equipo.",
+                        13.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                    .child(text(
+                        "Exportar tus datos o eliminar tu cuenta estará disponible próximamente.",
+                        12.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            );
         div()
             .flex_1()
             .min_h_0()
@@ -1134,7 +1193,7 @@ impl Remote {
             .bg(rgb(orbit::canvas(cx)))
             .child(orbit::page_header(
                 "Dirección del producto",
-                "Roadmap",
+                "Novedades",
                 "Explora los hitos en una línea temporal, por estado o como gráfico de distribución.",
              cx))
             .child(

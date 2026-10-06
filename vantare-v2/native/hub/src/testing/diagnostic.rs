@@ -37,8 +37,8 @@ impl Module {
             Self::Studio => "Studio",
             Self::Launcher => "Launcher",
             Self::Calendar => "Calendario",
-            Self::Strategy => "Strategy",
-            Self::Engineer => "Engineer",
+            Self::Strategy => "Estrategia",
+            Self::Engineer => "Ingeniero",
             Self::Analysis => "Análisis",
             Self::Notifications => "Notificaciones",
             Self::TestingCenter => "Testing Center",
@@ -51,6 +51,15 @@ impl Module {
 pub enum ErrorCode {
     Conflict,
     LocalError,
+}
+
+impl ErrorCode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Conflict => "El archivo cambió; vuelve a cargarlo",
+            Self::LocalError => "No se pudo completar la acción",
+        }
+    }
 }
 
 /// Solo reconoce mensajes internos exactos; nunca devuelve fragmentos del error.

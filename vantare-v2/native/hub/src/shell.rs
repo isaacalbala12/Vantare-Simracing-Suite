@@ -1064,7 +1064,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 },
                 titlebar: Some(gpui::TitlebarOptions {
                     appears_transparent: options.capture.is_some(),
-                    title: Some("Vantare Hub — nativo".into()),
+                    title: Some("Vantare Hub".into()),
                     ..Default::default()
                 }),
                 ..Default::default()

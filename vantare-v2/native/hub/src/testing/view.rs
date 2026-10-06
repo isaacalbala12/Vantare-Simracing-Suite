@@ -4,10 +4,7 @@ use super::{
 };
 use crate::orbit::{self, Input};
 use crate::services::{protocol::Command, view::Remote};
-use gpui::{
-    Context, Entity, IntoElement, Render, Window, div, linear_color_stop, linear_gradient,
-    prelude::*, px, rgba,
-};
+use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px, rgba};
 #[cfg(any(feature = "parity-capture", test))]
 use std::path::Path;
 use std::{path::PathBuf, time::Instant};
@@ -166,7 +163,7 @@ impl Testing {
             let exe = std::env::current_exe().map_err(|_| "No se pudo localizar el Hub")?;
             let root = exe
                 .parent()
-                .ok_or("No se pudo localizar el directorio nativo")?;
+                .ok_or("No se pudo localizar la carpeta de Vantare")?;
             Ok::<_, &str>(Diagnostic::collect(root, &data, &observed, Instant::now()))
         });
         cx.spawn(async move |this, cx| {
@@ -343,7 +340,7 @@ impl Testing {
                 cx,
             ));
         }
-        orbit::card("Diagnóstico sanitizado", cx).child(body)
+        orbit::card("Informe de diagnóstico", cx).child(body)
     }
 }
 
@@ -365,63 +362,12 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
     }
 }
 
-fn panel_header(
-    title: &str,
-    meta: &str,
-    action: Option<gpui::Stateful<gpui::Div>>,
-    cx: &gpui::App,
-) -> gpui::Div {
-    let mut header = div()
-        .flex()
-        .items_center()
-        .gap(px(12.0))
-        .min_h(px(60.0))
-        .px(px(20.0))
-        .py(px(13.0))
-        .border_b_1()
-        .border_color(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-        .child(
-            orbit::text(title, 15.0, 700, orbit::ink(cx), cx)
-                .flex_1()
-                .min_w_0(),
-        )
-        .child(
-            orbit::text(meta, orbit::SECONDARY, 400, orbit::ink_3(cx), cx)
-                .font_family(crate::orbit::mono_family(cx))
-                .flex_none(),
-        );
-    if let Some(action) = action {
-        header = header.child(action);
-    }
-    header
-}
-
-fn panel_note(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> gpui::Div {
-    div()
-        .mt(px(12.0))
-        .px(px(17.0))
-        .py(px(13.0))
-        .border_1()
-        .border_color(rgba(crate::orbit::legacy_rgba(0xff9b_5721, cx)))
-        .rounded(px(14.0))
-        .bg(linear_gradient(
-            110.0,
-            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xff9b_570f, cx)), 0.0),
-            linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
-        ))
-        .child(
-            orbit::text(content, orbit::SECONDARY, 400, orbit::ink_3(cx), cx).line_height(px(18.0)),
-        )
-}
-
 fn disabled_refresh(cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
     div()
         .id("testing-validate-refresh")
         .role(gpui::Role::Button)
         .aria_label("Actualizar")
-        .aria_description(
-            "Deshabilitado: esta build no dispone de validación nativa de candidatos.",
-        )
+        .aria_description("Próximamente")
         .tab_stop(false)
         .h(px(34.0))
         .px(px(14.0))
@@ -444,30 +390,48 @@ fn disabled_refresh(cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
 }
 
 fn validation_panel(cx: &gpui::App) -> gpui::Div {
-    orbit::card("", cx)
-        .bg(orbit::tint(0x0010_1114, 0.79))
+    orbit::neo_card(cx)
+        .flex_1()
+        .min_h_0()
         .w_full()
-        .child(panel_header(
-            "Correcciones pendientes",
-            "una validación por candidato",
-            Some(disabled_refresh( cx)),
-         cx))
+        .child(
+            orbit::neo_header("Correcciones pendientes", "v-testing", cx)
+                .child(div().flex_1())
+                .child(disabled_refresh(cx)),
+        )
         .child(
             div()
+                .flex_1()
+                .min_h_0()
                 .flex()
                 .flex_col()
-                .px(px(21.0))
-                .py(px(21.0))
+                .items_center()
+                .justify_center()
+                .gap(px(16.0))
+                .child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx)))
                 .child(orbit::text(
-                    "Prueba una corrección disponible para tu canal y registra un único resultado verificable.",
-                    orbit::BODY,
-                    400,
-                    orbit::ink_2(cx),
-                 cx))
-                .child(panel_note(
-                    "No se pudieron cargar o guardar las validaciones. Inténtalo de nuevo.",
-                 cx))
-                .child(div().mt(px(14.0))),
+                    "Disponible próximamente",
+                    22.0,
+                    600,
+                    orbit::ink(cx),
+                    cx,
+                ))
+                .child(
+                    orbit::text(
+                        "Prueba las correcciones de tu canal y registra el resultado de cada una.",
+                        14.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    )
+                    .max_w(px(480.0))
+                    .text_center(),
+                )
+                .child(orbit::pill(
+                    "Validación de correcciones",
+                    orbit::Tone::Neutral,
+                    cx,
+                )),
         )
 }
 
@@ -480,7 +444,7 @@ impl Testing {
                 .child(orbit::neo_header("Mis informes", "clock", cx));
         if remote.report_receipts.is_empty() {
             list = list.child(orbit::text(
-                "Todavía no hay recibos de envío en esta sesión.",
+                "Todavía no has enviado informes en esta sesión.",
                 13.0,
                 400,
                 orbit::ink_2(cx),
@@ -514,9 +478,11 @@ impl Testing {
                             ))
                             .child(orbit::text(
                                 format!(
-                                    "{} · {} · {}",
-                                    receipt.report_id,
-                                    fields.module,
+                                    "{} · {}",
+                                    super::model::MODULES
+                                        .iter()
+                                        .find(|(id, _)| *id == fields.module)
+                                        .map_or("Sin determinar", |(_, label)| *label),
                                     orbit::activity_time(
                                         &receipt.created_at,
                                         chrono::Local::now().fixed_offset()
@@ -531,7 +497,7 @@ impl Testing {
                     .child(orbit::text(
                         match receipt.report_state.as_str() {
                             "submitted" => "Enviado",
-                            actual => actual,
+                            _ => "Estado no disponible",
                         },
                         12.0,
                         600,
@@ -540,7 +506,7 @@ impl Testing {
                     )),
             );
         }
-        list.child(orbit::text("Estado confirmado al enviar. El servicio nativo aún no consulta historial ni cambios posteriores.", 12.0, 400, orbit::ink_3(cx), cx))
+        list.child(orbit::text("El estado corresponde al momento del envío. El seguimiento estará disponible próximamente.", 12.0, 400, orbit::ink_3(cx), cx))
     }
     pub(crate) fn topbar_controls(&self) -> Entity<orbit::Choice> {
         self.tabs.clone()
@@ -551,9 +517,9 @@ impl Testing {
             .child(orbit::neo_card(cx).child(orbit::neo_header("Tus informes", "pulse", cx))
                 .child(orbit::text(count.to_string(), 32.0, 700, orbit::ink(cx), cx))
                 .child(orbit::text(self.channel_label.clone(), 11.0, 500, orbit::ink_3(cx), cx))
-                .child(orbit::text("recibos confirmados en esta sesión", 12.0, 400, orbit::ink_3(cx), cx)))
+                .child(orbit::text("Informes enviados en esta sesión", 12.0, 400, orbit::ink_3(cx), cx)))
             .child(orbit::neo_card(cx).child(orbit::neo_header("Conversación", "v-chat", cx))
-                .child(orbit::text("Próximamente · el servicio nativo todavía no publica conversaciones ni respuestas.", 13.0, 400, orbit::ink_3(cx), cx)))
+                .child(orbit::text("Próximamente podrás consultar respuestas y conversar sobre tu informe.", 13.0, 400, orbit::ink_3(cx), cx)))
             .child(orbit::neo_card(cx).flex_1().child(orbit::neo_header("Un buen informe", "v-testing", cx))
                 .children([
                     "1  Cuenta qué esperabas y qué pasó.",
@@ -594,7 +560,7 @@ impl Render for Testing {
             .gap(px(16.0))
             .child(div().flex().items_center().justify_between().gap(px(12.0))
                 .child(orbit::neo_page_header("Informes de la beta", "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.", cx))
-                .child(orbit::button("testing-tools", "Herramientas locales", cx).on_click(cx.listener(|this, _, _, cx| { this.local_open = !this.local_open; cx.notify(); }))))
+                .child(orbit::button("testing-tools", "Borradores y diagnóstico", cx).on_click(cx.listener(|this, _, _, cx| { this.local_open = !this.local_open; cx.notify(); }))))
             .child(content)
             .when(self.local_open, |page| page.child(self.local_tools(cx)))
     }
@@ -602,7 +568,7 @@ impl Render for Testing {
 impl Testing {
     fn local_tools(&self, cx: &mut Context<Self>) -> gpui::Div {
         div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0)).child(orbit::callout(
-            "Solo local. Este JSON omite el texto privado y no se adjunta al envío del reporte.",
+            "Este borrador se guarda en tu equipo. El informe de diagnóstico no incluye el texto privado y no se adjunta automáticamente al envío.",
          cx))
         .child(
             div()
@@ -615,7 +581,7 @@ impl Testing {
                         });
                     }),
                 ))
-                .child(orbit::button("testing-retry-report", "Revisar intento pendiente o recibo", cx).on_click(
+                .child(orbit::button("testing-retry-report", "Revisar envío pendiente", cx).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.remote.update(cx, |remote, cx| {
                             remote.editor.clear_approval();

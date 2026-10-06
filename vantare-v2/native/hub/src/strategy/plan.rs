@@ -424,7 +424,7 @@ cálculo",
         }
         header=header.child(div().flex().flex_col().flex_1().gap(px(12.0))
             .child(orbit::text(if loading {"Calculando estrategia"} else {"Revisa las reglas y la telemetría antes de calcular."},if loading {16.0} else {20.0},700,orbit::ink(cx), cx))
-            .child(orbit::text(if loading {"El motor nativo está calculando vueltas, stints y combustible.".to_owned()} else {self.error.clone().unwrap_or_else(||"No existe una estrategia que complete la carrera con estas reglas y recursos.".into())},16.0,400,orbit::ink_2(cx), cx).line_height(px(24.0))));
+            .child(orbit::text(if loading {"Vantare está calculando vueltas, tandas y combustible.".to_owned()} else {self.error.clone().unwrap_or_else(||"No existe una estrategia que complete la carrera con estas reglas y recursos.".into())},16.0,400,orbit::ink_2(cx), cx).line_height(px(24.0))));
         if loading {
             let laps = self.last_input.as_ref().map_or_else(
                 || {

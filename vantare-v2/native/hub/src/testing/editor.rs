@@ -462,9 +462,14 @@ impl Editor {
                     .gap(px(8.0))
                     .child(orbit::text(
                         format!(
-                            "{} · {} · versión y equipo añadidos por el servicio",
-                            crate::product::VERSION,
-                            std::env::consts::OS
+                            "{} · {} · versión y equipo incluidos en el informe",
+                            crate::version_label(),
+                            match std::env::consts::OS {
+                                "windows" => "Windows",
+                                "macos" => "macOS",
+                                "linux" => "Linux",
+                                _ => "Sistema no disponible",
+                            }
                         ),
                         11.0,
                         400,
@@ -473,7 +478,7 @@ impl Editor {
                     ))
                     .child(orbit::disabled(
                         orbit::button("report-logs", "Adjuntar registro · Próximamente", cx),
-                        "El servicio nativo todavía no permite adjuntar registros.",
+                        "Adjuntar registros estará disponible próximamente.",
                     )),
             );
         // El primario solo se atenúa: nunca destaca más deshabilitado que activo.
@@ -619,9 +624,8 @@ impl Editor {
                         .gap(px(orbit::RADIUS_CONTROL))
                         .child(orbit::text(
                             format!(
-                                "Cuenta {} · canal {}{}",
-                                preview.account_id,
-                                preview.channel,
+                                "Tu cuenta · canal {}{}",
+                                super::model::channel_label(Some(&preview.channel), false),
                                 if preview.retry {
                                     " · reintento con contenido original"
                                 } else {
@@ -634,7 +638,8 @@ impl Editor {
                             cx,
                         ))
                         .child(orbit::text(
-                            preview.payload.clone(),
+                            super::model::preview_summary(preview)
+                                .unwrap_or_else(|_| preview.payload.clone()),
                             orbit::SECONDARY,
                             400,
                             orbit::ink_2(cx),

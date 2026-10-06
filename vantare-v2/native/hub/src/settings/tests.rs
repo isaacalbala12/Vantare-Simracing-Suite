@@ -9,12 +9,34 @@ fn panel_reserves_header_and_footer_and_tracks_resized_viewport() {
 }
 
 #[test]
-fn news_reads_valid_versioned_release_notes_in_wails_order() {
+fn news_reads_customer_summaries_in_release_order() {
     let news = releases::news().expect("manifiestos de releases");
     assert_eq!(news.len(), 17);
     assert_eq!(news[0].tag, "v0.1.0.7-testers.2");
     assert_eq!(news[2].tag, "v0.1.0.7-nightly.15");
     assert!(news.iter().all(|release| !release.summary.is_empty()));
+    for release in &news {
+        assert!(matches!(
+            release.kind.as_str(),
+            "Nuevo" | "Mejora" | "Arreglo"
+        ));
+        let text = format!("{} {}", release.title, release.summary).to_lowercase();
+        for internal in [
+            "go-first",
+            "overlayframe",
+            "backend",
+            "fixture",
+            "command orbit",
+            "flag",
+            "build",
+        ] {
+            assert!(
+                !text.contains(internal),
+                "{} contiene {internal}",
+                release.tag
+            );
+        }
+    }
 }
 
 #[test]
@@ -58,6 +80,7 @@ fn diagnostic_filters_use_only_observed_errors_and_sanitized_codes() {
     };
     assert!(event_matches(&error, 0, "launcher"));
     assert!(event_matches(&error, 3, " LOCALERROR "));
+    assert!(event_matches(&error, 3, "completar la acción"));
     assert!(!event_matches(&error, 1, ""));
     assert!(!event_matches(&error, 2, ""));
     assert!(!event_matches(&error, 3, "engineer"));

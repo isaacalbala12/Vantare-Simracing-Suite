@@ -66,7 +66,7 @@ pub(super) fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> 
             calendar,
             cx,
             CalendarView::Timeline,
-            "Timeline",
+            "Cronología",
             "calendar-timeline",
         ),
     ])

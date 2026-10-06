@@ -5,6 +5,17 @@ use serde::Deserialize;
 use std::collections::BTreeSet;
 use vantare_services::protocol::roadmap_document::Localized;
 
+fn readable_date(value: &str) -> String {
+    use chrono::Datelike;
+    let Ok(date) = chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d") else {
+        return value.to_owned();
+    };
+    let month = [
+        "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
+    ][date.month0() as usize];
+    format!("{} {month} {}", date.day(), date.year())
+}
+
 const DATA: &str = include_str!("../roadmap/roadmap.json");
 
 #[derive(Debug, Deserialize)]
@@ -224,7 +235,10 @@ impl Remote {
                     .when_some(
                         self.manual_roadmap.document.as_ref().ok(),
                         |row, document| {
-                            row.child(label(format!("Actualizado {}", document.updated_at), cx))
+                            row.child(label(
+                                format!("Actualizado {}", readable_date(&document.updated_at)),
+                                cx,
+                            ))
                         },
                     )
                     .child(toggle),
@@ -495,7 +509,10 @@ impl Remote {
                             .flex_col()
                             .gap(px(4.0))
                             .py(px(10.0))
-                            .child(label(item.date.clone().unwrap_or_default(), cx))
+                            .child(label(
+                                item.date.as_deref().map(readable_date).unwrap_or_default(),
+                                cx,
+                            ))
                             .child(orbit::text(
                                 item.title.es.clone(),
                                 14.0,
@@ -552,6 +569,12 @@ impl Remote {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dates_use_readable_spanish_months_and_keep_the_year() {
+        assert_eq!(readable_date("2026-10-05"), "5 oct 2026");
+        assert_eq!(readable_date("2027-01-01"), "1 ene 2027");
+        assert_eq!(readable_date("2024-02-29"), "29 feb 2024");
+    }
     #[test]
     fn manual_document_is_valid_and_filters_preserve_lanes() {
         let document = Document::parse(DATA).expect("documento versionado");

@@ -351,12 +351,13 @@ fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
     div()
         .flex()
         .items_start()
-        .ml(px(18.0))
+        .gap(px(8.0))
+        .child(orbit::text("•", 14.0, 400, orbit::ink_3(cx), cx).flex_none())
         .child(
             div()
                 .flex_1()
                 .min_w_0()
-                .child(paragraph(content, 16.0, 400, orbit::ink_2(cx), cx)),
+                .child(paragraph(content, 14.0, 400, orbit::ink_2(cx), cx)),
         )
 }
 fn palette_card(
@@ -1030,7 +1031,7 @@ impl Hub {
                     Page::Performance => self.settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => Self::settings_hotkeys(cx),
-                    Page::Privacy => self.settings_privacy(true, cx),
+                    Page::Privacy => self.settings_privacy(cx),
                     Page::Diagnostics => self.settings_diagnostics(true, cx),
                 }
                 .h_full()
@@ -1299,7 +1300,7 @@ impl Hub {
             section_body()
                 .child(section_row(
                     "Inicio con Windows",
-                    "Esta plataforma no permite abrir Vantare al iniciar sesión.",
+                    "Abrir Vantare al iniciar sesión estará disponible próximamente.",
                     disabled_toggle("settings-startup", "Inicio con Windows", false, cx),
                  cx))
                 .child(section_row(
@@ -1319,7 +1320,7 @@ impl Hub {
                  cx))
                 .child(section_row(
                     "Notificaciones del sistema",
-                    "Esta plataforma no admite notificaciones de escritorio.",
+                    "Los avisos de escritorio estarán disponibles próximamente.",
                     disabled_toggle(
                         "settings-notify-system",
                         "Notificaciones del sistema",
@@ -1599,7 +1600,7 @@ impl Hub {
             );
         stack().h_full().child(section_surface(
             "Nivel de rendimiento",
-            Some(if self.demo.is_some() { "Activo ahora · Equilibrado · 40 fps · elegido por ti" } else { "Nivel activo no disponible" }),
+            None,
             section_body()
                 .gap(px(12.0))
                 .child(custom_auto)
@@ -1737,17 +1738,11 @@ impl Hub {
                             .border_b_1()
                             .border_color(rgba(orbit::line_row(cx)))
                             .child(
-                                div().w(px(96.0)).flex_none().child(
-                                    text(
-                                        release.tag.replace('-', "-\n"),
-                                        12.0,
-                                        700,
-                                        orbit::coral(cx),
-                                        cx,
-                                    )
-                                    .font_family(crate::orbit::mono_family(cx))
-                                    .font_weight(gpui::FontWeight(700.0))
-                                    .line_height(px(18.0)),
+                                div().w(px(162.0)).flex_none().whitespace_nowrap().child(
+                                    text(release.tag.clone(), 12.0, 700, orbit::coral(cx), cx)
+                                        .font_family(crate::orbit::mono_family(cx))
+                                        .font_weight(gpui::FontWeight(700.0))
+                                        .line_height(px(18.0)),
                                 ),
                             )
                             .child(
@@ -1790,22 +1785,15 @@ impl Hub {
                                         }),
                                 ),
                             )
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .px(px(8.0))
-                                    .py(px(3.0))
-                                    .rounded_full()
-                                    .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-                                    .child(div().flex().gap(px(0.8)).children(
-                                        release.kind.chars().map(|ch| {
-                                            text(ch.to_string(), 10.0, 750, orbit::ink_3(cx), cx)
-                                                .w(px(6.0))
-                                                .font_family(crate::orbit::mono_family(cx))
-                                                .font_weight(gpui::FontWeight(750.0))
-                                        }),
-                                    )),
-                            ),
+                            .child(orbit::pill(
+                                &release.kind,
+                                match release.kind.as_str() {
+                                    "Nuevo" => Tone::Accent,
+                                    "Arreglo" => Tone::Success,
+                                    _ => Tone::Neutral,
+                                },
+                                cx,
+                            )),
                     );
                 }
             }
@@ -2037,10 +2025,11 @@ impl Hub {
                 "Los atajos en pista estarán disponibles más adelante. Por ahora, usa los atajos del Hub con su ventana activa.",
              cx))
     }
-    fn settings_privacy_consent(compact: bool, cx: &gpui::App) -> Div {
+    fn settings_privacy_consent(cx: &gpui::App) -> Div {
         let shared_bullets = div()
             .flex()
             .flex_col()
+            .gap(px(8.0))
             .child(privacy_bullet(
                 "Consumos, stints, pits, estrategias observadas y calidad ya derivados.",
                 cx,
@@ -2056,6 +2045,7 @@ impl Hub {
         let never_bullets = div()
             .flex()
             .flex_col()
+            .gap(px(8.0))
             .child(privacy_bullet(
                 "Telemetría cruda ni archivos de sesión.",
                 cx,
@@ -2074,7 +2064,7 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(text("Se comparte", 16.0, 700, orbit::ink(cx), cx))
+            .child(text("Se comparte", 14.0, 600, orbit::ink(cx), cx))
             .child(shared_bullets);
         let never = div()
             .flex_1()
@@ -2082,21 +2072,22 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(text("Nunca se comparte", 16.0, 700, orbit::ink(cx), cx))
+            .child(text("Nunca se comparte", 14.0, 600, orbit::ink(cx), cx))
             .child(never_bullets);
         section_surface(
             "Consentimiento de contribución",
             None,
             section_body()
+                .gap(px(12.0))
                 .child(text(
                     "Próximamente podrás compartir resúmenes de carrera para mejorar las recomendaciones de estrategia. Podrás revisar qué se comparte.",
-                    16.0,
+                    14.0,
                     400,
-                    orbit::ink(cx),
+                    orbit::ink_2(cx),
                  cx).line_height(px(24.0)).mt(px(0.0)))
-                .child(columns(compact).gap(px(16.0))
-                    .child(shared.when(compact, gpui::Styled::flex_none))
-                    .child(never.when(compact, gpui::Styled::flex_none)))
+                .child(columns(false).gap(px(20.0))
+                    .child(shared)
+                    .child(never))
                 .child(section_note(
                     "Tus aportes usarán una referencia que permita borrarlos, sin mostrar tu identidad a otros usuarios.",
                  cx))
@@ -2173,7 +2164,7 @@ impl Hub {
                  cx)),
          cx)
     }
-    fn settings_privacy(&self, compact: bool, cx: &mut Context<Self>) -> Div {
+    fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
         div()
             .flex()
             .flex_col()
@@ -2188,7 +2179,7 @@ impl Hub {
             .when(
                 self.shell.access.lock(Section::Strategy).is_none(),
                 |page| {
-                    page.child(Self::settings_privacy_consent(compact, cx))
+                    page.child(Self::settings_privacy_consent(cx))
                         .child(self.settings_privacy_queue(cx))
                         .child(self.settings_privacy_history(cx).flex_1().min_h_0())
                 },

@@ -812,20 +812,6 @@ impl Hub {
         cx: &mut Context<Self>,
     ) -> gpui::Div {
         let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
-        let pending = self
-            .demo
-            .as_ref()
-            .filter(|_| {
-                self.capture.as_ref().is_none_or(|capture| {
-                    capture.name != "ajustes-preparacion-oscuro"
-                        && (capture.name.starts_with("shell-")
-                            || matches!(
-                                capture.section,
-                                Section::Settings | Section::Account | Section::Licenses
-                            ))
-                })
-            })
-            .map(|_| crate::version_label().to_owned());
         let breadcrumb = if matches!(self.section, Section::Account | Section::Licenses) {
             Section::Account
         } else {
@@ -851,28 +837,11 @@ impl Hub {
                     cx,
                 ))
                 .child(bell)
-                .when_some(pending, |row, version| {
-                    row.child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(9.0))
-                            .px(px(13.0))
-                            .h(px(36.0))
-                            .rounded(px(12.0))
-                            .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-                            .border_1()
-                            .border_color(rgba(orbit::line(cx)))
-                            .child(
-                                div()
-                                    .size(px(6.5))
-                                    .rounded_full()
-                                    .border_1()
-                                    .border_color(rgb(orbit::ember(cx))),
-                            )
-                            .child(orbit::text(version, 12.0, 400, orbit::ink_3(cx), cx)),
-                    )
-                })
+                .child(orbit::pill(
+                    crate::version_label(),
+                    orbit::Tone::Neutral,
+                    cx,
+                ))
                 .into_any_element()
         };
         orbit::topbar_with_actions(

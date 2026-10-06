@@ -23,11 +23,7 @@ pub mod product;
 
 /// Identidad instalada compartida por todas las pantallas del Hub.
 pub(crate) fn version_label() -> &'static str {
-    if product::VERSION == "0.0.0" {
-        "Versión local"
-    } else {
-        product::VERSION
-    }
+    product::VERSION
 }
 pub mod roadmap;
 pub mod scene;

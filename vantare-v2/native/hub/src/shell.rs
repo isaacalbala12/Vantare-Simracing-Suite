@@ -233,20 +233,27 @@ impl Hub {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Composición de las dos páginas de módulos, sin lógica adicional.
     fn upcoming_page(&self, cx: &mut Context<Self>) -> gpui::Div {
         let (description, icon, features) = if self.section == Section::Strategy {
             (
                 "Prepara tus decisiones antes de salir a pista.",
                 "v-strategy",
                 [
-                    ("Plan de paradas", "Organiza tus pasos por boxes."),
                     (
-                        "Combustible y desgaste",
-                        "Compara lo que necesitas para cada stint.",
+                        "v-launch",
+                        "Plan de paradas",
+                        "Organiza tus pasos por boxes. Prepara la secuencia de paradas antes de salir a pista.",
                     ),
                     (
+                        "v-gauge",
+                        "Combustible y desgaste",
+                        "Compara lo que necesitas para cada stint. Revisa el consumo y la duración prevista.",
+                    ),
+                    (
+                        "v-sliders",
                         "Ajustes en carrera",
-                        "Revisa el plan cuando cambie la carrera.",
+                        "Revisa el plan cuando cambie la carrera. Adapta tus decisiones a lo que ocurre en pista.",
                     ),
                 ],
             )
@@ -256,24 +263,32 @@ impl Hub {
                 "v-engineer",
                 [
                     (
+                        "v-engineer",
                         "Avisos de voz en pista",
-                        "La información clave, sin apartar la vista.",
+                        "La información clave, sin apartar la vista. Escucha los avisos mientras te concentras en conducir.",
                     ),
                     (
+                        "v-side",
                         "Spotter",
-                        "Una ayuda para situar los coches a tu alrededor.",
+                        "Una ayuda para situar los coches a tu alrededor. Sigue el tráfico cercano durante la carrera.",
                     ),
-                    ("Informes de carrera", "Repasa lo ocurrido al terminar."),
+                    (
+                        "v-testing",
+                        "Informes de carrera",
+                        "Repasa lo ocurrido al terminar. Consulta los momentos clave de tu sesión.",
+                    ),
                 ],
             )
         };
-        let mut cards = div().flex().flex_1().min_h_0().gap(gpui::px(20.0));
-        for (title, description) in features {
+        let mut cards = div().flex().flex_none().gap(gpui::px(20.0));
+        for (feature_icon, title, description) in features {
             cards = cards.child(
                 orbit::neo_card(cx)
                     .flex_1()
-                    .justify_center()
-                    .child(orbit::neo_header(title, icon, cx))
+                    .items_start()
+                    .gap(gpui::px(12.0))
+                    .child(orbit::icon(feature_icon, 40.0, orbit::carmine(cx)))
+                    .child(orbit::text(title, 18.0, 600, orbit::ink(cx), cx))
                     .child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx)),
             );
         }
@@ -316,9 +331,40 @@ impl Hub {
                 orbit::neo_card(cx)
                     .flex_1()
                     .min_h_0()
-                    .justify_center()
                     .items_start()
                     .child(orbit::neo_header("Síguelo en el Roadmap", "v-roadmap", cx))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .w_full()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .gap(gpui::px(32.0))
+                            .child(orbit::icon(icon, 100.0, orbit::ink_3(cx)))
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap(gpui::px(12.0))
+                                    .child(orbit::text(
+                                        navigation::title(self.section),
+                                        28.0,
+                                        600,
+                                        orbit::ink(cx),
+                                        cx,
+                                    ))
+                                    .child(orbit::text(
+                                        "Preparar · En pista · Revisar",
+                                        14.0,
+                                        400,
+                                        orbit::ink_2(cx),
+                                        cx,
+                                    ))
+                                    .child(orbit::pill("Próximamente", orbit::Tone::Neutral, cx)),
+                            ),
+                    )
                     .child(orbit::text(
                         "Consulta los avances y las novedades del módulo.",
                         14.0,

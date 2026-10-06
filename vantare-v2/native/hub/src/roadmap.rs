@@ -213,7 +213,7 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(4.0))
-                    .child(orbit::text("Novedades", 30.0, 600, orbit::ink(cx), cx))
+                    .child(orbit::text("Roadmap", 30.0, 600, orbit::ink(cx), cx))
                     .child(label("Qué hay, qué viene y en qué estamos.", cx)),
             )
             .child(

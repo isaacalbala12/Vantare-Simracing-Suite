@@ -377,6 +377,19 @@ mod tests {
         }
     }
     #[test]
+    fn roadmap_is_found_by_its_product_name_and_keeps_its_breadcrumb() {
+        let access = Access {
+            verified: true,
+            ..Access::default()
+        };
+        let results = commands(access, "roadmap");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].command, Command::Navigate(Section::Roadmap));
+        assert_eq!(results[0].label, "Roadmap");
+        assert_eq!(title(Section::Roadmap), "Roadmap");
+        assert!(commands(access, "Novedades").is_empty());
+    }
+    #[test]
     fn palette_filter_cursor_and_context_keep_their_contract() {
         let access = Access {
             verified: true,

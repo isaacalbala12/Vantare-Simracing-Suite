@@ -86,7 +86,7 @@ impl Section {
             Self::Engineer => "Ingeniero",
             Self::Analysis => "Telemetría / Análisis",
             Self::Testing => "Testing Center",
-            Self::Roadmap => "Novedades",
+            Self::Roadmap => "Roadmap",
             Self::Account => "Cuenta",
             Self::Licenses => "Licencias",
             Self::Notifications => "Notificaciones",

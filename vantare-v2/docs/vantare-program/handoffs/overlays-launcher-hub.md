@@ -4427,3 +4427,45 @@ compartido fusionado automáticamente y revisado; textos conservados junto a
 las páginas Próximamente, OBS fijo y controles/componentes. Fragmento ISA-1470
 combinado con ambos alcances. Validación final y corrección Roadmap a continuación.
 Merges exclusivamente locales autorizados por Isaac; sin push ni promoción.
+
+### #1470 — Roadmap restaurado y validación unión2 (2026-10-06)
+
+Merges locales autorizados: textos 47b420e2 desde 0830113a; componentes
+0ddc4a96 desde 1dfef24d. Se conserva TODO el código de textos y la estructura
+/componentes; único conflicto en el handoff, conservando ambas entradas.
+Fragmento ISA-1470 combinado sin duplicados. El commit posterior restaura
+«Roadmap» en Section::label y el título de página; búsqueda/miga consumen esa
+misma etiqueta. Actualizaciones conserva «Notas de versión» y sus novedades.
+Regresión de búsqueda/miga y navegación beta PASS.
+
+Gates del código final: fmt PASS; check8,48s y clippy13,86s -Dwarnings PASS;
+Nextest1155/1155 PASS (610,592s, seis skips configurados; ACC501,262s PASS);
+lifecycle5+12 PASS. Compilación SOLO por C:/tmp/fase2/compilar.ps1, -j2 y target
+propio native/target/gates. Build prueba/parity-capture35,12s PASS; conserva
+aviso previo unused cx analysis/view.rs989 exclusivo de captura. Los gates
+ordinarios no tienen warnings. No se repiten gates completos tras documentación:
+el código final conserva los hashes de la ejecución validada.
+
+Evidencia externa C:/tmp/1470-union2-evidence/: 35 capturas1920x1080 del tema por
+defecto Grafito carmín, todas MIRADAS en galerías1–9 y capturas ampliadas;
+resumen-hub.png y ronda-1.png antes/después MIRADOS, mapas1–9 y JSON comparables.
+Sin regresiones visuales atribuibles al merge observadas. Launcher2 e Ingeniero
+/Estrategia0px frente a componentes; Studio cambia solo el texto OBS de textos.
+No se afirma0px para todo el Hub. Rutas beta ocultas (Workshop/Analysis/Licencias
+separada) arrancan en Inicio: no certifica sus módulos. Calendario conserva el
+catálogo caducado y la escena archivada explícita; no se renueva su horario.
+
+Standings compare.ps1: 0/292160px, threshold0/maxpercent0/delta0 frente a baseline
+nativa F1, binario prueba previamente compilado por cola; base/captura/diff
+MIRADOS. No es paridad Wails ni prueba LMU live o de rendimiento.
+Intento adicional de interacción con helper Hidden falló antes del PNG por no
+presentar ventana detectable; cerrado solo el proceso propio y su helper.
+Reintento con ventana normal por indicación del orquestador PASS: clic real desde Ingeniero abre Roadmap y rueda del inspector Studio llega a Posición y tamaño con OBS fijo. Ambas capturas1920 MIRADAS; 37 capturas en total. El fallo Hidden queda conservado en la evidencia.
+
+Manual: abrir el Hub con datos aislados; recorrer las siete pestañas de Ajustes,
+Launcher2, Cuenta, Testing3, Calendario5, campana y búsqueda; pulsar Ver Roadmap,
+confirmar nombre en menú/miga/título y desplazar inspector con OBS fijo.
+Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
+plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
+Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
+ni merges externos. Checkout principal y native-beta Isaac intactos.

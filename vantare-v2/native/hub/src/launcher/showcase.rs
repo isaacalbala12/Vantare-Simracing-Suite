@@ -158,7 +158,12 @@ fn toggle_quick(profile: &mut Profile, option: usize) {
     profile.policy = Some(policy);
 }
 
-fn launch_block_reason(profile: &Profile, discovery: &Discovery, scanning: bool) -> Option<String> {
+fn launch_block_reason(
+    profile: &Profile,
+    apps: &[App],
+    discovery: &Discovery,
+    scanning: bool,
+) -> Option<String> {
     if scanning {
         return Some("Espera a que termine la detección de aplicaciones.".into());
     }
@@ -174,7 +179,18 @@ fn launch_block_reason(profile: &Profile, discovery: &Discovery, scanning: bool)
                 .iter()
                 .any(|app| app.id == step.app_id && app.availability.launchable)
         })
-        .map(|step| step.app_id.as_str())
+        .map(|step| {
+            apps.iter()
+                .find(|app| app.id == step.app_id)
+                .map(|app| app.name.as_str())
+                .or_else(|| {
+                    CATALOG
+                        .iter()
+                        .find(|app| app.id == step.app_id)
+                        .map(|app| app.name)
+                })
+                .unwrap_or("Aplicación sin configurar")
+        })
         .collect();
     (!missing.is_empty()).then(|| {
         format!(
@@ -732,13 +748,26 @@ impl Launcher {
         }
         card.when(!running && !enabled, |card| {
             card.child(orbit::text(
-                launch_block_reason(profile, &self.discovered, self.scanning)
-                    .unwrap_or_else(|| "Revisa las aplicaciones del perfil.".into()),
+                launch_block_reason(
+                    profile,
+                    &self.store.document.apps,
+                    &self.discovered,
+                    self.scanning,
+                )
+                .unwrap_or_else(|| "Revisa las aplicaciones del perfil.".into()),
                 12.0,
                 400,
                 Tone::Warning.color(cx),
                 cx,
             ))
+            .child(
+                orbit::ghost_button("showcase-fix-apps", "Abrir Aplicaciones", cx).on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.page = LauncherPage::Manage;
+                        cx.notify();
+                    }),
+                ),
+            )
         })
         .child(div().flex_1())
         .child(self.showcase_steps(profile, running, compact, cx))
@@ -1307,12 +1336,12 @@ mod tests {
             warnings: vec![],
         };
         assert!(
-            launch_block_reason(&profile, &discovery, true)
+            launch_block_reason(&profile, &[], &discovery, true)
                 .unwrap()
                 .contains("detección")
         );
         assert!(
-            launch_block_reason(&profile, &discovery, false)
+            launch_block_reason(&profile, &[], &discovery, false)
                 .unwrap()
                 .contains("Añade")
         );
@@ -1322,10 +1351,33 @@ mod tests {
             args_override: None,
         });
         assert!(
-            launch_block_reason(&profile, &discovery, false)
+            launch_block_reason(&profile, &[], &discovery, false)
                 .unwrap()
-                .contains("lmu")
+                .contains("Le Mans Ultimate")
         );
+    }
+
+    #[test]
+    fn blocked_launch_uses_catalog_and_custom_names() {
+        let mut profile = Profile::new("p".into(), "Perfil".into());
+        for id in ["lmu", "obs", "spotify", "custom:tool"] {
+            profile.steps.push(Step {
+                app_id: id.into(),
+                delay_seconds: 0,
+                args_override: None,
+            });
+        }
+        let apps = vec![App {
+            id: "custom:tool".into(),
+            name: "Mi aplicación".into(),
+            executable: None,
+            args: vec![],
+            favorite: false,
+        }];
+        let reason = launch_block_reason(&profile, &apps, &Discovery::default(), false)
+            .expect("rutas pendientes");
+        assert!(reason.contains("Le Mans Ultimate, OBS Studio, Spotify, Mi aplicación"));
+        assert!(!reason.contains("custom:tool"));
     }
 
     #[test]

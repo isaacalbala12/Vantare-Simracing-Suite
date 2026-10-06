@@ -556,6 +556,15 @@ impl Launcher {
             "Eliminar aplicación"
         } else if self.app_draft.is_some() {
             "Editar aplicación"
+        } else if self.profile_draft.as_ref().is_some_and(|draft| {
+            !self
+                .store
+                .document
+                .profiles
+                .iter()
+                .any(|profile| profile.id == draft.profile.id)
+        }) {
+            "Nuevo perfil"
         } else {
             "Editar perfil"
         };

@@ -1,5 +1,4 @@
-//! `TrackMap` Eficiencia (`TrackMapFunctional.tsx`). El SVG de 304 × 209 y
-//! el pie producen 320 × 248, aunque el layout base declare 320 × 220.
+//! `TrackMap` Eficiencia: ancho máximo 554 px, geometría proporcional y pie de 29 px.
 //! Sin geometría en `Snapshot` se muestra PISTA SIN MAPA, nunca un mapa ficticio.
 
 #[cfg(feature = "parity-capture")]
@@ -17,8 +16,8 @@ use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
 
-const WIDTH: f32 = 320.0;
-const SCALE: f32 = 0.95; // preserveAspectRatio: 304 / 320 = 209 / 220.
+const WIDTH: f32 = 554.0;
+const SCALE: f32 = (WIDTH - 16.0) / 320.0;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -98,9 +97,9 @@ impl Widget {
 
 fn height(vm: &track_map::ViewModel) -> f32 {
     if vm.track_label.is_some() {
-        248.0
+        16.0 + 220.0 * SCALE + 29.0
     } else {
-        220.0
+        16.0 + 220.0 * SCALE
     }
 }
 
@@ -160,7 +159,7 @@ fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
         BorderStyle::default(),
     ));
     if let Some(first) = vm.outline.first() {
-        let mut builder = PathBuilder::stroke(px(3.0 * SCALE));
+        let mut builder = PathBuilder::stroke(px(10.0));
         builder.move_to(svg_point(*first));
         for &point in &vm.outline[1..] {
             builder.line_to(svg_point(point));
@@ -169,7 +168,7 @@ fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
         draw_path(window, builder, col(tokens::INK, 0.35));
         for marker in &vm.markers {
             let center = svg_point(marker.point);
-            let radius = if marker.is_player { 5.5 } else { 4.0 } * SCALE;
+            let radius = if marker.is_player { 9.5 } else { 8.5 };
             let mut fill = PathBuilder::fill();
             circle(&mut fill, center, radius);
             let color = if marker.is_player {
@@ -178,42 +177,57 @@ fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
                 class_color(marker.class_name.as_deref())
             };
             draw_path(window, fill, col(color, 1.0));
-            let mut border = PathBuilder::stroke(px(1.5 * SCALE));
+            let mut border = PathBuilder::stroke(px(1.0));
             circle(&mut border, center, radius);
             draw_path(window, border, col(tokens::PANEL, 0.8));
         }
     } else {
-        let style = ink(10.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
+        let style = ink(14.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
         let x = (WIDTH - text::width(window, &vm.empty_text, &style)) / 2.0;
         text::draw(
             window,
             cx,
             &vm.empty_text,
             x,
-            text::baseline((height - 12.0) / 2.0, 12.0, 10.0),
+            text::baseline((height - 29.0) / 2.0, 29.0, 14.0),
             &style,
         );
     }
     if let Some(label) = &vm.track_label {
-        paint_rect(window, 8.0, 223.0, 304.0, 1.0, col(tokens::INK, 0.1));
-        let style = ink(10.0, 650.0, 0.0, col(tokens::INK, 1.0));
+        paint_rect(
+            window,
+            8.0,
+            height - 29.0,
+            WIDTH - 16.0,
+            1.0,
+            col(tokens::INK, 0.1),
+        );
+        let style = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
+        let reference_width = vm.reference_text.as_ref().map_or(0.0, |reference| {
+            text::width(
+                window,
+                reference,
+                &ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0)),
+            ) + 6.0
+        });
+        let label = text::fit(window, label, &style, WIDTH - 16.0 - reference_width);
         text::draw(
             window,
             cx,
-            label,
+            &label,
             8.0,
-            text::baseline(230.0, 10.0, 10.0),
+            text::baseline(height - 28.0, 28.0, 14.0),
             &style,
         );
         if let Some(reference) = &vm.reference_text {
-            let style = ink(7.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
-            let x = 312.0 - text::width(window, reference, &style);
+            let style = ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
+            let x = WIDTH - 8.0 - text::width(window, reference, &style);
             text::draw(
                 window,
                 cx,
                 reference,
                 x,
-                text::baseline(231.5, 7.0, 7.0),
+                text::baseline(height - 28.0, 28.0, 11.0),
                 &style,
             );
         }
@@ -269,7 +283,7 @@ mod tests {
         .project(&snapshot, Preferences::default(), Some(&geometry));
         assert!(visible.track_label.is_some());
         assert_eq!(hidden, visible);
-        assert_eq!(height(&hidden), 248.0);
+        assert_eq!(height(&hidden), 16.0 + 220.0 * SCALE + 29.0);
     }
 
     use super::*;
@@ -298,7 +312,7 @@ mod tests {
         };
         assert!(widget.ingest(&snapshot, english));
         assert!(!widget.ingest(&snapshot, english));
-        assert_eq!(widget.size(), (320.0, 220.0));
+        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
         assert_eq!(widget.frame(english).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
@@ -332,7 +346,7 @@ mod tests {
         assert!(widget.vm.outline.is_empty());
         assert!(widget.vm.markers.is_empty());
         assert_eq!(widget.vm.empty_text, "PISTA SIN MAPA");
-        assert_eq!(widget.size(), (320.0, 220.0));
+        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
     }
 
     fn reference_snapshot() -> Snapshot {
@@ -352,7 +366,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.size(), (320.0, 248.0));
+        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE + 29.0));
         assert_eq!(
             widget.vm.track_label.as_deref(),
             Some("Sebring International Raceway")
@@ -399,7 +413,7 @@ mod tests {
             let mut widget = Widget::new(&Settings::default(), Preferences::default());
             assert!(widget.ingest(&reference, Preferences::default()));
             assert!(widget.ingest(&snapshot, Preferences::default()));
-            assert_eq!(widget.size(), (320.0, 220.0));
+            assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
             assert!(widget.vm.outline.is_empty());
             assert_eq!(widget.frame(Preferences::default()).1, Wake::Idle);
             assert!(!widget.animating());

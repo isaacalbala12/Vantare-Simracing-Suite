@@ -15,6 +15,10 @@ use super::bytes::{f32_at, i32_at, invalid, wide_at};
 use super::protocol::{self, CarUpdate, Entry, Lap, Message, SessionUpdate};
 use super::velocity::{Sample, Velocity};
 
+/// Tope de identidades de piloto y clase recordadas a la vez. Una carrera
+/// legitima no pasa de 104 coches; el margen absorbe entradas y salidas.
+const IDENTITY_BUDGET: usize = 512;
+
 const SHM_TTL: Duration = Duration::from_millis(500);
 
 #[cfg(test)]
@@ -101,6 +105,10 @@ impl Translator {
         self.udp_signature = None;
         self.request_entries = true;
         self.request_track = true;
+        // Las identidades son por sesion: sin esto el mapa de pilotos crecia
+        // durante toda la vida del proceso con nombres elegidos por quien
+        // escriba los datagramas.
+        self.drivers.clear();
     }
 
     pub(super) fn shm(&mut self, kind: u8, bytes: Vec<u8>, at: Duration) -> io::Result<bool> {
@@ -464,6 +472,13 @@ impl Translator {
     }
 
     fn driver(&mut self, name: &str) -> Driver {
+        // Tope de identidades recordadas: los nombres vienen de los datagramas,
+        // asi que sin cota el mapa crece durante toda la vida del proceso. Al
+        // agotarse se vacia, que solo cuesta estabilidad de id a quien exceda
+        // el maximo de coches de una carrera real.
+        if self.drivers.len() >= IDENTITY_BUDGET {
+            self.drivers.clear();
+        }
         // Asignación por nombre: sin colisiones de hash y estable en relevos/replays.
         let next = u32::try_from(self.drivers.len() + 1).unwrap_or(u32::MAX);
         let id = *self

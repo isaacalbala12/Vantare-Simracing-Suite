@@ -20,7 +20,10 @@ pub(super) fn wide_at(bytes: &[u8], offset: usize, size: usize) -> String {
         .map(|b| u16::from_le_bytes([b[0], b[1]]))
         .take_while(|u| *u != 0)
         .collect();
-    String::from_utf16_lossy(&units).trim().to_owned()
+    // Los nombres llegan del simulador y en multijugador los elige otro
+    // usuario: se quitan las marcas bidireccionales y de anchura cero antes de
+    // que lleguen a pintarse.
+    vantare_domain::text::sanitize_display(&String::from_utf16_lossy(&units))
 }
 
 /// Cursor acotado del protocolo: cada lectura valida su longitud antes de avanzar.

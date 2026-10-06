@@ -470,13 +470,21 @@ fn sanear(texto: &str) -> String {
 }
 
 /// Campo numérico octal del tar, justificado a la derecha con NUL final.
-fn campo_octal(campo: &mut [u8], valor: u64) {
+///
+/// Devuelve error si el valor no cabe: envolverlo en silencio dejaba el
+/// `corpus.tar.gz` corrupto sin avisar. Su gemelo de LMU
+/// (`grabar-lmu/implementation.rs:360`) ya falla cerrado.
+fn campo_octal(campo: &mut [u8], valor: u64) -> io::Result<()> {
     campo[campo.len() - 1] = 0;
     let mut resto = valor;
     for posicion in (0..campo.len() - 1).rev() {
         campo[posicion] = b'0' + u8::try_from(resto % 8).unwrap_or(0);
         resto /= 8;
     }
+    if resto != 0 {
+        return Err(io::Error::other("campo ustar fuera de rango"));
+    }
+    Ok(())
 }
 
 /// El campo de checksum del tar son 6 dígitos octales + NUL + espacio.
@@ -511,11 +519,11 @@ fn empaquetar(destino: &Path, entradas: &[(&str, &Path)]) -> io::Result<()> {
         }
         let mut cabecera = [0_u8; 512];
         cabecera[..nombre_bytes.len()].copy_from_slice(nombre_bytes);
-        campo_octal(&mut cabecera[100..108], 0o644);
-        campo_octal(&mut cabecera[108..116], 0);
-        campo_octal(&mut cabecera[116..124], 0);
-        campo_octal(&mut cabecera[124..136], tamano);
-        campo_octal(&mut cabecera[136..148], modificado);
+        campo_octal(&mut cabecera[100..108], 0o644)?;
+        campo_octal(&mut cabecera[108..116], 0)?;
+        campo_octal(&mut cabecera[116..124], 0)?;
+        campo_octal(&mut cabecera[124..136], tamano)?;
+        campo_octal(&mut cabecera[136..148], modificado)?;
         cabecera[156] = b'0'; // fichero regular
         cabecera[257..263].copy_from_slice(b"ustar\0");
         cabecera[263..265].copy_from_slice(b"00");
@@ -714,11 +722,27 @@ fn utf8(bytes: &[u8]) -> io::Result<Vec<u8>> {
         .to_vec())
 }
 
+/// Tope de `broadcasting.json`: es una configuracion diminuta.
+const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
+
+fn read_bounded(ruta: &Path) -> io::Result<Vec<u8>> {
+    use std::io::Read;
+    let fichero = fs::File::open(ruta)?;
+    let mut bytes = Vec::new();
+    fichero.take(MAX_CONFIG_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_CONFIG_BYTES {
+        return Err(io::Error::other("configuracion de ACC demasiado grande"));
+    }
+    Ok(bytes)
+}
+
 /// Lee `broadcasting.json`. ACC ha usado las dos grafías del puerto
 /// (`udpListenerPort` en las builds nuevas y la errata `updListenerPort`), así
 /// que se aceptan ambas. `Ok(None)` si el fichero no existe.
 fn config_broadcasting(ruta: &Path) -> io::Result<Option<ConfigBroadcasting>> {
-    let contenido = match fs::read(ruta) {
+    // Lectura acotada: el replay de ACC ya la tiene y esta ruta la controla el
+    // contenido del perfil del usuario.
+    let contenido = match read_bounded(ruta) {
         Ok(contenido) => contenido,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error),

@@ -582,12 +582,16 @@ fn c_string(bytes: &[u8]) -> Option<String> {
     std::str::from_utf8(&bytes[..end])
         .ok()
         .filter(|text| text.chars().all(|ch| ch >= '\u{20}'))
-        .map(str::to_owned)
+        // Los controles ya se rechazan arriba; el saneado quita ademas las
+        // marcas bidireccionales y de anchura cero, que si pasan ese filtro.
+        .map(vantare_domain::text::sanitize_display)
 }
 
 fn c_string_lossy(bytes: &[u8]) -> Option<String> {
     let end = bytes.iter().position(|byte| *byte == 0)?;
-    Some(String::from_utf8_lossy(&bytes[..end]).into_owned())
+    Some(vantare_domain::text::sanitize_display(
+        &String::from_utf8_lossy(&bytes[..end]),
+    ))
 }
 
 fn read_i16(bytes: &[u8], at: usize) -> i16 {
@@ -924,6 +928,42 @@ mod tests {
                 Err(Rejection::InvalidActiveGrid),
                 "offset {offset}"
             );
+        }
+    }
+
+    /// El parser indexa un buffer de tamano fijo con offsets constantes y con
+    /// `count`, que sale de la propia memoria compartida. Un fallo de cota aqui
+    /// no es un dato raro: es un panico en el proceso del nucleo, y lo alcanza
+    /// quien pueda escribir esa memoria.
+    ///
+    /// Se mutan bytes de fixtures reales de forma determinista y se truncan por
+    /// todos sus prefijos: el truncamiento es el camino clasico de fallo de
+    /// cota. Ninguna entrada hostil debe hacer panico.
+    #[test]
+    fn mutated_and_truncated_real_frames_never_panic() {
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for (build, fixture) in [("1.3.0.0", REAL_44), ("1.4.2.0", TRACK_1420)] {
+            // Truncamientos: densos al principio, muestreados despues.
+            for keep in (0..fixture.len().min(4096)).chain((4096..fixture.len()).step_by(1013)) {
+                let _ = admit(&fixture[..keep], build);
+            }
+            // Mutaciones: valores imposibles en campos de control y de indice.
+            // El parser es barato, asi que se le da volumen: 20.000 entradas
+            // hostiles por fixture cuestan decimas de segundo.
+            for _ in 0..20_000 {
+                let mut bytes = fixture.to_vec();
+                for _ in 0..=(next() % 8) {
+                    let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+                    bytes[at] = (next() & 0xff) as u8;
+                }
+                let _ = admit(&bytes, build);
+            }
         }
     }
 }

@@ -4510,3 +4510,30 @@ Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
 plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
 Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
 ni merges externos. Checkout principal y native-beta Isaac intactos.
+
+### #1473 — Tablas, ronda 2 Head to Head (2026-10-06)
+
+Revisión de Isaac sobre 6f91d8d1: se conserva SIZE 388×110, filas 24/62/24
+y letra 14. Solo cambia native/ui/src/head_to_head/mod.rs: rivales con
+posición, nombre con elipsis, clase mayúscula, RIVAL y gap disponible a la
+derecha; jugador con posición/nombre y una línea «CLASE · H2H · modo».
+La VM no expone vueltas ni sectores: hueco derecho central libre, sin cambiar
+proyección, telemetría, demanda, settings ni otros widgets.
+
+Evidencia externa C:/tmp/1473-tablas-evidence/: head-to-head-r2.png,
+head-to-head-r2-gap.png, head-to-head-r2-long.png y ronda-2-h2h.png MIRADAS
+a escala 1×; resumen.png actualizado y MIRADO. Escenas QA reconstruidas,
+no prueba LMU live, DPI alternativo ni rendimiento. Regresión protegida por
+los tests existentes de límites 24/62/24, ambas direcciones, proyección y
+goldens, y por inspección visual con rivales/gap/nombres largos.
+Entrega local pendiente de aceptación del orquestador/Isaac; sin push, PR,
+merge, CI remota, promoción ni release. plan.md ausente en esta base;
+no cambia alcance ni planificación. Informe final externo ≤10 líneas.
+Gates ronda 2: fmt/check/Clippy PASS; Nextest 1159/1159 PASS (6 skips
+configurados, 787,799 s; ACC 641,974 s PASS); lifecycle 17 escenarios PASS.
+Logs externos r2-*.log; build Workshop/parity-capture prueba PASS (9,20 s).
+No se añaden tests nuevos para esta redistribución exclusivamente visual:
+los tests existentes y las capturas inspeccionadas cubren la regresión.
+Manual: abrir head-to-head-middle con rivales y head-to-head-r2.snapshot.json
+con gap; comprobar clase/RIVAL en ambas filas, dos líneas centrales y espacio
+derecho libre. Aceptación visual final de Isaac/orquestador pendiente.

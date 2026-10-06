@@ -61,14 +61,25 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         if row.is_player {
             paint_rect(window, 1.0, y, width - 2.0, row_height, col(0xbfc2ca, 0.23));
         }
-        let line_top = y;
-        let columns = [
+        let line_top = y + if row.is_player { 7.0 } else { 0.0 };
+        let class_name = row.class_name.to_uppercase();
+        let player_columns = [
             (&row.place, 6.0, 22.0, false),
-            (&row.number, 34.0, 30.0, false),
-            (&row.name, 70.0, 234.0, false),
-            (&row.gap, 310.0, 72.0, true),
+            (&row.name, 34.0, 270.0, false),
         ];
-        for (value, left, cell_width, right) in columns {
+        let rival_columns = [
+            (&row.place, 6.0, 22.0, false),
+            (&row.name, 34.0, 154.0, false),
+            (&class_name, 194.0, 78.0, false),
+            (&row.label, 278.0, 46.0, false),
+            (&row.gap, 330.0, 52.0, true),
+        ];
+        let columns = if row.is_player {
+            &player_columns[..]
+        } else {
+            &rival_columns[..]
+        };
+        for &(value, left, cell_width, right) in columns {
             let style = ink(
                 14.0,
                 650.0,
@@ -101,24 +112,16 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             let secondary = ink(14.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
             let label = text::fit(
                 window,
-                &format!("{} · {}", row.class_name, row.label),
+                &format!("{class_name} · {}", vm.header),
                 &secondary,
-                width - 76.0,
-            );
-            text::draw(
-                window,
-                cx,
-                &vm.header,
-                70.0,
-                text::baseline(y + 46.0, 16.0, 11.0),
-                &header,
+                width - 40.0,
             );
             text::draw(
                 window,
                 cx,
                 &label,
-                70.0,
-                text::baseline(y + 24.0, 22.0, 14.0),
+                34.0,
+                text::baseline(y + 31.0, 24.0, 14.0),
                 &secondary,
             );
         }

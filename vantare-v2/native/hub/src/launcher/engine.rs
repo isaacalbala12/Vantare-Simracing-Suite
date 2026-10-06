@@ -488,6 +488,70 @@ pub fn is_executable(path: &Path) -> bool {
     is_local_path(path) && path.is_file()
 }
 
+/// Confianza del destino de un `.lnk` compartido; los del usuario se confían.
+///
+/// Un acceso directo en `%PUBLIC%\Desktop` o en el Start Menu de sistema lo
+/// puede plantar cualquier usuario local, así que su `TargetPath` solo prueba
+/// que existe un fichero: el destino tiene que estar además donde ese otro
+/// usuario no pueda escribirlo. En Windows son las raíces administradas
+/// (`%ProgramFiles%`, `%ProgramFiles(x86)%`, `%ProgramW6432%`) y el perfil del
+/// propio usuario (`%LOCALAPPDATA%`, `%APPDATA%`, `%USERPROFILE%`). Fuera de
+/// Windows no hay `.lnk` que leer: se exige que ni el binario ni sus carpetas
+/// sean escribibles por grupo u otros.
+///
+/// Límite conocido: no valida firma Authenticode ni el contenido del binario, y
+/// una instalación fuera de esas raíces no se detecta mediante un enlace compartido.
+/// Los enlaces del propio usuario, el registro y las rutas de catálogo la cubren.
+pub fn is_trusted_install_path(path: &Path) -> bool {
+    if !is_local_path(path) {
+        return false;
+    }
+    #[cfg(windows)]
+    {
+        [
+            "ProgramFiles",
+            "ProgramFiles(x86)",
+            "ProgramW6432",
+            "LOCALAPPDATA",
+            "APPDATA",
+            "USERPROFILE",
+        ]
+        .into_iter()
+        .filter_map(std::env::var_os)
+        .any(|root| under_ascii_case(path, Path::new(&root)))
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fn private(path: &Path) -> bool {
+            std::fs::metadata(path).is_ok_and(|meta| meta.permissions().mode() & 0o022 == 0)
+        }
+        // Canonicalizar primero: un enlace simbólico no debe saltarse el control.
+        let Ok(real) = std::fs::canonicalize(path) else {
+            return false;
+        };
+        std::iter::successors(Some(real.as_path()), |current| current.parent())
+            .take(64)
+            .all(private)
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        true
+    }
+}
+
+/// Prefijo por componentes: `C:\Users\Bob` no contiene a `C:\Users\Bobby`, y en
+/// Windows la comparación de rutas del sistema no distingue mayúsculas.
+#[cfg(windows)]
+pub(super) fn under_ascii_case(path: &Path, root: &Path) -> bool {
+    let mut parts = path.components();
+    root.components().all(|want| {
+        parts
+            .next()
+            .is_some_and(|part| part.as_os_str().eq_ignore_ascii_case(want.as_os_str()))
+    })
+}
+
 pub fn is_local_path(path: &Path) -> bool {
     if !path.is_absolute() {
         return false;

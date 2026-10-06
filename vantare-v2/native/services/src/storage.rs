@@ -99,7 +99,7 @@ impl Store {
         Ok(self.root.join(format!("{name}.{extension}")))
     }
 
-    pub fn load<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
+    fn load_bytes(&self, name: &str) -> Result<Zeroizing<Vec<u8>>> {
         let path = self.path(name)?;
         let info = fs::symlink_metadata(&path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
@@ -112,12 +112,11 @@ impl Store {
         let private_permissions = info.permissions().mode() & 0o777 == 0o600;
         #[cfg(not(unix))]
         let private_permissions = true;
-        if !info.is_file()
-            || info.file_type().is_symlink()
-            || info.len() > MAX_BLOB
-            || !private_permissions
-        {
+        if !info.is_file() || info.file_type().is_symlink() || !private_permissions {
             return Err(Error::Storage);
+        }
+        if info.len() > MAX_BLOB {
+            return Err(Error::TooLarge);
         }
         let mut blob = Vec::new();
         fs::File::open(path)
@@ -126,10 +125,67 @@ impl Store {
             .read_to_end(&mut blob)
             .map_err(|_| Error::Storage)?;
         if blob.len() as u64 > MAX_BLOB {
-            return Err(Error::Storage);
+            return Err(Error::TooLarge);
         }
-        let bytes = unprotect(&blob, &self.context)?;
-        serde_json::from_slice(&bytes).map_err(|_| Error::Storage)
+        unprotect(&blob, &self.context)
+    }
+
+    pub fn load<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
+        serde_json::from_slice(&self.load_bytes(name).map_err(|error| {
+            if error == Error::TooLarge {
+                Error::Storage
+            } else {
+                error
+            }
+        })?)
+        .map_err(|_| Error::Storage)
+    }
+
+    /// Recuperación de JSON inválido o excesivo; los errores de E/S se propagan.
+    pub fn load_for_restore<T: DeserializeOwned>(&self, name: &str) -> Result<Option<T>> {
+        let bytes = match self.load_bytes(name) {
+            Ok(bytes) => bytes,
+            Err(Error::TooLarge) => {
+                self.quarantine(name);
+                return Ok(None);
+            }
+            Err(error) => return Err(error),
+        };
+        if let Ok(value) = serde_json::from_slice(&bytes) {
+            Ok(Some(value))
+        } else {
+            self.quarantine(name);
+            Ok(None)
+        }
+    }
+
+    /// Aparta un documento que no valida para que el servicio pueda arrancar.
+    ///
+    /// Todas las `restore` comparten la misma forma: si el documento no valida
+    /// devuelven `Err`, lo que deja el servicio muerto en CADA arranque y obliga
+    /// a que alguien borre el fichero a mano. Renombrarlo conserva la evidencia
+    /// para diagnostico y permite seguir con el valor por defecto.
+    ///
+    /// Es a proposito que NO se use con `installation`, pero el motivo verificado
+    /// NO es que regale un dispositivo limpio: en la configuracion desplegada
+    /// borrar ese fichero no da nada -no hay re-enrolamiento, el servidor rechaza
+    /// cualquier campo extra, `devices.user_id` es UNIQUE y gana el primer
+    /// dispositivo, y `binding`/`authority` viven en OTRO almacen-. El motivo real
+    /// es que aqui el unico camino a una identidad nueva es ENOENT: 14 formas
+    /// de corrupcion devuelven `Err` y ninguna acuna identidad. Lo que si falta es
+    /// desacoplar `legacy` de `installation`, porque hoy comparten un unico
+    /// `Result` y un `installation` corrupto deja el nucleo SIN NINGUN derecho,
+    /// incluido el camino v1 que no usa ese fichero.
+    /// Tampoco se usa con el recargado posterior al login, que no es un `restore`.
+    pub fn quarantine(&self, name: &str) {
+        let Ok(path) = self.path(name) else {
+            return;
+        };
+        let aside = self.root.join(format!("{name}.corrupto"));
+        let _ = fs::remove_file(&aside);
+        if let Err(error) = fs::rename(&path, &aside) {
+            eprintln!("apartar {name} ilegible: {error}");
+        }
     }
 
     pub fn save(&self, name: &str, value: &impl Serialize) -> Result<()> {
@@ -202,6 +258,47 @@ pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restore_quarantines_invalid_json_but_preserves_documents_on_io_errors() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("restore-io-errors");
+        let oauth: crate::account::OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":"https://fixture.test/", "client_id":"public-fixture",
+            "redirect":"http://127.0.0.1:0/callback", "authorization":"https://fixture.test/authorize",
+            "token":"https://fixture.test/token", "userinfo":"https://fixture.test/userinfo"
+        })).expect("OAuth de test");
+        for name in ["account", "authority", "report-attempt", "roadmap"] {
+            store
+                .save(name, &serde_json::json!({}))
+                .expect("documento invÃ¡lido protegido");
+            let path = store.path(name).expect("ruta");
+            let original = fs::read(&path).expect("bytes protegidos");
+            let restore = || match name {
+                "account" => crate::account::Account::restore(oauth.clone(), &store).map(|_| ()),
+                "authority" => crate::license::authority::Authority::restore(&store).map(|_| ()),
+                "report-attempt" => crate::report::Reports::restore(&store).map(|_| ()),
+                _ => crate::roadmap::Roadmap::restore(&store).map(|_| ()),
+            };
+            let lock = OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&path)
+                .expect("simular E/S bloqueada");
+            assert!(
+                matches!(restore(), Err(Error::Storage)),
+                "{name}: no convertir E/S en valores por defecto"
+            );
+            assert!(!store.root.join(format!("{name}.corrupto")).exists());
+            drop(lock);
+            assert_eq!(fs::read(&path).expect("preservado"), original);
+            restore().expect("JSON invÃ¡lido recuperado");
+            assert!(!path.exists());
+            assert!(store.root.join(format!("{name}.corrupto")).exists());
+        }
+        drop(store);
+        fs::remove_dir_all(root).expect("limpiar");
+    }
 
     #[test]
     fn beta_generation_supports_long_dpapi_paths() {

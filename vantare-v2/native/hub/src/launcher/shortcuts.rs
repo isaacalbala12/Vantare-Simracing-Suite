@@ -88,6 +88,14 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
 }
 
 #[cfg(windows)]
+fn accepts_target(link: &Path, target: &Path, shared_roots: &[PathBuf]) -> bool {
+    !shared_roots
+        .iter()
+        .any(|root| super::under_ascii_case(link, root))
+        || super::is_trusted_install_path(target)
+}
+
+#[cfg(windows)]
 pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     use std::{
         io::{BufReader, Read},
@@ -102,8 +110,7 @@ pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     if data.len() > 16_000 {
         return Err("rutas de shortcuts demasiado largas".into());
     }
-    let executable = PathBuf::from(std::env::var_os("SystemRoot").ok_or("SystemRoot ausente")?)
-        .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let executable = crate::files::windows_powershell()?;
     let script = r"$ErrorActionPreference='Stop'; $out=@(); $shell=New-Object -ComObject WScript.Shell; try { foreach($path in ($env:VANTARE_SHORTCUT_PATHS | ConvertFrom-Json)) { try { $link=$shell.CreateShortcut($path); $out+= [string]$link.TargetPath; [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($link) } catch { $out+=''; } } [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); ConvertTo-Json -InputObject @($out) -Compress } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }";
     let mut child = Command::new(executable)
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
@@ -163,13 +170,61 @@ pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     }
     let paths: Vec<String> =
         serde_json::from_slice(&bytes).map_err(|e| format!("respuesta de shortcuts: {e}"))?;
-    Ok(paths
+    if paths.len() != links.len() {
+        return Err("respuesta de shortcuts incompleta".into());
+    }
+    let shared_roots: Vec<_> = ["PUBLIC", "ProgramData"]
         .into_iter()
+        .filter_map(std::env::var_os)
         .map(PathBuf::from)
-        .filter(|path| is_local_path(path) && is_executable(path))
+        .collect();
+    Ok(links
+        .iter()
+        .zip(paths)
+        .filter_map(|(link, target)| {
+            let target = PathBuf::from(target);
+            (is_local_path(&target)
+                && is_executable(&target)
+                && accepts_target(link, &target, &shared_roots))
+            .then_some(target)
+        })
         .collect())
 }
 #[cfg(not(windows))]
 pub(crate) fn resolve(_links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     Ok(Vec::new())
+}
+
+#[cfg(all(test, windows))]
+mod trust_tests {
+    use super::*;
+
+    #[test]
+    fn only_shared_shortcuts_restrict_targets_and_user_games_on_other_drives_are_trusted() {
+        let shared = [
+            PathBuf::from(r"C:\Users\Public"),
+            PathBuf::from(r"C:\ProgramData"),
+        ];
+        let game = Path::new(r"D:\Games\obs64.exe");
+        for link in [
+            r"C:\Users\Isaac\Desktop\obs.lnk",
+            r"C:\Users\Isaac\AppData\Roaming\Microsoft\Windows\Start Menu\obs.lnk",
+        ] {
+            assert!(accepts_target(Path::new(link), game, &shared));
+        }
+        for link in [
+            r"c:\users\PUBLIC\Desktop\obs.lnk",
+            r"C:\ProgramData\Microsoft\Windows\Start Menu\obs.lnk",
+        ] {
+            assert!(!accepts_target(Path::new(link), game, &shared));
+            let trusted = PathBuf::from(std::env::var_os("ProgramFiles").expect("Windows"))
+                .join("obs/obs64.exe");
+            assert!(accepts_target(Path::new(link), &trusted, &shared));
+        }
+        assert!(accepts_target(
+            Path::new(r"C:\Users\Publicity\Desktop\obs.lnk"),
+            game,
+            &shared
+        ));
+    }
 }

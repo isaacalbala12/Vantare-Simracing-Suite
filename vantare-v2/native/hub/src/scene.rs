@@ -11,6 +11,24 @@ const MAX_FRAMES: usize = 512;
 
 pub const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ui/fixtures");
 
+/// Raiz de fixtures resuelta **en runtime**.
+///
+/// `FIXTURES` es una ruta absoluta de la maquina de compilacion: no existe en
+/// un equipo donde solo se instalo el paquete, y usarla al arrancar dejaba al
+/// Hub sin abrir ventana. Se prefiere la copia que viaja junto al ejecutable
+/// (`bin/fixtures`) y solo se cae a la de desarrollo si esa existe.
+pub fn fixtures_root() -> Option<std::path::PathBuf> {
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|parent| parent.join("fixtures")))
+        .filter(|dir| dir.is_dir())
+    {
+        return Some(dir);
+    }
+    let development = std::path::PathBuf::from(FIXTURES);
+    development.is_dir().then_some(development)
+}
+
 pub struct Scene {
     pub path: PathBuf,
     frames: Vec<Snapshot>,
@@ -171,11 +189,16 @@ impl Scene {
 }
 
 pub fn catalog(directory: &Path, initial: &Path) -> Result<Vec<PathBuf>, String> {
-    let mut paths = std::fs::read_dir(directory)
-        .map_err(|e| format!("{}: {e}", directory.display()))?
-        .map(|entry| entry.map(|entry| entry.path()))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
+    let mut paths = match std::fs::read_dir(directory) {
+        Ok(entries) => entries
+            .map(|entry| entry.map(|entry| entry.path()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?,
+        // Sin catalogo instalado la escena abierta sigue siendo seleccionable.
+        // Es preferible a abortar el arranque del Hub con un error de E/S.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(error) => return Err(format!("{}: {error}", directory.display())),
+    };
     paths.retain(|path| {
         path.is_file()
             && (path.to_string_lossy().ends_with(".snapshot.json")
@@ -187,6 +210,21 @@ pub fn catalog(directory: &Path, initial: &Path) -> Result<Vec<PathBuf>, String>
     }
     paths.sort();
     Ok(paths)
+}
+
+/// Indica si `path` es una escena admisible: existe y vive bajo `directory`,
+/// con ambos canonicalizados.
+///
+/// Hacia falta porque el catálogo REINYECTA la escena abierta (`catalog`), de
+/// modo que la comprobacion de pertenencia de `workshop.rs` siempre acertaba y
+/// cualquier ruta acababa en el selector. El estado guardado
+/// (`workshop-selection.json`) puede plantarlo un tercero, asi que no se acepta
+/// una ruta arbitraria.
+pub fn confined_to(path: &Path, directory: &Path) -> bool {
+    let (Ok(root), Ok(candidate)) = (directory.canonicalize(), path.canonicalize()) else {
+        return false;
+    };
+    candidate.starts_with(&root) && candidate.is_file()
 }
 
 #[cfg(test)]
@@ -303,5 +341,33 @@ mod tests {
         std::fs::write(&path, format!("{json}\n{json}\n")).expect("duplicado");
         assert!(Scene::open(path.clone()).is_err());
         std::fs::remove_file(path).expect("limpiar prueba");
+    }
+    #[test]
+    fn only_paths_under_the_catalog_are_confined() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-scene-confine-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("directorio de prueba");
+        let inside = root.join("standings.snapshot.json");
+        std::fs::write(&inside, b"{}").expect("escena interna");
+        let outside = std::env::temp_dir().join(format!(
+            "vantare-scene-confine-outside-{}.json",
+            std::process::id()
+        ));
+        std::fs::write(&outside, b"{}").expect("escena externa");
+
+        assert!(
+            confined_to(&inside, &root),
+            "una escena del catalogo se acepta"
+        );
+        assert!(
+            !confined_to(&outside, &root),
+            "una escena externa se rechaza"
+        );
+        assert!(!confined_to(&root.join("no-existe.json"), &root));
+        assert!(!confined_to(&root, &root), "un directorio no es una escena");
+
+        let _ = std::fs::remove_file(&outside);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

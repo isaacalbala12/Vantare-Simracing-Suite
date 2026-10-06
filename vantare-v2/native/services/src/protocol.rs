@@ -100,6 +100,12 @@ pub enum Reply {
     Error {
         message: String,
     },
+    /// El servidor rechazó la emisión por límite de dispositivos. Es una salida
+    /// concreta (`Command::DeviceReset`), no un fallo cualquiera: viaja como
+    /// variante propia para que el Hub decida sin leer el texto.
+    DeviceLimit {
+        message: String,
+    },
 }
 
 /// Estado local tras confirmar un informe; conservar otro borrador no es un fallo.

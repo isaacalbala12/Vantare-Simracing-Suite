@@ -41,7 +41,7 @@ func TestAuthTokenRejectsExpiredAttempt(t *testing.T) {
 	srv.authAttempts.mu.Unlock()
 
 	body := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"` + attempt.State + `"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
+	req := loopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -70,7 +70,7 @@ func TestAuthTokenConsumesAttemptAtomically(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
+			req := loopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
 			rr := httptest.NewRecorder()
 			srv.Handler().ServeHTTP(rr, req)
 			statuses <- rr.Code

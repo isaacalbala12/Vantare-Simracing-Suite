@@ -6,9 +6,27 @@ use std::time::Duration;
 
 use vantare_domain::{Adapter, AdapterError, Observation, SourceKind};
 
-use super::shm::{Page, config_path};
-use super::translate::{PAGE_SIZES, Translator};
-use super::udp;
+use super::{
+    shm::{Page, config_path},
+    translate::{PAGE_SIZES, Translator},
+    udp,
+};
+
+/// Tope de `broadcasting.json`. La configuracion de ACC es diminuta; sin cota,
+/// un fichero enorme en esa ruta agota la memoria del nucleo.
+const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
+
+/// Lectura acotada de un fichero de configuracion del usuario.
+fn read_bounded(path: &std::path::Path) -> io::Result<Vec<u8>> {
+    use std::io::Read;
+    let file = std::fs::File::open(path)?;
+    let mut bytes = Vec::new();
+    file.take(MAX_CONFIG_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_CONFIG_BYTES {
+        return Err(io::Error::other("configuracion de ACC demasiado grande"));
+    }
+    Ok(bytes)
+}
 
 #[cfg(test)]
 #[path = "../../../tests/acc/live.rs"]
@@ -79,7 +97,7 @@ impl Acc {
         if self.socket.is_none()
             && let Some(path) = &self.config
         {
-            match std::fs::read(path) {
+            match read_bounded(path) {
                 Ok(bytes) if !bytes.iter().all(u8::is_ascii_whitespace) => {
                     let c = udp::config(&bytes)?;
                     let socket = UdpSocket::bind("127.0.0.1:0")?;

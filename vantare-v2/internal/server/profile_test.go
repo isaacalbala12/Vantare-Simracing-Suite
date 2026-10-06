@@ -15,7 +15,7 @@ import (
 func TestProfileV3MissingParam(t *testing.T) {
 	dir := t.TempDir()
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile-v3", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile-v3", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -28,7 +28,7 @@ func TestProfileV3MissingParam(t *testing.T) {
 func TestProfileV3RejectsPathTraversal(t *testing.T) {
 	dir := t.TempDir()
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile-v3?profile=..%2Fsecret.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile-v3?profile=..%2Fsecret.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -44,7 +44,7 @@ func TestProfileV3RejectsPathTraversal(t *testing.T) {
 func TestProfileV3NotFound(t *testing.T) {
 	dir := t.TempDir()
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile-v3?profile=missing.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile-v3?profile=missing.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -71,7 +71,7 @@ func TestProfileV3SuccessFromFixtures(t *testing.T) {
 			copyFixture(t, fixture.source, target)
 
 			srv := server.New(server.ServerConfig{CfgDir: dir})
-			req := httptest.NewRequest(http.MethodGet, "/api/profile-v3?profile="+fixture.name+".json", nil)
+			req := newLoopbackRequest(http.MethodGet, "/api/profile-v3?profile="+fixture.name+".json", nil)
 			rr := httptest.NewRecorder()
 			srv.Handler().ServeHTTP(rr, req)
 
@@ -119,7 +119,7 @@ func TestProfileV3EmptyProfile(t *testing.T) {
 	}
 
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile-v3?profile=empty.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile-v3?profile=empty.json", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -146,7 +146,7 @@ func TestProfileV3InvalidProfile(t *testing.T) {
 	}
 
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile-v3?profile=invalid.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile-v3?profile=invalid.json", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

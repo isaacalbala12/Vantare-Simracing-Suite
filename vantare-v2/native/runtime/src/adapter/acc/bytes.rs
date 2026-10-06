@@ -20,7 +20,10 @@ pub(super) fn wide_at(bytes: &[u8], offset: usize, size: usize) -> String {
         .map(|b| u16::from_le_bytes([b[0], b[1]]))
         .take_while(|u| *u != 0)
         .collect();
-    String::from_utf16_lossy(&units).trim().to_owned()
+    // Los nombres llegan del simulador y en multijugador los elige otro
+    // usuario: se quitan las marcas bidireccionales y de anchura cero antes de
+    // que lleguen a pintarse.
+    vantare_domain::text::sanitize_display(&String::from_utf16_lossy(&units))
 }
 
 /// Cursor acotado del protocolo: cada lectura valida su longitud antes de avanzar.
@@ -55,6 +58,28 @@ impl Reader<'_> {
 
     pub(super) fn text(&mut self) -> io::Result<String> {
         let n = usize::from(self.u16()?);
-        Ok(String::from_utf8_lossy(self.take(n)?).into_owned())
+        // Mismo saneado que `wide_at`: son DOS decodificadores del mismo campo y
+        // el nombre del piloto de la lista UDP entra por aqui. Sin esto, un
+        // piloto remoto elige un nombre con U+202E o anchura cero y llega al
+        // overlay sin filtrar, que es justo lo que `domain::text` defiende.
+        Ok(vantare_domain::text::sanitize_display(
+            &String::from_utf8_lossy(self.take(n)?),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Reader;
+
+    #[test]
+    fn udp_names_remove_bidirectional_overrides() {
+        let name = "Lo\u{202e}pez";
+        let mut bytes = u16::try_from(name.len())
+            .expect("nombre corto")
+            .to_le_bytes()
+            .to_vec();
+        bytes.extend_from_slice(name.as_bytes());
+        assert_eq!(Reader(&bytes).text().expect("texto UDP"), "Lopez");
     }
 }

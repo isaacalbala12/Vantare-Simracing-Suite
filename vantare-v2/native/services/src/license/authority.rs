@@ -57,15 +57,28 @@ pub struct Authority {
 
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
-        let saved = match store.load::<Saved>("authority") {
-            Ok(saved) if saved.version == 1 => saved,
-            Err(Error::NotFound) => Saved {
+        let saved = match store.load_for_restore::<Saved>("authority") {
+            Ok(Some(saved)) if saved.version == 1 => saved,
+            Ok(None) | Err(Error::NotFound) => Saved {
                 version: 1,
                 clock: Clock::default(),
                 game: None,
                 invalidated: true,
             },
-            _ => return Err(Error::Storage),
+            // Se aparta en vez de morir en cada arranque. El defecto es el
+            // conservador: `invalidated` deja puesta la lapida anti-rollback,
+            // asi que apartar el fichero no concede nada al atacante.
+            Ok(_) => {
+                store.quarantine("authority");
+                Saved {
+                    version: 1,
+                    clock: Clock::default(),
+                    game: None,
+                    invalidated: true,
+                }
+            }
+
+            Err(error) => return Err(error),
         };
         Ok(Self {
             clock: saved.clock,
@@ -335,5 +348,34 @@ impl Authority {
                 invalidated: self.invalidated,
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Un documento ilegible apartaba la autoridad para SIEMPRE: cada arranque
+    /// devolvia `Err` y la unica salida era que alguien borrase el fichero a
+    /// mano. Ahora se aparta y se arranca con el defecto.
+    #[test]
+    fn a_corrupt_authority_is_quarantined_and_the_service_still_starts() {
+        let (_root, store) = crate::test_store("authority-quarantine");
+        // Version distinta de 1: JSON valido con contenido que la puerta rechaza.
+        store
+            .save("authority", &serde_json::json!({"version": 2}))
+            .expect("guardar documento invalido");
+
+        let authority = Authority::restore(&store).expect("debe arrancar");
+        assert!(
+            authority.invalidated,
+            "el defecto debe ser el CONSERVADOR: lapida anti-rollback puesta"
+        );
+        assert!(
+            matches!(store.load::<Saved>("authority"), Err(Error::NotFound)),
+            "el documento invalido debe quedar apartado, no ignorado"
+        );
+        // Y el segundo arranque tampoco tropieza.
+        assert!(Authority::restore(&store).is_ok());
     }
 }

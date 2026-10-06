@@ -269,17 +269,20 @@ impl Exchange {
 
 impl Account {
     pub fn restore(oauth: OAuth, store: &Store) -> Result<Self> {
-        let session = match store.load::<Saved>("account") {
-            Ok(Saved::SignedOut) | Err(Error::NotFound) => None,
-            Ok(Saved::SignedIn {
+        let session = match store.load_for_restore::<Saved>("account") {
+            Ok(Some(Saved::SignedOut) | None) | Err(Error::NotFound) => None,
+            Ok(Some(Saved::SignedIn {
                 version: 1,
                 session,
-            }) if session.identity.issuer == oauth.issuer.as_str()
+            })) if session.identity.issuer == oauth.issuer.as_str()
                 && session.client_id == oauth.client_id =>
             {
                 Some(session)
             }
-            Ok(_) => return Err(Error::Storage),
+            Ok(_) => {
+                store.quarantine("account");
+                None
+            }
             Err(error) => return Err(error),
         };
         Ok(Self {

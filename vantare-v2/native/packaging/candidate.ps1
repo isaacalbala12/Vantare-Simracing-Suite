@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start')][string]$Operation = 'Status',
@@ -20,7 +20,80 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 $script:NativeBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
-$script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
+# El Hub resuelve su catalogo de escenas en runtime: si los fixtures no viajan
+# junto al ejecutable, `vantare-hub.exe` no abre ventana en un equipo donde solo
+# se instalo el paquete. Se enumeran aqui para que entren tambien en el
+# manifiesto y en la verificacion de reinstalacion.
+$script:NativeFixtures = @(
+    'bin/fixtures/broadcast-tower-crossing.scene.json'
+    'bin/fixtures/broadcast-tower-default.scene.json'
+    'bin/fixtures/broadcast-tower-exit-reentry.scene.json'
+    'bin/fixtures/broadcast-tower-fast-inversion.scene.json'
+    'bin/fixtures/broadcast-tower-overtake-sequence.scene.json'
+    'bin/fixtures/broadcast-tower-stable-values.scene.json'
+    'bin/fixtures/broadcast-tower.snapshot.json'
+    'bin/fixtures/car-damage-numbers-default.scene.json'
+    'bin/fixtures/car-damage-numbers.snapshot.json'
+    'bin/fixtures/car-damage-visual-default.scene.json'
+    'bin/fixtures/car-damage-visual.snapshot.json'
+    'bin/fixtures/delta-cross-zero.scene.json'
+    'bin/fixtures/delta-default.scene.json'
+    'bin/fixtures/delta-new-best.scene.json'
+    'bin/fixtures/delta-trace-default.scene.json'
+    'bin/fixtures/delta-trace.sequence.json'
+    'bin/fixtures/delta-trace.snapshot.json'
+    'bin/fixtures/delta.snapshot.json'
+    'bin/fixtures/fastest-lap-alert.scene.json'
+    'bin/fixtures/fastest-lap-default.scene.json'
+    'bin/fixtures/fastest-lap.snapshot.json'
+    'bin/fixtures/fuel-strategy-default.scene.json'
+    'bin/fixtures/fuel-strategy.snapshot.json'
+    'bin/fixtures/head-to-head-default.scene.json'
+    'bin/fixtures/head-to-head.snapshot.json'
+    'bin/fixtures/input-telemetry-default.scene.json'
+    'bin/fixtures/input-telemetry.sequence.json'
+    'bin/fixtures/input-telemetry.snapshot.json'
+    'bin/fixtures/layout.json'
+    'bin/fixtures/lmu47.snapshot.json'
+    'bin/fixtures/multiclass-relative-default.scene.json'
+    'bin/fixtures/multiclass-relative.snapshot.json'
+    'bin/fixtures/pedals-clutch.scene.json'
+    'bin/fixtures/pedals-default.scene.json'
+    'bin/fixtures/pedals-lap.scene.json'
+    'bin/fixtures/pedals-telemetry-default.scene.json'
+    'bin/fixtures/pedals-telemetry.snapshot.json'
+    'bin/fixtures/pedals.snapshot.json'
+    'bin/fixtures/racing-flags-default.scene.json'
+    'bin/fixtures/racing-flags.snapshot.json'
+    'bin/fixtures/radar-default.scene.json'
+    'bin/fixtures/radar-nearby-traffic.scene.json'
+    'bin/fixtures/radar.snapshot.json'
+    'bin/fixtures/relative-default.scene.json'
+    'bin/fixtures/relative-functional-cross-ahead.scene.json'
+    'bin/fixtures/relative-functional-cross-behind.scene.json'
+    'bin/fixtures/relative-functional-fast-reversal.scene.json'
+    'bin/fixtures/relative-functional-lap-difference.scene.json'
+    'bin/fixtures/relative-functional-sequence.scene.json'
+    'bin/fixtures/relative-functional-stable-values.scene.json'
+    'bin/fixtures/relative-functional-window-cycle.scene.json'
+    'bin/fixtures/relative.snapshot.json'
+    'bin/fixtures/standings-default.scene.json'
+    'bin/fixtures/standings-functional-battle.scene.json'
+    'bin/fixtures/standings-functional-combined.scene.json'
+    'bin/fixtures/standings-functional-personal-best.scene.json'
+    'bin/fixtures/standings-functional-pit.scene.json'
+    'bin/fixtures/standings-functional-position.scene.json'
+    'bin/fixtures/standings-functional-session-best.scene.json'
+    'bin/fixtures/standings-functional-window.scene.json'
+    'bin/fixtures/standings-legacy.snapshot.json'
+    'bin/fixtures/standings.snapshot.json'
+    'bin/fixtures/track-map-default.scene.json'
+    'bin/fixtures/track-map.snapshot.json'
+    'bin/fixtures/track-weather-default.scene.json'
+    'bin/fixtures/track-weather.snapshot.json'
+    'bin/fixtures/workshop-sources.json'
+)
+$script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + $script:NativeFixtures + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
 
 function Get-NativeHash([string]$Path) {
     # Streaming .NET: el host instalado no depende del autoload de Get-FileHash.
@@ -413,6 +486,13 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if ($LASTEXITCODE -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")
         [IO.File]::WriteAllText((Join-Path $payload "bin/$bin.exe.sha256"), "$(Get-NativeHash $source)  $bin.exe`n", [Text.UTF8Encoding]::new($false))
+    }
+    $fixturesRoot = Join-Path $native 'ui/fixtures'
+    foreach ($fixture in $script:NativeFixtures) {
+        $relative = $fixture.Substring('bin/fixtures/'.Length)
+        $target = Join-Path $payload ('bin/fixtures/' + $relative)
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $target)) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $fixturesRoot $relative) -Destination $target
     }
     Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $payload 'candidate.ps1')
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination (Join-Path $payload 'README.md')

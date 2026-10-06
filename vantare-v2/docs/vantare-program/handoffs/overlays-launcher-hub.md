@@ -4654,3 +4654,104 @@ número de widgets. ETA no se inventa: solo se representa el progreso existente.
 `plan.md` está ausente en esta base y no se crea un roadmap paralelo.
 Sin push, PR, CI remota, merge, promoción ni release; beta de Isaac intacta.
 La aceptación y actualización conjunta de #1470 corresponden al orquestador.
+
+### #1472 — Integración seleccionada de seguridad (2026-10-06)
+
+Worktree aislado `C:/tmp/vw3-1472-integracion`, rama
+`vantareapp/isa-1472-seguridad-integracion`, base `136a90fa`.
+Manda `C:/tmp/beta/r4/revision-auditoria-1472.md`; no se integran #5 ni #7.
+Primer hito: fixtures junto al ejecutable, lista fija del catálogo actual en
+packaging y recuperación de selección/escena/cursor inválidos del Taller.
+Navegación y derechos conservan el Hub; guardados con lock del SO y temporal
+exclusivo. `domain::text` se adelanta desde #2 porque #4 lo consume.
+Los tests del Launcher limpian también los locks persistentes en sus temporales.
+Evidencia y validación conjunta: `C:/tmp/1472-integracion-evidence/` e informe
+`C:/tmp/fase2/informe-1472-integracion.md`. Target propio en E: mediante junction;
+Nextest/lifecycle usan su ruta real para mantener la identidad Win32 del proceso.
+`docs/roadmap/plan.md` no existe en esta base; no se inventa otro roadmap.
+Entrega local para revisión del orquestador; sin push, PR, merge ni promoción.
+Segundo hito: Host loopback en Go heredado, checkout fijado, secretos solo en el step y .dockerignore; DEPLOY_SURFACE conservado.
+Tercer hito: capacidades del Hub (11), desconocidas ignoradas, cotas y cuarentena solo de JSON/versión/validación; errores de E/S se conservan y screenshots::validate permanece.
+Cuarto hito: cotas de identidades/lecturas/tar y pruebas codec/LMU; rights/mod.rs conserva íntegro el Hub y se recolocan CLOCK_WRAP_FROM/read_bounded.
+Quinto hito: Reader::text de ACC sanea U+202E, con test unitario; no se incorpora el fuzz de 863 líneas.
+Sexto hito (#9+#10 juntos): allowlist solo para enlaces de PUBLIC/ProgramData, los del usuario se confían; DeviceLimit tipado, botón principal y test semántico de cuarentena del roadmap repuesto.
+
+Validación final (cola `compilar.ps1`, Rust `-j 2`): fmt/check/clippy
+`-D warnings` PASS (`final5`), Nextest 1181 PASS y 6 omitidos preexistentes,
+lifecycle PASS (`final6`), `go test ./...` PASS. Go necesitó el `frontend/dist`
+ya construido del checkout principal para el embed; no se modificó frontend.
+`packaging/tests.ps1` PASS: 174 comprobaciones en Debug y 174 en Release.
+Release público real, con `parity-capture` para QA, compilado/empaquetado con
+exit 0; candidato local `0.0.0-local`, `source_sha=136a90fa`, `source_dirty=true`.
+No es una release publicada ni un paquete construido desde un commit limpio.
+Arranque desde `C:/tmp/1472-paquete` PASS: ventana en 3,81 s, datos propios,
+captura `primera-paquete.png` inspeccionada; sin renombrar fuentes del repo.
+Standings F1 PASS: 0/292160 píxeles, umbral 0; captura, referencia y diff
+inspeccionados: misma cabecera, siete filas, nombres/datos y pie Sebring.
+Hash PNG de ambos: `2b63ea4a40309fedd14337073a289c8767bd3f48c450c3fce0945a2ca34ba7df`.
+El vector heredado del test de timestamp se adaptó al `MAX_FRAME` del Hub
+(128 KiB); conserva la exigencia de superar el marco real, sin debilitarla.
+Fallos previos conservados: identidad IPC de la junction, limpieza de locks,
+disco lleno, test de timestamp con marco antiguo y enlace de exe aún vivo.
+Debug abortó por una aserción de accesibilidad de GPUI antes de abrir; Release
+abrió. La primera prueba Release con ventana oculta no midió apertura visible;
+la repetición con ventana normal y la misma copia verificada por hash sí pasó.
+Queda el warning Release de `analysis/view.rs` (`cx`), fuera del diff.
+Por falta de espacio, evidencia voluminosa y paquetes propios están en
+`E:/tmp/1472-integracion-evidence/` y `E:/tmp/1472-integracion-package-release/`;
+logs/capturas/lista de 51 archivos en `C:/tmp/1472-integracion-evidence/`.
+Manual: abrir el Hub copiado con datos aislados, recorrer Taller y guardar una
+escena; repetir con selección obsoleta. Un `.lock` residual permite guardar;
+un lock activo conserva el rechazo. Verificar enlaces compartidos/usuario y
+el botón de DeviceLimit con el flujo real de renovación antes de promoción.
+Sin LMU vivo, DPI ni DeviceLimit real; no se acredita rendimiento o servicios
+reales. La cuarentena de installation y los hallazgos de voz/radio de la revisión
+quedan fuera del alcance seleccionado para el orquestador.
+Sin gates frontend (no cambió TS/CSS), CI remota, push, PR, merge, promoción,
+release ni acción externa fuera del alcance. Siguiente: revisión aislada del
+orquestador; no integrar en nightly sin autorización de Isaac.
+
+### #1470 — Unión ronda 4 y seguridad seleccionada (1470-union4, 2026-10-07)
+
+Worktree `C:/tmp/vw3-1470/vantare-v2`, rama aislada
+`vantareapp/isa-1470-hub-rediseno`, base limpia `136a90fa`.
+Brief `C:/tmp/beta/r4/brief-1470-union4.md`; notas propias ausentes durante
+la ejecución. Merges locales en orden: `84a11584` incorpora `7c2ba572`,
+`aebe102f` incorpora `79d0c178`; tercer merge incorpora `d4a4e73a`
+(SHA final en informe externo). Único conflicto documental del tercer merge:
+se conservan completas las entregas de cortes y seguridad. Ninguna resolución
+altera código; los cruces automáticos de calendario/cuenta/Testing se revisan.
+
+Gates completos por cola/-j2/target propio: fmt --all/check/clippy -D warnings
+PASS; Nextest1182/1182 PASS810,550s, seis skips configurados, golden
+ACC616,975s PASS; lifecycle5Hub+12UI PASS al primer intento.
+Go ./... inicial sin frontend/dist; se reutilizan assets reales de1472
+con árbol frontend Git idéntico `1abfb3d0`. Un timeout SQLite en la repetición
+paralela; suite completa `go test -p 1 ./...` PASS, sin cambios de tests.
+Gofmt verificado. Packaging actual contra artefacto Release heredado1472:
+PowerShell7 falla por ruta PSHOME/powershell.exe; Windows PowerShell5.1
+PASS174 checks. Esto no demuestra un nuevo paquete Release de Unión4.
+
+QA prueba/parity-capture PASS: once binarios0.1.0-beta.1/testers,
+DuckDB DLL copiada; warning cx heredado solo bajo captura. No distribuir.
+Standings F1:0/292160px, threshold0/maxpercent0/delta0; captura, referencia
+y mapa MIRADOS. No es prueba Wails ni LMU live/rendimiento.
+70 capturas (35x1920x1080 y35x1440x900), galerías y hojas resumen MIRADAS.
+Inicio mantiene fit de Standings/Actividad; Launcher conserva cadena y estados;
+Studio envuelve Fuel a1440; cabeceras de Calendario/Testing abarcan las columnas.
+Capturas ocultas bloquean Inicio: timeout90s y árbol propio cerrado, visible
+PASS. Un cierre de paleta falla tras guardar PNG; repetición PASS, log conservado.
+Paquete QA copiado `C:/tmp/1470-union4-paquete`: ventana login en3,72s,
+y captura Inicio desde copia con fixtures locales; ambas imágenes MIRADAS.
+
+Evidencia `C:/tmp/1470-union4-evidence/`, informe
+`C:/tmp/fase2/informe-1470-union4.md`; diffs/lista65archivos y hashes externos.
+Manual: recorrer Hub/Ajustes a1920/1440, desplazar inspector/listas, verificar
+canalTesters/versión, cabeceras y estados; ejecutar solo copia QA con datos aislados.
+Pendientes aceptación de Isaac/orquestador, DPI125/150, servicios/DeviceLimit
+reales y Release de esta unión. Rutas beta ocultas abren Inicio; calendario
+conserva catálogo caducado/archivo QA y Roadmap datos demo. No certifican módulos.
+plan.md ausente en esta base; no se crea otro roadmap. Sin gates frontend
+(sin TS/CSS), CI remota ni LMU vivo. Rama remota ausente verificada.
+Solo merges locales autorizados, sin push/PR/promoción/release ni cambios a la
+beta de Isaac/checkout principal; siguiente: revisión aislada del orquestador.

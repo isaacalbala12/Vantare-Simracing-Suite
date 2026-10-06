@@ -573,4 +573,43 @@ pub(crate) mod tests {
         // Época distinta = productor reiniciado: aporta aunque la secuencia sea menor.
         assert!(r(2, 1).is_newer(Some(r(1, 5))));
     }
+
+    /// El lector de marcos del pipe es la frontera mas expuesta del nucleo:
+    /// acepta bytes de cualquier proceso del usuario que abra el pipe, y un
+    /// panico aqui tumba al que publica la telemetria.
+    #[test]
+    fn hostile_frames_are_rejected_without_panicking_or_allocating() {
+        // Un prefijo de longitud enorme con el cuerpo vacio. Si el tope se
+        // comprobase DESPUES de `vec![0; len]`, esto agotaria la memoria: la
+        // prueba pasa precisamente porque no se reserva nada.
+        let mut hostile = u32::MAX.to_le_bytes().to_vec();
+        hostile.extend_from_slice(b"{}");
+        assert!(read_message(&mut Cursor::new(hostile)).is_err());
+
+        // Bytes arbitrarios: nunca panico.
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..20_000 {
+            let len = usize::try_from(next() % 64).unwrap_or(0);
+            let mut bytes = vec![0_u8; len];
+            for byte in &mut bytes {
+                *byte = (next() & 0xff) as u8;
+            }
+            let _ = read_message(&mut Cursor::new(bytes));
+        }
+
+        // Marcos validos con un byte cambiado: tampoco.
+        let valid = frame(&Message::Ping);
+        for _ in 0..20_000 {
+            let mut bytes = valid.clone();
+            let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+            bytes[at] = (next() & 0xff) as u8;
+            let _ = read_message(&mut Cursor::new(bytes));
+        }
+    }
 }

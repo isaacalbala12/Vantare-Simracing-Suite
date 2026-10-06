@@ -19,7 +19,7 @@ func TestCalendarEndpointReturnsPersistedCalendar(t *testing.T) {
 	}
 
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/calendar", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/calendar", nil)
 	recorder := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(recorder, req)
 

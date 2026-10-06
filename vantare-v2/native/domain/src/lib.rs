@@ -41,3 +41,4 @@ pub use model::{
     Telemetry, UNKNOWN_SIMULATOR, Weather, degrade,
 };
 pub use quality::Quality;
+pub mod text;

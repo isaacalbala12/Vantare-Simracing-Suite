@@ -1461,7 +1461,7 @@ mod tests {
         assert!(restarted.open(path.clone()).is_err());
         assert_eq!(restarted.document.as_ref().expect("doc").bytes(), original);
         std::fs::remove_file(path).expect("remove own file");
-        std::fs::remove_dir(directory).expect("remove empty directory");
+        std::fs::remove_dir_all(directory).expect("limpiar temporal");
     }
     #[test]
     fn numbers_are_explicit_and_nonfinite_values_are_rejected() {

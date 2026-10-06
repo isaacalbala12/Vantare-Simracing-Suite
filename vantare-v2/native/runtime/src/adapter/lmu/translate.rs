@@ -23,6 +23,10 @@ mod signals_tests;
 /// Un hueco que reaparece con el mismo piloto y clase dentro de este número de
 /// frames es el mismo coche (parpadeo de la parrilla); pasado, es otro.
 const SLOT_GRACE_FRAMES: u64 = 30;
+/// Tope de identidades de piloto y clase recordadas a la vez. Una carrera
+/// legitima no pasa de 104 coches; el margen absorbe entradas y salidas.
+const IDENTITY_BUDGET: usize = 512;
+
 /// El reloj de sesión da la vuelta a las 24 h; un retroceso desde ahí a menos
 /// de un minuto es ese giro, no una sesión nueva.
 const CLOCK_WRAP_FROM: Duration = Duration::from_hours(24);
@@ -258,6 +262,12 @@ impl Translator {
             self.session += 1;
             self.frame_count = 0;
             self.slots.clear();
+            // Las identidades de piloto y clase son POR SESION. Sin limpiarlas
+            // aqui, los mapas crecian durante toda la vida del proceso: quien
+            // pueda escribir la memoria del simulador acuna hasta MAX_VEHICLES
+            // nombres nuevos por fotograma, a 60 Hz.
+            self.drivers.clear();
+            self.classes.clear();
         }
     }
 
@@ -291,6 +301,16 @@ impl Translator {
     }
 
     fn car(&mut self, vehicle: &Vehicle, id: CarId, number: String, stale: bool) -> Car {
+        // Tope de identidades recordadas. Una carrera legitima no pasa de
+        // `frame::MAX_VEHICLES` pilotos; el margen absorbe entradas y salidas.
+        // Sin tope, quien escriba la memoria del simulador acuna un nombre
+        // nuevo por coche y fotograma y el mapa crece durante toda la sesion.
+        // Al agotarse se vacia: solo pierde estabilidad de id quien esta
+        // excediendo el maximo de coches de una carrera real.
+        if self.drivers.len() >= IDENTITY_BUDGET {
+            self.drivers.clear();
+            self.classes.clear();
+        }
         let next_driver = self.drivers.len();
         let driver = *self
             .drivers
@@ -953,5 +973,31 @@ mod tests {
             assert_eq!(dataless, Capability::Supported);
         }
         assert_eq!(caps.session_clock, Capability::Fresh);
+    }
+
+    /// Los nombres de piloto vienen de la memoria del simulador, asi que los
+    /// mapas de identidad son superficie de crecimiento. Sin cota, quien pueda
+    /// escribir esa memoria acuna un nombre nuevo por fotograma y los mapas
+    /// crecen durante toda la sesion.
+    #[test]
+    fn mutated_driver_names_cannot_grow_the_identity_maps_without_bound() {
+        let mut translator = translator();
+        // El reloj AVANZA a proposito: asi no cuenta como sesion nueva y el
+        // unico limite posible es el presupuesto de identidades.
+        for round in 0..2_000_u32 {
+            let mut frame = REAL_44.to_vec();
+            frame[1_700..1_708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let name = format!("p{round:08}");
+            let at = SCORING_BASE + 4;
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+            frame[at + name.len()] = 0;
+            let _ = translator.observe(&frame, BUILD, ms(u64::from(round) * 16));
+        }
+        assert!(
+            translator.drivers.len() <= IDENTITY_BUDGET,
+            "el mapa de pilotos debe quedar acotado, y tiene {}",
+            translator.drivers.len()
+        );
+        assert!(translator.classes.len() <= IDENTITY_BUDGET);
     }
 }

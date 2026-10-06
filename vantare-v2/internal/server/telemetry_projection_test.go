@@ -25,7 +25,7 @@ func TestServerOverlayProjectionRouteRetired(t *testing.T) {
 	// historico porque ya no existe el producto que la construia.
 	const retiredOverlayRoute = "/telemetry/overlay/projection"
 	srv := server.New(server.ServerConfig{})
-	request := httptest.NewRequest(
+	request := newLoopbackRequest(
 		http.MethodGet,
 		retiredOverlayRoute,
 		nil,
@@ -65,7 +65,7 @@ func TestServerExposesCanonicalStrategyProjectionSSE(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	request := httptest.NewRequest(
+	request := newLoopbackRequest(
 		http.MethodGet,
 		telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),
 		nil,
@@ -112,7 +112,7 @@ func TestServerExposesOverlayV2PublisherSSE(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	request := httptest.NewRequest(http.MethodGet, telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2), nil).WithContext(ctx)
+	request := newLoopbackRequest(http.MethodGet, telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2), nil).WithContext(ctx)
 	request.RemoteAddr = "127.0.0.1:45678"
 	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 1}
 	srv := server.New(server.ServerConfig{OverlayV2Publishers: registry})
@@ -198,7 +198,7 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, test.route, nil)
+			request := newLoopbackRequest(http.MethodGet, test.route, nil)
 			request.RemoteAddr = test.remoteAddr
 			response := httptest.NewRecorder()
 			test.server.Handler().ServeHTTP(response, request)

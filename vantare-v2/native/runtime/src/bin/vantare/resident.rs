@@ -450,7 +450,7 @@ mod tests {
             .expect("cerrar solo propia");
         fs::remove_file(status_path(&settings)).expect("limpiar estado");
         fs::remove_file(executable).expect("limpiar fixture");
-        fs::remove_dir(dir).expect("limpiar directorio propio");
+        fs::remove_dir_all(dir).expect("limpiar directorio propio y locks del SO");
     }
 
     #[test]
@@ -515,6 +515,6 @@ mod tests {
         owner.reload();
         assert!(owner.status.profiles.is_empty());
         fs::remove_file(status_path(&path)).expect("limpiar estado");
-        fs::remove_dir(dir).expect("limpiar directorio propio");
+        fs::remove_dir_all(dir).expect("limpiar directorio propio y locks del SO");
     }
 }

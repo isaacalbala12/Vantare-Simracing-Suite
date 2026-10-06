@@ -18,7 +18,7 @@ import (
 
 func TestHealth(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -37,7 +37,7 @@ func TestHealth(t *testing.T) {
 
 func TestHealthJSONEq(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -54,7 +54,7 @@ func TestHealthJSONEq(t *testing.T) {
 
 func TestOverlayNoDist(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/overlay?profile=test.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/overlay?profile=test.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -66,7 +66,7 @@ func TestOverlayNoDist(t *testing.T) {
 
 func TestProfileMissingParam(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -78,7 +78,7 @@ func TestProfileMissingParam(t *testing.T) {
 
 func TestProfileRejectsPathTraversal(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile=../../secret.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile=../../secret.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -91,7 +91,7 @@ func TestProfileRejectsPathTraversal(t *testing.T) {
 func TestProfileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile=nonexistent.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile=nonexistent.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -117,7 +117,7 @@ func TestProfileSuccess(t *testing.T) {
 	}
 
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile=test-profile.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile=test-profile.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -154,7 +154,7 @@ func TestOverlayServesDedicatedEntry(t *testing.T) {
 	}
 	distFS := os.DirFS(dir)
 	srv := server.New(server.ServerConfig{DistFS: distFS})
-	req := httptest.NewRequest(http.MethodGet, "/overlay?profile=test.json", nil)
+	req := newLoopbackRequest(http.MethodGet, "/overlay?profile=test.json", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -186,7 +186,7 @@ func TestStaticAssetServedFromDist(t *testing.T) {
 	}
 	distFS := os.DirFS(dir)
 	srv := server.New(server.ServerConfig{DistFS: distFS})
-	req := httptest.NewRequest(http.MethodGet, "/assets/index-test.js", nil)
+	req := newLoopbackRequest(http.MethodGet, "/assets/index-test.js", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -215,7 +215,7 @@ func TestProfileResolvesByJSONIDWhenFilenameDiffers(t *testing.T) {
 	}
 
 	srv := server.New(server.ServerConfig{CfgDir: dir})
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile=default-streaming", nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile=default-streaming", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -236,7 +236,7 @@ func TestProfileResolvesByJSONIDWhenFilenameDiffers(t *testing.T) {
 
 func TestMethodNotAllowed(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodPost, "/health", nil)
+	req := newLoopbackRequest(http.MethodPost, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -248,7 +248,7 @@ func TestMethodNotAllowed(t *testing.T) {
 
 func TestUnknownRoute(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/unknown", nil)
+	req := newLoopbackRequest(http.MethodGet, "/unknown", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -261,7 +261,7 @@ func TestUnknownRoute(t *testing.T) {
 func TestProfileRejectsAbsolutePathWindows(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
 	abs := "C:\\Windows\\system32\\drivers\\etc\\hosts"
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile="+abs, nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile="+abs, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -274,7 +274,7 @@ func TestProfileRejectsAbsolutePathWindows(t *testing.T) {
 func TestProfileRejectsAbsolutePathUnix(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
 	abs := "/etc/passwd"
-	req := httptest.NewRequest(http.MethodGet, "/api/profile?profile="+abs, nil)
+	req := newLoopbackRequest(http.MethodGet, "/api/profile?profile="+abs, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -293,7 +293,7 @@ func authAttemptReq(srv *server.Server, body string) *http.Request {
 	}
 	body = strings.TrimRight(body, " \t\r\n}") + `, "attempt_id":"` + attempt.ID +
 		`", "provider":"` + attempt.Provider + `", "state":"` + attempt.State + `"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
+	req := newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
@@ -318,7 +318,7 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodGet, attempt.RedirectURL, nil)
+	req := newLoopbackRequest(http.MethodGet, attempt.RedirectURL, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -356,7 +356,7 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 
 func TestAuthCallbackRejectsUnsolicitedLogin(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)
+	req := newLoopbackRequest(http.MethodGet, "/auth/callback", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -374,7 +374,7 @@ func TestAuthCallbackRejectsProviderSubstitution(t *testing.T) {
 	}
 	callback := strings.Replace(attempt.RedirectURL, "provider=google", "provider=discord", 1)
 	rr := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, callback, nil))
+	srv.Handler().ServeHTTP(rr, newLoopbackRequest(http.MethodGet, callback, nil))
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("provider substitution callback = %d, want 401", rr.Code)
 	}
@@ -507,7 +507,7 @@ func TestAuthTokenRejectsMissingAttempt(t *testing.T) {
 	em := &testEmitter{}
 	srv := server.New(server.ServerConfig{Emitter: em})
 	payload := `{"access_token":"tok"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req := newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
@@ -529,7 +529,7 @@ func TestAuthTokenRejectsInvalidAttemptState(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"attacker-state"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
+	req := newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 
@@ -552,7 +552,7 @@ func TestAuthTokenRejectsProviderSubstitution(t *testing.T) {
 	}
 	payload := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"discord","state":"` + attempt.State + `"}`
 	rr := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(payload)))
+	srv.Handler().ServeHTTP(rr, newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(payload)))
 	if rr.Code != http.StatusUnauthorized || len(em.calls) != 0 {
 		t.Fatalf("provider substitution = %d emits=%d, want 401/0", rr.Code, len(em.calls))
 	}
@@ -567,7 +567,7 @@ func TestAuthTokenRejectsReplayedAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	body1 := `{"access_token":"tok","attempt_id":"` + attempt.ID + `","provider":"google","state":"` + attempt.State + `"}`
-	req1 := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
+	req1 := newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
 	req1.Header.Set("Content-Type", "application/json")
 	rr1 := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr1, req1)
@@ -576,7 +576,7 @@ func TestAuthTokenRejectsReplayedAttempt(t *testing.T) {
 	}
 
 	// Second request reusing the same nonce should fail.
-	req2 := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
+	req2 := newLoopbackRequest(http.MethodPost, "/auth/token", strings.NewReader(body1))
 	req2.Header.Set("Content-Type", "application/json")
 	rr2 := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr2, req2)
@@ -729,7 +729,7 @@ func TestValidateAddrRejectsLAN_172_20(t *testing.T) {
 
 func TestSecurityHeadersPresent(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -744,7 +744,7 @@ func TestSecurityHeadersPresent(t *testing.T) {
 
 func TestSecurityHeadersCSP(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := newLoopbackRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -776,7 +776,7 @@ func TestAuthCallbackSecurityHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodGet, attempt.RedirectURL, nil)
+	req := newLoopbackRequest(http.MethodGet, attempt.RedirectURL, nil)
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)

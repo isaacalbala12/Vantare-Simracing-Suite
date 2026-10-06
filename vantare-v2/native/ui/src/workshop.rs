@@ -395,7 +395,10 @@ fn default_path(kind: Kind) -> PathBuf {
 
 fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
     if kind == Kind::Relative {
-        (430.0, size.1 * 430.0 / size.0)
+        (
+            crate::relative::SIZE.0,
+            size.1 * crate::relative::SIZE.0 / size.0,
+        )
     } else {
         size
     }
@@ -1006,8 +1009,8 @@ mod tests {
         let production = overlay.wanted_size();
         overlay.workshop_layout();
         let preview = preview_size(Kind::Relative, overlay.wanted_size());
-        assert_eq!(preview.0, 430.0);
-        assert!((preview.1 - 256.0).abs() < 0.01);
+        assert_eq!(preview.0, 470.0);
+        assert!((preview.1 - 277.0).abs() < 0.01);
         assert_eq!(production, crate::relative::SIZE);
         for kind in Kind::ALL {
             Scene::new(&default_path(*kind)).expect("every selector opens a valid scene");

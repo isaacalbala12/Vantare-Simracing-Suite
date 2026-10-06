@@ -4,8 +4,22 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use url::Url;
 
+/// Un RFC3339 con fraccion de segundo y desplazamiento no llega a 40 caracteres.
+///
+/// Sin esta cota, un `published_at` de decenas de miles de digitos pasa
+/// `parse_from_rfc3339` (chrono acepta un desplazamiento arbitrariamente largo)
+/// y hace que la respuesta supere el marco del protocolo.
+const MAX_TIMESTAMP_CHARS: usize = 40;
+/// Presupuesto del documento.
+const MAX_DOCUMENT_BYTES: usize = 40_000;
+/// Presupuesto del conjunto publicado. `protocol::write` rechaza lo que supere
+/// `MAX_FRAME`, y ese rechazo deja el servicio en FAILURE con la cache ya
+/// escrita: reiniciar no lo cura, hay que borrar el fichero a mano.
+const MAX_PUBLICATION_BYTES: usize = 56 * 1024;
+
 fn validate(publication: &Publication) -> Result<()> {
     if !uuid(&publication.id)
+        || publication.published_at.chars().count() > MAX_TIMESTAMP_CHARS
         || chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_err()
         || publication.document.schema_version != 1
         || publication.document.items.len() > 40
@@ -40,7 +54,16 @@ fn validate(publication: &Publication) -> Result<()> {
     if serde_json::to_vec(&publication.document)
         .map_err(|_| Error::Protocol)?
         .len()
-        > 40_000
+        > MAX_DOCUMENT_BYTES
+    {
+        return Err(Error::TooLarge);
+    }
+    // Cota del conjunto, no solo del documento: es la que ata el tamano de la
+    // respuesta al marco del protocolo y protege ante campos futuros.
+    if serde_json::to_vec(publication)
+        .map_err(|_| Error::Protocol)?
+        .len()
+        > MAX_PUBLICATION_BYTES
     {
         return Err(Error::TooLarge);
     }
@@ -59,13 +82,19 @@ pub struct Roadmap {
 }
 impl Roadmap {
     pub fn restore(store: &Store) -> Result<Self> {
-        let cached = match store.load::<Cached>("roadmap") {
-            Ok(cache) if cache.version == 1 => {
-                validate(&cache.publication).map_err(|_| Error::Storage)?;
+        let cached = match store.load_for_restore::<Cached>("roadmap") {
+            Ok(Some(cache)) if cache.version == 1 && validate(&cache.publication).is_ok() => {
                 Some(cache)
             }
-            Err(Error::NotFound) => None,
-            _ => return Err(Error::Storage),
+            Ok(None) | Err(Error::NotFound) => None,
+            // Ilegible o invalido: se aparta y se sigue sin cache. Devolver
+            // `Err` dejaba el roadmap muerto en cada arranque para siempre.
+            Ok(_) => {
+                store.quarantine("roadmap");
+                None
+            }
+
+            Err(error) => return Err(error),
         };
         Ok(Self { cached })
     }
@@ -199,5 +228,84 @@ mod tests {
         publication.document.items[0].section = "now".into();
         publication.document.items[0].title.es = "ñ".repeat(121);
         assert!(validate(&publication).is_err());
+    }
+    #[test]
+    fn timestamp_is_bounded_and_a_full_publication_stays_inside_the_frame() {
+        let text = |count: usize| crate::protocol::roadmap_document::Localized {
+            es: "x".repeat(count),
+            en: String::new(),
+            pt: String::new(),
+            it: String::new(),
+        };
+        let mut publication: Publication = serde_json::from_value(serde_json::json!({
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "published_at": "2026-09-30T10:00:00Z",
+            "document": {"schemaVersion": 1, "items": []}
+        }))
+        .expect("test");
+        publication.document.items = (0..8)
+            .map(|index| crate::protocol::roadmap_document::Item {
+                id: format!("550e8400-e29b-41d4-a716-44665544000{index}"),
+                section: "now".into(),
+                title: text(120),
+                body: text(600),
+            })
+            .collect();
+        assert!(
+            validate(&publication).is_ok(),
+            "un documento lleno dentro de los limites debe pasar"
+        );
+        assert!(
+            serde_json::to_vec(&publication).expect("serializar").len()
+                < crate::protocol::MAX_FRAME,
+            "un conjunto valido debe caber en el marco"
+        );
+
+        // `parse_from_rfc3339` acepta desplazamientos largos, asi que el
+        // timestamp era el unico campo sin cota y desbordaba el marco: la
+        // respuesta se rechazaba al escribir y el servicio moria con la cache
+        // ya envenenada.
+        publication.published_at = format!("2026-09-30T10:00:00+{}:00", "0".repeat(25_000));
+        assert!(
+            validate(&publication).is_err(),
+            "un published_at de 25.000 digitos debe rechazarse"
+        );
+    }
+    /// Un documento invalido apartaba el servicio para siempre: cada arranque
+    /// devolvia `Err` y la unica salida era borrar el fichero a mano.
+    #[test]
+    fn a_corrupt_document_is_quarantined_and_the_service_still_starts() {
+        let (_root, store) = crate::test_store("roadmap-quarantine");
+        // Publicacion con id que no es uuid: JSON valido, contenido invalido.
+        let corrupt: Cached = serde_json::from_value(serde_json::json!({
+            "version": 1,
+            "fetched_at": 1,
+            "publication": {
+                "id": "no-es-un-uuid",
+                "published_at": "2026-09-30T10:00:00Z",
+                "document": {"schemaVersion": 1, "items": []}
+            }
+        }))
+        .expect("construir cache invalida");
+        store
+            .save("roadmap", &corrupt)
+            .expect("guardar cache invalida");
+
+        // Antes: Err en cada arranque. Ahora: arranca sin cache...
+        let roadmap = Roadmap::restore(&store).expect("debe arrancar");
+        assert!(roadmap.publication().is_none());
+
+        // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
+        // arranque tampoco tropieza.
+        assert!(
+            matches!(store.load::<Cached>("roadmap"), Err(Error::NotFound)),
+            "el documento invalido debe quedar apartado"
+        );
+        assert!(
+            Roadmap::restore(&store)
+                .expect("segundo arranque")
+                .publication()
+                .is_none()
+        );
     }
 }

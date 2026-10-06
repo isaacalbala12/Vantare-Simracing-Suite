@@ -116,7 +116,14 @@ pub fn renew(
 }
 
 pub fn reset_device(request: &DataRequest<'_>, device: &str) -> Result<()> {
-    if device.is_empty() || device.len() > 256 {
+    // La misma validacion que `renew` aplica a la huella: es la llamada que
+    // LIBERA el dispositivo activo, asi que no debe aceptar menos que el resto
+    // del modulo.
+    if device.len() != 64
+        || !device
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
         return Err(Error::InvalidCredential);
     }
     // Explicit manual action; no retry. Core must durably revoke before this call.

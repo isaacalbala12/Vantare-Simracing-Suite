@@ -287,17 +287,23 @@ fn date(value: &str) -> Result<DateTime<Utc>> {
 }
 
 fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Result<Vec<Grant>> {
-    if capabilities.len() > CAPABILITIES.len() {
-        return Err(Error::InvalidCredential);
-    }
     let mut previous = "";
     let mut roles = 0;
     let mut grants = Vec::new();
     for capability in capabilities {
-        if !CAPABILITIES.contains(&capability.key.as_str()) || capability.key.as_str() <= previous {
+        // El orden estricto y la ausencia de duplicados se mantienen: son la
+        // defensa contra una credencial mal formada.
+        if capability.key.as_str() <= previous {
             return Err(Error::InvalidCredential);
         }
         previous = &capability.key;
+        // Una capacidad que este cliente no conoce se IGNORA en vez de tumbar la
+        // credencial entera. El servidor puede ir por delante del cliente, y
+        // rechazarla degradaba a Free a un cliente de pago sin conceder nada a
+        // cambio: no se otorga nada por una capacidad desconocida.
+        if !CAPABILITIES.contains(&capability.key.as_str()) {
+            continue;
+        }
         if capability.key.starts_with("vantare.operational.") {
             roles += 1;
             if roles > 1 {

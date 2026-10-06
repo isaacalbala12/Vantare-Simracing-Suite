@@ -4590,3 +4590,4 @@ Nextest/lifecycle usan su ruta real para mantener la identidad Win32 del proceso
 `docs/roadmap/plan.md` no existe en esta base; no se inventa otro roadmap.
 Entrega local para revisión del orquestador; sin push, PR, merge ni promoción.
 Segundo hito: Host loopback en Go heredado, checkout fijado, secretos solo en el step y .dockerignore; DEPLOY_SURFACE conservado.
+Tercer hito: capacidades del Hub (11), desconocidas ignoradas, cotas y cuarentena solo de JSON/versión/validación; errores de E/S se conservan y screenshots::validate permanece.

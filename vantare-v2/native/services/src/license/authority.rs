@@ -57,15 +57,28 @@ pub struct Authority {
 
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
-        let saved = match store.load::<Saved>("authority") {
-            Ok(saved) if saved.version == 1 => saved,
-            Err(Error::NotFound) => Saved {
+        let saved = match store.load_for_restore::<Saved>("authority") {
+            Ok(Some(saved)) if saved.version == 1 => saved,
+            Ok(None) | Err(Error::NotFound) => Saved {
                 version: 1,
                 clock: Clock::default(),
                 game: None,
                 invalidated: true,
             },
-            _ => return Err(Error::Storage),
+            // Se aparta en vez de morir en cada arranque. El defecto es el
+            // conservador: `invalidated` deja puesta la lapida anti-rollback,
+            // asi que apartar el fichero no concede nada al atacante.
+            Ok(_) => {
+                store.quarantine("authority");
+                Saved {
+                    version: 1,
+                    clock: Clock::default(),
+                    game: None,
+                    invalidated: true,
+                }
+            }
+
+            Err(error) => return Err(error),
         };
         Ok(Self {
             clock: saved.clock,

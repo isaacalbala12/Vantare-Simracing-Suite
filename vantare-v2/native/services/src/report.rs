@@ -368,17 +368,25 @@ pub struct Reports {
 
 impl Reports {
     pub fn restore(store: &Store) -> Result<Self> {
-        let attempt = match store.load::<Attempt>("report-attempt") {
-            Ok(attempt) if attempt.version == 1 && crate::license::uuid(&attempt.account_id) => {
-                attempt.payload.validate().map_err(|_| Error::Storage)?;
-                screenshots::validate(&attempt.images).map_err(|_| Error::Storage)?;
-                if let Phase::Confirmed(receipt) = &attempt.phase {
-                    valid_receipt(receipt).map_err(|_| Error::Storage)?;
-                }
+        let attempt = match store.load_for_restore::<Attempt>("report-attempt") {
+            Ok(Some(attempt))
+                if attempt.version == 1
+                    && crate::license::uuid(&attempt.account_id)
+                    && attempt.payload.validate().is_ok()
+                    && screenshots::validate(&attempt.images).is_ok()
+                    && match &attempt.phase {
+                        Phase::Confirmed(receipt) => valid_receipt(receipt).is_ok(),
+                        _ => true,
+                    } =>
+            {
                 Some(attempt)
             }
-            Err(Error::NotFound) => None,
-            _ => return Err(Error::Storage),
+            Ok(None) | Err(Error::NotFound) => None,
+            Ok(_) => {
+                store.quarantine("report-attempt");
+                None
+            }
+            Err(error) => return Err(error),
         };
         Ok(Self {
             attempt,

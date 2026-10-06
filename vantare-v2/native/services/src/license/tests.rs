@@ -4,6 +4,49 @@ use ed25519_dalek::{Signer, SigningKey};
 use std::time::Duration;
 
 const SUBJECT: &str = "550e8400-e29b-41d4-a716-446655440000";
+#[test]
+fn unknown_capabilities_are_ignored_even_when_the_server_knows_more_than_the_client() {
+    let signing = key();
+    let verifier = verifier(&signing);
+    let mut credential = v1(&signing, "2027-09-30T11:00:00Z");
+    let expected: Vec<_> = verifier
+        .v1(&credential, SUBJECT, "test-device")
+        .expect("original")
+        .grants()
+        .iter()
+        .map(|grant| grant.key.clone())
+        .collect();
+    credential
+        .claims
+        .capabilities
+        .extend((0..=CAPABILITIES.len()).map(|index| Capability {
+            key: format!("vantare.future.feature-{index:03}"),
+            paid_through: "2027-09-30T11:00:00Z".into(),
+            perpetual: false,
+            scope_version: String::new(),
+        }));
+    credential
+        .claims
+        .capabilities
+        .sort_by(|a, b| a.key.cmp(&b.key));
+    credential.signature = URL_SAFE_NO_PAD.encode(
+        signing
+            .sign(&credential.signing_bytes().expect("payload"))
+            .to_bytes(),
+    );
+    let accepted = verifier
+        .v1(&credential, SUBJECT, "test-device")
+        .expect("ignorar desconocidas");
+    assert_eq!(
+        accepted
+            .grants()
+            .iter()
+            .map(|grant| grant.key.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+}
+
 fn key() -> SigningKey {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("test entropy");
@@ -455,10 +498,6 @@ fn module_grants_are_perpetual_closed_and_scope_free() {
             },
             Capability {
                 scope_version: "launch_v1".into(),
-                ..capability.clone()
-            },
-            Capability {
-                key: "vantare.module.unknown".into(),
                 ..capability.clone()
             },
         ] {

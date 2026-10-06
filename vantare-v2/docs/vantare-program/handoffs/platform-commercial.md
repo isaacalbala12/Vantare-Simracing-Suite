@@ -10,15 +10,14 @@ no integrado, promocionado ni publicado. Sin push, PR o CI remota.
 
 El actualizador exige el sobre Ed25519 antes de descargar y al aplicar,
 incluido modo local. Reutiliza licencia/services; no hay dependencias nuevas.
-**Isaac debe rellenar `PUBLIC_KEY_BASE64` en
-`native/services/src/update_manifest.rs` antes de distribuir y reconstruir
-el instalador inicial.** Vacío deliberado, sin clave de test/fallback en
-producción. El firmador recibe la ruta privada elegida por Isaac, no genera
-claves reales ni las imprime. Procedimiento en `native/packaging/README.md`.
+La clave pública Ed25519 está fijada en `PUBLIC_KEY_BASE64` de
+`native/services/src/update_manifest.rs` desde `e8f3f11f`; no hay clave de
+test ni fallback productivo. Isaac custodia la privada fuera del repo;
+este worker no accede a ella. El firmador recibe una ruta explícita y no
+imprime claves. Procedimiento en `native/packaging/README.md`.
 El bootstrap antiguo necesita reinstalación para pasar al feed firmado.
-No se ejecutó actualización positiva firmada/NSIS: falta la clave real por
-instrucción explícita. La firma con claves generadas dentro de los tests y el
-rechazo del bootstrap real PowerShell 5.1 están verificados.
+Pruebas locales con clave generada de TEST verifican el sobre y el feed;
+no equivalen a firma privada real, NSIS ni actualización desde GitHub.
 
 Los crashes enviados contienen código, versión conocida (o `unknown` para
 metadatos antiguos), SO y hasta 64 direcciones numéricas. No mensajes, rutas,

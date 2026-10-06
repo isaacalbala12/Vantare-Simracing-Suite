@@ -14,6 +14,35 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn legacy_import_keeps_its_origin_when_duplicated_without_marking_local_profiles() {
+    let tree = Tree::new();
+    let path = tree.0.join("launcher.json");
+    let mut document = Document::default();
+    document
+        .profiles
+        .push(Profile::new("legacy".into(), "Importado".into()));
+    document
+        .profiles
+        .push(Profile::new("local".into(), "Creado aquí".into()));
+    document.wails_import = Some(migration::Import {
+        source: tree.0.join("wails.json"),
+        launcher: std::collections::BTreeMap::from([(
+            "launcherProfiles".into(),
+            serde_json::json!([{ "id": "legacy" }]),
+        )]),
+    });
+    fs::write(
+        &path,
+        serde_json::to_vec(&document).expect("legacy document"),
+    )
+    .expect("write");
+    let store = Store::load(path).expect("load old document");
+    assert!(store.document.profiles[0].imported);
+    assert!(store.document.profiles[0].duplicate("copy".into()).imported);
+    assert!(!store.document.profiles[1].imported);
+}
+
+#[test]
 fn hotkeys_normalize_win32_codes_and_reject_reserved_unknown_or_duplicate_modifiers() {
     let key = triggers::Hotkey::parse(" SHIFT + Ctrl + 1 ")
         .expect("parse")
@@ -609,6 +638,35 @@ fn process_fixture(tree: &Tree, exit_code: i32) -> (Document, Profile, Discovery
 
 #[cfg(windows)]
 struct ProcessCleanup(processes::Shared);
+
+#[cfg(windows)]
+#[test]
+fn imported_profile_waits_for_review_before_any_child_process() {
+    let tree = Tree::new();
+    let (document, mut profile, found) = process_fixture(&tree, 0);
+    profile.imported = true;
+    profile.id = format!("review-{}", vantare_services::random_id().expect("id"));
+    let chain = Chain::start(document, profile, found).expect("chain");
+    let event = chain
+        .progress
+        .recv_timeout(Duration::from_secs(5))
+        .expect("review before launch");
+    assert_eq!(event.status, Status::Waiting);
+    assert!(event.pid.is_none());
+    let decision = event.decision.expect("review");
+    assert_eq!(
+        decision.actions,
+        [chain::Action::Trust, chain::Action::Cancel]
+    );
+    assert!(decision.message.contains("real cmd.exe"));
+    assert!(decision.message.contains("exit 0"));
+    chain
+        .answer(decision.id, chain::Action::Cancel)
+        .expect("cancel");
+    let events = collect(&chain);
+    assert!(events.iter().all(|event| event.pid.is_none()));
+    assert!(events.iter().all(|event| event.status != Status::Launching));
+}
 #[cfg(windows)]
 impl Drop for ProcessCleanup {
     fn drop(&mut self) {

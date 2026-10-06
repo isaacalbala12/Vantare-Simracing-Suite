@@ -450,6 +450,7 @@ impl Launcher {
                 && self.resident_answered != Some(decision.id)
             {
                 let actions = [
+                    Action::Trust,
                     Action::Reuse,
                     Action::Restart,
                     Action::Cancel,

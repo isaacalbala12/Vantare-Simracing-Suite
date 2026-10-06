@@ -132,6 +132,8 @@ pub struct Step {
 #[serde(deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)] // Preferencias independientes y compatibilidad de los dos flags v1.
 pub struct Profile {
+    #[serde(default)]
+    pub imported: bool,
     pub id: String,
     pub name: String,
     pub favorite: bool,
@@ -163,6 +165,7 @@ pub struct Profile {
 impl Profile {
     pub fn new(id: String, name: String) -> Self {
         Self {
+            imported: false,
             id,
             name,
             favorite: false,
@@ -458,12 +461,25 @@ impl Store {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("inspeccionar Launcher: {error}")),
         };
-        let document = saved
+        let mut document = saved
             .as_deref()
             .map(serde_json::from_slice::<Document>)
             .transpose()
             .map_err(|e| format!("Launcher inválido: {e}"))?
             .unwrap_or_default();
+        // Conserva el origen al editar o duplicar perfiles importados por versiones anteriores.
+        if let Some(imported) = document
+            .wails_import
+            .as_ref()
+            .and_then(|import| import.launcher.get("launcherProfiles"))
+            .and_then(serde_json::Value::as_array)
+        {
+            for profile in &mut document.profiles {
+                profile.imported |= imported
+                    .iter()
+                    .any(|old| old["id"].as_str() == Some(profile.id.as_str()));
+            }
+        }
         document.validate()?;
         Ok(Self {
             document,

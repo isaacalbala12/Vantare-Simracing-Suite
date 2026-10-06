@@ -216,6 +216,7 @@ fn import_profiles(
                 launch_count: profile.launch_count,
                 last_launched_at: profile.last_launched_at,
                 avg_chain_duration_ms: profile.avg_chain_duration_ms,
+                imported: true,
             });
         }
     }

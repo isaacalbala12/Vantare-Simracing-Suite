@@ -14,8 +14,8 @@ use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
 const SIZE: (f32, f32) = (240.0, 150.0);
-const SLOT_HEIGHT: f32 = 7.0 + 2.0 + 14.390_625;
-const ROW_GAP: f32 = 8.0;
+const SLOT_HEIGHT: f32 = 28.0;
+const ROW_GAP: f32 = 1.0;
 const COLUMN_WIDTH: f32 = 101.0;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -115,8 +115,8 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     if vm.status == Status::Ready {
         let rows = vm.metrics.len().div_ceil(2) as f32;
         let top = (height - (rows * SLOT_HEIGHT + (rows - 1.0) * ROW_GAP)) / 2.0;
-        let label_ink = ink(7.0, 600.0, 0.12, col(tokens::MUTED, 1.0));
-        let value_ink = ink(12.0, 650.0, 0.0, col(tokens::INK, 1.0));
+        let label_ink = ink(11.0, 600.0, 0.12, col(tokens::MUTED, 1.0));
+        let value_ink = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
         for (index, metric) in vm.metrics.iter().enumerate() {
             let x = 12.0 + (index % 2) as f32 * 115.0;
             let y = top + (index / 2) as f32 * (SLOT_HEIGHT + ROW_GAP);
@@ -125,7 +125,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 metric.label,
                 x,
-                text::baseline(y, 7.0, 7.0).round(),
+                text::baseline(y, 11.0, 11.0).round(),
                 &label_ink,
             );
             let value = text::fit(window, &metric.value, &value_ink, COLUMN_WIDTH);
@@ -134,19 +134,19 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 &value,
                 x,
-                text::baseline(y + 9.0, 14.4, 12.0).round(),
+                text::baseline(y + 13.0, 15.0, 14.0).round(),
                 &value_ink,
             );
         }
     } else {
         // .vf-status conserva padding propio dentro del panel centrado.
-        let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        let status_ink = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
         text::draw(
             window,
             cx,
             vm.status_text,
             24.0,
-            text::baseline((height - 18.0) / 2.0, 18.0, 12.0).round(),
+            text::baseline((height - 29.0) / 2.0, 29.0, 14.0).round(),
             &status_ink,
         );
     }

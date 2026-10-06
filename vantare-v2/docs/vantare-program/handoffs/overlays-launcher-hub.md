@@ -4573,3 +4573,19 @@ plan.md ausente en la base, no se crea otro roadmap; coordinación pública del
 orquestador pendiente. No Go/frontend/Release/CI remota: fuera del brief.
 Solo merges locales autorizados; sin push/PR/promoción/release ni modificación
 de native-beta Isaac o checkout principal. Siguiente: revisión aislada de la unión.
+
+### #1472 — Integración seleccionada de seguridad (2026-10-06)
+
+Worktree aislado `C:/tmp/vw3-1472-integracion`, rama
+`vantareapp/isa-1472-seguridad-integracion`, base `136a90fa`.
+Manda `C:/tmp/beta/r4/revision-auditoria-1472.md`; no se integran #5 ni #7.
+Primer hito: fixtures junto al ejecutable, lista fija del catálogo actual en
+packaging y recuperación de selección/escena/cursor inválidos del Taller.
+Navegación y derechos conservan el Hub; guardados con lock del SO y temporal
+exclusivo. `domain::text` se adelanta desde #2 porque #4 lo consume.
+Los tests del Launcher limpian también los locks persistentes en sus temporales.
+Evidencia y validación conjunta: `C:/tmp/1472-integracion-evidence/` e informe
+`C:/tmp/fase2/informe-1472-integracion.md`. Target propio en E: mediante junction;
+Nextest/lifecycle usan su ruta real para mantener la identidad Win32 del proceso.
+`docs/roadmap/plan.md` no existe en esta base; no se inventa otro roadmap.
+Entrega local para revisión del orquestador; sin push, PR, merge ni promoción.

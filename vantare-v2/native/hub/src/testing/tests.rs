@@ -334,8 +334,12 @@ fn failed_atomic_save_and_existing_export_never_overwrite_user_files() {
     )
     .expect("temporal");
     store.draft.fields[0] = "Después".into();
-    assert!(store.save().is_err());
-    assert_eq!(fs::read(temp.draft()).expect("leer"), before);
+    // Un temporal ajeno con el nombre del temporal ya NO bloquea: el temporal
+    // real lleva pid y contador. Antes bastaba `touch <doc>.tmp` para que todo
+    // guardado de ese documento fallara para siempre.
+    store.save().expect("un temporal ajeno no debe bloquear");
+    assert_ne!(fs::read(temp.draft()).expect("leer"), before);
+    assert_eq!(store.draft.fields[0], "Después");
     let bytes = store::export_bytes(&store.draft, &diagnostic(&temp, &Observed::default()))
         .expect("exportar");
     let export = temp.0.join("report.json");

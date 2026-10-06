@@ -495,9 +495,17 @@ mod tests {
         let mut calendar = Calendar::load(&dir).expect("reiniciar");
         assert_eq!(calendar.following.series_ids, vec![id.clone()]);
         let lock = dir.join("calendar-following.json.lock");
-        std::fs::write(&lock, "").expect("conflicto simulado");
-        assert!(calendar.follow(id.clone()).is_err());
-        assert_eq!(calendar.following.series_ids, vec![id]);
+        std::fs::write(&lock, "").expect("lock residual");
+        // Un lock residual no debe impedir seguir la serie. `follow` alterna,
+        // asi que esta segunda llamada la deja de seguir: que el efecto se
+        // aplique es la prueba de que el lock residual no bloqueo.
+        calendar
+            .follow(id.clone())
+            .expect("un lock residual no debe bloquear");
+        assert!(
+            calendar.following.series_ids.is_empty(),
+            "el efecto debe aplicarse pese al lock residual"
+        );
         let before = calendar.schedule.window().expect("ventana");
         let schedule = dir.join("official-schedule.json");
         std::fs::write(&schedule, "{}").expect("agenda inválida de test");
@@ -517,7 +525,7 @@ mod tests {
         for path in [lock, schedule, dir.join("calendar-following.json")] {
             std::fs::remove_file(path).expect("limpiar fichero propio");
         }
-        std::fs::remove_dir(dir).expect("limpiar directorio vacío");
+        std::fs::remove_dir_all(dir).expect("limpiar directorio");
     }
 
     #[test]

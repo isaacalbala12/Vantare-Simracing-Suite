@@ -77,7 +77,9 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         .nth(3)
         .ok_or("raíz Git no disponible en este build")?
         .to_path_buf();
-    let mut command = Command::new("powershell.exe");
+    // Ruta absoluta: por nombre, un `powershell.exe` plantado en el directorio
+    // de trabajo se ejecutaria con los privilegios del Hub.
+    let mut command = Command::new(crate::files::windows_powershell()?);
     command
         .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
         .arg(&scripts.runner)

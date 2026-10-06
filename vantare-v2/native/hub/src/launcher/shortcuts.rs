@@ -102,8 +102,7 @@ pub(crate) fn resolve(links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
     if data.len() > 16_000 {
         return Err("rutas de shortcuts demasiado largas".into());
     }
-    let executable = PathBuf::from(std::env::var_os("SystemRoot").ok_or("SystemRoot ausente")?)
-        .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let executable = crate::files::windows_powershell()?;
     let script = r"$ErrorActionPreference='Stop'; $out=@(); $shell=New-Object -ComObject WScript.Shell; try { foreach($path in ($env:VANTARE_SHORTCUT_PATHS | ConvertFrom-Json)) { try { $link=$shell.CreateShortcut($path); $out+= [string]$link.TargetPath; [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($link) } catch { $out+=''; } } [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); ConvertTo-Json -InputObject @($out) -Compress } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }";
     let mut child = Command::new(executable)
         .args(["-NoProfile", "-NonInteractive", "-Command", script])

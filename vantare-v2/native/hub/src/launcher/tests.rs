@@ -335,10 +335,9 @@ fn migration_invalid_source_or_conflict_never_creates_partial_native_data() {
     assert!(Store::load_with_wails(path.clone(), Some(&source)).is_err());
     assert!(!path.exists());
     fs::write(&source, br#"{"launcherProfiles":[],"launcherApps":{}}"#).expect("vacío explícito");
+    // Un fichero de lock residual no debe impedir cargar ni guardar.
     tree.file("launcher.json.lock", b"lock ajeno");
-    assert!(Store::load_with_wails(path.clone(), Some(&source)).is_err());
-    assert!(!path.exists());
-    fs::remove_file(tree.0.join("launcher.json.lock")).expect("retirar lock propio");
+    Store::load_with_wails(path.clone(), Some(&source)).expect("un lock residual no debe bloquear");
     let store = Store::load_with_wails(path, Some(&source)).expect("vacío conservado");
     assert!(store.document.profiles.is_empty());
 }

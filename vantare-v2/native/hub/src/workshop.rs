@@ -128,31 +128,50 @@ impl Prepared {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(format!("inspeccionar selección: {e}")),
         };
+        // Una selección obsoleta o dañada nunca impide abrir el Hub.
         let selection: Option<Selection> = saved
             .as_deref()
-            .map(serde_json::from_slice)
-            .transpose()
-            .map_err(|e| format!("selección inválida: {e}"))?;
-        if selection.as_ref().is_some_and(|s| s.version != 1) {
-            return Err("versión de selección no admitida".into());
-        }
+            .and_then(|bytes| serde_json::from_slice(bytes).ok())
+            .filter(|s: &Selection| s.version == 1 && s.widget.parse::<Kind>().is_ok());
         let kind = selection
             .as_ref()
-            .map_or(Ok(Kind::Standings), |s| s.widget.parse())
-            .map_err(|()| "widget guardado no existe en el registro".to_owned())?;
-        let explicit_scene = initial.is_some();
-        let path = initial
-            .or_else(|| selection.as_ref().map(|s| s.scene.clone()))
-            // El estudio Wails abre Standings por defecto; usar su fixture nativo.
-            .unwrap_or_else(|| Path::new(scene::FIXTURES).join("standings.snapshot.json"));
-        let mut scene = Scene::open(path)?;
+            .and_then(|s| s.widget.parse().ok())
+            .unwrap_or(Kind::Standings);
+        let fixtures = scene::fixtures_root();
+        let default_scene = || {
+            let root = fixtures
+                .as_ref()
+                .ok_or("no hay catálogo de escenas instalado; use --escena")?;
+            Scene::open(root.join("standings.snapshot.json"))
+        };
+        let mut scene = if let Some(explicit) = initial {
+            // La escena explícita conserva sus errores y no usa el cursor guardado.
+            Scene::open(explicit)?
+        } else {
+            selection
+                .as_ref()
+                .and_then(|s| {
+                    if !scene::confined_to(&s.scene, data_dir)
+                        && !fixtures
+                            .as_deref()
+                            .is_some_and(|root| scene::confined_to(&s.scene, root))
+                    {
+                        return None;
+                    }
+                    let mut scene = Scene::open(s.scene.clone()).ok()?;
+                    scene.seek(s.frame).ok()?;
+                    Some(scene)
+                })
+                .map_or_else(default_scene, Ok)?
+        };
         if let Some(selection) = &selection {
-            if !explicit_scene {
-                scene.seek(selection.frame)?;
-            }
             scene.looping = selection.looping;
         }
-        let scenes = scene::catalog(Path::new(scene::FIXTURES), &scene.path)?;
+        let scenes = match &fixtures {
+            Some(root) => scene::catalog(root, &scene.path)?,
+            // Sin catalogo, `catalog` devuelve solo la escena abierta.
+            None => scene::catalog(Path::new(""), &scene.path)?,
+        };
         let chosen_scene = scenes
             .iter()
             .position(|p| *p == scene.path)
@@ -1322,14 +1341,64 @@ mod tests {
             Some(&bytes),
         )
         .expect("cursor externo");
-        assert!(Prepared::load(&dir, None).is_err());
+        assert_eq!(
+            Prepared::load(&dir, None)
+                .expect("cursor inválido recuperado")
+                .scene
+                .path
+                .file_name()
+                .and_then(|n| n.to_str()),
+            Some("standings.snapshot.json")
+        );
         assert!(
             Prepared::load(&dir, Some(scene.clone())).is_ok(),
             "escena explícita ignora el cursor viejo"
         );
         std::fs::remove_file(path).expect("limpiar");
         std::fs::remove_file(scene).expect("limpiar escena propia");
-        std::fs::remove_dir(dir).expect("limpiar");
+        std::fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn invalid_saved_selections_fall_back_to_the_installed_default() {
+        let dir =
+            std::env::temp_dir().join(format!("vantare-workshop-fallback-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("directorio propio");
+        let path = dir.join("workshop-selection.json");
+        let bad_scene = dir.join("broken.snapshot.json");
+        std::fs::write(&bad_scene, "{}").expect("escena dañada");
+        for scene in [
+            dir.join("old-generation/standings.snapshot.json"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml"),
+            bad_scene,
+        ] {
+            let selection = Selection {
+                version: 1,
+                widget: "standings".into(),
+                scene,
+                frame: 0,
+                looping: false,
+                _imperial: false,
+                _english: false,
+                comparison: Mode::Hidden,
+                background: 0,
+            };
+            std::fs::write(&path, serde_json::to_vec(&selection).expect("JSON")).expect("guardar");
+            assert_eq!(
+                Prepared::load(&dir, None)
+                    .expect("recuperar")
+                    .scene
+                    .path
+                    .file_name()
+                    .and_then(|n| n.to_str()),
+                Some("standings.snapshot.json")
+            );
+        }
+        for invalid in ["{", "{\"version\":999}"] {
+            std::fs::write(&path, invalid).expect("selección dañada");
+            assert!(Prepared::load(&dir, None).is_ok());
+        }
+        std::fs::remove_dir_all(dir).expect("limpiar");
     }
 
     #[test]

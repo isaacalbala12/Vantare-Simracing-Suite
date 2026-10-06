@@ -54,6 +54,12 @@ foreach ($bin in $script:NativeBins) {
     Assert-True ((Get-NativeHash (Join-Path $active "bin/$bin.exe")) -ceq (Get-NativeHash (Join-Path $ArtifactsDirectory "payload/bin/$bin.exe"))) "binario real instalado sin alteración: $bin"
     Assert-True ([IO.File]::ReadAllText((Join-Path $active "bin/$bin.exe.sha256")) -ceq "$(Get-NativeHash (Join-Path $active "bin/$bin.exe"))  $bin.exe`n") "sidecar de binario verificado: $bin"
 }
+foreach ($fixture in $script:NativeFixtures) {
+    Assert-True ((Get-NativeHash (Join-Path $active $fixture)) -ceq (Get-NativeHash (Join-Path $ArtifactsDirectory "payload/$fixture"))) "fixture instalado sin alteración: $fixture"
+}
+# El script instalado no dispone de ../ui/fixtures ni del checkout de compilación.
+& (Join-Path $active 'candidate.ps1') -Operation Status -Root $install | Out-Null
+Assert-True ($? -and (Test-Path -LiteralPath (Join-Path $install 'state.json'))) 'candidate instalado carga fuera del árbol de fuentes'
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $active 'bin/vantare-admin.exe'))) 'la miniapp owner no entra en el instalador público'
 Assert-Rejected { Install-NativeCandidate $install $script:Package $hash $Channel } 'no reinstala encima de datos activos'
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-hash') $script:Package ('0' * 64) $Channel } 'rechaza SHA externo incorrecto'

@@ -13,7 +13,38 @@ pub const LABELS: [&str; 4] = [
     "Qué ocurrió",
     "Contexto adicional",
 ];
-const FIELD_LIMITS: [usize; 4] = [2048, 2048, 2048, 4096];
+/// Limites por campo del informe. Los comparten el borrador y la recuperacion:
+/// si la recuperacion aceptase mas que el envio, un texto recuperado se
+/// rechazaria para siempre al preparar el informe y el editor quedaria
+/// inservible hasta borrar el fichero a mano.
+pub(super) const FIELD_LIMITS: [usize; 4] = [2048, 2048, 2048, 4096];
+
+/// Limpia un campo visible del informe: quita las marcas invisibles y los
+/// controles, y recorta al limite del envio.
+///
+/// Conserva `\n` y `\t` porque el usuario los escribe a proposito; por eso no
+/// reutiliza `sanitize_display`, que los convierte en espacio a proposito para
+/// los nombres de una sola linea.
+pub(super) fn clean_field(text: &str, limit: usize) -> String {
+    let mut out = String::with_capacity(text.len().min(limit));
+    for ch in text.chars() {
+        match ch {
+            '\n' | '\t' => out.push(ch),
+            _ if vantare_domain::text::is_invisible(ch) => {}
+            c if c.is_control() => out.push(' '),
+            _ => out.push(ch),
+        }
+    }
+    if out.len() <= limit {
+        return out;
+    }
+    let mut end = limit;
+    while end > 0 && !out.is_char_boundary(end) {
+        end -= 1;
+    }
+    out.truncate(end);
+    out
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -32,12 +63,11 @@ impl Draft {
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.schema_version != 1
-            || self.fields.iter().zip(FIELD_LIMITS).any(|(field, limit)| {
-                field.len() > limit
-                    || field
-                        .chars()
-                        .any(|c| c.is_control() && !matches!(c, '\n' | '\t'))
-            })
+            || self
+                .fields
+                .iter()
+                .zip(FIELD_LIMITS)
+                .any(|(field, limit)| *field != clean_field(field, limit))
         {
             return Err("Borrador inválido o fuera de límites".into());
         }
@@ -131,4 +161,28 @@ pub fn export(path: &Path, bytes: &[u8]) -> Result<(), String> {
     }
     // Crear exclusivamente: un destino ya existente nunca se sobrescribe.
     files::save_with_limit(path, bytes, None, 64 * 1024)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cleaning_a_report_field_keeps_formatting_and_drops_invisibles() {
+        // Los saltos de linea y tabuladores que el usuario escribe se conservan.
+        assert_eq!(clean_field("uno\ndos\ttres", 4096), "uno\ndos\ttres");
+        // Las marcas invisibles se quitan: son las que permiten que lo que se
+        // lee no sea lo que hay.
+        assert_eq!(clean_field("Nombre\u{202e}real", 4096), "Nombrereal");
+        assert_eq!(clean_field("a\u{200b}b\u{feff}c", 4096), "abc");
+        // Un control se sustituye por espacio, no se elimina.
+        assert_eq!(clean_field("a\u{1b}b", 4096), "a b");
+        // Se recorta al limite del envio sin partir un caracter UTF-8.
+        let largo = "\u{f1}".repeat(3000);
+        let limpio = clean_field(&largo, 2048);
+        assert!(limpio.len() <= 2048, "debe caber en el limite del envio");
+        assert!(limpio.chars().all(|c| c == '\u{f1}'));
+        // Limpiar es idempotente: lo limpio ya es valido para el envio.
+        assert_eq!(clean_field(&limpio, 2048), limpio);
+    }
 }

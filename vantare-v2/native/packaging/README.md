@@ -322,13 +322,15 @@ detecta `VCRUNTIME140.dll`; Overlays también importa `icuuc.dll`, DX11 y
 
 ## Firma del manifiesto (#1472)
 
-**Pendiente de Isaac antes de distribuir:** rellenar `PUBLIC_KEY_BASE64` en
-`native/services/src/update_manifest.rs` con su clave PÚBLICA Ed25519 de 32
-bytes en base64. Está vacío a propósito: sin él se rechazan todas las
-actualizaciones y la herramienta de publicación falla. No hay clave de test,
-clave obtenida del feed ni parámetro para reemplazar la clave del verificador.
-Reconstruir el paquete inicial y el instalador después de poner esa clave.
-Instalaciones con el bootstrap antiguo sin firma necesitan reinstalación.
+La clave PÚBLICA Ed25519 está en `PUBLIC_KEY_BASE64`
+(`native/services/src/update_manifest.rs`). La semilla privada (32 bytes
+binarios) se generó el 2026-10-07 y vive fuera del repo, en
+`%USERPROFILE%\.vantare-claves/actualizador-ed25519.seed`, con permisos solo
+para Isaac; debe tener copia de seguridad fuera del PC. Si se pierde, ninguna
+instalación podrá recibir actualizaciones firmadas y habrá que reinstalar con
+una clave nueva. No hay clave de test, clave obtenida del feed ni parámetro
+para reemplazar la clave del verificador. Instalaciones con el bootstrap
+antiguo sin firma necesitan reinstalación.
 
 El JSON anterior es el contenido firmado, no el asset publicado. El asset
 `vantare-native-beta.json` tiene exactamente `payload` (bytes UTF-8 del JSON

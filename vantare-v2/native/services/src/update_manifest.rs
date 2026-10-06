@@ -5,9 +5,9 @@ use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-// ISAAC: sustituir por su clave PÚBLICA Ed25519 (32 bytes, base64) antes de distribuir.
-// Vacío deliberadamente: no hay fallback ni clave de prueba en producción.
-const PUBLIC_KEY_BASE64: &str = "";
+// Clave PÚBLICA Ed25519 del actualizador; la privada la custodia Isaac fuera del repo.
+// Sin fallback ni clave de prueba en producción.
+const PUBLIC_KEY_BASE64: &str = "QcYuRiCPzjsM7JrNs1e/6DoGm+aCVmKItd6Y4nVofSs=";
 const LIMIT: usize = 65536;
 
 #[derive(Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-//! Eficiencia: composición congelada de 523 × 272 (`fuel-strategy.geometry.json`).
+//! Eficiencia: tabla de 523 × 272, filas de 23 px y datos canónicos de la VM.
 //! El historial se omite como en el productivo cuando no hay filas canónicas.
 //! No hay animaciones ni avisos temporales en `FuelStrategyFunctional.tsx`.
 
@@ -15,8 +15,8 @@ use crate::efficiency::text::{self, Ink, ink};
 use crate::efficiency::{col, paint_highlighted_frame, paint_panel, paint_rect, rect, tokens};
 
 pub const SIZE: (f32, f32) = (523.0, 272.0);
-const MAIN_WIDTH: f32 = 351.0;
-const CONTENT_WIDTH: f32 = MAIN_WIDTH - 12.0;
+const ROW_HEIGHT: f32 = 23.0;
+const HISTORY_TOP: f32 = 173.0;
 
 fn draw(window: &mut Window, cx: &mut App, value: &str, x: f32, top: f32, style: &Ink) {
     text::draw(
@@ -50,7 +50,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             window,
             cx,
             status,
-            (MAIN_WIDTH - text::width(window, status, &style)) / 2.0,
+            (SIZE.0 - text::width(window, status, &style)) / 2.0,
             (SIZE.1 - 14.0) / 2.0,
             &style,
         );
@@ -61,111 +61,50 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     paint_highlighted_frame(window, SIZE.0, SIZE.1);
 }
 
-fn pane_height(vm: &ViewModel) -> f32 {
-    // CSS grid-auto-rows conserva el mínimo intrínseco del historial.
-    SIZE.1.max(41.0 + vm.history.len() as f32 * 23.0)
-}
-
 fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    let muted = col(tokens::MUTED, 1.0);
-    let label = ink(11.0, 600.0, 0.0, muted);
-    let value = ink(28.0, 700.0, -0.02, col(tokens::INK, 1.0));
-    draw(window, cx, vm.labels[0], 6.0, 22.0, &label);
+    let label = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
+    let fuel = ink(28.0, 700.0, 0.0, col(tokens::INK, 1.0));
+    draw(window, cx, vm.labels[0], 7.0, 22.0, &label);
     draw(
         window,
         cx,
         &vm.fuel,
-        MAIN_WIDTH - 6.0 - text::width(window, &vm.fuel, &value),
+        SIZE.0 - 7.0 - text::width(window, &vm.fuel, &fuel),
         14.0,
-        &value,
+        &fuel,
     );
-
-    let extra_height = pane_height(vm) - SIZE.1;
-    let bar_top = if vm.show_projection {
-        82.0 + extra_height / 3.0
-    } else {
-        82.0 + extra_height / 2.0
-    };
-    let stat_top = if vm.show_projection {
-        128.0 + extra_height * 2.0 / 3.0
-    } else {
-        128.0 + extra_height
-    };
-
-    // El productivo deja fuelPercent sin definir aunque haya capacidad: barra vacía.
-    window.paint_quad(quad(
-        rect(6.0, bar_top, CONTENT_WIDTH, 8.0),
-        Corners::all(px(4.0)),
-        col(0xffffff, 0.07),
-        Edges::all(px(1.0)),
-        col(0xffffff, 0.10),
-        BorderStyle::default(),
-    ));
-    let cell_width = (CONTENT_WIDTH - 16.0) / 3.0;
-    let small = ink(8.0, 600.0, 0.12, muted);
-    for (index, value) in [&vm.average, &vm.laps, &vm.required]
+    for (index, value) in [&vm.average, &vm.laps, &vm.required, &vm.finish]
         .into_iter()
         .enumerate()
     {
         if !vm.show_projection && index > 0 {
             continue;
         }
-        let x = 6.0 + index as f32 * (cell_width + 8.0);
-        window.paint_quad(quad(
-            rect(x, stat_top, cell_width, 24.0),
-            Corners::all(px(5.0)),
-            col(0xffffff, 0.03),
-            Edges::all(px(1.0)),
-            col(0xffffff, 0.06),
-            BorderStyle::default(),
-        ));
-        let center = x + cell_width / 2.0;
-        let label = vm.labels[index + 1];
-        draw(
-            window,
-            cx,
-            label,
-            center - text::width(window, label, &small) / 2.0,
-            stat_top + 1.0,
-            &small,
-        );
+        let top = 58.0 + index as f32 * ROW_HEIGHT;
+        paint_rect(window, 7.0, top, SIZE.0 - 14.0, 1.0, col(tokens::INK, 0.08));
         let style = ink(
             14.0,
             650.0,
             0.0,
-            col(if index == 2 { 0xe2c568 } else { tokens::INK }, 1.0),
+            col(if index >= 2 { 0xe2c568 } else { tokens::INK }, 1.0),
         );
-        draw(
+        text::draw(
+            window,
+            cx,
+            vm.labels[index + 1],
+            7.0,
+            text::baseline(top, ROW_HEIGHT, 11.0).round(),
+            &label,
+        );
+        text::draw(
             window,
             cx,
             value,
-            center - text::width(window, value, &style) / 2.0,
-            stat_top + 9.0,
+            SIZE.0 - 7.0 - text::width(window, value, &style),
+            text::baseline(top, ROW_HEIGHT, 14.0).round(),
             &style,
         );
     }
-    if !vm.show_projection {
-        return;
-    }
-    paint_rect(
-        window,
-        6.0,
-        223.0 + extra_height,
-        CONTENT_WIDTH,
-        1.0,
-        col(tokens::INK, 0.10),
-    );
-    let footer = ink(11.0, 600.0, 0.12, muted);
-    let required = ink(14.0, 650.0, 0.12, col(0xe2c568, 1.0));
-    draw(window, cx, vm.labels[4], 6.0, 241.0 + extra_height, &footer);
-    draw(
-        window,
-        cx,
-        &vm.finish,
-        MAIN_WIDTH - 6.0 - text::width(window, &vm.finish, &required),
-        239.0 + extra_height,
-        &required,
-    );
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -222,41 +161,44 @@ fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     if vm.history.is_empty() {
         return;
     }
-    let left = MAIN_WIDTH + 6.0;
-    let width = SIZE.0 - left - 6.0;
-    paint_rect(
+    let title = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
+    text::draw(
         window,
-        MAIN_WIDTH,
-        0.0,
-        SIZE.0 - MAIN_WIDTH,
-        pane_height(vm),
-        col(0, 0.16),
+        cx,
+        vm.history_label,
+        7.0,
+        text::baseline(HISTORY_TOP - ROW_HEIGHT, ROW_HEIGHT, 11.0).round(),
+        &title,
     );
-    paint_rect(window, MAIN_WIDTH, 0.0, 1.0, SIZE.1, col(tokens::INK, 0.10));
-    let title = ink(11.0, 600.0, 0.16, col(tokens::MUTED, 1.0));
-    draw(window, cx, vm.history_label, left, 10.0, &title);
-    paint_rect(window, left, 29.0, width, 1.0, col(tokens::INK, 0.10));
-    let label = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    // <b> más específico que el font:650 del padre; Inter disponible W800.
-    let value = ink(14.0, 800.0, 0.0, col(tokens::INK, 1.0));
-    let top = 41.0;
+    let value = ink(14.0, 700.0, 0.0, col(tokens::INK, 1.0));
+    // Up to eight canonical laps fit in two columns, retaining 23 px rows.
+    let columns = vm.history.len().div_ceil(4);
+    let width = (SIZE.0 - 14.0) / columns as f32;
     for (index, row) in vm.history.iter().enumerate() {
-        let y = top + index as f32 * 23.0;
-        window.paint_quad(quad(
-            rect(left, y, width, 22.0),
-            Corners::all(px(4.0)),
-            col(0xffffff, 0.02),
-            Edges::all(px(1.0)),
-            col(0xffffff, 0.04),
-            BorderStyle::default(),
-        ));
-        draw(window, cx, &row.lap, left + 6.0, y + 5.5, &label);
-        draw(
+        let left = 7.0 + (index / 4) as f32 * width;
+        let top = HISTORY_TOP + (index % 4) as f32 * ROW_HEIGHT;
+        paint_rect(
+            window,
+            left,
+            top,
+            width,
+            ROW_HEIGHT - 1.0,
+            col(tokens::INK, 0.03),
+        );
+        text::draw(
+            window,
+            cx,
+            &row.lap,
+            left + 6.0,
+            text::baseline(top, ROW_HEIGHT, 11.0).round(),
+            &title,
+        );
+        text::draw(
             window,
             cx,
             &row.consumed,
             left + width - 6.0 - text::width(window, &row.consumed, &value),
-            y + 4.0,
+            text::baseline(top, ROW_HEIGHT, 14.0).round(),
             &value,
         );
     }
@@ -325,12 +267,8 @@ mod tests {
         };
         let vm = settings.project(&snapshot, Preferences::default());
         assert_eq!(vm.history.len(), 8);
-        assert_eq!(pane_height(&vm), SIZE.1);
-        assert!(41.0 + vm.history.len() as f32 * 23.0 <= SIZE.1 - 6.0);
-        assert_eq!(
-            pane_height(&Settings::default().project(&snapshot, Preferences::default())),
-            272.0
-        );
+        assert!(HISTORY_TOP + 4.0 * ROW_HEIGHT <= SIZE.1 - 6.0);
+        assert_eq!(vm.history.len().div_ceil(4), 2);
     }
 
     use vantare_domain::{Capabilities, Capability, Fuel, Player, Quality, State};

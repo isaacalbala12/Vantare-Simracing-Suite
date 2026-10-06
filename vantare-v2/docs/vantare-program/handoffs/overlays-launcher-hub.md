@@ -4494,3 +4494,33 @@ tyres/aero/projection/virtual-energy y escalas. Pendientes aceptación Isaac,
 DPI/OBS/Mac/LMU real/performance. Frontend/Go no tocados, no gates de esas capas.
 plan.md ausente en base: no se crea roadmap alternativo. GitHub#1473 actualizado.
 Sin push/PR/CI remota/merge/promoción/release. Siguiente: revisión orquestador.
+
+### #1473 — Ronda 2 reanudada, resto (2026-10-06, revisión local)
+
+Continuación autorizada desde 040f15b2 en vantareapp/isa-1473-widgets-resto;
+se preservaron y completaron los cambios sin commit de Weather y Daños.
+Weather pasa 240×150→240×164: dos columnas, rótulo11/valor14, celda29+gap7;
+Daños pasa150×191→180×201: leyenda en tres filas29, SVG centrado.
+Fuel conserva523×272, distribuye datos VM en tabla continua con filas23;
+historial de ocho vueltas usa dos columnas. No reproduce la división351/172
+ni añade AVG/MAX/MIN, pits o tiempos inexistentes: composición adaptada al VM.
+Solo tres renderizadores y este handoff; sin cambios domain/IPC/telemetría,
+settings, demanda, Workshop, Standings, dependencias o layouts persistidos.
+Gates del árbol final PASS: fmt/check/clippy -D warnings, Nextest1156/1156
+(6 skips previstos), lifecycle5+12, build de captura y diffcheck.
+Weather b3d105f1fad9456f0ceab4126df4a6ecce64a767, Daños bff49f9f2fd8b009f37b4a75dbc83cdf57367f3c; Fuel en este commit.
+SHAs completos y estado final en C:/tmp/fase2/informe-1473-resto.md.
+Evidencia: C:/tmp/1473-resto-evidence/ronda-2-reanudada.png, resumen.png,
+r2-medidas.json, r2-layout-fit.json, r2-source-hashes.json y logs r2-resume-*.
+Antes/después y seis estados stale/espera MIRADOS; turno pantalla con marcador,
+mutex y timeout90, marcador propio retirado. Tres escenas default caben1920×1080;
+los perfiles de ejemplo no incluyen estos tres widgets. Letras nominales11/14:
+glifos medidos8/11, pitch daño29; historial23; Weather36=29+7, gap texto6/11px.
+Pruebas existentes de VM/repaint y prueba de ocho vueltas conservadas/adaptadas;
+verificación de solapamientos por captura del renderer; no tests visuales complacientes.
+Manual: abrir Workshop con fixtures/default, mirar tres PNG a1× y estados antiguos/
+espera; seleccionar historyRows8, showProjection y showAero en inspector.
+Límites: QA Workshop, no LMU live/rendimiento/DPI alternativo/OBS/Mac;
+8 vueltas con test y cálculo de encaje, sin nueva captura de ese ajuste del inspector.
+plan.md ausente en base; Notion exceptuado por cabecera-sol del encargo.
+Sin push/PR/CI remota/merge/promoción/release; siguiente revisión del orquestador.

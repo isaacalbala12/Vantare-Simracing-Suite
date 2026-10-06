@@ -891,7 +891,7 @@ impl Launcher {
                             )
                             .when(profile.favorite, |cover| {
                                 cover.child(
-                                    orbit::pill("★ Favorito", Tone::Accent, cx)
+                                    orbit::chip("★ Favorito", Tone::Accent, cx)
                                         .h(px(22.0))
                                         .absolute()
                                         .top(px(8.0))
@@ -1062,17 +1062,21 @@ impl Launcher {
                     ),
             )
             .child(
-                div()
-                    .id("showcase-app-scroll")
-                    .max_h(px(if compact { 200.0 } else { 256.0 }))
-                    .overflow_y_scroll()
-                    .child(grid)
-                    .children(
-                        self.discovered
-                            .warnings
-                            .iter()
-                            .map(|warning| orbit::callout(warning.clone(), cx)),
-                    ),
+                orbit::scroll_fade(
+                    div()
+                        .id("showcase-app-scroll")
+                        .overflow_y_scroll()
+                        .child(grid)
+                        .children(
+                            self.discovered
+                                .warnings
+                                .iter()
+                                .map(|warning| orbit::callout(warning.clone(), cx)),
+                        ),
+                    cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+                )
+                .flex_none()
+                .max_h(px(if compact { 200.0 } else { 256.0 })),
             )
     }
 
@@ -1150,14 +1154,15 @@ impl Launcher {
         if !self.progress.is_empty() && self.chain.is_none() && self.capture == Capture::None {
             rows = rows.child(self.progress_panel(cx));
         }
-        card = card.child(
+        card = card.child(orbit::scroll_fade(
             div()
                 .id("showcase-history")
                 .flex_1()
                 .min_h_0()
                 .overflow_y_scroll()
                 .child(rows),
-        );
+            cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+        ));
         card
     }
 

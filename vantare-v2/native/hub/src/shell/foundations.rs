@@ -564,9 +564,13 @@ impl Hub {
                             cx,
                         ))
                         .child(orbit::text(title, 13.0, 600, orbit::ink(cx), cx))
-                        .child(orbit::button(title, "Abrir Studio", cx).on_click(
-                            cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
-                        ))
+                        .child(
+                            orbit::button(title, "Abrir Studio", cx)
+                                .self_start()
+                                .on_click(
+                                    cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
+                                ),
+                        )
                 }),
             ));
         }

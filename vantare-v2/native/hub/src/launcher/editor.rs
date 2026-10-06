@@ -203,7 +203,7 @@ impl Render for LauncherDrawer {
             .capture_key_down(cx.listener(Self::key))
             .on_mouse_down_out(cx.listener(|this, _, window, cx| this.dismiss(window, cx)))
             .child(self.header(cx))
-            .child(
+            .child(orbit::scroll_fade(
                 div()
                     .id("launcher-drawer-body")
                     .flex_1()
@@ -212,7 +212,8 @@ impl Render for LauncherDrawer {
                     .py(px(18.0))
                     .px(px(20.0))
                     .child(self.content.clone()),
-            );
+                orbit::surface_1(cx),
+            ));
         if let Some(footer) = &self.footer {
             panel = panel.child(
                 div()
@@ -467,8 +468,7 @@ fn editor_field(label: &str, control: impl IntoElement, cx: &gpui::App) -> gpui:
         .flex_col()
         .gap(px(9.0))
         .child(
-            tracked_text(label.to_uppercase(), 11.0, 700, orbit::ink_3(cx), 0.77)
-                .line_height(px(16.0)),
+            tracked_text(label.to_owned(), 12.0, 600, orbit::ink_3(cx), 0.0).line_height(px(16.0)),
         )
         .child(div().w_full().child(control))
 }
@@ -950,7 +950,7 @@ impl Launcher {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(tracked_text("PASOS", 11.0, 700, orbit::ink_3(cx), 0.77))
+                    .child(orbit::eyebrow("Pasos", cx))
                     .child(
                         div()
                             .id("launcher-editor-mode")
@@ -961,7 +961,7 @@ impl Launcher {
                             .tab_stop(false)
                             .cursor_pointer()
                             .child(tracked_text(
-                                if advanced { "BÁSICO" } else { "AVANZADO" },
+                                if advanced { "Básico" } else { "Avanzado" },
                                 10.0,
                                 700,
                                 orbit::ink_3(cx),
@@ -1131,7 +1131,11 @@ impl Launcher {
                     .border_1()
                     .border_dashed()
                     .border_color(rgba(orbit::line_strong(cx)))
-                    .font_family(crate::orbit::mono_family(cx))
+                    .font_family(if draft.hotkey.read(cx).value.is_empty() {
+                        orbit::sans_family(400, cx)
+                    } else {
+                        orbit::mono_family(cx).into()
+                    })
                     .text_size(px(12.0))
                     .text_color(rgb(orbit::ink_3(cx)))
                     .child(if draft.hotkey.read(cx).value.is_empty() {

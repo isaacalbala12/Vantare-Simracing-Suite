@@ -4469,3 +4469,36 @@ Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
 plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
 Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
 ni merges externos. Checkout principal y native-beta Isaac intactos.
+
+### #1470 — Ronda 3, componentes comunes (1470-r3-comunes, 2026-10-06)
+
+Worker aislado en `vantareapp/isa-1470-r3-comunes`, base `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`.
+Alcance: barra/topbar comunes, botones por contenido, desvanecido de scroll,
+rótulos sin mayúsculas forzadas, sans para interfaz y display para KPIs.
+La barra mantiene las filas de navegación/perfiles a su alto real y desplaza
+la lista completa antes del pie fijo; Lanzar es neutro y muestra Ctrl L.
+Los contadores de Launcher/Perfiles salen de perfiles guardados, Tester del acceso.
+Nota 03:11: Roadmap sin indicador en beta; Testing sin contador sin fuente real.
+Sin cambios de textos/contenido del worker paralelo ni de servicios/permisos.
+La comprobación con rueda real a 1440 detectó y corrigió también el carril de
+Atajos (Ctrl B fuera de tarjeta) y tarjetas finales Canal/Historial de borrado
+reducidas al encabezado: se conserva su alto intrínseco, sin cambiar contenido.
+Build prueba/parity por cola PASS (11 exe + duckdb.dll); warning heredado de
+analysis/view.rs:989 con parity-capture. check/clippy/fmt PASS, Nextest1155 PASS,
+6 skips existentes, corpus ACC completo PASS568,646s. Lifecycle final falló una
+vez en alive(pid39296) de engineer_restart_budget; repetición completa PASS
+(5 Hub + 12 runtime), sin modificar tests. Intermitencia fuera de alcance en
+#1476, area:plataforma y Project Vantare; causa no demostrada, logs conservados.
+30 capturas (15 pantallas × 1920/1440) y 19 de rueda real a 1440 MIRADAS,
+ronda-4.png y detalle-scroll.png MIRADOS; dimensiones/hash PASS. EXE SHA256
+33C6A4E02E0A2011258C9B9421C126FC13701E49C1B28A22F853422AC8231266.
+QA a DPI96; sin certificación DPI125/150, LMU live ni igualdad total del Hub.
+Evidencia externa `C:/tmp/1470-r3-comunes-evidence/`, canal del orquestador
+`C:/tmp/fase2/informe-1470-r3-comunes.md`. Aceptación del orquestador pendiente.
+No se añaden tests que repitan estilos: se usan los suites existentes y capturas
+nativas con rueda real; escenas demo son QA visual, no evidencia LMU live.
+Chevrons ya corregidos en base/ronda 2: se verifican sin duplicar implementación.
+Los tokens de `vantare_ui::theme` ya separan body/display/mono; se corrigen los
+consumidores que usaban mono para texto, sin alterar esquema ni temas de widgets.
+`plan.md` ausente en esta base; no se crea otro roadmap. Sin push, PR, CI remota,
+merge, promoción ni release. No se toca la beta de Isaac ni el checkout principal.

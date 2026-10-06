@@ -364,14 +364,15 @@ impl Render for StudioSidebar {
                 .pl(px(0.0))
                 .gap(px(12.0))
                 .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
-                .child(
+                .child(orbit::scroll_fade(
                     div()
                         .id("studio-inspector-scroll")
                         .flex_1()
                         .min_h_0()
                         .overflow_y_scroll()
                         .child(studio.inspector(cx)),
-                )
+                    orbit::canvas(cx),
+                ))
                 .child(
                     orbit::neo_card(cx)
                         .flex_none()
@@ -1445,21 +1446,25 @@ impl Studio {
                     }
                 }
                 body = self.tab_settings(item, tab, body, cx);
-                card = card.child(
-                    div()
-                        .id(("studio-inspector-card", tab as usize))
-                        .when(tab != Tab::Appearance, |body| {
-                            body.max_h(px(if tab == Tab::Content {
-                                140.0
-                            } else if tab == Tab::Behavior {
-                                90.0
-                            } else {
-                                100.0
-                            }))
-                            .overflow_y_scroll()
-                        })
-                        .child(body),
-                );
+                let content = div()
+                    .id(("studio-inspector-card", tab as usize))
+                    .child(body);
+                card = card.child(if tab == Tab::Appearance {
+                    div().child(content)
+                } else {
+                    orbit::scroll_fade(
+                        content.overflow_y_scroll(),
+                        cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+                    )
+                    .flex_none()
+                    .max_h(px(if tab == Tab::Content {
+                        140.0
+                    } else if tab == Tab::Behavior {
+                        90.0
+                    } else {
+                        100.0
+                    }))
+                });
                 if tab == Tab::Layout {
                     card =
                         card.child(

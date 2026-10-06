@@ -76,57 +76,6 @@ fn paragraph(content: &str, size: f32, weight: u16, color: u32, cx: &gpui::App) 
         })
 }
 
-// KPIs y versión usan tracking negativo en orbit-kit/settings.css.
-// El cursor conserva el kerning de Cascadia, sin redondear cada avance.
-fn mono_tracked(content: String, size: f32, weight: f32, tracking: f32, color: u32) -> Div {
-    div().h(px(size * 1.5)).w_full().child(
-        gpui::canvas(
-            |bounds, _, _| bounds,
-            move |_, bounds, window, cx| {
-                let run = gpui::TextRun {
-                    len: content.len(),
-                    font: gpui::Font {
-                        weight: gpui::FontWeight(weight),
-                        ..font("Cascadia Code")
-                    },
-                    color: rgb(color).into(),
-                    background_color: None,
-                    underline: None,
-                    strikethrough: None,
-                };
-                let line =
-                    window
-                        .text_system()
-                        .shape_line(content.clone().into(), px(size), &[run], None);
-                let base = vantare_ui::efficiency::text::baseline(
-                    f32::from(bounds.top()),
-                    size * 1.5,
-                    size,
-                );
-                let height = line.ascent + line.descent;
-                let mut cursor = line.cursor();
-                let mut spacing = px(0.0);
-                for (byte, ch) in content.char_indices() {
-                    let x = bounds.left() + cursor.x_offset() + spacing;
-                    spacing += px(tracking);
-                    let part = cursor.take_until(byte + ch.len_utf8());
-                    if let Err(error) = part.paint(
-                        gpui::point(x, px(base) - line.ascent),
-                        height,
-                        gpui::TextAlign::Left,
-                        None,
-                        window,
-                        cx,
-                    ) {
-                        eprintln!("No se pudo pintar el valor monoespaciado: {error}");
-                    }
-                }
-            },
-        )
-        .size_full(),
-    )
-}
-
 fn stack() -> Div {
     div()
         .flex()
@@ -251,12 +200,13 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                     )
                 }),
         )
-        .child(
+        .child(orbit::scroll_fade(
             body.id(format!("settings-body-{title}"))
                 .flex_grow(1.0)
                 .min_h_0()
                 .overflow_y_scroll(),
-        )
+            cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+        ))
 }
 fn section_note(content: &str, cx: &gpui::App) -> Div {
     div()
@@ -324,6 +274,7 @@ fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stat
 }
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     div()
+        .self_start()
         .id(id)
         .role(gpui::Role::Button)
         .aria_label(label)
@@ -332,7 +283,7 @@ fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Sta
         .flex_none()
         .h(px(39.0))
         .px(px(14.0))
-        .rounded(px(12.0))
+        .rounded_full()
         .border_1()
         .border_color(rgba(0x0000_0000))
         .bg(rgb(orbit::primary_bg(cx)))
@@ -482,12 +433,13 @@ fn appearance_slider(
         .flex_none()
         .items_center()
         .gap(px(12.0))
-        .child(
-            div().w(px(45.0)).flex_none().text_right().child(
-                text(format!("{value:.0}%"), 16.0, 400, orbit::ink_2(cx), cx)
-                    .font_family(crate::orbit::mono_family(cx)),
-            ),
-        )
+        .child(div().w(px(45.0)).flex_none().text_right().child(text(
+            format!("{value:.0}%"),
+            16.0,
+            400,
+            orbit::ink_2(cx),
+            cx,
+        )))
         .child(
             div()
                 .relative()
@@ -604,20 +556,17 @@ fn performance_choice(
                 ),
         )
         .child(meter)
-        .child(
-            text(
-                rate,
-                11.0,
-                600,
-                if selected {
-                    orbit::ink_2(cx)
-                } else {
-                    orbit::ink_3(cx)
-                },
-                cx,
-            )
-            .font_family(crate::orbit::mono_family(cx)),
-        )
+        .child(text(
+            rate,
+            11.0,
+            600,
+            if selected {
+                orbit::ink_2(cx)
+            } else {
+                orbit::ink_3(cx)
+            },
+            cx,
+        ))
         .child(
             text(description, 12.0, 400, orbit::ink_3(cx), cx)
                 .line_height(px(18.0))
@@ -673,9 +622,7 @@ fn performance_mode(
                         .border_color(rgb(orbit::ink_3(cx)))
                 }),
         )
-        .child(
-            text(rate, 11.0, 600, orbit::ink_3(cx), cx).font_family(crate::orbit::mono_family(cx)),
-        )
+        .child(text(rate, 11.0, 600, orbit::ink_3(cx), cx))
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
 }
 fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
@@ -807,7 +754,7 @@ impl Hub {
 
     #[allow(clippy::too_many_lines)] // Composición del carril de las siete páginas, sin lógica de negocio.
     fn settings_rail(&self, cx: &mut Context<Self>) -> Div {
-        let mut rail = stack().h_full().gap(px(16.0));
+        let mut rail = stack().min_h_full().gap(px(16.0));
         let (title, icon, note) = match self.settings.page {
             Page::Appearance => (
                 "Estilo de los overlays",
@@ -847,6 +794,7 @@ impl Hub {
         };
         rail = rail.child(
             orbit::neo_card(cx)
+                .flex_shrink(0.0)
                 .child(orbit::neo_header(title, icon, cx))
                 .child(text(note, 13.0, 400, orbit::ink_2(cx), cx))
                 .when(self.settings.page == Page::Appearance, |card| {
@@ -924,6 +872,7 @@ impl Hub {
         for (index, (title, icon, note)) in sections.iter().enumerate() {
             rail = rail.child(
                 orbit::neo_card(cx)
+                    .flex_shrink(0.0)
                     .when(index + 1 == sections.len(), |card| {
                         card.flex_grow(1.0).min_h_0()
                     })
@@ -934,11 +883,13 @@ impl Hub {
         if self.settings.page == Page::Appearance {
             rail = rail.child(
                 orbit::neo_card(cx)
-                    .flex_1()
+                    .flex_shrink(0.0)
+                    .flex_grow(1.0)
                     .min_h_0()
                     .child(orbit::neo_header("Vista previa", "v-palette", cx))
                     .child(
                         orbit::neo_card(cx)
+                            .flex_shrink(0.0)
                             .child(orbit::neo_header("Vantare", "v-home", cx))
                             .child(orbit::progress(0.65, cx))
                             .child(orbit::pill("Tema actual", Tone::Neutral, cx)),
@@ -949,6 +900,7 @@ impl Hub {
             rail = rail
                 .child(
                     orbit::neo_card(cx)
+                        .flex_shrink(0.0)
                         .child(orbit::neo_header("Versión", "v-download", cx))
                         .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
                         .child(
@@ -960,6 +912,7 @@ impl Hub {
                 )
                 .child(
                     orbit::neo_card(cx)
+                        .flex_shrink(0.0)
                         .child(orbit::neo_header("Diagnóstico", "v-monitor", cx))
                         .child(self.settings_button(
                             "settings-rail-prepare",
@@ -976,7 +929,8 @@ impl Hub {
                 )
                 .child(
                     orbit::neo_card(cx)
-                        .flex_1()
+                        .flex_shrink(0.0)
+                        .flex_grow(1.0)
                         .min_h_0()
                         .child(orbit::neo_header("Atajos del Hub", "v-keys", cx))
                         .children(
@@ -1023,7 +977,7 @@ impl Hub {
             .when_some(self.settings.status.clone(), |view, status| {
                 view.child(orbit::callout(status, cx))
             })
-            .child(
+            .child(orbit::scroll_fade(
                 match self.settings.page {
                     Page::Application => self.settings_application(true, cx),
                     Page::Appearance => self.settings_appearance(cx),
@@ -1038,7 +992,8 @@ impl Hub {
                 .id("settings-page-scroll")
                 .overflow_y_scroll()
                 .track_scroll(&self.settings.panel_scroll),
-            );
+                orbit::canvas(cx),
+            ));
         let rail = self.settings_rail(cx);
         div()
             .id("settings-panel")
@@ -1058,14 +1013,19 @@ impl Hub {
                     .child(content),
             )
             .child(
-                div()
-                    .id("settings-rail-scroll")
-                    .flex_1()
-                    .flex_basis(gpui::relative(1.0 / 3.0))
-                    .min_w_0()
-                    .h_full()
-                    .overflow_y_scroll()
-                    .child(rail),
+                orbit::scroll_fade(
+                    div()
+                        .id("settings-rail-scroll")
+                        .flex_1()
+                        .flex_basis(gpui::relative(1.0 / 3.0))
+                        .min_w_0()
+                        .h_full()
+                        .overflow_y_scroll()
+                        .child(rail),
+                    orbit::canvas(cx),
+                )
+                .flex_basis(gpui::relative(1.0 / 3.0))
+                .h_full(),
             )
     }
     fn settings_zoom(cx: &gpui::App) -> gpui::Stateful<Div> {
@@ -1178,7 +1138,7 @@ impl Hub {
         let channel = self.settings_general_channel(cx);
         view = stack().gap(px(16.0)).child(view).child(overlays).child(
             section_surface("Canal", None, channel, cx)
-                .flex_1()
+                .flex_grow(1.0)
                 .min_h_0(),
         );
         if open_language {
@@ -1797,14 +1757,7 @@ impl Hub {
                                     .py(px(3.0))
                                     .rounded_full()
                                     .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0d, cx)))
-                                    .child(div().flex().gap(px(0.8)).children(
-                                        release.kind.chars().map(|ch| {
-                                            text(ch.to_string(), 10.0, 750, orbit::ink_3(cx), cx)
-                                                .w(px(6.0))
-                                                .font_family(crate::orbit::mono_family(cx))
-                                                .font_weight(gpui::FontWeight(750.0))
-                                        }),
-                                    )),
+                                    .child(text(release.kind, 12.0, 600, orbit::ink_3(cx), cx)),
                             ),
                     );
                 }
@@ -1831,9 +1784,11 @@ impl Hub {
                     .flex_1()
                     .min_w_0()
                     .child(eyebrow("Versión instalada", cx))
-                    .child(div().font_family(crate::orbit::mono_family(cx)).child(
-                        mono_tracked(version, 30.0, 700.0, -1.2, orbit::ink(cx)).mt(px(4.0)),
-                    ))
+                    .child(
+                        text(version, 30.0, 600, orbit::ink(cx), cx)
+                            .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
+                            .mt(px(4.0)),
+                    )
                     .child(text(state, 12.5, 400, orbit::ink_3(cx), cx).mt(px(4.0))),
             )
             .when(demo, |hero| {
@@ -1848,10 +1803,9 @@ impl Hub {
                             "Actualización disponible",
                             cx,
                         ))
-                        .child(reference_primary(
-                            "settings-update-check",
-                            "Buscar actualizaciones",
-                            cx,
+                        .child(orbit::disabled(
+                            orbit::button("settings-update-check", "Buscar actualizaciones", cx),
+                            "Próximamente",
                         )),
                 )
             })
@@ -1923,20 +1877,17 @@ impl Hub {
                         )
                         .line_height(px(18.0)),
                     )
-                    .child(
-                        text(
-                            if active {
-                                "Canal instalado"
-                            } else {
-                                "Canal no seleccionado"
-                            },
-                            11.0,
-                            600,
-                            orbit::ink_3(cx),
-                            cx,
-                        )
-                        .font_family(crate::orbit::mono_family(cx)),
-                    ),
+                    .child(text(
+                        if active {
+                            "Canal instalado"
+                        } else {
+                            "Canal no seleccionado"
+                        },
+                        11.0,
+                        600,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
             );
         }
         channels
@@ -2190,7 +2141,7 @@ impl Hub {
                 |page| {
                     page.child(Self::settings_privacy_consent(compact, cx))
                         .child(self.settings_privacy_queue(cx))
-                        .child(self.settings_privacy_history(cx).flex_1().min_h_0())
+                        .child(self.settings_privacy_history(cx).flex_grow(1.0).min_h_0())
                 },
             )
     }
@@ -2355,17 +2306,18 @@ impl Hub {
                     .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
                     .child(text(label, 11.0, 700, orbit::ink_3(cx), cx).line_height(px(13.2)))
                     .child(
-                        mono_tracked(
+                        text(
                             value.to_owned(),
-                            22.0,
-                            700.0,
-                            -0.66,
+                            26.0,
+                            600,
                             if connected && label == "Telemetría" {
                                 orbit::green(cx)
                             } else {
                                 orbit::ink(cx)
                             },
+                            cx,
                         )
+                        .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
                         .mt(px(8.0)),
                     )
                     .child(
@@ -2565,16 +2517,16 @@ impl Hub {
                             .flex_none()
                             .relative()
                             .left(px(-1.0))
-                            .child(mono_tracked(
+                            .child(text(
                                 level.to_owned(),
-                                10.0,
-                                700.0,
-                                0.4,
+                                11.0,
+                                600,
                                 match level {
                                     "Error" => orbit::coral(cx),
                                     "Aviso" => orbit::ember(cx),
                                     _ => orbit::ink_3(cx),
                                 },
+                                cx,
                             )),
                     )
                     .child(
@@ -2582,7 +2534,6 @@ impl Hub {
                             text(message, 12.0, 400, orbit::ink_2(cx), cx)
                                 .relative()
                                 .left(px(-1.0))
-                                .font_family(crate::orbit::mono_family(cx))
                                 .line_height(px(18.0)),
                         ),
                     ),

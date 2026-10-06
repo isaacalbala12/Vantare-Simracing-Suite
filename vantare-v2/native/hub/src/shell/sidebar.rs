@@ -34,17 +34,31 @@ impl Hub {
                         .mb(px(8.0))
                         .px(px(10.0))
                         .when(expanded, |heading| {
-                            heading.child(orbit::text(
-                                if section == Section::Testing {
-                                    "Para testers"
-                                } else {
-                                    "Módulos"
-                                },
-                                12.0,
-                                400,
-                                orbit::ink_muted(cx),
-                                cx,
-                            ))
+                            heading
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(orbit::text(
+                                    if section == Section::Testing {
+                                        "Para testers"
+                                    } else {
+                                        "Módulos"
+                                    },
+                                    12.0,
+                                    400,
+                                    orbit::ink_muted(cx),
+                                    cx,
+                                ))
+                                .when(
+                                    section == Section::Testing && self.shell.access.tester,
+                                    |heading| {
+                                        heading.child(orbit::chip(
+                                            "Tester",
+                                            orbit::Tone::Accent,
+                                            cx,
+                                        ))
+                                    },
+                                )
                         })
                         .when(!expanded, |heading| {
                             heading.border_t_1().border_color(rgba(orbit::line(cx)))
@@ -62,6 +76,7 @@ impl Hub {
                 cx,
             )
             .h(px(40.0))
+            .flex_none()
             .w(px(if expanded {
                 self.sidebar_width(cx) - 24.0
             } else {
@@ -82,6 +97,15 @@ impl Hub {
                     .px(px(12.0))
                     .gap(px(12.0))
                     .child(orbit::text(label, 14.0, 500, orbit::ink_2(cx), cx).flex_1())
+                    .when(section == Section::Launcher, |button| {
+                        button.child(orbit::text(
+                            self.launcher.read(cx).saved_profiles().len().to_string(),
+                            12.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        ))
+                    })
                     .when_some(lock, |button, reason| {
                         button.child(
                             div()
@@ -104,13 +128,22 @@ impl Hub {
         }
         let profiles = self.launcher.read(cx).saved_profiles();
         if expanded {
-            items = items.child(div().mt(px(20.0)).px(px(10.0)).child(orbit::text(
-                "Perfiles",
-                12.0,
-                400,
-                orbit::ink_muted(cx),
-                cx,
-            )));
+            items = items.child(
+                div()
+                    .mt(px(20.0))
+                    .px(px(10.0))
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(orbit::text("Perfiles", 12.0, 400, orbit::ink_muted(cx), cx))
+                    .child(orbit::text(
+                        profiles.len().to_string(),
+                        12.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            );
             for profile in profiles {
                 let id = profile.id.clone();
                 let subtitle = format!("{} pasos de lanzamiento", profile.steps.len());
@@ -118,6 +151,7 @@ impl Hub {
                     orbit::action_row(gpui::SharedString::from(id.clone()), &profile.name, cx)
                         .w_full()
                         .h(px(54.0))
+                        .flex_none()
                         .child(div().size(px(6.0)).flex_none().rounded_full().bg(rgb(
                             if profile.favorite {
                                 orbit::coral(cx)
@@ -156,30 +190,42 @@ impl Hub {
         let launch_name = launching.map_or(launch_name, |(ready, total)| {
             format!("Lanzando… {ready} de {total}")
         });
-        let launch = orbit::play_button(
-            "sidebar-launch",
-            if expanded { &launch_name } else { "" },
-            44.0,
-            false,
-            cx,
-        )
-        .w_full()
-        .rounded(px(12.0))
-        .px(px(10.0))
-        .pl(px(if expanded { 44.0 } else { 0.0 }))
-        .bg(orbit::gradient(
-            cx.global::<orbit::design::Tokens>().gradients.active,
-            180.0,
-        ))
-        .aria_label(launch_name.clone())
-        .aria_keyshortcuts("Control+L")
-        .tab_stop(launching.is_none())
-        .when(launching.is_some(), |button| {
-            orbit::disabled(button, "Lanzamiento en curso")
-        })
-        .on_click(cx.listener(|hub, _, _, cx| hub.launch_favorite(cx)));
+        let launch = orbit::action_row("sidebar-launch", "", cx)
+            .relative()
+            .h(px(44.0))
+            .w_full()
+            .flex_none()
+            .justify_start()
+            .gap(px(8.0))
+            .rounded(px(12.0))
+            .px(px(10.0))
+            .bg(orbit::gradient(
+                [orbit::surface_3(cx), orbit::surface_2(cx)],
+                180.0,
+            ))
+            .border_1()
+            .border_color(rgba(orbit::line(cx)))
+            .child(orbit::play_circle(26.0, cx))
+            .when(expanded, |button| {
+                button
+                    .child(
+                        orbit::text(launch_name.clone(), 13.0, 600, orbit::ink(cx), cx)
+                            .flex_1()
+                            .min_w_0()
+                            .text_ellipsis(),
+                    )
+                    .child(orbit::keycap("Ctrl L", cx))
+            })
+            .aria_label(launch_name.clone())
+            .aria_keyshortcuts("Control+L")
+            .tab_stop(launching.is_none())
+            .when(launching.is_some(), |button| {
+                orbit::disabled(button, "Lanzamiento en curso")
+            })
+            .on_click(cx.listener(|hub, _, _, cx| hub.launch_favorite(cx)));
         let collapse = orbit::action_row("sidebar-collapse", "Contraer barra", cx)
             .w_full()
+            .flex_none()
             .aria_expanded(expanded)
             .aria_keyshortcuts("Control+B")
             .child(orbit::icon("v-side", 18.0, orbit::ink_3(cx)))
@@ -293,11 +339,11 @@ impl Hub {
                                     cx.global::<orbit::design::Tokens>().fonts.display.clone(),
                                 ),
                             )
-                            .child(orbit::keycap("BETA", cx))
+                            .child(orbit::chip("BETA", orbit::Tone::Neutral, cx))
                     }),
             )
             .child(launch)
-            .child(items)
+            .child(orbit::scroll_fade(items, orbit::rail_bg(cx)))
             .child(collapse)
             .child(settings)
             .child(account)

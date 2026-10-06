@@ -578,10 +578,9 @@ pub fn mono_text(content: impl Into<SharedString>, size: f32, color: u32, cx: &g
         .child(content.into())
 }
 
-/// Rótulo en mayúsculas espaciadas (`--orbit-fs-eyebrow`).
+/// Rótulo de interfaz: conserva el caso elegido por el autor.
 pub fn eyebrow(content: impl Into<SharedString>, cx: &gpui::App) -> Div {
-    let upper: SharedString = content.into().to_uppercase().into();
-    tracked_text(upper, 11.0, 800, ink_3(cx), 0.99, cx)
+    text(content, 12.0, 600, ink_3(cx), cx)
 }
 
 /// Columna de contexto: título con versión y lista de secciones.
@@ -689,10 +688,10 @@ pub fn topbar(trail: &str, title: &str, action: impl IntoElement, cx: &gpui::App
     topbar_with_actions(trail, title, None, action, false, cx)
 }
 
-/// Acciones opcionales de la sección entre la ruta y los controles comunes.
+/// Acciones opcionales de la sección junto al título y los controles comunes.
 /// La sección conserva su estado, eventos y persistencia; Orbit solo compone.
 pub fn topbar_with_actions(
-    trail: &str,
+    _trail: &str,
     title: &str,
     section_actions: Option<gpui::AnyElement>,
     common_actions: impl IntoElement,
@@ -721,17 +720,6 @@ pub fn topbar_with_actions(
                 .when(compact, gpui::Styled::flex_none)
                 .items_baseline()
                 .gap(px(10.0))
-                .when(!trail.is_empty(), |path| {
-                    path.child(tracked_text(
-                        trail.to_uppercase(),
-                        10.5,
-                        800,
-                        ink_4(cx),
-                        0.66,
-                        cx,
-                    ))
-                    .child(text("/", 12.0, 400, ink_muted(cx), cx))
-                })
                 .child(
                     text(title.to_owned(), 16.0, 650, ink(cx), cx)
                         .font_weight(face_weight(650, cx))
@@ -891,6 +879,7 @@ fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> S
                 tokens.geometry.control_height
             })))
         .px(px(16.0))
+        .flex_none()
         .flex()
         .items_center()
         .justify_center()
@@ -974,6 +963,7 @@ pub fn keycaps<S: Into<SharedString>>(keys: impl IntoIterator<Item = S>, cx: &gp
 /// Botón principal (claro sobre oscuro, `--orbit-primary-*`).
 pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
     button_base(id, label, cx)
+        .self_start()
         .bg(rgb(primary_bg(cx)))
         .border_color(rgb(primary_bg(cx)))
         .hover(|s| s.bg(rgb(ink(cx))))
@@ -985,6 +975,7 @@ pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful
 /// Acción principal de acceso; conserva foco y semántica del botón Orbit.
 pub fn carmine_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
     button_base(id, label, cx)
+        .self_start()
         .bg(linear_gradient(
             135.0,
             linear_color_stop(rgb(carmine(cx)), 0.0),

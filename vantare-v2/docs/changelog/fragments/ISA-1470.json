@@ -9,7 +9,8 @@
     "La campana separa su contador, Ajustes y Cuenta muestran selección, y el Launcher conecta sus pasos y usa iconos en baldosa.",
     "El calendario distingue las clases por color y muestra Bronze, Silver, Gold y Semanal con etiquetas.",
     "Los textos para clientes, los resúmenes de versiones y la identidad instalada común se conservan junto a las columnas completas de Cuenta, Validar y Ajustes; Equilibrado solo se selecciona en la escena QA y Automático permanece pendiente.",
-    "La sección, la búsqueda, la miga y el título mantienen el nombre Roadmap por decisión de Isaac; Actualizaciones conserva sus notas de versión."
+    "La sección, la búsqueda, la miga y el título mantienen el nombre Roadmap por decisión de Isaac; Actualizaciones conserva sus notas de versión.",
+    "La ronda 3 de componentes comunes limita botones y pills al contenido, conserva el caso de los rótulos y usa sans para texto y display para KPIs. Lanzar es neutro con Ctrl L; perfiles sin encogimiento y listas con degradado de 24 px y espacio final. No se inventan contadores ni indicadores."
   ],
   "testing": [
     "Abrir Estrategia e Ingeniero a 1920 y 1440: comprobar las tres tarjetas, el alto completo y que Ver Roadmap navega a Roadmap.",
@@ -17,7 +18,8 @@
     "Recorrer Ajustes y Cuenta, abrir la campana y revisar su contador; comprobar Launcher en reposo y durante el lanzamiento.",
     "Revisar los chips de clase y las etiquetas de nivel del calendario a 1920 y 1440.",
     "Recorrer las siete pestañas de Ajustes, Cuenta y Validar: comprobar textos, carriles, scroll, versión instalada y contenido aprobado del informe.",
-    "Buscar Roadmap y abrirlo desde Estrategia o Ingeniero: comprobar Roadmap en menú, miga y título."
+    "Buscar Roadmap y abrirlo desde Estrategia o Ingeniero: comprobar Roadmap en menú, miga y título.",
+    "A 1920 y 1440, revisar barra/topbar y botones de Inicio/General/Actualizaciones; desplazar hasta el final Perfiles, Últimas veces, Studio, Calendario, Roadmap y notas de versión: última fila legible y pie de barra separado."
   ],
   "knownLimitations": [
     "Los módulos futuros no tienen fecha confirmada.",

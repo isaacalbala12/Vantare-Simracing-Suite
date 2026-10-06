@@ -4592,3 +4592,4 @@ Entrega local para revisión del orquestador; sin push, PR, merge ni promoción.
 Segundo hito: Host loopback en Go heredado, checkout fijado, secretos solo en el step y .dockerignore; DEPLOY_SURFACE conservado.
 Tercer hito: capacidades del Hub (11), desconocidas ignoradas, cotas y cuarentena solo de JSON/versión/validación; errores de E/S se conservan y screenshots::validate permanece.
 Cuarto hito: cotas de identidades/lecturas/tar y pruebas codec/LMU; rights/mod.rs conserva íntegro el Hub y se recolocan CLOCK_WRAP_FROM/read_bounded.
+Quinto hito: Reader::text de ACC sanea U+202E, con test unitario; no se incorpora el fuzz de 863 líneas.

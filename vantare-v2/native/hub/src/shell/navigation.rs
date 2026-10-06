@@ -679,6 +679,15 @@ mod beta_tests {
                 assert!(access.beta_navigate(&mut current, future).is_ok());
                 assert_eq!(current, future);
                 assert_eq!(access.beta_lock(current), Some("Próximamente"));
+                let result = access.beta_navigate(&mut current, Section::Roadmap);
+                if access.verified {
+                    assert!(result.is_ok());
+                    assert_eq!(current, Section::Roadmap);
+                    assert_eq!(access.beta_lock(current), None);
+                } else {
+                    assert!(result.is_err());
+                    assert_eq!(current, future);
+                }
             }
         }
     }

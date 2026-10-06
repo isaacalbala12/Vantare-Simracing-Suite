@@ -4,14 +4,14 @@
   "type": "fix",
   "summary": "El Hub muestra los módulos futuros con el diseño nuevo y corrige controles e indicadores visuales.",
   "technicalNotes": [
-    "Strategy e Engineer presentan qué ofrecerán y anuncian la fecha por confirmar, sin abrir sus interfaces anteriores. Workshop y Analysis quedan fuera de las rutas del Hub.",
-    "La tarjeta Apariencia del inspector crece para mostrar sus controles completos; botones secundarios pill y desplegables con chevron.",
+    "Estrategia e Ingeniero aprovechan todo el alto con tres tarjetas de funciones futuras y un botón para seguir sus avances en Roadmap; no anuncian fechas. Workshop y Analysis quedan fuera de las rutas del Hub.",
+    "OBS permanece visible bajo la zona desplazable del inspector; Apariencia muestra sus controles completos, botones secundarios pill y desplegables con chevron.",
     "La campana separa su contador, Ajustes y Cuenta muestran selección, y el Launcher conecta sus pasos y usa iconos en baldosa.",
     "El calendario distingue las clases por color y muestra Bronze, Silver, Gold y Semanal con etiquetas."
   ],
   "testing": [
-    "Abrir Strategy e Engineer desde la barra y comprobar la página Próximamente sin acciones.",
-    "Seleccionar un widget en Studio y comprobar todos los controles de Apariencia; desplazarse por el inspector.",
+    "Abrir Estrategia e Ingeniero a 1920 y 1440: comprobar las tres tarjetas, el alto completo y que Ver Roadmap navega a Roadmap.",
+    "Seleccionar un widget en Studio a 1920 y 1440: comprobar OBS completo y desplazar el inspector hasta Posición y tamaño.",
     "Recorrer Ajustes y Cuenta, abrir la campana y revisar su contador; comprobar Launcher en reposo y durante el lanzamiento.",
     "Revisar los chips de clase y las etiquetas de nivel del calendario a 1920 y 1440."
   ],

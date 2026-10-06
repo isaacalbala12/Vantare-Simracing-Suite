@@ -362,6 +362,7 @@ impl Render for StudioSidebar {
                 .p(px(32.0))
                 .pt(px(0.0))
                 .pl(px(0.0))
+                .gap(px(12.0))
                 .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
                 .child(
                     div()
@@ -370,6 +371,12 @@ impl Render for StudioSidebar {
                         .min_h_0()
                         .overflow_y_scroll()
                         .child(studio.inspector(cx)),
+                )
+                .child(
+                    orbit::neo_card(cx)
+                        .flex_none()
+                        .p(px(16.0))
+                        .child(Studio::obs_settings(cx)),
                 )
         }) {
             Ok(column) => column,
@@ -1482,9 +1489,6 @@ impl Studio {
                                 )),
                         );
                 }
-                if tab == Tab::Layout {
-                    card = card.child(Self::obs_settings(cx));
-                }
                 panel = panel.child(card);
             }
         } else {
@@ -1493,9 +1497,6 @@ impl Studio {
                 "Selecciona un widget para editar sus propiedades.",
                 cx,
             )));
-        }
-        if self.editor.selected().is_none() {
-            panel = panel.child(orbit::neo_card(cx).child(Self::obs_settings(cx)));
         }
         panel
     }

@@ -547,13 +547,13 @@ impl Editor {
         block = block.child(images);
         if self.screenshots.len() < 3 {
             block = block.child(
-                orbit::button("report-capture", "Capturar pantalla", cx).on_click(cx.listener(
-                    |this, _, _, cx| {
+                orbit::button("report-capture", "Capturar pantalla", cx)
+                    .self_start()
+                    .on_click(cx.listener(|this, _, _, cx| {
                         this.editor.clear_approval();
                         let fields = this.editor.fields(cx);
                         this.report_action(Command::ReportCapture { fields }, cx);
-                    },
-                )),
+                    })),
             );
         }
         block.child(orbit::text(

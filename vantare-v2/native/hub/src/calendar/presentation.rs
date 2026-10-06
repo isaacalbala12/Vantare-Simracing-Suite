@@ -83,12 +83,11 @@ fn mono(content: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
 
 fn local_time(now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let local = now.with_timezone(&Local);
-    mono(
-        format!(
-            "{} · {}",
-            local.format("%H:%M"),
-            local.format("%Z (UTC%:z)")
-        ),
+    orbit::text(
+        local.format("%H:%M").to_string(),
+        12.0,
+        400,
+        orbit::ink_3(cx),
         cx,
     )
 }
@@ -329,10 +328,11 @@ fn day_view(now: DateTime<Utc>, cx: &gpui::App) -> Div {
 fn week_title(monday: NaiveDate) -> String {
     let sunday = monday + Duration::days(6);
     format!(
-        "{} – {} de {}",
+        "{} {} – {} {}",
         monday.day(),
+        &month_name(monday.month())[..3],
         sunday.day(),
-        month_name(sunday.month())
+        &month_name(sunday.month())[..3]
     )
 }
 
@@ -609,11 +609,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn week_caption_matches_wails_across_month_and_year_boundaries() -> Result<(), String> {
+    fn week_caption_names_both_months_across_month_and_year_boundaries() -> Result<(), String> {
         for (date, expected) in [
-            ("2026-09-28", "28 – 4 de octubre"),
-            ("2026-12-28", "28 – 3 de enero"),
-            ("2026-10-05", "5 – 11 de octubre"),
+            ("2026-09-28", "28 sep – 4 oct"),
+            ("2026-12-28", "28 dic – 3 ene"),
+            ("2026-10-05", "5 oct – 11 oct"),
         ] {
             let monday =
                 NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|error| error.to_string())?;

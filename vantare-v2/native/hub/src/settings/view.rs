@@ -173,32 +173,36 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
         .flex_shrink_0()
         .gap(px(12.0))
         .child(
-            orbit::neo_header(title.to_owned(), "gear", cx)
-                .flex_wrap()
-                .when_some(meta, |head, value| {
-                    let meta = if title == "Nivel de rendimiento" {
-                        section_status(
-                            value,
-                            if value.starts_with("Activo") {
-                                orbit::green(cx)
-                            } else {
-                                orbit::ember(cx)
-                            },
-                            cx,
+            orbit::neo_header(
+                title.to_owned(),
+                match title {
+                    "Interfaz" | "Tema" => "v-palette",
+                    "Overlays" => "v-studio",
+                    "Canal" | "Notas de versión" => "v-download",
+                    "Nivel de rendimiento" | "Qué cambia en cada nivel" => "v-gauge",
+                    "En el Hub" | "En pista · Próximamente" => "v-keys",
+                    "Últimos eventos" => "clock",
+                    "Sistema"
+                    | "Datos y registros"
+                    | "Informe de diagnóstico local"
+                    | "Contenido del informe" => "v-monitor",
+                    _ => "v-shield",
+                },
+                cx,
+            )
+            .flex_wrap()
+            .when_some(meta, |head, value| {
+                let meta = text(value, 12.0, 500, orbit::ink_3(cx), cx);
+                head.child(div().flex_1()).child(meta.flex_none()).when(
+                    title == "Últimos eventos" && value == "8 en esta sesión",
+                    |head| {
+                        head.child(
+                            orbit::small_button("settings-demo-copy-events", "Copiar", cx)
+                                .tab_stop(false),
                         )
-                    } else {
-                        text(value, 12.0, 500, orbit::ink_3(cx), cx)
-                    };
-                    head.child(div().flex_1()).child(meta.flex_none()).when(
-                        title == "Últimos eventos" && value == "8 en esta sesión",
-                        |head| {
-                            head.child(
-                                orbit::small_button("settings-demo-copy-events", "Copiar", cx)
-                                    .tab_stop(false),
-                            )
-                        },
-                    )
-                }),
+                    },
+                )
+            }),
         )
         .child(orbit::scroll_fade(
             body.id(format!("settings-body-{title}"))
@@ -482,148 +486,37 @@ fn performance_choice(
     title: &str,
     rate: &str,
     description: &str,
-    selected: bool,
-    cx: &gpui::App,
-) -> gpui::Stateful<Div> {
-    let meter = (0..5).fold(
-        div()
-            .w_full()
-            .mt(px(1.0))
-            .flex()
-            .items_center()
-            .gap(px(4.0)),
-        |bars, step| {
-            bars.child(div().flex_1().min_w_0().h(px(5.0)).rounded(px(2.0)).bg(rgb(
-                if step < 5 - index {
-                    if selected {
-                        orbit::carmine(cx)
-                    } else {
-                        orbit::ink_4(cx)
-                    }
-                } else {
-                    0x002a_2a2f
-                },
-            )))
-        },
-    );
-    div()
-        .id(("settings-performance", index))
-        .role(gpui::Role::Button)
-        .aria_label(title)
-        .aria_selected(selected)
-        .aria_description("Próximamente")
-        .tab_stop(false)
-        .flex_1()
-        .min_w_0()
-        .h(px(167.0))
-        .px(px(15.0))
-        .pt(px(14.0))
-        .pb(px(13.0))
-        .flex()
-        .flex_col()
-        .gap(px(7.0))
-        .rounded(px(14.0))
-        .border_1()
-        .border_color(if selected {
-            rgba(crate::orbit::legacy_rgba(0xf047_5559, cx))
-        } else {
-            rgba(orbit::line(cx))
-        })
-        .bg(if selected {
-            linear_gradient(
-                160.0,
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0x2412_15ff, cx)), 0.0),
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0x0e0f_11ff, cx)), 0.7),
-            )
-        } else {
-            gpui::Background::from(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
-        })
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(text(title, 15.0, 720, orbit::ink(cx), cx))
-                .child(
-                    div()
-                        .size(px(7.0))
-                        .rounded_full()
-                        .border_1()
-                        .border_color(rgb(orbit::ink_3(cx)))
-                        .when(selected, |mark| {
-                            mark.bg(rgb(orbit::carmine(cx)))
-                                .border_color(rgb(orbit::carmine(cx)))
-                        }),
-                ),
-        )
-        .child(meter)
-        .child(text(
-            rate,
-            11.0,
-            600,
-            if selected {
-                orbit::ink_2(cx)
-            } else {
-                orbit::ink_3(cx)
-            },
-            cx,
-        ))
-        .child(
-            text(description, 12.0, 400, orbit::ink_3(cx), cx)
-                .line_height(px(18.0))
-                .top(px(1.0)),
-        )
-}
-fn performance_mode(
-    title: &str,
-    rate: &str,
-    description: &str,
-    selected: bool,
     cx: &gpui::App,
 ) -> Div {
-    div()
-        .flex_1()
-        .min_w_0()
-        .h(px(100.0))
-        .px(px(15.0))
-        .pt(px(14.0))
-        .pb(px(13.0))
-        .flex()
-        .flex_col()
-        .gap(px(7.0))
-        .rounded(px(14.0))
-        .border_1()
-        .border_color(if selected {
-            rgba(crate::orbit::legacy_rgba(0xf047_5559, cx))
-        } else {
-            rgba(orbit::line(cx))
-        })
-        .bg(if selected {
-            linear_gradient(
-                160.0,
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0x2412_15ff, cx)), 0.0),
-                linear_color_stop(rgba(crate::orbit::legacy_rgba(0x0e0f_11ff, cx)), 0.7),
-            )
-        } else {
-            gpui::Background::from(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
-        })
-        .child(
+    let meter = (0..5).fold(div().w_full().flex().gap(px(4.0)), |bars, step| {
+        bars.child(
             div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(text(title, 15.0, 720, orbit::ink(cx), cx))
-                .child(if selected {
-                    orbit::status_dot(Tone::Success, 8.0, cx)
+                .flex_1()
+                .h(px(5.0))
+                .rounded(px(2.0))
+                .bg(rgb(if step < 5 - index {
+                    orbit::ink_4(cx)
                 } else {
-                    div()
-                        .size(px(8.0))
-                        .rounded_full()
-                        .border_1()
-                        .border_color(rgb(orbit::ink_3(cx)))
-                }),
+                    orbit::surface_3(cx)
+                })),
         )
+    });
+    orbit::neo_card(cx)
+        .p(px(15.0))
+        .h(px(167.0))
+        .gap(px(7.0))
+        .child(text(title, 15.0, 700, orbit::ink(cx), cx))
+        .child(meter)
         .child(text(rate, 11.0, 600, orbit::ink_3(cx), cx))
+        .child(text(description, 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0)))
+}
+fn performance_mode(title: &str, description: &str, cx: &gpui::App) -> Div {
+    orbit::neo_card(cx)
+        .flex_1()
+        .p(px(15.0))
+        .min_h(px(100.0))
+        .gap(px(7.0))
+        .child(text(title, 15.0, 700, orbit::ink(cx), cx))
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
 }
 fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
@@ -649,6 +542,7 @@ impl Hub {
         } else {
             orbit::small_button(id, label, cx)
         })
+        .self_start()
         .track_focus(&self.settings.action_focus[focus_index])
         .tab_stop(enabled)
         .when(!enabled, |button| button.opacity(orbit::DISABLED))
@@ -783,7 +677,7 @@ impl Hub {
                 "Próximamente podrás consultar las versiones instaladas anteriormente.",
             ),
             Page::Diagnostics => (
-                "Paquete de diagnóstico",
+                "Informe de diagnóstico",
                 "v-monitor",
                 "Prepara un informe del estado de Vantare, sin contraseñas ni datos de la carrera.",
             ),
@@ -801,6 +695,7 @@ impl Hub {
                 .when(self.settings.page == Page::Appearance, |card| {
                     card.child(
                         orbit::small_button("settings-open-studio", "Abrir Overlay Studio", cx)
+                            .self_start()
                             .on_click(
                                 cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
                             ),
@@ -892,8 +787,28 @@ impl Hub {
                         orbit::neo_card(cx)
                             .flex_shrink(0.0)
                             .child(orbit::neo_header("Vantare", "v-home", cx))
-                            .child(orbit::progress(0.65, cx))
-                            .child(orbit::pill("Tema actual", Tone::Neutral, cx)),
+                            .child(text(
+                                cx.global::<orbit::design::Tokens>().name.clone(),
+                                20.0,
+                                700,
+                                orbit::ink(cx),
+                                cx,
+                            ))
+                            .child(text(
+                                "Así se ven las tarjetas, los textos y los controles con tu tema.",
+                                13.0,
+                                400,
+                                orbit::ink_2(cx),
+                                cx,
+                            ))
+                            .child(orbit::pill("Tema actual", Tone::Accent, cx).self_start())
+                            .child(
+                                orbit::carmine_button("theme-preview-button", "Botón primario", cx)
+                                    .self_start()
+                                    .tab_stop(false)
+                                    .cursor_default(),
+                            )
+                            .child(orbit::progress(0.65, cx)),
                     ),
             );
         }
@@ -906,6 +821,7 @@ impl Hub {
                         .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
                         .child(
                             orbit::small_button("settings-open-updates", "Actualizaciones", cx)
+                                .self_start()
                                 .on_click(cx.listener(|hub, _, _, cx| {
                                     hub.select_settings_page(Page::Updates, cx);
                                 })),
@@ -982,7 +898,7 @@ impl Hub {
                 match self.settings.page {
                     Page::Application => self.settings_application(true, cx),
                     Page::Appearance => self.settings_appearance(cx),
-                    Page::Performance => self.settings_performance(true, cx),
+                    Page::Performance => Self::settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => Self::settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
@@ -1344,18 +1260,13 @@ impl Hub {
             .w_full()
 
             .child(section_surface(
-                "Apariencia",
+                "Tema",
                 None,
                 section_body()
                     .child(section_palette_row(
                     "Paleta de colores",
                     "Cambia los colores de la interfaz sin alterar su diseño.",
                     palettes,
-                 cx))
-                .child(section_row(
-                    "Apariencia",
-                    "Cada tema define sus superficies oscuras y su contraste.",
-                    orbit::pill("Oscuro", orbit::Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Contraste",
@@ -1491,7 +1402,7 @@ impl Hub {
                 }),
             )
     }
-    fn settings_performance(&self, compact: bool, cx: &gpui::App) -> Div {
+    fn settings_performance(compact: bool, cx: &gpui::App) -> Div {
         let choices = [
             (
                 "Máximo",
@@ -1522,17 +1433,14 @@ impl Hub {
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(12.0));
         for (index, (name, rate, description)) in choices.into_iter().enumerate() {
             levels = levels.child(
-                performance_choice(
-                    index,
-                    name,
-                    rate,
-                    description,
-                    self.demo.is_some() && index == 2,
-                    cx,
-                )
-                .when(compact, |element| element.h_auto().min_h(px(167.0))),
+                performance_choice(index, name, rate, description, cx)
+                    .when(compact, |element| element.h_auto().min_h(px(167.0))),
             );
         }
+        levels = levels.child(orbit::neo_card(cx).p(px(15.0)).gap(px(10.0))
+            .child(orbit::neo_header("Cómo elegir", "v-gauge", cx))
+            .child(text("Una frecuencia menor reduce el trabajo de los overlays. Podrás elegir según tu equipo y tu carrera.", 12.0, 400, orbit::ink_3(cx), cx))
+            .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()));
         let custom_auto = div()
             .flex()
             .w_full()
@@ -1541,9 +1449,7 @@ impl Hub {
             .child(
                 performance_mode(
                     "Personalizado",
-                    "Sin perfil activo",
-                    "Elige la cadencia widget a widget; cada aumento muestra su coste de CPU.",
-                    false,
+                    "Podrás ajustar la frecuencia de actualización de cada widget.",
                     cx,
                 )
                 .when(compact, |element| element.h_auto().min_h(px(100.0))),
@@ -1551,16 +1457,14 @@ impl Hub {
             .child(
                 performance_mode(
                     "Automático",
-                    "Próximamente",
                     "El ajuste automático estará disponible más adelante.",
-                    false,
                     cx,
                 )
                 .when(compact, |element| element.h_auto().min_h(px(100.0))),
             );
         stack().h_full().child(section_surface(
             "Nivel de rendimiento",
-            None,
+            Some("Así funcionarán los niveles"),
             section_body()
                 .gap(px(12.0))
                 .child(custom_auto)
@@ -1584,7 +1488,6 @@ impl Hub {
                 "Cadencia objetivo",
                 ["Monitor", "60 fps", "40 fps", "30 fps", "20 fps"],
             ),
-            ("Disponibilidad", ["Pendiente"; 5]),
         ] {
             rows = rows.child(
                 div()
@@ -1702,7 +1605,18 @@ impl Hub {
     }
     fn settings_release_news(cx: &gpui::App) -> Div {
         let mut body = section_body().mt(px(-0.5));
-        match super::releases::news() {
+        body = body.child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(12.0))
+                .min_h(px(46.0))
+                .child(text(crate::version_label(), 14.0, 700, orbit::ink(cx), cx))
+                .child(orbit::pill("Instalada", Tone::Success, cx)),
+        );
+
+        match super::releases::news_for_channel(crate::product::CHANNEL) {
             Ok(releases) => {
                 for release in releases {
                     body = body.child(
@@ -1714,14 +1628,6 @@ impl Hub {
                             .mb(px(-0.5))
                             .border_b_1()
                             .border_color(rgba(orbit::line_row(cx)))
-                            .child(
-                                div().w(px(162.0)).flex_none().whitespace_nowrap().child(
-                                    text(release.tag.clone(), 12.0, 700, orbit::coral(cx), cx)
-                                        .font_family(crate::orbit::mono_family(cx))
-                                        .font_weight(gpui::FontWeight(700.0))
-                                        .line_height(px(18.0)),
-                                ),
-                            )
                             .child(
                                 div().flex_1().min_w_0().child(
                                     div()
@@ -1992,7 +1898,7 @@ impl Hub {
             .flex_col()
             .gap(px(8.0))
             .child(privacy_bullet(
-                "Consumos, stints, pits, estrategias observadas y calidad ya derivados.",
+                "Consumo, tandas, paradas y estrategias observadas, sin datos de carrera originales.",
                 cx,
             ))
             .child(privacy_bullet(
@@ -2052,23 +1958,7 @@ impl Hub {
                 .child(section_note(
                     "Tus aportes usarán una referencia que permita borrarlos, sin mostrar tu identidad a otros usuarios.",
                  cx))
-                .child(
-                    div()
-                        .mt(px(12.0)).mb(px(12.0))
-                        .flex()
-                        .flex_wrap()
-                        .items_center()
-                        .gap(px(8.0))
-                        .child(reference_primary(
-                            "settings-consent",
-                            "Aceptar y participar",
-                         cx).opacity(0.55))
-                        .child(disabled_button("settings-revoke", "Revocar consentimiento", cx))
-                        .child(disabled_button(
-                            "settings-delete-remote",
-                            "Solicitar borrado remoto",
-                         cx)),
-                )
+                .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start())
                 .child(
                     div()
                         .mt(px(0.0))
@@ -2083,7 +1973,7 @@ impl Hub {
     }
     fn settings_privacy_queue(&self, cx: &gpui::App) -> Div {
         section_surface(
-            "Cola e historial de envíos",
+            "Envíos pendientes",
             Some(if self.demo.is_some() {
                 "0 sin enviar · 0 enviados"
             } else {
@@ -2092,23 +1982,17 @@ impl Hub {
             section_body()
                 .child(section_note(
                     if self.demo.is_some() {
-                        "Todavía no hay paquetes preparados."
+                        "Todavía no hay informes preparados."
                     } else {
-                        "La cola de Strategy no está disponible en el Hub."
+                        "El envío de resúmenes de carrera estará disponible próximamente."
                     },
                     cx,
                 ))
-                .child(
-                    div()
-                        .mt(px(2.0))
-                        .flex()
-                        .items_start()
-                        .child(disabled_button(
-                            "settings-send-next",
-                            "Enviar siguiente",
-                            cx,
-                        )),
-                ),
+                .child(div().mt(px(2.0)).flex().items_start().child(orbit::pill(
+                    "Próximamente",
+                    Tone::Neutral,
+                    cx,
+                ))),
             cx,
         )
     }
@@ -2201,7 +2085,7 @@ impl Hub {
                 }
                 body = body.child(section_note("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", cx));
                 if !vantare_services::diagnostics::configured() {
-                    body = body.child(section_note("Este build aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
+                    body = body.child(section_note("Esta versión aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
                 }
             }
         }
@@ -2366,16 +2250,16 @@ impl Hub {
                     cx,
                 ))
                 .child(section_row_hint(
-                    "Muestreo de CPU",
-                    "Métrica de diagnóstico local.",
-                    disabled_toggle("settings-cpu", "Muestreo de CPU", demo, cx),
+                    "Medir uso de CPU",
+                    "Consulta el uso del procesador en este equipo.",
+                    disabled_toggle("settings-cpu", "Medir uso de CPU", demo, cx),
                     12.0,
                     cx,
                 ))
                 .child(
                     section_row_hint(
                         "Informe de diagnóstico",
-                        "Paquete saneado, listo para copiar o adjuntar.",
+                        "Informe sin datos personales, listo para copiar o adjuntar.",
                         self.settings_button(
                             "settings-diagnostic-prepare",
                             if self.settings.busy {
@@ -2463,7 +2347,7 @@ impl Hub {
             (
                 "15:59:35",
                 "Info",
-                "Actualizaciones · Canal Nightly seleccionado",
+                "Actualizaciones · Canal de la instalación comprobado",
             ),
             (
                 "15:59:00",

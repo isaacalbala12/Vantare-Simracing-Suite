@@ -391,12 +391,8 @@ impl Calendar {
             .justify_between()
             .gap(px(12.0))
             .child(
-                orbit::neo_page_header(
-                    "Calendario LMU",
-                    "Carreras diarias y semanales · hora local del equipo",
-                    cx,
-                )
-                .flex_1(),
+                orbit::neo_page_header("Calendario LMU", "Carreras diarias y semanales", cx)
+                    .flex_1(),
             )
             .child(
                 orbit::button("calendar-reload", "Actualizar horario", cx).on_click(cx.listener(

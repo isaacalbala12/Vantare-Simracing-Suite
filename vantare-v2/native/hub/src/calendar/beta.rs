@@ -308,7 +308,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
             );
     } else {
         hero = hero.child(orbit::text(
-            "Sigue una serie con horario vigente para ver su próxima salida.",
+            "Sigue una serie para ver su próxima carrera.",
             22.0,
             600,
             orbit::ink(cx),
@@ -316,7 +316,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
         ));
     }
     hero.child(orbit::text(
-        "Avisarme antes · Próximamente     |     Lanzar perfil antes · Próximamente",
+        "Avisos y lanzamiento de perfil antes de la carrera · Próximamente",
         12.0,
         400,
         orbit::ink_3(cx),
@@ -434,13 +434,54 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
             }
         }
         Ok(_) => {
-            races = races.child(orbit::text(
-                "Sin salidas disponibles para estos filtros. El catálogo debe estar vigente.",
-                13.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ));
+            let current = matches!(calendar.schedule.is_current(now), Ok(true));
+            races = races.flex().flex_col().child(
+                div()
+                    .flex_1()
+                    .min_h(px(260.0))
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(16.0))
+                    .child(orbit::icon("v-calendar", 42.0, orbit::ink_3(cx)))
+                    .child(
+                        orbit::text(
+                            if current {
+                                "No hay carreras para estos filtros"
+                            } else {
+                                "No hay horario de esta semana"
+                            },
+                            18.0,
+                            600,
+                            orbit::ink(cx),
+                            cx,
+                        )
+                        .text_center(),
+                    )
+                    .child(
+                        orbit::text(
+                            if current {
+                                "Prueba otra clase o nivel, o actualiza el horario."
+                            } else {
+                                "Pulsa Actualizar horario para descargar el último."
+                            },
+                            13.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        )
+                        .text_center(),
+                    )
+                    .child(
+                        orbit::button("calendar-empty-reload", "Actualizar horario", cx)
+                            .self_center()
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.error = this.reload().err();
+                                cx.notify();
+                            })),
+                    ),
+            );
         }
         Err(error) => {
             races = races.child(orbit::callout(error, cx));
@@ -498,12 +539,12 @@ fn week_card(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
                     .child(orbit::text(
                         match starts {
                             Ok(ref rows) if !rows.is_empty() => "●",
-                            Ok(_) => "–",
+                            Ok(_) => "",
                             Err(_) => "?",
                         },
                         11.0,
                         400,
-                        orbit::coral(cx),
+                        orbit::ink_3(cx),
                         cx,
                     )),
             );
@@ -522,7 +563,7 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
             if current {
                 "Horario vigente"
             } else {
-                "Horario caducado · actualiza el catálogo local"
+                "Horario caducado · pulsa Actualizar horario"
             },
             14.0,
             600,
@@ -551,8 +592,8 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
         ))
         .child(orbit::text(
             format!(
-                "Zona del equipo · {}",
-                now.with_timezone(&Local).format("%Z (UTC%:z)")
+                "Tu zona horaria · {}",
+                now.with_timezone(&Local).format("UTC%:z")
             ),
             13.0,
             400,

@@ -358,3 +358,19 @@ Las pruebas Rust generan sus claves de test en memoria y comprueban ausencia
 de firma, cambio de contenido, clave ajena y campos desconocidos.
 El smoke beta anterior usa manifiestos sin firma y requiere adaptación con
 artefactos firmados por Isaac para probar una actualización positiva real.
+
+### Prueba del feed remoto firmado (#1472 R2)
+
+Regresión local (sin red): `remote-feed-tests.ps1 -TestVerifier <exe aislado con
+clave pública de TEST> -SigningKeyFile <semilla de TEST>`. El feed simulado
+incluye versiones inválidas `99999.0.0` y `65535.0.0`, un asset ajeno y una
+versión menor firmada. Comprueba selección descendente y contenido string,
+UTF-8 bytes y UTF-16 con BOM; no modifica la clave productiva.
+
+Prueba real pendiente, **solo cuando Isaac autorice una prerelease**: construir
+instalador inicial y actualización con la clave pública productiva fijada;
+Isaac firma fuera del repo. Publicar la prerelease autorizada y su manifiesto,
+instalar la anterior en una cuenta de prueba, ejecutar Check sin LocalManifest,
+verificar versión/notas, reiniciar y confirmar Apply/arranque y datos conservados.
+Guardar tags, hashes, log y capturas; desinstalar esa instalación de prueba.
+No publicar una versión inválida para simular el ataque en el feed real.

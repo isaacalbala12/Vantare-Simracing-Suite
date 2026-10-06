@@ -1383,3 +1383,9 @@ con fixtures, interrupción inyectada y datos conservados. Evidencia externa
 N-10 bloqueado: `native/hub/src/comparison.rs:197` usa Workshop para capturas;
 no se retira del paquete ni se cambia esa arquitectura en este encargo.
 Las notas R2 y `docs/roadmap/plan.md` no existen en el checkout recibido.
+
+N-2: selección descendente de la primera release verificable; assets inválidos
+se omiten y byte[] se decodifica con UTF-8 estricto/detección BOM.
+Regresión con verificador Ed25519 aislado y clave generada TEST: RED base,
+3 PASS (string, UTF-8 bytes, UTF-16 BOM). GitHub real pendiente de prerelease
+autorizada; procedimiento en packaging/README.md, sin publicación en esta tarea.

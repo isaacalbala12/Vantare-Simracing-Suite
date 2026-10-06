@@ -99,21 +99,35 @@ function Get-BetaRemoteManifest([string]$Verifier) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $headers = @{ 'User-Agent' = 'Vantare-Native-Beta'; Accept = 'application/vnd.github+json' }
     $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$script:BetaRepository/releases?per_page=100" -Headers $headers -TimeoutSec 30
-    $best = $null
-    foreach ($release in $releases) {
-        if ($release.draft -or $release.tag_name -cnotmatch '^native-beta-v(.+)$') { continue }
-        try { $version = Read-BetaVersion $Matches[1] } catch { continue }
-        $asset = @($release.assets | Where-Object { $_.name -ceq 'vantare-native-beta.json' })
-        if ($asset.Count -ne 1 -or $asset[0].size -gt 65536) { continue }
-        $expected = "https://github.com/$script:BetaRepository/releases/download/$($release.tag_name)/vantare-native-beta.json"
-        if ($asset[0].browser_download_url -cne $expected) { throw 'Asset de manifiesto fuera de GitHub Releases.' }
-        if ($null -eq $best -or $version -gt $best.version) { $best = @{ version = $version; url = $expected; tag = $release.tag_name } }
+    $candidates = @(
+        foreach ($release in $releases) {
+            if ($release.draft -or $release.tag_name -cnotmatch '^native-beta-v(.+)$') { continue }
+            try { $version = Read-BetaVersion $Matches[1] } catch { continue }
+            $asset = @($release.assets | Where-Object { $_.name -ceq 'vantare-native-beta.json' })
+            if ($asset.Count -ne 1 -or $asset[0].size -gt 65536) { continue }
+            $expected = "https://github.com/$script:BetaRepository/releases/download/$($release.tag_name)/vantare-native-beta.json"
+            if ($asset[0].browser_download_url -cne $expected) { continue }
+            @{ version = $version; url = $expected; tag = $release.tag_name }
+        }
+    )
+    foreach ($candidate in ($candidates | Sort-Object { $_.version } -Descending)) {
+        try {
+            $response = Invoke-WebRequest -UseBasicParsing -Uri $candidate.url -TimeoutSec 30 -Headers $headers
+            $json = $response.Content
+            if ($json -is [byte[]]) {
+                if ($json.Length -gt 65536) { continue }
+                # UTF-8 estricto y detección BOM (UTF-8/UTF-16/UTF-32).
+                $stream = [IO.MemoryStream]::new($json)
+                $reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false, $true), $true)
+                try { $json = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            }
+            if ($json -isnot [string]) { continue }
+            $manifest = Read-BetaManifest $json $false $Verifier
+            if ("native-beta-v$($manifest.version)" -cne $candidate.tag) { continue }
+            return $json
+        } catch { continue } # Un asset inválido no veta una versión firmada anterior.
     }
-    if ($null -eq $best) { throw 'No hay release native-beta con manifiesto publicado.' }
-    $response = Invoke-WebRequest -UseBasicParsing -Uri $best.url -TimeoutSec 30 -Headers $headers
-    $manifest = Read-BetaManifest $response.Content $false $Verifier
-    if ("native-beta-v$($manifest.version)" -cne $best.tag) { throw 'Versión del manifiesto distinta del tag.' }
-    $response.Content
+    throw 'No hay release native-beta con manifiesto válido y firmado.'
 }
 
 function Write-BetaJson([string]$Path, $Value) {

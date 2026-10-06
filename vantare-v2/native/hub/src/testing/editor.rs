@@ -35,7 +35,7 @@ impl Editor {
     }
 
     fn tracked_label(label: &str, color: u32, tracking: f32) -> gpui::Div {
-        let label = label.to_uppercase();
+        let label = label.to_owned();
         // La cara estática W800 ya contiene el peso; modelar conserva el kerning.
         div().h(px(16.5)).child(
             gpui::canvas(

@@ -493,7 +493,7 @@ fn stat_tile(
         .p(px(14.0))
         .px(px(18.0))
         .rounded(px(18.0))
-        .child(tracked_text(label.to_uppercase(), 11.0, 700, orbit::ink_3(cx), 0.44).flex_none())
+        .child(tracked_text(label.to_owned(), 12.0, 600, orbit::ink_3(cx), 0.0).flex_none())
         .child(value_line)
         .when_some(sub, |tile, sub| {
             tile.child(

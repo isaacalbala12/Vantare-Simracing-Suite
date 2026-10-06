@@ -525,9 +525,9 @@ pub fn chip(label: &str, tone: Tone, cx: &gpui::App) -> Div {
         && !tone.symbol().is_empty()
         && !matches!(tone, Tone::Bronze | Tone::Silver | Tone::Gold)
     {
-        format!("{} {}", tone.symbol(), label.to_uppercase())
+        format!("{} {label}", tone.symbol())
     } else {
-        label.to_uppercase()
+        label.to_owned()
     };
     let color = if is_mono(cx) && tone == Tone::Danger {
         cx.global::<theme::Theme>().primary_ink
@@ -558,6 +558,8 @@ pub fn chip(label: &str, tone: Tone, cx: &gpui::App) -> Div {
 }
 pub fn pill(label: &str, tone: Tone, cx: &gpui::App) -> Div {
     let control = div()
+        .self_start()
+        .flex_none()
         .h(px(PILL_H))
         .px(px(FIELD_PAD))
         .rounded(px(RADIUS_CONTROL))

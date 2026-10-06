@@ -428,7 +428,7 @@ impl Remote {
                         orbit::ink(cx),
                         cx,
                     ))
-                    .child(
+                    .child(orbit::scroll_fade(
                         div()
                             .id(format!("roadmap-{section}"))
                             .flex_1()
@@ -445,7 +445,8 @@ impl Remote {
                                     .items(section, area)
                                     .map(|item| item_card(item, compact, cx)),
                             ),
-                    )
+                        cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+                    ))
             }),
         );
         let upcoming = orbit::neo_card(cx)
@@ -494,7 +495,7 @@ impl Remote {
             .min_h_0()
             .gap(px(12.0))
             .child(orbit::neo_header("Recién entregado", "check", cx))
-            .child(
+            .child(orbit::scroll_fade(
                 div()
                     .id("roadmap-delivered")
                     .flex_1()
@@ -522,7 +523,8 @@ impl Remote {
                             ))
                             .child(label(item.body.es.clone(), cx))
                     })),
-            );
+                cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+            ));
         div()
             .id("roadmap")
             .size_full()

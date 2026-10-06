@@ -4503,3 +4503,73 @@ Evidencia y canal: `C:/tmp/1470-r3-pantallas-evidence/` y
 `C:/tmp/fase2/informe-1470-r3-pantallas.md`. `docs/roadmap/plan.md` sigue ausente en
 esta base; su coordinación queda al orquestador, sin inventar otra fuente pública.
 Sin dependencias nuevas, frontend, Go, push, PR, merge, promoción o release.
+
+### #1470 — Ronda 3, componentes comunes (1470-r3-comunes, 2026-10-06)
+
+Worker aislado en `vantareapp/isa-1470-r3-comunes`, base `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`.
+Alcance: barra/topbar comunes, botones por contenido, desvanecido de scroll,
+rótulos sin mayúsculas forzadas, sans para interfaz y display para KPIs.
+La barra mantiene las filas de navegación/perfiles a su alto real y desplaza
+la lista completa antes del pie fijo; Lanzar es neutro y muestra Ctrl L.
+Los contadores de Launcher/Perfiles salen de perfiles guardados, Tester del acceso.
+Nota 03:11: Roadmap sin indicador en beta; Testing sin contador sin fuente real.
+Sin cambios de textos/contenido del worker paralelo ni de servicios/permisos.
+La comprobación con rueda real a 1440 detectó y corrigió también el carril de
+Atajos (Ctrl B fuera de tarjeta) y tarjetas finales Canal/Historial de borrado
+reducidas al encabezado: se conserva su alto intrínseco, sin cambiar contenido.
+Build prueba/parity por cola PASS (11 exe + duckdb.dll); warning heredado de
+analysis/view.rs:989 con parity-capture. check/clippy/fmt PASS, Nextest1155 PASS,
+6 skips existentes, corpus ACC completo PASS568,646s. Lifecycle final falló una
+vez en alive(pid39296) de engineer_restart_budget; repetición completa PASS
+(5 Hub + 12 runtime), sin modificar tests. Intermitencia fuera de alcance en
+#1476, area:plataforma y Project Vantare; causa no demostrada, logs conservados.
+30 capturas (15 pantallas × 1920/1440) y 19 de rueda real a 1440 MIRADAS,
+ronda-4.png y detalle-scroll.png MIRADOS; dimensiones/hash PASS. EXE SHA256
+33C6A4E02E0A2011258C9B9421C126FC13701E49C1B28A22F853422AC8231266.
+QA a DPI96; sin certificación DPI125/150, LMU live ni igualdad total del Hub.
+Evidencia externa `C:/tmp/1470-r3-comunes-evidence/`, canal del orquestador
+`C:/tmp/fase2/informe-1470-r3-comunes.md`. Aceptación del orquestador pendiente.
+No se añaden tests que repitan estilos: se usan los suites existentes y capturas
+nativas con rueda real; escenas demo son QA visual, no evidencia LMU live.
+Chevrons ya corregidos en base/ronda 2: se verifican sin duplicar implementación.
+Los tokens de `vantare_ui::theme` ya separan body/display/mono; se corrigen los
+consumidores que usaban mono para texto, sin alterar esquema ni temas de widgets.
+`plan.md` ausente en esta base; no se crea otro roadmap. Sin push, PR, CI remota,
+merge, promoción ni release. No se toca la beta de Isaac ni el checkout principal.
+
+### #1470 — Unión ronda 3 (1470-union3, 2026-10-06)
+
+Base limpia `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`, misma rama aislada
+`vantareapp/isa-1470-hub-rediseno`, worktree `C:/tmp/vw3-1470/vantare-v2`.
+Primer merge local `f9a60b92` incorpora pantallas `e4b4f96a`; el segundo merge
+incorpora comunes `b305db34` (SHA de entrega en informe externo/issue).
+Dos conflictos: handoff combinado conservando ambas entradas; badge de las
+notas conserva `orbit::pill` y condición de pantallas. Se mantienen TODO el
+contenido/textos y los scroll, rótulos/botones comunes, incluido `self_start`
+de Plantillas. Roadmap y DeepSeek Harness intactos; fragmento sin duplicados.
+
+Gates finales por cola, -j2 y target propio: fmt PASS; check12,13s PASS;
+clippy -Dwarnings14,62s PASS; Nextest1157/1157 PASS753,040s, seis skips
+configurados, golden ACC612,588s PASS; lifecycle5 Hub+12 UI PASS al primer
+intento (incluido engineer_restart_budget; sin reintento #1476).
+QA prueba/parity-capture sellado0.1.0-beta.1/testers PASS42,11s. Se conserva
+warning previo unused cx analysis/view.rs989 solo bajo captura; ordinarios verdes.
+Standings0/292160px, threshold0/maxpercent0/delta0 frente a nativa F1; captura,
+referencia y mapa MIRADOS. No es prueba Wails ni LMU live/rendimiento.
+
+Evidencia externa `C:/tmp/1470-union3-evidence/`: 35 escenas1920x1080 y35
+1440x900, todas MIRADAS; resumen-1920.png/resumen-1440.png y ronda-1.png
+antes/después MIRADOS; diez capturas adicionales con rueda real a1440 MIRADAS.
+Sin regresiones de unión observadas: perfiles desplazables sin pisar Contraer
+barra; últimas filas legibles, primarios/Plantillas por contenido, caso normal,
+OBS fijo y Posición y tamaño accesible. Hashes de binarios/capturas/código,
+logs completos y scripts reproducibles conservados fuera del repo.
+Rutas beta ocultas Workshop/Telemetría/Licencias separada abren Inicio: no
+certifican sus módulos. Calendario conserva el archivo QA y catálogo caducado.
+Manual: recorrer Hub/Ajustes a1920 y1440, desplazar perfiles/listas/inspector,
+revisar badge0.1.0-beta.1, Roadmap/fechas y botones de Plantillas.
+Pendientes aceptación del orquestador/Isaac, DPI125/150 y servicios reales.
+plan.md ausente en la base, no se crea otro roadmap; coordinación pública del
+orquestador pendiente. No Go/frontend/Release/CI remota: fuera del brief.
+Solo merges locales autorizados; sin push/PR/promoción/release ni modificación
+de native-beta Isaac o checkout principal. Siguiente: revisión aislada de la unión.

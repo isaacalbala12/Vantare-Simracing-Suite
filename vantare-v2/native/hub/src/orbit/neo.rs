@@ -155,6 +155,7 @@ pub fn summary_row(
         .relative()
         .pl(px(42.0))
         .min_h(px(54.0))
+        .flex_none()
         .border_b_1()
         .border_color(rgba(line(cx)))
         .child(
@@ -220,4 +221,30 @@ pub fn ghost_button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App)
         .bg(gpui::transparent_black())
         .border_0()
         .hover(|style| style.bg(rgb(surface_2(cx))))
+}
+
+/// Borde de scroll común. El padding permite leer completa la última fila al llegar abajo.
+pub fn scroll_fade(content: Stateful<Div>, background: u32) -> Div {
+    div()
+        .relative()
+        .flex_1()
+        .min_w_0()
+        .min_h_0()
+        .flex()
+        .flex_col()
+        .overflow_hidden()
+        .child(content.flex_1().min_h_0().pb(px(24.0)))
+        .child(
+            div()
+                .absolute()
+                .bottom_0()
+                .left_0()
+                .right_0()
+                .h(px(24.0))
+                .bg(linear_gradient(
+                    180.0,
+                    linear_color_stop(tint(background, 0.0), 0.0),
+                    linear_color_stop(rgb(background), 1.0),
+                )),
+        )
 }

@@ -446,7 +446,10 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
             races = races.child(orbit::callout(error, cx));
         }
     }
-    table = table.child(races);
+    table = table.child(orbit::scroll_fade(
+        races,
+        cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+    ));
     div()
         .id("calendar")
         .w_full()

@@ -4573,3 +4573,50 @@ plan.md ausente en la base, no se crea otro roadmap; coordinación pública del
 orquestador pendiente. No Go/frontend/Release/CI remota: fuera del brief.
 Solo merges locales autorizados; sin push/PR/promoción/release ni modificación
 de native-beta Isaac o checkout principal. Siguiente: revisión aislada de la unión.
+### ISA-1470 — Ronda 4, cortes y cabeceras (2026-10-06)
+
+Entrega aislada del worker `1470-r4-cortes`, rama
+`vantareapp/isa-1470-r4-cortes`, base `136a90fa`; se retoman los ocho
+archivos sin commit dejados por el worker anterior, sin descartar cambios.
+Corrige el fit de Standings y los rótulos compactos de Inicio a 1440,
+separadores de Estado a todo el ancho (Cuenta y Actividad quedan al otro
+worker), dos filas completas de aplicaciones con acceso a «Ver todas»,
+flechas y descripción funcional de la cadena, insignias según su estado,
+espera atenuada, pósteres arriba y «Probar» oculto durante el lanzamiento.
+Studio muestra «Fuel y stint» a 1440, botón de inspector con icono y nombre
+accesible, y «Probar con · Próximamente» deshabilitado sin selección ficticia.
+Testing y Calendario comparten cabecera hasta el borde derecho; sus columnas
+no duplican el espacio de la antigua cabecera.
+
+La primera captura heredada bloqueaba el mutex global en el proceso padre
+mientras el helper del Hub esperaba el mismo mutex. La validación usa el
+helper de turno `VANTARE_CAPTURE_TURN` del worker estados únicamente en el
+binario QA externo; se restaura el script del repo después de compilar y no
+se incluye esa adaptación en este commit. El helper posee el mutex global,
+el script externo reserva `pantalla-ocupada` con identificador y limita cada
+captura a 90 s, cerrando solo su árbol de procesos. Inicio solo termina en
+2,8 s: no se reprodujo un cuelgue de layout después de corregir la captura.
+
+Evidencia externa: `C:/tmp/1470-r4-cortes-evidence/`, 20 capturas de diez
+pantallas a 1920x1080 y 1440x900, comparaciones antes/después inspeccionadas.
+Las 20 recapturas finales y las comparaciones se han inspeccionado;
+`ronda-2.png` y `seal.json` conservan la revisión y hashes. Fmt, check y
+Clippy `-D warnings` PASS después del último cambio. Nextest 1157/1157 PASS
+(754,329 s, seis skips configurados); corpus ACC completo PASS (604,246 s).
+Lifecycle PASS (5 escenarios Hub y 12 UI). Build QA PASS (aviso heredado de analysis/view.rs
+solo con parity-capture); build ordinario PASS sin avisos. Escaneo UTF8/UTF16
+confirma que el binario ordinario no contiene los dos textos exclusivos QA.
+Regresión visual con escenas existentes: no se añade un test que compare
+constantes de layout. No hay cambios de lógica core, dependencias, Go ni
+frontend. Los textos QA del calendario y Notificaciones mantienen sus guards
+`parity-capture` y fixtures; no se introducen datos QA en las rutas normales.
+La app normal obtiene Cuenta del servicio; la cuenta de ejemplo exige demo.
+
+Manual: recorrer Inicio/Launcher/Studio/Testing/Calendario a ambas resoluciones,
+comprobar bordes completos, Fuel visible, inspector conmutado, escenarios
+inactivos, y acciones de cabecera a la derecha. A 1440 Fuel pasa a una segunda
+línea para conservar su acceso; no se promete una sola línea con cualquier
+número de widgets. ETA no se inventa: solo se representa el progreso existente.
+`plan.md` está ausente en esta base y no se crea un roadmap paralelo.
+Sin push, PR, CI remota, merge, promoción ni release; beta de Isaac intacta.
+La aceptación y actualización conjunta de #1470 corresponden al orquestador.

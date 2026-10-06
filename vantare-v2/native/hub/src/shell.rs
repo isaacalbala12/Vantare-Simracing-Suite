@@ -633,6 +633,26 @@ impl Render for Hub {
             .min_w_0()
             .min_h_0()
             .child(topbar)
+            .when(
+                matches!(self.section, Section::Testing | Section::Calendar)
+                    && self.shell.access.beta_lock(self.section).is_none(),
+                |main| {
+                    let header = if self.section == Section::Testing {
+                        self.testing.update(cx, |_, cx| Testing::page_header(cx))
+                    } else {
+                        self.calendar.update(cx, |_, cx| Calendar::page_header(cx))
+                    };
+                    main.child(
+                        div()
+                            .flex_none()
+                            .px(gpui::px(
+                                cx.global::<orbit::design::Tokens>().geometry.gutter,
+                            ))
+                            .pt(gpui::px(24.0))
+                            .child(header),
+                    )
+                },
+            )
             .when(self.section == Section::Studio, |main| {
                 main.child(
                     div()

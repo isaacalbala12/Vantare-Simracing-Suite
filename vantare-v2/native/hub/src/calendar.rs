@@ -1,5 +1,5 @@
 //! Lectura local del catálogo oficial UTC; sin publicación, Discord ni recordatorios.
-use crate::files;
+use crate::{files, orbit};
 pub mod views;
 
 // Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
@@ -8,7 +8,7 @@ pub mod home;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
 #[cfg(feature = "parity-capture")]
 use chrono::{Local, Timelike};
-use gpui::{Context, IntoElement, Render, Styled, Window};
+use gpui::{Context, IntoElement, Render, Styled, Window, div, prelude::*, px};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -384,6 +384,29 @@ impl Calendar {
 }
 
 impl Calendar {
+    pub(crate) fn page_header(cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(12.0))
+            .child(
+                orbit::neo_page_header(
+                    "Calendario LMU",
+                    "Carreras diarias y semanales · hora local del equipo",
+                    cx,
+                )
+                .flex_1(),
+            )
+            .child(
+                orbit::button("calendar-reload", "Actualizar horario", cx).on_click(cx.listener(
+                    |this, _, _, cx| {
+                        this.error = this.reload().err();
+                        cx.notify();
+                    },
+                )),
+            )
+    }
     pub(crate) fn topbar_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
         presentation::views_control(self, cx)
     }
@@ -409,7 +432,8 @@ impl Render for Calendar {
         }
         let height = (f32::from(window.viewport_size().height)
             - cx.global::<crate::orbit::design::Tokens>().geometry.topbar
-            - 2.0 * cx.global::<crate::orbit::design::Tokens>().geometry.gutter)
+            - 2.0 * cx.global::<crate::orbit::design::Tokens>().geometry.gutter
+            - 76.0)
             .max(0.0);
         if self.view == CalendarView::Upcoming {
             beta::render(self, cx)

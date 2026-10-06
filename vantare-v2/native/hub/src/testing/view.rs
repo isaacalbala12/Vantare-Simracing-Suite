@@ -514,6 +514,7 @@ impl Testing {
     pub(crate) fn context_column(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let count = self.remote.read(cx).report_receipts.len();
         orbit::neo_context_column("testing-context", cx)
+            .pt(px(cx.global::<orbit::design::Tokens>().geometry.gutter))
             .child(orbit::neo_card(cx).child(orbit::neo_header("Tus informes", "pulse", cx))
                 .child(orbit::text(count.to_string(), 32.0, 700, orbit::ink(cx), cx))
                 .child(orbit::text(self.channel_label.clone(), 11.0, 500, orbit::ink_3(cx), cx))
@@ -551,21 +552,42 @@ impl Render for Testing {
             .id("testing-center")
             .min_h(px((f32::from(window.viewport_size().height)
                 - cx.global::<orbit::design::Tokens>().geometry.topbar
-                - 2.0 * cx.global::<orbit::design::Tokens>().geometry.gutter)
+                - 2.0 * cx.global::<orbit::design::Tokens>().geometry.gutter
+                - 76.0)
                 .max(0.0)))
             .w_full()
             .min_w_0()
             .flex()
             .flex_col()
             .gap(px(16.0))
-            .child(div().flex().items_center().justify_between().gap(px(12.0))
-                .child(orbit::neo_page_header("Informes de la beta", "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.", cx))
-                .child(orbit::button("testing-tools", "Borradores y diagnóstico", cx).on_click(cx.listener(|this, _, _, cx| { this.local_open = !this.local_open; cx.notify(); }))))
             .child(content)
             .when(self.local_open, |page| page.child(self.local_tools(cx)))
     }
 }
 impl Testing {
+    pub(crate) fn page_header(cx: &mut Context<Self>) -> gpui::Div {
+        div()
+            .flex()
+            .items_center()
+            .justify_between()
+            .gap(px(12.0))
+            .child(
+                orbit::neo_page_header(
+                    "Informes de la beta",
+                    "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.",
+                    cx,
+                )
+                .flex_1(),
+            )
+            .child(
+                orbit::button("testing-tools", "Borradores y diagnóstico", cx).on_click(
+                    cx.listener(|this, _, _, cx| {
+                        this.local_open = !this.local_open;
+                        cx.notify();
+                    }),
+                ),
+            )
+    }
     fn local_tools(&self, cx: &mut Context<Self>) -> gpui::Div {
         div().flex().flex_col().gap(gpui::px(orbit::GUTTER / 2.0)).child(orbit::callout(
             "Este borrador se guarda en tu equipo. El informe de diagnóstico no incluye el texto privado y no se adjunta automáticamente al envío.",

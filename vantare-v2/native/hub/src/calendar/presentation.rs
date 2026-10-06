@@ -598,11 +598,6 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex()
         .flex_col()
         .gap(px(16.0))
-        .child(orbit::neo_page_header(
-            "Calendario LMU",
-            "Carreras diarias y semanales · hora local del equipo",
-            cx,
-        ))
         .child(content(calendar, now, cx))
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))

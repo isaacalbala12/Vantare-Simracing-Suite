@@ -9,7 +9,7 @@ orquestador; no aceptación, integración, promoción ni publicación.
 
 | Trabajo anterior | Decisión en esta base |
 | --- | --- |
-| #1463 simplificación: `6c35b814`, `a3a08a91`, `e83e512f` | Ya recuperado y adaptado en `fd505f6f`, ancestro comprobado. Conserva pausas, fase fija de lectura, recorrido único y buffers IPC. No cherry-pick duplicado. |
+| #1463 simplificación: `6c35b814`, `a3a08a91`, `e83e512f`, cierre documental `c15a76ce` | Los tres cambios productivos ya están recuperados/adaptados en `fd505f6f`, ancestro comprobado. Conserva pausas, fase fija de lectura, recorrido único y buffers IPC. Cierre documental leído: campaña antigua ruidosa/descriptiva, no prueba de esta rama. No cherry-pick duplicado ni traslado de sus cifras como resultado actual. |
 | #1461 instrumentación: `c4fbd278` | Ancestro comprobado; banco de fases y ablaciones presentes. No nueva instrumentación. |
 | #1461 invalidación: `4726e0c0` | Base conserva normalización del intervalo oculto y tests de demanda/historial. No cambios al render de Standings. |
 | #1462 crítica: `6f7f040b` | Leída desde su worktree; sus cifras son históricas y sus propuestas hipótesis. P2 y parte de P6 ya adaptadas por #1463; el resto no se incorpora sin reproducción/medida. |
@@ -51,6 +51,9 @@ degradado por el núcleo a 500 ms: cuatro regímenes × 18 widgets, más columna
 completas, pie Relative y multiclase configurables y H2H detrás (88 contrastes).
 Su procedencia
 también se compara byte a byte contra el replay/golden, sin fabricar valores.
+El contraste común incrementa únicamente `Snapshot.sequence`, metadato de
+transporte del test existente; no modifica ningún campo del simulador. Las
+regresiones específicas H2H/Relative publican la foto sin ese incremento.
 
 Contraste adicional con el [PDF Kunos SHM 1.8.12, espejo fijado](https://github.com/rrennoir/PyAccSharedMemory/blob/d08ae99739fe638de2785c67e8684bafcadf80de/ACCSharedMemoryDocumentationV1.8.12.pdf):
 página 1 documenta fuel en kg y steering normalizado; página 4 viento en m/s,
@@ -88,7 +91,7 @@ no una promesa de frecuencia del simulador.
 | Head-to-Head | Identidad/puestos y relative_s del rival elegido; 33 ms | corregido: demanda omitía Relative; entrega de familia con dato real verificada; gap positivo live pendiente |
 | Fuel Strategy | Nivel/capacidad L, consumo L/vuelta, autonomía e historial; vueltas restantes con proyección; 500 ms | ok en conservación; ACC nivel/capacidad ausentes (kg no son L); consumo/repostaje real pendiente |
 | Pedals Telemetry | Pedales/clutch/steering/marcha/velocidad/rpm; 16 ms | ok en señales/ausencias; entrada ±1 y marchas físicas pendientes |
-| Relative | Identidad/puestos/clase, relative_s/relative_laps, pit, tipo/pista; last/best 250 ms según columnas; pie reloj/clima; relativo 33 ms | pendiente corrección: slot track pide TrackName aunque muestra temperatura; captura de jugador con mejor vuelta válida pendiente |
+| Relative | Identidad/puestos/clase, relative_s/relative_laps, pit, tipo/pista; last/best y reloj 250 ms; clima 500 ms o slots 250 ms; relativo 33 ms | corregido: track conserva temperatura y el pie stale conserva reloj/clima; gap positivo del jugador pendiente |
 | Racing Flags | Flags con scope sesión/sector/coche; 33 ms | ACC verde real ok; LMU sin evidencia positiva, pendiente |
 | Fastest Lap | Identidad/clase/jugador; vueltas, last/best, pista; 250 ms | ok en corpus/demanda; primera mejora observada y cambios live pendientes; deuda visual fuera de alcance |
 
@@ -190,7 +193,7 @@ Los nombres de tests de esta tabla señalan evidencia verificable, no una
 certificación física de escenarios que el corpus no contiene. Las capturas
 1.4 de pit/outlap se conservan sin ordenar arbitrariamente como carrera grabada.
 
-## Fallo corregido y límites
+## Fallos corregidos y límites
 
 H2H consumía `relative_s` en `domain/head_to_head.rs::row`, pero pedía Gaps,
 ClassGaps, LapTimes y Sectors, **ninguna de las cuales transporta Relative**.
@@ -205,6 +208,19 @@ captura con gap positivo para certificación semántica física. Los 18 widgets
 se contrastan con demanda sobre fotos congeladas LMU/ACC. No cambia el DTO,
 admisión, bucle, render, dependencia ni golden.
 
+Relative tenía dos pérdidas dentro de la misma demanda del pie: `track`
+solicitaba TrackName aunque `footer_slots` pinta temperatura; además, con
+slots personalizados se retiraban reloj/clima que el painter común sí usa
+cuando la fuente está stale. La regresión recorre `track`, `ambient` y `time`
+sobre ACC fresco y LMU stale (seis casos), por pipe solicitado y sin modificar
+la foto. Antes del arreglo ACC `40°` y LMU `23°` pasaban a `—`; el pie stale
+perdía `58:12`, `16°` y `23°` según el slot. Log `relative-red.log`.
+Ahora se conservan SessionClock 250 ms y Weather 500 ms para ese pie y se
+reutiliza el mapeo común de slots: los climáticos, incluido track, solicitan
+Weather a 250 ms. No hay nuevo estado ni cambio de renderer. El
+gate completo confirma la conservación de los seis casos: GREEN UI 172/172
+y Nextest workspace 1158/1158 PASS, sin modificar los goldens.
+
 No se ejecuta `measure-cost.ps1`: exige LMU live en primer plano y una campaña
 autorizada, que el brief excluye. No se inventa un banco offline equivalente ni
 se certifica CPU/RAM. Revisión por Isaac: H2H solo, delante y detrás, completar
@@ -213,10 +229,6 @@ pit, desconexión y práctica→qualy→carrera; añadir capturas reales faltant
 de declarar todos los campos validados.
 
 ## Hallazgos siguientes y fuera de alcance
-
-Relative: la clave de pie `track` consume temperatura en `domain/relative.rs::footer_slots`,
-pero la demanda solicita TrackName sin Weather si no hay otro slot climático.
-Regresión real y arreglo separados pendientes del siguiente hito.
 
 Standings con footerSlots: el contraste experimental solo difiere en `Vm.track`
 (nombre de circuito oculto); renderer utiliza footer_cells en esa configuración.
@@ -228,18 +240,27 @@ No se amplía la demanda ni se modifica el renderer para esconderlo.
 
 ## Gates y estado
 
-Primer hito H2H: fmt workspace y módulo tocado, check y Clippy PASS; Nextest
-1157/1157 PASS, seis skips previos; lifecycle 5 tests IPC + 12 escenarios de
-runtime PASS. Logs `h2h-*.log` en la carpeta de evidencia. Los cinco ignored
+Primer hito H2H (`76518fe1ee31`): fmt workspace y módulo tocado, check y Clippy PASS; Nextest
+1157/1157 PASS, seis skips previos; lifecycle 5 tests Engineer por IPC + 12
+escenarios launcher/runtime PASS. Logs `h2h-*.log` en la carpeta de evidencia. Los cinco ignored
 previos son tres live y dos benchmarks; Nextest excluye además lifecycle para
 ejecutarlo aparte. No se activan juegos ni se debilitan tests.
-La captura debug con referencia vigente difiere en 1/292160 px (delta 1);
-perfil `prueba`/cero estricto pendiente. Esto no cierra la tarea: Relative
-requiere el siguiente arreglo y sus gates completos.
+La captura debug con referencia vigente difería en 1/292160 px (delta 1);
+con el procedimiento indicado y perfil `prueba`, Standings da **0/292160 px**,
+Threshold 0 / MaxPercent 0 / delta máximo 0. Referencia, captura y diff
+inspeccionados; estructura, textos y detalle coinciden. Log
+`standings-final.log`. Tras el arreglo Relative se repitió sobre el binario
+final: **0/292160 px**, delta 0; hash del artefacto/copia capturada iguales,
+referencia/captura/diff inspeccionados de nuevo.
+Segundo hito Relative: fmt workspace + módulos macro-incluidos, check y
+Clippy `-D warnings` PASS; Nextest 1158/1158 PASS (seis skips previos,
+761,462 s; golden ACC 599,523 s), lifecycle 5 Engineer IPC + 12
+launcher/runtime PASS. No retries ni fallos en esta ejecución final.
 
-Resultados exactos, SHAs y omisiones se registran al cerrar en
+Resultados exactos, SHAs y omisiones se registran en
 `C:/tmp/beta/r4/informe-1474-telemetria.md`; logs en `C:/tmp/1474-evidence/`.
-La entrega requiere fmt/check/Clippy/Nextest con goldens/lifecycle y Standings
-0 px. Mientras no se registre PASS no se declara ningún gate verde.
+Entrega local lista para revisión del orquestador: fmt/check/Clippy/Nextest
+con goldens/lifecycle y Standings 0 px PASS. No equivale a validación física,
+aceptación, integración ni promoción.
 `docs/roadmap/plan.md` no existe en la base asignada; no se crea un roadmap
 paralelo ni se modifica publicación remota. Sin push, PR, merge ni release.

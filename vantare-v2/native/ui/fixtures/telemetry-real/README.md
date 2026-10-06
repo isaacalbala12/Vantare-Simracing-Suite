@@ -30,3 +30,7 @@ estas capturas: `relative_s` está ausente, mientras que `relative_laps` aporta
 datos reales. La regresión H2H prueba la entrega de la familia Relative y su
 demanda; no acredita un gap positivo conduciendo. Los vectores de presentación
 existentes cubren el signo y el formato por separado.
+
+Relative contrasta los slots `track`, `ambient` y `time` con ACC fresco y LMU
+stale: seis casos por pipe solicitado, sin modificar las fotos. Protege la
+temperatura del slot y el reloj/clima del pie común cuando la fuente está stale.

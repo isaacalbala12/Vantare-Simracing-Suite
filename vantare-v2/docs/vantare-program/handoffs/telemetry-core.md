@@ -16,15 +16,22 @@ Relative, las señales que usa su proyección, en lugar de gaps/tiempos/sectores
 que no consume. No cambia renderer, DTO, adquisición, goldens ni dependencias.
 Los cortes UI LMU/ACC quedan vinculados byte a byte al replay real y los 18
 widgets se comprueban con demanda IPC sobre ellos.
-Revisión ampliada: Relative pide nombre de pista para el slot `track`, aunque
-su pie consume temperatura; corrección y regresión real en el siguiente hito.
+Revisión ampliada: Relative perdía temperatura en el slot `track` y
+reloj/clima en el pie común stale con slots personalizados. RED real:
+ACC `40°` → `—`; LMU stale pierde `58:12`, `16°`, `23°`. Se corrige la demanda
+usando el mapeo común y conservando señales del pie stale; seis casos de
+regresión sin modificar las fotos, GREEN UI 172/172 y gates completos PASS.
 La invalidación por nombre de pista oculto de Standings se documenta fuera de
 alcance en [#1475](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1475).
 
 Gates, SHAs y estado final: `C:/tmp/beta/r4/informe-1474-telemetria.md`; evidencia
-`C:/tmp/1474-evidence/`. Primer hito H2H: fmt/check/Clippy, Nextest 1157 PASS
-(6 skips previos) y lifecycle 5+12 PASS. Paridad estricta/Relative pendientes;
-no declara entrega cerrada. Siguiente: corrección Relative y gates finales;
+`C:/tmp/1474-evidence/`. Primer hito H2H `76518fe1ee31`: fmt/check/Clippy,
+Nextest 1157 PASS (6 skips previos) y lifecycle 5+12 PASS. Segundo hito
+Relative: fmt/check/Clippy, Nextest 1158 PASS (6 skips), lifecycle 5+12 PASS.
+Standings perfil prueba final después de ambos arreglos: 0/292160 px,
+umbral 0/delta 0, referencia/captura/diff inspeccionados y binario verificado.
+Entrega local de implementación/revisión sistemática lista para revisión del
+orquestador; no aceptación ni integración/promoción. Siguiente: review y campaña;
 Isaac valida H2H solo delante/detrás con mejor
 vuelta real, transición de sesión/pit/desconexión y rendimiento live. Corpus
 actual: una sesión por simulador y jugador ACC en boxes; no certifica esas

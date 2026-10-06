@@ -874,17 +874,11 @@ impl Settings {
         }) {
             demand.request(LapTimes, 250);
         }
-        // Sin huecos configurados, el pie productivo conserva reloj y clima.
-        if settings.footer_slots.iter().all(|id| id == "none") {
-            demand.request(SessionClock, 250);
-            demand.request(Weather, 500);
-        }
+        // Con estado stale, paint usa el pie común incluso con slots configurados.
+        demand.request(SessionClock, 250);
+        demand.request(Weather, 500);
         for id in &settings.footer_slots {
-            if id == "track" {
-                demand.request(TrackName, 500);
-            } else {
-                crate::demand::information(&mut demand, id, true);
-            }
+            crate::demand::information(&mut demand, id, true);
         }
         demand
     }
@@ -894,6 +888,81 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn real_custom_footers_keep_visible_fresh_and_stale_data_through_requested_pipe() {
+        use std::sync::Arc;
+        let mut lost = Vec::new();
+        for (index, scene) in [
+            include_str!("../../fixtures/telemetry-real/acc.snapshot.json"),
+            include_str!("../../fixtures/telemetry-real/lmu-stale.snapshot.json"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let snapshot = vantare_ipc::snapshot_from_json(scene).expect("foto real intacta");
+            for id in ["track", "ambient", "time"] {
+                let settings = Settings {
+                    footer_slots: vec![id.into()],
+                    ..Settings::default()
+                };
+                let prefs = Preferences::default();
+                let mut full = Widget::new(&settings, prefs);
+                full.ingest(&snapshot, prefs);
+                assert_eq!(full.footer.len(), 1);
+                assert_ne!(full.footer[0].value, vantare_domain::format::PLACEHOLDER);
+
+                let name = format!(
+                    "vantare-relative-footer-real-{}-{index}-{id}",
+                    std::process::id()
+                );
+                let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");
+                let source = publisher.demand_source();
+                let demand = settings.demand();
+                let mut subscriber =
+                    vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
+                        .expect("suscriptor");
+                let deadline = Instant::now() + std::time::Duration::from_secs(2);
+                while source.mask() != demand.mask() {
+                    assert!(Instant::now() < deadline, "demanda no aceptada");
+                    std::thread::yield_now();
+                }
+                publisher
+                    .publish(Arc::new(snapshot.clone()))
+                    .expect("foto real");
+                let photo = subscriber
+                    .next_photo(std::time::Duration::from_secs(2))
+                    .expect("foto pedida");
+                let mut requested = Widget::new(&settings, prefs);
+                requested.ingest(&photo.snapshot, prefs);
+                if full.footer != requested.footer {
+                    lost.push(format!(
+                        "foto {index}, slot {id}: {:?} -> {:?}",
+                        full.footer, requested.footer
+                    ));
+                }
+                if full.vm.status.is_some() {
+                    // Con estado stale, paint usa el pie común (reloj + clima).
+                    let visible = |vm: &relative::ViewModel| {
+                        (
+                            vm.remaining.clone(),
+                            vm.air.clone(),
+                            vm.track_temperature.clone(),
+                            vm.wind.clone(),
+                        )
+                    };
+                    if visible(&full.vm) != visible(&requested.vm) {
+                        lost.push(format!(
+                            "foto {index}, slot {id}, pie stale: {:?} -> {:?}",
+                            visible(&full.vm),
+                            visible(&requested.vm)
+                        ));
+                    }
+                }
+            }
+        }
+        assert!(lost.is_empty(), "datos reales visibles perdidos: {lost:#?}");
+    }
 
     #[test]
     fn configured_columns_fill_and_slots_reach_the_rendered_model() {

@@ -1,4 +1,4 @@
-//! Track weather Eficiencia: geometría de `TrackWeatherFunctional` a 240 × 150.
+//! Track weather Eficiencia: rejilla de dos columnas a 240 × 164.
 //! Sin efectos temporales en el productivo: el host solo despierta por datos.
 
 use crate::efficiency::preview::PaintWindow as Window;
@@ -13,9 +13,9 @@ use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
-const SIZE: (f32, f32) = (240.0, 150.0);
-const SLOT_HEIGHT: f32 = 28.0;
-const ROW_GAP: f32 = 1.0;
+const SIZE: (f32, f32) = (240.0, 164.0);
+const SLOT_HEIGHT: f32 = 29.0;
+const ROW_GAP: f32 = 7.0;
 const COLUMN_WIDTH: f32 = 101.0;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -125,7 +125,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 metric.label,
                 x,
-                text::baseline(y, 11.0, 11.0).round(),
+                text::baseline(y, 12.0, 11.0).round(),
                 &label_ink,
             );
             let value = text::fit(window, &metric.value, &value_ink, COLUMN_WIDTH);
@@ -134,7 +134,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 &value,
                 x,
-                text::baseline(y + 13.0, 15.0, 14.0).round(),
+                text::baseline(y + 14.0, 15.0, 14.0).round(),
                 &value_ink,
             );
         }

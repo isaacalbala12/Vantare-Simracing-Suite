@@ -252,30 +252,38 @@ impl Hub {
                     hub.launch_profile(id, cx);
                 }
             }));
-        let search =
-            orbit::ghost_button("home-command", "Busca, abre o lanza algo en Vantare…", cx)
-                .flex_1()
-                .min_w_0()
-                .overflow_hidden()
-                .relative()
-                .justify_start()
-                .pl(px(36.0))
-                .child(
-                    orbit::icon("search", 16.0, orbit::ink_3(cx))
-                        .absolute()
-                        .left(px(8.0))
-                        .top(px(10.0)),
-                )
-                .when(!compact, |button| {
-                    button.child(orbit::text(
-                        "«abre el editor con Standings»",
-                        14.0,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    ))
-                })
-                .on_click(cx.listener(|hub, _, window, cx| hub.toggle_palette(window, cx)));
+        let search = orbit::ghost_button("home-command", "", cx)
+            .flex_1()
+            .min_w_0()
+            .overflow_hidden()
+            .relative()
+            .justify_start()
+            .pl(px(36.0))
+            .gap(px(12.0))
+            .aria_label("Busca, abre o lanza algo en Vantare…")
+            .child(orbit::text(
+                "Busca, abre o lanza algo en Vantare…",
+                14.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+            .child(
+                orbit::icon("search", 16.0, orbit::ink_3(cx))
+                    .absolute()
+                    .left(px(8.0))
+                    .top(px(10.0)),
+            )
+            .when(!compact, |button| {
+                button.child(orbit::text(
+                    "«abre el editor con Standings»",
+                    14.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+            })
+            .on_click(cx.listener(|hub, _, window, cx| hub.toggle_palette(window, cx)));
         let composer = div()
             .w_full()
             .h(px(60.0))
@@ -447,22 +455,43 @@ impl Hub {
                 ),
             )
             .child(
-                orbit::primary_button("home-edit-overlay", "Editar overlay", cx)
-                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))),
+                div().flex().gap(px(24.0)).children(
+                    [
+                        ("—", "Hz de telemetría"),
+                        ("—", "Widgets en pista"),
+                        ("—", "CPU"),
+                    ]
+                    .map(|(value, label)| {
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
+                            .child(orbit::text(label, 12.0, 400, orbit::ink_3(cx), cx))
+                    }),
+                ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::primary_button("home-edit-overlay", "Editar overlay", cx).on_click(
+                            cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
+                        ),
+                    )
+                    .child(orbit::disabled(
+                        orbit::button("home-stop-overlay", "Detener", cx),
+                        "El control del overlay desde Inicio estará disponible próximamente",
+                    )),
             );
+
         let now = chrono::Local::now().fixed_offset();
-        let unread = self.notifications.read(cx).unread();
         let activity_rows = div()
             .id("home-activity-list")
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
-            .child(orbit::summary_row(
-                "Notificaciones",
-                format!("{unread} sin leer"),
-                "v-bell",
-                cx,
-            ))
             .children(
                 self.launcher
                     .read(cx)
@@ -470,12 +499,21 @@ impl Hub {
                     .iter()
                     .filter_map(|profile| {
                         profile.last_launched_at.as_ref().map(|at| {
-                            orbit::summary_row(
-                                profile.name.clone(),
-                                orbit::activity_time(at, now),
-                                "v-launch",
-                                cx,
-                            )
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .child(
+                                    orbit::summary_row(
+                                        format!("{} lanzado", profile.name),
+                                        orbit::activity_time(at, now),
+                                        "v-launch",
+                                        cx,
+                                    )
+                                    .flex_1()
+                                    .min_w_0(),
+                                )
+                                .child(orbit::pill("Lanzado", orbit::Tone::Neutral, cx))
                         })
                     }),
             );
@@ -493,7 +531,24 @@ impl Hub {
                         ),
                     ),
             )
-            .child(activity_rows);
+            .child(activity_rows)
+            .when(
+                !self
+                    .launcher
+                    .read(cx)
+                    .saved_profiles()
+                    .iter()
+                    .any(|p| p.last_launched_at.is_some()),
+                |card| {
+                    card.child(orbit::text(
+                        "Tus próximos lanzamientos aparecerán aquí.",
+                        14.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    ))
+                },
+            );
         let center = div()
             .flex_grow(1.0)
             .flex_basis(gpui::relative(2.0 / 3.0))
@@ -517,20 +572,85 @@ impl Hub {
             .flex_none()
             .gap(px(0.0))
             .child(orbit::neo_header("Estado", "pulse", cx))
-            .child(orbit::summary_row("Le Mans Ultimate", status, "v-helmet", cx).min_h(px(48.0)))
             .child(
-                orbit::summary_row(profile_name.to_owned(), "Perfil favorito", "v-launch", cx)
-                    .min_h(px(48.0)),
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::summary_row("Le Mans Ultimate", status, "v-helmet", cx)
+                            .min_h(px(48.0))
+                            .flex_1()
+                            .min_w_0(),
+                    )
+                    .child(orbit::pill(
+                        if connected { "Conectado" } else { "Esperando" },
+                        if connected {
+                            orbit::Tone::Success
+                        } else {
+                            orbit::Tone::Neutral
+                        },
+                        cx,
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::summary_row(
+                            profile_name.to_owned(),
+                            "Perfil favorito",
+                            "v-launch",
+                            cx,
+                        )
+                        .min_h(px(48.0))
+                        .flex_1()
+                        .min_w_0(),
+                    )
+                    .child(orbit::pill(
+                        if profile.is_some() {
+                            "Guardado"
+                        } else {
+                            "Sin perfil"
+                        },
+                        orbit::Tone::Neutral,
+                        cx,
+                    )),
             )
             .when(self.shell.access.tester, |card| {
                 card.child(
-                    orbit::summary_row("Testing Center", "Acceso de tester", "v-testing", cx)
-                        .min_h(px(48.0)),
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(
+                            orbit::summary_row(
+                                "Testing Center",
+                                "Acceso de tester",
+                                "v-testing",
+                                cx,
+                            )
+                            .min_h(px(48.0))
+                            .flex_1()
+                            .min_w_0(),
+                        )
+                        .child(orbit::pill("Tester", orbit::Tone::Accent, cx)),
                 )
             })
             .child(
-                orbit::summary_row("Beta para testers", "Acceso gratuito", "key", cx)
-                    .min_h(px(48.0)),
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::summary_row("Beta para testers", "Acceso gratuito", "key", cx)
+                            .min_h(px(48.0))
+                            .flex_1()
+                            .min_w_0(),
+                    )
+                    .child(orbit::pill("Beta", orbit::Tone::Neutral, cx)),
             );
         let mut templates = div()
             .flex_1()

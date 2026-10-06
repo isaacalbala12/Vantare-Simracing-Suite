@@ -4469,3 +4469,37 @@ Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
 plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
 Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
 ni merges externos. Checkout principal y native-beta Isaac intactos.
+
+### #1470 — Ronda 3 · pantallas (2026-10-06, entrega local)
+
+Worker `1470-r3-pantallas`, rama `vantareapp/isa-1470-r3-pantallas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Solo la lista de pantallas del brief
+`C:/tmp/beta/r3/w15-arreglos-r3.md`; componentes/scroll en otro worktree.
+
+Implementación: identidad de paquete visible en topbar, General y Actualizaciones,
+notas sin salto en la versión y pills del kit; Rendimiento sin «Activo ahora»;
+Inicio con buscador normal/separado, estados con pills, lanzamientos como actividad,
+indicadores sin cifras inventadas y acciones de Overlay de ancho por contenido.
+Estrategia/Ingeniero: tarjetas a altura natural con iconos propios y descripción,
+póster sobrio inferior que compone el alto. Consentimiento: cuerpo 14 px, dos
+columnas y viñetas. Launcher muestra nombres del catálogo/perfiles personalizados,
+abre Aplicaciones y titula «Nuevo perfil» cuando todavía no existe el perfil.
+Roadmap presenta fechas españolas con año. General explica funciones pendientes.
+Calendario: la etiqueta QA está confinada al constructor demo/escena archivada y
+`parity-capture`; no hay cambio de catálogo. Según nota 03:01 se conserva el nombre
+«DeepSeek Harness» en el selector, sin cambiar ID, tema ni persistencia.
+
+Gates finales PASS: fmt, check (36,63 s), clippy con -D warnings (125,4 s),
+nextest (1157 passed, 6 skipped; 993,6 s con compilación) y lifecycle (5 + 12
+casos, sin fallos; 32,85 s). QA prueba/parity-capture PASS (36,77 s), identidad
+verificada `Vantare Native 0.1.0-beta.1 (testers)` mediante VANTARE_VERSION y
+VANTARE_BUILD_CHANNEL, sin modificar Cargo.toml. Único warning heredado del
+build parity: analysis/view.rs:989, fuera de alcance; gates ordinarios limpios.
+35 pantallas preliminares de 1440 inspeccionadas, además de las 10 modificadas
+a 1920. La recaptura completa sobre HEAD y sus hashes se registra en el canal
+y manifiesto externos al cerrar la entrega; no es prueba de runtime LMU, DPI
+125/150 ni CI remota. Cortes heredados de listas/scroll son del worker común.
+Evidencia y canal: `C:/tmp/1470-r3-pantallas-evidence/` y
+`C:/tmp/fase2/informe-1470-r3-pantallas.md`. `docs/roadmap/plan.md` sigue ausente en
+esta base; su coordinación queda al orquestador, sin inventar otra fuente pública.
+Sin dependencias nuevas, frontend, Go, push, PR, merge, promoción o release.

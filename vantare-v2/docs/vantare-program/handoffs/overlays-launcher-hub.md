@@ -1,5 +1,46 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1473 — Tablas: proporciones RaceLabs, presentación Vantare (2026-10-06)
+
+Worker `1473-tablas`, rama `vantareapp/isa-1473-widgets-tablas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Entrega local terminada para
+revisión del orquestador, no integrada ni promovida. Commits por widget:
+Relative `c4dae159`, Multiclass `e8c58dba`, H2H `bd011bcc`,
+Broadcast `8373b8b7`, Fastest Lap `d203472a`.
+
+Relative pasa a 470×277, siete filas de 29 px, cabecera 36 y pie 38;
+Multiclass a 470×181 con cinco filas de 29 px y cabecera 36;
+H2H a 388×110 con rivales de 24 y jugador de 62; Broadcast a 1920×86,
+nombre 16, gap 12 y tarjeta del jugador 1,4 veces el ancho de sus vecinos.
+Fastest Lap conserva 480×104, rótulo y piloto 14 con cajas de línea de 29.
+Inter, colores y cifras tabulares siguen siendo los de Eficiencia.
+Workshop deja de forzar Relative a 430 px; usa el ancho productivo 470.
+
+La nota del orquestador de las 03:55 autoriza cambiar SIZE sin migración:
+la beta nativa aún no se distribuyó. Las 14 escenas de layout de estas tablas
+caben en 1920×1080; el layout de inicio coloca Relative desde su ancho.
+Capturas antes/después y referencias públicas inspeccionadas en
+`C:/tmp/1473-tablas-evidence/`; demostraciones Workshop, no evidencia LMU.
+Ronda 3/resumen y nombres largos inspeccionados; H2H con tres pilotos,
+Broadcast también a escala 1×. Separadores Multiclass únicos de 1 px.
+Fmt (workspace y módulos), check y Clippy con warnings denegados pasan;
+Nextest 1159/1159, seis skips (cinco pruebas manuales/live y lifecycle,
+que pasa aparte: cinco tests de engineer y doce escenarios de runtime).
+Build final de captura pasa en 15,08 s. Logs y reproducción manual en
+`C:/tmp/1473-tablas-evidence/VERIFICACION.md`. Sin prueba LMU, OBS, Mac,
+DPI distinto ni rendimiento; sin push, PR, CI remoto, merge o release.
+
+Los cinco bloques de demanda permanecen idénticos a la base. #1474 modifica
+Relative/H2H en otra rama: posible conflicto de fichero en sus `mod.rs`,
+sin conflicto intencionado de responsabilidad; preservar sus cambios de demanda.
+No se tocan domain, IPC, persistencia ni dependencias. `efficiency` es el kit
+compartido, no un widget; se conserva intacto, igual que Standings.
+Standings solo tiene propuesta/pregunta en `C:/tmp/beta/r4/informe-1473-tablas.md`.
+Sin datos de sectores/mejores vueltas H2H ni ratings Relative: no se inventan.
+Broadcast conserva selección, orden y cantidad configurada de pilotos;
+centrar siempre al jugador requiere una decisión de contenido posterior.
+`docs/roadmap/plan.md` no existe en esta base; no se recrea.
+
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
 ### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente

@@ -87,6 +87,7 @@ impl Previews {
         div()
             .w_full()
             .h(px(height))
+            .flex_none()
             .min_w_0()
             .overflow_hidden()
             .rounded(px(12.0))
@@ -98,6 +99,7 @@ impl Previews {
                 div()
                     .w(px(widget_width * scale))
                     .h(px(widget_height * scale))
+                    .flex_none()
                     .child(preview.view.clone()),
             )
     }
@@ -450,15 +452,27 @@ impl Hub {
             ))
             .child(
                 div().flex().flex_wrap().gap(px(6.0)).children(
-                    ["Standings", "Relative", "Fuel", "Delta"]
-                        .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
+                    if compact {
+                        ["Standings", "Relative", "+2"].as_slice()
+                    } else {
+                        ["Standings", "Relative", "Fuel", "Delta"].as_slice()
+                    }
+                    .iter()
+                    .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
                 ),
             )
             .child(
                 div().flex().gap(px(24.0)).children(
                     [
-                        ("—", "Hz de telemetría"),
-                        ("—", "Widgets en pista"),
+                        ("—", if compact { "Hz" } else { "Hz de telemetría" }),
+                        (
+                            "—",
+                            if compact {
+                                "Widgets"
+                            } else {
+                                "Widgets en pista"
+                            },
+                        ),
                         ("—", "CPU"),
                     ]
                     .map(|(value, label)| {
@@ -578,8 +592,11 @@ impl Hub {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
+                    .border_b_1()
+                    .border_color(gpui::rgba(orbit::line(cx)))
                     .child(
                         orbit::summary_row("Le Mans Ultimate", status, "v-helmet", cx)
+                            .border_b_0()
                             .min_h(px(48.0))
                             .flex_1()
                             .min_w_0(),
@@ -599,6 +616,8 @@ impl Hub {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
+                    .border_b_1()
+                    .border_color(gpui::rgba(orbit::line(cx)))
                     .child(
                         orbit::summary_row(
                             profile_name.to_owned(),
@@ -606,6 +625,7 @@ impl Hub {
                             "v-launch",
                             cx,
                         )
+                        .border_b_0()
                         .min_h(px(48.0))
                         .flex_1()
                         .min_w_0(),
@@ -626,6 +646,8 @@ impl Hub {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
+                        .border_b_1()
+                        .border_color(gpui::rgba(orbit::line(cx)))
                         .child(
                             orbit::summary_row(
                                 "Testing Center",
@@ -633,6 +655,7 @@ impl Hub {
                                 "v-testing",
                                 cx,
                             )
+                            .border_b_0()
                             .min_h(px(48.0))
                             .flex_1()
                             .min_w_0(),
@@ -645,8 +668,11 @@ impl Hub {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
+                    .border_b_1()
+                    .border_color(gpui::rgba(orbit::line(cx)))
                     .child(
                         orbit::summary_row("Beta para testers", "Acceso gratuito", "key", cx)
+                            .border_b_0()
                             .min_h(px(48.0))
                             .flex_1()
                             .min_w_0(),

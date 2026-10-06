@@ -498,7 +498,12 @@ impl Studio {
             .child(self.toolbar_preview_mode(cx))
             .child(div().flex_1())
             .child(
-                orbit::ghost_button("studio-inspector", "Inspector", cx)
+                orbit::ghost_button("studio-inspector", "", cx)
+                    .aria_label("Mostrar u ocultar inspector")
+                    .child(orbit::icon("v-sliders", 18.0, orbit::ink_2(cx)))
+                    .when(self.inspector_open, |button| {
+                        button.bg(rgb(orbit::surface_3(cx)))
+                    })
                     .aria_selected(self.inspector_open)
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.inspector_open = !this.inspector_open;
@@ -1002,7 +1007,7 @@ impl Studio {
     }
     fn widget_list(&self, cx: &mut Context<Self>) -> gpui::Div {
         let query = self.search.read(cx).value.to_lowercase();
-        let mut list = div().flex().gap(px(6.0));
+        let mut list = div().flex().flex_wrap().gap(px(6.0));
         let mut matches = 0;
         for (index, item) in self.editor.layout().instances.iter().enumerate() {
             if format!("{} {}", item.id, item.settings.kind().label())
@@ -1042,12 +1047,12 @@ impl Studio {
             .role(gpui::Role::Button)
             .aria_label(item.settings.kind().label())
             .tab_index(0)
-            .h(px(51.0))
-            .w(px(172.0))
+            .h(px(42.0))
+            .w(px(146.0))
             .flex_none()
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
-            .px(px(12.0))
+            .px(px(8.0))
             .rounded(px(12.0))
             .flex()
             .items_center()
@@ -1058,31 +1063,13 @@ impl Studio {
             })
             .hover(|row| row.bg(rgb(orbit::surface_2(cx))))
             .child(orbit::icon("v-studio", 20.0, orbit::ink_2(cx)))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .child(text(
-                        item.settings.kind().label(),
-                        13.0,
-                        650,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(
-                        text(
-                            format!(
-                                "{} · Eficiencia",
-                                if item.visible { "activo" } else { "oculto" }
-                            ),
-                            11.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )
-                        .mt(px(3.0)),
-                    ),
-            )
+            .child(div().flex_1().min_w_0().child(text(
+                item.settings.kind().label(),
+                13.0,
+                650,
+                orbit::ink(cx),
+                cx,
+            )))
             .child(
                 div()
                     .id(("studio-visibility", index))
@@ -1592,11 +1579,11 @@ impl Studio {
                 .child(div().id("studio-widget-strip").flex_1().min_w_0().overflow_x_scroll().child(self.widget_list(cx)))
                 .child(self.widget_actions(cx)))
             .child(div().flex().items_center().gap(px(8.0)).flex_wrap()
-                .child(text("Probar con", 12.0, 400, orbit::ink_3(cx), cx))
-                .children(["Salida", "Carrera", "Boxes", "Lluvia", "Noche"].into_iter().enumerate().map(|(index, label)|
-                    orbit::disabled(orbit::ghost_button(("studio-scenario", index), label, cx),
-                        "Pendiente: escenarios de prueba; el lienzo recibe telemetría real")))
-                .child(div().flex_1())
+                .child(text("Probar con · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))
+                .child(div().flex().p(px(4.0)).gap(px(4.0)).rounded_full().bg(rgb(orbit::surface_2(cx)))
+                    .children(["Salida", "Carrera", "Boxes", "Lluvia", "Noche"].into_iter().enumerate().map(|(index, label)|
+                        orbit::disabled(orbit::ghost_button(("studio-scenario", index), label, cx),
+                            "Próximamente: escenarios de prueba; Ejemplo y En vivo controlan la fuente del lienzo"))))
                 )
     }
 

@@ -404,13 +404,17 @@ impl Launcher {
         compact: bool,
         cx: &gpui::App,
     ) -> Stateful<Div> {
-        let mut row = div().flex().items_stretch().gap(px(if running {
-            0.0
-        } else if compact {
-            8.0
-        } else {
-            12.0
-        }));
+        let mut row = div()
+            .flex()
+            .items_center()
+            .when(running, gpui::Styled::items_stretch)
+            .gap(px(if running {
+                0.0
+            } else if compact {
+                8.0
+            } else {
+                12.0
+            }));
         for (index, step) in profile.steps.iter().enumerate() {
             let app = self
                 .store
@@ -421,6 +425,9 @@ impl Launcher {
             let event = self.step_event(profile, index);
             let (label, tone) = self.step_state(profile, index);
             let icon_size = if compact { 48.0 } else { 80.0 };
+            if !running && index > 0 {
+                row = row.child(orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx).flex_none());
+            }
             let mut card = div()
                 .relative()
                 .flex_1()
@@ -441,7 +448,8 @@ impl Launcher {
                         .border_color(rgba(orbit::line(cx)))
                         .bg(orbit::tint(0, 0.18))
                 })
-                .when(running, |card| card.items_center().text_center());
+                .when(running, |card| card.items_center().text_center())
+                .when(running && label == "En espera", |card| card.opacity(0.45));
             if let Some(app) = app {
                 card = card.child(app_icon(
                     app,
@@ -455,6 +463,34 @@ impl Launcher {
                     cx,
                 ));
             }
+            if running
+                && event.is_some_and(|event| {
+                    matches!(
+                        event.status,
+                        super::super::chain::Status::Ready | super::super::chain::Status::Failed
+                    ) || label == "Reintentando…"
+                })
+            {
+                card = card.child(
+                    orbit::text(
+                        if label == "Listo" { "✓" } else { "!" },
+                        13.0,
+                        600,
+                        orbit::ink(cx),
+                        cx,
+                    )
+                    .absolute()
+                    .top(px(icon_size - 18.0))
+                    .left(gpui::relative(0.5))
+                    .ml(px(icon_size / 2.0 - 18.0))
+                    .size(px(24.0))
+                    .rounded_full()
+                    .bg(rgb(tone.color(cx)))
+                    .flex()
+                    .items_center()
+                    .justify_center(),
+                );
+            }
             card = card
                 .child(orbit::text(
                     app.map_or(step.app_id.as_str(), |app| app.name.as_str()),
@@ -464,7 +500,13 @@ impl Launcher {
                     cx,
                 ))
                 .child(orbit::text(
-                    format!("Paso {} · espera {} s", index + 1, step.delay_seconds),
+                    match step.app_id.as_str() {
+                        "lmu" => "Abre el juego y espera al menú",
+                        "crewchief" => "Tu ingeniero de voz",
+                        "simhub" => "Telemetría para el volante",
+                        "custom:vantare" => "Tus widgets sobre el juego",
+                        _ => "Abre la aplicación del perfil",
+                    },
                     if compact { 10.0 } else { 12.0 },
                     400,
                     orbit::ink_2(cx),
@@ -629,35 +671,39 @@ impl Launcher {
                     )),
                 )
             })
-            .child(
-                button("showcase-rehearsal", "Probar sin el juego", cx)
-                    .when(running || self.scanning, |button| {
-                        orbit::disabled(button, "Espera a que termine la cadena o el escaneo")
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.chain.is_some() || this.scanning || this.capture == Capture::Running
-                        {
-                            return;
-                        }
-                        let selected = rehearsal
-                            .steps
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, step)| step.app_id != "lmu")
-                            .map(|(index, _)| index)
-                            .collect();
-                        this.start_selection(
-                            rehearsal.clone(),
-                            Discovery {
-                                apps: this.discovered.apps.clone(),
-                                steam_executable: this.discovered.steam_executable.clone(),
-                                warnings: vec![],
-                            },
-                            selected,
-                            cx,
-                        );
-                    })),
-            );
+            .when(!running, |row| {
+                row.child(
+                    button("showcase-rehearsal", "Probar sin el juego", cx)
+                        .when(running || self.scanning, |button| {
+                            orbit::disabled(button, "Espera a que termine la cadena o el escaneo")
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if this.chain.is_some()
+                                || this.scanning
+                                || this.capture == Capture::Running
+                            {
+                                return;
+                            }
+                            let selected = rehearsal
+                                .steps
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, step)| step.app_id != "lmu")
+                                .map(|(index, _)| index)
+                                .collect();
+                            this.start_selection(
+                                rehearsal.clone(),
+                                Discovery {
+                                    apps: this.discovered.apps.clone(),
+                                    steam_executable: this.discovered.steam_executable.clone(),
+                                    warnings: vec![],
+                                },
+                                selected,
+                                cx,
+                            );
+                        })),
+                )
+            });
         let mut card = orbit::neo_card(cx)
             .id("showcase-hero")
             .relative()
@@ -918,6 +964,21 @@ impl Launcher {
                                     .top(px(-45.0))
                                     .opacity(0.16),
                             )
+                            .when(
+                                self.launch_progress().is_some()
+                                    && self
+                                        .last_profile
+                                        .as_ref()
+                                        .is_some_and(|active| active.id == profile.id),
+                                |cover| {
+                                    cover.child(
+                                        orbit::pill("Abriendo", Tone::Accent, cx)
+                                            .absolute()
+                                            .top(px(8.0))
+                                            .right(px(8.0)),
+                                    )
+                                },
+                            )
                             .when(profile.favorite, |cover| {
                                 cover.child(
                                     orbit::chip("★ Favorito", Tone::Accent, cx)
@@ -993,7 +1054,7 @@ impl Launcher {
     ) -> Div {
         let running = self.launch_progress().is_some();
         let mut grid = div().flex().flex_wrap().gap(px(8.0));
-        for (index, app) in self.store.document.apps.iter().enumerate() {
+        for (index, app) in self.store.document.apps.iter().take(5).enumerate() {
             let edit = app.clone();
             let step = profile.and_then(|profile| {
                 profile
@@ -1091,21 +1152,16 @@ impl Launcher {
                     ),
             )
             .child(
-                orbit::scroll_fade(
-                    div()
-                        .id("showcase-app-scroll")
-                        .overflow_y_scroll()
-                        .child(grid)
-                        .children(
-                            self.discovered
-                                .warnings
-                                .iter()
-                                .map(|warning| orbit::callout(warning.clone(), cx)),
-                        ),
-                    cx.global::<orbit::design::Tokens>().colors.neo_bottom,
-                )
-                .flex_none()
-                .max_h(px(if compact { 200.0 } else { 256.0 })),
+                div()
+                    .id("showcase-app-scroll")
+                    .flex_none()
+                    .child(grid)
+                    .children(
+                        self.discovered
+                            .warnings
+                            .iter()
+                            .map(|warning| orbit::callout(warning.clone(), cx)),
+                    ),
             )
     }
 
@@ -1244,6 +1300,11 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(gap));
+        if self.launch_progress().is_some() {
+            center = center.child(
+                self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx),
+            );
+        }
         center = if let Some(profile) = profile {
             center.child(self.showcase_hero(
                 profile,
@@ -1259,8 +1320,11 @@ impl Launcher {
                 cx,
             )))
         };
-        center = center
-            .child(self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx));
+        if self.launch_progress().is_none() {
+            center = center.child(
+                self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx),
+            );
+        }
         let mut context = div()
             .w(gpui::relative(1.0 / 3.0))
             .min_w_0()

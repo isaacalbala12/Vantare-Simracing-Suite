@@ -457,27 +457,6 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex()
         .flex_col()
         .gap(px(16.0))
-        .child(
-            div()
-                .flex()
-                .flex_none()
-                .items_center()
-                .justify_between()
-                .gap(px(12.0))
-                .child(orbit::neo_page_header(
-                    "Calendario LMU",
-                    "Carreras diarias y semanales · hora local del equipo",
-                    cx,
-                ))
-                .child(
-                    orbit::button("calendar-reload", "Actualizar horario", cx).on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.error = this.reload().err();
-                            cx.notify();
-                        }),
-                    ),
-                ),
-        )
         .child(hero(calendar, now, cx))
         .child(table)
         .when_some(calendar.error.clone(), |page, error| {
@@ -615,6 +594,7 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
     }
     follows = follows.child(orbit::text("Tus recordatorios · Próximamente. Seguir una serie guarda tu selección; aún no envía avisos ni abre aplicaciones.", 13.0, 400, orbit::ink_3(cx), cx));
     orbit::neo_context_column("calendar-context", cx)
+        .pt(px(cx.global::<orbit::design::Tokens>().geometry.gutter))
         .child(week)
         .child(timing)
         .child(follows)

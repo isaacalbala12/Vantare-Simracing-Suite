@@ -878,7 +878,7 @@ pub fn toggle(
         })))
 }
 
-/// Botón secundario (borde fino, fondo de superficie).
+/// Botón pill compartido; el secundario es transparente con contorno.
 fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
     div()
         .id(id)
@@ -894,10 +894,8 @@ fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> S
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(cx
-            .try_global::<design::Tokens>()
-            .map_or(RADIUS_CONTROL, |tokens| tokens.geometry.control_radius)))
-        .bg(rgb(surface_2(cx)))
+        .rounded_full()
+        .bg(gpui::transparent_black())
         .border_1()
         .border_color(rgba(line_strong(cx)))
         .cursor_pointer()
@@ -923,10 +921,10 @@ pub fn small_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<D
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(10.0))
+        .rounded_full()
         .border_1()
         .border_color(rgba(line(cx)))
-        .bg(rgba(legacy_rgba(0xffff_ff04, cx)))
+        .bg(gpui::transparent_black())
         .cursor_pointer()
         .hover(|s| s.bg(rgb(surface_2(cx))).border_color(rgba(line_strong(cx))))
         .focus_visible(|s| s.border_color(rgb(carmine(cx))))

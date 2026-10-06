@@ -45,6 +45,21 @@ impl Access {
             _ => true,
         }
     }
+    /// Los módulos futuros abren solo su presentación; las rutas ocultas nunca navegan.
+    pub fn beta_navigate(
+        self,
+        current: &mut Section,
+        destination: Section,
+    ) -> Result<(), &'static str> {
+        if !self.beta_visible(destination) {
+            return Err("No disponible en la navegación beta");
+        }
+        if matches!(destination, Section::Strategy | Section::Engineer) {
+            *current = destination;
+            return Ok(());
+        }
+        self.navigate(current, destination)
+    }
     pub fn beta_lock(self, section: Section) -> Option<&'static str> {
         if matches!(section, Section::Strategy | Section::Engineer) {
             return Some("Próximamente");
@@ -640,6 +655,40 @@ mod beta_tests {
                 }
                 .beta_visible(Section::Testing)
             );
+        }
+    }
+    #[test]
+    fn beta_routes_keep_hidden_modules_unreachable_and_future_modules_presentable() {
+        for access in [
+            Access::default(),
+            Access {
+                verified: true,
+                engineer: true,
+                strategy: true,
+                analysis: true,
+                tester: true,
+                ..Access::default()
+            },
+        ] {
+            let mut current = Section::Home;
+            for hidden in [Section::Workshop, Section::Analysis, Section::Licenses] {
+                assert!(access.beta_navigate(&mut current, hidden).is_err());
+                assert_eq!(current, Section::Home);
+            }
+            for future in [Section::Strategy, Section::Engineer] {
+                assert!(access.beta_navigate(&mut current, future).is_ok());
+                assert_eq!(current, future);
+                assert_eq!(access.beta_lock(current), Some("Próximamente"));
+                let result = access.beta_navigate(&mut current, Section::Roadmap);
+                if access.verified {
+                    assert!(result.is_ok());
+                    assert_eq!(current, Section::Roadmap);
+                    assert_eq!(access.beta_lock(current), None);
+                } else {
+                    assert!(result.is_err());
+                    assert_eq!(current, future);
+                }
+            }
         }
     }
 }

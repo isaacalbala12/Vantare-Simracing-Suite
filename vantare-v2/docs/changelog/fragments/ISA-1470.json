@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1470",
+  "type": "fix",
+  "summary": "El Hub aclara sus textos y notas de versión, completa las columnas y corrige controles e indicadores visuales.",
+  "technicalNotes": [
+    "Estrategia e Ingeniero aprovechan todo el alto con tres tarjetas de funciones futuras y un botón para seguir sus avances en Roadmap; no anuncian fechas. Workshop y Analysis quedan fuera de las rutas del Hub.",
+    "OBS permanece visible bajo la zona desplazable del inspector; Apariencia muestra sus controles completos, botones secundarios pill y desplegables con chevron.",
+    "La campana separa su contador, Ajustes y Cuenta muestran selección, y el Launcher conecta sus pasos y usa iconos en baldosa.",
+    "El calendario distingue las clases por color y muestra Bronze, Silver, Gold y Semanal con etiquetas.",
+    "Los textos para clientes, los resúmenes de versiones y la identidad instalada común se conservan junto a las columnas completas de Cuenta, Validar y Ajustes; Equilibrado solo se selecciona en la escena QA y Automático permanece pendiente."
+  ],
+  "testing": [
+    "Abrir Estrategia e Ingeniero a 1920 y 1440: comprobar las tres tarjetas, el alto completo y que Ver Roadmap navega a Roadmap.",
+    "Seleccionar un widget en Studio a 1920 y 1440: comprobar OBS completo y desplazar el inspector hasta Posición y tamaño.",
+    "Recorrer Ajustes y Cuenta, abrir la campana y revisar su contador; comprobar Launcher en reposo y durante el lanzamiento.",
+    "Revisar los chips de clase y las etiquetas de nivel del calendario a 1920 y 1440.",
+    "Recorrer las siete pestañas de Ajustes, Cuenta y Validar: comprobar textos, carriles, scroll, versión instalada y contenido aprobado del informe."
+  ],
+  "knownLimitations": [
+    "Los módulos futuros no tienen fecha confirmada.",
+    "La revisión visual usa escenas QA aisladas; no demuestra servicios reales ni rendimiento con LMU.",
+    "Este arreglo no renueva el catálogo del calendario."
+  ]
+}

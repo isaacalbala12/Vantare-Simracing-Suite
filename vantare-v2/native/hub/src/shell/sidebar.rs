@@ -193,6 +193,14 @@ impl Hub {
             }));
         let settings = orbit::action_row("sidebar-settings", "Ajustes", cx)
             .w_full()
+            .aria_selected(self.section == Section::Settings)
+            .when(self.section == Section::Settings, |row| {
+                row.bg(orbit::gradient(
+                    cx.global::<orbit::design::Tokens>().gradients.active,
+                    180.0,
+                ))
+                .border_color(rgba(orbit::line(cx)))
+            })
             .child(orbit::icon("v-sliders", 18.0, orbit::ink_3(cx)))
             .when(expanded, |row| {
                 row.child(orbit::text("Ajustes", 14.0, 400, orbit::ink_2(cx), cx))
@@ -205,6 +213,17 @@ impl Hub {
             .map_or("Cuenta", |demo| demo.user.full_name.as_str());
         let account = orbit::action_row("sidebar-account", account_name, cx)
             .w_full()
+            .aria_selected(matches!(self.section, Section::Account | Section::Licenses))
+            .when(
+                matches!(self.section, Section::Account | Section::Licenses),
+                |row| {
+                    row.bg(orbit::gradient(
+                        cx.global::<orbit::design::Tokens>().gradients.active,
+                        180.0,
+                    ))
+                    .border_color(rgba(orbit::line(cx)))
+                },
+            )
             .h(px(54.0))
             .px(px(8.0))
             .child(

@@ -4369,3 +4369,61 @@ también Novedades y los nombres de producto conservados. DPI125/150, cuenta
 real, preparar/copiar diagnóstico y envío remoto requieren comprobación física.
 Checkout principal y native-beta Isaac intactos. Entrega local para revisión,
 sin push, PR, CI remota, merge, promoción ni release.
+### ISA-1470 — Fase 3, componentes y detalles visuales (1470-fix-componentes, 2026-10-06)
+
+Worker de implementación en `vantareapp/isa-1470-fix-componentes`, worktree
+`C:/tmp/vw3-1470-fix-componentes/vantare-v2`, base `e264cf435b5f41af306174c3d8ba7026573ef6ac`.
+Alcance cerrado: página Próximamente Strategy/Engineer sin acción y rutas Hub ocultas
+Workshop/Analysis; Apariencia crece sin recortar controles (las otras tarjetas conservan sus límites); secundarios pill y chevron SVG;
+contador separado en campana (también Studio), selección de Ajustes/Cuenta; conectores
+horizontales continuos del Launcher, iconos en baldosa y clases/niveles de Calendario.
+No cambia permisos del núcleo, servicios, catálogo ni datos del usuario.
+Estado: terminado localmente; revisión e integración pendientes. Primer commit de
+componentes/rutas `8ea77958a63bd7d2f1a53034da091663c158baa2`; segundo commit Launcher/Calendario/docs en HEAD
+(consultar `git log -2`; SHAs finales en informe externo y comentario de #1470).
+Gates del árbol final: check PASS12,10s, clippy -Dwarnings PASS14,50s,
+Nextest1153/1153 PASS (6 tests y 2 binarios omitidos por configuración del repo),
+lifecycle PASS17/17 (5 Hub + 12 UI); fmt/diff-check y schema del fragmento PASS.
+Build prueba/parity-capture PASS36,26s; conserva el warning previo de `cx` no usado
+en analysis/view.rs bajo esa feature. No se amplía el alcance para eliminarlo.
+24 capturas1920/1440 MIRADAS; antes/después `C:/tmp/1470-fix-componentes-evidence/ronda-1.png`.
+Apariencia ya muestra ambos selects completos; conexiones continuas sin verticales,
+iconos y chips de clase/nivel legibles. Workshop/Analysis arrancan en Inicio;
+regresión de navegación PASS también con permisos concedidos. Escenas QA aisladas,
+no evidencia de LMU o servicios reales. No se renueva el catálogo del calendario.
+Verificación manual: pulsar Estrategia/Ingeniero; revisar Apariencia y desplegables;
+marcar avisos y comprobar contador; entrar en Ajustes/Cuenta; lanzar perfil,
+revisar conectores e iconos; filtrar clases/niveles del Calendario a1920 y1440.
+Coordinar al unir: settings/view.rs tiene solo dos glifos aprobados por nota01:09;
+chrome.rs no modifica la fuente de versión del otro worker. El fragmento ISA-1470.json
+contiene solo este bloque y se combinará con la entrega paralela. plan.md ausente en
+esta base, ya registrado por 1470-union; no se crea otro roadmap. Sin push, PR,
+CI remota, merge, promoción ni release. Siguiente: revisión del diff/capturas por el orquestador/Isaac y unión aislada.
+
+### ISA-1470 — Ronda 2 de componentes (2026-10-06)
+
+Misma rama/worktree `vantareapp/isa-1470-fix-componentes`; entrada `cd763fd1128fbac795c54f1b198dbdd908f38def`.
+Corrección solicitada por revisión: Ingeniero/Estrategia ahora heredan el alto disponible,
+con cabecera icono/título/estado, tres tarjetas específicas y bloque «Síguelo en el Roadmap»
+con navegación real. Textos breves, sin fecha ni compromiso concreto.
+Studio conserva scroll para propiedades y fija OBS debajo: texto y botón completos
+sin desplazarse a 1920×1080 y 1440×900; no cambia controles, permisos ni persistencia.
+Regresión de rutas comprueba Roadmap con acceso verificado y conserva el bloqueo sin verificar.
+Ocho capturas MIRADAS (seis de distribución y dos de interacción QA); antes/después
+`C:/tmp/1470-fix-componentes-evidence/ronda-2.png`. Clic real en Ver Roadmap y rueda
+hasta Posición y tamaño PASS1440. Escenas QA aisladas; sin prueba de LMU/servicios reales.
+Gates R2: check PASS9,82s; clippy -Dwarnings PASS13,05s; Nextest1153/1153 PASS670,495s
+(6 omitidos por configuración); lifecycle17/17 PASS; fmt/diff-check PASS.
+Build prueba/parity PASS18,92s; warning previo de cx en analysis/view.rs solo en parity.
+Fragmento ISA-1470 actualizado, schema PASS. No dependencias nuevas ni cambios fuera de estos dos defectos.
+Siguiente: revisar el commit R2 y unir la entrega aislada. Sin push, PR, CI remota,
+merge, promoción o release. plan.md ausente en esta base; no se crea otro roadmap.
+
+### #1470 — Unión de textos y componentes (1470-union2, 2026-10-06)
+
+Base e264cf43, merge textos 47b420e2 (0830113a) y componentes 1dfef24d.
+Handoff combinado conservando las dos entregas, sin duplicar entradas. Código
+compartido fusionado automáticamente y revisado; textos conservados junto a
+las páginas Próximamente, OBS fijo y controles/componentes. Fragmento ISA-1470
+combinado con ambos alcances. Validación final y corrección Roadmap a continuación.
+Merges exclusivamente locales autorizados por Isaac; sin push ni promoción.

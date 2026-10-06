@@ -127,7 +127,7 @@ impl Hub {
             self.close_requested = false;
             self.cancel_beta_restart();
         }
-        if !self.shell.access.visible(self.section) {
+        if !self.shell.access.beta_visible(self.section) {
             self.section = Section::Home;
         }
         if self.close_requested && self.can_close(cx) {
@@ -233,8 +233,112 @@ impl Hub {
         }
     }
 
+    fn upcoming_page(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let (description, icon, features) = if self.section == Section::Strategy {
+            (
+                "Prepara tus decisiones antes de salir a pista.",
+                "v-strategy",
+                [
+                    ("Plan de paradas", "Organiza tus pasos por boxes."),
+                    (
+                        "Combustible y desgaste",
+                        "Compara lo que necesitas para cada stint.",
+                    ),
+                    (
+                        "Ajustes en carrera",
+                        "Revisa el plan cuando cambie la carrera.",
+                    ),
+                ],
+            )
+        } else {
+            (
+                "Una ayuda para concentrarte en la carrera.",
+                "v-engineer",
+                [
+                    (
+                        "Avisos de voz en pista",
+                        "La información clave, sin apartar la vista.",
+                    ),
+                    (
+                        "Spotter",
+                        "Una ayuda para situar los coches a tu alrededor.",
+                    ),
+                    ("Informes de carrera", "Repasa lo ocurrido al terminar."),
+                ],
+            )
+        };
+        let mut cards = div().flex().flex_1().min_h_0().gap(gpui::px(20.0));
+        for (title, description) in features {
+            cards = cards.child(
+                orbit::neo_card(cx)
+                    .flex_1()
+                    .justify_center()
+                    .child(orbit::neo_header(title, icon, cx))
+                    .child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx)),
+            );
+        }
+        div()
+            .h_full()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(gpui::px(20.0))
+            .child(
+                orbit::neo_card(cx)
+                    .flex_none()
+                    .items_start()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(gpui::px(16.0))
+                            .child(orbit::icon(icon, 44.0, orbit::carmine(cx)))
+                            .child(orbit::text(
+                                navigation::title(self.section),
+                                30.0,
+                                600,
+                                orbit::ink(cx),
+                                cx,
+                            ))
+                            .child(orbit::pill("Próximamente", orbit::Tone::Neutral, cx)),
+                    )
+                    .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx)),
+            )
+            .child(orbit::text(
+                "Qué podrás hacer",
+                18.0,
+                600,
+                orbit::ink(cx),
+                cx,
+            ))
+            .child(cards)
+            .child(
+                orbit::neo_card(cx)
+                    .flex_1()
+                    .min_h_0()
+                    .justify_center()
+                    .items_start()
+                    .child(orbit::neo_header("Síguelo en el Roadmap", "v-roadmap", cx))
+                    .child(orbit::text(
+                        "Consulta los avances y las novedades del módulo.",
+                        14.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                    .child(
+                        orbit::button("upcoming-roadmap", "Ver Roadmap", cx).on_click(
+                            cx.listener(|this, _, _, cx| this.navigate(Section::Roadmap, cx)),
+                        ),
+                    ),
+            )
+    }
+
     /// Contenido de la sección activa; las que aún no existen dicen qué falta.
     fn section_view(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        if matches!(self.section, Section::Strategy | Section::Engineer) {
+            return self.upcoming_page(cx).into_any_element();
+        }
         if let Some(reason) = self.shell.access.beta_lock(self.section) {
             return orbit::callout(
                 format!(
@@ -278,6 +382,8 @@ impl Hub {
                 matches!(
                     self.section,
                     Section::Home
+                        | Section::Strategy
+                        | Section::Engineer
                         | Section::Roadmap
                         | Section::Notifications
                         | Section::Studio
@@ -291,14 +397,11 @@ impl Hub {
             .flex_1()
             .flex()
             .flex_col()
-            .when(
-                !matches!(self.section, Section::Strategy | Section::Launcher),
-                |content| {
-                    content.gap(gpui::px(24.0)).p(gpui::px(
-                        cx.global::<orbit::design::Tokens>().geometry.gutter,
-                    ))
-                },
-            )
+            .when(self.section != Section::Launcher, |content| {
+                content.gap(gpui::px(24.0)).p(gpui::px(
+                    cx.global::<orbit::design::Tokens>().geometry.gutter,
+                ))
+            })
             .when(self.section == Section::Studio, |content| {
                 content.pt(gpui::px(0.0))
             })
@@ -363,6 +466,10 @@ impl Hub {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> Option<gpui::AnyElement> {
+        if matches!(self.section, Section::Strategy | Section::Engineer) {
+            return None;
+        }
+
         match self.section {
             Section::Launcher => {
                 if !self.launcher.read(cx).managing() {
@@ -508,6 +615,8 @@ impl Render for Hub {
                                 !matches!(
                                     self.section,
                                     Section::Home
+                                        | Section::Strategy
+                                        | Section::Engineer
                                         | Section::Roadmap
                                         | Section::Notifications
                                         | Section::Studio
@@ -530,6 +639,8 @@ impl Render for Hub {
                                     | Section::Settings
                                     | Section::Account
                                     | Section::Licenses
+                                    | Section::Strategy
+                                    | Section::Engineer
                             )
                             && (self.section != Section::Studio
                                 || self.studio.read(cx).inspector_visible())
@@ -537,7 +648,9 @@ impl Render for Hub {
                         |body| body.child(column),
                     ),
             );
-        let background = if self.section == Section::Strategy {
+        let background = if self.section == Section::Strategy
+            && self.shell.access.beta_lock(self.section).is_none()
+        {
             self.strategy
                 .read(cx)
                 .garage_background(f32::from(window.viewport_size().width), cx)
@@ -572,18 +685,7 @@ impl Render for Hub {
             .when_some(self.notifications.read(cx).popover(), |root, layer| {
                 root.child(div().absolute().inset_0().size_full().child(layer))
             });
-        if self
-            .capture
-            .as_ref()
-            .is_some_and(|capture| capture.section == Section::Engineer)
-        {
-            div()
-                .size_full()
-                .child(frame.top(gpui::px(40.0)))
-                .into_any_element()
-        } else {
-            frame.into_any_element()
-        }
+        frame.into_any_element()
     }
 }
 
@@ -791,6 +893,11 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        let section = if access.beta_visible(section) {
+            section
+        } else {
+            Section::Home
+        };
         let Loaded {
             preview_fixtures,
             appearance,

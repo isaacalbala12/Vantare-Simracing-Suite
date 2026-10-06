@@ -349,29 +349,16 @@ pub(super) fn app_mark(app: &App, size: f32, cx: &gpui::App) -> gpui::Div {
             .justify_center()
             .child(svg_mark(include_str!("motec.svg"), size * 0.74));
     }
-    let abbreviation = match app.id.as_str() {
-        "crewchief" => "CC".to_owned(),
-        "discord" => "DC".to_owned(),
-        "lmu" => "LMU".to_owned(),
-        "motec" => "MT".to_owned(),
-        "obs" => "OBS".to_owned(),
-        "simhub" => "SH".to_owned(),
-        "spotify" => "SP".to_owned(),
-        "custom:vantare" => "A".to_owned(),
-        _ => app.name.chars().take(2).collect::<String>().to_uppercase(),
-    };
-    let (first, second) = app_palette(&app.id);
-    monogram(&abbreviation, size, first, second, cx).when(size <= 26.0, |mark| {
-        // En Wails, .orbit-chain-step span también estiliza el span del monograma.
-        mark.items_start()
-            .justify_start()
-            .font_family(crate::orbit::mono_family(cx))
-            .font_weight(gpui::FontWeight::NORMAL)
-            .text_size(px(10.5))
-            .line_height(px(12.6))
-            .text_color(rgb(orbit::ink_3(cx)))
-            .mt(px(2.0))
-    })
+    match app.id.as_str() {
+        "lmu" | "crewchief" | "discord" | "obs" | "simhub" | "spotify" | "custom:vantare" => {
+            super::showcase::app_icon(app, size, cx)
+        }
+        _ => {
+            let abbreviation = app.name.chars().take(2).collect::<String>().to_uppercase();
+            let (first, second) = app_palette(&app.id);
+            monogram(&abbreviation, size, first, second, cx)
+        }
+    }
 }
 
 fn profile_initials(name: &str) -> String {

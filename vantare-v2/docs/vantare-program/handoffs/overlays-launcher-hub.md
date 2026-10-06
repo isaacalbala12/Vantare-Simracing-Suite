@@ -1,5 +1,39 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1470 — ronda 4, estados (2026-10-06)
+
+Reanudación en `vantareapp/isa-1470-r4-estados`, base `136a90fa`, sobre los
+11 ficheros sin commit conservados. Testing usa el canal de build compartido;
+Mis informes tiene vacío centrado con acción y variante compacta bajo el formulario;
+Validar elimina la pill suelta. Rótulos sin tracking, consejos con badges y
+textareas sin asas falsas. Actividad se ajusta a su contenido y centra el vacío.
+Cuenta limita su pill al contenido, elimina hover de resúmenes estáticos y
+extiende los separadores bajo las pills. El enlace Abrir Aplicaciones queda
+junto al error. Actualizaciones muestra aviso y acción solo para un paquete
+preparado de versión distinta, y Estás al día con estado current confirmado.
+
+El capturador QA reconoce un turno propio explícito y conserva el mutex global.
+La raíz de estado QA se consulta solo con parity-capture y captura explícita;
+no se modifica la instancia native-beta. Lanzar oculto hizo esperar una ventana
+visible; las capturas se lanzan normales, con turno y timeout externo de 90 s.
+Diagnósticos temporales retirados. Evidencia y logs fuera del repo:
+`C:/tmp/1470-r4-estados-evidence/`; notas e informe en `C:/tmp/fase2/`.
+Validación Windows PASS por cola: fmt, check, Clippy -D warnings, Nextest
+1158/1158 (6 omitidos por configuración existente) y lifecycle (17 escenarios).
+Tras el ajuste visual final se repiten check/Clippy/lifecycle y Hub 277/277.
+Build QA perfil prueba PASS, 0.1.0-beta.1/testers. 18 capturas finales 1920/1440
+miradas, incluidos Actividad vacía y actualización preparada; ambas comparativas
+ronda-1/ronda-2 también inspeccionadas. Hashes y revisión en capture-hashes.json
+e inspeccion.md. El guard de instalación cubre misma versión, vacía y estados
+no ready; la prueba de turno cubre propio/ajeno/ausente. No se pulsó Instalar.
+Persisten recortes de Overlay en pista a 1440 y otras zonas de la lista del
+worker cortes; no se certifica paridad total. Go/frontend y CI remota no
+aplican a esta entrega local; juegos/OBS y envío/instalación reales no probados.
+El roadmap manual no existe en esta base; no se recrea. Se conserva DemoData
+según nota 05:43: --demo explícito puede cargar fixtures, el arranque normal no.
+Sin push, PR, integración, promoción, release ni medición de rendimiento.
+
+
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
 ### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente

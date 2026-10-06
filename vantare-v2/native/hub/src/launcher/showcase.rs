@@ -761,12 +761,12 @@ impl Launcher {
                 cx,
             ))
             .child(
-                orbit::ghost_button("showcase-fix-apps", "Abrir Aplicaciones", cx).on_click(
-                    cx.listener(|this, _, _, cx| {
+                orbit::button("showcase-fix-apps", "Abrir Aplicaciones", cx)
+                    .self_start()
+                    .on_click(cx.listener(|this, _, _, cx| {
                         this.page = LauncherPage::Manage;
                         cx.notify();
-                    }),
-                ),
+                    })),
             )
         })
         .child(div().flex_1())

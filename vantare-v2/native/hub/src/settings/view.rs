@@ -1638,8 +1638,19 @@ impl Hub {
         } else {
             None
         };
+        // Estado externo aislado solo en capturas QA; no modifica la beta real.
+        #[cfg(feature = "parity-capture")]
+        let beta = if self.capture.is_some() {
+            super::updates::beta_status()
+        } else {
+            beta
+        };
+        let current = (self.demo.is_some() && beta.is_none())
+            || beta
+                .as_ref()
+                .is_some_and(|status| status.state == "current" && status.version == version);
         stack()
-            .when_some(beta, |surface, status| {
+            .when_some(beta.filter(|status| status.state != "current"), |surface, status| {
                 surface.child(
                     Self::settings_beta_notice(status, cx),
                 )
@@ -1647,7 +1658,7 @@ impl Hub {
             .child(Self::settings_update_hero(
                 version,
                 state,
-                self.demo.is_some(),
+                current,
                 cx,
             ))
             .child(if channel == Some("Beta") {
@@ -1659,15 +1670,21 @@ impl Hub {
             .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
     }
     fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
+        let ready = status.ready_for(crate::version_label());
         section_body()
             .flex_row()
             .flex_wrap()
             .items_center()
             .justify_between()
-            .child(text(status.message, 13.0, 400, orbit::ink_2(cx), cx).min_w_0())
-            .when(status.state == "ready", |body| {
+            .when(ready, |body| {
+                body.child(orbit::pill("Hay una versión nueva", Tone::Accent, cx))
+            })
+            .when(!ready && status.state != "current", |body| {
+                body.child(text(status.message, 13.0, 400, orbit::ink_2(cx), cx).min_w_0())
+            })
+            .when(ready, |body| {
                 body.child(
-                    reference_primary("beta-restart-now", "Reiniciar ahora", cx)
+                    orbit::carmine_button("beta-restart-now", "Instalar y reiniciar", cx)
                         .tab_stop(true)
                         .aria_description("Aplicar la actualización y volver a abrir Vantare")
                         .cursor_pointer()
@@ -1761,7 +1778,7 @@ impl Hub {
         }
         body
     }
-    fn settings_update_hero(version: String, state: String, demo: bool, cx: &gpui::App) -> Div {
+    fn settings_update_hero(version: String, state: String, current: bool, cx: &gpui::App) -> Div {
         div()
             .h(px(138.0))
             .w_full()
@@ -1786,25 +1803,11 @@ impl Hub {
                     )
                     .child(text(state, 12.5, 400, orbit::ink_3(cx), cx).mt(px(4.0))),
             )
-            .when(demo, |hero| {
-                hero.child(
-                    div()
-                        .flex()
-                        .flex_none()
-                        .items_center()
-                        .gap(px(12.0))
-                        .child(reference_primary(
-                            "settings-update-install",
-                            "Actualización disponible",
-                            cx,
-                        ))
-                        .child(orbit::disabled(
-                            orbit::button("settings-update-check", "Buscar actualizaciones", cx),
-                            "Próximamente",
-                        )),
-                )
+            .when(current, |hero| {
+                hero.child(orbit::pill("Estás al día", Tone::Success, cx).self_center())
             })
     }
+
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
         let mut channels = div().flex().w_full().gap(px(21.0));
         for (index, (name, description)) in [

@@ -272,6 +272,33 @@ pub(super) struct BetaStatus {
     #[serde(default)]
     pub notes: String,
 }
+impl BetaStatus {
+    pub(super) fn ready_for(&self, installed: &str) -> bool {
+        self.state == "ready" && !self.version.trim().is_empty() && self.version != installed
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn install_requires_a_staged_different_version() {
+    let mut status = BetaStatus {
+        schema: 1,
+        state: "ready".into(),
+        message: String::new(),
+        version: "0.1.1".into(),
+        notes: String::new(),
+    };
+    assert!(status.ready_for("0.1.0"));
+    assert!(!status.ready_for("0.1.1"));
+    status.version.clear();
+    assert!(!status.ready_for("0.1.0"));
+    status.version = "0.1.1".into();
+    for state in ["current", "error", "rollback", "applied"] {
+        status.state = state.into();
+        assert!(!status.ready_for("0.1.0"));
+    }
+}
+
 pub(super) fn beta_status() -> Option<BetaStatus> {
     let root = std::env::var_os("VANTARE_BETA_ROOT")?;
     let status: BetaStatus = read(&Path::new(&root).join("update-status.json"), 64 * 1024).ok()?;

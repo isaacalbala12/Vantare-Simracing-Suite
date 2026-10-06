@@ -184,18 +184,16 @@ Conserva los 36 px pedidos por el orquestador y el tracking Wails de -0.035em
 congelada se debe revisar con el orquestador tras integrar el marco.
 Reutiliza el texto modelado común de `vantare-ui`, como Inicio, para conservar
 kerning y espaciado negativo sin sintetizar otra negrita sobre la cara estática.
-El canal Nightly se limita a la escena de captura; en una build normal se usa
-`VANTARE_BUILD_CHANNEL`, o se declara `CANAL NO DISPONIBLE`. Un test impide
-atribuir Nightly a una build sin canal configurado.
+Ronda 4 (#1470): Testing Center usa `product::CHANNEL`, igual que Actualizaciones,
+también en las capturas. Sin canal conocido declara `Canal no disponible`.
+El test de canal cubre Testers, Nightly, Estable y valores ausentes/desconocidos.
 
 Formulario y consentimiento conservan sus columnas y controles productivos,
-validación, comandos y consentimiento. Las etiquetas llevan el tracking de
-Wails y las superficies su composición RGBA. La nota de Mis reportes usa un
-único `StyledText` para que el texto continúe tras Sin historial y las líneas
-siguientes vuelvan al borde izquierdo. No se inventa un historial.
-Los textareas incorporan el pequeño trazo visual inferior derecho. No habilita
-resize: `orbit::Input` fija su altura; ampliar su API corresponde al kit,
-fuera de las rutas de este worker. El editor e IME siguen siendo los existentes.
+validación, comandos y consentimiento. Ronda 4: etiquetas Inter 12 semibold sin
+tracking; Mis informes centra el estado vacío y ofrece Nuevo informe. Los
+recibos siguen limitados a la sesión y no se inventa un historial remoto.
+Los consejos llevan badges numerados. Los textareas mantienen altura fija sin
+asas visuales que simulen una función de resize inexistente.
 
 Informe y detalle **son la misma escena en las referencias congeladas**:
 ambas tienen el mismo SHA-256, registrado fuera del repo en
@@ -304,3 +302,13 @@ la última integración; el gate completo comprueba los 182 posteriores.
 Go/frontend, CI remoto, envío real, juegos, OBS, DPI mixto y otra GPU siguen
 sin ejecución específica en este hito. Solo merges y commits locales
 autorizados; sin push, PR, promoción de canal ni release.
+
+
+### Ronda 4 de ISA-1470 (2026-10-06)
+
+La entrega visual actual sustituye los rótulos con tracking y las asas falsas
+históricas: Inter 12 semibold y altura fija sin asa. Consejos con badge numerado,
+canal compartido con Actualizaciones y vacío centrado en Mis informes (compacto
+bajo Nuevo informe). Validar no muestra una pill adicional. Las cifras de paridad
+históricas anteriores no certifican este rediseño. Evidencia de esta ronda fuera
+del repo en `C:/tmp/1470-r4-estados-evidence/`.

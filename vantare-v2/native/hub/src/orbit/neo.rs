@@ -152,6 +152,7 @@ pub fn summary_row(
         .role(gpui::Role::GenericContainer)
         .tab_stop(false)
         .cursor_default()
+        .hover(|style| style.bg(gpui::transparent_black()))
         .relative()
         .pl(px(42.0))
         .min_h(px(54.0))

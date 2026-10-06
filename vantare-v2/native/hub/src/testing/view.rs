@@ -36,14 +36,7 @@ impl Testing {
         let selected_tab = selected_capture_tab(&data).unwrap_or(0);
         #[cfg(not(feature = "parity-capture"))]
         let selected_tab = 0;
-        #[cfg(feature = "parity-capture")]
-        let capture = selected_capture_tab(&data).is_some();
-        #[cfg(not(feature = "parity-capture"))]
-        let capture = false;
-        let channel_label = super::model::channel_label(
-            option_env!("VANTARE_BUILD_CHANNEL").map(|_| crate::product::CHANNEL),
-            capture,
-        );
+        let channel_label = super::model::channel_label(Some(crate::product::CHANNEL));
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
                 "Vistas de Testing Center",
@@ -426,30 +419,30 @@ fn validation_panel(cx: &gpui::App) -> gpui::Div {
                     )
                     .max_w(px(480.0))
                     .text_center(),
-                )
-                .child(orbit::pill(
-                    "Validación de correcciones",
-                    orbit::Tone::Neutral,
-                    cx,
-                )),
+                ),
         )
 }
 
 impl Testing {
-    fn reports_panel(&self, cx: &gpui::App) -> gpui::Div {
+    fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
         let remote = self.remote.read(cx);
         let mut list =
             orbit::neo_card(cx)
                 .flex_1()
                 .child(orbit::neo_header("Mis informes", "clock", cx));
         if remote.report_receipts.is_empty() {
-            list = list.child(orbit::text(
-                "Todavía no has enviado informes en esta sesión.",
-                13.0,
-                400,
-                orbit::ink_2(cx),
-                cx,
-            ));
+            let dedicated = self.tabs.read(cx).state.selected == Some(2);
+            return list.child(
+                div().flex().flex_col().items_center().justify_center().gap(px(16.0))
+                    .when(dedicated, |body| body.flex_1().child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx))))
+                    .when(!dedicated, |body| body.py(px(16.0)))
+                    .child(orbit::text("Tu primer informe empieza aquí", if dedicated { 22.0 } else { 16.0 }, 600, orbit::ink(cx), cx))
+                    .child(orbit::text(if dedicated { "Aquí verás los informes enviados durante esta sesión. Si encuentras un problema o tienes una sugerencia, cuéntanos qué pasó y añade una captura desde Nuevo informe." } else { "Aquí verás los informes enviados durante esta sesión." }, 14.0, 400, orbit::ink_2(cx), cx).max_w(px(480.0)).text_center())
+                    .when(dedicated, |body| body.child(orbit::primary_button("testing-first-report", "Nuevo informe", cx).self_center().on_click(cx.listener(|this, _, _, cx| {
+                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(0); cx.notify(); });
+                        cx.notify();
+                    }))))
+            );
         }
         for (fields, receipt) in &remote.report_receipts {
             list = list.child(
@@ -522,11 +515,13 @@ impl Testing {
                 .child(orbit::text("Próximamente podrás consultar respuestas y conversar sobre tu informe.", 13.0, 400, orbit::ink_3(cx), cx)))
             .child(orbit::neo_card(cx).flex_1().child(orbit::neo_header("Un buen informe", "v-testing", cx))
                 .children([
-                    "1  Cuenta qué esperabas y qué pasó.",
-                    "2  Añade una captura: se comprime antes de enviar. Revisa los datos personales.",
-                    "3  Si se repite, indica cuántas veces y en qué sesión.",
-                    "4  Las sugerencias también cuentan: dinos para qué las usarías."
-                ].into_iter().map(|tip| orbit::text(tip, 13.0, 400, orbit::ink_2(cx), cx).py(px(8.0)))))
+                    "Cuenta qué esperabas y qué pasó.",
+                    "Añade una captura: se comprime antes de enviar. Revisa los datos personales.",
+                    "Si se repite, indica cuántas veces y en qué sesión.",
+                    "Las sugerencias también cuentan: dinos para qué las usarías."
+                ].into_iter().enumerate().map(|(index, tip)| div().flex().items_start().gap(px(10.0)).py(px(8.0))
+                    .child(orbit::pill(&(index + 1).to_string(), orbit::Tone::Accent, cx).flex_none())
+                    .child(orbit::text(tip, 13.0, 400, orbit::ink_2(cx), cx).flex_1().min_w_0()))))
     }
 }
 impl Render for Testing {

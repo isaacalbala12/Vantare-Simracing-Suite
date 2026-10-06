@@ -1,7 +1,7 @@
 //! Inicio del layout C sobre los mismos renderizadores de Studio y Desktop.
 use super::Hub;
 use crate::{Section, orbit};
-use gpui::{Context, Div, Entity, Window, div, prelude::*, px, rgb};
+use gpui::{Context, Div, Entity, Window, div, prelude::*, px, rgb, rgba};
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings};
 struct Preview {
@@ -489,7 +489,6 @@ impl Hub {
         let now = chrono::Local::now().fixed_offset();
         let activity_rows = div()
             .id("home-activity-list")
-            .flex_1()
             .min_h_0()
             .overflow_y_scroll()
             .children(
@@ -503,6 +502,8 @@ impl Hub {
                                 .flex()
                                 .items_center()
                                 .gap(px(8.0))
+                                .border_b_1()
+                                .border_color(rgba(orbit::line_row(cx)))
                                 .child(
                                     orbit::summary_row(
                                         format!("{} lanzado", profile.name),
@@ -510,6 +511,7 @@ impl Hub {
                                         "v-launch",
                                         cx,
                                     )
+                                    .border_0()
                                     .flex_1()
                                     .min_w_0(),
                                 )
@@ -519,6 +521,8 @@ impl Hub {
             );
         let activity = orbit::neo_card(cx)
             .flex_1()
+            .self_start()
+            .max_h_full()
             .child(
                 div()
                     .flex()
@@ -540,13 +544,10 @@ impl Hub {
                     .iter()
                     .any(|p| p.last_launched_at.is_some()),
                 |card| {
-                    card.child(orbit::text(
-                        "Tus próximos lanzamientos aparecerán aquí.",
-                        14.0,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    ))
+                    card.child(div().min_h(px(220.0)).flex().flex_col().items_center().justify_center().gap(px(16.0))
+                        .child(orbit::icon("clock", 40.0, orbit::ink_3(cx)))
+                        .child(orbit::text("Tu actividad empieza con un lanzamiento", 16.0, 600, orbit::ink(cx), cx).text_center())
+                        .child(orbit::text("Lanza un perfil desde Launcher. Su último lanzamiento aparecerá aquí.", 14.0, 400, orbit::ink_3(cx), cx).max_w(px(320.0)).text_center()))
                 },
             );
         let center = div()

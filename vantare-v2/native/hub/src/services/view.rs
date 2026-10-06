@@ -731,7 +731,7 @@ impl Remote {
     fn account_badges(&self, cx: &gpui::App) -> gpui::Div {
         let access = self.account_access();
         let verified = access.verified && !access.blocked;
-        div().mt(px(8.0)).child(orbit::pill(
+        div().mt(px(8.0)).flex().child(orbit::pill(
             if verified {
                 "Beta para testers · activa"
             } else {
@@ -842,7 +842,13 @@ impl Remote {
                     .items_center()
                     .justify_between()
                     .gap(px(12.0))
-                    .child(orbit::summary_row(label, description, icon, cx).flex_1())
+                    .border_b_1()
+                    .border_color(rgba(orbit::line_row(cx)))
+                    .child(
+                        orbit::summary_row(label, description, icon, cx)
+                            .border_0()
+                            .flex_1(),
+                    )
                     .child(orbit::pill(
                         account_module_status(section, included[index]),
                         if !soon && included[index] {

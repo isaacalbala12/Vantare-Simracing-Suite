@@ -31,3 +31,39 @@ pub(super) fn news() -> Result<Vec<Release>, &'static str> {
         })
         .collect()
 }
+
+/// Un canal no anuncia las entregas restringidas a otro público.
+pub(super) fn news_for_channel(channel: &str) -> Result<Vec<Release>, &'static str> {
+    Ok(news()?
+        .into_iter()
+        .filter(|release| match channel {
+            "nightly" => true,
+            "testers" | "beta" => release.channel != "nightly",
+            _ => release.channel == "master",
+        })
+        .collect())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn installed_channel_limits_visible_release_notes() {
+        for channel in ["testers", "beta"] {
+            let notes = news_for_channel(channel).expect("valid notes");
+            assert!(!notes.is_empty());
+            assert!(notes.iter().all(|note| note.channel != "nightly"));
+        }
+        for channel in ["master", "stable", "unknown"] {
+            assert!(
+                news_for_channel(channel)
+                    .expect("notes")
+                    .iter()
+                    .all(|note| note.channel == "master")
+            );
+        }
+        assert_eq!(
+            news_for_channel("nightly").expect("notes").len(),
+            news().expect("notes").len()
+        );
+    }
+}

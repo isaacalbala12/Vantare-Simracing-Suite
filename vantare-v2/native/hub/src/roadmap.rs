@@ -146,11 +146,21 @@ impl State {
 fn label(text: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
     orbit::text(text, 13.0, 400, orbit::ink_3(cx), cx)
 }
-fn item_card(item: &Item, compact: bool, cx: &gpui::App) -> Div {
+fn item_card(item: &Item, area: &Area, compact: bool, cx: &gpui::App) -> Div {
     orbit::neo_card(cx)
         .p(px(14.0))
         .gap(px(8.0))
         .flex_none()
+        .child(orbit::neo_header(
+            area.title.clone(),
+            match area.id.as_str() {
+                "overlays" => "v-studio",
+                "launcher" => "v-launch",
+                "modules" => "v-engineer",
+                _ => "v-home",
+            },
+            cx,
+        ))
         .child(orbit::text(
             item.title.es.clone(),
             15.0,
@@ -440,11 +450,13 @@ impl Remote {
                             .when(document.items(section, area).next().is_none(), |list| {
                                 list.child(label("Sin hitos en este filtro", cx))
                             })
-                            .children(
+                            .children(document.items(section, area).filter_map(|item| {
                                 document
-                                    .items(section, area)
-                                    .map(|item| item_card(item, compact, cx)),
-                            ),
+                                    .areas
+                                    .iter()
+                                    .find(|area| area.id == item.area)
+                                    .map(|area| item_card(item, area, compact, cx))
+                            })),
                         cx.global::<orbit::design::Tokens>().colors.neo_bottom,
                     ))
             }),

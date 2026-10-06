@@ -4798,3 +4798,45 @@ Manual: CtrlK, Notificaciones y editar perfil a100/125%; revisar halos y bordes;
 Aplicaciones/Historial/Volver, tres filas, cadena4pasos y scroll de Opciones.
 Go/frontend/CI remota no ejecutados (sin cambios/push). plan.md ausente en esta
 base, sin roadmap alternativo. Siguiente: revisar entrega aislada y sus límites.
+### #1470 — Ronda 5, LISTA B pantallas (2026-10-07)
+
+Rama `vantareapp/isa-1470-r5-pantallas`, worktree
+`C:/tmp/vw3-1470-r5-pantallas/vantare-v2`, base `40a4ddc9`.
+Brief `C:/tmp/beta/r4/brief-1470-r5.md`, revisión r4 completa y recortes
+aplicables. Solo LISTA B; no delegación ni cambios de la LISTA A.
+Actualizaciones muestra la versión instalada y filtra notas por canal; Cuenta
+alinea nombre/iniciales de la escena con sidebar, sin ampliar autenticación.
+Calendario centra el vacío con icono y recarga, elimina guiones de acento y
+zona repetida, y muestra ambos meses en el rango semanal. Rendimiento usa
+tarjetas informativas neo, sin radios/selección/Disponibilidad Pendiente;
+Cómo elegir ocupa la sexta celda. Acciones a tamaño de contenido, iconos de
+sección, mini preview de Apariencia, contador sin leer, cifra/canal de informes
+en una línea, lenguaje llano/pills para funciones inertes y área/icono del
+Roadmap. Cambios en doce archivos Rust del Hub; sin dependencias ni contratos.
+
+fmt/check/clippy -D warnings PASS por cola `compilar.ps1`, -j2, target propio.
+Nextest1183/1183 PASS733,796s, seis skips configurados; golden ACC605,828s.
+Lifecycle5Hub+12UI PASS al primer intento. Build ordinario sin parity-capture
+PASS40,03s; seis textos exclusivos de avisos QA ausentes UTF8/UTF16, control
+positivo en binario QA y fixture ausente de allowlist de empaquetado. No se
+generó paquete distribuible. Ambos binarios/hashes conservados externamente.
+Tests de filtrado por canal y rango semanal mes/año PASS. QA prueba con
+parity-capture 0.1.0-beta.1/testers PASS; warning cx heredado solo en captura.
+40 capturas 20 nombres x1920/1440, detalles y hojas MIRADOS, 18 pares antes/
+después y mapas MIRADOS. Standings F1 0/292160px, umbral0/delta0, captura/
+referencia/mapa MIRADOS. Una captura falló al cerrar ventana tras guardar PNG;
+reintento PASS, logs conservados. Clippy inicial unused_self/match_same_arms
+corregido; log conservado. Build propio simultáneo cancelado y serializado.
+
+Evidencia `C:/tmp/1470-r5-pantallas-evidence/`, informe
+`C:/tmp/fase2/informe-1470-r5-pantallas.md`. Cuenta completa se acredita en
+cuenta-base: ruta QA licencias-modulos-dispositivos heredada abre Inicio.
+Manual: recorrer pantallas a1440/1920 y desplazar inspectores/listas; comprobar
+Instalada/Testers, avatar común, vacío, niveles sin selección, mini preview,
+pill/filtro sin leer, informes en línea e iconos/áreas del Roadmap.
+Calendario mantiene recarga local y seed caducado; no se añadió descarga ni
+horario vigente. Cuenta real no transmite nombre/correo en su IPC actual.
+Fixtures de Roadmap/calendario/avisos no acreditan servicios reales. B1 es del
+otro worker; no se arreglan sombras/velos aquí. Sin LMU vivo, DPI125/150, OBS,
+Mac, gates frontend/Go (sin cambios) ni CI remoto. plan.md ausente en la base.
+Entrega local aislada para revisión; sin push, PR, merge, promoción o release.

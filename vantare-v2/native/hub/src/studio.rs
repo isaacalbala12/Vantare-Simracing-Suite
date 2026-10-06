@@ -1505,10 +1505,10 @@ impl Studio {
                 orbit::ink_2(cx),
                 cx,
             ))
-            .child(orbit::disabled(
-                button("copy-obs-url", "Fuente Navegador próximamente", cx),
-                "Próximamente",
-            ))
+            .child(
+                orbit::pill("Fuente Navegador · Próximamente", orbit::Tone::Neutral, cx)
+                    .self_start(),
+            )
     }
 
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {

@@ -59,7 +59,7 @@ impl Page {
         match self {
             Self::Application => "Interfaz y sistema",
             Self::Appearance => "Colores, contraste y fuentes",
-            Self::Performance => "Nivel global y perfil activo",
+            Self::Performance => "Así funcionarán los niveles",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
             Self::Privacy => "Fallos, uso y contribución",
@@ -77,7 +77,7 @@ impl Page {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
-            Self::Performance => "Consulta los niveles de consumo previstos para la carrera.",
+            Self::Performance => "Así funcionarán los niveles",
             Self::Updates => "Versión instalada, canal y novedades.",
             Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",

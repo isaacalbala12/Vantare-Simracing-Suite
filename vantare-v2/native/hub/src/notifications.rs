@@ -757,7 +757,11 @@ impl Notifications {
             )
             .child(orbit::pill(
                 &format!("{unread} sin leer"),
-                orbit::Tone::Neutral,
+                if unread > 0 {
+                    orbit::Tone::Accent
+                } else {
+                    orbit::Tone::Neutral
+                },
                 cx,
             ))
             .child(read);
@@ -776,14 +780,22 @@ impl Notifications {
             let focus = self.focus(&key, cx);
             targets.push(focus.clone());
             filters = filters.child(
-                orbit::ghost_button(key, filter.label(), cx)
-                    .track_focus(&focus)
-                    .when(self.filter == filter, |button| {
-                        button.bg(gpui::rgb(orbit::surface_3(cx)))
-                    })
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.execute(Intent::Filter(filter), window, cx);
-                    })),
+                orbit::ghost_button(
+                    key,
+                    &if filter == Filter::Unread {
+                        format!("Sin leer · {unread}")
+                    } else {
+                        filter.label().to_owned()
+                    },
+                    cx,
+                )
+                .track_focus(&focus)
+                .when(self.filter == filter, |button| {
+                    button.bg(gpui::rgb(orbit::surface_3(cx)))
+                })
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.execute(Intent::Filter(filter), window, cx);
+                })),
             );
         }
         let now = self.now.unwrap_or_else(chrono::Local::now);

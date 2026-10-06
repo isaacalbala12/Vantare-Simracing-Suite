@@ -61,13 +61,16 @@ fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {
 fn account_surface(title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
     orbit::neo_card(cx)
         .child(
-            orbit::neo_header(title.to_owned(), "v-lock", cx).child(text(
-                meta,
-                12.0,
-                500,
-                orbit::ink_3(cx),
+            orbit::neo_header(
+                title.to_owned(),
+                if title == "Dispositivos" {
+                    "v-monitor"
+                } else {
+                    "pulse"
+                },
                 cx,
-            )),
+            )
+            .child(text(meta, 12.0, 500, orbit::ink_3(cx), cx)),
         )
         .child(body)
 }
@@ -798,7 +801,18 @@ impl Remote {
                         linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0017_171b, cx)), 1.0),
                     ))
                     .child(text(
-                        if demo.is_some() { "T" } else { "·" },
+                        demo.map_or_else(
+                            || "·".to_owned(),
+                            |demo| {
+                                demo.user
+                                    .full_name
+                                    .split_whitespace()
+                                    .take(2)
+                                    .filter_map(|name| name.chars().next())
+                                    .flat_map(char::to_uppercase)
+                                    .collect()
+                            },
+                        ),
                         26.0,
                         750,
                         orbit::ink(cx),
@@ -814,7 +828,7 @@ impl Remote {
                     .gap(px(2.0))
                     .child(text(
                         if let Some(demo) = demo {
-                            &demo.user.name
+                            &demo.user.full_name
                         } else if signed_in {
                             "Cuenta conectada"
                         } else {
@@ -827,7 +841,7 @@ impl Remote {
                     ))
                     .child(text(
                         if demo.is_some() {
-                            "tes•••@example.com"
+                            "Correo oculto por privacidad"
                         } else {
                             "Tu sesión de Vantare"
                         },
@@ -883,7 +897,7 @@ impl Remote {
     fn account_plan(&self, cx: &gpui::App) -> gpui::Div {
         let access = self.account_access();
         orbit::neo_card(cx)
-            .child(orbit::neo_header("Módulos", "v-lock", cx))
+            .child(orbit::neo_header("Módulos", "v-studio", cx))
             .child(text("Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
             .child(Self::account_modules(account_module_access(access, account_demo().is_some()), cx).id("account-modules-scroll").flex_grow(1.0).min_h_0().overflow_y_scroll())
     }
@@ -1032,7 +1046,7 @@ impl Remote {
             )
             .child(
                 orbit::neo_card(cx)
-                    .child(orbit::neo_header("Licencias · Acceso beta", "v-lock", cx))
+                    .child(orbit::neo_header("Licencias · Acceso beta", "key", cx))
                     .child(text(
                         account_plan_label(
                             self.account_access().verified && !self.account_access().blocked,

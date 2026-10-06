@@ -107,7 +107,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ));
 
     if let Some(status) = vm.status {
-        let style = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        let style = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
         // .vf-status tiene 12 px de padding dentro de los 126 px disponibles.
         let lines: &[&str] = match status {
             "DATOS ANTIGUOS" => &["DATOS", "ANTIGUOS"],
@@ -125,12 +125,12 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 line,
                 (SIZE.0 - width) / 2.0,
-                text::baseline(top + i as f32 * 18.0, 18.0, 12.0),
+                text::baseline(top + i as f32 * 18.0, 18.0, 14.0),
                 &style,
             );
         }
     } else {
-        let label = ink(7.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
+        let label = ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
         let value = ink(14.0, 700.0, 0.0, col(tokens::INK, 1.0));
         let widths = std::array::from_fn::<_, 3, _>(|i| {
             text::width(window, vm.labels[i], &label).max(text::width(
@@ -143,7 +143,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         let count = 3 - start;
         let wrapped = widths[start..].iter().sum::<f32>() + (count - 1) as f32 * 14.0 > 126.0;
         // Chrome ajusta el origen del viewport SVG a píxel físico.
-        let y = ((SIZE.1 - if wrapped { 144.0 } else { 113.0 }) / 2.0).round();
+        let y = ((SIZE.1 - if wrapped { 160.0 } else { 129.0 }) / 2.0).round();
         polygon(
             window,
             &[
@@ -169,7 +169,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             + (first_count - 1) as f32 * 14.0;
         let mut x = (SIZE.0 - first_width) / 2.0;
         for (i, width) in widths.into_iter().enumerate().skip(start) {
-            let top = y + 90.0 + if wrapped && i == start + 2 { 31.0 } else { 0.0 };
+            let top = y + 90.0 + if wrapped && i == start + 2 { 29.0 } else { 0.0 };
             if wrapped && i == start + 2 {
                 x = (SIZE.0 - width) / 2.0;
             }
@@ -179,7 +179,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 vm.labels[i],
                 center - text::width(window, vm.labels[i], &label) / 2.0,
-                text::baseline(top, 7.0, 7.0).round(),
+                text::baseline(top, 11.0, 11.0).round(),
                 &label,
             );
             text::draw(
@@ -187,7 +187,7 @@ fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 &vm.percentages[i],
                 center - text::width(window, &vm.percentages[i], &value) / 2.0,
-                text::baseline(top + 9.0, 14.0, 14.0).round(),
+                text::baseline(top + 13.0, 15.0, 14.0).round(),
                 &value,
             );
             x += width + 14.0;

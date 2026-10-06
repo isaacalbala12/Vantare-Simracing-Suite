@@ -1372,3 +1372,14 @@ Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
 solo en Mac. No se declara promoción ni publicación.
 
 Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.
+## #1472 — arreglos R2 (2026-10-07, entrega local en curso)
+
+Base recibida `e8f3f11f`, rama `vantareapp/isa-1472-seguridad-decisiones`.
+B-01: desinstalación por inventario, directorios vacíos de hijos a padres y
+reintento con estado estructural aunque falten archivos ya eliminados.
+Regresión `native/packaging/uninstall-tests.ps1`: RED contra base, 2 PASS
+con fixtures, interrupción inyectada y datos conservados. Evidencia externa
+`C:/tmp/1472-arreglos-r2-evidence/`. Sin push, PR, promoción ni release.
+N-10 bloqueado: `native/hub/src/comparison.rs:197` usa Workshop para capturas;
+no se retira del paquete ni se cambia esa arquitectura en este encargo.
+Las notas R2 y `docs/roadmap/plan.md` no existen en el checkout recibido.

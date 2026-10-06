@@ -338,8 +338,13 @@ function Uninstall-Beta([string]$Directory) {
     $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     $lock = Open-NativeLock $directory
     try {
-        $state = Read-NativeState $directory
-        if ($state.channel -cne 'beta') { throw 'No es una instalación beta.' }
+        # Una desinstalación interrumpida ya no tiene todos los hashes/archivos.
+        # Validar el estado estructural, sin exigir integridad de lo que se va a borrar.
+        $state = [IO.File]::ReadAllText((Join-Path $directory 'state.json')) | ConvertFrom-Json
+        if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cne 'beta' -or $null -eq $state.active) { throw 'No es una instalación beta.' }
+        foreach ($reference in @($state.active, $state.previous)) {
+            if ($null -ne $reference -and ($reference.generation -cnotmatch '^[a-f0-9]{32}$' -or $reference.manifest_sha256 -cnotmatch '^[a-f0-9]{64}$')) { throw 'Referencia de generación inválida.' }
+        }
         $handles = Open-NativeBinaryGuard $directory
         foreach ($handle in $handles.Values) { $handle.Dispose() }
         # Conserva cada data/ junto a su generación, sin descubrir datos Wails.
@@ -349,9 +354,17 @@ function Uninstall-Beta([string]$Directory) {
             foreach ($member in ($script:NativeMembers + @('manifest.json'))) {
                 $path = Join-Path $generation.FullName $member
                 if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
+                Invoke-NativeCheckpoint 'uninstall-member'
             }
-            $bin = Join-Path $generation.FullName 'bin'
-            if (Test-Path -LiteralPath $bin) { Remove-Item -LiteralPath $bin }
+            # Solo carpetas del inventario, vacías, de hijas a padres; nunca data/.
+            $directories = @($script:NativeMembers | ForEach-Object {
+                $parent = [IO.Path]::GetDirectoryName($_)
+                while ($parent) { $parent; $parent = [IO.Path]::GetDirectoryName($parent) }
+            } | Sort-Object -Unique | Sort-Object Length -Descending)
+            foreach ($relative in $directories) {
+                $path = Join-Path $generation.FullName $relative
+                if (Test-Path -LiteralPath $path) { [IO.Directory]::Delete($path, $false) }
+            }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')
     } finally { $lock.Dispose(); $session.Dispose() }

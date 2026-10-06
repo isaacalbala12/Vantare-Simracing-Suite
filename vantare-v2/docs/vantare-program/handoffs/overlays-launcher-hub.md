@@ -4469,3 +4469,28 @@ Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
 plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
 Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
 ni merges externos. Checkout principal y native-beta Isaac intactos.
+
+### #1473 — Proporciones de widgets, worker 1473-resto (2026-10-06, entrega local)
+
+Base13ae6945, rama vantareapp/isa-1473-widgets-resto; HEAD de código 52367c31fc835e633d0382f663fbaeebb54017df.
+Doce commits por widget (commits.json externo), doce renderizadores modificados;
+este handoff es el único archivo adicional. Standings, Eficiencia, workshop.rs,
+domain/IPC/persistencia/fixtures y DEMANDA12/12 intactos. Sin dependencias nuevas.
+SIZE autorizado por notas: beta nativa no distribuida, sin migración.
+Fuel523x272, filas historial34→23px medidos; Input420x110; Flags250x70;
+Map554x415, trazo4→10px; daños numéricos164x132, pitch29/29/29 medido.
+Pedals valores encima y textos completos; PedalsTelemetry barras14/pitch24,
+tres100 separados. Delta barra280x96/cifra27>=24; Radar220x220/tráfico0px diff.
+Capturas antes/después y estados/100% MIRADOS en
+C:/tmp/1473-resto-evidence/resumen.png y ronda-4.png.14 escenas caben1920x1080.
+Gates finales PASS: fmt workspace+módulos, check, Clippy -D warnings,
+Nextest1156/1156 (goldens,6 skips previstos), lifecycle5+12, build captura, diffcheck.
+Los gates validan el árbol conjunto final; commits intermedios no certificados.
+Map live sin geometría/posiciones; InputTrace solo acelerador; Fuel sin datos
+AVG/MAX/MIN/pits inventados. Espera Flags/Weather conserva semántica previa.
+Preguntas y límites para #1474 en VERIFICACION.md externo; no arreglados aquí.
+Manual: Workshop fixtures/default/stale/espera/100%, settings history8/clutch/
+tyres/aero/projection/virtual-energy y escalas. Pendientes aceptación Isaac,
+DPI/OBS/Mac/LMU real/performance. Frontend/Go no tocados, no gates de esas capas.
+plan.md ausente en base: no se crea roadmap alternativo. GitHub#1473 actualizado.
+Sin push/PR/CI remota/merge/promoción/release. Siguiente: revisión orquestador.

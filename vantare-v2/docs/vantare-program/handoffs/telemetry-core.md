@@ -1,5 +1,37 @@
 # Handoff vivo — Telemetry Core
 
+## #1474 — revisión nativa LMU/ACC — 2026-10-06
+
+Encargo vigente de Isaac/brief local: GitHub #1474, entrega local para revisión
+del orquestador, sin Notion ni push/PR/merge/release. Base `13ae6945`, rama
+`vantareapp/isa-1474-telemetria-revision`, worktree `C:/tmp/vw3-1474`.
+Las menciones históricas inferiores a Notion no cambian este encargo.
+
+Inventario de 18 widgets y trazabilidad campo a campo en
+[revisión #1474](../../analysis/2026-10-06-1474-revision-telemetria.md).
+`fd505f6f` y `c4fbd278` ya están en la base: no se reintegran ramas antiguas.
+Fallo reproducido con foto real LMU47: la demanda H2H retiraba la familia
+Relative (`Estimated(78)` → `Unavailable`). H2H solicita ahora Positions y
+Relative, las señales que usa su proyección, en lugar de gaps/tiempos/sectores
+que no consume. No cambia renderer, DTO, adquisición, goldens ni dependencias.
+Los cortes UI LMU/ACC quedan vinculados byte a byte al replay real y los 18
+widgets se comprueban con demanda IPC sobre ellos.
+Revisión ampliada: Relative pide nombre de pista para el slot `track`, aunque
+su pie consume temperatura; corrección y regresión real en el siguiente hito.
+La invalidación por nombre de pista oculto de Standings se documenta fuera de
+alcance en [#1475](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1475).
+
+Gates, SHAs y estado final: `C:/tmp/beta/r4/informe-1474-telemetria.md`; evidencia
+`C:/tmp/1474-evidence/`. Primer hito H2H: fmt/check/Clippy, Nextest 1157 PASS
+(6 skips previos) y lifecycle 5+12 PASS. Paridad estricta/Relative pendientes;
+no declara entrega cerrada. Siguiente: corrección Relative y gates finales;
+Isaac valida H2H solo delante/detrás con mejor
+vuelta real, transición de sesión/pit/desconexión y rendimiento live. Corpus
+actual: una sesión por simulador y jugador ACC en boxes; no certifica esas
+transiciones ni gaps positivos. Fase/banderas LMU, varias integridades,
+litros ACC, dirección meteorológica/presión siguen ausentes justificadamente.
+`docs/roadmap/plan.md` no existe en esta base; no se crea publicación paralela.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

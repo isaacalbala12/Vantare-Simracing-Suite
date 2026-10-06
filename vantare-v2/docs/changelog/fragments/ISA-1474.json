@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1474",
+  "type": "fix",
+  "summary": "Head-to-Head solicita los datos relativos al jugador que necesita para mostrar el gap del rival.",
+  "technicalNotes": [
+    "La demanda IPC incluye Relative; conserva posiciones e identidad y deja de pedir gaps de clasificación, tiempos y sectores que esta presentación no consume.",
+    "Se añade una regresión del pipe con datos reales y conservación de las proyecciones de los 18 widgets sobre fotos congeladas LMU/ACC. Los goldens originales no cambian."
+  ],
+  "testing": [
+    "Con Head-to-Head como único widget, completar una mejor vuelta válida y comprobar el gap con rival delante y detrás; después añadir Relative y comparar el mismo dato.",
+    "Comprobar pausa, boxes, desconexión y nueva sesión: cuando falta la señal, el widget no debe fabricar un gap."
+  ],
+  "knownLimitations": [
+    "El corpus actual no tiene gap relativo positivo del jugador: verifica la entrega de la familia Relative, pero su validación física conduciendo sigue pendiente.",
+    "No se acredita una mejora CPU/RAM ni una validación live de todas las señales y transiciones."
+  ]
+}

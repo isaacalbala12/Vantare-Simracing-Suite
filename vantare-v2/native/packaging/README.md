@@ -324,9 +324,12 @@ detecta `VCRUNTIME140.dll`; Overlays también importa `icuuc.dll`, DX11 y
 
 La clave PÚBLICA Ed25519 está en `PUBLIC_KEY_BASE64`
 (`native/services/src/update_manifest.rs`). La semilla privada (32 bytes
-binarios) se generó el 2026-10-07 y vive fuera del repo, en
-`%USERPROFILE%\.vantare-claves/actualizador-ed25519.seed`, con permisos solo
-para Isaac; debe tener copia de seguridad fuera del PC. Si se pierde, ninguna
+binarios) se generó el 2026-10-07 y la custodia Isaac en un USB, carpeta
+`vantare-claves\actualizador-ed25519.seed` (letra de unidad variable).
+Para firmar: conectar el USB y pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed`.
+**No copiar la semilla al disco, logs ni repo.** Retirar el USB al terminar;
+Isaac conserva una copia de seguridad offline bajo su custodia. Si se pierde, ninguna
 instalación podrá recibir actualizaciones firmadas y habrá que reinstalar con
 una clave nueva. No hay clave de test, clave obtenida del feed ni parámetro
 para reemplazar la clave del verificador. Instalaciones con el bootstrap
@@ -342,12 +345,12 @@ conserva el sobre firmado. `-LocalManifest` también exige firma.
 
 Isaac custodia su semilla privada de 32 bytes binarios fuera del repo. Esta
 implementación no genera ninguna clave privada real ni la imprime. Pasar
-`-SigningKeyFile <ruta-privada-elegida>` a `publish-beta.ps1`; el archivo se lee
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed` a `publish-beta.ps1`; el archivo se lee
 solo en el proceso firmador, con buffers zeroize. No ponerlo en logs ni Git.
 Para firmar por separado un JSON revisado:
 
 ```powershell
-pwsh -File native/packaging/sign-beta-manifest.ps1 -Manifest <json-revisado> -Output <asset-firmado> -ServicesExecutable <vantare-services.exe> -SigningKeyFile <ruta-privada>
+pwsh -File native/packaging/sign-beta-manifest.ps1 -Manifest <json-revisado> -Output <asset-firmado> -ServicesExecutable <vantare-services.exe> -SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed
 ```
 
 El script también acepta la ruta desde `VANTARE_UPDATE_SIGNING_KEY_FILE`.

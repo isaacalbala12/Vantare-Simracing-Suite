@@ -12,8 +12,11 @@ El actualizador exige el sobre Ed25519 antes de descargar y al aplicar,
 incluido modo local. Reutiliza licencia/services; no hay dependencias nuevas.
 La clave pública Ed25519 está fijada en `PUBLIC_KEY_BASE64` de
 `native/services/src/update_manifest.rs` desde `e8f3f11f`; no hay clave de
-test ni fallback productivo. Isaac custodia la privada fuera del repo;
-este worker no accede a ella. El firmador recibe una ruta explícita y no
+test ni fallback productivo. Isaac custodia la privada en un USB, carpeta
+`vantare-claves\actualizador-ed25519.seed`, con letra de unidad variable.
+Firmar exige conectar el USB y pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed`; nunca copiar
+la semilla al disco. Este worker no accede al USB ni a la semilla. El firmador recibe una ruta explícita y no
 imprime claves. Procedimiento en `native/packaging/README.md`.
 El bootstrap antiguo necesita reinstalación para pasar al feed firmado.
 Pruebas locales con clave generada de TEST verifican el sobre y el feed;

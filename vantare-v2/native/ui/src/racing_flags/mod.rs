@@ -1,4 +1,4 @@
-//! Banner Eficiencia, geometría congelada 280 × 88. Sin reglas de simulador.
+//! Banner Eficiencia, geometría congelada 250 × 70. Sin reglas de simulador.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::{
@@ -22,7 +22,7 @@ use vantare_domain::{
     racing_flags::{self, ViewModel},
 };
 
-pub const SIZE: (f32, f32) = (280.0, 88.0);
+pub const SIZE: (f32, f32) = (250.0, 70.0);
 const PULSE: Duration = Duration::from_millis(920);
 
 /// Start, mid (54 %), end y RGB del borde, de tokens.css.
@@ -48,14 +48,14 @@ fn background(colors: [u32; 4], cx: &App) -> Result<Arc<gpui::RenderImage>, Stri
     if let Some(image) = CACHE.with(|cache| cache.borrow().get(&colors).cloned()) {
         return Ok(image);
     }
-    let mut pixels = Vec::with_capacity(280 * 88 * 4);
+    let mut pixels = Vec::with_capacity(250 * 70 * 4);
     let gradient = |x: f32, y: f32, angle: f32, width: f32, height: f32| {
         let (dx, dy) = (angle.to_radians().sin(), -angle.to_radians().cos());
         ((x - width / 2.0) * dx + (y - height / 2.0) * dy) / (width * dx.abs() + height * dy.abs())
             + 0.5
     };
-    for y in 0..88 {
-        for x in 0..280 {
+    for y in 0..70 {
+        for x in 0..250 {
             let t = gradient(x as f32 + 0.5, y as f32 + 0.5, 108.0, SIZE.0, SIZE.1);
             let (from, to, mix) = if t < 0.54 {
                 (colors[0], colors[1], t / 0.54)
@@ -63,7 +63,7 @@ fn background(colors: [u32; 4], cx: &App) -> Result<Arc<gpui::RenderImage>, Stri
                 (colors[1], colors[2], (t - 0.54) / 0.46)
             };
             let shine = 0.08
-                * (1.0 - gradient(x as f32 - 0.5, y as f32 - 0.5, 110.0, 278.0, 86.0) / 0.42)
+                * (1.0 - gradient(x as f32 - 0.5, y as f32 - 0.5, 110.0, 248.0, 68.0) / 0.42)
                     .clamp(0.0, 1.0);
             for shift in [16, 8, 0] {
                 let a = ((from >> shift) & 255) as f32;
@@ -75,7 +75,7 @@ fn background(colors: [u32; 4], cx: &App) -> Result<Arc<gpui::RenderImage>, Stri
     }
     let mut bytes = Vec::new();
     {
-        let mut encoder = png::Encoder::new(&mut bytes, 280, 88);
+        let mut encoder = png::Encoder::new(&mut bytes, 250, 70);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
         let mut writer = encoder
@@ -124,54 +124,43 @@ pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
     if vm.hidden {
         return;
     }
-    let has_sectors = !vm.sectors.is_empty();
-    let top = if has_sectors { 7.73 } else { 25.23 };
-    let heading_ink = ink(7.0, 800.0, 0.18, col(vm.text_color, 0.82));
-    // CSS pide 850, pero fonts.css declara Inter 400–800: Chrome usa 800.
-    let message_ink = ink(26.8847, 800.0, -0.045, col(vm.text_color, 1.0));
-    for (value, top, line, style) in [
-        (vm.heading, top, 7.0, heading_ink),
-        (vm.message, top + 12.0, 25.5405, message_ink),
-    ] {
-        let x = (SIZE.0 - text::width(window, value, &style)) / 2.0;
-        let base = text::baseline(top, line, style.size);
-        paint_text_shadow(window, cx, value, x, base, style);
-        text::draw(window, cx, value, x, base, &style);
-    }
-    if has_sectors {
-        let left = (SIZE.0 - (vm.sectors.len() as f32 * 22.0 - 4.0)) / 2.0;
-        crate::efficiency::paint_rect(window, 17.8, 53.77, 244.4, 1.0, col(0xffffff, 0.12));
-        let style = ink(9.0, 700.0, 0.0, col(vm.text_color, 1.0));
-        for (index, flag) in vm.sectors.iter().enumerate() {
-            let x = left + index as f32 * 22.0;
-            let alpha = if matches!(
-                flag,
-                Some(FlagKind::Green | FlagKind::Yellow | FlagKind::Red)
-            ) {
-                0.18
-            } else {
-                0.14
-            };
-            window.paint_quad(quad(
-                rect(x, 62.77, 18.0, 18.0),
-                Corners::all(px(3.0)),
-                col(0, alpha),
-                Edges::all(px(0.0)),
-                col(0, 0.0),
-                BorderStyle::default(),
-            ));
-            let label = racing_flags::sector_label(flag.as_ref());
-            let label_x = x + (18.0 - text::width(window, &label, &style)) / 2.0;
-            text::draw(
-                window,
-                cx,
-                &label,
-                label_x,
-                text::baseline(67.27, 9.0, 9.0),
-                &style,
-            );
-        }
-    }
+    let title_height = 44.0; // 63 % título, 37 % banda de color.
+    // Mantener la paleta Eficiencia y el color de texto configurado.
+    window.paint_quad(quad(
+        rect(1.0, 1.0, SIZE.0 - 2.0, title_height - 1.0),
+        Corners::all(px(0.0)),
+        col(tokens::PANEL, 0.18),
+        Edges::all(px(0.0)),
+        col(0, 0.0),
+        BorderStyle::default(),
+    ));
+    let message = ink(15.0, 800.0, 0.0, col(vm.text_color, 1.0));
+    let fitted = text::fit(window, vm.message, &message, SIZE.0 - 12.0);
+    let x = (SIZE.0 - text::width(window, &fitted, &message)) / 2.0;
+    let base = text::baseline(0.0, title_height, 15.0);
+    paint_text_shadow(window, cx, &fitted, x, base, message);
+    text::draw(window, cx, &fitted, x, base, &message);
+    let labels: Vec<_> = vm
+        .sectors
+        .iter()
+        .map(|flag| racing_flags::sector_label(flag.as_ref()))
+        .collect();
+    let subtitle = if labels.is_empty() {
+        vm.heading.to_owned()
+    } else {
+        format!("{} · {}", vm.heading, labels.join(" · "))
+    };
+    let style = ink(11.0, 700.0, 0.0, col(vm.text_color, 0.82));
+    let fitted = text::fit(window, &subtitle, &style, SIZE.0 - 12.0);
+    let x = (SIZE.0 - text::width(window, &fitted, &style)) / 2.0;
+    text::draw(
+        window,
+        cx,
+        &fitted,
+        x,
+        text::baseline(title_height, 26.0, 11.0),
+        &style,
+    );
 }
 
 /// Convolución gaussiana del mismo texto: GPUI no ofrece text-shadow.

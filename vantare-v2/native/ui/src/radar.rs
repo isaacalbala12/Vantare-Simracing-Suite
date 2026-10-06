@@ -43,7 +43,7 @@ fn paint_car(window: &mut Window, cx: f32, cy: f32, fill: u32, highlighted: bool
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     if !vm.available {
-        let ink = ink(11.0, 500.0, 0.0, col(0xd5d5d8, 1.0));
+        let ink = ink(14.0, 500.0, 0.0, col(0xd5d5d8, 1.0));
         let message = "Sin posición espacial";
         let x = (SIZE.0 - text::width(window, message, &ink)) / 2.0;
         text::draw(
@@ -51,7 +51,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             cx,
             message,
             x,
-            text::baseline(8.0, 13.0, 11.0),
+            text::baseline(8.0, 29.0, 14.0),
             &ink,
         );
         return;

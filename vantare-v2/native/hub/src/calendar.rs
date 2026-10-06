@@ -299,7 +299,7 @@ impl Calendar {
             tier_filter: None,
             clock_started: false,
             error: None,
-            status: "Catálogo local empaquetado; sin consultar servicios".into(),
+            status: "Horario guardado en este equipo".into(),
         })
     }
     pub fn load_demo(data_dir: &Path, demo: &crate::demo::DemoData) -> Result<Self, String> {
@@ -310,7 +310,7 @@ impl Calendar {
         #[cfg(feature = "parity-capture")]
         let now = capture_clock(now);
         calendar.demo_now = Some(now);
-        calendar.status = "Fixture Wails de demostración · solo captura".into();
+        calendar.status = "Horario de ejemplo".into();
         #[cfg(feature = "parity-capture")]
         {
             calendar.view = capture_view();

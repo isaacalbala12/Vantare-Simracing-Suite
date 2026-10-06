@@ -160,7 +160,7 @@ fn disabled_topbar_select(
         .role(gpui::Role::ComboBox)
         .aria_label(label)
         .aria_value(value.to_owned())
-        .aria_description("Solo está disponible el layout local.")
+        .aria_description("Solo está disponible el diseño guardado en este equipo.")
         .tab_stop(false)
         .cursor_default()
         .w(px(width))
@@ -1102,7 +1102,7 @@ impl Studio {
             .gap(px(6.0))
             .when(self.catalog_open, |body| {
                 body.child(text(
-                    "Filtrar widgets del layout",
+                    "Filtrar widgets del diseño",
                     12.0,
                     500,
                     orbit::ink_2(cx),
@@ -1349,7 +1349,7 @@ impl Studio {
                 {
                     panel = panel.child(orbit::empty_state(
                         "Sin ajustes disponibles",
-                        "El widget conserva su configuración nativa.",
+                        "El widget conserva sus ajustes.",
                         cx,
                     ));
                 }
@@ -1503,7 +1503,7 @@ impl Studio {
             .gap(px(8.0))
             .child(orbit::neo_header("OBS", "v-rec", cx))
             .child(text(
-                "Usa una captura de ventana de los overlays nativos en OBS Studio.",
+                "Captura la ventana del overlay en OBS Studio.",
                 12.0,
                 400,
                 orbit::ink_2(cx),

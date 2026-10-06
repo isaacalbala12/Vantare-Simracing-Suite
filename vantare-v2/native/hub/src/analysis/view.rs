@@ -388,7 +388,7 @@ impl Analysis {
             pair: [None, None],
             watermark: 0,
             charts: Charts::default(),
-            status: "Carga el directorio de grabaciones nativas. Sin datos de demostración.".into(),
+            status: "Abre la carpeta de tus grabaciones para consultar sus datos.".into(),
             recording_status: String::new(),
             busy: false,
             job: None,
@@ -429,7 +429,7 @@ impl Analysis {
                 match result {
                     Ok(files) => {
                         this.status = if files.is_empty() {
-                            "Sin grabaciones nativas en este directorio".into()
+                            "No hay grabaciones en esta carpeta".into()
                         } else {
                             format!("{} grabaciones; selecciona una para leerla", files.len())
                         };
@@ -1522,7 +1522,7 @@ impl Analysis {
                 if self.selected.as_ref() == Some(&path) {
                     "Grabación seleccionada"
                 } else {
-                    "Grabación nativa · solo lectura"
+                    "Grabación · solo lectura"
                 },
                 orbit::button("open-recording", "Abrir", cx)
                     .id(("recording", index))

@@ -77,9 +77,9 @@ impl Page {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
-            Self::Performance => "Elige cuánto trabajo hace Vantare durante la carrera.",
+            Self::Performance => "Consulta los niveles de consumo previstos para la carrera.",
             Self::Updates => "Versión instalada, canal y novedades.",
-            Self::Hotkeys => "Combinaciones globales registradas por la app.",
+            Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
@@ -343,8 +343,13 @@ fn panel_height(viewport_height: f32) -> f32 {
 }
 fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
     matches!(filter, 0 | 3)
-        && search_text(&format!("{} {:?}", error.module.label(), error.code))
-            .contains(&search_text(query))
+        && search_text(&format!(
+            "{} {:?} {}",
+            error.module.label(),
+            error.code,
+            error.code.label()
+        ))
+        .contains(&search_text(query))
 }
 // Rótulos ES/EN del contrato Wails: búsqueda sin acentos, incluidos los
 // acentos combinados, sin añadir una dependencia de normalización Unicode.
@@ -396,7 +401,7 @@ impl Hub {
     }
     fn settings_preferences(&mut self, prefs: Preferences, cx: &mut Context<Self>) {
         match self.studio.update(cx, |studio, cx| studio.set_preferences(prefs, cx)) {
-            Ok(()) => self.settings.status = Some("Formato guardado en el layout local. Studio y Workshop actualizados; overlays lo aplica al recargar el documento.".into()),
+            Ok(()) => self.settings.status = Some("Formato guardado. Studio y Workshop actualizados; el overlay lo aplicará al recargar el diseño.".into()),
             Err(error) => {
                 self.notifications.update(cx, |center, cx| center.report("hub.preferences", error.clone(), cx));
                 self.testing.update(cx, |testing, _| testing.observed.error(Module::Hub, &error));

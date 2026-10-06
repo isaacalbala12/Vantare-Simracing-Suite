@@ -20,6 +20,15 @@ pub mod notifications;
 pub mod orbit;
 #[path = "../../packaging/version.rs"]
 pub mod product;
+
+/// Identidad instalada compartida por todas las pantallas del Hub.
+pub(crate) fn version_label() -> &'static str {
+    if product::VERSION == "0.0.0" {
+        "Versión local"
+    } else {
+        product::VERSION
+    }
+}
 pub mod roadmap;
 pub mod scene;
 pub mod services;
@@ -73,11 +82,11 @@ impl Section {
             Self::Studio => "Overlay Studio",
             Self::Launcher => "Launcher",
             Self::Calendar => "Calendario",
-            Self::Strategy => "Strategy",
-            Self::Engineer => "Engineer / Spotter",
+            Self::Strategy => "Estrategia",
+            Self::Engineer => "Ingeniero",
             Self::Analysis => "Telemetría / Análisis",
             Self::Testing => "Testing Center",
-            Self::Roadmap => "Roadmap",
+            Self::Roadmap => "Novedades",
             Self::Account => "Cuenta",
             Self::Licenses => "Licencias",
             Self::Notifications => "Notificaciones",
@@ -89,8 +98,8 @@ impl Section {
     pub fn subtitle(self) -> &'static str {
         match self {
             Self::Home => "Resumen y próximas carreras",
-            Self::Workshop => "Widgets, escenas y paridad",
-            Self::Studio => "Layout, contenido y apariencia",
+            Self::Workshop => "Widgets y escenas",
+            Self::Studio => "Diseño, contenido y apariencia",
             Self::Launcher => "Aplicaciones y cadena de arranque",
             Self::Calendar => "Series, sesiones y recordatorios",
             Self::Strategy => "Planes, variantes y paradas",

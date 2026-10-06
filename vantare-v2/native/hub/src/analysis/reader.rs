@@ -121,7 +121,7 @@ impl Reader {
                                 "Base bloqueada por el writer; termina la grabación antes de abrirla"
                             }
                             Some("incompatible") => {
-                                "Versión de base incompatible; solo grabaciones nativas series-db.v1"
+                                "Esta versión no puede abrir el formato de la grabación"
                             }
                             _ => "Base ilegible; conserva el original para diagnóstico",
                         };

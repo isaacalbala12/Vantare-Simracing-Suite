@@ -345,7 +345,7 @@ impl Strategy {
                 orbit::card_body()
                     .child(orbit::empty_state(
                         "Calendario · pendiente",
-                        "La selección de carreras todavía no tiene contrato nativo en Strategy.",
+                        "La selección de carreras estará disponible próximamente.",
                      cx))
                     .child(pending("strategy-calendar", "Ver carreras", cx)),
             ))

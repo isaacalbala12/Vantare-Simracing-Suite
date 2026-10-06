@@ -866,7 +866,7 @@ impl Strategy {
                 return Err("La entrada guardada tiene reglas o reservas que este formulario aún no edita; no se sustituyen por un cálculo sin ellas".into());
             }
         } else if !variant["overrides"]["nativeScalarInput"].is_null() {
-            return Err("Entrada nativa guardada inválida; se conserva sin sobrescribir".into());
+            return Err("Datos guardados ilegibles; se conservan sin sobrescribir".into());
         }
         if self.fields[8].trim() != "dry"
             || variant["mode"]["value"] != "dry"

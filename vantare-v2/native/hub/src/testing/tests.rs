@@ -16,11 +16,57 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 fn missing_build_channel_does_not_claim_the_demo_channel() {
     use super::model::channel_label;
     for missing in [None, Some(""), Some(" ")] {
-        assert_eq!(channel_label(missing, false), "CANAL NO DISPONIBLE");
-        assert_eq!(channel_label(missing, true), "NIGHTLY");
+        assert_eq!(channel_label(missing, false), "Canal no disponible");
+        assert_eq!(channel_label(missing, true), "Nightly");
     }
-    assert_eq!(channel_label(Some("testers"), false), "TESTERS");
-    assert_eq!(channel_label(Some("nightly"), false), "NIGHTLY");
+    assert_eq!(channel_label(Some("testers"), false), "Testers");
+    assert_eq!(channel_label(Some("nightly"), false), "Nightly");
+    assert_eq!(channel_label(Some("stable"), false), "Estable");
+    assert_eq!(
+        channel_label(Some("not-a-channel"), false),
+        "Canal no disponible"
+    );
+}
+
+#[test]
+fn customer_preview_uses_the_approved_payload_and_keeps_private_text() {
+    use crate::services::protocol::report_document::Preview;
+    let mut preview = Preview {
+        id: "preview-original".into(),
+        digest: "digest-original".into(),
+        account_id: "account-private-id".into(),
+        channel: "testers".into(),
+        retry: true,
+        screenshots: vec![],
+        payload: serde_json::json!({
+            "p_module": "settings", "p_action_text": "Título original", "p_expected_text": "Mi expectativa",
+            "p_observed_text": "Mi observación", "p_context_text": "Mi contexto privado",
+            "p_app_version": "1.2.3", "p_os_version": "Windows 11",
+            "p_include_diagnostic": false, "p_include_logs": false,
+            "p_idempotency_key": "internal-key"
+        })
+        .to_string(),
+    };
+    let summary = super::model::preview_summary(&preview).expect("contenido legible");
+    for text in [
+        "Título original",
+        "Mi expectativa",
+        "Mi observación",
+        "Mi contexto privado",
+        "Windows 11",
+    ] {
+        assert!(summary.contains(text));
+    }
+    assert!(!summary.contains("internal-key"));
+    assert!(summary.contains("Módulo: Ajustes"));
+    assert!(!summary.contains("account-private-id"));
+    preview.payload = serde_json::json!({"reporte": serde_json::from_str::<serde_json::Value>(&preview.payload).expect("reporte")}).to_string();
+    assert_eq!(
+        super::model::preview_summary(&preview).expect("envío con capturas"),
+        summary
+    );
+    preview.payload = "no es JSON".into();
+    assert!(super::model::preview_summary(&preview).is_err());
 }
 
 #[test]

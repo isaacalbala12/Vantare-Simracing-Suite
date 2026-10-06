@@ -325,7 +325,7 @@ impl Launcher {
             step: Some(index),
             status,
             pid: None,
-            message: "Fixture QA · estado de lanzamiento".into(),
+            message: "Lanzamiento de ejemplo".into(),
             success: index < 2,
             decision: None,
         })
@@ -334,7 +334,7 @@ impl Launcher {
             step: Some(2),
             status: super::super::chain::Status::Launching,
             pid: None,
-            message: "Fixture QA · segundo intento".into(),
+            message: "Segundo intento de ejemplo".into(),
             success: false,
             decision: None,
         });

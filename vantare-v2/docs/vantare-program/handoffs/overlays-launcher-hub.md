@@ -4304,3 +4304,68 @@ scroll por tarjetas, rol no-tester y DPI125/150. Servicio real de Testing y
 catálogo renovado requieren campaña propia. Revisar el mosaico y capturas
 antes de aceptar o autorizar promoción. Entrega terminada localmente;
 revisión del orquestador/Isaac e integración de canal pendientes.
+
+## 2026-10-06 — #1470 contenido de pantallas, entrega aislada
+
+Worker `1470-fix-textos`, worktree `C:/tmp/vw3-1470-fix-textos/vantare-v2`,
+rama `vantareapp/isa-1470-fix-textos`, base `e264cf435b5f41af306174c3d8ba7026573ef6ac`.
+Contenido del Hub revisado para clientes: mensajes y diagnóstico en español,
+sin nombres de componentes ejecutables, identificadores de informes o notas
+internas de releases en sus pantallas habituales. Los nombres de producto
+Standings, Relative, Fuel y stint, Overlay Studio, Testing Center y los canales
+Nightly/Testers se conservan por indicación del orquestador. No se modifican
+identificadores persistidos, permisos, contratos IPC ni las notas originales.
+
+Cuenta y Validar llenan las columnas; Ajustes tiene carriles específicos por
+subpágina, Atajos utiliza todo el ancho y alto, Rendimiento reserva espacio para
+su tabla, y Diagnóstico para el registro. Cada página mantiene el alto completo
+y desplaza su propio contenido sobrante, con el mismo control de desplazamiento
+del panel, sin reglas especiales por subpágina. La captura de detalle
+de Diagnóstico verifica que se alcanza la octava fila a 1920 y 1440.
+Equilibrado coincide con la tarjeta y punto seleccionados en el ejemplo QA;
+Automático queda sin marcar y anunciado como pendiente. En producto, donde no
+hay nivel confirmado, no se inventa una selección activa.
+
+Versión instalada: `product::VERSION` de packaging es la única fuente, presentada
+mediante `version_label()`; `0.0.0` se muestra como «Versión local». Las versiones
+históricas de las notas y del contenido original de un envío no se sustituyen.
+Actualizaciones usa 17 resúmenes para clientes en
+`native/hub/src/settings/customer-news.json`, con tipos Nuevo/Mejora/Arreglo.
+Las próximas entregas deberán añadir allí su resumen para clientes; nunca se
+vuelca automáticamente el cuerpo técnico de una release beta. El documento local
+`native/hub/roadmap/roadmap.json` recibe únicamente cuatro correcciones de texto;
+no cambian estados, porcentajes ni alcance. `docs/roadmap/plan.md` sigue ausente
+en esta base: su actualización queda coordinada por el orquestador al integrar.
+
+La vista previa del informe muestra etiquetas legibles y el contenido privado
+original aprobado, también al reintentar. Consentimiento y envío permanecen
+intactos. Un formato inesperado conserva el payload real anterior como vista
+de revisión, para no ocultar lo que se enviaría. Regresiones para resúmenes de
+versiones, búsqueda de errores en español y preservación de ese contenido.
+
+Validación local: fmt/check/clippy -Dwarnings PASS; Nextest workspace
+1153/1153 PASS, seis skips configurados, sin filtro adicional (707,676 s de
+ejecución; ACC 587,652 s). Después de los últimos ajustes exclusivamente de
+presentación se repite Hub: 272/272 PASS. Lifecycle: cinco y doce tests PASS.
+Build prueba/parity PASS; conserva únicamente el aviso previo unused cx en
+`analysis/view.rs:989`, exclusivo de esa configuración QA. Compilación por
+`C:/tmp/fase2/compilar.ps1`, target propio y -j2. El primer test de búsqueda y
+Clippy fallaron durante la iteración: se corrigieron sin cambiar tests ni añadir
+excepciones a lint, y se repitieron los checks.
+
+Evidencia externa `C:/tmp/1470-fix-textos-evidence/`: primeras capturas,
+29 estados finales (18 a 1920x1080 y 11 a 1440x900), galerías MIRADAS,
+`ronda-1.png` antes/después, mapas de diferencias visuales, logs y hash del
+binario QA. No es prueba de paridad pixel a pixel, LMU live, rendimiento,
+permisos reales, servicio remoto ni publicación. La captura «diagnostico-detalle»
+es desplazamiento del registro; no simula pulsar Preparar ni certifica ese flujo.
+No Go/frontend/release/CI remota ejecutados: ajenos a este cambio local.
+
+Verificación manual pendiente de aceptación: recorrer Cuenta, Validar y las
+siete páginas de Ajustes a ambos tamaños; bajar hasta el final de General,
+Rendimiento y Diagnóstico, comprobar carriles distintos, versión instalada,
+Automático sin seleccionar y textos del informe antes de consentir. Revisar
+también Novedades y los nombres de producto conservados. DPI125/150, cuenta
+real, preparar/copiar diagnóstico y envío remoto requieren comprobación física.
+Checkout principal y native-beta Isaac intactos. Entrega local para revisión,
+sin push, PR, CI remota, merge, promoción ni release.

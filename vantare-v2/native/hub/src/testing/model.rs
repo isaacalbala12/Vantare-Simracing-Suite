@@ -3,13 +3,19 @@ use crate::services::protocol::report_document::{Fields, Preview};
 /// La escena de paridad declara Nightly; fuera de ella manda la build.
 pub(super) fn channel_label(channel: Option<&str>, capture: bool) -> String {
     if capture {
-        "NIGHTLY".into()
+        "Nightly".into()
     } else {
         channel
             .filter(|value| !value.trim().is_empty())
             .map_or_else(
-                || "CANAL NO DISPONIBLE".into(),
-                |value| value.trim().to_uppercase(),
+                || "Canal no disponible".into(),
+                |value| match value.trim() {
+                    "stable" | "master" => "Estable".into(),
+                    "nightly" => "Nightly".into(),
+                    "testers" => "Testers".into(),
+                    "beta" => "Beta".into(),
+                    _ => "Canal no disponible".into(),
+                },
             )
     }
 }
@@ -19,19 +25,73 @@ pub(super) const MODULES: [(&str, &str); 15] = [
     ("unknown", "Sin determinar"),
     ("hub", "Hub"),
     ("launcher", "Launcher"),
-    ("settings", "Settings"),
+    ("settings", "Ajustes"),
     ("overlay_studio", "Overlay Studio"),
-    ("overlay_runtime", "Overlay Runtime"),
-    ("telemetry", "Telemetry"),
-    ("telemetry_analysis", "Telemetry Analysis"),
-    ("engineer", "Engineer"),
-    ("strategy", "Strategy"),
-    ("calendar", "Calendar"),
-    ("billing", "Billing"),
-    ("account", "Account"),
-    ("updater", "Updater"),
+    ("overlay_runtime", "Overlays en pista"),
+    ("telemetry", "Telemetría"),
+    ("telemetry_analysis", "Análisis de telemetría"),
+    ("engineer", "Ingeniero"),
+    ("strategy", "Estrategia"),
+    ("calendar", "Calendario"),
+    ("billing", "Facturación"),
+    ("account", "Cuenta"),
+    ("updater", "Actualizaciones"),
     ("testing_center", "Testing Center"),
 ];
+
+/// Lee el contenido aprobado, también al reintentar; nunca el formulario actual.
+pub(super) fn preview_summary(preview: &Preview) -> Result<String, &'static str> {
+    let value: serde_json::Value = serde_json::from_str(&preview.payload)
+        .map_err(|_| "No se pudo leer el contenido del envío.")?;
+    let report = value.get("reporte").unwrap_or(&value);
+    let mut lines = Vec::new();
+    let module = report
+        .get("p_module")
+        .and_then(serde_json::Value::as_str)
+        .ok_or("No se pudo leer el contenido del envío.")?;
+    lines.push(format!(
+        "Módulo: {}",
+        MODULES
+            .iter()
+            .find(|(id, _)| *id == module)
+            .map_or("Sin determinar", |(_, label)| *label)
+    ));
+    for (key, label) in [
+        ("p_action_text", "Título"),
+        ("p_expected_text", "Qué esperabas"),
+        ("p_observed_text", "Qué ocurrió"),
+        ("p_context_text", "Contexto"),
+        ("p_app_version", "Versión"),
+        ("p_os_version", "Sistema"),
+    ] {
+        let text = report
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .ok_or("No se pudo leer el contenido del envío.")?;
+        lines.push(format!("{label}: {text}"));
+    }
+    for (key, label) in [
+        ("p_include_diagnostic", "Diagnóstico"),
+        ("p_include_logs", "Registro"),
+    ] {
+        let included = report
+            .get(key)
+            .and_then(serde_json::Value::as_bool)
+            .ok_or("No se pudo leer el contenido del envío.")?;
+        lines.push(format!(
+            "{label}: {}",
+            if included { "Incluido" } else { "No incluido" }
+        ));
+    }
+    if let Some(payload) = report
+        .get("p_diagnostic_payload")
+        .and_then(serde_json::Value::as_str)
+    {
+        lines.push(format!("Contenido del diagnóstico: {payload}"));
+    }
+    lines.push(format!("Capturas: {}", preview.screenshots.len()));
+    Ok(lines.join("\n"))
+}
 
 /// Mismos límites UTF-8 que Wails. El servicio vuelve a validar la frontera.
 pub(super) fn field_errors(fields: &Fields) -> [Option<&'static str>; 4] {

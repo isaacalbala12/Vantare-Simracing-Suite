@@ -164,7 +164,7 @@ pub fn trail(section: Section) -> &'static str {
         Section::Launcher => "Herramienta",
         Section::Calendar => "Le Mans Ultimate",
         Section::Strategy => "Planificador",
-        Section::Engineer => "Telemetry Core",
+        Section::Engineer => "Radio",
         Section::Analysis => "Análisis post-sesión",
         Section::Roadmap => "Producto",
         Section::Settings => "Preferencias locales",

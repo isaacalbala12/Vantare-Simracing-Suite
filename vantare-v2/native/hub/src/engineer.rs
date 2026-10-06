@@ -249,11 +249,7 @@ fn checkbox(
         .gap(px(8.0))
         .role(gpui::Role::CheckBox)
         .aria_label(label.to_owned())
-        .aria_description(if disabled {
-            "Sin contrato nativo; deshabilitado"
-        } else {
-            ""
-        })
+        .aria_description(if disabled { "Próximamente" } else { "" })
         .tab_stop(!disabled)
         .child(mark)
         .child(text(label.to_owned(), 16.0, 400, text_color(cx), cx))
@@ -263,11 +259,7 @@ fn select_control(value: &str, disabled: bool, cx: &gpui::App) -> gpui::Stateful
     div()
         .id(format!("engineer-select-{value}"))
         .role(gpui::Role::ComboBox)
-        .aria_description(if disabled {
-            "Sin contrato nativo; deshabilitado"
-        } else {
-            ""
-        })
+        .aria_description(if disabled { "Próximamente" } else { "" })
         .tab_stop(!disabled)
         .flex()
         .items_center()
@@ -442,22 +434,24 @@ impl Engineer {
                     .model
                     .report()
                     .map_or("—", |report| report.status.settings.locale.as_str());
-                let voice = &runtime.voice.selected_voice;
-                format!("{locale} · {voice} / {voice}")
-            },
-        );
-        let cycle = view.runtime.and_then(|runtime| runtime.epoch).map_or_else(
-            || "No disponible".into(),
-            |epoch| {
-                // Hora congelada de la observación en el harness Wails; no es un
-                // heartbeat real ni una marca de tiempo inferida del proceso.
-                if self.demo.is_some() {
-                    format!("{epoch} · 16:00:19")
+                let language = match locale {
+                    "es" | "es-ES" => "Español",
+                    "en" | "en-US" | "en-GB" => "Inglés",
+                    _ => "Idioma no disponible",
+                };
+                let voice = if runtime.voice.selected_voice.is_empty() {
+                    "Sin voz seleccionada"
                 } else {
-                    epoch.to_string()
-                }
+                    "Voz seleccionada"
+                };
+                format!("{language} · {voice}")
             },
         );
+        let cycle = if view.runtime.and_then(|runtime| runtime.epoch).is_some() {
+            "Disponible"
+        } else {
+            "No disponible"
+        };
         div()
             .flex()
             .flex_col()
@@ -465,10 +459,10 @@ impl Engineer {
             .gap(px(14.0))
             .child(fact_row(
                 &[
-                    ("Servicio", service),
+                    ("Conexión", service),
                     ("Telemetría", telemetry),
                     ("Spotter", spotter),
-                    ("Reproductor real", player),
+                    ("Audio", player),
                 ],
                 compact,
                 cx,
@@ -476,7 +470,7 @@ impl Engineer {
             .child(fact_row(
                 &[
                     ("Idioma · voz spotter / ingeniero", &locale_value),
-                    ("Ciclo", &cycle),
+                    ("Sesión", cycle),
                 ],
                 compact,
                 cx,
@@ -487,16 +481,16 @@ impl Engineer {
         let mut card = section("Estado observado", cx);
         let view = self.model.view(self.model.now());
         let status_copy = if view.health == model::Health::Fresh {
-            "Estado actualizado desde el servicio."
+            "Estado actualizado."
         } else if view.health == model::Health::Expired {
-            "El estado ha caducado; esperando un heartbeat reciente."
+            "Los datos han caducado; esperando una actualización."
         } else {
             "Esperando respuesta de Vantare…"
         };
         card = card
             .child(paragraph(status_copy, cx).mt(px(0.0)))
             .child(self.observed_facts(compact, cx))
-            .child(paragraph("El audio de radio usa únicamente frases ya disponibles en caché. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido.", cx));
+            .child(paragraph("El audio de radio usa frases guardadas en este equipo. Esta versión no genera ni descarga voces: un mensaje visual puede llegar sin sonido.", cx));
         if let Some(error) = view.error {
             card = card.child(text(
                 format!("estado: {error}; se conserva la evidencia anterior"),
@@ -552,13 +546,7 @@ impl Engineer {
             .flex_col()
             .gap(px(14.0))
             .mt(px(12.0))
-            .child(text(
-                "Ajustes disponibles en el contrato nativo",
-                16.0,
-                700,
-                text_color(cx),
-                cx,
-            ))
+            .child(text("Ajustes disponibles", 16.0, 700, text_color(cx), cx))
             .child(
                 div()
                     .flex()
@@ -740,10 +728,10 @@ impl Engineer {
             ))
             .child(controls)
             .child(outputs);
-        section("Configuración real", cx)
+        section("Configuración", cx)
             .child(fieldset)
             .child(paragraph("La salida «Respuestas de voz» solo afecta a respuestas si la entrada de voz experimental está disponible; no activa el micrófono.", cx))
-            .child(paragraph(if self.demo.is_some() { "Los valores muestran el estado confirmado por Vantare." } else { "Los ajustes nativos disponibles se guardan localmente. Las salidas sin contrato están deshabilitadas." }, cx))
+            .child(paragraph(if self.demo.is_some() { "Los valores muestran el estado confirmado por Vantare." } else { "Los ajustes se guardan en este equipo. Las opciones pendientes se muestran deshabilitadas." }, cx))
     }
 
     fn audio_section(cx: &gpui::App) -> gpui::Div {

@@ -31,6 +31,11 @@ impl Editor {
             selected: None,
         })
     }
+    pub fn initialize(&mut self, monitor: (f32, f32, f32, f32)) -> Result<(), String> {
+        self.document
+            .initialize(monitor)
+            .map_err(|error| error.to_string())
+    }
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }

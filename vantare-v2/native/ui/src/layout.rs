@@ -258,6 +258,33 @@ impl Document {
         Ok(changed)
     }
 
+    /// Ambos hosts inicializan el mismo documento. Si otro lo creó después de
+    /// abrirlo, se adopta antes de pintar o editar; un layout vacío existente se respeta.
+    pub fn initialize(&mut self, monitor: (f32, f32, f32, f32)) -> Result<(), Error> {
+        if self.exists() {
+            return Ok(());
+        }
+        match self.save(&crate::app::starter_layout(monitor)) {
+            Err(Error::Conflict) => {
+                // Espera solo al escritor inicial: el fichero aún puede no existir
+                // cuando try_lock detecta al otro proceso creando el documento.
+                let lock = OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .open(self.path.with_extension("json.lock"))?;
+                lock.lock()?;
+                self.poll()?;
+                if self.exists() {
+                    Ok(())
+                } else {
+                    Err(Error::Conflict)
+                }
+            }
+            result => result,
+        }
+    }
+
     pub fn save(&mut self, layout: &Layout) -> Result<(), Error> {
         let layout = layout.clone().normalized()?;
         let bytes = serde_json::to_vec_pretty(&layout).map_err(Error::Json)?;
@@ -350,6 +377,54 @@ mod tests {
         ));
         fs::create_dir_all(&path).expect("directorio temporal");
         path
+    }
+
+    #[test]
+    fn initialization_adopts_the_first_writer_and_preserves_explicit_empty_layouts() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        let monitor = (0.0, 0.0, 1920.0, 1080.0);
+        let mut hub = Document::open(path.clone()).expect("Hub antes de overlays");
+        let mut overlays = Document::open(path.clone()).expect("overlays antes de Hub");
+        overlays.initialize(monitor).expect("primer escritor");
+        hub.initialize(monitor).expect("adoptar creación tardía");
+        assert_eq!(hub.layout(), overlays.layout());
+        assert_eq!(hub.layout().instances.len(), 4);
+        let mut changed = hub.layout().clone();
+        changed.instances[0].x += 20.0;
+        hub.save(&changed).expect("guardar sin falso conflicto");
+        assert!(overlays.poll().expect("recargar en pista"));
+        assert_eq!(overlays.layout(), &changed);
+        overlays
+            .save(&Layout::default())
+            .expect("vaciar explícitamente");
+        let mut reopened = Document::open(path).expect("vacío guardado por el usuario");
+        reopened.initialize(monitor).expect("respetar vacío");
+        assert!(reopened.layout().instances.is_empty());
+        fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn concurrent_initializers_share_one_layout_without_a_startup_conflict() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let other_barrier = barrier.clone();
+        let mut hub = Document::open(path.clone()).expect("Hub antes de crear archivo");
+        let overlays = std::thread::spawn(move || {
+            let mut document = Document::open(path).expect("overlays antes de crear archivo");
+            other_barrier.wait();
+            document
+                .initialize((0.0, 0.0, 1920.0, 1080.0))
+                .expect("inicializar overlays");
+            document.layout().clone()
+        });
+        barrier.wait();
+        hub.initialize((0.0, 0.0, 1920.0, 1080.0))
+            .expect("inicializar Hub");
+        assert_eq!(hub.layout(), &overlays.join().expect("hilo overlays"));
+        assert_eq!(hub.layout().instances.len(), 4);
+        fs::remove_dir_all(dir).expect("limpiar");
     }
 
     #[test]

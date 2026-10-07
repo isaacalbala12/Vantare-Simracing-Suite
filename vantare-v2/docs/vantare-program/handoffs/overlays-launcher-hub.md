@@ -5409,3 +5409,47 @@ Batería versionada `capture-alpha.ps1`/`alpha-scenes.json`:36 escenas por tama�
 Standings final0/292160 con umbral0/delta0 contra `C:/tmp/candidato-evidence/union2-standings/standings.png`; captura, referencia y diff inspeccionados. Referencia histórica del repo conserva deuda85,3666% registrada en candidata; no se actualiza ni se cambia tolerancia.
 Primer intento de matriz: PNG de diagnóstico1440 opaco pero cierre del helper excedió10s; log `alpha-first.log` conservado. Repetición1440/1280 PASS y matriz completa final108/108 PASS sin fallos de cierre. Arranque Hidden inicial no abrió HWND y excedió90s; batería usa ventana Normal para captura física.
 Evidencia `C:/tmp/1479-evidence/`; informe y SHA en `C:/tmp/fase2/informe-1479.md`; manual `pwsh -File C:/tmp/1479-evidence/manual.ps1`. Issue actualizada; siguiente: orquestador revisa diff/evidencia antes de integrar. Sin push/PR/CI remota/merge/promoción/release ni acciones externas fuera del seguimiento autorizado. QA Windows DPI96; sin LMU live/OBS/DPI mixto/macOS; no Go/TS al no cambiar su código. `docs/roadmap/plan.md` no existe en la base y esta corrección de QA no cambia alcance público.
+
+### #1482 — Studio instalado, inicialización compartida (2026-10-07, entrega aislada)
+
+Worker `C:/tmp/vw3-1482-studio/vantare-v2`, rama `vantareapp/isa-1482-studio-instalado`,
+base candidata `7be121744fb477090995d28d009fc08fc1cb9666`, limpia al empezar.
+Issue [#1482](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1482);
+brief `C:/tmp/beta/r4/brief-studio-instalado.md`. Sin subagentes ni dependencias nuevas.
+Ambos hosts resuelven `data/Vantare/native/layout.json`: la causa era la revisión,
+no otra ruta. PreparedStudio podía abrir el archivo ausente antes del primer frame
+de overlays; su creación posterior dejaba Editor con bytes=None y layout vacío.
+La siguiente edición disparaba el guard de conflicto. `Document::initialize`
+compartido crea/adopta el layout inicial antes de pintar en Studio y overlays,
+respetando el vacío explícito y los conflictos de ediciones posteriores.
+
+Regresiones: adopción tardía, inicialización concurrente sin sleep y vacío deliberado;
+proceso hijo Windows con raíz de generación limpia, cuatro widgets, guardado,
+recarga en pista, añadir y reabrir. El padre exige que el archivo se haya creado.
+Gates por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS,
+Nextest1220/1220 PASS (6 skips existentes; ACC500,619s), lifecycle18/18 PASS.
+Refuerzo final del test subprocess: fmt/Clippy y arquitectura7/7 PASS.
+Packaging beta174/174 PASS sobre el paquete0.0.951 utilizado en la reproducción.
+Standings0/292160px contra candidata union2, umbral0/delta0; captura, referencia y
+mapa inspeccionados. Renderer, referencias y tolerancia intactos.
+
+Copia portable aislada en `C:/tmp/studio-instalado`; instalación de Isaac intacta,
+solo lectura del resumen: generación de7f1ef9, cuatro widgets. Hub productivo
+corregido sin demo/capture crea cuatro instancias en datos nuevos ANTES de overlays.
+Login aislado exige sesión; no se copian credenciales ni se certifica autenticación.
+Harness externo QA (fuente temporal retirada del repo) recorre1440×900/DPI96:
+cuatro widgets/Guardado verde, Ejemplo/En vivo, selección, drag persistido,
+inspector filas/cabecera, visibilidad4→3→4, añadir/undo/redo5→4→5 y reapertura.
+Capturas originales y hoja inspeccionadas; JSON y recarga del mismo HWND verificados.
+Mostrar en pista/Publicar en OBS están disabled Próximamente en la base;
+captura qa-track-disabled.png. No se habilitan fuera de esta causa.
+Árbol QA con EXE Prueba sustituidos y hashes externos: no es paquete publicable.
+No prueba login empaquetado autenticado, LMU live, OBS, rendimiento, DPI mixto o Mac.
+
+Evidencia `C:/tmp/studio-instalado-evidence/`; informe≤15 líneas/SHA definitivo en
+`C:/tmp/fase2/informe-studio-instalado.md`. Manual `manual.ps1` preparado (no ejecutado,
+requiere sesión propia) con instancia aislada isa1482-manual; cierre incluido.
+Siguiente: revisión del orquestador y smoke autenticado antes de aceptar/integrar.
+Solo commit local; sin push/PR/CI remota/merge/promoción/release ni acciones externas
+fuera del seguimiento GitHub autorizado. Go/TS no ejecutados: solo cambia Rust/UI.
+Roadmap plan.md ausente en esta base; no se crea otra fuente ni se cambia alcance público.

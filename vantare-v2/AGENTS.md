@@ -2,6 +2,14 @@
 
 Guia obligatoria para agentes que trabajen en este repo.
 
+Hay dos líneas de producto. La aplicación nativa **Rust + GPUI** en `native/`
+es la base de futuro y de la beta, por decisión aceptada en
+[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). Wails **Go + React**
+(`internal/`, `cmd/`, `pkg/`, `frontend/`) es legado y sigue en producción
+hasta el corte autorizado. Para la ruta nativa, lee `native/README.md`, los
+README de los crates afectados y sus gates; las secciones Go y TypeScript /
+React de este archivo siguen siendo obligatorias cuando se toca el legado.
+
 ## Contexto del usuario
 
 - El usuario no revisa codigo complejo linea por linea.
@@ -57,6 +65,17 @@ prevalecen sobre planes historicos. La tarea Notion es la autoridad para alcance
 dependencias y estado; GitHub demuestra rama, PR, CI e integración; no sustituye los contratos de producto o
 arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
+Si un contrato pide `docs/roadmap/plan.md`, comprueba primero que existe en la
+rama. Si falta, desde la raíz Git comprueba
+`git cat-file -e origin/nightly:vantare-v2/docs/roadmap/plan.md` y, solo si
+existe, léelo con `git show origin/nightly:vantare-v2/docs/roadmap/plan.md`.
+En la base de #1483 tampoco existe en `origin/nightly` verificado; no inventes
+una ruta ni recrees el plan. Registra la ausencia y la contradicción con el
+contrato que exige actualizar alcance y entregas en el mismo PR para decisión
+de Isaac: consultar otra rama no cumple ese requisito ni autoriza omitirlo.
+El checkout contiene `docs/roadmap-maintenance.md`; no sustituye por sí solo
+la regla del mismo PR ni autoriza publicar cambios.
+
 ## Reglas generales
 
 - El flujo canónico es `rama de issue -> nightly -> testers -> master`.
@@ -86,14 +105,14 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
-- `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
+- En el legado Wails, Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
+- En el legado Wails, `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
   Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
   TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,
   compilador HTML, scaffolder o registro generico salvo una decision nueva.
   Los HTML son contratos visuales; el fondo del escenario no forma parte del
   widget ni de sus capturas de paridad.
-- Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
+- Si tocas drag/resize del canvas V3 del legado Wails, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - El alcance, las dependencias y el estado operativo viven en la tarea Notion.
   El roadmap público muestra varias vistas gráficas de una única publicación.
   Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
@@ -199,6 +218,37 @@ Para y pide revision si:
 - La base, rama o SHA no coincide con la tarea Notion y su referencia técnica.
 - La accion requiere una autorizacion reservada a Isaac.
 
+## Ruta nativa
+
+La decisión vigente es ADR 0099 y su
+[plan por fases](docs/superpowers/plans/2026-09-29-arquitectura-rust-nativa.md).
+Mapa actual de `native/Cargo.toml` (los README por crate detallan contratos):
+
+- `domain`: modelo neutral, derivaciones, ViewModels y formato; puro, sin I/O ni GPUI.
+- `runtime`: adaptadores privados, núcleo, flujos y supervisor de procesos.
+- `ipc`: DTO versionados y transporte autenticado entre procesos.
+- `ui` / `hub`: widgets, overlays y Workshop GPUI / aplicación Hub y Studio GPUI.
+- `engineer` / `storage`: eventos y voz bajo demanda / propietario único de series DuckDB.
+- `services`: cuenta, licencia y llamadas remotas bajo demanda, sin UI.
+- `strategy` / `admin`: documento y cálculo Strategy / miniapp privada del owner, fuera del instalador público.
+
+`domain` y `ui` no dependen de `runtime`, tampoco transitivamente; conserva el
+test de arquitectura descrito en `native/README.md`. Usa Rust concreto,
+funciones puras y `Result`, y GPUI directamente conforme a ADR 0099.
+
+Desde `native/`, formato: `cargo fmt --all -- --check`. Para iterar:
+`./gates.ps1 check`; antes de entregar cambios Rust:
+`./gates.ps1 clippy`, `./gates.ps1 test` y `./gates.ps1 lifecycle`.
+Según `native/gates.ps1`, ejecutan check/Clippy del workspace y todos los
+targets (Clippy con `-D warnings`), Nextest del workspace y el test lifecycle
+por separado, con `--locked --offline -j 2`. Requieren DuckDB oficial instalado
+mediante `./setup-duckdb.ps1`; conservan los defaults ajenos a storage y usan
+el target propio `target/gates`. No compartas targets entre worktrees.
+Esta variante de desarrollo no sustituye el build de distribución con DuckDB
+bundled; para compilación, plataformas y empaquetado lee `native/README.md`.
+Una entrega solo documental puede omitir compilación si su brief lo autoriza;
+registra los checks omitidos y el motivo.
+
 ## Go
 
 - Usa Go simple e idiomatico.
@@ -267,7 +317,7 @@ Para y pide revision si:
 
 - Grandes rewrites.
 - Microservicios prematuros.
-- Rust como base principal sin decision explicita.
+- Cambios de arquitectura fuera de la decisión Rust + GPUI aceptada en ADR 0099 y de sus fases autorizadas.
 - Abstracciones enormes.
 - Interfaces con una sola implementacion sin justificacion.
 - Factories/providers/managers innecesarios.

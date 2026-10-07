@@ -3288,3 +3288,16 @@ Primer merge incorpora `18fdf07a` sin conflictos: demanda Relative en H2H y pie 
 Gates por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1185/1185 PASS (6 skips), golden ACC 631,186 s; lifecycle PASS.
 Pendiente incorporar tablas y resto, QA Workshop/Studio y paridad Standings. Evidencia `C:/tmp/1473-integracion-evidence/`.
 Solo integración local autorizada; sin push, PR, promoción ni release. plan.md ausente en esta base.
+
+### #1473 + #1474 — integración y QA completadas (2026-10-07)
+Base `40a4ddc9`; rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`.
+Merges sin squash en orden: `93d0cb1d` (18fdf07a), `59c5092b` (1cb6c892), `3f9232a2` (8004af81).
+Hub productivo igual a la base; se conservaron ambas entradas de handoff y ambos tests en los conflictos.
+Cada merge pasó fmt/check/clippy -D warnings, Nextest completo (1185/1189/1190 PASS, 6 skips previstos), goldens ACC/LMU y lifecycle, por cola/-j2/target propio.
+QA MIRADA: 18 widgets Workshop default/unavailable/stale, 18 espera con datos retenidos, tres escenas H2H y 18 aperturas Studio a 1920x1080.
+Default 18/18 idénticos a referencias; H2H extra 3/3 idénticos; Standings 0/292160 píxeles distintos.
+Hoja `C:/tmp/1473-integracion-evidence/resumen.png`; paneles Studio y capturas individuales en la misma carpeta.
+Studio usó hook temporal exclusivo parity-capture para layout externo por widget, retirado tras build; fuente restaurada con hash idéntico. Binarios solo QA, no distribución.
+Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
+Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.

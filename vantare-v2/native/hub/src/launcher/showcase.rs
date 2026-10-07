@@ -256,6 +256,14 @@ pub(super) fn app_icon(app: &App, size: f32, cx: &gpui::App) -> Div {
         .child(orbit::icon(icon, size * 0.48, orbit::ink(cx)))
 }
 
+fn carousel_offset(
+    offset: gpui::Pixels,
+    delta: gpui::Pixels,
+    maximum: gpui::Pixels,
+) -> gpui::Pixels {
+    (offset + delta).clamp(-maximum, px(0.0))
+}
+
 impl Launcher {
     fn sync_showcase_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(profile) = self
@@ -468,7 +476,8 @@ impl Launcher {
                 }))
                 .rounded(px(18.0))
                 .when(!running, |card| {
-                    card.border_1()
+                    card.justify_between()
+                        .border_1()
                         .border_color(rgba(orbit::line(cx)))
                         .bg(orbit::tint(0, 0.18))
                 })
@@ -625,10 +634,14 @@ impl Launcher {
             .flex_none()
             .min_h_0()
             .overflow_x_scroll()
-            .child(row.min_w(px(
-                u16::try_from(profile.steps.len()).map_or(0.0, f32::from)
-                    * if compact { 125.0 } else { 160.0 },
-            )))
+            .child(
+                row.when(!running, |row| {
+                    row.min_h(px(if compact { 180.0 } else { 260.0 }))
+                })
+                .min_w(px(u16::try_from(profile.steps.len())
+                    .map_or(0.0, f32::from)
+                    * if compact { 125.0 } else { 160.0 })),
+            )
     }
 
     #[allow(clippy::too_many_lines)] // Composición del escaparate; conserva un único controlador de lanzamiento.
@@ -738,9 +751,8 @@ impl Launcher {
             .overflow_y_scroll()
             .flex_1()
             .min_h_0()
-            .gap(px(8.0))
-            .justify_start()
-            .when(!running, gpui::Styled::flex_none)
+            .gap(px(if compact || running { 8.0 } else { 24.0 }))
+            .justify_between()
             .p(px(if compact { 20.0 } else { 32.0 }))
             .bg(orbit::gradient(
                 cx.global::<orbit::design::Tokens>().gradients.hero,
@@ -846,7 +858,10 @@ impl Launcher {
         })
         .child(
             self.showcase_steps(profile, running, compact, cx)
-                .mt(px(12.0)),
+                .mt(px(12.0))
+                .when(!running, |steps| {
+                    steps.min_h(px(if compact { 180.0 } else { 260.0 }))
+                }),
         )
         .when(running, |card| card.child(div().flex_1()))
         .when(running, |card| card.child(self.showcase_quick(profile, cx)))
@@ -939,7 +954,20 @@ impl Launcher {
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
     fn showcase_profiles(&self, compact: bool, cx: &mut Context<Self>) -> Stateful<Div> {
-        let mut row = div().w_full().min_h(px(198.0)).flex().gap(px(14.0));
+        let width = if compact { 200.0 } else { 284.0 };
+        let height = if compact { 166.0 } else { 206.0 };
+        let content_width = self
+            .store
+            .document
+            .profiles
+            .iter()
+            .fold(150.0, |total, _| total + width + 14.0);
+        let mut row = div()
+            .w(px(content_width))
+            .flex_none()
+            .h(px(height))
+            .flex()
+            .gap(px(14.0));
         for (index, profile) in self.store.document.profiles.iter().enumerate() {
             let selected = profile.id.clone();
             let keyboard_selection = selected.clone();
@@ -966,8 +994,8 @@ impl Launcher {
                                 .is_none_or(|active| active.id != profile.id),
                         |card| card.opacity(0.45),
                     )
-                    .flex_1()
-                    .min_w(px(140.0))
+                    .flex_none()
+                    .w(px(width))
                     .overflow_hidden()
                     .gap(px(8.0))
                     .p(px(8.0))
@@ -1065,17 +1093,59 @@ impl Launcher {
                 .h_auto()
                 .rounded(px(18.0))
                 .w(px(150.0))
+                .flex_none()
                 .on_click(cx.listener(|this, _, window, cx| this.new_profile(None, window, cx))),
         );
+        let scroll = self.profile_scroll.clone();
         div()
             .id("showcase-profiles")
+            .relative()
             .flex_none()
-            .min_h(px(198.0))
-            .when(self.launch_progress().is_some(), |row| {
-                row.flex_none().h(px(198.0))
+            .h(px(height))
+            .child(
+                div()
+                    .id("showcase-profile-carousel")
+                    .size_full()
+                    .overflow_x_scroll()
+                    .track_scroll(&scroll)
+                    .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+                        let delta = event.delta.pixel_delta(px(24.0));
+                        let offset = this.profile_scroll.offset();
+                        let maximum = this.profile_scroll.max_offset().x;
+                        this.profile_scroll.set_offset(gpui::point(
+                            carousel_offset(offset.x, delta.x + delta.y, maximum),
+                            px(0.0),
+                        ));
+                        cx.stop_propagation();
+                        cx.notify();
+                    }))
+                    .child(row),
+            )
+            .when(scroll.max_offset().x > px(0.0), |mut carousel| {
+                for (id, label, direction) in [
+                    ("profiles-previous", "‹", 1.0),
+                    ("profiles-next", "›", -1.0),
+                ] {
+                    carousel = carousel.child(
+                        button(id, label, cx)
+                            .absolute()
+                            .top(px(height / 2.0 - 18.0))
+                            .when(direction > 0.0, gpui::Styled::left_0)
+                            .when(direction < 0.0, gpui::Styled::right_0)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                let scroll = &this.profile_scroll;
+                                let next =
+                                    scroll.offset().x + scroll.bounds().size.width * direction;
+                                scroll.set_offset(gpui::point(
+                                    carousel_offset(next, px(0.0), scroll.max_offset().x),
+                                    px(0.0),
+                                ));
+                                cx.notify();
+                            })),
+                    );
+                }
+                carousel
             })
-            .overflow_x_scroll()
-            .child(row)
     }
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
@@ -1320,6 +1390,10 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         self.sync_showcase_controls(window, cx);
+        if self.profile_scroll.bounds().size.width == px(0.0) {
+            let entity = cx.entity();
+            window.on_next_frame(move |_, cx| entity.update(cx, |_, cx| cx.notify()));
+        }
         let tokens = cx.global::<orbit::design::Tokens>();
         let gap = tokens.geometry.gap;
         let gutter = tokens.geometry.gutter;
@@ -1369,11 +1443,6 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(gap));
-        if self.launch_progress().is_some() {
-            center = center.child(
-                self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx),
-            );
-        }
         center = if let Some(profile) = profile {
             center.child(self.showcase_hero(
                 profile,
@@ -1389,11 +1458,8 @@ impl Launcher {
                 cx,
             )))
         };
-        if self.launch_progress().is_none() {
-            center = center.child(
-                self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx),
-            );
-        }
+        center = center
+            .child(self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx));
         let mut context = div()
             .w(gpui::relative(1.0 / 3.0))
             .min_w_0()
@@ -1446,6 +1512,17 @@ impl Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn carousel_stops_at_both_ends_and_keeps_the_last_card_reachable() {
+        assert_eq!(carousel_offset(px(0.0), px(-300.0), px(500.0)), px(-300.0));
+        assert_eq!(
+            carousel_offset(px(-300.0), px(-300.0), px(500.0)),
+            px(-500.0)
+        );
+        assert_eq!(carousel_offset(px(-500.0), px(900.0), px(500.0)), px(0.0));
+        assert_eq!(carousel_offset(px(0.0), px(-300.0), px(0.0)), px(0.0));
+    }
+
     #[test]
     fn run_pills_require_a_terminal_result_and_keep_recovered_retries() {
         use super::super::super::chain::Status;

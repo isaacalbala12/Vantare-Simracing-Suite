@@ -110,9 +110,11 @@ function Get-BetaRemoteManifest([string]$Verifier) {
             @{ version = $version; url = $expected; tag = $release.tag_name }
         }
     )
+    $downloadError = $null
     foreach ($candidate in ($candidates | Sort-Object { $_.version } -Descending)) {
+        try { $response = Invoke-WebRequest -UseBasicParsing -Uri $candidate.url -TimeoutSec 30 -Headers $headers }
+        catch { $downloadError = $_.Exception; continue }
         try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri $candidate.url -TimeoutSec 30 -Headers $headers
             $json = $response.Content
             if ($json -is [byte[]]) {
                 if ($json.Length -gt 65536) { continue }
@@ -127,7 +129,9 @@ function Get-BetaRemoteManifest([string]$Verifier) {
             return $json
         } catch { continue } # Un asset inválido no veta una versión firmada anterior.
     }
-    throw 'No hay release native-beta con manifiesto válido y firmado.'
+    if ($null -ne $downloadError) { throw $downloadError }
+    # Feed consultado correctamente, pero sin actualización verificable.
+    return $null
 }
 
 function Write-BetaJson([string]$Path, $Value) {
@@ -173,10 +177,21 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
             $signedJson = [IO.File]::ReadAllText($path)
             $manifest = Read-BetaManifest $signedJson $true $verifier
         } else {
-            $signedJson = Get-BetaRemoteManifest $verifier
+            try { $signedJson = Get-BetaRemoteManifest $verifier }
+            catch {
+                Set-BetaStatus $directory 'error' ('No se pudo consultar el feed beta: ' + $_.Exception.Message) $current.version
+                return $false
+            }
+            if (-not $signedJson) {
+                Set-BetaStatus $directory 'current' 'Estás al día' $current.version
+                return $false
+            }
             $manifest = Read-BetaManifest $signedJson $false $verifier
         }
-        if ((Read-BetaVersion $manifest.version) -le (Read-BetaVersion $current.version)) { return $false }
+        if ((Read-BetaVersion $manifest.version) -le (Read-BetaVersion $current.version)) {
+            Set-BetaStatus $directory 'current' 'Estás al día' $current.version
+            return $false
+        }
         $staging = Join-Path $directory 'staging'
         [IO.Directory]::CreateDirectory($staging) | Out-Null
         $zip = Join-Path $staging ($manifest.sha256 + '.zip')

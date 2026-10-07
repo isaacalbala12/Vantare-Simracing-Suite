@@ -1469,3 +1469,37 @@ en beta y presente en nightly/testers/master. Bootstrap antiguo de paquetes
 QA descartados no migra; no existen instalaciones beta distribuidas según
 nota del orquestador. Gates Rust/paridad no se repitieron: ningún cambio Rust
 ni visual después de los gates finales, solo packaging/docs y su validación.
+
+## #1472 — Prerelease E2E, fase 2 (2026-10-07)
+
+Encargo directo: C:/tmp/beta/r4/brief-prerelease-fase2.md; manda
+C:/tmp/fase2/notas-prerelease-fase2.md. Rama aislada
+`vantareapp/isa-1472-feed-vacio`, base `1c26b898907cb3b3b3b4547ff39bd925cdf2fe01`,
+worktree C:/tmp/vw3-1472-feed; el candidato compartido no se editó.
+La instrucción recibida fija GitHub #1472 y prevalece sobre las referencias
+Notion antiguas de esta base. docs/roadmap/plan.md no existe en ella.
+
+beta.ps1 considera current un feed consultado sin manifiesto verificable o
+sin versión superior. Un fallo de transporte del índice o del asset conserva
+state=error y la versión activa, devuelve false y no bloquea el Hub. La firma,
+la selección descendente y la verificación del paquete permanecen obligatorias.
+remote-feed-tests.ps1: RED con feed vacío; GREEN 9/9 en PS5.1 y PS7:
+tres codificaciones, vacío, igual, anterior, mayor inválida, red del índice y
+red del asset. Fixtures de inventario y firma real con clave exclusivamente TEST;
+no se usó la clave del USB ni se publicó nada.
+
+Runtime productivo aislado: Apply realizado por el orquestador antes de esta
+fase; arranque 0.0.901 confirmó current y retiró boot-pending. El feed vacío
+reprodujo el error inicial; Check corregido real contra GitHub salió 0/current.
+Se copió solo beta.ps1 corregido a la raíz de la instalación aislada para
+repetir Run: Hub listo, current/Estás al día, cierre normal idle. Capturas
+segunda-hub.png y segunda-hub-fixed.png inspeccionadas; Hub sin acceso verificado,
+no prueba login/LMU/OBS ni una instalación Windows limpia.
+
+Uninstall real PASS; state y EXE retirados, datos preservados por el bootstrap.
+Después se borró exclusivamente E:/tmp/prerelease salvo candidato-target;
+0 procesos de la prueba y 0 accesos directos en Desktop/Inicio. Logs externos
+conservados en C:/tmp/prerelease-e2e-evidence. Informe FASE 2:
+C:/tmp/fase2/informe-prerelease.md. Sin gates Rust/frontend ni rebuild porque
+solo cambió PowerShell; diff-check PASS. Entrega solo local al orquestador,
+pendiente de revisión/unión: sin push, PR, CI remota, merge, promoción ni release.

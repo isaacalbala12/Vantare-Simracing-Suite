@@ -5383,3 +5383,10 @@ fmt/check/clippy PASS; Nextest1210/1210 PASS (6 skips; ACC488,713s); lifecycle P
 QA beta.1/testers compilado y hashes de fuentes guardados; 36 capturas1920 y36 a1440 MIRADAS,1280 en curso. Focal1280/100 y1440/125 elegido MIRADAS: botones Inicio y cuatro pasos Launcher caben; General confirma límite112,5% sin cambiar elección125.
 Elipsis y contenido inferior con scroll preexistentes conservados. Escenas Workshop/Telemetría/Licencias redirigen a Inicio; Cuenta sí cubre licencias. Warning QA preexistente analysis/view.rs:989 conservado.
 Sin push/PR/CI remota/promoción/release; falta merge feed, packaging, paridad/alfa y Release externo. Evidencia union2-*.
+
+### #1470/#1472 — candidato beta unión 2, feed vacío (2026-10-07)
+Quinto merge810709e7 tras e8f6661b añadido por nota prioritaria: feed vacío/igual/anterior/inválido muestra current/Estás al día; fallos de transporte conservan error.
+remote-feed-tests.ps1 PASS9/9 en PS5.1 yPS7; firma real con clave exclusivamente TEST, transporte simulado, sin modificación de instalación activa.
+No cambia Rust/UI respecto al cuarto merge ya validado; no se repiten gates de código intacto. Conflictos ninguno; diff-check PASS.
+36 capturas por tamaño1920/1440/1280 MIRADAS; matriz completa en union2-resumen-*.png, focales zoom125→112,5 confirmadas. Quedan paridad/alfa y empaquetado/Release externo.
+Sin push/PR/CI remota/promoción/publicación; solo cinco merges locales autorizados. Logs union2-feed-ps51/ps7 ycapturas externas.

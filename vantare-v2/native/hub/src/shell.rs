@@ -1246,7 +1246,10 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             let initial_section = options.section;
             if let Err(error) = cx.open_window(window_options, |window, cx| {
                 let hub = cx.new(|cx: &mut Context<Hub>| {
-                    Hub::build(loaded, initial_section, access, failure_on_quit, window, cx)
+                    let mut hub =
+                        Hub::build(loaded, initial_section, access, failure_on_quit, window, cx);
+                    hub.settings_zoom_restore(window);
+                    hub
                 });
                 let closing = hub.downgrade();
                 window.on_window_should_close(cx, move |_, cx| {

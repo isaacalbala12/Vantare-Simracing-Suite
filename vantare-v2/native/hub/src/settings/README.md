@@ -78,6 +78,22 @@ No concede roles ni crea Agenda Owner.
 | Privacidad | Ningún envío desde esta sección. | Consentimiento, revocación, borrado remoto y cola Strategy. No se afirma que la cola esté vacía. |
 | Diagnóstico | Observaciones reales del Testing Center, preparación local sanitizada, binarios/hashes, errores tipados, filtros/búsqueda y copia local del mismo informe. Trabajo de disco en segundo plano. | Estado de overlays, CPU/memoria, tamaño de datos, carpetas/registros y niveles Info/Aviso sin instrumentación. |
 
+### Zoom del Hub — revisión #1470 (2026-10-07)
+
+«Tamaño de la interfaz» (90/100/110/125 %, Ctrl +/−/0, persistencia y
+aplicación inmediata) sigue pendiente. La revisión de `dd90b49c` activa la
+condición de parada del brief: GPUI permite `set_rem_size`, pero los tamaños
+del Hub están fijados mediante `px(...)` en 40 archivos; cambiar el rem no
+escala sus textos, iconos, tarjetas ni espaciados explícitos.
+`Window::set_scale_factor` solo existe con `test`/`test-support` y no es una
+API de zoom productiva. No se habilita un control que prometa escala completa.
+
+Alternativa con las API actuales: aprobar un lote acotado para convertir las
+dimensiones de la interfaz del Hub a `rems` y usar `set_rem_size`, manteniendo
+el canvas/renderer de widgets en píxeles. Requiere revisar también controles,
+umbrales adaptables y coordenadas de interacción. No basta con cambiar los
+tokens del tema. No se modifica GPUI ni el DPI global de Windows.
+
 El diagnóstico reutiliza la lista blanca del Testing Center; no exporta rutas
 privadas, pipe/SID, sesiones, pilotos ni telemetría cruda. La copia es local y
 no envía datos. Un error no observado no demuestra funcionamiento correcto.

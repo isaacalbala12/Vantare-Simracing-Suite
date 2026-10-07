@@ -46,3 +46,61 @@ include!("registry.rs");
 pub use app::{
     Overlay, layout_row, run_layout_requested, run_layout_with_rights, run_placed, run_with_rights,
 };
+
+/// Requests a zoom change for this window only, via the vendored Windows backend.
+/// Posted rather than sent: resize callbacks must run after the current GPUI update.
+pub fn set_window_zoom(window: &gpui::Window, percent: u16) -> Result<(), String> {
+    if !matches!(percent, 90 | 100 | 110 | 125) {
+        return Err("Tamaño de interfaz no válido".into());
+    }
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn PostMessageW(hwnd: isize, message: u32, wparam: usize, lparam: isize) -> i32;
+        }
+        let hwnd = overlay::hwnd_of(window).ok_or("Ventana no disponible")?;
+        // SAFETY: HWND comes from this GPUI window; payload contains no pointers.
+        if unsafe { PostMessageW(hwnd, 0x8000 + 0x1470, usize::from(percent), 0) } == 0 {
+            return Err(format!(
+                "Cambiar tamaño de interfaz: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+        if percent == 100 {
+            Ok(())
+        } else {
+            Err("Zoom disponible solo en Windows".into())
+        }
+    }
+}
+
+/// Largest Hub zoom that leaves its 1280 x 800 logical design area.
+pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
+    #[cfg(not(windows))]
+    let _ = window;
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn GetDpiForWindow(hwnd: isize) -> u32;
+        }
+        if let Some(hwnd) = overlay::hwnd_of(window) {
+            // SAFETY: HWND belongs to the live GPUI window; no pointers are passed.
+            let dpi = unsafe { GetDpiForWindow(hwnd) } as f32 / 96.0;
+            if dpi > 0.0 {
+                let size = window.viewport_size();
+                return (f32::from(size.width) / 1280.0).min(f32::from(size.height) / 800.0)
+                    * window.scale_factor()
+                    / dpi
+                    * 100.0;
+            }
+        }
+    }
+    100.0
+}

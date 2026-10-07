@@ -51,6 +51,10 @@ pub struct WindowsWindowState {
     pub appearance: Cell<WindowAppearance>,
     pub background_appearance: Cell<WindowBackgroundAppearance>,
     pub scale_factor: Cell<f32>,
+    /// Application zoom belongs to this HWND; monitor DPI remains independent.
+    pub zoom_percent: Cell<u16>,
+    pub dpi_scale: Cell<f32>,
+    pub limit_zoom: Cell<bool>,
     pub restore_from_minimized: Cell<Option<Box<dyn FnMut(RequestFrameOptions)>>>,
 
     pub callbacks: Callbacks,
@@ -165,6 +169,9 @@ impl WindowsWindowState {
             appearance: Cell::new(appearance),
             background_appearance: Cell::new(WindowBackgroundAppearance::Opaque),
             scale_factor: Cell::new(scale_factor),
+            zoom_percent: Cell::new(100),
+            dpi_scale: Cell::new(scale_factor),
+            limit_zoom: Cell::new(false),
             restore_from_minimized: Cell::new(restore_from_minimized),
             min_size,
             callbacks,
@@ -651,7 +658,10 @@ impl PlatformWindow for WindowsWindow {
 
     fn resize(&mut self, size: Size<Pixels>) {
         let hwnd = self.0.hwnd;
-        let bounds = gpui::bounds(self.bounds().origin, size).to_device_pixels(self.scale_factor());
+        // Requested window sizes remain DPI-relative when content zoom changes.
+        let dpi_scale = self.state.dpi_scale.get();
+        let mut bounds = self.bounds().to_device_pixels(self.scale_factor());
+        bounds.size = size.to_device_pixels(dpi_scale);
         let rect = calculate_window_rect(bounds, &self.state.border_offset);
 
         self.0

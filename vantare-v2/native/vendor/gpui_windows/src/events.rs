@@ -30,6 +30,9 @@ pub(crate) const WM_GPUI_GPU_DEVICE_LOST: u32 = WM_USER + 7;
 pub(crate) const WM_GPUI_KEYDOWN: u32 = WM_USER + 8;
 pub(crate) const WM_GPUI_END_SESSION: u32 = WM_USER + 9;
 
+// Vantare per-window zoom protocol; kept in sync with vantare-ui/lib.rs.
+const WM_VANTARE_WINDOW_ZOOM: u32 = WM_APP + 0x1470;
+
 const SIZE_MOVE_LOOP_TIMER_ID: usize = 1;
 
 /// Coordinates window draws on the UI thread. Owned by the platform and
@@ -104,6 +107,7 @@ impl WindowsWindowInner {
             WM_TIMER => self.handle_timer_msg(handle, wparam),
             WM_NCCALCSIZE => self.handle_calc_client_size(handle, wparam, lparam),
             WM_DPICHANGED => self.handle_dpi_changed_msg(handle, wparam, lparam),
+            WM_VANTARE_WINDOW_ZOOM => self.handle_zoom_msg(handle, wparam),
             WM_DISPLAYCHANGE => self.handle_display_change_msg(handle),
             WM_NCHITTEST => self.handle_hit_test_msg(handle, lparam),
             WM_PAINT => self.handle_paint_msg(handle),
@@ -223,7 +227,8 @@ impl WindowsWindowInner {
 
     fn handle_get_min_max_info_msg(&self, lparam: LPARAM) -> Option<isize> {
         let min_size = self.state.min_size?;
-        let scale_factor = self.state.scale_factor.get();
+        // Window constraints use monitor DPI, never the content zoom.
+        let scale_factor = self.state.dpi_scale.get();
         let boarder_offset = &self.state.border_offset;
 
         unsafe {
@@ -275,6 +280,25 @@ impl WindowsWindowInner {
         scale_factor: f32,
         should_resize_renderer: bool,
     ) {
+        let scale_factor = if self.state.limit_zoom.get() {
+            let dpi = self.state.dpi_scale.get();
+            let limit = (device_size.width.0 as f32 / 1280.0)
+                .min(device_size.height.0 as f32 / 800.0)
+                .max(dpi * 0.9);
+            let effective = (dpi * self.state.zoom_percent.get() as f32 / 100.0).min(limit);
+            let ratio = self.state.scale_factor.get() / effective;
+            self.state.origin.set(self.state.origin.get() * ratio);
+            let restore = self.state.fullscreen_restore_bounds.get();
+            self.state.fullscreen_restore_bounds.set(Bounds::new(
+                restore.origin * ratio,
+                size(restore.size.width * ratio, restore.size.height * ratio),
+            ));
+            self.state.scale_factor.set(effective);
+            self.state.direct_manipulation.set_scale_factor(effective);
+            effective
+        } else {
+            scale_factor
+        };
         let new_logical_size = device_size.to_pixels(scale_factor);
 
         self.state.logical_size.set(new_logical_size);
@@ -875,6 +899,35 @@ impl WindowsWindowInner {
         }
     }
 
+    fn handle_zoom_msg(&self, handle: HWND, wparam: WPARAM) -> Option<isize> {
+        if !matches!(wparam.0, 90 | 100 | 110 | 125) {
+            return Some(0);
+        }
+        // SAFETY: handle is the live HWND currently dispatching this message.
+        let dpi = unsafe { GetDpiForWindow(handle) };
+        let mut rect = RECT::default();
+        // SAFETY: rect is valid writable storage for the current client bounds.
+        if unsafe { GetClientRect(handle, &mut rect) }.is_err() {
+            return Some(0);
+        }
+        self.state.zoom_percent.set(wparam.0 as u16);
+        self.state.limit_zoom.set(true);
+        self.state
+            .dpi_scale
+            .set(dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32);
+        let scale = dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32
+            * self.state.zoom_percent.get() as f32
+            / 100.0;
+        let device_size = size(
+            DevicePixels(rect.right - rect.left),
+            DevicePixels(rect.bottom - rect.top),
+        );
+        // Keep the physical client size and swap chain; GPUI re-reads scale,
+        // viewport and pointer coordinates through its existing resize callback.
+        self.handle_size_change(device_size, scale, false);
+        Some(0)
+    }
+
     fn handle_dpi_changed_msg(
         &self,
         handle: HWND,
@@ -882,9 +935,13 @@ impl WindowsWindowInner {
         lparam: LPARAM,
     ) -> Option<isize> {
         let new_dpi = wparam.loword() as f32;
+        self.state
+            .dpi_scale
+            .set(new_dpi / USER_DEFAULT_SCREEN_DPI as f32);
 
         let is_maximized = self.state.is_maximized();
-        let new_scale_factor = new_dpi / USER_DEFAULT_SCREEN_DPI as f32;
+        let new_scale_factor =
+            new_dpi / USER_DEFAULT_SCREEN_DPI as f32 * self.state.zoom_percent.get() as f32 / 100.0;
         self.state.scale_factor.set(new_scale_factor);
         self.state.border_offset.update(handle).log_err();
 

@@ -844,7 +844,7 @@ impl Hub {
 
     pub(in crate::shell) fn settings(
         &self,
-        _window: &Window,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<Div> {
         self.sync_settings_preferences(cx);
@@ -867,7 +867,7 @@ impl Hub {
             })
             .child(orbit::scroll_fade(
                 match self.settings.page {
-                    Page::Application => self.settings_application(true, cx),
+                    Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
                     Page::Performance => Self::settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
@@ -916,7 +916,7 @@ impl Hub {
                 .h_full(),
             )
     }
-    fn settings_zoom(cx: &gpui::App) -> gpui::Stateful<Div> {
+    fn settings_zoom(&self, cx: &Context<Self>) -> gpui::Stateful<Div> {
         div()
             .id("settings-zoom-control")
             .role(gpui::Role::Group)
@@ -936,6 +936,11 @@ impl Hub {
                     .flex()
                     .items_center()
                     .justify_center()
+                    .id("settings-zoom-less")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(-1, window, cx)),
+                    )
                     .child(text("−", 16.0, 700, orbit::ink_muted(cx), cx)),
             )
             .child(
@@ -948,7 +953,18 @@ impl Hub {
                     .border_l_1()
                     .border_r_1()
                     .border_color(rgba(orbit::line_row(cx)))
-                    .child(text("100%", 13.0, 700, orbit::ink(cx), cx)),
+                    .id("settings-zoom-reset")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(0, window, cx)),
+                    )
+                    .child(text(
+                        format!("{}%", self.settings.appearance.zoom_percent),
+                        13.0,
+                        700,
+                        orbit::ink(cx),
+                        cx,
+                    )),
             )
             .child(
                 div()
@@ -956,18 +972,39 @@ impl Hub {
                     .flex()
                     .items_center()
                     .justify_center()
+                    .id("settings-zoom-more")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(1, window, cx)),
+                    )
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    fn settings_application(&self, compact: bool, cx: &Context<Self>) -> Div {
-        let zoom = Self::settings_zoom(cx);
+    fn settings_application(&self, compact: bool, window: &Window, cx: &Context<Self>) -> Div {
+        let limit = vantare_ui::window_zoom_limit(window).max(90.0);
+        let selected = f32::from(self.settings.appearance.zoom_percent);
+        let zoom = div()
+            .flex()
+            .flex_col()
+            .items_end()
+            .gap(px(4.0))
+            .child(self.settings_zoom(cx))
+            .when(selected > limit + 0.01, |view| {
+                view.child(text(
+                    format!("Limitado a {limit:.1} % por el tamaño de la ventana"),
+                    11.0,
+                    400,
+                    orbit::ink_muted(cx),
+                    cx,
+                ))
+            });
         let interface = section_surface(
             "Interfaz",
             None,
             section_body()
                 .child(section_row(
-                    "Zoom de la interfaz",
-                    "Amplía o reduce toda la app. Atajos: Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rueda.",
+                    "Tamaño de la interfaz",
+                    "90, 100, 110 o 125 %. Atajos: Ctrl +, Ctrl − y Ctrl 0.",
                     zoom,
                     cx,
                 ))

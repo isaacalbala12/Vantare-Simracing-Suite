@@ -187,6 +187,9 @@ impl Hub {
             return;
         }
         let key = &event.keystroke;
+        if self.shell_zoom_key(event, window, cx) {
+            return;
+        }
         if key.modifiers.control && key.key.eq_ignore_ascii_case("b") {
             self.shell.sidebar_open = !self.shell.sidebar_open;
             cx.notify();
@@ -270,6 +273,29 @@ impl Hub {
             }
             cx.stop_propagation();
         }
+    }
+
+    fn shell_zoom_key(
+        &mut self,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let key = &event.keystroke;
+        if key.modifiers.control && !key.modifiers.alt && !key.modifiers.platform {
+            let direction = match key.key.as_str() {
+                "+" | "=" | "add" => Some(1),
+                "-" | "subtract" => Some(-1),
+                "0" => Some(0),
+                _ => None,
+            };
+            if let Some(direction) = direction {
+                self.settings_zoom_change(direction, window, cx);
+                cx.stop_propagation();
+                return true;
+            }
+        }
+        false
     }
 
     pub(super) fn rail(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {

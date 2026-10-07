@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## Candidato beta — verificación local cerrada (2026-10-07)
+Código `1c9ca48d`, base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`; merges en orden `6338e31e` y `f18b842e`, sin squash. Zoom no autorizado por nota y no integrado.
+Gates completos finales PASS: fmt/check/Clippy -D warnings, Nextest1205/1205 (6 skips, goldens ACC/LMU), lifecycle17. Se conserva el fallo intermedio de caché/mtime y su repetición completa verde.
+QA `0.1.0-beta.1`/testers: 72 capturas Hub 1920/1440 opacas, 54 widgets y todas sus hojas/paneles inspeccionados. 18/18 widgets idénticos a referencias; Standings0/292160px. Regresión alfa255/254/0 PASS.
+Paquete Release beta fuera del repo: source_sha `1c9ca48d19997733df2d8e2cf425bca67fe3d466`, source_dirty=false; 10 ejecutables, sin Workshop; build Release PASS, packaging/tests.ps1 beta174 PASS. Desinstalación normal/interrumpida PASS en PS5.1 y pwsh.
+Hub empaquetado abre/responde/cierra exit0 con datos y pipe aislados; captura1440 opaca inspeccionada. Muestra pantalla de acceso Comprobando sesión: no acredita login completado, LMU live, OBS, DPI125, Mac ni rendimiento. Feed GitHub real/firma USB/NSIS no probados.
+Evidencia `C:/tmp/candidato-evidence/`; hojas `resumen-1920.png`, `resumen-1440.png`, `widgets/resumen.png`; detalle `inspeccion.md`. Informe/archivos/checks/manual en `C:/tmp/fase2/informe-candidato.md`. Paquete `release-package/`; primer paquete dirty es solo evidencia histórica, no el candidato final.
+Cierre documental posterior al código no cambia los binarios del paquete. plan.md ausente en base: no se inventa otro roadmap. Checkout principal preservado.
+Solo integración local autorizada por brief. Sin push, PR, CI remota, promoción, release ni cambios de cuentas/datos/servicios remotos.
+
 ## #1472 — seguridad incorporada al candidato beta local (2026-10-07)
 Rama `vantareapp/isa-1470-candidato-beta`, base `dd90b49c`, worktree `C:/tmp/vw3-candidato`.
 Se incorpora `f18b842e` (contiene R2 `d1aa7fc2`) mediante segundo merge sin squash, después de widgets/telemetría `2ab5d362`.

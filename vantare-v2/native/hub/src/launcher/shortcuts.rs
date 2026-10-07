@@ -89,10 +89,14 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
 
 #[cfg(windows)]
 fn accepts_target(link: &Path, target: &Path, shared_roots: &[PathBuf]) -> bool {
-    !shared_roots
-        .iter()
-        .any(|root| super::under_ascii_case(link, root))
-        || super::is_trusted_install_path(target)
+    let Ok(real_link) = fs::canonicalize(link) else {
+        return false;
+    };
+    !shared_roots.iter().any(|root| {
+        super::under_ascii_case(link, root)
+            || fs::canonicalize(root)
+                .is_ok_and(|real_root| super::under_ascii_case(&real_link, &real_root))
+    }) || super::is_trusted_install_path(target)
 }
 
 #[cfg(windows)]
@@ -200,31 +204,39 @@ mod trust_tests {
     use super::*;
 
     #[test]
-    fn only_shared_shortcuts_restrict_targets_and_user_games_on_other_drives_are_trusted() {
-        let shared = [
-            PathBuf::from(r"C:\Users\Public"),
-            PathBuf::from(r"C:\ProgramData"),
-        ];
-        let game = Path::new(r"D:\Games\obs64.exe");
-        for link in [
-            r"C:\Users\Isaac\Desktop\obs.lnk",
-            r"C:\Users\Isaac\AppData\Roaming\Microsoft\Windows\Start Menu\obs.lnk",
-        ] {
-            assert!(accepts_target(Path::new(link), game, &shared));
-        }
-        for link in [
-            r"c:\users\PUBLIC\Desktop\obs.lnk",
-            r"C:\ProgramData\Microsoft\Windows\Start Menu\obs.lnk",
-        ] {
-            assert!(!accepts_target(Path::new(link), game, &shared));
-            let trusted = PathBuf::from(std::env::var_os("ProgramFiles").expect("Windows"))
-                .join("obs/obs64.exe");
-            assert!(accepts_target(Path::new(link), &trusted, &shared));
-        }
-        assert!(accepts_target(
-            Path::new(r"C:\Users\Publicity\Desktop\obs.lnk"),
-            game,
-            &shared
-        ));
+    fn shared_shortcuts_resolve_junctions_and_private_shortcuts_allow_other_roots() {
+        use std::os::windows::process::CommandExt;
+        let root = PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("Windows"))
+            .join(format!("shortcut-real-{}", std::process::id()));
+        let outside = PathBuf::from(format!(r"C:\tmp\shortcut-outside-{}", std::process::id()));
+        fs::create_dir_all(root.join("shared")).expect("shared");
+        fs::create_dir_all(&outside).expect("outside");
+        let shared_link = root.join("shared/obs.lnk");
+        let private_link = root.join("private.lnk");
+        fs::write(&shared_link, b"fixture").expect("link");
+        fs::write(&private_link, b"fixture").expect("link");
+        let target = outside.join("obs64.exe");
+        fs::write(&target, b"fixture").expect("target");
+        let junction = root.join("escape");
+        let status = std::process::Command::new("cmd.exe")
+            .args(["/c", "mklink", "/J"])
+            .arg(&junction)
+            .arg(&outside)
+            .creation_flags(0x0800_0000)
+            .status()
+            .expect("junction");
+        assert!(status.success());
+        let roots = [root.join("shared")];
+        let escaped = accepts_target(&shared_link, &junction.join("obs64.exe"), &roots);
+        let private = accepts_target(&private_link, &target, &roots);
+        let other_drive = accepts_target(&private_link, Path::new(r"D:\Games\obs64.exe"), &roots);
+        let trusted = root.join("trusted.exe");
+        fs::write(&trusted, b"fixture").expect("trusted");
+        let allowed = accepts_target(&shared_link, &trusted, &roots);
+        fs::remove_dir(&junction).expect("unlink junction only");
+        fs::remove_dir_all(&root).expect("cleanup trusted fixture");
+        fs::remove_dir_all(&outside).expect("cleanup outside fixture");
+        assert!(!escaped);
+        assert!(private && other_drive && allowed);
     }
 }

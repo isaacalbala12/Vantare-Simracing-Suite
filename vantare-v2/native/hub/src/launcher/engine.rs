@@ -524,6 +524,9 @@ pub fn is_trusted_install_path(path: &Path) -> bool {
     }
     #[cfg(windows)]
     {
+        let Ok(real) = std::fs::canonicalize(path) else {
+            return false;
+        };
         [
             "ProgramFiles",
             "ProgramFiles(x86)",
@@ -534,7 +537,8 @@ pub fn is_trusted_install_path(path: &Path) -> bool {
         ]
         .into_iter()
         .filter_map(std::env::var_os)
-        .any(|root| under_ascii_case(path, Path::new(&root)))
+        .filter_map(|root| std::fs::canonicalize(Path::new(&root)).ok())
+        .any(|root| under_ascii_case(&real, &root))
     }
     #[cfg(unix)]
     {

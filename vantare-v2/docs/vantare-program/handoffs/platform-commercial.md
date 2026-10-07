@@ -1391,3 +1391,9 @@ se omiten y byte[] se decodifica con UTF-8 estricto/detección BOM.
 Regresión con verificador Ed25519 aislado y clave generada TEST: RED base,
 3 PASS (string, UTF-8 bytes, UTF-16 BOM). GitHub real pendiente de prerelease
 autorizada; procedimiento en packaging/README.md, sin publicación en esta tarea.
+
+B-02: destino y raíces confiables canonicalizados antes de comparar componentes;
+los enlaces compartidos se identifican también por su ruta real. Test con
+junction real RED/GREEN y acceso propio a D: permitido. Gates de esta pasada:
+fmt, clippy workspace/all-targets -D warnings, nextest 1189 PASS (6 omitidos)
+y lifecycle PASS (0 fallos). Logs en 1472-arreglos-r2-evidence/*-b02.log.

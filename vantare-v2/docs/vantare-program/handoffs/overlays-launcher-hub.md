@@ -5390,3 +5390,12 @@ remote-feed-tests.ps1 PASS9/9 en PS5.1 yPS7; firma real con clave exclusivamente
 No cambia Rust/UI respecto al cuarto merge ya validado; no se repiten gates de código intacto. Conflictos ninguno; diff-check PASS.
 36 capturas por tamaño1920/1440/1280 MIRADAS; matriz completa en union2-resumen-*.png, focales zoom125→112,5 confirmadas. Quedan paridad/alfa y empaquetado/Release externo.
 Sin push/PR/CI remota/promoción/publicación; solo cinco merges locales autorizados. Logs union2-feed-ps51/ps7 ycapturas externas.
+
+### #1470 — cierre local de candidato unión 2 (2026-10-07)
+Cinco merges locales autorizados: 43851186 (r6), 6b7f8ee5 (zoom), 5d64a300 (#1475), e8f6661b (#1476), cc3437dc (#1472). Base 1c26b898. Solo conflictos de handoff y chrome; sin dependencias nuevas.
+Gates finales de código PASS: fmt/check/clippy -D warnings, Nextest1210/1210 (6 skips existentes, ACC488,713s), lifecycle18/18. Feed9/9 en PS5.1 y PS7; packaging beta174/174 en PS5.1. El intento PS7 falla por powershell.exe ausente en PSHOME; no se altera el test.
+QA beta.1/testers y Release externos compilados por cola/-j2. Hashes de fuentes QA coinciden con código final. Release generado desde cc3437dc, source_dirty=false; arranque responsive/cierre exit0 fuera del repo, pantalla de acceso inspeccionada. No prueba autenticación.
+111 capturas MIRADAS:36 por tamaño1920/1440/1280 y3 focales1440/125 elegido. Inicio Abrir Studio y cadena Launcher caben1280/100; General conserva125 elegido y limita112,5 a1440. Elipsis y scroll presentes. Workshop/Telemetría/Licencias redirigen a Inicio en estas escenas; no certifican módulos activos.
+Standings0/292160px (umbral0/delta0) contra captura del candidato previo, ambas imágenes y mapa inspeccionados. La referencia histórica del repositorio difiere85,3666%; log conservado, no se cambia referencia ni tolerancia.
+ALFA FALLA:110/111 opacas; shell-paleta-busqueda1280 reproduce1 píxel RGBA0,0,0,0 en(912,503). Guard255/254/0 funciona. Sin normalizar imagen ni debilitar gate; causa renderer/PrintWindow sin determinar. Hallazgo fuera de alcance #1479: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1479 . Aceptación de candidata pendiente de revisión/corrección del alfa.
+Evidencia C:/tmp/candidato-evidence/union2-*; informe C:/tmp/fase2/informe-candidato-union2.md. Sin push/PR/CI remota/promoción/publicación. Sin certificación LMU live, OBS, DPI mixto o macOS. docs/roadmap/plan.md ausente en base; no se inventa otro roadmap. Siguiente: orquestador revisa evidencia y #1479 antes de aceptar candidata.

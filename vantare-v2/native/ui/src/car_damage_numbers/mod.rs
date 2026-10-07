@@ -14,7 +14,7 @@ use vantare_domain::{
     format::Preferences,
 };
 
-pub const SIZE: (f32, f32) = (140.0, 149.0);
+pub const SIZE: (f32, f32) = (164.0, 132.0);
 
 fn status_lines(vm: &ViewModel) -> Vec<&'static str> {
     match vm.status_text {
@@ -33,22 +33,21 @@ fn height(vm: &ViewModel) -> f32 {
     } else {
         20.0 + status.len() as f32 * 24.0
     };
-    SIZE.1
-        .max(16.0 + status_h + rows * 25.0 + (rows - 1.0) * 4.0)
+    16.0 + status_h + rows * 29.0
 }
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let mut top = 8.0;
     let lines = status_lines(vm);
     if !lines.is_empty() {
-        let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        let status_ink = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
         for line in lines {
             text::draw(
                 window,
                 cx,
                 line,
                 20.0,
-                text::baseline(top + 10.0, 24.0, 12.0),
+                text::baseline(top + 10.0, 24.0, 14.0),
                 &status_ink,
             );
             top += 24.0;
@@ -56,14 +55,13 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         top += 20.0;
     }
     let rows: usize = if vm.show_tyres { 4 } else { 3 };
-    // El min-height de las celdas conserva borde + padding + línea de 13 px.
-    // Con avisos largos el CSS permite desbordar la altura mínima del widget.
-    let row_h = ((height(vm) - 8.0 - top - (rows - 1) as f32 * 4.0) / rows as f32).max(25.0);
-    let label_ink = ink(12.0, 750.0, 0.0, col(tokens::MUTED, 1.0));
-    let value_ink = ink(13.0, 750.0, 0.0, col(0x7fb686, 1.0));
+    // Filas de 29 px: 28 de panel y 1 de separación, texto centrado.
+    let row_h = 29.0;
+    let label_ink = ink(14.0, 750.0, 0.0, col(tokens::MUTED, 1.0));
+    let value_ink = ink(14.0, 750.0, 0.0, col(0x7fb686, 1.0));
     for (label, value) in vm.labels.iter().zip(&vm.values).take(rows) {
         window.paint_quad(quad(
-            rect(8.0, top, 124.0, row_h),
+            rect(8.0, top, SIZE.0 - 16.0, row_h - 1.0),
             Corners::all(px(tokens::RADIUS)),
             col(tokens::PANEL, 0.87),
             Edges::all(px(1.0)),
@@ -74,20 +72,20 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             window,
             cx,
             label,
-            17.0,
-            text::baseline(top + (row_h - 12.0) / 2.0, 12.0, 12.0),
+            14.0,
+            text::baseline(top, row_h - 1.0, 14.0),
             &label_ink,
         );
-        let x = 123.0 - text::width(window, value, &value_ink);
+        let x = SIZE.0 - 14.0 - text::width(window, value, &value_ink);
         text::draw(
             window,
             cx,
             value,
             x,
-            text::baseline(top + (row_h - 13.0) / 2.0, 13.0, 13.0),
+            text::baseline(top, row_h - 1.0, 14.0),
             &value_ink,
         );
-        top += row_h + 4.0;
+        top += row_h;
     }
 }
 
@@ -173,6 +171,30 @@ mod tests {
         assert!(
             height(&vm) < height(&Settings::default().project(&snapshot, Preferences::default()))
         );
+    }
+
+    #[test]
+    fn rows_and_status_fit_the_reported_height() {
+        let prefs = Preferences::default();
+        for tyres in [false, true] {
+            let mut vm = Settings {
+                show_tyres: tyres,
+                ..Settings::default()
+            }
+            .project(&Snapshot::default(), prefs);
+            for status in [None, Some("DATOS ANTIGUOS"), Some("DATA OUT OF DATE")] {
+                vm.status_text = status;
+                let count = if tyres { 4.0 } else { 3.0 };
+                let lines = status_lines(&vm).len() as f32;
+                let top = 8.0
+                    + if lines > 0.0 {
+                        20.0 + 24.0 * lines
+                    } else {
+                        0.0
+                    };
+                assert_eq!(height(&vm), top + count * 29.0 + 8.0);
+            }
+        }
     }
 
     use super::*;

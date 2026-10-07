@@ -15,8 +15,8 @@ const PAD_TOP: f32 = 8.0;
 const PAD_BOTTOM: f32 = 10.0;
 const GAP: f32 = 8.0;
 const TRACK_W: f32 = 14.0;
-const LABEL_H: f32 = 6.0;
-const VALUE_H: f32 = 10.0;
+const LABEL_H: f32 = 11.0;
+const VALUE_H: f32 = 11.0;
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
@@ -42,20 +42,27 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     ];
     let column_w = (width - 2.0 * PAD_X - GAP * 2.0) / 3.0;
     let status_height = if let Some(message) = vm.status_text {
-        let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        let mut status_ink = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
         // El productivo permite envolver el aviso en la columna de 120 px.
         let lines: Vec<_> = match message {
             "DATOS ANTIGUOS" => vec!["DATOS", "ANTIGUOS"],
             "DATA OUT OF DATE" => vec!["DATA OUT OF", "DATE"],
             _ => vec![message],
         };
+        let longest = lines
+            .iter()
+            .map(|line| text::width(window, line, &status_ink))
+            .fold(0.0, f32::max);
+        if longest > width - 24.0 {
+            status_ink.size *= (width - 24.0) / longest;
+        }
         for (index, line) in lines.iter().enumerate() {
             text::draw(
                 window,
                 cx,
                 line,
                 12.0,
-                text::baseline(10.0 + index as f32 * 18.0, 18.0, 12.0),
+                text::baseline(10.0 + index as f32 * 18.0, 18.0, status_ink.size),
                 &status_ink,
             );
         }
@@ -63,11 +70,12 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     } else {
         0.0
     };
-    let track_top = PAD_TOP + status_height;
-    // Columna: pista (flexible) + 4 + rótulo + 4 + valor.
+    let value_top = PAD_TOP + status_height;
+    let track_top = value_top + VALUE_H + 4.0;
+    // Valor sobre la pista; rótulo debajo, con los mismos márgenes.
     let track_h = height - PAD_TOP - PAD_BOTTOM - status_height - (4.0 + LABEL_H + 4.0 + VALUE_H);
-    let label_ink = ink(6.0, 600.0, 0.18, col(tokens::MUTED, 0.78));
-    let value_ink = ink(10.0, 700.0, 0.0, col(tokens::INK, 1.0));
+    let label_ink = ink(11.0, 600.0, 0.18, col(tokens::MUTED, 0.78));
+    let value_ink = ink(11.0, 700.0, 0.0, col(tokens::INK, 1.0));
     for (index, (label, value, text_value, color)) in columns.into_iter().enumerate() {
         let left = PAD_X + index as f32 * (column_w + GAP);
         let mid = left + column_w / 2.0;
@@ -114,17 +122,16 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             cx,
             label,
             label_x,
-            text::baseline(label_top, LABEL_H, 6.0),
+            text::baseline(label_top, LABEL_H, LABEL_H),
             &label_ink,
         );
-        let value_top = label_top + LABEL_H + 4.0;
         let value_x = mid - text::width(window, text_value, &value_ink) / 2.0;
         text::draw(
             window,
             cx,
             text_value,
             value_x,
-            text::baseline(value_top, VALUE_H, 10.0),
+            text::baseline(value_top, VALUE_H, VALUE_H),
             &value_ink,
         );
     }

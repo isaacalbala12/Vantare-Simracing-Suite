@@ -52,14 +52,14 @@ fn paint(vm: &ViewModel, samples: &[Sample], window: &mut Window, cx: &mut App) 
         Trend::Losing => 0xd95360,
         _ => tokens::MUTED,
     };
-    let trend_ink = ink(9.0, 600.0, 0.08, col(trend_color, 1.0));
+    let trend_ink = ink(14.0, 600.0, 0.08, col(trend_color, 1.0));
     let trend_x = width - 12.0 - text::width(window, vm.trend_text, &trend_ink);
     text::draw(
         window,
         cx,
         vm.trend_text,
         trend_x,
-        text::baseline(10.0, 22.0, 22.0),
+        text::baseline(10.0, 29.0, 14.0),
         &trend_ink,
     );
 
@@ -91,8 +91,8 @@ fn paint(vm: &ViewModel, samples: &[Sample], window: &mut Window, cx: &mut App) 
             cx,
             status,
             12.0,
-            text::baseline(38.0, 18.0, 12.0),
-            &ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0)),
+            text::baseline(38.0, 18.0, 14.0),
+            &ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0)),
         );
     }
 

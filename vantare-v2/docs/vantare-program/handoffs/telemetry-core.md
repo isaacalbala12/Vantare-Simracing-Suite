@@ -1,5 +1,32 @@
 # Handoff vivo — Telemetry Core
 
+## #1471 — golden LMU47 macOS — 2026-10-07
+
+Encargo vigente: `C:/tmp/fase2/notas-1471.md`, base `7be12174`, rama
+`vantareapp/isa-1471-lmu47-macos`, worktree `C:/tmp/vw3-1471`.
+Compilación/tests únicamente en Mac arm64, clon propio `~/vantare-1471`;
+entrega y commit locales en Windows, sin push a GitHub ni PR/promoción.
+RED en la base: bloque 24. Medición completa de 3.839 DTO: 1.356 diferencias
+exclusivamente en `cars[*].pose.reliable.yaw_rad`, máximo 1 ULP (4,44e-16 rad).
+El test permite ese único ULP finito y conserva todos los demás bytes.
+No cambia runtime, DTO, dependencias, corpus, goldens ni renderizadores.
+Decisión y límites en `native/runtime/tests/golden/README.md`; regresión que
+rechaza dos ULP y cambios de posición, calidad, formato o estructura.
+Mac Rust 1.95.0/-j2/cola: fmt PASS; goldens 4/4 PASS, 0 skips (ACC 433,302 s);
+lifecycle 10/10 PASS. SHA-256 del test idéntico entre Mac y entrega Windows.
+Check/Clippy/Nextest globales bloqueados por errores heredados ajenos al diff:
+imports Windows de Engineer y `unnecessary_wraps` en profiling, registrados
+en [#1489](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1489).
+Clippy del target golden también se bloquea en profiling antes de revisar el
+test: no se afirma que ese gate pase. Paridad Standings Windows no ejecutada
+(compilar/probar en este PC está prohibido; runtime/renderizadores intactos).
+Evidencia `C:/tmp/1471-evidence/`; informe final `C:/tmp/fase2/informe-1471.md`.
+Manual en Mac, desde `vantare-v2/native`, con `/opt/homebrew/bin` en PATH:
+`cargo nextest run --workspace --test telemetry_golden -j 2`.
+Diff revisado; entrega local lista para revisión del orquestador, sin aceptación
+ni integración/promoción. Siguiente: revisar #1471 y resolver gates en #1489.
+`docs/roadmap/plan.md` ausente en esta base; no se crea un roadmap alternativo.
+
 ## #1474 — revisión nativa LMU/ACC — 2026-10-06
 
 Encargo vigente de Isaac/brief local: GitHub #1474, entrega local para revisión

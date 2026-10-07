@@ -1,4 +1,4 @@
-//! Renderer Relative Eficiencia, sobre el kit común y la geometría congelada.
+//! Relative Eficiencia: filas de 29 px, letra base 14 y siete huecos por defecto.
 //! La proyección usa las señales relativas v4 del núcleo.
 
 mod motion;
@@ -18,12 +18,13 @@ use vantare_domain::{
     relative::{self, Side, ViewModel},
 };
 
-pub const SIZE: (f32, f32) = (304.0, 285.0);
-const SCALE: f32 = SIZE.0 / 430.0;
-const BAND: f32 = 30.0 * SCALE;
-const ROW: f32 = 28.0 * SCALE;
-// Tabla fixed: colgroup 20/6/36/90/60/60 distribuido en todo el ancho.
-const EDGES: [f32; 7] = [0.0, 20.0, 26.0, 62.0, 152.0, 212.0, 272.0];
+pub const SIZE: (f32, f32) = (470.0, 277.0);
+const SCALE: f32 = 1.0;
+const BAND: f32 = 36.0;
+const FOOTER: f32 = 38.0;
+const ROW: f32 = 29.0;
+// Conserva las señales Vantare (número y mejor vuelta), sin inventar ratings.
+const EDGES: [f32; 7] = [0.0, 30.0, 38.0, 68.0, 300.0, 364.0, 470.0];
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -144,9 +145,9 @@ impl Widget {
     pub(crate) fn size(&self) -> (f32, f32) {
         if self.workshop {
             let footer = if self.footer.is_empty() {
-                BAND
+                FOOTER
             } else {
-                (15.0 + self.footer_rows as f32 * 14.0) * SCALE
+                (15.0 + self.footer_rows as f32 * 14.0).max(FOOTER) * SCALE
             };
             (
                 SIZE.0,
@@ -295,17 +296,37 @@ fn paint(
     if has_meta {
         line(window, BAND - SCALE, tokens::INK, 0.1);
         let (label, _) = labels(prefs.language);
-        item(window, cx, 12.0 * SCALE, 0.0, label, &vm.track);
-        let font = ink(11.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
-        let x = width - 12.0 * SCALE - text::width(window, &vm.player_badge, &font);
-        text::draw(window, cx, &vm.player_badge, x, 18.5 * SCALE, &font);
+        let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
+        let badge_width = text::width(window, &vm.player_badge, &font);
+        let label_width = text::width(
+            window,
+            label,
+            &ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0)),
+        );
+        let track = text::fit(
+            window,
+            &vm.track,
+            &font,
+            (width - badge_width - label_width - 42.0).max(0.0),
+        );
+        item(window, cx, 12.0 * SCALE, 0.0, label, &track);
+        let x = width - 12.0 * SCALE - badge_width;
+        text::draw(
+            window,
+            cx,
+            &vm.player_badge,
+            x,
+            text::baseline(0.0, BAND, font.size),
+            &font,
+        );
     }
     let footer_height = if footer.is_empty() {
-        BAND
+        FOOTER
     } else {
-        (15.0 + footer_rows as f32 * 14.0) * SCALE
+        (15.0 + footer_rows as f32 * 14.0).max(FOOTER) * SCALE
     };
-    let row_height = ROW;
+    let row_height =
+        ((height - footer_height - top) / settings.slot_count().max(1) as f32).min(ROW);
     window.with_content_mask(
         Some(ContentMask {
             bounds: rect(0.0, top, width, height - footer_height - top),
@@ -375,7 +396,7 @@ fn paint(
             cx,
         );
     } else if !visible.is_empty() {
-        let y = height - BAND;
+        let y = height - FOOTER;
         line(window, y, tokens::INK, 0.1);
         let widths = visible
             .iter()
@@ -446,8 +467,8 @@ fn labels(language: Language) -> (&'static str, [&'static str; 3]) {
 }
 
 fn item_width(window: &Window, label: &str, value: &str) -> f32 {
-    let label_font = ink(9.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let font = ink(11.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
+    let label_font = ink(11.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
+    let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
     text::width(window, value, &font)
         + if label.is_empty() {
             0.0
@@ -460,15 +481,29 @@ fn item(window: &mut Window, cx: &mut App, x: f32, y: f32, label: &str, value: &
     if value.is_empty() {
         return;
     }
-    let label_font = ink(9.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let font = ink(11.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
+    let label_font = ink(11.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
+    let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
     let advance = if label.is_empty() {
         0.0
     } else {
         text::width(window, label, &label_font) + 6.0 * SCALE
     };
-    text::draw(window, cx, label, x, y + 18.5 * SCALE, &label_font);
-    text::draw(window, cx, value, x + advance, y + 18.5 * SCALE, &font);
+    text::draw(
+        window,
+        cx,
+        label,
+        x,
+        y + text::baseline(0.0, BAND, font.size),
+        &label_font,
+    );
+    text::draw(
+        window,
+        cx,
+        value,
+        x + advance,
+        y + text::baseline(0.0, BAND, font.size),
+        &font,
+    );
 }
 
 fn paint_row(
@@ -525,8 +560,7 @@ fn paint_row(
         };
         line(window, y + row_height - SCALE, color, alpha * opacity);
     }
-    let y = y + (row_height - ROW) / 2.0;
-    let edges = EDGES.map(|x| x * SIZE.0 / 272.0);
+    let edges = EDGES;
     let position = ink(
         13.0 * SCALE,
         600.0,
@@ -545,7 +579,7 @@ fn paint_row(
         cx,
         &row.position,
         pos_x,
-        y + 18.25 * SCALE,
+        text::baseline(y, row_height, position.size),
         &position,
     );
     let color = match row.class.to_uppercase().as_str() {
@@ -558,7 +592,7 @@ fn paint_row(
     paint_rect(
         window,
         identity_x + two_ch + 4.0 * SCALE,
-        y + 7.0 * SCALE,
+        y + (row_height - 14.0) / 2.0,
         3.0 * SCALE,
         14.0 * SCALE,
         col(color, position.color.a),
@@ -570,7 +604,7 @@ fn paint_row(
         &row.number,
         edges[2],
         edges[3],
-        y + 17.75 * SCALE,
+        text::baseline(y, row_height, number.size),
         &number,
         true,
     );
@@ -603,12 +637,19 @@ fn paint_row(
                 0.0
             },
     );
-    // Baseline de la línea de 21px centrada en la fila CSS de 28px.
-    text::draw(window, cx, &value, edges[3], y + 20.0 * SCALE, &name);
+    // Cada tamaño de letra comparte el centro vertical de la fila.
+    text::draw(
+        window,
+        cx,
+        &value,
+        edges[3],
+        text::baseline(y, row_height, name.size),
+        &name,
+    );
     if let Some(value) = badge {
         let x = edges[4] - 10.0 * SCALE - badge_width;
         window.paint_quad(quad(
-            rect(x, y + 7.0 * SCALE, badge_width, 14.0 * SCALE),
+            rect(x, y + (row_height - 14.0) / 2.0, badge_width, 14.0 * SCALE),
             Corners::all(px(3.0 * SCALE)),
             col(0, 0.0),
             Edges::all(px(SCALE)),
@@ -625,7 +666,7 @@ fn paint_row(
         );
     }
     let gap = ink(
-        13.0 * SCALE,
+        16.0 * SCALE,
         650.0,
         -0.02,
         col(tokens::INK, opacity * if row.gap_stale { 0.6 } else { 1.0 }),
@@ -636,7 +677,7 @@ fn paint_row(
         &row.gap,
         edges[4],
         edges[5],
-        y + 18.25 * SCALE,
+        text::baseline(y, row_height, gap.size),
         &gap,
         false,
     );
@@ -655,7 +696,7 @@ fn paint_row(
         &row.best_lap,
         edges[5],
         edges[6],
-        y + 18.25 * SCALE,
+        text::baseline(y, row_height, lap.size),
         &lap,
         false,
     );
@@ -736,13 +777,15 @@ fn paint_configured_row(
         let centered = column.style.align.as_deref().map_or(
             matches!(
                 column.metric_id.as_str(),
-                "position" | "class" | "carNumber" | "gap"
+                "position" | "class" | "carNumber"
             ),
             |v| v == "center",
         );
         let font = ink(
             if column.metric_id == "driverName" {
                 14.0
+            } else if column.metric_id == "gap" {
+                16.0
             } else {
                 13.0
             } * SCALE,
@@ -754,13 +797,7 @@ fn paint_configured_row(
             -0.02,
             col(tokens::INK, visual.opacity * if stale { 0.6 } else { 1.0 }),
         );
-        let baseline = y
-            + (height - ROW) / 2.0
-            + if column.metric_id == "driverName" {
-                20.0
-            } else {
-                18.25
-            } * SCALE;
+        let baseline = text::baseline(y, height, font.size);
         if (column.metric_id == "class" && !has_position)
             || (column.metric_id == "position" && has_class)
         {
@@ -848,12 +885,12 @@ fn cell(
     font: &Ink,
     centered: bool,
 ) {
-    let fitted = text::fit(window, value, font, right - left - 20.0 * SCALE);
+    let fitted = text::fit(window, value, font, right - left - 12.0 * SCALE);
     let width = text::width(window, &fitted, font);
     let x = if centered {
         (left + right - width) / 2.0
     } else {
-        right - 10.0 * SCALE - width
+        right - 6.0 * SCALE - width
     };
     text::draw(window, cx, &fitted, x, baseline, font);
 }
@@ -962,6 +999,22 @@ mod tests {
             }
         }
         assert!(lost.is_empty(), "datos reales visibles perdidos: {lost:#?}");
+    }
+
+    #[test]
+    fn row_count_changes_height_without_changing_row_proportions() {
+        for ahead in 0..=8 {
+            for behind in 0..=8 {
+                let settings = Settings {
+                    range_ahead: ahead,
+                    range_behind: behind,
+                    ..Settings::default()
+                };
+                let (width, height) = settings.size();
+                assert_eq!(width, 470.0);
+                assert_eq!(height, BAND + FOOTER + settings.slot_count() as f32 * 29.0);
+            }
+        }
     }
 
     #[test]

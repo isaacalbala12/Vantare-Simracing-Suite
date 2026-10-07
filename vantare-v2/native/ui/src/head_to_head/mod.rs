@@ -1,8 +1,7 @@
-//! Porte de `HeadToHeadFunctional.tsx` (360 × 128). El productivo no tiene
+//! H2H Eficiencia (388 × 110). El productivo no tiene
 //! animaciones ni avisos temporales: `Wake::Idle`, sin un reloj adicional.
 //! La dirección configurada selecciona el rival en la proyección pura.
-//! Referencia Workshop congelada: líder mirando delante, SIN RIVAL; 20 coches
-//! presentes. `compare.ps1`: 635/46080 px (1,3780 %), umbral RGBA 8, sin máscaras.
+//! La escena por defecto conserva al líder mirando delante, SIN RIVAL; 20 coches.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
@@ -16,7 +15,7 @@ use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
 
-pub const SIZE: (f32, f32) = (360.0, 128.0);
+pub const SIZE: (f32, f32) = (388.0, 110.0);
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let (width, height) = SIZE;
@@ -36,82 +35,65 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         BorderStyle::default(),
     ));
 
-    let list_height = if vm.rows.is_empty() {
-        38.0
-    } else {
-        vm.rows.len() as f32 * 22.0 + (vm.rows.len() - 1) as f32 * 4.0
-    };
-    let top = (height - 24.0 - list_height) / 2.0;
-    let header = ink(9.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
-    text::draw(
-        window,
-        cx,
-        &vm.header,
-        12.0,
-        text::baseline(top, 9.0, 9.0),
-        &header,
-    );
-    paint_rect(window, 12.0, top + 15.0, 336.0, 1.0, col(tokens::INK, 0.10));
-    let list_top = top + 24.0;
+    let header = ink(11.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
     if vm.rows.is_empty() {
-        let status = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        text::draw(
+            window,
+            cx,
+            &vm.header,
+            6.0,
+            text::baseline(0.0, 18.0, 11.0),
+            &header,
+        );
+        let status = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
         text::draw(
             window,
             cx,
             &vm.no_rival,
-            24.0,
-            text::baseline(list_top + 10.0, 18.0, 12.0),
+            6.0,
+            text::baseline(18.0, 92.0, 14.0),
             &status,
         );
     }
+    let player_index = vm.rows.iter().position(|row| row.is_player).unwrap_or(0);
     for (index, row) in vm.rows.iter().enumerate() {
-        let y = list_top + index as f32 * 26.0;
+        let (y, row_height) = row_bounds(row.is_player, index < player_index);
         if row.is_player {
-            window.paint_quad(quad(
-                rect(12.0, y, 336.0, 22.0),
-                Corners::all(px(4.0)),
-                col(0xbfc2ca, 0.23),
-                Edges::all(px(0.0)),
-                col(0x000000, 0.0),
-                BorderStyle::default(),
-            ));
+            paint_rect(window, 1.0, y, width - 2.0, row_height, col(0xbfc2ca, 0.23));
         }
-        // Grid CSS: 26 34 1fr 44 56 48, gap 5, padding 5px 8px.
-        let columns = [
-            (&row.place, 20.0, 26.0, 12.0, 650.0, tokens::INK, false),
-            (&row.number, 51.0, 34.0, 10.0, 600.0, tokens::MUTED, false),
-            (&row.name, 90.0, 87.0, 11.0, 650.0, tokens::INK, false),
-            (
-                &row.class_name,
-                182.0,
-                44.0,
-                8.0,
-                600.0,
-                tokens::MUTED,
-                false,
-            ),
-            (
-                &row.gap,
-                231.0,
-                56.0,
-                11.0,
-                650.0,
-                if row.selected {
-                    tokens::LOSS
-                } else {
-                    tokens::INK
-                },
-                true,
-            ),
-            (&row.label, 292.0, 48.0, 8.0, 600.0, tokens::MUTED, true),
+        let line_top = y + if row.is_player { 7.0 } else { 0.0 };
+        let class_name = row.class_name.to_uppercase();
+        let player_columns = [
+            (&row.place, 6.0, 22.0, false),
+            (&row.name, 34.0, 270.0, false),
         ];
-        for (value, left, cell_width, font_size, weight, color, right) in columns {
-            let style = ink(font_size, weight, 0.0, col(color, 1.0));
-            let value = if left == 90.0 {
-                text::fit(window, value, &style, cell_width)
-            } else {
-                value.clone()
-            };
+        let rival_columns = [
+            (&row.place, 6.0, 22.0, false),
+            (&row.name, 34.0, 154.0, false),
+            (&class_name, 194.0, 78.0, false),
+            (&row.label, 278.0, 46.0, false),
+            (&row.gap, 330.0, 52.0, true),
+        ];
+        let columns = if row.is_player {
+            &player_columns[..]
+        } else {
+            &rival_columns[..]
+        };
+        for &(value, left, cell_width, right) in columns {
+            let style = ink(
+                14.0,
+                650.0,
+                0.0,
+                col(
+                    if right && row.selected {
+                        tokens::LOSS
+                    } else {
+                        tokens::INK
+                    },
+                    1.0,
+                ),
+            );
+            let value = text::fit(window, value, &style, cell_width);
             let x = if right {
                 left + cell_width - text::width(window, &value, &style)
             } else {
@@ -122,10 +104,35 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
                 cx,
                 &value,
                 x,
-                text::baseline(y + 5.0 + (12.0 - font_size) / 2.0, font_size, font_size),
+                text::baseline(line_top, 24.0, 14.0),
                 &style,
             );
         }
+        if row.is_player {
+            let secondary = ink(14.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
+            let label = text::fit(
+                window,
+                &format!("{class_name} · {}", vm.header),
+                &secondary,
+                width - 40.0,
+            );
+            text::draw(
+                window,
+                cx,
+                &label,
+                34.0,
+                text::baseline(y + 31.0, 24.0, 14.0),
+                &secondary,
+            );
+        }
+        paint_rect(
+            window,
+            1.0,
+            y + row_height - 1.0,
+            width - 2.0,
+            1.0,
+            col(tokens::INK, 0.10),
+        );
     }
     paint_frame(window, width, height);
     // CSS ::after: blanco 24 % arriba sobre el mismo panel redondeado.
@@ -145,6 +152,16 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         col(0xffffff, 0.136),
         BorderStyle::default(),
     ));
+}
+
+fn row_bounds(player: bool, ahead: bool) -> (f32, f32) {
+    if player {
+        (24.0, 62.0)
+    } else if ahead {
+        (0.0, 24.0)
+    } else {
+        (86.0, 24.0)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -283,6 +300,32 @@ mod tests {
             assert_eq!(full.relative_s, received.relative_s, "gap relativo perdido");
         }
         assert!(demand.contains(vantare_ipc::Signal::Relative));
+    }
+
+    #[test]
+    fn rivals_and_player_fit_without_gaps_for_both_target_directions() {
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/head-to-head.snapshot.json"
+        ))
+        .expect("escena");
+        snapshot.state.player.as_mut().expect("jugador").car = snapshot.state.cars[1].id;
+        for target in [Target::Ahead, Target::Behind] {
+            let vm = head_to_head::project(&snapshot, Preferences::default(), target);
+            assert_eq!(vm.rows.len(), 3);
+            let player = vm
+                .rows
+                .iter()
+                .position(|row| row.is_player)
+                .expect("jugador");
+            let mut bottom = 0.0;
+            for (index, row) in vm.rows.iter().enumerate() {
+                let (top, height) = row_bounds(row.is_player, index < player);
+                assert_eq!(top, bottom);
+                assert_eq!(height, if row.is_player { 62.0 } else { 24.0 });
+                bottom = top + height;
+            }
+            assert_eq!(bottom, SIZE.1);
+        }
     }
 
     #[test]

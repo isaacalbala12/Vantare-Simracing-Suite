@@ -286,27 +286,28 @@ fn paint_content(
     } else {
         0.0
     };
-    let heading_ink = ink(11.718, 750.0, 0.14, col(0xc05bff, alpha));
+    let heading_ink = ink(14.0, 750.0, 0.14, col(0xc05bff, alpha));
+    let heading = text::fit(window, heading, &heading_ink, 210.0);
     text::draw(
         window,
         cx,
-        heading,
+        &heading,
         96.0,
-        text::baseline(15.91 + top_shift, 17.577, 11.718).round(),
+        text::baseline(6.0 + top_shift, 29.0, 14.0).round(),
         &heading_ink,
     );
     if kind == Kind::Class
         && let Some(class) = &vm.active_class
     {
-        let class_ink = ink(8.2026, 750.0, 0.06, col(0xb7a2c6, alpha));
-        let x = 96.0 + text::width(window, heading, &heading_ink) + 10.0;
+        let class_ink = ink(11.0, 750.0, 0.06, col(0xb7a2c6, alpha));
+        let x = 96.0 + text::width(window, &heading, &heading_ink) + 6.0;
         let label = text::fit(window, class, &class_ink, 455.0 - x);
         text::draw(
             window,
             cx,
             &label,
             x,
-            text::baseline(18.91 + top_shift, 12.3039, 8.2026).round(),
+            text::baseline(6.0 + top_shift, 29.0, 11.0).round(),
             &class_ink,
         );
     }
@@ -320,14 +321,14 @@ fn paint_content(
         &time_ink,
     );
     if vm.show_driver {
-        let driver_ink = ink(12.152, 600.0, 0.0, col(0xc6c7cd, alpha));
+        let driver_ink = ink(14.0, 600.0, 0.0, col(0xc6c7cd, alpha));
         let driver = text::fit(window, &timing.driver, &driver_ink, 359.0);
         text::draw(
             window,
             cx,
             &driver,
             96.0,
-            text::baseline(69.86, 18.228, 12.152).round(),
+            text::baseline(69.0, 29.0, 14.0).round(),
             &driver_ink,
         );
     }

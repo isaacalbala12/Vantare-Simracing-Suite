@@ -34,6 +34,47 @@ según nota 05:43: --demo explícito puede cargar fixtures, el arranque normal n
 Sin push, PR, integración, promoción, release ni medición de rendimiento.
 
 
+## ISA-1473 — Tablas: proporciones RaceLabs, presentación Vantare (2026-10-06)
+
+Worker `1473-tablas`, rama `vantareapp/isa-1473-widgets-tablas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Entrega local terminada para
+revisión del orquestador, no integrada ni promovida. Commits por widget:
+Relative `c4dae159`, Multiclass `e8c58dba`, H2H `bd011bcc`,
+Broadcast `8373b8b7`, Fastest Lap `d203472a`.
+
+Relative pasa a 470×277, siete filas de 29 px, cabecera 36 y pie 38;
+Multiclass a 470×181 con cinco filas de 29 px y cabecera 36;
+H2H a 388×110 con rivales de 24 y jugador de 62; Broadcast a 1920×86,
+nombre 16, gap 12 y tarjeta del jugador 1,4 veces el ancho de sus vecinos.
+Fastest Lap conserva 480×104, rótulo y piloto 14 con cajas de línea de 29.
+Inter, colores y cifras tabulares siguen siendo los de Eficiencia.
+Workshop deja de forzar Relative a 430 px; usa el ancho productivo 470.
+
+La nota del orquestador de las 03:55 autoriza cambiar SIZE sin migración:
+la beta nativa aún no se distribuyó. Las 14 escenas de layout de estas tablas
+caben en 1920×1080; el layout de inicio coloca Relative desde su ancho.
+Capturas antes/después y referencias públicas inspeccionadas en
+`C:/tmp/1473-tablas-evidence/`; demostraciones Workshop, no evidencia LMU.
+Ronda 3/resumen y nombres largos inspeccionados; H2H con tres pilotos,
+Broadcast también a escala 1×. Separadores Multiclass únicos de 1 px.
+Fmt (workspace y módulos), check y Clippy con warnings denegados pasan;
+Nextest 1159/1159, seis skips (cinco pruebas manuales/live y lifecycle,
+que pasa aparte: cinco tests de engineer y doce escenarios de runtime).
+Build final de captura pasa en 15,08 s. Logs y reproducción manual en
+`C:/tmp/1473-tablas-evidence/VERIFICACION.md`. Sin prueba LMU, OBS, Mac,
+DPI distinto ni rendimiento; sin push, PR, CI remoto, merge o release.
+
+Los cinco bloques de demanda permanecen idénticos a la base. #1474 modifica
+Relative/H2H en otra rama: posible conflicto de fichero en sus `mod.rs`,
+sin conflicto intencionado de responsabilidad; preservar sus cambios de demanda.
+No se tocan domain, IPC, persistencia ni dependencias. `efficiency` es el kit
+compartido, no un widget; se conserva intacto, igual que Standings.
+Standings solo tiene propuesta/pregunta en `C:/tmp/beta/r4/informe-1473-tablas.md`.
+Sin datos de sectores/mejores vueltas H2H ni ratings Relative: no se inventan.
+Broadcast conserva selección, orden y cantidad configurada de pilotos;
+centrar siempre al jugador requiere una decisión de contenido posterior.
+`docs/roadmap/plan.md` no existe en esta base; no se recrea.
+
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
 ### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente
@@ -4755,3 +4796,38 @@ plan.md ausente en esta base; no se crea otro roadmap. Sin gates frontend
 (sin TS/CSS), CI remota ni LMU vivo. Rama remota ausente verificada.
 Solo merges locales autorizados, sin push/PR/promoción/release ni cambios a la
 beta de Isaac/checkout principal; siguiente: revisión aislada del orquestador.
+
+### #1473 — Tablas, ronda 2 Head to Head (2026-10-06)
+
+Revisión de Isaac sobre 6f91d8d1: se conserva SIZE 388×110, filas 24/62/24
+y letra 14. Solo cambia native/ui/src/head_to_head/mod.rs: rivales con
+posición, nombre con elipsis, clase mayúscula, RIVAL y gap disponible a la
+derecha; jugador con posición/nombre y una línea «CLASE · H2H · modo».
+La VM no expone vueltas ni sectores: hueco derecho central libre, sin cambiar
+proyección, telemetría, demanda, settings ni otros widgets.
+
+Evidencia externa C:/tmp/1473-tablas-evidence/: head-to-head-r2.png,
+head-to-head-r2-gap.png, head-to-head-r2-long.png y ronda-2-h2h.png MIRADAS
+a escala 1×; resumen.png actualizado y MIRADO. Escenas QA reconstruidas,
+no prueba LMU live, DPI alternativo ni rendimiento. Regresión protegida por
+los tests existentes de límites 24/62/24, ambas direcciones, proyección y
+goldens, y por inspección visual con rivales/gap/nombres largos.
+Entrega local pendiente de aceptación del orquestador/Isaac; sin push, PR,
+merge, CI remota, promoción ni release. plan.md ausente en esta base;
+no cambia alcance ni planificación. Informe final externo ≤10 líneas.
+Gates ronda 2: fmt/check/Clippy PASS; Nextest 1159/1159 PASS (6 skips
+configurados, 787,799 s; ACC 641,974 s PASS); lifecycle 17 escenarios PASS.
+Logs externos r2-*.log; build Workshop/parity-capture prueba PASS (9,20 s).
+No se añaden tests nuevos para esta redistribución exclusivamente visual:
+los tests existentes y las capturas inspeccionadas cubren la regresión.
+Manual: abrir head-to-head-middle con rivales y head-to-head-r2.snapshot.json
+con gap; comprobar clase/RIVAL en ambas filas, dos líneas centrales y espacio
+derecho libre. Aceptación visual final de Isaac/orquestador pendiente.
+
+### #1473 + #1474 — integración sobre Hub unión 4, tablas (2026-10-07)
+Rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`, base `40a4ddc9`.
+Primer merge `93d0cb1d` incorpora `18fdf07a`; segundo incorpora `1cb6c892`.
+Conflictos resueltos conservando dos entradas del handoff y ambos tests independientes en H2H/Relative; no hay conflicto productivo.
+Gates segunda ronda por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1189/1189 PASS (6 skips, ACC 572,170 s); lifecycle PASS.
+Pendiente resto `8004af81`, QA Workshop/Studio y Standings 0 px. Evidencia `C:/tmp/1473-integracion-evidence/`.
+Sin push, PR, promoción ni release; plan.md ausente en la base; checkout principal y beta de Isaac preservados.

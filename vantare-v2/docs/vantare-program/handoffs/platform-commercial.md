@@ -1530,3 +1530,37 @@ conservados en C:/tmp/prerelease-e2e-evidence. Informe FASE 2:
 C:/tmp/fase2/informe-prerelease.md. Sin gates Rust/frontend ni rebuild porque
 solo cambió PowerShell; diff-check PASS. Entrega solo local al orquestador,
 pendiente de revisión/unión: sin push, PR, CI remota, merge, promoción ni release.
+
+## #1488 — Calendario nativo: horario publicado (2026-10-07)
+
+Encargo `C:/tmp/beta/r4/brief-1488-calendario.md`; rama aislada
+`vantareapp/isa-1488-calendario-publicado`, base recibida `bce17802`.
+La cabecera del encargo fija GitHub como seguimiento y entrega local al
+orquestador: sin subagentes, push, PR, merge ni publicación.
+
+Se incorpora `CalendarRefresh` al IPC existente del Hub/supervisor/services.
+Services consulta la RPC pública de solo lectura `race_schedule_current` con
+la configuración Supabase anon del build; sin HTTP desde UI, sesión Clerk,
+esquema nuevo ni dependencias nuevas. El Hub aplica `Schedule::parse`, guarda
+atómicamente `official-schedule.json` en su directorio de datos y lo restaura.
+La primera apertura sin horario vigente y los dos botones de actualización
+usan esa ruta. Una petición en curso no se duplica; demo/capturas de ejemplo
+no piden red ni guardan publicaciones. Se conserva el último horario válido
+ante errores de red, respuesta o escritura; nada caducado se presenta como
+actual en ninguna vista. Sin uno vigente: «Aún no hay horario publicado para
+esta semana». La vigencia conserva el intervalo UTC `[validFrom, validUntil)`.
+
+Consulta real del 07/10 con la configuración pública de beta cargada por el
+loader autorizado, sin mostrar valores: HTTP 200 y `[]`. No hay publicación,
+por tanto tampoco horario vigente: Isaac debe publicar uno. No se ha escrito
+nada en Supabase. Tests con fixture/servidor HTTP local cubren descarga,
+validación, ausencia de publicación, caché, reinicio, caducidad, red y guardado
+bloqueado; no demuestran una publicación real que el servidor aún no tiene.
+
+Gates finales: fmt/check/Clippy PASS; Nextest 1220/1220 PASS (6 omitidas); lifecycle PASS en repetición. El fallo anterior del ejecutable Engineer 0xc0000409 queda conservado y registrado en #1491, sin cambio fuera de alcance. Standings perfil prueba: 0/292160 px, sin máscaras ni tolerancias, captura/referencia/mapa inspeccionados. Calendario demo 1440×900 inspeccionado: vacío honesto. Probe del código Rust real de services: RPC OK, 0 publicaciones. La build con parity-capture conserva un warning heredado de analysis/view.rs (cx sin usar); Clippy normal pasa. El comparador JSON con diferencias falla por numpy int64: #1490. Evidencia fuera del repo:
+`C:/tmp/1488-calendario-evidence/`. Informe del worker:
+`C:/tmp/fase2/informe-1488-calendario.md`. `docs/roadmap/plan.md` no existe en
+la base ni en `origin/nightly` consultado; no se crea un roadmap paralelo.
+Entrega local para revisión del orquestador; sin push, PR, CI remota, integración, promoción ni release. Siguiente: revisión y validación con un horario
+que Isaac publique. Se mantiene el cierre de services durante Live y el
+heartbeat/permisos existentes; no se amplía su vigencia durante llamadas de red.

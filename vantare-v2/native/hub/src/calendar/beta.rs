@@ -421,7 +421,10 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
             "v-calendar",
             cx,
         ))
-        .child(filters(calendar, cx));
+        .when(
+            matches!(calendar.schedule.is_current(now), Ok(true)),
+            |table| table.child(filters(calendar, cx)),
+        );
     let mut races = div()
         .id("calendar-races")
         .flex_1()
@@ -450,7 +453,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
                             if current {
                                 "No hay carreras para estos filtros"
                             } else {
-                                "No hay horario de esta semana"
+                                "Aún no hay horario publicado para esta semana"
                             },
                             18.0,
                             600,
@@ -477,8 +480,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
                         orbit::button("calendar-empty-reload", "Actualizar horario", cx)
                             .self_center()
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.error = this.reload().err();
-                                cx.notify();
+                                this.refresh(cx);
                             })),
                     ),
             );
@@ -563,7 +565,7 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
             if current {
                 "Horario vigente"
             } else {
-                "Horario caducado · pulsa Actualizar horario"
+                "Aún no hay horario publicado para esta semana"
             },
             14.0,
             600,
@@ -575,16 +577,20 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
             cx,
         ))
         .child(orbit::text(
-            calendar.schedule.window().map_or_else(
-                |_| "Vigencia no disponible".into(),
-                |(from, until)| {
-                    format!(
-                        "Válido: {} → {}",
-                        from.with_timezone(&Local).format("%d/%m/%Y %H:%M"),
-                        until.with_timezone(&Local).format("%d/%m/%Y %H:%M")
-                    )
-                },
-            ),
+            if current {
+                calendar.schedule.window().map_or_else(
+                    |_| "Vigencia no disponible".into(),
+                    |(from, until)| {
+                        format!(
+                            "Válido: {} → {}",
+                            from.with_timezone(&Local).format("%d/%m/%Y %H:%M"),
+                            until.with_timezone(&Local).format("%d/%m/%Y %H:%M")
+                        )
+                    },
+                )
+            } else {
+                "Vigencia no disponible".into()
+            },
             12.0,
             400,
             orbit::ink_3(cx),
@@ -615,7 +621,7 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
         .schedule
         .series
         .iter()
-        .filter(|series| calendar.following.series_ids.contains(&series.id))
+        .filter(|series| current && calendar.following.series_ids.contains(&series.id))
     {
         follows = follows.child(
             div()

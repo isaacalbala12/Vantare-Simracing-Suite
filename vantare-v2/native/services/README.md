@@ -194,3 +194,13 @@ Los símbolos de la build se necesitan para interpretar las direcciones.
 El hook previo sigue recibiendo el panic para conservar el comportamiento
 local; esta política se refiere a la cola y el envío automático. Los informes
 voluntarios del Testing Center mantienen su preview y su contrato propio.
+
+## Calendario publicado — #1488
+
+`CalendarRefresh` consulta por POST la RPC pública de solo lectura
+`race_schedule_current` con la URL y la clave anon públicas fijadas al compilar.
+No necesita sesión Clerk, puente de cuenta ni permisos de publicación.
+`Reply::Calendar` devuelve el horario JSON o ausencia de publicación; el Hub
+lo valida con `Schedule::parse` y conserva su caché local ante un fallo.
+Se mantienen los límites HTTP/IPC, timeout y cierre de services durante Live.
+Compilar Hub, supervisor y services juntos; no mezclar binarios anteriores.

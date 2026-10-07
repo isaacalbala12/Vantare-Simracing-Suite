@@ -8,6 +8,8 @@ pub mod app;
 #[cfg(feature = "network")]
 pub mod bridge;
 #[cfg(feature = "network")]
+pub mod calendar;
+#[cfg(feature = "network")]
 pub mod config;
 pub mod diagnostics;
 pub mod error;

@@ -349,6 +349,11 @@ impl App {
                 }
                 return self.report_reply(command);
             }
+            Command::CalendarRefresh => {
+                return Ok(Reply::Calendar {
+                    schedule: crate::calendar::current(&self.http, &self.config)?,
+                });
+            }
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }

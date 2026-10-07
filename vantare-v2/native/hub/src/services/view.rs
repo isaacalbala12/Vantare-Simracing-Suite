@@ -139,6 +139,7 @@ enum Area {
     Account,
     Licenses { renew: bool },
     Roadmap,
+    Calendar,
     Report,
 }
 
@@ -156,6 +157,17 @@ enum Inflight {
     Background,
     User,
 }
+// La petición del calendario espera al heartbeat sin ocupar ni sobrescribir
+// el único hueco reservado a una acción explícita del usuario.
+fn next_request(
+    next: Option<Command>,
+    queued: &mut Option<Command>,
+    calendar_pending: bool,
+) -> Option<Command> {
+    next.or_else(|| queued.take())
+        .or_else(|| calendar_pending.then_some(Command::CalendarRefresh))
+}
+
 fn remember_receipt(
     receipts: &mut Vec<(
         super::protocol::report_document::Fields,
@@ -199,6 +211,7 @@ pub struct Remote {
     license_polled_at: Option<std::time::Instant>,
     message: String,
     active: Area,
+    calendar_target: Option<gpui::WeakEntity<crate::calendar::Calendar>>,
     report_revision: Option<u64>,
     pub(crate) editor: crate::testing::Editor,
     pub(crate) report_receipts: Vec<(
@@ -313,6 +326,7 @@ impl Remote {
             license_polled_at: None,
             message: "Cuenta no disponible".into(),
             active: Area::Account,
+            calendar_target: None,
             report_revision: None,
             editor,
             report_receipts: Vec::new(),
@@ -346,6 +360,40 @@ impl Remote {
             self.license_polled_at = Some(std::time::Instant::now());
             self.request(Command::LicenseStatus, cx);
         }
+    }
+
+    pub(crate) fn refresh_calendar(
+        &mut self,
+        target: gpui::WeakEntity<crate::calendar::Calendar>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if self.working() || self.stop.load(Ordering::Acquire) {
+            return false;
+        }
+        self.calendar_target = Some(target);
+        // El heartbeat ya tiene un worker: entregar el horario justo después,
+        // sin reemplazar la acción del usuario que pudiera estar en queued.
+        if self.inflight == Inflight::Background {
+            return true;
+        }
+        self.request(Command::CalendarRefresh, cx);
+        if !self.busy() {
+            self.calendar_target = None;
+            return false;
+        }
+        true
+    }
+    fn calendar_reply(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        if let Some(target) = self.calendar_target.take() {
+            // La sección puede haber desaparecido al cerrar el Hub.
+            let _ = target.update(cx, |calendar, cx| {
+                calendar.complete_refresh(reply);
+                cx.notify();
+            });
+        }
+    }
+    pub(crate) fn calendar_busy(&self) -> bool {
+        self.working()
     }
 
     fn busy(&self) -> bool {
@@ -450,6 +498,7 @@ impl Remote {
             self.device_limit = false;
         }
         self.active = match command {
+            Command::CalendarRefresh => Area::Calendar,
             Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
             Command::LicenseRenew => Area::Licenses { renew: true },
             Command::LicenseStatus | Command::DeviceReset => Area::Licenses { renew: false },
@@ -545,11 +594,16 @@ impl Remote {
                             this.inflight = Inflight::Idle;
                             this.account.pending = false;
                             let quiet = background && matches!(reply, Reply::License { .. } | Reply::Error { .. });
+                            if matches!(this.active, Area::Calendar) {
+                                this.calendar_reply(reply.clone(), cx);
+                            }
                             match reply {
                                 // La consulta periódica no pisa el resultado de una acción del usuario.
                                 Reply::Error { .. } | Reply::License { .. } if background => {}
                                 Reply::Status { message, .. } | Reply::Error { message } => {
-                                    if matches!(this.active,Area::Roadmap) {
+                                    if matches!(this.active,Area::Calendar) {
+                                        // El Calendario recibe su error sin alterar Cuenta.
+                                    } else if matches!(this.active,Area::Roadmap) {
                                         this.roadmap_message = message;
                                         this.stale = true;
                                     } else if matches!(this.active,Area::Report) {
@@ -566,6 +620,7 @@ impl Remote {
                                     this.device_limit = true;
                                     this.message = message;
                                 }
+                                Reply::Calendar { .. } => {}
                                 Reply::Roadmap {
                                     publication,
                                     stale,
@@ -602,11 +657,13 @@ impl Remote {
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
                             }
-                            let next = next.or_else(|| this.queued.take());
+                            let next = next_request(next, &mut this.queued, this.calendar_target.is_some());
                             let notify = !quiet || access_before != this.navigation_access() || next.is_some();
                             if let Some(command) = next {
                                 this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
-                                this.dispatch(command);
+                                if !this.dispatch(command) && matches!(this.active, Area::Calendar) {
+                                    this.calendar_reply(Reply::Error { message: this.message.clone() }, cx);
+                                }
                             }
                             if notify {
                                 cx.notify();
@@ -1286,6 +1343,27 @@ impl Drop for Remote {
 #[cfg(test)]
 mod account_tests {
     use super::*;
+    #[test]
+    fn calendar_waits_for_heartbeat_without_losing_queued_user_actions() {
+        let mut queued = Some(Command::Logout);
+        assert!(matches!(
+            next_request(Some(Command::AccountPoll), &mut queued, true),
+            Some(Command::AccountPoll)
+        ));
+        assert!(matches!(queued, Some(Command::Logout)));
+        assert!(matches!(
+            next_request(None, &mut queued, true),
+            Some(Command::Logout)
+        ));
+        assert!(queued.is_none());
+        assert!(matches!(
+            next_request(None, &mut queued, true),
+            Some(Command::CalendarRefresh)
+        ));
+        // Entregar la respuesta retira el destino pendiente: no repite la red.
+        assert!(next_request(None, &mut queued, false).is_none());
+    }
+
     #[test]
     fn heartbeat_cadence_keeps_cached_core_policy_current_until_delivery() {
         // Núcleo cachea 1 s, shell sondea cada 100 ms y entrega IPC cada 250 ms.

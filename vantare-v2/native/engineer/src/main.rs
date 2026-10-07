@@ -65,16 +65,13 @@ fn options(arguments: impl IntoIterator<Item = OsString>) -> Result<Options, &'s
             }
             _ => {
                 return Err(
-                    "uso: --pipe [--pipe-name N] | --stream --cursor R; [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]",
+                    "uso: --pipe | --stream; --cursor R [--pipe-name N] [--core-image R] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]",
                 );
             }
         }
     }
     if options.cursor.is_none() {
         return Err("ambos modos requieren --cursor R");
-    }
-    if options.stream && (options.pipe.is_some() || options.core_image.is_some()) {
-        return Err("stream requiere cursor y no acepta nombre de pipe");
     }
     Ok(options)
 }
@@ -111,6 +108,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut local = settings_path.map(|path| Local::new(path, seed, clips));
     let result = if options.stream {
         run_stream(
+            options.pipe,
+            options.core_image,
             options.cursor.as_deref().ok_or("falta cursor")?,
             &mut radio,
             local.as_mut(),
@@ -139,10 +138,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run_stream(
+    name: Option<String>,
+    core_image: Option<PathBuf>,
     checkpoint: &std::path::Path,
     radio: &mut RadioWorker,
     mut local: Option<&mut Local>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // El transporte del banco no concede derechos: usa la misma autoridad
+    // autenticada que el modo pipe, independiente de las fotos por stdin.
+    let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+    let expected =
+        core_image.unwrap_or(std::env::current_exe()?.with_file_name("vantare-core.exe"));
+    let rights = vantare_ipc::control::Feed::connect(&name, expected)?;
+    rights.wait_initial(Duration::from_secs(1));
+    require_stream_rights(&rights)?;
     let mut engineer = Engineer::resume(checkpoint)?;
     let mut output = io::stdout().lock();
     wire::write_hello(&mut output, engineer.cursor())?;
@@ -164,11 +173,13 @@ fn run_stream(
     let start = Instant::now();
     let mut presentation = io::stderr().lock();
     loop {
+        require_stream_rights(&rights)?;
         if let Some(local) = &mut local {
             local.poll(radio, &mut presentation)?;
         }
         match receiver.recv_timeout(Duration::from_millis(50)) {
             Ok(Ok(Some(frame))) => {
+                require_stream_rights(&rights)?;
                 let applied = engineer.apply(&frame, checkpoint)?;
                 radio.ingest(
                     &frame.snapshot,
@@ -190,6 +201,7 @@ fn run_stream(
             Ok(Ok(None)) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
             Ok(Err(error)) => return Err(error.into()),
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                require_stream_rights(&rights)?;
                 radio.tick(start.elapsed(), &mut presentation)?;
             }
         }
@@ -198,6 +210,17 @@ fn run_stream(
         }
     }
     Ok(())
+}
+
+fn require_stream_rights(rights: &vantare_ipc::control::Feed) -> io::Result<()> {
+    if rights.policy().engineer {
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "la radio requiere una licencia válida de Engineer",
+        ))
+    }
 }
 
 #[cfg(windows)]
@@ -342,11 +365,17 @@ mod tests {
             "clips",
             "--settings",
             "engineer.json",
+            "--pipe-name",
+            "core-test",
+            "--core-image",
+            "core.exe",
         ])
         .unwrap();
         assert!(parsed.stream && parsed.clips.is_some());
         assert_eq!(parsed.locale, Locale::PtBr);
         assert_eq!(parsed.settings, Some(PathBuf::from("engineer.json")));
+        assert_eq!(parsed.pipe.as_deref(), Some("core-test"));
+        assert_eq!(parsed.core_image, Some(PathBuf::from("core.exe")));
         for args in [
             &["--stream"][..],
             &[],

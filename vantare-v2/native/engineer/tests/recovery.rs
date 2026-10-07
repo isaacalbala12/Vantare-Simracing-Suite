@@ -1,7 +1,7 @@
 //! Observaciones sintéticas explícitas; procesos reales y checkpoints reales.
 #![allow(clippy::unwrap_used)] // Solo helpers del banco; producción sigue prohibiéndolo.
 use std::fs;
-use std::io;
+use std::io::{self, Read as _};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -16,6 +16,7 @@ use vantare_runtime::flows::{
     Consumer, Cursor, Delivery, GapReason,
     wire::{self, Frame},
 };
+mod rights;
 
 struct Files(PathBuf);
 impl Files {
@@ -73,6 +74,7 @@ fn photo(tick: u64, in_pits: bool) -> Observation {
 }
 
 struct Worker {
+    rights: rights::Fixture,
     child: Child,
     input: Option<ChildStdin>,
     hello: Option<Cursor>,
@@ -81,12 +83,16 @@ struct Worker {
 }
 impl Worker {
     fn start(files: &Files) -> Self {
+        let name = format!("engineer-stream-{}", vantare_services::random_id().unwrap());
+        let rights = rights::Fixture::new(&name);
         let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
             .args(["--stream", "--cursor"])
             .arg(files.cursor())
+            .args(["--pipe-name", &name, "--core-image"])
+            .arg(std::env::current_exe().unwrap())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             .spawn()
             .unwrap();
         let mut output = child.stdout.take().unwrap();
@@ -106,6 +112,7 @@ impl Worker {
         });
         // Drop mata/espera al hijo incluso si falla el saludo o un deadline.
         let mut worker = Self {
+            rights,
             input: child.stdin.take(),
             child,
             hello: None,
@@ -275,4 +282,59 @@ fn gaps_rebuild_photo_without_pit_facts_and_failed_checkpoint_never_acks() {
         Engineer::resume(&files.cursor()).is_err(),
         "sin fallback a cero"
     );
+}
+
+#[test]
+fn stream_without_rights_is_rejected_before_hello_or_checkpoint() {
+    let files = Files::new();
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
+        .args(["--stream", "--cursor"])
+        .arg(files.cursor())
+        .args(["--pipe-name", "engineer-stream-no-rights", "--core-image"])
+        .arg(std::env::current_exe().unwrap())
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "stream arrancó sin licencia");
+    assert!(output.stdout.is_empty(), "no debe emitir ni el saludo");
+    assert!(!files.cursor().exists(), "no debe consumir el cursor");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("licencia"));
+}
+
+#[test]
+fn stream_with_signed_rights_emits_radio_and_stops_when_authority_is_lost() {
+    let files = Files::new();
+    let mut core = Core::new(1);
+    let lap = |tick, laps| {
+        let mut observation = photo(tick, false);
+        observation.state.cars[0].laps = Quality::Reliable(laps);
+        observation
+    };
+    core.observe(lap(1, 0)).unwrap();
+    let mut worker = Worker::start(&files);
+    let baseline = Frame::capture(&core.snapshot(), core.events(), None).unwrap();
+    let mut consumer = Consumer::new(worker.send(&baseline));
+    core.observe(lap(2, 1)).unwrap();
+    let frame = Frame::capture(&core.snapshot(), core.events(), Some(&mut consumer)).unwrap();
+    assert_eq!(worker.send(&frame), core.events().tail());
+    drop(worker.rights.host.take());
+    assert!(
+        worker
+            .acknowledgements
+            .recv_timeout(Duration::from_secs(10))
+            .unwrap()
+            .is_err(),
+        "sin autoridad el stream debe terminar incluso sin más fotos"
+    );
+    assert!(!worker.child.wait().unwrap().success());
+    let mut presentation = String::new();
+    worker
+        .child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut presentation)
+        .unwrap();
+    assert!(presentation.contains("laps.completed"), "{presentation}");
+    assert!(presentation.contains("licencia"), "{presentation}");
 }

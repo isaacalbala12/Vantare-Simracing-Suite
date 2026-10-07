@@ -7,7 +7,7 @@ use vantare_runtime::rights::{Devices, host};
 use vantare_services::license::{Capability, ClaimsV2};
 
 pub struct Fixture {
-    host: Option<host::Host>,
+    pub host: Option<host::Host>,
     root: PathBuf,
 }
 impl Fixture {

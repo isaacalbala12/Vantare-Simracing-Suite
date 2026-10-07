@@ -130,7 +130,12 @@ local para revisión de Opus; sin actualización Notion, push, PR ni integració
 `vantare-engineer --stream --cursor <checkpoint>` usa stdin/stdout heredados:
 HELLO con cursor, frame individual, checkpoint y ACK. Es **el banco IPC**, no
 el named pipe de eventos de ADR 0099. En este modo stdout es solo HELLO/ACK;
-radio JSONL y diagnóstico salen por stderr. EOF termina con código 0; error de codec, checkpoint
+radio JSONL y diagnóstico salen por stderr. Exige el mismo permiso vigente de
+Engineer que `--pipe`, leído del núcleo autenticado (por defecto el core hermano;
+`--pipe-name` y `--core-image` permiten seleccionar el host del banco).
+Sin permiso no emite HELLO ni avanza el cursor; si pierde derechos en ejecución,
+cancela la radio y termina con código 1 y un error de licencia. El banco no
+acepta derechos desde los frames de stdin. EOF autorizado termina con código 0; error de codec, checkpoint
 o continuidad termina con 1. El consumidor nuevo recibe foto y base actuales.
 Los siguientes recuperan desde cursor, uno por ACK. El servidor solo reconoce
 el cursor pendiente: no aceptar un ACK superior a ciegas. Reconexión conserva

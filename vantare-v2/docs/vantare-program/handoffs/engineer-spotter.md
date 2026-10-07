@@ -28,6 +28,25 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-10-07 — #1477: licencia en el banco nativo de radio
+
+Entrega aislada desde `d96acc64`, rama `vantareapp/isa-1477-radio-licencia`.
+`--stream` consulta el mismo `Feed` autenticado y `policy.engineer` que `--pipe`:
+sin permiso vigente no emite HELLO ni consume cursor; la pérdida de autoridad
+termina con error de licencia y cancela la radio mediante el cierre existente.
+El transporte por stdin no concede derechos. Los bancos usan credenciales
+firmadas de prueba y permiten seleccionar el host con las opciones existentes
+`--pipe-name`/`--core-image`, ahora admitidas también en stream.
+Regresión reproducida en la base (arranque sin licencia); 42/42 pruebas focales
+PASS, incluida radio `laps.completed` autorizada y cierre al perder el host.
+Gates completos PASS por `compilar.ps1`, target aislado y `-j 2`: fmt, check,
+clippy con `-D warnings`, nextest (1212 PASS, 6 omitidas por la suite) y
+lifecycle (18 PASS). Logs en `C:/tmp/1477-radio-evidence/`; comprobación manual
+sin autoridad: exit 1, stdout vacío, sin cursor y error de licencia.
+No se tocan voz/caché ni otros hallazgos de #1477. Sin prueba acústica o LMU,
+sin push, PR, integración ni publicación. GitHub según excepción del encargo;
+Notion no disponible y `docs/roadmap/plan.md` ausente en esta base.
+
 ### 2026-09-23 — Reparación de rutas de audio Windows extraída para integración
 
 [VAN-760](https://app.notion.com/p/3e4e51695c65811689b6e260e5908ca0), puente #1350,

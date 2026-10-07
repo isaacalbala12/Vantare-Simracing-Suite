@@ -9,13 +9,17 @@ use vantare_engineer::control::{
     self,
     runtime::{Connection, HEARTBEAT_TIMEOUT_MS, Report},
 };
+mod rights;
 
 struct Process {
+    _rights: rights::Fixture,
     child: Child,
     root: PathBuf,
 }
 impl Process {
     fn start(suffix: &str) -> Self {
+        let name = format!("engineer-status-{}-{suffix}", std::process::id());
+        let rights = rights::Fixture::new(&name);
         let root = std::env::temp_dir().join(format!(
             "engineer-status-process-{}-{suffix}",
             std::process::id()
@@ -31,6 +35,8 @@ impl Process {
         let child = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
             .args(["--stream", "--cursor"])
             .arg(root.join("cursor.json"))
+            .args(["--pipe-name", &name, "--core-image"])
+            .arg(std::env::current_exe().expect("imagen test"))
             .arg("--settings")
             .arg(root.join("engineer.json"))
             .arg("--clips")
@@ -40,7 +46,11 @@ impl Process {
             .stderr(Stdio::null())
             .spawn()
             .expect("Engineer");
-        Self { child, root }
+        Self {
+            _rights: rights,
+            child,
+            root,
+        }
     }
     fn report(&self, predicate: impl Fn(&Report) -> bool) -> Report {
         let deadline = Instant::now() + Duration::from_secs(5);

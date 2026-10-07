@@ -92,6 +92,8 @@ fn flush_until(
             };
             // Disable person profiles for these installation-level events.
             properties["$process_person_profile"] = false.into();
+            properties["$ip"] = serde_json::Value::Null;
+            properties["$geoip_disable"] = true.into();
             let response = http.post_json(endpoint, &serde_json::json!({"api_key": key, "event": event, "distinct_id": distinct_id, "properties": properties}), None, None)?.success()?;
             // EU capture returns "Ok"; older capture endpoints return 1.
             let status = response.json::<serde_json::Value>()?["status"].clone();
@@ -223,6 +225,12 @@ mod tests {
             assert!(body["properties"].get("message").is_none());
             assert!(body["properties"].get("backtrace").is_none());
             assert_eq!(body["properties"]["code"], "native_panic");
+            assert_eq!(body["properties"]["$geoip_disable"], true);
+            assert!(
+                body["properties"]
+                    .get("$ip")
+                    .is_some_and(serde_json::Value::is_null)
+            );
             assert_eq!(body["properties"]["version"], crate::product::VERSION);
             assert_eq!(body["properties"]["os"], std::env::consts::OS);
             assert!(request.contains("\"event\":\"crash\""));
@@ -268,7 +276,15 @@ mod tests {
         fields.sort_unstable();
         assert_eq!(
             fields,
-            ["$process_person_profile", "code", "os", "stack", "version"]
+            [
+                "$geoip_disable",
+                "$ip",
+                "$process_person_profile",
+                "code",
+                "os",
+                "stack",
+                "version"
+            ]
         );
         assert_eq!(properties["stack"], serde_json::json!([1234]));
         assert_eq!(properties["version"], "unknown");
@@ -341,6 +357,15 @@ mod tests {
                 .recv_timeout(Duration::from_secs(3))
                 .expect("request");
             assert!(request.contains(name));
+            let body: serde_json::Value =
+                serde_json::from_str(request.split_once("\r\n\r\n").expect("body").1)
+                    .expect("json");
+            assert_eq!(body["properties"]["$geoip_disable"], true);
+            assert!(
+                body["properties"]
+                    .get("$ip")
+                    .is_some_and(serde_json::Value::is_null)
+            );
             assert!(!request.contains("position"));
         }
         server.finish();

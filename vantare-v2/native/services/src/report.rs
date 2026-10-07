@@ -130,7 +130,8 @@ pub(crate) fn rpc_channel(channel: &str) -> &str {
 
 /// Metadatos visibles en la preview y estables en el intento durable/reintento.
 fn installation_context(root: &std::path::Path, channel: &str) -> Result<String> {
-    let id = crate::diagnostics::anonymous_id(root)?;
+    // UUID independiente: el informe autenticado no revela el ID de uso.
+    let id = crate::diagnostics::anonymous_id(&root.join("testing"))?;
     Ok(format!(
         "Instalación anónima: {id}\nCanal de distribución: {channel}"
     ))
@@ -674,3 +675,20 @@ fn valid_receipt(receipt: &Receipt) -> Result<()> {
 
 #[cfg(all(test, windows))]
 mod tests;
+
+#[cfg(test)]
+mod identity_privacy_tests {
+    #[test]
+    fn testing_identity_is_stable_and_different_from_usage_identity() {
+        let root = std::env::temp_dir().join(format!(
+            "testing-identity-{}",
+            crate::random_id().expect("random")
+        ));
+        let usage = crate::diagnostics::anonymous_id(&root).expect("usage");
+        let testing = super::installation_context(&root, "beta").expect("testing");
+        let repeated = super::installation_context(&root, "beta").expect("testing again");
+        std::fs::remove_dir_all(&root).expect("fixture cleanup");
+        assert_eq!(testing, repeated);
+        assert!(!testing.contains(&usage));
+    }
+}

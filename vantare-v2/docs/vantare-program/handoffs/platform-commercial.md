@@ -1413,3 +1413,10 @@ No se aparta/genera otra identidad v2: el servidor actual admite solo
 `deviceFingerprint`, no hay reenrolamiento autenticado del cliente ni reset de
 dispositivo. Recuperación v2 requiere contrato de servidor y queda documentada;
 se conserva fail-closed para v2 y no se cambia Store, cuenta ni datos reales.
+
+N-5: todos los eventos PostHog llevan `$ip: null` y `$geoip_disable: true`;
+Testing usa un UUID estable en namespace propio, diferente del de uso.
+Regresiones crashes/uso/identidad RED, 8 focales GREEN; mismos gates completos
+finales PASS sobre todo el árbol funcional, sin cambios posteriores de código.
+No borra vínculos históricos ni reescribe intentos de informe ya consentidos.
+No se envió telemetría a PostHog real ni se cambió su configuración remota.

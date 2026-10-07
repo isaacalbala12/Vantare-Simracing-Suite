@@ -105,7 +105,7 @@ fn valid_uuid(id: &str) -> bool {
         && matches!(id.as_bytes()[19], b'8' | b'9' | b'a' | b'b')
 }
 
-/// UUID v4 compartible con Testing Center. Publicación atómica incluso entre procesos.
+/// UUID v4 estable por namespace; Testing usa otro. Publicación atómica entre procesos.
 pub fn anonymous_id(root: &Path) -> Result<String> {
     fs::create_dir_all(root).map_err(|_| Error::Storage)?;
     let path = root.join("anonymous-id");

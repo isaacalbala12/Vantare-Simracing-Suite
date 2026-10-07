@@ -1464,7 +1464,7 @@ impl Hub {
             );
         stack().h_full().child(section_surface(
             "Nivel de rendimiento",
-            Some("Así funcionarán los niveles"),
+            None,
             section_body()
                 .gap(px(12.0))
                 .child(custom_auto)

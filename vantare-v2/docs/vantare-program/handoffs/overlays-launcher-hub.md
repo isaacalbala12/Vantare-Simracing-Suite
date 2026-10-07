@@ -4840,3 +4840,62 @@ Fixtures de Roadmap/calendario/avisos no acreditan servicios reales. B1 es del
 otro worker; no se arreglan sombras/velos aquí. Sin LMU vivo, DPI125/150, OBS,
 Mac, gates frontend/Go (sin cambios) ni CI remoto. plan.md ausente en la base.
 Entrega local aislada para revisión; sin push, PR, merge, promoción o release.
+
+### #1470 — Unión ronda 5 (1470-union5, 2026-10-07)
+
+Worktree `C:/tmp/vw3-1470/vantare-v2`, rama
+`vantareapp/isa-1470-hub-rediseno`, base limpia `40a4ddc9`.
+Brief `C:/tmp/beta/r4/brief-1470-union5.md`, notas
+`C:/tmp/fase2/notas-1470-union5.md`. Merges locales no squash autorizados:
+`24092193` mediante `d9af7965` (render), `918df80e` mediante `c02d7373`
+(pantallas). Único conflicto en este handoff, conservando ambas entregas.
+
+Corrección propia: `native/hub/src/launcher/showcase.rs` evita que la fila de
+perfiles absorba todo el alto restante; las tarjetas y Nuevo perfil siguen
+el alto de contenido, mínimo198px. La columna derecha mantiene Últimas veces
+hasta abajo. `native/hub/src/settings/view.rs` elimina la repetición de
+«Así funcionarán los niveles» en la tarjeta, conservando el subtítulo.
+Cambios exclusivamente visuales, sin nuevos tests que repliquen estilos;
+las capturas comprueban ambos tamaños y los tests existentes de resultados
+terminales protegen las pills Bien/Lento/Falló.
+Últimas veces ya muestra esas pills si existe resultado del perfil en la
+sesión actual. El historial persistido solo guarda fecha/contador/media:
+las fechas QA no tienen resultado terminal, y no se inventa ninguno.
+
+Build QA `0.1.0-beta.1 (testers)` PASS, perfil prueba/parity-capture,
+no distribuible ni apto para demostrar rendimiento. Warning previo
+`analysis/view.rs:989` exclusivo de parity-capture conservado.
+Fmt/check/clippy-Dwarnings PASS; nextest1184/1184 PASS en712,270s (ACC578,928s, seis skips configurados). Lifecycle5Hub+12UI PASS al primer intento.
+72 capturas finales,36 escenas×1920x1080/1440x900, con turno y mutex;
+18 hojas detalle,2 resúmenes y principales/diffs MIRADOS. Alfa<255=0 en72/72;
+autotest255 aceptado,254/0 rechazados. Standings0/292160px, umbral0/delta0,
+referencia/captura/mapa MIRADOS. `source-seal.json` acredita mismo código.
+Evidencia externa `C:/tmp/1470-union5-evidence/`, informe
+`C:/tmp/fase2/informe-1470-union5.md`.
+
+Ventana normal real a100% capturada con CopyFromScreen en datos aislados:
+`runtime-historial-before.png`/`after.png` muestran Comprobando sesión,
+no acreditan panel de perfil/paleta/notificaciones ni navegación de pestañas.
+Primer intento1920 limitado por el marco normal a1920x1061; repetición1440
+produjo screenshots reales, segundo arranque falló «Ventana no disponible».
+Logs conservados. DPI125 no tiene override por sesión en renderer Windows;
+no se altera configuración global compartida. Esa validación sigue pendiente
+porque el binario actual no admite escena QA en ventana Normal.
+Alias QA licencias-modulos-dispositivos/telemetria/workshop abren Inicio;
+Cuenta se acredita en cuenta-base. Fixtures Calendario/Roadmap no certifican
+datos públicos actuales. No LMU live, OBS, Mac, DPI125 ni rendimiento.
+`docs/roadmap/plan.md` ausente en esta base, sin roadmap alternativo.
+Sin cambios Go/TS ni sus gates; CI remoto no ejecutado, sin push/PR.
+Solo merges locales autorizados; sin promoción nightly/testers/master,
+release, anuncio ni cambios al checkout principal. #1470 sigue abierta.
+Siguiente: revisión aislada del orquestador; después
+escena QA en ventana Normal cuando exista soporte aprobado; DPI125 manual de Isaac.
+
+Nota final del orquestador (releída): no construir soporte QA normal ni bypass.
+El parser solo selecciona CaptureState mediante --capture; esa ruta abre
+WindowKind::PopUp, visible pero distinta de Normal. --demo abre Normal sin
+aplicar CaptureState, y --scene solo carga foto de telemetría; no admite
+las cuatro escenas pedidas en Normal. Evidencia qa-normal-limit.txt.
+Se documenta el límite y se cierra lo posible conforme a la nota; DPI125
+queda manual para Isaac, sin cambiar escala global ni exigir sesión para
+esta comprobación de DWM.

@@ -939,7 +939,7 @@ impl Launcher {
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
     fn showcase_profiles(&self, compact: bool, cx: &mut Context<Self>) -> Stateful<Div> {
-        let mut row = div().w_full().h_full().flex().gap(px(14.0));
+        let mut row = div().w_full().min_h(px(198.0)).flex().gap(px(14.0));
         for (index, profile) in self.store.document.profiles.iter().enumerate() {
             let selected = profile.id.clone();
             let keyboard_selection = selected.clone();
@@ -968,7 +968,6 @@ impl Launcher {
                     )
                     .flex_1()
                     .min_w(px(140.0))
-                    .h_full()
                     .overflow_hidden()
                     .gap(px(8.0))
                     .p(px(8.0))
@@ -1063,14 +1062,14 @@ impl Launcher {
         }
         row = row.child(
             button("showcase-new", "+ Nuevo perfil", cx)
+                .h_auto()
                 .rounded(px(18.0))
                 .w(px(150.0))
-                .h_full()
                 .on_click(cx.listener(|this, _, window, cx| this.new_profile(None, window, cx))),
         );
         div()
             .id("showcase-profiles")
-            .flex_1()
+            .flex_none()
             .min_h(px(198.0))
             .when(self.launch_progress().is_some(), |row| {
                 row.flex_none().h(px(198.0))

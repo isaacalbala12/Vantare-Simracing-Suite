@@ -213,6 +213,10 @@ pub struct Remote {
     stale: bool,
 }
 
+// Margen para el cache de 1 s del núcleo, el tick de shell y la entrega IPC;
+// no amplía la caducidad de 2 s que impone Policy::current_at.
+const LICENSE_POLL: std::time::Duration = std::time::Duration::from_millis(500);
+
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
 
@@ -337,13 +341,10 @@ impl Remote {
             && self.access.session_known()
             && self
                 .license_polled_at
-                .is_none_or(|last| last.elapsed() >= std::time::Duration::from_secs(1))
+                .is_none_or(|last| last.elapsed() >= LICENSE_POLL)
         {
             self.license_polled_at = Some(std::time::Instant::now());
             self.request(Command::LicenseStatus, cx);
-            if self.busy() {
-                self.inflight = Inflight::Background;
-            }
         }
     }
 
@@ -476,12 +477,17 @@ impl Remote {
             );
             return false;
         }
+        let background = matches!(command, Command::LicenseStatus);
         if self
             .send
             .as_ref()
             .is_some_and(|send| send.try_send(command).is_ok())
         {
-            self.inflight = Inflight::User;
+            self.inflight = if background {
+                Inflight::Background
+            } else {
+                Inflight::User
+            };
             true
         } else {
             self.message = "Operación en curso".into();
@@ -513,7 +519,9 @@ impl Remote {
             cx.notify();
             return;
         }
-        cx.notify();
+        if self.inflight != Inflight::Background {
+            cx.notify();
+        }
         cx.spawn(async move |this, cx| {
             loop {
                 let keep = this
@@ -526,6 +534,7 @@ impl Remote {
                             _ => None,
                         };
                         if let Some(reply) = reply {
+                            let access_before = this.navigation_access();
                             let failed = matches!(&reply, Reply::Error { .. });
                             let after_renew = if matches!(this.active, Area::Licenses { renew: true }) {
                                 this.access.renewal_acknowledged(&reply)
@@ -535,7 +544,10 @@ impl Remote {
                             let background = this.inflight == Inflight::Background;
                             this.inflight = Inflight::Idle;
                             this.account.pending = false;
+                            let quiet = background && matches!(reply, Reply::License { .. } | Reply::Error { .. });
                             match reply {
+                                // La consulta periódica no pisa el resultado de una acción del usuario.
+                                Reply::Error { .. } | Reply::License { .. } if background => {}
                                 Reply::Status { message, .. } | Reply::Error { message } => {
                                     if matches!(this.active,Area::Roadmap) {
                                         this.roadmap_message = message;
@@ -570,15 +582,15 @@ impl Remote {
                                     message,
                                     ..
                                 } => {
-                                    if !signed_in {
-                                        this.report_receipts.clear();
+                                    if !pending {
+                                        if !signed_in {
+                                            this.report_receipts.clear();
+                                        }
+                                        this.account.signed_in = signed_in;
                                     }
-                                    this.account.signed_in = signed_in;
                                     this.account.pending = pending;
                                     this.message = message;
                                 }
-                                // La consulta periódica no pisa el resultado de una acción del usuario.
-                                Reply::License { .. } if background => {}
                                 Reply::License { message, .. } => {
                                     this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().verified));
                                 }
@@ -590,11 +602,15 @@ impl Remote {
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
                             }
-                            if let Some(command) = next.or_else(|| this.queued.take()) {
+                            let next = next.or_else(|| this.queued.take());
+                            let notify = !quiet || access_before != this.navigation_access() || next.is_some();
+                            if let Some(command) = next {
                                 this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
                                 this.dispatch(command);
                             }
-                            cx.notify();
+                            if notify {
+                                cx.notify();
+                            }
                         }
                         this.busy() && !this.stop.load(Ordering::Acquire)
                     })
@@ -1270,6 +1286,26 @@ impl Drop for Remote {
 #[cfg(test)]
 mod account_tests {
     use super::*;
+    #[test]
+    fn heartbeat_cadence_keeps_cached_core_policy_current_until_delivery() {
+        // Núcleo cachea 1 s, shell sondea cada 100 ms y entrega IPC cada 250 ms.
+        // Simula todas las fases del cache; no modifica el TTL de Policy.
+        let interval = u64::try_from(LICENSE_POLL.as_millis()).expect("interval");
+        for cache_age in 0..1000 {
+            let policy = vantare_ipc::control::Policy {
+                version: vantare_ipc::control::VERSION,
+                revision: 1,
+                checked_at_ms: 1000,
+                overlays_advanced: true,
+                ..Default::default()
+            };
+            assert!(
+                policy.current_at(1000 + cache_age + interval + 100 + 250),
+                "el heartbeat caduca antes de la entrega: cache={cache_age}"
+            );
+        }
+    }
+
     #[test]
     fn beta_modules_remain_upcoming_even_with_verified_module_rights() {
         for section in [Section::Strategy, Section::Engineer] {

@@ -367,3 +367,35 @@ fn live_cached_access_metadata_and_policy_survive_services_shutdown() {
     drop(core);
     std::fs::remove_dir_all(root).expect("cleanup fixture");
 }
+
+#[test]
+fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
+    let Fixture {
+        root,
+        photo,
+        link: _,
+        core,
+        services,
+    } = Fixture::new();
+    let mut hub = Session::open(&photo);
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    assert!(
+        matches!(hub.request(Command::LicenseStatus), Reply::License { policy, .. } if policy.overlays_advanced)
+    );
+    assert!(matches!(
+        hub.request(Command::Logout),
+        Reply::Account {
+            signed_in: false,
+            ..
+        }
+    ));
+    let Reply::License { policy, .. } = hub.request(Command::LicenseStatus) else {
+        panic!("el Hub necesita el resultado definitivo, no un error de transporte");
+    };
+    assert!(!policy.overlays_advanced);
+    assert!(policy.error.is_some());
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("cleanup fixture");
+}

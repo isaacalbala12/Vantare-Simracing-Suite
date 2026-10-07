@@ -142,12 +142,9 @@ impl State {
     }
 
     pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
-        // El límite de dispositivos sigue siendo un fallo de renovación: conserva
-        // el cierre fail-closed y solo añade la distinción tipada.
-        if matches!(
-            reply,
-            Reply::Error { .. } | Reply::DeviceLimit { .. } | Reply::Closed
-        ) {
+        // Un error de transporte no revoca la última política. navigation sigue
+        // aplicando su caducidad; el resultado definitivo sí retira el acceso.
+        if matches!(reply, Reply::DeviceLimit { .. } | Reply::Closed) {
             self.policy = None;
             if self.transition == Transition::Login {
                 self.transition = Transition::Renewal;
@@ -181,6 +178,10 @@ impl State {
                 if self.transition == Transition::Logout {
                     self.transition = Transition::Renewal;
                 }
+                // Un sondeo pendiente no sustituye una sesión ya confirmada.
+                if *pending && self.session_known() && self.transition == Transition::Idle {
+                    return;
+                }
                 // Releer una sesión que sigue igual no retira la política vigente:
                 // hacerlo dejaba el candado visible hasta la siguiente lectura.
                 if !*signed_in || *pending || self.expires_at.is_none() {
@@ -206,9 +207,14 @@ impl State {
             }
             Reply::Closed => self.invalidate(),
             Reply::Error { message } if account => {
-                self.expires_at = None;
                 self.login_requested = false;
+                if self.transition == Transition::Login {
+                    self.transition = Transition::Renewal;
+                }
                 self.error = Some(format!("No se pudo completar el acceso: {message}"));
+            }
+            Reply::Error { .. } if self.transition == Transition::Login => {
+                self.transition = Transition::Renewal;
             }
             _ => {}
         }
@@ -844,6 +850,75 @@ mod navigation_tests {
         state
     }
     #[test]
+    fn transient_ipc_errors_preserve_only_the_last_current_access() {
+        for account in [false, true] {
+            let mut state = state(true, true);
+            let before = state.navigation(true, 1500);
+            state.observe(
+                &Reply::Error {
+                    message: "IPC temporal".into(),
+                },
+                account,
+            );
+            assert_eq!(state.navigation(true, 1500), before);
+            assert!(state.session_known());
+            assert!(
+                !state.navigation(true, 3000).verified,
+                "no extiende el heartbeat"
+            );
+            state.policy.as_mut().expect("policy").valid_until_ms = Some(1600);
+            assert!(
+                !state.navigation(true, 1600).verified,
+                "no extiende la credencial"
+            );
+        }
+        let mut initial = State::from_build();
+        initial.observe(
+            &Reply::Error {
+                message: "offline".into(),
+            },
+            true,
+        );
+        assert!(!initial.navigation(true, 1500).verified);
+    }
+
+    #[test]
+    fn pending_poll_preserves_access_but_definitive_logout_and_device_limit_drop_it() {
+        let mut state = state(true, true);
+        state.observe(
+            &Reply::Account {
+                signed_in: false,
+                pending: true,
+                expires_at: None,
+                message: String::new(),
+                error: None,
+            },
+            true,
+        );
+        assert!(state.navigation(state.session_known(), 1500).verified);
+        assert!(!state.login_requested);
+        state.observe(
+            &Reply::Account {
+                signed_in: false,
+                pending: false,
+                expires_at: None,
+                message: String::new(),
+                error: None,
+            },
+            true,
+        );
+        assert!(!state.navigation(true, 1500).verified);
+        let mut state = self::state(true, true);
+        state.observe(
+            &Reply::DeviceLimit {
+                message: "límite".into(),
+            },
+            false,
+        );
+        assert!(!state.navigation(true, 1500).verified);
+    }
+
+    #[test]
     fn policy_module_flags_project_independently() {
         for flags in [
             [false; 4],
@@ -894,7 +969,7 @@ mod navigation_tests {
         assert!(!access.visible(Section::Calendar));
     }
     #[test]
-    fn logout_error_missing_session_and_expiry_never_grant_navigation() {
+    fn logout_missing_session_and_expiry_block_but_transport_errors_keep_current_access() {
         let mut state = state(true, true);
         assert!(state.navigation(true, 2999).verified);
         for (signed_in, time) in [(false, 1000), (true, 999), (true, 3000), (true, 10000)] {
@@ -906,7 +981,8 @@ mod navigation_tests {
             },
             false,
         );
-        assert!(!state.navigation(true, 1000).verified);
+        assert!(state.navigation(true, 1000).verified);
+        assert!(!state.navigation(true, 3000).verified);
         state = self::state(true, true);
         state.requested(&Command::Logout); // Antes del ACK.
         assert!(!state.navigation(true, 1000).verified);

@@ -1,5 +1,32 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1480 — acceso intermitente, corrección aislada (2026-10-07)
+
+Rama `vantareapp/isa-1480-acceso-parpadeo`, base `d96acc64`, worktree
+`C:/tmp/vw3-1480-acceso`; pendiente de revisión del orquestador.
+Causa reproducida por cuatro regresiones RED: cache de política de 1 s + sondeo
+Hub de 1 s + entrega IPC pueden vencer el heartbeat de 2 s; errores genéricos
+retiraban la política y cada consulta notificaba la página completa. El
+supervisor ocultaba la política revocada tras un error genérico.
+Corrección: consultas a 500 ms, última política conservada ante fallos/pending
+solo dentro de su vigencia, resultados definitivos entregados por LicenseStatus
+y heartbeats sin cambios de Access sin notificación. No cambia el modelo de
+derechos, TTL, firma, IPC ni persistencia; logout y revocación siguen bloqueando.
+Gates finales PASS por cola/-j2: fmt/check/Clippy -D warnings, Nextest
+1214/1214 (6 skips previos; ACC/LMU incluidos), lifecycle18/18. Cuatro
+regresiones RED antes del arreglo y PASS dentro de la suite final. Se conserva
+el primer fallo Clippy (brazos idénticos), corregido sin excepciones al lint.
+Standings Release propio 0/292160 px, umbral0/delta0, referencia/captura/mapa
+inspeccionados. Baseline nativa aprobada F1; intentos histórico Wails85,3666%
+y Debug1px/delta1 conservados, sin modificar referencias, imágenes o umbral.
+Evidencia, diagnóstico, hashes y manual `C:/tmp/1480-acceso-evidence/`;
+informe y SHA local `C:/tmp/fase2/informe-1480-acceso.md`. Issue #1480 abierta
+para revisión del orquestador; no se anuncia una beta corregida publicada.
+No se tocó la instalación real ni se leyó DPAPI/tokens/.env. Falta prueba física
+con la sesión de Isaac; los tests deterministas no la sustituyen. Sin push,
+PR, CI remota, integración, promoción o release. `docs/roadmap/plan.md` ausente
+en esta base: no se crea una segunda fuente del roadmap.
+
 ## Candidato beta — verificación local cerrada (2026-10-07)
 Código `1c9ca48d`, base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`; merges en orden `6338e31e` y `f18b842e`, sin squash. Zoom no autorizado por nota y no integrado.
 Gates completos finales PASS: fmt/check/Clippy -D warnings, Nextest1205/1205 (6 skips, goldens ACC/LMU), lifecycle17. Se conserva el fallo intermedio de caché/mtime y su repetición completa verde.

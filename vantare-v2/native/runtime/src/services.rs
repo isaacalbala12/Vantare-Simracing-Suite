@@ -230,6 +230,14 @@ fn serve_command(
         return Reply::Closed;
     }
     let policy = match control::request_cancelled(&options.core, control::Command::Read, stop) {
+        // Heartbeat: entregar también revocación/caducidad explícitas. El Hub
+        // distingue esta política definitiva de un fallo temporal del transporte.
+        Ok(policy) if matches!(command, Command::LicenseStatus) => {
+            return Reply::License {
+                policy,
+                message: "Política vigente del núcleo".into(),
+            };
+        }
         Ok(p) if p.current() => p,
         Err(error)
             if error.get_ref().is_some_and(
@@ -244,14 +252,6 @@ fn serve_command(
             return failure("núcleo de derechos no disponible");
         }
     };
-    // El heartbeat lee la autoridad local incluso con el helper cerrado en pista.
-    // No inicia servicios ni reinstala el candidate en cada consulta del Hub.
-    if matches!(command, Command::LicenseStatus) {
-        return Reply::License {
-            policy,
-            message: "Política vigente del núcleo".into(),
-        };
-    }
     if closes_for_game(&policy, signing_in(signing)) {
         finish(state);
         return failure("servicios cerrados durante el juego");

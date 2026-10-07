@@ -110,10 +110,8 @@ pub(super) fn wire(state: &State, window: &Window, cx: &mut Context<Hub>) {
 }
 impl Hub {
     pub(crate) fn settings_zoom_restore(&mut self, window: &Window) {
-        if self.settings.appearance.zoom_percent != 100 {
-            self.settings.status =
-                vantare_ui::set_window_zoom(window, self.settings.appearance.zoom_percent).err();
-        }
+        self.settings.status =
+            vantare_ui::set_window_zoom(window, self.settings.appearance.zoom_percent).err();
     }
     pub(crate) fn settings_zoom_change(
         &mut self,
@@ -121,7 +119,11 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let percent = zoom_step(self.settings.appearance.zoom_percent, direction);
+        let percent = zoom_step_limited(
+            self.settings.appearance.zoom_percent,
+            direction,
+            vantare_ui::window_zoom_limit(window).max(90.0),
+        );
         if percent == self.settings.appearance.zoom_percent {
             return;
         }
@@ -220,15 +222,18 @@ impl Hub {
     }
 }
 
-fn zoom_step(percent: u16, direction: i8) -> u16 {
+fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
     let values = [90, 100, 110, 125];
-    let index = values
-        .iter()
-        .position(|value| *value == percent)
-        .unwrap_or(1);
     match direction {
-        -1 => values[index.saturating_sub(1)],
-        1 => values[(index + 1).min(values.len() - 1)],
+        -1 => values
+            .into_iter()
+            .rev()
+            .find(|value| f32::from(*value) < f32::from(percent).min(limit))
+            .unwrap_or(90),
+        1 => values
+            .into_iter()
+            .find(|value| *value > percent && f32::from(*value) <= limit + 0.001)
+            .unwrap_or(percent),
         _ => 100,
     }
 }
@@ -266,11 +271,15 @@ mod tests {
         assert!(store.save_zoom(99).is_err());
         std::fs::write(dir.join("hub-zoom.json"), b"99").expect("invalid");
         assert!(Store::load(path).is_err());
-        assert_eq!(zoom_step(90, -1), 90);
-        assert_eq!(zoom_step(125, 1), 125);
-        assert_eq!(zoom_step(100, 1), 110);
-        assert_eq!(zoom_step(110, -1), 100);
-        assert_eq!(zoom_step(125, 0), 100);
+        assert_eq!(zoom_step_limited(90, -1, 125.0), 90);
+        assert_eq!(zoom_step_limited(125, 1, 125.0), 125);
+        assert_eq!(zoom_step_limited(100, 1, 125.0), 110);
+        assert_eq!(zoom_step_limited(110, -1, 125.0), 100);
+        assert_eq!(zoom_step_limited(125, 0, 125.0), 100);
+        assert_eq!(zoom_step_limited(110, 1, 112.5), 110);
+        assert_eq!(zoom_step_limited(125, 1, 112.5), 125);
+        assert_eq!(zoom_step_limited(125, -1, 112.5), 110);
+        assert_eq!(zoom_step_limited(90, 1, 90.0), 90);
         std::fs::remove_dir_all(dir).expect("cleanup");
     }
     #[test]

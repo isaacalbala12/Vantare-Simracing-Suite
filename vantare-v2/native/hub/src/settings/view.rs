@@ -873,7 +873,7 @@ impl Hub {
 
     pub(in crate::shell) fn settings(
         &self,
-        _window: &Window,
+        window: &Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<Div> {
         self.sync_settings_preferences(cx);
@@ -896,7 +896,7 @@ impl Hub {
             })
             .child(orbit::scroll_fade(
                 match self.settings.page {
-                    Page::Application => self.settings_application(true, cx),
+                    Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
                     Page::Performance => Self::settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
@@ -1009,8 +1009,24 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    fn settings_application(&self, compact: bool, cx: &Context<Self>) -> Div {
-        let zoom = self.settings_zoom(cx);
+    fn settings_application(&self, compact: bool, window: &Window, cx: &Context<Self>) -> Div {
+        let limit = vantare_ui::window_zoom_limit(window).max(90.0);
+        let selected = f32::from(self.settings.appearance.zoom_percent);
+        let zoom = div()
+            .flex()
+            .flex_col()
+            .items_end()
+            .gap(px(4.0))
+            .child(self.settings_zoom(cx))
+            .when(selected > limit + 0.01, |view| {
+                view.child(text(
+                    format!("Limitado a {limit:.1} % por el tamaño de la ventana"),
+                    11.0,
+                    400,
+                    orbit::ink_muted(cx),
+                    cx,
+                ))
+            });
         let interface = section_surface(
             "Interfaz",
             None,

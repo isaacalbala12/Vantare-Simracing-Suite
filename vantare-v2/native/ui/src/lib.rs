@@ -79,3 +79,28 @@ pub fn set_window_zoom(window: &gpui::Window, percent: u16) -> Result<(), String
         }
     }
 }
+
+/// Largest Hub zoom that leaves its 1280 x 800 logical design area.
+pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
+    #[cfg(not(windows))]
+    let _ = window;
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn GetDpiForWindow(hwnd: isize) -> u32;
+        }
+        if let Some(hwnd) = overlay::hwnd_of(window) {
+            // SAFETY: HWND belongs to the live GPUI window; no pointers are passed.
+            let dpi = unsafe { GetDpiForWindow(hwnd) } as f32 / 96.0;
+            if dpi > 0.0 {
+                let size = window.viewport_size();
+                return (f32::from(size.width) / 1280.0).min(f32::from(size.height) / 800.0)
+                    * window.scale_factor()
+                    / dpi
+                    * 100.0;
+            }
+        }
+    }
+    100.0
+}

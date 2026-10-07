@@ -153,3 +153,25 @@ Ronda3 completa: matriz18/18 y clic/scroll/resize/reset/reapertura inspeccionado
 Normal1280×800 físicos a90/100/125 medido en ventana diagnóstica del mismo backend.
 Standings0/292160; fmt/check/clippy/nextest1186/lifecycle17 PASS. Sigue aislado, sin
 push ni integración al candidato; límites visuales/servicios/DPI en informe y handoff.
+
+### Ronda 4: límite según el cliente físico
+
+El mensaje de zoom activa el límite solamente en el HWND destinatario (Hub).
+`zoom_percent` conserva la elección; `dpi_scale` conserva DPI puro; `limit_zoom`
+empieza falso, de modo que ventanas de overlays/Workshop mantienen la ruta original.
+Cada resize/restauración/cambio de DPI calcula la escala efectiva como
+`min(DPI * elegido/100, max(DPI * 0.9, min(cliente.width/1280, cliente.height/800)))`.
+No cambia el tamaño físico: actualiza origen, bounds, Direct Manipulation y callback
+resize antes de renderizar. Al ampliar recupera la elección sin guardar otro valor.
+A1440x900/DPI96/125 elegido aplica112.5%, viewport1280x800. A1920x1080 aplica125%.
+Hub muestra bajo el control el límite real cuando interviene. Los pasos de aumento
+no guardan un porcentaje superior al límite; reducir desde una elección limitada
+busca el siguiente paso inferior al porcentaje efectivo. Ctrl0 mantiene reset100,
+que también queda sujeto al límite efectivo si el cliente/DPI lo requiere.
+La evidencia completa r4-* y sus límites quedan en el informe externo y handoff.
+
+Ronda 4: gates completos PASS (nextest 1186, lifecycle 17), Standings 0/292160;
+las nueve combinaciones a 1920 conservan paridad 0 px con r3 y el resize vivo
+recupera 125→112,5→125 sin alterar la preferencia. **Aceptación visual pendiente:**
+1280×800 lógicos no evita todos los recortes de Inicio/Launcher a 1440/125 elegido.
+El informe y handoff conservan las capturas y el hallazgo; no se integra al candidato.

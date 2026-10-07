@@ -5047,3 +5047,42 @@ C:/tmp/1470-zoom-spike-evidence. Verificación: r3-matrix.ps1, r3-probe-build.ps
 r3-normal-shell-control.ps1 y r3-normal-verify.ps1; Native Normal con control/verify
 r3-backend-normal-*. Siguiente: revisión del orquestador. Sin push, PR, CI remoto,
 merge, promoción, release ni integración al candidato; checkout principal preservado.
+
+### #1470 — Zoom backend, ronda 4: límite de diseño (2026-10-07)
+
+Encargo explícito del orquestador; rama `vantareapp/isa-1470-zoom-backend`,
+worktree `C:/tmp/vw3-1470-zoom`, HEAD inicial `12f610d1`, base original `dae60712`.
+Se conserva la elección persistida y el DPI separado del zoom efectivo por HWND.
+Cada resize limita el zoom a 1280×800 lógicos con suelo 90 % del DPI; solo el Hub
+activa ese límite mediante el mensaje existente. A 1440×900/DPI96 limita a 112,5 %;
+a 1920×1080 el 125 % elegido queda intacto. Ajustes informa del límite bajo el
+control; +/Ctrl+ no aumentan por encima y − busca el paso inferior al zoom efectivo.
+Cinco archivos de código: vendor/window.rs, events.rs, ui/lib.rs,
+settings/appearance.rs y view.rs. README vendor y este handoff completan siete.
+Sin dependencia, global mutable, GPUI externo ni renderer alternativo. Roadmap
+plan.md ausente como en rondas anteriores; no se crea otra fuente para el spike.
+
+PASS fmt workspace/vendor, check/all-targets, Clippy -D warnings y build QA,
+por cola/-j2/target propio. Nextest 1186/1186 PASS (6 skips existentes;
+ACC 598,868 s, neumáticos 151,009 s); lifecycle 17/17 PASS (5 Engineer + 12 supervisor).
+Check/Clippy/build QA finales también PASS tras el ajuste cfg no-Windows para evitar
+un argumento no usado; ruta Windows intacta, General final 0 px respecto al primer
+build r4. Captura final y hoja r4-live-sheet MIRADAS. No se ejecuta gate Mac/DPI físico.
+Matriz de 18 capturas MIRADA: a 1920 las nueve combinaciones son 0 px respecto a
+r3; a 1440 las seis de 90/100 también. Elegido 125 limita a 112,5 y conserva 125.
+Standings 0/292160 px: referencia, captura y mapa MIRADOS. Resize vivo
+1920→1440→1920 recupera 125→112,5→125, PNG antes/después 0 px. Ctrl+ y clic+
+bloqueados en 110; Ctrl− desde 125 limitado elige 110 y clic− pasa 110→100;
+preferencias verificadas y capturas MIRADAS.
+
+**Aceptación visual NO alcanzada:** a 112,5 Inicio aún tapa parte de Abrir Studio
+(CTA envuelta bajo el hero); Launcher corta el borde inferior de los pasos.
+Recortes r4-crop-* MIRADOS. Diagnóstico 110 también tapa Abrir Studio en Inicio;
+Launcher a 110 cabe. El mínimo solicitado 1280×800 no basta para ese layout.
+No se amplía a home/launcher ni se cambia la fórmula para ocultar este resultado.
+Siguiente: revisión del orquestador del mínimo/layout, sin integrar al candidato.
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`; evidencia externa r4-* en
+`C:/tmp/1470-zoom-spike-evidence`. Sin push, PR, CI remoto, merge, promoción o release.
+
+Commit local de ronda 4: consultar el SHA definitivo en el informe externo.
+El commit conserva el spike revisable; no significa aceptación visual ni integración.

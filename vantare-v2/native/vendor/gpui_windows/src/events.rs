@@ -228,8 +228,7 @@ impl WindowsWindowInner {
     fn handle_get_min_max_info_msg(&self, lparam: LPARAM) -> Option<isize> {
         let min_size = self.state.min_size?;
         // Window constraints use monitor DPI, never the content zoom.
-        let scale_factor =
-            self.state.scale_factor.get() / (self.state.zoom_percent.get() as f32 / 100.0);
+        let scale_factor = self.state.dpi_scale.get();
         let boarder_offset = &self.state.border_offset;
 
         unsafe {
@@ -281,6 +280,25 @@ impl WindowsWindowInner {
         scale_factor: f32,
         should_resize_renderer: bool,
     ) {
+        let scale_factor = if self.state.limit_zoom.get() {
+            let dpi = self.state.dpi_scale.get();
+            let limit = (device_size.width.0 as f32 / 1280.0)
+                .min(device_size.height.0 as f32 / 800.0)
+                .max(dpi * 0.9);
+            let effective = (dpi * self.state.zoom_percent.get() as f32 / 100.0).min(limit);
+            let ratio = self.state.scale_factor.get() / effective;
+            self.state.origin.set(self.state.origin.get() * ratio);
+            let restore = self.state.fullscreen_restore_bounds.get();
+            self.state.fullscreen_restore_bounds.set(Bounds::new(
+                restore.origin * ratio,
+                size(restore.size.width * ratio, restore.size.height * ratio),
+            ));
+            self.state.scale_factor.set(effective);
+            self.state.direct_manipulation.set_scale_factor(effective);
+            effective
+        } else {
+            scale_factor
+        };
         let new_logical_size = device_size.to_pixels(scale_factor);
 
         self.state.logical_size.set(new_logical_size);
@@ -893,18 +911,13 @@ impl WindowsWindowInner {
             return Some(0);
         }
         self.state.zoom_percent.set(wparam.0 as u16);
+        self.state.limit_zoom.set(true);
+        self.state
+            .dpi_scale
+            .set(dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32);
         let scale = dpi as f32 / USER_DEFAULT_SCREEN_DPI as f32
             * self.state.zoom_percent.get() as f32
             / 100.0;
-        let ratio = self.state.scale_factor.get() / scale;
-        self.state.origin.set(self.state.origin.get() * ratio);
-        let restore = self.state.fullscreen_restore_bounds.get();
-        self.state.fullscreen_restore_bounds.set(Bounds::new(
-            restore.origin * ratio,
-            size(restore.size.width * ratio, restore.size.height * ratio),
-        ));
-        self.state.scale_factor.set(scale);
-        self.state.direct_manipulation.set_scale_factor(scale);
         let device_size = size(
             DevicePixels(rect.right - rect.left),
             DevicePixels(rect.bottom - rect.top),
@@ -922,6 +935,9 @@ impl WindowsWindowInner {
         lparam: LPARAM,
     ) -> Option<isize> {
         let new_dpi = wparam.loword() as f32;
+        self.state
+            .dpi_scale
+            .set(new_dpi / USER_DEFAULT_SCREEN_DPI as f32);
 
         let is_maximized = self.state.is_maximized();
         let new_scale_factor =

@@ -4958,3 +4958,92 @@ sin gates/build/capturas/paridad/ interacción/nitidez porque no hay implementac
 Notas específicas ausentes; #1470 abierta; roadmap plan.md ausente en la base.
 Siguiente: orquestador revisa el inventario y decide el presupuesto del experimento.
 Sin push, PR, CI remoto, merge, promoción o release; checkout principal preservado.
+
+
+### #1470 — Zoom backend, ronda 2: parada por resize (2026-10-07)
+
+Presupuesto ampliado explícitamente a los nueve archivos del inventario.
+Rama `vantareapp/isa-1470-zoom-backend`, worktree `C:/tmp/vw3-1470-zoom`,
+HEAD inicial/final `9f39fa55e3617acd2cefa93fdae295643048aab6`, base original
+`dae60712778a2f44fa0604b155916b279c067eda`. Nueve archivos modificados sin commit;
+no se considera entrega aceptada ni se integra al candidato.
+
+Implementación experimental: multiplicador por HWND en window/events del vendor,
+puente PostMessageW dirigido en ui/lib.rs, carga en shell.rs, atajos en chrome.rs,
+persistencia `hub-zoom.json` en appearance.rs y control 90/100/110/125 en view.rs.
+README vendor y este handoff completan el inventario. Sin dependencias, global
+mutable, GPUI externo, overlays ni Workshop modificados. Búsqueda de llamadas:
+solo Hub/restauración/controles; overlays y Workshop no llaman al setter.
+
+Se activa el LÍMITE del usuario: a125, capture-desktop pide cliente1920×1080
+mediante MoveWindow y mide2400×1350 aDPI96. GetClientRect independiente confirma
+2400×1350, outer2416×1358; PNG real guardado y MIRADO. La escena QA fija su tamaño
+pedido como mínimo lógico (shell.rs); WM_GETMINMAXINFO lo escala por el factor
+efectivo. El mínimo normal1280×800 también pasaría a1600×1000 a125 según el código
+(inferencia, no prueba de ventana Normal). No se concluye inviabilidad del
+backend; requiere decisión sobre mínimo físico frente a zoom antes de reanudar.
+No se corrigió ni se amplió la implementación tras activar el límite.
+
+PASS fmt workspace y vendor/check completos/build QA por cola y -j2. Clippy
+-Dwarnings FAIL: shell_key101/100 líneas y orden del constructor Store.
+Nextest/lifecycle no ejecutados: parada y flujo de gates detenido en Clippy.
+Los errores iniciales de compilación se corrigieron y conservaron en logs;
+el build QA conserva el warning heredado unused cx de analysis/view.rs:989.
+No se debilita ningún test ni lint; no hay commit con gates fallidos.
+
+Capturas MIRADAS: seis referencias base a1920/1440 (Inicio/Launcher/General),
+General1920 a90 y125, y cliente real2400×1350 tras resize. Atajos Ctrl−/Ctrl+
+procesados y preferencias90/125 verificadas. Texto inicial nítido; sin certificación
+de toda la matriz18, paridad100/Standings0px, clic, scroll, reset/reapertura física,
+ventana Normal, LMU/OBS/Mac/DPI físico/performance o servicios reales.
+El clic no llegó a ejecutarse porque la herramienta verifica resize antes de él.
+Capturador externo adaptado para enviar atajos antes del PNG; falso fallo previo
+por PID reutilizado/carpeta antigua corregido seleccionando la carpeta más reciente.
+
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`, patch/logs/fuentes/capturas en
+`C:/tmp/1470-zoom-spike-evidence/`. Verificar manualmente resize-failure.txt/PNG y
+reproducir con capture.ps1 General1920 a125 e Interactive, seguido de
+capture-desktop.ps1 pidiendo1920×1080 al PID propio. Sin tocar escala global.
+Roadmap plan.md ausente en esta base; no se crea una fuente alternativa.
+#1470 sigue abierta para revisión del orquestador. Sin push, PR, CI remota, merge,
+promoción, release ni acción externa fuera del seguimiento autorizado de la issue.
+### #1470 — Zoom backend, ronda 3: unidades corregidas y QA completa (2026-10-07)
+
+Reanudación explícita del orquestador; preservados los nueve cambios sin commit de
+ronda2. Rama vantareapp/isa-1470-zoom-backend, worktree C:/tmp/vw3-1470-zoom, base
+original dae60712 y HEAD inicial9f39fa55. Commit local final en el informe externo.
+WM_GETMINMAXINFO y resize usan DPI puro: scale_factor/(zoom/100). La ventana nace
+antes de restaurar zoom; el mensaje conserva cliente/swap chain y solo recalcula
+contenido. Origen, ratón, viewport y rasterizado siguen usando DPI×zoom.
+Sin GPUI externo, dependencias ni archivos productivos nuevos. Solo nueve archivos:
+vendor/window.rs y events.rs, ui/lib.rs, hub/shell.rs, shell/chrome.rs,
+settings/appearance.rs y view.rs, README vendor y este handoff.
+Atajos extraídos a shell_zoom_key, constructor Store ordenado; Clippy sin excepciones.
+
+PASS por cola/-j2/target propio: fmt workspace/vendor, check/all-targets,
+clippy-Dwarnings, nextest1186/1186 (6 skips existentes; ACC y neumáticos incluidos),
+lifecycle17/17, build QA. Warning QA heredado unused cx analysis/view.rs989 conservado.
+Matriz18/18 a1920×1080/1440×900 y90/100/125 MIRADA; tamaño físico posterior al zoom
+exacto aDPI96. Inicio/Launcher100=0px; General100 solo3743px de los dos textos
+nuevos, fuera de bbox(321,233)-(722,267)=0px. Standings0/292160px a tolerancia0;
+referencia, captura y mapa MIRADOS. Solo Hub llama al setter; Workshop/overlays no.
+Clic real(850,362) en «−» a125 aplica110 y persiste. Rueda6 pasos en General a125
+muestra Overlays. Resize1440→1920→1440 a125 y Ctrl0 conservan tamaño; preferencias
+reabren a125 sin enviar atajos, en shell QA aislada con rutas estables.
+
+Arnés externo enlaza las MISMAS librerías QA. WindowKind::Normal, mínimo1280×800:
+a90/100/125 rechaza solicitud1000×600 y mide1280×800 físicos; capturas MIRADAS.
+La shell comercial sin supervisor muestra acceso, por lo que no se autentica:
+reset/reapertura se prueban en PopUp QA y el mínimoNormal en ventana diagnóstica
+Normal del backend. No se confunde con validación de cuenta/servicios reales.
+Capturador externo de escritorio corregido para alinear cliente y reiniciar POINT
+antes de ClientToScreen; se conservan los intentos con8 columnas fuera del monitor.
+No es un cambio de producción ni un fallo de escala, hit-testing o nitidez.
+Límite visual: Inicio/Launcher1440 a125 envuelven/recortan contenido en tarjetas
+con altura fija; no se rediseña fuera del spike. Sin LMUlive, OBS, Mac, DPI125/150
+ni rendimiento. Sin Go/frontend por alcance; plan.md ausente en esta base.
+Informe C:/tmp/fase2/informe-1470-zoom-spike.md; capturas/logs/scripts/sellos r3-* en
+C:/tmp/1470-zoom-spike-evidence. Verificación: r3-matrix.ps1, r3-probe-build.ps1,
+r3-normal-shell-control.ps1 y r3-normal-verify.ps1; Native Normal con control/verify
+r3-backend-normal-*. Siguiente: revisión del orquestador. Sin push, PR, CI remoto,
+merge, promoción, release ni integración al candidato; checkout principal preservado.

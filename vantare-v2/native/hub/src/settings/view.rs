@@ -945,7 +945,7 @@ impl Hub {
                 .h_full(),
             )
     }
-    fn settings_zoom(cx: &gpui::App) -> gpui::Stateful<Div> {
+    fn settings_zoom(&self, cx: &Context<Self>) -> gpui::Stateful<Div> {
         div()
             .id("settings-zoom-control")
             .role(gpui::Role::Group)
@@ -965,6 +965,11 @@ impl Hub {
                     .flex()
                     .items_center()
                     .justify_center()
+                    .id("settings-zoom-less")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(-1, window, cx)),
+                    )
                     .child(text("−", 16.0, 700, orbit::ink_muted(cx), cx)),
             )
             .child(
@@ -977,7 +982,18 @@ impl Hub {
                     .border_l_1()
                     .border_r_1()
                     .border_color(rgba(orbit::line_row(cx)))
-                    .child(text("100%", 13.0, 700, orbit::ink(cx), cx)),
+                    .id("settings-zoom-reset")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(0, window, cx)),
+                    )
+                    .child(text(
+                        format!("{}%", self.settings.appearance.zoom_percent),
+                        13.0,
+                        700,
+                        orbit::ink(cx),
+                        cx,
+                    )),
             )
             .child(
                 div()
@@ -985,18 +1001,23 @@ impl Hub {
                     .flex()
                     .items_center()
                     .justify_center()
+                    .id("settings-zoom-more")
+                    .cursor_pointer()
+                    .on_click(
+                        cx.listener(|hub, _, window, cx| hub.settings_zoom_change(1, window, cx)),
+                    )
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
     fn settings_application(&self, compact: bool, cx: &Context<Self>) -> Div {
-        let zoom = Self::settings_zoom(cx);
+        let zoom = self.settings_zoom(cx);
         let interface = section_surface(
             "Interfaz",
             None,
             section_body()
                 .child(section_row(
-                    "Zoom de la interfaz",
-                    "Amplía o reduce toda la app. Atajos: Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rueda.",
+                    "Tamaño de la interfaz",
+                    "90, 100, 110 o 125 %. Atajos: Ctrl +, Ctrl − y Ctrl 0.",
                     zoom,
                     cx,
                 ))

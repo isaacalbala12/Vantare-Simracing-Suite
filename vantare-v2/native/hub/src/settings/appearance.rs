@@ -8,6 +8,9 @@ pub(crate) struct Store {
     pub settings: AppearanceSettings,
     path: PathBuf,
     observed: Option<Vec<u8>>,
+    pub zoom_percent: u16,
+    zoom_path: PathBuf,
+    zoom_observed: Option<Vec<u8>>,
 }
 impl Store {
     pub fn load(path: PathBuf) -> Result<Self, String> {
@@ -24,11 +27,37 @@ impl Store {
         )?;
         settings.contrast = settings.contrast.clamp(80, 120);
         settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
+        let zoom_path = path.with_file_name("hub-zoom.json");
+        let zoom_observed = match std::fs::metadata(&zoom_path) {
+            Ok(_) => Some(crate::files::read(&zoom_path, 128)?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(format!("inspeccionar zoom: {error}")),
+        };
+        let zoom_percent = zoom_observed.as_deref().map_or(Ok(100), |bytes| {
+            serde_json::from_slice::<u16>(bytes).map_err(|error| format!("leer zoom: {error}"))
+        })?;
+        if !matches!(zoom_percent, 90 | 100 | 110 | 125) {
+            return Err("Tamaño de interfaz no válido".into());
+        }
         Ok(Self {
             settings,
             path,
             observed,
+            zoom_percent,
+            zoom_path,
+            zoom_observed,
         })
+    }
+    pub fn save_zoom(&mut self, percent: u16) -> Result<(), String> {
+        if !matches!(percent, 90 | 100 | 110 | 125) {
+            return Err("Tamaño de interfaz no válido".into());
+        }
+        let bytes =
+            serde_json::to_vec(&percent).map_err(|error| format!("serializar zoom: {error}"))?;
+        crate::files::save(&self.zoom_path, &bytes, self.zoom_observed.as_deref())?;
+        self.zoom_observed = Some(bytes);
+        self.zoom_percent = percent;
+        Ok(())
     }
     pub fn save(&mut self, mut settings: AppearanceSettings) -> Result<(), String> {
         settings.contrast = settings.contrast.clamp(80, 120);
@@ -80,6 +109,28 @@ pub(super) fn wire(state: &State, window: &Window, cx: &mut Context<Hub>) {
     .detach();
 }
 impl Hub {
+    pub(crate) fn settings_zoom_restore(&mut self, window: &Window) {
+        if self.settings.appearance.zoom_percent != 100 {
+            self.settings.status =
+                vantare_ui::set_window_zoom(window, self.settings.appearance.zoom_percent).err();
+        }
+    }
+    pub(crate) fn settings_zoom_change(
+        &mut self,
+        direction: i8,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let percent = zoom_step(self.settings.appearance.zoom_percent, direction);
+        if percent == self.settings.appearance.zoom_percent {
+            return;
+        }
+        self.settings.status = match self.settings.appearance.save_zoom(percent) {
+            Ok(()) => vantare_ui::set_window_zoom(window, percent).err(),
+            Err(error) => Some(error),
+        };
+        cx.notify();
+    }
     pub(super) fn settings_appearance_apply(
         &mut self,
         settings: AppearanceSettings,
@@ -169,6 +220,19 @@ impl Hub {
     }
 }
 
+fn zoom_step(percent: u16, direction: i8) -> u16 {
+    let values = [90, 100, 110, 125];
+    let index = values
+        .iter()
+        .position(|value| *value == percent)
+        .unwrap_or(1);
+    match direction {
+        -1 => values[index.saturating_sub(1)],
+        1 => values[(index + 1).min(values.len() - 1)],
+        _ => 100,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,6 +246,32 @@ mod tests {
             "vantare-appearance-{label}-{}-{nonce}",
             std::process::id()
         ))
+    }
+    #[test]
+    fn zoom_persists_reopens_and_rejects_conflicts_and_invalid_values() {
+        let dir = directory("zoom");
+        let path = dir.join("appearance.json");
+        let mut store = Store::load(path.clone()).expect("default");
+        let mut stale = Store::load(path.clone()).expect("other");
+        assert_eq!(store.zoom_percent, 100);
+        for percent in [90, 100, 110, 125] {
+            store.save_zoom(percent).expect("save");
+            assert_eq!(
+                Store::load(path.clone()).expect("reopen").zoom_percent,
+                percent
+            );
+        }
+        assert!(stale.save_zoom(90).is_err());
+        assert_eq!(stale.zoom_percent, 100);
+        assert!(store.save_zoom(99).is_err());
+        std::fs::write(dir.join("hub-zoom.json"), b"99").expect("invalid");
+        assert!(Store::load(path).is_err());
+        assert_eq!(zoom_step(90, -1), 90);
+        assert_eq!(zoom_step(125, 1), 125);
+        assert_eq!(zoom_step(100, 1), 110);
+        assert_eq!(zoom_step(110, -1), 100);
+        assert_eq!(zoom_step(125, 0), 100);
+        std::fs::remove_dir_all(dir).expect("cleanup");
     }
     #[test]
     fn persists_all_preferences_and_keeps_the_last_applied_values_on_conflict() {

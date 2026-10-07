@@ -78,23 +78,60 @@ mod tests {
     }
     #[test]
     fn requested_photos_preserve_every_default_widget_projection() {
+        check_requested_projections(None);
+    }
+
+    #[test]
+    fn real_lmu_and_acc_photos_preserve_every_default_widget_projection() {
+        for scene in [
+            include_str!("../fixtures/telemetry-real/lmu47.snapshot.json"),
+            include_str!("../fixtures/telemetry-real/acc.snapshot.json"),
+            include_str!("../fixtures/telemetry-real/lmu-stale.snapshot.json"),
+            include_str!("../fixtures/telemetry-real/lmu-menu.snapshot.json"),
+        ] {
+            check_requested_projections(Some(scene));
+        }
+    }
+
+    fn check_requested_projections(real_scene: Option<&str>) {
         use std::{sync::Arc, time::Duration};
         let prefs = vantare_domain::format::Preferences::default();
-        for &kind in Kind::ALL {
-            let scene = std::fs::read_to_string(format!(
-                "{}/fixtures/{}.snapshot.json",
-                env!("CARGO_MANIFEST_DIR"),
-                kind.name()
-            ))
-            .expect("escena de paridad");
+        let mut configurations: Vec<_> = Kind::ALL
+            .iter()
+            .copied()
+            .map(Settings::default_for)
+            .collect();
+        if real_scene.is_some() {
+            // Opciones reales del inspector; los datos de las fotos no se modifican.
+            for json in [
+                r#"{"kind":"standings","classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}]}"#,
+                r#"{"kind":"standings","footerFirst":"totalLaps","footerSecond":"track"}"#,
+                r#"{"kind":"relative","classScope":"sameClass","columns":[{"metricId":"position"},{"metricId":"class"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"gap"},{"metricId":"bestLap"},{"metricId":"lastLap"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","lastLap"]}"#,
+                r#"{"kind":"head-to-head","target":"behind"}"#,
+            ] {
+                configurations.push(serde_json::from_str(json).expect("opciones del inspector"));
+            }
+        }
+        for (index, settings) in configurations.into_iter().enumerate() {
+            let kind = settings.kind();
+            let scene = real_scene.map_or_else(
+                || {
+                    std::fs::read_to_string(format!(
+                        "{}/fixtures/{}.snapshot.json",
+                        env!("CARGO_MANIFEST_DIR"),
+                        kind.name()
+                    ))
+                    .expect("escena de paridad")
+                },
+                str::to_owned,
+            );
             let mut snapshot = vantare_ipc::snapshot_from_json(&scene).expect("foto completa");
             let name = format!(
-                "vantare-demand-projection-{}-{}",
+                "vantare-demand-projection-{}-{}-{index}",
                 std::process::id(),
                 kind.name()
             );
             let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");
-            let settings = Settings::default_for(kind);
             let demand = settings.demand();
             let source = publisher.demand_source();
             let mut subscriber =
@@ -118,8 +155,8 @@ mod tests {
             widget.ingest(&snapshot, prefs);
             assert!(
                 !widget.ingest(&photo.snapshot, prefs),
-                "{}: la demanda cambia su proyección",
-                kind.name()
+                "{}: la demanda cambia su proyección con {settings:?}",
+                kind.name(),
             );
         }
     }

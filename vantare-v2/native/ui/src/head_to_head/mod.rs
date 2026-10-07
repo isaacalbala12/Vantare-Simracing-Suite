@@ -228,8 +228,8 @@ impl Widget {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{ClassGaps, Gaps, LapTimes, Positions, Sectors};
-        crate::demand::signals(33, &[Positions, Gaps, ClassGaps, LapTimes, Sectors])
+        use vantare_ipc::Signal::{Positions, Relative};
+        crate::demand::signals(33, &[Positions, Relative])
     }
 }
 
@@ -237,6 +237,53 @@ impl Settings {
 mod tests {
     use super::*;
     use vantare_domain::{Car, CarId, Player, Quality::Reliable};
+
+    #[test]
+    fn real_relative_progress_survives_the_requested_pipe() {
+        use std::{
+            sync::Arc,
+            time::{Duration, Instant},
+        };
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/telemetry-real/lmu47.snapshot.json"
+        ))
+        .expect("DTO congelado del corpus real");
+        let demand = Settings::default().demand();
+        let name = format!("vantare-h2h-real-{}", std::process::id());
+        let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");
+        let source = publisher.demand_source();
+        let mut subscriber =
+            vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
+                .expect("suscriptor");
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while source.mask() != demand.mask() {
+            assert!(Instant::now() < deadline, "demanda no aceptada");
+            std::thread::yield_now();
+        }
+        assert!(
+            snapshot
+                .state
+                .cars
+                .iter()
+                .any(|car| car.relative_laps.current().is_some())
+        );
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("foto real");
+        let photo = subscriber
+            .next_photo(Duration::from_secs(2))
+            .expect("foto pedida");
+        assert_eq!(snapshot.state.cars.len(), photo.snapshot.state.cars.len());
+        for (full, received) in snapshot.state.cars.iter().zip(&photo.snapshot.state.cars) {
+            assert_eq!(full.id, received.id);
+            assert_eq!(
+                full.relative_laps, received.relative_laps,
+                "progreso relativo perdido"
+            );
+            assert_eq!(full.relative_s, received.relative_s, "gap relativo perdido");
+        }
+        assert!(demand.contains(vantare_ipc::Signal::Relative));
+    }
 
     #[test]
     fn configured_direction_projects_the_selected_rival() {

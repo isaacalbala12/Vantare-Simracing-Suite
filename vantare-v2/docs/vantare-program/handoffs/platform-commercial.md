@@ -1382,14 +1382,12 @@ reintento con estado estructural aunque falten archivos ya eliminados.
 Regresión `native/packaging/uninstall-tests.ps1`: RED contra base, 2 PASS
 con fixtures, interrupción inyectada y datos conservados. Evidencia externa
 `C:/tmp/1472-arreglos-r2-evidence/`. Sin push, PR, promoción ni release.
-N-10 pendiente de contrato: beta_visible oculta Workshop; Studio y su preview
-renderizan en el Hub y no lanzan ese EXE. El flujo general de capturas de
-Workshop (workshop.rs:540 -> comparison.rs:197) sí lo necesita. candidate.ps1
-comparte inventario entre canales y exige igualdad con cargo metadata; el
-bootstrap schema=1 instalado no se reemplaza al actualizar. Una generación
-sin ese miembro no verifica con el bootstrap anterior. Retirarlo solo de beta
-requiere decidir compatibilidad de inventario/bootstrap o reinstalación; no
-se ejecuta ese cambio de contrato aquí ni se declara N-10 resuelto.
+N-10: la nota del orquestador confirma que beta aún no se ha distribuido y
+permite cambiar su inventario/bootstrap sin migración. Workshop oculto en beta;
+Studio/preview renderizan en el Hub y no dependen del EXE. Se excluyen Workshop
+y su sidecar solo del paquete beta (10 bins); continúa compilándose para
+desarrollo/paridad y los otros canales conservan sus 11 bins. Lectura de
+manifiesto/estado e importación usan el inventario del canal guardado.
 `docs/roadmap/plan.md` no existe en el checkout recibido. La nota R2 externa
 se recibió después del inicio y sus instrucciones de custodia USB se aplicaron.
 
@@ -1438,8 +1436,16 @@ services reemplazado por verificador aislado con pública TEST; versiones QA
 2 PASS y feed 3 PASS también en PS5.1. Paridad Standings Release contra GPUI
 #1470: 0/292160 píxeles distintos, umbral0/delta0; captura y diff inspeccionados.
 Evidencia: C:/tmp/1472-arreglos-r2-evidence/*-final.log,
-packaging-real-final-rerun.log, signed-walk-release.log y standings-final.png.
+packaging-n10-final.log, signed-walk-release-n10.log y standings-final.png.
 Sin prueba de firma privada productiva, GitHub real, NSIS, PostHog real ni
-LMU físico/DPI/OBS/Mac. Dos pendientes: contrato de recuperación v2 (#21) y
-compatibilidad del inventario/bootstrap (N-10). Solo commits locales; sin push,
+LMU físico/DPI/OBS/Mac. Pendiente: contrato de recuperación v2 (#21). Solo commits locales; sin push,
 PR, CI remota, integración/promoción ni release. Issue #1472 abierta para revisión.
+
+N-10 final: regresión beta RED antes del arreglo; suite Release sin Workshop
+174 PASS y recorrido firmado TEST install/update/uninstall PASS. Cuatro canales
+con fixtures: install/status/update/import/rollback PASS, incluso con valor de
+canal por defecto opuesto (channel-regressions-green.log). Workshop ausente
+en beta y presente en nightly/testers/master. Bootstrap antiguo de paquetes
+QA descartados no migra; no existen instalaciones beta distribuidas según
+nota del orquestador. Gates Rust/paridad no se repitieron: ningún cambio Rust
+ni visual después de los gates finales, solo packaging/docs y su validación.

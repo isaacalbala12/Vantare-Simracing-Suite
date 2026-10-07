@@ -45,6 +45,9 @@ $hash = Get-NativeHash $script:Package
 $script:TestRoot = Join-Path (Assert-NativePath $EvidenceDirectory) ('phase7-tests-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($script:TestRoot) | Out-Null
 Write-Output "Evidencia conservada en $script:TestRoot"
+if ($Channel -ceq 'beta') {
+    Assert-True ('vantare-workshop' -cnotin $script:NativeBins) 'beta excluye Workshop de su inventario'
+}
 
 $install = Join-Path $script:TestRoot 'installed with spaces'
 $state = Install-NativeCandidate $install $script:Package $hash $Channel
@@ -61,6 +64,15 @@ foreach ($fixture in $script:NativeFixtures) {
 & (Join-Path $active 'candidate.ps1') -Operation Status -Root $install | Out-Null
 Assert-True ($? -and (Test-Path -LiteralPath (Join-Path $install 'state.json'))) 'candidate instalado carga fuera del árbol de fuentes'
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $active 'bin/vantare-admin.exe'))) 'la miniapp owner no entra en el instalador público'
+Assert-True ((Test-Path -LiteralPath (Join-Path $active 'bin/vantare-workshop.exe')) -eq ($Channel -cne 'beta')) 'Workshop instalado solo fuera de beta'
+if ($Channel -ceq 'beta') {
+    $workshopArchive = New-TestArchive 'unexpected-workshop' {
+        param($zip)
+        $null = $zip.CreateEntry('bin/vantare-workshop.exe')
+        $null = $zip.CreateEntry('bin/vantare-workshop.exe.sha256')
+    }
+    Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'with-workshop') $workshopArchive (Get-NativeHash $workshopArchive) $Channel } 'beta rechaza Workshop añadido al ZIP'
+}
 Assert-Rejected { Install-NativeCandidate $install $script:Package $hash $Channel } 'no reinstala encima de datos activos'
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'bad-hash') $script:Package ('0' * 64) $Channel } 'rechaza SHA externo incorrecto'
 Assert-Rejected { Install-NativeCandidate (Join-Path $script:TestRoot 'no-hash') $script:Package '' $Channel } 'exige SHA externo'

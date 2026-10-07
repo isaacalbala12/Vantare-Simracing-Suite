@@ -186,14 +186,18 @@ Desde la raíz `vantare-v2`, con checkout limpio y dependencias Cargo cacheadas:
   -Channel nightly -BuildProfile Debug -OutputDirectory C:/tmp/isa-1454-evidence/phase7-build
 ```
 
-Compila todos los binarios del workspace (once en esta base), offline/locked con `-j 2`. `Release` es el
-perfil por defecto; `Debug` verifica packaging sin representar rendimiento de
-producto. Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
+Compila todos los binarios del workspace (once en esta base), offline/locked con `-j 2`.
+`Release` es el perfil por defecto; `Debug` verifica packaging sin representar
+rendimiento de producto. Beta empaqueta diez: excluye `vantare-workshop.exe` y su
+sidecar, pero sigue compilándolo para desarrollo y capturas de paridad en el repo.
+Los demás canales conservan Workshop. El inventario se verifica según el canal
+guardado en el manifiesto/estado, también al actualizar, importar o consultar Status.
+Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.
 
 La salida conserva `payload`, `portable-tree`, el paquete, portable e instalador
-script con sus SHA-256. El manifiesto enumera exactamente los once exe y sus sidecars SHA-256, el
+script con sus SHA-256. El manifiesto enumera exactamente los exe del canal y sus sidecars SHA-256, el
 script, README, licencia Inter y catálogo Cargo con versiones/licencias/source.
 Este catálogo **no es un SBOM ni una auditoría de distribución**. No publica
 releases ni ejecuta los workflows Wails.

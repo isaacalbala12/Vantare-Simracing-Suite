@@ -19,7 +19,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
-$script:NativeBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
+$script:NativeBuildBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
+function Get-NativeBins([string]$CandidateChannel) {
+    # Workshop sigue compilándose para desarrollo/paridad, pero no se distribuye en beta.
+    @($script:NativeBuildBins | Where-Object { $CandidateChannel -cne 'beta' -or $_ -cne 'vantare-workshop' })
+}
+$script:NativeBins = @(Get-NativeBins $Channel)
 # El Hub resuelve su catalogo de escenas en runtime: si los fixtures no viajan
 # junto al ejecutable, `vantare-hub.exe` no abre ventana en un equipo donde solo
 # se instalo el paquete. Se enumeran aqui para que entren tambien en el
@@ -93,7 +98,10 @@ $script:NativeFixtures = @(
     'bin/fixtures/track-weather.snapshot.json'
     'bin/fixtures/workshop-sources.json'
 )
-$script:NativeMembers = @($script:NativeBins | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + $script:NativeFixtures + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
+function Get-NativeMembers([string]$CandidateChannel) {
+    @((Get-NativeBins $CandidateChannel) | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + $script:NativeFixtures + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
+}
+$script:NativeMembers = @(Get-NativeMembers $Channel)
 
 function Get-NativeHash([string]$Path) {
     # Streaming .NET: el host instalado no depende del autoload de Get-FileHash.
@@ -187,13 +195,14 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
         $manifest.version -cnotmatch '^[0-9]+(?:\.[0-9]+){2,3}(?:-[a-z0-9][a-z0-9.-]{0,63})?$' -or
         $manifest.channel -cnotin @('nightly', 'testers', 'master', 'beta') -or
         ($ExpectedChannel -and $manifest.channel -cne $ExpectedChannel)) { throw 'Manifiesto, esquema o canal incompatible.' }
+    $members = @(Get-NativeMembers $manifest.channel)
     foreach ($item in Get-ChildItem -LiteralPath $Directory -File -Recurse -Force) {
         $relative = $item.FullName.Substring($Directory.Length + 1).Replace('\', '/')
-        if (-not $relative.StartsWith('data/') -and $relative -cnotin ($script:NativeMembers + @('manifest.json'))) { throw 'Archivo instalado no enumerado en el manifiesto.' }
+        if (-not $relative.StartsWith('data/') -and $relative -cnotin ($members + @('manifest.json'))) { throw 'Archivo instalado no enumerado en el manifiesto.' }
     }
     $seen = @{}
     foreach ($file in $manifest.files) {
-        if ($file.path -cnotin $script:NativeMembers -or $seen.ContainsKey($file.path) -or
+        if ($file.path -cnotin $members -or $seen.ContainsKey($file.path) -or
             $file.sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Lista de archivos inválida o duplicada.' }
         $seen[$file.path] = $true
         $actual = Get-Item -LiteralPath (Join-Path $Directory $file.path)
@@ -204,7 +213,7 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
             if ($sidecar -cne "$($file.sha256)  $($actual.Name)`n") { throw "Sidecar incorrecto: $($file.path)" }
         }
     }
-    if ($seen.Count -ne $script:NativeMembers.Count) { throw 'Faltan archivos obligatorios.' }
+    if ($seen.Count -ne $members.Count) { throw 'Faltan archivos obligatorios.' }
     $manifest
 }
 
@@ -221,7 +230,7 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
         $inputFile.Position = 0
         $zip = [IO.Compression.ZipArchive]::new($inputFile, [IO.Compression.ZipArchiveMode]::Read, $true)
         try {
-            $allowed = $script:NativeMembers + @('manifest.json')
+            $allowed = @(Get-NativeMembers $ExpectedChannel) + @('manifest.json')
             if ($zip.Entries.Count -ne $allowed.Count) { throw 'Número de miembros ZIP incorrecto.' }
             $seen = @{}; $total = 0L
             foreach ($entry in $zip.Entries) {
@@ -387,7 +396,7 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
         try {
             $id = [guid]::NewGuid().ToString('N')
             $generation = Join-Path $directory "generations/$id"
-            foreach ($member in ($script:NativeMembers + @('manifest.json'))) {
+            foreach ($member in (@(Get-NativeMembers $state.channel) + @('manifest.json'))) {
                 $from = Join-Path $source $member; $to = Join-Path $generation $member
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to)) | Out-Null
                 if ($member.EndsWith('.exe')) {
@@ -474,12 +483,12 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
         $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cne 'vantare-admin' } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
-        if (@(Compare-Object $script:NativeBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
+        if (@(Compare-Object $script:NativeBuildBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
     } finally { Pop-Location }
     $payload = Join-Path $destination 'payload'
     [IO.Directory]::CreateDirectory((Join-Path $payload 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses')) | Out-Null
-    foreach ($bin in $script:NativeBins) {
+    foreach ($bin in (Get-NativeBins $CandidateChannel)) {
         $source = Join-Path $metadata.target_directory ($Profile.ToLowerInvariant() + "/$bin.exe")
         Assert-NativePe $source
         $embedded = & $source --version
@@ -504,7 +513,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     # Catálogo de procedencia/licencias declaradas, no sustituye notices/SBOM revisado.
     $dependencies = @($metadata.packages | Sort-Object name, version | ForEach-Object { [ordered]@{ name = $_.name; version = $_.version; license = $_.license; source = $_.source } })
     Write-NativeJson (Join-Path $payload 'dependencies.json') $dependencies
-    $files = @($script:NativeMembers | ForEach-Object { $file = Get-Item -LiteralPath (Join-Path $payload $_); [ordered]@{ path = $_; size = $file.Length; sha256 = (Get-NativeHash $file.FullName) } })
+    $files = @((Get-NativeMembers $CandidateChannel) | ForEach-Object { $file = Get-Item -LiteralPath (Join-Path $payload $_); [ordered]@{ path = $_; size = $file.Length; sha256 = (Get-NativeHash $file.FullName) } })
     $manifest = [ordered]@{ schema = 1; product = 'vantare-native'; candidate = $true; channel = $CandidateChannel; version = $CandidateVersion; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile; architecture = 'windows-x64'; data_schema = 'opaque-v1'; files = $files }
     Write-NativeJson (Join-Path $payload 'manifest.json') $manifest
     $package = Join-Path $destination 'vantare-native-amd64-package.zip'

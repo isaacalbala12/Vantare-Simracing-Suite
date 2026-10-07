@@ -11,7 +11,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $betaOperation = $Operation
-. (Join-Path $PSScriptRoot 'candidate.ps1') -Root $Root -Archive $Archive -ExpectedSha256 $ExpectedSha256
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Root $Root -Archive $Archive -ExpectedSha256 $ExpectedSha256 -Channel beta
 $Operation = $betaOperation
 $script:BetaRepository = 'isaacalbala12/Vantare-Simracing-Suite'
 

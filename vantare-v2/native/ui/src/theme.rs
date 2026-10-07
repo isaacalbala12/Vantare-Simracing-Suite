@@ -365,7 +365,7 @@ mod tests {
         .expect("mtime distinto");
         assert!(live.poll(Design::GrafitoCarmin).expect("poll recuperado"));
         assert!(live.error.is_none());
-        assert_eq!(live.value.name, "DeepSeek Harness");
+        assert_eq!(live.value.name, "Harness");
         std::fs::remove_file(path).expect("limpiar");
     }
 }

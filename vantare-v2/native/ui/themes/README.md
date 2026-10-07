@@ -20,8 +20,8 @@ válido sin reiniciar. Una escritura parcial o inválida conserva el último tem
 válido y muestra el error. Colores RGB: enteros `0xRRGGBB` expresados en decimal
 JSON; bordes: `0xRRGGBBAA`. Radios, tipografía, sombras y geometría se validan.
 
-Grafito carmín corresponde a la especificación aprobada de ronda 8. DeepSeek
-Harness usa los neutros de la referencia oficial proporcionada en el brief;
+Grafito carmín corresponde a la especificación aprobada de ronda 8. Harness (id
+`deepseek-harness`, conservado por compatibilidad) usa los neutros de la referencia oficial proporcionada en el brief;
 Noche Le Mans y Piedra cálida son alternativas oscuras. No hay líneas verticales
 de acento: la selección usa superficie, borde, luz superior y color.
 

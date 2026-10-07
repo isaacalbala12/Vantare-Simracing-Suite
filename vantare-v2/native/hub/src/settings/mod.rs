@@ -90,7 +90,7 @@ impl Page {
                 "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
             }
             Self::Appearance => {
-                "paleta grafito carmín deepseek harness noche le mans piedra cálida contraste opacidad cristal fuentes animaciones"
+                "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes animaciones"
             }
             Self::Performance => {
                 "máximo alto equilibrado ahorro mínimo personalizado automático cadencia widgets hz coste"

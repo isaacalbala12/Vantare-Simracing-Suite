@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$Notes = '',
     [string]$ConfigFile,
+    [Parameter(Mandatory)][string]$SigningKeyFile,
     [string]$NsisCompiler = "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
     [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
     [switch]$AllowDirty
@@ -35,9 +36,10 @@ $manifest = [ordered]@{
     url = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"
     sha256 = $artifacts.sha256; notes = $Notes
 }
-$json = ConvertTo-Json $manifest
-$null = Read-BetaManifest $json
-Write-NativeJson (Join-Path $output 'vantare-native-beta.json') $manifest
+$verifier = Join-Path $output 'payload/bin/vantare-services.exe'
+$json = Invoke-BetaManifestTool $verifier (ConvertTo-Json $manifest) $SigningKeyFile
+$null = Read-BetaManifest $json $false $verifier
+[IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'), $json, [Text.UTF8Encoding]::new($false))
 & $compiler.Source "/DOUTPUT=$output" "/DBOOTSTRAP=$PSScriptRoot" "/DVERSION=$Version" "/DPACKAGE_SHA=$($artifacts.sha256)" (Join-Path $PSScriptRoot 'beta-installer.nsi')
 if ($LASTEXITCODE) { throw 'Falló NSIS; no hay instalador listo.' }
 $setup = Join-Path $output 'VantareSetup.exe'

@@ -578,3 +578,17 @@ Las ocho capturas finales fueron inspeccionadas, con HTML|GPUI y comparación
 antes/después. El aviso parity-capture de `analysis/view.rs:989` es previo a
 este bloque. No se ejecutaron Release ni pruebas físicas de interacción,
 LMU/OBS o escalas mixtas; frontend y Go no se modificaron.
+
+## Confianza de perfiles importados (#1472)
+
+El motor compartido por Hub y supervisor pide revisar los perfiles Wails antes
+ de abrir programas: muestra rutas y argumentos efectivos, incluidos Steam y
+Discord, con «Confiar y lanzar» y «Cancelar». Los disparadores de Windows,
+LMU y atajos usan la misma barrera; sin respuesta no ejecutan el perfil.
+La confianza se guarda por ID y SHA-256 del contenido y comandos resueltos en
+`Vantare/native/launcher-trust/`; cambiar instrucciones o rutas exige revisión.
+Las estadísticas de uso no invalidan la revisión. Duplicar conserva el origen
+importado, pero el ID nuevo exige confianza propia. Los perfiles creados aquí
+no requieren este paso. La marca histórica Wails también protege documentos
+anteriores que aún no tienen `imported`. No es aislamiento frente a malware
+que pueda modificar archivos del mismo usuario.

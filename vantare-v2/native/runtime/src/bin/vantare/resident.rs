@@ -292,6 +292,7 @@ impl Owner {
                     .filter(|d| d.id == decision && d.actions.contains(&action))
                     .and_then(|_| {
                         [
+                            launcher::chain::Action::Trust,
                             launcher::chain::Action::Reuse,
                             launcher::chain::Action::Restart,
                             launcher::chain::Action::Cancel,

@@ -28,8 +28,15 @@ pub mod report;
 #[cfg(feature = "network")]
 pub mod roadmap;
 pub mod storage;
+pub mod update_manifest;
 
 pub use error::{Error, Result};
+
+/// Huella de contenido para decisiones de confianza locales, nunca una firma.
+pub fn content_hash(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    format!("{:x}", Sha256::digest(bytes))
+}
 
 /// Entropía SO; no fingerprint ni identificador sintético ante fallo.
 pub fn random_id() -> Result<String> {

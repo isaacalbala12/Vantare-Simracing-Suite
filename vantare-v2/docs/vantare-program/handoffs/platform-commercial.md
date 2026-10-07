@@ -1,5 +1,69 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1472 — seguridad incorporada al candidato beta local (2026-10-07)
+Rama `vantareapp/isa-1470-candidato-beta`, base `dd90b49c`, worktree `C:/tmp/vw3-candidato`.
+Se incorpora `f18b842e` (contiene R2 `d1aa7fc2`) mediante segundo merge sin squash, después de widgets/telemetría `2ab5d362`.
+Seguridad de arranque/guardado/licencia/IPC/packaging/actualizador preservada; Launcher conserva visual r2 y añade Trust.
+El diagnóstico ya no espera Workshop en beta/testers. Regresión RED/PASS con inventario real; desarrollo/nightly/master sin cambio de inventario.
+Gates propios finales PASS: fmt/check/Clippy -D warnings, Nextest 1205/1205 con goldens ACC/LMU, lifecycle 17 escenarios. Un build de test RED reutilizado por mtime antiguo queda conservado; repetición final completa verde.
+Desinstalación normal/interrumpida con fixtures PASS en PS 5.1 y pwsh, datos preservados. QA beta.1/testers y 72 capturas opacas PASS; inspección y paquete Release en curso.
+Evidencia `C:/tmp/candidato-evidence`; continuidad `C:/tmp/fase2/informe-candidato.md`.
+No se prueba el feed contra GitHub real: prerelease autorizada por Isaac sigue pendiente. Sin push, PR, promoción, publicación, cuentas ni servicios remotos modificados.
+
+## ISA-1472 — decisiones de seguridad de Isaac (2026-10-07)
+
+Entrega local en `vantareapp/isa-1472-seguridad-decisiones`, worktree
+`C:/tmp/vw3-1472-decisiones`, base `d4a4e73a`. Implementación:
+`984909ea` revisión de perfiles, `7193b868` manifiesto firmado y `b3111fd0`
+crashes con campos cerrados. Pendiente de revisión del orquestador e Isaac;
+no integrado, promocionado ni publicado. Sin push, PR o CI remota.
+
+El actualizador exige el sobre Ed25519 antes de descargar y al aplicar,
+incluido modo local. Reutiliza licencia/services; no hay dependencias nuevas.
+La clave pública Ed25519 está fijada en `PUBLIC_KEY_BASE64` de
+`native/services/src/update_manifest.rs` desde `e8f3f11f`; no hay clave de
+test ni fallback productivo. Isaac custodia la privada en un USB, carpeta
+`vantare-claves\actualizador-ed25519.seed`, con letra de unidad variable.
+Firmar exige conectar el USB y pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed`; nunca copiar
+la semilla al disco. Este worker no accede al USB ni a la semilla. El firmador recibe una ruta explícita y no
+imprime claves. Procedimiento en `native/packaging/README.md`.
+El bootstrap antiguo necesita reinstalación para pasar al feed firmado.
+Pruebas locales con clave generada de TEST verifican el sobre y el feed;
+no equivalen a firma privada real, NSIS ni actualización desde GitHub.
+
+Los crashes enviados contienen código, versión conocida (o `unknown` para
+metadatos antiguos), SO y hasta 64 direcciones numéricas. No mensajes, rutas,
+binarios libres, timestamp ni UUID estable. La proyección protege también las
+colas antiguas; el hook local y Testing Center voluntario conservan su
+comportamiento. Fuera de Windows la pila es vacía. No es certificación integral
+de seguridad, SmartScreen/Authenticode ni validación de cuentas de producción.
+
+`cargo install cargo-audit --locked` y auditoría de `native/Cargo.lock`:
+cargo-audit 0.22.2, **0 vulnerabilidades**, DB
+`ef6173cbc5c50ec8166f9a5b28f07834144373ee`. Avisos pendientes, sin modificar
+dependencias: `paste 1.0.15` (RUSTSEC-2024-0436), `rustybuzz 0.20.1`
+(RUSTSEC-2026-0206), `ttf-parser 0.25.1` (RUSTSEC-2026-0192), sin mantenimiento;
+`yoke-derive 0.8.3`, yanked. No equivalen a vulnerabilidades demostradas ni se
+silencian. Evidencia íntegra `C:/tmp/1472-decisiones-evidence/audit.json`.
+
+Gates por la cola: fmt/check/clippy `-D warnings` PASS; nextest completo
+1188/1188, seis omisiones previas; tras el ajuste de perfiles históricos,
+check/clippy finales y 302/302 tests de Hub/supervisor PASS; lifecycle 5+12
+PASS. Standings Release propio: **0/292160 px**, umbral 0; captura, referencia
+y diff inspeccionados. Debug tuvo un píxel delta 1 en dos rondas; se conservan
+las capturas y logs, no se alteró la referencia. No hubo cambios en UI de
+Standings. Logs, hashes y capturas fuera del repo en
+`C:/tmp/1472-decisiones-evidence/`; informe de cierre
+`C:/tmp/fase2/informe-1472-decisiones.md`. No Go/TS/CSS modificados ni LMU vivo,
+DPI, instalador final o CI remota verificados. `docs/roadmap/plan.md` no existe
+en esta base; no se inventó otro roadmap ni se anunció disponibilidad pública.
+
+Siguiente acción: clave pública ya fijada (privada en el USB de Isaac);
+reconstruir y verificar el roundtrip firmado con el instalador y una
+prerelease real de GitHub antes de autorizar una promoción a nightly.
+
+
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
@@ -1320,3 +1384,78 @@ Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
 solo en Mac. No se declara promoción ni publicación.
 
 Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.
+## #1472 — arreglos R2 (2026-10-07, entrega local)
+
+Base recibida `e8f3f11f`, rama `vantareapp/isa-1472-seguridad-decisiones`.
+B-01: desinstalación por inventario, directorios vacíos de hijos a padres y
+reintento con estado estructural aunque falten archivos ya eliminados.
+Regresión `native/packaging/uninstall-tests.ps1`: RED contra base, 2 PASS
+con fixtures, interrupción inyectada y datos conservados. Evidencia externa
+`C:/tmp/1472-arreglos-r2-evidence/`. Sin push, PR, promoción ni release.
+N-10: la nota del orquestador confirma que beta aún no se ha distribuido y
+permite cambiar su inventario/bootstrap sin migración. Workshop oculto en beta;
+Studio/preview renderizan en el Hub y no dependen del EXE. Se excluyen Workshop
+y su sidecar solo del paquete beta (10 bins); continúa compilándose para
+desarrollo/paridad y los otros canales conservan sus 11 bins. Lectura de
+manifiesto/estado e importación usan el inventario del canal guardado.
+`docs/roadmap/plan.md` no existe en el checkout recibido. La nota R2 externa
+se recibió después del inicio y sus instrucciones de custodia USB se aplicaron.
+
+N-2: selección descendente de la primera release verificable; assets inválidos
+se omiten y byte[] se decodifica con UTF-8 estricto/detección BOM.
+Regresión con verificador Ed25519 aislado y clave generada TEST: RED base,
+3 PASS (string, UTF-8 bytes, UTF-16 BOM). GitHub real pendiente de prerelease
+autorizada; procedimiento en packaging/README.md, sin publicación en esta tarea.
+
+B-02: destino y raíces confiables canonicalizados antes de comparar componentes;
+los enlaces compartidos se identifican también por su ruta real. Test con
+junction real RED/GREEN y acceso propio a D: permitido. Gates de esta pasada:
+fmt, clippy workspace/all-targets -D warnings, nextest 1189 PASS (6 omitidos)
+y lifecycle PASS (0 fallos). Logs en 1472-arreglos-r2-evidence/*-b02.log.
+
+B-03: mapas de pilotos/clases acotados independientemente a 512 identidades;
+solo una identidad nueva agota su mapa. Regresión con 2000 clases y pilotos
+fijos RED/GREEN, conservando el número de pilotos. Árbol funcional final:
+fmt/check/clippy -D warnings PASS, nextest 1192 PASS (6 omisiones del perfil),
+lifecycle PASS (0 fallos). Sin cambio de datos del renderer ni telemetría inventada.
+Build Release PASS (-j 2, target aislado, cola autorizada).
+
+#21 parcial: legacy se carga independientemente de installation. Regresión
+con archivo guardado inválido y bytes DPAPI ilegibles: conserva fingerprint y
+Owner acepta una credencial v1 firmada y concede overlays_advanced. RED/GREEN;
+mismos gates completos del árbol final PASS, sin cambios funcionales posteriores.
+No se aparta/genera otra identidad v2: el servidor actual admite solo
+`deviceFingerprint`, no hay reenrolamiento autenticado del cliente ni reset de
+dispositivo. Recuperación v2 requiere contrato de servidor y queda documentada;
+se conserva fail-closed para v2 y no se cambia Store, cuenta ni datos reales.
+
+N-5: todos los eventos PostHog llevan `$ip: null` y `$geoip_disable: true`;
+Testing usa un UUID estable en namespace propio, diferente del de uso.
+Regresiones crashes/uso/identidad RED, 8 focales GREEN; mismos gates completos
+finales PASS sobre todo el árbol funcional, sin cambios posteriores de código.
+No borra vínculos históricos ni reescribe intentos de informe ya consentidos.
+No se envió telemetría a PostHog real ni se cambió su configuración remota.
+
+Validación de cierre R2: Release final PASS; packaging/tests.ps1 sobre paquete
+QA con binarios Release: 174 PASS (incluye CLI, launcher/hijos replay,
+rollback y muerte abrupta). Requirió DuckDB externo en PATH; no prueba una
+máquina Windows limpia. Recorrido firmado install/Stage/tamper reject/Apply/
+replay no-op/uninstall PASS, datos conservados. Usa payload Release excepto
+services reemplazado por verificador aislado con pública TEST; versiones QA
+0.1.0/0.1.1, no build ni firma distribuible de producción. Regresiones uninstall
+2 PASS y feed 3 PASS también en PS5.1. Paridad Standings Release contra GPUI
+#1470: 0/292160 píxeles distintos, umbral0/delta0; captura y diff inspeccionados.
+Evidencia: C:/tmp/1472-arreglos-r2-evidence/*-final.log,
+packaging-n10-final.log, signed-walk-release-n10.log y standings-final.png.
+Sin prueba de firma privada productiva, GitHub real, NSIS, PostHog real ni
+LMU físico/DPI/OBS/Mac. Pendiente: contrato de recuperación v2 (#21). Solo commits locales; sin push,
+PR, CI remota, integración/promoción ni release. Issue #1472 abierta para revisión.
+
+N-10 final: regresión beta RED antes del arreglo; suite Release sin Workshop
+174 PASS y recorrido firmado TEST install/update/uninstall PASS. Cuatro canales
+con fixtures: install/status/update/import/rollback PASS, incluso con valor de
+canal por defecto opuesto (channel-regressions-green.log). Workshop ausente
+en beta y presente en nightly/testers/master. Bootstrap antiguo de paquetes
+QA descartados no migra; no existen instalaciones beta distribuidas según
+nota del orquestador. Gates Rust/paridad no se repitieron: ningún cambio Rust
+ni visual después de los gates finales, solo packaging/docs y su validación.

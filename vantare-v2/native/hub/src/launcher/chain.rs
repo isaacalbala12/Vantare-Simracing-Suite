@@ -6,6 +6,7 @@ use super::{
     policy::{Close, Failure, Running},
     processes,
 };
+use std::fmt::Write as _;
 use std::{
     process::{Child, Command, Stdio},
     sync::{
@@ -39,6 +40,7 @@ pub struct Progress {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
+    Trust,
     Reuse,
     Restart,
     Cancel,
@@ -50,9 +52,10 @@ pub enum Action {
 impl Action {
     pub fn label(self) -> &'static str {
         match self {
+            Self::Trust => "Confiar y lanzar",
             Self::Reuse => "Reutilizar",
             Self::Restart => "Reiniciar",
-            Self::Cancel => "Cancelar cadena",
+            Self::Cancel => "Cancelar",
             Self::Stop => "Parar",
             Self::Continue => "Continuar",
             Self::Leave => "Dejar abiertas",
@@ -425,32 +428,10 @@ fn launch(
         .available()?;
     let identity =
         std::fs::canonicalize(executable).map_err(|e| format!("identidad del ejecutable: {e}"))?;
-    let mut args = step.args_override.as_ref().unwrap_or(&app.args).clone();
-    if app.id == "discord"
-        && executable
-            .file_name()
-            .is_some_and(|name| name.eq_ignore_ascii_case("Update.exe"))
-        && args.is_empty()
-    {
-        args = vec!["--processStart".into(), "Discord.exe".into()];
-    }
-    let steam_id = CATALOG
-        .iter()
-        .find(|known| known.id == app.id)
-        .and_then(|known| known.steam_id);
-    let child = if let Some(steam_id) = steam_id {
-        let steam = discovery
-            .steam_executable
-            .as_ref()
-            .ok_or("Steam no encontrado; no se puede lanzar el juego")?;
-        let mut steam_args = vec!["-applaunch".into(), steam_id.to_string()];
-        steam_args.extend(args);
-        command(steam, &steam_args, context.detached)?
-    } else {
-        command(executable, &args, context.detached)?
-    };
+    let (program, args, steam) = effective_command(app, step, discovery)?;
+    let child = command(program, &args, context.detached)?;
     let pid = child.id();
-    let dispatcher = if steam_id.is_some() {
+    let dispatcher = if steam {
         Some(child)
     } else {
         context
@@ -470,7 +451,43 @@ fn launch(
     ) {
         return Err("vista Launcher cerrada".into());
     }
-    probe(executable, steam_id.is_some(), pid, dispatcher, context)
+    probe(executable, steam, pid, dispatcher, context)
+}
+
+// Una sola resolución para lo mostrado en la revisión y lo ejecutado después.
+fn effective_command<'a>(
+    app: &App,
+    step: &Step,
+    discovery: &'a Discovery,
+) -> Result<(&'a std::path::Path, Vec<String>, bool), String> {
+    let executable = discovery
+        .app(&app.id)
+        .and_then(|app| app.executable.as_deref())
+        .ok_or("Ruta de aplicación no encontrada")?;
+    let mut args = step.args_override.as_ref().unwrap_or(&app.args).clone();
+    if app.id == "discord"
+        && executable
+            .file_name()
+            .is_some_and(|name| name.eq_ignore_ascii_case("Update.exe"))
+        && args.is_empty()
+    {
+        args = vec!["--processStart".into(), "Discord.exe".into()];
+    }
+    if let Some(steam_id) = CATALOG
+        .iter()
+        .find(|known| known.id == app.id)
+        .and_then(|known| known.steam_id)
+    {
+        let steam = discovery
+            .steam_executable
+            .as_deref()
+            .ok_or("Steam no encontrado; no se puede lanzar el juego")?;
+        let mut steam_args = vec!["-applaunch".into(), steam_id.to_string()];
+        steam_args.extend(args);
+        Ok((steam, steam_args, true))
+    } else {
+        Ok((executable, args, false))
+    }
 }
 
 fn probe(
@@ -528,6 +545,30 @@ fn probe(
 }
 
 fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &RunContext) {
+    if (profile.imported
+        || document.wails_import.as_ref().is_some_and(|import| {
+            import
+                .launcher
+                .get("launcherProfiles")
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|profiles| {
+                    profiles
+                        .iter()
+                        .any(|old| old["id"].as_str() == Some(profile.id.as_str()))
+                })
+        }))
+        && let Err(message) = review_import(document, profile, discovery, context)
+    {
+        emit(
+            &context.sender,
+            None,
+            Status::Cancelled,
+            None,
+            message,
+            false,
+        );
+        return;
+    }
     let policy = profile.effective_policy();
     let retries = if policy.retry == super::policy::Retry::All {
         policy.max_retries
@@ -545,6 +586,86 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
         }
     }
     finish(profile, context, success);
+}
+
+fn review_content(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+) -> Result<(String, String), String> {
+    // Contenido y comandos efectivos: también invalida la confianza si cambia discovery.
+    let mut commands = Vec::new();
+    let mut message = format!(
+        "Este perfil viene de fuera. Revisa lo que abrirá antes de continuar:\n{}\n",
+        profile.name
+    );
+    for step in &profile.steps {
+        let app = document
+            .apps
+            .iter()
+            .find(|app| app.id == step.app_id)
+            .ok_or("Aplicación no encontrada")?;
+        let executable = discovery
+            .app(&app.id)
+            .and_then(|app| app.executable.as_ref())
+            .ok_or("Ruta de aplicación no encontrada")?;
+        let (command, args, _) = effective_command(app, step, discovery)?;
+        write!(message, "\n{}\nArgumentos: {args:?}\n", command.display())
+            .map_err(|e| format!("Revisar argumentos: {e}"))?;
+        commands.push((executable, command, args));
+    }
+    let mut content = profile.clone();
+    // Estadísticas de uso no cambian las instrucciones que el usuario ha revisado.
+    content.launch_count = 0;
+    content.last_launched_at = None;
+    content.avg_chain_duration_ms = 0;
+    let bytes = serde_json::to_vec(&(content, commands, &discovery.steam_executable))
+        .map_err(|e| format!("Revisar perfil: {e}"))?;
+    Ok((vantare_services::content_hash(&bytes), message))
+}
+
+fn review_import(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+) -> Result<(), String> {
+    let root = vantare_services::diagnostics::data_root()
+        .map_err(|_| "No se pudo guardar la confianza del perfil")?
+        .join("launcher-trust");
+    review_at(document, profile, discovery, context, &root)
+}
+
+fn review_at(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+    root: &std::path::Path,
+) -> Result<(), String> {
+    let (hash, message) = review_content(document, profile, discovery)?;
+    let path = root.join(format!(
+        "{}.json",
+        vantare_services::content_hash(profile.id.as_bytes())
+    ));
+    let saved = if path
+        .try_exists()
+        .map_err(|e| format!("Leer confianza: {e}"))?
+    {
+        Some(super::files::read(&path, 64)?)
+    } else {
+        None
+    };
+    if saved.as_deref() == Some(hash.as_bytes()) {
+        return Ok(());
+    }
+    if context.ask(None, message, &[Action::Trust, Action::Cancel], false)? != Action::Trust
+        || context.cancel.cancelled()
+    {
+        return Err("Lanzamiento cancelado; no se abrió ninguna aplicación".into());
+    }
+    std::fs::create_dir_all(root).map_err(|e| format!("Guardar confianza: {e}"))?;
+    super::files::save(&path, hash.as_bytes(), saved.as_deref())
 }
 
 fn run_pass(
@@ -733,4 +854,132 @@ fn close_cancelled(
             .close_profile(&profile.id)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod trust_tests {
+    use super::*;
+    #[test]
+    fn cancel_never_remembers_trust_and_content_change_requires_review_again() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-trust-{}",
+            vantare_services::random_id().expect("test id")
+        ));
+        let document = Document::default();
+        let mut profile = Profile::new("outside".into(), "Externo".into());
+        profile.imported = true;
+        profile.steps.push(Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        });
+        let mut discovery = Discovery::default();
+        discovery.apps.push(discovery::Detected {
+            id: "obs".into(),
+            executable: Some(root.join("must-not-execute.exe")),
+            source: "test",
+            availability: discovery::Availability::default(),
+        });
+        let (sender, events) = mpsc::channel();
+        let (answers, replies) = mpsc::channel();
+        let context = RunContext {
+            cancel: Arc::new(Cancellation::default()),
+            sender,
+            answers: replies,
+            processes: Arc::new(Mutex::new(processes::Processes::default())),
+            next_decision: AtomicU64::new(1),
+            selected: vec![0],
+            detached: false,
+        };
+        answers.send((1, Action::Cancel)).expect("cancel");
+        assert!(review_at(&document, &profile, &discovery, &context, &root).is_err());
+        assert!(!root.exists());
+        let decision = events
+            .try_recv()
+            .expect("review")
+            .decision
+            .expect("decision");
+        assert_eq!(decision.actions, [Action::Trust, Action::Cancel]);
+        assert!(decision.message.contains("must-not-execute.exe"));
+        answers.send((2, Action::Trust)).expect("trust");
+        review_at(&document, &profile, &discovery, &context, &root).expect("accepted");
+        events.try_recv().expect("second review");
+        review_at(&document, &profile, &discovery, &context, &root).expect("remembered");
+        assert!(events.try_recv().is_err());
+        profile.steps[0].args_override = Some(vec!["changed".into()]);
+        answers.send((3, Action::Cancel)).expect("cancel changed");
+        assert!(review_at(&document, &profile, &discovery, &context, &root).is_err());
+        assert!(
+            events
+                .try_recv()
+                .expect("changed review")
+                .message
+                .contains("changed")
+        );
+        answers.send((4, Action::Trust)).expect("trust changed");
+        review_at(&document, &profile, &discovery, &context, &root)
+            .expect("new trust replaces old hash");
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn reviewed_content_changes_with_profile_arguments_and_resolved_paths() {
+        let mut document = Document::default();
+        let mut profile = Profile::new("imported".into(), "Perfil externo".into());
+        profile.imported = true;
+        profile.steps.push(Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        });
+        let mut discovery = Discovery::default();
+        discovery.apps.push(discovery::Detected {
+            id: "obs".into(),
+            executable: Some(std::path::PathBuf::from("C:/Programs/obs.exe")),
+            source: "test",
+            availability: discovery::Availability::default(),
+        });
+        let (hash, message) = review_content(&document, &profile, &discovery).expect("review");
+        assert!(message.contains("C:/Programs/obs.exe"));
+        profile.launch_count = 1;
+        assert_eq!(
+            hash,
+            review_content(&document, &profile, &discovery)
+                .expect("same commands")
+                .0
+        );
+        document
+            .apps
+            .iter_mut()
+            .find(|app| app.id == "obs")
+            .expect("obs")
+            .args
+            .push("--test".into());
+        assert_ne!(
+            hash,
+            review_content(&document, &profile, &discovery)
+                .expect("changed args")
+                .0
+        );
+        document
+            .apps
+            .iter_mut()
+            .find(|app| app.id == "obs")
+            .expect("obs")
+            .args
+            .clear();
+        discovery.apps[0].executable = Some(std::path::PathBuf::from("D:/Programs/obs.exe"));
+        assert_ne!(
+            hash,
+            review_content(&document, &profile, &discovery)
+                .expect("changed path")
+                .0
+        );
+        profile.name.push_str(" editado");
+        assert_ne!(
+            hash,
+            review_content(&document, &profile, &discovery)
+                .expect("changed profile")
+                .0
+        );
+    }
 }

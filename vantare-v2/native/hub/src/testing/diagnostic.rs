@@ -184,8 +184,14 @@ pub fn local_path(path: &Path) -> bool {
 }
 
 pub fn binaries(root: &Path) -> Vec<Binary> {
+    binaries_for_channel(root, crate::product::CHANNEL)
+}
+
+pub(super) fn binaries_for_channel(root: &Path, channel: &str) -> Vec<Binary> {
     BINARIES
         .into_iter()
+        // El paquete beta no distribuye Workshop; su build QA usa testers.
+        .filter(|name| !matches!(channel, "beta" | "testers") || *name != "vantare-workshop.exe")
         .map(|name| {
             let path = root.join(name);
             let (state, sha256) = if local_path(root) {

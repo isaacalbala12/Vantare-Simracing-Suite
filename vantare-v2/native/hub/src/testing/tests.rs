@@ -372,7 +372,14 @@ fn bcrypt_hash_matches_known_vector_and_inventory_ignores_unlisted_files() {
     fs::write(temp.0.join("private-token.exe"), b"secreto de prueba")
         .expect("archivo fuera de lista");
     let binaries = diagnostic::binaries(&temp.0);
-    assert_eq!(binaries.len(), 9);
+    assert_eq!(
+        binaries.len(),
+        if matches!(crate::product::CHANNEL, "beta" | "testers") {
+            8
+        } else {
+            9
+        }
+    );
     assert_eq!(binaries[0].state, "present");
     assert_eq!(
         binaries[0].sha256.as_deref(),
@@ -392,4 +399,44 @@ fn bcrypt_hash_matches_known_vector_and_inventory_ignores_unlisted_files() {
     large.set_len(512 * 1024 * 1024 + 1).expect("límite");
     drop(large);
     assert_eq!(diagnostic::binaries(&temp.0)[2].state, "unreadable");
+}
+
+#[test]
+fn diagnostic_inventory_only_reports_binaries_distributed_in_its_channel() {
+    let temp = Temp::new();
+    for channel in ["beta", "testers", "nightly", "master", "development"] {
+        let binaries = diagnostic::binaries_for_channel(&temp.0, channel);
+        let expected = if matches!(channel, "beta" | "testers") {
+            vec![
+                "vantare-hub.exe",
+                "vantare.exe",
+                "vantare-core.exe",
+                "vantare-overlays.exe",
+                "vantare-engineer.exe",
+                "vantare-storage.exe",
+                "vantare-grabar-lmu.exe",
+                "vantare-grabar-acc.exe",
+            ]
+        } else {
+            diagnostic::BINARIES.to_vec()
+        };
+        assert_eq!(
+            binaries
+                .iter()
+                .map(|binary| binary.name)
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert_eq!(
+            binaries
+                .iter()
+                .any(|binary| binary.name == "vantare-workshop.exe"),
+            !matches!(channel, "beta" | "testers")
+        );
+        assert!(
+            binaries
+                .iter()
+                .all(|binary| binary.state == "missing" && binary.sha256.is_none())
+        );
+    }
 }

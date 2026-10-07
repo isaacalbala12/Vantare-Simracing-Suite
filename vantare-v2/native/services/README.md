@@ -180,3 +180,17 @@ demuestran composición de UI, no Storage/Clerk/validación reales.
 Gates: fmt, Clippy, nextest workspace y lifecycle; compilación siempre `-j 2`.
 Para lifecycle usar `RUST_TEST_THREADS=2` y no argumentos de filtro: el harness
 propio de Runtime interpreta `--test-threads 2` como filtro `2`, omitiendo escenarios.
+
+## Informes automáticos de fallo (#1472)
+
+La salida de crashes contiene únicamente `code=native_panic`, versión de la
+build, SO y como máximo 64 direcciones numéricas de pila. No se simbolizan ni
+se envían mensajes de panic, rutas, nombres de binarios, timestamps o el UUID
+estable del usuario: PostHog usa el identificador fijo `native-crash` para
+estos eventos. También se descartan los campos de texto de la cola antigua.
+Windows captura las direcciones mediante RtlCaptureStackBackTrace; fuera de
+Windows se envía una pila vacía hasta contar con un capturador seguro.
+Los símbolos de la build se necesitan para interpretar las direcciones.
+El hook previo sigue recibiendo el panic para conservar el comportamiento
+local; esta política se refiere a la cola y el envío automático. Los informes
+voluntarios del Testing Center mantienen su preview y su contrato propio.

@@ -172,10 +172,10 @@ impl Store {
     /// cualquier campo extra, `devices.user_id` es UNIQUE y gana el primer
     /// dispositivo, y `binding`/`authority` viven en OTRO almacen-. El motivo real
     /// es que aqui el unico camino a una identidad nueva es ENOENT: 14 formas
-    /// de corrupcion devuelven `Err` y ninguna acuna identidad. Lo que si falta es
-    /// desacoplar `legacy` de `installation`, porque hoy comparten un unico
-    /// `Result` y un `installation` corrupto deja el nucleo SIN NINGUN derecho,
-    /// incluido el camino v1 que no usa ese fichero.
+    /// de corrupcion devuelven `Err` y ninguna acuna identidad. El nucleo carga
+    /// `legacy` y `installation` por separado para conservar el camino v1 si
+    /// falla v2. La recuperacion de v2 sigue pendiente de un reenrolamiento
+    /// autenticado en el servidor; cuarentena sola no permite volver a vincular.
     /// Tampoco se usa con el recargado posterior al login, que no es un `restore`.
     pub fn quarantine(&self, name: &str) {
         let Ok(path) = self.path(name) else {

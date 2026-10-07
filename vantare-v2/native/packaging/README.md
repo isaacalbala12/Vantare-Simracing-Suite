@@ -74,7 +74,7 @@ La confirmación prueba apertura, no login remoto, juego ni sesión prolongada.
 Las generaciones se conservan; no hay purga automática ni migración de esquema.
 El bootstrap schema 1 queda fijo durante Update; cambiar scripts instalados
 requiere reinstalación/revisión. SHA-256 prueba integridad sobre GitHub HTTPS;
-no se ofrece firma de artefactos.
+el manifiesto del feed exige firma Ed25519; no se ofrece Authenticode.
 
 Los datos beta viven en la generación (`data/`); el Hub y sus hijos heredan
 `VANTARE_NATIVE_DATA_ROOT`. Layout, ajustes, servicios y derechos no se escriben
@@ -97,6 +97,7 @@ Desde `vantare-v2`, en el SHA integrado y limpio:
 ```powershell
 powershell -NoProfile -File native/packaging/publish-beta.ps1 `
   -Version 0.1.0 -OutputDirectory C:/tmp/isa-1432-beta-build `
+  -SigningKeyFile <ruta-privada-elegida-por-Isaac> `
   -ConfigFile C:/tmp/beta/build-config/beta-dev-clerk.env `
   -Notes 'Notas revisadas por el orquestador'
 ```
@@ -185,14 +186,18 @@ Desde la raíz `vantare-v2`, con checkout limpio y dependencias Cargo cacheadas:
   -Channel nightly -BuildProfile Debug -OutputDirectory C:/tmp/isa-1454-evidence/phase7-build
 ```
 
-Compila todos los binarios del workspace (once en esta base), offline/locked con `-j 2`. `Release` es el
-perfil por defecto; `Debug` verifica packaging sin representar rendimiento de
-producto. Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
+Compila todos los binarios del workspace (once en esta base), offline/locked con `-j 2`.
+`Release` es el perfil por defecto; `Debug` verifica packaging sin representar
+rendimiento de producto. Beta empaqueta diez: excluye `vantare-workshop.exe` y su
+sidecar, pero sigue compilándolo para desarrollo y capturas de paridad en el repo.
+Los demás canales conservan Workshop. El inventario se verifica según el canal
+guardado en el manifiesto/estado, también al actualizar, importar o consultar Status.
+Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.
 
 La salida conserva `payload`, `portable-tree`, el paquete, portable e instalador
-script con sus SHA-256. El manifiesto enumera exactamente los once exe y sus sidecars SHA-256, el
+script con sus SHA-256. El manifiesto enumera exactamente los exe del canal y sus sidecars SHA-256, el
 script, README, licencia Inter y catálogo Cargo con versiones/licencias/source.
 Este catálogo **no es un SBOM ni una auditoría de distribución**. No publica
 releases ni ejecuta los workflows Wails.
@@ -318,3 +323,61 @@ necesitan Pester. El smoke solo verifica carga del exe y rechazo de argumentos,
 sin abrir juego, ventana GPUI ni red. La inspección PE local de Core/Overlays
 detecta `VCRUNTIME140.dll`; Overlays también importa `icuuc.dll`, DX11 y
 `d3dcompiler_47.dll`. Que carguen en este PC no prueba Windows 10 limpio.
+
+## Firma del manifiesto (#1472)
+
+La clave PÚBLICA Ed25519 está en `PUBLIC_KEY_BASE64`
+(`native/services/src/update_manifest.rs`). La semilla privada (32 bytes
+binarios) se generó el 2026-10-07 y la custodia Isaac en un USB, carpeta
+`vantare-claves\actualizador-ed25519.seed` (letra de unidad variable).
+Para firmar: conectar el USB y pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed`.
+**No copiar la semilla al disco, logs ni repo.** Retirar el USB al terminar;
+Isaac conserva una copia de seguridad offline bajo su custodia. Si se pierde, ninguna
+instalación podrá recibir actualizaciones firmadas y habrá que reinstalar con
+una clave nueva. No hay clave de test, clave obtenida del feed ni parámetro
+para reemplazar la clave del verificador. Instalaciones con el bootstrap
+antiguo sin firma necesitan reinstalación.
+
+El JSON anterior es el contenido firmado, no el asset publicado. El asset
+`vantare-native-beta.json` tiene exactamente `payload` (bytes UTF-8 del JSON
+en base64) y `signature` (firma Ed25519 de esos bytes en base64). Reescribir el
+JSON dentro del payload invalida la firma. El verificador es `vantare-services`
+de la generación instalada, verificada por los hashes del inventario.
+Se comprueba la firma antes del staging y otra vez al aplicar; pending.json
+conserva el sobre firmado. `-LocalManifest` también exige firma.
+
+Isaac custodia su semilla privada de 32 bytes binarios fuera del repo. Esta
+implementación no genera ninguna clave privada real ni la imprime. Pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed` a `publish-beta.ps1`; el archivo se lee
+solo en el proceso firmador, con buffers zeroize. No ponerlo en logs ni Git.
+Para firmar por separado un JSON revisado:
+
+```powershell
+pwsh -File native/packaging/sign-beta-manifest.ps1 -Manifest <json-revisado> -Output <asset-firmado> -ServicesExecutable <vantare-services.exe> -SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed
+```
+
+El script también acepta la ruta desde `VANTARE_UPDATE_SIGNING_KEY_FILE`.
+No es una variable con el valor secreto. Solo escribe el sobre firmado y lo
+verifica con la clave pública embebida antes de guardarlo. Firma de manifiesto
+y SHA-256 autenticado del ZIP no sustituyen Authenticode/SmartScreen.
+Las pruebas Rust generan sus claves de test en memoria y comprueban ausencia
+de firma, cambio de contenido, clave ajena y campos desconocidos.
+El smoke beta anterior usa manifiestos sin firma y requiere adaptación con
+artefactos firmados por Isaac para probar una actualización positiva real.
+
+### Prueba del feed remoto firmado (#1472 R2)
+
+Regresión local (sin red): `remote-feed-tests.ps1 -TestVerifier <exe aislado con
+clave pública de TEST> -SigningKeyFile <semilla de TEST>`. El feed simulado
+incluye versiones inválidas `99999.0.0` y `65535.0.0`, un asset ajeno y una
+versión menor firmada. Comprueba selección descendente y contenido string,
+UTF-8 bytes y UTF-16 con BOM; no modifica la clave productiva.
+
+Prueba real pendiente, **solo cuando Isaac autorice una prerelease**: construir
+instalador inicial y actualización con la clave pública productiva fijada;
+Isaac firma fuera del repo. Publicar la prerelease autorizada y su manifiesto,
+instalar la anterior en una cuenta de prueba, ejecutar Check sin LocalManifest,
+verificar versión/notas, reiniciar y confirmar Apply/arranque y datos conservados.
+Guardar tags, hashes, log y capturas; desinstalar esa instalación de prueba.
+No publicar una versión inválida para simular el ataque en el feed real.

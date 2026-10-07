@@ -12,6 +12,33 @@ use vantare_services::{
 
 fn run() -> vantare_services::Result<()> {
     let mut args: Vec<_> = std::env::args().skip(1).collect();
+    if args
+        .first()
+        .is_some_and(|arg| matches!(arg.as_str(), "--verify-update" | "--sign-update"))
+    {
+        use std::io::{Read, Write};
+        let mut input = Vec::new();
+        std::io::stdin()
+            .take(65537)
+            .read_to_end(&mut input)
+            .map_err(|_| vantare_services::Error::Protocol)?;
+        let output = match args.as_slice() {
+            [operation] if operation == "--verify-update" => {
+                vantare_services::update_manifest::verify(&input)?
+            }
+            [operation, key_file] if operation == "--sign-update" => {
+                vantare_services::update_manifest::sign_file(
+                    &input,
+                    std::path::Path::new(key_file),
+                )?
+            }
+            _ => return Err(vantare_services::Error::Protocol),
+        };
+        std::io::stdout()
+            .write_all(&output)
+            .map_err(|_| vantare_services::Error::Protocol)?;
+        return Ok(());
+    }
     if args.as_slice() == ["--diagnostics"] {
         let _worker = vantare_services::diagnostics::Worker::start()?;
         // EOF del supervisor es cancelación; este modo no abre cuenta, DB ni IPC.

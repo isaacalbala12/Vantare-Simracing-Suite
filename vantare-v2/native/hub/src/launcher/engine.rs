@@ -132,6 +132,8 @@ pub struct Step {
 #[serde(deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)] // Preferencias independientes y compatibilidad de los dos flags v1.
 pub struct Profile {
+    #[serde(default)]
+    pub imported: bool,
     pub id: String,
     pub name: String,
     pub favorite: bool,
@@ -163,6 +165,7 @@ pub struct Profile {
 impl Profile {
     pub fn new(id: String, name: String) -> Self {
         Self {
+            imported: false,
             id,
             name,
             favorite: false,
@@ -458,12 +461,25 @@ impl Store {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("inspeccionar Launcher: {error}")),
         };
-        let document = saved
+        let mut document = saved
             .as_deref()
             .map(serde_json::from_slice::<Document>)
             .transpose()
             .map_err(|e| format!("Launcher inválido: {e}"))?
             .unwrap_or_default();
+        // Conserva el origen al editar o duplicar perfiles importados por versiones anteriores.
+        if let Some(imported) = document
+            .wails_import
+            .as_ref()
+            .and_then(|import| import.launcher.get("launcherProfiles"))
+            .and_then(serde_json::Value::as_array)
+        {
+            for profile in &mut document.profiles {
+                profile.imported |= imported
+                    .iter()
+                    .any(|old| old["id"].as_str() == Some(profile.id.as_str()));
+            }
+        }
         document.validate()?;
         Ok(Self {
             document,
@@ -508,6 +524,9 @@ pub fn is_trusted_install_path(path: &Path) -> bool {
     }
     #[cfg(windows)]
     {
+        let Ok(real) = std::fs::canonicalize(path) else {
+            return false;
+        };
         [
             "ProgramFiles",
             "ProgramFiles(x86)",
@@ -518,7 +537,8 @@ pub fn is_trusted_install_path(path: &Path) -> bool {
         ]
         .into_iter()
         .filter_map(std::env::var_os)
-        .any(|root| under_ascii_case(path, Path::new(&root)))
+        .filter_map(|root| std::fs::canonicalize(Path::new(&root)).ok())
+        .any(|root| under_ascii_case(&real, &root))
     }
     #[cfg(unix)]
     {

@@ -307,9 +307,8 @@ impl Translator {
         // nuevo por coche y fotograma y el mapa crece durante toda la sesion.
         // Al agotarse se vacia: solo pierde estabilidad de id quien esta
         // excediendo el maximo de coches de una carrera real.
-        if self.drivers.len() >= IDENTITY_BUDGET {
+        if self.drivers.len() >= IDENTITY_BUDGET && !self.drivers.contains_key(&vehicle.driver) {
             self.drivers.clear();
-            self.classes.clear();
         }
         let next_driver = self.drivers.len();
         let driver = *self
@@ -317,6 +316,9 @@ impl Translator {
             .entry(vehicle.driver.clone())
             .or_insert(DriverId(u32::try_from(next_driver).unwrap_or(u32::MAX)));
         let class = (!vehicle.class.is_empty()).then(|| {
+            if self.classes.len() >= IDENTITY_BUDGET && !self.classes.contains_key(&vehicle.class) {
+                self.classes.clear();
+            }
             let next_class = self.classes.len();
             Class {
                 id: *self
@@ -999,5 +1001,22 @@ mod tests {
             translator.drivers.len()
         );
         assert!(translator.classes.len() <= IDENTITY_BUDGET);
+    }
+    #[test]
+    fn changing_classes_with_fixed_drivers_are_bounded_independently() {
+        let mut translator = translator();
+        let mut driver_count = None;
+        for round in 0..2_000_u32 {
+            let mut frame = REAL_44.to_vec();
+            frame[1_700..1_708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let name = format!("class{round:08}");
+            let at = SCORING_BASE + 200;
+            frame[at..at + 32].fill(0);
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+            let _ = translator.observe(&frame, BUILD, ms(u64::from(round) * 16));
+            let fixed_count = *driver_count.get_or_insert(translator.drivers.len());
+            assert_eq!(translator.drivers.len(), fixed_count);
+            assert!(translator.classes.len() <= IDENTITY_BUDGET);
+        }
     }
 }

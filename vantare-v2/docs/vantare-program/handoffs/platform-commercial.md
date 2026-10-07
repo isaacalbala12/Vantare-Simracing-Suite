@@ -1397,3 +1397,10 @@ los enlaces compartidos se identifican también por su ruta real. Test con
 junction real RED/GREEN y acceso propio a D: permitido. Gates de esta pasada:
 fmt, clippy workspace/all-targets -D warnings, nextest 1189 PASS (6 omitidos)
 y lifecycle PASS (0 fallos). Logs en 1472-arreglos-r2-evidence/*-b02.log.
+
+B-03: mapas de pilotos/clases acotados independientemente a 512 identidades;
+solo una identidad nueva agota su mapa. Regresión con 2000 clases y pilotos
+fijos RED/GREEN, conservando el número de pilotos. Árbol funcional final:
+fmt/check/clippy -D warnings PASS, nextest 1192 PASS (6 omisiones del perfil),
+lifecycle PASS (0 fallos). Sin cambio de datos del renderer ni telemetría inventada.
+Build Release y validación de paquete/paridad aún en curso.

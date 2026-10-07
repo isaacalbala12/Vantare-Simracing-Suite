@@ -26,6 +26,37 @@ Manual en Mac, desde `vantare-v2/native`, con `/opt/homebrew/bin` en PATH:
 Diff revisado; entrega local lista para revisión del orquestador, sin aceptación
 ni integración/promoción. Siguiente: revisar #1471 y resolver gates en #1489.
 `docs/roadmap/plan.md` ausente en esta base; no se crea un roadmap alternativo.
+/^>>>>>>> vantareapp/isa-1481-derivar-siempre$/d
+## #1481 — derivaciones independientes de overlays — 2026-10-07
+
+Encargo vigente: GitHub #1481, base `5924264284cc19c8f1e71a920c1e0fbe8e418602`,
+rama `vantareapp/isa-1481-derivar-siempre`, worktree `C:/tmp/vw3-1481-derivar`.
+Entrega local para review del orquestador; sin Notion disponible ni push/PR/merge/release.
+Tres regresiones fallan en la base y pasan con el arreglo: cambio de demanda pierde
+consumo/historial, máscara cero pierde referencia delta y canal de eventos sin widgets
+recibe derivados ausentes. El núcleo deriva en cada observación y alimenta ambos
+trackers, conservando la excepción de pausa y los resets por sesión/coche/dato inválido.
+La demanda solo notifica una nueva revisión para la hidratación que exige el IPC
+actual; esa notificación no deriva, no genera hechos ni muestras y conserva el origen.
+No cambia DTO/protocolo, filtro/cadencia por suscriptor, arquitectura ni dependencias.
+Gates PASS: fmt/check/Clippy -D warnings; Nextest 1213/1213 (6 skips existentes);
+lifecycle 5+13, sin fallos. Paridad Standings nativa 0/292160 px, umbral 0/delta 0,
+captura/base/diff inspeccionados. UI y su cierre de dependencias coinciden con
+`59242642` y excluyen runtime: la referencia nativa se captura con esos inputs
+verificados. El PNG versionado de Wails no es el baseline nativo de regresión.
+Medición Release con `paint-stats`, mismo LMU47 y máscara cero, sin compilaciones:
+3839 derivaciones por brazo; media `Stage::Derive` 1,07 → 10,83 µs/llamada;
+CPU total del núcleo 1,844 → 1,906 s en ventanas de 65 s; ambos cierran con 0,
+sin errores de ciclos. Una toma por brazo: no certifica CPU/FPS de LMU live ni OBS.
+La reserva de todos los huecos libres evita contención; dos intentos anteriores
+de espera agotaron sus 12 minutos. Sin microoptimizaciones ni cambios al banco.
+Evidencia externa: `C:/tmp/1481-derivar-evidence/`; informe de entrega:
+`C:/tmp/fase2/informe-1481-derivar.md`. No hay `docs/roadmap/plan.md` en esta base;
+no se crea un roadmap paralelo. Memoria y skill local ponytail: lectura bloqueada
+por revisión automática del entorno; se aplica la solución mínima del brief.
+Siguiente: review del diff y evidencia por el orquestador; Isaac valida en LMU live
+el historial y la referencia tras ocultar Fuel/Delta o reiniciar overlays, y el
+rendimiento de producto. Entrega local; no aceptación ni integración/promoción.
 
 ## #1474 — revisión nativa LMU/ACC — 2026-10-06
 

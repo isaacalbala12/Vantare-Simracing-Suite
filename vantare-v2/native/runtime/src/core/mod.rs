@@ -25,7 +25,7 @@ pub use merge::Reject;
 pub use publish::Reader;
 
 use crate::flows::{Cursor, Journal, Series};
-use merge::{Trackers, merge_requested, stale};
+use merge::{Trackers, merge_validated, stale};
 use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
@@ -190,11 +190,10 @@ impl Core {
         self.publisher.subscribe()
     }
 
-    /// La demanda aceptada se deriva en el siguiente tick. Los datos nativos
-    /// siguen disponibles para journal/series, aunque no salgan por el IPC visual.
+    /// Notifica una nueva suscripción: el IPC exige una revisión posterior
+    /// a su registro, incluso sin adquisición nueva. No altera las derivaciones.
     pub fn set_demand(&mut self, demand: vantare_ipc::Demand) {
         if self.demand != demand {
-            self.trackers.demand_changed(&demand);
             self.demand = demand;
             self.demand_pending = true;
         }
@@ -215,12 +214,8 @@ impl Core {
         }
         self.demand_pending = false;
         let mut snapshot = (*self.current).clone();
-        derive::derive_requested(&mut snapshot.state, &self.demand);
-        if snapshot.state.source_state != SourceState::Paused {
-            self.trackers.derive(&mut snapshot.state, &self.demand);
-        }
         snapshot.sequence += 1;
-        // Reproyectar no es una adquisición: no añade muestras a series ni hechos.
+        // Notificar una suscripción no es una adquisición: no añade muestras a series ni hechos.
         self.current = Arc::new(snapshot);
         self.publisher.publish(Arc::clone(&self.current));
     }
@@ -263,12 +258,11 @@ impl Core {
         let origin = observation.origin;
         let paused = observation.state.source_state == SourceState::Paused;
         let advanced = origin.source_time.is_none() || origin.source_time != self.last_source_time;
-        let mut snapshot = merge_requested(
+        let mut snapshot = merge_validated(
             Some(&self.current),
             observation,
             self.epoch,
             &mut self.trackers,
-            &self.demand,
             !self.measurement_skip_validation,
         )?;
         self.demand_pending = false;
@@ -824,71 +818,126 @@ mod tests {
         assert_eq!(old.sequence, 2);
         assert_eq!(old.state.cars[0].position, Quality::Stale(1));
     }
-    #[test]
-    fn demand_skips_derivations_and_a_new_widget_is_hydrated_on_the_next_tick() {
-        use vantare_ipc::{Demand, Signal};
+
+    fn measured_core() -> Core {
         let mut core = Core::new(1);
-        core.set_demand(Demand::default());
-        core.observe(observation(ms(0), ms(0), 0.5))
-            .expect("observación");
-        assert_eq!(
-            core.snapshot().state.cars[1].gap_ahead,
-            Quality::Unavailable
-        );
-        let mut wanted = Demand::default();
-        wanted.request(Signal::Gaps, 250);
-        core.set_demand(wanted);
-        let mut adapter = Script::default();
-        core.step(&mut adapter, ms(10))
-            .expect("tick sin adquisición nueva");
-        assert_eq!(
-            core.snapshot().state.cars[1].gap_ahead,
-            Quality::Estimated(Gap::Time { seconds: 2.0 })
-        );
-        assert_eq!(core.snapshot().sequence, 2);
-        core.set_demand(Demand::default());
-        core.observe(observation(ms(20), ms(20), 0.5))
-            .expect("nuevo layout");
-        assert_eq!(
-            core.snapshot().state.cars[1].gap_ahead,
-            Quality::Unavailable
-        );
-        assert_eq!(
-            core.snapshot()
-                .state
-                .player
-                .expect("jugador")
-                .telemetry
-                .throttle,
-            Quality::Reliable(0.5)
-        );
+        for (at, lap, level, distance, elapsed) in [
+            (0, 0, 100.0, 100.0, 0.5),
+            (100, 1, 100.0, 0.0, 0.0),
+            (200, 1, 98.0, 100.0, 0.5),
+            (300, 2, 96.0, 0.0, 0.0),
+        ] {
+            core.observe(lap_photo(ms(at), lap, level, distance, elapsed))
+                .expect("referencia");
+        }
+        core
     }
 
     #[test]
-    fn turning_fuel_demand_off_does_not_infer_consumption_across_the_gap() {
+    fn demand_changes_preserve_fuel_history_and_measure_hidden_laps() {
         use vantare_ipc::{Demand, Signal};
+        let mut without_fuel = Demand::default();
+        without_fuel.request(Signal::Delta, 100);
+        for demand in [Demand::default(), without_fuel] {
+            let mut core = measured_core();
+            let before = core.snapshot().state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(before.per_lap_l, Quality::Estimated(4.0));
+            core.set_demand(demand);
+            core.observe(lap_photo(ms(400), 2, 94.0, 50.0, 0.25))
+                .expect("oculto");
+            let hidden = core.snapshot();
+            let fuel = &hidden.state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(fuel.per_lap_l, before.per_lap_l);
+            assert_eq!(fuel.history, before.history);
+            core.observe(lap_photo(ms(450), 3, 90.0, 0.0, 0.0))
+                .expect("meta oculta");
+            core.set_demand_mask(Demand::all().mask());
+            core.observe(lap_photo(ms(500), 3, 89.0, 10.0, 0.1))
+                .expect("visible");
+            let photo = core.snapshot();
+            let fuel = &photo.state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(fuel.per_lap_l, Quality::Estimated(5.0));
+            assert_eq!(&fuel.history[..2], &[Some((1, 4.0)), Some((2, 6.0))]);
+        }
+    }
+
+    #[test]
+    fn demand_changes_preserve_delta_reference() {
+        let mut core = measured_core();
+        core.set_demand_mask(0);
+        core.observe(lap_photo(ms(400), 2, 95.0, 50.0, 0.15))
+            .expect("oculto");
+        let delta = core
+            .snapshot()
+            .state
+            .player
+            .as_ref()
+            .expect("jugador")
+            .delta_best_s;
+        assert!((delta.current().expect("referencia conservada") + 0.1).abs() < 1e-9);
+        core.set_demand_mask(vantare_ipc::Demand::all().mask());
+        core.observe(lap_photo(ms(450), 2, 94.0, 60.0, 0.2))
+            .expect("visible");
+        let delta = core
+            .snapshot()
+            .state
+            .player
+            .as_ref()
+            .expect("jugador")
+            .delta_best_s;
+        assert!((delta.current().expect("referencia al volver") + 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn event_consumer_receives_derivations_without_overlay_demand() {
+        use crate::flows::wire::{self, Frame};
+        use vantare_domain::{Class, ClassId};
         let mut core = Core::new(1);
-        core.observe(lap_photo(ms(0), 0, 100.0, 50.0, 0.25))
-            .expect("inicio");
-        core.observe(lap_photo(ms(100), 1, 100.0, 0.0, 0.0))
-            .expect("meta");
-        core.set_demand(Demand::default());
-        core.observe(lap_photo(ms(200), 2, 90.0, 0.0, 0.0))
-            .expect("sin demanda");
-        let mut wanted = Demand::default();
-        wanted.request(Signal::FuelEstimate, 500);
-        core.set_demand(wanted);
-        core.observe(lap_photo(ms(300), 3, 80.0, 0.0, 0.0))
-            .expect("reactivar");
+        core.set_demand_mask(0);
+        for (at, lap, level, distance, elapsed) in [
+            (0, 0, 100.0, 100.0, 0.5),
+            (100, 1, 100.0, 0.0, 0.0),
+            (200, 1, 98.0, 100.0, 0.5),
+            (300, 2, 96.0, 0.0, 0.0),
+            (400, 2, 95.0, 50.0, 0.15),
+        ] {
+            let mut obs = lap_photo(ms(at), lap, level, distance, elapsed);
+            obs.state.session.laps_total = Quality::Reliable(10);
+            for car in &mut obs.state.cars {
+                car.class = Some(Class {
+                    id: ClassId(1),
+                    name: "GT".into(),
+                });
+                car.laps = Quality::Reliable(lap);
+                car.lap_distance_m = Quality::Reliable(distance);
+                car.lap_elapsed_s = Quality::Reliable(elapsed);
+            }
+            obs.state.cars[1].best_lap_s = Quality::Reliable(0.5);
+            obs.state.cars[2].lap_elapsed_s = Quality::Reliable(elapsed + 0.1);
+            core.observe(obs).expect("adquisición sin widgets");
+        }
+        let frame = Frame::capture(&core.snapshot(), core.events(), None).expect("frame");
+        let mut bytes = Vec::new();
+        wire::write_frame(&mut bytes, &frame).expect("canal de eventos");
+        let frame = wire::read_frame(&mut bytes.as_slice())
+            .expect("consumidor")
+            .expect("frame recibido");
+        let state = frame.snapshot.state;
+        assert_eq!(state.session.laps_remaining, Quality::Estimated(8));
+        assert_eq!(state.cars[1].class_position, Quality::Estimated(2));
         assert_eq!(
-            core.snapshot()
-                .state
-                .player
-                .expect("jugador")
-                .fuel
-                .per_lap_l,
-            Quality::Unavailable
+            state.cars[1].gap_ahead,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
         );
+        assert_eq!(
+            state.cars[1].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert!((state.cars[2].relative_s.current().expect("relative") - 0.1).abs() < 1e-9);
+        let player = state.player.expect("jugador");
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(4.0));
+        assert_eq!(player.fuel.history[0], Some((1, 4.0)));
+        assert!((player.delta_best_s.current().expect("delta") + 0.1).abs() < 1e-9);
     }
     #[test]
     fn reconnecting_the_same_demand_refreshes_photo_without_fabricating_series_samples() {
@@ -896,10 +945,15 @@ mod tests {
         core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
             .expect("foto");
         let samples = core.series().active().expect("vuelta").samples.len();
+        let before = core.snapshot();
+        let tail = core.events().tail();
         core.set_demand_mask(vantare_ipc::Demand::all().mask());
         core.step(&mut Script::default(), ms(10))
             .expect("siguiente tick");
         assert_eq!(core.snapshot().sequence, 2);
+        assert_eq!(core.snapshot().state, before.state);
+        assert_eq!(core.snapshot().origin, before.origin);
+        assert_eq!(core.events().tail(), tail);
         assert_eq!(
             core.series().active().expect("vuelta").samples.len(),
             samples

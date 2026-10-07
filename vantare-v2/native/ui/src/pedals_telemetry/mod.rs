@@ -265,22 +265,22 @@ fn paint(
         text::baseline(17.6, 41.8, 44.0),
         &gear_ink,
     );
-    let speed_ink = ink(12.0, 700.0, 0.0, col(0xf1f1f2, alpha));
-    let unit_ink = ink(12.0, 500.0, 0.0, col(0xf1f1f2, alpha));
+    let speed_ink = ink(14.0, 700.0, 0.0, col(0xf1f1f2, alpha));
+    let unit_ink = ink(11.0, 500.0, 0.0, col(0xf1f1f2, alpha));
     let unit = format!(" {}", vm.speed_unit);
     let speed_w = text::width(window, &vm.speed, &speed_ink);
     let x = 46.0 - f32::midpoint(speed_w, text::width(window, &unit, &unit_ink));
-    let baseline = text::baseline(60.4, 18.0, 12.0);
+    let baseline = text::baseline(60.4, 18.0, 14.0);
     text::draw(window, cx, &vm.speed, x, baseline, &speed_ink);
     text::draw(window, cx, &unit, x + speed_w, baseline, &unit_ink);
-    let rpm_ink = ink(10.0, 400.0, 0.0, col(0x929399, alpha));
+    let rpm_ink = ink(11.0, 400.0, 0.0, col(0x929399, alpha));
     let rpm = format!("{} rpm", vm.rpm);
     text::draw(
         window,
         cx,
         &rpm,
         46.0 - text::width(window, &rpm, &rpm_ink) / 2.0,
-        text::baseline(79.4, 15.0, 10.0),
+        text::baseline(79.4, 15.0, 11.0),
         &rpm_ink,
     );
 
@@ -293,9 +293,26 @@ fn paint(
             continue;
         }
         let index = if vm.show_clutch { i } else { i - 1 };
-        let x = 86.0 + index as f32 * 20.0;
+        let x = 86.0 + index as f32 * 24.0;
+        let label_top = if vm.status_text.is_empty() {
+            10.0
+        } else {
+            24.0
+        };
+        let bar_top = label_top + 14.0;
+        let bar_height = 102.0 - bar_top;
+        let label = value.map_or_else(|| "—".into(), |value| format!("{:.0}", value * 100.0));
+        let label_ink = ink(11.0, 700.0, 0.0, col(0xf1f1f2, alpha));
+        text::draw(
+            window,
+            cx,
+            &label,
+            x + 7.0 - text::width(window, &label, &label_ink) / 2.0,
+            text::baseline(label_top, 14.0, 11.0),
+            &label_ink,
+        );
         window.paint_quad(quad(
-            rect(x, 10.0, 14.0, 92.0),
+            rect(x, bar_top, 14.0, bar_height),
             Corners::all(px(3.0)),
             col(0x0c0c0e, 0.85 * alpha),
             Edges::all(px(0.0)),
@@ -303,7 +320,7 @@ fn paint(
             BorderStyle::default(),
         ));
         if let Some(value) = value.filter(|v| *v > 0.0) {
-            let height = value as f32 * 92.0;
+            let height = value as f32 * bar_height;
             // CSS overflow:hidden recorta el relleno por las esquinas del slot.
             let radius = 3.0f32.min(height / 2.0);
             window.paint_quad(quad(
@@ -329,13 +346,13 @@ fn paint(
         vm.status == Status::Stale,
         vm.steering_wheel,
     );
-    let status_ink = ink(9.0, 600.0, 0.06, col(0xc1121f, 1.0));
+    let status_ink = ink(11.0, 600.0, 0.06, col(0xc1121f, 1.0));
     text::draw(
         window,
         cx,
         vm.status_text,
         14.0,
-        text::baseline(4.0, 13.5, 9.0),
+        text::baseline(4.0, 13.5, 11.0),
         &status_ink,
     );
 }

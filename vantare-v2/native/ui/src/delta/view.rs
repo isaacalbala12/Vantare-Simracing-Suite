@@ -127,14 +127,20 @@ pub(super) fn paint(vm: &ViewModel, frame: Frame, window: &mut Window, cx: &mut 
         ));
     }
     // El kit solo registra Inter: conservar las cajas de JetBrains Mono del golden.
-    let scale_ink = ink(7.0, 400.0, 0.04, col(tokens::INK, 1.0));
-    for (label, x) in [("-1.5", 16.0), ("0", 137.77), ("+1.5", 246.08)] {
+    let scale_ink = ink(11.0, 400.0, 0.04, col(tokens::INK, 1.0));
+    for (label, x) in [("-1.5", 16.0), ("0", 140.0), ("+1.5", 264.0)] {
         text::draw(
             window,
             cx,
             label,
-            x,
-            text::baseline(77.0, 10.5, 7.0),
+            if label == "0" {
+                x - text::width(window, label, &scale_ink) / 2.0
+            } else if label == "+1.5" {
+                x - text::width(window, label, &scale_ink)
+            } else {
+                x
+            },
+            text::baseline(77.0, 11.0, 11.0),
             &scale_ink,
         );
     }

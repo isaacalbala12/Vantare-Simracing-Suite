@@ -1,12 +1,12 @@
-//! Input telemetry Eficiencia, layout por defecto de 360 × 140.
+//! Input telemetry Eficiencia, layout por defecto de 420 × 110.
 //! La traza corta pertenece al widget y solo conserva muestras observadas.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use std::time::{Duration, Instant};
 
 use gpui::{
-    App, BorderStyle, Corners, Edges, FontWeight, TextAlign, TextRun, font, linear_color_stop,
-    linear_gradient, point, px, quad,
+    App, BorderStyle, Corners, Edges, PathBuilder, linear_color_stop, linear_gradient, point, px,
+    quad,
 };
 use vantare_domain::{
     CarId, SessionId, Snapshot,
@@ -18,7 +18,7 @@ use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
-const SIZE: (f32, f32) = (360.0, 140.0);
+const SIZE: (f32, f32) = (420.0, 110.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -172,99 +172,113 @@ fn paint(
     cx: &mut App,
 ) {
     paint_surface(window);
-    let mut body_top = 10.0;
-    if let Some(status) = vm.status_text {
-        text::draw(
-            window,
-            cx,
-            status,
-            24.0,
-            text::baseline(20.0, 18.0, 12.0),
-            &ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0)),
-        );
-        body_top += 38.0; // .vf-status: 18 px de línea y 20 px de padding.
-    }
-    let label_ink = ink(7.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let value_ink = ink(12.0, 650.0, 0.0, col(tokens::INK, 1.0));
-    text::draw(
-        window,
-        cx,
-        &vm.gear,
-        12.0,
-        text::baseline(body_top, 32.0, 32.0),
-        &ink(32.0, 800.0, 0.0, col(tokens::INK, 1.0)),
-    );
-    let speed_label_w = text::width(window, vm.speed_label, &label_ink);
-    let rpm_label_w = text::width(window, "RPM", &label_ink);
-    let primary_w = (speed_label_w + 4.0 + text::width(window, &vm.speed, &value_ink))
-        .max(rpm_label_w + 4.0 + text::width(window, &vm.rpm, &value_ink))
-        .max(text::width(
-            window,
-            &vm.gear,
-            &ink(32.0, 800.0, 0.0, col(tokens::INK, 1.0)),
+    let top = if vm.status_text.is_some() { 28.0 } else { 10.0 };
+    let graph_height = SIZE.1 - top - 8.0;
+    let graph_width = 286.0;
+    // Solo acelerador observado: el contrato de Trace no contiene freno/embrague.
+    for fraction in [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0] {
+        window.paint_quad(gpui::fill(
+            rect(6.0, top + fraction * graph_height, graph_width, 1.0),
+            col(tokens::INK, 0.12),
         ));
-    for (label, label_w, value, top) in [
-        (vm.speed_label, speed_label_w, &vm.speed, body_top + 38.0),
-        ("RPM", rpm_label_w, &vm.rpm, body_top + 56.0),
-    ] {
+    }
+    let (ox, oy) = text::origin();
+    let mut path = PathBuilder::stroke(px(2.0));
+    let mut connected = false;
+    let mut segments = 0;
+    for (index, sample) in samples.iter().enumerate() {
+        if let Some(value) = sample.throttle {
+            let x =
+                6.0 + index as f32 / samples.len().saturating_sub(1).max(1) as f32 * graph_width;
+            let y = top + graph_height * (1.0 - value as f32 / 100.0);
+            let position = point(px(ox + x), px(oy + y));
+            if connected && !sample.break_before {
+                path.line_to(position);
+                segments += 1;
+            } else {
+                path.move_to(position);
+            }
+            connected = true;
+        } else {
+            connected = false;
+        }
+    }
+    if segments > 0 {
+        match path.build() {
+            Ok(path) => window.paint_path(path, col(0x6fae7d, 1.0)),
+            Err(error) => eprintln!("input-telemetry: traza: {error}"),
+        }
+    }
+    let value_ink = ink(11.0, 700.0, 0.0, col(tokens::INK, 1.0));
+    let count = if vm.show_clutch { 3.0 } else { 2.0 };
+    let step = 60.0 / count;
+    for (i, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
+        if i == 0 && !vm.show_clutch {
+            continue;
+        }
+        let index = if vm.show_clutch { i } else { i - 1 };
+        let middle = 294.0 + index as f32 * step + step / 2.0;
+        let bar_top = top + 14.0;
+        let bar_height = SIZE.1 - bar_top - 8.0;
+        window.paint_quad(quad(
+            rect(middle - 7.0, bar_top, 14.0, bar_height),
+            Corners::all(px(3.0)),
+            col(tokens::INK, 0.07),
+            Edges::all(px(0.0)),
+            col(0, 0.0),
+            BorderStyle::default(),
+        ));
+        if let Some(value) = pedals[i] {
+            let height = bar_height * value as f32 / 100.0;
+            if height > 0.0 {
+                window.paint_quad(quad(
+                    rect(middle - 7.0, SIZE.1 - 8.0 - height, 14.0, height),
+                    Corners::all(px(3.0)),
+                    col(color, 1.0),
+                    Edges::all(px(0.0)),
+                    col(0, 0.0),
+                    BorderStyle::default(),
+                ));
+            }
+        }
+        let label = pedals[i].map_or_else(|| "—".into(), |value| format!("{value:.0}"));
         text::draw(
             window,
             cx,
-            label,
-            12.0,
-            text::baseline(top + 4.0, 7.0, 7.0),
-            &label_ink,
-        );
-        text::draw(
-            window,
-            cx,
-            value,
-            12.0 + label_w + 4.0,
-            text::baseline(top, 12.0, 12.0),
+            &label,
+            middle - text::width(window, &label, &value_ink) / 2.0,
+            text::baseline(top, 14.0, 11.0),
             &value_ink,
         );
     }
-    let bars_left = 12.0 + primary_w + 14.0;
-    paint_bars(
-        vm,
-        pedals,
-        bars_left,
-        body_top,
-        !samples.is_empty(),
-        window,
-        cx,
-    );
-    if !samples.is_empty() {
-        // CSS: 28 px, margin-top 8, padding-top 6, borde 1; contenido de 21 px.
-        window.paint_quad(gpui::fill(
-            rect(12.0, 102.0, 336.0, 1.0),
-            col(tokens::INK, 0.12),
-        ));
-        let column = ((336.0 - (samples.len() - 1) as f32) / samples.len() as f32).max(2.0);
-        for (i, sample) in samples.iter().enumerate() {
-            if let Some(value) = sample.throttle {
-                let height = 21.0 * value as f32 / 100.0;
-                if height > 0.0 {
-                    window.paint_quad(quad(
-                        rect(
-                            12.0 + i as f32 * (column + 1.0),
-                            130.0 - height,
-                            column,
-                            height,
-                        ),
-                        Corners {
-                            top_left: px(1.0),
-                            top_right: px(1.0),
-                            ..Corners::default()
-                        },
-                        col(0x6fae7d, 0.55),
-                        Edges::all(px(0.0)),
-                        col(0, 0.0),
-                        BorderStyle::default(),
-                    ));
-                }
-            }
-        }
+    let gear = ink(33.0, 800.0, 0.0, col(tokens::INK, 1.0));
+    let rpm = format!("{} RPM", vm.rpm);
+    for (value, y, line, style) in [
+        (&vm.gear, 16.0, 40.0, gear),
+        (&vm.speed, 58.0, 18.0, value_ink),
+        (&rpm, 78.0, 18.0, value_ink),
+    ] {
+        let fitted = text::fit(window, value, &style, 62.0);
+        text::draw(
+            window,
+            cx,
+            &fitted,
+            383.0 - text::width(window, &fitted, &style) / 2.0,
+            text::baseline(y, line, style.size),
+            &style,
+        );
+    }
+    if let Some(status) = vm.status_text {
+        let style = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
+        let fitted = text::fit(window, status, &style, graph_width);
+        text::draw(
+            window,
+            cx,
+            &fitted,
+            6.0,
+            text::baseline(4.0, 20.0, 14.0),
+            &style,
+        );
     }
 }
 
@@ -302,109 +316,6 @@ fn paint_surface(window: &mut Window) {
         col(0xffffff, 0.136),
         BorderStyle::default(),
     ));
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)] // Tres columnas y 0..100 %.
-fn paint_bars(
-    vm: &ViewModel,
-    pedals: [Option<f64>; 3],
-    bars_left: f32,
-    body_top: f32,
-    has_trace: bool,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let width = SIZE.0;
-    let track_h = (SIZE.1 - 10.0 - body_top - 9.0 - if has_trace { 36.0 } else { 0.0 }).max(40.0);
-    let count = if vm.show_clutch { 3.0 } else { 2.0 };
-    let column_w = (width - 12.0 - bars_left - 10.0 * (count - 1.0)) / count;
-    for (i, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
-        if i == 0 && !vm.show_clutch {
-            continue;
-        }
-        let index = if vm.show_clutch { i } else { i - 1 };
-        let middle = bars_left + index as f32 * (column_w + 10.0) + column_w / 2.0;
-        window.paint_quad(quad(
-            rect(middle - 6.0, body_top, 12.0, track_h),
-            Corners::all(px(3.0)),
-            col(tokens::INK, 0.07),
-            Edges::all(px(0.0)),
-            col(0, 0.0),
-            BorderStyle::default(),
-        ));
-        if let Some(value) = pedals[i] {
-            let fill_h = track_h * value as f32 / 100.0;
-            if fill_h > 0.0 {
-                window.paint_quad(quad(
-                    rect(middle - 6.0, body_top + track_h - fill_h, 12.0, fill_h),
-                    Corners {
-                        top_left: px(3.0),
-                        top_right: px(3.0),
-                        // overflow:hidden de la pista recorta el pie del relleno.
-                        bottom_left: px(3.0),
-                        bottom_right: px(3.0),
-                    },
-                    col(color, 1.0),
-                    Edges::all(px(0.0)),
-                    col(0, 0.0),
-                    BorderStyle::default(),
-                ));
-            }
-        }
-        let label = if vm.pedals[i].is_some() {
-            vm.pedal_labels[i].to_owned()
-        } else {
-            format!("{} —", vm.pedal_labels[i])
-        };
-        paint_label(&label, middle, body_top + track_h + 3.0, window, cx);
-    }
-}
-
-// El kit solo registra Inter. Chrome resuelve ui-monospace a Consolas en Windows;
-// el tracking .18em de estos rótulos se conserva sin añadir fuentes/dependencias.
-fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut App) {
-    let (ox, oy) = text::origin();
-    let scale = window.preview_scale();
-    let mut font = font("Consolas");
-    font.weight = FontWeight(600.0);
-    let glyphs: Vec<_> = label
-        .chars()
-        .map(|ch| {
-            let glyph = ch.to_string();
-            let run = TextRun {
-                len: glyph.len(),
-                font: font.clone(),
-                color: col(tokens::MUTED, 1.0),
-                background_color: None,
-                underline: None,
-                strikethrough: None,
-            };
-            window
-                .text_system()
-                .shape_line(glyph.into(), px(6.0 * scale), &[run], None)
-        })
-        .collect();
-    let width: f32 = glyphs
-        .iter()
-        .map(|line| f32::from(line.width) + 1.08 * scale)
-        .sum();
-    let mut x = middle * scale - width / 2.0 + ox;
-    for line in glyphs {
-        let ascent = f32::from(line.ascent);
-        let descent = f32::from(line.descent);
-        let baseline = top * scale + oy + ascent + ((6.0 * scale - ascent - descent) / 2.0).floor();
-        if let Err(error) = line.paint(
-            point(px(x), px(baseline - ascent)),
-            px(ascent + descent),
-            TextAlign::Left,
-            None,
-            window,
-            cx,
-        ) {
-            eprintln!("input-telemetry: pintar rótulo: {error}");
-        }
-        x += f32::from(line.width) + 1.08 * scale;
-    }
 }
 
 impl Settings {

@@ -1,4 +1,4 @@
-//! Broadcast Tower Eficiencia, composición horizontal de 1920 × 71 px.
+//! Broadcast Tower Eficiencia, composición horizontal de 1920 × 86 px.
 //! Geometría y tipografía de `BroadcastTowerFunctional`; primitivas del kit.
 
 mod motion;
@@ -22,7 +22,7 @@ use vantare_domain::{
     format::{Language, Preferences},
 };
 
-const SIZE: (f32, f32) = (1920.0, 71.0);
+const SIZE: (f32, f32) = (1920.0, 86.0);
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -178,10 +178,10 @@ fn paint(
     ));
     paint_flag(window, vm.flag.as_ref());
 
-    let session_ink = ink(8.0, 600.0, 0.16, col(tokens::MUTED, 1.0));
+    let session_ink = ink(13.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
     let lap_ink = ink(17.0, 700.0, -0.02, col(tokens::INK, 1.0));
     let total_ink = ink(10.0, 600.0, -0.02, col(tokens::MUTED, 1.0));
-    let weather_ink = ink(8.0, 600.0, 0.12, col(tokens::MUTED, 1.0));
+    let weather_ink = ink(13.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
     let lap = format!("{} {}", label(prefs.language, "VUELTA", "LAP"), vm.lap);
     let total = vm
         .total_laps
@@ -207,10 +207,10 @@ fn paint(
         cx,
         &vm.session,
         14.0,
-        text::baseline(21.0, 8.0, 8.0),
+        text::baseline(14.0, 22.0, 13.0),
         &session_ink,
     );
-    let lap_base = text::baseline(33.0, 17.0, 17.0);
+    let lap_base = text::baseline(36.0, 22.0, 17.0);
     text::draw(window, cx, &lap, 14.0, lap_base, &lap_ink);
     text::draw(
         window,
@@ -226,7 +226,7 @@ fn paint(
             cx,
             &weather,
             stream_end + 15.0,
-            text::baseline(31.5, 8.0, 8.0),
+            text::baseline(24.5, 22.0, 13.0),
             &weather_ink,
         );
     }
@@ -237,12 +237,20 @@ fn paint(
         }),
         |window| {
             if vm.status == Status::Ready && !vm.rows.is_empty() {
-                let count = vm.rows.len() as f32;
-                let inner = (stream_end - lead - count + 1.0) / count;
+                let count = vm.rows.len();
+                let player = vm.rows.iter().position(|row| row.is_player);
                 for card in cards {
+                    let (offset, card_width) =
+                        card_bounds(card.slot, count, player, stream_end - lead);
                     let border = if card.slot >= 0.5 { 1.0 } else { 0.0 };
-                    let left = lead + card.slot * (inner + 1.0) - border;
-                    paint_card(card, left, inner + border, border, window, cx);
+                    paint_card(
+                        card,
+                        lead + offset - border,
+                        card_width + border,
+                        border,
+                        window,
+                        cx,
+                    );
                 }
             } else {
                 let status = broadcast_tower::status_text(vm.status, prefs.language);
@@ -260,6 +268,21 @@ fn paint(
         },
     );
     efficiency::paint_highlighted_frame(window, width, height);
+}
+
+// Rejilla continua: conserva vecinos durante interpolación y carrusel, con el jugador 1,4×.
+fn card_bounds(slot: f32, count: usize, player: Option<usize>, width: f32) -> (f32, f32) {
+    let count = count.max(1) as f32;
+    let extra = if player.is_some() { 0.4 } else { 0.0 };
+    let unit = (width - count + 1.0) / (count + extra);
+    let edge = |slot: f32| {
+        let cycle = (slot / count).floor();
+        let local = slot - cycle * count;
+        let weight = player.map_or(0.0, |index| (local - index as f32).clamp(0.0, 1.0) * 0.4);
+        cycle * (width + 1.0) + (local + weight) * unit + local
+    };
+    let left = edge(slot);
+    (left, edge(slot + 1.0) - left - 1.0)
 }
 
 fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window, cx: &mut App) {
@@ -306,16 +329,16 @@ fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window,
         color(cue_color, card.cue.abs() * 0.05),
     );
     let place_ink = ink(15.0, 650.0, 0.0, color(tokens::MUTED, 1.0));
-    let gap_ink = ink(10.0, 650.0, 0.0, color(tokens::MUTED, 1.0));
-    let name_ink = ink(12.0, 700.0, -0.01, color(tokens::INK, 1.0));
-    let number_ink = ink(8.0, 600.0, 0.08, color(tokens::MUTED, 1.0));
+    let gap_ink = ink(12.0, 650.0, 0.0, color(tokens::MUTED, 1.0));
+    let name_ink = ink(16.0, 700.0, -0.01, color(tokens::INK, 1.0));
+    let number_ink = ink(11.0, 600.0, 0.0, color(tokens::MUTED, 1.0));
     let (badge, badge_text) = match card.row.accent {
         Accent::Red => (0xe63946, 0xffffff),
         Accent::Blue => (0x5b8bd6, 0xffffff),
         Accent::Amber => (0xe2c568, 0x151612),
         Accent::Neutral => (0x8b93a7, 0xffffff),
     };
-    let badge_ink = ink(7.0, 700.0, 0.0, color(badge_text, 1.0));
+    let badge_ink = ink(11.0, 700.0, 0.0, color(badge_text, 1.0));
     let place = card
         .row
         .place
@@ -328,39 +351,38 @@ fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window,
         cx,
         &place,
         left,
-        text::baseline(28.0, 15.0, 15.0),
+        text::baseline((SIZE.1 - 44.0) / 2.0, 44.0, 15.0),
         &place_ink,
     );
     let name = text::fit(
         window,
         &card.row.name,
         &name_ink,
-        (gap_x - identity - 9.0).max(0.0),
+        (x + width - 6.0 - identity).max(0.0),
     );
     let has_class = !card.row.class.is_empty() && card.row.class != "—";
     let has_number = !card.row.number.is_empty() && card.row.number != "—";
-    let sub_height = if has_class {
-        11.0
-    } else if has_number {
-        8.0
-    } else {
-        0.0
-    };
-    let name_top = (SIZE.1 - 12.0 - 4.0 - sub_height) / 2.0;
+    let name_top = (SIZE.1 - 44.0) / 2.0;
     text::draw(
         window,
         cx,
         &name,
         identity,
-        text::baseline(name_top, 12.0, 12.0),
+        text::baseline(name_top, 22.0, 16.0),
         &name_ink,
     );
-    let sub_top = name_top + 16.0;
+    let sub_top = name_top + 22.0;
     let mut number_x = identity;
     if has_class {
-        let badge_width = text::width(window, &card.row.class, &badge_ink) + 8.0;
+        let class = text::fit(
+            window,
+            &card.row.class,
+            &badge_ink,
+            (gap_x - identity - 14.0).max(0.0),
+        );
+        let badge_width = text::width(window, &class, &badge_ink) + 8.0;
         window.paint_quad(quad(
-            rect(identity, sub_top, badge_width, 11.0),
+            rect(identity, sub_top, badge_width, 18.0),
             Corners::all(px(3.0)),
             color(badge, 1.0),
             Edges::all(px(0.0)),
@@ -370,20 +392,26 @@ fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window,
         text::draw(
             window,
             cx,
-            &card.row.class,
+            &class,
             identity + 4.0,
-            text::baseline(sub_top + 2.0, 7.0, 7.0),
+            text::baseline(sub_top, 18.0, 11.0),
             &badge_ink,
         );
         number_x += badge_width + 6.0;
     }
     if has_number {
+        let number = text::fit(
+            window,
+            &format!("#{}", card.row.number),
+            &number_ink,
+            (gap_x - number_x - 6.0).max(0.0),
+        );
         text::draw(
             window,
             cx,
-            &format!("#{}", card.row.number),
+            &number,
             number_x,
-            text::baseline(sub_top + (sub_height - 8.0) / 2.0, 8.0, 8.0),
+            text::baseline(sub_top, 22.0, 11.0),
             &number_ink,
         );
     }
@@ -392,7 +420,7 @@ fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window,
         cx,
         &card.row.gap,
         gap_x,
-        text::baseline(30.5, 10.0, 10.0),
+        text::baseline(sub_top, 22.0, 12.0),
         &gap_ink,
     );
 }
@@ -519,6 +547,28 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn weighted_cards_fill_the_stream_without_overlap_during_motion_and_carousel() {
+        for count in 3..=10 {
+            for player in 0..count {
+                let (_, rival_width) =
+                    card_bounds((player + 1) as f32, count, Some(player), 1600.0);
+                let (_, player_width) = card_bounds(player as f32, count, Some(player), 1600.0);
+                assert!((player_width / rival_width - 1.4).abs() < 0.0001);
+                for slot in [-1.5, -1.0, 0.0, 0.5, player as f32, count as f32] {
+                    let (left, width) = card_bounds(slot, count, Some(player), 1600.0);
+                    let (next, _) = card_bounds(slot + 1.0, count, Some(player), 1600.0);
+                    assert!(width > 0.0);
+                    assert!((left + width + 1.0 - next).abs() < 0.001);
+                }
+                let (left, _) = card_bounds(0.0, count, Some(player), 1600.0);
+                let (right, width) = card_bounds((count - 1) as f32, count, Some(player), 1600.0);
+                assert_eq!(left, 0.0);
+                assert!((right + width - 1600.0).abs() < 0.001);
+            }
+        }
+    }
 
     #[test]
     fn configured_cards_weather_and_carousel_follow_product_options() {
@@ -650,7 +700,7 @@ mod tests {
         );
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest(&snapshot, prefs);
-        assert_eq!(widget.size(), (1920.0, 71.0));
+        assert_eq!(widget.size(), (1920.0, 86.0));
         assert_eq!(widget.frame(prefs).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());

@@ -1,4 +1,4 @@
-//! Renderer productivo Eficiencia, geometría congelada 420 × 155.
+//! Renderer Eficiencia: cabecera de 36 px y filas de 29 px en un panel de 470 px.
 //! Sin animaciones propias en MulticlassRelativeFunctional.tsx/tokens.css.
 
 use crate::efficiency::preview::PaintWindow as Window;
@@ -11,12 +11,12 @@ use vantare_domain::{
 
 use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::{
-    col, paint_frame, paint_panel, rect,
+    col, paint_frame, paint_panel, paint_rect, rect,
     text::{self, ink},
     tokens,
 };
 
-const SIZE: (f32, f32) = (420.0, 155.0);
+const SIZE: (f32, f32) = (470.0, 181.0);
 // Fallback explícito del ViewModel v2 productivo: classColor no es telemetría.
 const CLASS_COLOR: u32 = 0x8b93a7;
 
@@ -40,69 +40,90 @@ fn paint_background(size: (f32, f32), window: &mut Window) {
     ));
 }
 
-fn paint(vm: &ViewModel, size: (f32, f32), window: &mut Window, cx: &mut App) {
+fn paint(vm: &ViewModel, size: (f32, f32), prefs: Preferences, window: &mut Window, cx: &mut App) {
     let (width, height) = size;
     let transparent = col(0x000000, 0.0);
     paint_background(size, window);
-    let main = ink(11.0, 650.0, 0.0, col(tokens::INK, 1.0));
-    let number = ink(9.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    let badge = ink(7.0, 700.0, 0.0, col(0xffffff, 1.0));
-    let mut top = 10.0;
+    let header = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
+    let label = match prefs.language {
+        vantare_domain::format::Language::Es => "RELATIVE MULTICLASE",
+        vantare_domain::format::Language::En => "MULTICLASS RELATIVE",
+    };
+    text::draw(
+        window,
+        cx,
+        label,
+        6.0,
+        text::baseline(0.0, 36.0, 14.0),
+        &header,
+    );
+    paint_rect(window, 1.0, 35.0, width - 2.0, 1.0, col(tokens::INK, 0.10));
+    let main = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
+    let number = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
+    let badge = ink(11.0, 700.0, 0.0, col(0xffffff, 1.0));
+    // El número configurado de filas cambia la altura; conserva el mismo pitch.
+    let row_height = ((height - 36.0) / vm.rows.len().max(1) as f32).min(29.0);
+    let mut top = 36.0;
     for (index, row) in vm.rows.iter().enumerate() {
-        if index > 0 {
-            top += 3.0;
-        }
-        if row.divider {
-            top += 3.0;
-        }
-        let row_height = if row.divider { 21.0 } else { 19.0 };
         window.paint_quad(quad(
-            rect(12.0, top, 396.0, row_height),
+            rect(12.0, top, 458.0, row_height),
             Corners::all(px(4.0)),
             if row.is_player {
                 col(0xbfc2ca, 0.23)
             } else {
                 transparent
             },
-            Edges {
-                top: px(if row.divider { 1.0 } else { 0.0 }),
-                ..Edges::all(px(0.0))
-            },
+            Edges::all(px(0.0)),
             col(tokens::INK, 0.10),
             BorderStyle::default(),
         ));
-        let content_top = top + if row.divider { 6.0 } else { 4.0 };
-        let base = text::baseline(content_top, 11.0, 11.0);
+        let content_top = top + (row_height - 18.0) / 2.0;
+        let base = text::baseline(top, row_height, 14.0);
         text::draw(window, cx, &row.place, 20.0, base, &main);
         window.paint_quad(quad(
-            rect(49.0, content_top, 32.0, 11.0),
+            rect(49.0, content_top, 40.0, 18.0),
             Corners::all(px(3.0)),
             col(CLASS_COLOR, 1.0),
             Edges::all(px(0.0)),
             transparent,
             BorderStyle::default(),
         ));
-        let badge_x = 49.0 + (32.0 - text::width(window, &row.class_label, &badge)) / 2.0;
+        let badge_x = 49.0 + (40.0 - text::width(window, &row.class_label, &badge)) / 2.0;
         text::draw(
             window,
             cx,
             &row.class_label,
             badge_x,
-            text::baseline(content_top + 2.0, 7.0, 7.0),
+            text::baseline(content_top, 18.0, 11.0),
             &badge,
         );
         text::draw(
             window,
             cx,
             &row.number,
-            86.0,
-            text::baseline(content_top + 1.0, 9.0, 9.0),
+            95.0,
+            text::baseline(top, row_height, 11.0),
             &number,
         );
-        let name = text::fit(window, &row.name, &main, 224.0);
+        let name = text::fit(window, &row.name, &main, 252.0);
         text::draw(window, cx, &name, 121.0, base, &main);
-        let gap_x = 400.0 - text::width(window, &row.gap, &main);
+        let gap_x = 464.0 - text::width(window, &row.gap, &main);
         text::draw(window, cx, &row.gap, gap_x, base, &main);
+        paint_rect(
+            window,
+            12.0,
+            top + row_height - 1.0,
+            458.0,
+            1.0,
+            col(
+                tokens::INK,
+                if vm.rows.get(index + 1).is_some_and(|next| next.divider) {
+                    0.20
+                } else {
+                    0.10
+                },
+            ),
+        );
         top += row_height;
     }
     if let Some(status) = &vm.status {
@@ -174,7 +195,7 @@ impl Settings {
         }
     }
     fn size(&self) -> (f32, f32) {
-        (SIZE.0, SIZE.1 + (self.row_count as f32 - 5.0) * 28.0)
+        (SIZE.0, SIZE.1 + (self.row_count as f32 - 5.0) * 29.0)
     }
 }
 
@@ -207,11 +228,11 @@ impl Widget {
         )
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let size = self.size();
         (
-            Box::new(move |window, cx| paint(&vm, size, window, cx)),
+            Box::new(move |window, cx| paint(&vm, size, prefs, window, cx)),
             Wake::Idle,
         )
     }
@@ -235,6 +256,19 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::source;
+
+    #[test]
+    fn configured_rows_keep_the_same_pitch_and_fit_the_panel() {
+        for count in 3..=7 {
+            let settings = Settings {
+                row_count: count,
+                ..Settings::default()
+            };
+            let (width, height) = settings.size();
+            assert_eq!(width, 470.0);
+            assert_eq!(height, 36.0 + count as f32 * 29.0);
+        }
+    }
 
     #[test]
     fn configured_class_rows_and_dividers_project_independently() {

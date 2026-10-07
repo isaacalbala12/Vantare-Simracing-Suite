@@ -1,5 +1,15 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1470 + #1473 + #1474 — candidato beta, primer merge (2026-10-07)
+Worktree `C:/tmp/vw3-candidato`, rama `vantareapp/isa-1470-candidato-beta`, base `dd90b49c`.
+Se incorpora `6338e31e` mediante merge sin squash; único conflicto documental, ambas entradas conservadas completas.
+Hub productivo idéntico a la base; los demás archivos incorporados coinciden con la fuente.
+Gates por cola, -j 2 y target propio: fmt/check/Clippy -D warnings PASS; Nextest 1193/1193 PASS (6 skips), golden ACC 646,270 s y LMU PASS; lifecycle 17 escenarios PASS.
+Evidencia `C:/tmp/candidato-evidence/m1-*.log`. Guard de alfa 255/254/0 PASS.
+Pendiente segundo merge de seguridad `f18b842e`, diagnóstico beta sin Workshop, QA visual y paquete Release.
+Zoom no incorporado: notas-candidato.md ausente. plan.md ausente en esta base; no se recrea.
+Sin push, PR, CI remota, promoción ni release; checkout principal y beta instalada preservados.
+
 ## ISA-1470 — ronda 4, estados (2026-10-06)
 
 Reanudación en `vantareapp/isa-1470-r4-estados`, base `136a90fa`, sobre los
@@ -33,6 +43,47 @@ El roadmap manual no existe en esta base; no se recrea. Se conserva DemoData
 según nota 05:43: --demo explícito puede cargar fixtures, el arranque normal no.
 Sin push, PR, integración, promoción, release ni medición de rendimiento.
 
+
+## ISA-1473 — Tablas: proporciones RaceLabs, presentación Vantare (2026-10-06)
+
+Worker `1473-tablas`, rama `vantareapp/isa-1473-widgets-tablas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Entrega local terminada para
+revisión del orquestador, no integrada ni promovida. Commits por widget:
+Relative `c4dae159`, Multiclass `e8c58dba`, H2H `bd011bcc`,
+Broadcast `8373b8b7`, Fastest Lap `d203472a`.
+
+Relative pasa a 470×277, siete filas de 29 px, cabecera 36 y pie 38;
+Multiclass a 470×181 con cinco filas de 29 px y cabecera 36;
+H2H a 388×110 con rivales de 24 y jugador de 62; Broadcast a 1920×86,
+nombre 16, gap 12 y tarjeta del jugador 1,4 veces el ancho de sus vecinos.
+Fastest Lap conserva 480×104, rótulo y piloto 14 con cajas de línea de 29.
+Inter, colores y cifras tabulares siguen siendo los de Eficiencia.
+Workshop deja de forzar Relative a 430 px; usa el ancho productivo 470.
+
+La nota del orquestador de las 03:55 autoriza cambiar SIZE sin migración:
+la beta nativa aún no se distribuyó. Las 14 escenas de layout de estas tablas
+caben en 1920×1080; el layout de inicio coloca Relative desde su ancho.
+Capturas antes/después y referencias públicas inspeccionadas en
+`C:/tmp/1473-tablas-evidence/`; demostraciones Workshop, no evidencia LMU.
+Ronda 3/resumen y nombres largos inspeccionados; H2H con tres pilotos,
+Broadcast también a escala 1×. Separadores Multiclass únicos de 1 px.
+Fmt (workspace y módulos), check y Clippy con warnings denegados pasan;
+Nextest 1159/1159, seis skips (cinco pruebas manuales/live y lifecycle,
+que pasa aparte: cinco tests de engineer y doce escenarios de runtime).
+Build final de captura pasa en 15,08 s. Logs y reproducción manual en
+`C:/tmp/1473-tablas-evidence/VERIFICACION.md`. Sin prueba LMU, OBS, Mac,
+DPI distinto ni rendimiento; sin push, PR, CI remoto, merge o release.
+
+Los cinco bloques de demanda permanecen idénticos a la base. #1474 modifica
+Relative/H2H en otra rama: posible conflicto de fichero en sus `mod.rs`,
+sin conflicto intencionado de responsabilidad; preservar sus cambios de demanda.
+No se tocan domain, IPC, persistencia ni dependencias. `efficiency` es el kit
+compartido, no un widget; se conserva intacto, igual que Standings.
+Standings solo tiene propuesta/pregunta en `C:/tmp/beta/r4/informe-1473-tablas.md`.
+Sin datos de sectores/mejores vueltas H2H ni ratings Relative: no se inventan.
+Broadcast conserva selección, orden y cantidad configurada de pilotos;
+centrar siempre al jugador requiere una decisión de contenido posterior.
+`docs/roadmap/plan.md` no existe en esta base; no se recrea.
 
 ## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
 
@@ -4918,3 +4969,115 @@ más tests existentes. Warning QA previo de analysis/view.rs:989 conservado.
 No LMU live, OBS, Mac, DPI125/150, pruebas de rendimiento ni CI remoto.
 `docs/roadmap/plan.md` ausente en la base; esta ronda no cambia alcance o fases.
 Siguiente: revisión del orquestador; ninguna integración/publicación ejecutada.
+### #1473 — Tablas, ronda 2 Head to Head (2026-10-06)
+
+Revisión de Isaac sobre 6f91d8d1: se conserva SIZE 388×110, filas 24/62/24
+y letra 14. Solo cambia native/ui/src/head_to_head/mod.rs: rivales con
+posición, nombre con elipsis, clase mayúscula, RIVAL y gap disponible a la
+derecha; jugador con posición/nombre y una línea «CLASE · H2H · modo».
+La VM no expone vueltas ni sectores: hueco derecho central libre, sin cambiar
+proyección, telemetría, demanda, settings ni otros widgets.
+
+Evidencia externa C:/tmp/1473-tablas-evidence/: head-to-head-r2.png,
+head-to-head-r2-gap.png, head-to-head-r2-long.png y ronda-2-h2h.png MIRADAS
+a escala 1×; resumen.png actualizado y MIRADO. Escenas QA reconstruidas,
+no prueba LMU live, DPI alternativo ni rendimiento. Regresión protegida por
+los tests existentes de límites 24/62/24, ambas direcciones, proyección y
+goldens, y por inspección visual con rivales/gap/nombres largos.
+Entrega local pendiente de aceptación del orquestador/Isaac; sin push, PR,
+merge, CI remota, promoción ni release. plan.md ausente en esta base;
+no cambia alcance ni planificación. Informe final externo ≤10 líneas.
+Gates ronda 2: fmt/check/Clippy PASS; Nextest 1159/1159 PASS (6 skips
+configurados, 787,799 s; ACC 641,974 s PASS); lifecycle 17 escenarios PASS.
+Logs externos r2-*.log; build Workshop/parity-capture prueba PASS (9,20 s).
+No se añaden tests nuevos para esta redistribución exclusivamente visual:
+los tests existentes y las capturas inspeccionadas cubren la regresión.
+Manual: abrir head-to-head-middle con rivales y head-to-head-r2.snapshot.json
+con gap; comprobar clase/RIVAL en ambas filas, dos líneas centrales y espacio
+derecho libre. Aceptación visual final de Isaac/orquestador pendiente.
+
+### #1473 + #1474 — integración sobre Hub unión 4, tablas (2026-10-07)
+Rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`, base `40a4ddc9`.
+Primer merge `93d0cb1d` incorpora `18fdf07a`; segundo incorpora `1cb6c892`.
+Conflictos resueltos conservando dos entradas del handoff y ambos tests independientes en H2H/Relative; no hay conflicto productivo.
+Gates segunda ronda por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1189/1189 PASS (6 skips, ACC 572,170 s); lifecycle PASS.
+Pendiente resto `8004af81`, QA Workshop/Studio y Standings 0 px. Evidencia `C:/tmp/1473-integracion-evidence/`.
+Sin push, PR, promoción ni release; plan.md ausente en la base; checkout principal y beta de Isaac preservados.
+
+### #1473 — Proporciones de widgets, worker 1473-resto (2026-10-06, entrega local)
+
+Base13ae6945, rama vantareapp/isa-1473-widgets-resto; HEAD de código 52367c31fc835e633d0382f663fbaeebb54017df.
+Doce commits por widget (commits.json externo), doce renderizadores modificados;
+este handoff es el único archivo adicional. Standings, Eficiencia, workshop.rs,
+domain/IPC/persistencia/fixtures y DEMANDA12/12 intactos. Sin dependencias nuevas.
+SIZE autorizado por notas: beta nativa no distribuida, sin migración.
+Fuel523x272, filas historial34→23px medidos; Input420x110; Flags250x70;
+Map554x415, trazo4→10px; daños numéricos164x132, pitch29/29/29 medido.
+Pedals valores encima y textos completos; PedalsTelemetry barras14/pitch24,
+tres100 separados. Delta barra280x96/cifra27>=24; Radar220x220/tráfico0px diff.
+Capturas antes/después y estados/100% MIRADOS en
+C:/tmp/1473-resto-evidence/resumen.png y ronda-4.png.14 escenas caben1920x1080.
+Gates finales PASS: fmt workspace+módulos, check, Clippy -D warnings,
+Nextest1156/1156 (goldens,6 skips previstos), lifecycle5+12, build captura, diffcheck.
+Los gates validan el árbol conjunto final; commits intermedios no certificados.
+Map live sin geometría/posiciones; InputTrace solo acelerador; Fuel sin datos
+AVG/MAX/MIN/pits inventados. Espera Flags/Weather conserva semántica previa.
+Preguntas y límites para #1474 en VERIFICACION.md externo; no arreglados aquí.
+Manual: Workshop fixtures/default/stale/espera/100%, settings history8/clutch/
+tyres/aero/projection/virtual-energy y escalas. Pendientes aceptación Isaac,
+DPI/OBS/Mac/LMU real/performance. Frontend/Go no tocados, no gates de esas capas.
+plan.md ausente en base: no se crea roadmap alternativo. GitHub#1473 actualizado.
+Sin push/PR/CI remota/merge/promoción/release. Siguiente: revisión orquestador.
+
+### #1473 — Ronda 2 reanudada, resto (2026-10-06, revisión local)
+
+Continuación autorizada desde 040f15b2 en vantareapp/isa-1473-widgets-resto;
+se preservaron y completaron los cambios sin commit de Weather y Daños.
+Weather pasa 240×150→240×164: dos columnas, rótulo11/valor14, celda29+gap7;
+Daños pasa150×191→180×201: leyenda en tres filas29, SVG centrado.
+Fuel conserva523×272, distribuye datos VM en tabla continua con filas23;
+historial de ocho vueltas usa dos columnas. No reproduce la división351/172
+ni añade AVG/MAX/MIN, pits o tiempos inexistentes: composición adaptada al VM.
+Solo tres renderizadores y este handoff; sin cambios domain/IPC/telemetría,
+settings, demanda, Workshop, Standings, dependencias o layouts persistidos.
+Gates del árbol final PASS: fmt/check/clippy -D warnings, Nextest1156/1156
+(6 skips previstos), lifecycle5+12, build de captura y diffcheck.
+Weather b3d105f1fad9456f0ceab4126df4a6ecce64a767, Daños bff49f9f2fd8b009f37b4a75dbc83cdf57367f3c; Fuel en este commit.
+SHAs completos y estado final en C:/tmp/fase2/informe-1473-resto.md.
+Evidencia: C:/tmp/1473-resto-evidence/ronda-2-reanudada.png, resumen.png,
+r2-medidas.json, r2-layout-fit.json, r2-source-hashes.json y logs r2-resume-*.
+Antes/después y seis estados stale/espera MIRADOS; turno pantalla con marcador,
+mutex y timeout90, marcador propio retirado. Tres escenas default caben1920×1080;
+los perfiles de ejemplo no incluyen estos tres widgets. Letras nominales11/14:
+glifos medidos8/11, pitch daño29; historial23; Weather36=29+7, gap texto6/11px.
+Pruebas existentes de VM/repaint y prueba de ocho vueltas conservadas/adaptadas;
+verificación de solapamientos por captura del renderer; no tests visuales complacientes.
+Manual: abrir Workshop con fixtures/default, mirar tres PNG a1× y estados antiguos/
+espera; seleccionar historyRows8, showProjection y showAero en inspector.
+Límites: QA Workshop, no LMU live/rendimiento/DPI alternativo/OBS/Mac;
+8 vueltas con test y cálculo de encaje, sin nueva captura de ese ajuste del inspector.
+plan.md ausente en base; Notion exceptuado por cabecera-sol del encargo.
+Sin push/PR/CI remota/merge/promoción/release; siguiente revisión del orquestador.
+
+### #1473 + #1474 — integración sobre Hub unión 4, widgets completos (2026-10-07)
+Rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`, base `40a4ddc9`.
+Merges en orden: `93d0cb1d` incorpora `18fdf07a`; `59c5092b` incorpora `1cb6c892`; tercero incorpora `8004af81`.
+El tercer conflicto es exclusivamente documental; se conservan completas las entradas del Hub, tablas y resto.
+Hub productivo idéntico a la base. Dos conflictos de tests de tablas conservan ambos tests; no se cambia arquitectura ni dependencias.
+Gates tercera ronda por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1190/1190 PASS (6 skips, ACC 536,833 s); lifecycle PASS.
+Pendiente QA Workshop/Studio y Standings 0 px; se actualizará esta entrada con resultados inspeccionados.
+Evidencia `C:/tmp/1473-integracion-evidence/`, informe `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin push, PR, promoción ni release; plan.md ausente en la base, no se crea roadmap paralelo. Beta y checkout principal preservados.
+
+### #1473 + #1474 — integración y QA completadas (2026-10-07)
+Base `40a4ddc9`; rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`.
+Merges sin squash en orden: `93d0cb1d` (18fdf07a), `59c5092b` (1cb6c892), `3f9232a2` (8004af81).
+Hub productivo igual a la base; se conservaron ambas entradas de handoff y ambos tests en los conflictos.
+Cada merge pasó fmt/check/clippy -D warnings, Nextest completo (1185/1189/1190 PASS, 6 skips previstos), goldens ACC/LMU y lifecycle, por cola/-j2/target propio.
+QA MIRADA: 18 widgets Workshop default/unavailable/stale, 18 espera con datos retenidos, tres escenas H2H y 18 aperturas Studio a 1920x1080.
+Default 18/18 idénticos a referencias; H2H extra 3/3 idénticos; Standings 0/292160 píxeles distintos.
+Hoja `C:/tmp/1473-integracion-evidence/resumen.png`; paneles Studio y capturas individuales en la misma carpeta.
+Studio usó hook temporal exclusivo parity-capture para layout externo por widget, retirado tras build; fuente restaurada con hash idéntico. Binarios solo QA, no distribución.
+Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
+Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.

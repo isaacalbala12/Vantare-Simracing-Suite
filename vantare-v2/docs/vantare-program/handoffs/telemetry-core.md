@@ -1,5 +1,44 @@
 # Handoff vivo — Telemetry Core
 
+## #1474 — revisión nativa LMU/ACC — 2026-10-06
+
+Encargo vigente de Isaac/brief local: GitHub #1474, entrega local para revisión
+del orquestador, sin Notion ni push/PR/merge/release. Base `13ae6945`, rama
+`vantareapp/isa-1474-telemetria-revision`, worktree `C:/tmp/vw3-1474`.
+Las menciones históricas inferiores a Notion no cambian este encargo.
+
+Inventario de 18 widgets y trazabilidad campo a campo en
+[revisión #1474](../../analysis/2026-10-06-1474-revision-telemetria.md).
+`fd505f6f` y `c4fbd278` ya están en la base: no se reintegran ramas antiguas.
+Fallo reproducido con foto real LMU47: la demanda H2H retiraba la familia
+Relative (`Estimated(78)` → `Unavailable`). H2H solicita ahora Positions y
+Relative, las señales que usa su proyección, en lugar de gaps/tiempos/sectores
+que no consume. No cambia renderer, DTO, adquisición, goldens ni dependencias.
+Los cortes UI LMU/ACC quedan vinculados byte a byte al replay real y los 18
+widgets se comprueban con demanda IPC sobre ellos.
+Revisión ampliada: Relative perdía temperatura en el slot `track` y
+reloj/clima en el pie común stale con slots personalizados. RED real:
+ACC `40°` → `—`; LMU stale pierde `58:12`, `16°`, `23°`. Se corrige la demanda
+usando el mapeo común y conservando señales del pie stale; seis casos de
+regresión sin modificar las fotos, GREEN UI 172/172 y gates completos PASS.
+La invalidación por nombre de pista oculto de Standings se documenta fuera de
+alcance en [#1475](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1475).
+
+Gates, SHAs y estado final: `C:/tmp/beta/r4/informe-1474-telemetria.md`; evidencia
+`C:/tmp/1474-evidence/`. Primer hito H2H `76518fe1ee31`: fmt/check/Clippy,
+Nextest 1157 PASS (6 skips previos) y lifecycle 5+12 PASS. Segundo hito
+Relative: fmt/check/Clippy, Nextest 1158 PASS (6 skips), lifecycle 5+12 PASS.
+Standings perfil prueba final después de ambos arreglos: 0/292160 px,
+umbral 0/delta 0, referencia/captura/diff inspeccionados y binario verificado.
+Entrega local de implementación/revisión sistemática lista para revisión del
+orquestador; no aceptación ni integración/promoción. Siguiente: review y campaña;
+Isaac valida H2H solo delante/detrás con mejor
+vuelta real, transición de sesión/pit/desconexión y rendimiento live. Corpus
+actual: una sesión por simulador y jugador ACC en boxes; no certifica esas
+transiciones ni gaps positivos. Fase/banderas LMU, varias integridades,
+litros ACC, dirección meteorológica/presión siguen ausentes justificadamente.
+`docs/roadmap/plan.md` no existe en esta base; no se crea publicación paralela.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
@@ -3242,3 +3281,23 @@ lector opt-in y auditoría de privacidad PASS. La suite Go global reprodujo solo
 la contención Windows heredada de `app-settings.json.tmp`; el focal aislado
 pasó al repetir y la suite global serial quedó verde. Siguiente: D5. Sin PR,
 merge, wiring productivo ni promoción.
+
+### #1473 + #1474 — integración sobre Hub unión 4 (2026-10-07)
+Worktree aislado `C:/tmp/vw3-1473-integracion`, rama `vantareapp/isa-1473-integracion`, base `40a4ddc9`.
+Primer merge incorpora `18fdf07a` sin conflictos: demanda Relative en H2H y pie de Relative con datos tardíos.
+Gates por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1185/1185 PASS (6 skips), golden ACC 631,186 s; lifecycle PASS.
+Pendiente incorporar tablas y resto, QA Workshop/Studio y paridad Standings. Evidencia `C:/tmp/1473-integracion-evidence/`.
+Solo integración local autorizada; sin push, PR, promoción ni release. plan.md ausente en esta base.
+
+### #1473 + #1474 — integración y QA completadas (2026-10-07)
+Base `40a4ddc9`; rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`.
+Merges sin squash en orden: `93d0cb1d` (18fdf07a), `59c5092b` (1cb6c892), `3f9232a2` (8004af81).
+Hub productivo igual a la base; se conservaron ambas entradas de handoff y ambos tests en los conflictos.
+Cada merge pasó fmt/check/clippy -D warnings, Nextest completo (1185/1189/1190 PASS, 6 skips previstos), goldens ACC/LMU y lifecycle, por cola/-j2/target propio.
+QA MIRADA: 18 widgets Workshop default/unavailable/stale, 18 espera con datos retenidos, tres escenas H2H y 18 aperturas Studio a 1920x1080.
+Default 18/18 idénticos a referencias; H2H extra 3/3 idénticos; Standings 0/292160 píxeles distintos.
+Hoja `C:/tmp/1473-integracion-evidence/resumen.png`; paneles Studio y capturas individuales en la misma carpeta.
+Studio usó hook temporal exclusivo parity-capture para layout externo por widget, retirado tras build; fuente restaurada con hash idéntico. Binarios solo QA, no distribución.
+Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
+Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.

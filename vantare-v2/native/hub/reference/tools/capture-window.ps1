@@ -28,6 +28,7 @@ if ($output.StartsWith($repo + [IO.Path]::DirectorySeparatorChar, [StringCompari
     throw 'La evidencia debe quedar fuera del repo'
 }
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+. "$PSScriptRoot/capture-bitmap.ps1"
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -51,7 +52,6 @@ public class HubReferenceWindow {
  public delegate bool EnumProc(IntPtr h,IntPtr p);
  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc callback,IntPtr p);
  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h,StringBuilder text,int capacity);
- [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h,IntPtr hdc,uint f);
  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
  [DllImport("user32.dll")] public static extern void mouse_event(uint f,uint x,uint y,int data,UIntPtr extra);
  public static IntPtr Find(uint pid) {
@@ -84,6 +84,7 @@ if ($handle -eq 0) { throw 'Ventana no disponible' }
 $previousDpi = [HubReferenceWindow]::SetThreadDpiAwarenessContext([IntPtr]::new(-4))
 $bitmap = $null
 $graphics = $null
+$nativeBitmap = $null
 try {
     [HubReferenceWindow]::Focus($handle)
     $outer = New-Object HubReferenceWindow+RECT
@@ -121,16 +122,19 @@ try {
     Start-Sleep -Milliseconds 500
     if ([HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'Otra ventana ha recibido el foco' }
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output))
-    $bitmap = [Drawing.Bitmap]::new($width,$height)
-    $graphics = [Drawing.Graphics]::FromImage($bitmap)
-    $hdc = $graphics.GetHdc()
-    $printed = [HubReferenceWindow]::PrintWindow($handle,$hdc,3)
-    $graphics.ReleaseHdc($hdc)
-    if (-not $printed) { $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size) }
-    $bitmap.Save($output,[Drawing.Imaging.ImageFormat]::Png)
+    $nativeBitmap = [HubCaptureBitmap]::new($width,$height)
+    if ($nativeBitmap.Capture($handle)) {
+        Save-HubCaptureBitmap $nativeBitmap $output
+    } else {
+        $bitmap = [Drawing.Bitmap]::new($width,$height)
+        $graphics = [Drawing.Graphics]::FromImage($bitmap)
+        $graphics.CopyFromScreen($origin.X,$origin.Y,0,0,$bitmap.Size)
+        $bitmap.Save($output,[Drawing.Imaging.ImageFormat]::Png)
+    }
     & "$PSScriptRoot/assert-opaque.ps1" -Path $output
     Write-Output "${width} x ${height}; DPI 96; PID $ProcessId; $output"
 } finally {
+    if ($nativeBitmap) { $nativeBitmap.Dispose() }
     if ($graphics) { $graphics.Dispose() }
     if ($bitmap) { $bitmap.Dispose() }
     [void][HubReferenceWindow]::SetThreadDpiAwarenessContext($previousDpi)

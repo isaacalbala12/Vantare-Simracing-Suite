@@ -12,12 +12,14 @@ use shell::Options;
 const CAPTURE_PROCESS: &str = include_str!("../reference/tools/capture-process.ps1");
 const ASSERT_OPAQUE: &str = include_str!("../reference/tools/assert-opaque.ps1");
 const CAPTURE_WINDOW: &str = include_str!("../reference/tools/capture-window.ps1");
+const CAPTURE_BITMAP: &str = include_str!("../reference/tools/capture-bitmap.ps1");
 
 struct HelperScripts {
     directory: PathBuf,
     runner: PathBuf,
     window: PathBuf,
     opacity: PathBuf,
+    bitmap: PathBuf,
 }
 
 impl HelperScripts {
@@ -32,6 +34,7 @@ impl HelperScripts {
             runner: directory.join("capture-process.ps1"),
             window: directory.join("capture-window.ps1"),
             opacity: directory.join("assert-opaque.ps1"),
+            bitmap: directory.join("capture-bitmap.ps1"),
             directory,
         })
     }
@@ -42,6 +45,7 @@ impl Drop for HelperScripts {
         let _ = fs::remove_file(&self.runner);
         let _ = fs::remove_file(&self.window);
         let _ = fs::remove_file(&self.opacity);
+        let _ = fs::remove_file(&self.bitmap);
         let _ = fs::remove_dir(&self.directory);
     }
 }
@@ -77,6 +81,8 @@ pub fn run(options: Options, state: CaptureState, output: PathBuf) -> Result<(),
         .map_err(|error| format!("escribir captura de ventana: {error}"))?;
     fs::write(&scripts.opacity, ASSERT_OPAQUE)
         .map_err(|error| format!("escribir validador de alfa: {error}"))?;
+    fs::write(&scripts.bitmap, CAPTURE_BITMAP)
+        .map_err(|error| format!("escribir bitmap de captura: {error}"))?;
     let executable = std::env::current_exe().map_err(|error| format!("ruta del Hub: {error}"))?;
     let repository = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .ancestors()

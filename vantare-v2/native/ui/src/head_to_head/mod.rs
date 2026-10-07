@@ -389,6 +389,21 @@ mod tests {
     }
 
     #[test]
+    fn qa_player_p2_scene_has_a_rival_ahead() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/head-to-head-player-p2.snapshot.json"
+        ))
+        .expect("escena P2 válida");
+        assert_eq!(
+            snapshot.state.player_car().expect("jugador").position,
+            vantare_domain::Quality::Reliable(2)
+        );
+        let vm = head_to_head::project(&snapshot, Preferences::default(), Target::Ahead);
+        assert!(!vm.rows.is_empty());
+        assert!(vm.rows.iter().any(|row| row.name == "André Lotterer"));
+    }
+
+    #[test]
     fn only_visible_changes_repaint_and_frames_finish() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);

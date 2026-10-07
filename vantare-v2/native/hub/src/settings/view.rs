@@ -163,7 +163,7 @@ fn section_palette_row(label: &str, help: &str, palettes: Div, cx: &gpui::App) -
                 .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
                 .child(section_text(help, 12.0, 400, orbit::ink_3(cx), 16.8, cx)),
         )
-        .child(palettes)
+        .child(palettes.mt(px(12.0)))
 }
 fn section_body() -> Div {
     div().flex().flex_col()
@@ -178,10 +178,12 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                 match title {
                     "Interfaz" | "Tema" => "v-palette",
                     "Overlays" => "v-studio",
-                    "Canal" | "Notas de versión" => "v-download",
+                    "Canal" | "Notas de versión" | "Envíos pendientes" => "v-download",
                     "Nivel de rendimiento" | "Qué cambia en cada nivel" => "v-gauge",
-                    "En el Hub" | "En pista · Próximamente" => "v-keys",
-                    "Últimos eventos" => "clock",
+                    "En el Hub" | "En pista · Próximamente" | "Consentimiento de contribución" => {
+                        "v-keys"
+                    }
+                    "Últimos eventos" | "Historial de borrado remoto" => "clock",
                     "Sistema"
                     | "Datos y registros"
                     | "Informe de diagnóstico local"
@@ -225,34 +227,6 @@ fn section_note(content: &str, cx: &gpui::App) -> Div {
             linear_color_stop(rgba(crate::orbit::legacy_rgba(0xd52f_4905, cx)), 1.0),
         ))
         .child(section_text(content, 12.0, 400, orbit::ink_3(cx), 18.0, cx))
-}
-fn section_status(content: &str, color: u32, cx: &gpui::App) -> Div {
-    if orbit::is_mono(cx) {
-        return orbit::pill(
-            content,
-            if color == orbit::ember(cx) {
-                Tone::Warning
-            } else {
-                Tone::Success
-            },
-            cx,
-        );
-    }
-    div()
-        .h(px(29.0))
-        .px(px(12.0))
-        .flex_none()
-        .flex()
-        .items_center()
-        .rounded_full()
-        .border_1()
-        .border_color(rgba(if color == orbit::ember(cx) {
-            0xff9b_5722
-        } else {
-            0x78d6_8b38
-        }))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-        .child(section_text(content, 10.0, 750, color, 13.0, cx))
 }
 
 fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
@@ -518,9 +492,6 @@ fn performance_mode(title: &str, description: &str, cx: &gpui::App) -> Div {
         .gap(px(7.0))
         .child(text(title, 15.0, 700, orbit::ink(cx), cx))
         .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
-}
-fn disabled_button(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    orbit::disabled(orbit::small_button(id, label, cx), "Próximamente")
 }
 impl Hub {
     fn settings_button(
@@ -1177,42 +1148,38 @@ impl Hub {
                 .child(section_row(
                     "Inicio con Windows",
                     "Abrir Vantare al iniciar sesión estará disponible próximamente.",
-                    disabled_toggle("settings-startup", "Inicio con Windows", false, cx),
+                    orbit::pill("Próximamente", Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Empezar minimizado",
                     "Arranca en la bandeja, sin abrir la ventana.",
-                    disabled_toggle("settings-minimized", "Empezar minimizado", false, cx),
+                    orbit::pill("Próximamente", Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Avisos de actualización",
                     "Aviso cuando hay una versión nueva.",
-                    disabled_toggle("settings-notify-update", "Avisos de actualización", true, cx),
+                    orbit::pill("Próximamente", Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Avisos del Launcher",
                     "Aviso cuando terminan de abrirse tus aplicaciones.",
-                    disabled_toggle("settings-notify-launcher", "Avisos del Launcher", true, cx),
+                    orbit::pill("Próximamente", Tone::Neutral, cx),
                  cx))
                 .child(section_row(
                     "Notificaciones del sistema",
                     "Los avisos de escritorio estarán disponibles próximamente.",
-                    disabled_toggle(
-                        "settings-notify-system",
-                        "Notificaciones del sistema",
-                        false,
-                     cx),
+                    orbit::pill("Próximamente", Tone::Neutral, cx),
                  cx))
                 .child(
                     section_row(
                         "Probar notificación",
                         "Envía un aviso ahora sin cambiar tus preferencias.",
-                        disabled_button("settings-notify-test", "Enviar prueba", cx),
+                        orbit::pill("Próximamente", Tone::Neutral, cx),
                      cx)
                     .border_b_0(),
                 )
                 .child(section_note(
-                    "Las preferencias de inicio, bandeja y avisos estarán disponibles próximamente.",
+                    "El inicio con Windows, la bandeja y las preferencias de avisos llegarán pronto.",
                  cx)),
          cx)
         .flex_1()
@@ -1474,7 +1441,7 @@ impl Hub {
                     orbit::SECONDARY,
                     400,
                     orbit::ink_3(cx),
-                 cx).mt(px(-8.0)).line_height(px(18.0))),
+                 cx).mt(px(4.0)).line_height(px(18.0))),
          cx)).child(Self::settings_performance_table(cx).flex_grow(1.0).min_h(px(240.0)))
     }
     fn settings_performance_table(cx: &gpui::App) -> Div {
@@ -1878,11 +1845,7 @@ impl Hub {
                             .gap(px(10.0))
                             .relative()
                             .top(px(-7.0))
-                            .child(disabled_button(
-                                "settings-hotkeys-reset",
-                                "Restablecer todos",
-                             cx))
-                            .child(section_status("Reasignación pendiente", orbit::ember(cx), cx)),
+                            .child(orbit::pill("Cambiar atajos · Próximamente", Tone::Neutral, cx)),
                     ),
             )
             .child(
@@ -1958,17 +1921,7 @@ impl Hub {
                 .child(section_note(
                     "Tus aportes usarán una referencia que permita borrarlos, sin mostrar tu identidad a otros usuarios.",
                  cx))
-                .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start())
-                .child(
-                    div()
-                        .mt(px(0.0))
-                        .flex()
-                        .items_start()
-                        .child(section_status(
-                            "Sin consentimiento · no se envían aportes",
-                            orbit::ember(cx),
-                         cx)),
-                ),
+                .child(orbit::pill("Próximamente · ahora no se envía nada", Tone::Neutral, cx).self_start()),
          cx)
     }
     fn settings_privacy_queue(&self, cx: &gpui::App) -> Div {

@@ -597,7 +597,7 @@ impl Render for Hub {
         if presentation(self.section) == Presentation::Fullscreen {
             return self.render_fullscreen(window, cx);
         }
-        let rail = self.rail(cx);
+        let rail = self.rail(window, cx);
         let section_actions = self.section_actions(window, cx);
         let topbar = self.topbar(window, section_actions, cx);
         if self

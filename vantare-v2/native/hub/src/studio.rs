@@ -462,8 +462,10 @@ impl Render for CanvasFrame {
                         orbit::ink(cx),
                         cx,
                     )
+                    .whitespace_nowrap()
+                    .line_height(px(14.0))
                     .absolute()
-                    .top(px(-18.0))
+                    .top(px(-22.0))
                     .left_0()
                     .px(px(5.0))
                     .bg(rgb(orbit::carmine(cx))),
@@ -1368,7 +1370,16 @@ impl Studio {
                             .items_center()
                             .justify_between()
                             .gap(px(8.0))
-                            .child(orbit::neo_header(title, "v-sliders", cx))
+                            .child(orbit::neo_header(
+                                title,
+                                match tab {
+                                    Tab::Layout => "v-studio",
+                                    Tab::Content => "v-testing",
+                                    Tab::Behavior => "v-gauge",
+                                    Tab::Appearance => "v-palette",
+                                },
+                                cx,
+                            ))
                             .when(tab == Tab::Layout, |header| {
                                 let size = self.frames.iter().find(|(id, _)| *id == item.id).map(
                                     |(_, frame)| frame.read(cx).renderer.read(cx).wanted_size(),
@@ -1436,22 +1447,7 @@ impl Studio {
                 let content = div()
                     .id(("studio-inspector-card", tab as usize))
                     .child(body);
-                card = card.child(if tab == Tab::Appearance {
-                    div().child(content)
-                } else {
-                    orbit::scroll_fade(
-                        content.overflow_y_scroll(),
-                        cx.global::<orbit::design::Tokens>().colors.neo_bottom,
-                    )
-                    .flex_none()
-                    .max_h(px(if tab == Tab::Content {
-                        140.0
-                    } else if tab == Tab::Behavior {
-                        90.0
-                    } else {
-                        100.0
-                    }))
-                });
+                card = card.child(content);
                 if tab == Tab::Layout {
                     card =
                         card.child(

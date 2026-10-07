@@ -12,14 +12,11 @@ impl Hub {
         }
     }
     #[allow(clippy::too_many_lines)] // Composición de la barra; reutiliza los controles y permisos del shell.
-    pub(super) fn redesign_rail(&self, cx: &mut Context<Self>) -> Div {
+    pub(super) fn redesign_rail(&self, short: bool, cx: &mut Context<Self>) -> Div {
         let expanded = self.shell.sidebar_open;
         let mut items = div()
             .id("rail-sections")
-            .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
-            .track_scroll(&self.shell.rail_scroll)
+            .flex_none()
             .flex()
             .flex_col()
             .gap(px(4.0));
@@ -30,7 +27,7 @@ impl Hub {
             if matches!(section, Section::Testing | Section::Strategy) {
                 items = items.child(
                     div()
-                        .mt(px(20.0))
+                        .mt(px(if short { 12.0 } else { 20.0 }))
                         .mb(px(8.0))
                         .px(px(10.0))
                         .when(expanded, |heading| {
@@ -75,7 +72,7 @@ impl Hub {
                 if expanded { None } else { lock },
                 cx,
             )
-            .h(px(40.0))
+            .h(px(if short { 36.0 } else { 40.0 }))
             .flex_none()
             .w(px(if expanded {
                 self.sidebar_width(cx) - 24.0
@@ -127,10 +124,20 @@ impl Hub {
             items = items.child(button);
         }
         let profiles = self.launcher.read(cx).saved_profiles();
+        let mut profile_list = div()
+            .id("rail-profiles")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .track_scroll(&self.shell.rail_scroll)
+            .flex()
+            .flex_col()
+            .gap(px(4.0));
         if expanded {
-            items = items.child(
+            profile_list = profile_list.child(
                 div()
-                    .mt(px(20.0))
+                    .flex_none()
+                    .mt(px(if short { 12.0 } else { 20.0 }))
                     .px(px(10.0))
                     .flex()
                     .items_center()
@@ -147,7 +154,7 @@ impl Hub {
             for profile in profiles {
                 let id = profile.id.clone();
                 let subtitle = format!("{} pasos de lanzamiento", profile.steps.len());
-                items = items.child(
+                profile_list = profile_list.child(
                     orbit::action_row(gpui::SharedString::from(id.clone()), &profile.name, cx)
                         .w_full()
                         .h(px(54.0))
@@ -343,7 +350,11 @@ impl Hub {
                     }),
             )
             .child(launch)
-            .child(orbit::scroll_fade(items, orbit::rail_bg(cx)))
+            .child(items)
+            .when(expanded, |rail| {
+                rail.child(orbit::scroll_fade(profile_list, orbit::rail_bg(cx)))
+            })
+            .when(!expanded, |rail| rail.child(div().flex_1()))
             .child(collapse)
             .child(settings)
             .child(account)

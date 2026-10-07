@@ -5132,3 +5132,27 @@ Studio usó hook temporal exclusivo parity-capture para layout externo por widge
 Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
 Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
 Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.
+
+### #1470 — R6 sobre candidato beta (2026-10-07)
+Rama `vantareapp/isa-1470-r6`, worktree `C:/tmp/vw3-1470-r6`, base `1c26b898907cb3b3b3b4547ff39bd925cdf2fe01`.
+I1: navegación y pie fijos; solo Perfiles flexible con scroll/fundido. A altura800, filas36 y márgenes12 dejan visible el primer perfil.
+I2: seis controles Sistema no implementados pasan a pills Próximamente; nota limitada a inicio, bandeja y preferencias de avisos.
+I3: cinco filtros en una fila; filas/grupos no se comprimen y test excluye filtro vacío. No se alteró el agrupador ni la entrada QA.
+P7/P8/P9/P10/P11/P12/P13/P5/P6/P4: separación, pills, iconos, textos de paleta, envío sin play, opciones sin duplicar, historial compacto sin inventar resultados e inspector con scroll de columna. Etiqueta Studio a una línea, separada22px.
+Nota del orquestador: mínimo1280x800; hero Inicio crece para Abrir Studio, cadena Launcher completa y columnas centrales con scroll; Testing compacto y contexto sin compresión.
+V3: dos fixtures QA nuevos y tests, banderas Quality::Stale con WithData, jugador P2 y rival delante. Renderizadores/VM/domain/IPC/runtime/Standings intactos.
+34 capturas Hub finales1920/1440/1280 MIRADAS, alfa255; escenas V3 MIRADAS. Standings0/292160 frente a referencia nativa aprobada `C:/tmp/1470-evidence/f1-standings-parity/standings.png`.
+Primero se comparó por error con referencia Wails histórica: fallo conservado, también aparece en candidato base; R6 idéntico a candidato0px.
+Scroll adicional con rueda mediante instrumentación temporal solo del capturador QA; `capture.rs` restaurado con hash idéntico, diff y hashes externos. No entra en el commit.
+Gates finales PASS: fmt/check/clippy -D warnings, Nextest1207/1207 (6 skips previstos; ACC563.175s), lifecycle5+12. Primer Nextest falló StorageFull112; log conservado y repetición completa verde sin cambiar tests.
+Release candidato base abierto sin capture/scene en datos aislados: responde/cierra exit0 pero queda Comprobando sesión. NO acredita panel vacío por navegación ni un Release R6; exclusión QA protegida por cfg/test, verificación autenticada pendiente.
+Evidencia `C:/tmp/1470-r6-evidence/`, antes/después `antes-despues.png`; informe `C:/tmp/fase2/informe-1470-r6.md`.
+P1/P2/P3 no implementados; sin V1 horario real, V2 DPI125, LMU live/rendimiento/OBS/Mac. plan.md ausente en la base; no se crea roadmap alternativo.
+Entrega local en este commit, sin push/PR/CI remota/merge/promoción/release; checkout principal y trabajo ajeno preservados. Pendiente revisión del orquestador.
+
+### #1470 — candidato beta unión 2, primer merge local (2026-10-07)
+Base 1c26b898; worktree C:/tmp/vw3-candidato; rama vantareapp/isa-1470-candidato-beta.
+Ronda 6 e60d955f combinada sin conflictos. Gates por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1207/1207 PASS (6 skips; ACC 432,873 s); lifecycle PASS.
+Evidencia externa C:/tmp/candidato-evidence/union2-m1-*. Informe C:/tmp/fase2/informe-candidato-union2.md.
+Pendientes zoom394720b9, Standings6faa25d4, lifecycle127bf564 y feed810709e7 (5.º merge añadido por nota); luego QA, paridad, alfa, packaging y Release externo.
+plan.md ausente en esta base; Notion exceptuado por cabecera-sol. Solo integración local autorizada; sin push/PR/CI remota/promoción/publicación.

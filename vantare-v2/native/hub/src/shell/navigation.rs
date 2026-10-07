@@ -174,16 +174,16 @@ pub fn title(section: Section) -> &'static str {
 
 pub fn trail(section: Section) -> &'static str {
     match section {
-        Section::Home => "Centro operativo",
+        Section::Home => "Tu resumen",
         Section::Studio => "Editor",
-        Section::Launcher => "Herramienta",
-        Section::Calendar => "Le Mans Ultimate",
+        Section::Launcher => "Abre tus apps",
+        Section::Calendar => "Carreras de LMU",
         Section::Strategy => "Planificador",
         Section::Engineer => "Radio",
         Section::Analysis => "Análisis post-sesión",
         Section::Roadmap => "Producto",
         Section::Settings => "Preferencias locales",
-        Section::Testing => "Calidad",
+        Section::Testing => "Envía informes",
         _ => section.subtitle(),
     }
 }

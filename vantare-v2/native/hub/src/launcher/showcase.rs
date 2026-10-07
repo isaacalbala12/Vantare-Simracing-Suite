@@ -752,7 +752,6 @@ impl Launcher {
             .flex_1()
             .min_h_0()
             .gap(px(if compact || running { 8.0 } else { 24.0 }))
-            .justify_between()
             .p(px(if compact { 20.0 } else { 32.0 }))
             .bg(orbit::gradient(
                 cx.global::<orbit::design::Tokens>().gradients.hero,
@@ -810,9 +809,15 @@ impl Launcher {
             )
             .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx))
         } else {
-            card.child(title)
-                .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx))
-                .child(actions)
+            card.child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .child(title)
+                    .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx)),
+            )
+            .child(actions)
         };
         if running {
             card = card
@@ -860,7 +865,9 @@ impl Launcher {
             self.showcase_steps(profile, running, compact, cx)
                 .mt(px(12.0))
                 .when(!running, |steps| {
-                    steps.min_h(px(if compact { 180.0 } else { 260.0 }))
+                    steps
+                        .mt_auto()
+                        .min_h(px(if compact { 180.0 } else { 260.0 }))
                 }),
         )
         .when(running, |card| card.child(div().flex_1()))
@@ -1097,15 +1104,51 @@ impl Launcher {
                 .on_click(cx.listener(|this, _, window, cx| this.new_profile(None, window, cx))),
         );
         let scroll = self.profile_scroll.clone();
+        let mut header = div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .h(px(24.0))
+            .child(orbit::text("Tus perfiles", 12.0, 500, orbit::ink_2(cx), cx).flex_1());
+        if scroll.max_offset().x > px(0.0) {
+            for (id, label, direction) in [
+                ("profiles-previous", "‹", 1.0),
+                ("profiles-next", "›", -1.0),
+            ] {
+                header = header.child(
+                    button(id, label, cx)
+                        .w(px(28.0))
+                        .h(px(24.0))
+                        .p_0()
+                        .aria_label(if direction > 0.0 {
+                            "Perfiles anteriores"
+                        } else {
+                            "Perfiles siguientes"
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            let scroll = &this.profile_scroll;
+                            let next = scroll.offset().x + scroll.bounds().size.width * direction;
+                            scroll.set_offset(gpui::point(
+                                carousel_offset(next, px(0.0), scroll.max_offset().x),
+                                px(0.0),
+                            ));
+                            cx.notify();
+                        })),
+                );
+            }
+        }
         div()
             .id("showcase-profiles")
-            .relative()
             .flex_none()
-            .h(px(height))
+            .flex()
+            .flex_col()
+            .gap(px(6.0))
+            .child(header)
             .child(
                 div()
                     .id("showcase-profile-carousel")
-                    .size_full()
+                    .w_full()
+                    .h(px(height))
                     .overflow_x_scroll()
                     .track_scroll(&scroll)
                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
@@ -1121,31 +1164,6 @@ impl Launcher {
                     }))
                     .child(row),
             )
-            .when(scroll.max_offset().x > px(0.0), |mut carousel| {
-                for (id, label, direction) in [
-                    ("profiles-previous", "‹", 1.0),
-                    ("profiles-next", "›", -1.0),
-                ] {
-                    carousel = carousel.child(
-                        button(id, label, cx)
-                            .absolute()
-                            .top(px(height / 2.0 - 18.0))
-                            .when(direction > 0.0, gpui::Styled::left_0)
-                            .when(direction < 0.0, gpui::Styled::right_0)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                let scroll = &this.profile_scroll;
-                                let next =
-                                    scroll.offset().x + scroll.bounds().size.width * direction;
-                                scroll.set_offset(gpui::point(
-                                    carousel_offset(next, px(0.0), scroll.max_offset().x),
-                                    px(0.0),
-                                ));
-                                cx.notify();
-                            })),
-                    );
-                }
-                carousel
-            })
     }
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
@@ -1272,14 +1290,21 @@ impl Launcher {
         &self,
         profile: &Profile,
         compact: bool,
+        short: bool,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let mut card = orbit::neo_card(cx)
-            .id("showcase-options-scroll")
+        let card = orbit::neo_card(cx)
+            .id("showcase-options")
             .flex_1()
             .min_h_0()
-            .overflow_y_scroll()
-            .p(px(if compact { 16.0 } else { 20.0 }))
+            .min_h(px(if short {
+                150.0
+            } else if compact {
+                262.0
+            } else {
+                294.0
+            }))
+            .p(px(if compact { 12.0 } else { 20.0 }))
             .gap(px(6.0))
             .child(orbit::neo_header(
                 if self.launch_progress().is_some() {
@@ -1290,6 +1315,13 @@ impl Launcher {
                 "v-sliders",
                 cx,
             ));
+        let mut rows = div()
+            .id("showcase-options-scroll")
+            .flex()
+            .flex_col()
+            .min_h_0()
+            .overflow_y_scroll()
+            .gap(px(6.0));
         let labels = [
             "Si una app ya está abierta",
             "Esperar antes del primer paso",
@@ -1303,7 +1335,7 @@ impl Launcher {
             .filter(|controls| controls.profile_id == profile.id)
         {
             for (label, choice) in labels.into_iter().zip(&controls.choices) {
-                card = card.child(
+                rows = rows.child(
                     div()
                         .w_full()
                         .h(px(if compact { 32.0 } else { 36.0 }))
@@ -1320,14 +1352,29 @@ impl Launcher {
                 );
             }
         }
-        card
+        card.child(orbit::scroll_fade(
+            rows,
+            cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+        ))
+        .when(short, |card| {
+            card.child(
+                orbit::text(
+                    "↕ Desplaza para ver las 5 opciones",
+                    11.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .flex_none(),
+            )
+        })
     }
     pub(super) fn showcase_history(&self, cx: &mut Context<Self>) -> Div {
         let mut card = orbit::neo_card(cx)
             .flex_1()
             .min_h_0()
             .gap(px(12.0))
-            .min_h(px(270.0))
+            .min_h(px(80.0))
             .p(px(16.0))
             .child(orbit::neo_header("Últimas veces", "clock", cx));
         let mut rows = div().flex().flex_col().gap(px(8.0));
@@ -1460,6 +1507,7 @@ impl Launcher {
         };
         center = center
             .child(self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx));
+        let short = f32::from(window.viewport_size().height) < 900.0;
         let mut context = div()
             .w(gpui::relative(1.0 / 3.0))
             .min_w_0()
@@ -1477,6 +1525,7 @@ impl Launcher {
             context = context.child(self.showcase_options(
                 profile,
                 f32::from(window.viewport_size().height) < 1000.0,
+                short,
                 cx,
             ));
         }

@@ -4899,3 +4899,22 @@ las cuatro escenas pedidas en Normal. Evidencia qa-normal-limit.txt.
 Se documenta el límite y se cierra lo posible conforme a la nota; DPI125
 queda manual para Isaac, sin cambiar escala global ni exigir sesión para
 esta comprobación de DWM.
+
+### #1470 — Launcher alto, ronda 2 (2026-10-07)
+
+Base local `a6d0bb6f`, worktree `C:/tmp/vw3-1470`, rama
+`vantareapp/isa-1470-hub-rediseno`; entrega aislada sin push ni promoción.
+`native/hub/src/launcher/showcase.rs`: flechas por páginas en la cabecera
+«Tus perfiles», fuera de tarjetas; título/descripción agrupados y aire entre
+acciones y cadena. Opciones reserva alto para sus cinco filas a 1440×900 y
+1280×900; historial cede alto y conserva scroll. En ventanas bajas, opciones
+usa scroll interno con degradado e indicación «Desplaza para ver las 5 opciones».
+Capturas antes/después de reposo 1920×1080, 1440×900, 1280×900 y de lanzando/
+nuevo perfil 1440×900, inspeccionadas; evidencia externa `C:/tmp/1470-launcher-alto-evidence/r2-*`.
+Build QA beta.1/testers y gates por cola: fmt, check, clippy -D warnings,
+nextest Hub (285/285), lifecycle y Standings (0/292160 px; referencia/captura/mapa vistos).
+Sin cambio del motor ni dependencias; regresión visual validada mediante capturas
+más tests existentes. Warning QA previo de analysis/view.rs:989 conservado.
+No LMU live, OBS, Mac, DPI125/150, pruebas de rendimiento ni CI remoto.
+`docs/roadmap/plan.md` ausente en la base; esta ronda no cambia alcance o fases.
+Siguiente: revisión del orquestador; ninguna integración/publicación ejecutada.

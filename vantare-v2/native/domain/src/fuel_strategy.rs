@@ -49,6 +49,10 @@ pub struct ViewModel {
     pub labels: [&'static str; 5],
     pub fuel: String,
     pub average: String,
+    pub minimum: String,
+    pub maximum: String,
+    pub stops: String,
+    pub stops_label: &'static str,
     pub laps: String,
     pub required: String,
     pub laps_basis: Option<LapsBasis>,
@@ -120,6 +124,10 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
         Language::En => "REQ",
     };
     let history = history_rows(&fuel, config.history_rows, prefs.language, status.is_none());
+    let extremes = consumption_extremes(&fuel);
+    let stops = (status.is_none() && config.show_projection)
+        .then(|| required_stops(&fuel, state.session.laps_remaining))
+        .flatten();
     ViewModel {
         show_projection: config.show_projection,
         status,
@@ -129,6 +137,14 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
         },
         fuel: liters(current(&fuel.level_l), 1),
         average: liters(current(&fuel.per_lap_l), 2),
+        minimum: liters(extremes.filter(|_| status.is_none()).map(|v| v.0), 2),
+        maximum: liters(extremes.filter(|_| status.is_none()).map(|v| v.1), 2),
+        stops: decimal(stops, 0),
+        stops_label: if prefs.language == Language::Es {
+            "PARADAS"
+        } else {
+            "STOPS"
+        },
         laps: decimal(laps.filter(|_| config.show_projection), 1),
         laps_basis: laps_basis.filter(|_| config.show_projection),
         finish: if !config.show_projection {
@@ -150,6 +166,36 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
             "HISTORY"
         },
     }
+}
+
+// Extremos sobre todo el historial valido, no solo las filas visibles.
+fn consumption_extremes(fuel: &crate::Fuel) -> Option<(f64, f64)> {
+    let mut consumption = fuel
+        .history
+        .into_iter()
+        .flatten()
+        .map(|(_, liters)| liters)
+        .filter(|v| v.is_finite() && *v > 0.0);
+    let first = consumption.next()?;
+    Some(consumption.fold((first, first), |(min, max), value| {
+        (min.min(value), max.max(value))
+    }))
+}
+
+fn required_stops(fuel: &crate::Fuel, laps: Quality<u32>) -> Option<f64> {
+    let required = *required_fuel(fuel.per_lap_l, laps).current()?;
+    let level = *fuel.level_l.current()?;
+    let capacity = *fuel.capacity_l.current()?;
+    if !level.is_finite()
+        || level < 0.0
+        || !capacity.is_finite()
+        || capacity <= 0.0
+        || level > capacity
+    {
+        return None;
+    }
+    let stops = ((required - level).max(0.0) / capacity).ceil();
+    stops.is_finite().then_some(stops)
 }
 
 fn history_rows(
@@ -286,6 +332,60 @@ mod tests {
 
     use super::*;
     use crate::{Capabilities, Fuel, Player, State};
+
+    #[test]
+    fn extremes_use_all_valid_history_and_stops_round_up_missing_fuel() {
+        let mut fuel = Fuel {
+            level_l: Quality::Reliable(10.0),
+            capacity_l: Quality::Reliable(75.0),
+            per_lap_l: Quality::Estimated(2.0),
+            ..Fuel::default()
+        };
+        fuel.history[..6].copy_from_slice(&[
+            Some((1, 1.25)),
+            Some((2, 4.5)),
+            Some((3, f64::NAN)),
+            Some((4, -1.0)),
+            Some((5, 0.0)),
+            Some((6, 2.0)),
+        ]);
+        let mut data = snapshot(&fuel);
+        data.state.session.laps_remaining = Quality::Reliable(43);
+        let vm = project_with_config(
+            &data,
+            Preferences::default(),
+            Config {
+                history_rows: 1,
+                ..Config::default()
+            },
+        );
+        assert_eq!(
+            (vm.minimum.as_str(), vm.maximum.as_str(), vm.stops.as_str()),
+            ("1.25 L", "4.50 L", "2")
+        );
+        for (laps, stops) in [(0, "0"), (5, "0"), (42, "1"), (43, "2")] {
+            data.state.session.laps_remaining = Quality::Reliable(laps);
+            assert_eq!(project(&data, Preferences::default()).stops, stops);
+        }
+        for capacity in [
+            Quality::Unavailable,
+            Quality::Stale(75.0),
+            Quality::Reliable(0.0),
+            Quality::Reliable(5.0),
+        ] {
+            data.state.player.as_mut().expect("jugador").fuel.capacity_l = capacity;
+            assert_eq!(project(&data, Preferences::default()).stops, "—");
+        }
+        data.state.player.as_mut().expect("jugador").fuel.capacity_l = Quality::Reliable(75.0);
+        data.state.session.laps_remaining = Quality::Unavailable;
+        assert_eq!(project(&data, Preferences::default()).stops, "—");
+        data.state.source_state = SourceState::Stale;
+        let vm = project(&data, Preferences::default());
+        assert_eq!(
+            (vm.minimum.as_str(), vm.maximum.as_str(), vm.stops.as_str()),
+            ("—", "—", "—")
+        );
+    }
 
     #[test]
     fn session_projection_is_independent_of_tank_range() {

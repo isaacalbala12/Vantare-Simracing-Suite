@@ -73,6 +73,47 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         14.0,
         &fuel,
     );
+    // Celdas en el espacio libre de las filas existentes: medidas intactas.
+    for (caption, value, left) in [("MIN", &vm.minimum, 104.0), ("MAX", &vm.maximum, 250.0)] {
+        text::draw(
+            window,
+            cx,
+            caption,
+            left,
+            text::baseline(58.0, ROW_HEIGHT, 11.0).round(),
+            &label,
+        );
+        let style = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
+        let value = text::fit(window, value, &style, 87.0);
+        text::draw(
+            window,
+            cx,
+            &value,
+            left + 30.0,
+            text::baseline(58.0, ROW_HEIGHT, 14.0).round(),
+            &style,
+        );
+    }
+    if vm.show_projection {
+        text::draw(
+            window,
+            cx,
+            vm.stops_label,
+            164.0,
+            text::baseline(127.0, ROW_HEIGHT, 11.0).round(),
+            &label,
+        );
+        let style = ink(14.0, 650.0, 0.0, col(0xe2c568, 1.0));
+        let stops = text::fit(window, &vm.stops, &style, 90.0);
+        text::draw(
+            window,
+            cx,
+            &stops,
+            240.0,
+            text::baseline(127.0, ROW_HEIGHT, 14.0).round(),
+            &style,
+        );
+    }
     for (index, value) in [&vm.average, &vm.laps, &vm.required, &vm.finish]
         .into_iter()
         .enumerate()
@@ -272,6 +313,21 @@ mod tests {
     }
 
     use vantare_domain::{Capabilities, Capability, Fuel, Player, Quality, State};
+
+    #[test]
+    fn real_corpus_without_measured_laps_never_invents_extremes_or_stops() {
+        for json in [
+            include_str!("../../fixtures/telemetry-real/lmu47.snapshot.json"),
+            include_str!("../../fixtures/telemetry-real/acc.snapshot.json"),
+        ] {
+            let snapshot = vantare_ipc::snapshot_from_json(json).expect("corpus real");
+            let vm = Settings::default().project(&snapshot, Preferences::default());
+            assert_eq!(
+                (vm.minimum.as_str(), vm.maximum.as_str(), vm.stops.as_str()),
+                ("—", "—", "—")
+            );
+        }
+    }
 
     #[test]
     fn reference_scene_preserves_fuel_and_does_not_turn_session_laps_into_range() {

@@ -4900,6 +4900,25 @@ Se documenta el límite y se cierra lo posible conforme a la nota; DPI125
 queda manual para Isaac, sin cambiar escala global ni exigir sesión para
 esta comprobación de DWM.
 
+### #1470 — Zoom del Hub: condición de parada (2026-10-07)
+
+Worktree `C:/tmp/vw3-1470`, rama `vantareapp/isa-1470-hub-rediseno`,
+base `dd90b49c9fa2244fb8fa881a44ff094f71bd4b11`, inicialmente limpio.
+Brief `C:/tmp/beta/r4/brief-1470-zoom.md`; notas específicas ausentes.
+No se implementa zoom parcial: GPUI fijado en `72d28c3` ofrece
+`set_rem_size`, pero `AbsoluteLength::Pixels` ignora rem; 40 archivos del Hub
+usan `px(...)`. `set_scale_factor` está limitado a tests. Ampliar la solución
+a esos consumidores o al backend excede el ajuste pequeño autorizado.
+Alternativa propuesta, pendiente de decisión: conversión a rem de la interfaz del Hub,
+con canvas/widgets aislados en píxeles y revisión de interacción/responsive.
+README de settings actualizado; ningún código, dependencia o renderer cambia.
+Informe y evidencia de fuentes: `C:/tmp/fase2/informe-1470-zoom.md` y
+`C:/tmp/1470-zoom-evidence/viabilidad.md`. Verificación: diff-check;
+gates Rust, capturas y paridad no ejecutados porque no hay cambio de runtime.
+`docs/roadmap/plan.md` sigue ausente en esta base; no se crea otro roadmap.
+Siguiente: orquestador revisa el límite y decide el lote; no hay push, PR,
+merge, promoción, release ni prueba LMU/OBS/Mac/DPI/rendimiento.
+
 ### #1470 — Launcher alto, ronda 2 (2026-10-07)
 
 Base local `a6d0bb6f`, worktree `C:/tmp/vw3-1470`, rama

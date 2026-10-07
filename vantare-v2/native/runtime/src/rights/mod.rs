@@ -21,6 +21,28 @@ pub fn wall_now() -> DateTime<Utc> {
     std::time::SystemTime::now().into()
 }
 
+fn local_devices(root: &Path) -> Devices {
+    // Cada identidad falla por separado: v1 no depende del archivo de v2.
+    let legacy =
+        vantare_services::license::installation::legacy_fingerprint().unwrap_or_else(|error| {
+            eprintln!("núcleo: identidad legacy no disponible: {error}");
+            String::new()
+        });
+    let installation = (|| -> Result<String> {
+        let installation_root = root.parent().ok_or(Error::Storage)?;
+        let store = Store::open(installation_root, "core-installation-v1")?;
+        Ok(vantare_services::license::installation::Installation::load_or_create(&store)?.key_id())
+    })()
+    .unwrap_or_else(|error| {
+        eprintln!("núcleo: identidad de instalación no disponible: {error}");
+        String::new()
+    });
+    Devices {
+        legacy,
+        installation,
+    }
+}
+
 pub fn production(
     photo: &str,
     epoch: u64,
@@ -42,22 +64,7 @@ pub fn production(
         installation: String::new(),
     };
     if keys.is_some() {
-        let local = (|| -> Result<Devices> {
-            let installation_root = root.parent().ok_or(Error::Storage)?;
-            let installation = Store::open(installation_root, "core-installation-v1")?;
-            Ok(Devices {
-                legacy: vantare_services::license::installation::legacy_fingerprint()?,
-                installation:
-                    vantare_services::license::installation::Installation::load_or_create(
-                        &installation,
-                    )?
-                    .key_id(),
-            })
-        })();
-        match local {
-            Ok(binding) => devices = binding,
-            Err(error) => eprintln!("núcleo: identidad local de derechos no disponible: {error}"),
-        }
+        devices = local_devices(&root);
     }
     let image = std::env::current_exe()?;
     let helper = image.with_file_name("vantare-services.exe");

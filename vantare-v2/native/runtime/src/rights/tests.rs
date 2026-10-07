@@ -55,6 +55,13 @@ fn devices() -> Devices {
 }
 
 fn signed_v1(issued: i64, capabilities: Vec<Capability>) -> (String, String) {
+    signed_v1_device(issued, capabilities, devices().legacy)
+}
+fn signed_v1_device(
+    issued: i64,
+    capabilities: Vec<Capability>,
+    fingerprint: String,
+) -> (String, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía local");
     let key = SigningKey::from_bytes(&seed);
@@ -65,7 +72,7 @@ fn signed_v1(issued: i64, capabilities: Vec<Capability>) -> (String, String) {
         claims: ClaimsV1 {
             issuer: "vantare-license".into(),
             subject: "550e8400-e29b-41d4-a716-446655440000".into(),
-            device_fingerprint: devices().legacy,
+            device_fingerprint: fingerprint,
             issued_at: wall(issued).to_rfc3339(),
             capabilities,
         },
@@ -841,4 +848,59 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
         drop(owner);
         clean(&root);
     }
+}
+
+#[test]
+fn unreadable_installation_preserves_the_legacy_device() {
+    let root = test_root();
+    let installation = root.join("rights");
+    let expected = vantare_services::license::installation::legacy_fingerprint().expect("legacy");
+    let healthy = local_devices(&installation);
+    assert_eq!(healthy.legacy, expected);
+    assert!(!healthy.installation.is_empty());
+    // Invalid saved schema and an unreadable DPAPI blob exercise both failure paths.
+    let store = Store::open(&root, "core-installation-v1").expect("store");
+    store
+        .save(
+            "installation",
+            &serde_json::json!({"version":999,"seed":[]}),
+        )
+        .expect("bad schema");
+    drop(store);
+    let malformed = local_devices(&installation);
+    let file = std::fs::read_dir(&root)
+        .expect("root")
+        .flatten()
+        .find(|entry| entry.path().is_dir())
+        .expect("store directory")
+        .path()
+        .join(if cfg!(windows) {
+            "installation.dpapi"
+        } else {
+            "installation.json"
+        });
+    std::fs::write(file, b"not a DPAPI blob").expect("corrupt bytes");
+    let unreadable = local_devices(&installation);
+    assert_eq!(malformed.legacy, expected);
+    assert_eq!(unreadable.legacy, expected);
+    assert!(malformed.installation.is_empty() && unreadable.installation.is_empty());
+    let start = 1_790_770_000;
+    let (credential, keys) = signed_v1_device(start - 1, beta_grants(None, start), expected);
+    let mut owner = Owner::open(
+        &root.join("rights"),
+        Some(&keys),
+        unreadable,
+        1,
+        wall(start),
+    )
+    .expect("owner");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("legacy license");
+    let policy = owner
+        .advance(&Snapshot::default(), wall(start), Duration::ZERO)
+        .expect("policy");
+    assert!(policy.overlays_advanced);
+    drop(owner);
+    clean(&root);
 }

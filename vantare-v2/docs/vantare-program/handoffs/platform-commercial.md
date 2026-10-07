@@ -1404,3 +1404,12 @@ fijos RED/GREEN, conservando el número de pilotos. Árbol funcional final:
 fmt/check/clippy -D warnings PASS, nextest 1192 PASS (6 omisiones del perfil),
 lifecycle PASS (0 fallos). Sin cambio de datos del renderer ni telemetría inventada.
 Build Release y validación de paquete/paridad aún en curso.
+
+#21 parcial: legacy se carga independientemente de installation. Regresión
+con archivo guardado inválido y bytes DPAPI ilegibles: conserva fingerprint y
+Owner acepta una credencial v1 firmada y concede overlays_advanced. RED/GREEN;
+mismos gates completos del árbol final PASS, sin cambios funcionales posteriores.
+No se aparta/genera otra identidad v2: el servidor actual admite solo
+`deviceFingerprint`, no hay reenrolamiento autenticado del cliente ni reset de
+dispositivo. Recuperación v2 requiere contrato de servidor y queda documentada;
+se conserva fail-closed para v2 y no se cambia Store, cuenta ni datos reales.

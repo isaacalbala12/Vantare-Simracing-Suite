@@ -4937,3 +4937,24 @@ más tests existentes. Warning QA previo de analysis/view.rs:989 conservado.
 No LMU live, OBS, Mac, DPI125/150, pruebas de rendimiento ni CI remoto.
 `docs/roadmap/plan.md` ausente en la base; esta ronda no cambia alcance o fases.
 Siguiente: revisión del orquestador; ninguna integración/publicación ejecutada.
+
+### #1470 — Spike de zoom del backend: presupuesto excedido (2026-10-07)
+
+Brief `C:/tmp/beta/r4/brief-1470-zoom-spike.md`; worktree nuevo
+`C:/tmp/vw3-1470-zoom`, rama `vantareapp/isa-1470-zoom-backend`, base
+`dae60712778a2f44fa0604b155916b279c067eda`, inicialmente limpio.
+Parada preventiva por el límite de ~6 archivos: el recorrido identificado
+requiere 9 con las fronteras actuales o 7 concentrando persistencia/atajos en
+shell.rs. El backend requiere window.rs y events.rs; el Hub necesita acceso
+al HWND (hwnd_of existe, pero el módulo overlay de ui es privado), carga/aplicación,
+control, persistencia y atajos, además del README vendor y este handoff.
+El callback resize actual permite releer escala/viewport/ratón; Direct Manipulation
+requiere sincronizar su escala. No se demuestra inviabilidad técnica del zoom.
+No se modifica producción, GPUI upstream, dependencias, overlays ni Workshop;
+no existe setter nuevo. No se crea un parche parcial ni se integra al candidato.
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`; evidencia estática
+`C:/tmp/1470-zoom-spike-evidence/fuentes.txt`. Diff-check y revisión documental;
+sin gates/build/capturas/paridad/ interacción/nitidez porque no hay implementación.
+Notas específicas ausentes; #1470 abierta; roadmap plan.md ausente en la base.
+Siguiente: orquestador revisa el inventario y decide el presupuesto del experimento.
+Sin push, PR, CI remoto, merge, promoción o release; checkout principal preservado.

@@ -91,6 +91,12 @@ mantiene preview fuera del documento y confirma una sola edición al soltar.
 Inspector edita los `Settings` tipados. Mismo `Overlay::configured` que overlays;
 no hay otra implementación visual ni otro formato de layout.
 
+Al abrir una instalación limpia, Hub y overlays inicializan el documento mediante
+la misma API: Standings, Relative, Delta y Pedals en el monitor principal. Si otro
+proceso lo creó después de prepararlo, se relee antes de pintar o editar. Un layout
+vacío guardado por el usuario se conserva; los conflictos de ediciones posteriores
+siguen exigiendo recarga explícita.
+
 Cada edición, undo y redo se guarda mediante `layout::Document::save` antes de
 confirmarla. Usa `<directorio de datos>/Vantare/native/layout.json`, independiente
 de `--data-dir`. Conflicto por bytes/error conserva documento, selección e historial.

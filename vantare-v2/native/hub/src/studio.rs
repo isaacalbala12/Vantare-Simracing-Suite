@@ -562,7 +562,16 @@ impl Studio {
         self.rebuild(cx);
         Ok(())
     }
-    pub fn new(prepared: Prepared, snapshot: Snapshot, cx: &mut Context<Self>) -> Self {
+    pub fn new(mut prepared: Prepared, snapshot: Snapshot, cx: &mut Context<Self>) -> Self {
+        let status = cx.primary_display().map_or(Ok(()), |display| {
+            let bounds = display.bounds();
+            prepared.editor.initialize((
+                f32::from(bounds.origin.x),
+                f32::from(bounds.origin.y),
+                f32::from(bounds.size.width),
+                f32::from(bounds.size.height),
+            ))
+        });
         let search = cx.new(|cx| orbit::Input::new(String::new(), "Buscar widget…", cx));
         cx.observe(&search, |_, _, cx| cx.notify()).detach();
         let parent = cx.entity();
@@ -593,7 +602,7 @@ impl Studio {
             snapshot,
             examples: prepared.examples,
             example: true,
-            status: Ok(()),
+            status,
             drag: None,
             focus: cx.focus_handle(),
             catalog: None,

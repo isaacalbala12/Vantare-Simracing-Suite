@@ -837,9 +837,7 @@ fn run_layout_feed<T: Send + 'static>(
             return;
         }
         crate::rights::install(rights, cx);
-        if !document.exists()
-            && let Some(display) = cx.primary_display()
-        {
+        if let Some(display) = cx.primary_display() {
             let bounds = display.bounds();
             let monitor = (
                 f32::from(bounds.origin.x),
@@ -847,7 +845,7 @@ fn run_layout_feed<T: Send + 'static>(
                 f32::from(bounds.size.width),
                 f32::from(bounds.size.height),
             );
-            if let Err(error) = document.save(&starter_layout(monitor)) {
+            if let Err(error) = document.initialize(monitor) {
                 eprintln!("layout inicial no guardado: {error}");
             }
         }

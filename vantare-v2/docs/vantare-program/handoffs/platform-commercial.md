@@ -49,9 +49,9 @@ Standings. Logs, hashes y capturas fuera del repo en
 DPI, instalador final o CI remota verificados. `docs/roadmap/plan.md` no existe
 en esta base; no se inventó otro roadmap ni se anunció disponibilidad pública.
 
-Siguiente acción: revisar los cuatro commits locales; Isaac provisiona su
-clave pública y custodia privada, reconstruir y verificar roundtrip firmado
-con el instalador antes de autorizar una promoción a nightly.
+Siguiente acción: clave pública ya fijada (privada en el USB de Isaac);
+reconstruir y verificar el roundtrip firmado con el instalador y una
+prerelease real de GitHub antes de autorizar una promoción a nightly.
 
 
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)

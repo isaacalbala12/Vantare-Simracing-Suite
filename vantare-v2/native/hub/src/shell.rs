@@ -1032,6 +1032,7 @@ impl Hub {
         let engineer = create_engineer(engineer, cx);
         let remote =
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
+        calendar.update(cx, |calendar, _| calendar.attach_remote(remote.clone()));
         cx.observe(&remote, |this, remote, cx| {
             if this.capture.is_none() {
                 this.shell.access = remote.read(cx).navigation_access();

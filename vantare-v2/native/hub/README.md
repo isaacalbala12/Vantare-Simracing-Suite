@@ -182,3 +182,15 @@ El smoke usa una ruta de layout aislada y no lee el layout personal.
 cabecera de página, tarjetas, filas de ajuste, interruptores, botones, selects
 y notas. Toda sección nueva compone estas piezas; no define colores ni tamaños
 propios. La dirección visual la mantiene el orquestador.
+
+## Horario publicado — #1488
+
+«Actualizar horario» usa el worker IPC compartido para pedir a services el
+horario publicado. La primera apertura del Calendario también lo pide si no
+hay horario vigente. La demo no consulta red ni guarda publicaciones.
+`official-schedule.json`, bajo el directorio de datos, contiene la última agenda
+validada y guardada atómicamente; se restaura al arrancar. Una respuesta inválida,
+un fallo de red o de escritura conserva el horario anterior. La ventana es
+`[validFrom, validUntil)`; cuando no hay uno vigente, todas las vistas muestran
+«Aún no hay horario publicado para esta semana» sin carreras caducadas.
+No publica horarios ni activa recordatorios.

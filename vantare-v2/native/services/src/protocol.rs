@@ -22,6 +22,7 @@ pub enum Command {
     LicenseStatus,
     LicenseRenew,
     DeviceReset,
+    CalendarRefresh,
     RoadmapCached,
     RoadmapRefresh,
     DraftLoad,
@@ -83,6 +84,9 @@ pub enum Reply {
     ReportReceipt {
         receipt: report_document::Receipt,
         draft_state: DraftState,
+    },
+    Calendar {
+        schedule: Option<String>,
     },
     Roadmap {
         publication: Option<roadmap_document::Publication>,

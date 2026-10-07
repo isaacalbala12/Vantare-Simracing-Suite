@@ -1,4 +1,4 @@
-//! Lectura local del catálogo oficial UTC; sin publicación, Discord ni recordatorios.
+//! Horario publicado UTC y caché local; red exclusivamente por services.
 use crate::{files, orbit};
 pub mod views;
 
@@ -198,6 +198,9 @@ struct Following {
 }
 pub struct Calendar {
     schedule: Schedule,
+    remote: Option<gpui::Entity<crate::services::view::Remote>>,
+    refreshing: bool,
+    first_open_requested: bool,
     path: PathBuf,
     following: Following,
     saved: Option<Vec<u8>>,
@@ -288,8 +291,21 @@ impl Calendar {
         {
             return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
         }
+        let schedule_path = path.with_file_name("official-schedule.json");
+        let cached =
+            files::read(&schedule_path, 64 * 1024).and_then(|bytes| Schedule::parse(&bytes));
+        let schedule = cached.unwrap_or(schedule);
+        let status = if schedule.is_current(Utc::now())? {
+            "Horario guardado en este equipo"
+        } else {
+            "Aún no hay horario publicado para esta semana"
+        }
+        .into();
         Ok(Self {
             schedule,
+            remote: None,
+            refreshing: false,
+            first_open_requested: false,
             path,
             following,
             saved,
@@ -299,7 +315,7 @@ impl Calendar {
             tier_filter: None,
             clock_started: false,
             error: None,
-            status: "Horario guardado en este equipo".into(),
+            status,
         })
     }
     pub fn load_demo(data_dir: &Path, demo: &crate::demo::DemoData) -> Result<Self, String> {
@@ -352,12 +368,89 @@ impl Calendar {
         self.saved = Some(data);
         Ok(())
     }
-    pub fn reload(&mut self) -> Result<(), String> {
+    pub(crate) fn attach_remote(&mut self, remote: gpui::Entity<crate::services::view::Remote>) {
+        self.remote = Some(remote);
+    }
+    fn refresh(&mut self, cx: &mut Context<Self>) {
+        if self.refreshing || self.demo_now.is_some() {
+            return;
+        }
+        let target = cx.entity().downgrade();
+        let started = self.remote.as_ref().is_some_and(|remote| {
+            remote.update(cx, |remote, cx| remote.refresh_calendar(target, cx))
+        });
+        if started {
+            self.refreshing = true;
+            self.first_open_requested = true;
+            self.error = None;
+            self.status = "Actualizando horario…".into();
+        } else {
+            self.error = Some("No se pudo actualizar el horario: servicios ocupados o no disponibles. Vuelve a intentarlo.".into());
+        }
+        cx.notify();
+    }
+    fn apply_publication(&mut self, data: Option<&str>, now: DateTime<Utc>) -> Result<(), String> {
+        let Some(data) = data else {
+            self.status = if self.schedule.is_current(now)? {
+                "No hay una nueva publicación; se conserva el horario guardado"
+            } else {
+                "Aún no hay horario publicado para esta semana"
+            }
+            .into();
+            return Ok(());
+        };
+        if data.len() > 64 * 1024 {
+            return Err("horario demasiado grande".into());
+        }
+        let schedule = Schedule::parse(data.as_bytes())?;
+        if !schedule.is_current(now)? {
+            self.status = if self.schedule.is_current(now)? {
+                "La publicación no está vigente; se conserva el horario guardado"
+            } else {
+                "Aún no hay horario publicado para esta semana"
+            }
+            .into();
+            return Ok(());
+        }
+        if self.schedule.is_current(now)? && schedule.window()?.0 < self.schedule.window()?.0 {
+            self.status = "La publicación es anterior; se conserva el horario guardado".into();
+            return Ok(());
+        }
         let path = self.path.with_file_name("official-schedule.json");
-        let schedule = Schedule::parse(&files::read(&path, 1024 * 1024)?)?;
+        let previous = match std::fs::metadata(&path) {
+            Ok(_) => Some(files::read(&path, 64 * 1024)?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(format!("caché del horario: {error}")),
+        };
+        files::save(&path, data.as_bytes(), previous.as_deref())?;
         self.schedule = schedule;
-        self.status = format!("Agenda local explícita: {}", path.display());
+        self.status = "Horario publicado actualizado".into();
         Ok(())
+    }
+    pub(crate) fn complete_refresh(&mut self, reply: crate::services::protocol::Reply) {
+        use crate::services::protocol::Reply;
+        self.refreshing = false;
+        let result = match reply {
+            Reply::Calendar { schedule } => self.apply_publication(schedule.as_deref(), Utc::now()),
+            Reply::Error { message } => Err(message),
+            _ => Err("respuesta de horario inválida".into()),
+        };
+        self.error = result.err().map(|error| {
+            let retained = if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
+                "Se conserva el último horario válido."
+            } else {
+                "Vuelve a intentarlo."
+            };
+            format!("No se pudo actualizar el horario: {error}. {retained}")
+        });
+        if self.error.is_some() {
+            self.status = if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
+                "Horario guardado en este equipo"
+            } else {
+                "Aún no hay horario publicado para esta semana"
+            }
+            .into();
+        }
     }
 }
 impl Calendar {
@@ -397,8 +490,7 @@ impl Calendar {
             .child(
                 orbit::button("calendar-reload", "Actualizar horario", cx).on_click(cx.listener(
                     |this, _, _, cx| {
-                        this.error = this.reload().err();
-                        cx.notify();
+                        this.refresh(cx);
                     },
                 )),
             )
@@ -412,6 +504,19 @@ impl Calendar {
 }
 impl Render for Calendar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.first_open_requested
+            && self.demo_now.is_none()
+            && !matches!(self.schedule.is_current(Utc::now()), Ok(true))
+            && self
+                .remote
+                .as_ref()
+                .is_some_and(|remote| !remote.read(cx).calendar_busy())
+        {
+            self.refresh(cx);
+            self.first_open_requested = true;
+        } else if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
+            self.first_open_requested = true;
+        }
         if !self.clock_started && self.demo_now.is_none() {
             self.clock_started = true;
             cx.spawn(async move |this, cx| {
@@ -431,7 +536,13 @@ impl Render for Calendar {
             - 2.0 * cx.global::<crate::orbit::design::Tokens>().geometry.gutter
             - 76.0)
             .max(0.0);
-        if self.view == CalendarView::Upcoming {
+        if self.view == CalendarView::Upcoming
+            || !matches!(
+                self.schedule
+                    .is_current(self.demo_now.unwrap_or_else(Utc::now)),
+                Ok(true)
+            )
+        {
             beta::render(self, cx)
                 .h(gpui::px(height))
                 .into_any_element()
@@ -466,6 +577,9 @@ mod tests {
     fn upcoming_only_includes_followed_current_series_in_order_and_is_bounded() {
         let mut calendar = Calendar {
             schedule: Schedule::parse(SEED.as_bytes()).expect("catálogo real empaquetado"),
+            remote: None,
+            refreshing: false,
+            first_open_requested: false,
             path: PathBuf::new(),
             following: Following::default(),
             saved: None,
@@ -529,7 +643,7 @@ mod tests {
         let before = calendar.schedule.window().expect("ventana");
         let schedule = dir.join("official-schedule.json");
         std::fs::write(&schedule, "{}").expect("agenda inválida de test");
-        assert!(calendar.reload().is_err());
+        assert!(calendar.apply_publication(Some("{}"), Utc::now()).is_err());
         assert_eq!(
             calendar.schedule.window().expect("ventana conservada"),
             before
@@ -546,6 +660,120 @@ mod tests {
             std::fs::remove_file(path).expect("limpiar fichero propio");
         }
         std::fs::remove_dir_all(dir).expect("limpiar directorio");
+    }
+
+    fn published_fixture(now: DateTime<Utc>) -> String {
+        let mut value: serde_json::Value = serde_json::from_str(SEED).expect("fixture");
+        value["validFrom"] = serde_json::json!((now - Duration::days(1)).to_rfc3339());
+        value["validUntil"] = serde_json::json!((now + Duration::days(6)).to_rfc3339());
+        serde_json::to_string(&value).expect("JSON")
+    }
+
+    #[test]
+    fn publication_is_validated_cached_and_restored_and_failures_keep_last_valid() {
+        use crate::services::protocol::Reply;
+        let dir = std::env::temp_dir().join(format!(
+            "vantare-calendar-publication-{}",
+            vantare_services::random_id().expect("id")
+        ));
+        let now = Utc::now();
+        let mut calendar = Calendar::load(&dir).expect("sin caché");
+        let data = published_fixture(now);
+        calendar
+            .apply_publication(Some(&data), now)
+            .expect("publicado");
+        assert!(calendar.schedule.is_current(now).expect("vigencia"));
+        let path = dir.join("official-schedule.json");
+        assert_eq!(
+            files::read(&path, 64 * 1024).expect("caché"),
+            data.as_bytes()
+        );
+        let mut restored = Calendar::load(&dir).expect("reinicio");
+        assert_eq!(
+            restored.schedule.window().expect("ventana"),
+            calendar.schedule.window().expect("ventana")
+        );
+        restored.complete_refresh(Reply::Error {
+            message: "sin conexión".into(),
+        });
+        assert!(restored.error.is_some());
+        assert!(restored.schedule.is_current(now).expect("conservado"));
+        assert!(restored.apply_publication(Some("{}"), now).is_err());
+        restored
+            .apply_publication(Some(SEED), now)
+            .expect("caducado no sustituye");
+        restored
+            .apply_publication(None, now)
+            .expect("vacío no sustituye");
+        restored
+            .apply_publication(Some(&published_fixture(now - Duration::days(2))), now)
+            .expect("publicación anterior aún vigente no sustituye una nueva");
+        assert_eq!(
+            files::read(&path, 64 * 1024).expect("caché intacta"),
+            data.as_bytes()
+        );
+        assert!(
+            !restored
+                .schedule
+                .is_current(now + Duration::days(6))
+                .expect("fin exclusivo")
+        );
+        // Un guardado bloqueado tampoco altera el horario en memoria ni disco.
+        let lock = std::fs::OpenOptions::new()
+            .write(true)
+            .open(dir.join("official-schedule.json.lock"))
+            .expect("lock");
+        lock.try_lock().expect("bloqueo real");
+        assert!(
+            restored
+                .apply_publication(Some(&published_fixture(now + Duration::hours(1))), now)
+                .is_err()
+        );
+        assert_eq!(
+            restored.schedule.window().expect("ventana"),
+            calendar.schedule.window().expect("ventana")
+        );
+        drop(lock);
+        std::fs::remove_dir_all(dir).expect("limpiar propio");
+    }
+
+    #[test]
+    fn no_network_or_current_cache_is_an_honest_empty_state() {
+        use crate::services::protocol::Reply;
+        let dir = std::env::temp_dir().join(format!(
+            "vantare-calendar-empty-{}",
+            vantare_services::random_id().expect("id")
+        ));
+        let now = Utc::now();
+        let mut calendar = Calendar::load(&dir).expect("vacío");
+        calendar.complete_refresh(Reply::Error {
+            message: "sin conexión".into(),
+        });
+        assert!(!calendar.schedule.is_current(now).expect("sin vigente"));
+        assert!(calendar.upcoming(now).0.is_empty());
+        assert_eq!(
+            calendar.status,
+            "Aún no hay horario publicado para esta semana"
+        );
+        calendar.complete_refresh(Reply::Calendar { schedule: None });
+        assert!(calendar.error.is_none());
+        assert_eq!(
+            calendar.status,
+            "Aún no hay horario publicado para esta semana"
+        );
+        std::fs::create_dir_all(&dir).expect("propio");
+        std::fs::write(dir.join("official-schedule.json"), SEED).expect("caché caducada");
+        let restored = Calendar::load(&dir).expect("caducada");
+        assert!(!restored.schedule.is_current(now).expect("caducada"));
+        assert_eq!(restored.status, calendar.status);
+        std::fs::write(dir.join("official-schedule.json"), "{}").expect("caché inválida");
+        assert_eq!(
+            Calendar::load(&dir)
+                .expect("inválida no impide actualizar")
+                .status,
+            calendar.status
+        );
+        std::fs::remove_dir_all(dir).expect("limpiar propio");
     }
 
     #[test]

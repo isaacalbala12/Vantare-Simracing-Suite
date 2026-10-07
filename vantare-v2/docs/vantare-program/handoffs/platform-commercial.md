@@ -1374,7 +1374,7 @@ Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
 solo en Mac. No se declara promoción ni publicación.
 
 Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.
-## #1472 — arreglos R2 (2026-10-07, entrega local en curso)
+## #1472 — arreglos R2 (2026-10-07, entrega local)
 
 Base recibida `e8f3f11f`, rama `vantareapp/isa-1472-seguridad-decisiones`.
 B-01: desinstalación por inventario, directorios vacíos de hijos a padres y
@@ -1382,9 +1382,16 @@ reintento con estado estructural aunque falten archivos ya eliminados.
 Regresión `native/packaging/uninstall-tests.ps1`: RED contra base, 2 PASS
 con fixtures, interrupción inyectada y datos conservados. Evidencia externa
 `C:/tmp/1472-arreglos-r2-evidence/`. Sin push, PR, promoción ni release.
-N-10 bloqueado: `native/hub/src/comparison.rs:197` usa Workshop para capturas;
-no se retira del paquete ni se cambia esa arquitectura en este encargo.
-Las notas R2 y `docs/roadmap/plan.md` no existen en el checkout recibido.
+N-10 pendiente de contrato: beta_visible oculta Workshop; Studio y su preview
+renderizan en el Hub y no lanzan ese EXE. El flujo general de capturas de
+Workshop (workshop.rs:540 -> comparison.rs:197) sí lo necesita. candidate.ps1
+comparte inventario entre canales y exige igualdad con cargo metadata; el
+bootstrap schema=1 instalado no se reemplaza al actualizar. Una generación
+sin ese miembro no verifica con el bootstrap anterior. Retirarlo solo de beta
+requiere decidir compatibilidad de inventario/bootstrap o reinstalación; no
+se ejecuta ese cambio de contrato aquí ni se declara N-10 resuelto.
+`docs/roadmap/plan.md` no existe en el checkout recibido. La nota R2 externa
+se recibió después del inicio y sus instrucciones de custodia USB se aplicaron.
 
 N-2: selección descendente de la primera release verificable; assets inválidos
 se omiten y byte[] se decodifica con UTF-8 estricto/detección BOM.
@@ -1403,7 +1410,7 @@ solo una identidad nueva agota su mapa. Regresión con 2000 clases y pilotos
 fijos RED/GREEN, conservando el número de pilotos. Árbol funcional final:
 fmt/check/clippy -D warnings PASS, nextest 1192 PASS (6 omisiones del perfil),
 lifecycle PASS (0 fallos). Sin cambio de datos del renderer ni telemetría inventada.
-Build Release y validación de paquete/paridad aún en curso.
+Build Release PASS (-j 2, target aislado, cola autorizada).
 
 #21 parcial: legacy se carga independientemente de installation. Regresión
 con archivo guardado inválido y bytes DPAPI ilegibles: conserva fingerprint y
@@ -1420,3 +1427,19 @@ Regresiones crashes/uso/identidad RED, 8 focales GREEN; mismos gates completos
 finales PASS sobre todo el árbol funcional, sin cambios posteriores de código.
 No borra vínculos históricos ni reescribe intentos de informe ya consentidos.
 No se envió telemetría a PostHog real ni se cambió su configuración remota.
+
+Validación de cierre R2: Release final PASS; packaging/tests.ps1 sobre paquete
+QA con binarios Release: 174 PASS (incluye CLI, launcher/hijos replay,
+rollback y muerte abrupta). Requirió DuckDB externo en PATH; no prueba una
+máquina Windows limpia. Recorrido firmado install/Stage/tamper reject/Apply/
+replay no-op/uninstall PASS, datos conservados. Usa payload Release excepto
+services reemplazado por verificador aislado con pública TEST; versiones QA
+0.1.0/0.1.1, no build ni firma distribuible de producción. Regresiones uninstall
+2 PASS y feed 3 PASS también en PS5.1. Paridad Standings Release contra GPUI
+#1470: 0/292160 píxeles distintos, umbral0/delta0; captura y diff inspeccionados.
+Evidencia: C:/tmp/1472-arreglos-r2-evidence/*-final.log,
+packaging-real-final-rerun.log, signed-walk-release.log y standings-final.png.
+Sin prueba de firma privada productiva, GitHub real, NSIS, PostHog real ni
+LMU físico/DPI/OBS/Mac. Dos pendientes: contrato de recuperación v2 (#21) y
+compatibilidad del inventario/bootstrap (N-10). Solo commits locales; sin push,
+PR, CI remota, integración/promoción ni release. Issue #1472 abierta para revisión.

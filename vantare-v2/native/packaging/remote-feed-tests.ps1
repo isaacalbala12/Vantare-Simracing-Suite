@@ -35,4 +35,3 @@ foreach($script:encoding in @('utf8','utf16','text')) {
  if($script:requested.Count -ne 2 -or $script:requested[0] -notmatch 'v65535.0.0/') {throw 'Orden de verificación incorrecto'}
  Write-Output "PASS feed inválido alto + asset raro + válido firmado; encoding=$script:encoding"
 }
-

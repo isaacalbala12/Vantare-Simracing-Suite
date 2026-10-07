@@ -4918,3 +4918,45 @@ más tests existentes. Warning QA previo de analysis/view.rs:989 conservado.
 No LMU live, OBS, Mac, DPI125/150, pruebas de rendimiento ni CI remoto.
 `docs/roadmap/plan.md` ausente en la base; esta ronda no cambia alcance o fases.
 Siguiente: revisión del orquestador; ninguna integración/publicación ejecutada.
+
+### #1476 — Observador de lifecycle Windows (2026-10-07, entrega aislada)
+
+Worker en `C:/tmp/vw3-1476/vantare-v2`, rama
+`vantareapp/isa-1476-lifecycle-windows`, base `dd90b49c9fa2244fb8fa881a44ff094f71bd4b11`.
+Solo se modifica `native/runtime/tests/lifecycle.rs` y este handoff. El supervisor,
+los presupuestos de reinicio, las aserciones de cierre y sus plazos permanecen intactos.
+Los hijos sintéticos registran su tiempo de creación antes de terminar. El observador
+Windows abre un handle, compara PID + creación y consulta el estado con una espera
+no bloqueante. Un PID reutilizado no cuenta como el hijo original; un proceso
+terminado tampoco cuenta como vivo aunque conserve handles abiertos. Errores de
+consulta distintos de PID inexistente hacen fallar el escenario.
+
+Regresión con proceso real: identidad actual viva, otra creación con el mismo PID
+rechazada y proceso terminado con handle retenido. RED con `tasklist` anterior
+(`regression-red-1.log`); GREEN con el arreglo (`regression-fixed-1.log`). Antes:
+50/50 pasadas originales en tandas de 25, sin fallo espontáneo. Después: 50/50.
+La regresión reproduce de forma controlada la confusión de identidad; NO demuestra
+que esa fuera la causa del PID39296 histórico ni un defecto del supervisor.
+
+Gates por la cola, -j 2 y target propio `native/target/gates`: fmt/check/clippy PASS,
+Nextest 1185/1185 PASS (6 skips existentes; ACC completo PASS en 639,385 s), lifecycle
+5 Hub + 13 runtime PASS. Standings Prueba: 0/292160 px, umbral 0/delta máximo 0;
+candidata, referencia y mapa MIRADOS. Dos capturas Debug idénticas conservaron
+1 px/delta 1 en (41,48); se repitió con el perfil Prueba usado por las validaciones
+previas, sin modificar UI, referencia ni tolerancia. EXE SHA256 en
+`C:/tmp/1476-evidence/prueba-workshop.sha256`.
+
+Primer Nextest falló en IPC (`put_wakes_a_waiting_reader_and_close_releases_it`):
+486 PASS, 1 FAIL, 698 sin ejecutar. El test usa dos pausas de 20 ms que no aseguran
+que el lector observe `put` antes de `close`. Hallazgo separado en
+[#1478](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1478),
+Project Vantare/Backlog; IPC idéntico a la base. Log `final-test.log` conservado;
+repetición completa `repeat-test.log` PASS sin cambios en IPC.
+
+Evidencia externa `C:/tmp/1476-evidence/`; informe de 10 líneas y SHA final en
+`C:/tmp/fase2/informe-1476.md`. Solo entrega local para revisión del orquestador:
+sin push, PR, CI remota, merge, promoción ni release. Sin dependencias nuevas.
+`docs/roadmap/plan.md` no existe en la base asignada; esta corrección de QA no
+cambia alcance público ni entrega una feature pendiente del roadmap.
+Sin certificación LMU live, OBS, DPI mixto ni macOS; no se ejecutan suites globales
+Go/TS porque solo cambia QA Rust Windows.

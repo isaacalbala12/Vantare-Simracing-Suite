@@ -42,6 +42,16 @@ fn opt(args: &[String], name: &str) -> String {
 }
 
 fn note(path: &str, line: &str) {
+    // Guardar la identidad en el propio hijo, antes de que pueda terminar.
+    #[cfg(windows)]
+    let line = if line.contains(" pid=") {
+        // SAFETY: seudo-handle del proceso actual; no se cierra.
+        let created =
+            creation_time(unsafe { windows_sys::Win32::System::Threading::GetCurrentProcess() });
+        format!("{line} created={created}")
+    } else {
+        line.to_string()
+    };
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -267,6 +277,13 @@ fn fake_overlays(args: &[String]) -> ExitCode {
 
 // --- escenarios ------------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Process {
+    pid: u32,
+    #[cfg(windows)]
+    created: u64,
+}
+
 struct Scenario {
     dir: PathBuf,
     pipe: String,
@@ -310,8 +327,8 @@ impl Scenario {
             .unwrap_or_default()
     }
 
-    /// `(pid, época)` de cada arranque de `who` en `status`.
-    fn starts(&self, who: &str) -> Vec<(u32, u64)> {
+    /// `(identidad de proceso, época)` de cada arranque de `who` en `status`.
+    fn starts(&self, who: &str) -> Vec<(Process, u64)> {
         let field = |line: &str, key: &str| {
             line.split_whitespace()
                 .find_map(|part| part.strip_prefix(key))
@@ -322,7 +339,11 @@ impl Scenario {
             .filter(|line| line.starts_with(&format!("{who} pid=")))
             .map(|line| {
                 (
-                    field(line, "pid=").unwrap() as u32,
+                    Process {
+                        pid: field(line, "pid=").unwrap() as u32,
+                        #[cfg(windows)]
+                        created: field(line, "created=").expect("identidad registrada por el hijo"),
+                    },
                     field(line, "epoch=").unwrap_or(0),
                 )
             })
@@ -448,18 +469,110 @@ impl Drop for Scenario {
 }
 
 #[cfg(windows)]
-fn alive(pid: u32) -> bool {
-    let out = Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {pid}"), "/NH", "/FO", "CSV"])
-        .output()
+fn creation_time(handle: windows_sys::Win32::Foundation::HANDLE) -> u64 {
+    use windows_sys::Win32::Foundation::FILETIME;
+    use windows_sys::Win32::System::Threading::GetProcessTimes;
+
+    let mut created = FILETIME::default();
+    let mut exited = FILETIME::default();
+    let mut kernel = FILETIME::default();
+    let mut user = FILETIME::default();
+    // SAFETY: handle válido; los cuatro FILETIME son salidas inicializadas y únicas.
+    assert_ne!(
+        unsafe {
+            GetProcessTimes(
+                handle,
+                &raw mut created,
+                &raw mut exited,
+                &raw mut kernel,
+                &raw mut user,
+            )
+        },
+        0,
+        "GetProcessTimes: {}",
+        std::io::Error::last_os_error()
+    );
+    (u64::from(created.dwHighDateTime) << 32) | u64::from(created.dwLowDateTime)
+}
+
+#[cfg(windows)]
+fn process_observer_distinguishes_identity_and_terminated_processes() {
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+    // SAFETY: seudo-handle válido del proceso actual; no se cierra.
+    let created = creation_time(unsafe { GetCurrentProcess() });
+    let current = Process {
+        pid: std::process::id(),
+        created,
+    };
+    assert!(alive(current), "la identidad actual sigue viva");
+    // Misma consulta por PID que tras reutilizarlo, pero otra identidad de nacimiento.
+    assert!(
+        !alive(Process {
+            created: created - 1,
+            ..current
+        }),
+        "un PID vivo de otra identidad no es el hijo original"
+    );
+
+    let scenario = Scenario::new("observer");
+    let mut child = Command::new(env::current_exe().unwrap())
+        .args(["fake-crash", "--status", &scenario.file("status")])
+        .spawn()
         .unwrap();
-    String::from_utf8_lossy(&out.stdout).contains(&format!("\"{pid}\""))
+    assert!(!child.wait().unwrap().success());
+    let original = scenario.starts("crash")[0].0;
+    assert!(
+        !alive(original),
+        "el handle retenido no implica un proceso vivo"
+    );
+}
+
+#[cfg(windows)]
+fn alive(process: Process) -> bool {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::Foundation::{ERROR_INVALID_PARAMETER, WAIT_OBJECT_0, WAIT_TIMEOUT};
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+    };
+
+    // SAFETY: sin punteros; se comprueba el resultado y se toma propiedad una sola vez.
+    let handle = unsafe {
+        OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+            0,
+            process.pid,
+        )
+    };
+    if handle.is_null() {
+        let error = std::io::Error::last_os_error();
+        assert_eq!(
+            error.raw_os_error(),
+            i32::try_from(ERROR_INVALID_PARAMETER).ok(),
+            "OpenProcess({process:?}): {error}"
+        );
+        return false; // El PID ya no existe; otros errores no simulan un cierre.
+    }
+    // SAFETY: handle válido recién abierto, con un único propietario.
+    let handle = unsafe { OwnedHandle::from_raw_handle(handle) };
+    if creation_time(handle.as_raw_handle()) != process.created {
+        return false; // PID reutilizado por otro proceso.
+    }
+    // SAFETY: el handle mantiene la identidad durante esta consulta no bloqueante.
+    match unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) } {
+        WAIT_OBJECT_0 => false,
+        WAIT_TIMEOUT => true,
+        _ => panic!(
+            "WaitForSingleObject({process:?}): {}",
+            std::io::Error::last_os_error()
+        ),
+    }
 }
 
 #[cfg(unix)]
-fn alive(pid: u32) -> bool {
+fn alive(process: Process) -> bool {
     Command::new("kill")
-        .args(["-0", &pid.to_string()])
+        .args(["-0", &process.pid.to_string()])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
@@ -467,7 +580,8 @@ fn alive(pid: u32) -> bool {
 }
 
 #[cfg(windows)]
-fn kill(pid: u32) {
+fn kill(process: Process) {
+    let pid = process.pid;
     let status = Command::new("taskkill")
         .args(["/PID", &pid.to_string(), "/F"])
         .stdout(Stdio::null())
@@ -477,7 +591,8 @@ fn kill(pid: u32) {
 }
 
 #[cfg(unix)]
-fn kill(pid: u32) {
+fn kill(process: Process) {
+    let pid = process.pid;
     let status = Command::new("kill")
         .args(["-KILL", &pid.to_string()])
         .stdout(Stdio::null())
@@ -778,7 +893,7 @@ fn engineer_restart_budget_closes_every_child_after_exactly_two_retries() {
     );
     for who in ["engineer", "overlays", "core"] {
         for (pid, _) in scenario.starts(who) {
-            assert!(!alive(pid), "{who} (pid {pid}) debía estar muerto");
+            assert!(!alive(pid), "{who} ({pid:?}) debía estar muerto");
         }
     }
 }
@@ -847,6 +962,11 @@ fn run_scenarios(filters: &[String]) -> ExitCode {
             a_hung_engineer_is_killed_by_the_grace_deadline,
         ),
     ];
+    #[cfg(windows)]
+    scenarios.push((
+        "process_observer_distinguishes_identity_and_terminated_processes",
+        process_observer_distinguishes_identity_and_terminated_processes,
+    ));
     #[cfg(windows)]
     scenarios.push((
         "engineer_dies_in_the_same_job_when_launcher_is_killed",

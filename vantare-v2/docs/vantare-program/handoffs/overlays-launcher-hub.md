@@ -1,5 +1,48 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1468 — Input/Fuel entrega local; H2H pendiente (2026-10-07)
+
+Worktree `C:/tmp/vw3-1468-datos/vantare-v2`, rama
+`vantareapp/isa-1468-widgets-datos`, base `f0aea665` limpia al empezar.
+Input conserva freno y embrague en el mismo historial observado; colores
+idénticos a sus barras. Embrague ausente oculta su barra sin reservar columna.
+Fixture: doce DTO del replay LMU47 real con reloj de 20 ms; ACC original
+y vectores de ausencia.
+Input commit local `f64f4f06`, sin push.
+Fuel implementado en el segundo hito: MIN/MAX sobre todas las vueltas positivas
+finitas del historial de diez, independiente de las filas visibles. PARADAS =
+ceil(max(0, consumo medio × vueltas restantes − nivel actual) / capacidad).
+Si falta una entrada actual válida, PARADAS muestra «—»; no deriva ritmo desde
+una vuelta aislada cuando solo hay reloj restante. Celdas en las filas
+existentes MED. y EST. META.; conserva 523×272 y filas de 23 px.
+Fuel validado: fmt/check/Clippy -D warnings PASS, Nextest 1225/1225
+(6 skips previos, goldens ACC/LMU y procedencia temporal), lifecycle 17 PASS.
+Build prueba/parity-capture final PASS; Standings vigente 0/292160 px.
+Alfa completo 108/108 opacas en 1920/1440/1280; capturas y hojas inspeccionadas.
+Fuel real LMU47/ACC mantiene ausencia honesta; demo heredado positivo encaja
+MIN2.08 L/MAX2.26 L/PARADAS2 sin solapamientos. Ausencia de embrague inspeccionada
+como vector explícito. No se atribuyen esos vectores/demo a conducción real.
+Logs iniciales de Clippy (límite de líneas) y referencia Standings histórica
+incorrecta se conservan; corregidos sin debilitar los gates. Estado GitHub #1468
+abierta para revisión, H2H aún necesita decisión. Rama remota/PR/CI ausentes.
+Sin cambios de DTO, demanda, adaptadores, medidas ni dependencias.
+H2H bloqueado por el límite visual del brief: filas de rival de 24 px ocupadas,
+388×110. Captura real inspeccionada `primera-head-to-head.png`; añadir sectores
+y mejor vuelta a ambas filas exige rediseño. Opciones para decisión de Isaac:
+(1) ampliar filas de rival a dos líneas y aumentar altura total; (2) conservar
+110 px y sustituir columnas actuales por sectores/mejor vuelta. No se ejecuta
+ninguna opción ni se inventan sectores. Informe `C:/tmp/fase2/informe-1468-datos.md`.
+Input validado por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS,
+Nextest 1223/1223 (6 skips) y lifecycle 17 PASS; tras renovar el reloj de la
+fixture, UI+procedencia temporal 184/184 PASS y check/Clippy repetidos PASS.
+Capturas Input LMU47/ACC inspeccionadas; misma geometría, traza roja añadida
+(572 px de diferencia intencional). Standings vigente 0/292160 px inspeccionado.
+Evidencia externa
+`C:/tmp/1468-datos-evidence/`. El corpus no acredita Fuel medido durante carrera,
+conducción live, OBS ni DPI. `plan.md` ausente aquí y en `origin/nightly`;
+no se recrea roadmap paralelo. Sin push, PR, merge, promoción ni release.
+
+
 ## Candidato beta — verificación local cerrada (2026-10-07)
 Código `1c9ca48d`, base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`; merges en orden `6338e31e` y `f18b842e`, sin squash. Zoom no autorizado por nota y no integrado.
 Gates completos finales PASS: fmt/check/Clippy -D warnings, Nextest1205/1205 (6 skips, goldens ACC/LMU), lifecycle17. Se conserva el fallo intermedio de caché/mtime y su repetición completa verde.

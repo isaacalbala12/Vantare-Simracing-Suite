@@ -19,8 +19,12 @@ pub struct Sample {
     pub at: Duration,
     /// Porcentaje redondeado dibujado por Eficiencia; None es ausencia.
     pub throttle: Option<f64>,
+    pub brake: Option<f64>,
+    pub clutch: Option<f64>,
     /// Comienza otro tramo, sin interpolar a traves de un hueco.
     pub break_before: bool,
+    /// Huecos por canal: acelerador, freno y embrague.
+    pub break_pedals: [bool; 3],
 }
 
 #[derive(Clone, Debug, Default)]
@@ -29,6 +33,7 @@ pub struct Trace {
     identity: Option<(u64, SessionId, Option<CarId>)>,
     last_seen: Option<(u64, Duration)>,
     cut: bool,
+    cut_pedals: [bool; 3],
 }
 
 impl Trace {
@@ -78,27 +83,42 @@ impl Trace {
             }
         }
         self.last_seen = Some((snapshot.sequence, at));
-        let value = snapshot
+        let telemetry = snapshot
             .state
             .player
-            .and_then(|p| p.telemetry.throttle.current().copied())
-            .filter(|v| v.is_finite())
-            .map(|v| (v.clamp(0.0, 1.0) * 100.0).round());
-        self.cut |= value.is_none();
+            .map(|p| p.telemetry)
+            .unwrap_or_default();
+        let [throttle, brake, clutch] = [telemetry.throttle, telemetry.brake, telemetry.clutch]
+            .map(|q| {
+                q.current()
+                    .copied()
+                    .filter(|v| v.is_finite())
+                    .map(|v| (v.clamp(0.0, 1.0) * 100.0).round())
+            });
+        let missing = [throttle, brake, clutch].iter().all(Option::is_none);
+        self.cut |= missing;
+        let absent = [throttle, brake, clutch].map(|value| value.is_none());
+        for (cut, missing) in self.cut_pedals.iter_mut().zip(absent) {
+            *cut |= missing;
+        }
         if self
             .samples
             .back()
             .is_some_and(|p| at.saturating_sub(p.at) < CADENCE)
-            || (self.samples.is_empty() && value.is_none())
+            || (self.samples.is_empty() && missing)
         {
             return changed;
         }
         self.samples.push_back(Sample {
             at,
-            throttle: value,
+            throttle,
+            brake,
+            clutch,
             break_before: self.cut,
+            break_pedals: self.cut_pedals,
         });
-        self.cut = value.is_none();
+        self.cut = missing;
+        self.cut_pedals = absent;
         // La ventana predeterminada conserva el límite visual heredado de 120.
         let max_samples = if window == WINDOW {
             MAX_SAMPLES
@@ -368,6 +388,47 @@ mod tests {
 
 #[cfg(test)]
 mod trace_tests {
+
+    #[test]
+    fn subcadence_loss_breaks_only_the_missing_channel() {
+        let mut trace = Trace::default();
+        let mut s = sample(1, 0, Quality::Reliable(0.5));
+        s.state.player.as_mut().expect("jugador").telemetry.brake = Quality::Reliable(0.5);
+        trace.push(&s);
+        s.sequence += 1;
+        s.origin.received_at += Duration::from_millis(5);
+        s.state.player.as_mut().expect("jugador").telemetry.brake = Quality::Unavailable;
+        trace.push(&s);
+        s.sequence += 1;
+        s.origin.received_at = CADENCE;
+        s.state.player.as_mut().expect("jugador").telemetry.brake = Quality::Reliable(0.25);
+        trace.push(&s);
+        assert_eq!(trace.samples().len(), 2);
+        assert!(!trace.samples()[1].break_before);
+        assert_eq!(trace.samples()[1].break_pedals, [false, true, true]);
+    }
+
+    #[test]
+    fn brake_and_clutch_do_not_depend_on_throttle_availability() {
+        let mut trace = Trace::default();
+        let mut s = sample(1, 0, Quality::Unavailable);
+        let telemetry = &mut s.state.player.as_mut().expect("jugador").telemetry;
+        telemetry.brake = Quality::Reliable(0.5);
+        telemetry.clutch = Quality::Reliable(0.25);
+        assert!(trace.push(&s));
+        assert_eq!(trace.samples()[0].throttle, None);
+        assert_eq!(trace.samples()[0].brake, Some(50.0));
+        assert_eq!(trace.samples()[0].clutch, Some(25.0));
+        s.sequence += 1;
+        s.origin.received_at += CADENCE;
+        s.state.player.as_mut().expect("jugador").telemetry.brake = Quality::Stale(0.8);
+        trace.push(&s);
+        assert_eq!(trace.samples()[1].brake, None);
+        assert_eq!(trace.samples()[1].clutch, Some(25.0));
+        s.state.source_state = SourceState::Lost;
+        assert!(trace.push(&s));
+        assert!(trace.samples().is_empty());
+    }
 
     #[test]
     fn selected_windows_retain_the_full_span_at_native_cadence() {

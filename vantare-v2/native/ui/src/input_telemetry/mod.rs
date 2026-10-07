@@ -49,7 +49,7 @@ impl Settings {
     }
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = vantare_domain::input_telemetry::project(snapshot, prefs);
-        vm.show_clutch = self.show_clutch;
+        vm.show_clutch = self.show_clutch && vm.pedals[0].is_some();
         if !self.show_clutch {
             vm.pedals[0] = None;
         }
@@ -175,7 +175,7 @@ fn paint(
     let top = if vm.status_text.is_some() { 28.0 } else { 10.0 };
     let graph_height = SIZE.1 - top - 8.0;
     let graph_width = 286.0;
-    // Solo acelerador observado: el contrato de Trace no contiene freno/embrague.
+    // Las tres señales comparten muestras, escala y huecos observados.
     for fraction in [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0] {
         window.paint_quad(gpui::fill(
             rect(6.0, top + fraction * graph_height, graph_width, 1.0),
@@ -183,30 +183,40 @@ fn paint(
         ));
     }
     let (ox, oy) = text::origin();
-    let mut path = PathBuilder::stroke(px(2.0));
-    let mut connected = false;
-    let mut segments = 0;
-    for (index, sample) in samples.iter().enumerate() {
-        if let Some(value) = sample.throttle {
-            let x =
-                6.0 + index as f32 / samples.len().saturating_sub(1).max(1) as f32 * graph_width;
-            let y = top + graph_height * (1.0 - value as f32 / 100.0);
-            let position = point(px(ox + x), px(oy + y));
-            if connected && !sample.break_before {
-                path.line_to(position);
-                segments += 1;
-            } else {
-                path.move_to(position);
-            }
-            connected = true;
-        } else {
-            connected = false;
+    for (signal, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
+        if signal == 0 && !vm.show_clutch {
+            continue;
         }
-    }
-    if segments > 0 {
-        match path.build() {
-            Ok(path) => window.paint_path(path, col(0x6fae7d, 1.0)),
-            Err(error) => eprintln!("input-telemetry: traza: {error}"),
+        let mut path = PathBuilder::stroke(px(2.0));
+        let mut connected = false;
+        let mut segments = 0;
+        for (index, sample) in samples.iter().enumerate() {
+            let value = match signal {
+                0 => sample.clutch,
+                1 => sample.brake,
+                _ => sample.throttle,
+            };
+            if let Some(value) = value {
+                let x = 6.0
+                    + index as f32 / samples.len().saturating_sub(1).max(1) as f32 * graph_width;
+                let y = top + graph_height * (1.0 - value as f32 / 100.0);
+                let position = point(px(ox + x), px(oy + y));
+                if connected && !sample.break_before && !sample.break_pedals[2 - signal] {
+                    path.line_to(position);
+                    segments += 1;
+                } else {
+                    path.move_to(position);
+                }
+                connected = true;
+            } else {
+                connected = false;
+            }
+        }
+        if segments > 0 {
+            match path.build() {
+                Ok(path) => window.paint_path(path, col(color, 1.0)),
+                Err(error) => eprintln!("input-telemetry: traza: {error}"),
+            }
         }
     }
     let value_ink = ink(11.0, 700.0, 0.0, col(tokens::INK, 1.0));
@@ -477,6 +487,54 @@ mod tests {
 
     use super::*;
     use vantare_domain::{Player, Quality};
+
+    #[test]
+    fn real_lmu_and_acc_inputs_reach_all_three_observed_traces() {
+        for json in [
+            include_str!("../../fixtures/telemetry-real/lmu47-input.sequence.json"),
+            include_str!("../../fixtures/telemetry-real/acc.snapshot.json"),
+        ] {
+            let snapshots = crate::workshop::snapshots_from_json(json).expect("corpus real");
+            let mut widget = Widget::new(&Settings::default(), Preferences::default());
+            for snapshot in &snapshots {
+                widget.ingest(snapshot, Preferences::default());
+            }
+            if snapshots.len() > 1 {
+                assert!(widget.trace.samples().len() > 1);
+            }
+            let sample = widget.trace.samples().back().expect("muestra observada");
+            let player = snapshots
+                .last()
+                .expect("foto")
+                .state
+                .player
+                .expect("jugador");
+            let percent = |q: Quality<f64>| q.current().map(|v| (v * 100.0).round());
+            assert_eq!(sample.throttle, percent(player.telemetry.throttle));
+            assert_eq!(sample.brake, percent(player.telemetry.brake));
+            assert_eq!(sample.clutch, percent(player.telemetry.clutch));
+        }
+    }
+
+    #[test]
+    fn unsupported_clutch_uses_two_bars_and_has_no_trace() {
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/telemetry-real/lmu47.snapshot.json"
+        ))
+        .expect("corpus");
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .clutch = Quality::Unavailable;
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
+        widget.ingest(&snapshot, Preferences::default());
+        assert!(!widget.vm.show_clutch);
+        assert_eq!(widget.trace.samples()[0].clutch, None);
+        assert_eq!(widget.trace.samples()[0].brake, Some(100.0));
+    }
 
     #[test]
     fn reconstructed_workshop_scene_keeps_the_frozen_available_channels() {

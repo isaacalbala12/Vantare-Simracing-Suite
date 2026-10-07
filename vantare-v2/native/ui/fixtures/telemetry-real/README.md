@@ -34,3 +34,16 @@ existentes cubren el signo y el formato por separado.
 Relative contrasta los slots `track`, `ambient` y `time` con ACC fresco y LMU
 stale: seis casos por pipe solicitado, sin modificar las fotos. Protege la
 temperatura del slot y el reloj/clima del pie común cuando la fuente está stale.
+
+## Input #1468
+
+`lmu47-input.sequence.json` contiene las primeras doce observaciones del
+corpus `testdata/rust-port/lmu47-high-rate-60s.tar.gz`, pasando por el adaptador
+LMU real y Core (epoch 1463), con reloj de replay que avanza de 20 en 20 ms.
+La regresión temporal regenera y compara el array completo byte a byte.
+No modifica valores, secuencias ni identidad de las fotos obtenidas del núcleo.
+El golden anterior entregaba todos los eventos a 61 s, por lo que no servía
+para dibujar el histórico temporal. El tramo observado muestra el jugador
+detenido (freno 100 %, acelerador y embrague 0 %); no acredita conducción live.
+ACC se contrasta además con la foto real existente. La ausencia de embrague
+se prueba como vector de degradación explícito, no como captura real.

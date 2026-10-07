@@ -8,7 +8,7 @@ scroll independiente en contenido y carril; Cuenta es un destino separado y
 Licencias redirige a Cuenta. Usa las tarjetas neo y tokens de los cimientos.
 
 Apariencia ofrece los cuatro temas productivos con miniaturas: Grafito carmín,
-DeepSeek Harness, Noche Le Mans y Piedra cálida. Conserva guardado atómico,
+Harness, Noche Le Mans y Piedra cálida. Conserva guardado atómico,
 conflictos, contraste, opacidad y fuentes. Privacidad mantiene ambos consentimientos
 PostHog; diagnóstico conserva preparación, filtro y copia sanitizada;
 Actualizaciones conserva metadatos, novedades y acciones de reinicio de beta.

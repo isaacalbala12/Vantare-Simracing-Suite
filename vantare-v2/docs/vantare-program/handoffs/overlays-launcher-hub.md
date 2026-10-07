@@ -5329,3 +5329,8 @@ El commit conserva el spike revisable; no significa aceptación visual ni integr
 Segundo merge incorpora394720b9 tras43851186. Conflictos: handoff conserva ambas entradas; chrome conserva atajos zoom y rail compacto de r6, sin restaurar el helper antiguo de foco.
 Gates por cola/-j2/target propio PASS: fmt/check/clippy -D warnings, Nextest1208/1208 (6 skips; ACC431,878s), lifecycle17 escenarios.
 Capturas nuevas con zoom y aceptación visual siguen pendientes. Evidencia union2-m2-*; sin push/PR/promoción/release.
+
+### #1470/#1475 — candidato beta unión 2, Standings (2026-10-07)
+Tercer merge incorpora6faa25d4 tras6b7f8ee5 sin conflictos. Regresiones de VM visible por pipe y pista visible/oculta PASS.
+Gates por cola/-j2/target propio: fmt/check/clippy PASS, Nextest1210/1210 (6 skips; ACC432,872s), lifecycle17 PASS.
+Paridad visual0px nueva todavía pendiente, sin evidencia de rendimiento live. Logs union2-m3-*; sin push/PR/promoción/release.

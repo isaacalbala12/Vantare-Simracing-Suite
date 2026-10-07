@@ -351,6 +351,18 @@ impl Widget {
                 row.interval_text = vantare_domain::format::PLACEHOLDER.into();
             }
         }
+        // paint_footer usa footer_cells con slots o metricas no legacy.
+        // En esos casos el nombre visible, si se pide, ya esta en esas celdas.
+        let legacy_track_visible = self.config.show_session_footer
+            && self.config.footer_slots.is_empty()
+            && self.config.footer_ids.iter().all(|id| {
+                ["none", "track", "estimatedLaps"].contains(&id.as_str())
+            })
+            && [self.config.footer_first, self.config.footer_second]
+                .contains(&model::InfoMetric::Track);
+        if !legacy_track_visible {
+            next.track = vantare_domain::format::PLACEHOLDER.into();
+        }
         // El número de secuencia cambia siempre y no se ve: no cuenta.
         let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
         let changed = {
@@ -565,6 +577,64 @@ mod tests {
         #[cfg(feature = "paint-stats")]
         crate::profiling::report();
         assert_eq!(repaints, 0);
+    }
+
+    #[test]
+    fn real_lmu_footer_slots_preserve_visible_vm_through_requested_pipe() {
+        use std::{sync::Arc, time::Duration};
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/telemetry-real/lmu47.snapshot.json"
+        ))
+        .expect("foto LMU47 real");
+        let settings: Settings = serde_json::from_str(r#"{"classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","bestLap"]}"#).expect("opciones de la issue #1475");
+        let demand = settings.demand();
+        assert!(!demand.contains(vantare_ipc::Signal::TrackName));
+        let name = format!("vantare-standings-1475-{}", std::process::id());
+        let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");
+        let source = publisher.demand_source();
+        let mut subscriber =
+            vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
+                .expect("suscriptor");
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while source.mask() != demand.mask() {
+            assert!(Instant::now() < deadline, "demanda no aceptada");
+            std::thread::yield_now();
+        }
+        publisher.publish(Arc::new(snapshot.clone())).expect("foto real");
+        let photo = subscriber.next_photo(Duration::from_secs(2)).expect("foto pedida");
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&settings, prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        let visible_rows = widget.vm.rows.clone();
+        let visible_footer = widget.vm.footer_cells.clone();
+        assert_eq!(visible_footer.len(), 9);
+        let mut requested = Widget::new(&settings, prefs);
+        assert!(requested.ingest(&photo.snapshot, prefs));
+        assert_eq!(requested.vm.rows, visible_rows);
+        assert_eq!(requested.vm.footer_cells, visible_footer);
+        assert!(
+            !widget.ingest(&photo.snapshot, prefs),
+            "mismo contenido visible: sin invalidacion por nombre de pista omitido"
+        );
+        assert_eq!(widget.vm, requested.vm);
+    }
+
+    #[test]
+    fn track_name_invalidates_only_when_the_footer_draws_it() {
+        let prefs = Preferences::default();
+        for (settings, visible) in [
+            (Settings::default(), true),
+            (Settings { footer_slots: Some(vec!["track".into()]), ..Settings::default() }, false),
+            (Settings { show_session_footer: false, ..Settings::default() }, false),
+            (Settings { footer_first: "none".into(), ..Settings::default() }, false),
+            (Settings { footer_second: "totalLaps".into(), ..Settings::default() }, true),
+        ] {
+            let mut snapshot = source::fixed();
+            let mut widget = Widget::new(&settings, prefs);
+            assert!(widget.ingest(&snapshot, prefs));
+            snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Otra pista".into());
+            assert_eq!(widget.ingest(&snapshot, prefs), visible, "{settings:?}");
+        }
     }
 
     #[test]

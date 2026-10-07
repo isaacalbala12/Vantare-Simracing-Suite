@@ -659,6 +659,7 @@ impl Notifications {
         .join(" · ");
         div()
             .id(id.clone())
+            .flex_none()
             .flex()
             .gap(px(12.0))
             .p(px(12.0))
@@ -765,7 +766,12 @@ impl Notifications {
                 cx,
             ))
             .child(read);
-        let mut filters = div().flex().flex_wrap().gap(px(4.0));
+        let mut filters = div()
+            .id("notifications-filters")
+            .flex()
+            .flex_none()
+            .overflow_x_scroll()
+            .gap(px(4.0));
         for (id, filter) in [
             ("all", Filter::All),
             ("unread", Filter::Unread),
@@ -789,6 +795,7 @@ impl Notifications {
                     },
                     cx,
                 )
+                .flex_none()
                 .track_focus(&focus)
                 .when(self.filter == filter, |button| {
                     button.bg(gpui::rgb(orbit::surface_3(cx)))
@@ -840,8 +847,11 @@ impl Notifications {
             );
         }
         for (group, records) in groups {
-            history =
-                history.child(orbit::text(group, 12.0, 400, orbit::ink_4(cx), cx).mt(px(12.0)));
+            history = history.child(
+                orbit::text(group, 12.0, 400, orbit::ink_4(cx), cx)
+                    .flex_none()
+                    .mt(px(12.0)),
+            );
             for record in &records {
                 let focus = self.focus(&record.id, cx);
                 let action_focus = self.focus(&format!("action-{}", record.id), cx);
@@ -1043,6 +1053,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc3339("1970-01-01T01:00:00+00:00").expect("reloj");
         let groups = center.groups(Filter::All, true, &now);
         assert_eq!(groups.len(), 1);
+        assert!(groups.iter().all(|(_, records)| !records.is_empty()));
         assert_eq!(groups[0].0, "Hoy");
         assert_eq!(
             groups[0]
@@ -1053,6 +1064,7 @@ mod tests {
             ["four", "three", "two", "one"]
         );
         let launcher = center.groups(Filter::Launcher, true, &now);
+        assert!(center.groups(Filter::Beta, true, &now).is_empty());
         assert_eq!(
             launcher[0]
                 .1

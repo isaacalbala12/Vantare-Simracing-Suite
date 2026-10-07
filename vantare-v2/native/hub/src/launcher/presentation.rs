@@ -1707,7 +1707,7 @@ impl Render for Launcher {
                             cx.notify();
                         })),
                 )
-                .child(self.showcase_history(cx))
+                .child(self.showcase_history(false, cx))
                 .into_any_element();
         }
         let compact = f32::from(window.viewport_size().width) <= 1360.0;

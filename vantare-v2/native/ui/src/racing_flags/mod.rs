@@ -397,6 +397,21 @@ mod tests {
     }
 
     #[test]
+    fn qa_stale_scene_contains_old_flags_and_preserves_the_product_contract() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/racing-flags-stale.snapshot.json"
+        ))
+        .expect("escena de banderas antiguas válida");
+        assert!(matches!(snapshot.state.flags, Quality::Stale(_)));
+        assert_eq!(
+            snapshot.state.capabilities.flags,
+            vantare_domain::Capability::WithData
+        );
+        let vm = racing_flags::project(&snapshot, Preferences::default());
+        assert_eq!(vm.flag, Some(FlagKind::Green));
+    }
+
+    #[test]
     fn yellow_pulse_ends_and_identical_snapshots_do_not_restart_it() {
         for elapsed in [None, Some(PULSE), Some(PULSE * 2)] {
             assert!(matches!(pulse(elapsed), (0.0, Wake::Idle)));

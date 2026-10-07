@@ -375,7 +375,7 @@ impl Hub {
                     .top(px(-4.0))
                     .opacity(0.10),
             )
-            .h(px(if compact { 260.0 } else { 300.0 }))
+            .min_h(px(if compact { 260.0 } else { 300.0 }))
             .flex_none()
             .flex_row()
             .items_center()
@@ -385,7 +385,7 @@ impl Hub {
             .child(
                 div()
                     .flex_1()
-                    .h_full()
+                    .min_h(px(if compact { 196.0 } else { 236.0 }))
                     .min_w_0()
                     .flex()
                     .flex_col()
@@ -421,6 +421,7 @@ impl Hub {
                     .child(
                         div()
                             .flex()
+                            .flex_none()
                             .flex_wrap()
                             .gap(px(8.0))
                             .child(launch)
@@ -571,10 +572,12 @@ impl Hub {
                 },
             );
         let center = div()
+            .id("home-center")
             .flex_grow(1.0)
             .flex_basis(gpui::relative(2.0 / 3.0))
             .min_w_0()
             .min_h_0()
+            .overflow_y_scroll()
             .flex()
             .flex_col()
             .gap(px(gap))
@@ -583,6 +586,9 @@ impl Hub {
                 div()
                     .flex_1()
                     .min_h_0()
+                    .when(f32::from(window.viewport_size().height) <= 900.0, |row| {
+                        row.min_h(px(440.0))
+                    })
                     .flex()
                     .gap(px(gap))
                     .child(overlay)

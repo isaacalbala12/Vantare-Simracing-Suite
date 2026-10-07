@@ -145,7 +145,7 @@ impl Editor {
             module: self.inputs[4].read(cx).value.clone(),
         }
     }
-    fn field(&self, index: usize, label: &str, cx: &Context<Remote>) -> gpui::Div {
+    fn field(&self, index: usize, label: &str, compact: bool, cx: &Context<Remote>) -> gpui::Div {
         div()
             .flex_1()
             .min_w_0()
@@ -156,7 +156,11 @@ impl Editor {
             .child(Self::field_label(label, cx).h(px(17.0)))
             .child(
                 div()
-                    .h(px(FIELD_HEIGHTS[index]))
+                    .h(px(if compact && index == 2 {
+                        64.0
+                    } else {
+                        FIELD_HEIGHTS[index]
+                    }))
                     .relative()
                     .min_h(px(0.0))
                     .flex()
@@ -305,7 +309,7 @@ impl Editor {
         }
         options
     }
-    fn form(&self, cx: &mut Context<Remote>) -> gpui::Div {
+    fn form(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
         let controls = self.module_control(cx);
         let fields = self.fields(cx);
         let valid = field_errors(&fields).iter().all(Option::is_none);
@@ -323,7 +327,7 @@ impl Editor {
         let mut body = orbit::card_body()
             .px(px(21.0))
             .py(px(21.0))
-            .gap(px(orbit::GUTTER / 2.0))
+            .gap(px(if compact { 8.0 } else { orbit::GUTTER / 2.0 }))
             .child(
                 div()
                     .flex()
@@ -371,14 +375,14 @@ impl Editor {
                             })),
                     ),
             )
-            .child(self.field(0, "Título · qué hiciste", cx))
-            .child(self.field(2, "Texto · qué ocurrió o qué propones", cx))
+            .child(self.field(0, "Título · qué hiciste", compact, cx))
+            .child(self.field(2, "Texto · qué ocurrió o qué propones", compact, cx))
             .child(
                 div()
                     .flex()
                     .gap(px(orbit::GUTTER / 2.0))
-                    .child(self.field(1, "Qué esperabas", cx))
-                    .child(self.field(3, "Contexto adicional · opcional", cx)),
+                    .child(self.field(1, "Qué esperabas", compact, cx))
+                    .child(self.field(3, "Contexto adicional · opcional", compact, cx)),
             );
         if self.dirty {
             body = body.child(div().flex().justify_end().child(
@@ -439,7 +443,7 @@ impl Editor {
                     )),
             );
         // El primario solo se atenúa: nunca destaca más deshabilitado que activo.
-        let send = orbit::play_button("report-send", "Enviar informe", 38.0, false, cx);
+        let send = orbit::carmine_button("report-send", "Enviar informe", cx).h(px(38.0));
         let send = if ready {
             send.on_click(cx.listener(|this, _, _, cx| {
                 if can_send(
@@ -564,7 +568,7 @@ impl Editor {
             cx,
         ))
     }
-    pub fn render(&self, _compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
+    pub fn render(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
         let mut page = orbit::neo_card(cx)
             .flex_none()
             .gap(px(8.0))
@@ -572,7 +576,7 @@ impl Editor {
             .when(self.error, |page| {
                 page.child(orbit::callout(self.message.clone(), cx))
             })
-            .child(self.form(cx).p(px(0.0)))
+            .child(self.form(compact, cx).p(px(0.0)))
             .child(self.consent_card(cx));
         if let Some(preview) = &self.preview {
             page = page.child(

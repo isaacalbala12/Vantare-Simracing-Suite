@@ -508,11 +508,11 @@ impl Testing {
         let count = self.remote.read(cx).report_receipts.len();
         orbit::neo_context_column("testing-context", cx)
             .pt(px(cx.global::<orbit::design::Tokens>().geometry.gutter))
-            .child(orbit::neo_card(cx).child(orbit::neo_header("Tus informes", "pulse", cx))
+            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Tus informes", "pulse", cx))
                 .child(orbit::text(format!("{count} informes enviados · canal {}", self.channel_label), 13.0, 500, orbit::ink_2(cx), cx)))
-            .child(orbit::neo_card(cx).child(orbit::neo_header("Conversación", "v-chat", cx))
+            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Conversación", "v-chat", cx))
                 .child(orbit::text("Próximamente podrás consultar respuestas y conversar sobre tu informe.", 13.0, 400, orbit::ink_3(cx), cx)))
-            .child(orbit::neo_card(cx).flex_1().child(orbit::neo_header("Un buen informe", "v-testing", cx))
+            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Un buen informe", "v-testing", cx))
                 .children([
                     "Cuenta qué esperabas y qué pasó.",
                     "Añade una captura: se comprime antes de enviar. Revisa los datos personales.",

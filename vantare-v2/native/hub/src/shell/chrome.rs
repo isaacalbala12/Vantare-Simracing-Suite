@@ -248,7 +248,6 @@ impl Hub {
             } else {
                 window.focus_next(cx);
             }
-            self.reveal_rail_focus(window, cx);
             cx.stop_propagation();
         } else if matches!(key.key.as_str(), "up" | "down")
             && let Some(index) = self
@@ -269,25 +268,12 @@ impl Hub {
                 let next = navigation::move_cursor(position, key.key == "down", visible.len());
                 self.shell.rail_focus[visible[next]].focus(window, cx);
             }
-            self.reveal_rail_focus(window, cx);
             cx.stop_propagation();
         }
     }
 
-    fn reveal_rail_focus(&self, window: &Window, cx: &mut Context<Self>) {
-        if let Some(index) = self
-            .shell
-            .rail_focus
-            .iter()
-            .position(|focus| focus.is_focused(window))
-        {
-            self.shell.rail_scroll.scroll_to_item(index);
-            cx.notify();
-        }
-    }
-
-    pub(super) fn rail(&self, cx: &mut Context<Self>) -> gpui::Div {
-        self.redesign_rail(cx)
+    pub(super) fn rail(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
+        self.redesign_rail(f32::from(window.viewport_size().height) < 900.0, cx)
     }
     pub(super) fn avatar_initial(&self) -> String {
         self.demo.as_ref().map_or_else(

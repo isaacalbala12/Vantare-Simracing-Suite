@@ -750,7 +750,7 @@ impl Launcher {
             .overflow_hidden()
             .overflow_y_scroll()
             .flex_1()
-            .min_h_0()
+            .min_h(px(if compact { 430.0 } else { 0.0 }))
             .gap(px(if compact || running { 8.0 } else { 24.0 }))
             .p(px(if compact { 20.0 } else { 32.0 }))
             .bg(orbit::gradient(
@@ -899,17 +899,11 @@ impl Launcher {
             .find(|saved| saved.id == profile.id)
             .unwrap_or(profile);
         let policy = profile.effective_policy();
-        let options = [
-            ("Reintentar si no abre", policy.max_retries > 0),
-            (
-                "Cerrar mis apps al salir de Vantare",
-                policy.exit == Close::Started,
-            ),
-            (
-                "Abrir al iniciar Windows",
-                profile.launch_on_windows_startup,
-            ),
-        ];
+        let options = [(
+            1,
+            "Cerrar mis apps al salir de Vantare",
+            policy.exit == Close::Started,
+        )];
         div()
             .flex()
             .flex_wrap()
@@ -917,46 +911,40 @@ impl Launcher {
             .border_t_1()
             .border_color(rgba(orbit::line(cx)))
             .pt(px(12.0))
-            .children(
-                options
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, (label, checked))| {
-                        let id = profile.id.clone();
-                        let keyboard_id = id.clone();
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .child(
-                                orbit::toggle(
-                                    ["showcase-retry", "showcase-exit", "showcase-startup"][index],
-                                    label,
-                                    checked,
-                                    true,
-                                    cx,
-                                )
-                                .aria_toggled(if checked {
-                                    gpui::Toggled::True
-                                } else {
-                                    gpui::Toggled::False
-                                })
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.toggle_saved_preference(&id, index, cx);
-                                }))
-                                .on_key_down(cx.listener(
-                                    move |this, event: &gpui::KeyDownEvent, _, cx| {
-                                        if matches!(event.keystroke.key.as_str(), "enter" | "space")
-                                        {
-                                            this.toggle_saved_preference(&keyboard_id, index, cx);
-                                            cx.stop_propagation();
-                                        }
-                                    },
-                                )),
-                            )
-                            .child(orbit::text(label, 12.0, 400, orbit::ink_2(cx), cx))
-                    }),
-            )
+            .children(options.into_iter().map(|(index, label, checked)| {
+                let id = profile.id.clone();
+                let keyboard_id = id.clone();
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::toggle(
+                            ["showcase-retry", "showcase-exit", "showcase-startup"][index],
+                            label,
+                            checked,
+                            true,
+                            cx,
+                        )
+                        .aria_toggled(if checked {
+                            gpui::Toggled::True
+                        } else {
+                            gpui::Toggled::False
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.toggle_saved_preference(&id, index, cx);
+                        }))
+                        .on_key_down(cx.listener(
+                            move |this, event: &gpui::KeyDownEvent, _, cx| {
+                                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                    this.toggle_saved_preference(&keyboard_id, index, cx);
+                                    cx.stop_propagation();
+                                }
+                            },
+                        )),
+                    )
+                    .child(orbit::text(label, 12.0, 400, orbit::ink_2(cx), cx))
+            }))
     }
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
@@ -1369,7 +1357,7 @@ impl Launcher {
             )
         })
     }
-    pub(super) fn showcase_history(&self, cx: &mut Context<Self>) -> Div {
+    pub(super) fn showcase_history(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         let mut card = orbit::neo_card(cx)
             .flex_1()
             .min_h_0()
@@ -1394,21 +1382,50 @@ impl Launcher {
                 .and_then(|_| run_result(&self.progress));
             rows = rows.child(
                 div()
+                    .flex_none()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
                     .child(
-                        orbit::summary_row(
-                            profile.name.clone(),
-                            orbit::activity_time(
-                                profile.last_launched_at.as_deref().unwrap_or_default(),
-                                chrono::Local::now().fixed_offset(),
-                            ),
-                            "v-launch",
-                            cx,
-                        )
-                        .flex_1()
-                        .min_w_0(),
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .when(compact, |row| {
+                                row.child(
+                                    orbit::text(
+                                        format!(
+                                            "{} · {}",
+                                            profile.name,
+                                            orbit::activity_time(
+                                                profile
+                                                    .last_launched_at
+                                                    .as_deref()
+                                                    .unwrap_or_default(),
+                                                chrono::Local::now().fixed_offset()
+                                            )
+                                        ),
+                                        12.0,
+                                        400,
+                                        orbit::ink_2(cx),
+                                        cx,
+                                    )
+                                    .text_ellipsis()
+                                    .py(px(6.0)),
+                                )
+                            })
+                            .when(!compact, |row| {
+                                row.child(orbit::summary_row(
+                                    profile.name.clone(),
+                                    orbit::activity_time(
+                                        profile.last_launched_at.as_deref().unwrap_or_default(),
+                                        chrono::Local::now().fixed_offset(),
+                                    ),
+                                    "v-launch",
+                                    cx,
+                                ))
+                            })
+                            .flex_1()
+                            .min_w_0(),
                     )
                     .when_some(result, |row, (label, tone)| {
                         row.child(orbit::pill(label, tone, cx))
@@ -1447,6 +1464,7 @@ impl Launcher {
         let profile = self.showcase_profile();
         let heading =
             div()
+                .flex_none()
                 .flex()
                 .items_center()
                 .justify_between()
@@ -1484,9 +1502,11 @@ impl Launcher {
                         )),
                 );
         let mut center = div()
+            .id("showcase-center")
             .flex_1()
             .min_w_0()
             .min_h_0()
+            .overflow_y_scroll()
             .flex()
             .flex_col()
             .gap(px(gap));
@@ -1529,7 +1549,8 @@ impl Launcher {
                 cx,
             ));
         }
-        context = context.child(self.showcase_history(cx));
+        context = context
+            .child(self.showcase_history(f32::from(window.viewport_size().width) < 1700.0, cx));
         div()
             .id("launcher-showcase")
             .size_full()

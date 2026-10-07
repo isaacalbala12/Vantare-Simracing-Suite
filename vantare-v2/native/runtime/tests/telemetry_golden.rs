@@ -255,3 +255,29 @@ fn acc_real_corpus_matches_frozen_dtos() {
     );
     check("acc", &output);
 }
+
+#[test]
+fn input_sequence_matches_real_lmu47_replay_with_observed_clock() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../testdata/rust-port/lmu47-high-rate-60s.tar.gz");
+    let mut replay = open_replay(&path, None).expect("corpus obligatorio");
+    let mut core = Core::new(1463);
+    let mut rows = Vec::new();
+    for ms in (0..=61_000).step_by(20) {
+        let now = Duration::from_millis(ms);
+        while let Some(observation) = replay.poll(now).expect("replay valido") {
+            core.step(&mut Once(Some(observation)), now)
+                .expect("foto valida");
+            rows.push(vantare_ipc::snapshot_to_json(&core.snapshot()).expect("DTO"));
+            if rows.len() == 12 {
+                let actual = format!("[\n{}\n]\n", rows.join(",\n"));
+                assert_eq!(
+                    actual.as_bytes(),
+                    include_bytes!("../../ui/fixtures/telemetry-real/lmu47-input.sequence.json")
+                );
+                return;
+            }
+        }
+    }
+    panic!("el corpus debe aportar doce observaciones");
+}

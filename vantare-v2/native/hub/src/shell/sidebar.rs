@@ -279,13 +279,7 @@ impl Hub {
             )
             .h(px(54.0))
             .px(px(8.0))
-            .child(
-                orbit::avatar(false, &initial, cx)
-                    .rounded_full()
-                    .flex_none()
-                    .role(gpui::Role::GenericContainer)
-                    .tab_stop(false),
-            )
+            .child(orbit::avatar(&initial, cx).rounded_full().flex_none())
             .when(expanded, |row| {
                 row.child(
                     div()

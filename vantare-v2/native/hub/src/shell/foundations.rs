@@ -185,6 +185,14 @@ pub(super) fn profile_choice(
     .detach();
     choice
 }
+/// Estados globales derivados, sin perfiles ni actividad de ejemplo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HomeState { Session, Empty, Loading, AccessError }
+fn home_state(pending: bool, error: bool, profiles: usize) -> HomeState {
+    if error { HomeState::AccessError } else if pending { HomeState::Loading }
+    else if profiles == 0 { HomeState::Empty } else { HomeState::Session }
+}
+
 impl Hub {
     #[allow(clippy::too_many_lines)] // ComposiciÃ³n lineal del layout C; las piezas se comparten en Orbit.
     /// Inicio: el centro es la pÃ¡gina; Â«EstadoÂ» y Â«PlantillasÂ» forman la barra derecha (R10.2).
@@ -207,6 +215,26 @@ impl Hub {
         let lower_height = adapt.height - 52.0 - top - bottom - if adapt.show_notes() { 60.0 } else { 52.0 } - 2.0 * gap - hero_height;
         let preview_height = (lower_height - if adapt.show_optional() { 260.0 } else { 158.0 }).max(90.0);
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
+        let (pending, access_error) = self.remote.read(cx).home_access();
+        let mut state = home_state(pending, access_error.is_some() || self.shell.access.blocked,
+            self.launcher.read(cx).saved_profiles().len());
+        // Variantes solo del banco de captura; no alteran servicios ni permisos.
+        if let Some(capture) = &self.capture {
+            state = match capture.name.as_str() {
+                "inicio-cargando" => HomeState::Loading,
+                "inicio-error" => HomeState::AccessError,
+                _ => state,
+            };
+        }
+        if state == HomeState::Loading {
+            let skeletons = || orbit::neo_card(cx).flex_1().gap(px(18.0))
+                .child(orbit::skeleton(0.4, 16.0, cx)).child(orbit::skeleton(0.8, 36.0, cx))
+                .child(orbit::skeleton(1.0, 64.0, cx));
+            return (div().size_full().flex().flex_col().gap(px(gap))
+                .child(orbit::skeleton(1.0, 52.0, cx)).child(skeletons()).child(skeletons()),
+                vec![orbit::RailSection::new("Estado", "pulse", skeletons()),
+                    orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow()]);
+        }
         let compact = adapt.center_width() < 1100.0;
         let short = adapt.density != orbit::adapt::Density::A;
         let name = self.demo.as_ref().map_or("piloto", |demo| {
@@ -246,13 +274,19 @@ impl Hub {
             || format!("Lanzar {profile_name}"),
             |(ready, total)| format!("Lanzandoâ€¦ {ready}/{total}"),
         );
+        let empty = state == HomeState::Empty;
         let launch =
-            orbit::play_button("home-launch", &launch_label, adapt.hero_button(), true, cx)
-                .tab_stop(profile.is_some() && launching.is_none())
-                .when(profile.is_none() || launching.is_some(), |button| {
+            orbit::play_button("home-launch", if empty { "Crear mi primer perfil" } else { &launch_label }, adapt.hero_button(), !empty, cx)
+                .tab_stop(empty || profile.is_some() && launching.is_none())
+                .when(!empty && (profile.is_none() || launching.is_some()), |button| {
                     orbit::disabled(button, "Perfil no disponible o lanzamiento en curso")
                 })
-                .on_click(cx.listener(|hub, _, _, cx| hub.launch_favorite(cx)));
+                .on_click(cx.listener(move |hub, _, window, cx| {
+                    if empty {
+                        hub.navigate(Section::Launcher, cx);
+                        hub.launcher.update(cx, |launcher, cx| launcher.create_home_profile(window, cx));
+                    } else { hub.launch_favorite(cx); }
+                }));
         let studio = orbit::button("home-studio", "Abrir Studio", cx)
             .h(px(36.0))
             .bg(gpui::transparent_black())
@@ -432,7 +466,7 @@ impl Hub {
                     )
                     .child(
                         orbit::text(
-                            format!("{salute}, {name}"),
+                            if empty { "Bienvenido a Vantare".to_owned() } else { format!("{salute}, {name}") },
                             if compact { 38.0 } else { 54.0 },
                             600,
                             orbit::ink(cx),
@@ -473,11 +507,11 @@ impl Hub {
             .when_some(preview, |card, preview| card.child(preview.flex_1().min_h_0()))
             .when(main_settings.is_none(), |card| card.child(
                 div().flex_1().min_h_0().flex().items_center().justify_center()
-                    .child(orbit::text("Ningún widget visible en tu layout", 14.0, 400, orbit::ink_3(cx), cx))))
+                    .child(orbit::text("NingÃºn widget visible en tu layout", 14.0, 400, orbit::ink_3(cx), cx))))
             .child(div().flex().items_center().gap(px(8.0))
                 .child(orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx).flex_1())
                 .child(orbit::pill("Vista previa", orbit::Tone::Neutral, cx)))
-            .child(orbit::text(if connected { "Telemetría conectada · ejecución en pista sin verificar" }
+            .child(orbit::text(if connected { "TelemetrÃ­a conectada Â· ejecuciÃ³n en pista sin verificar" }
                 else { "Esperando simulador" }, 12.0, 400, orbit::ink_3(cx), cx))
             .when(adapt.show_optional(), |card| card.child(
                 div().flex().gap(px(6.0)).children(widget_labels.iter().take(3)
@@ -486,7 +520,7 @@ impl Hub {
                         format!("+{}", widget_count - 3), orbit::Tone::Neutral, cx)))))
             .when(adapt.show_optional(), |card| card.child(
                 div().flex().gap(px(16.0)).children(
-                    [("—".to_owned(), "Hz"), (widget_count.to_string(), "Widgets visibles"), ("—".to_owned(), "CPU")]
+                    [("â€”".to_owned(), "Hz"), (widget_count.to_string(), "Widgets visibles"), ("â€”".to_owned(), "CPU")]
                         .map(|(value, label)| div().flex_1().min_w_0()
                             .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
                             .child(orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx))))))
@@ -530,8 +564,8 @@ impl Hub {
             .when(recent.is_empty(), |card| card.child(
                 div().flex_1().min_h_0().flex().flex_col().items_center().justify_center().gap(px(12.0))
                     .child(orbit::icon("clock", 32.0, orbit::ink_3(cx)))
-                    .child(orbit::text("Todavía no hay actividad", 16.0, 600, orbit::ink(cx), cx).text_center())
-                    .child(orbit::text("Tus avisos y lanzamientos aparecerán aquí.", 13.0, 400, orbit::ink_3(cx), cx).text_center())));
+                    .child(orbit::text("TodavÃ­a no hay actividad", 16.0, 600, orbit::ink(cx), cx).text_center())
+                    .child(orbit::text("Tus avisos y lanzamientos aparecerÃ¡n aquÃ­.", 13.0, 400, orbit::ink_3(cx), cx).text_center())));
         let center = div()
             .id("home-center")
             .flex_grow(1.0)
@@ -639,7 +673,7 @@ impl Hub {
                     .border_b_1()
                     .border_color(gpui::rgba(orbit::line(cx)))
                     .child(
-                        orbit::summary_row("Beta para testers", "Acceso gratuito", "key", cx)
+                        orbit::summary_row("Beta para testers", env!("CARGO_PKG_VERSION"), "key", cx)
                             .border_b_0()
                             .min_h(px(48.0))
                             .flex_1()
@@ -680,6 +714,12 @@ impl Hub {
                 }),
             ));
         }
+        let banner = (state == HomeState::AccessError).then(|| {
+            orbit::neo_card(cx).flex_none().flex_row().items_center().p(px(10.0)).gap(px(12.0))
+                .child(orbit::text("No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.", 12.0, 400, orbit::ink_2(cx), cx).flex_1().min_w_0())
+                .child(orbit::button("home-access-retry", "Reintentar", cx).flex_none()
+                    .on_click(cx.listener(|hub, _, _, cx| hub.remote.update(cx, |remote, cx| remote.retry_home_access(cx)))))
+        });
         let page = div()
             .size_full()
             .min_h_0()
@@ -687,6 +727,7 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(gap))
+            .when_some(banner, |page, banner| page.child(banner))
             .child(composer)
             .child(center);
         let templates_title = if adapt.show_secondary() {

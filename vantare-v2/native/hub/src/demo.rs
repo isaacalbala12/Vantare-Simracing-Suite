@@ -279,6 +279,9 @@ impl DemoData {
     /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
     pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
         self.profile.present = capture.name == "inicio-base";
+        if matches!(capture.name.as_str(), "inicio-vacio" | "inicio-cargando") {
+            self.launcher.profiles.clear();
+        }
         self.notifications.clear();
         if matches!(
             capture.name.as_str(),
@@ -551,6 +554,7 @@ impl CaptureState {
             && !matches!(name, "launcher-reposo" | "launcher-lanzando")
             && name != "calendario-beta-archivo"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
+            && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }

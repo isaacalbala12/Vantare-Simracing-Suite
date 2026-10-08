@@ -257,6 +257,18 @@ fn portal_url(issuer: Option<&str>, page: Portal) -> Option<String> {
 }
 
 impl Remote {
+    /// Estado de lectura de acceso para Inicio. Los heartbeats no activan esqueletos.
+    pub(crate) fn home_access(&self) -> (bool, Option<&str>) {
+        let pending = self.access.configured && !self.access.session_checked
+            || self.account.signed_in && self.access.session_known() && self.access.policy.is_none() && self.busy();
+        let error = self.access.error.as_deref().or_else(|| self.access.policy.as_ref()
+            .and_then(|policy| policy.error.as_deref()));
+        (pending, error)
+    }
+    pub(crate) fn retry_home_access(&mut self, cx: &mut Context<Self>) {
+        self.access.error = None;
+        self.request(if self.account.signed_in { Command::LicenseStatus } else { Command::Status }, cx);
+    }
     pub fn requires_access(&self) -> bool {
         self.access.required(self.account.signed_in)
     }

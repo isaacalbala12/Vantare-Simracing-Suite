@@ -544,7 +544,7 @@ impl Studio {
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()
     }
-    /// Documento productivo para el resumen de Inicio; no implica ejecución en Desktop.
+    /// Documento productivo para el resumen de Inicio; no implica ejecuciÃ³n en Desktop.
     pub(crate) fn home_layout(&self) -> &vantare_ui::layout::Layout {
         self.editor.layout()
     }

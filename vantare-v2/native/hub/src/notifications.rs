@@ -405,7 +405,7 @@ fn time(occurred_at: i64) -> String {
         .unwrap_or_default()
 }
 impl Notifications {
-    /// Últimos avisos reales; comparte traducción y filtro de audiencia con el centro.
+    /// Ãšltimos avisos reales; comparte traducciÃ³n y filtro de audiencia con el centro.
     pub(crate) fn home_activity(&self) -> Vec<(String, String, &'static str, orbit::Tone)> {
         let mut records: Vec<_> = self.center.records.iter()
             .filter(|record| self.tester || record.source != Source::Beta).collect();
@@ -417,7 +417,7 @@ impl Notifications {
                 Severity::Info => match record.source {
                     Source::Launcher => ("Launcher", orbit::Tone::Success),
                     Source::Beta => ("Beta", orbit::Tone::Accent),
-                    Source::Updater => ("Actualización", orbit::Tone::Accent),
+                    Source::Updater => ("ActualizaciÃ³n", orbit::Tone::Accent),
                     Source::System => ("Sistema", orbit::Tone::Neutral),
                 },
             };

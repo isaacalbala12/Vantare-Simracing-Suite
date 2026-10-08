@@ -371,6 +371,9 @@ fn profile_mark(name: &str, featured: bool, size: f32, cx: &gpui::App) -> gpui::
 }
 
 impl Launcher {
+    pub(crate) fn create_home_profile(&mut self, window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
+        self.new_profile(None, window, cx);
+    }
     /// Baldosas del kit; los nombres y el orden pertenecen al documento Launcher.
     pub(crate) fn profile_app_tiles(&self, profile: &Profile, cx: &gpui::App) -> gpui::Div {
         div()

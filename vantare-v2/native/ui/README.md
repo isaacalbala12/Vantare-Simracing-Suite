@@ -410,8 +410,10 @@ elegibles (±, dorsal, coche, compuesto, paradas/BOX, sectores, última, mejor,
 intervalo, gap) en el orden del catálogo y ancho calculado desde las activas.
 `vantare_template` da las plantillas compacto 340, estándar 520 (el del
 Studio) y ampliado 900. Estilos Neo, Carmín y Limpio y cuatro acentos.
-Valores visuales y duraciones de animación en `styles/standings-vantare.json`
-(compilados en producto, en vivo en Workshop). Animaciones: deslizamiento al
+Valores visuales y duraciones de animación en `styles/vantare.json`, el estilo
+único del sistema (compilado en producto, en vivo en Workshop). El kit común
+vive en `ui/src/vantare/`: estilo, primitivas de pintado, movimiento y edición
+del orden de columnas; cada widget conserva su ViewModel y su layout. Animaciones: deslizamiento al
 cambiar de posición, fundido de filas nuevas y destellos al ganar o perder
 puestos, vuelta rápida de clase y entrada en boxes; sin cambios, `Wake::Idle`.
 Escenas: `standings-vantare.scene.json` (estados del catálogo) y

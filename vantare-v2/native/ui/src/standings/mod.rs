@@ -24,7 +24,6 @@ pub(crate) mod motion;
 pub mod options;
 pub(crate) mod style;
 pub(crate) mod vantare;
-pub(crate) mod vantare_motion;
 pub(crate) mod view;
 
 use crate::app::Paint;
@@ -94,7 +93,7 @@ pub enum Accent {
     Red,
 }
 
-/// Métricas que ocupan un hueco propio y se pueden reordenar (P es fija).
+/// Métricas de Standings Vantare que ocupan un hueco propio (P es fija).
 const MOVABLE: &[&str] = &[
     "positionsGained",
     "driverNumber",
@@ -109,63 +108,18 @@ const MOVABLE: &[&str] = &[
     "gap",
 ];
 
-fn movable(column: &options::ColumnSetting) -> bool {
-    MOVABLE.contains(&column.metric_id.as_str())
-        && (column.enabled || column.metric_id == "driverName")
-}
-
-/// Mueve `metric` justo delante de `before`, o tras la última columna visible
-/// si `before` es `None`. Las columnas ocultas conservan su sitio relativo.
-/// Devuelve si cambió el orden. Compartido por Workshop y Studio.
+/// Mueve `metric` delante de `before` (o al final); ver `vantare::columns`.
 pub fn move_column(
     columns: &mut Vec<options::ColumnSetting>,
     metric: &str,
     before: Option<&str>,
 ) -> bool {
-    if before == Some(metric) {
-        return false;
-    }
-    let Some(from) = columns
-        .iter()
-        .position(|c| c.metric_id == metric && movable(c))
-    else {
-        return false;
-    };
-    let previous = columns.clone();
-    let column = columns.remove(from);
-    let at = if let Some(target) = before {
-        let Some(index) = columns.iter().position(|c| c.metric_id == target) else {
-            *columns = previous;
-            return false;
-        };
-        index
-    } else {
-        columns
-            .iter()
-            .rposition(movable)
-            .map_or(columns.len(), |i| i + 1)
-    };
-    columns.insert(at, column);
-    *columns != previous
+    crate::vantare::columns::move_column(columns, metric, before, MOVABLE)
 }
 
-/// Desplaza `metric` un puesto (`step` −1 izquierda, +1 derecha) entre las
-/// columnas visibles. Devuelve si cambió el orden.
+/// Desplaza `metric` un puesto entre las columnas visibles.
 pub fn shift_column(columns: &mut Vec<options::ColumnSetting>, metric: &str, step: i32) -> bool {
-    let visible: Vec<String> = columns
-        .iter()
-        .filter(|c| movable(c))
-        .map(|c| c.metric_id.clone())
-        .collect();
-    let Some(index) = visible.iter().position(|m| m == metric) else {
-        return false;
-    };
-    match step {
-        -1 if index > 0 => move_column(columns, metric, Some(&visible[index - 1])),
-        1 if index + 2 < visible.len() => move_column(columns, metric, Some(&visible[index + 2])),
-        1 if index + 1 < visible.len() => move_column(columns, metric, None),
-        _ => false,
-    }
+    crate::vantare::columns::shift_column(columns, metric, step, MOVABLE)
 }
 
 /// Plantillas Vantare del catálogo r10b: todas las columnas elegibles en su
@@ -620,12 +574,15 @@ impl Widget {
     }
 
     /// Columnas Vantare colocadas; `None` en Eficiencia o sin filas.
-    pub(crate) fn vantare_columns(&self) -> Option<vantare::ColumnBoxes> {
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
         self.vantare.as_ref().and_then(vantare::State::columns)
     }
 
     /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
-    pub(crate) fn set_vantare_style(&mut self, style: std::sync::Arc<vantare::Style>) {
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
         if let Some(state) = &mut self.vantare {
             state.set_style(style);
         }

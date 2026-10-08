@@ -1,362 +1,21 @@
 //! Standings en el sistema de diseño Vantare (#1497), según el catálogo r10b.
 //!
 //! El ViewModel es puro (`vantare_domain::standings_vantare`); aquí solo se
-//! decide la geometría y se pinta con las primitivas GPUI del kit. Los valores
-//! visuales viven en `styles/standings-vantare.json`: compilados en producto y
-//! editables en vivo en Workshop.
+//! decide la geometría y se pinta con el kit Vantare (`crate::vantare`). Los
+//! valores visuales viven en `styles/vantare.json`.
 
-use super::vantare_motion::{Flash, Motion, Sample, Timing};
 use super::{Accent, Look};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
-use gpui::{
-    App, BorderStyle, BoxShadow, Corners, Edges, Hsla, Rgba, linear_color_stop, linear_gradient,
-    point, px, quad,
-};
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, OnceLock};
+use crate::vantare::columns::ColumnBoxes;
+use crate::vantare::motion::{Flash, Motion, Sample};
+use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect, transparent};
+use crate::vantare::style::{ClassColors, Color, Style, Variant, with_opacity};
+use gpui::{App, BorderStyle, Corners, Edges, px, quad};
+use std::sync::Arc;
 use vantare_domain::format::{Language, PLACEHOLDER};
 use vantare_domain::standings_vantare::{Banner, Board, Mark, Pit, Row};
 use vantare_domain::{SourceState, TyreCompound};
-
-// ---------------------------------------------------------------------------
-// Estilo
-// ---------------------------------------------------------------------------
-
-thread_local! {
-    /// Opacidad de la fila que se está pintando (fundido de entrada).
-    static OPACITY: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
-}
-
-fn with_opacity<R>(value: f32, f: impl FnOnce() -> R) -> R {
-    let previous = OPACITY.with(|o| o.replace(o.get() * value));
-    let result = f();
-    OPACITY.with(|o| o.set(previous));
-    result
-}
-
-/// Color `#rrggbb` o `#rrggbbaa`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct Color(u32, f32);
-
-impl Color {
-    pub(crate) fn hsla(self) -> Hsla {
-        self.alpha(self.1)
-    }
-    /// Color con opacidad propia, multiplicada por la de la fila en curso.
-    pub(crate) fn alpha(self, alpha: f32) -> Hsla {
-        Rgba {
-            r: ((self.0 >> 16) & 0xff) as f32 / 255.0,
-            g: ((self.0 >> 8) & 0xff) as f32 / 255.0,
-            b: (self.0 & 0xff) as f32 / 255.0,
-            a: alpha * OPACITY.with(std::cell::Cell::get),
-        }
-        .into()
-    }
-}
-
-impl Serialize for Color {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let alpha = (self.1 * 255.0).round() as u32;
-        let text = if alpha == 255 {
-            format!("#{:06x}", self.0)
-        } else {
-            format!("#{:06x}{alpha:02x}", self.0)
-        };
-        serializer.serialize_str(&text)
-    }
-}
-
-impl<'de> Deserialize<'de> for Color {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let text = String::deserialize(deserializer)?;
-        let hex = text
-            .strip_prefix('#')
-            .filter(|s| s.len() == 6 || s.len() == 8)
-            .ok_or_else(|| serde::de::Error::custom("color: usa #rrggbb o #rrggbbaa"))?;
-        let value = u32::from_str_radix(hex, 16).map_err(serde::de::Error::custom)?;
-        Ok(if hex.len() == 6 {
-            Self(value, 1.0)
-        } else {
-            Self(value >> 8, (value & 0xff) as f32 / 255.0)
-        })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Style {
-    pub geometry: Geometry,
-    pub fonts: Fonts,
-    pub colors: Colors,
-    pub classes: Vec<ClassColors>,
-    pub accents: Accents,
-    pub styles: Variants,
-    pub motion: MotionStyle,
-}
-
-/// Duraciones del movimiento en ms e intensidad del destello.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct MotionStyle {
-    pub reorder_ms: f32,
-    pub fade_ms: f32,
-    pub flash_ms: f32,
-    /// Intensidad del destello respecto a la fila propia (1 = igual).
-    pub flash_boost: f32,
-}
-
-impl MotionStyle {
-    fn timing(&self) -> Timing {
-        let ms = |v: f32| std::time::Duration::from_secs_f32(v.max(0.0) / 1000.0);
-        Timing {
-            reorder: ms(self.reorder_ms),
-            fade: ms(self.fade_ms),
-            flash: ms(self.flash_ms),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Geometry {
-    pub column_header_height: f32,
-    pub row_height: f32,
-    pub cell_gap: f32,
-    pub footer_gap: f32,
-    pub footer_height: f32,
-    pub banner_height: f32,
-    pub banner_gap: f32,
-    pub player_bleed: f32,
-    pub class_dot: f32,
-    pub number_min_width: f32,
-    pub number_height: f32,
-    pub number_padding: f32,
-    pub chip_radius: f32,
-    pub compound_size: f32,
-    pub compound_border: f32,
-    pub pill_height: f32,
-    pub pill_padding: f32,
-    pub sector_width: f32,
-    pub sector_height: f32,
-    pub sector_gap: f32,
-    pub sector_radius: f32,
-    pub col_position: f32,
-    pub col_gained: f32,
-    pub col_pit: f32,
-    pub col_lap: f32,
-    pub col_gap: f32,
-    pub wait_height: f32,
-    pub skeleton_bar: f32,
-    pub pulse: f32,
-    /// Ancho del piloto según su `widthPreset` (xs, sm, md, lg).
-    pub driver_xs: f32,
-    pub driver_sm: f32,
-    pub driver_md: f32,
-    pub driver_lg: f32,
-    pub separator_height: f32,
-    pub separator_gap_top: f32,
-    pub separator_gap_bottom: f32,
-    /// Por debajo, cabecera y pie abreviados; desde `wide_width`, tiempo restante.
-    pub narrow_width: f32,
-    pub wide_width: f32,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Fonts {
-    pub body: f32,
-    pub small: f32,
-    pub header: f32,
-    pub header_tracking: f32,
-    pub column: f32,
-    pub column_tracking: f32,
-    pub position: f32,
-    pub mono: f32,
-    pub mono_small: f32,
-    pub pill: f32,
-    pub pill_tracking: f32,
-    pub compound: f32,
-    pub separator: f32,
-    pub separator_tracking: f32,
-    pub banner: f32,
-    pub banner_tracking: f32,
-    pub wait_title: f32,
-    pub regular_weight: f32,
-    pub bold_weight: f32,
-    pub pill_weight: f32,
-    pub display_family: String,
-    pub mono_family: String,
-    pub display_baseline: f32,
-    pub mono_baseline: f32,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Colors {
-    pub text: Color,
-    pub muted: Color,
-    pub value: Color,
-    pub header_em: Color,
-    pub column: Color,
-    pub frozen: Color,
-    pub line: Color,
-    pub separator_band: Color,
-    pub skeleton: Color,
-    pub pulse: Color,
-    pub gain: Color,
-    pub loss: Color,
-    pub even: Color,
-    pub purple: Color,
-    pub green: Color,
-    pub best_personal: Color,
-    pub yellow: Color,
-    pub sector_pending: Color,
-    pub box_fill: Color,
-    pub box_text: Color,
-    pub stops_fill: Color,
-    pub stops_text: Color,
-    pub compound_soft: Color,
-    pub compound_medium: Color,
-    pub compound_hard: Color,
-    pub compound_wet: Color,
-    pub fcy_fill: Color,
-    pub fcy_text: Color,
-    pub yellow_fill: Color,
-    pub yellow_text: Color,
-    pub yellow_line: Color,
-    pub final_fill: Color,
-    pub final_text: Color,
-    pub shadow: Color,
-    /// Líder de la clase: posición, «Líder» y destello al tomar el mando.
-    pub leader: Color,
-    pub flash_gain: Color,
-    pub flash_loss: Color,
-}
-
-/// Colores de una clase; `match` es un fragmento del nombre en minúsculas y
-/// la última entrada (vacía) cubre cualquier otra clase.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct ClassColors {
-    #[serde(rename = "match")]
-    pub matches: String,
-    pub dot: Color,
-    pub tint: Color,
-    pub ink: Color,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Accents {
-    pub red: Color,
-    pub amber: Color,
-    pub green: Color,
-    pub white: Color,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Variants {
-    pub neo: Variant,
-    pub carmin: Variant,
-    pub limpio: Variant,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[allow(clippy::struct_excessive_bools)] // Rasgos independientes de cada estilo del catálogo.
-pub(crate) struct Variant {
-    pub top: Color,
-    pub bottom: Color,
-    pub border: Color,
-    /// Opacidad del borde en el color del acento (Carmín); 0 usa `border`.
-    pub border_accent: f32,
-    pub radius: f32,
-    pub padding_x: f32,
-    pub padding_y: f32,
-    pub shadow_y: f32,
-    pub shadow_blur: f32,
-    pub shadow_alpha: f32,
-    /// Cabecera en Rajdhani (Carmín) en lugar de Inter.
-    pub header_display: bool,
-    pub header_size: f32,
-    pub header_tracking: f32,
-    pub header_color: Color,
-    pub header_height: f32,
-    pub header_gap: f32,
-    /// Opacidad de la línea inferior de la cabecera en el acento; 0 sin línea.
-    pub header_rule: f32,
-    pub player_from: f32,
-    pub player_to: f32,
-    pub player_vertical: bool,
-    pub player_radius: f32,
-    /// Fila propia en blanco a esta opacidad (Limpio) en lugar del acento.
-    pub player_white: f32,
-    pub square_dots: bool,
-}
-
-impl Style {
-    pub(crate) fn compiled() -> Arc<Self> {
-        static STYLE: OnceLock<Arc<Style>> = OnceLock::new();
-        STYLE
-            .get_or_init(|| {
-                // El test `compiled_style_is_valid` garantiza que el JSON compilado es válido.
-                Self::from_json(include_str!("../../styles/standings-vantare.json"))
-                    .unwrap_or_else(|error| panic!("styles/standings-vantare.json: {error}"))
-            })
-            .clone()
-    }
-
-    pub(crate) fn from_json(json: &str) -> Result<Arc<Self>, String> {
-        let value: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        check_numbers(&value, "")?;
-        let style: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
-        if style
-            .classes
-            .last()
-            .is_none_or(|class| !class.matches.is_empty())
-        {
-            return Err("classes: la última entrada debe tener \"match\": \"\"".into());
-        }
-        if style.geometry.row_height < 1.0 || style.geometry.driver_xs < 20.0 {
-            return Err("geometry: fila y piloto demasiado pequeños".into());
-        }
-        Ok(Arc::new(style))
-    }
-
-    fn class(&self, name: &str) -> &ClassColors {
-        let name = name.to_lowercase();
-        self.classes
-            .iter()
-            .find(|class| name.contains(&class.matches))
-            .unwrap_or(&self.classes[self.classes.len() - 1])
-    }
-}
-
-/// Todos los números deben ser finitos, no negativos y razonables.
-fn check_numbers(value: &serde_json::Value, path: &str) -> Result<(), String> {
-    match value {
-        serde_json::Value::Number(number) => {
-            let n = number.as_f64().unwrap_or(f64::NAN);
-            if !n.is_finite() || !(0.0..=4096.0).contains(&n) {
-                return Err(format!("{path}: valor fuera de rango"));
-            }
-        }
-        serde_json::Value::Object(map) => {
-            for (key, value) in map {
-                check_numbers(value, &format!("{path}.{key}"))?;
-            }
-        }
-        serde_json::Value::Array(list) => {
-            for (index, value) in list.iter().enumerate() {
-                check_numbers(value, &format!("{path}[{index}]"))?;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 // ---------------------------------------------------------------------------
 // Opciones
@@ -485,30 +144,6 @@ impl Cols {
     }
 }
 
-/// Columnas colocadas para editarlas: `(métrica, x, ancho)`, franja vertical
-/// de la cabecera a la última fila y separación entre columnas (px del widget).
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ColumnBoxes {
-    pub columns: Vec<(&'static str, f32, f32)>,
-    pub top: f32,
-    pub bottom: f32,
-    pub gap: f32,
-}
-
-impl ColumnBoxes {
-    /// Columna bajo el punto, contando media separación a cada lado.
-    pub(crate) fn at(&self, x: f32, y: f32) -> Option<(&'static str, f32, f32)> {
-        if y < self.top || y > self.bottom {
-            return None;
-        }
-        let half = self.gap / 2.0;
-        self.columns
-            .iter()
-            .copied()
-            .find(|(_, left, width)| x >= left - half && x <= left + width + half)
-    }
-}
-
 /// Una columna colocada: métrica, borde izquierdo y ancho (px del widget).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Placed {
@@ -615,23 +250,6 @@ impl Options {
     fn width(&self, style: &Style) -> f32 {
         self.layout(style, self.driver_max(style)).1
     }
-}
-
-/// Ancho aproximado de un texto Inter (em por carácter): el layout es puro y
-/// no mide con la ventana; `text::fit` recorta al pintar si se queda corto.
-fn estimate(text: &str, size: f32) -> f32 {
-    text.chars()
-        .map(|c| match c {
-            ' ' => 0.28,
-            '.' | ',' | '·' | '\'' | 'i' | 'l' | 'I' | 'j' | '|' => 0.3,
-            'f' | 't' | 'r' => 0.4,
-            'm' | 'w' | 'M' | 'W' => 0.86,
-            c if c.is_ascii_digit() => 0.62,
-            c if c.is_uppercase() => 0.7,
-            _ => 0.57,
-        })
-        .sum::<f32>()
-        * size
 }
 
 /// Complemento del coche junto al piloto: completo con el piloto ancho; si no,
@@ -936,13 +554,16 @@ impl State {
 
     pub(crate) fn paint(&self, language: Language, window: &mut Window, cx: &mut App) {
         Painter {
-            style: &self.style,
-            variant: self.options.variant(&self.style),
-            accent: self.options.accent(&self.style),
+            kit: Kit {
+                style: &self.style,
+                variant: self.options.variant(&self.style),
+                accent: self.options.accent(&self.style),
+                language,
+                width: self.plan.width,
+            },
             options: &self.options,
             board: self.board.as_ref(),
             plan: &self.plan,
-            language,
             motion: &self.motion,
             now: std::time::Instant::now(),
         }
@@ -954,133 +575,26 @@ impl State {
 // Pintado
 // ---------------------------------------------------------------------------
 
-/// Blanco de la fila propia en Limpio.
-const WHITE: Color = Color(0xffffff, 1.0);
-
-/// Píldora de boxes: igual en español e inglés, como el catálogo.
-const BOX: &str = "BOX";
-
 struct Painter<'a> {
-    style: &'a Style,
-    variant: &'a Variant,
-    accent: Color,
+    kit: Kit<'a>,
     options: &'a Options,
     board: Option<&'a Board>,
     plan: &'a Plan,
-    language: Language,
     motion: &'a Motion,
     now: std::time::Instant,
 }
 
-#[derive(Clone, Copy)]
-enum Face {
-    Body,
-    Display,
-    Mono,
-}
-
-fn transparent() -> Hsla {
-    gpui::transparent_black()
-}
-
-fn round_rect(window: &mut Window, x: f32, y: f32, w: f32, h: f32, radius: f32, color: Hsla) {
-    if w > 0.0 && h > 0.0 {
-        window.paint_quad(quad(
-            rect(x, y, w, h),
-            Corners::all(px(radius)),
-            color,
-            Edges::all(px(0.0)),
-            transparent(),
-            BorderStyle::default(),
-        ));
+/// El pintor de Standings usa las primitivas del kit como propias.
+impl<'a> std::ops::Deref for Painter<'a> {
+    type Target = Kit<'a>;
+    fn deref(&self) -> &Self::Target {
+        &self.kit
     }
 }
 
 impl Painter<'_> {
-    fn es(&self) -> bool {
-        self.language == Language::Es
-    }
-
-    fn ink(&self, face: Face, size: f32, tracking: f32, color: Hsla) -> text::TextInk<'_> {
-        let f = &self.style.fonts;
-        let (family, weight) = match face {
-            Face::Body => (None, f.regular_weight),
-            Face::Display => (Some(f.display_family.as_str()), 600.0),
-            Face::Mono => (Some(f.mono_family.as_str()), 400.0),
-        };
-        text::TextInk {
-            family,
-            size,
-            weight,
-            tracking,
-            color,
-        }
-    }
-
-    fn baseline(&self, face: Face, top: f32, height: f32, size: f32) -> f32 {
-        let offset = match face {
-            Face::Body => 0.0,
-            Face::Display => self.style.fonts.display_baseline,
-            Face::Mono => self.style.fonts.mono_baseline,
-        };
-        text::baseline(top, height, size) + offset
-    }
-
-    /// Texto alineado a la izquierda (`right = None`) o al borde derecho dado.
-    #[allow(clippy::too_many_arguments)] // Celda de texto: posición, caja, cara e ink.
-    fn label(
-        &self,
-        window: &mut Window,
-        cx: &mut App,
-        value: &str,
-        x: f32,
-        right: Option<f32>,
-        top: f32,
-        height: f32,
-        face: Face,
-        ink: &text::TextInk<'_>,
-    ) -> f32 {
-        let width = text::width(window, value, ink);
-        let left = right.map_or(x, |r| r - width);
-        let base = self.baseline(face, top, height, ink.size);
-        text::draw(window, cx, value, left, base, ink);
-        width
-    }
-
     fn paint(&self, window: &mut Window, cx: &mut App) {
-        let (w, h) = (self.plan.width, self.plan.height);
-        let v = self.variant;
-        let corners = Corners::all(px(v.radius));
-        if v.shadow_alpha > 0.0 {
-            window.paint_drop_shadows(
-                rect(0.0, 0.0, w, h),
-                corners,
-                &[BoxShadow {
-                    color: self.style.colors.shadow.alpha(v.shadow_alpha),
-                    offset: point(px(0.0), px(v.shadow_y)),
-                    blur_radius: px(v.shadow_blur),
-                    spread_radius: px(0.0),
-                    inset: false,
-                }],
-            );
-        }
-        let border = if v.border_accent > 0.0 {
-            self.accent.alpha(v.border_accent)
-        } else {
-            v.border.hsla()
-        };
-        window.paint_quad(quad(
-            rect(0.0, 0.0, w, h),
-            corners,
-            linear_gradient(
-                180.0,
-                linear_color_stop(v.top.hsla(), 0.0),
-                linear_color_stop(v.bottom.hsla(), 1.0),
-            ),
-            Edges::all(px(if border.a > 0.0 { 1.0 } else { 0.0 })),
-            border,
-            BorderStyle::default(),
-        ));
+        self.panel(window, self.plan.height);
         for &(y, item) in &self.plan.items {
             match item {
                 Item::Banner => self.banner(window, cx),
@@ -1099,90 +613,44 @@ impl Painter<'_> {
         let Some(board) = self.board else { return };
         let Some(banner) = &board.banner else { return };
         let c = &self.style.colors;
-        let f = &self.style.fonts;
-        let g = &self.style.geometry;
-        let (w, h) = (self.plan.width, g.banner_height);
-        let (fill_color, ink_color, title) = match banner {
-            Banner::FullCourseYellow => (c.fcy_fill, c.fcy_text, "FCY".to_owned()),
-            Banner::LocalYellow(sector) => (
-                c.yellow_fill,
-                c.yellow_text,
-                if self.es() {
+        let es = self.es();
+        match banner {
+            Banner::FullCourseYellow => {
+                self.band(window, cx, c.fcy_fill, c.fcy_text, "FCY", None, false, None);
+            }
+            Banner::LocalYellow(sector) => {
+                let title = if es {
                     format!("Amarilla · Sector {sector}")
                 } else {
                     format!("Yellow · Sector {sector}")
-                },
-            ),
-            Banner::FinalLap => (
-                c.final_fill,
-                c.final_text,
-                if self.es() {
-                    "Última vuelta"
-                } else {
-                    "Final lap"
-                }
-                .to_owned(),
-            ),
-        };
-        let radius = (self.variant.radius - 1.0).max(0.0);
-        window.paint_quad(quad(
-            rect(0.0, 0.0, w, h),
-            Corners {
-                top_left: px(radius),
-                top_right: px(radius),
-                bottom_right: px(0.0),
-                bottom_left: px(0.0),
-            },
-            fill_color.hsla(),
-            Edges::all(px(0.0)),
-            transparent(),
-            BorderStyle::default(),
-        ));
-        if matches!(banner, Banner::LocalYellow(_)) {
-            round_rect(window, 0.0, h - 1.0, w, 1.0, 0.0, c.yellow_line.hsla());
-        }
-        let pad = self.variant.padding_x;
-        let mut x = pad;
-        if matches!(banner, Banner::FinalLap) {
-            // Bandera a cuadros: 8 celdas de 4 px, damero de 4 × 2.
-            let top = (h - 8.0) / 2.0;
-            for (col, row) in [(0, 0), (2, 0), (1, 1), (3, 1)] {
-                round_rect(
+                };
+                let line = Some(c.yellow_line);
+                self.band(
                     window,
-                    x + col as f32 * 4.0,
-                    top + row as f32 * 4.0,
-                    4.0,
-                    4.0,
-                    0.0,
-                    c.final_text.hsla(),
+                    cx,
+                    c.yellow_fill,
+                    c.yellow_text,
+                    &title,
+                    None,
+                    false,
+                    line,
                 );
             }
-            x += 16.0 + 8.0;
-            let ink = self.ink(Face::Mono, f.mono_small, 0.0, ink_color.hsla());
-            self.label(
-                window,
-                cx,
-                &board.lap,
-                0.0,
-                Some(w - pad),
-                0.0,
-                h,
-                Face::Mono,
-                &ink,
-            );
+            Banner::FinalLap => {
+                let title = if es { "Última vuelta" } else { "Final lap" };
+                let lap = Some(board.lap.as_str());
+                self.band(
+                    window,
+                    cx,
+                    c.final_fill,
+                    c.final_text,
+                    title,
+                    lap,
+                    true,
+                    None,
+                );
+            }
         }
-        let ink = self.ink(Face::Display, f.banner, f.banner_tracking, ink_color.hsla());
-        self.label(
-            window,
-            cx,
-            &title.to_uppercase(),
-            x,
-            None,
-            0.0,
-            h,
-            Face::Display,
-            &ink,
-        );
     }
 
     fn header(&self, window: &mut Window, cx: &mut App, y: f32) {
@@ -1347,24 +815,6 @@ impl Painter<'_> {
         self.plan.width < self.style.geometry.narrow_width
     }
 
-    fn class_dot(&self, window: &mut Window, x: f32, y: f32, class: &ClassColors) {
-        let g = &self.style.geometry;
-        let dot = g.class_dot;
-        round_rect(
-            window,
-            x,
-            y + (g.row_height - dot) / 2.0,
-            dot,
-            dot,
-            if self.variant.square_dots {
-                1.0
-            } else {
-                dot / 2.0
-            },
-            class.dot.hsla(),
-        );
-    }
-
     fn separator(&self, window: &mut Window, cx: &mut App, y: f32, group: usize) {
         let Some(board) = self.board else { return };
         let Some(group) = board.groups.get(group) else {
@@ -1424,35 +874,6 @@ impl Painter<'_> {
             .pose(row.id, self.style.motion.timing(), self.now);
         let y = y + pose.offset;
         with_opacity(pose.alpha, || self.row(window, cx, y, gi, ri, pose.flash));
-    }
-
-    /// Fondo de fila con el perfil de la fila propia (degradado o plano).
-    fn highlight(&self, window: &mut Window, y: f32, color: Color, scale: f32) {
-        if scale <= 0.0 {
-            return;
-        }
-        let v = self.variant;
-        let g = &self.style.geometry;
-        let x0 = v.padding_x - g.player_bleed;
-        let background = if v.player_white > 0.0 {
-            // Limpio: plano; el blanco propio y los destellos con la misma opacidad base.
-            let base = if color == WHITE { v.player_white } else { 0.3 };
-            color.alpha(base * scale).into()
-        } else {
-            linear_gradient(
-                if v.player_vertical { 180.0 } else { 90.0 },
-                linear_color_stop(color.alpha(v.player_from * scale), 0.0),
-                linear_color_stop(color.alpha(v.player_to * scale), 1.0),
-            )
-        };
-        window.paint_quad(quad(
-            rect(x0, y, self.plan.width - 2.0 * x0, g.row_height),
-            Corners::all(px(v.player_radius)),
-            background,
-            Edges::all(px(0.0)),
-            transparent(),
-            BorderStyle::default(),
-        ));
     }
 
     fn row(
@@ -1608,21 +1029,6 @@ impl Painter<'_> {
         );
     }
 
-    fn number_text(row: &Row) -> String {
-        if row.number.is_empty() {
-            PLACEHOLDER.to_owned()
-        } else {
-            format!("#{}", row.number)
-        }
-    }
-
-    fn number_width(&self, window: &Window, row: &Row) -> f32 {
-        let g = &self.style.geometry;
-        let ink = self.ink(Face::Mono, self.style.fonts.mono_small, 0.0, transparent());
-        (text::width(window, &Self::number_text(row), &ink) + 2.0 * g.number_padding)
-            .max(g.number_min_width)
-    }
-
     fn number(
         &self,
         window: &mut Window,
@@ -1632,37 +1038,15 @@ impl Painter<'_> {
         x: f32,
         y: f32,
     ) {
-        let g = &self.style.geometry;
-        let width = self.number_width(window, row);
-        let top = y + (g.row_height - g.number_height) / 2.0;
-        round_rect(
-            window,
-            x,
-            top,
-            width,
-            g.number_height,
-            g.chip_radius,
-            class.tint.hsla(),
-        );
-        let ink = self.ink(
-            Face::Mono,
-            self.style.fonts.mono_small,
-            0.0,
-            class.ink.hsla(),
-        );
-        let label = Self::number_text(row);
-        let text_width = text::width(window, &label, &ink);
-        self.label(
-            window,
-            cx,
-            &label,
-            x + (width - text_width) / 2.0,
-            None,
-            top,
-            g.number_height,
-            Face::Mono,
-            &ink,
-        );
+        self.chip(window, cx, &Self::number_text(row), class, x, y);
+    }
+
+    fn number_text(row: &Row) -> String {
+        if row.number.is_empty() {
+            PLACEHOLDER.to_owned()
+        } else {
+            format!("#{}", row.number)
+        }
     }
 
     fn name(&self, window: &mut Window, cx: &mut App, row: &Row, x: f32, right: f32, y: f32) {
@@ -1759,18 +1143,6 @@ impl Painter<'_> {
         );
     }
 
-    fn pill_ink(&self, color: Hsla) -> text::TextInk<'_> {
-        let f = &self.style.fonts;
-        let mut ink = self.ink(Face::Body, f.pill, f.pill_tracking, color);
-        ink.weight = f.pill_weight;
-        ink
-    }
-
-    fn pill_width(&self, window: &Window, label: &str) -> f32 {
-        text::width(window, label, &self.pill_ink(transparent()))
-            + 2.0 * self.style.geometry.pill_padding
-    }
-
     /// Píldora de boxes: BOX en el pit lane, o «N P» paradas en ampliado.
     fn pit(&self, window: &mut Window, cx: &mut App, row: &Row, x: f32, y: f32, stops: bool) {
         let g = &self.style.geometry;
@@ -1795,28 +1167,14 @@ impl Painter<'_> {
             }
             _ => return,
         };
-        let width = self.pill_width(window, &label);
-        let top = y + (g.row_height - g.pill_height) / 2.0;
-        round_rect(
-            window,
-            x,
-            top,
-            width,
-            g.pill_height,
-            g.chip_radius,
-            fill_color.hsla(),
-        );
-        let ink = self.pill_ink(ink_color.hsla());
-        self.label(
+        self.pill(
             window,
             cx,
             &label,
-            x + g.pill_padding,
-            None,
-            top,
-            g.pill_height,
-            Face::Body,
-            &ink,
+            x,
+            y,
+            fill_color.hsla(),
+            ink_color.hsla(),
         );
     }
 
@@ -1858,88 +1216,13 @@ impl Painter<'_> {
         }
     }
 
-    fn wait(&self, window: &mut Window, cx: &mut App, y: f32) {
-        let g = &self.style.geometry;
-        let f = &self.style.fonts;
-        let c = &self.style.colors;
-        let center = self.plan.width / 2.0;
-        let pulse = g.pulse;
-        round_rect(
-            window,
-            center - pulse / 2.0,
-            y + 10.0,
-            pulse,
-            pulse,
-            pulse / 2.0,
-            c.pulse.hsla(),
-        );
-        let title = if self.es() {
-            "ESPERANDO AL SIMULADOR"
-        } else {
-            "WAITING FOR THE SIMULATOR"
-        };
-        let ink = self.ink(
-            Face::Display,
-            f.wait_title,
-            f.separator_tracking,
-            c.header_em.hsla(),
-        );
-        let width = text::width(window, title, &ink);
-        self.label(
-            window,
-            cx,
-            title,
-            center - width / 2.0,
-            None,
-            y + 22.0,
-            f.wait_title,
-            Face::Display,
-            &ink,
-        );
-        let hint = if self.es() {
-            "Abre el simulador y entra en una sesión"
-        } else {
-            "Open the simulator and join a session"
-        };
-        let ink = self.ink(Face::Body, f.small, 0.0, c.muted.hsla());
-        let width = text::width(window, hint, &ink);
-        self.label(
-            window,
-            cx,
-            hint,
-            center - width / 2.0,
-            None,
-            y + 40.0,
-            20.0,
-            Face::Body,
-            &ink,
-        );
-    }
-
-    fn skeleton(&self, window: &mut Window, y: f32, index: usize) {
-        let g = &self.style.geometry;
-        let color = self.style.colors.skeleton.hsla();
-        let (pad, w, h) = (self.variant.padding_x, self.plan.width, g.row_height);
-        let bar = g.skeleton_bar;
-        let top = y + (h - bar) / 2.0;
-        let mut x = pad;
-        round_rect(window, x, top, 16.0, bar, 2.0, color);
-        x += 16.0 + g.cell_gap;
-        let dot = g.class_dot;
-        round_rect(window, x, y + (h - dot) / 2.0, dot, dot, dot / 2.0, color);
-        x += dot + g.cell_gap;
-        let name = 110.0 + ((index * 37) % 70) as f32;
-        round_rect(window, x, top, name, bar, 2.0, color);
-        round_rect(window, w - pad - 48.0, top, 48.0, bar, 2.0, color);
-    }
-
     fn footer(&self, window: &mut Window, cx: &mut App, y: f32, footer: Footer) {
         let Some(board) = self.board else { return };
         let g = &self.style.geometry;
         let f = &self.style.fonts;
         let c = &self.style.colors;
         let (pad, w) = (self.variant.padding_x, self.plan.width);
-        round_rect(window, pad, y, w - 2.0 * pad, 1.0, 0.0, c.line.hsla());
+        self.rule(window, y);
         let top = y + 1.0 + g.footer_gap;
         let h = g.footer_height;
         let ink = self.ink(Face::Body, f.header, 0.0, c.muted.hsla());
@@ -2266,7 +1549,7 @@ mod tests {
 
     #[test]
     fn race_scene_animates_overtakes_best_lap_and_pit_entry_then_settles() {
-        use super::super::vantare_motion::Flash;
+        use crate::vantare::motion::Flash;
         use vantare_domain::standings_vantare::project;
         let scene: serde_json::Value = serde_json::from_str(include_str!(
             "../../fixtures/standings-vantare-carrera.scene.json"

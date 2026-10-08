@@ -306,7 +306,7 @@ impl Playback {
 
 struct Workshop {
     style: LiveStyle<crate::standings::style::Style>,
-    vantare_style: LiveStyle<crate::standings::vantare::Style>,
+    vantare_style: LiveStyle<crate::vantare::style::Style>,
     kind: Kind,
     settings: Settings,
     prefs: Preferences,
@@ -1024,9 +1024,9 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
         crate::standings::style::Style::from_json,
     );
     let vantare_style = LiveStyle::new(
-        style_path.join("standings-vantare.json"),
-        crate::standings::vantare::Style::compiled(),
-        crate::standings::vantare::Style::from_json,
+        style_path.join("vantare.json"),
+        crate::vantare::style::Style::compiled(),
+        crate::vantare::style::Style::from_json,
     );
     let scenes = scenes(&scene.path)?;
     let scene_labels = scenes
@@ -1407,12 +1407,12 @@ mod tests {
     fn vantare_style_reloads_live_and_keeps_the_last_valid_one() {
         let dir = std::env::temp_dir().join(format!("vantare-style-v-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("directorio");
-        let path = dir.join("standings-vantare.json");
-        std::fs::write(&path, include_str!("../styles/standings-vantare.json")).expect("estilo");
+        let path = dir.join("vantare.json");
+        std::fs::write(&path, include_str!("../styles/vantare.json")).expect("estilo");
         let mut file = LiveStyle::new(
             path.clone(),
-            crate::standings::vantare::Style::compiled(),
-            crate::standings::vantare::Style::from_json,
+            crate::vantare::style::Style::compiled(),
+            crate::vantare::style::Style::from_json,
         );
         assert!(file.error.is_none());
         let mut changed = serde_json::to_value(&*file.value).expect("JSON");

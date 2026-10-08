@@ -150,7 +150,7 @@ impl Overlay {
     /// Estilo Vantare de Standings en Workshop en vivo.
     pub(crate) fn standings_vantare_style(
         &mut self,
-        style: Arc<crate::standings::vantare::Style>,
+        style: Arc<crate::vantare::style::Style>,
         cx: &mut Context<Self>,
     ) {
         if let Widget::Standings(widget) = &mut self.widget {
@@ -160,7 +160,7 @@ impl Overlay {
     }
 
     /// Workshop: columnas Vantare colocadas del widget.
-    pub(crate) fn vantare_columns(&self) -> Option<crate::standings::vantare::ColumnBoxes> {
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
         match &self.widget {
             Widget::Standings(widget) => widget.vantare_columns(),
             _ => None,

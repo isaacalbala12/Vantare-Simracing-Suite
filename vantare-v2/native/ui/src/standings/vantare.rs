@@ -162,6 +162,8 @@ pub(crate) struct Options {
     /// Formato del nombre de la columna de piloto (`format.mode`, `maxChars`).
     pub name_mode: String,
     pub name_max: usize,
+    /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
+    pub brand: bool,
 }
 
 impl Options {
@@ -188,6 +190,7 @@ impl Options {
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)
                 .min(64),
+            brand: settings.brand_visible == Some(true),
         }
     }
 
@@ -708,6 +711,10 @@ impl Painter<'_> {
             x += self.label(window, cx, &lead.to_uppercase(), x, None, y, h, face, &ink);
             self.label(window, cx, lap, x, None, y, h, face, &em);
         }
+        let mut edge = w - pad;
+        if self.options.brand {
+            edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
+        }
         if let Some(board) = board {
             let classes: Vec<&str> = match self.options.mode {
                 Mode::PlayerClass => shown_group(board)
@@ -733,7 +740,7 @@ impl Painter<'_> {
                     .map(|s| (*s).to_owned()),
             );
             let right = parts.join(" · ").to_uppercase();
-            self.label(window, cx, &right, 0.0, Some(w - pad), y, h, face, &ink);
+            self.label(window, cx, &right, 0.0, Some(edge), y, h, face, &ink);
         }
         if v.header_rule > 0.0 {
             round_rect(

@@ -251,6 +251,8 @@ enum Control {
     Template(&'static str),
     /// Desplaza una columna Vantare un puesto (−1 izquierda, +1 derecha).
     MoveColumn(&'static str, i32),
+    /// Marca Vantare visible u oculta (en producto la decide la licencia).
+    Brand,
 }
 
 struct Playback {
@@ -357,6 +359,7 @@ fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settin
             Settings::Standings(crate::standings::Settings {
                 row_count: 8,
                 columns: Some(crate::standings::vantare_template("standard")),
+                brand_visible: Some(true),
                 ..Default::default()
             })
         }
@@ -373,6 +376,7 @@ fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settin
         }
         (Kind::Relative, DesignSystem::Vantare) => Settings::Relative(crate::relative::Settings {
             columns: Some(crate::relative::vantare_template("standard")),
+            brand_visible: Some(true),
             ..Default::default()
         }),
         (Kind::Relative, DesignSystem::Eficiencia) => {
@@ -985,6 +989,14 @@ impl Workshop {
                 }
                 Control::MoveColumn(metric, step) => {
                     self.shift_vantare_column(metric, step);
+                }
+                Control::Brand => {
+                    let brand = match &mut self.settings {
+                        Settings::Standings(settings) => &mut settings.brand_visible,
+                        Settings::Relative(settings) => &mut settings.brand_visible,
+                        _ => return Err("este widget no tiene marca".into()),
+                    };
+                    *brand = Some(value == "true");
                 }
                 Control::Footer(slot) => {
                     let slots = match &mut self.settings {

@@ -133,6 +133,8 @@ pub(crate) struct Options {
     pub same_class: bool,
     pub name_mode: String,
     pub name_max: usize,
+    /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
+    pub brand: bool,
 }
 
 impl Options {
@@ -154,6 +156,7 @@ impl Options {
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)
                 .min(64),
+            brand: settings.brand_visible == Some(true),
         }
     }
 
@@ -701,7 +704,11 @@ impl Painter<'_> {
             Some(class) => format!("{} · {range}", class.to_uppercase()),
             None => range,
         };
-        self.label(window, cx, &right, 0.0, Some(w - pad), y, h, face, &ink);
+        let mut edge = w - pad;
+        if self.options.brand {
+            edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
+        }
+        self.label(window, cx, &right, 0.0, Some(edge), y, h, face, &ink);
         if v.header_rule > 0.0 {
             round_rect(
                 window,
@@ -1303,6 +1310,16 @@ mod tests {
             !state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
             "sin tendencia en FCY"
         );
+    }
+
+    #[test]
+    fn brand_only_shows_when_the_host_decides_it() {
+        let mut settings = super::super::Settings::default();
+        assert!(!Options::from_settings(&settings).brand, "sin decisión, sin marca");
+        settings.brand_visible = Some(true);
+        assert!(Options::from_settings(&settings).brand);
+        let json = serde_json::to_value(super::super::Settings::default()).expect("json");
+        assert!(json.get("brandVisible").is_none(), "no cambia el JSON guardado");
     }
 
     #[test]

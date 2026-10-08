@@ -6,8 +6,8 @@ use super::style::{ClassColors, Color, Style, Variant};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
 use gpui::{
-    App, BorderStyle, BoxShadow, Corners, Edges, Hsla, linear_color_stop, linear_gradient, point,
-    px, quad,
+    App, BorderStyle, BoxShadow, Corners, Edges, Hsla, PathBuilder, linear_color_stop,
+    linear_gradient, point, px, quad,
 };
 use vantare_domain::format::Language;
 
@@ -155,6 +155,60 @@ impl Kit<'_> {
         let base = self.baseline(face, top, height, ink.size);
         text::draw(window, cx, value, left, base, ink);
         width
+    }
+
+    /// Marca Vantare (símbolo + nombre) alineada a `right` en la caja de la
+    /// cabecera. Devuelve su ancho para colocar el resto a su izquierda.
+    pub(crate) fn brand(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        right: f32,
+        top: f32,
+        height: f32,
+    ) -> f32 {
+        let b = &self.style.brand;
+        let ink = self.ink(
+            Face::Display,
+            b.size,
+            b.tracking,
+            self.variant.header_color.hsla(),
+        );
+        let name = self.label(
+            window,
+            cx,
+            "VANTARE",
+            0.0,
+            Some(right),
+            top,
+            height,
+            Face::Display,
+            &ink,
+        );
+        // Símbolo de mark.svg (caja 64): M9 51 32 10l23 41H42L32 32 22 51Z.
+        let scale = b.symbol_height / 41.0;
+        let symbol = 46.0 * scale;
+        let (ox, oy) = text::origin();
+        let left = right - name - b.gap - symbol + ox;
+        let base = top + (height - b.symbol_height) / 2.0 + oy;
+        let at =
+            |x: f32, y: f32| point(px(left + (x - 9.0) * scale), px(base + (y - 10.0) * scale));
+        let mut path = PathBuilder::fill();
+        path.move_to(at(9.0, 51.0));
+        for (x, y) in [
+            (32.0, 10.0),
+            (55.0, 51.0),
+            (42.0, 51.0),
+            (32.0, 32.0),
+            (22.0, 51.0),
+        ] {
+            path.line_to(at(x, y));
+        }
+        path.close();
+        if let Ok(path) = path.build() {
+            window.paint_path(path, b.symbol.hsla());
+        }
+        name + b.gap + symbol
     }
 
     pub(crate) fn class_dot(&self, window: &mut Window, x: f32, y: f32, class: &ClassColors) {

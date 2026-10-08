@@ -188,6 +188,14 @@
       "square_dots": false
     }
   },
+  "brand": {
+    "symbol": "#d80000",
+    "symbol_height": 9.0,
+    "size": 11.0,
+    "tracking": 1.6,
+    "gap": 4.0,
+    "margin": 12.0
+  },
   "motion": {
     "reorder_ms": 320.0,
     "fade_ms": 220.0,

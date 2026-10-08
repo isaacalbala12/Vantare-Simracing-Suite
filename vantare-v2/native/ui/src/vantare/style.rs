@@ -79,6 +79,21 @@ pub(crate) struct Style {
     pub styles: Variants,
     pub motion: MotionStyle,
     pub relative: RelativeStyle,
+    pub brand: BrandStyle,
+}
+
+/// Marca Vantare de la cabecera (#1504): símbolo rojo y nombre en Rajdhani.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct BrandStyle {
+    pub symbol: Color,
+    pub symbol_height: f32,
+    pub size: f32,
+    pub tracking: f32,
+    /// Entre el símbolo y el nombre.
+    pub gap: f32,
+    /// Entre la marca y el texto derecho de la cabecera.
+    pub margin: f32,
 }
 
 /// Geometría y colores propios de Relative Vantare.

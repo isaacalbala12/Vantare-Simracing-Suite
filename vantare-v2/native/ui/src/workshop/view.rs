@@ -624,6 +624,26 @@ impl Render for Workshop {
                             ],
                             cx,
                         ))),
+                )
+                .child(
+                    group("Marca")
+                        .child(Self::segments(
+                            Control::Brand,
+                            match &self.settings {
+                                Settings::Standings(s) if s.brand_visible == Some(true) => "true",
+                                Settings::Relative(s) if s.brand_visible == Some(true) => "true",
+                                _ => "false",
+                            },
+                            &[("true", "Con marca"), ("false", "Sin marca")],
+                            cx,
+                        ))
+                        .child(
+                            div()
+                                .mt(px(6.0))
+                                .text_size(px(10.0))
+                                .text_color(rgb(0x95959c))
+                                .child("En la app lo decidirá la licencia; aquí se prueba a mano."),
+                        ),
                 );
         } else if self.kind == Kind::Standings {
             panel = panel

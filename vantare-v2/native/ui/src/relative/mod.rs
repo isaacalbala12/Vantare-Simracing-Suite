@@ -41,6 +41,10 @@ pub struct Settings {
     pub include_player: bool,
     pub row_height_mode: String,
     pub footer_slots: Vec<String>,
+    /// Marca Vantare: decisión inyectada por el host según la licencia
+    /// (como en Standings). Sin decisión no se pinta.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -55,6 +59,7 @@ impl Default for Settings {
             include_player: true,
             row_height_mode: "compact".into(),
             footer_slots: Vec::new(),
+            brand_visible: None,
         }
     }
 }

@@ -5834,3 +5834,7 @@ persistencia; Nextest seleccionado2/2 y Clippy workspace-Dwarnings PASS.
 Evidencia C:/tmp/ui-r10/calidad-2-evidence/logs/shared-*.log.
 Pendiente capturas/interacciones, D3/V1, layout físico e input→Present;
 no se atribuye nota ≥9, fluidez, live ni promoción a estos tests.
+D3 heredado corregido: búsqueda/filtros siempre montados, Limpiar restaura
+Todos y consulta vacía con foco en búsqueda. Cero eventos y cero coincidencias
+usan mensajes distintos. Regresión del recorrido filtrar→vacío→limpiar PASS;
+Nextest seleccionado4/4, runtime UI pendiente en tanda final. D1/D2 5f85c7cd.

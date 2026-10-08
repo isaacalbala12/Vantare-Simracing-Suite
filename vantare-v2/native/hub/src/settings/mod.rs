@@ -351,6 +351,23 @@ fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
         ))
         .contains(&search_text(query))
 }
+fn event_results<'a>(
+    errors: &'a [SectionError],
+    filter: usize,
+    query: &str,
+) -> Vec<&'a SectionError> {
+    errors
+        .iter()
+        .filter(|error| event_matches(error, filter, query))
+        .collect()
+}
+fn event_empty_message(observed: usize) -> &'static str {
+    if observed == 0 {
+        "Todavía no hay eventos registrados en esta sesión. Puedes preparar un informe de diagnóstico."
+    } else {
+        "No hay eventos que coincidan con estos filtros. Borra la búsqueda o limpia los filtros."
+    }
+}
 // Rótulos ES/EN del contrato Wails: búsqueda sin acentos, incluidos los
 // acentos combinados, sin añadir una dependencia de normalización Unicode.
 fn search_text(value: &str) -> String {
@@ -371,6 +388,21 @@ fn search_text(value: &str) -> String {
         .collect()
 }
 impl Hub {
+    fn clear_event_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.settings.event_filter.update(cx, |filter, cx| {
+            filter.state.selected = Some(0);
+            cx.notify();
+        });
+        self.settings.event_query.update(cx, |query, cx| {
+            query.set_value(String::new(), cx);
+        });
+        self.settings
+            .event_query
+            .read(cx)
+            .focus_handle()
+            .focus(window, cx);
+        cx.notify();
+    }
     fn settings_account_destination(&mut self, cx: &mut Context<Self>) {
         if self.section == crate::Section::Licenses {
             self.section = crate::Section::Account;

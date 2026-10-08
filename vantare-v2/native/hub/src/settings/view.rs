@@ -1394,10 +1394,8 @@ impl Hub {
             .selected
             .unwrap_or(0);
         let query = self.settings.event_query.read(cx).value.to_lowercase();
-        let rows: Vec<_> = observed
-            .errors
-            .iter()
-            .filter(|error| super::event_matches(error, filter, &query))
+        let rows: Vec<_> = super::event_results(&observed.errors, filter, &query)
+            .into_iter()
             .map(|error| {
                 vec![
                     chrono::DateTime::from_timestamp(error.observed_at_utc, 0).map_or_else(
@@ -1410,14 +1408,20 @@ impl Hub {
                 ]
             })
             .collect();
-        let mut events = section_body();
+        let mut events = section_body()
+            .child(self.settings.event_filter.clone())
+            .child(self.settings.event_query.clone())
+            .child(
+                orbit::button("settings-events-clear", "Limpiar filtros", cx).on_click(
+                    cx.listener(|this, _, window, cx| this.clear_event_filters(window, cx)),
+                ),
+            );
         if rows.is_empty() {
             events = events.child(section_note(
-                "Todavía no hay eventos registrados en esta sesión. Puedes preparar un informe de diagnóstico.",
-             cx));
+                super::event_empty_message(observed.errors.len()),
+                cx,
+            ));
         } else {
-            events = events.child(self.settings.event_filter.clone());
-            events = events.child(self.settings.event_query.clone());
             let table = orbit::Table {
                 headers: vec![
                     "Hora (UTC)".into(),

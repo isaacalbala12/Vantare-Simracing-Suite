@@ -184,13 +184,13 @@ impl Options {
     }
 
     /// Columnas colocadas de izquierda a derecha y ancho total del panel.
-    fn layout(&self, style: &Style, driver: f32) -> (Vec<Placed>, f32) {
+    fn layout(&self, style: &Style, driver: f32, order: &[Kind]) -> (Vec<Placed>, f32) {
         let g = &style.geometry;
         let r = &style.relative;
         let gap = g.cell_gap;
         let mut x = self.variant(style).padding_x + g.class_dot;
-        let mut placed = Vec::with_capacity(self.cols.order.len());
-        for &kind in &self.cols.order {
+        let mut placed = Vec::with_capacity(order.len());
+        for &kind in order {
             let width = match kind {
                 Kind::Position => r.col_position,
                 Kind::Number => g.number_min_width,
@@ -311,7 +311,26 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let variant = options.variant(style);
     let g = &style.geometry;
     let shown = board.filter(|b| !waiting(Some(b)));
-    let (columns, width) = options.layout(style, driver_width(shown, options, style));
+    // Vueltas de diferencia y tendencia suelen ir vacías: no ocupan sitio
+    // mientras ningún coche visible tenga dato (la tendencia no se pinta en FCY).
+    let order: Vec<Kind> = options
+        .cols
+        .order
+        .iter()
+        .copied()
+        .filter(|kind| {
+            let rows = || shown.into_iter().flat_map(|b| b.slots.iter().flatten());
+            match kind {
+                Kind::Laps => rows().any(|row| row.laps.is_some()),
+                Kind::Trend => {
+                    shown.is_some_and(|b| b.banner != Some(Banner::FullCourseYellow))
+                        && rows().any(|row| row.trend.is_some())
+                }
+                _ => true,
+            }
+        })
+        .collect();
+    let (columns, width) = options.layout(style, driver_width(shown, options, style), &order);
     let mut items = Vec::new();
     let mut y = variant.padding_y;
     if shown.is_some_and(|b| b.banner.is_some()) {
@@ -1198,7 +1217,7 @@ mod tests {
         let style = Style::compiled();
         for (name, width) in [("compact", 280.0), ("standard", 420.0), ("expanded", 600.0)] {
             let options = options(name);
-            let (_, w) = options.layout(&style, options.driver_max(&style));
+            let (_, w) = options.layout(&style, options.driver_max(&style), &options.cols.order);
             assert_eq!(w, width, "{name}");
         }
         assert!(options("expanded").cols.strip && !options("standard").cols.strip);
@@ -1235,6 +1254,31 @@ mod tests {
         assert!(!state.project(&photos[4]).player_present);
         let boxes = state.columns().expect("columnas editables");
         assert_eq!(boxes.columns.len(), options("expanded").cols.order.len());
+    }
+
+    #[test]
+    fn empty_lap_and_trend_columns_take_no_space_until_some_car_has_data() {
+        let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
+        let mut options = options("expanded");
+        options.same_class = true;
+        let mut state = State::new(options);
+        state.ingest(state.project(&photos[0]));
+        let metrics: Vec<_> = state.plan.columns.iter().map(|c| c.kind).collect();
+        assert!(!metrics.contains(&Kind::Laps), "ningún Hypercar doblado");
+        assert!(metrics.contains(&Kind::Trend));
+        let narrow = state.size().0;
+        state.options.same_class = false;
+        state.ingest(state.project(&photos[0]));
+        assert!(state.plan.columns.iter().any(|c| c.kind == Kind::Laps));
+        assert!(
+            state.size().0 > narrow,
+            "aparece la columna y el panel se ensancha"
+        );
+        state.ingest(state.project(&photos[3]));
+        assert!(
+            !state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
+            "sin tendencia en FCY"
+        );
     }
 
     #[test]

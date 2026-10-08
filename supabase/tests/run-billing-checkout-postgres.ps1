@@ -77,13 +77,15 @@ insert into public.billing_customers (
   docker cp $bootstrap "${container}:/tmp/bootstrap.sql"
   docker cp (Join-Path $root "supabase\migrations\20260802000000_billing_checkout_attempts.sql") "${container}:/tmp/migration.sql"
   docker cp (Join-Path $root "supabase\migrations\20260802010000_billing_customer_environment.sql") "${container}:/tmp/customer-environment.sql"
+  docker cp (Join-Path $root "supabase\migrations\20261008000000_billing_checkout_pro_annual.sql") "${container}:/tmp/pro-annual.sql"
   docker cp (Join-Path $root "supabase\tests\billing_checkout_attempts_test.sql") "${container}:/tmp/test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_customer_environment_test.sql") "${container}:/tmp/customer-environment-test.sql"
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/bootstrap.sql | Out-Null
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/migration.sql | Out-Null
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/customer-environment.sql | Out-Null
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/pro-annual.sql | Out-Null
   $checkoutTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $checkoutTap -match "(?m)^not ok" -or $checkoutTap -notmatch "1\.\.18") {
+  if ($LASTEXITCODE -ne 0 -or $checkoutTap -match "(?m)^not ok" -or $checkoutTap -notmatch "1\.\.19") {
     throw "Checkout pgTAP failed:`n$checkoutTap"
   }
   $customerTap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -d postgres -f /tmp/customer-environment-test.sql | Out-String

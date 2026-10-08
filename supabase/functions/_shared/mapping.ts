@@ -1,6 +1,7 @@
 export const CHECKOUT_KEYS = [
   "launch_lifetime",
   "pro_monthly",
+  "pro_annual",
   "pro_plus_monthly",
 ] as const;
 
@@ -108,6 +109,15 @@ const EXPECTED_KEY_META: Record<
   },
   pro_monthly: {
     plan_sku: "pro_monthly",
+    billing_type: "subscription",
+    lifetime: false,
+    capabilities: ["vantare.plan.pro"],
+    channels: ["stable"],
+    launch_scope_version: null,
+  },
+  // Same Pro grant as pro_monthly; Polar needs a separate yearly product.
+  pro_annual: {
+    plan_sku: "pro_annual",
     billing_type: "subscription",
     lifetime: false,
     capabilities: ["vantare.plan.pro"],

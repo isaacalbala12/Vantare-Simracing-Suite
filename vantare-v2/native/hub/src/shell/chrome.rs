@@ -920,6 +920,7 @@ impl Hub {
             34.0,
             cx,
         )
+        .occlude()
         .aria_expanded(rail_open)
         .aria_keyshortcuts("Control+Alt+B")
         .when(!rail_open, |button| button.bg(orbit::alpha(skin.active)))
@@ -927,7 +928,7 @@ impl Hub {
             hub.shell.column_open = !hub.shell.column_open;
             cx.notify();
         }));
-        let bell = self.notification_bell(cx);
+        let bell = self.notification_bell(cx).occlude();
         div()
             .h(px(52.0))
             .flex_none()
@@ -954,6 +955,7 @@ impl Hub {
                         .ml(px(12.0))
                         .flex()
                         .items_center()
+                        .occlude()
                         .child(actions),
                 )
             })

@@ -5872,3 +5872,10 @@ Instrumentación solo en copias externas; no añade logging a producción.
 PresentMon1.10 exit0 sin CSV/eventos utilizables en esta sesión sin privilegio;
 la medida usa la traza equivalente del Present real, no intervalo/API time.
 No acredita dispositivo físico→fotón, scanout,18 widgets ni LMU/OBS.
+E1/E2 barra: el recorrido con ratón reprodujo pestañas/campana/carril sin acción;
+la zona Drag de la barra alcanzaba sus hijos. Occlude acotado a las acciones
+seccionales, campana y carril; conserva drag en espacio libre y no altera GPUI.
+Regresión runtime QA: clics Carteles→Tiempos con aria_selected comprobado,
+contraer carril y abrir notificaciones PASS; capturas header-mouse-* inspeccionadas.
+Clippy-Dwarnings PASS. La prueba es por HWND/input nativo, no un test del estilo.
+E3 traza 4193684c; E2 consentimiento af5b69be. Gates/matriz final continúan.

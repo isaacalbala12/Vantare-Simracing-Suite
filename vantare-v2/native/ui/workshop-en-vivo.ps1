@@ -10,7 +10,7 @@ try {
     $target=if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { 'target' }
     $exe=Join-Path $target 'prueba/vantare-workshop.exe'
     $env:VANTARE_WORKSHOP_STYLES=Join-Path $PSScriptRoot 'styles'
-    Write-Output "Workshop en vivo: edita $PSScriptRoot/styles/standings.json y guarda."
+    Write-Output "Workshop en vivo: edita $PSScriptRoot/styles/standings.json o standings-vantare.json y guarda."
     & $exe --dev
     if ($LASTEXITCODE) { throw 'Workshop en vivo terminó con un error.' }
 } finally {

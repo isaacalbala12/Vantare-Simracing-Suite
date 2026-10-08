@@ -35,7 +35,7 @@ mod tests {
 
     #[test]
     fn columns_footer_and_hidden_inputs_declare_only_their_signals() {
-        let settings: Settings = serde_json::from_str(r#"{"kind":"standings","classScope":"all-classes","showSessionHeader":false,"showSessionFooter":true,"footerSlots":["ambient"],"columns":[{"metricId":"driverName"},{"metricId":"gap","enabled":false}]}"#).expect("ajustes");
+        let settings: Settings = serde_json::from_str(r#"{"kind":"standings","designSystem":"eficiencia","classScope":"all-classes","showSessionHeader":false,"showSessionFooter":true,"footerSlots":["ambient"],"columns":[{"metricId":"driverName"},{"metricId":"gap","enabled":false}]}"#).expect("ajustes");
         let demand = settings.demand();
         assert!(demand.contains(Signal::Weather));
         assert!(!demand.contains(Signal::Gaps));

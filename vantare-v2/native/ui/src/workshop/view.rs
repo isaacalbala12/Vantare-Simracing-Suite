@@ -352,6 +352,17 @@ impl Render for Workshop {
         } else {
             "es"
         };
+        let vantare = matches!(&self.settings, Settings::Standings(s) if s.design_system == crate::standings::DesignSystem::Vantare);
+        let system = if self.kind == Kind::Standings {
+            Self::segments(
+                Control::Setting("designSystem"),
+                if vantare { "vantare" } else { "eficiencia" },
+                &[("vantare", "Vantare"), ("eficiencia", "Eficiencia")],
+                cx,
+            )
+        } else {
+            div().child(button("system".into(), "Eficiencia", true))
+        };
         let mut panel = div()
             .id("properties")
             .w(px(248.0))
@@ -381,7 +392,11 @@ impl Render for Workshop {
                 div()
                     .text_size(px(11.0))
                     .text_color(rgb(0xa5a5ab))
-                    .child(format!("{} · Sistema Eficiencia", widget_label(self.kind))),
+                    .child(format!(
+                        "{} · Sistema {}",
+                        widget_label(self.kind),
+                        if vantare { "Vantare" } else { "Eficiencia" }
+                    )),
             )
             .child(group("Idioma del widget").child(self.picker(
                 Control::Language,
@@ -411,7 +426,7 @@ impl Render for Workshop {
                             .text_color(rgb(0xacacb2))
                             .child("Sistema de diseño"),
                     )
-                    .child(button("system".into(), "Eficiencia", true))
+                    .child(system)
                     .child(
                         div()
                             .mt(px(6.0))
@@ -434,7 +449,50 @@ impl Render for Workshop {
                 ],
                 cx,
             )));
-        if self.kind == Kind::Standings {
+        if self.kind == Kind::Standings && vantare {
+            let current = |key: &str| {
+                serde_json::to_value(&self.settings)
+                    .ok()
+                    .and_then(|v| v[key].as_str().map(str::to_owned))
+                    .unwrap_or_default()
+            };
+            panel = panel.child(
+                group("Vantare")
+                    .child(Self::segments(
+                        Control::Setting("size"),
+                        &current("size"),
+                        &[
+                            ("compact", "Compacto"),
+                            ("standard", "Estándar"),
+                            ("expanded", "Ampliado"),
+                        ],
+                        cx,
+                    ))
+                    .child(div().mt(px(6.0)).child(Self::segments(
+                        Control::Setting("style"),
+                        &current("style"),
+                        &[("neo", "Neo"), ("carmin", "Carmín"), ("limpio", "Limpio")],
+                        cx,
+                    )))
+                    .child(div().mt(px(6.0)).child(Self::segments(
+                        Control::Setting("accent"),
+                        &current("accent"),
+                        &[
+                            ("red", "Rojo"),
+                            ("amber", "Ámbar"),
+                            ("green", "Verde"),
+                            ("white", "Blanco"),
+                        ],
+                        cx,
+                    )))
+                    .child(div().mt(px(6.0)).child(Self::segments(
+                        Control::Setting("gapMode"),
+                        &current("gapMode"),
+                        &[("leader", "Gap al líder"), ("interval", "Intervalo")],
+                        cx,
+                    ))),
+            );
+        } else if self.kind == Kind::Standings {
             panel = panel
                 .child(group("Marca").child(Self::segments(
                     Control::Setting("brandVisible"),
@@ -493,7 +551,7 @@ impl Render for Workshop {
             )));
         }
 
-        if self.kind == Kind::Standings || self.kind == Kind::Relative {
+        if (self.kind == Kind::Standings && !vantare) || self.kind == Kind::Relative {
             if self.kind == Kind::Standings {
                 panel = panel.child(group("Posición del jugador").child(self.picker(
                     Control::Player,
@@ -969,6 +1027,7 @@ impl Render for Workshop {
             .error
             .as_ref()
             .or(self.style.error.as_ref())
+            .or(self.vantare_style.error.as_ref())
             .or(self.state_error.as_ref())
         {
             stage = stage.child(

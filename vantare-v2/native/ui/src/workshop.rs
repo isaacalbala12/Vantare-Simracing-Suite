@@ -173,20 +173,27 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
-struct LiveStyle {
+/// Estilo editable en vivo: el último JSON válido se conserva ante errores.
+struct LiveStyle<T> {
     path: PathBuf,
     modified: Option<SystemTime>,
-    value: std::sync::Arc<crate::standings::style::Style>,
+    value: std::sync::Arc<T>,
     error: Option<String>,
+    parse: fn(&str) -> Result<std::sync::Arc<T>, String>,
 }
 
-impl LiveStyle {
-    fn new(path: PathBuf) -> Self {
+impl<T> LiveStyle<T> {
+    fn new(
+        path: PathBuf,
+        compiled: std::sync::Arc<T>,
+        parse: fn(&str) -> Result<std::sync::Arc<T>, String>,
+    ) -> Self {
         let mut file = Self {
             path,
             modified: None,
-            value: crate::standings::style::Style::compiled(),
+            value: compiled,
             error: None,
+            parse,
         };
         file.reload();
         file
@@ -196,7 +203,7 @@ impl LiveStyle {
         self.modified = modified(&self.path);
         match std::fs::read_to_string(&self.path)
             .map_err(|e| e.to_string())
-            .and_then(|json| crate::standings::style::Style::from_json(&json))
+            .and_then(|json| (self.parse)(&json))
         {
             Ok(style) => {
                 self.value = style;
@@ -294,7 +301,8 @@ impl Playback {
 }
 
 struct Workshop {
-    style: LiveStyle,
+    style: LiveStyle<crate::standings::style::Style>,
+    vantare_style: LiveStyle<crate::standings::vantare::Style>,
     kind: Kind,
     settings: Settings,
     prefs: Preferences,
@@ -566,6 +574,7 @@ impl Workshop {
             style.geometry.chip_cut_radius = 3.0;
         }
         let style = std::sync::Arc::new(style);
+        let vantare = self.vantare_style.value.clone();
         let scale = self.scale;
         let dimensions = self.dimensions;
         let study = self.study.clone();
@@ -574,6 +583,7 @@ impl Workshop {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
             overlay.standings_style(style.clone(), cx);
+            overlay.standings_vantare_style(vantare.clone(), cx);
             overlay.standings_study(&study);
             let size = overlay.wanted_size();
             let natural = preview_size(kind, size);
@@ -846,7 +856,16 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
         || PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/styles")),
         PathBuf::from,
     );
-    let style = LiveStyle::new(style_path.join("standings.json"));
+    let style = LiveStyle::new(
+        style_path.join("standings.json"),
+        crate::standings::style::Style::compiled(),
+        crate::standings::style::Style::from_json,
+    );
+    let vantare_style = LiveStyle::new(
+        style_path.join("standings-vantare.json"),
+        crate::standings::vantare::Style::compiled(),
+        crate::standings::vantare::Style::from_json,
+    );
     let scenes = scenes(&scene.path)?;
     let scene_labels = scenes
         .iter()
@@ -874,6 +893,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 let overlay = cx.new(|cx| {
                     let mut overlay = Overlay::new(kind, Preferences::default());
                     overlay.standings_style(style.value.clone(), cx);
+                    overlay.standings_vantare_style(vantare_style.value.clone(), cx);
                     for snapshot in &scene.snapshots {
                         overlay.ingest(snapshot, cx);
                     }
@@ -881,6 +901,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 });
                 let mut workshop = Workshop {
                     style,
+                    vantare_style,
                     kind,
                     settings: default_settings(kind),
                     prefs: Preferences::default(),
@@ -944,7 +965,8 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                         if this
                             .update(cx, |this, cx| {
                                 this.tick(Instant::now(), cx);
-                                if this.style.poll() {
+                                // `|` para sondear ambos ficheros en cada vuelta.
+                                if this.style.poll() | this.vantare_style.poll() {
                                     this.replay(cx);
                                     cx.notify();
                                 }
@@ -1081,7 +1103,8 @@ mod tests {
                 );
             }
         }
-        assert_eq!(count, 43);
+        // 43 demostraciones React + la escena del catálogo Vantare r10b (#1497).
+        assert_eq!(count, 44);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),
@@ -1177,7 +1200,11 @@ mod tests {
         let path = dir.join("standings.json");
         let original = include_str!("../styles/standings.json");
         std::fs::write(&path, original).expect("estilo");
-        let mut file = LiveStyle::new(path.clone());
+        let mut file = LiveStyle::new(
+            path.clone(),
+            crate::standings::style::Style::compiled(),
+            crate::standings::style::Style::from_json,
+        );
         assert!(!file.poll());
         let previous = file.value.clone();
         std::fs::write(&path, "{").expect("escritura parcial");
@@ -1196,6 +1223,32 @@ mod tests {
         assert!(file.error.is_none());
         assert_eq!(file.value.colors.panel.0, 0x123456);
         assert_eq!(file.value.geometry.row_height, 40.0);
+        std::fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn vantare_style_reloads_live_and_keeps_the_last_valid_one() {
+        let dir = std::env::temp_dir().join(format!("vantare-style-v-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directorio");
+        let path = dir.join("standings-vantare.json");
+        std::fs::write(&path, include_str!("../styles/standings-vantare.json")).expect("estilo");
+        let mut file = LiveStyle::new(
+            path.clone(),
+            crate::standings::vantare::Style::compiled(),
+            crate::standings::vantare::Style::from_json,
+        );
+        assert!(file.error.is_none());
+        let mut changed = serde_json::to_value(&*file.value).expect("JSON");
+        changed["geometry"]["row_height"] = serde_json::json!(30);
+        std::fs::write(&path, changed.to_string()).expect("guardar");
+        file.modified = None;
+        assert!(file.poll());
+        assert_eq!(file.value.geometry.row_height, 30.0);
+        std::fs::write(&path, "{").expect("escritura parcial");
+        file.modified = None;
+        assert!(file.poll());
+        assert!(file.error.is_some());
+        assert_eq!(file.value.geometry.row_height, 30.0);
         std::fs::remove_dir_all(dir).expect("limpiar");
     }
 

@@ -383,6 +383,14 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
             return;
         };
         view.update(cx, |v, cx| {
+            // Las referencias de paridad de Standings son del sistema Eficiencia;
+            // Vantare (#1497) es el predeterminado del producto.
+            if kind == Kind::Standings {
+                *v = Overlay::configured(
+                    &crate::Settings::Standings(crate::standings::Settings::eficiencia()),
+                    Preferences::default(),
+                );
+            }
             for snapshot in &snapshots {
                 v.ingest(snapshot, cx);
             }

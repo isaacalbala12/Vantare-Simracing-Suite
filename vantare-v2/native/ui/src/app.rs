@@ -147,6 +147,18 @@ impl Overlay {
         }
     }
 
+    /// Estilo Vantare de Standings en Workshop en vivo.
+    pub(crate) fn standings_vantare_style(
+        &mut self,
+        style: Arc<crate::standings::vantare::Style>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Widget::Standings(widget) = &mut self.widget {
+            widget.set_vantare_style(style);
+            cx.notify();
+        }
+    }
+
     pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }
@@ -925,7 +937,8 @@ fn run_layout_feed<T: Send + 'static>(
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
 pub(crate) fn init(cx: &mut App) -> bool {
-    match text::register_fonts(cx) {
+    // Inter para todos; Rajdhani y Space Mono para el sistema Vantare.
+    match text::register_fonts(cx).and_then(|()| crate::theme::register_fonts(cx)) {
         Ok(()) => true,
         Err(error) => {
             eprintln!("{error}");
@@ -1347,7 +1360,7 @@ mod tests {
     fn changed_settings_recreate_the_widget_and_reingest_the_latest_snapshot() {
         let snapshot = crate::source::fixed();
         let prefs = Preferences::default();
-        let initial = Settings::default_for(Kind::Standings);
+        let initial = Settings::Standings(crate::standings::Settings::eficiencia());
         let before = Overlay::with_snapshot(&initial, prefs, Some(&snapshot));
         let Settings::Standings(mut options) = initial else {
             panic!("Standings");

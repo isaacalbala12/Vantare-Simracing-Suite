@@ -349,12 +349,25 @@ impl Translator {
             laps: quality(Some(vehicle.laps), stale),
             last_lap_s: quality(vehicle.last_lap_s, stale),
             best_lap_s: quality(vehicle.best_lap_s, stale),
-            // LMU solo publica el sector en curso; los tiempos de sector no
-            // están en el layout admitido.
             last_sectors_s: vehicle
                 .last_sectors_s
                 .iter()
                 .map(|v| quality(*v, stale))
+                .collect(),
+            // Sin ninguno medido se quedan vacíos, como antes de leerlos (#1497).
+            best_sectors_s: if vehicle.best_sectors_s.iter().any(Option::is_some) {
+                vehicle
+                    .best_sectors_s
+                    .iter()
+                    .map(|v| quality(*v, stale))
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            current_sectors_s: vehicle
+                .current_sectors_s
+                .iter()
+                .map(|v| quality(Some(*v), stale))
                 .collect(),
             estimated_lap_s: estimate(vehicle.estimated_lap_s, stale),
             lap_distance_m: quality(vehicle.lap_distance_m, stale),
@@ -473,10 +486,13 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
         // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
         pit_service: PitService::default(),
         stint: Stint::default(),
-        // Deltas frente a óptima y líder y vuelta invalidada: aún no (#1497).
+        // Los deltas frente a óptima y líder los deriva el núcleo (#1497).
         delta_optimal_s: Quality::Unavailable,
         delta_leader_s: Quality::Unavailable,
-        lap_invalid: Quality::Unavailable,
+        lap_invalid: quality(
+            vehicle.lap_time_counts.map(|counts| !counts),
+            telemetry_stale,
+        ),
     }
 }
 

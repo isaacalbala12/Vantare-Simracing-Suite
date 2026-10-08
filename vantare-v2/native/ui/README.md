@@ -475,8 +475,10 @@ amarillo más lento; el sector en curso se rellena). Formatos en `size`: píldor
 La barra de ±1 s se desliza hacia el valor nuevo y la vuelta récord personal
 destella en morado. Escenas `delta-vantare.scene.json` y
 `delta-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
-Los adaptadores aún no publican los deltas frente a óptima y líder ni la vuelta
-invalidada: en pista real esas referencias salen «sin referencia».
+LMU publica los mejores sectores (S1 y S2 de la sesión, S3 de la mejor vuelta),
+los sectores de la vuelta en curso y si la vuelta cuenta (`mCountLapFlag`); con
+ellos el núcleo deriva los deltas frente a óptima y líder escalando la
+referencia de la mejor vuelta propia (exactos en meta, `Estimated`).
 
 ### Harness anterior y mediciones históricas
 

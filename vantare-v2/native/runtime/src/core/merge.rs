@@ -120,6 +120,7 @@ impl Trackers {
         };
         self.fuel.derive(player, car);
         self.delta.derive(player, car, state.session.track_length_m);
+        delta::references(player, car, cars);
     }
 }
 

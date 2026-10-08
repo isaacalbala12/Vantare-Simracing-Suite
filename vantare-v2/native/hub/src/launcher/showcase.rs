@@ -180,22 +180,27 @@ fn run_result(events: &[Progress]) -> Option<(&'static str, Tone)> {
     let result = events
         .iter()
         .rev()
-        .find(|event| event.status == Status::Done)?;
-    if !result.success {
+        .find(|event| matches!(event.status, Status::Done | Status::Cancelled))?;
+    if result.status == Status::Cancelled {
+        Some(("Cancelado", Tone::Neutral))
+    } else if !result.success {
         Some(("Falló", Tone::Danger))
-    } else if events.iter().any(|event| event.status == Status::Waiting)
-        || events
-            .iter()
-            .filter(|event| event.status == Status::Launching)
-            .count()
-            > events
+    } else if events.iter().any(|event| {
+        event.step.is_some_and(|step| {
+            events
                 .iter()
-                .filter(|event| event.status == Status::Ready)
+                .filter(|candidate| {
+                    candidate.step == Some(step) && candidate.status == Status::Launching
+                })
                 .count()
-    {
-        Some(("Lento", Tone::Warning))
+                > 1
+        })
+    }) {
+        Some(("Completado con reintentos", Tone::Warning))
+    } else if events.iter().any(|event| event.status == Status::Waiting) {
+        Some(("Requirió confirmación", Tone::Neutral))
     } else {
-        Some(("Bien", Tone::Success))
+        Some(("Completado", Tone::Success))
     }
 }
 
@@ -1859,7 +1864,7 @@ mod tests {
                     event(Status::Ready, true),
                     event(Status::Done, true),
                 ],
-                Some("Bien"),
+                Some("Completado"),
             ),
             (
                 vec![
@@ -1869,13 +1874,34 @@ mod tests {
                     event(Status::Ready, true),
                     event(Status::Done, true),
                 ],
-                Some("Lento"),
+                Some("Completado con reintentos"),
             ),
+            (
+                vec![
+                    event(Status::Waiting, false),
+                    event(Status::Ready, true),
+                    event(Status::Done, true),
+                ],
+                Some("Requirió confirmación"),
+            ),
+            (vec![event(Status::Cancelled, false)], Some("Cancelado")),
             (vec![event(Status::Done, false)], Some("Falló")),
         ];
         for (events, expected) in cases {
             assert_eq!(run_result(&events).map(|(label, _)| label), expected);
         }
+        // Dos pasos normales no son un reintento de la misma aplicación.
+        let mut second = event(Status::Launching, false);
+        second.step = Some(1);
+        assert_eq!(
+            run_result(&[
+                event(Status::Launching, false),
+                second,
+                event(Status::Done, true)
+            ])
+            .map(|result| result.0),
+            Some("Completado")
+        );
     }
 
     #[test]

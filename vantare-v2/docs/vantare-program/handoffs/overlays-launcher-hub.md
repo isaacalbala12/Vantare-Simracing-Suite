@@ -18,6 +18,11 @@ hero/overlay/actividad separados. Circuitos tipados validados y parseados una ve
 Microbenchmark manual preparado; caché de entidades conservada hasta medir.
 Base R0 corregida cb6ca7d4; check/Clippy workspace PASS, suite y QA pendientes.
 
+R2: Avanzado admite Tab con foco visible y el focus target existente;
+resultados descriptivos de terminal/reintentos/confirmación, sin Lento inferido.
+Regresiones de recuperación, decisión, pasos independientes, fallo y cancelación.
+Motor, persistencia y controladores intactos; interacción nativa pendiente de QA.
+
 ## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama

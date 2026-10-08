@@ -1085,7 +1085,15 @@ impl Launcher {
                             .aria_label(if advanced { "Básico" } else { "Avanzado" })
                             .track_focus(&tabs.read(cx).focus_handle())
                             .tab_index(0)
-                            .tab_stop(false)
+                            .tab_stop(true)
+                            .rounded(px(4.0))
+                            .border_1()
+                            .border_color(gpui::transparent_black())
+                            .px(px(6.0))
+                            .py(px(3.0))
+                            .focus_visible(|style| {
+                                style.border_color(rgb(orbit::skin(cx).selection >> 8))
+                            })
                             .cursor_pointer()
                             .child(tracked_text(
                                 if advanced { "Básico" } else { "Avanzado" },

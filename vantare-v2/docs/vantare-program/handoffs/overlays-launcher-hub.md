@@ -5861,3 +5861,14 @@ preview nueva, error, captura, reintento, envío y recibo invalidan la marca.
 Clippy-Dwarnings y Nextest Testing22/22 PASS; regresión UI final en curso.
 No cambia protocolo, consentimiento persistido ni autorización del servicio.
 Banco/espera ca238d0f; artefactos de intentos QA conservados y diferenciados.
+E3 af5b69be: seis muestras release instrumentadas, alternadas antes66ba1d45/
+finalaf5b69be,1920×1080,DPI96,UI/canvas100%,cuatro widgets y dos arrastres
+reales por muestra. QPC inyección→WM_MOUSEMOVE→preview→render→Present;
+1432/1440 movimientos enlazados,8 no enlazados/coalescidos declarados.
+p95 evento→Present antes11,42–12,56ms/final11,66–12,46ms; inyección→Present
+final14,18–20,20ms. No se demuestra regresión del tramo app ni mejora causal.
+Trazas, binarios/hashes, inyecciones y analizador en calidad-2-evidence/performance.
+Instrumentación solo en copias externas; no añade logging a producción.
+PresentMon1.10 exit0 sin CSV/eventos utilizables en esta sesión sin privilegio;
+la medida usa la traza equivalente del Present real, no intervalo/API time.
+No acredita dispositivo físico→fotón, scanout,18 widgets ni LMU/OBS.

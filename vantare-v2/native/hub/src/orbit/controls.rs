@@ -1008,6 +1008,19 @@ impl Render for NumberControl {
         })
     }
 }
+/// Cara estática compartida por filas de resumen y filas interactivas.
+pub(super) fn list_row_content(label: &str, detail: &str, cx: &gpui::App) -> Div {
+    div()
+        .min_h(px(ROW_H))
+        .px(px(RADIUS_CONTROL))
+        .py(px(RADIUS_CHIP))
+        .rounded(px(RADIUS_CONTROL))
+        .flex()
+        .flex_col()
+        // La cara Inter ya trae el peso: pedirlo otra vez sintetiza negrita.
+        .child(text(label.to_owned(), BODY, 650, ink(cx), cx).font_weight(face_weight(650, cx)))
+        .child(text(detail.to_owned(), SECONDARY, 400, ink_3(cx), cx))
+}
 pub fn list_row(
     id: impl Into<gpui::ElementId>,
     label: &str,
@@ -1016,19 +1029,13 @@ pub fn list_row(
     enabled: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    div()
+    list_row_content(label, detail, cx)
         .id(id)
         .role(gpui::Role::Button)
         .aria_label(label.to_owned())
         .aria_selected(selected)
         .tab_index(0)
         .tab_stop(enabled)
-        .min_h(px(ROW_H))
-        .px(px(RADIUS_CONTROL))
-        .py(px(RADIUS_CHIP))
-        .rounded(px(RADIUS_CONTROL))
-        .flex()
-        .flex_col()
         .when(selected, |s| s.bg(tint(carmine(cx), 0.11)))
         .when(selected && is_mono(cx), |s| {
             s.bg(rgb(surface_3(cx)))
@@ -1040,9 +1047,6 @@ pub fn list_row(
         })
         .when(!enabled, |s| s.opacity(DISABLED))
         .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
-        // La cara Inter ya trae el peso: pedirlo otra vez sintetiza negrita.
-        .child(text(label.to_owned(), BODY, 650, ink(cx), cx).font_weight(face_weight(650, cx)))
-        .child(text(detail.to_owned(), SECONDARY, 400, ink_3(cx), cx))
 }
 pub fn empty_state(title: &str, help: &str, cx: &gpui::App) -> Div {
     div()

@@ -13,6 +13,13 @@ conflictos, contraste, opacidad y fuentes. Privacidad mantiene ambos consentimie
 PostHog; diagnóstico conserva preparación, filtro y copia sanitizada;
 Actualizaciones conserva metadatos, novedades y acciones de reinicio de beta.
 Cuenta conserva inicio/cierre de sesión y restablecimiento del dispositivo.
+
+#1515 añade una pregunta opcional de informes de fallos antes del acceso normal
+del Hub, con botones Orbit «No, gracias» y «Aceptar» y enlace a la política.
+Tab/Shift+Tab recorre los tres controles y Enter/Espacio los activa; el foco
+inicial está en rechazar. Solo se abandona la pregunta tras guardar la decisión.
+Sin decisión antigua registrada se vuelve a preguntar y se descartan pendientes
+anteriores. Demo/capturas de otras pantallas conservan su flujo de QA.
 Las licencias se presentan como Beta para testers, gratuita durante la beta;
 Strategy y Engineer se anuncian Próximamente sin modificar permisos del núcleo.
 

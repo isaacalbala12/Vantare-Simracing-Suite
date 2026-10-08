@@ -233,11 +233,17 @@ function Apply-BetaUpdate([string]$Directory) {
     $true
 }
 
+function Throw-BetaInstallError([int]$Code, [string]$Message) {
+    $exception = [InvalidOperationException]::new($Message)
+    $exception.Data['InstallExitCode'] = $Code
+    throw $exception
+}
+
 # Setup y el feed comparten activación, confirmación y rollback.
 function Activate-BetaPackage([string]$Directory, [string]$Zip, [string]$Hash, [string]$Version, [string]$Notes = '', [bool]$Repair = $false) {
     $state = Read-NativeState $Directory (-not $Repair)
     $marker = Join-Path $Directory 'boot-pending.json'
-    if (Test-Path -LiteralPath $marker) { throw 'Abre Vantare y ciérralo antes de volver a instalar; hay un arranque pendiente de comprobar.' }
+    if (Test-Path -LiteralPath $marker) { Throw-BetaInstallError 4 'Abre Vantare y ciérralo antes de volver a instalar; hay un arranque pendiente de comprobar.' }
     $previous = $state.active.generation
     if ($Repair) {
         try { $null = Read-NativeState $Directory }
@@ -255,7 +261,7 @@ function Activate-BetaPackage([string]$Directory, [string]$Zip, [string]$Hash, [
 function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
     $directory = Open-NativeRoot $Directory -Initialize
     try { $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
-    catch { throw 'Cierra Vantare para continuar. Si estás en carrera, espera a terminar.' }
+    catch { Throw-BetaInstallError 2 'Cierra Vantare para continuar. Si estás en carrera, espera a terminar.' }
     try {
         # Validar el paquete completo antes de seleccionar datos o cambiar el estado.
         $probe = Join-Path $directory ('staging/setup-' + [guid]::NewGuid().ToString('N'))
@@ -266,14 +272,14 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
         if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
             $state = Read-NativeState $directory $false
             $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
-            if ($version -lt (Read-BetaVersion $current.version)) { throw 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
+            if ($version -lt (Read-BetaVersion $current.version)) { Throw-BetaInstallError 3 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
             Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
         } else {
             $source = ''
             if (Test-Path -LiteralPath $retained) {
                 $saved = [IO.File]::ReadAllText($retained) | ConvertFrom-Json
                 if ($saved.schema -ne 1 -or $saved.generation -cnotmatch '^[a-f0-9]{32}$') { throw 'No se reconoce la referencia a tus datos conservados; no se han modificado.' }
-                if ($version -lt (Read-BetaVersion $saved.version)) { throw 'Tus datos pertenecen a una versión más reciente. Descarga el instalador más reciente.' }
+                if ($version -lt (Read-BetaVersion $saved.version)) { Throw-BetaInstallError 3 'Tus datos pertenecen a una versión más reciente. Descarga el instalador más reciente.' }
                 $source = Join-Path $directory "generations/$($saved.generation)/data"
                 if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw 'No se encuentran tus datos conservados; no se han modificado.' }
             } elseif (Test-Path -LiteralPath (Join-Path $directory 'generations')) {
@@ -343,12 +349,16 @@ function Test-BetaReady([string]$Directory, $Process) {
 }
 
 function Sync-BetaRegistration([string]$Directory, [string]$Version) {
-    foreach ($identity in @('VantareNativeBeta', 'VantareNativeBetaQA1492')) {
-        $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
-        $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
-        if ($null -ne $registration -and [IO.Path]::GetFullPath($registration.InstallLocation) -eq $Directory) {
-            Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
-        }
+    $identity = 'VantareNativeBeta'
+    $identityFile = Join-Path $Directory 'registration-identity.txt'
+    if (Test-Path -LiteralPath $identityFile) {
+        $identity = [IO.File]::ReadAllText($identityFile).Trim()
+        if ($identity -cnotmatch '^[A-Za-z0-9]{1,64}$') { throw 'Identidad de registro inválida.' }
+    }
+    $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
+    $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+    if ($null -ne $registration -and [IO.Path]::GetFullPath($registration.InstallLocation) -eq $Directory) {
+        Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
     }
 }
 
@@ -484,8 +494,7 @@ switch ($Operation) {
         try { Install-Beta $Root $Archive $ExpectedSha256 }
         catch {
             Write-Error $_ -ErrorAction Continue
-            if ($_.Exception.Message -match 'Cierra Vantare|Cierre los procesos') { exit 2 }
-            if ($_.Exception.Message -match 'más reciente|instalador es anterior') { exit 3 }
+            if ($_.Exception.Data.Contains('InstallExitCode')) { exit ([int]$_.Exception.Data['InstallExitCode']) }
             exit 1
         }
         if (-not $NoLaunch) { Run-BetaHub $Root }

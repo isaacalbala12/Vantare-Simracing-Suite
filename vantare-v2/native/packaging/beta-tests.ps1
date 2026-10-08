@@ -16,9 +16,12 @@ function Assert-Beta([bool]$Condition, [string]$Message) {
     $script:Passed++
     Write-Output "PASS $Message"
 }
-function Reject-Beta([scriptblock]$Action, [string]$Message) {
+function Reject-Beta([scriptblock]$Action, [string]$Message, [int]$Code = 0) {
     $failed = $false
-    try { $null = & $Action } catch { $failed = $true }
+    try { $null = & $Action } catch {
+        $failed = $true
+        if ($Code) { Assert-Beta ($_.Exception.Data['InstallExitCode'] -eq $Code) "$Message código tipado $Code" }
+    }
     Assert-Beta $failed $Message
 }
 $evidence = Assert-NativePath $EvidenceDirectory
@@ -49,6 +52,26 @@ $fromBootstrap = & $installedBootstrap -Operation Status -Root $root | ConvertFr
 Assert-Beta ($fromBootstrap.active.generation -ceq $initial) 'CLI del bootstrap instalado lee la generación real'
 $old = Join-Path $root "generations/$initial"
 $oldVersion = (Read-NativeManifest $old 'beta').version
+# La identidad la aporta el instalador; el bootstrap no enumera claves QA.
+$testIdentity = 'VantareRegistrationTest' + [guid]::NewGuid().ToString('N')
+$testKey = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$testIdentity"
+$identityFile = Join-Path $root 'registration-identity.txt'
+try {
+    $null = New-Item -Path $testKey
+    Set-ItemProperty -LiteralPath $testKey -Name InstallLocation -Value $evidence
+    Set-ItemProperty -LiteralPath $testKey -Name DisplayVersion -Value 'unchanged'
+    [IO.File]::WriteAllText($identityFile, $testIdentity)
+    Sync-BetaRegistration $root $oldVersion
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq 'unchanged') 'identidad externa no cambia registro de otra raíz'
+    Set-ItemProperty -LiteralPath $testKey -Name InstallLocation -Value $root
+    Sync-BetaRegistration $root $oldVersion
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq $oldVersion) 'registro usa identidad externa de su raíz'
+    [IO.File]::WriteAllText($identityFile, '../invalid')
+    Reject-Beta { Sync-BetaRegistration $root $oldVersion } 'identidad externa inválida rechazada'
+} finally {
+    Remove-Item -LiteralPath $testKey -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $identityFile -ErrorAction SilentlyContinue
+}
 $data = Join-Path $old 'data/local-profile.json'
 [IO.File]::WriteAllText($data, '{"profile":"local test","layout":[1,2],"account":"fake-test-account"}')
 $dataHash = Get-NativeHash $data
@@ -58,10 +81,10 @@ foreach ($version in @('', '0.1', '01.1.0', '0.1.1-beta', '-1.2.3', '1.2.65536',
 }
 # Sesión abierta y binarios abiertos conservan selección y datos, sin matar procesos.
 $session = [IO.File]::Open((Join-Path $root 'beta-session.lock'), [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-try { Reject-Beta { Install-Beta $root $next $nextHash } 'Setup exige cerrar la sesión' }
+try { Reject-Beta { Install-Beta $root $next $nextHash } 'Setup exige cerrar la sesión' 2 }
 finally { $session.Dispose() }
 $busy = [IO.File]::Open((Join-Path $old 'bin/vantare-hub.exe'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-try { Reject-Beta { Install-Beta $root $next $nextHash } 'Setup exige cerrar binarios en uso' }
+try { Reject-Beta { Install-Beta $root $next $nextHash } 'Setup exige cerrar binarios en uso' 2 }
 finally { $busy.Dispose() }
 Assert-Beta ((Read-NativeState $root).active.generation -ceq $initial) 'rechazo conserva selección'
 Assert-Beta (-not (Test-Path (Join-Path $root 'boot-pending.json'))) 'rechazo no deja arranque pendiente'
@@ -74,7 +97,10 @@ Assert-Beta ((Read-BetaVersion $newVersion) -gt (Read-BetaVersion $oldVersion)) 
 Assert-Beta ($updated.previous.generation -ceq $initial) 'Setup usa Update y conserva generación anterior'
 Assert-Beta ((Get-NativeHash (Join-Path $active 'data/local-profile.json')) -ceq $dataHash) 'Setup conserva perfil, layout y cuenta'
 Assert-Beta (Test-Path (Join-Path $root 'boot-pending.json')) 'Setup exige confirmación de arranque'
-Reject-Beta { Install-Beta $root $next $nextHash } 'Setup no sustituye una actualización sin confirmar'
+$pendingHash = Get-NativeHash (Join-Path $root 'boot-pending.json')
+Reject-Beta { Install-Beta $root $next $nextHash } 'Setup no sustituye una actualización sin confirmar' 4
+Assert-Beta ((Get-NativeHash (Join-Path $root 'boot-pending.json')) -ceq $pendingHash) 'repetir Setup conserva marcador de rollback exacto'
+Assert-Beta ((Read-NativeState $root).active.generation -ceq $updated.active.generation) 'repetir Setup conserva generación pendiente'
 # Proceso real, sin ventana ni marcador inventado: fallo antes del ready.
 $info = [Diagnostics.ProcessStartInfo]::new()
 $info.FileName = Join-Path $active 'bin/vantare-hub.exe'
@@ -107,7 +133,7 @@ Remove-Item -LiteralPath (Join-Path $root 'boot-pending.json')
 Install-Beta $root $next $nextHash
 $updated = Read-NativeState $root
 Remove-Item -LiteralPath (Join-Path $root 'boot-pending.json')
-Reject-Beta { Install-Beta $root $first $firstHash } 'versión inferior rechazada sin bajar en silencio'
+Reject-Beta { Install-Beta $root $first $firstHash } 'versión inferior rechazada sin bajar en silencio' 3
 Assert-Beta ((Read-NativeState $root).active.generation -ceq $updated.active.generation) 'downgrade conserva versión nueva'
 foreach ($bin in (Get-NativeBins 'beta')) {
     $text = & (Join-Path $root "generations/$($updated.active.generation)/bin/$bin.exe") --version
@@ -120,7 +146,7 @@ $latestHash = Get-NativeHash $latestData
 Uninstall-Beta $root
 Assert-Beta (-not (Test-Path (Join-Path $root 'state.json'))) 'desinstalar retira estado activo'
 Assert-Beta ((Get-NativeHash $latestData) -ceq $latestHash) 'desinstalar conserva datos más recientes'
-Reject-Beta { Install-Beta $root $first $firstHash } 'datos conservados no se adoptan con versión inferior'
+Reject-Beta { Install-Beta $root $first $firstHash } 'datos conservados no se adoptan con versión inferior' 3
 Install-Beta $root $next $nextHash
 $adopted = (Read-NativeState $root).active.generation
 Assert-Beta ((Get-NativeHash (Join-Path $root "generations/$adopted/data/local-profile.json")) -ceq $latestHash) 'reinstalar adopta la copia activa exacta entre varias generaciones'

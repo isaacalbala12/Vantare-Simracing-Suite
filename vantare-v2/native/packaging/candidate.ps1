@@ -325,7 +325,9 @@ function Open-NativeBinaryGuard([string]$Directory) {
         $handles
     } catch {
         foreach ($handle in $handles.Values) { $handle.Dispose() }
-        throw 'Cierre los procesos de esta instalación antes de actualizar/importar/restaurar; no se mata la aplicación.'
+        $exception = [InvalidOperationException]::new('Cierre los procesos de esta instalación antes de actualizar/importar/restaurar; no se mata la aplicación.')
+        $exception.Data['InstallExitCode'] = 2
+        throw $exception
     }
 }
 

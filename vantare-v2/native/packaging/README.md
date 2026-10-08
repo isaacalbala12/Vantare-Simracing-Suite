@@ -24,6 +24,11 @@ misma activación por generaciones que el Hub: exige cerrar Vantare y restaura
 la versión anterior si el Hub nuevo no confirma su ventana. Una versión inferior
 se rechaza con un aviso; no baja de versión en silencio. Inicio y el registro
 de desinstalación se actualizan, también si hay rollback.
+Si se vuelve a ejecutar Setup antes de comprobar el arranque de una actualización
+o reparación, devuelve código 4 y pide abrir y cerrar Vantare primero. No cambia
+la generación ni el marcador pendiente: el arranque conserva su rollback.
+Los códigos 2 (sesión/binarios abiertos), 3 (versión anterior) y 4 provienen de
+errores tipados, sin depender del texto mostrado.
 
 Después de desinstalar, Setup adopta automáticamente los datos de la generación
 activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
@@ -34,6 +39,9 @@ QA aislada: compilar NSIS con `/DTEST_INSTALLER` y ejecutar
 `VantareSetup.exe /S /D=E:\tmp\1492\installed` (el argumento `/D` va al final).
 Esta build exige ruta explícita y usa registro `VantareNativeBetaQA1492` y
 accesos «Vantare Native Beta QA1492», separados de la instalación de Isaac.
+Solo este instalador escribe `registration-identity.txt` en la raíz y lo retira
+al desinstalar; el bootstrap lee esa identidad validada para sincronizar el
+registro tras confirmar o restaurar. Sin ese archivo usa `VantareNativeBeta`.
 No distribuir esta build. `installer-tests.ps1` prueba los dos Setup construidos
 sin abrir ventanas; `beta-tests.ps1` requiere verificador y semilla de TEST
 para probar el feed firmado, nunca la clave privada productiva.

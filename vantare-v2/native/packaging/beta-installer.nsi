@@ -76,12 +76,22 @@ retry_install:
     SetErrorLevel 3
     Abort
   ${EndIf}
+  ${If} $0 == 4
+    MessageBox MB_ICONSTOP "Abre Vantare y ciérralo antes de volver a instalar. Falta comprobar el arranque de la instalación anterior. Tus datos se conservan." /SD IDOK
+    SetErrorLevel 4
+    Abort
+  ${EndIf}
   ${If} $0 != 0
     MessageBox MB_ICONSTOP "No se pudo instalar Vantare. Tus datos se conservan. Consulta el detalle de la instalación." /SD IDOK
     SetErrorLevel 1
     Abort
   ${EndIf}
   SetOutPath "$INSTDIR"
+!ifdef TEST_INSTALLER
+  FileOpen $1 "$INSTDIR\registration-identity.txt" w
+  FileWrite $1 "${IDENTITY}"
+  FileClose $1
+!endif
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\${SHORTCUT_FOLDER}"
   ; Explorer x64 abre System32 directamente; Sysnative solo existe para procesos x86.
@@ -111,5 +121,8 @@ Section "Uninstall"
   Delete "$INSTDIR\beta.ps1"
   Delete "$INSTDIR\candidate.ps1"
   Delete "$INSTDIR\Uninstall.exe"
+!ifdef TEST_INSTALLER
+  Delete "$INSTDIR\registration-identity.txt"
+!endif
   RMDir "$INSTDIR"
 SectionEnd

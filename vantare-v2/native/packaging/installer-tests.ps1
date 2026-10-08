@@ -52,6 +52,13 @@ Invoke-Setup $Version011Directory
 $newVersion = (Get-ItemProperty -LiteralPath $key).DisplayVersion
 Assert-Setup ((Read-BetaVersion $newVersion) -gt (Read-BetaVersion $oldVersion)) 'registro actualizado a versión mayor'
 Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'Setup nuevo conserva datos'
+Assert-Setup ([IO.File]::ReadAllText((Join-Path $root 'registration-identity.txt')) -ceq 'VantareNativeBetaQA1492') 'Setup QA declara su identidad fuera del bootstrap productivo'
+$pendingHash = Get-NativeHash (Join-Path $root 'boot-pending.json')
+$pendingGeneration = (Read-SetupState).active.generation
+Invoke-Setup $Version011Directory 4
+Assert-Setup ((Get-NativeHash (Join-Path $root 'boot-pending.json')) -ceq $pendingHash) 'Setup repetido conserva marcador exacto'
+Assert-Setup ((Read-SetupState).active.generation -ceq $pendingGeneration) 'Setup repetido conserva generación y rollback'
+Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'Setup repetido conserva datos'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Vantare Native Beta QA1492/Vantare Native Beta.lnk'
 $link = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut)
 Assert-Setup ($link.Arguments.Contains($root)) 'Inicio apunta a bootstrap de la instalación aislada'
@@ -71,9 +78,14 @@ $process = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentLi
 try { $process.WaitForExit(); Assert-Setup ($process.ExitCode -eq 0) 'desinstalador construido termina' }
 finally { $process.Dispose() }
 Assert-Setup (-not (Test-Path -LiteralPath $key)) 'desinstalar retira registro QA'
+Assert-Setup (-not (Test-Path (Join-Path $root 'registration-identity.txt'))) 'desinstalar retira identidad QA'
 Invoke-Setup $Version011Directory
 Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'Setup adopta datos tras desinstalar'
+$retainedData = Get-SetupData
 $process = Start-Process -FilePath (Join-Path $root 'Uninstall.exe') -ArgumentList "/S _?=$root" -WindowStyle Hidden -PassThru
 try { $process.WaitForExit(); Assert-Setup ($process.ExitCode -eq 0) 'limpieza final solo de instalación QA' }
 finally { $process.Dispose() }
+Invoke-Setup $Version010Directory 3
+Assert-Setup (-not (Test-Path -LiteralPath $key)) 'datos más recientes rechazan Setup anterior sin registrar instalación'
+Assert-Setup ((Get-NativeHash $retainedData) -ceq $hash) 'datos conservados intactos'
 Write-Output "$script:Passed comprobaciones PASS. Evidencia: $root"

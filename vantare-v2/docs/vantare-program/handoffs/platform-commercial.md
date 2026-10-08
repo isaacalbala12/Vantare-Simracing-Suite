@@ -2,6 +2,27 @@
 
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 
+Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`
+(2 sesión/binarios abiertos, 3 versión/datos superiores, 4 arranque pendiente).
+El código 4 tiene mensaje NSIS específico y conserva generación, datos y
+marcador exacto; el fallo posterior del Hub sigue restaurando la anterior.
+La identidad QA se escribe únicamente desde NSIS TEST en
+`registration-identity.txt`; el bootstrap valida ese dato y solo conoce
+`VantareNativeBeta` como predeterminado. Desinstalar QA retira el archivo.
+Setup reconstruidos mediante la cola, sin recompilar Rust: 33/33 PASS reales
+en raíz aislada; rollback y versión registrada anteriores recuperados. Sin
+registro/accesos QA restantes; huella comprobada de Isaac idéntica.
+Evidencia de esta ronda: `C:/tmp/1492-instalador-evidence/ronda2/`.
+Gates de ronda 2 PASS: packaging 174, beta 86 (+configuración 10), feed 9,
+desinstalación 2, guardas 2, MSIX 12 (sin paquete MSIX real), sintaxis y diff.
+Se conservó el fallo del lanzador PS5.1 al elevar stderr esperado de un
+negativo; repetición completa desde PS7 con suites PS5.1 PASS. Sin cambios
+Rust ni gates Rust; instaladores QA sin firma, mensajes verificados por códigos
+silenciosos. Entrega local pendiente de revisión del orquestador, sin push,
+PR, CI remoto, merge, promoción ni release; seguimiento en GitHub por encargo.
+
+Evidencia de la ronda 1:
+
 Rama `vantareapp/isa-1492-instalador-encima`, base `aa8ba9e1`, worktree
 `C:/tmp/vw3-1492-instalador/vantare-v2`. Continuación del intento interrumpido
 por disco lleno; se conservan y revisan sus cuatro archivos de packaging.

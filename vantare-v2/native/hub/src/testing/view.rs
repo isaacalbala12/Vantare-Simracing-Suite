@@ -9,11 +9,20 @@ use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px, rg
 use std::path::Path;
 use std::{path::PathBuf, time::Instant};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ReportView {
+    Compose,
+    List,
+}
+
 pub struct Testing {
+    adapt: orbit::Adapt,
     remote: Entity<Remote>,
     tabs: Entity<orbit::Choice>,
     local_module: Entity<orbit::Choice>,
     local_open: bool,
+    report_view: ReportView,
+    expanded_receipt: Option<String>,
     pub observed: Observed,
     store: Store,
     data: PathBuf,
@@ -26,6 +35,12 @@ pub struct Testing {
     channel_label: String,
 }
 impl Testing {
+    pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
+        if self.adapt != adapt {
+            self.adapt = adapt;
+            cx.notify();
+        }
+    }
     pub fn new(
         data: PathBuf,
         remote: Entity<Remote>,
@@ -36,12 +51,20 @@ impl Testing {
         let selected_tab = selected_capture_tab(&data).unwrap_or(0);
         #[cfg(not(feature = "parity-capture"))]
         let selected_tab = 0;
+        #[cfg(feature = "parity-capture")]
+        let report_view = if selected_capture_list(&data) {
+            ReportView::List
+        } else {
+            ReportView::Compose
+        };
+        #[cfg(not(feature = "parity-capture"))]
+        let report_view = ReportView::Compose;
         let channel_label = super::model::channel_label(Some(crate::product::CHANNEL));
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
                 "Vistas de Testing Center",
                 orbit::ChoiceKind::Tabs,
-                ["Nuevo informe", "Validar", "Mis informes"]
+                super::model::VIEWS
                     .into_iter()
                     .map(orbit::OptionItem::new)
                     .collect(),
@@ -50,7 +73,8 @@ impl Testing {
                 cx,
             )
         });
-        cx.subscribe(&tabs, |_, _, _: &orbit::ChoiceChanged, cx| {
+        cx.subscribe(&tabs, |this, _, _: &orbit::ChoiceChanged, cx| {
+            this.local_open = false;
             cx.notify();
         })
         .detach();
@@ -86,10 +110,13 @@ impl Testing {
         )
         .detach();
         Self {
+            adapt: orbit::Adapt::default(),
             remote,
             tabs,
             local_module,
             local_open: false,
+            report_view,
+            expanded_receipt: None,
             observed: Observed::default(),
             inputs: Self::inputs(&store.draft, cx),
             store,
@@ -348,213 +375,289 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
     }
     let screen = parts.next()?;
     match screen {
-        "testing-center-informe" | "testing-center-detalle" => Some(0),
-        "testing-center-validar" => Some(1),
-        "testing-center-mis-reportes" => Some(2),
+        "testing-center-resumen" => Some(0),
+        "testing-center-informe" | "testing-center-detalle" | "testing-center-mis-reportes" => {
+            Some(2)
+        }
+        "testing-center-validar" | "testing-center-cuestionarios" => Some(1),
+        "testing-center-comunidad" => Some(3),
         _ => None,
     }
 }
 
-fn disabled_refresh(cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
-    div()
-        .id("testing-validate-refresh")
-        .role(gpui::Role::Button)
-        .aria_label("Actualizar")
-        .aria_description("Próximamente")
-        .tab_stop(false)
-        .h(px(34.0))
-        .px(px(14.0))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(orbit::RADIUS_CONTROL))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-        .flex_none()
-        .opacity(0.55)
-        .child(orbit::text(
-            "Actualizar",
-            orbit::SECONDARY,
-            600,
-            orbit::ink_3(cx),
-            cx,
-        ))
-}
-
-fn validation_panel(cx: &gpui::App) -> gpui::Div {
-    orbit::neo_card(cx)
-        .flex_1()
-        .min_h_0()
-        .w_full()
-        .child(
-            orbit::neo_header("Correcciones pendientes", "v-testing", cx)
-                .child(div().flex_1())
-                .child(disabled_refresh(cx)),
-        )
-        .child(
-            div()
-                .flex_1()
-                .min_h_0()
+impl Testing {
+    fn receipt_rows(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let remote = self.remote.read(cx);
+        let mut rows = div()
+            .id("testing-receipts")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .flex()
+            .flex_col()
+            .gap(px(10.0));
+        if remote.report_receipts.is_empty() {
+            rows = rows.child(orbit::text(
+                "Aún no has enviado informes en esta sesión.",
+                14.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ));
+        }
+        for (index, (fields, receipt)) in remote.report_receipts.iter().enumerate() {
+            let id = receipt.report_id.clone();
+            let key_id = id.clone();
+            let expanded = self.expanded_receipt.as_ref() == Some(&id);
+            let title = if fields.action_text.trim().is_empty() {
+                "Título no disponible"
+            } else {
+                &fields.action_text
+            };
+            let row = div()
+                .id(("testing-receipt", index))
+                .cursor_pointer()
+                .role(gpui::Role::Button)
+                .aria_label(format!("Detalle de {title}"))
+                .tab_index(0)
                 .flex()
                 .flex_col()
-                .items_center()
-                .justify_center()
-                .gap(px(16.0))
-                .child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx)))
+                .min_w_0()
+                .gap(px(6.0))
+                .py(px(10.0))
+                .border_b_1()
+                .border_color(rgba(orbit::line_row(cx)))
+                .child(orbit::text(title.to_owned(), 14.0, 600, orbit::ink(cx), cx))
+                .child(
+                    orbit::meta(&receipt.report_id, 10.0, orbit::ink_3(cx), cx)
+                        .overflow_hidden()
+                        .text_ellipsis(),
+                )
                 .child(orbit::text(
-                    "Disponible próximamente",
-                    22.0,
-                    600,
-                    orbit::ink(cx),
+                    format!(
+                        "{} · {} · {}",
+                        super::model::MODULES
+                            .iter()
+                            .find(|(key, _)| *key == fields.module)
+                            .map_or("Sin determinar", |(_, label)| *label),
+                        orbit::activity_time(
+                            &receipt.created_at,
+                            chrono::Local::now().fixed_offset()
+                        ),
+                        super::model::receipt_status(&receipt.report_state)
+                    ),
+                    12.0,
+                    400,
+                    orbit::ink_2(cx),
                     cx,
                 ))
-                .child(
-                    orbit::text(
-                        "Prueba las correcciones de tu canal y registra el resultado de cada una.",
-                        14.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    )
-                    .max_w(px(480.0))
-                    .text_center(),
-                ),
-        )
-}
-
-impl Testing {
-    fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let remote = self.remote.read(cx);
-        let mut list =
-            orbit::neo_card(cx)
-                .flex_1()
-                .child(orbit::neo_header("Mis informes", "clock", cx));
-        if remote.report_receipts.is_empty() {
-            let dedicated = self.tabs.read(cx).state.selected == Some(2);
-            return list.child(
-                div().flex().flex_col().items_center().justify_center().gap(px(16.0))
-                    .when(dedicated, |body| body.flex_1().child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx))))
-                    .when(!dedicated, |body| body.py(px(16.0)))
-                    .child(orbit::text("Tu primer informe empieza aquí", if dedicated { 22.0 } else { 16.0 }, 600, orbit::ink(cx), cx))
-                    .child(orbit::text(if dedicated { "Aquí verás los informes enviados durante esta sesión. Si encuentras un problema o tienes una sugerencia, cuéntanos qué pasó y añade una captura desde Nuevo informe." } else { "Aquí verás los informes enviados durante esta sesión." }, 14.0, 400, orbit::ink_2(cx), cx).max_w(px(480.0)).text_center())
-                    .when(dedicated, |body| body.child(orbit::primary_button("testing-first-report", "Nuevo informe", cx).self_center().on_click(cx.listener(|this, _, _, cx| {
-                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(0); cx.notify(); });
+                .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        this.expanded_receipt = if this.expanded_receipt.as_ref() == Some(&key_id) {
+                            None
+                        } else {
+                            Some(key_id.clone())
+                        };
+                        cx.stop_propagation();
                         cx.notify();
-                    }))))
-            );
+                    }
+                }))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.expanded_receipt = if this.expanded_receipt.as_ref() == Some(&id) {
+                        None
+                    } else {
+                        Some(id.clone())
+                    };
+                    cx.notify();
+                }));
+            rows = rows.child(row);
+            if expanded {
+                rows = rows.child(orbit::text("El texto privado no se conserva en esta lista. El recibo confirma el envío; no consulta cambios posteriores.", 13.0, 400, orbit::ink_2(cx), cx))
+                    .child(orbit::text("Conversación · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))
+                    .child(orbit::disabled(orbit::button("testing-also-happens", "A mí también me pasa · Próximamente", cx), "El servicio nativo aún no permite apoyar otro informe."));
+            }
         }
-        for (fields, receipt) in &remote.report_receipts {
-            list = list.child(
+        rows
+    }
+    fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let rows = self.receipt_rows(cx);
+        orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .child(orbit::neo_header(
+                "Tus informes, paso a paso",
+                "v-testing",
+                cx,
+            ))
+            .child(orbit::text(
+                "Flujo previsto: Recibido → Reproducido → En arreglo → Arreglado en nightly.N",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+            .child(rows)
+            .child(orbit::text(
+                "Recibos de esta sesión. Estado al enviar; seguimiento posterior próximamente.",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+    }
+    fn reports(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = self.adapt;
+        let action = orbit::button(
+            "testing-compose",
+            if self.report_view == ReportView::Compose {
+                "Ver mis informes"
+            } else {
+                "Nuevo informe"
+            },
+            cx,
+        )
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.report_view = if this.report_view == ReportView::Compose {
+                ReportView::List
+            } else {
+                ReportView::Compose
+            };
+            cx.notify();
+        }));
+        let mut body = div()
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(
                 div()
+                    .flex_none()
                     .flex()
-                    .items_center()
                     .justify_between()
-                    .gap(px(12.0))
-                    .py(px(12.0))
-                    .border_b_1()
-                    .border_color(rgba(orbit::line_row(cx)))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(orbit::text(
-                                if fields.action_text.trim().is_empty() {
-                                    "Título no disponible".to_owned()
-                                } else {
-                                    fields.action_text.clone()
-                                },
-                                14.0,
-                                600,
-                                orbit::ink(cx),
-                                cx,
-                            ))
-                            .child(orbit::text(
-                                format!(
-                                    "{} · {}",
-                                    super::model::MODULES
-                                        .iter()
-                                        .find(|(id, _)| *id == fields.module)
-                                        .map_or("Sin determinar", |(_, label)| *label),
-                                    orbit::activity_time(
-                                        &receipt.created_at,
-                                        chrono::Local::now().fixed_offset()
-                                    )
-                                ),
-                                11.0,
-                                400,
-                                orbit::ink_3(cx),
-                                cx,
-                            )),
-                    )
-                    .child(orbit::text(
-                        match receipt.report_state.as_str() {
-                            "submitted" => "Enviado",
-                            _ => "Estado no disponible",
-                        },
-                        12.0,
-                        600,
-                        orbit::ink_2(cx),
-                        cx,
-                    )),
+                    .gap(px(10.0))
+                    .child(orbit::text("Informes", 18.0, 600, orbit::ink(cx), cx))
+                    .child(action),
             );
+        if self.report_view == ReportView::Compose {
+            body = body.child(
+                div()
+                    .id("testing-composer-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.remote.update(cx, |remote, cx| {
+                        remote.editor.render(adapt.center_width() < 1050.0, cx)
+                    })),
+            );
+        } else {
+            body = body.child(self.reports_panel(cx));
         }
-        list.child(orbit::text("El estado corresponde al momento del envío. El seguimiento estará disponible próximamente.", 12.0, 400, orbit::ink_3(cx), cx))
+        body
     }
     pub(crate) fn topbar_controls(&self) -> Entity<orbit::Choice> {
         self.tabs.clone()
     }
-    pub(crate) fn context_column(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    pub(crate) fn rail_sections(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
+        let adapt = self.adapt;
+        let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
+        let note = |text: &str| orbit::text(text.to_owned(), 13.0, 400, orbit::ink_3(cx), cx);
         let count = self.remote.read(cx).report_receipts.len();
-        orbit::neo_context_column("testing-context", cx)
-            .pt(px(cx.global::<orbit::design::Tokens>().geometry.gutter))
-            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Tus informes", "pulse", cx))
-                .child(orbit::text(format!("{count} informes enviados · canal {}", self.channel_label), 13.0, 500, orbit::ink_2(cx), cx)))
-            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Conversación", "v-chat", cx))
-                .child(orbit::text("Próximamente podrás consultar respuestas y conversar sobre tu informe.", 13.0, 400, orbit::ink_3(cx), cx)))
-            .child(orbit::neo_card(cx).flex_none().child(orbit::neo_header("Un buen informe", "v-testing", cx))
-                .children([
-                    "Cuenta qué esperabas y qué pasó.",
-                    "Añade una captura: se comprime antes de enviar. Revisa los datos personales.",
-                    "Si se repite, indica cuántas veces y en qué sesión.",
-                    "Las sugerencias también cuentan: dinos para qué las usarías."
-                ].into_iter().enumerate().map(|(index, tip)| div().flex().items_start().gap(px(10.0)).py(px(8.0))
-                    .child(orbit::pill(&(index + 1).to_string(), orbit::Tone::Accent, cx).flex_none())
-                    .child(orbit::text(tip, 13.0, 400, orbit::ink_2(cx), cx).flex_1().min_w_0()))))
+        match tab {
+            1 => vec![
+                orbit::RailSection::new(
+                    "Abiertos y cerrados",
+                    "v-testing",
+                    note("Próximamente · No hay cuestionarios disponibles."),
+                ),
+                orbit::RailSection::new(
+                    "Resultados",
+                    "pulse",
+                    note("Qué cambiamos con tus respuestas · Próximamente"),
+                ),
+            ],
+            2 => {
+                let mut sections = vec![
+                    orbit::RailSection::new(
+                        "Tus informes",
+                        "v-testing",
+                        note(&format!(
+                            "{count} recibos de esta sesión · {}",
+                            self.channel_label
+                        )),
+                    ),
+                    orbit::RailSection::new(
+                        "Conversación",
+                        "v-chat",
+                        note(
+                            "Respuestas, informes parecidos y apoyo a otros informes · Próximamente",
+                        ),
+                    ),
+                ];
+                if adapt.show_optional() {
+                    sections.push(orbit::RailSection::new("Un buen informe", "v-testing", note("Cuenta qué hiciste, qué esperabas y qué ocurrió. Añade una captura si ayuda y revisa los datos personales.")));
+                }
+                sections
+            }
+            _ => {
+                let mut sections = vec![orbit::RailSection::new(
+                    "Tu participación",
+                    "pulse",
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(10.0))
+                        .child(note("Nivel · Próximamente"))
+                        .child(note(&format!("{count} recibos de informes en esta sesión"))),
+                )];
+                if adapt.show_optional() {
+                    sections.push(orbit::RailSection::new(
+                        "Insignias",
+                        "v-testing",
+                        note("Próximamente · No hay insignias disponibles."),
+                    ));
+                }
+                sections.push(orbit::RailSection::new(
+                    "Esta semana",
+                    "clock",
+                    note("Estadísticas de la beta · Próximamente"),
+                ));
+                sections
+            }
+        }
     }
 }
 impl Render for Testing {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
-            1 => validation_panel(cx),
-            2 => self.reports_panel(cx),
-            _ => div()
-                .flex_1()
-                .flex()
-                .flex_col()
-                .gap(px(16.0))
-                .child(self.remote.update(cx, |remote, cx| {
-                    remote
-                        .editor
-                        .render(f32::from(window.viewport_size().width) <= 1500.0, cx)
-                }))
-                .child(self.reports_panel(cx)),
+            1 => self.questionnaires(cx),
+            2 => self.reports(cx),
+            3 => self.community(cx),
+            _ => self.summary(cx),
         };
         div()
             .id("testing-center")
-            .min_h(px((f32::from(window.viewport_size().height)
-                - cx.global::<orbit::design::Tokens>().geometry.topbar
-                - 2.0 * cx.global::<orbit::design::Tokens>().geometry.gutter
-                - 76.0)
-                .max(0.0)))
+            .flex_1()
+            .min_h_0()
             .w_full()
             .min_w_0()
             .flex()
             .flex_col()
             .gap(px(16.0))
-            .child(content)
-            .when(self.local_open, |page| page.child(self.local_tools(cx)))
+            .child(if self.local_open {
+                div()
+                    .id("testing-tools-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.local_tools(cx))
+                    .into_any_element()
+            } else {
+                content.into_any_element()
+            })
     }
 }
 impl Testing {
@@ -563,11 +666,12 @@ impl Testing {
             .flex()
             .items_center()
             .justify_between()
+            .flex_wrap()
             .gap(px(12.0))
             .child(
                 orbit::neo_page_header(
-                    "Informes de la beta",
-                    "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.",
+                    "Testing Center",
+                    "Informes y cuestionarios de la beta. Tu experiencia ayuda a mejorar Vantare.",
                     adapt,
                     cx,
                 )
@@ -589,6 +693,7 @@ impl Testing {
         .child(
             div()
                 .flex()
+                .flex_wrap()
                 .gap(gpui::px(orbit::GUTTER / 2.0))
                 .child(orbit::button("testing-load-report", "Cargar borrador", cx).on_click(
                     cx.listener(|this, _, _, cx| {
@@ -662,16 +767,151 @@ impl Testing {
     }
 }
 
+impl Testing {
+    fn pending_view(title: &str, message: &str, cx: &gpui::App) -> gpui::Div {
+        orbit::neo_card(cx)
+            .flex_none()
+            .min_w_0()
+            .child(orbit::neo_header(title, "v-testing", cx))
+            .child(orbit::text(
+                message.to_owned(),
+                14.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
+    }
+    fn summary(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = self.adapt;
+        div().flex_1().min_h_0().flex().flex_col().min_w_0().gap(px(adapt.gap()))
+            .child(orbit::hero_surface(cx).flex_none().p(px(20.0)).gap(px(12.0))
+                .child(orbit::meta("CUESTIONARIOS · PRÓXIMAMENTE", 11.0, orbit::ink_3(cx), cx))
+                .child(orbit::caps("Tu experiencia cuenta", 28.0, orbit::ink(cx), cx))
+                .when(adapt.show_optional(), |hero| hero.child(orbit::text("Aún no hay cuestionarios disponibles. Puedes contarnos un problema o una sugerencia.", 14.0, 400, orbit::ink_2(cx), cx)))
+                .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.report_view = ReportView::Compose;
+                        this.local_open = false;
+                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
+                        cx.notify();
+                    }))))
+            .when(adapt.show_optional(), |page| page.child(div().flex_none().flex().gap(px(adapt.gap())).min_w_0()
+                .child(Self::pending_view("Pendiente para ti", "Las solicitudes de respuesta y validación estarán disponibles próximamente.", cx).flex_1())
+                .child(Self::pending_view("Gracias a los probadores", "El reconocimiento de contribuciones estará disponible próximamente.", cx).flex_1())))
+            .child(self.reports_panel(cx))
+    }
+}
+
+impl Testing {
+    fn questionnaires(&self, cx: &gpui::App) -> gpui::Div {
+        let adapt = self.adapt;
+        let mut page = div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(Self::pending_view(
+                "Cuestionarios",
+                "Próximamente · Aún no hay cuestionarios disponibles para responder.",
+                cx,
+            ));
+        let mut formats = orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .child(orbit::neo_header("Cómo podrás responder", "v-testing", cx));
+        for (label, description) in super::model::QUESTION_FORMATS {
+            formats = formats.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .py(px(8.0))
+                    .child(
+                        orbit::text(label, 13.0, 600, orbit::ink(cx), cx)
+                            .flex_1()
+                            .min_w_0(),
+                    )
+                    .when(adapt.show_optional(), |row| {
+                        row.child(orbit::text(description, 12.0, 400, orbit::ink_3(cx), cx))
+                    }),
+            );
+        }
+        page = page.child(formats);
+        page.child(orbit::text("Respuesta y guardado automático · Próximamente. No hay respuestas guardadas ni resultados disponibles.", 12.0, 400, orbit::ink_3(cx), cx))
+    }
+    fn community(&self, cx: &gpui::App) -> gpui::Div {
+        let adapt = self.adapt;
+        let mut page = div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(Self::pending_view(
+                "Ayúdanos a mejorar Vantare",
+                "Comunidad · Próximamente. El acceso actual sigue reservado a testers y owner.",
+                cx,
+            ));
+        if adapt.show_optional() {
+            page = page.child(orbit::neo_card(cx)
+                .child(orbit::neo_header("Niveles de participación", "pulse", cx))
+                .child(orbit::text("Visitante → Probador → Probador verificado → Colaborador", 14.0, 600, orbit::ink(cx), cx))
+                .child(orbit::text("Propuesta pendiente: los criterios y su relación con los canales aún no están definidos. No tienes un nivel asignado por esta pantalla.", 12.0, 400, orbit::ink_3(cx), cx)));
+        }
+        page.child(div().flex_none().flex().min_w_0().gap(px(adapt.gap()))
+            .child(Self::pending_view("Cómo unirse", "El alta sin invitación estará disponible próximamente.", cx).flex_1())
+            .child(Self::pending_view("Reconocimiento", "Insignias y menciones públicas · Próximamente", cx).flex_1()))
+            .child(orbit::neo_card(cx).flex_1().min_h_0()
+                .child(orbit::neo_header("Qué compartes", "v-testing", cx))
+                .child(orbit::text("Revisas y apruebas el contenido de cada informe antes de enviarlo. Las capturas son opcionales. El borrador privado y el diagnóstico local no se adjuntan automáticamente.", 13.0, 400, orbit::ink_2(cx), cx))
+                .when(adapt.show_optional(), |card| card.child(orbit::text("Cómo apareces en la comunidad y en las notas de versión · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))))
+    }
+}
+
+#[cfg(any(feature = "parity-capture", test))]
+fn selected_capture_list(data_dir: &Path) -> bool {
+    selected_capture_tab(data_dir) == Some(2)
+        && data_dir
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with("-testing-center-mis-reportes"))
+}
+
 #[cfg(test)]
 mod capture_view_tests {
     use super::selected_capture_tab;
 
     #[test]
+    fn capture_list_isolated_from_composer_and_from_other_processes() {
+        let pid = std::process::id();
+        let list = std::env::temp_dir()
+            .join(format!("{pid}-1700000000000-testing-center-mis-reportes"))
+            .join("data");
+        assert!(super::selected_capture_list(&list));
+        let composer = std::env::temp_dir()
+            .join(format!("{pid}-1700000000000-testing-center-informe"))
+            .join("data");
+        assert!(!super::selected_capture_list(&composer));
+        let other = std::env::temp_dir()
+            .join(format!(
+                "{}-1700000000000-testing-center-mis-reportes",
+                pid.wrapping_add(1)
+            ))
+            .join("data");
+        assert!(!super::selected_capture_list(&other));
+    }
+
+    #[test]
     fn capture_selects_its_testing_center_tab_only_for_the_current_process() {
         let process_id = std::process::id();
         for (screen, tab) in [
-            ("testing-center-informe", 0),
-            ("testing-center-detalle", 0),
+            ("testing-center-resumen", 0),
+            ("testing-center-cuestionarios", 1),
+            ("testing-center-comunidad", 3),
+            ("testing-center-informe", 2),
+            ("testing-center-detalle", 2),
             ("testing-center-validar", 1),
             ("testing-center-mis-reportes", 2),
         ] {

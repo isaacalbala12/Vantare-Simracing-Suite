@@ -553,11 +553,9 @@ impl Hub {
                 .update(cx, |launcher, cx| launcher.rail_sections(window, cx)),
             Section::Settings => self.settings_rail(cx),
             Section::Account => self.remote.update(cx, |remote, cx| remote.account_rail(cx)),
-            Section::Testing => legacy(
-                self.testing
-                    .update(cx, |testing, cx| testing.context_column(cx))
-                    .into_any_element(),
-            ),
+            Section::Testing => self
+                .testing
+                .update(cx, |testing, cx| testing.rail_sections(cx)),
             Section::Calendar => legacy(
                 self.calendar
                     .update(cx, |calendar, cx| calendar.context_column(cx))
@@ -685,6 +683,8 @@ impl Render for Hub {
         );
         self.shell.adapt = adapt;
         self.studio.update(cx, |view, cx| view.set_adapt(adapt, cx));
+        self.testing
+            .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.launcher
             .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.remote.update(cx, |view, cx| view.set_adapt(adapt, cx));

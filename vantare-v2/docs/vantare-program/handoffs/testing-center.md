@@ -7,7 +7,7 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
-Última actualización: 2026-09-10, ISA-728 integrada en Nightly, Codex con verificación de Muse Spark 1.3 Contributor.
+Última actualización: 2026-10-08, UI R10 ronda 5 implementada en rama local; gates aprobados, capturas inspeccionadas y revisión de Isaac pendiente. La integración ISA-728 se conserva como evidencia histórica.
 
 ## Autoridad y alcance
 
@@ -138,3 +138,50 @@ el protocolo anterior; no se toca backend, auth ni la política tester/owner.
 Pruebas nuevas cubren cambio de tipo y deduplicación sin duplicar texto privado.
 Evidencia y estado de gates: sección Fase 2 Testing Center del handoff vivo
 `overlays-launcher-hub.md` y C:/tmp/1470-testing-evidence/.
+
+## 2026-10-08 — UI R10, ronda 5 (#1496), entrega aislada
+
+Encargo explícito: C:/tmp/ui-r10/brief-r5-testing.md y PLAN.md; usuario fija
+GitHub y ejecución sin preguntas. Las referencias históricas a Notion no
+sustituyen este encargo. Issue técnica #1496 sigue describiendo R0; ampliar su
+cuerpo se deja al orquestador junto con las demás rondas, sin sobrescribirlo.
+
+- Worktree C:/tmp/vw3-ui-r5-testing/vantare-v2; rama
+  vantareapp/isa-1496-ui-r5-testing; base R3 a5a0108422b89c9ae113fe53761ee144f2bc820f.
+- Hitos previos locales: 51a922ad (pestañas/Resumen), 63bd938d (Informes),
+  fc27e1d1 (Cuestionarios/Comunidad). El cuarto hito contiene adaptación,
+  regresiones, correcciones de gates y esta evidencia; SHA final en el informe.
+- Cuatro pestañas en la barra superior, hero y secciones pendientes, redactor
+  existente, lista de recibos con ID/estado/fecha y detalle accesible por teclado.
+- Privacidad y envío sin cambios. El texto privado sigue fuera de la lista;
+  submitted significa Recibido al enviar, sin inferir seguimiento remoto.
+- Cuestionarios, niveles, insignias, votos, conversación, reconocimiento y alta
+  pública son Próximamente. Se describen formatos/propuestas sin inventar datos.
+- RailSection común y Adapt; secciones opcionales fuera de B/XS, scroll interior
+  del editor/lista/herramientas. Redactor y lista alternan en Informes para
+  conservar espacio; diferencia con el mockup pendiente de revisión de Isaac.
+- Kit/tokens/dependencias/contratos/runtime intactos. Shell y demo solo cambian
+  sus bloques Testing. Otros workers trabajan en ramas independientes.
+- Evidencia: C:/tmp/ui-r10/r5-evidence/VERIFICACION.md e informe-r5.md.
+  PASS fmt/check/Clippy, Nextest1260/1260 (6 skips heredados), lifecycle18.
+  Build prueba configurado PASS. Logs de fallos/repeticiones y hash conservados.
+- Pantalla compartida respetada: sin ventanas mientras existía el marcador;
+  tanda final96 GPUI +96 mockup, seis matrices inspeccionadas y originales
+  ampliados. Cada ventana se cerró. No se afirma paridad exacta ni QA física.
+- plan.md falta tanto en la base como en origin/nightly consultado. No se crea
+  otra fuente manual ni se publica contenido del roadmap.
+- Pendiente: revisión de Isaac de las diferencias y preguntas del informe;
+  validar interacción y envío real en entorno autorizado. Fuji23h falló en
+  un intento y pasó al repetir el gate con dos casos simultáneos; evidencia
+  conservada y hallazgo fuera de alcance registrado en #1458, sin tocar solver.
+  Tests no demuestran login, envío remoto real, LMU/OBS, Mac, DPI físico ni fluidez.
+- Sin push, PR, CI remota, merge, promoción ni release. No se toca la instalación
+  personal ni se envían informes de prueba a servicios reales.
+
+### #1496 — integración local R5 en calidad (2026-10-08)
+
+Merge no-ff de b299be82 sobre calidad/e597a009 autorizado por Isaac.
+Conservados Cuenta/Ajustes R4, kit único, rojo y contrastes semánticos vigentes.
+Resueltos shell, cabecera Testing y fragmento acumulando R4/R5. Las nuevas
+vistas reciben Adapt de su ventana; no se restaura el global retirado.
+Gates y captura del conjunto pendientes; sin push/PR/promoción/release.

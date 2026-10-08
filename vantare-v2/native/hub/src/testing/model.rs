@@ -148,6 +148,26 @@ pub(super) fn with_report_kind(context: &str, suggestion: bool) -> String {
         }
     )
 }
+/// Vistas R10.9; sin contadores de cuestionarios inventados.
+pub(super) const VIEWS: [&str; 4] = ["Resumen", "Cuestionarios", "Informes", "Comunidad"];
+
+/// El recibo acredita recepción, nunca el estado posterior del servidor.
+pub(super) fn receipt_status(state: &str) -> &'static str {
+    match state {
+        "submitted" => "Recibido",
+        _ => "Estado no disponible",
+    }
+}
+
+/// Describe formatos futuros, no preguntas ni respuestas de ejemplo.
+pub(super) const QUESTION_FORMATS: [(&str, &str); 5] = [
+    ("Escala 1–5", "Valorar de menos a más"),
+    ("Opción única", "Elegir una respuesta"),
+    ("Varias opciones", "Seleccionar varias respuestas"),
+    ("Texto corto", "Contar tu experiencia"),
+    ("Captura opcional", "Adjuntar una imagen si ayuda"),
+];
+
 #[cfg(test)]
 mod kind_tests {
     use super::with_report_kind;

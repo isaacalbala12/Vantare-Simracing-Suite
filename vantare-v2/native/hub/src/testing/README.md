@@ -178,3 +178,33 @@ el servicio nativo; la UI lo declara, sin controles que prometan enviar esos dat
 Las herramientas privadas, diagnóstico/exportación, borrador, recuperación y pestaña
 Validar siguen disponibles. La shell conserva la denegación para quien no es tester
 u owner. `orbit::Input::with_height` permite ajustar altura conservando texto/IME.
+
+## UI R10, ronda 5 — #1496
+
+Las vistas Resumen, Cuestionarios, Informes y Comunidad viven en las pestañas de
+la barra superior. Resumen presenta el acceso a Nuevo informe, las secciones
+pendientes y los recibos reales. Informes alterna el redactor existente con la
+lista para reservar un viewport al consentimiento y a las capturas. El editor,
+la lista y las herramientas locales tienen scroll interior; no amplían la página.
+
+Los recibos muestran ID, título disponible, módulo, fecha y Recibido cuando el
+servicio confirma submitted. Clic, Enter o Espacio abre el detalle del recibo.
+El texto privado sigue eliminado de esta lista por el servicio; no se reconstruye.
+El flujo posterior se presenta como previsto, sin pasos completados ni una
+versión nightly atribuida. Conversación, informes parecidos y apoyo a otro informe
+están pendientes: no existen llamadas nativas para esos efectos.
+
+Cuestionarios muestra ausencia de contenido y describe los cinco formatos futuros;
+no contiene preguntas de muestra, campos editables, selecciones ni autosave falso.
+Comunidad presenta los niveles como propuesta pendiente, sin asignar nivel,
+insignia o acceso. El alta pública, reconocimiento y nombres públicos siguen
+pendientes de sus contratos y decisiones. No modifica la restricción tester/owner.
+
+El panel derecho usa RailSection compartido; recogido conserva los iconos reales
+de las secciones. Solo cuenta recibos de esta sesión, sin convertirlos en métricas
+semanales. Adapt reduce las secciones opcionales en B/XS y mantiene el editor
+compacto según el ancho central. Los tokens y el kit común no cambian.
+
+La evidencia de esta ronda está en C:/tmp/ui-r10/r5-evidence/VERIFICACION.md y el
+informe del worker en C:/tmp/ui-r10/informe-r5.md. Una entrega sin capturas por
+pantalla ocupada no acredita paridad visual ni ausencia física de desbordes.

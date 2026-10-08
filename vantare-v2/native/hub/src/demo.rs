@@ -410,6 +410,12 @@ impl DemoData {
     }
 }
 
+const TESTING_CAPTURE_SCREENS: [&str; 3] = [
+    "testing-center-resumen",
+    "testing-center-cuestionarios",
+    "testing-center-comunidad",
+];
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CaptureState {
     pub name: String,
@@ -621,6 +627,7 @@ impl CaptureState {
             && name != "calendario-beta-archivo"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
             && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
+            && !TESTING_CAPTURE_SCREENS.contains(&name)
         {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
@@ -648,7 +655,10 @@ impl CaptureState {
             name if strategy_capture_page(name).is_some() => Section::Strategy,
             "engineer-base" | "engineer-historial" => Section::Engineer,
             "telemetria-base" | "telemetria-demo" | "telemetria-trazas" => Section::Analysis,
-            "testing-center-informe"
+            "testing-center-resumen"
+            | "testing-center-cuestionarios"
+            | "testing-center-comunidad"
+            | "testing-center-informe"
             | "testing-center-detalle"
             | "testing-center-validar"
             | "testing-center-mis-reportes" => Section::Testing,

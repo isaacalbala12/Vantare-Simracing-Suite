@@ -657,6 +657,7 @@ impl Launcher {
     ) {
         self.profile_draft = None;
         self.app_draft = None;
+        self.page = LauncherPage::Showcase;
         self.pending_profile_removal = Some(id);
         self.open_form(window, cx);
     }
@@ -679,17 +680,19 @@ impl Launcher {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> StepDraft {
+        let app = cx.new(|cx| {
+            Choice::new(
+                "Aplicación del paso",
+                ChoiceKind::Dropdown,
+                apps.iter().map(|app| OptionItem::new(&app.name)).collect(),
+                apps.iter().position(|app| app.id == step.app_id),
+                window,
+                cx,
+            )
+        });
+        cx.observe(&app, |_, _, cx| cx.notify()).detach();
         StepDraft {
-            app: cx.new(|cx| {
-                Choice::new(
-                    "Aplicación del paso",
-                    ChoiceKind::Dropdown,
-                    apps.iter().map(|app| OptionItem::new(&app.name)).collect(),
-                    apps.iter().position(|app| app.id == step.app_id),
-                    window,
-                    cx,
-                )
-            }),
+            app,
             delay: number(step.delay_seconds, u32::MAX, "Espera del paso (s)", cx),
             args: input(
                 step.args_override
@@ -794,6 +797,7 @@ impl Launcher {
             profile,
             steps,
         });
+        self.observe_profile_preview(cx);
         self.app_draft = None;
         self.page = LauncherPage::Editor;
         if let Some(draft) = &self.profile_draft {
@@ -802,6 +806,14 @@ impl Launcher {
         cx.notify();
     }
 
+    fn observe_profile_preview(&self, cx: &mut Context<Self>) {
+        if let Some(draft) = &self.profile_draft {
+            cx.observe(&draft.name, |_, _, cx| cx.notify()).detach();
+            cx.observe(&draft.description, |_, _, cx| cx.notify())
+                .detach();
+            cx.observe(&draft.hotkey, |_, _, cx| cx.notify()).detach();
+        }
+    }
     pub(super) fn new_profile(
         &mut self,
         source: Option<Profile>,
@@ -932,6 +944,35 @@ impl Launcher {
             .child(
                 div()
                     .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .mt(px(12.0))
+                    .child(
+                        orbit::toggle(
+                            "profile-favorite",
+                            "Perfil favorito",
+                            draft.profile.favorite,
+                            true,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            if let Some(draft) = &mut this.profile_draft {
+                                draft.profile.favorite = !draft.profile.favorite;
+                                cx.notify();
+                            }
+                        })),
+                    )
+                    .child(orbit::text(
+                        "Perfil favorito",
+                        13.0,
+                        500,
+                        orbit::ink(cx),
+                        cx,
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
                     .gap(px(12.0))
                     .child(editor_field(
                         "Color",
@@ -952,11 +993,10 @@ impl Launcher {
                     .mt(px(14.0)),
             )
             .child(editor_field("Descripción", draft.description.clone(), cx).mt(px(14.0)))
-            .child(editor_field("Notas", draft.notes.clone(), cx).mt(px(14.0)))
+            .when(advanced, |form| {
+                form.child(editor_field("Notas", draft.notes.clone(), cx).mt(px(14.0)))
+            })
             .child(self.profile_steps_section(draft, advanced, cx))
-            .child(Self::profile_hotkey_row(draft, cx))
-            .child(Self::profile_autostart_row(draft, cx))
-            .child(self.profile_advanced_section(draft, cx))
     }
 
     pub(super) fn editor_page(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -1182,74 +1222,11 @@ impl Launcher {
             )))
     }
 
-    fn profile_hotkey_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
-        div()
-            .mt(px(20.0))
-            .min_h(px(54.0))
-            .px(px(8.0))
-            .flex()
-            .items_center()
-            .justify_between()
-            .gap(px(14.0))
-            .rounded(px(10.0))
-            .border_b_1()
-            .border_color(rgba(orbit::line_row(cx)))
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .child(text("Atajo global", 13.5, 650, orbit::ink(cx), cx))
-                    .child(text(
-                        "Lanza este perfil desde cualquier sitio.",
-                        11.5,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
-            )
-            .child(
-                div()
-                    .h(px(28.0))
-                    .px(px(9.0))
-                    .flex()
-                    .items_center()
-                    .rounded(px(7.0))
-                    .border_1()
-                    .border_dashed()
-                    .border_color(rgba(orbit::line_strong(cx)))
-                    .font_family(if draft.hotkey.read(cx).value.is_empty() {
-                        orbit::sans_family(400, cx)
-                    } else {
-                        orbit::mono_family(cx).into()
-                    })
-                    .text_size(px(12.0))
-                    .text_color(rgb(orbit::ink_3(cx)))
-                    .child(if draft.hotkey.read(cx).value.is_empty() {
-                        "sin asignar".into()
-                    } else {
-                        draft.hotkey.read(cx).value.clone()
-                    }),
-            )
-    }
-
-    fn profile_autostart_row(draft: &ProfileDraft, cx: &Context<Self>) -> gpui::Div {
-        div()
-            .mt(px(30.0))
-            .min_h(px(26.0))
-            .flex()
-            .items_center()
-            .justify_between()
-            .child(text("Iniciar con Windows", 13.5, 400, orbit::ink_2(cx), cx))
-            .child(orbit::toggle(
-                "windows-start",
-                "Iniciar con Windows",
-                draft.autostart.read(cx).checked,
-                false,
-                cx,
-            ))
-    }
-
-    fn profile_advanced_section(&self, draft: &ProfileDraft, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn profile_advanced_section(
+        &self,
+        draft: &ProfileDraft,
+        cx: &mut Context<Self>,
+    ) -> gpui::Div {
         div()
             .mt(px(18.0))
             .flex()
@@ -1299,7 +1276,7 @@ fn policy_choice(
     cx.new(|cx| {
         Choice::new(
             label,
-            ChoiceKind::List,
+            ChoiceKind::Dropdown,
             labels.iter().map(|label| OptionItem::new(*label)).collect(),
             Some(selected),
             window,

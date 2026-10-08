@@ -413,6 +413,40 @@ pub fn app_tile(id: &str, name: &str, cx: &gpui::App) -> Div {
                 .overflow_hidden(),
         )
 }
+/// Baldosa de marca compartida por perfiles, cadenas y el catálogo. Sin acceso al motor.
+pub fn app_badge(id: &str, name: &str, size: f32, cx: &gpui::App) -> Div {
+    let (glyph, colors) = match id {
+        "lmu" => ("v-helmet", [0x002f_6ad8, 0x0012_2e6a]),
+        "crewchief" => ("headset", [0x00e9_852a, 0x008f_450b]),
+        "simhub" => ("v-sliders", [0x008a_4ce0, 0x0040_207a]),
+        "obs" => ("v-camera", [0x005a_5d64, 0x0026_272b]),
+        "spotify" => ("v-music", [0x0022_c35d, 0x000e_6b30]),
+        "discord" => ("v-chat", [0x0068_73f5, 0x002e_3699]),
+        "custom:vantare" => ("mark", [0x00e3_434e, 0x008e_1823]),
+        _ => ("", [0x003a_3a40, 0x0025_2529]),
+    };
+    let content = if glyph.is_empty() {
+        super::text(
+            name.chars().next().unwrap_or('?').to_string(),
+            size * 0.4,
+            600,
+            0x00ff_ffff,
+            cx,
+        )
+    } else {
+        div().child(super::icon(glyph, size * 0.48, 0x00ff_ffff))
+    };
+    div()
+        .size(px(size))
+        .flex_none()
+        .rounded(px(size * 0.25))
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(super::gradient(colors, 135.0))
+        .child(content)
+}
+
 /// Esqueleto estático: no crea contenido ni simula porcentajes de carga.
 pub fn skeleton(width: f32, height: f32, cx: &gpui::App) -> Div {
     div()
@@ -460,6 +494,13 @@ fn circuit_key(name: Option<&str>) -> Option<&'static str> {
 /// Trazado real del recurso R9.3. Le Mans horizontal es decoración de reposo;
 /// jamás dibuja posición de coche/meta sin un contrato de posición de sesión.
 pub fn circuit(name: Option<&str>, cx: &gpui::App) -> Div {
+    circuit_ink(name, false, cx)
+}
+/// Circuito decorativo de portada, sin sesión ni marcadores.
+pub fn cover_circuit(cx: &gpui::App) -> Div {
+    circuit_ink(None, true, cx)
+}
+fn circuit_ink(name: Option<&str>, neutral: bool, cx: &gpui::App) -> Div {
     static TRACKS: std::sync::OnceLock<std::collections::BTreeMap<String, [String; 2]>> =
         std::sync::OnceLock::new();
     let Some(key) = circuit_key(name) else {
@@ -482,7 +523,14 @@ pub fn circuit(name: Option<&str>, cx: &gpui::App) -> Div {
         .collect();
     let strokes = [
         (10.0, skin(cx).accent << 8 | 0x1a),
-        (2.5, skin(cx).accent_bright << 8 | 0x40),
+        (
+            2.5,
+            if neutral {
+                skin(cx).text1 << 8 | 0x66
+            } else {
+                skin(cx).accent_bright << 8 | 0x40
+            },
+        ),
     ];
     gpui::div().child(
         gpui::canvas(

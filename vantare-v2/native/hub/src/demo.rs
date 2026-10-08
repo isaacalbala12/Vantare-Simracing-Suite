@@ -291,7 +291,14 @@ impl DemoData {
         }
         if matches!(
             capture.name.as_str(),
-            "inicio-base" | "launcher-reposo" | "launcher-lanzando"
+            "inicio-base"
+                | "launcher-reposo"
+                | "launcher-lanzando"
+                | "launcher-aplicaciones"
+                | "launcher-historial"
+                | "launcher-editor"
+                | "launcher-listo"
+                | "launcher-cancelado"
         ) {
             self.launcher = serde_json::from_str(if capture.name == "inicio-base" {
                 include_str!("../reference/fixtures/home-r7-launcher.json")
@@ -551,7 +558,16 @@ impl CaptureState {
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
         if !screens.iter().any(|screen| screen.name == name)
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
-            && !matches!(name, "launcher-reposo" | "launcher-lanzando")
+            && !matches!(
+                name,
+                "launcher-reposo"
+                    | "launcher-lanzando"
+                    | "launcher-aplicaciones"
+                    | "launcher-historial"
+                    | "launcher-editor"
+                    | "launcher-listo"
+                    | "launcher-cancelado"
+            )
             && name != "calendario-beta-archivo"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
             && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
@@ -562,9 +578,15 @@ impl CaptureState {
             "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio" => {
                 Section::Home
             }
-            "launcher-base" | "launcher-nuevo-perfil" | "launcher-reposo" | "launcher-lanzando" => {
-                Section::Launcher
-            }
+            "launcher-base"
+            | "launcher-nuevo-perfil"
+            | "launcher-reposo"
+            | "launcher-lanzando"
+            | "launcher-aplicaciones"
+            | "launcher-historial"
+            | "launcher-editor"
+            | "launcher-listo"
+            | "launcher-cancelado" => Section::Launcher,
             "calendario-beta-archivo"
             | "calendario-base"
             | "calendario-dia"

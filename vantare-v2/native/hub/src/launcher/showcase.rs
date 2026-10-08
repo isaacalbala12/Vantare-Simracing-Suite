@@ -263,35 +263,7 @@ fn launch_block_reason(
 }
 
 pub(super) fn app_icon(app: &App, size: f32, cx: &gpui::App) -> Div {
-    let icon = match app.id.as_str() {
-        "lmu" => "v-helmet",
-        "crewchief" => "headset",
-        "simhub" => "v-sliders",
-        "obs" => "v-camera",
-        "spotify" => "v-music",
-        "discord" => "v-chat",
-        "custom:vantare" => "mark",
-        _ => return presentation::app_mark(app, size, cx),
-    };
-    let gradients = &cx.global::<orbit::design::Tokens>().gradients;
-    let colors = match app.id.as_str() {
-        "lmu" => gradients.app_game,
-        "crewchief" => gradients.app_voice,
-        "spotify" => gradients.app_music,
-        "obs" => gradients.app_video,
-        "simhub" => gradients.app_tools,
-        "discord" => [0x0068_73f5, 0x002e_3699],
-        _ => gradients.button,
-    };
-    div()
-        .size(px(size))
-        .flex_none()
-        .rounded(px(size * 0.25))
-        .flex()
-        .items_center()
-        .justify_center()
-        .bg(orbit::gradient(colors, 135.0))
-        .child(orbit::icon(icon, size * 0.48, orbit::ink(cx)))
+    orbit::app_badge(&app.id, &app.name, size, cx)
 }
 
 fn carousel_offset(
@@ -313,7 +285,11 @@ fn poster_height(adapt: orbit::Adapt, profiles: usize) -> f32 {
     let (top, _, bottom) = adapt.padding();
     let available =
         adapt.height - 52.0 - top - bottom - 60.0 - hero_height(adapt) - adapt.gap() * 2.0 - 30.0;
-    let rows = profiles.saturating_add(1).div_ceil(2).clamp(1, 2);
+    let rows = if adapt.show_optional() {
+        profiles.saturating_add(1).div_ceil(2).clamp(1, 2)
+    } else {
+        1
+    };
     ((available - 12.0) / if rows == 1 { 1.0 } else { 2.0 }).max(140.0)
 }
 
@@ -430,6 +406,39 @@ impl Launcher {
         }
         if running {
             self.capture_launch();
+        }
+    }
+    pub(crate) fn prepare_capture_view(
+        &mut self,
+        name: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.prepare_capture(false);
+        match name {
+            "launcher-aplicaciones" => self.page = LauncherPage::Manage,
+            "launcher-historial" => self.page = LauncherPage::History,
+            "launcher-editor" => {
+                if let Some(profile) = self.showcase_profile().cloned() {
+                    self.profile_editor(profile, window, cx);
+                }
+            }
+            "launcher-listo" | "launcher-cancelado" => {
+                self.last_profile = self.showcase_profile().cloned();
+                self.progress = vec![Progress {
+                    step: None,
+                    status: if name == "launcher-listo" {
+                        super::super::chain::Status::Done
+                    } else {
+                        super::super::chain::Status::Cancelled
+                    },
+                    pid: None,
+                    message: String::new(),
+                    success: name == "launcher-listo",
+                    decision: None,
+                }];
+            }
+            _ => self.prepare_capture(name == "launcher-lanzando"),
         }
     }
     /// Escena fija de QA: no ejecuta procesos ni modifica configuración productiva.
@@ -603,13 +612,17 @@ impl Launcher {
                 );
             }
             card = card
-                .child(orbit::text(
-                    app.map_or(step.app_id.as_str(), |app| app.name.as_str()),
-                    if compact { 13.0 } else { 16.0 },
-                    600,
-                    orbit::ink(cx),
-                    cx,
-                ))
+                .child(
+                    orbit::text(
+                        app.map_or(step.app_id.as_str(), |app| app.name.as_str()),
+                        if compact { 13.0 } else { 16.0 },
+                        600,
+                        orbit::ink(cx),
+                        cx,
+                    )
+                    .truncate()
+                    .w_full(),
+                )
                 .when(
                     running && cx.global::<orbit::Adapt>().show_notes(),
                     |card| {
@@ -620,15 +633,18 @@ impl Launcher {
                     },
                 )
                 .when(running, |card| {
-                    card.child(orbit::pill(
-                        if running || event.is_some() {
-                            label
-                        } else {
-                            "Sin estado previo"
-                        },
-                        tone,
-                        cx,
-                    ))
+                    card.child(
+                        orbit::pill(
+                            if running || event.is_some() {
+                                label
+                            } else {
+                                "Sin estado previo"
+                            },
+                            tone,
+                            cx,
+                        )
+                        .self_center(),
+                    )
                 })
                 .when(!running, |card| {
                     card.child(orbit::text(
@@ -842,11 +858,11 @@ impl Launcher {
                     .h(px(160.0))
                     .opacity(0.5),
             )
-            .child(orbit::text(
+            .child(orbit::meta(
                 if state == CardState::Ready {
                     "✓ Todo listo"
                 } else if state == CardState::Cancelled {
-                    "Cancelado · las apps abiertas siguen abiertas"
+                    "Lanzamiento cancelado"
                 } else if state == CardState::Failed {
                     "El lanzamiento no se completó"
                 } else if running {
@@ -857,14 +873,13 @@ impl Launcher {
                     "Tu perfil seleccionado"
                 },
                 12.0,
-                400,
                 orbit::ink_2(cx),
                 cx,
             ));
         let title = orbit::text(
             profile.name.clone(),
             if compact {
-                36.0
+                if running { 32.0 } else { 40.0 }
             } else if running {
                 40.0
             } else {
@@ -874,6 +889,7 @@ impl Launcher {
             orbit::ink(cx),
             cx,
         )
+        .truncate()
         .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
         .line_height(px(if compact {
             42.0
@@ -882,75 +898,53 @@ impl Launcher {
         } else {
             64.0
         }));
-        card = if running {
-            card.child(
+        card =
+            if running {
+                card.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(12.0))
+                        .child(title.flex_1().min_w_0())
+                        .child(actions),
+                )
+                .when(adapt.show_notes(), |card| {
+                    card.child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate())
+                })
+            } else {
+                card.child(
+                    div().flex().flex_col().gap(px(8.0)).child(title).child(
+                        orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate(),
+                    ),
+                )
+                .child(actions)
+            };
+        if running {
+            let fraction = if profile.steps.is_empty() {
+                0.0
+            } else {
+                u16::try_from(ready).map_or(0.0, f32::from)
+                    / u16::try_from(profile.steps.len()).map_or(1.0, f32::from)
+            };
+            card = card.child(
                 div()
+                    .flex_none()
                     .flex()
                     .items_center()
                     .gap(px(12.0))
-                    .child(title.flex_1().min_w_0())
-                    .child(actions),
-            )
-            .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx))
-        } else {
-            card.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(8.0))
-                    .child(title)
-                    .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx)),
-            )
-            .child(actions)
-        };
-        if running {
-            card = card
-                .child(orbit::text(
-                    format!("{ready} de {} listas", profile.steps.len()),
-                    13.0,
-                    500,
-                    orbit::ink_2(cx),
-                    cx,
-                ))
-                .child(orbit::progress(
-                    if profile.steps.is_empty() {
-                        0.0
-                    } else {
-                        u16::try_from(ready).map_or(0.0, f32::from)
-                            / u16::try_from(profile.steps.len()).map_or(0.0, f32::from)
-                    },
-                    cx,
-                ));
+                    .child(orbit::meta(
+                        &format!("{ready} de {} listas", profile.steps.len()),
+                        12.0,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                    .child(orbit::progress(fraction, cx).flex_1()),
+            );
         }
-        card.when(!running && !enabled, |card| {
-            card.child(orbit::text(
-                launch_block_reason(
-                    profile,
-                    &self.store.document.apps,
-                    &self.discovered,
-                    self.scanning,
-                )
-                .unwrap_or_else(|| "Revisa las aplicaciones del perfil.".into()),
-                12.0,
-                400,
-                Tone::Warning.color(cx),
-                cx,
-            ))
-            .child(
-                orbit::button("showcase-fix-apps", "Abrir Aplicaciones", cx)
-                    .self_start()
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.page = LauncherPage::Manage;
-                        cx.notify();
-                    })),
-            )
-        })
-        .child(
+        card.child(
             self.showcase_steps(profile, running, compact, cx)
                 .mt(px(0.0)),
         )
-        .when(running, |card| card.child(div().flex_1()))
-        .when(running, |card| card.child(self.showcase_quick(profile, cx)))
     }
 
     fn toggle_saved_preference(&mut self, id: &str, index: usize, cx: &mut Context<Self>) {
@@ -1031,10 +1025,11 @@ impl Launcher {
         let width = if compact { 200.0 } else { 284.0 };
         let adapt = *cx.global::<orbit::Adapt>();
         let grid = adapt.show_optional();
-        let height = if grid {
-            poster_height(adapt, self.store.document.profiles.len())
+        let height = poster_height(adapt, self.store.document.profiles.len());
+        let viewport_height = if grid && self.store.document.profiles.len() > 1 {
+            height * 2.0 + 12.0
         } else {
-            156.0
+            height
         };
         let content_width = self
             .store
@@ -1065,7 +1060,7 @@ impl Launcher {
                 orbit::neo_card(cx)
                     .id(("showcase-profile", index))
                     .role(gpui::Role::Button)
-                    .aria_label(format!("Seleccionar {}", profile.name))
+                    .aria_label(format!("Editar {}", profile.name))
                     .tab_index(0)
                     .tab_stop(self.launch_progress().is_none())
                     .when(
@@ -1092,21 +1087,22 @@ impl Launcher {
                             .relative()
                             .overflow_hidden()
                             .h(px(if compact { 76.0 } else { 120.0 }))
-                            .when(grid, |cover| cover.flex_1().min_h_0())
                             .flex_none()
+                            .flex_1()
+                            .min_h_0()
                             .flex()
                             .items_end()
                             .rounded(px(12.0))
                             .p(px(14.0))
                             .bg(orbit::gradient(cover, 120.0))
                             .child(
-                                orbit::circuit(None, cx)
+                                orbit::cover_circuit(cx)
                                     .w_full()
                                     .h_full()
                                     .absolute()
                                     .right_0()
-                                    .top(px(-45.0))
-                                    .opacity(0.16),
+                                    .top(px(0.0))
+                                    .opacity(0.8),
                             )
                             .when(
                                 self.launch_progress().is_some()
@@ -1136,6 +1132,7 @@ impl Launcher {
                     )
                     .child(
                         orbit::text(profile.name.clone(), 20.0, 600, orbit::ink(cx), cx)
+                            .truncate()
                             .font_family(
                                 cx.global::<orbit::design::Tokens>().fonts.display.clone(),
                             ),
@@ -1231,13 +1228,15 @@ impl Launcher {
                 div()
                     .id("showcase-profile-carousel")
                     .w_full()
-                    .h(px(height))
+                    .h(px(viewport_height))
+                    .flex_none()
                     .overflow_x_scroll()
-                    .when(grid, |list| {
-                        list.flex_1().min_h_0().h_auto().overflow_y_scroll()
-                    })
+                    .when(grid, gpui::StatefulInteractiveElement::overflow_y_scroll)
                     .track_scroll(&scroll)
                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+                        if cx.global::<orbit::Adapt>().show_optional() {
+                            return;
+                        }
                         let delta = event.delta.pixel_delta(px(24.0));
                         let offset = this.profile_scroll.offset();
                         let maximum = this.profile_scroll.max_offset().x;
@@ -1360,13 +1359,7 @@ impl Launcher {
         )
     }
 
-    fn showcase_options(
-        &self,
-        profile: &Profile,
-        compact: bool,
-        short: bool,
-        cx: &mut Context<Self>,
-    ) -> Stateful<Div> {
+    fn showcase_options(&self, profile: &Profile, cx: &mut Context<Self>) -> Stateful<Div> {
         let adapt = *cx.global::<orbit::Adapt>();
         let visible = adapt.rail_rows().unwrap_or(5);
         let card = div()
@@ -1382,7 +1375,6 @@ impl Launcher {
             .flex()
             .flex_col()
             .min_h_0();
-        let _ = (short, compact);
         let mut rows = div()
             .id("showcase-options-scroll")
             .flex()
@@ -1426,6 +1418,59 @@ impl Launcher {
         ))
     }
 
+    fn history_row(
+        profile: &Profile,
+        result: Option<(&str, Tone)>,
+        compact: bool,
+        cx: &gpui::App,
+    ) -> Div {
+        div()
+            .flex_none()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .when(compact, |row| {
+                        row.child(
+                            orbit::text(
+                                format!(
+                                    "{} · {}",
+                                    profile.name,
+                                    orbit::activity_time(
+                                        profile.last_launched_at.as_deref().unwrap_or_default(),
+                                        chrono::Local::now().fixed_offset()
+                                    )
+                                ),
+                                12.0,
+                                400,
+                                orbit::ink_2(cx),
+                                cx,
+                            )
+                            .text_ellipsis()
+                            .py(px(6.0)),
+                        )
+                    })
+                    .when(!compact, |row| {
+                        row.child(orbit::summary_row(
+                            profile.name.clone(),
+                            orbit::activity_time(
+                                profile.last_launched_at.as_deref().unwrap_or_default(),
+                                chrono::Local::now().fixed_offset(),
+                            ),
+                            "v-launch",
+                            cx,
+                        ))
+                    })
+                    .flex_1()
+                    .min_w_0(),
+            )
+            .when_some(result, |row, (label, tone)| {
+                row.child(orbit::pill(label, tone, cx))
+            })
+    }
     pub(super) fn showcase_history(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         let mut card = div()
             .flex()
@@ -1465,57 +1510,7 @@ impl Launcher {
                 .as_ref()
                 .filter(|last| last.id == profile.id)
                 .and_then(|_| run_result(&self.progress));
-            rows = rows.child(
-                div()
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .when(compact, |row| {
-                                row.child(
-                                    orbit::text(
-                                        format!(
-                                            "{} · {}",
-                                            profile.name,
-                                            orbit::activity_time(
-                                                profile
-                                                    .last_launched_at
-                                                    .as_deref()
-                                                    .unwrap_or_default(),
-                                                chrono::Local::now().fixed_offset()
-                                            )
-                                        ),
-                                        12.0,
-                                        400,
-                                        orbit::ink_2(cx),
-                                        cx,
-                                    )
-                                    .text_ellipsis()
-                                    .py(px(6.0)),
-                                )
-                            })
-                            .when(!compact, |row| {
-                                row.child(orbit::summary_row(
-                                    profile.name.clone(),
-                                    orbit::activity_time(
-                                        profile.last_launched_at.as_deref().unwrap_or_default(),
-                                        chrono::Local::now().fixed_offset(),
-                                    ),
-                                    "v-launch",
-                                    cx,
-                                ))
-                            })
-                            .flex_1()
-                            .min_w_0(),
-                    )
-                    .when_some(result, |row, (label, tone)| {
-                        row.child(orbit::pill(label, tone, cx))
-                    }),
-            );
+            rows = rows.child(Self::history_row(profile, result, compact, cx));
         }
         if !self.progress.is_empty() && self.chain.is_none() && self.capture == Capture::None {
             rows = rows.child(self.progress_panel(cx));
@@ -1532,30 +1527,37 @@ impl Launcher {
         card
     }
 
-    pub(crate) fn rail_sections(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Vec<orbit::RailSection> {
-        self.sync_showcase_controls(window, cx);
-        if let Some(draft) = &self.profile_draft {
-            if self.page == LauncherPage::Editor {
-                let preview = orbit::neo_card(cx)
-                    .p(px(12.0))
-                    .child(orbit::circuit(None, cx).h(px(100.0)))
-                    .child(orbit::display(
-                        draft.name.read(cx).value.clone(),
-                        24.0,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(orbit::text(
-                        draft.description.read(cx).value.clone(),
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
+    fn editor_rail(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
+        let Some(draft) = &self.profile_draft else {
+            return Vec::new();
+        };
+        let preview = orbit::neo_card(cx)
+            .id("profile-preview-list")
+            .h(px(if cx.global::<orbit::Adapt>().show_notes() {
+                350.0
+            } else {
+                230.0
+            }))
+            .overflow_y_scroll()
+            .p(px(12.0))
+            .child(orbit::circuit(None, cx).h(px(80.0)))
+            .child(orbit::display(
+                draft.name.read(cx).value.clone(),
+                24.0,
+                orbit::ink(cx),
+                cx,
+            ))
+            .child(orbit::text(
+                draft.description.read(cx).value.clone(),
+                13.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
+            .child(
+                div()
+                    .flex()
+                    .gap(px(6.0))
                     .children(draft.steps.iter().filter_map(|step| {
                         step.app
                             .read(cx)
@@ -1565,48 +1567,49 @@ impl Launcher {
                             .and_then(|id| {
                                 self.store.document.apps.iter().find(|app| &app.id == id)
                             })
-                            .map(|app| {
-                                div()
-                                    .flex()
-                                    .gap(px(8.0))
-                                    .items_center()
-                                    .child(app_icon(app, 28.0, cx))
-                                    .child(orbit::text(
-                                        app.name.clone(),
-                                        13.0,
-                                        500,
-                                        orbit::ink(cx),
-                                        cx,
-                                    ))
-                            })
-                    }));
-                return vec![
-                    orbit::RailSection::new("Vista previa", "v-launch", preview),
-                    orbit::RailSection::new(
-                        "Comportamiento",
-                        "v-sliders",
-                        orbit::text(
-                            "Las opciones de la cadena están en el editor. Se aplican al guardar.",
-                            13.0,
-                            400,
-                            orbit::ink_2(cx),
-                            cx,
-                        ),
-                    )
-                    .grow(),
-                ];
-            }
+                            .map(|app| app_icon(app, 28.0, cx))
+                    })),
+            );
+        let preview = preview.when(!draft.hotkey.read(cx).value.is_empty(), |preview| {
+            preview.child(orbit::keycaps(
+                presentation::hotkey_keys(&draft.hotkey.read(cx).value),
+                cx,
+            ))
+        });
+        vec![
+            orbit::RailSection::new("Vista previa", "v-launch", preview),
+            orbit::RailSection::new(
+                "Comportamiento",
+                "v-sliders",
+                div()
+                    .id("profile-behaviour-list")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.profile_advanced_section(draft, cx)),
+            )
+            .grow(),
+        ]
+    }
+
+    pub(crate) fn rail_sections(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<orbit::RailSection> {
+        self.sync_showcase_controls(window, cx);
+        if self.page == LauncherPage::Editor {
+            return self.editor_rail(cx);
         }
         let adapt = *cx.global::<orbit::Adapt>();
         let profile = self.showcase_profile();
         let apps = self.showcase_apps(profile, !adapt.show_notes(), cx);
         let options = if let Some(profile) = profile {
-            div().child(self.showcase_options(
-                profile,
-                !adapt.show_notes(),
-                !adapt.show_optional(),
-                cx,
-            ))
+            div()
+                .child(self.showcase_options(profile, cx))
+                .when(adapt.show_notes(), |options| {
+                    options.child(self.showcase_quick(profile, cx))
+                })
         } else {
             div().child(orbit::text(
                 "Crea un perfil para configurar su comportamiento.",
@@ -1693,6 +1696,37 @@ impl Launcher {
             .flex()
             .flex_col()
             .gap(px(gap));
+        if let Some(profile) = profile
+            && self.launch_progress().is_none()
+            && let Some(reason) = launch_block_reason(
+                profile,
+                &self.store.document.apps,
+                &self.discovered,
+                self.scanning,
+            )
+        {
+            center = center.child(
+                div()
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::text(reason, 12.0, 400, Tone::Warning.color(cx), cx)
+                            .flex_1()
+                            .min_w_0()
+                            .truncate(),
+                    )
+                    .child(
+                        orbit::button("showcase-fix-apps", "Aplicaciones", cx).on_click(
+                            cx.listener(|this, _, _, cx| {
+                                this.page = LauncherPage::Manage;
+                                cx.notify();
+                            }),
+                        ),
+                    ),
+            );
+        }
         center = if let Some(profile) = profile {
             center.child(self.showcase_hero(
                 profile,
@@ -1732,6 +1766,37 @@ impl Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn both_states_reserve_complete_controls_and_covers_at_seven_sizes() {
+        for (width, height) in [
+            (1920.0, 1080.0),
+            (1680.0, 1050.0),
+            (1512.0, 900.0),
+            (1440.0, 900.0),
+            (1366.0, 768.0),
+            (1280.0, 720.0),
+            (2048.0, 1152.0),
+        ] {
+            for rail in [true, false] {
+                let adapt = orbit::Adapt::new(width, height, None, rail);
+                let (top, _, bottom) = adapt.padding();
+                let page = height - 52.0 - top - bottom;
+                let covers = if adapt.show_optional() {
+                    poster_height(adapt, 3) * 2.0 + 12.0
+                } else {
+                    poster_height(adapt, 3)
+                };
+                assert!(
+                    hero_height(adapt) + covers + 60.0 + 30.0 + adapt.gap() * 2.0 <= page + 1.0,
+                    "{width}x{height}, rail={rail}"
+                );
+                // A four-step chain plus Cancel and progress keeps an interactive viewport.
+                assert!(adapt.center_width() - adapt.padding().1 * 2.0 >= 560.0);
+                assert!(hero_height(adapt) >= 318.0);
+            }
+        }
+    }
+
     #[test]
     fn card_projects_idle_retry_success_failure_and_cancellation() {
         use super::super::super::chain::Status;

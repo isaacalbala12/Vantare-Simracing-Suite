@@ -592,3 +592,26 @@ importado, pero el ID nuevo exige confianza propia. Los perfiles creados aquí
 no requieren este paso. La marca histórica Wails también protege documentos
 anteriores que aún no tienen `imported`. No es aislamiento frente a malware
 que pueda modificar archivos del mismo usuario.
+
+## UI R10, ronda 2 — #1496 (2026-10-08)
+
+La presentación usa el kit Orbit común: escaparate de favorito/seleccionado,
+portadas que abren su editor, pestañas Perfiles/Aplicaciones/Historial/Perfil y
+carril acoplado con aplicaciones, opciones y último lanzamiento por perfil.
+La misma tarjeta muestra progreso por paso, reintento y resultados reales,
+sin modificar `engine.rs`, `chain.rs` ni `processes.rs`.
+
+Editar un perfil abre una página con borrador, cadena ordenable, esperas,
+argumentos avanzados y comportamiento en el carril. Guardar conserva la
+validación/persistencia existentes; Cancelar/Escape descarta el borrador.
+Color y circuito no existen en el documento: permanecen deshabilitados.
+Le Mans es decoración, no una pista asignada al perfil. El historial no
+suministra duraciones, intentos o estados que no estén guardados.
+«Listo» describe el evento del motor, no un proceso continuamente observado.
+
+QA explícita, con `parity-capture`: `launcher-reposo`, `launcher-lanzando`,
+`launcher-aplicaciones`, `launcher-historial`, `launcher-editor`,
+`launcher-nuevo-perfil`, `launcher-listo` y `launcher-cancelado`.
+Las escenas usan fixtures aisladas y no inician procesos ni escriben datos
+productivos. Evidencia y comandos: `C:/tmp/ui-r10/r2-evidence/VERIFICACION.md`.
+La entrega se mantiene local para revisión, sin push/PR/merge/release.

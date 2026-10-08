@@ -1163,10 +1163,16 @@ fn create_launcher(
             if let Some(capture) = capture.filter(|capture| {
                 matches!(
                     capture.name.as_str(),
-                    "launcher-reposo" | "launcher-lanzando"
+                    "launcher-reposo"
+                        | "launcher-lanzando"
+                        | "launcher-aplicaciones"
+                        | "launcher-historial"
+                        | "launcher-editor"
+                        | "launcher-listo"
+                        | "launcher-cancelado"
                 )
             }) {
-                launcher.prepare_capture(capture.name == "launcher-lanzando");
+                launcher.prepare_capture_view(&capture.name, window, cx);
             }
             launcher
         }

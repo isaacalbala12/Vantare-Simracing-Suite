@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1496",
+  "type": "change",
+  "summary": "Launcher presenta el perfil favorito, su cadena y las vistas de aplicaciones, historial y edición con la nueva interfaz del Hub.",
+  "technicalNotes": [
+    "La tarjeta conserva su tamaño durante el lanzamiento y muestra progreso, reintentos, resultado y cancelación del motor existente.",
+    "Las pestañas y el panel derecho usan el kit común. Los cambios del perfil son un borrador hasta Guardar."
+  ],
+  "testing": [
+    "Revisar Launcher en los tres temas, con ambos paneles, seleccionar un póster, ordenar pasos y guardar o cancelar el perfil.",
+    "Con una aplicación local propia, probar la cadena, cancelar una espera y comprobar el resultado sin cerrar procesos ajenos."
+  ],
+  "knownLimitations": [
+    "Color y circuito del perfil aparecen como Próximamente porque el documento actual no los guarda.",
+    "Historial muestra el último lanzamiento por perfil; no se inventan intentos, duración ni estado continuo de procesos.",
+    "Entrega local pendiente de revisión y promoción; sin release ni validación LMU/OBS/Mac o DPI físico 125 %."
+  ]
+}

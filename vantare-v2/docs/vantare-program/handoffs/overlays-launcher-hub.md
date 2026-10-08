@@ -1,5 +1,54 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1496 — UI R2 Launcher: entrega local para revisión (2026-10-08)
+
+Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama
+`vantareapp/isa-1496-ui-r2-launcher`, base R1 `d14e5561`.
+Cinco hitos en español (#1496): reposo, lanzamiento, carril común,
+pestañas/editor y adaptación/tests. El código del quinto hito queda acompañado
+por este cierre documental; los SHA completos están en el informe externo.
+
+Launcher usa kit/tokens Orbit R0, tarjeta de altura estable entre estados,
+cadena de aplicaciones, pósteres que aprovechan el alto y abren el editor,
+y carril común de aplicaciones/opciones/últimas veces. El editor mantiene el
+borrador y validación existentes, cadena ordenable, espera por paso, preview
+y comportamiento. Color/Circuito deshabilitados: el documento no los guarda.
+Le Mans es decoración. «Listo» es un evento, no observación continua de procesos.
+El historial conserva solo el último lanzamiento por perfil y el resultado
+transitorio disponible, sin inventar duración o registro de intentos.
+Motor, contratos, persistencia y dependencias intactos; sin animaciones nuevas.
+
+Gates por cola, target/gates y -j2: fmt/check/Clippy -D warnings PASS;
+Nextest1253/1253 PASS (6 skips previos, ACC422.525s), lifecycle18 PASS;
+build prueba con beta-dev-clerk PASS. Después del último pulido visual:
+fmt/Clippy PASS y Hub317/317 PASS. El primer Hub aislado falló porque no
+preparaba PATH de DuckDB; corregido el entorno, sin tocar ni relajar el test.
+QA parity-capture PASS, con warning preexistente solo QA en analysis/view.rs989.
+
+Capturas finales pendientes por pantalla ocupada: el orquestador ordenó parar
+la tanda y cerrar nuestras ventanas. Se completaron 64/102 capturas del binario
+final antes de parar; no se presenta esa matriz parcial como validación completa.
+La tanda anterior tenía 102 GPUI, 96 mockups y 22 hojas inspeccionadas; esa revisión
+permitió corregir portadas ocultas con carriles recogidos. Tres originales nuevos
+(1440×900, 1366×768 y XS recogidas) confirmaron la corrección. Las restantes
+capturas anteriores corresponden a un código visual anterior y no acreditan HEAD.
+No se abren más ventanas mientras exista C:/tmp/fase2/pantalla-ocupada.
+El cierre se entrega sin una tanda final completa de capturas.
+El límite de zoom R0 permanece: 1280×720/1366×768 reducen escala;
+2560×1440 usa zoom125 con monitor DPI100. No acredita DPI físico125,
+LMU live, OBS, Mac, login ni rendimiento. Las escenas aisladas no inician
+aplicaciones reales; lifecycle conserva pruebas con procesos propios.
+Comparación visual, sin declarar paridad píxel con HTML.
+
+Evidencia `C:/tmp/ui-r10/r2-evidence/VERIFICACION.md`, informe de hasta15 líneas
+`C:/tmp/ui-r10/informe-r2.md`. Caché native/target/gates intacta para R3.
+docs/roadmap/plan.md no existe en esta base; no se recrea ni se edita su digest.
+Preguntas: ampliar #1496 (aún describe R0), futuro contrato Color/Circuito e
+historial persistido/estado continuo. El brief R2 autoriza solo presentación.
+Pendiente revisión de Isaac antes de integrar. Rama remota/PR/CI ausentes;
+sin push, merge, promoción ni release. Actualización de evidencia en #1496,
+sin cerrar la issue ni modificar canales.
+
 ## #1496 — UI R1 Inicio: entrega local para revisión (2026-10-08)
 
 Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama

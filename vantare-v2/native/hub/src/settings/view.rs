@@ -1,8 +1,4 @@
-use super::{
-    Action, Hub, Page,
-    text_rendering::{Grayscale, Paragraph},
-    updates::LocalUpdate,
-};
+use super::{Action, Hub, Page, text_rendering::Paragraph, updates::LocalUpdate};
 use crate::{Section, orbit};
 use gpui::{
     Context, Div, IntoElement, Window, div, linear_color_stop, linear_gradient, prelude::*, px,
@@ -167,7 +163,16 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
             .when_some(meta, |card, meta| {
                 card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
             })
-            .child(body.min_h_0()),
+            .flex_1()
+            .child(body.min_h_0().flex_grow(1.0).id(format!("settings-body-{title}")).when(
+                matches!(
+                    title,
+                    "Notas de versión" | "Registro observado" | "Informe de diagnóstico local"
+                ),
+                |body| {
+                    body.overflow_y_scroll()
+                },
+            )),
         cx,
     )
 }
@@ -206,40 +211,6 @@ fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
         )
 }
 /// Tarjeta de tema R10.1: nombre y dos orbes (claro y oscuro) con acento y fondo.
-fn disabled_toggle(
-    id: &'static str,
-    label: &str,
-    value: bool,
-    cx: &gpui::App,
-) -> gpui::Stateful<Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Switch)
-        .aria_label(label)
-        .tab_stop(false)
-        .aria_description("Próximamente")
-        .w(px(44.0))
-        .h(px(24.0))
-        .flex_none()
-        .p(px(3.0))
-        .rounded_full()
-        .flex()
-        .when(value, |toggle| {
-            toggle.justify_end().bg(linear_gradient(
-                130.0,
-                linear_color_stop(rgb(orbit::red(cx)), 0.0),
-                linear_color_stop(rgb(orbit::carmine(cx)), 1.0),
-            ))
-        })
-        .when(!value, |toggle| {
-            toggle.bg(rgb(crate::orbit::legacy_rgb(0x0015_1619, cx)))
-        })
-        .child(div().size(px(18.0)).rounded_full().bg(rgb(if value {
-            0x001e_171c
-        } else {
-            orbit::ink_muted(cx)
-        })))
-}
 fn appearance_slider(
     value: f32,
     min: f32,
@@ -615,10 +586,23 @@ impl Hub {
                             .items_center()
                             .min_h(px(42.0))
                             .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
-                            .child(orbit::keycap(key, cx))
+                            .child(orbit::keycap(*key, cx))
                     }),
                 ),
             ));
+        }
+        if self.settings.page == Page::Diagnostics {
+            let details = self.settings_diagnostic_report(cx);
+            if !details.is_empty() {
+                rail.push(
+                    orbit::RailSection::new(
+                        "Contenido del informe",
+                        "v-monitor",
+                        stack().children(details),
+                    )
+                    .grow(),
+                );
+            }
         }
         rail
     }
@@ -950,7 +934,7 @@ impl Hub {
         let entity = cx.entity();
         appearance_slider(f32::from(value), min, max, label, cx)
             .relative()
-            .track_focus(&self.settings.appearance_focus[10 + index])
+            .track_focus(&self.settings.appearance_focus[12 + index])
             .tab_index(0)
             .cursor_pointer()
             .child(
@@ -968,7 +952,7 @@ impl Hub {
             .on_mouse_down(
                 gpui::MouseButton::Left,
                 cx.listener(move |hub, event: &gpui::MouseDownEvent, window, cx| {
-                    hub.settings.appearance_focus[10 + index].focus(window, cx);
+                    hub.settings.appearance_focus[12 + index].focus(window, cx);
                     if hub.settings.appearance_bounds[index]
                         .is_some_and(|bounds| event.position.x >= bounds.left() + px(57.0))
                     {
@@ -1096,11 +1080,10 @@ impl Hub {
         } else {
             beta
         };
-        let current = (self.demo.is_some() && beta.is_none())
-            || beta
-                .as_ref()
-                .is_some_and(|status| status.state == "current" && status.version == version);
-        stack()
+        let current = beta
+            .as_ref()
+            .is_some_and(|status| status.state == "current" && status.version == version);
+        stack().h_full()
             .when_some(beta.filter(|status| status.state != "current"), |surface, status| {
                 surface.child(
                     Self::settings_beta_notice(status, cx),
@@ -1118,7 +1101,7 @@ impl Hub {
             } else {
                 Self::settings_update_channels(channel, self.demo.is_some(), cx)
             })
-            .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
+            .child(news.flex_1().min_h_0())
     }
     fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
         let ready = status.ready_for(crate::version_label());
@@ -1349,7 +1332,7 @@ impl Hub {
             section_body().children(
                 items
                     .iter()
-                    .map(|(label, key)| section_row(label, help, orbit::keycap(key, cx), cx)),
+                    .map(|(label, key)| section_row(label, help, orbit::keycap(*key, cx), cx)),
             )
         };
         stack().h_full()
@@ -1550,12 +1533,9 @@ impl Hub {
                 }
             }
         }
-        section_surface("Diagnóstico y uso", None, body, cx)
+        section_surface("Lo que compartes", None, body, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {
-        if self.demo.is_some() {
-            return Self::settings_demo_events(cx);
-        }
         let observed = &self.testing.read(cx).observed;
         let filter = self
             .settings
@@ -1603,291 +1583,77 @@ impl Hub {
                 Err(error) => events = events.child(orbit::callout(error, cx)),
             }
         }
-        section_surface("Últimos eventos", Some("sesión actual"), events, cx)
-            .flex_1()
-            .min_h(px(240.0))
+        section_surface(
+            "Registro observado",
+            Some("Errores registrados en esta sesión"),
+            events,
+            cx,
+        )
+        .flex_1()
+        .min_h_0()
     }
-    fn settings_statistics(demo: bool, connected: bool, cx: &gpui::App) -> Div {
-        let tiles = if demo {
-            [
-                (
-                    "Telemetría",
-                    if connected { "Conectado" } else { "Esperando" },
-                    if connected {
-                        "Datos del simulador disponibles"
-                    } else {
-                        "Esperando simulador"
-                    },
-                ),
-                ("Overlay", "Detenido", "sin perfil activo"),
-                ("CPU · memoria", "—", "Esperando datos del simulador"),
-                ("Datos locales", "45 MB", "3 carpetas revisadas"),
-            ]
-        } else {
-            [
-                (
-                    "Telemetría",
-                    if connected { "Conectado" } else { "Esperando" },
-                    "Conexión con el simulador",
-                ),
-                ("Overlay", "—", "sin perfil activo"),
-                ("CPU · memoria", "—", "muestreo no disponible"),
-                ("Datos locales", "—", "medición no disponible"),
-            ]
-        };
-        let mut stats = div().grid().grid_cols(4).w_full().gap(px(12.0));
-        for (label, value, help) in tiles {
+    fn settings_statistics(connected: bool, cx: &gpui::App) -> Div {
+        let mut stats = div().grid().grid_cols(3).w_full().gap(px(10.0));
+        for (label, value) in [
+            (
+                "Telemetría",
+                if connected { "Conectada" } else { "Esperando" },
+            ),
+            ("Overlays", "Sin observación"),
+            ("CPU / memoria", "—"),
+        ] {
             stats = stats.child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .h(px(107.0))
-                    .px(px(18.0))
-                    .py(px(15.0))
-                    .flex()
-                    .flex_col()
-                    .rounded(px(orbit::RADIUS))
-                    .border_1()
-                    .border_color(rgba(orbit::line(cx)))
-                    .bg(rgba(crate::orbit::legacy_rgba(crate::orbit::PANEL_BG, cx)))
-                    .child(text(label, 11.0, 700, orbit::ink_3(cx), cx).line_height(px(13.2)))
-                    .child(
-                        text(
-                            value.to_owned(),
-                            26.0,
-                            600,
-                            if connected && label == "Telemetría" {
-                                orbit::green(cx)
-                            } else {
-                                orbit::ink(cx)
-                            },
-                            cx,
-                        )
-                        .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
-                        .mt(px(8.0)),
-                    )
-                    .child(
-                        text(help, 11.5, 400, orbit::ink_4(cx), cx)
-                            .mt(px(4.0))
-                            .whitespace_nowrap()
-                            .text_ellipsis(),
-                    ),
+                orbit::neo_card(cx)
+                    .p(px(12.0))
+                    .gap(px(6.0))
+                    .child(orbit::caps(label, 14.0, orbit::ink_2(cx), cx))
+                    .child(text(value, 16.0, 600, orbit::ink(cx), cx)),
             );
         }
-        stats
+        orbit::settings_group(1, "Estado de Vantare", stats, cx)
     }
-    fn settings_diagnostics(&self, compact: bool, cx: &mut Context<Self>) -> Div {
-        let demo = self.demo.is_some();
-        let stats = Self::settings_statistics(demo, self.previous_source == Some(true), cx)
-            .when(compact, |stats| stats.grid().grid_cols(2));
-        let data = section_surface(
-            "Datos y registros",
-            None,
-            section_body()
-                .child(section_row_hint(
-                    "Carpeta de datos",
-                    &if demo {
-                        "C:\\Users\\piloto\\AppData\\Roaming\\Vantare\\configs".into()
-                    } else {
-                        self.settings.data.display().to_string()
-                    },
-                    orbit::small_button("settings-data-open", "Abrir", cx)
-                        .tab_stop(false)
-                        .aria_description("Abrir esta carpeta estará disponible próximamente"),
-                    12.0,
-                    cx,
-                ))
-                .child(section_row_hint(
-                    "Carpeta de registros",
-                    if demo {
-                        "C:\\Users\\piloto\\AppData\\Local\\Vantare\\logs"
-                    } else {
-                        "El registro aún no está disponible."
-                    },
-                    orbit::small_button("settings-logs-open", "Abrir", cx)
-                        .tab_stop(false)
-                        .aria_description("Sin ruta de registros disponible"),
-                    12.0,
-                    cx,
-                ))
-                .child(section_row_hint(
-                    "Medir uso de CPU",
-                    "Consulta el uso del procesador en este equipo.",
-                    disabled_toggle("settings-cpu", "Medir uso de CPU", demo, cx),
-                    12.0,
-                    cx,
-                ))
-                .child(
-                    section_row_hint(
-                        "Informe de diagnóstico",
-                        "Informe sin datos personales, listo para copiar o adjuntar.",
+    fn settings_diagnostics(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+        stack()
+            .h_full()
+            .child(Self::settings_statistics(
+                self.previous_source == Some(true),
+                cx,
+            ))
+            .child(section_surface(
+                "Diagnóstico local",
+                None,
+                section_body()
+                    .child(section_row(
+                        "Informe sanitizado",
+                        "Sin contraseñas ni datos de carrera",
                         self.settings_button(
                             "settings-diagnostic-prepare",
                             if self.settings.busy {
                                 "Preparando…"
                             } else {
-                                "Preparar"
+                                "Preparar informe"
                             },
                             Action::PrepareDiagnostic,
                             cx,
-                        )
-                        .h(px(34.0))
-                        .px(px(12.0)),
-                        12.0,
-                        cx,
-                    )
-                    .border_b_0(),
-                ),
-            cx,
-        )
-        .flex_1();
-        let mut view = stack().h_full().child(stats).child(
-            columns(compact)
-                .flex_1()
-                .child(data.when(compact, gpui::Styled::flex_none))
-                .child(self.settings_events(cx).flex_1()),
-        );
-        for detail in self.settings_diagnostic_report(cx) {
-            view = view.child(detail);
-        }
-        view
-    }
-    fn settings_event_filters(cx: &gpui::App) -> Div {
-        let mut filters = div()
-            .flex()
-            .items_center()
-            .gap(px(2.5))
-            .p(px(4.0))
-            .rounded(px(12.0))
-            .border_1()
-            .border_color(rgba(orbit::line_row(cx)));
-        for (index, label) in ["Todos 8", "Info 5", "Aviso 2", "Error 1"]
-            .into_iter()
-            .enumerate()
-        {
-            filters = filters.child(
-                div()
-                    .h(px(29.0))
-                    .px(px(12.0))
-                    .rounded(px(8.0))
-                    .flex()
-                    .items_center()
-                    .when(index == 0, |item| {
-                        item.bg(rgba(crate::orbit::legacy_rgba(0xd52f_492e, cx)))
-                            .border_1()
-                            .border_color(rgba(crate::orbit::legacy_rgba(0xf047_554d, cx)))
-                    })
-                    .child(text(
-                        label,
-                        12.0,
-                        650,
-                        if index == 0 {
-                            orbit::ink(cx)
-                        } else {
-                            orbit::ink_4(cx)
-                        },
-                        cx,
-                    )),
-            );
-        }
-        filters
-    }
-    fn settings_demo_events(cx: &gpui::App) -> Div {
-        // Anillo del harness Wails (`wails-runtime-mock.ts`), sin observaciones
-        // productivas ni envío. Las horas son las de la referencia congelada.
-        let mut rows = section_body().gap(px(2.0));
-        let filters = Self::settings_event_filters(cx);
-        rows = rows.child(div().flex().mb(px(8.0)).child(filters));
-        for (index, (time, level, message)) in [
-            ("16:00:24", "Info", "Inicio · Le Mans Ultimate abierto"),
-            (
-                "16:00:02",
-                "Aviso",
-                "Atajos · Ctrl+Alt+O ya lo usa otra aplicación",
-            ),
-            (
-                "15:59:35",
-                "Info",
-                "Actualizaciones · Canal de la instalación comprobado",
-            ),
-            (
-                "15:59:00",
-                "Error",
-                "Grabaciones · No se pudo guardar una parte de la sesión",
-            ),
-            (
-                "15:58:38",
-                "Info",
-                "Overlays · Perfil de carrera cargado con 7 widgets",
-            ),
-            (
-                "15:58:04",
-                "Aviso",
-                "Perfiles · No se encontró la carpeta de ajustes; no se pueden editar perfiles",
-            ),
-            (
-                "15:57:45",
-                "Info",
-                "Telemetría · Conexión con LMU preparada",
-            ),
-            ("15:57:32", "Info", "Vantare · Conexión local preparada"),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            rows = rows.child(
-                div()
-                    .flex()
-                    .items_start()
-                    .gap(px(10.0))
-                    .px(px(6.0))
-                    .py(px(4.0))
-                    .rounded(px(5.0))
-                    .bg(rgba(if level == "Error" {
-                        0xff6a_5f14
-                    } else if index % 2 == 0 {
-                        orbit::line_row(cx)
-                    } else {
-                        0x0000_0000
-                    }))
-                    .child(
-                        div().w(px(72.0)).flex_none().child(
-                            text(time, 12.0, 400, orbit::ink_3(cx), cx)
-                                .font_family(crate::orbit::mono_family(cx))
-                                .line_height(px(18.0)),
                         ),
-                    )
-                    .child(
-                        div()
-                            .w(px(52.0))
-                            .flex_none()
-                            .relative()
-                            .left(px(-1.0))
-                            .child(text(
-                                level.to_owned(),
-                                11.0,
-                                600,
-                                match level {
-                                    "Error" => orbit::coral(cx),
-                                    "Aviso" => orbit::ember(cx),
-                                    _ => orbit::ink_3(cx),
-                                },
+                        cx,
+                    ))
+                    .when(self.settings.diagnostic.is_some(), |body| {
+                        body.child(section_row(
+                            "Informe preparado",
+                            "Copia local; no envía datos",
+                            self.settings_button(
+                                "settings-diagnostic-copy",
+                                "Copiar informe",
+                                Action::CopyDiagnostic,
                                 cx,
-                            )),
-                    )
-                    .child(
-                        div().flex_1().min_w_0().child(
-                            text(message, 12.0, 400, orbit::ink_2(cx), cx)
-                                .relative()
-                                .left(px(-1.0))
-                                .line_height(px(18.0)),
-                        ),
-                    ),
-            );
-        }
-        section_surface("Últimos eventos", Some("8 en esta sesión"), rows, cx)
-            .flex_1()
-            .min_h(px(240.0))
+                            ),
+                            cx,
+                        ))
+                    }),
+                cx,
+            ))
+            .child(self.settings_events(cx).flex_1().min_h_0())
     }
     fn settings_diagnostic_report(&self, cx: &mut Context<Self>) -> Vec<Div> {
         let Some(diagnostic) = &self.settings.diagnostic else {

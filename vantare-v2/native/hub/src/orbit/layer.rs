@@ -1,11 +1,10 @@
 //! Capa modal/popover: contenido y acciones pertenecen al consumidor.
 use super::{
-    GUTTER, MENU_Z, MODAL_Z, PALETTE_W, POPOVER_MAX_H, POPOVER_RADIUS, POPOVER_W, RADIUS,
-    layer_shadow, line_strong, palette_backdrop, state, surface_1, surface_2,
+    GUTTER, MENU_Z, MODAL_Z, PALETTE_W, POPOVER_MAX_H, POPOVER_W, palette_backdrop, state,
 };
 use gpui::{
     AnyView, Context, EventEmitter, FocusHandle, IntoElement, Render, Window, anchored, deferred,
-    div, prelude::*, px, rgb, rgba,
+    div, prelude::*, px, rgba,
 };
 #[derive(Clone, Copy, Debug)]
 pub enum LayerKind {
@@ -145,11 +144,18 @@ impl Render for Layer {
                 s.max_h(px(self.popover_size.map_or(POPOVER_MAX_H, |size| size.1)))
             })
             .overflow_y_scroll()
-            .rounded(px(if modal { RADIUS } else { POPOVER_RADIUS }))
-            .shadow(layer_shadow(modal, cx))
-            .bg(rgb(if modal { surface_1(cx) } else { surface_2(cx) }))
+            .rounded(px(super::skin(cx).radius.lg))
+            // Panel flotante §3: relleno 180° y luz superior; sin desenfoque exterior.
+            .bg(super::ramp(super::skin(cx).neo, 180.0))
+            .shadow(vec![super::kit_shadow(
+                super::skin(cx).neo_light,
+                1.0,
+                0.0,
+                0.0,
+                true,
+            )])
             .border_1()
-            .border_color(rgba(line_strong(cx)))
+            .border_color(super::alpha(super::skin(cx).line2))
             .occlude()
             .capture_key_down(cx.listener(Self::key))
             .on_mouse_down_out(cx.listener(|this, _, window, cx| this.dismiss(window, cx)))

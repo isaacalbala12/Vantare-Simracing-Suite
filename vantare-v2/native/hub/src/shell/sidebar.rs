@@ -373,7 +373,7 @@ impl Hub {
             .gap(px(10.0))
             .when(expanded, |logo| logo.px(px(4.0)))
             .when(!expanded, gpui::Styled::justify_center)
-            .child(orbit::icon("mark", 26.0, skin.accent))
+            .child(orbit::icon("mark", 26.0, 0x00e1_4a54))
             .when(expanded, |logo| {
                 logo.child(orbit::wordmark(cx))
                     .child(

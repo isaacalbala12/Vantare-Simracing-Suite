@@ -625,9 +625,11 @@ impl Notifications {
     fn record_time(record: &Record, cx: &gpui::App) -> gpui::Div {
         orbit::text(time(record.occurred_at), 12.0, 400, orbit::ink_4(cx), cx)
             .relative()
+            // No leído: punto del acento bajo la hora (nunca barra vertical, §3).
             .when(record.unread, |stamp| {
                 stamp.child(
-                    orbit::status_dot(orbit::Tone::Accent, 8.0, cx)
+                    orbit::live_dot(cx)
+                        .size(px(8.0))
                         .absolute()
                         .top(px(24.0))
                         .right_0(),
@@ -657,34 +659,35 @@ impl Notifications {
         .filter(|text| !text.is_empty())
         .collect::<Vec<_>>()
         .join(" · ");
+        let skin = orbit::skin(cx).clone();
+        // Icono con el tinte de su tipo: novedad/beta en acento, ok, aviso, error o neutro.
+        let (fill, ink) = match tone {
+            orbit::Tone::Danger => ((skin.err_tint << 8) | 0xff, skin.err),
+            orbit::Tone::Warning => ((skin.warn_tint << 8) | 0xff, skin.warn),
+            orbit::Tone::Success => ((skin.ok_tint << 8) | 0xff, skin.ok),
+            orbit::Tone::Accent => (skin.accent_tint, skin.accent_bright),
+            _ => ((skin.l3 << 8) | 0xff, skin.text2),
+        };
+        let hover = skin.hover;
         div()
             .id(id.clone())
             .flex_none()
             .flex()
             .gap(px(12.0))
             .p(px(12.0))
-            .rounded(px(12.0))
-            .when(record.unread, |row| {
-                row.bg(orbit::tint(orbit::ink(cx), 0.035))
-            })
+            .rounded(px(skin.radius.md))
+            .hover(move |row| row.bg(orbit::alpha(hover)))
+            .when(record.unread, |row| row.bg(orbit::tint(0x00ff_ffff, 0.035)))
             .child(
                 div()
                     .size(px(34.0))
                     .flex_none()
-                    .rounded(px(10.0))
+                    .rounded(px(skin.radius.md))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(gpui::rgb(orbit::surface_3(cx)))
-                    .child(orbit::icon(
-                        icon,
-                        18.0,
-                        match tone {
-                            orbit::Tone::Danger => orbit::red(cx),
-                            orbit::Tone::Warning => orbit::ember(cx),
-                            _ => orbit::coral(cx),
-                        },
-                    )),
+                    .bg(orbit::alpha(fill))
+                    .child(orbit::icon(icon, 18.0, ink)),
             )
             .child(
                 div()
@@ -703,7 +706,7 @@ impl Notifications {
                                 orbit::text(
                                     message(&record.title_key, &record.params),
                                     14.0,
-                                    600,
+                                    500,
                                     orbit::ink(cx),
                                     cx,
                                 )
@@ -756,7 +759,7 @@ impl Notifications {
                 orbit::text("Notificaciones", 22.0, 600, orbit::ink(cx), cx)
                     .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone()),
             )
-            .child(orbit::pill(
+            .child(orbit::tag(
                 &format!("{unread} sin leer"),
                 if unread > 0 {
                     orbit::Tone::Accent
@@ -765,13 +768,21 @@ impl Notifications {
                 },
                 cx,
             ))
+            .child(div().flex_1())
             .child(read);
+        let skin = orbit::skin(cx).clone();
+        // Filtro segmentado §4: l2 hundido; la opción activa se eleva.
         let mut filters = div()
             .id("notifications-filters")
             .flex()
             .flex_none()
+            .self_start()
             .overflow_x_scroll()
-            .gap(px(4.0));
+            .gap(px(2.0))
+            .p(px(3.0))
+            .rounded(px(skin.radius.sm))
+            .bg(gpui::rgb(skin.l2))
+            .shadow(vec![orbit::kit_shadow(0x0000_0059, 1.0, 2.0, 0.0, true)]);
         for (id, filter) in [
             ("all", Filter::All),
             ("unread", Filter::Unread),
@@ -796,9 +807,19 @@ impl Notifications {
                     cx,
                 )
                 .flex_none()
+                .h(px(24.0))
+                .px(px(10.0))
+                .rounded(px(skin.radius.xs))
+                .text_size(px(12.0))
                 .track_focus(&focus)
                 .when(self.filter == filter, |button| {
-                    button.bg(gpui::rgb(orbit::surface_3(cx)))
+                    button.bg(gpui::rgb(skin.el)).shadow(vec![orbit::kit_shadow(
+                        skin.neo_light,
+                        1.0,
+                        0.0,
+                        0.0,
+                        true,
+                    )])
                 })
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.execute(Intent::Filter(filter), window, cx);
@@ -831,7 +852,16 @@ impl Notifications {
                     .items_center()
                     .justify_center()
                     .gap(px(16.0))
-                    .child(orbit::icon("v-bell", 42.0, orbit::ink_3(cx)))
+                    .child(
+                        div()
+                            .size(px(52.0))
+                            .rounded(px(skin.radius.lg))
+                            .bg(gpui::rgb(skin.l3))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(orbit::icon("v-bell", 26.0, skin.text2)),
+                    )
                     .child(orbit::text("Todo al día", 16.0, 600, orbit::ink(cx), cx))
                     .child(orbit::text(
                         if nonempty {
@@ -848,9 +878,10 @@ impl Notifications {
         }
         for (group, records) in groups {
             history = history.child(
-                orbit::text(group, 12.0, 400, orbit::ink_4(cx), cx)
+                orbit::text(group, 12.0, 400, skin.cap, cx)
                     .flex_none()
-                    .mt(px(12.0)),
+                    .mt(px(12.0))
+                    .px(px(12.0)),
             );
             for record in &records {
                 let focus = self.focus(&record.id, cx);

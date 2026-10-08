@@ -1,3 +1,27 @@
+# Shell del Hub — rework UI r10 (#1496, ronda 0)
+
+Fuente visual: maqueta `vantare-hub-r10h.html` y `ESPEC-GPUI.md` (R10 > R9 > §1–8).
+
+- Temas: `orbit/skin.rs` genera los tokens R9/R10 desde `Palette × Scheme`
+  (Vantare = R9.1, Vantare clásico = §1, DeepSeek = grises y acento azul; el resto
+  con la regla HSL de la maqueta). `theme::apply` deriva de ahí `design::Tokens`,
+  que siguen leyendo las páginas. Logotipo, estados y apps no cambian con el tema.
+- Adaptación: `orbit/adapt.rs` (`Adapt`, global publicado en cada render): densidad
+  A/M/B/XS por alto, estructura por ancho, barra izquierda automática < 1500,
+  barra derecha `clamp(320, 22vw, 400)` o franja de 56. Píxeles lógicos (incluyen
+  el escalado de Windows).
+- Barra izquierda 272/76 (`Ctrl B` o botón junto al logo), sin Lanzar; grupo
+  «Para testers» solo con rol; activo con relleno y relieve, nunca barra vertical.
+- Barra superior 52: título en mayúsculas, ranura de pestañas (`orbit::topbar_tab`),
+  estado LMU, barra derecha (`Ctrl Alt B`), campana (`Ctrl Mayús N`) y controles
+  de ventana propios (marco sin barra de título del sistema).
+- Barra derecha acoplada: las páginas aportan `orbit::RailSection`; Inicio y Ajustes
+  ya la usan, el resto entra como una sección heredada sin cabecera.
+- Kit en `orbit/kit.rs`, `neo.rs`, `controls.rs`. Captura QA: `--collapsed` y
+  `--zoom 125` (solo con `--capture`).
+
+Las secciones siguientes son históricas (ISA-1430) y no describen el marco actual.
+
 # Shell Command Orbit nativa — ISA-1430
 
 Alcance: rail, columna contextual, topbar y paleta. Las entidades de sección,

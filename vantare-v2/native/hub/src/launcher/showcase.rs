@@ -137,6 +137,44 @@ fn step_state(events: &[Progress], step: usize) -> (&'static str, Tone) {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CardState {
+    Resting,
+    Running,
+    Retry,
+    Ready,
+    Cancelled,
+    Failed,
+}
+fn card_state(events: &[Progress], running: bool) -> CardState {
+    use super::super::chain::Status;
+    if let Some(end) = events
+        .iter()
+        .rev()
+        .find(|event| matches!(event.status, Status::Done | Status::Cancelled))
+    {
+        return if end.status == Status::Cancelled {
+            CardState::Cancelled
+        } else if end.success {
+            CardState::Ready
+        } else {
+            CardState::Failed
+        };
+    }
+    if !running {
+        return CardState::Resting;
+    }
+    if events
+        .iter()
+        .filter_map(|event| event.step)
+        .any(|step| step_state(events, step).0 == "Reintentando…")
+    {
+        CardState::Retry
+    } else {
+        CardState::Running
+    }
+}
+
 fn run_result(events: &[Progress]) -> Option<(&'static str, Tone)> {
     use super::super::chain::Status;
     let result = events
@@ -266,8 +304,8 @@ fn carousel_offset(
 
 fn hero_height(adapt: orbit::Adapt) -> f32 {
     match adapt.density {
-        orbit::Density::A => 388.0,
-        orbit::Density::M => 354.0,
+        orbit::Density::A => 400.0,
+        orbit::Density::M => 360.0,
         orbit::Density::B | orbit::Density::Xs => 318.0,
     }
 }
@@ -467,7 +505,13 @@ impl Launcher {
                 .find(|app| app.id == step.app_id);
             let event = self.step_event(profile, index);
             let (label, tone) = self.step_state(profile, index);
-            let icon_size = if compact { 48.0 } else { 80.0 };
+            let icon_size = if compact {
+                48.0
+            } else if running {
+                80.0
+            } else {
+                48.0
+            };
             if !running && index > 0 {
                 row = row.child(
                     orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx)
@@ -487,7 +531,7 @@ impl Launcher {
                 } else if compact {
                     10.0
                 } else {
-                    18.0
+                    12.0
                 }))
                 .rounded(px(18.0))
                 .when(!running, |card| {
@@ -506,7 +550,7 @@ impl Launcher {
                     } else if running {
                         80.0
                     } else {
-                        60.0
+                        48.0
                     },
                     cx,
                 ));
@@ -547,21 +591,14 @@ impl Launcher {
                     orbit::ink(cx),
                     cx,
                 ))
-                .child(
-                    orbit::text(
-                        match step.app_id.as_str() {
-                            "lmu" => "Abre el juego y espera al menú",
-                            "crewchief" => "Tu ingeniero de voz",
-                            "simhub" => "Telemetría para el volante",
-                            "custom:vantare" => "Tus widgets sobre el juego",
-                            _ => "Abre la aplicación del perfil",
-                        },
-                        if compact { 10.0 } else { 12.0 },
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    )
-                    .truncate(),
+                .when(
+                    running && cx.global::<orbit::Adapt>().show_notes(),
+                    |card| {
+                        card.child(
+                            orbit::text("Aplicación del perfil", 12.0, 400, orbit::ink_2(cx), cx)
+                                .truncate(),
+                        )
+                    },
                 )
                 .when(running, |card| {
                     card.child(orbit::pill(
@@ -667,6 +704,15 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let running = self.launch_progress().is_some();
+        let state = if self
+            .last_profile
+            .as_ref()
+            .is_some_and(|last| last.id == profile.id)
+        {
+            card_state(&self.progress, running)
+        } else {
+            CardState::Resting
+        };
         let edit = profile.clone();
         let launch = profile.id.clone();
         let rehearsal = profile.clone();
@@ -687,6 +733,18 @@ impl Launcher {
             .flex_wrap()
             .items_center()
             .gap(px(10.0))
+            .when(running, |row| {
+                row.child(
+                    button("showcase-cancel", "Cancelar", cx).on_click(cx.listener(
+                        |this, _, _, cx| {
+                            if let Some(chain) = &this.chain {
+                                chain.cancel();
+                            }
+                            cx.notify();
+                        },
+                    )),
+                )
+            })
             .child(
                 orbit::play_button(
                     "showcase-launch",
@@ -711,18 +769,6 @@ impl Launcher {
                 row.child(
                     button("showcase-edit", "Editar perfil", cx).on_click(cx.listener(
                         move |this, _, window, cx| this.profile_editor(edit.clone(), window, cx),
-                    )),
-                )
-            })
-            .when(running, |row| {
-                row.child(
-                    button("showcase-cancel", "Cancelar", cx).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            if let Some(chain) = &this.chain {
-                                chain.cancel();
-                            }
-                            cx.notify();
-                        },
                     )),
                 )
             })
@@ -778,7 +824,13 @@ impl Launcher {
                     .opacity(0.5),
             )
             .child(orbit::text(
-                if running {
+                if state == CardState::Ready {
+                    "✓ Todo listo"
+                } else if state == CardState::Cancelled {
+                    "Cancelado · las apps abiertas siguen abiertas"
+                } else if state == CardState::Failed {
+                    "El lanzamiento no se completó"
+                } else if running {
                     "● Lanzando…"
                 } else if profile.favorite {
                     "★ Tu perfil favorito · Ctrl L"
@@ -1555,6 +1607,43 @@ impl Launcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn card_projects_idle_retry_success_failure_and_cancellation() {
+        use super::super::super::chain::Status;
+        let event = |status, success| Progress {
+            step: Some(0),
+            status,
+            pid: None,
+            message: String::new(),
+            success,
+            decision: None,
+        };
+        assert_eq!(card_state(&[], false), CardState::Resting);
+        assert_eq!(card_state(&[], true), CardState::Running);
+        let retry = [
+            event(Status::Launching, false),
+            event(Status::Failed, false),
+            event(Status::Launching, false),
+        ];
+        assert_eq!(card_state(&retry, true), CardState::Retry);
+        assert_eq!(
+            card_state(&[event(Status::Ready, true)], true),
+            CardState::Running
+        );
+        assert_eq!(
+            card_state(&[event(Status::Done, true)], false),
+            CardState::Ready
+        );
+        assert_eq!(
+            card_state(&[event(Status::Done, false)], false),
+            CardState::Failed
+        );
+        assert_eq!(
+            card_state(&[event(Status::Cancelled, false)], false),
+            CardState::Cancelled
+        );
+    }
+
     #[test]
     fn carousel_stops_at_both_ends_and_keeps_the_last_card_reachable() {
         assert_eq!(carousel_offset(px(0.0), px(-300.0), px(500.0)), px(-300.0));

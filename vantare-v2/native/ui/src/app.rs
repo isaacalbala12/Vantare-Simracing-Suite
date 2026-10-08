@@ -450,8 +450,8 @@ impl Render for Screen {
         // Un único aviso discreto en la esquina del primer widget, no uno por widget.
         let notice = self
             .widgets
-            .first()
-            .filter(|first| crate::rights::denied(first.view.read(cx).kind, cx))
+            .iter()
+            .find(|first| crate::rights::denied(first.view.read(cx).kind, cx))
             .map(|first| license_notice(first.at, crate::rights::notice(cx)));
         div()
             .size_full()

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub mod authority;
+pub mod catalog;
 pub mod installation;
 
 const ISSUER: &str = "vantare-license";

@@ -1,5 +1,43 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1510 — Launch Edition y funciones posteriores (2026-10-08)
+
+Worktree `C:/tmp/vw3-1510/vantare-v2`, rama `vantareapp/isa-1510-le-bloqueo`,
+base exacta `a8f9bdc3`. Implementación aislada contra candidato beta, sin
+delegación y sin tocar #1506, precios, productos, compra ni producción.
+El núcleo distingue Free/LaunchV1/Pro a partir de derechos firmados vigentes;
+LE congela Standings/Relative/Delta/Pedals. Pro amplía durante su vigencia;
+canal/rol tester no amplían LE. Owner conserva QA. Calendario inicial;
+otros módulos requieren su capacidad existente y quedan fuera de LE.
+Control IPC v4, licencia firmada sin cambios. Studio conserva perfiles y
+muestra candado/«Incluida en Pro»; overlays no pintan/proyectan lo bloqueado.
+Inventario, límites, revisión del corte y QA real para Isaac:
+[contrato y runbook](../../billing/le-1510-catalogo.md).
+Check completo PASS por cola/-j2. Primera pasada Clippy detectó 101/100 líneas
+en `poll_source`; se extrajo su bloque de actualización de acceso, sin excepción
+al lint. Segunda pasada Clippy PASS; Nextest 1221/1221 PASS (6 excluidos del
+perfil habitual), lifecycle 18/18 PASS. Log fallido conservado; corpus de
+telemetría 21/21 PASS. Captura Debug falló por `GenericContainer` heredado,
+igual en la base; hallazgo separado [#1520](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1520),
+sin tocar sidebar/neo. Fmt/diff PASS. Tres capturas del Hub real en perfil
+`prueba`, 1440×900, inspeccionadas: Free bloquea Relative/Delta y conserva
+sus instancias; LE conserva los cuatro iniciales y bloquea módulos posteriores;
+Pro conserva acceso. Evidencia local `C:/tmp/lanzamiento/1510-capturas/`,
+políticas sanitizadas exportadas por tests con credenciales firmadas, sin
+cuentas reales. Intento adicional de catálogo abierto no completado: timeout
+del helper/mutex compartido; no se afirma esa aceptación visual. Selección
+por teclado/ratón y los 18 tipos están cubiertos por tests. No prueba backend,
+LMU/OBS, macOS, instalación ni release. Pendiente de revisión de Isaac;
+el informe `C:/tmp/lanzamiento/informe-1510.md` registra SHA/PR/CI finales.
+Código publicado en `e12aabaa6b03f11d52640b6edb656ec30b1b835d`,
+[PR draft #1522](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1522)
+contra `vantareapp/isa-1470-candidato-beta` remoto exacto `a8f9bdc3`.
+#1510 permanece abierta, Project Vantare en revisión. CI remoto en curso
+al entregar, sin aceptación/integración, merge, promoción ni release.
+La actualización documental posterior no cambia el código ya verificado.
+Roadmap `plan.md` ausente también en `origin/nightly`; no se recrea ni publica.
+Seguimiento GitHub por brief reciente, sin aplicar referencias Notion antiguas.
+
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 
 Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`

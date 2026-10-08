@@ -701,7 +701,18 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
         );
         assert_eq!(
             policy.valid_until_ms,
-            Some(u64::try_from(start + 10).expect("fecha") * 1000)
+            Some(
+                u64::try_from(
+                    start
+                        + if capability == Some("vantare.plan.pro") {
+                            3
+                        } else {
+                            10
+                        }
+                )
+                .expect("fecha")
+                    * 1000
+            )
         );
         export_capture_policy(capability, &policy);
         // Caché válida tras restaurar, sin consulta de red ni derechos inventados.
@@ -781,12 +792,88 @@ fn beta_grants(capability: Option<&str>, start: i64) -> Vec<Capability> {
         .collect()
 }
 
+#[test]
+fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
+    use vantare_ipc::control::CatalogAccess;
+    let start = 1_790_800_000;
+    for legacy in [true, false] {
+        let mut grants: Vec<_> = [
+            "vantare.edition.launch_v1",
+            "vantare.module.calendar",
+            "vantare.module.engineer",
+            "vantare.module.strategy",
+            "vantare.operational.tester",
+            "vantare.plan.pro",
+        ]
+        .into_iter()
+        .flat_map(|key| beta_grants(Some(key), start))
+        .collect();
+        grants.sort_by(|a, b| a.key.cmp(&b.key));
+        let (credential, keys) = if legacy {
+            signed_v1(start - 1, grants)
+        } else {
+            signed_modules(start + 100, start - 1, grants)
+        };
+        let root = test_root();
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+        owner
+            .install(credential, wall(start), Duration::ZERO)
+            .expect("firma existente");
+        let pro = owner
+            .advance(&Snapshot::default(), wall(start), Duration::ZERO)
+            .expect("Pro");
+        assert_eq!(pro.catalog, CatalogAccess::Pro);
+        export_capture_policy(Some("vantare.plan.pro"), &pro);
+        assert!(pro.engineer && pro.strategy);
+        assert_eq!(
+            pro.valid_until_ms,
+            Some(u64::try_from(start + 3).expect("fecha") * 1000)
+        );
+        drop(owner);
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(start + 3)).expect("offline");
+        let launch = owner
+            .advance(&Snapshot::default(), wall(start + 3), Duration::ZERO)
+            .expect("LE");
+        assert!(launch.overlays_advanced && launch.tester && launch.calendar);
+        assert_eq!(launch.catalog, CatalogAccess::LaunchV1);
+        export_capture_policy(Some("vantare.edition.launch_v1"), &launch);
+        assert!(launch.catalog.allows_widget("relative"));
+        assert!(!launch.catalog.allows_widget("radar"));
+        assert!(!launch.engineer && !launch.strategy);
+        let without_tester = owner
+            .advance(
+                &Snapshot::default(),
+                wall(start + 10),
+                Duration::from_secs(7),
+            )
+            .expect("tester vencido");
+        assert!(!without_tester.tester);
+        assert_eq!(without_tester.catalog, CatalogAccess::LaunchV1);
+        owner
+            .invalidate(wall(start + 11), Duration::from_secs(8))
+            .expect("revocar");
+        let revoked = owner
+            .advance(
+                &Snapshot::default(),
+                wall(start + 11),
+                Duration::from_secs(8),
+            )
+            .expect("revocada");
+        assert!(!revoked.overlays_advanced);
+        drop(owner);
+        clean(&root);
+    }
+}
+
 fn export_capture_policy(capability: Option<&str>, policy: &Policy) {
     if let Some(directory) = std::env::var_os("VANTARE_BETA_POLICY_EVIDENCE") {
         let name = match capability {
             None => Some("sin-modulos"),
             Some("vantare.operational.owner") => Some("owner"),
             Some("vantare.module.strategy") => Some("solo-strategy"),
+            Some("vantare.edition.launch_v1") => Some("launch-v1"),
+            Some("vantare.plan.pro") => Some("pro"),
             _ => None,
         };
         if let Some(name) = name {

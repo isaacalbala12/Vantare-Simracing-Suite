@@ -6,6 +6,8 @@ pub mod account;
 #[cfg(feature = "network")]
 pub mod app;
 #[cfg(feature = "network")]
+pub mod billing;
+#[cfg(feature = "network")]
 pub mod bridge;
 #[cfg(feature = "network")]
 pub mod calendar;

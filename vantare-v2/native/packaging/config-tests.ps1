@@ -19,7 +19,7 @@ try {
     } finally { Restore-NativeBuildConfig $previous }
     if ([Environment]::GetEnvironmentVariable('VANTARE_POSTHOG_KEY', 'Process') -cne $expected) { throw 'No se restauró el valor público previo.' }
     $passed++
-    foreach ($invalid in @('UNKNOWN=value', "VANTARE_POSTHOG_KEY=a`nVANTARE_POSTHOG_KEY=b", 'VANTARE_POSTHOG_KEY=', 'VANTARE_SUPABASE_ANON_KEY=sb_secret_fixture', 'VANTARE_SUPABASE_ANON_KEY=invalid.jwt.fixture')) {
+    foreach ($invalid in @('VANTARE_BILLING_ENVIRONMENT=invalid', 'UNKNOWN=value', "VANTARE_POSTHOG_KEY=a`nVANTARE_POSTHOG_KEY=b", 'VANTARE_POSTHOG_KEY=', 'VANTARE_SUPABASE_ANON_KEY=sb_secret_fixture', 'VANTARE_SUPABASE_ANON_KEY=invalid.jwt.fixture')) {
         [IO.File]::WriteAllText($file, $invalid)
         $rejected = $false
         try { $null = Import-NativeBuildConfig $file } catch { $rejected = $true }
@@ -39,6 +39,12 @@ try {
     if ([Environment]::GetEnvironmentVariable('VANTARE_VERSION', 'Process') -cne $versionBefore -or
         [Environment]::GetEnvironmentVariable('VANTARE_BUILD_CHANNEL', 'Process') -cne $channelBefore) { throw 'No se restauró la identidad pública anterior.' }
     $passed++
+    foreach ($billingEnvironment in @('sandbox','production')) {
+        [IO.File]::WriteAllText($file, "VANTARE_BILLING_ENVIRONMENT=$billingEnvironment")
+        $previous = Import-NativeBuildConfig $file
+        try { if ($env:VANTARE_BILLING_ENVIRONMENT -cne $billingEnvironment) { throw 'Entorno no cargado.' }; $passed++ }
+        finally { Restore-NativeBuildConfig $previous }
+    }
     # Una variable ausente debe volver a estar ausente (no presente con valor vacío).
     Remove-Item Env:VANTARE_POSTHOG_KEY -ErrorAction SilentlyContinue
     [IO.File]::WriteAllText($file, 'VANTARE_POSTHOG_KEY=public-fixture')

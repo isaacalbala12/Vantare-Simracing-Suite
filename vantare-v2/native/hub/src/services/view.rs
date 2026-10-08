@@ -209,6 +209,8 @@ pub struct Remote {
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
     license_polled_at: Option<std::time::Instant>,
+    purchase_started_at: Option<std::time::Instant>,
+    purchase_polled_at: Option<std::time::Instant>,
     message: String,
     active: Area,
     calendar_target: Option<gpui::WeakEntity<crate::calendar::Calendar>>,
@@ -244,7 +246,7 @@ const ACCOUNT_MODULES: [(Section, &str); 6] = [
 
 fn account_plan_label(verified: bool) -> &'static str {
     if verified {
-        "Beta para testers"
+        "Acceso verificado"
     } else {
         "Acceso sin verificar"
     }
@@ -324,6 +326,8 @@ impl Remote {
             access: access::State::from_build(),
             device_limit: false,
             license_polled_at: None,
+            purchase_started_at: None,
+            purchase_polled_at: None,
             message: "Cuenta no disponible".into(),
             active: Area::Account,
             calendar_target: None,
@@ -350,6 +354,19 @@ impl Remote {
 
     /// `LicenseStatus` solo lee el núcleo por IPC. Su política caduca a los 2 s.
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
+        if !self.busy()
+            && self.account.signed_in
+            && self
+                .purchase_started_at
+                .is_some_and(|start| start.elapsed().as_secs() < 600)
+            && self
+                .purchase_polled_at
+                .is_none_or(|last| last.elapsed().as_secs() >= 5)
+        {
+            self.purchase_polled_at = Some(std::time::Instant::now());
+            self.request(Command::LicenseRenew, cx);
+            return;
+        }
         if !self.busy()
             && self.account.signed_in
             && self.access.session_known()
@@ -598,6 +615,12 @@ impl Remote {
                                 this.calendar_reply(reply.clone(), cx);
                             }
                             match reply {
+                                Reply::Checkout { url } => {
+                                    this.purchase_started_at = Some(std::time::Instant::now());
+                                    this.purchase_polled_at = None;
+                                    cx.open_url(&url);
+                                    this.message = "Compra abierta. Los derechos se comprobarán automáticamente.".into();
+                                },
                                 // La consulta periódica no pisa el resultado de una acción del usuario.
                                 Reply::Error { .. } | Reply::License { .. } if background => {}
                                 Reply::Status { message, .. } | Reply::Error { message } => {
@@ -639,6 +662,8 @@ impl Remote {
                                 } => {
                                     if !pending {
                                         if !signed_in {
+                                            this.purchase_started_at = None;
+                                            this.purchase_polled_at = None;
                                             this.report_receipts.clear();
                                         }
                                         this.account.signed_in = signed_in;
@@ -776,6 +801,31 @@ impl Remote {
                     }
                 })),
             )
+            .children(
+                [
+                    super::protocol::BillingProduct::ProMonthly,
+                    super::protocol::BillingProduct::ProAnnual,
+                    super::protocol::BillingProduct::LaunchLifetime,
+                ]
+                .into_iter()
+                .enumerate()
+                .map(|(index, product)| {
+                    orbit::small_button(
+                        ["purchase-monthly", "purchase-annual", "purchase-launch"][index],
+                        ["Pro · 5,99 €/mes", "Pro · 59,90 €/año", "Launch · 30 €"][index],
+                        cx,
+                    )
+                    .tab_stop(signed_in && !self.working())
+                    .when(!signed_in || self.working(), |button| {
+                        button.opacity(orbit::DISABLED)
+                    })
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if this.account.signed_in && !this.busy() {
+                            this.request(Command::Purchase { product }, cx);
+                        }
+                    }))
+                }),
+            )
             .child(if signed_in {
                 orbit::small_button("services-sign-out", "Cerrar sesión", cx)
                     .tab_stop(!self.working())
@@ -827,7 +877,7 @@ impl Remote {
         let verified = access.verified && !access.blocked;
         div().mt(px(8.0)).flex().child(orbit::pill(
             if verified {
-                "Beta para testers · activa"
+                "Acceso verificado · activo"
             } else {
                 "Acceso sin verificar"
             },
@@ -1433,7 +1483,7 @@ mod account_tests {
                 [false; 6]
             );
         }
-        assert_eq!(account_plan_label(true), "Beta para testers");
+        assert_eq!(account_plan_label(true), "Acceso verificado");
         assert_eq!(account_plan_label(false), "Acceso sin verificar");
     }
 }

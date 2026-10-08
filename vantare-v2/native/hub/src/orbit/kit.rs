@@ -574,27 +574,63 @@ pub fn circuit(name: Option<&str>, cx: &gpui::App) -> Div {
 pub fn cover_circuit(cx: &gpui::App) -> Div {
     circuit_ink(None, true, cx)
 }
-fn circuit_ink(name: Option<&str>, neutral: bool, cx: &gpui::App) -> Div {
-    static TRACKS: std::sync::OnceLock<std::collections::BTreeMap<String, [String; 2]>> =
+#[derive(Debug)]
+struct Circuit {
+    viewbox: [f32; 4],
+    points: Vec<[f32; 2]>,
+}
+fn parse_circuit(track: &[String; 2]) -> Result<Circuit, String> {
+    let numbers = |text: &str| -> Result<Vec<f32>, String> {
+        text.split_whitespace()
+            .map(|n| n.parse::<f32>().map_err(|error| error.to_string()))
+            .collect()
+    };
+    let viewbox: [f32; 4] = numbers(&track[0])?
+        .try_into()
+        .map_err(|_| "viewbox requiere cuatro coordenadas")?;
+    if !viewbox.iter().all(|v| v.is_finite()) || viewbox[2] <= 0.0 || viewbox[3] <= 0.0 {
+        return Err("viewbox no finito o vacío".into());
+    }
+    let path = track[1]
+        .strip_prefix('M')
+        .and_then(|path| path.strip_suffix('Z'))
+        .ok_or("trazado no cerrado")?;
+    let values = numbers(path)?;
+    if values.len() < 6 || !values.len().is_multiple_of(2) || !values.iter().all(|v| v.is_finite())
+    {
+        return Err("coordenadas incompletas o no finitas".into());
+    }
+    Ok(Circuit {
+        viewbox,
+        points: values
+            .chunks_exact(2)
+            .map(|pair| [pair[0], pair[1]])
+            .collect(),
+    })
+}
+fn circuit_tracks() -> &'static std::collections::BTreeMap<String, Circuit> {
+    static TRACKS: std::sync::OnceLock<std::collections::BTreeMap<String, Circuit>> =
         std::sync::OnceLock::new();
-    let Some(key) = circuit_key(name) else {
+    TRACKS.get_or_init(|| {
+        let raw: std::collections::BTreeMap<String, [String; 2]> =
+            serde_json::from_str(include_str!("../../assets/tracks/tracks.json"))
+                .expect("recurso validado por tests");
+        raw.into_iter()
+            .map(|(key, track)| {
+                (
+                    key,
+                    parse_circuit(&track).expect("circuito validado por tests"),
+                )
+            })
+            .collect()
+    })
+}
+fn circuit_ink(name: Option<&str>, neutral: bool, cx: &gpui::App) -> Div {
+    let Some(track) = circuit_key(name).and_then(|key| circuit_tracks().get(key)) else {
         return div();
     };
-    let tracks = TRACKS.get_or_init(|| {
-        serde_json::from_str(include_str!("../../assets/tracks/tracks.json"))
-            .expect("recurso de circuitos validado por tests")
-    });
-    let track = &tracks[key];
-    let viewbox: Vec<f32> = track[0]
-        .split_whitespace()
-        .map(|n| n.parse().expect("viewbox validado"))
-        .collect();
-    let points: Vec<f32> = track[1]
-        .trim_start_matches('M')
-        .trim_end_matches('Z')
-        .split_whitespace()
-        .map(|n| n.parse().expect("punto validado"))
-        .collect();
+    let viewbox = track.viewbox;
+    let points = &track.points;
     let strokes = [
         (10.0, skin(cx).accent << 8 | 0x1a),
         (
@@ -618,9 +654,12 @@ fn circuit_ink(name: Option<&str>, neutral: bool, cx: &gpui::App) -> Div {
                 );
                 for (stroke, color) in strokes {
                     let mut path = gpui::PathBuilder::stroke(px(stroke));
-                    for (index, point) in points.chunks_exact(2).enumerate() {
-                        let point =
-                            origin + gpui::point(px(point[0] * scale), px(point[1] * scale));
+                    for (index, point) in points.iter().enumerate() {
+                        let point = origin
+                            + gpui::point(
+                                px((point[0] - viewbox[0]) * scale),
+                                px((point[1] - viewbox[1]) * scale),
+                            );
                         if index == 0 {
                             path.move_to(point);
                         } else {
@@ -839,6 +878,75 @@ pub fn appearance_slider(
 
 #[cfg(test)]
 mod resource_tests {
+    #[test]
+    #[ignore = "Medición local explícita; sin umbral temporal en gates"]
+    fn measure_circuit_parse_lookup_and_document_clone() {
+        use std::{hint::black_box, time::Instant};
+        let raw: std::collections::BTreeMap<String, [String; 2]> =
+            serde_json::from_str(include_str!("../../assets/tracks/tracks.json")).unwrap();
+        let runs = 10_000;
+        let started = Instant::now();
+        for _ in 0..runs {
+            black_box(super::parse_circuit(black_box(&raw["lemans_h"])).unwrap());
+        }
+        println!(
+            "parse_us_per_call={:.3}",
+            started.elapsed().as_secs_f64() * 1e6 / f64::from(runs)
+        );
+        let tracks = super::circuit_tracks();
+        let started = Instant::now();
+        for _ in 0..runs {
+            black_box(&black_box(tracks)["lemans_h"]);
+        }
+        println!(
+            "lookup_us_per_call={:.3}",
+            started.elapsed().as_secs_f64() * 1e6 / f64::from(runs)
+        );
+        for count in [4, 18] {
+            let layout = vantare_ui::layout::Layout {
+                instances: (0..count)
+                    .map(|index| {
+                        let kind = vantare_ui::Kind::ALL[index % vantare_ui::Kind::ALL.len()];
+                        vantare_ui::layout::Instance {
+                            id: kind.name().to_owned(),
+                            x: 0.0,
+                            y: 0.0,
+                            visible: true,
+                            opacity: 1.0,
+                            settings: vantare_ui::Settings::default_for(kind),
+                        }
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            let started = Instant::now();
+            for _ in 0..runs {
+                black_box(black_box(&layout).clone());
+            }
+            println!(
+                "layout_clone_{count}_us_per_call={:.3}",
+                started.elapsed().as_secs_f64() * 1e6 / f64::from(runs)
+            );
+        }
+    }
+
+    #[test]
+    fn parsed_resources_are_shared_and_malformed_paths_are_rejected() {
+        let first = &super::circuit_tracks()["lemans_h"];
+        let second = &super::circuit_tracks()["lemans_h"];
+        assert!(std::ptr::eq(first.points.as_ptr(), second.points.as_ptr()));
+        for (key, track) in super::circuit_tracks() {
+            assert!(track.points.len() >= 3, "{key}");
+        }
+        for raw in [
+            ["0 0 NaN 10", "M0 0 1 1 2 2Z"],
+            ["0 0 10 10", "M0 0 1Z"],
+            ["0 0 10 10", "M0 0 1 1 2 2"],
+        ] {
+            assert!(super::parse_circuit(&raw.map(str::to_owned)).is_err());
+        }
+    }
+
     #[test]
     fn session_track_uses_real_outline_and_unknown_never_becomes_le_mans() {
         assert_eq!(super::circuit_key(None), Some("lemans_h"));

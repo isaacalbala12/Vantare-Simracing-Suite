@@ -13,6 +13,11 @@ plan.md ausente también en origin/nightly; no se recrea ni publica roadmap.
 Sin push/PR/merge/CI remoto/promoción/release. Evidencia externa calidad-1-evidence.
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+R1: host real con opacidad/visibilidad/orden/superposición y regresión de su estilo;
+hero/overlay/actividad separados. Circuitos tipados validados y parseados una vez.
+Microbenchmark manual preparado; caché de entidades conservada hasta medir.
+Base R0 corregida cb6ca7d4; check/Clippy workspace PASS, suite y QA pendientes.
+
 ## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama

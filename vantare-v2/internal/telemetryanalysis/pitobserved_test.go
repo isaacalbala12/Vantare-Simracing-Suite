@@ -1,8 +1,11 @@
 package telemetryanalysis
 
 import (
+	"context"
 	"encoding/json"
+	"math"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -66,6 +69,152 @@ func TestDeriveSessionPitObservationKeepsDegradedBoundary(t *testing.T) {
 	}
 }
 
+func TestDeriveSessionPitObservationPreservesOpenVisit(t *testing.T) {
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, []float64{50, 50}, []float64{30, 30})
+	pages[0] = pitEventPage("pit", []pitEventValue{{seconds: 1, value: false}, {seconds: 2, value: true}})
+
+	got, err := DeriveSessionPitObservation(session, pages, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Family.ObservedIntervals) != 1 {
+		t.Fatalf("open intervals = %+v", got.Family.ObservedIntervals)
+	}
+	interval := got.Family.ObservedIntervals[0]
+	if interval.StartTimestamp == nil || interval.EndTimestamp != nil || interval.DurationSeconds != 0 ||
+		!interval.Ambiguous || interval.AmbiguityReason != "open_pit_lane_interval" ||
+		interval.FuelAddedLiters != nil || interval.VEAddedPercent != nil {
+		t.Fatalf("open interval = %+v", interval)
+	}
+}
+
+func TestDeriveSessionPitObservationTreatsInitialTrueAsState(t *testing.T) {
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, []float64{50, 50}, []float64{30, 30})
+	pages[0] = pitEventPage("pit", []pitEventValue{{seconds: 1, value: true}, {seconds: 2, value: false}})
+
+	got, err := DeriveSessionPitObservation(session, pages, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Family.ObservedIntervals) != 0 {
+		t.Fatalf("initial state created visit: %+v", got.Family.ObservedIntervals)
+	}
+}
+
+func TestObserveRiseUsesObservedPairDuration(t *testing.T) {
+	samples := []timedMetricSample{
+		{seconds: 2, value: 50, presence: strategyprojection.PresenceValid},
+		{seconds: 2.1, value: 50, presence: strategyprojection.PresenceValid},
+		{seconds: 3, value: 52, presence: strategyprojection.PresenceValid},
+		{seconds: 4, value: 54, presence: strategyprojection.PresenceValid},
+	}
+	rise, ok := observeRise(samples, 2, 4)
+	if !ok || math.Abs(rise.rate-4.0/1.9) > 1e-9 {
+		t.Fatalf("rise = %+v ok=%v", rise, ok)
+	}
+}
+
+func TestPitRiseScanCarriesOnlyIntervalStateAcrossPages(t *testing.T) {
+	pages := [][]timedMetricSample{
+		{{seconds: 2, value: 50, presence: strategyprojection.PresenceValid},
+			{seconds: 2.1, value: 50, presence: strategyprojection.PresenceValid}},
+		{{seconds: 3, value: 52, presence: strategyprojection.PresenceValid},
+			{seconds: 3.5, value: 52.005, presence: strategyprojection.PresenceValid}},
+		{{seconds: 4, value: 54.005, presence: strategyprojection.PresenceUnknown}},
+	}
+	var scan pitRiseScan
+	for _, page := range pages {
+		for _, sample := range page {
+			scan.accept(sample)
+		}
+	}
+	rise, ok := scan.finish()
+	if !ok || math.Abs(rise.delta-4) > 1e-9 || math.Abs(rise.rate-4/1.9) > 1e-9 ||
+		rise.presence != strategyprojection.PresenceUnknown {
+		t.Fatalf("pit rise across pages = %+v ok=%v", rise, ok)
+	}
+	var noDuration pitRiseScan
+	noDuration.accept(timedMetricSample{seconds: 2, value: 50, presence: strategyprojection.PresenceValid})
+	noDuration.accept(timedMetricSample{seconds: 2, value: 52, presence: strategyprojection.PresenceValid})
+	if _, ok := noDuration.finish(); ok {
+		t.Fatal("zero-duration rise became a rate")
+	}
+}
+
+func TestPitObservationFromPagedRisesMatchesMaterialized(t *testing.T) {
+	fuel := []float64{50, 50, 50, 50, 50, 50, 52, 52, 54, 54, 54, 54, 54, 54}
+	ve := []float64{30, 30, 30, 30, 30, 30, 31, 31, 32, 32, 32, 32, 32, 32}
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, fuel, ve)
+	want, err := DeriveSessionPitObservation(session, pages, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intervals := observedPitIntervals(readEvents([]HistoricalPage{pages[0]}))
+	fuelScans := make([]pitRiseScan, len(intervals))
+	veScans := make([]pitRiseScan, len(intervals))
+	for _, page := range pages[1:] {
+		for _, sample := range page.Samples {
+			value, presence, ok := numericValue(sample.Values)
+			if !ok || sample.TimestampSeconds == nil {
+				continue
+			}
+			for index, interval := range intervals {
+				if interval.open || *sample.TimestampSeconds < interval.start || *sample.TimestampSeconds > interval.end {
+					continue
+				}
+				metric := timedMetricSample{seconds: *sample.TimestampSeconds, value: value, presence: presence}
+				if page.ChannelID == "fuel" {
+					fuelScans[index].accept(metric)
+				} else {
+					veScans[index].accept(metric)
+				}
+			}
+		}
+	}
+	got, err := derivePitObservationWithRises(session, classified, intervals,
+		func(index int, _ pitInterval) (riseObservation, bool) { return fuelScans[index].finish() },
+		func(index int, _ pitInterval) (riseObservation, bool) { return veScans[index].finish() })
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("page-fed pit observation differs: %v", err)
+	}
+}
+
+func TestPagedPitObservationMatchesMaterializedWithCorrectedValue(t *testing.T) {
+	model := correctionSourceExample(t)
+	fuel := []float64{50, 50, 50, 50, 50, 50, 52, 52, 54, 54, 54, 54, 54, 54}
+	ve := []float64{30, 30, 30, 30, 30, 30, 31, 31, 32, 32, 32, 32, 32, 32}
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, fuel, ve)
+	session.ID = model.Session.ID
+	session.SchemaVersion = HistoricalSchemaVersion
+	session.Provenance = model.Session.Provenance
+	classified.SessionID = session.ID
+	reader := &correctionInputReader{session: session, pages: pages}
+	limits := CorrectionReadLimits{PageRows: 3, MaxSamples: 100, MaxValues: 100, MaxTextBytes: 4096}
+	summary := CorrectionSummary{Session: session}
+	corrected := cloneHistoricalPages(pages)
+	corrected[1].Samples = append([]HistoricalSample(nil), corrected[1].Samples...)
+	corrected[1].Samples[8].Values = append([]HistoricalValue(nil), corrected[1].Samples[8].Values...)
+	corrected[1].Samples[8].Values[0].Scalar.Number = 55
+	values := map[correctionRowKey]map[string]HistoricalValue{
+		{channel: "fuel", index: 8}: {"": corrected[1].Samples[8].Values[0]},
+	}
+	want, err := DeriveSessionPitObservation(session, corrected, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := readPagedProjectionRows(context.Background(), reader, model.Artifact, limits, summary, LapValidityAnalysis{}, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := readPagedPitObservationFromEvents(context.Background(), reader, model.Artifact, limits, summary, classified, rows.pitEvents, values)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("paged corrected pit differs: %v", err)
+	}
+	if pages[1].Samples[8].Values[0].Scalar.Number != 54 {
+		t.Fatal("paged correction mutated source")
+	}
+}
+
 func TestAggregatePitObservationsFiltersCombinationAndKeepsRateAxes(t *testing.T) {
 	current := pitObservationFixture("race-a", "combo-a", 2.0, 2.5)
 	history := []SessionPitObservation{
@@ -92,6 +241,51 @@ func TestAggregatePitObservationsFiltersCombinationAndKeepsRateAxes(t *testing.T
 	wrongVEProvenance := got.Family.VERate.Provenance.Kind != strategyprojection.ProvenanceDerived
 	if wrongVESampleSize || wrongVEProvenance {
 		t.Fatalf("VE rate axes = %#v", got.Family.VERate)
+	}
+}
+
+func TestAggregatePitObservationsExcludesOpenVisitFromStatistics(t *testing.T) {
+	current := pitObservationFixture("race-a", "combo-a", 2, 2.5)
+	start := time.Unix(100, 0).UTC()
+	open := SessionPitObservation{
+		SessionID: "race-b", CombinationID: "combo-a",
+		Family: strategyprojection.PitFamily{Presence: strategyprojection.PresenceUnknown, ObservedIntervals: []strategyprojection.ObservedPitLaneInterval{{
+			PitNumber: 1, StartTimestamp: &start, Ambiguous: true, AmbiguityReason: "open_pit_lane_interval",
+		}}},
+	}
+
+	got, err := AggregatePitObservations(current, []SessionPitObservation{open})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Family.ObservedIntervals) != 2 || got.Family.Confidence.SampleSize != 1 || got.Family.FuelRate.Confidence.SampleSize != 1 {
+		t.Fatalf("aggregate with open visit = %+v", got.Family)
+	}
+	onlyOpen, err := AggregatePitObservations(open, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if onlyOpen.Family.Presence != strategyprojection.PresenceUnknown || onlyOpen.Family.Reason != "open_pit_lane_interval" ||
+		onlyOpen.Family.Confidence.SampleSize != 0 {
+		t.Fatalf("open-only aggregate = %+v", onlyOpen.Family)
+	}
+}
+
+func TestObservedWearChangesUsesRealLapNumbers(t *testing.T) {
+	laps := make([]AnalyzedLap, 3)
+	for index, number := range []int{10, 11, 12} {
+		laps[index] = AnalyzedLap{Number: number, End: fixtureTime(float64((index + 1) * 10)), Complete: true}
+	}
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	pages := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{
+		{Index: 10, TimestampSeconds: floatPointer(10), Values: fixtureVectorValues([]float64{90, 90, 90, 90})},
+		{Index: 20, TimestampSeconds: floatPointer(20), Values: fixtureVectorValues([]float64{98, 98, 98, 98})},
+		{Index: 30, TimestampSeconds: floatPointer(30), Values: fixtureVectorValues([]float64{98, 98, 98, 98})},
+	}}}
+
+	got := observedWearChanges("wear", laps, pages)
+	if len(got) != 1 || got[0].LapNumber != 11 || got[0].Delta == nil || *got[0].Delta != 8 {
+		t.Fatalf("wear changes = %+v", got)
 	}
 }
 
@@ -150,7 +344,7 @@ func pitFixtureSession(
 		Type:        SessionTypeRace,
 	}
 	pages := []HistoricalPage{
-		pitEventPage("pit", []pitEventValue{{seconds: 2, value: true}, {seconds: 6, value: false}}),
+		pitEventPage("pit", []pitEventValue{{seconds: 0, value: false}, {seconds: 2, value: true}, {seconds: 6, value: false}}),
 		pitContinuousPage("fuel", origin, fuelValues),
 		pitContinuousPage("ve", origin, veValues),
 	}
@@ -309,14 +503,19 @@ func pitEventPage(id string, values []pitEventValue) HistoricalPage {
 func pitContinuousPage(id string, origin TimeOrigin, values []float64) HistoricalPage {
 	samples := make([]HistoricalSample, 0, len(values))
 	for index, value := range values {
-		samples = append(samples, HistoricalSample{
+		sample := HistoricalSample{
 			Index: int64(index), RelativeTimeSeconds: float64(index) / 2,
 			Values: []HistoricalValue{{
 				Present: true,
 				Quality: QualityValid,
 				Scalar:  HistoricalScalar{Kind: ScalarNumber, Number: value},
 			}},
-		})
+		}
+		if origin == TimeOriginSourceTimestamp {
+			seconds := sample.RelativeTimeSeconds
+			sample.TimestampSeconds = &seconds
+		}
+		samples = append(samples, sample)
 	}
 	return HistoricalPage{
 		ChannelID: id,
@@ -350,6 +549,10 @@ func pitWearPage(id string, origin TimeOrigin) HistoricalPage {
 	for index := range page.Samples {
 		page.Samples[index].Index = int64(index)
 		page.Samples[index].RelativeTimeSeconds = float64(index)
+		if origin == TimeOriginSourceTimestamp {
+			seconds := float64(index)
+			page.Samples[index].TimestampSeconds = &seconds
+		}
 		value := page.Samples[index].Values[0]
 		page.Samples[index].Values = []HistoricalValue{value, value, value, value}
 	}
@@ -366,6 +569,10 @@ func pitLapDistancePage(id string, origin TimeOrigin) HistoricalPage {
 	for index := range page.Samples {
 		page.Samples[index].Index = int64(index)
 		page.Samples[index].RelativeTimeSeconds = float64(index)
+		if origin == TimeOriginSourceTimestamp {
+			seconds := float64(index)
+			page.Samples[index].TimestampSeconds = &seconds
+		}
 	}
 	return page
 }

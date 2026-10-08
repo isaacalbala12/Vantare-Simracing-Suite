@@ -129,7 +129,7 @@ func (service *Service[T]) RollbackLegacyMigration(ctx context.Context, command 
 	}
 	restored := strategydocument.StrategyDocumentV2{
 		ContractVersion:   strategydocument.ContractVersionV2,
-		SchemaVersion:     strategydocument.SchemaVersionV2,
+		SchemaVersion:     current.SchemaVersion,
 		GeneratedAt:       generatedAt,
 		Events:            append([]strategydocument.Event{}, meta.PreviousEvents...),
 		ActiveEventID:     cloneEventID(meta.PreviousActiveEventID),
@@ -221,6 +221,7 @@ func (service *Service[T]) ensureLegacyBackup(ctx context.Context, command Legac
 		},
 	}
 	if snapshot.StrategyDocument != nil {
+		backup.SchemaVersion = snapshot.StrategyDocument.SchemaVersion
 		backup.Events = append([]strategydocument.Event{}, snapshot.StrategyDocument.Events...)
 		backup.ActiveEventID = cloneEventID(snapshot.StrategyDocument.ActiveEventID)
 		backup.MigrationArchives = append([]strategydocument.MigrationArchive{}, snapshot.StrategyDocument.MigrationArchives...)
@@ -337,6 +338,12 @@ func buildLegacyMigrationPreview(sources []LegacyStorageSource, fingerprint stri
 		Events:          state.events,
 		ActiveEventID:   state.activeEventID,
 		MigrationMeta:   meta,
+	}
+	for _, event := range document.Events {
+		if event.Rules != nil {
+			document.SchemaVersion = strategydocument.SchemaVersionV2Rules
+			break
+		}
 	}
 	if err := document.Validate(); err != nil {
 		return LegacyMigrationPreview{}, fmt.Errorf("validate legacy migration preview: %w", err)
@@ -987,6 +994,9 @@ func previewFromPersisted(document strategydocument.StrategyDocumentV2, alreadyI
 func carryLegacyMigrationHistory(target *strategydocument.StrategyDocumentV2, backup strategydocument.StrategyDocumentV2) {
 	if target == nil || target.MigrationMeta == nil || backup.MigrationMeta == nil {
 		return
+	}
+	if backup.SchemaVersion == strategydocument.SchemaVersionV2Rules {
+		target.SchemaVersion = backup.SchemaVersion
 	}
 	target.MigrationMeta.PreviousGeneratedAt = backup.MigrationMeta.PreviousGeneratedAt
 	target.MigrationMeta.SupersededJournals = append([]strategydocument.LegacyJournalBackup{}, backup.MigrationMeta.SupersededJournals...)

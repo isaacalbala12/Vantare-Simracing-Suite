@@ -25,6 +25,117 @@ type testPayload struct {
 	Note string `json:"note,omitempty"`
 }
 
+func TestRepositoryPendingRevisionSurvivesRestartAndBindsCommit(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	root := t.TempDir()
+	repository, err := Open[testPayload](root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := json.RawMessage(`{"protocolVersion":"strategy.application.v1","commandId":"save-a","operation":"save_revision","expectedRepositoryVersion":0}`)
+	staged, err := repository.StagePendingRevision(ctx, 0, "save-a", command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot, err := repository.Snapshot(ctx); err != nil || snapshot.Version != 0 {
+		t.Fatalf("stage changed logical generation: snapshot=%#v err=%v", snapshot, err)
+	}
+
+	reopened, err := Open[testPayload](root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending, err := reopened.LoadPendingRevision(ctx)
+	if err != nil || pending == nil || !reflect.DeepEqual(*pending, staged) {
+		t.Fatalf("pending after restart = %#v, err=%v, want %#v", pending, err, staged)
+	}
+	if replay, err := reopened.StagePendingRevision(ctx, 0, "save-a", command); err != nil || !reflect.DeepEqual(replay, staged) {
+		t.Fatalf("exact stage replay = %#v, err=%v", replay, err)
+	}
+	if _, err := reopened.StagePendingRevision(ctx, 0, "save-a", json.RawMessage(`{"different":true}`)); !errors.Is(err, ErrPendingRevisionConflict) {
+		t.Fatalf("changed replay error = %v, want ErrPendingRevisionConflict", err)
+	}
+
+	draft := validDraft("draft-a", "plan-a", testPayload{Laps: 10})
+	result, err := reopened.Commit(ctx, 0, ChangeSet[testPayload]{
+		Drafts: []contract.PlanDraft[testPayload]{draft},
+		RequiredPendingRevision: &PendingRevisionIdentity{
+			CommandID: staged.CommandID, CommandDigest: staged.CommandDigest,
+		},
+	})
+	if err != nil || result.Version != 1 {
+		t.Fatalf("guarded commit = %#v, err=%v", result, err)
+	}
+	if pending, err := reopened.LoadPendingRevision(ctx); err != nil || pending == nil || pending.CommandID != "save-a" {
+		t.Fatalf("commit lost recovery intent: pending=%#v err=%v", pending, err)
+	}
+	if err := reopened.AcknowledgePendingRevision(ctx, "other", staged.CommandDigest); !errors.Is(err, ErrPendingRevisionConflict) {
+		t.Fatalf("foreign acknowledge error = %v, want ErrPendingRevisionConflict", err)
+	}
+	if err := reopened.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
+		t.Fatal(err)
+	}
+	if err := reopened.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
+		t.Fatalf("idempotent acknowledge: %v", err)
+	}
+	if pending, err := reopened.LoadPendingRevision(ctx); err != nil || pending != nil {
+		t.Fatalf("pending after acknowledge = %#v, err=%v", pending, err)
+	}
+}
+
+func TestRepositoryRecoverableCommitRequiresStillStagedIntent(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, err := Open[testPayload](t.TempDir(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := json.RawMessage(`{"commandId":"save-a"}`)
+	staged, err := repository.StagePendingRevision(ctx, 0, "save-a", command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
+		t.Fatal(err)
+	}
+	_, err = repository.Commit(ctx, 0, ChangeSet[testPayload]{
+		Drafts:                  []contract.PlanDraft[testPayload]{validDraft("draft-a", "plan-a", testPayload{Laps: 10})},
+		RequiredPendingRevision: &PendingRevisionIdentity{CommandID: staged.CommandID, CommandDigest: staged.CommandDigest},
+	})
+	if !errors.Is(err, ErrPendingRevisionConflict) {
+		t.Fatalf("commit after acknowledge error = %v, want ErrPendingRevisionConflict", err)
+	}
+}
+
+func TestRepositoryPendingStageReportsUncertainAfterBackupReplacement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, err := Open[testPayload](t.TempDir(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaultWriter := repository.write
+	writes := 0
+	fault := errors.New("primary replace failed")
+	repository.write = func(path string, data []byte) (bool, error) {
+		writes++
+		if writes == 2 {
+			return false, fault
+		}
+		return defaultWriter(path, data)
+	}
+	_, err = repository.StagePendingRevision(ctx, 0, "save-a", json.RawMessage(`{"commandId":"save-a"}`))
+	if !errors.Is(err, ErrCommitUncertain) || !errors.Is(err, fault) {
+		t.Fatalf("stage error = %v, want uncertain primary failure", err)
+	}
+	repository.write = defaultWriter
+	pending, err := repository.LoadPendingRevision(ctx)
+	if err != nil || pending == nil || pending.CommandID != "save-a" {
+		t.Fatalf("backup recovery = %#v, err=%v", pending, err)
+	}
+}
+
 func TestRepositoryRecoversDraftWithoutMutatingStableRevision(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

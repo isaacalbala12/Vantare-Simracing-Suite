@@ -15,6 +15,7 @@ var (
 	ErrCandidateLimit  = errors.New("telemetry analysis candidate limit exceeded")
 	ErrNotReady        = errors.New("telemetry source is not ready")
 	ErrSourceChanged   = errors.New("telemetry source changed after stability gate")
+	ErrSourceMissing   = errors.New("selected telemetry source is missing")
 	ErrInvalidOptions  = errors.New("invalid telemetry analysis import options")
 	ErrInvalidWindow   = errors.New("invalid telemetry analysis stability window")
 	ErrInvalidManifest = errors.New("invalid telemetry analysis manifest")
@@ -67,18 +68,23 @@ type Provenance struct {
 }
 
 type Candidate struct {
-	Kind       SourceKind `json:"kind"`
-	Format     string     `json:"format"`
-	Locator    string     `json:"locator"`
-	Size       int64      `json:"size"`
-	ModTime    time.Time  `json:"modified_at"`
-	WALPresent bool       `json:"wal_present"`
-	State      State      `json:"state"`
+	// Local discovery label only; never serialize it into provenance or manifests.
+	DisplayName string     `json:"-"`
+	Kind        SourceKind `json:"kind"`
+	Format      string     `json:"format"`
+	Locator     string     `json:"locator"`
+	Size        int64      `json:"size"`
+	ModTime     time.Time  `json:"modified_at"`
+	WALPresent  bool       `json:"wal_present"`
+	State       State      `json:"state"`
 
 	sourcePath    string
 	walPath       string
 	stabilityGate bool
 }
+
+// LocalPath is for native ownership checks only; never publish it in UI contracts.
+func (candidate Candidate) LocalPath() string { return candidate.sourcePath }
 
 type ContentMetadata struct {
 	Size      int64

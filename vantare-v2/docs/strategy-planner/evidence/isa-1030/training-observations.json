@@ -1,0 +1,401 @@
+{
+  "method": "Bounded existing spike samples and event observations; not independent truth labels; no solver run",
+  "records": [
+    {
+      "inventory_id": "S026-08a1e626",
+      "source_id": "sha256:08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538",
+      "partition": "training",
+      "source_hash_after_read_matches": true,
+      "channel_count": 98,
+      "explicit_invalidation_or_spin_names": [],
+      "event_summaries": {
+        "In Pits": {
+          "rows": 5,
+          "value_counts": {
+            "[1]": 3,
+            "[0]": 2
+          }
+        },
+        "LastImpactMagnitude": {
+          "rows": 1,
+          "value_counts": {
+            "[False]": 1
+          }
+        },
+        "Finish Status": {
+          "rows": 1,
+          "value_counts": {
+            "[0]": 1
+          }
+        }
+      },
+      "descriptive_bounded_samples": {
+        "Track Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 6037,
+          "nulls": 0,
+          "minimum": 40.00969696044922,
+          "maximum": 42.339691162109375
+        },
+        "Ambient Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 6037,
+          "nulls": 0,
+          "minimum": 20.02008819580078,
+          "maximum": 23.023019790649414
+        },
+        "Fuel Level": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "L",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 1.8498902320861816,
+          "maximum": 88.0
+        },
+        "Virtual Energy": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "%",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 0.5106176137924194,
+          "maximum": 100.0
+        },
+        "Tyres Wear": {
+          "kind": "continuous",
+          "frequency_hz": 10,
+          "unit": "%",
+          "samples": 24576,
+          "nulls": 0,
+          "minimum": 52.772830963134766,
+          "maximum": 100.0
+        },
+        "Minimum Path Wetness": {
+          "kind": "events",
+          "frequency_hz": null,
+          "unit": "%",
+          "samples": 1,
+          "nulls": 0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "historical_alignment_not_validated": {
+        "continuous_anchor": "Ambient Temperature",
+        "continuous_end_s": 6037.0,
+        "last_event_s": 12158.9,
+        "end_delta_s": -6121.9,
+        "estimated_event_to_continuous_offset_s": 6121.9
+      },
+      "historical_segmentation_not_ground_truth": {
+        "lap_event_rows": 0,
+        "lap_time_rows": 61,
+        "lap_dist_resets": 60,
+        "difference_resets_vs_lap_times": -1
+      }
+    },
+    {
+      "inventory_id": "S040-3ebe91db",
+      "source_id": "sha256:3ebe91db7872482a08707ae313ad3e425c70dcab987edaa0cd7b9b8d1ef63400",
+      "partition": "training",
+      "source_hash_after_read_matches": true,
+      "channel_count": 98,
+      "explicit_invalidation_or_spin_names": [],
+      "event_summaries": {
+        "In Pits": {
+          "rows": 2,
+          "value_counts": {
+            "[1]": 1,
+            "[0]": 1
+          }
+        },
+        "LastImpactMagnitude": {
+          "rows": 2,
+          "value_counts": {
+            "[False]": 1,
+            "[True]": 1
+          }
+        },
+        "Finish Status": {
+          "rows": 1,
+          "value_counts": {
+            "[0]": 1
+          }
+        }
+      },
+      "descriptive_bounded_samples": {
+        "Track Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 1464,
+          "nulls": 0,
+          "minimum": 20.341516494750977,
+          "maximum": 21.003324508666992
+        },
+        "Ambient Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 1464,
+          "nulls": 0,
+          "minimum": 18.01813316345215,
+          "maximum": 18.01813316345215
+        },
+        "Fuel Level": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "L",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 54.69486999511719,
+          "maximum": 85.0
+        },
+        "Virtual Energy": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "%",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 65.35112762451172,
+          "maximum": 100.0
+        },
+        "Tyres Wear": {
+          "kind": "continuous",
+          "frequency_hz": 10,
+          "unit": "%",
+          "samples": 24576,
+          "nulls": 0,
+          "minimum": 78.49234771728516,
+          "maximum": 100.0
+        },
+        "Minimum Path Wetness": {
+          "kind": "events",
+          "frequency_hz": null,
+          "unit": "%",
+          "samples": 2,
+          "nulls": 0,
+          "minimum": 5.0,
+          "maximum": 12.5
+        }
+      },
+      "historical_alignment_not_validated": {
+        "continuous_anchor": "Ambient Temperature",
+        "continuous_end_s": 1464.0,
+        "last_event_s": 7668.2,
+        "end_delta_s": -6204.2,
+        "estimated_event_to_continuous_offset_s": 6204.2
+      },
+      "historical_segmentation_not_ground_truth": {
+        "lap_event_rows": 0,
+        "lap_time_rows": 11,
+        "lap_dist_resets": 15,
+        "difference_resets_vs_lap_times": 4
+      }
+    },
+    {
+      "inventory_id": "S125-35438326",
+      "source_id": "sha256:35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0",
+      "partition": "training",
+      "source_hash_after_read_matches": true,
+      "channel_count": 98,
+      "explicit_invalidation_or_spin_names": [],
+      "event_summaries": {
+        "In Pits": {
+          "rows": 3,
+          "value_counts": {
+            "[0]": 2,
+            "[1]": 1
+          }
+        },
+        "LastImpactMagnitude": {
+          "rows": 11,
+          "value_counts": {
+            "[True]": 6,
+            "[False]": 5
+          }
+        },
+        "Finish Status": {
+          "rows": 2,
+          "value_counts": {
+            "[0]": 1,
+            "[1]": 1
+          }
+        }
+      },
+      "descriptive_bounded_samples": {
+        "Track Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 3772,
+          "nulls": 0,
+          "minimum": 40.333290100097656,
+          "maximum": 42.99998092651367
+        },
+        "Ambient Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 3772,
+          "nulls": 0,
+          "minimum": 28.027908325195312,
+          "maximum": 29.028884887695312
+        },
+        "Fuel Level": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "L",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 4.065855503082275,
+          "maximum": 75.0
+        },
+        "Virtual Energy": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "%",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "Tyres Wear": {
+          "kind": "continuous",
+          "frequency_hz": 10,
+          "unit": "%",
+          "samples": 24576,
+          "nulls": 0,
+          "minimum": 72.86043548583984,
+          "maximum": 100.0
+        },
+        "Minimum Path Wetness": {
+          "kind": "events",
+          "frequency_hz": null,
+          "unit": "%",
+          "samples": 1,
+          "nulls": 0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "historical_alignment_not_validated": {
+        "continuous_anchor": "Ambient Temperature",
+        "continuous_end_s": 3772.0,
+        "last_event_s": 3796.82,
+        "end_delta_s": -24.820000000000164,
+        "estimated_event_to_continuous_offset_s": 24.820000000000164
+      },
+      "historical_segmentation_not_ground_truth": {
+        "lap_event_rows": 0,
+        "lap_time_rows": 39,
+        "lap_dist_resets": 39,
+        "difference_resets_vs_lap_times": 0
+      }
+    },
+    {
+      "inventory_id": "S266-6b912640",
+      "source_id": "sha256:6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362",
+      "partition": "training",
+      "source_hash_after_read_matches": true,
+      "channel_count": 98,
+      "explicit_invalidation_or_spin_names": [],
+      "event_summaries": {
+        "In Pits": {
+          "rows": 5,
+          "value_counts": {
+            "[1]": 3,
+            "[0]": 2
+          }
+        },
+        "LastImpactMagnitude": {
+          "rows": 11,
+          "value_counts": {
+            "[False]": 6,
+            "[True]": 5
+          }
+        },
+        "Finish Status": {
+          "rows": 1,
+          "value_counts": {
+            "[0]": 1
+          }
+        }
+      },
+      "descriptive_bounded_samples": {
+        "Track Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 29.78731918334961,
+          "maximum": 32.80092239379883
+        },
+        "Ambient Temperature": {
+          "kind": "continuous",
+          "frequency_hz": 1,
+          "unit": "C",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 25.024974822998047,
+          "maximum": 26.90180778503418
+        },
+        "Fuel Level": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "L",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 0.27451571822166443,
+          "maximum": 75.0
+        },
+        "Virtual Energy": {
+          "kind": "continuous",
+          "frequency_hz": 20,
+          "unit": "%",
+          "samples": 6144,
+          "nulls": 0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "Tyres Wear": {
+          "kind": "continuous",
+          "frequency_hz": 10,
+          "unit": "%",
+          "samples": 24576,
+          "nulls": 0,
+          "minimum": 55.68829345703125,
+          "maximum": 100.0
+        },
+        "Minimum Path Wetness": {
+          "kind": "events",
+          "frequency_hz": null,
+          "unit": "%",
+          "samples": 1,
+          "nulls": 0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "historical_alignment_not_validated": {
+        "continuous_anchor": "Ambient Temperature",
+        "continuous_end_s": 6855.0,
+        "last_event_s": 16840.14,
+        "end_delta_s": -9985.14,
+        "estimated_event_to_continuous_offset_s": 9985.14
+      },
+      "historical_segmentation_not_ground_truth": {
+        "lap_event_rows": 0,
+        "lap_time_rows": 71,
+        "lap_dist_resets": 70,
+        "difference_resets_vs_lap_times": -1
+      }
+    }
+  ]
+}

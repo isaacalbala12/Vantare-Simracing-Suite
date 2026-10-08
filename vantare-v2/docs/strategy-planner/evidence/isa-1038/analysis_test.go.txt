@@ -1,0 +1,17 @@
+package telemetryanalysis
+
+import "testing"
+
+func TestISA1038ReviewPitBetweenBoundaries(t *testing.T) {
+	start := secondsTimestamp(60)
+	laps := []AnalyzedLap{{Number: 2, Start: &start, End: secondsTimestamp(120), Complete: true}}
+	event := func(sec float64, active bool) observedEvent {
+		return observedEvent{seconds: sec, values: []HistoricalValue{{Present: true, Quality: QualityValid, Scalar: HistoricalScalar{Kind: ScalarBoolean, Boolean: active}}}}
+	}
+	labelPitLaps(laps, []observedEvent{event(0, false), event(80, true), event(100, false)})
+	laps[0].FamilyUse = familyUseForLap(laps[0])
+	t.Logf("pit=[80,100] lap=[60,120] labels=%v pace_included=%t", laps[0].Labels, familyIncluded(laps[0], FamilyCombinedStintPaceCurve))
+	if laps[0].HasLabel(LapLabelPit) || !familyIncluded(laps[0], FamilyCombinedStintPaceCurve) {
+		t.Fatal("suspected pit label omission absent")
+	}
+}

@@ -2,6 +2,8 @@ package document
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -171,5 +173,79 @@ func TestStrategyDocumentV2_ValidationFailures(t *testing.T) {
 	doc.ActiveEventID = &active
 	if err := doc.Validate(); err == nil {
 		t.Fatalf("expected schema error")
+	}
+}
+
+func TestSelectionPinsAnalysisRevisionAcrossSerialization(t *testing.T) {
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	for _, included := range []bool{true, false} {
+		doc := validDocumentV2(t)
+		doc.Events[0].Combination = &CombinationReference{CombinationID: "combo", Sessions: []SessionSelection{{SessionID: "race-1", Included: included, Revision: &ref}}}
+		if err := doc.Validate(); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var restored StrategyDocumentV2
+		if err := json.Unmarshal(raw, &restored); err != nil {
+			t.Fatal(err)
+		}
+		got := restored.Events[0].Combination.Sessions[0]
+		if got.Revision == nil || *got.Revision != ref || got.Included != included {
+			t.Fatalf("lost selection: %+v", got)
+		}
+	}
+}
+
+func TestSelectionRejectsInvalidOrPartialAnalysisRevisions(t *testing.T) {
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	for _, name := range []string{"foreign", "digest", "partial"} {
+		t.Run(name, func(t *testing.T) {
+			current := ref
+			sessions := []SessionSelection{{SessionID: "race-1", Included: true, Revision: &current}}
+			switch name {
+			case "foreign":
+				current.SessionID = "other"
+			case "digest":
+				current.RevisionID = "latest"
+			case "partial":
+				sessions = append(sessions, SessionSelection{SessionID: "other", Included: true})
+			}
+			doc := validDocumentV2(t)
+			doc.Events[0].Combination = &CombinationReference{CombinationID: "combo", Sessions: sessions}
+			if err := doc.Validate(); err == nil {
+				t.Fatal("invalid selection accepted")
+			}
+		})
+	}
+}
+
+func TestSelectedRevisionMustMatchStoredProjection(t *testing.T) {
+	raw, err := os.ReadFile("../../telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projection strategyprojection.StrategyInputProjectionV2
+	if err := json.Unmarshal(raw, &projection); err != nil {
+		t.Fatal(err)
+	}
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	projection.SourceSessions = []string{"race-1"}
+	projection.SourceRevisions = []strategyprojection.AnalysisRevisionRef{ref}
+	doc := validDocumentV2(t)
+	doc.Events[0].Combination = &CombinationReference{CombinationID: projection.CombinationID, Sessions: []SessionSelection{{SessionID: "race-1", Included: true, Revision: &ref}}}
+	doc.Events[0].PlanningInputs = &PlanningInputs{Projection: &projection}
+	if err := doc.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	projection.SourceRevisions[0].RevisionID = strings.Repeat("d", 64)
+	if err := doc.Validate(); err == nil {
+		t.Fatal("different revision accepted")
+	}
+	projection.SourceRevisions = nil
+	if err := doc.Validate(); err == nil {
+		t.Fatal("unpinned projection accepted for pinned selection")
 	}
 }

@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import projectionGolden from "../../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
+import type { StrategyInputProjectionV2 } from "../../strategy/strategy-application-client";
+import { describe, expect, it, vi } from "vitest";
 import type {
   StrategyApplicationClient,
   StrategyApplicationCommandV1,
@@ -11,6 +13,7 @@ import {
   selectedCombination,
   selectedSessions,
   usableSessionCombinations,
+  strategyEventV2FromRecord,
 } from "./strategy-session-selection";
 import type { StrategyEventRecord } from "./strategy-events-store";
 
@@ -82,3 +85,39 @@ function result<TPayload>(
 ): StrategyApplicationResultV1<TPayload> {
   return { protocolVersion: "strategy.application.v1", commandId, repositoryVersion, recoveredFromBackup: false, closed: false, ...extra };
 }
+
+
+it.each(["exclusion", "revision", "same", "failure"])("preserves revisions and handles %s without stale derived inputs", async (mode) => {
+  const revision = { sessionId: "race-1", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) };
+  const projection = { ...projectionGolden, combinationId: combination.combinationId, sourceSessions: ["race-1"], sourceRevisions: [revision] } as unknown as StrategyInputProjectionV2;
+  const planning = { projection, overrides: { fuel_per_lap_liters: { value: 3, presence: "valid" as const, provenance: { kind: "manual" as const, sourceId: "test" }, confidence: { sampleSize: 1, computationVersion: "test" } } } };
+  const event = { ...strategyEventV2FromRecord(record), combination: { combinationId: combination.combinationId, sessions: [{ sessionId: "race-1", included: true, revision }] }, planningInputs: planning };
+  const view = { status: "available" as const, repositoryVersion: 1, combinations: [combination], events: [event], planningByEvent: { [record.id]: planning }, planningStatusByEvent: { [record.id]: "available" as const } };
+  const execute = vi.fn(async (command: StrategyApplicationCommandV1<unknown>) => {
+    if (command.operation !== "edit_event") throw new Error("unexpected operation");
+    if (mode === "failure") throw new Error("conflict");
+    return result(command.commandId, 2, { events: [command.event] });
+  });
+  const client: StrategyApplicationClient<unknown> = { execute, cancel: () => false, dispose: () => undefined };
+  const selected = selectedSessions(view, record.id, combination);
+  expect(selected[0].revision).toEqual(revision);
+  const changed = selected.map((session) => mode === "same" ? session : mode === "revision" ? { ...session, revision: { ...revision, revisionId: "d".repeat(64) } } : { ...session, included: false });
+  if (mode === "failure") {
+    await expect(persistStrategySessionSelection(client, view, record, combination, changed)).rejects.toThrow("conflict");
+    expect(view.planningByEvent[record.id]).toEqual(planning);
+    expect(view.events[0].combination.sessions[0].included).toBe(true);
+    return;
+  }
+  const saved = await persistStrategySessionSelection(client, view, record, combination, changed);
+  expect(saved.events[0].combination?.sessions[0].revision).toEqual(changed[0].revision);
+  expect(saved.events[0].planningInputs?.overrides).toEqual(planning.overrides);
+  if (mode === "same") {
+    expect(saved.events[0].planningInputs?.projection).toEqual(projection);
+    expect(saved.planningByEvent[record.id]).toEqual(planning);
+  } else {
+    expect(saved.events[0].planningInputs?.projection).toBeUndefined();
+    expect(saved.planningByEvent[record.id]).toBeUndefined();
+    expect(saved.planningStatusByEvent[record.id]).toBeUndefined();
+  }
+  expect(view.planningByEvent[record.id]).toEqual(planning);
+});

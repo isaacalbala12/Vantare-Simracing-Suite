@@ -204,6 +204,7 @@ type Server struct {
 
 type ServerConfig struct {
 	Addr                    string
+	DisableAuth             bool
 	DistFS                  fs.FS
 	CfgDir                  string
 	EngineerSvc             *engineerservice.EngineerService
@@ -256,8 +257,10 @@ func New(cfg ServerConfig) *Server {
 		)
 	}
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
-	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
-	mux.HandleFunc("POST /auth/token", s.handleAuthToken)
+	if !cfg.DisableAuth {
+		mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
+		mux.HandleFunc("POST /auth/token", s.handleAuthToken)
+	}
 	if cfg.WidgetPolicy != nil {
 		mux.Handle("GET "+WidgetPolicyStreamRoute, widgetPolicyStreamHandler(cfg.WidgetPolicy))
 	}

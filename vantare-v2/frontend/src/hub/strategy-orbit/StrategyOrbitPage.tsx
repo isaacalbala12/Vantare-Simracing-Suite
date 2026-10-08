@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { StrategyRecordedFrame } from "./StrategyRecordedFrame";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   AvailabilityBoard,
@@ -102,11 +103,16 @@ import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
   STRATEGY_ORBIT_REVISION_CONTRACT_V1,
   activateOrbitRevision,
+  acknowledgeOrbitRevisionRecovery,
   loadOrbitLifecycle,
+  loadOrbitRevisionRecovery,
   orbitLifecycleIdentity,
+  resolveOrbitRevisionRecovery,
+  retryOrbitRevisionRecovery,
   sameRevision,
   saveOrbitRevision,
   type OrbitLifecycleState,
+  type OrbitRevisionRecovery,
   type StrategyOrbitRevisionPayloadV1,
 } from "./strategy-orbit-lifecycle";
 import {
@@ -148,6 +154,7 @@ import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from 
 import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
 import { StrategyReferencePanel } from "./StrategyReferencePanel";
 import { StrategyAnalysisPanel } from "./StrategyAnalysisPanel";
+import { StrategyRecordedSessions } from "./StrategyRecordedSessions";
 import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import { STRATEGY_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
@@ -170,6 +177,13 @@ type VisibleApplicationFailure = {
 type OrbitLifecycleView = {
   readonly status: "idle" | "loading" | "ready" | "busy" | "error";
   readonly state?: OrbitLifecycleState;
+  readonly failure?: VisibleApplicationFailure;
+};
+
+type OrbitRecoveryView = {
+  readonly status: "loading" | "ready" | "busy" | "error";
+  readonly pending?: OrbitRevisionRecovery;
+  readonly resolution?: "stored" | "not_stored";
   readonly failure?: VisibleApplicationFailure;
 };
 
@@ -605,6 +619,23 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventPlanningInputs = eventRecord && catalogView
     ? catalogView.planningByEvent[eventRecord.id]
     : undefined;
+  const eventPlanningStatus = eventRecord && catalogView
+    ? catalogView.planningStatusByEvent[eventRecord.id]
+    : undefined;
+  const persistedSessionSelection = eventRecord && catalogView
+    ? catalogView.events.find((event) => event.id === eventRecord.id)?.combination?.sessions ?? []
+    : [];
+  const telemetryPlanningRequired = eventRecord?.fillMode === "telemetry"
+    || persistedSessionSelection.some((session) => session.included);
+  const telemetryPlanningReady = sessionCatalog.status === "error"
+    ? eventRecord?.fillMode !== "telemetry"
+    : sessionCatalog.status === "ready"
+      && (!telemetryPlanningRequired || eventPlanningStatus === "available");
+  const telemetryPlanningFailed = telemetryPlanningRequired
+    && (sessionCatalog.status === "error" || sessionSave === "error"
+      || (sessionCatalog.status === "ready" && !eventCombination)
+      || (eventPlanningStatus !== undefined && eventPlanningStatus !== "available"));
+  const eventRules = catalogView?.events.find(event => event.id === eventRecord?.id)?.rules;
   const eventWeatherScenarios = eventRecord && catalogView
     ? selectedWeatherScenarios(catalogView, eventRecord.id)
     : EMPTY_WEATHER_SCENARIOS;
@@ -625,11 +656,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     );
     return () => { current = false; };
   }, [applicationClient, catalogView, eventCombination, eventRecord]);
-  const planningRequests = useRef(new Set<string>());
   useEffect(() => {
-    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
-      || planningRequests.current.has(eventRecord.id)) return;
-    planningRequests.current.add(eventRecord.id);
+    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs) return;
     let current = true;
     void refreshStrategyPlanningInputs(applicationClient, catalogView, eventRecord.id).then(
       (view) => { if (current) setSessionCatalog({ status: "ready", view }); },
@@ -657,8 +685,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   // ── cálculo Go (manual + solver) ─────────────────────────────────────────
   const calculationSequence = useRef(0);
   const [calculationRetry, setCalculationRetry] = useState(0);
-  const calculationInput = strategyEvent && eventRecord && activeId
-    ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios)
+  const calculationInput = strategyEvent && eventRecord && activeId && telemetryPlanningReady
+    ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios, eventRules?.value)
     : null;
   const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
   const [calculation, setCalculation] = useState<
@@ -675,7 +703,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       return;
     }
     const currentCalculationInput = JSON.parse(calculationKey) as NonNullable<typeof calculationInput>;
-    const commandId = `orbit-calculate-${sequence}`;
+    const commandId = `orbit-calculate-${globalThis.crypto.randomUUID()}`;
     let current = true;
     void Promise.resolve().then(() => {
       if (current) setCalculation({ status: "loading" });
@@ -740,8 +768,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         availability: eventRecord.availability ?? {},
         teamMode: eventRecord.teamMode ?? "team",
         fillMode: eventRecord.fillMode ?? "manual",
+        ...(eventRules === undefined ? {} : { rules: eventRules }),
       },
       variant: active,
+      ...(calculationInput ? { calculationInput } : {}),
       calculatedPlan: plan,
     };
   })();
@@ -749,6 +779,23 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const lifecycleSequence = useRef(0);
   const [lifecycleRetry, setLifecycleRetry] = useState(0);
   const [lifecycle, setLifecycle] = useState<OrbitLifecycleView>({ status: "idle" });
+  const recoverySequence = useRef(0);
+  const [recovery, setRecovery] = useState<OrbitRecoveryView>({ status: "loading" });
+  useEffect(() => {
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    void Promise.resolve().then(() => {
+      if (sequence === recoverySequence.current) setRecovery({ status: "loading" });
+    });
+    void loadOrbitRevisionRecovery(lifecycleClient, String(sequence)).then(
+      (pending) => {
+        if (sequence === recoverySequence.current) setRecovery({ status: "ready", ...(pending ? { pending } : {}) });
+      },
+      (error: unknown) => {
+        if (sequence === recoverySequence.current) setRecovery({ status: "error", failure: visibleApplicationFailure(error) });
+      },
+    );
+  }, [lifecycleClient]);
   useEffect(() => {
     lifecycleSequence.current += 1;
     const sequence = lifecycleSequence.current;
@@ -799,6 +846,52 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       const failure = visibleApplicationFailure(error);
       setLifecycle({ status: "error", state: lifecycle.state, failure });
       toast.show(t("strategy.lifecycle.saveFailed"), failure.message);
+    }
+  };
+
+  const checkRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending });
+    try {
+      const result = await resolveOrbitRevisionRecovery(lifecycleClient, String(sequence));
+      if (sequence !== recoverySequence.current) return;
+      setRecovery({ status: "ready", pending, resolution: result.stored ? "stored" : "not_stored" });
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, failure: visibleApplicationFailure(error) });
+    }
+  };
+
+  const retryRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending, resolution: recovery.resolution });
+    try {
+      const revision = await retryOrbitRevisionRecovery(lifecycleClient, pending, String(sequence));
+      if (sequence !== recoverySequence.current) return;
+      setRecovery({ status: "ready" });
+      setLifecycleRetry((value) => value + 1);
+      toast.show(t("strategy.lifecycle.recoverySaved"), revision.revisionId);
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, resolution: recovery.resolution, failure: visibleApplicationFailure(error) });
+    }
+  };
+
+  const acknowledgeRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending, resolution: recovery.resolution });
+    try {
+      await acknowledgeOrbitRevisionRecovery(lifecycleClient, pending, String(sequence));
+      if (sequence === recoverySequence.current) setRecovery({ status: "ready" });
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, resolution: recovery.resolution, failure: visibleApplicationFailure(error) });
     }
   };
 
@@ -1273,8 +1366,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         combination,
         combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded })),
       );
-      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-      setSessionCatalog({ status: "ready", view });
+      setSessionCatalog({ status: "ready", view: saved });
       setSessionPickerDismissed(eventRecord.id);
       setSessionSave("idle");
     } catch {
@@ -1296,8 +1388,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         eventCombination,
         sessions,
       );
-      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-      setSessionCatalog({ status: "ready", view });
+      setSessionCatalog({ status: "ready", view: saved });
       setSessionSave("idle");
     } catch {
       setSessionSave("error");
@@ -2102,32 +2193,35 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const stepIndex = wizard ? WIZARD_STEPS.indexOf(wizard.step) : 0;
 
   const wizardView = wizard ? (
-    <Surface
-      aria-label={t("strategy.wizard.title")}
-      data-testid="orbit-strategy-wizard"
-      fill
-      meta={formatMessage(t("strategy.wizard.stepMeta"), {
-        n: stepIndex + 1,
-        total: WIZARD_STEPS.length,
-      })}
+    <StrategyRecordedFrame
+      currentStep={wizard.step}
+      steps={WIZARD_STEPS.map((id, index) => ({ id, label: t(`strategy.wizard.steps.${id}`), available: index <= stepIndex }))}
+      onStep={(id) => {
+        const step = WIZARD_STEPS.find(candidate => candidate === id);
+        if (step) setWizard({ ...wizard, step, path: "none" });
+      }}
       title={t("strategy.wizard.title")}
+      description={t(`strategy.wizard.${wizard.step}.lead`)}
+      preservationLabel={t("strategy.recorded.originals")}
+      progressLabel={formatMessage(t("strategy.wizard.stepMeta"), { n: stepIndex + 1, total: WIZARD_STEPS.length })}
+      actions={<div className="orbit-strategy__wizard-acts">
+        <Button
+          data-testid="orbit-strategy-wizard-back"
+          onClick={() => {
+            if (stepIndex === 0) {
+              setWizard(null);
+              return;
+            }
+            setWizard({ ...wizard, step: WIZARD_STEPS[stepIndex - 1], path: "none" });
+          }}
+          variant="ghost"
+        >
+          {stepIndex === 0 ? t("strategy.wizard.cancel") : t("strategy.wizard.back")}
+        </Button>
+      </div>}
     >
-      <ol aria-label={t("strategy.wizard.stepsLabel")} className="orbit-strategy__steps">
-        {WIZARD_STEPS.map((id, index) => (
-          <li
-            data-state={index < stepIndex ? "done" : index === stepIndex ? "now" : "next"}
-            data-testid={`orbit-strategy-wizard-step-${id}`}
-            key={id}
-          >
-            <span className="orbit-strategy__step-n">{index + 1}</span>
-            <span>{t(`strategy.wizard.steps.${id}`)}</span>
-          </li>
-        ))}
-      </ol>
-
       {wizard.step === "fill" ? (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.fill.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-fill">
             <Featured
               data-testid="orbit-strategy-wizard-manual"
@@ -2166,7 +2260,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       ) : wizard.step === "team" ? (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.team.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-team-step">
             <Featured
               data-testid="orbit-strategy-wizard-solo"
@@ -2188,7 +2281,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       ) : (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.start.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-paths">
             <Featured
               data-testid="orbit-strategy-path-own"
@@ -2211,22 +2303,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       )}
 
-      <div className="orbit-strategy__wizard-acts">
-        <Button
-          data-testid="orbit-strategy-wizard-back"
-          onClick={() => {
-            if (stepIndex === 0) {
-              setWizard(null);
-              return;
-            }
-            setWizard({ ...wizard, step: WIZARD_STEPS[stepIndex - 1], path: "none" });
-          }}
-          variant="ghost"
-        >
-          {stepIndex === 0 ? t("strategy.wizard.cancel") : t("strategy.wizard.back")}
-        </Button>
-      </div>
-    </Surface>
+    </StrategyRecordedFrame>
   ) : null;
 
   const sessionPickerView = eventRecord ? (
@@ -2619,10 +2696,32 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     </div>
   );
 
+  const recordedSessionsPanel = eventRecord && eventCombination && catalogView ? <div key="recorded-sessions" hidden={calculationCurrent && calculation.status === "success" && panel !== "sessions"}>
+                <StrategyRecordedSessions
+                  key={`${eventRecord.id}:${eventCombination.combinationId}`}
+                  combinationId={eventCombination.combinationId}
+                  revisions={eventSessionDecisions.flatMap((session) => session.revision ? [session.revision] : [])}
+                  t={t}
+                  onCleanupError={() => toast.show(t("strategy.recorded.error"), "recorded_cleanup_failed")}
+                  onApply={async (sessions, signal) => {
+                    signal.throwIfAborted();
+                    const prepared = sessions.map((session) => ({ sessionId: session.revision.sessionId, included: true, revision: session.revision }));
+                    const excluded = eventCombination.sessions
+                      .filter((session) => !prepared.some((item) => item.sessionId === session.sessionId))
+                      .map((session) => ({ sessionId: session.sessionId, included: false }));
+                    const saved = await persistStrategySessionSelection(applicationClient, catalogView, eventRecord, eventCombination,
+                      [...excluded, ...prepared]);
+                    signal.throwIfAborted();
+                    // Keep the acknowledged version even if recomputation fails.
+                    setSessionCatalog({ status: "ready", view: saved });
+                  }}
+                />
+              </div> : null;
+
   // ── entrada: menú, asistente o formulario ───────────────────────────────
   if (!eventRecord || !strategyEvent || !storedActive) {
     return (
-      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+      <div className={`orbit-strategy orbit-strategy--empty${wizard && !form ? " orbit-strategy--recorded" : ""}`} data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
         {form ? eventForm : (wizardView ?? entryMenu)}
@@ -2649,8 +2748,14 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
-        <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
-          <p role="status">{t("strategy.calculation.loadingHint")}</p>
+        {recordedSessionsPanel}
+        <Surface
+          data-testid={telemetryPlanningFailed ? "orbit-strategy-calculation-error" : "orbit-strategy-calculation-loading"}
+          title={t(telemetryPlanningFailed ? "strategy.sessions.errorTitle" : "strategy.calculation.loading")}
+        >
+          <p role={telemetryPlanningFailed ? "alert" : "status"}>
+            {t(telemetryPlanningFailed ? "strategy.sessions.errorTitle" : "strategy.calculation.loadingHint")}
+          </p>
         </Surface>
         {editorFailureView}
         {migrationDialog}
@@ -2666,6 +2771,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        {recordedSessionsPanel}
         <Surface data-testid="orbit-strategy-calculation-error" title={t("strategy.calculation.error")}>
           <p role="alert">{message}</p>
           {detail ? <p className="orbit-strategy__meta">{detail}</p> : null}
@@ -2814,6 +2920,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       ) : null}
     </div>
   ) : null;
+  const recoveryStatus = recovery.pending || recovery.failure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-revision-recovery">
+      <b>{t("strategy.lifecycle.recoveryTitle")}</b>
+      {recovery.pending ? <span>{recovery.pending.command.revisionId} · {recovery.pending.command.commandId}</span> : null}
+      <span>{recovery.resolution === "stored" ? t("strategy.lifecycle.recoveryStored") : recovery.resolution === "not_stored" ? t("strategy.lifecycle.recoveryMissing") : t("strategy.lifecycle.recoveryHint")}</span>
+      {recovery.failure ? <span role="alert">{recovery.failure.message}</span> : null}
+      {recovery.pending ? (
+        <div className="orbit-strategy__actions">
+          <Button disabled={recovery.status === "busy"} onClick={() => void checkRecoveredRevision()} size="sm" variant="ghost">{t("strategy.lifecycle.recoveryCheck")}</Button>
+          <Button disabled={recovery.status === "busy"} onClick={() => void retryRecoveredRevision()} size="sm" variant="primary">{t("strategy.lifecycle.recoveryRetry")}</Button>
+          <Button disabled={recovery.status === "busy"} onClick={() => void acknowledgeRecoveredRevision()} size="sm" variant="ghost">{t("strategy.lifecycle.recoveryAcknowledge")}</Button>
+        </div>
+      ) : null}
+    </div>
+  ) : null;
   const sessionDecisionByID = new Map(eventSessionDecisions.map((session) => [session.sessionId, session.included]));
   const sessionsPanel = sessionCatalog.status === "error" ? (
     <Note title={t("strategy.sessions.errorTitle")}>
@@ -2898,6 +3019,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
+      {recordedSessionsPanel}
       {contextSlot ? createPortal(context, contextSlot) : null}
       {migrationDialog}
 
@@ -2945,7 +3067,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           </Button>
           <Button
             data-testid="orbit-strategy-save-revision"
-            disabled={lifecycle.status === "loading" || lifecycle.status === "busy"}
+            disabled={lifecycle.status === "loading" || lifecycle.status === "busy" || recovery.pending !== undefined}
             onClick={() => void saveVisibleRevision()}
             variant="primary"
           >
@@ -3000,6 +3122,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       </header>
 
       {editorFailureView}
+      {recoveryStatus}
       {lifecycleStatus}
 
       <UnderlineTabs<StrategyTab>
@@ -3815,6 +3938,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   )}
                 </div>
               ) : panel === "sessions" ? sessionsPanel : weatherPanel}
+
             </Surface>
           </div>
         </div>

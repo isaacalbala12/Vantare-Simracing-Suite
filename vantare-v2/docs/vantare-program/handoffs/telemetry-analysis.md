@@ -6,6 +6,243 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## SDD T02a — reglas recibidas por Orbit, ISA-1092 (2026-09-09)
+
+Base6d4aa514; rama vantareapp/isa-1092-recorded-event-inputs,
+C:/tmp/vantare-isa1092. Matriz de entradas en evidencia/isa-1092/README.md.
+Primer corte backend: event.rules opcional reutiliza EventRules del solver,
+aplicado en búsqueda, comparación Weather y replay final mediante el adapter
+común. Tests RED/GREEN para min/max paradas, negativos, driverLimits sin perfil,
+ventana obligatoria y override que la viola. Documento/TS/UI aún no emiten reglas.
+T02a commit ad8774a5: Go global y vet PASS. T02b: contrato de reglas con evidencia y schema2.1.0 validado; Go global/vet PASS. T02c1: crear/editar promueve schema al añadir reglas; reapertura y Go global/vet PASS. T02c2: cliente TS validado; 420 archivos/3320 tests, tipos, lint y build PASS. T02c3 compatibilidad legacy RED/GREEN y Go global/vet PASS; T02c4 enlaza pantalla y captura reglas/evidencia en revisión; 14 focales, lint/build PASS, suite frontend global en curso. Continúa T04 #1093, sin cerrar entradas pendientes de #1092. Evidencia detallada en isa-1092/README.md; UI aún pendiente.
+
+T01/ISA-1089: commit6d4aa514, build frontend, Go global -p1 y vet PASS.
+Intento Wails diagnóstico PID18668 terminó sin abrir CDP: puerto39261 ocupado,
+hotkeys en uso y fallo de controlador WebView. PID26412 de1072 preservado;
+no se atribuye todo el fallo a una única causa no demostrada. No cerrar T01
+runtime ni declarar benchmark físico. No se tocó LMU. Avanzar tareas independientes.
+
+
+## Ejecución SDD reanudada — T00/T01, ISA-1089 (2026-09-09)
+
+Isaac autoriza iniciar todo el SDD v1.0. Se levanta la pausa documental anterior;
+continuidad entre tareas vigente, sin subagentes de código ni permiso por corte.
+Base43d415f4; rama vantareapp/isa-1089-recorded-solver-timeout,
+C:/tmp/vantare-isa1089. Timeout Imola reproducido con input Wails capturado,
+perfil señala coste repetido de paradas/allocaciones. Caché acotada por búsqueda
+reutiliza resultados de CalculatePitStop sin cambiar alternativas ni ecuaciones.
+RED 8.02 s; primer GREEN5.88 s. Suites solver/application secuenciales PASS;
+una ejecución concurrente volvió a agotar deadline: no se oculta contención.
+Gates globales, repeticiones comparables y Wails pendientes. No se declara T01
+cerrado ni óptimo físico. Después T02/T03 y porte A4 T04 según dependencias.
+
+
+## SDD integral y pausa de implementación — ISA-1091 (2026-09-09)
+
+Isaac solicita consolidar chat, roadmap y contratos para continuar después sin
+pausas repetidas. [SDD v1.0](../../strategy-planner/sdd/README.md),
+[ejecución T00–T24](../../strategy-planner/sdd/execution.md) y
+[aceptación A01–A21](../../strategy-planner/sdd/acceptance.md) son la secuencia
+vigente de este alcance; las notas posteriores conservan historia, no una cola
+alternativa de pendientes. Base 0240bc7806570be17832aea6153300631f392170,
+rama vantareapp/isa-1091-strategy-sdd, C:/tmp/vantare-isa1091.
+
+Entrega sólo documental, implementación pausada por Isaac. Al reanudar: T00 y
+T01 (#1089); avanzar dependencias y cortes automáticamente, sin permiso por
+commit/test/issue. A4 sigue por portar; calibración empírica sigue sin cerrar.
+Una decisión de umbrales se prepara agrupada con evidencia y no bloquea UI o
+integridad independientes. Código sin subagentes; excepción visual ya autorizada.
+No app/build/LMU en esta entrega. Sin promoción ni release.
+
+
+## Discovery del corpus real — ISA-1090 (2026-09-09)
+
+Base 7d504d780095b0d81044824d7d2182599e94ac89; rama
+vantareapp/isa-1090-analysis-discovery-limit, C:/tmp/vantare-isa1090.
+Reproducción Wails de #1088: límite de composición 128 impide descubrir carpeta
+con >400 archivos; ErrCandidateLimit se presentaba como formato incompatible.
+Servicio y composición admiten ahora 1024, mismo límite que importador existente;
+el exceso produce error específico, sin truncamiento ni lectura de contenido.
+Se mantienen cuatro sesiones abiertas y todos los presupuestos de lectura.
+Regresión 400/1024/1025 RED/GREEN; full Go/vet, frontend 420 archivos/3308 tests,
+build y lint PASS. Wails descubre 416 archivos; abre Imola, aplica referencia
+exacta y cierra sesión. Persistencia y SHA originales comprobados. Evidencia
+en docs/strategy-planner/evidence/isa-1090/README.md. Build diagnóstica, no
+aceptación visual A4 ni validación de producción/licencia.
+El timeout de cálculo real queda en #1089; no se cambia solver en este corte.
+
+## UI y validación real — ISA-1088 (2026-09-09)
+
+Rama vantareapp/isa-1088-recorded-session-ui, C:/tmp/vantare-isa1088,
+base 7b0afab9. Panel Sesiones conectado con apertura/preparación/revisión exacta.
+Banco real Imola/Monza y lectura de entradas por Strategy PASS; hashes intactos.
+Wails abre; evento nuevo de Imola reproduce timeout (#1089). Acceso a Sesiones
+ante fallo corregido con RED/GREEN. Búsqueda real bloqueada por límite 128,
+frente a carpeta >400: siguiente corrección aislada. No se certifica recorrido
+UI completo, A4 productivo completo ni precisión física. Detalle:
+docs/strategy-planner/evidence/isa-1088/README.md. Runtime liberado para #1072.
+
+## Consumidor conectado — ISA-1087 (2026-09-09)
+
+Base 11676e9958d951fc1ed999055b4b38f0103590d0; rama
+vantareapp/isa-1087-connect-revision-inputs; C:/tmp/vantare-isa1087.
+GetEventPlanningInputs despacha referencias completas al productor autorizado;
+valida proyección, combinación y referencias exactas antes de entregarlas.
+Sin proveedor, fuente o revisión falla sin volver al catálogo observado.
+Selecciones antiguas sin referencias conservan su vía. Consulta sin escritura,
+ajustes conservados y respuesta tardía tras cancelación rechazada.
+Main construye Strategy después de Analysis/licencia usando el adaptador.
+
+Pruebas y límites: docs/strategy-planner/evidence/isa-1087/README.md.
+Siguiente: enlazar la preparación y selección de revisiones desde UI productiva,
+con reapertura explícita de fuentes. C7, operaciones restantes, calibración real
+y aceptación visual/Wails siguen pendientes. LMU intacto. Sin promoción/release.
+
+## Proyección conjunta autorizada — ISA-1086 (2026-09-09)
+
+Base 40e95273; rama vantareapp/isa-1086-authorized-revision-producer;
+worktree C:/tmp/vantare-isa1086. Adapter de catálogo reutiliza derivación escalar
+y productor Analysis para referencias exactas de sesiones abiertas autorizadas.
+Valida identidad/base/revisión/snapshot, combinación, cancelación y licencia;
+rechaza fuentes cerradas/ambiguas y conserva límite existente de cuatro abiertas.
+No devuelve parciales ni mezcla estadísticas agregadas. No es servicio Wails.
+
+Isaac autoriza de nuevo PC/build/app; LMU intacto. Build frontend PASS.
+App/Analysis completos, vet, Go global y diff check PASS. Detalle en
+docs/strategy-planner/evidence/isa-1086/README.md.
+Siguiente: conexión al consumidor Strategy y composición main; luego reapertura,
+UI productiva y operaciones/calibración pendientes. Sin push/PR/CI remota,
+merge, promoción o release. No se anuncia C7 completo ni precisión física.
+
+## Cliente de selección exacta — ISA-1085 (2026-09-09)
+
+Base ae6eb45f; rama vantareapp/isa-1085-selection-revision-client;
+worktree C:/tmp/vantare-isa1085. Cliente de eventos valida/conserva referencias
+exactas y concordancia con proyección. Helper existente mantiene referencias y,
+al cambiar selección, retira proyección del evento y caché derivada tras ack,
+conservando overrides. Misma selección mantiene datos; error conserva vista.
+Sin cambios visuales. Cuatro TS/test, sin nueva dependencia ni Go.
+
+RED de siete casos; GREEN focal 42 tests y typecheck PASS. Frontend global
+418 archivos / 3294 tests, lint y diff check PASS.
+Detalle: docs/strategy-planner/evidence/isa-1085/README.md. Sin app ni builds.
+Siguiente: conectar productor autorizado de revisiones; sigue el rechazo
+explícito de #1084. UI y operaciones restantes, calibración y Wails pendientes.
+Sin push/PR/CI remota, merge, promoción ni release.
+
+## Selección de revisiones — ISA-1084 (2026-09-09)
+
+Base c1db89f9; rama vantareapp/isa-1084-plan-analysis-revision;
+worktree C:/tmp/vantare-isa1084. SessionSelection conserva AnalysisRevisionRef
+opcional, validada, incluida en la serialización. Selección fijada exige cobertura
+completa de incluidas y coincidencia exacta de la proyección guardada. Excluidas
+pueden conservar su referencia sin participar. Sin promoción de calidad ni I/O.
+
+GetEventPlanningInputs rechaza la selección fijada mientras no se conecte su
+productor autorizado: el catálogo antiguo no puede ignorar referencias. C7 no
+está completo. Siguiente: contrato TS, productor de revisiones y UI; luego
+operaciones restantes, calibración y aceptación real. Evidencia en
+docs/strategy-planner/evidence/isa-1084/README.md.
+
+Sin app/builds por instrucción de Isaac. Focales document/application PASS;
+Vet y diff check PASS. Go global FAIL: dos paquetes sin frontend/dist y
+flaky SQLite #708 (WAL deadline). Tres repeticiones aisladas PASS sin cambios.
+No se fabrican assets para ocultarlo. Sin push/PR/CI remota, merge o promoción.
+
+## Cliente nativo de Analysis — ISA-1082 (2026-09-09)
+
+Base f68e2214; rama vantareapp/isa-1082-native-analysis-client;
+worktree C:/tmp/vantare-isa1082. Cliente TS de discovery, apertura explícita,
+páginas y preparar/guardar/cargar/proyectar correcciones. Reutiliza el parser
+de proyección existente. Métodos Wails cerrados, cancelación nativa y descarte
+tardío, sin reintentos automáticos. Conserva calidad/presencia y rechaza páginas
+o revisiones de otra petición. Los digests se validan estructuralmente.
+
+No se abre app ni se generan builds por instrucción actual de Isaac.
+Frontend 418 archivos / 3281 tests, tipos, lint y diff check PASS. Evidencia:
+docs/strategy-planner/evidence/isa-1082/README.md.
+Faltan selección persistida, agregación, operaciones restantes y UI productiva;
+la aceptación visual/Wails y precisión física siguen pendientes. Sin fuentes
+reales, LMU, push/PR/CI remota, merge, promoción o release.
+
+## Comandos de corrección autorizados — ISA-1081
+
+Sobre 89bdb65e en C:/tmp/vantare-isa1081. SaveCorrections/LoadCorrection y
+ProjectCorrection validan fuente/licencia antes de operar, también en replay.
+Custodia persistente nativa separada de staging. Clasificación de proyección
+basada en vueltas recalculadas; sin criterios nuevos. Focales, vet, build y
+Go global pasan. Detalle en handoff Strategy y contrato de correcciones.
+Cliente, selección persistida, otras operaciones y UI pendientes. Sin promoción.
+
+## Preparación autorizada para correcciones — ISA-1080
+
+Sobre 40419038 en C:/tmp/vantare-isa1080. El servicio TA-03E ahora prepara la
+base estable de una sesión abierta/autorizada con licencia vigente. Retiene su
+artefacto y usa Analysis para lectura paginada acotada y validez original.
+No muta originales ni infiere relojes. Presupuestos y evidencia en el contrato
+de correcciones y handoff Strategy. Focales Analysis/app, vet, build y Go global
+pasan. Guardado, proyección autorizada y UI siguen pendientes.
+Sin fuentes reales leídas, LMU, promoción o release.
+
+## Correcciones escalares para Strategy — 2026-09-08
+
+Isaac ha aceptado la visión visual completa y autorizado su implementación.
+Cortes locales #1073–#1079: snapshots completos, custodia con revisiones y
+conflictos, vista efectiva sin alterar originales, recálculo de familias,
+referencias estructuradas de proyección y unión a una revisión guardada exacta.
+El cliente TS valida referencias completas. Detalle y evidencia vigentes:
+`strategy-planner.md` y `docs/strategy-planner/evidence/isa-1079/README.md`.
+
+No se ha conectado aún el servicio con autorización de fuentes a las correcciones,
+ni el editor productivo o selección persistida de planes. Siguen pendientes uso
+por familia/clasificación/límites, calibración #1030 y validación real Wails.
+El servicio TA-03E existente será la frontera para licencia, consentimiento,
+estabilidad y lectura. No se añade SQL a Strategy/React ni se activa live.
+Sin promoción, release o modificación de los originales.
+
+## Actualización ISA-1067 — base autorizada (2026-09-08)
+
+Base `7f04dd93`, rama `vantareapp/isa-1067-correction-source`.
+Analysis marca sesión/versión al derivar y produce la base exacta de corrección.
+Los análisis legacy sin marca requieren reanálisis; no se versionan al leerlos.
+Sin cambios de criterios, fuentes o UI. Evidencia en
+`docs/strategy-planner/evidence/isa-1067/README.md`.
+Siguiente: snapshots/solapes y custodia reversible; después conexión a Strategy.
+
+
+## Actualización ISA-1066 — C1a (2026-09-08)
+
+Isaac acepta #1063 como dirección visual inicial. Primer código de correcciones
+sobre `b486050c`, rama `vantareapp/isa-1066-sample-corrections`: identidad de base
+y preparación de un escalar con precondición/original intacto. No persistencia,
+UI conectada, revisión guardada ni solver. Evidencia:
+`docs/strategy-planner/evidence/isa-1066/README.md`.
+Siguiente C1b/base autorizada y snapshots, después C2/custodia. Sin subagentes,
+fuentes modificadas, promoción o publicación.
+
+
+## Actualización ISA-1030: relojes del banco (2026-09-08)
+
+Corrección instrumental sobre `18f9dea4` en `vantareapp/isa-1030-clock-evidence`.
+El contraste real Imola/Algarve reproduce un desfase de 119,48 s en el spike y
+recupera el repostaje de Algarve. Producto conserva origen desconocido; no se
+cambia su contrato por una inferencia experimental. Ver
+`docs/strategy-planner/evidence/isa-1030/clock-correction.md`.
+Siguiente: propuesta navegable dentro de Strategy para revisión de Isaac;
+anotación/calibración y contrato productivo de relojes siguen pendientes.
+Sin promoción, release ni intervención en LMU.
+
+
+## Propuesta de correcciones desde Strategy — 2026-09-08
+
+#1033 entrega solo ADR 0010, contrato y microplan sobre `8a2d8ff4`, rama
+`vantareapp/isa-1033-observation-corrections`. Analysis conserva custodia de las
+correcciones y derivación; Strategy es la superficie y fija revisiones para planes.
+Ver `docs/adr/0010-analysis-observation-corrections.md` y
+`docs/strategy-planner/corrections-contract-v1.md`. Estado propuesto, sin código,
+fuentes modificadas, nuevos umbrales ni nueva dependencia. Calibración #1030 y
+aceptación real siguen pendientes; no se activa implementación por este handoff.
+
 
 ## Resultado
 
@@ -17,7 +254,7 @@ visible es `Telemetría`.
 
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
-- Este handoff y el proyecto del tracker vigente según `../notion-transition.md`.
+- Este handoff y el proyecto Linear del módulo.
 - ADR 0004 y el handoff de Telemetry Core para contratos/recording.
 - La futura investigación, spec, HTML y plan aprobados reemplazarán el resumen
   de experiencia cuando aporten más detalle.

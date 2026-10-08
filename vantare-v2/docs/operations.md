@@ -49,7 +49,11 @@ pnpm --dir frontend lint
 
 ## Ejecutar app
 
-### Ruta normal: app de escritorio completa
+### Desarrollo local sin cuenta
+
+Para revisar UI, DuckDB y Strategy sin iniciar sesión: `powershell -File scripts/build-local-development.ps1` y ejecutar `bin/vantare-localdev.exe` desde este worktree. Usa servicios reales, permisos temporales y un perfil WebView separado. No lee `.env` ni inicia o cierra otras apps. Véanse el [perfil y sus límites](local-development.md). Las builds normales conservan autenticación; `production` desactiva siempre el acceso local.
+
+### Desarrollo con autenticación: app de escritorio completa
 
 ```powershell
 powershell -File tools\start-wails-dev.ps1

@@ -2,7 +2,6 @@ import type {
   StrategyApplicationClient,
   StrategyEventV2,
   StrategyReferenceCatalogResultV1,
-  StrategyReferenceStrategyV1,
   StrategySourcedV2,
 } from "../../strategy/strategy-application-client";
 import type { StrategyEventRecord } from "./strategy-events-store";
@@ -35,6 +34,7 @@ export async function applyReferenceProfile(
   const profile = combination.referenceProfile;
   if (!profile) throw new Error("Reference profile is unavailable");
   const event = existing ?? strategyEventV2FromRecord(record);
+  requireReferenceCombination(event, combination);
   const overrides = { ...(event.planningInputs?.overrides ?? {}) };
   const sourceId = `catalog:${combination.combinationId}:profile`;
   if (profile.fuel) overrides.fuel_per_lap_liters = referenceOverride(profile.fuel.medianPerLap, profile.fuel.sampleLaps, sourceId);
@@ -48,9 +48,13 @@ export async function applyReferenceStrategy(
   repositoryVersion: number,
   existing: StrategyEventV2 | undefined,
   record: StrategyEventRecord,
-  strategy: StrategyReferenceStrategyV1,
+  combination: ReferenceCombination,
+  clusterDigest: string,
 ): Promise<StrategyEventV2> {
   const event = existing ?? strategyEventV2FromRecord(record);
+  requireReferenceCombination(event, combination);
+  const strategy = combination.strategies.find((candidate) => candidate.clusterDigest === clusterDigest);
+  if (!strategy) throw new Error("Reference strategy is unavailable for this combination");
   const id = `reference-${strategy.clusterDigest.slice(0, 16)}`;
   const variant = {
     id,
@@ -64,6 +68,12 @@ export async function applyReferenceStrategy(
   };
   const strategies = [...event.strategies.filter((candidate) => candidate.id !== id), variant];
   return persistEvent(client, repositoryVersion, existing !== undefined, { ...event, strategies });
+}
+
+function requireReferenceCombination(event: StrategyEventV2, combination: ReferenceCombination): void {
+  if (!event.combination?.combinationId || event.combination.combinationId !== combination.combinationId) {
+    throw new Error("Reference combination does not match the selected event");
+  }
 }
 
 function referenceOverride(value: number, sampleSize: number, sourceId: string) {

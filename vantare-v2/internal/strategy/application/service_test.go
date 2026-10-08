@@ -17,6 +17,126 @@ type testPayload struct {
 	Laps int `json:"laps"`
 }
 
+func TestBridgeOpensExactRevisionAfterRestartWithoutSources(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-1", "plan-1", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft.Payload.Laps = 11
+	draft.UpdatedAt = canonicalTime(2)
+	savedA, err := service.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-a", OperationSaveRevision, created.RepositoryVersion), Draft: draft, RevisionID: "revision-a", CreatedAt: canonicalTime(3)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft = *savedA.SavedDraft
+	draft.Payload.Laps = 22
+	draft.UpdatedAt = canonicalTime(4)
+	if _, err := service.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-b", OperationSaveRevision, savedA.RepositoryVersion), Draft: draft, RevisionID: "revision-b", CreatedAt: canonicalTime(5)}); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, err := json.Marshal(map[string]any{
+		"protocolVersion":           ProtocolVersionV1,
+		"commandId":                 "open-a",
+		"operation":                 OperationOpen,
+		"expectedRepositoryVersion": 0,
+		"revision":                  savedA.Revision.Ref(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(NewService[testPayload](reopened))
+	encoded, err := bridge.Execute(ctx, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var opened struct {
+		RepositoryVersion uint64          `json:"repositoryVersion"`
+		Draft             json.RawMessage `json:"draft"`
+		Revision          json.RawMessage `json:"revision"`
+	}
+	if err := json.Unmarshal(encoded, &opened); err != nil {
+		t.Fatal(err)
+	}
+	openedRevision, err := contract.DecodePlanRevision[testPayload](opened.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if openedRevision.Ref() != savedA.Revision.Ref() {
+		t.Fatalf("opened revision = %#v, want A", opened.Revision)
+	}
+	payload, err := openedRevision.Payload()
+	if err != nil || payload.Laps != 11 {
+		t.Fatalf("opened payload = %#v, err=%v", payload, err)
+	}
+	if len(opened.Draft) != 0 || opened.RepositoryVersion != savedA.RepositoryVersion+1 {
+		t.Fatalf("revision read changed or substituted state: %#v", opened)
+	}
+
+	legacyCommand, err := json.Marshal(OpenCommand{CommandHeader: commandHeader("open-draft", OperationOpen, 0), DraftID: draft.DraftID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyEncoded, err := bridge.Execute(ctx, legacyCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacyOpened Result[testPayload]
+	if err := json.Unmarshal(legacyEncoded, &legacyOpened); err != nil {
+		t.Fatal(err)
+	}
+	if legacyOpened.Draft == nil || legacyOpened.Draft.Payload.Laps != 22 {
+		t.Fatalf("legacy open did not return current draft B: %#v", legacyOpened.Draft)
+	}
+
+	wrongHash := savedA.Revision.Ref()
+	wrongHash.ContentHash = strings.Repeat("d", 64)
+	wrongHashCommand, err := json.Marshal(OpenCommand{CommandHeader: commandHeader("open-wrong-hash", OperationOpen, 0), Revision: &wrongHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Execute(ctx, wrongHashCommand); !errors.Is(err, ErrRevisionNotFound) {
+		t.Fatalf("wrong hash open = %v, want ErrRevisionNotFound", err)
+	}
+}
+
+func TestOpenRejectsAmbiguousOrMissingRevisionSelectors(t *testing.T) {
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	missing := contract.RevisionRef{PlanID: "plan-1", VariantID: "variant-1", RevisionID: "revision-missing", ContentHash: "a" + strings.Repeat("0", 63)}
+	tests := []struct {
+		name    string
+		command OpenCommand
+		want    error
+	}{
+		{name: "neither", command: OpenCommand{CommandHeader: commandHeader("none", OperationOpen, 0)}, want: ErrInvalidCommand},
+		{name: "both", command: OpenCommand{CommandHeader: commandHeader("both", OperationOpen, 0), DraftID: "draft-1", Revision: &missing}, want: ErrInvalidCommand},
+		{name: "missing revision", command: OpenCommand{CommandHeader: commandHeader("missing", OperationOpen, 0), Revision: &missing}, want: ErrRevisionNotFound},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := service.Open(context.Background(), test.command); !errors.Is(err, test.want) {
+				t.Fatalf("Open() = %v, want %v", err, test.want)
+			}
+		})
+	}
+}
+
 func TestServiceCreateSaveAndRetryAreIdempotent(t *testing.T) {
 	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
 	if err != nil {
@@ -218,6 +338,105 @@ func TestServiceReconcilesAnUncertainCommitWithoutRetrying(t *testing.T) {
 		t.Fatalf("reconciled = %#v", result)
 	}
 }
+
+func TestServiceRecoversExactRevisionSaveAfterRestartAndLaterHead(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-1", "plan-1", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := SaveRevisionCommand[testPayload]{
+		CommandHeader: commandHeader("save-a", OperationSaveRevision, created.RepositoryVersion),
+		Draft:         draft, RevisionID: "revision-a", CreatedAt: canonicalTime(2), Recoverable: true,
+	}
+	saved, err := service.SaveRevision(ctx, command)
+	if err != nil || saved.Revision == nil {
+		t.Fatalf("recoverable save = %#v, err=%v", saved, err)
+	}
+
+	reopenedRepo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restarted := NewService[testPayload](reopenedRepo)
+	pendingResult, err := restarted.GetPendingRevisionSave(ctx, PendingRevisionCommand{CommandHeader: commandHeader("get-pending", OperationGetPendingRevisionSave, 0)})
+	if err != nil || pendingResult.PendingRevision == nil || !equalJSON(pendingResult.PendingRevision.Command, command) {
+		t.Fatalf("pending after restart = %#v, err=%v", pendingResult.PendingRevision, err)
+	}
+	if retried, err := restarted.SaveRevision(ctx, command); err != nil || retried.Revision == nil || retried.Revision.Ref() != saved.Revision.Ref() {
+		t.Fatalf("exact retry = %#v, err=%v", retried, err)
+	}
+
+	later := draft
+	later.Payload.Laps = 12
+	later.UpdatedAt = canonicalTime(3)
+	later.BaseRevision = pointerToRevisionRef(saved.Revision.Ref())
+	if _, err := restarted.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-b", OperationSaveRevision, saved.RepositoryVersion), Draft: later, RevisionID: "revision-b", CreatedAt: canonicalTime(4)}); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := restarted.ResolvePendingRevisionSave(ctx, PendingRevisionCommand{CommandHeader: commandHeader("resolve", OperationResolveRevisionSave, 0)})
+	if err != nil || resolved.PendingResolution != PendingRevisionStored || resolved.Revision == nil || resolved.Revision.Ref() != saved.Revision.Ref() {
+		t.Fatalf("resolved original after later HEAD = %#v, err=%v", resolved, err)
+	}
+
+	changed := command
+	changed.Draft.Payload.Laps = 99
+	if _, err := restarted.SaveRevision(ctx, changed); !errors.Is(err, ErrPendingRevisionConflict) {
+		t.Fatalf("changed same identity error = %v, want ErrPendingRevisionConflict", err)
+	}
+	digest := pendingResult.PendingRevision.CommandDigest
+	if _, err := restarted.AcknowledgePendingRevisionSave(ctx, AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack", OperationAcknowledgeRevisionSave, 0), PendingCommandID: "save-a", CommandDigest: digest}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := restarted.AcknowledgePendingRevisionSave(ctx, AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack-again", OperationAcknowledgeRevisionSave, 0), PendingCommandID: "save-a", CommandDigest: digest}); err != nil {
+		t.Fatalf("idempotent acknowledgement: %v", err)
+	}
+}
+
+func TestJSONBridgeExposesAndAcknowledgesRecoverableRevisionSave(t *testing.T) {
+	ctx := context.Background()
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-bridge", "plan-bridge", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create-bridge", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(service)
+	save := SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-bridge", OperationSaveRevision, created.RepositoryVersion), Draft: draft, RevisionID: "revision-bridge", CreatedAt: canonicalTime(2), Recoverable: true}
+	raw, err := json.Marshal(save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Execute(ctx, raw); err != nil {
+		t.Fatal(err)
+	}
+	getRaw, _ := json.Marshal(PendingRevisionCommand{CommandHeader: commandHeader("get-bridge", OperationGetPendingRevisionSave, 0)})
+	encoded, err := bridge.Execute(ctx, getRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pending Result[testPayload]
+	if err := json.Unmarshal(encoded, &pending); err != nil || pending.PendingRevision == nil {
+		t.Fatalf("bridge pending = %#v, err=%v", pending.PendingRevision, err)
+	}
+	ackRaw, _ := json.Marshal(AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack-bridge", OperationAcknowledgeRevisionSave, 0), PendingCommandID: string(save.CommandID), CommandDigest: pending.PendingRevision.CommandDigest})
+	if _, err := bridge.Execute(ctx, ackRaw); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func pointerToRevisionRef(ref contract.RevisionRef) *contract.RevisionRef { return &ref }
 
 func TestServiceConcurrentDifferentCommandsNeverOverwrite(t *testing.T) {
 	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})

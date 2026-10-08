@@ -56,6 +56,7 @@ type HarnessStrategyRepository = {
   revisions: Record<string, Record<string, unknown>>;
   activePlan?: Record<string, unknown>;
   events?: Record<string, Record<string, unknown>>;
+  pendingRevision?: { command: Record<string, unknown>; commandDigest: string };
 };
 
 
@@ -165,9 +166,64 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   }
 
   if (operation === "calculate_orbit") {
+    const input = readHarnessPayload(command.input);
+    const drivers = Array.isArray(input.drivers) ? input.drivers.map(readHarnessPayload) : [];
+    if (drivers.some((driver) => typeof driver.paceDeltaSeconds === "number" && driver.dry === undefined)) {
+      const result = {
+        ...baseResult,
+        repositoryVersion: Number.isSafeInteger(command.expectedRepositoryVersion) ? command.expectedRepositoryVersion : repository.version,
+        orbitCalculation: recordedHarnessCalculation(input),
+      };
+      const mode = new URLSearchParams(globalThis.location?.search ?? "").get("calculation");
+      if (mode === "error") {
+        broadcast("strategy:application:error", { commandId, code: "calculation_infeasible", field: "event", message: "Visual harness infeasible state" });
+      } else if (mode === "slow") {
+        setTimeout(() => broadcast("strategy:application:result", result), 1500);
+      } else {
+        broadcast("strategy:application:result", result);
+      }
+      return;
+    }
     void createOrbitCalculationTestClient()
       .execute(command as unknown as StrategyApplicationCommandV1<unknown>)
       .then((result) => broadcast("strategy:application:result", result));
+    return;
+  }
+
+  if (operation === "get_pending_revision_save") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
+    });
+    return;
+  }
+
+  if (operation === "resolve_pending_revision_save") {
+    const pendingCommand = readHarnessPayload(repository.pendingRevision?.command);
+    const draft = readHarnessPayload(pendingCommand.draft);
+    const wanted = {
+      planId: draft.planId,
+      variantId: draft.variantId,
+      revisionId: pendingCommand.revisionId,
+    };
+    const stored = repository.revisions[revisionKey(wanted)];
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
+      pendingResolution: stored ? "stored" : "not_stored",
+      ...(stored ? { revision: stored } : {}),
+    });
+    return;
+  }
+
+  if (operation === "acknowledge_pending_revision_save") {
+    if (repository.pendingRevision &&
+      (command.pendingCommandId !== repository.pendingRevision.command.commandId || command.commandDigest !== repository.pendingRevision.commandDigest)) {
+      return fail("pending_revision_conflict", "pendingRevision", "Pending Strategy revision does not match");
+    }
+    delete repository.pendingRevision;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", baseResult);
     return;
   }
 
@@ -203,10 +259,11 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   }
 
   if (operation === "list_session_combinations") {
+    const emptyCatalog = new URLSearchParams(globalThis.location?.search ?? "").get("catalog") === "empty";
     broadcast("strategy:application:result", {
       ...baseResult,
       sessionCatalogStatus: "available",
-      sessionCombinations: [{
+      sessionCombinations: emptyCatalog ? [] : [{
         combinationId: "lmu:imola-lmgt3",
         simId: "lmu",
         trackName: "Imola",
@@ -291,6 +348,46 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     });
     return;
   }
+  if (operation === "get_revision_planning_inputs") {
+    const sourceRevisions = Array.isArray(command.sourceRevisions)
+      ? structuredClone(command.sourceRevisions)
+      : [];
+    const combinationId = typeof command.combinationId === "string" ? command.combinationId : "";
+    const generatedAt = typeof command.generatedAt === "string" ? command.generatedAt : "2026-09-15T12:00:00Z";
+    const sourceSessions = sourceRevisions
+      .map((revision) => readHarnessPayload(revision).sessionId)
+      .filter((sessionId): sessionId is string => typeof sessionId === "string");
+    const provenance = { kind: "derived", sourceId: `recorded:${combinationId}` };
+    const confidence = { sampleSize: 118, rangeLower: 0, rangeUpper: 0, computationVersion: "visual-harness.v1" };
+    const missing = { presence: "missing", provenance, confidence: { ...confidence, sampleSize: 0 } };
+    const partial = new URLSearchParams(globalThis.location?.search ?? "").get("calculation") === "partial";
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      planningInputStatus: "available",
+      planningInputs: {
+        projection: {
+          contractVersion: "strategyinputprojection.v2",
+          generatedAt,
+          computationVersion: "visual-harness.v1",
+          sourceSessions,
+          sourceRevisions,
+          combinationId,
+          fuelConsumption: { ...missing, presence: "valid", meanPerLap: 2.71, rangeLower: 2.62, rangeUpper: 2.82 },
+          virtualEnergyConsumption: { ...missing, presence: "valid", meanPerLap: 3.45, rangeLower: 3.1, rangeUpper: 3.8 },
+          ...(partial ? {} : { representativePaceByClimateBucket: {
+            dry: { ...missing, presence: "valid", medianLapSeconds: 104.38 },
+            wet: { ...missing, presence: "valid", medianLapSeconds: 113.72 },
+          } }),
+          combinedStintPaceCurve: { ...missing, presence: "valid", identifiability: "combined_only", reason: "combined_only", points: [{ lapInStint: 1, deltaSeconds: 0, sampleSize: 41 }, { lapInStint: 28, deltaSeconds: 1.18, sampleSize: 29 }] },
+          tyreDegradation: { ...missing, presence: "valid", lifeLapsEstimate: 31, lifeLapsRangeLower: 28, lifeLapsRangeUpper: 34 },
+          pit: { ...missing, presence: "unknown", reason: "degraded_no_transit_service_breakdown" },
+          savingCost: { ...missing, reason: "missing_fuel_mixture_levels" },
+        },
+        overrides: {},
+      },
+    });
+    return;
+  }
   if (operation === "get_validated_examples") {
     broadcast("strategy:application:result", {
       ...baseResult,
@@ -370,6 +467,14 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
     const revisionId = typeof command.revisionId === "string" ? command.revisionId : "";
     if (!draftId || !revisionId) return fail("invalid_command", "draft", "Invalid Strategy save");
+    if (command.recoverable === true) {
+      const { sha256: commandDigest } = await canonicalizeAndHashStrategyJSONV1(JSON.stringify(command));
+      if (repository.pendingRevision && repository.pendingRevision.commandDigest !== commandDigest) {
+        return fail("pending_revision_conflict", "pendingRevision", "Another Strategy revision save is pending");
+      }
+      repository.pendingRevision = { command: structuredClone(command), commandDigest };
+      saveHarnessStrategyRepository(repository);
+    }
     const createdAt = typeof command.createdAt === "string" ? command.createdAt : "";
     const revisionWithoutHash = {
       contractVersion: "strategy.v1",
@@ -400,6 +505,7 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
       draft: stored,
       savedDraft: stored,
       revision,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
     });
     return;
   }
@@ -445,6 +551,95 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     return;
   }
   fail("invalid_command", "operation", "Unsupported harness Strategy operation");
+}
+
+/** Deterministic visual fixture for the recorded editor; it is never used by production. */
+function recordedHarnessCalculation(input: Record<string, unknown>) {
+  const event = readHarnessPayload(input.event);
+  const variants = Array.isArray(input.variants) ? input.variants.map(readHarnessPayload) : [];
+  const drivers = Array.isArray(input.drivers) ? input.drivers.map(readHarnessPayload) : [];
+  const activeVariantId = typeof input.activeVariantId === "string" ? input.activeVariantId : "recorded-main";
+  const totalLaps = Number.isSafeInteger(event.targetLaps) ? Number(event.targetLaps) : 69;
+  const hasTyreInventory = event.tyreInventory !== undefined;
+  const hasVirtualEnergy = readHarnessPayload(event.virtualEnergy).applicability === "applicable";
+  const plans: Record<string, Record<string, unknown>> = {};
+  for (const variant of variants) {
+    const id = typeof variant.id === "string" ? variant.id : "recorded-main";
+    const order = Array.isArray(variant.order) && variant.order.length
+      ? variant.order.filter((driverId): driverId is string => typeof driverId === "string")
+      : drivers.map((driver) => String(driver.id ?? "driver"));
+    const overrides = readHarnessPayload(variant.overrides);
+    const pitOverrides = readHarnessPayload(variant.pitOverrides);
+    const defaultLaps = [23, 23, Math.max(1, totalLaps - 46)];
+    const laps = defaultLaps.map((value, index) => {
+      const override = readHarnessPayload(overrides[index]);
+      return Number.isSafeInteger(override.laps) && Number(override.laps) > 0 ? Number(override.laps) : value;
+    });
+    const difference = totalLaps - laps.reduce((sum, value) => sum + value, 0);
+    laps[laps.length - 1] += difference;
+    let lap = 0;
+    let clock = Number(event.formationSeconds ?? 42);
+    const stints = laps.map((stintLaps, index) => {
+      const lap0 = lap + 1;
+      const lap1 = lap + stintLaps;
+      const pace = 104.38 + index * 0.27;
+      const start = clock;
+      clock += stintLaps * pace;
+      lap = lap1;
+      const compound = index === 2 ? "hard" : "medium";
+      const fitment = { frontLeft: `${compound}-fl`, frontRight: `${compound}-fr`, rearLeft: `${compound}-rl`, rearRight: `${compound}-rr` };
+      return {
+        i: index, d: order[index % Math.max(1, order.length)] ?? "driver", laps: stintLaps,
+        fuel: Math.min(Number(event.tankLiters ?? 100), stintLaps * 2.71 + 2.2),
+        ...(hasVirtualEnergy ? { virtualEnergy: Math.min(100, stintLaps * 3.45 + 4) } : {}),
+        pace, start, end: clock, lap0, lap1, pitWindowLap: Math.max(lap0, lap1 - 2), pitWindowSeconds: clock - pace * 2,
+        over: false, manual: id !== "recorded-main", savingLevel: "none", fuelSavedPerLap: 0, savingCostSeconds: 0,
+        ...(hasTyreInventory ? { compound, tyreFitment: fitment } : {}),
+      };
+    });
+    const stopDetails = stints.slice(0, -1).map((stint, index) => {
+      const next = stints[index + 1];
+      const override = readHarnessPayload(pitOverrides[index]);
+      const fuelAdded = typeof override.fuelLiters === "number" ? override.fuelLiters : 62.4;
+      const veAdded = hasVirtualEnergy ? (typeof override.vePercent === "number" ? override.vePercent : 78) : 0;
+      const changeTyres = hasTyreInventory ? (typeof override.changeTyres === "boolean" ? override.changeTyres : true) : undefined;
+      const compound = hasTyreInventory ? (typeof override.compound === "string" ? override.compound : next.compound) : undefined;
+      const transit = 22.4;
+      const fuelService = fuelAdded / Number(readHarnessPayload(event.pitServices).refuelRateLPerS || 2.5);
+      const veService = veAdded / Number(readHarnessPayload(event.pitServices).veRatePPerS || 4.5);
+      const tyreService = changeTyres ? Number(readHarnessPayload(event.pitServices).tyreSeconds || 14) : 0;
+      const service = Math.max(fuelService, veService, tyreService);
+      const total = transit + service;
+      return {
+        index, lap: stint.lap1, fuelInLiters: 2.2, fuelOutLiters: Math.min(Number(event.tankLiters ?? 100), 2.2 + fuelAdded),
+        ...(hasVirtualEnergy ? { virtualEnergyInPercent: 4, virtualEnergyOutPercent: Math.min(100, 4 + veAdded) } : {}),
+        pitLossSeconds: total, pitTransitSeconds: transit, pitServiceSeconds: service, pitOverlapSeconds: fuelService + veService + tyreService - service,
+        pitBreakdownAvailable: true,
+        ...(hasTyreInventory ? { changeTyres, compound, tyreFitment: next.tyreFitment } : {}),
+      };
+    });
+    const drivingSeconds = stints.reduce((sum, stint) => sum + (stint.end - stint.start), 0);
+    const pitSeconds = stopDetails.reduce((sum, stop) => sum + Number(stop.pitLossSeconds), 0);
+    const editCost = id === "recorded-main" ? 0 : id.includes("pit") ? 2.8 : 5.4;
+    plans[id] = {
+      modelVersion: "strategy.solver.v2", objective: "minimum_total_seconds", optimality: "proven",
+      stints, totalLaps, total: drivingSeconds + pitSeconds + Number(event.formationSeconds ?? 42) + editCost,
+      stops: stopDetails.length, maxLaps: 34, avgFuel: 2.71, avgPace: 104.65,
+      distribution: order.map((driverId) => ({ driverId, laps: stints.filter((stint) => stint.d === driverId).reduce((sum, stint) => sum + stint.laps, 0), seconds: stints.filter((stint) => stint.d === driverId).reduce((sum, stint) => sum + stint.end - stint.start, 0) })),
+      drivingSeconds, pitSeconds, formationSeconds: Number(event.formationSeconds ?? 42), startFuelLiters: Number(event.initialFuelLiters ?? event.tankLiters ?? 100),
+      finishFuelLiters: 3.1, reserveLaps: 1.14, reserveRequiredLaps: 1, reserveSatisfied: true, stopDetails, savingApplied: false,
+    };
+  }
+  const comparisons: Record<string, Record<string, unknown>> = {};
+  if (activeVariantId !== "recorded-main") {
+    const baseId = variants.find((variant) => variant.id !== activeVariantId)?.id;
+    if (typeof baseId === "string") comparisons[baseId] = {
+      winnerId: baseId, loserId: activeVariantId, winnerLaps: totalLaps, loserLaps: totalLaps, diff: 0,
+      savedStops: 0, savedS: 0, costS: 0, totalDeltaSeconds: -Number(plans[activeVariantId]?.total) + Number(plans[baseId]?.total),
+      pays: false, sameStops: true, stints: 3, driverCount: drivers.length, doubles: [],
+    };
+  }
+  return { plans, comparisons };
 }
 
 function revisionKey(value: Record<string, unknown>): string {
@@ -1241,9 +1436,23 @@ export const Events = {
   },
 };
 
+// Browser-only visual harnesses cannot open a native file picker. Returning an
+// empty path models dismissal and keeps the production picker path untouched.
+export const Dialogs = {
+  OpenFile: async () => "",
+};
+
 export const Browser = {
   OpenURL: () => {
     // no-op in harness
+  },
+};
+
+// Keep native-only clients importable in the visual harness without claiming
+// a reader, a filesystem operation or telemetry that this harness cannot supply.
+export const Call = {
+  ByName(): never {
+    throw new Error("Native calls are unavailable in the visual harness");
   },
 };
 

@@ -3,6 +3,7 @@ package telemetryanalysis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -10,7 +11,11 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-var ErrInvalidAuthorizedSession = errors.New("invalid authorized historical session")
+var (
+	ErrInvalidAuthorizedSession        = errors.New("invalid authorized historical session")
+	ErrCanonicalCombinationUnavailable = errors.New("canonical combination catalog unavailable")
+	ErrCanonicalCombinationUnknown     = errors.New("canonical combination unknown")
+)
 
 // AuthorizedSessionModel binds an inspected historical model and its pure
 // derivations to the exact artifact that passed the Analysis authorization
@@ -82,6 +87,38 @@ func (catalog *SessionCatalog) ListSessionCombinations(ctx context.Context) (Ses
 		return SessionCatalogListing{}, err
 	}
 	return ListAuthorizedSessionCombinations(ctx, models)
+}
+
+// ResolveCanonicalCombination resolves one persisted canonical reference
+// against the authorized listing. Cancellation is checked before the query
+// and again after it, so a source that ignores the context cannot sneak a
+// result past a cancelled caller; cancellation wins over read errors. A nil
+// catalog or nil source means no authorized history exists and reports
+// ErrCanonicalCombinationUnavailable; an available listing without the ID
+// reports ErrCanonicalCombinationUnknown. The comparison is byte-exact:
+// client text is never trimmed, folded or rehashed to earn membership, and
+// canonical membership never depends on completed laps. The identity returns
+// by value. It matches the J3 resolver callback signature.
+func (catalog *SessionCatalog) ResolveCanonicalCombination(ctx context.Context, id string) (CombinationIdentity, error) {
+	if err := ctx.Err(); err != nil {
+		return CombinationIdentity{}, err
+	}
+	if catalog == nil || catalog.source == nil {
+		return CombinationIdentity{}, ErrCanonicalCombinationUnavailable
+	}
+	listing, err := catalog.ListSessionCombinations(ctx)
+	if cerr := ctx.Err(); cerr != nil {
+		return CombinationIdentity{}, cerr
+	}
+	if err != nil {
+		return CombinationIdentity{}, fmt.Errorf("list canonical combinations: %w", err)
+	}
+	for _, entry := range listing.Combinations {
+		if entry.Combination.ID == id {
+			return entry.Combination, nil
+		}
+	}
+	return CombinationIdentity{}, ErrCanonicalCombinationUnknown
 }
 
 // ProjectStrategyInputs composes the public Analysis projection for exactly

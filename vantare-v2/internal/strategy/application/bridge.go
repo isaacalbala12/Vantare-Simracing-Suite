@@ -11,16 +11,19 @@ import (
 )
 
 var requiredOperationFields = map[Operation][]string{
-	OperationCreate:       {"draft"},
-	OperationOpen:         {"draftId"},
-	OperationEdit:         {"draft"},
-	OperationSaveRevision: {"draft", "revisionId", "createdAt"},
-	OperationDuplicate:    {"sourceDraft", "targetDraftId", "targetPlanId", "targetVariantId", "name", "updatedAt"},
-	OperationActivate:     {"revision", "activationId", "activatedAt"},
-	OperationDeactivate:   {"expectedActivationId"},
-	OperationRestore:      {"draftId"},
-	OperationList:         {},
-	OperationExport:       {"plans", "provenance"},
+	OperationCreate:                  {"draft"},
+	OperationOpen:                    {},
+	OperationEdit:                    {"draft"},
+	OperationSaveRevision:            {"draft", "revisionId", "createdAt"},
+	OperationGetPendingRevisionSave:  {},
+	OperationResolveRevisionSave:     {},
+	OperationAcknowledgeRevisionSave: {"pendingCommandId", "commandDigest"},
+	OperationDuplicate:               {"sourceDraft", "targetDraftId", "targetPlanId", "targetVariantId", "name", "updatedAt"},
+	OperationActivate:                {"revision", "activationId", "activatedAt"},
+	OperationDeactivate:              {"expectedActivationId"},
+	OperationRestore:                 {"draftId"},
+	OperationList:                    {},
+	OperationExport:                  {"plans", "provenance"},
 	// dryRun is deliberately not required: omitting it means a real import,
 	// and a caller that forgets the flag gets the explicit behaviour, not a
 	// silently skipped one.
@@ -40,6 +43,7 @@ var requiredOperationFields = map[Operation][]string{
 	OperationCalculateOrbit:          {"input"},
 	OperationListSessionCombinations: {},
 	OperationGetEventPlanningInputs:  {"eventId", "generatedAt"},
+	OperationGetRevisionInputs:       {"combinationId", "sourceRevisions", "generatedAt"},
 	OperationGetValidatedExamples:    {"eventId"},
 	OperationListReferenceCatalog:    {},
 	OperationGetColdStartStatus:      {},
@@ -128,6 +132,21 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command SaveRevisionCommand[T]
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.SaveRevision(ctx, command)
+		}
+	case OperationGetPendingRevisionSave:
+		var command PendingRevisionCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetPendingRevisionSave(ctx, command)
+		}
+	case OperationResolveRevisionSave:
+		var command PendingRevisionCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ResolvePendingRevisionSave(ctx, command)
+		}
+	case OperationAcknowledgeRevisionSave:
+		var command AcknowledgePendingRevisionCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.AcknowledgePendingRevisionSave(ctx, command)
 		}
 	case OperationDuplicate:
 		var command DuplicateCommand[T]
@@ -223,6 +242,11 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command GetEventPlanningInputsCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.GetEventPlanningInputs(ctx, command)
+		}
+	case OperationGetRevisionInputs:
+		var command GetRevisionPlanningInputsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetRevisionPlanningInputs(ctx, command)
 		}
 	case OperationGetValidatedExamples:
 		var command GetValidatedExamplesCommand

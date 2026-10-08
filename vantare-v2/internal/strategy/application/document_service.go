@@ -278,6 +278,12 @@ func (service *Service[T]) changeDocument(
 	if err := change(&value); err != nil {
 		return Result[T]{}, err
 	}
+	for _, event := range value.Events {
+		if event.Rules != nil && value.SchemaVersion == strategydocument.SchemaVersionV2 {
+			value.SchemaVersion = strategydocument.SchemaVersionV2Rules
+			break
+		}
+	}
 	if original != nil && reflect.DeepEqual(*original, value) {
 		return documentResult[T](header.CommandID, snapshot), nil
 	}

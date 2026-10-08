@@ -1,0 +1,72 @@
+import type { AnalysisCandidate } from "../../strategy/analysis-contract";
+import type { StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
+import { Icon } from "../../ui/orbit";
+import "./strategy-recorded-entry.css";
+
+export type StrategyEntrySaved = {
+  readonly status: "loading" | "ready" | "error";
+  readonly opening: boolean;
+  readonly drafts: readonly StrategyPlanSummaryV1[];
+  readonly plans: readonly StrategyPlanSummaryV1[];
+  readonly recoveredFromBackup: boolean;
+  readonly error?: string;
+  readonly onRetry: () => void;
+  readonly onOpenDraft: (draftId: string) => void;
+  readonly onOpenPlan: (plan: StrategyPlanSummaryV1) => void;
+};
+
+/** The filename is only a locator. Car, track and lap count are unknown here. */
+export function StrategyRecordedStart({ candidates, busy, error, saved, onChoose, onLibrary, onManual, onResume, onSaved, onCancel, t }: {
+  readonly candidates: readonly AnalysisCandidate[] | null;
+  readonly busy: boolean;
+  readonly error?: string;
+  readonly saved?: StrategyEntrySaved;
+  readonly onChoose: (candidate: AnalysisCandidate) => void;
+  readonly onLibrary: () => void;
+  readonly onManual: () => void;
+  readonly onResume?: () => void;
+  readonly onSaved?: () => void;
+  readonly onCancel: () => void;
+  readonly t: (key: string) => string;
+}) {
+  const recent = [...(candidates ?? [])].sort((a, b) => Date.parse(b.modifiedAt) - Date.parse(a.modifiedAt) || a.id.localeCompare(b.id)).slice(0, 2);
+  return <section className="strategy-entry" aria-labelledby="strategy-entry-title">
+    <header className="strategy-entry__heading"><div><span className="strategy-entry__micro">{t(onResume ? "strategy.entry.changeSource" : "strategy.entry.new")}</span><h2 id="strategy-entry-title">{t("strategy.entry.title")}</h2><p>{t("strategy.entry.description")}</p></div><div className="strategy-entry__head-actions">{onSaved && !saved ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onSaved}>{t("strategy.home.saved")}</button> : null}{onResume ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onResume}>{t("strategy.entry.resume")} ↗</button> : <Icon name="i-estrategia" size={54} />}</div><div className="strategy-entry__mobile-actions"><button type="button" className="orbit-btn orbit-btn--primary" onClick={onLibrary}>{t("strategy.entry.openTelemetry")}</button><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onManual}>{t("strategy.entry.startManual")}</button></div></header>
+    <div className="strategy-entry__choices">
+      <section className="strategy-entry__telemetry" aria-labelledby="strategy-entry-telemetry">
+        <header className="strategy-entry__section-head"><div><span className="strategy-entry__micro">{t("strategy.entry.fromLaps")}</span><h3 id="strategy-entry-telemetry">{t("strategy.entry.telemetry")}</h3></div><small>LMU | .duckdb</small></header>
+        <div className="strategy-entry__sessions">
+          {recent.map(candidate => {
+            const ready = candidate.state === "ready" && !candidate.walPresent;
+            const name = candidate.displayName || t("strategy.recorded.unnamed");
+            const extension = name.toLowerCase().endsWith(".duckdb") ? name.slice(-7) : "";
+            return <button key={candidate.id} type="button" className="strategy-entry__session" disabled={busy || !ready} onClick={() => onChoose(candidate)} aria-label={`${t("strategy.entry.useSession")} ${candidate.displayName || t("strategy.recorded.unnamed")}`}>
+              <span className="strategy-entry__poster" aria-hidden="true"><small>.DUCKDB</small><b>LMU</b></span>
+              <span className="strategy-entry__session-copy"><span><small>{t("strategy.entry.recordedSession")}</small><strong>{name.slice(0, name.length - extension.length)}<span>{extension}</span></strong><small>{ready ? t("strategy.recorded.ready") : t("strategy.recorded.waiting")}</small></span><span className="strategy-entry__open" aria-hidden="true">↗</span></span>
+              <span className="strategy-entry__session-foot"><span><Icon name="i-telemetria" size={12} />{new Date(candidate.modifiedAt).toLocaleString()}</span><span>{(candidate.size / 1048576).toFixed(1)} MB</span></span>
+            </button>;
+          })}
+          {recent.length === 0 ? <p className="strategy-entry__empty" role="status">{candidates === null ? t("strategy.entry.searching") : t("strategy.recorded.empty")}</p> : null}
+        </div>
+        <footer className="strategy-entry__telemetry-foot"><div><b>{t("strategy.entry.anotherSession")}</b><span>{t("strategy.entry.anotherSessionHint")}</span></div><button type="button" className="orbit-btn orbit-btn--primary" onClick={onLibrary}>{t("strategy.entry.openTelemetry")}</button></footer>
+      </section>
+      <section className="strategy-entry__manual" aria-labelledby="strategy-entry-manual"><div className="strategy-entry__manual-top"><span className="strategy-entry__micro">{t("strategy.entry.fromReferences")}</span><span>{t("strategy.journey.manual")}</span></div>
+        <div className="strategy-entry__manual-art" aria-hidden="true"><div className="strategy-entry__ring"><Icon name="i-ajustes" size={42} /></div><i /><i /><i /></div>
+        <div className="strategy-entry__manual-copy"><h3 id="strategy-entry-manual">{t("strategy.entry.manualTitle")}</h3><p>{t("strategy.entry.manualDescription")}</p><div><span>{t("strategy.entry.pace")}</span><span>{t("strategy.entry.fuel")}</span><span>{t("strategy.entry.energy")}</span></div></div>
+        <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onManual}>{t("strategy.entry.startManual")} ↗</button><small>{t("strategy.entry.noTelemetry")}</small>
+      </section>
+      {saved ? <aside className="strategy-entry__saved" data-testid="strategy-entry-saved" aria-label={t("strategy.home.saved")}>
+        <header><h3>{t("strategy.home.saved")}</h3>{onSaved ? <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={onSaved}>{t("strategy.entry.viewAll")} ↗</button> : null}</header>
+        {saved.status === "loading" || saved.opening ? <p role="status">{t(saved.opening ? "strategy.journey.opening" : "strategy.workspace.loading")}</p> : null}
+        {saved.status === "error" || saved.error ? <div role="alert"><p>{t("strategy.workspace.libraryError")}</p><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={saved.onRetry}>{t("strategy.workspace.refresh")}</button></div> : null}
+        {saved.recoveredFromBackup ? <p role="status">{t("strategy.workspace.recovered")}</p> : null}
+        {saved.status === "ready" && saved.drafts.length === 0 && saved.plans.length === 0 ? <p>{t("strategy.entry.noSaved")}</p> : null}
+        {saved.status === "ready" && saved.drafts.length > 0 ? <section aria-label={t("strategy.entry.savedDrafts")}><h4>{t("strategy.entry.savedDrafts")}</h4><ul>{saved.drafts.slice(0, 3).map(plan => <li key={plan.draftId}><div><strong>{plan.name}</strong><small>{new Date(plan.updatedAt).toLocaleString()}</small></div><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={() => { if (plan.draftId) saved.onOpenDraft(plan.draftId); }}>{t("strategy.workspace.open")}</button></li>)}</ul></section> : null}
+        {saved.status === "ready" && saved.plans.length > 0 ? <section aria-label={t("strategy.planHistory.savedPlans")}><h4>{t("strategy.planHistory.savedPlans")}</h4><ul>{saved.plans.slice(0, 3).map(plan => <li key={`${plan.planId}:${plan.variantId}`}><div><strong>{plan.name}</strong><small>{plan.revisionCount} {t("strategy.planHistory.revisions")}</small></div><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={() => saved.onOpenPlan(plan)}>{t("strategy.planHistory.open")}</button></li>)}</ul></section> : null}
+      </aside> : null}
+    </div>
+    {busy ? <p role="status" className="strategy-entry__status">{t("strategy.recorded.busy")} <button type="button" onClick={onCancel}>{t("strategy.recorded.cancel")}</button></p> : null}
+    {error ? <p role="alert" className="strategy-entry__status">{error}</p> : null}
+    <footer className="strategy-entry__foot"><span>{t("strategy.entry.rulesHint")}</span><span>{t("strategy.recorded.originals")}</span></footer>
+  </section>;
+}

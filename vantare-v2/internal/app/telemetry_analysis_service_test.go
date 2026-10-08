@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,7 +19,77 @@ import (
 
 type telemetryAnalysisAuthorizerStub struct{ allowed bool }
 
+type discoveryLibraryMetadata struct{ count int }
+
+func (source discoveryLibraryMetadata) ReadDir(context.Context, string) ([]telemetryanalysis.MetadataEntry, error) {
+	entries := make([]telemetryanalysis.MetadataEntry, source.count)
+	for i := range entries {
+		entries[i] = telemetryanalysis.MetadataEntry{Name: fmt.Sprintf("race-%04d.duckdb", i), Size: 10, ModTime: time.Date(2026, 9, 9, 0, 0, 0, 0, time.UTC)}
+	}
+	return entries, nil
+}
+func (discoveryLibraryMetadata) Exists(context.Context, string) (bool, error) { return false, nil }
+
+func TestTelemetryAnalysisDiscoversBoundedLargeLibrary(t *testing.T) {
+	for _, count := range []int{400, 1024, 1025} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			svc, _, _ := telemetryAnalysisTestService(t, true)
+			t.Cleanup(func() {
+				if err := svc.ServiceShutdown(); err != nil {
+					t.Error(err)
+				}
+			})
+			cfg := svc.cfg
+			cfg.MaxCandidates = 1024
+			if err := validateTelemetryAnalysisConfig(cfg, svc.authorizer); err != nil {
+				t.Fatalf("large bounded config refused: %v", err)
+			}
+			excessive := cfg
+			excessive.MaxCandidates = 1025
+			if err := validateTelemetryAnalysisConfig(excessive, svc.authorizer); err == nil {
+				t.Fatal("unbounded configuration accepted")
+			}
+			svc.cfg = cfg
+			svc.metadata = discoveryLibraryMetadata{count: count}
+			found, err := svc.Discover(context.Background())
+			if count <= 1024 {
+				if err != nil || len(found) != count {
+					t.Fatalf("discover count %d: %d, %v", count, len(found), err)
+				}
+			} else if err == nil || found != nil || !errors.Is(err, ErrTelemetryAnalysisCandidateLimit) {
+				t.Fatalf("excess should be a limit, not a format failure: %d, %v", len(found), err)
+			}
+		})
+	}
+}
+
 func (stub telemetryAnalysisAuthorizerStub) AllowsTelemetryAnalysis() bool { return stub.allowed }
+
+func TestTelemetryAnalysisDiscoveryProvidesOnlyALocalFilenameLabel(t *testing.T) {
+	svc, privatePath, now := telemetryAnalysisTestService(t, true)
+	t.Cleanup(func() {
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	encoded, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if fields["displayName"] != filepath.Base(privatePath) {
+		t.Fatalf("local filename label = %v, want basename", fields["displayName"])
+	}
+	for key, value := range fields {
+		if text, ok := value.(string); ok && key != "displayName" && (strings.Contains(text, filepath.Base(privatePath)) || strings.Contains(text, filepath.Dir(privatePath))) {
+			t.Fatalf("private name escaped its local label in %s", key)
+		}
+	}
+}
 
 type telemetryAnalysisReaderStub struct {
 	mu             sync.Mutex
@@ -178,7 +249,12 @@ func TestTelemetryAnalysisInspectsAndPagesOnlyAnOpaqueDiscoveredCandidate(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(encodedCandidate), privatePath) || strings.Contains(string(encodedCandidate), filepath.Base(privatePath)) {
+	// SDD 4.2 permits a local display label. The path and opaque locator remain private.
+	encodedPrivatePath, err := json.Marshal(privatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encodedCandidate), string(encodedPrivatePath)) || strings.Contains(candidate.ID, filepath.Base(privatePath)) || strings.ContainsAny(candidate.DisplayName, `/\`) {
 		t.Fatalf("candidate leaked the private path: %s", encodedCandidate)
 	}
 	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})

@@ -80,6 +80,13 @@ export type StrategyTyre = {
   readonly lockedCorner?: StrategyCorner;
 };
 
+export type StrategyTyreFitment = {
+  readonly frontLeft: string;
+  readonly frontRight: string;
+  readonly rearLeft: string;
+  readonly rearRight: string;
+};
+
 export type StrategyTyreErrorCode =
   | "invalid_tyre"
   | "invalid_compound"
@@ -216,6 +223,26 @@ export function parseStrategyTyre(value: unknown): StrategyTyre {
   };
   assertStateInvariants(tyre);
   return tyre;
+}
+
+export function parseStrategyTyreFitment(value: unknown): StrategyTyreFitment {
+  if (!isRecord(value)) {
+    throw new StrategyTyreError("invalid_tyre", "", "el montaje no es un objeto");
+  }
+  const fields = ["frontLeft", "frontRight", "rearLeft", "rearRight"] as const;
+  const ids = fields.map((field) => value[field]);
+  if (ids.some((id) => typeof id !== "string" || !TYRE_ID_PATTERN.test(id))) {
+    throw new StrategyTyreError("invalid_tyre", "", "el montaje físico está incompleto");
+  }
+  if (new Set(ids).size !== ids.length) {
+    throw new StrategyTyreError("invalid_tyre", "", "el montaje físico repite una rueda");
+  }
+  return {
+    frontLeft: ids[0] as string,
+    frontRight: ids[1] as string,
+    rearLeft: ids[2] as string,
+    rearRight: ids[3] as string,
+  };
 }
 
 /** Mirrors the state invariants in `tyres.Tyre.validate`. */

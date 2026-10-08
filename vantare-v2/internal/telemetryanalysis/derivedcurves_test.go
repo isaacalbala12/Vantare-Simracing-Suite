@@ -6,7 +6,9 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -312,9 +314,11 @@ func derivedCurvesFixtureInput(fixture derivedCurvesFixture) (HistoricalSession,
 			})
 			bucket := fixture.Bucket
 			pace.Laps = append(pace.Laps, LapConsumptionPace{
-				Number: lapNumber, Labels: []LapLabel{}, ClimateBucket: &bucket,
+				Number: lapNumber, Start: startTime, End: endTime, Labels: []LapLabel{}, ClimateBucket: &bucket,
 				FuelConsumption:    &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: fuelPerLap},
 				RepresentativePace: &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: lapTime},
+				SavingPace:         &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: lapTime},
+				SavingFuel:         &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: fuelPerLap},
 			})
 			lapNumber++
 		}
@@ -333,7 +337,51 @@ func cleanFixtureFamilyUses() []LapFamilyUse {
 }
 
 func fixtureVectorContinuousSample(seconds float64, frequency int, values []float64) HistoricalSample {
-	return HistoricalSample{Index: int64(math.Round(seconds * float64(frequency))), RelativeTimeSeconds: seconds, Values: fixtureVectorValues(values)}
+	return HistoricalSample{Index: int64(math.Round(seconds * float64(frequency))), RelativeTimeSeconds: seconds, TimestampSeconds: floatPointer(seconds), Values: fixtureVectorValues(values)}
+}
+
+func TestContinuousVectorSeriesRequiresAlignedSourceTimestamp(t *testing.T) {
+	aligned := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	page := HistoricalPage{Sampling: aligned, Samples: []HistoricalSample{{
+		Index: 70, RelativeTimeSeconds: 7, TimestampSeconds: floatPointer(1007), Values: fixtureVectorValues([]float64{1, 2, 3, 4}),
+	}}}
+
+	got := continuousVectorSeries([]HistoricalPage{page})
+	if len(got) != 1 || got[0].seconds != 1007 || got[0].values != [4]float64{1, 2, 3, 4} {
+		t.Fatalf("aligned vector series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginUnknown
+	if got := continuousVectorSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("unaligned vector series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginSourceTimestamp
+	invalid := math.NaN()
+	page.Samples[0].TimestampSeconds = &invalid
+	if got := continuousVectorSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("non-finite vector series = %+v", got)
+	}
+}
+
+func TestDeriveTyreDegradationUsesAlignedClock(t *testing.T) {
+	start, end := fixtureTime(1000), fixtureTime(1010)
+	validity := LapValidityAnalysis{Laps: []AnalyzedLap{{
+		Number: 1, Start: &start, End: end, Complete: true,
+		FamilyUse: []LapFamilyUse{{Family: FamilyTyreDegradation, Included: true}},
+	}}}
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	pages := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{
+		{Index: 0, RelativeTimeSeconds: 0, TimestampSeconds: floatPointer(1000), Values: fixtureVectorValues([]float64{100, 100, 100, 100})},
+		{Index: 10, RelativeTimeSeconds: 10, TimestampSeconds: floatPointer(1010), Values: fixtureVectorValues([]float64{99, 99, 99, 99})},
+	}}}
+
+	got := deriveTyreDegradation("aligned-wear", validity, pages)
+	if got.Presence != strategyprojection.PresenceValid || got.ByWheel[strategyprojection.TyreWheelFL] != 1 {
+		t.Fatalf("aligned wear = %+v", got)
+	}
+	pages[0].Sampling.Origin = TimeOriginUnknown
+	if got := deriveTyreDegradation("unaligned-wear", validity, pages); got.Presence != strategyprojection.PresenceMissing {
+		t.Fatalf("unaligned wear = %+v", got)
+	}
 }
 
 func fixtureVectorEventSample(seconds float64, values []float64) HistoricalSample {
@@ -358,4 +406,148 @@ func savingLevel(t *testing.T, levels []strategyprojection.SavingLevel, code int
 	}
 	t.Fatalf("mixture code %d not found in %+v", code, levels)
 	return strategyprojection.SavingLevel{}
+}
+
+func TestCurveSamplesDoNotJoinRepeatedLapNumbers(t *testing.T) {
+	fixture := loadDerivedCurvesFixture(t, "derived-curves-crossed-v1.json")
+	session, pages, _, validity, pace := derivedCurvesFixtureInput(fixture)
+	grouped, err := groupPagesBySource(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := collectCurveLapSamples(validity, pace, grouped)
+	if len(want) < 2 {
+		t.Fatal("fixture lacks distinct observations")
+	}
+	for i := range validity.Laps {
+		validity.Laps[i].Number = 1
+		pace.Laps[i].Number = 1
+	}
+	got := collectCurveLapSamples(validity, pace, grouped)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("repeated lap numbers changed curve observations or stint ages")
+	}
+}
+
+func TestCurveSamplesRequireUnambiguousCompleteIdentity(t *testing.T) {
+	for _, name := range []string{"missing start", "missing end", "changed interval", "duplicate validity", "duplicate pace", "equivalent timezone"} {
+		t.Run(name, func(t *testing.T) {
+			fixture := loadDerivedCurvesFixture(t, "derived-curves-crossed-v1.json")
+			session, pages, _, validity, pace := derivedCurvesFixtureInput(fixture)
+			grouped, err := groupPagesBySource(session, pages)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := collectCurveLapSamples(validity, pace, grouped)
+			switch name {
+			case "missing start":
+				pace.Laps[0].Start = time.Time{}
+			case "missing end":
+				pace.Laps[0].End = time.Time{}
+			case "changed interval":
+				pace.Laps[0].End = pace.Laps[0].End.Add(time.Second)
+			case "duplicate validity":
+				validity.Laps = append(validity.Laps, validity.Laps[0])
+			case "duplicate pace":
+				pace.Laps = append(pace.Laps, pace.Laps[0])
+			case "equivalent timezone":
+				pace.Laps[0].Start = pace.Laps[0].Start.In(time.FixedZone("local", 3600))
+				pace.Laps[0].End = pace.Laps[0].End.In(time.FixedZone("local", 3600))
+			}
+			got := collectCurveLapSamples(validity, pace, grouped)
+			if name == "equivalent timezone" {
+				if !reflect.DeepEqual(got, want) {
+					t.Fatal("equivalent instant lost")
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, want[1:]) {
+				t.Fatal("ambiguous target contributed or changed other lap ages")
+			}
+		})
+	}
+}
+
+func TestSavingDoesNotDependOnPaceOrFuelFamilyUse(t *testing.T) {
+	fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
+	session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+	before, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.SavingCost.Presence != strategyprojection.PresenceValid {
+		t.Fatal("fixture lacks valid saving protocol")
+	}
+	for i := range validity.Laps {
+		for j := range validity.Laps[i].FamilyUse {
+			if validity.Laps[i].FamilyUse[j].Family == FamilyCombinedStintPaceCurve {
+				validity.Laps[i].FamilyUse[j].Included = false
+			}
+		}
+		pace.Laps[i].RepresentativePace = nil
+		pace.Laps[i].FuelConsumption = nil
+	}
+	got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.SavingCost, before.SavingCost) {
+		t.Fatal("pace/fuel exclusions leaked into saving")
+	}
+	if len(got.Stints) != 0 {
+		t.Fatal("saving observations leaked into pace curves")
+	}
+}
+
+func TestTrafficInclusionIsExplicitAndScopedToFamily(t *testing.T) {
+	for _, mode := range []string{"automatic", "pace", "saving", "both", "invalid metrics"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
+			session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+			base, _, _, _ := correctionExample()
+			base.SessionID = session.ID
+			validity.SessionID = session.ID
+			validity.ComputationVersion = base.AnalysisVersion
+			var err error
+			base.SegmentationDigest, err = correctionDigest("analysis.correction-segmentation.v1", validity.Temporal)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i := range validity.Laps {
+				validity.Laps[i].Labels = append(validity.Laps[i].Labels, LapLabelTraffic)
+			}
+			var requests []LapFamilyUseCorrection
+			for _, lap := range validity.Laps {
+				for _, use := range lap.FamilyUse {
+					wanted := (use.Family == FamilyCombinedStintPaceCurve && mode == "pace") || (use.Family == FamilySavingCost && mode == "saving") || ((mode == "both" || mode == "invalid metrics") && (use.Family == FamilySavingCost || use.Family == FamilyCombinedStintPaceCurve))
+					if wanted {
+						requests = append(requests, LapFamilyUseCorrection{Base: base, Target: LapCorrectionTarget{Number: lap.Number, Start: *lap.Start, End: lap.End}, Family: use.Family, Expected: use, Included: true, Reason: "controlled traffic review"})
+					}
+				}
+			}
+			prepared, err := PrepareLapFamilyCorrections(base, validity, requests)
+			if err != nil {
+				t.Fatal(err)
+			}
+			validity.Laps, err = ApplyLapFamilyCorrections(base, validity, validity, prepared)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mode == "invalid metrics" {
+				for i := range pace.Laps {
+					pace.Laps[i].RepresentativePace.Presence = strategyprojection.PresenceInvalid
+					pace.Laps[i].SavingPace.Presence = strategyprojection.PresenceInvalid
+				}
+			}
+			got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantPace := mode == "pace" || mode == "both"
+			wantSaving := mode == "saving" || mode == "both"
+			if (len(got.Stints) > 0) != wantPace || (got.SavingCost.Presence == strategyprojection.PresenceValid) != wantSaving {
+				t.Fatal("traffic decision leaked or ignored", mode, len(got.Stints), got.SavingCost.Presence)
+			}
+		})
+	}
 }

@@ -2,12 +2,110 @@ package telemetryanalysis
 
 import (
 	"encoding/json"
-	"math"
+	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestLapDistResetObservationsMatchSortedPath(t *testing.T) {
+	sample := func(index int64, distance, seconds float64) HistoricalSample {
+		return HistoricalSample{
+			Index: index, TimestampSeconds: &seconds,
+			Values: []HistoricalValue{{Column: "Lap Dist", Present: true, Quality: QualityValid,
+				Scalar: HistoricalScalar{Kind: ScalarNumber, Number: distance}}},
+		}
+	}
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	ordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{sample(0, 900, 10), sample(1, 950, 10.1)}},
+		{Sampling: sampling, Samples: []HistoricalSample{sample(2, 10, 10.2), sample(4, 990, 10.4), sample(5, 20, 10.5)}},
+	}
+	unordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{sample(2, 10, 10.2), sample(0, 900, 10)}},
+		{Sampling: sampling, Samples: []HistoricalSample{sample(1, 950, 10.1), sample(4, 990, 10.4), sample(5, 20, 10.5)}},
+	}
+	unknownOrigin := append([]HistoricalPage(nil), ordered...)
+	unknownOrigin[1].Sampling.Origin = TimeOriginUnknown
+	mismatch := append([]HistoricalPage(nil), ordered...)
+	mismatch[1].Sampling.FrequencyHz = 5
+	for _, test := range []struct {
+		name  string
+		pages []HistoricalPage
+	}{
+		{name: "ordered across pages and gaps", pages: ordered},
+		{name: "unordered fallback", pages: unordered},
+		{name: "unknown timestamp origin", pages: unknownOrigin},
+		{name: "frequency mismatch", pages: mismatch},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, gotFrequency := readLapDistResetObservations(test.pages)
+			want, wantFrequency := readUnorderedLapDistResetObservations(test.pages)
+			if gotFrequency != wantFrequency || !reflect.DeepEqual(got, want) {
+				t.Fatalf("streamed resets (%v, %d) differ from sorted path (%v, %d)", got, gotFrequency, want, wantFrequency)
+			}
+		})
+	}
+	got, frequency := readLapDistResetObservations(ordered)
+	if frequency != 10 || len(got) != 2 || got[0].index != 2 || got[1].index != 5 ||
+		got[0].seconds == nil || *got[0].seconds != 10.2 || !got[0].qualityValid {
+		t.Fatalf("unexpected ordered lap resets: %v, frequency %d", got, frequency)
+	}
+	var scan orderedLapDistResetScan
+	for _, page := range ordered {
+		if !scan.accept(page) {
+			t.Fatal("ordered page was rejected")
+		}
+	}
+	streamed, streamedFrequency := scan.finish()
+	if streamedFrequency != frequency || !reflect.DeepEqual(streamed, got) {
+		t.Fatalf("page-fed resets (%v, %d) differ from materialized (%v, %d)", streamed, streamedFrequency, got, frequency)
+	}
+}
+
+func TestChannelCoverageWindowKeepsUnorderedSemantics(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	point := func(index int64, seconds float64) HistoricalSample {
+		return HistoricalSample{Index: index, TimestampSeconds: &seconds}
+	}
+	ordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(1, 10.1)}},
+		{Sampling: sampling, Samples: []HistoricalSample{point(2, 10.2)}},
+	}
+	// The first page seems to have a gap, but the second fills it. A one-pass
+	// rejection would change the existing sorted interpretation.
+	unordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(2, 10.2)}},
+		{Sampling: sampling, Samples: []HistoricalSample{point(1, 10.1)}},
+	}
+	gap := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(2, 10.2)}}}
+	badTime := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(1, 9)}}}
+	for _, test := range []struct {
+		name  string
+		pages []HistoricalPage
+	}{
+		{name: "ordered pages", pages: ordered},
+		{name: "unordered pages that fill a gap", pages: unordered},
+		{name: "missing index", pages: gap},
+		{name: "nonmonotonic clock", pages: badTime},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			start, end, ok := channelCoverageWindow(test.pages)
+			wantStart, wantEnd, wantOK := unorderedChannelCoverageWindow(test.pages)
+			if start != wantStart || end != wantEnd || ok != wantOK {
+				t.Fatalf("coverage (%v, %v, %v), sorted path (%v, %v, %v)", start, end, ok, wantStart, wantEnd, wantOK)
+			}
+		})
+	}
+	start, end, ok := channelCoverageWindow(unordered)
+	if !ok || start != 10 || end != 10.2 {
+		t.Fatalf("filled unordered coverage = (%v, %v, %v)", start, end, ok)
+	}
+}
 
 type lapValidityFixture struct {
 	FixtureVersion      string                    `json:"fixtureVersion"`
@@ -66,10 +164,9 @@ func TestAnalyzeLapValidityRealSanitizedFixtures(t *testing.T) {
 	tests := []struct {
 		name string
 		file string
-		gaps int
 	}{
-		{name: "S045 baseline simple", file: "lap-validity-s045-v1.json", gaps: 1},
-		{name: "S266 delta temporal adversarial", file: "lap-validity-s266-v1.json", gaps: 1},
+		{name: "S045 baseline simple", file: "lap-validity-s045-v1.json"},
+		{name: "S266 delta temporal adversarial", file: "lap-validity-s266-v1.json"},
 	}
 	for _, test := range tests {
 		test := test
@@ -93,11 +190,11 @@ func TestAnalyzeLapValidityRealSanitizedFixtures(t *testing.T) {
 			if got := countLapLabel(analysis.Laps, LapLabelPit); got != expected.PitLaps {
 				t.Fatalf("pit labels = %d, expected %d", got, expected.PitLaps)
 			}
-			if got := len(analysis.Temporal.StintBoundaries) + 1; got != expected.ApparentStints {
-				t.Fatalf("apparent stints = %d, expected %d", got, expected.ApparentStints)
+			if analysis.Diagnostics.TemporalBridge.Aligned || analysis.Diagnostics.TemporalBridge.Reason != "bridge_absent" {
+				t.Fatalf("fixture without GPS bridge = %+v", analysis.Diagnostics.TemporalBridge)
 			}
-			if got := len(analysis.Temporal.Gaps); got != test.gaps {
-				t.Fatalf("coverage gaps = %d, expected %d", got, test.gaps)
+			if got := len(analysis.Temporal.Gaps); got != 0 {
+				t.Fatalf("unaligned fixture published %d coverage gaps", got)
 			}
 			if len(analysis.Laps) != expected.LapEventRows {
 				t.Fatalf("lap records = %d, expected one per lap event (%d)", len(analysis.Laps), expected.LapEventRows)
@@ -105,21 +202,21 @@ func TestAnalyzeLapValidityRealSanitizedFixtures(t *testing.T) {
 			if got := countCompleteLaps(analysis.Laps); got != expected.LapTimeUsableRows {
 				t.Fatalf("complete lap records = %d, expected %d", got, expected.LapTimeUsableRows)
 			}
-			if got := lapLabelCounts(analysis.Laps); !equalCountMaps(got, expected.Labels) {
-				t.Fatalf("labels = %v, expected %v", got, expected.Labels)
+			labelsWithoutTraffic := cloneCountMap(expected.Labels)
+			delete(labelsWithoutTraffic, LapLabelTraffic)
+			if got := lapLabelCounts(analysis.Laps); !equalCountMaps(got, labelsWithoutTraffic) {
+				t.Fatalf("labels = %v, expected fail-closed %v", got, labelsWithoutTraffic)
 			}
-			if got := boundarySourceCounts(analysis); !equalCountMaps(got, expected.BoundarySources) {
-				t.Fatalf("boundary sources = %v, expected %v", got, expected.BoundarySources)
+			if got := boundarySourceCounts(analysis); !equalCountMaps(got, map[string]int{"lap_event": expected.LapEventRows}) {
+				t.Fatalf("boundary sources = %v, expected event-only boundaries", got)
 			}
-			if got := boundaryQualityCounts(analysis); !equalCountMaps(got, expected.BoundaryQualities) {
-				t.Fatalf("boundary qualities = %v, expected %v", got, expected.BoundaryQualities)
+			if got := boundaryQualityCounts(analysis); !equalCountMaps(got, map[string]int{"unknown": expected.LapEventRows}) {
+				t.Fatalf("boundary qualities = %v, expected unknown without bridge", got)
 			}
-			if got := stintCauseCounts(analysis); !equalCountMaps(got, expected.StintCauses) {
-				t.Fatalf("stint causes = %v, expected %v", got, expected.StintCauses)
-			}
-			gapSeconds := analysis.Temporal.Gaps[0].EndTs.Sub(analysis.Temporal.Gaps[0].StartTs).Seconds()
-			if math.Abs(gapSeconds-expected.CoverageGapSeconds) > 0.001 {
-				t.Fatalf("coverage gap = %.3fs, expected %.3fs", gapSeconds, expected.CoverageGapSeconds)
+			causesWithoutFuel := cloneCountMap(expected.StintCauses)
+			delete(causesWithoutFuel, "fuel_jump")
+			if got := stintCauseCounts(analysis); !equalCountMaps(got, causesWithoutFuel) {
+				t.Fatalf("stint causes = %v, expected fail-closed %v", got, causesWithoutFuel)
 			}
 			assertTemporalContractValid(t, analysis)
 			assertFamilyReasonsExplicit(t, analysis.Laps)
@@ -139,23 +236,13 @@ func TestLapValidityLabelsAndFamilyExclusions(t *testing.T) {
 	if countLapLabel(analysis.Laps, LapLabelOutLap) == 0 ||
 		countLapLabel(analysis.Laps, LapLabelInLap) == 0 ||
 		countLapLabel(analysis.Laps, LapLabelIncidentOfftrack) == 0 ||
-		countLapLabel(analysis.Laps, LapLabelTraffic) == 0 ||
 		countLapLabel(analysis.Laps, LapLabelPaceOutlier) == 0 {
 		t.Fatalf("required labels missing: %+v", lapLabelCounts(analysis.Laps))
 	}
-
-	for _, lap := range analysis.Laps {
-		if !lap.HasLabel(LapLabelTraffic) {
-			continue
-		}
-		for _, use := range lap.FamilyUse {
-			for _, reason := range use.ExclusionReasons {
-				if reason == "traffic" {
-					t.Fatalf("traffic excluded from %s on lap %d", use.Family, lap.Number)
-				}
-			}
-		}
+	if countLapLabel(analysis.Laps, LapLabelTraffic) != 0 {
+		t.Fatal("unaligned traffic was attributed to a lap")
 	}
+
 }
 
 func TestAnalyzeLapValidityDeclaresSingleSourceQuality(t *testing.T) {
@@ -180,7 +267,70 @@ func TestAnalyzeLapValidityDeclaresSingleSourceQuality(t *testing.T) {
 	}
 }
 
-func TestAnalyzeLapValidityPreservesResetOnlyIncompleteLaps(t *testing.T) {
+func TestReconcileLapBoundariesRequiresIndependentAlignedReset(t *testing.T) {
+	t.Parallel()
+	events := []observedLapEvent{
+		{seconds: 1000, lapNumber: 0, qualityValid: true}, // Initial state, not a proved crossing.
+		{seconds: 1100, lapNumber: 1, qualityValid: true},
+		{seconds: 1200, lapNumber: 2, qualityValid: true},
+	}
+	for _, test := range []struct {
+		name   string
+		resets []observedLapReset
+		want   []string
+	}{
+		{name: "aligned independent crossings", resets: []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}, {seconds: floatPointer(1200.05), qualityValid: true}}, want: []string{"unknown", "valid", "valid"}},
+		{name: "one crossing missing", resets: []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}}, want: []string{"unknown", "valid", "unknown"}},
+		{name: "unmatched distance clock", resets: []observedLapReset{{seconds: floatPointer(1100.11), qualityValid: true}, {seconds: floatPointer(1200.11), qualityValid: true}}, want: []string{"unknown", "unknown", "unknown"}},
+		{name: "ambiguous double reset", resets: []observedLapReset{{seconds: floatPointer(1100.04), qualityValid: true}, {seconds: floatPointer(1100.05), qualityValid: true}, {seconds: floatPointer(1200.05), qualityValid: true}}, want: []string{"unknown", "unknown", "valid"}},
+		{name: "unaligned reset", resets: []observedLapReset{{}, {}}, want: []string{"unknown", "unknown", "unknown"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			boundaries := reconcileLapBoundaries(events, test.resets, 10, true, strategyprojection.Provenance{})
+			if len(boundaries) != len(test.want) {
+				t.Fatalf("boundaries=%d, want %d", len(boundaries), len(test.want))
+			}
+			for index, boundary := range boundaries {
+				if string(boundary.Quality) != test.want[index] {
+					t.Fatalf("boundary %d quality=%s, want %s", index, boundary.Quality, test.want[index])
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileLapBoundariesRejectsUntrustedCrossings(t *testing.T) {
+	t.Parallel()
+	baseEvents := []observedLapEvent{
+		{seconds: 1000, lapNumber: 0, qualityValid: true},
+		{seconds: 1100, lapNumber: 1, qualityValid: true},
+	}
+	baseResets := []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}}
+	for _, test := range []struct {
+		name    string
+		mutate  func([]observedLapEvent, []observedLapReset)
+		aligned bool
+	}{
+		{name: "no GPS bridge", aligned: false},
+		{name: "uncertain event", aligned: true, mutate: func(events []observedLapEvent, _ []observedLapReset) { events[1].qualityValid = false }},
+		{name: "uncertain distance", aligned: true, mutate: func(_ []observedLapEvent, resets []observedLapReset) { resets[0].qualityValid = false }},
+		{name: "lap number jump", aligned: true, mutate: func(events []observedLapEvent, _ []observedLapReset) { events[1].lapNumber = 2 }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			events := append([]observedLapEvent(nil), baseEvents...)
+			resets := append([]observedLapReset(nil), baseResets...)
+			if test.mutate != nil {
+				test.mutate(events, resets)
+			}
+			boundaries := reconcileLapBoundaries(events, resets, 10, test.aligned, strategyprojection.Provenance{})
+			if boundaries[1].Quality != strategyprojection.PresenceUnknown {
+				t.Fatalf("untrusted crossing became %s", boundaries[1].Quality)
+			}
+		})
+	}
+}
+
+func TestAnalyzeLapValidityRejectsUnalignedResetOnlyLaps(t *testing.T) {
 	t.Parallel()
 	fixture := loadLapValidityFixture(t, "lap-validity-s045-v1.json")
 	session, pages := fixtureHistoricalInput(t, fixture)
@@ -193,21 +343,8 @@ func TestAnalyzeLapValidityPreservesResetOnlyIncompleteLaps(t *testing.T) {
 	}
 
 	analysis, err := AnalyzeLapValidity(session, filtered)
-	if err != nil {
-		t.Fatalf("AnalyzeLapValidity() error = %v", err)
-	}
-	if len(analysis.Laps) != fixture.ExpectedSpikeCounts.LapDistResets {
-		t.Fatalf("reset-only laps = %d", len(analysis.Laps))
-	}
-	for _, lap := range analysis.Laps {
-		if lap.Complete || !lap.HasLabel(LapLabelIncomplete) {
-			t.Fatalf("reset-only lap claims completeness: %+v", lap)
-		}
-	}
-	for _, boundary := range analysis.Temporal.LapBoundaries {
-		if boundary.Source != "lap_dist_reset" || boundary.Quality != "unknown" {
-			t.Fatalf("reset-only boundary = %+v", boundary)
-		}
+	if !errors.Is(err, ErrInvalidLapValidityInput) || len(analysis.Laps) != 0 {
+		t.Fatalf("unaligned reset-only source was accepted: analysis=%+v err=%v", analysis, err)
 	}
 }
 
@@ -257,6 +394,290 @@ func TestAnalyzeLapValidityHandlesIncidentsOutsideLapRange(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnalyzeLapValidityUsesAlignedFuelRiseAndCoverage(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	originalFuelTimestamp := pages[2].Samples[17].TimestampSeconds
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if analysis.ComputationVersion != "lap-validity.v3" {
+		t.Fatalf("computation version = %q", analysis.ComputationVersion)
+	}
+	if !analysis.Diagnostics.TemporalBridge.Aligned {
+		t.Fatalf("temporal bridge = %+v", analysis.Diagnostics.TemporalBridge)
+	}
+	if len(analysis.Temporal.StintBoundaries) != 1 {
+		t.Fatalf("stint boundaries = %+v; gradual refuel created a phantom stint", analysis.Temporal.StintBoundaries)
+	}
+	boundary := analysis.Temporal.StintBoundaries[0]
+	if boundary.Cause != "pit" || timestampSeconds(boundary.Timestamp) != 1025 {
+		t.Fatalf("merged pit/fuel boundary = %+v", boundary)
+	}
+	if len(analysis.Temporal.Segments) != 1 {
+		t.Fatalf("coverage segments = %+v", analysis.Temporal.Segments)
+	}
+	segment := analysis.Temporal.Segments[0]
+	if timestampSeconds(segment.SessionStartTs) != 1005 || timestampSeconds(segment.SessionEndTs) != 1025 {
+		t.Fatalf("coverage = %v..%v, want 1005..1025", segment.SessionStartTs, segment.SessionEndTs)
+	}
+	if originalFuelTimestamp != nil || pages[2].Samples[17].TimestampSeconds != nil {
+		t.Fatal("analysis mutated original pages")
+	}
+}
+
+func TestAnalyzeLapValidityFailsClosedWithoutTemporalBridge(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	session.Channels = session.Channels[1:]
+	pages = pages[1:]
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if analysis.Diagnostics.TemporalBridge.Aligned || analysis.Diagnostics.TemporalBridge.Reason != "bridge_absent" {
+		t.Fatalf("temporal bridge = %+v", analysis.Diagnostics.TemporalBridge)
+	}
+	for _, boundary := range analysis.Temporal.StintBoundaries {
+		if boundary.Cause == "fuel_jump" {
+			t.Fatalf("unaligned fuel produced boundary %+v", boundary)
+		}
+	}
+	if len(analysis.Temporal.Segments) != 0 || len(analysis.Temporal.Gaps) != 0 {
+		t.Fatalf("unaligned continuous data produced coverage: %+v", analysis.Temporal)
+	}
+}
+
+func TestAnalyzeLapValidityUsesAlignedGradualFuelRiseWithoutPitEvents(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	pages = pages[:6]
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := stintCauseCounts(analysis); !equalCountMaps(got, map[string]int{"fuel_jump": 1}) {
+		t.Fatalf("stint causes = %v, want one gradual fuel rise", got)
+	}
+}
+
+func TestOrderedFuelRiseScanKeepsOnlyRiseSummariesAcrossPages(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	values := []float64{90, 92, 94, 94, 93, 94, 97, 98}
+	pages := []HistoricalPage{{Sampling: sampling}, {Sampling: sampling}}
+	for index, value := range values {
+		page := index / 4
+		pages[page].Samples = append(pages[page].Samples, HistoricalSample{
+			Index: int64(index), TimestampSeconds: floatPointer(100 + float64(index)),
+			Values: []HistoricalValue{numberValue("Fuel Level", value)},
+		})
+	}
+	var scan orderedFuelRiseScan
+	for _, page := range pages {
+		if !scan.accept(page) {
+			t.Fatal("ordered pages rejected")
+		}
+	}
+	want := []fuelRise{{seconds: 101, delta: 4}, {seconds: 105, delta: 5}}
+	if got := scan.finish(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("streamed rises = %+v, want %+v", got, want)
+	}
+	if got := observedFuelRises(pages); !reflect.DeepEqual(got, want) {
+		t.Fatalf("materialized rises = %+v, want %+v", got, want)
+	}
+	if got := observedFuelRises([]HistoricalPage{pages[1], pages[0]}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("unordered fallback = %+v, want %+v", got, want)
+	}
+}
+
+func TestAnalyzeLapValidityIgnoresInitialFuelRiseAndPitState(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	fuel := &pages[2]
+	for index := range fuel.Samples {
+		fuel.Samples[index].Values = []HistoricalValue{numberValue("Fuel Level", 100-float64(index))}
+	}
+	for index := 1; index <= 4; index++ {
+		fuel.Samples[index].Values = []HistoricalValue{numberValue("Fuel Level", 100+float64(index)*2)}
+	}
+	pages[6].Samples = []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000), Values: []HistoricalValue{booleanValue("In Pits", true)}},
+		{Index: 1, TimestampSeconds: floatPointer(1004), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+	}
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Temporal.StintBoundaries) != 0 {
+		t.Fatalf("initial state created stint boundaries: %+v", analysis.Temporal.StintBoundaries)
+	}
+}
+
+func TestAnalyzeLapValidityIgnoresFuelRiseInsideInitialPitState(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	pages[6].Samples = []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000), Values: []HistoricalValue{booleanValue("In Pits", true)}},
+		{Index: 1, TimestampSeconds: floatPointer(1022), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+	}
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Temporal.StintBoundaries) != 0 {
+		t.Fatalf("fuel rise inside initial pit state created stint boundaries: %+v", analysis.Temporal.StintBoundaries)
+	}
+}
+
+func TestAnalyzeLapValidityMergesPitCrossingWithLaterFuelRise(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	pages[6].Samples = []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+		{Index: 1, TimestampSeconds: floatPointer(1014), Values: []HistoricalValue{booleanValue("In Pits", true)}},
+		{Index: 2, TimestampSeconds: floatPointer(1018), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+	}
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := stintCauseCounts(analysis); !equalCountMaps(got, map[string]int{"pit": 1}) {
+		t.Fatalf("stint causes = %v, want one pit-priority boundary", got)
+	}
+	if got := timestampSeconds(analysis.Temporal.StintBoundaries[0].Timestamp); got != 1015 {
+		t.Fatalf("pit boundary = %v, want crossed lap boundary 1015", got)
+	}
+}
+
+func TestAnalyzeLapValidityAttributesAlignedTraffic(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	session.Channels = append(session.Channels, HistoricalChannel{
+		ID: "traffic", SourceName: "Time Behind Next",
+		Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginUnknown},
+		Columns:  []HistoricalColumn{{Name: "Time Behind Next", Type: ScalarNumber}},
+	})
+	pages = append(pages, HistoricalPage{
+		ChannelID: "traffic", Sampling: session.Channels[len(session.Channels)-1].Sampling,
+		Samples: []HistoricalSample{
+			{Index: 5, Values: []HistoricalValue{numberValue("Time Behind Next", 20)}},
+			{Index: 6, Values: []HistoricalValue{numberValue("Time Behind Next", 1)}},
+			{Index: 7, Values: []HistoricalValue{numberValue("Time Behind Next", 20)}},
+		},
+	})
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := countLapLabel(analysis.Laps, LapLabelTraffic); got != 1 {
+		t.Fatalf("traffic labels = %d, want 1", got)
+	}
+	for _, lap := range analysis.Laps {
+		if lap.HasLabel(LapLabelTraffic) {
+			assertTrafficExcludedFromRelevantFamilies(t, lap)
+		}
+	}
+}
+
+func TestContinuousCoverageUsesOneContiguousChannel(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	discontinuous := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000)},
+		{Index: 2, TimestampSeconds: floatPointer(1002)},
+	}}}
+	fallback := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{
+		{Index: 5, TimestampSeconds: floatPointer(1005)},
+		{Index: 6, TimestampSeconds: floatPointer(1006)},
+	}}}
+
+	start, end, ok := continuousCoverageWindow(discontinuous, fallback)
+	if !ok || start != 1005 || end != 1006 {
+		t.Fatalf("coverage = %v..%v ok=%v, want contiguous fallback 1005..1006", start, end, ok)
+	}
+	if _, _, ok := continuousCoverageWindow(discontinuous); ok {
+		t.Fatal("discontinuous channel claimed continuous coverage")
+	}
+}
+
+func TestAnalyzeLapValidityUsesAlignedResetsWithoutLapEvents(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	session.Channels = session.Channels[:4]
+	pages = pages[:4]
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Laps) != 3 || len(analysis.Temporal.LapBoundaries) != 3 {
+		t.Fatalf("aligned reset-only result: laps=%d boundaries=%d", len(analysis.Laps), len(analysis.Temporal.LapBoundaries))
+	}
+	for _, boundary := range analysis.Temporal.LapBoundaries {
+		if boundary.Source != "lap_dist_reset" {
+			t.Fatalf("reset boundary = %+v", boundary)
+		}
+	}
+}
+
+func reducedT19aTemporalRegression(t *testing.T) (HistoricalSession, []HistoricalPage) {
+	t.Helper()
+	continuous := func(id, name string) HistoricalChannel {
+		return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginUnknown}, Columns: []HistoricalColumn{{Name: name, Type: ScalarNumber}}}
+	}
+	event := func(id, name string, kind ScalarKind) HistoricalChannel {
+		return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{Kind: SamplingEventTimestamped, Origin: TimeOriginSourceTimestamp}, Columns: []HistoricalColumn{{Name: name, Type: kind}}}
+	}
+	session := HistoricalSession{SchemaVersion: HistoricalSchemaVersion, ID: "t19a-reduced-regression", Channels: []HistoricalChannel{
+		{ID: "gps", SourceName: "GPS Time", Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}, Columns: []HistoricalColumn{{Name: "GPS Time", Type: ScalarNumber}}},
+		continuous("lap-dist", "Lap Dist"),
+		continuous("fuel", "Fuel Level"),
+		continuous("track-temp", "Track Temperature"),
+		event("lap", "Lap", ScalarNumber),
+		event("lap-time", "Lap Time", ScalarNumber),
+		event("pits", "In Pits", ScalarBoolean),
+	}}
+	gps := HistoricalPage{ChannelID: "gps", Sampling: session.Channels[0].Sampling}
+	for index := int64(0); index <= 300; index++ {
+		gps.Samples = append(gps.Samples, HistoricalSample{Index: index, Values: []HistoricalValue{numberValue("GPS Time", 1000+float64(index)*0.1+float64(index)*0.00001)}})
+	}
+	lapDist := HistoricalPage{ChannelID: "lap-dist", Sampling: session.Channels[1].Sampling}
+	fuel := HistoricalPage{ChannelID: "fuel", Sampling: session.Channels[2].Sampling}
+	trackTemperature := HistoricalPage{ChannelID: "track-temp", Sampling: session.Channels[3].Sampling}
+	fuelLevel := 90.0
+	for index := int64(0); index <= 30; index++ {
+		distance := float64(index%10) * 600
+		lapDist.Samples = append(lapDist.Samples, HistoricalSample{Index: index, Values: []HistoricalValue{numberValue("Lap Dist", distance)}})
+		if index > 0 {
+			fuelLevel -= 0.5
+		}
+		if index >= 17 && index <= 20 {
+			fuelLevel += 2
+		}
+		fuel.Samples = append(fuel.Samples, HistoricalSample{Index: index, Values: []HistoricalValue{numberValue("Fuel Level", fuelLevel)}})
+		trackTemperature.Samples = append(trackTemperature.Samples, HistoricalSample{Index: index, Values: []HistoricalValue{numberValue("Track Temperature", 30)}})
+	}
+	lap := HistoricalPage{ChannelID: "lap", Sampling: session.Channels[4].Sampling, Samples: []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1005), Values: []HistoricalValue{numberValue("Lap", 1)}},
+		{Index: 1, TimestampSeconds: floatPointer(1015), Values: []HistoricalValue{numberValue("Lap", 2)}},
+		{Index: 2, TimestampSeconds: floatPointer(1025), Values: []HistoricalValue{numberValue("Lap", 3)}},
+	}}
+	lapTime := HistoricalPage{ChannelID: "lap-time", Sampling: session.Channels[5].Sampling, Samples: []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1005), Values: []HistoricalValue{numberValue("Lap Time", 10)}},
+		{Index: 1, TimestampSeconds: floatPointer(1015), Values: []HistoricalValue{numberValue("Lap Time", 10)}},
+		{Index: 2, TimestampSeconds: floatPointer(1025), Values: []HistoricalValue{numberValue("Lap Time", 10)}},
+	}}
+	pits := HistoricalPage{ChannelID: "pits", Sampling: session.Channels[6].Sampling, Samples: []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+		{Index: 1, TimestampSeconds: floatPointer(1016), Values: []HistoricalValue{booleanValue("In Pits", true)}},
+		{Index: 2, TimestampSeconds: floatPointer(1022), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+	}}
+	return session, []HistoricalPage{gps, lapDist, fuel, trackTemperature, lap, lapTime, pits}
+}
+
+func booleanValue(column string, value bool) HistoricalValue {
+	return HistoricalValue{Column: column, Present: true, Quality: QualityValid, Scalar: HistoricalScalar{Kind: ScalarBoolean, Boolean: value}}
 }
 
 func loadLapValidityFixture(t *testing.T, name string) lapValidityFixture {
@@ -401,6 +822,14 @@ func equalCountMaps[K comparable](left, right map[K]int) bool {
 	return true
 }
 
+func cloneCountMap[K comparable](source map[K]int) map[K]int {
+	clone := make(map[K]int, len(source))
+	for key, value := range source {
+		clone[key] = value
+	}
+	return clone
+}
+
 func assertFamilyReasonsExplicit(t *testing.T, laps []AnalyzedLap) {
 	t.Helper()
 	for _, lap := range laps {
@@ -410,6 +839,17 @@ func assertFamilyReasonsExplicit(t *testing.T, laps []AnalyzedLap) {
 			}
 			if !use.Included && len(use.ExclusionReasons) == 0 {
 				t.Fatalf("excluded family %s lacks reason on lap %d", use.Family, lap.Number)
+			}
+		}
+	}
+}
+
+func assertTrafficExcludedFromRelevantFamilies(t *testing.T, lap AnalyzedLap) {
+	t.Helper()
+	for _, use := range lap.FamilyUse {
+		for _, reason := range use.ExclusionReasons {
+			if reason == "traffic" {
+				t.Fatalf("traffic excluded from %s on lap %d", use.Family, lap.Number)
 			}
 		}
 	}
@@ -497,7 +937,7 @@ func TestAnalyzeLapValidityDropsDuplicateLapEvents(t *testing.T) {
 
 func TestAnalyzeLapValidityDoesNotCompareFuelAcrossMissingBoundary(t *testing.T) {
 	t.Parallel()
-	continuous := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}
+	continuous := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
 	session := HistoricalSession{SchemaVersion: HistoricalSchemaVersion, ID: "sparse-fuel"}
 	pages := []HistoricalPage{}
 	addChannel := func(name string, samples []HistoricalSample) {
@@ -514,13 +954,15 @@ func TestAnalyzeLapValidityDoesNotCompareFuelAcrossMissingBoundary(t *testing.T)
 		if index%10 == 0 && index > 0 {
 			meters = 0
 		}
-		lapDist = append(lapDist, lapValidityNumberSample(index, nil, meters))
+		seconds := 100 + float64(index)/10
+		lapDist = append(lapDist, lapValidityNumberSample(index, &seconds, meters))
 	}
 	addChannel("Lap Dist", lapDist)
+	at := func(seconds float64) *float64 { return &seconds }
 	fuel := []HistoricalSample{
-		lapValidityNumberSample(10, nil, 30),
-		{Index: 20, Values: []HistoricalValue{{Column: "value", Quality: QualityMissing}}},
-		lapValidityNumberSample(30, nil, 65),
+		lapValidityNumberSample(10, at(101), 30),
+		{Index: 11, TimestampSeconds: at(101.1), Values: []HistoricalValue{{Column: "value", Quality: QualityMissing}}},
+		lapValidityNumberSample(12, at(101.2), 65),
 	}
 	addChannel("Fuel Level", fuel)
 

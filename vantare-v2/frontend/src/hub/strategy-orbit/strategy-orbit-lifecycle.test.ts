@@ -4,11 +4,17 @@ import type {
   StrategyApplicationClient,
   StrategyApplicationCommandV1,
   StrategyApplicationResultV1,
+  StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
+import projectionGolden from "../../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
 import type { RevisionRefV1 } from "../../strategy/strategy-contract-v1";
 import {
   activateOrbitRevision,
+  acknowledgeOrbitRevisionRecovery,
   loadOrbitLifecycle,
+  loadOrbitRevisionRecovery,
+  resolveOrbitRevisionRecovery,
+  retryOrbitRevisionRecovery,
   saveOrbitRevision,
   type StrategyOrbitRevisionPayloadV1,
 } from "./strategy-orbit-lifecycle";
@@ -19,6 +25,26 @@ const payload: StrategyOrbitRevisionPayloadV1 = {
   variant: { id: "strategy-a", name: "Base", mode: "dry" },
   calculatedPlan: { totalLaps: 139 },
 };
+
+function payloadWithSourceRevision(revisionId: string): StrategyOrbitRevisionPayloadV1 {
+  const sourceRevisions = projectionGolden.sourceSessions.map((sessionId) => ({
+    sessionId,
+    baseDigest: "a".repeat(64),
+    revisionId,
+    snapshotId: "c".repeat(64),
+  }));
+  const calculationInput = {
+    event: { durationMinutes: 60, tankLiters: 100, pitLossSeconds: 30 },
+    drivers: [],
+    variants: [],
+    activeVariantId: "strategy-a",
+    planningInputs: {
+      projection: { ...projectionGolden, sourceRevisions },
+      overrides: {},
+    },
+  } as StrategyOrbitCalculationInputV1;
+  return { ...payload, calculationInput };
+}
 
 const revision: RevisionRefV1 = {
   planId: "orbit-event-event-1",
@@ -80,8 +106,10 @@ describe("Strategy Orbit lifecycle canónico", () => {
             payload: command.draft.payload,
             contentHash: revision.contentHash,
           } as never,
+          pendingRevision: { command, commandDigest: "c".repeat(64) },
         });
       }
+      if (command.operation === "acknowledge_pending_revision_save") return result(command);
       throw new Error(`unexpected ${command.operation}`);
     });
 
@@ -90,7 +118,7 @@ describe("Strategy Orbit lifecycle canónico", () => {
       now: () => "2026-08-21T18:00:00Z",
     });
 
-    expect(seen.map((command) => command.operation)).toEqual(["list", "create", "save_revision", "list"]);
+    expect(seen.map((command) => command.operation)).toEqual(["list", "create", "save_revision", "acknowledge_pending_revision_save", "list"]);
     expect(seen[1]).toMatchObject({
       operation: "create",
       expectedRepositoryVersion: 7,
@@ -100,13 +128,60 @@ describe("Strategy Orbit lifecycle canónico", () => {
       operation: "save_revision",
       expectedRepositoryVersion: 8,
       revisionId: "orbit-revision-visible",
+      recoverable: true,
       draft: { payload },
     });
     expect(saved.revision).toEqual(revision);
     expect(saved.repositoryVersion).toBe(9);
   });
 
+  it("recupera, comprueba, reintenta y reconoce solo por la intención exacta", async () => {
+    const saveCommand: Extract<StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>, { operation: "save_revision" }> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "orbit-save-lost",
+      operation: "save_revision",
+      expectedRepositoryVersion: 8,
+      draft: {
+        contractVersion: "strategy.v1",
+        draftId: "orbit-draft-event-1",
+        planId: revision.planId,
+        variantId: revision.variantId,
+        name: "Enduro · Base",
+        mode: "manual",
+        capabilities: ["manual_inputs"],
+        provenance: { kind: "manual", sourceId: "strategy-orbit" },
+        confidence: { level: "high", basis: "visible calculated plan" },
+        updatedAt: "2026-08-21T18:00:00Z",
+        payload,
+      },
+      revisionId: revision.revisionId,
+      createdAt: "2026-08-21T18:00:00Z",
+      recoverable: true,
+    };
+    const pendingRevision = { command: saveCommand, commandDigest: "d".repeat(64) };
+    const seen: StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>[] = [];
+    const client = clientWith(async (command) => {
+      seen.push(command);
+      if (command.operation === "get_pending_revision_save") return result(command, { pendingRevision });
+      if (command.operation === "resolve_pending_revision_save") return result(command, { pendingRevision, pendingResolution: "stored", revision: { ...saveCommand.draft, ...revision } as never });
+      if (command.operation === "save_revision") return result(command, { revision: { ...saveCommand.draft, ...revision } as never, pendingRevision });
+      if (command.operation === "acknowledge_pending_revision_save") return result(command);
+      throw new Error(`unexpected ${command.operation}`);
+    });
+
+    expect(await loadOrbitRevisionRecovery(client, "load")).toEqual(pendingRevision);
+    expect(await resolveOrbitRevisionRecovery(client, "check")).toEqual({ stored: true, revision });
+    expect(await retryOrbitRevisionRecovery(client, pendingRevision, "retry")).toEqual(revision);
+    await acknowledgeOrbitRevisionRecovery(client, pendingRevision, "dismiss");
+    expect(seen.map((command) => command.operation)).toEqual([
+      "get_pending_revision_save", "resolve_pending_revision_save", "save_revision",
+      "acknowledge_pending_revision_save", "acknowledge_pending_revision_save",
+    ]);
+    expect(seen[2]).toEqual(saveCommand);
+  });
+
   it("al recargar recupera revisión exacta y ActivePlan solo del backend", async () => {
+    const savedPayload = payloadWithSourceRevision("b".repeat(64));
     const activePlan = {
       contractVersion: "strategy.v1" as const,
       activationId: "activation-1",
@@ -133,6 +208,9 @@ describe("Strategy Orbit lifecycle canónico", () => {
         });
       }
       if (command.operation === "open") {
+        if (!("draftId" in command) || command.draftId === undefined) {
+          throw new Error("unexpected revision open");
+        }
         const draft = {
           contractVersion: "strategy.v1" as const,
           draftId: command.draftId,
@@ -145,17 +223,24 @@ describe("Strategy Orbit lifecycle canónico", () => {
           provenance: { kind: "manual" as const, sourceId: "strategy-orbit" },
           confidence: { level: "high" as const, basis: "visible calculated plan" },
           updatedAt: "2026-08-21T18:00:00Z",
-          payload,
+          payload: savedPayload,
         };
         return result(command, { repositoryVersion: 12, draft, savedDraft: draft });
       }
       throw new Error(`unexpected ${command.operation}`);
     });
 
-    const loaded = await loadOrbitLifecycle(client, payload, "reload");
+    const loaded = await loadOrbitLifecycle(client, savedPayload, "reload");
     expect(loaded.savedRevision).toEqual(revision);
     expect(loaded.activePlan).toEqual(activePlan);
     expect(loaded.repositoryVersion).toBe(12);
+
+    const changedSource = await loadOrbitLifecycle(
+      client,
+      payloadWithSourceRevision("d".repeat(64)),
+      "changed-source",
+    );
+    expect(changedSource.savedRevision).toBeUndefined();
   });
 
   it("Activar envía exactamente la revisión guardada y conserva el ActivePlan devuelto", async () => {
@@ -183,5 +268,20 @@ describe("Strategy Orbit lifecycle canónico", () => {
       revision,
     }));
     expect(activated.activePlan?.revision).toEqual(revision);
+  });
+
+  it("usa una marca canónica al activar en un segundo exacto", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-15T12:05:00.000Z"));
+    try {
+      const execute = vi.fn(async (command: StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>) => {
+        if (command.operation !== "activate") throw new Error(`unexpected ${command.operation}`);
+        return result(command, { activePlan: { contractVersion: "strategy.v1", activationId: command.activationId, revision: command.revision, activatedAt: command.activatedAt } });
+      });
+      await activateOrbitRevision(clientWith(execute), { repositoryVersion: 12, savedRevision: revision });
+      expect(execute.mock.calls[0][0].activatedAt).toBe("2026-09-15T12:05:00Z");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

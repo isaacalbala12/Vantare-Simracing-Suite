@@ -1,0 +1,564 @@
+package telemetryanalysis
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+const maxCorrectionRevisions = 256
+const maxCorrectionDocumentBytes = 8 << 20
+
+var (
+	ErrCorrectionConflict        = errors.New("correction revision conflict")
+	ErrCorrectionRevisionMissing = errors.New("correction revision missing")
+	ErrCorruptCorrections        = errors.New("corrupt correction history")
+	ErrCorrectionWriteInProgress = errors.New("correction write in progress")
+	ErrCorrectionCommitUncertain = errors.New("correction commit uncertain")
+)
+
+type CorrectionSaveCommand struct {
+	ExpectedRevision string `json:"expectedRevision"`
+	CommandID        string `json:"commandId"`
+	Reason           string `json:"reason"`
+	LocalAuthorID    string `json:"localAuthorId"`
+}
+type CorrectionRevision struct {
+	RevisionID       string                           `json:"revisionId"`
+	ParentRevisionID string                           `json:"parentRevisionId"`
+	Command          CorrectionSaveCommand            `json:"command"`
+	CommandDigest    string                           `json:"commandDigest"`
+	CreatedAt        string                           `json:"createdAt"`
+	Snapshot         PreparedSampleCorrectionSnapshot `json:"snapshot"`
+}
+type CorrectionStoreResult struct {
+	Revision CorrectionRevision `json:"revision"`
+	HeadID   string             `json:"headId"`
+}
+
+type CorrectionCommandResolution struct {
+	Found    bool                `json:"found"`
+	HeadID   string              `json:"headId"`
+	Revision *CorrectionRevision `json:"revision,omitempty"`
+}
+
+// PendingCorrectionCommand is the exact write intent retained before Save.
+// Every slice is explicit: nil is invalid, while an empty slice means the
+// caller intentionally supplied an empty complete set.
+type PendingCorrectionCommand struct {
+	Corrections     []SampleValueCorrection    `json:"corrections"`
+	FamilyUses      []LapFamilyUseCorrection   `json:"familyUses"`
+	Classifications []ClassificationCorrection `json:"classifications"`
+	StintBoundaries []StintBoundaryCorrection  `json:"stintBoundaries"`
+	Command         CorrectionSaveCommand      `json:"command"`
+	CommandDigest   string                     `json:"commandDigest"`
+}
+
+// ObservationCorrectionInput is assembled by Analysis from authorized original
+// data and scalar reanalysis. It is not a client DTO. Non-nil FamilyUses denotes
+// an explicit complete set, including explicit removal of all family decisions.
+// The same holds for Classifications and StintBoundaries: nil means the caller
+// is unaware of the group and must never silently drop it, while an explicit
+// (possibly empty) set replaces it. Session carries the original session for
+// classification.
+type ObservationCorrectionInput struct {
+	Samples         []SampleCorrectionInput
+	Original        LapValidityAnalysis
+	Effective       LapValidityAnalysis
+	FamilyUses      []LapFamilyUseCorrection
+	Session         HistoricalSession
+	Classifications []ClassificationCorrection
+	// StintBoundaries follows the same complete-set rule: nil means the caller
+	// is unaware of the group; a non-nil empty set explicitly removes it.
+	StintBoundaries []StintBoundaryCorrection
+	// ResolveCanonicalCombination resuelve una referencia canónica contra
+	// el catálogo autorizado para una escritura nueva de identidad. Es un
+	// callback nativo opcional, nunca un DTO ni parte de digests. El store
+	// no posee catálogo: se invoca una sola vez, bajo lease y sólo después
+	// de replay, conflicto de cabeza, guardas de grupos desconocidos y
+	// cuota. Replay, Resolve, Load y reapertura nunca lo consultan.
+	ResolveCanonicalCombination func(context.Context, string) (CombinationIdentity, error)
+}
+type correctionDocument struct {
+	Version   int                       `json:"version"`
+	Base      SourceAnalysisRef         `json:"base"`
+	HeadID    string                    `json:"headId"`
+	Revisions []CorrectionRevision      `json:"revisions"`
+	Pending   *PendingCorrectionCommand `json:"pending,omitempty"`
+}
+
+// CorrectionStore owns only private revision custody. The Analysis service must
+// verify current source authorization before every call, including replays.
+// Neither a base digest nor stored history grants authorization to source data.
+type CorrectionStore struct {
+	root      string
+	writeFile func(string, []byte) error
+}
+
+func NewCorrectionStore(privateRoot string) *CorrectionStore {
+	return &CorrectionStore{root: filepath.Join(privateRoot, "corrections"), writeFile: writeAuthorizedSessionFile}
+}
+func (s *CorrectionStore) lock(ctx context.Context, base SourceAnalysisRef) (string, correctionLease, error) {
+	if err := ctx.Err(); err != nil {
+		return "", nil, err
+	}
+	digest, err := base.Digest()
+	if err != nil {
+		return "", nil, err
+	}
+	if err := os.MkdirAll(s.root, 0700); err != nil {
+		return "", nil, fmt.Errorf("create correction directory: %w", err)
+	}
+	path := filepath.Join(s.root, digest+".json")
+	lease, err := acquireCorrectionLease(filepath.Join(s.root, digest+".lock"))
+	return path, lease, err
+}
+func (s *CorrectionStore) Load(ctx context.Context, base SourceAnalysisRef, revisionID string) (result CorrectionStoreResult, err error) {
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, _, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	initial, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		return result, err
+	}
+	if revisionID == "" {
+		revisionID = doc.HeadID
+	}
+	if revisionID == initial.SnapshotID {
+		return CorrectionStoreResult{Revision: CorrectionRevision{RevisionID: revisionID, Snapshot: initial}, HeadID: doc.HeadID}, nil
+	}
+	for _, revision := range doc.Revisions {
+		if revision.RevisionID == revisionID {
+			return CorrectionStoreResult{revision, doc.HeadID}, nil
+		}
+	}
+	return result, ErrCorrectionRevisionMissing
+}
+func (s *CorrectionStore) Save(ctx context.Context, base SourceAnalysisRef, inputs []SampleCorrectionInput, command CorrectionSaveCommand) (result CorrectionStoreResult, err error) {
+	if len(inputs) > MaxSampleCorrections {
+		return result, ErrInvalidCorrection
+	}
+	requests := make([]SampleValueCorrection, len(inputs))
+	for i := range inputs {
+		requests[i] = inputs[i].Request
+	}
+	commandDigest, err := validatedCorrectionCommandDigest(base, command, requests)
+	if err != nil {
+		return result, err
+	}
+	return s.saveValidated(ctx, base, ObservationCorrectionInput{Samples: inputs}, command, commandDigest)
+}
+
+func (s *CorrectionStore) SaveObservations(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand) (CorrectionStoreResult, error) {
+	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses)+len(input.Classifications)+len(input.StintBoundaries) > MaxSampleCorrections {
+		return CorrectionStoreResult{}, ErrInvalidCorrection
+	}
+	requests := make([]SampleValueCorrection, len(input.Samples))
+	for i, sample := range input.Samples {
+		requests[i] = sample.Request
+	}
+	digest, err := validatedStintMixedCommandDigest(base, command, requests, input.FamilyUses, input.Classifications, input.StintBoundaries)
+	if err != nil {
+		return CorrectionStoreResult{}, err
+	}
+	return s.saveValidated(ctx, base, input, command, digest)
+}
+
+// StagePendingCommand durably retains one exact current-format intent before
+// the caller dispatches SaveObservations. Repeating the same intent is a no-op;
+// replacing it requires first resolving and acknowledging the existing one.
+func (s *CorrectionStore) StagePendingCommand(ctx context.Context, base SourceAnalysisRef, pending PendingCorrectionCommand) (result PendingCorrectionCommand, err error) {
+	if pending.CommandDigest != "" {
+		return result, ErrInvalidCorrection
+	}
+	digest, err := pendingCorrectionCommandDigest(base, pending)
+	if err != nil {
+		return result, err
+	}
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, previous, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if doc.Pending != nil {
+		existingDigest, validationErr := validateStoredPendingCorrectionCommand(base, *doc.Pending)
+		if validationErr != nil {
+			return result, validationErr
+		}
+		if existingDigest != digest {
+			return result, ErrCorrectionConflict
+		}
+		return *doc.Pending, nil
+	}
+	if doc.HeadID != pending.Command.ExpectedRevision {
+		return result, ErrCorrectionConflict
+	}
+	pending.CommandDigest = digest
+	doc.Pending = &pending
+	if err := s.commitDocument(ctx, path, previous, doc); err != nil {
+		return result, err
+	}
+	return pending, nil
+}
+
+func (s *CorrectionStore) LoadPendingCommand(ctx context.Context, base SourceAnalysisRef) (result *PendingCorrectionCommand, err error) {
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, _, err := s.read(path, base)
+	if err != nil || doc.Pending == nil {
+		return nil, err
+	}
+	pending := *doc.Pending
+	return &pending, nil
+}
+
+// AcknowledgePendingCommand removes only the named intent. Absence is
+// idempotent; another pending identity is a conflict.
+func (s *CorrectionStore) AcknowledgePendingCommand(ctx context.Context, base SourceAnalysisRef, commandID string) (err error) {
+	if !correctionText(commandID, 256) {
+		return ErrInvalidCorrection
+	}
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, previous, err := s.read(path, base)
+	if err != nil || doc.Pending == nil {
+		return err
+	}
+	if doc.Pending.Command.CommandID != commandID {
+		return ErrCorrectionConflict
+	}
+	doc.Pending = nil
+	return s.commitDocument(ctx, path, previous, doc)
+}
+
+func pendingCorrectionCommandDigest(base SourceAnalysisRef, pending PendingCorrectionCommand) (string, error) {
+	if pending.Corrections == nil || pending.FamilyUses == nil || pending.Classifications == nil || pending.StintBoundaries == nil {
+		return "", ErrInvalidCorrection
+	}
+	return validatedStintMixedCommandDigest(base, pending.Command, pending.Corrections, pending.FamilyUses, pending.Classifications, pending.StintBoundaries)
+}
+
+func validateStoredPendingCorrectionCommand(base SourceAnalysisRef, pending PendingCorrectionCommand) (string, error) {
+	digest, err := pendingCorrectionCommandDigest(base, pending)
+	if err != nil || digest != pending.CommandDigest {
+		return "", ErrCorruptCorrections
+	}
+	return digest, nil
+}
+
+// ResolveCommand checks the exact command without another write. The same lease
+// as Save prevents reporting absence while that writer still owns the document.
+func (s *CorrectionStore) ResolveCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, command CorrectionSaveCommand) (result CorrectionCommandResolution, err error) {
+	digest, err := validatedCorrectionCommandDigest(base, command, requests)
+	if err != nil {
+		return result, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+func (s *CorrectionStore) ResolveObservationsCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedObservationCommandDigest(base, command, requests, families)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+// ResolveMixedCommand resolves a command carrying classification decisions
+// with exactly the same digest function as SaveObservations. Omitting the
+// classification payload never matches a revision that stores it: the digest
+// differs and the resolution reports a conflict, never a silent match.
+func (s *CorrectionStore) ResolveMixedCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedMixedCommandDigest(base, command, requests, families, classes)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+// ResolveStintMixedCommand resolves the complete four-group command. A nil
+// stint set is rejected so an unaware caller cannot match or remove active
+// stint-boundary decisions accidentally.
+func (s *CorrectionStore) ResolveStintMixedCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, stints []StintBoundaryCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil || stints == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedStintMixedCommandDigest(base, command, requests, families, classes, stints)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+func (s *CorrectionStore) resolveValidatedCommand(ctx context.Context, base SourceAnalysisRef, command CorrectionSaveCommand, digest string) (result CorrectionCommandResolution, err error) {
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, _, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	for _, revision := range doc.Revisions {
+		if revision.Command.CommandID == command.CommandID {
+			if revision.CommandDigest != digest {
+				return result, ErrCorrectionConflict
+			}
+			return CorrectionCommandResolution{Found: true, HeadID: doc.HeadID, Revision: &revision}, nil
+		}
+	}
+	return CorrectionCommandResolution{HeadID: doc.HeadID}, nil
+}
+
+func validatedObservationCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection) (string, error) {
+	if len(requests)+len(families) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestWithFamilies(base, command, requests, families)
+}
+
+// validatedMixedCommandDigest is the single digest function shared by Save
+// and Resolve for the mixed set. It delegates to the canonical v4 digest:
+// without identity it returns the v1/v2/v3 digest unchanged, preserving
+// historical hashes. It only validates request representation, never
+// consults a catalog nor fabricates a canonical tuple from client text.
+func validatedMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection) (string, error) {
+	if len(requests)+len(families)+len(classes) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestCanonicalMixed(base, command, requests, families, classes)
+}
+
+func validatedStintMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, stints []StintBoundaryCorrection) (string, error) {
+	if len(requests)+len(families)+len(classes)+len(stints) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestStintMixed(base, command, requests, families, classes, stints)
+}
+
+func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
+	if !correctionText(command.CommandID, 256) || !correctionText(command.LocalAuthorID, 256) || !correctionText(command.Reason, 1024) || !correctionSHA256(command.ExpectedRevision) || len(requests) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := base.Digest(); err != nil {
+		return "", err
+	}
+	for _, request := range requests {
+		if _, err := request.Base.Digest(); err != nil {
+			return "", err
+		}
+		if !correctionText(request.Reason, 1024) || !correctionText(request.Target.ChannelID, 256) || !correctionText(request.Target.Column, 256) || len(request.Unit.Symbol) > 256 || len(request.Expected.Column) > 256 || len(request.Expected.Scalar.Text) > 4096 || len(request.Replacement.Text) > 4096 {
+			return "", ErrInvalidCorrection
+		}
+		if !correctionScalar(request.Expected.Scalar, request.Expected.Scalar.Kind) || !correctionScalar(request.Replacement, request.Expected.Scalar.Kind) || request.Unit.Quality != QualityValid {
+			return "", ErrCorrectionValue
+		}
+		switch request.Expected.Quality {
+		case QualityValid, QualityStale, QualityMissing, QualityInvalid, QualityUnknown:
+		default:
+			return "", ErrCorrectionValue
+		}
+	}
+	return correctionCommandDigest(base, command, requests)
+}
+
+// prepareMixedSnapshotForWrite prepares a new write under the retained lease.
+// Without identity it keeps the exact v1/v2/v3 representation and never
+// invokes the resolver. With identity it reuses the common reference already
+// validated by the command digest (never deriving a tuple from client text),
+// resolves it once through the native callback and prepares the snapshot
+// with the canonical J2 constructor and a separate target. A missing
+// resolver reports ErrCorrectionTarget; a resolver error propagates wrapped;
+// ctx.Err is checked after resolving even when the callback ignored
+// cancellation. Family validation and every previous guard stay intact.
+func prepareMixedSnapshotForWrite(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput) (PreparedSampleCorrectionSnapshot, error) {
+	if !hasStoredIdentityActivity(input.Classifications) {
+		return PrepareStintMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, nil, input.StintBoundaries)
+	}
+	reference := ""
+	for _, request := range input.Classifications {
+		if request.CanonicalCombinationID != "" {
+			reference = request.CanonicalCombinationID
+			break
+		}
+	}
+	if reference == "" {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("%w: missing canonical combination reference", ErrCorrectionTarget)
+	}
+	if input.ResolveCanonicalCombination == nil {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("%w: missing canonical combination resolver", ErrCorrectionTarget)
+	}
+	target, resolveErr := input.ResolveCanonicalCombination(ctx, reference)
+	if cerr := ctx.Err(); cerr != nil {
+		return PreparedSampleCorrectionSnapshot{}, cerr
+	}
+	if resolveErr != nil {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("resolve canonical combination: %w", resolveErr)
+	}
+	return PrepareStintMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, &target, input.StintBoundaries)
+}
+
+func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, previous, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	for _, revision := range doc.Revisions {
+		if revision.Command.CommandID == command.CommandID {
+			if revision.CommandDigest != commandDigest {
+				return result, ErrCorrectionConflict
+			}
+			return CorrectionStoreResult{revision, doc.HeadID}, nil
+		}
+	}
+	if doc.HeadID != command.ExpectedRevision {
+		return result, ErrCorrectionConflict
+	}
+	if input.FamilyUses == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.FamilyUses) > 0 {
+		return result, fmt.Errorf("%w: complete family correction set required", ErrInvalidCorrection)
+	}
+	if input.Classifications == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.Classifications) > 0 {
+		return result, fmt.Errorf("%w: complete classification correction set required", ErrInvalidCorrection)
+	}
+	if input.StintBoundaries == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.StintBoundaries) > 0 {
+		return result, fmt.Errorf("%w: complete stint boundary correction set required", ErrInvalidCorrection)
+	}
+	if len(doc.Revisions) >= maxCorrectionRevisions {
+		return result, fmt.Errorf("%w: revision quota", ErrInvalidCorrection)
+	}
+	// La identidad nueva se resuelve exactamente una vez, bajo el lease ya
+	// retenido y sólo después de replay, cabeza, guardas de grupos
+	// desconocidos y cuota. Sin identidad el callback nunca se invoca.
+	snapshot, err := prepareMixedSnapshotForWrite(ctx, base, input)
+	if err != nil {
+		return result, err
+	}
+	if len(snapshot.FamilyUses) > 0 {
+		if _, err := ApplyLapFamilyCorrections(base, input.Original, input.Effective, snapshot.FamilyUses); err != nil {
+			return result, err
+		}
+	}
+	if len(snapshot.StintBoundaries) > 0 {
+		if _, err := ApplyStintBoundaryCorrections(base, input.Original, input.Effective, snapshot.StintBoundaries); err != nil {
+			return result, err
+		}
+	}
+	revision := CorrectionRevision{ParentRevisionID: doc.HeadID, Command: command, CommandDigest: commandDigest, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Snapshot: snapshot}
+	revision.RevisionID, err = correctionRevisionDigest(revision)
+	if err != nil {
+		return result, err
+	}
+	doc.Revisions = append(doc.Revisions, revision)
+	doc.HeadID = revision.RevisionID
+	if err := s.commitDocument(ctx, path, previous, doc); err != nil {
+		return result, err
+	}
+	return CorrectionStoreResult{revision, doc.HeadID}, nil
+}
+
+func (s *CorrectionStore) commitDocument(ctx context.Context, path string, previous []byte, doc correctionDocument) error {
+	data, err := encodeCorrectionDocument(doc)
+	if err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	// Keep a validated recovery generation. First commit's backup is itself a
+	// durable candidate: failure after it is written must report uncertainty.
+	first := previous == nil
+	if first {
+		previous = data
+	}
+	if err := s.writeFile(path+".bak", previous); err != nil {
+		if first {
+			return fmt.Errorf("%w: correction backup: %w", ErrCorrectionCommitUncertain, err)
+		}
+		return fmt.Errorf("correction backup: %w", err)
+	}
+	if err := s.writeFile(path, data); err != nil {
+		return fmt.Errorf("%w: %w", ErrCorrectionCommitUncertain, err)
+	}
+	return nil
+}
+func (s *CorrectionStore) read(path string, base SourceAnalysisRef) (correctionDocument, []byte, error) {
+	primary, primaryErr := readCorrectionFile(path)
+	if primaryErr == nil {
+		if doc, err := decodeCorrectionDocument(primary, base); err == nil {
+			return doc, primary, nil
+		} else {
+			primaryErr = err
+		}
+	}
+	backup, backupErr := readCorrectionFile(path + ".bak")
+	if errors.Is(primaryErr, os.ErrNotExist) && errors.Is(backupErr, os.ErrNotExist) {
+		initial, err := PrepareSampleCorrectionSnapshot(base, nil)
+		return correctionDocument{Version: 1, Base: base, HeadID: initial.SnapshotID, Revisions: []CorrectionRevision{}}, nil, err
+	}
+	if backupErr != nil {
+		return correctionDocument{}, nil, fmt.Errorf("%w: %w", ErrCorruptCorrections, errors.Join(primaryErr, backupErr))
+	}
+	doc, err := decodeCorrectionDocument(backup, base)
+	if err != nil {
+		return correctionDocument{}, nil, err
+	}
+	if !errors.Is(primaryErr, os.ErrNotExist) {
+		quarantine := path + ".corrupt-" + time.Now().UTC().Format("20060102T150405.000000000")
+		if err := os.Rename(path, quarantine); err != nil {
+			return correctionDocument{}, nil, fmt.Errorf("quarantine corrections: %w", err)
+		}
+	}
+	if err := s.writeFile(path, backup); err != nil {
+		return correctionDocument{}, nil, fmt.Errorf("restore corrections: %w", err)
+	}
+	return doc, backup, nil
+}

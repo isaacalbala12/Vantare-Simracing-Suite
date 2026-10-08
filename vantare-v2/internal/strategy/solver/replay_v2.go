@@ -11,13 +11,15 @@ const ReplayContractVersionV1 = "strategy.solver.replay.v1"
 // constraint models used by SolveV2. An invalid document returns an error;
 // a well-formed plan that breaks race constraints returns Feasible=false.
 type ReplayResultV1 struct {
-	ContractVersion string             `json:"contractVersion"`
-	Decision        DecisionVector     `json:"decision"`
-	Evaluation      ScenarioEvaluation `json:"evaluation"`
-	Stints          []ReplayStintV1    `json:"stints"`
-	Reserve         ReserveStatus      `json:"reserve"`
-	Feasible        bool               `json:"feasible"`
-	Reasons         []SolverReason     `json:"reasons,omitempty"`
+	// Available only on a feasible replay, including formation and prior pits.
+	FinalLapStartSeconds float64            `json:"finalLapStartSeconds"`
+	ContractVersion      string             `json:"contractVersion"`
+	Decision             DecisionVector     `json:"decision"`
+	Evaluation           ScenarioEvaluation `json:"evaluation"`
+	Stints               []ReplayStintV1    `json:"stints"`
+	Reserve              ReserveStatus      `json:"reserve"`
+	Feasible             bool               `json:"feasible"`
+	Reasons              []SolverReason     `json:"reasons,omitempty"`
 }
 
 type ReplayStintV1 struct {
@@ -29,6 +31,17 @@ type ReplayStintV1 struct {
 // ReplayDecisionV2 evaluates a fixed plan without searching or changing its
 // pit laps, service quantities, compounds, drivers or saving levels.
 func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResultV1, error) {
+	return replayDecisionV2(input, decision, nil, true)
+}
+
+// ReplayDecisionV2WithResources evaluates the exact initial load selected by
+// an editor. Unlike ReplayDecisionV2 it never raises that load to make a plan
+// feasible. Service quantities still mean amounts added, not target levels.
+func ReplayDecisionV2WithResources(input SolverInputV2, decision DecisionVector, fuelLiters, vePercent float64) (ReplayResultV1, error) {
+	return replayDecisionV2(input, decision, &[2]float64{fuelLiters, vePercent}, true)
+}
+
+func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]float64, enforceCompletion bool) (ReplayResultV1, error) {
 	if err := input.Validate(); err != nil {
 		return ReplayResultV1{}, solveError(ErrorInvalidInput, "input", err.Error())
 	}
@@ -77,6 +90,23 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		return ReplayResultV1{}, err
 	}
 
+	if initial != nil {
+		if input.InitialFuelLiters != nil && input.InitialFuelLiters.Value != initial[0] {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialFuelLiters", "explicit replay load differs from solver input")
+		}
+		if input.InitialVEPercent != nil && input.InitialVEPercent.Value != initial[1] {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialVEPercent", "explicit replay load differs from solver input")
+		}
+		resourcePlan.fuelStart, err = replayServiceAmount("initialFuelLiters", initial[0], 0, fuel.capacity)
+		if err != nil {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialFuelLiters", err.Error())
+		}
+		resourcePlan.veStart, err = replayServiceAmount("initialVEPercent", initial[1], 0, ve.capacity)
+		if err != nil {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialVEPercent", err.Error())
+		}
+	}
+
 	initialTyre, ok := replayInitialTyre(tyreModel, decision.Stints[0])
 	if !ok {
 		return infeasibleReplay(decision, input.Formation.Seconds.Value, searchNode{}, "tyre_inventory_insufficient", "el compuesto o juego inicial observado no existe en el inventario"), nil
@@ -86,11 +116,15 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
 	replayedStints := make([]ReplayStintV1, 0, len(decision.Stints))
+	finalLapStart := 0.0
 
 	for index, requestedStint := range decision.Stints {
 		driverID := requestedStint.Driver
 		if driverID == "" && len(drivers.order) == 1 {
 			driverID = drivers.order[0].id
+		}
+		if !input.driverSequenceAllows(index, driverID) {
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "driver_sequence", "el plan no respeta la secuencia de pilotos configurada"), nil
 		}
 		driver, found := driverByID(drivers, driverID)
 		if !found {
@@ -112,6 +146,16 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		}
 
 		before := node
+		if index == len(decision.Stints)-1 {
+			prefix := node
+			if requestedStint.Laps > 1 {
+				prefix, err = appendStint(node, requestedStint.Laps-1, input, costs, savingLevel, driver)
+				if err != nil {
+					return ReplayResultV1{}, err
+				}
+			}
+			finalLapStart = prefix.total(input.Formation.Seconds.Value)
+		}
 		node, err = appendStint(node, requestedStint.Laps, input, costs, savingLevel, driver)
 		if err != nil {
 			return ReplayResultV1{}, err
@@ -141,13 +185,13 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 			if reserveErr != nil {
 				return ReplayResultV1{}, reserveErr
 			}
-			if !reserveStatus.Satisfied {
+			if enforceCompletion && !reserveStatus.Satisfied {
 				code, message := reserveFailure(reserveStatus)
 				result := infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message)
 				result.Reserve = reserveStatus
 				return result, nil
 			}
-			if allowed, code, message := input.completedAllowed(node, tyreModel); !allowed {
+			if allowed, code, message := input.completedAllowed(node, tyreModel); enforceCompletion && !allowed {
 				return infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message), nil
 			}
 			continue
@@ -182,15 +226,20 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 	if err != nil {
 		return ReplayResultV1{}, err
 	}
-	return ReplayResultV1{
-		ContractVersion: ReplayContractVersionV1,
-		Decision:        cloneDecision(node.decision),
-		Evaluation:      evaluationForNode(node, input.Formation.Seconds.Value),
-		Stints:          replayedStints,
-		Reserve:         reserveStatus,
-		Feasible:        true,
-		Reasons:         []SolverReason{},
-	}, nil
+	result := ReplayResultV1{
+		FinalLapStartSeconds: finalLapStart,
+		ContractVersion:      ReplayContractVersionV1,
+		Decision:             cloneDecision(node.decision),
+		Evaluation:           evaluationForNode(node, input.Formation.Seconds.Value),
+		Stints:               replayedStints,
+		Reserve:              reserveStatus,
+		Feasible:             true,
+		Reasons:              []SolverReason{},
+	}
+	if enforceCompletion && input.RaceDurationSeconds != nil && !timedHorizonComplete(result.FinalLapStartSeconds, result.Evaluation.TotalSeconds, *input.RaceDurationSeconds) {
+		return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "timed_horizon", "la ultima vuelta no cruza correctamente el limite temporal"), nil
+	}
+	return result, nil
 }
 
 func evaluationDelta(before, after searchNode, formation float64) ScenarioEvaluation {
@@ -221,10 +270,21 @@ func validateReplayShape(input SolverInputV2, decision DecisionVector) error {
 			return fmt.Errorf("pitStops[%d].lap must equal the preceding stint boundary", index)
 		}
 	}
-	if lap != input.RaceLaps {
+	if input.RaceDurationSeconds == nil && lap != input.RaceLaps {
 		return fmt.Errorf("stint laps total %d, want raceLaps %d", lap, input.RaceLaps)
 	}
+	if input.RaceDurationSeconds != nil && lap > input.RaceLaps {
+		return fmt.Errorf("stint laps total %d exceeds raceLaps limit %d", lap, input.RaceLaps)
+	}
 	return nil
+}
+
+func timedHorizonComplete(finalLapStart, total, duration float64) bool {
+	return timedFinalLapMayStart(finalLapStart, duration) && compareTotalSeconds(total, duration) >= 0
+}
+
+func timedFinalLapMayStart(finalLapStart, duration float64) bool {
+	return compareTotalSeconds(finalLapStart, duration) < 0
 }
 
 func replayInitialTyre(model tyreDecisionModel, stint StintDecision) (tyreChoice, bool) {

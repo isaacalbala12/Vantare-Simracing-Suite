@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	pitObservationComputationVersion   = "pit-observation.v1"
-	observedStrategyComputationVersion = "observed-strategy.v1"
+	pitObservationComputationVersion   = "pit-observation.v2"
+	observedStrategyComputationVersion = "observed-strategy.v2"
 	pitRiseMinimum                     = 0.01
 	wearRiseMinimumPercent             = 2.0
 )
@@ -21,6 +21,7 @@ const (
 const (
 	pitAmbiguityClockUnaligned = "resource_clock_unaligned"
 	pitAmbiguityNoRise         = "no_resource_rise_detected"
+	pitAmbiguityOpen           = "open_pit_lane_interval"
 	pitRatesNote               = "degraded: pit lane interval only; no transit/service breakdown"
 	reasonDegradedPit          = "degraded_no_transit_service_breakdown"
 )
@@ -61,6 +62,7 @@ type PitObservationAggregate struct {
 type pitInterval struct {
 	start float64
 	end   float64
+	open  bool
 }
 
 type riseObservation struct {
@@ -88,6 +90,24 @@ func DeriveSessionPitObservation(
 	}
 
 	intervals := observedPitIntervals(readEvents(grouped["in pits"]))
+	if len(intervals) == 0 {
+		return derivePitObservationWithRises(session, classified, nil, nil, nil)
+	}
+	fuel := continuousSeries(grouped["fuel level"])
+	ve := continuousSeries(grouped["virtual energy"])
+	return derivePitObservationWithRises(session, classified, intervals,
+		func(_ int, observed pitInterval) (riseObservation, bool) {
+			return observeRise(fuel, observed.start, observed.end)
+		},
+		func(_ int, observed pitInterval) (riseObservation, bool) {
+			return observeRise(ve, observed.start, observed.end)
+		})
+}
+
+type pitRiseLookup func(int, pitInterval) (riseObservation, bool)
+
+// Both page-fed and materialized derivations build the same public pit model.
+func derivePitObservationWithRises(session HistoricalSession, classified ClassifiedSession, intervals []pitInterval, fuelRise, veRise pitRiseLookup) (SessionPitObservation, error) {
 	result := SessionPitObservation{
 		SessionID: session.ID, CombinationID: classified.Combination.ID,
 		Family:    missingPitFamily(session.ID, "missing_closed_pit_lane_interval"),
@@ -100,25 +120,38 @@ func DeriveSessionPitObservation(
 	result.Family.Presence = strategyprojection.PresenceUnknown
 	result.Family.Reason = reasonDegradedPit
 	result.Family.RatesNote = pitRatesNote
+	durations := pitDurations(intervals)
+	if len(durations) == 0 {
+		result.Family.Reason = pitAmbiguityOpen
+		result.Family.RatesNote = pitRatesNote + "; " + pitAmbiguityOpen
+	}
 	result.Family.Confidence = confidenceForValues(
-		pitDurations(intervals),
-		len(intervals),
+		durations,
+		len(durations),
 		pitObservationComputationVersion,
 	)
 	result.Family.ObservedIntervals = make([]strategyprojection.ObservedPitLaneInterval, 0, len(intervals))
 	fuelAligned := channelUsesSourceTimestamp(session, "fuel level")
 	veAligned := channelUsesSourceTimestamp(session, "virtual energy")
-	fuel := continuousSeries(grouped["fuel level"])
-	ve := continuousSeries(grouped["virtual energy"])
+	if (fuelAligned && fuelRise == nil) || (veAligned && veRise == nil) {
+		return SessionPitObservation{}, ErrInvalidPitObservationInput
+	}
 	for index, observed := range intervals {
 		start := secondsTimestamp(observed.start)
-		end := secondsTimestamp(observed.end)
 		interval := strategyprojection.ObservedPitLaneInterval{
-			PitNumber: index + 1, StartTimestamp: &start, EndTimestamp: &end,
-			DurationSeconds: observed.end - observed.start,
+			PitNumber: index + 1, StartTimestamp: &start,
 		}
+		if observed.open {
+			interval.Ambiguous = true
+			interval.AmbiguityReason = pitAmbiguityOpen
+			result.Family.ObservedIntervals = append(result.Family.ObservedIntervals, interval)
+			continue
+		}
+		end := secondsTimestamp(observed.end)
+		interval.EndTimestamp = &end
+		interval.DurationSeconds = observed.end - observed.start
 		if fuelAligned {
-			if rise, ok := observeRise(fuel, observed.start, observed.end); ok {
+			if rise, ok := fuelRise(index, observed); ok {
 				interval.FuelAddedLiters = floatPointer(rise.delta)
 				interval.FuelRateLPerS = floatPointer(rise.rate)
 				interval.HasFuelRise = true
@@ -126,7 +159,7 @@ func DeriveSessionPitObservation(
 			}
 		}
 		if veAligned {
-			if rise, ok := observeRise(ve, observed.start, observed.end); ok {
+			if rise, ok := veRise(index, observed); ok {
 				interval.VEAddedPercent = floatPointer(rise.delta)
 				interval.VERatePPerS = floatPointer(rise.rate)
 				interval.HasVERise = true
@@ -181,7 +214,9 @@ func AggregatePitObservations(
 		for _, interval := range session.Family.ObservedIntervals {
 			interval.PitNumber = len(result.Family.ObservedIntervals) + 1
 			result.Family.ObservedIntervals = append(result.Family.ObservedIntervals, interval)
-			durations = append(durations, interval.DurationSeconds)
+			if !isOpenPitInterval(interval) {
+				durations = append(durations, interval.DurationSeconds)
+			}
 			if interval.FuelRateLPerS != nil {
 				fuelRates = append(fuelRates, *interval.FuelRateLPerS)
 			}
@@ -192,10 +227,15 @@ func AggregatePitObservations(
 		fuelRates = append(fuelRates, ratesNotInIntervals(session.fuelRates, session.Family.ObservedIntervals, true)...)
 		veRates = append(veRates, ratesNotInIntervals(session.veRates, session.Family.ObservedIntervals, false)...)
 	}
-	if len(durations) > 0 {
+	if len(result.Family.ObservedIntervals) > 0 {
 		result.Family.Presence = strategyprojection.PresenceUnknown
-		result.Family.Reason = reasonDegradedPit
-		result.Family.RatesNote = pitRatesNote
+		if len(durations) > 0 {
+			result.Family.Reason = reasonDegradedPit
+			result.Family.RatesNote = pitRatesNote
+		} else {
+			result.Family.Reason = pitAmbiguityOpen
+			result.Family.RatesNote = pitRatesNote + "; " + pitAmbiguityOpen
+		}
 		result.Family.Confidence = confidenceForValues(durations, len(durations), pitObservationComputationVersion)
 	}
 	result.Family.FuelRate = summarizeObservedRate(sourceID, fuelRates)
@@ -219,66 +259,84 @@ func missingPitFamily(sourceID, reason string) strategyprojection.PitFamily {
 func observedPitIntervals(events []observedEvent) []pitInterval {
 	result := []pitInterval{}
 	var start *float64
+	initialized, previous := false, false
 	for _, event := range events {
 		active, ok := firstBoolean(event.values)
 		if !ok {
 			continue
 		}
-		if active && start == nil {
-			value := event.seconds
-			start = &value
+		if !initialized {
+			initialized, previous = true, active
 			continue
 		}
-		if !active && start != nil && event.seconds > *start {
+		if active && !previous && start == nil {
+			value := event.seconds
+			start = &value
+		}
+		if !active && previous && start != nil && event.seconds > *start {
 			result = append(result, pitInterval{start: *start, end: event.seconds})
 			start = nil
 		}
+		previous = active
+	}
+	if start != nil {
+		result = append(result, pitInterval{start: *start, open: true})
 	}
 	return result
 }
 
 func observeRise(samples []timedMetricSample, start, end float64) (riseObservation, bool) {
-	window := make([]timedMetricSample, 0)
+	var scan pitRiseScan
 	for _, sample := range samples {
 		if sample.seconds >= start && sample.seconds <= end {
-			window = append(window, sample)
+			scan.accept(sample)
 		}
 	}
-	if len(window) < 2 {
+	return scan.finish()
+}
+
+// The pit interval can be consumed page by page without retaining its signal.
+// Only consecutive usable samples contribute to each observed rise.
+type pitRiseScan struct {
+	previous     timedMetricSample
+	firstSeconds float64
+	lastSeconds  float64
+	delta        float64
+	presence     strategyprojection.Presence
+	count        int
+	hasRise      bool
+}
+
+func (scan *pitRiseScan) accept(sample timedMetricSample) {
+	if scan.count == 0 {
+		scan.previous = sample
+		scan.presence = strategyprojection.PresenceValid
+		scan.count = 1
+		return
+	}
+	increment := sample.value - scan.previous.value
+	if increment > pitRiseMinimum {
+		if !scan.hasRise {
+			scan.firstSeconds = scan.previous.seconds
+			scan.hasRise = true
+		}
+		scan.lastSeconds = sample.seconds
+		scan.delta += increment
+		scan.presence = weakestPresence(scan.presence, scan.previous.presence, sample.presence)
+	}
+	scan.previous = sample
+	scan.count++
+}
+
+func (scan *pitRiseScan) finish() (riseObservation, bool) {
+	if scan.count < 2 || !scan.hasRise || !isFinitePositive(scan.delta) {
 		return riseObservation{}, false
 	}
-	delta := 0.0
-	firstRise := -1
-	lastRise := -1
-	presence := strategyprojection.PresenceValid
-	step := math.Inf(1)
-	for index := 1; index < len(window); index++ {
-		duration := window[index].seconds - window[index-1].seconds
-		if duration > 0 {
-			step = math.Min(step, duration)
-		}
-		increment := window[index].value - window[index-1].value
-		if increment <= pitRiseMinimum {
-			continue
-		}
-		if firstRise < 0 {
-			firstRise = index
-		}
-		lastRise = index
-		delta += increment
-		presence = weakestPresence(presence, window[index-1].presence, window[index].presence)
-	}
-	if firstRise < 0 || !isFinitePositive(delta) {
-		return riseObservation{}, false
-	}
-	if math.IsInf(step, 1) {
-		return riseObservation{}, false
-	}
-	duration := window[lastRise].seconds - window[firstRise].seconds + step
+	duration := scan.lastSeconds - scan.firstSeconds
 	if !isFinitePositive(duration) {
 		return riseObservation{}, false
 	}
-	return riseObservation{delta: delta, rate: delta / duration, presence: presence}, true
+	return riseObservation{delta: scan.delta, rate: scan.delta / duration, presence: scan.presence}, true
 }
 
 func summarizeObservedRate(sourceID string, values []float64) strategyprojection.ObservedRateFamily {
@@ -301,9 +359,16 @@ func summarizeObservedRate(sourceID string, values []float64) strategyprojection
 func pitDurations(intervals []pitInterval) []float64 {
 	result := make([]float64, 0, len(intervals))
 	for _, interval := range intervals {
-		result = append(result, interval.end-interval.start)
+		if !interval.open {
+			result = append(result, interval.end-interval.start)
+		}
 	}
 	return result
+}
+
+func isOpenPitInterval(interval strategyprojection.ObservedPitLaneInterval) bool {
+	return interval.EndTimestamp == nil && interval.DurationSeconds == 0 &&
+		interval.Ambiguous && interval.AmbiguityReason == pitAmbiguityOpen
 }
 
 func channelUsesSourceTimestamp(session HistoricalSession, sourceName string) bool {
@@ -389,7 +454,7 @@ func DeriveObservedStrategy(
 	compounds := timestampedVectorSeries(grouped["tyrescompound"])
 	result.Stints = observedStints(session.ID, laps, boundaries, compounds)
 	result.Changes = observedBoundaryChanges(session.ID, laps, boundaries)
-	result.Changes = append(result.Changes, observedWearChanges(session.ID, grouped)...)
+	result.Changes = append(result.Changes, observedWearChanges(session.ID, laps, grouped["tyres wear"])...)
 	sortObservedChanges(result.Changes)
 	result.PitStops = observedPitStops(session.ID, laps, pit.Family.ObservedIntervals)
 	for _, boundary := range boundaries {
@@ -525,33 +590,30 @@ func observedBoundaryChanges(
 	return result
 }
 
-func observedWearChanges(sessionID string, grouped map[string][]HistoricalPage) []strategyprojection.ObservedChange {
-	resets, lapDistFrequency, _ := readLapDistResets(grouped["lap dist"])
-	if lapDistFrequency <= 0 || len(resets) < 2 {
-		return []strategyprojection.ObservedChange{}
-	}
-	wear := continuousVectorSeries(grouped["tyres wear"])
+func observedWearChanges(sessionID string, laps []AnalyzedLap, wearPages []HistoricalPage) []strategyprojection.ObservedChange {
+	wear := continuousVectorSeries(wearPages)
 	result := []strategyprojection.ObservedChange{}
 	var previous [4]float64
+	previousLap := 0
 	previousOK := false
-	for index, reset := range resets {
-		seconds := float64(reset) / float64(lapDistFrequency)
-		values, presence, ok := vectorValueAt(wear, seconds, vectorBoundaryToleranceSeconds)
+	for _, lap := range laps {
+		values, presence, ok := vectorValueAt(wear, timestampSeconds(lap.End), vectorBoundaryToleranceSeconds)
 		if !ok {
 			previousOK = false
 			continue
 		}
-		if previousOK {
+		if previousOK && lap.Number == previousLap+1 {
 			delta := meanVector(values) - meanVector(previous)
 			if delta > wearRiseMinimumPercent {
 				result = append(result, strategyprojection.ObservedChange{
-					LapNumber: index + 1, Kind: strategyprojection.ObservedChangeWearRise,
+					LapNumber: lap.Number, Kind: strategyprojection.ObservedChangeWearRise,
 					Delta: floatPointer(delta), Presence: weakestPresence(strategyprojection.PresenceUnknown, presence),
 					Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID},
 				})
 			}
 		}
 		previous = values
+		previousLap = lap.Number
 		previousOK = true
 	}
 	return result
@@ -568,7 +630,7 @@ func observedPitStops(
 ) []strategyprojection.ObservedPitStop {
 	result := []strategyprojection.ObservedPitStop{}
 	for _, interval := range intervals {
-		if interval.StartTimestamp == nil {
+		if interval.StartTimestamp == nil || isOpenPitInterval(interval) {
 			continue
 		}
 		lapNumber := lapNumberAt(laps, timestampSeconds(*interval.StartTimestamp))

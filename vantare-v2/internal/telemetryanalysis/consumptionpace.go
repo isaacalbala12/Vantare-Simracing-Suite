@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v2"
+const consumptionPaceComputationVersion = "consumption-pace.v6"
 
 const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
 
@@ -49,12 +49,19 @@ type RepresentativePaceFamily struct {
 
 // LapConsumptionPace preserves F3-a2 labels even when a family excludes the lap.
 type LapConsumptionPace struct {
+	// Zero instants mean unavailable identity in older persisted observations.
+	// Consumers must not recover it by matching the lap number alone.
+	Start                    time.Time                         `json:"start,omitzero"`
+	End                      time.Time                         `json:"end,omitzero"`
 	Number                   int                               `json:"number"`
 	Labels                   []LapLabel                        `json:"labels"`
 	ClimateBucket            *strategyprojection.ClimateBucket `json:"climateBucket,omitempty"`
 	FuelConsumption          *DerivedMetric                    `json:"fuelConsumption,omitempty"`
 	VirtualEnergyConsumption *DerivedMetric                    `json:"virtualEnergyConsumption,omitempty"`
 	RepresentativePace       *DerivedMetric                    `json:"representativePace,omitempty"`
+	// Saving uses its own family decision, not eligibility for aggregate fuel/pace.
+	SavingFuel *DerivedMetric `json:"savingFuel,omitempty"`
+	SavingPace *DerivedMetric `json:"savingPace,omitempty"`
 }
 
 func (l LapConsumptionPace) HasLabel(wanted LapLabel) bool {
@@ -136,7 +143,10 @@ func DeriveSessionConsumptionPace(
 	samplesByBucket := make(map[strategyprojection.ClimateBucket]*bucketSamples)
 	completeLaps, reliableLapTimes, stableClimateLaps, representativePaceLaps := 0, 0, 0, 0
 	for _, lap := range validity.Laps {
-		derivedLap := LapConsumptionPace{Number: lap.Number, Labels: append([]LapLabel(nil), lap.Labels...)}
+		derivedLap := LapConsumptionPace{Number: lap.Number, End: lap.End, Labels: append([]LapLabel(nil), lap.Labels...)}
+		if lap.Start != nil {
+			derivedLap.Start = *lap.Start
+		}
 		if lap.Complete {
 			completeLaps++
 		}
@@ -181,10 +191,17 @@ func DeriveSessionConsumptionPace(
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
-		if familyIncluded(lap, FamilyFuelConsumption) {
+		savingIncluded := familyIncluded(lap, FamilySavingCost)
+		if familyIncluded(lap, FamilyFuelConsumption) || savingIncluded {
 			if metric, ok := resourceDeltaMetric(session.ID, fuel, *lap.Start, lap.End, lapPresence); ok {
-				derivedLap.FuelConsumption = &metric
-				bucketValues.fuel = append(bucketValues.fuel, metricSample{value: metric.Value, presence: metric.Presence})
+				if familyIncluded(lap, FamilyFuelConsumption) {
+					derivedLap.FuelConsumption = &metric
+					bucketValues.fuel = append(bucketValues.fuel, metricSample{value: metric.Value, presence: metric.Presence})
+				}
+				if savingIncluded {
+					savingMetric := metric
+					derivedLap.SavingFuel = &savingMetric
+				}
 			}
 		}
 		if familyIncluded(lap, FamilyVirtualEnergyConsumption) {
@@ -197,11 +214,17 @@ func DeriveSessionConsumptionPace(
 		// deliberately keeps traffic laps usable for every family; applying a
 		// second private gate here made fuel valid while dropping pace from the
 		// exact same complete laps.
-		if familyIncluded(lap, FamilyCombinedStintPaceCurve) {
+		if familyIncluded(lap, FamilyCombinedStintPaceCurve) || savingIncluded {
 			metric := newDerivedMetric(session.ID, *lap.LapTimeSeconds, lapPresence)
-			derivedLap.RepresentativePace = &metric
-			bucketValues.pace = append(bucketValues.pace, metricSample{value: metric.Value, presence: metric.Presence})
-			representativePaceLaps++
+			if familyIncluded(lap, FamilyCombinedStintPaceCurve) {
+				derivedLap.RepresentativePace = &metric
+				bucketValues.pace = append(bucketValues.pace, metricSample{value: metric.Value, presence: metric.Presence})
+				representativePaceLaps++
+			}
+			if savingIncluded {
+				savingMetric := metric
+				derivedLap.SavingPace = &savingMetric
+			}
 		}
 		result.Laps = append(result.Laps, derivedLap)
 	}
@@ -232,7 +255,8 @@ func DeriveSessionConsumptionPace(
 // persisted before consumption-pace.v2. It never writes the authorized store
 // and only restores a pace when the store already contains every required
 // fact: climate bucket, reliable lap time, shared family inclusion and a
-// same-lap derived presence from Fuel or VE.
+// same-lap derived presence from Fuel or VE. Missing/ambiguous temporal identity
+// remains unavailable; a lap number alone cannot prove that these facts agree.
 func repairLegacyRepresentativePace(
 	validity *LapValidityAnalysis,
 	consumption SessionConsumptionPace,
@@ -240,9 +264,22 @@ func repairLegacyRepresentativePace(
 	if validity == nil || len(consumption.Laps) == 0 {
 		return consumption
 	}
-	byNumber := make(map[int]AnalyzedLap, len(validity.Laps))
+	byTarget := make(map[LapCorrectionTarget]AnalyzedLap, len(validity.Laps))
+	validityCounts := make(map[LapCorrectionTarget]int, len(validity.Laps))
+	consumptionCounts := make(map[LapCorrectionTarget]int, len(consumption.Laps))
 	for _, lap := range validity.Laps {
-		byNumber[lap.Number] = lap
+		if lap.Start == nil {
+			continue
+		}
+		if target, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
+			byTarget[target] = lap
+			validityCounts[target]++
+		}
+	}
+	for _, lap := range consumption.Laps {
+		if target, ok := derivedLapTarget(lap.Number, lap.Start, lap.End); ok {
+			consumptionCounts[target]++
+		}
 	}
 	result := consumption
 	result.Laps = append([]LapConsumptionPace(nil), consumption.Laps...)
@@ -252,8 +289,9 @@ func repairLegacyRepresentativePace(
 		if derivedLap.RepresentativePace != nil || derivedLap.ClimateBucket == nil {
 			continue
 		}
-		lap, ok := byNumber[derivedLap.Number]
-		if !ok || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
+		target, resolved := derivedLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
+		lap, ok := byTarget[target]
+		if !resolved || validityCounts[target] != 1 || consumptionCounts[target] != 1 || !ok || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
 			!familyIncluded(lap, FamilyCombinedStintPaceCurve) {
 			continue
 		}
@@ -306,33 +344,17 @@ type timedMetricSample struct {
 }
 
 func continuousSeries(pages []HistoricalPage) []timedMetricSample {
-	var result []timedMetricSample
-	for _, page := range pages {
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
-			continue
-		}
-		for _, sample := range page.Samples {
-			seconds := sample.RelativeTimeSeconds
-			if seconds == 0 && sample.Index != 0 {
-				seconds = float64(sample.Index) / float64(page.Sampling.FrequencyHz)
-			}
-			if value, presence, ok := numericValue(sample.Values); ok {
-				result = append(result, timedMetricSample{seconds: seconds, value: value, presence: presence})
-			}
-		}
-	}
-	sort.SliceStable(result, func(i, j int) bool { return result[i].seconds < result[j].seconds })
-	return result
+	return timestampedSeries(pages)
 }
 
 func timestampedSeries(pages []HistoricalPage) []timedMetricSample {
 	var result []timedMetricSample
 	for _, page := range pages {
-		if page.Sampling.Kind != SamplingEventTimestamped {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
 			continue
 		}
 		for _, sample := range page.Samples {
-			if sample.TimestampSeconds == nil {
+			if sample.TimestampSeconds == nil || math.IsNaN(*sample.TimestampSeconds) || math.IsInf(*sample.TimestampSeconds, 0) {
 				continue
 			}
 			if value, presence, ok := numericValue(sample.Values); ok {
@@ -474,6 +496,7 @@ func climateBucket(pathWetnessPercent float64) (strategyprojection.ClimateBucket
 }
 
 func summarizeResource(sessionID string, bucket strategyprojection.ClimateBucket, samples []metricSample) strategyprojection.ResourceConsumptionFamily {
+	samples = validatedSummarySamples(samples)
 	mean, lower, upper, variance, presence := weightedSummary(samples)
 	provenance := strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID}
 	confidence := strategyprojection.Confidence{SampleSize: len(samples), ComputationVersion: consumptionPaceComputationVersion}
@@ -488,6 +511,7 @@ func summarizeResource(sessionID string, bucket strategyprojection.ClimateBucket
 }
 
 func summarizePace(sessionID string, samples []metricSample) RepresentativePaceFamily {
+	samples = validatedSummarySamples(samples)
 	_, lower, upper, variance, presence := weightedSummary(samples)
 	provenance := strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID}
 	confidence := strategyprojection.Confidence{SampleSize: len(samples), ComputationVersion: consumptionPaceComputationVersion}
@@ -504,6 +528,22 @@ func summarizePace(sessionID string, samples []metricSample) RepresentativePaceF
 		Presence: presence, Provenance: provenance, Confidence: confidence,
 		Reason: reason, MedianLapSeconds: median,
 	}
+}
+
+// Unknown observations remain on their individual laps. Once corroborated
+// laps exist, they cannot influence a family advertised as valid to Strategy.
+// An all-uncertain family stays visible as uncertain instead of disappearing.
+func validatedSummarySamples(samples []metricSample) []metricSample {
+	valid := make([]metricSample, 0, len(samples))
+	for _, sample := range samples {
+		if sample.presence == strategyprojection.PresenceValid {
+			valid = append(valid, sample)
+		}
+	}
+	if len(valid) == 0 {
+		return samples
+	}
+	return valid
 }
 
 func weightedSummary(samples []metricSample) (mean, lower, upper, variance float64, presence strategyprojection.Presence) {

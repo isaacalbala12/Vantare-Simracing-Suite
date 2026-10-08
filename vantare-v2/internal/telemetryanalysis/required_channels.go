@@ -23,9 +23,10 @@ func RequiredHistoricalPageChannels() []string {
 
 func historicalPageChannelFamilies() map[string][]string {
 	return map[string][]string{
-		"consumption_pace": consumptionPaceHistoricalPageChannels(),
-		"derived_curves":   derivedCurvesHistoricalPageChannels(),
-		"lap_validity":     lapValidityHistoricalPageChannels(),
-		"pit_observation":  pitObservationHistoricalPageChannels(),
+		"consumption_pace":   consumptionPaceHistoricalPageChannels(),
+		"derived_curves":     derivedCurvesHistoricalPageChannels(),
+		"lap_validity":       lapValidityHistoricalPageChannels(),
+		"pit_observation":    pitObservationHistoricalPageChannels(),
+		"temporal_alignment": {"gps time"},
 	}
 }

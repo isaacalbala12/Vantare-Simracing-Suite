@@ -1,11 +1,18 @@
 import {
   STRATEGY_APPLICATION_PROTOCOL_V1,
   type StrategyApplicationClient,
+  type StrategyPendingRevisionSaveV1,
+  type StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
-import type {
-  ActivePlanV1,
-  PlanDraftV1,
-  RevisionRefV1,
+import {
+  canonicalStrategyTimestamp,
+  type ActivePlanV1,
+  type ConfidenceV1,
+  type PlanDraftV1,
+  type PlanMode,
+  type ProvenanceV1,
+  type RevisionRefV1,
+  type StrategyCapability,
 } from "../../strategy/strategy-contract-v1";
 
 export const STRATEGY_ORBIT_REVISION_CONTRACT_V1 =
@@ -16,6 +23,7 @@ export type StrategyOrbitRevisionPayloadV1 = {
   readonly contractVersion: typeof STRATEGY_ORBIT_REVISION_CONTRACT_V1;
   readonly event: object & { readonly id: string };
   readonly variant: object & { readonly id: string };
+  readonly calculationInput?: StrategyOrbitCalculationInputV1;
   readonly calculatedPlan: object;
 };
 
@@ -25,14 +33,85 @@ export type OrbitLifecycleState = {
   readonly activePlan?: ActivePlanV1;
 };
 
+export type OrbitRevisionRecovery = StrategyPendingRevisionSaveV1<StrategyOrbitRevisionPayloadV1>;
+
+export async function loadOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  commandID: string,
+): Promise<OrbitRevisionRecovery | undefined> {
+  const result = await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-recovery-${safeToken(commandID)}`,
+    operation: "get_pending_revision_save",
+    expectedRepositoryVersion: 0,
+  });
+  return result.pendingRevision;
+}
+
+export async function resolveOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  commandID: string,
+): Promise<{ readonly stored: boolean; readonly revision?: RevisionRefV1 }> {
+  const result = await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-resolve-${safeToken(commandID)}`,
+    operation: "resolve_pending_revision_save",
+    expectedRepositoryVersion: 0,
+  });
+  return {
+    stored: result.pendingResolution === "stored",
+    ...(result.revision ? { revision: revisionRef(result.revision) } : {}),
+  };
+}
+
+export async function retryOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  pending: OrbitRevisionRecovery,
+  commandID: string,
+): Promise<RevisionRefV1> {
+  const saved = await client.execute(pending.command);
+  if (!saved.revision) throw new Error("Strategy recovery did not return the immutable revision");
+  await acknowledgeOrbitRevisionRecovery(client, pending, commandID);
+  return revisionRef(saved.revision);
+}
+
+export async function acknowledgeOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  pending: OrbitRevisionRecovery,
+  commandID: string,
+): Promise<void> {
+  await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-ack-${safeToken(commandID)}`,
+    operation: "acknowledge_pending_revision_save",
+    expectedRepositoryVersion: 0,
+    pendingCommandId: pending.command.commandId,
+    commandDigest: pending.commandDigest,
+  });
+}
+
 export type OrbitLifecycleClock = {
   id(): string;
   now(): string;
 };
 
+export type OrbitRevisionMetadata = {
+  readonly mode: PlanMode;
+  readonly capabilities: readonly StrategyCapability[];
+  readonly provenance: ProvenanceV1;
+  readonly confidence: ConfidenceV1;
+};
+
+const legacyOrbitMetadata: OrbitRevisionMetadata = {
+  mode: "manual",
+  capabilities: ["manual_inputs"],
+  provenance: { kind: "manual", sourceId: "strategy-orbit" },
+  confidence: { level: "high", basis: "visible calculated plan" },
+};
+
 const defaultClock: OrbitLifecycleClock = {
   id: () => globalThis.crypto.randomUUID(),
-  now: () => new Date().toISOString(),
+  now: () => canonicalStrategyTimestamp(),
 };
 
 export async function loadOrbitLifecycle(
@@ -71,6 +150,7 @@ export async function saveOrbitRevision(
   visible: StrategyOrbitRevisionPayloadV1,
   name: string,
   clock: OrbitLifecycleClock = defaultClock,
+  metadata: OrbitRevisionMetadata = legacyOrbitMetadata,
 ): Promise<OrbitLifecycleState & { readonly revision: RevisionRefV1 }> {
   const identity = orbitLifecycleIdentity(visible.event.id);
   const operationID = safeToken(clock.id());
@@ -97,7 +177,7 @@ export async function saveOrbitRevision(
     repositoryVersion = opened.repositoryVersion;
     baseRevision = opened.draft?.baseRevision ?? baseRevision;
   } else {
-    const draft = orbitDraft(identity, visible, name, timestamp, baseRevision);
+    const draft = orbitDraft(identity, visible, name, timestamp, baseRevision, metadata);
     const created = await client.execute({
       protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
       commandId: `orbit-create-${operationID}`,
@@ -108,7 +188,7 @@ export async function saveOrbitRevision(
     repositoryVersion = created.repositoryVersion;
   }
 
-  const draft = orbitDraft(identity, visible, name, timestamp, baseRevision);
+  const draft = orbitDraft(identity, visible, name, timestamp, baseRevision, metadata);
   const saved = await client.execute({
     protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
     commandId: `orbit-save-${operationID}`,
@@ -117,6 +197,7 @@ export async function saveOrbitRevision(
     draft,
     revisionId: `orbit-revision-${operationID}`,
     createdAt: timestamp,
+    recoverable: true,
   });
   if (!saved.revision) {
     throw new Error("Strategy save did not return the immutable revision");
@@ -127,6 +208,10 @@ export async function saveOrbitRevision(
     revisionId: saved.revision.revisionId,
     contentHash: saved.revision.contentHash,
   };
+  if (!saved.pendingRevision) {
+    throw new Error("Strategy save did not return its recoverable command");
+  }
+  await acknowledgeOrbitRevisionRecovery(client, saved.pendingRevision, `saved-${operationID}`);
   const refreshed = await client.execute({
     protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
     commandId: `orbit-list-after-save-${operationID}`,
@@ -189,6 +274,7 @@ function orbitDraft(
   name: string,
   updatedAt: string,
   baseRevision?: RevisionRefV1,
+  metadata: OrbitRevisionMetadata = legacyOrbitMetadata,
 ): PlanDraftV1<StrategyOrbitRevisionPayloadV1> {
   return {
     contractVersion: "strategy.v1",
@@ -197,10 +283,10 @@ function orbitDraft(
     variantId: identity.variantId,
     ...(baseRevision ? { baseRevision } : {}),
     name,
-    mode: "manual",
-    capabilities: ["manual_inputs"],
-    provenance: { kind: "manual", sourceId: "strategy-orbit" },
-    confidence: { level: "high", basis: "visible calculated plan" },
+    mode: metadata.mode,
+    capabilities: [...metadata.capabilities],
+    provenance: metadata.provenance,
+    confidence: metadata.confidence,
     updatedAt,
     payload,
   };
@@ -215,6 +301,15 @@ function lifecycleState(
     repositoryVersion,
     ...(savedRevision ? { savedRevision } : {}),
     ...(activePlan ? { activePlan } : {}),
+  };
+}
+
+function revisionRef(revision: RevisionRefV1): RevisionRefV1 {
+  return {
+    planId: revision.planId,
+    variantId: revision.variantId,
+    revisionId: revision.revisionId,
+    contentHash: revision.contentHash,
   };
 }
 

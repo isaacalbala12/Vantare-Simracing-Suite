@@ -1,0 +1,182 @@
+# T02 — matriz de transporte y cortes (ISA-1092)
+
+Base6d4aa514, rama vantareapp/isa-1092-recorded-event-inputs,
+C:/tmp/vantare-isa1092. El SDD está en ejecución autorizada; T01 mantiene
+validación nativa pendiente. Esta matriz no declara las familias conectadas.
+
+| Entrada | Documento / cliente actual | Adapter / solver | Corte necesario |
+|---|---|---|---|
+| Duración | durationMin -> durationMinutes | CalculateRace por tiempo + horizonte | Conservar; añadir carrera por vueltas en corte propio. |
+| Fuel capacidad/consumo/reserva | tank + PlanningInputs | orbitScalarInput/Reserve -> SolverV2 | Conservar procedencia; comprobar inicial/capacidad distintos. |
+| VE | proyección + overrides parciales | capacidad inferida/aplicabilidad pendiente | Modelar aplicabilidad y configuración explícitas, no cero por ausencia. |
+| Min/max paradas y ventanas | Sin campo de reglas transportado | EventRules del solver ya soporta | Primer corte backend Rules opcional + validación/replay; persistencia/TS/UI después. |
+| Pilotos/ritmos | Drivers y order; disponibilidad en documento | Optimiza promedio; perfiles sólo evaluación final | Conectar perfiles antes de optimizar; retirar estimaciones automáticas no autorizadas; no inventar consumo. |
+| Disponibilidad | Ventanas en minutos de día | DriverLimits usa vueltas y segundos de conducción | No convertir minutos a vueltas con promedio; contrato temporal explícito y validación final. |
+| Neumáticos/inventario | Documento tiene TyreInventory | No llega desde Orbit; solver lo admite con curvas por compuesto | Mapper con identidades/calidad; falta curva no permite declarar compuesto conocido. |
+| Servicios | pitLoss único | Tránsito legacy + tasas sentinel; PitCostModel completo existe | Transportar desglose confirmado, no reinterpretar pit total como tránsito observado. |
+| Formación | Sin entrada | cero marcado fallback | Campo/configuración y cobertura explícita. |
+| Clima | escenarios/proyección | ruta Weather existente separada | Conservar capacidades, no nuevo forecast; restricciones compatibles. |
+| Referencias | revisiones exactas #1084–1088 | productor autorizado | Preservar; configuración/persistencia no puede sustituir la revisión. |
+| Final | accepted/variants previos parciales | final replay siempre not_proven | T03 aclara resultado y validez; no llamar óptimo por haber pasado solver. |
+
+## Primer microcorte
+
+Tres archivos de lógica/tests: application/types.go, orbit_calculation.go y
+orbit_event_rules_test.go. Nuevo campo opcional event.rules reutiliza
+solver.EventRules, sin duplicar sus validadores. La omisión conserva contrato
+anterior. Reglas dadas se aplican al solve y al replay final: min/max paradas,
+ventanas; driverLimits sin perfiles y compuestos sin soporte se rechazan por
+contrato, no se ignoran. No se declara que UI/persistencia ya lo emitan.
+
+RED por JSON con maxPitStops=0 en carrera que necesita repostar; minPitStops
+exige parada adicional; ventana obligatoria y override que la viola; valor
+negativo inválido. GREEN después del transporte, suites application/solver,
+Go/vet y build antes de cierre. Siguientes cortes completan documento/cliente,
+perfiles, recursos y UI sin alterar owners ni introducir dependencias.
+
+## T02a — resultado focal
+
+Cuatro casos JSON fallan antes por reglas ignoradas (RED) y pasan tras el campo
+opcional y el transporte. La ventana [2,2] se cumple; override a primera parada
+vuelta1 se rechaza por replay final. Errores tipados invalid/infeasible comprobados.
+No duplicación del validador ni nueva ecuación. El adapter común cubre solve,
+Weather y evaluación final. Campo omitido mantiene el comportamiento previo.
+Frontend build PASS (aviso heredado de chunks); Go global/vet en curso.
+
+Revisión: clave de reglas es por evento, no por fuente; referencias Analysis no
+se modifican. No se promete UI conectada por aceptar JSON. Rollback del campo
+es seguro para este corte sin persistencia nueva; persistencia posterior debe
+fijar compatibilidad/versionado antes de guardar reglas en documentos.
+
+## T02b — contrato persistente de reglas (2026-09-09)
+
+T02a commit ad8774a5: Go completo -p 1, vet y frontend build PASS.
+T02b añade reglas con evidencia al documento y versión 2.1.0. Los documentos
+2.0.0 sin reglas siguen siendo válidos; reglas en 2.0.0 se rechazan. El solver
+es dueño del validador estructural reutilizado por el documento; perfiles,
+modelos y horizonte concreto se validan al calcular. Archivos originales intactos.
+
+Pruebas de versión/serialización y evidencia, más 11 casos estructurales PASS.
+La comparación JSON se corrigió para representar los números como float64;
+la diferencia era del test y no pérdida del contenido. Go completo -p 1 PASS
+(C:/tmp/isa1092-t02b-all.log), vet PASS (isa1092-t02b-vet.log), diff check PASS.
+No cambia frontend: se conserva el build T02a. No prueba Wails nueva.
+
+Pendiente inmediato T02c: promoción de versión al guardar mediante aplicación,
+cliente TS y transporte desde evento. Este corte define el contrato; no declara
+la interfaz conectada. No push, PR, CI remoto, merge ni release.
+
+## T02c1 — comandos y reapertura
+
+CreateEvent y EditEvent ascienden de 2.0.0 a 2.1.0 al añadir reglas; no ascienden
+sin reglas ni degradan versión al retirarlas. Dos casos RED antes del cambio,
+GREEN después, incluyendo reapertura del repositorio y comparación de evidencia.
+Go completo -p1 PASS (isa1092-t02c1-all.log), vet PASS
+(isa1092-t02c1-vet.log). El cliente TS se conecta en el siguiente corte.
+
+## T02c2 — cliente tipado
+
+Cliente admite schema2.0.0/2.1.0, exige versión nueva para reglas y valida su
+estructura y evidencia. El tipo de cálculo admite event.rules. 48 tests focales,
+420 archivos/3320 tests frontend PASS, typecheck PASS, lint PASS, build PASS.
+Logs C:/tmp/isa1092-t02c2-{focused,tests,types,lint,build}.log. La suite imprime
+AbortError de teardown happy-dom; termina exit0 sin tests fallidos. Aviso de
+chunks grandes heredado. No nueva prueba Wails ni paridad visual.
+
+Reglas de evento todavía no se envían desde la pantalla productiva; ese enlace
+es T02c4. T02c3 cubre antes compatibilidad de backup/preview/rollback antiguo.
+
+## T02c3 — compatibilidad del journal existente
+
+RED: PreviewLegacyMigration rechazaba el evento con reglas porque el backup
+forzaba schema2.0.0. Backup/preview/commit/rollback ahora conservan2.1.0, también
+los archivos de restauración. Prueba integral conserva reglas/evidencia en cada
+paso y archivo. No se ha ejecutado migración sobre datos reales. Go global -p1
+y vet PASS (isa1092-t02c3-all.log / isa1092-t02c3-vet.log).
+
+## T02c4 — enlace de pantalla a cálculo
+
+El modelo recibe reglas opcionales y la pantalla las toma del evento canónico
+(view.events), sin extender el store legacy. El input transporta su valor; el
+payload de revisión conserva también su evidencia. La edición de otro dato no
+las elimina. 14 tests focales PASS; lint y build con typecheck PASS. Suite global
+frontend en curso, log isa1092-t02c4-tests.log: este commit no cierra el gate.
+
+Pendiente #1092: edición visible de reglas (T06), perfiles antes de optimizar,
+disponibilidad temporal, recursos Fuel/VE y pit detallado. T03 debe evitar dar
+por completo un cálculo iniciado antes de cargar configuración/proyección.
+T04 #1093 puede avanzar independientemente, conforme al orden práctico del SDD.
+
+## T02d1 — horizonte exacto por vueltas (#1222)
+
+El contrato de cálculo distingue explícitamente `time` y `laps`; la ausencia
+de discriminador conserva el camino temporal anterior. En modo vueltas exige
+`targetLaps`, mantiene `durationMinutes` inactivo a cero y rechaza valores
+ausentes, no positivos, combinaciones ambiguas y tipos desconocidos. El cálculo
+reutiliza `manual.CalculateRace` y llama al mismo `calculateOrbitLapPlan`: no
+convierte vueltas a minutos ni añade solver, iteración o persistencia.
+
+RED: los tests no compilaban porque el contrato no tenía horizonte por vueltas.
+GREEN: 12 vueltas se conservan con ritmos de 60 y 95 s/vuelta, la suma de stints
+es 12 y el puente JSON devuelve la misma distancia. El cliente TypeScript usa
+una unión discriminada, conserva el cero explícito y transporta el comando sin
+inventar duración. La ruta temporal queda cubierta por sus regresiones previas.
+
+El siguiente microcorte es T02d2a, reservas independientes de Fuel y energía
+virtual. T02d1 no conecta todavía el asistente visual ni acredita
+Wails, LMU o precisión física.
+
+## T02d2a — capacidad y reservas Fuel/VE (#1224)
+
+El evento admite reserva Fuel en litros y una configuración discriminada de
+energía virtual. `applicable` exige capacidad y reserva en puntos porcentuales;
+`not_applicable` retira VE del cálculo sin convertir su ausencia en consumo
+gratis. Si los campos nuevos no existen, el contrato conserva exactamente el
+comportamiento anterior y su reserva compartida por vueltas.
+
+Las reservas explícitas llegan al mismo `manual.CalculateRace` como cantidades,
+incluido cero, y Fuel y VE se validan por separado. La proyección se copia sólo
+para marcar VE no aplicable, de modo que los escenarios meteorológicos siguen
+disponibles y la fuente original queda intacta. El cliente TypeScript transporta
+el discriminador sin normalizaciones ni estado adicional.
+
+RED: el test nuevo no compilaba porque el evento carecía de los campos. GREEN:
+reservas independientes, cero explícito, compatibilidad heredada, VE no
+aplicable con clima y entradas inválidas quedan cubiertos. T02d2b añadirá las
+cargas iniciales fijas al solver; este corte no conecta todavía el asistente.
+
+## T02d2b — cargas iniciales fijas en SolverV2 (#1225)
+
+`SolverInputV2` admite cargas iniciales opcionales de Fuel y VE como escalares
+con procedencia. Si están presentes, la búsqueda general, el peor caso, replay,
+canonicalización y escenarios meteorológicos parten del valor exacto, incluido
+cero; nunca lo elevan para volver factible un plan. Si faltan, el atajo y la
+selección mínima anteriores permanecen intactos.
+
+El caso explícito usa la búsqueda general existente. Adaptar el atajo habría
+ampliado varias suposiciones sobre carga mínima y número de stints sin aportar
+otra capacidad. Las cargas se validan por separado contra sus capacidades, se
+incluyen en el hash y aparecen en las entradas resueltas. El diagnóstico de peor
+caso usa también la carga fija para conservar las causas Fuel/VE concretas.
+
+RED: los tests no compilaban porque el solver carecía de ambos campos. GREEN:
+carga insuficiente, coste de peso, replay, cero, validación, hash, clima y peor
+caso Fuel/VE quedan cubiertos. T02d2c transportará estos valores desde
+application y su evaluación final; este corte no toca TypeScript ni UI.
+
+## T02d2c — cargas iniciales en CalculateOrbit (#1226)
+
+El evento Go transporta cargas iniciales opcionales de Fuel y VE a los escalares
+fijos de SolverV2. Se validan contra la capacidad efectiva y conservan cero,
+ausencia y procedencia. La evaluación final fija sólo el primer target y deja
+que el replay común determine factibilidad y coste.
+
+El remanente de VE se propaga entre stints igual que Fuel: una parada añade sólo
+la cantidad necesaria y nunca intenta retirar energía sobrante. Una edición de
+Fuel del primer stint que contradice la carga del evento se rechaza en lugar de
+elegir una autoridad silenciosamente.
+
+RED: CalculateOrbit no tenía campos para las cargas. GREEN: transporte,
+procedencia, carga superior a la mínima, cero explícito, rangos, conflicto y
+remanente VE con parada Fuel quedan cubiertos. T02d2d conectará el contrato
+TypeScript y el borrador del asistente sin rehacer esta semántica.

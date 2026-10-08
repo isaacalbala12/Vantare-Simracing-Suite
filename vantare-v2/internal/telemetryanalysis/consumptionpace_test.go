@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -158,13 +159,15 @@ func TestRepairLegacyRepresentativePaceUsesSharedFamilyDecisionForTrafficLaps(t 
 	}
 	for index, lapTime := range times {
 		number := []int{2, 4, 6, 7}[index]
+		// Controlled distinct intervals are required evidence for this repair.
+		start, end := fixtureTime(float64(index*200)), fixtureTime(float64(index*200)+lapTime)
 		validity.Laps[index] = AnalyzedLap{
-			Number: number, Complete: true, LapTimeSeconds: &lapTime, Labels: []LapLabel{LapLabelTraffic},
+			Number: number, Start: &start, End: end, Complete: true, LapTimeSeconds: &lapTime, Labels: []LapLabel{LapLabelTraffic},
 			FamilyUse: []LapFamilyUse{{Family: FamilyCombinedStintPaceCurve, Included: true}},
 		}
 		fuel := newDerivedMetric(consumption.SessionID, 3.5, strategyprojection.PresenceValid)
 		consumption.Laps[index] = LapConsumptionPace{
-			Number: number, Labels: []LapLabel{LapLabelTraffic}, ClimateBucket: &dry, FuelConsumption: &fuel,
+			Number: number, Start: start, End: end, Labels: []LapLabel{LapLabelTraffic}, ClimateBucket: &dry, FuelConsumption: &fuel,
 		}
 	}
 
@@ -200,7 +203,7 @@ func TestDeriveSessionConsumptionPaceExcludesWeatherTransitionLap(t *testing.T) 
 	}
 }
 
-func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
+func TestAggregateConsumptionPaceUsesValidatedSamplesAndScopesHistory(t *testing.T) {
 	current := aggregateFixtureSession("current", "combo", strategyprojection.PresenceValid, 2, 10)
 	historyUnknown := aggregateFixtureSession("history-unknown", "combo", strategyprojection.PresenceUnknown, 4, 12)
 	historyOtherCombo := aggregateFixtureSession("other", "other-combo", strategyprojection.PresenceValid, 100, 20)
@@ -210,10 +213,11 @@ func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	bucket := got.ByClimateBucket[strategyprojection.ClimateBucketDry]
-	// valid weighs 1 and unknown weighs 0.5: (2*1 + 4*0.5) / 1.5.
-	assertNear(t, bucket.FuelConsumption.MeanPerLap, 8.0/3.0)
-	if bucket.FuelConsumption.Confidence.SampleSize != 2 {
-		t.Fatalf("aggregate N = %d, expected two matching sessions", bucket.FuelConsumption.Confidence.SampleSize)
+	// An uncertain lap stays visible in its source but cannot alter a validated
+	// aggregate used to plan the race.
+	assertNear(t, bucket.FuelConsumption.MeanPerLap, 2)
+	if bucket.FuelConsumption.Presence != strategyprojection.PresenceValid || bucket.FuelConsumption.Confidence.SampleSize != 1 {
+		t.Fatalf("validated aggregate = %+v, expected one valid source", bucket.FuelConsumption)
 	}
 	if got.SourceSessions[0] != "current" || got.SourceSessions[1] != "history-unknown" || len(got.SourceSessions) != 2 {
 		t.Fatalf("source sessions leaked another combination: %v", got.SourceSessions)
@@ -223,6 +227,29 @@ func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 	}
 	assertDerivedAxes(t, bucket.PacePercentile.Presence, bucket.PacePercentile.Provenance, bucket.PacePercentile.Confidence)
 	assertNear(t, bucket.PacePercentile.Value, 100) // 10 s is faster than the 12 s history.
+}
+
+func TestSummariesKeepUncertainOnlyObservationsUncertain(t *testing.T) {
+	samples := []metricSample{{value: 3, presence: strategyprojection.PresenceUnknown}}
+	resource := summarizeResource("session", strategyprojection.ClimateBucketDry, samples)
+	pace := summarizePace("session", samples)
+	if resource.Presence != strategyprojection.PresenceUnknown || resource.Confidence.SampleSize != 1 ||
+		pace.Presence != strategyprojection.PresenceUnknown || pace.Confidence.SampleSize != 1 {
+		t.Fatalf("uncertain observations were silently dropped: fuel=%+v pace=%+v", resource, pace)
+	}
+}
+
+func TestSummariesExcludeUncertainSamplesWhenValidatedLapsExist(t *testing.T) {
+	samples := []metricSample{
+		{value: 2, presence: strategyprojection.PresenceValid},
+		{value: 4, presence: strategyprojection.PresenceUnknown},
+	}
+	resource := summarizeResource("session", strategyprojection.ClimateBucketDry, samples)
+	pace := summarizePace("session", samples)
+	if resource.Presence != strategyprojection.PresenceValid || resource.Confidence.SampleSize != 1 || resource.MeanPerLap != 2 ||
+		pace.Presence != strategyprojection.PresenceValid || pace.Confidence.SampleSize != 1 || pace.MedianLapSeconds != 2 {
+		t.Fatalf("uncertain sample entered validated summary: fuel=%+v pace=%+v", resource, pace)
+	}
 }
 
 func loadConsumptionPaceFixture(t *testing.T, name string) consumptionPaceFixture {
@@ -283,7 +310,7 @@ func consumptionPaceFixtureInput(fixture consumptionPaceFixture) (HistoricalSess
 
 func fixtureContinuousChannel(id, name string) HistoricalChannel {
 	return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{
-		Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginUnknown,
+		Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp,
 	}}
 }
 
@@ -294,7 +321,83 @@ func fixtureEventChannel(id, name string) HistoricalChannel {
 }
 
 func fixtureContinuousSample(seconds, value float64) HistoricalSample {
-	return HistoricalSample{Index: int64(seconds), RelativeTimeSeconds: seconds, Values: []HistoricalValue{fixtureNumber(value)}}
+	return HistoricalSample{Index: int64(seconds), RelativeTimeSeconds: seconds, TimestampSeconds: floatPointer(seconds), Values: []HistoricalValue{fixtureNumber(value)}}
+}
+
+func TestContinuousSeriesRequiresAlignedSourceTimestamp(t *testing.T) {
+	aligned := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	page := HistoricalPage{Sampling: aligned, Samples: []HistoricalSample{{
+		Index: 7, RelativeTimeSeconds: 7, TimestampSeconds: floatPointer(1007), Values: []HistoricalValue{fixtureNumber(42)},
+	}}}
+
+	got := continuousSeries([]HistoricalPage{page})
+	if len(got) != 1 || got[0].seconds != 1007 || got[0].value != 42 {
+		t.Fatalf("aligned series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginUnknown
+	if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("unaligned series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginSourceTimestamp
+	page.Samples[0].TimestampSeconds = nil
+	if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("missing timestamp series = %+v", got)
+	}
+	for _, invalid := range []float64{math.NaN(), math.Inf(1)} {
+		page.Samples[0].TimestampSeconds = &invalid
+		if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+			t.Fatalf("non-finite timestamp series = %+v", got)
+		}
+	}
+}
+
+func TestDeriveSessionConsumptionPaceFailsClosedForUnalignedResources(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	for index := 0; index < 2; index++ {
+		session.Channels[index].Sampling.Origin = TimeOriginUnknown
+		pages[index].Sampling.Origin = TimeOriginUnknown
+	}
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lap := range got.Laps {
+		if lap.FuelConsumption != nil || lap.VirtualEnergyConsumption != nil {
+			t.Fatalf("unaligned resources produced metrics: %+v", lap)
+		}
+	}
+}
+
+func TestDeriveSessionConsumptionPaceUsesAlignedClockOffset(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	const offset = 1000.0
+	for pageIndex := range pages {
+		for sampleIndex := range pages[pageIndex].Samples {
+			timestamp := *pages[pageIndex].Samples[sampleIndex].TimestampSeconds + offset
+			pages[pageIndex].Samples[sampleIndex].TimestampSeconds = &timestamp
+		}
+	}
+	for index := range validity.Laps {
+		start := validity.Laps[index].Start.Add(time.Duration(offset * float64(time.Second)))
+		validity.Laps[index].Start = &start
+		validity.Laps[index].End = validity.Laps[index].End.Add(time.Duration(offset * float64(time.Second)))
+	}
+	for index := range validity.Temporal.LapBoundaries {
+		validity.Temporal.LapBoundaries[index].Timestamp = validity.Temporal.LapBoundaries[index].Timestamp.Add(time.Duration(offset * float64(time.Second)))
+	}
+	validity.Temporal.Segments[0].SessionStartTs = validity.Temporal.Segments[0].SessionStartTs.Add(time.Duration(offset * float64(time.Second)))
+	validity.Temporal.Segments[0].SessionEndTs = validity.Temporal.Segments[0].SessionEndTs.Add(time.Duration(offset * float64(time.Second)))
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket := got.ByClimateBucket[fixture.Expected.Bucket]
+	assertResourceFamily(t, bucket.FuelConsumption, fixture.Expected.FuelSampleSize, fixture.Expected.FuelMean, fixture.Expected.FuelVariance)
+	assertResourceFamily(t, bucket.VirtualEnergyConsumption, fixture.Expected.VESampleSize, fixture.Expected.VEMean, fixture.Expected.VEVariance)
 }
 
 func fixtureEventSample(seconds, value float64) HistoricalSample {
@@ -363,5 +466,148 @@ func aggregateFixtureSession(id, combination string, presence strategyprojection
 				RepresentativePace:       RepresentativePaceFamily{Presence: presence, Provenance: provenance, Confidence: confidence, MedianLapSeconds: pace},
 			},
 		},
+	}
+}
+
+func TestConsumptionPacePreservesTemporalIdentity(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	for i := range validity.Laps {
+		validity.Laps[i].Number = 1
+	}
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Laps) != len(validity.Laps) {
+		t.Fatal("lost observations")
+	}
+	for i, lap := range validity.Laps {
+		if lap.Start == nil || !got.Laps[i].Start.Equal(*lap.Start) || !got.Laps[i].End.Equal(lap.End) {
+			t.Fatal("lost interval", i)
+		}
+	}
+	first := *validity.Laps[0].Start
+	got.Laps[0].Start = got.Laps[0].Start.Add(time.Second)
+	if !validity.Laps[0].Start.Equal(first) {
+		t.Fatal("identity aliases original")
+	}
+	var legacy LapConsumptionPace
+	if err := json.Unmarshal([]byte(`{"number":1,"labels":[]}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if !legacy.Start.IsZero() || !legacy.End.IsZero() {
+		t.Fatal("legacy identity invented")
+	}
+}
+
+func TestSavingObservationsUseIndependentFamilyAndHardEvidence(t *testing.T) {
+	for _, mode := range []string{"exclude fuel and pace", "exclude saving", "invalid coverage", "missing fuel"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+			session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+			for i := range validity.Laps {
+				validity.Laps[i].FamilyUse = familyUseForLap(validity.Laps[i])
+			}
+			original, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := -1
+			for i, lap := range original.Laps {
+				if lap.SavingFuel != nil && lap.SavingPace != nil {
+					target = i
+					break
+				}
+			}
+			if target < 0 {
+				t.Fatal("fixture lacks saving observations")
+			}
+			switch mode {
+			case "exclude fuel and pace":
+				for j := range validity.Laps[target].FamilyUse {
+					use := &validity.Laps[target].FamilyUse[j]
+					if use.Family == FamilyFuelConsumption || use.Family == FamilyCombinedStintPaceCurve {
+						use.Included = false
+					}
+				}
+			case "exclude saving":
+				for j := range validity.Laps[target].FamilyUse {
+					if validity.Laps[target].FamilyUse[j].Family == FamilySavingCost {
+						validity.Laps[target].FamilyUse[j].Included = false
+					}
+				}
+			case "invalid coverage":
+				validity.Temporal.Segments[0].Presence = strategyprojection.PresenceInvalid
+			case "missing fuel":
+				pages[0].Samples = nil
+			}
+			got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lap := got.Laps[target]
+			switch mode {
+			case "exclude fuel and pace":
+				if lap.FuelConsumption != nil || lap.RepresentativePace != nil || !reflect.DeepEqual(lap.SavingFuel, original.Laps[target].SavingFuel) || !reflect.DeepEqual(lap.SavingPace, original.Laps[target].SavingPace) {
+					t.Fatal("family decisions coupled")
+				}
+			case "exclude saving":
+				if lap.SavingFuel != nil || lap.SavingPace != nil || !reflect.DeepEqual(lap.FuelConsumption, original.Laps[target].FuelConsumption) || !reflect.DeepEqual(lap.RepresentativePace, original.Laps[target].RepresentativePace) {
+					t.Fatal("saving exclusion leaked")
+				}
+			case "invalid coverage":
+				if lap.SavingFuel != nil || lap.SavingPace != nil {
+					t.Fatal("invalid coverage promoted")
+				}
+			case "missing fuel":
+				if lap.SavingFuel != nil {
+					t.Fatal("missing fuel invented")
+				}
+			}
+		})
+	}
+}
+
+func TestLegacyPaceRepairRequiresExactUniqueLapIdentity(t *testing.T) {
+	for _, mode := range []string{"repeated number", "missing interval", "duplicate validity", "duplicate consumption", "changed interval"} {
+		t.Run(mode, func(t *testing.T) {
+			dry := strategyprojection.ClimateBucketDry
+			validity := LapValidityAnalysis{}
+			consumption := SessionConsumptionPace{SessionID: "controlled", CombinationID: "combination", ByClimateBucket: map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace{dry: {}}}
+			for i, seconds := range []float64{90, 100} {
+				start, end := fixtureTime(float64(i*100)), fixtureTime(float64(i*100)+seconds)
+				validity.Laps = append(validity.Laps, AnalyzedLap{Number: 1, Start: &start, End: end, Complete: true, LapTimeSeconds: &seconds, FamilyUse: []LapFamilyUse{{Family: FamilyCombinedStintPaceCurve, Included: true}}})
+				fuel := newDerivedMetric(consumption.SessionID, 3, strategyprojection.PresenceValid)
+				consumption.Laps = append(consumption.Laps, LapConsumptionPace{Number: 1, Start: start, End: end, ClimateBucket: &dry, FuelConsumption: &fuel})
+			}
+			switch mode {
+			case "missing interval":
+				consumption.Laps[0].Start = time.Time{}
+			case "duplicate validity":
+				validity.Laps = append(validity.Laps, validity.Laps[0])
+			case "duplicate consumption":
+				consumption.Laps = append(consumption.Laps, consumption.Laps[0])
+			case "changed interval":
+				consumption.Laps[0].End = consumption.Laps[0].End.Add(time.Second)
+			}
+			got := repairLegacyRepresentativePace(&validity, consumption)
+			if got.Laps[1].RepresentativePace == nil || got.Laps[1].RepresentativePace.Value != 100 {
+				t.Fatal("lost unambiguous lap")
+			}
+			if mode == "repeated number" {
+				if got.Laps[0].RepresentativePace == nil || got.Laps[0].RepresentativePace.Value != 90 {
+					t.Fatal("joined another lap by number")
+				}
+			} else if got.Laps[0].RepresentativePace != nil {
+				t.Fatal("repaired unresolved or ambiguous lap")
+			}
+			if mode == "duplicate consumption" && got.Laps[2].RepresentativePace != nil {
+				t.Fatal("duplicate observation repaired")
+			}
+			if consumption.Laps[1].RepresentativePace != nil {
+				t.Fatal("persisted original mutated")
+			}
+		})
 	}
 }

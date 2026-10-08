@@ -1,0 +1,424 @@
+# ISA-1375 — preparación paginada, primer corte productivo
+
+## Repetición del perfil de proyección (2026-09-26)
+
+Se repitió la comparación sobre el HEAD `122214d0`, sin cambiar código ni
+cuotas. Se compiló una vez el test de `internal/app` y se ejecutó en seis
+procesos nuevos: tres con `ISA1375_PROJECTION_PROFILE=paged` y tres con
+`materialized`. Cada proceso abrió la misma fuente Algarve S266 de 71 eventos
+de vuelta (SHA-256 `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`).
+Una fuente Monza distinta se usó sólo para satisfacer el descubrimiento de dos
+candidatos; no alimentó la proyección. El runtime autorizado y el test opt-in
+existentes validaron apertura, resultado y hashes antes/después. Se muestreó
+`WorkingSet64` del proceso de test cada 100 ms desde el arranque hasta salir;
+por ello el pico incluye preparación y parser, no sólo la función de proyección.
+
+| Ruta | Pico de proceso MiB, tres ejecuciones | Tiempo de proyección, s | Ritmo seco / Fuel |
+| --- | --- | --- | --- |
+| Paginada | 94,6 · 52,6 · 52,3 | 6,85 · 6,75 · 6,45 | 95,190 s · 2,135 L/vuelta |
+| Materializada | 777,7 · 805,6 · 777,2 | 2,22 · 2,52 · 2,25 | 95,190 s · 2,135 L/vuelta |
+
+Las seis ejecuciones terminaron con exit 0 y `TestRecordedStrategyRealDuckDB`
+PASS; los hashes de ambos archivos coincidieron al terminar cada una. El
+control materializado es la ruta anterior **del mismo binario**, no una versión
+distinta. La proyección paginada reduce el pico observado en esta fuente, a
+costa de relecturas y más tiempo. El presupuesto provisional de 128 MiB cubre
+estas tres ejecuciones de S266, pero no acredita una carrera de resistencia:
+ninguna fuente independiente disponible contiene muchas más vueltas, y falta
+medir el proceso Wails completo. No se eleva la cuota productiva ni se cierra
+#1375.
+
+## Inventario adicional de fuentes locales (2026-09-25)
+
+Se enumeraron los `.duckdb` de `Le Mans Ultimate/UserData/Telemetry` sin
+abrir LMU ni la app. Había 417 archivos: 48 tenían `.wal` y se excluyeron por
+inestables; los otros 369 se consultaron con la CLI DuckDB en modo
+`-readonly`. La consulta sólo contó filas y valores distintos de la tabla
+`Lap`, sin importar señales ni modificar originales. Desglose estable: 298
+prácticas, 26 clasificaciones y 45 carreras.
+
+El máximo de **marcadores** de vuelta fue Algarve R (71), seguido de Monza R
+(61), Imola R (39) y COTA R (31). Son marcadores, no vueltas completas; el
+banco existente ya había acreditado 66 completas en Algarve. El mayor archivo
+por tamaño, Sarthe P de 1.113,8 MiB, contiene un único marcador de vuelta 0:
+su tamaño no lo convierte en una prueba de resistencia. Ninguna de las 369
+fuentes estables ofrece una carrera independiente significativamente más larga
+que Algarve según este criterio preliminar. Las 48 fuentes con WAL no se
+consideran aptas ni se abren para forzar una prueba. Este inventario no cierra
+la cuota, el presupuesto de memoria ni Wails T22; hace falta una fuente
+multivuelta larga adicional y una medición con el pipeline productivo.
+
+El barrido general también contó `Lap` en archivos Race, incluidos
+potencialmente candidatos de la reserva congelada de #1030. No se leyeron
+señales, etiquetas ni resultados de carrera y estos conteos no se emplearon
+para ajustar filtros, umbrales o el solver. Aun así, **no se afirma que esa
+reserva permaneciera sin abrir en esta pasada**. La selección y los hashes del
+holdout siguen fijados en #1030; no usar este inventario como evaluación
+independiente de precisión o de incidencias.
+
+`PrepareCorrections` usa ahora `ReadCorrectionSummary`: valida el artefacto
+autorizado y todas las páginas, conserva eventos con un techo explícito de
+100.000 filas, valida GPS en orden y relee señales continuas mediante ventanas
+GPS. La validez y la referencia de análisis se construyen sin devolver las
+páginas de todas las señales. No cambia el presupuesto de 1,25 M muestras,
+1,5 M valores y 16 MiB de texto; una fuente que lo supera sigue rechazándose.
+En el primer corte inspección, guardado y proyección aún usaban
+`ReadCorrectionInput`; los cortes posteriores de este expediente migraron
+inspección y guardado. La proyección todavía retiene las páginas completas.
+Por tanto **no** se anuncia soporte de resistencia.
+
+La prueba focal compara referencia, sesión alineada y validez completas contra
+el lector anterior, y compara rechazo por límite/cancelación, puente inválido y
+cobertura truncada. El banco real opt-in con S266 Algarve y una Monza de
+2026-05-02 compara los tres objetos completos y la lista productiva de canales
+editables, después ejecuta revisiones exactas, derivación, Strategy y reapertura.
+Una regresión RED→PASS confirma que una lectura cancelada no retira el handle
+y puede repetirse; una fuente realmente incompatible sigue retirándose.
+Pasó: 71 eventos, 70 reinicios, 66 vueltas completas, ritmo seco 95,190 s
+(N=58), Fuel 2,135 L/vuelta (N=58), VE no aplicable a LMP2 y plan de 38 vueltas
+sin parada con óptimo probado **sólo para el evento supuesto**. Los SHA-256 de
+ambos originales siguieron intactos. `go test ./...` y `go vet` de Analysis/App
+pasaron. Esto no es prueba Wails ni precisión física de carrera.
+
+Para medir sólo el recorrido hasta preparación, el banco real se detuvo tras
+`PrepareCorrections`. La versión anterior se compiló desde `03988b62` en un
+worktree temporal separado con **únicamente** esa salida temprana de test; el
+worktree se retiró tras medir. Ambas versiones usaron los mismos dos originales,
+runtime autorizado y test binario oculto. Se muestreó `PeakWorkingSet64` del
+proceso cada 50 ms; cada ejecución terminó con código 0 y verificó los hashes.
+
+| Versión | Pico de working set, MiB (3 ejecuciones) | Tiempo total, s (3 ejecuciones) |
+| --- | --- | --- |
+| Materializada | 531,5 · 546,1 · 596,0 | 9,39 · 8,25 · 8,56 |
+| Preparación paginada inicial | 540,9 · 591,8 · 624,6 | 15,63 · 15,88 · 15,59 |
+| Paginada, segunda visita sólo a canales continuos | 657,4 · 482,8 · 433,5 | 15,66 · 15,41 · 15,87 |
+
+Los rangos de memoria varían y se solapan; **no demuestran ahorro de pico** en
+esta grabación. Evitar releer eventos en la segunda visita tampoco redujo el
+tiempo de forma visible: domina la relectura de señales continuas. El tiempo
+aumentó frente a la versión anterior. La medición incluye discovery,
+importación de catálogo y apertura, de modo que tampoco aísla el pico de la
+preparación. La propiedad estructural lograda es no retener señales continuas
+en la respuesta de preparación; falta medir una fuente significativamente más
+larga **con muchas vueltas**, y reducir visitas antes de fijar una cuota nueva.
+La sección siguiente separa el coste de importación en una fuente de alto
+volumen continuo. Quedan pendientes inspección y proyección paginadas, correcciones
+exactas, limpieza/cancelación en runtime y Wails T22.
+
+## Volumen real aislado de la importación
+
+Se repitió la lectura con el original limpio
+`Autodromo Enzo e Dino Ferrari_P_2026-08-13T13_50_06Z.duckdb` (264,10 MiB,
+sin WAL; SHA-256 `88956bb77774fbe93a1898b3c34f13ecaa076ff37d5e2ec2003212be39440de0`).
+Esta fuente contiene mucho más volumen continuo, pero sólo **una vuelta**:
+sirve para estresar el lector, no para certificar una estrategia de resistencia.
+La rama opcional del test abre el parser autorizado y llama directamente a
+`ReadCorrectionSummary` antes de importar el catálogo. Sólo en el banco se
+permitieron 12 M muestras, 15 M valores y 64 MiB de texto para observar el
+recorrido completo; **la cuota productiva no cambió**. La fuente Monza usada
+por el banco conservó también su hash original.
+
+Una medición preliminar con importación previa dio 2.191 MiB de pico, pero
+`HeapSys` ya marcaba 2.492 MiB **antes** de empezar el resumen: esa cifra no
+pertenece a `ReadCorrectionSummary`. Se retiró la importación del recorrido de
+volumen y se midió el proceso nuevo con `PeakWorkingSet64` cada 50 ms:
+
+| Ejecución | Pico de working set | Tiempo | Resultado |
+| --- | ---: | ---: | --- |
+| 1 | 50,8 MiB | 54,09 s | 1 vuelta; hashes intactos |
+| 2 | 50,8 MiB | 53,49 s | 1 vuelta; hashes intactos |
+| 3 | 51,1 MiB | 53,31 s | 1 vuelta; hashes intactos |
+
+Antes del resumen `HeapSys` estaba entre 7,6 y 11,6 MiB; al terminar,
+entre 18,2 y 18,4 MiB. El test asignó ~14,66 GiB **acumulados** a lo largo
+de las visitas, dato que explica el coste temporal pero no es memoria
+simultánea. Los tres picos son evidencia de este lector, esta fuente y este
+entorno: no prueban rendimiento con muchas vueltas/eventos, aplicación Wails
+ni las operaciones productivas que todavía materializan correcciones.
+
+## Límite de las relecturas repetidas
+
+Se probó pasar `LoadCorrection`, `LoadPendingCorrectionCommand`,
+`AcknowledgeCorrectionCommand` y `ResolveCorrectionCommand` al resumen paginado.
+El banco real completo conservó revisiones, proyección, restauración y hashes,
+pero tardó **288,18 s** frente a **87,21 s** de la ejecución anterior con
+esas operaciones en la ruta materializada. Son ejecuciones individuales, no
+una comparación estadística de rendimiento, pero el coste es inaceptable para
+consultas de historial frecuentes. El cambio de esas cuatro llamadas se
+retiró antes de commit; el worktree volvió a `03e5e5e6` limpio. Hace falta
+separar revalidación ligera de la fuente y reutilización segura de identidad,
+o una derivación paginada compartida por comando, antes de cambiar esas rutas.
+
+## Consultas de historial con identidad de sesión abierta
+
+Las cuatro consultas citadas arriba usan ahora sólo la identidad base ya
+obtenida por preparación o una lectura anterior. Antes de cada consulta,
+`LMUDuckDBParser.Inspect` vuelve a validar el SHA-256 de la copia privada a
+través del proceso lector y el catálogo. Si aún no hay base en esa sesión,
+`ReadCorrectionSummary` la produce una vez. El caché no guarda muestras ni
+sale de la sesión abierta. Guardar, inspeccionar observaciones y proyectar
+siguen en el lector materializado.
+
+Un test focal comprueba que la segunda consulta no toca páginas de muestras,
+que la cancelación no retira la fuente y que una evidencia modificada sí la
+invalida. `go test ./...`, `go vet ./internal/app ./internal/telemetryanalysis/...`
+y `git diff --check` pasaron. El banco real corto confirmó preparación de
+98 canales y 70 anclas, con originales Algarve y Monza intactos: PASS,
+45,66 s incluyendo apertura e importación. El banco real completo confirmó
+paridad paginada/materializada, 71 eventos, 70 reinicios, proyección, cálculo,
+revisiones exactas, restauración, reapertura y hashes originales intactos:
+PASS, **132,81 s**. Una ejecución previa del mismo corte tardó 429,46 s con
+salida capturada por PowerShell y no verificó explícitamente el código del
+test; se considera sólo un dato de latencia anómala, no un PASS. Las medidas
+individuales no prueban una mejora de tiempo frente al banco anterior de
+87,21 s; sí evitan estructuralmente releer muestras para cada consulta de
+historial. No se eleva la cuota ni se acredita resistencia o Wails.
+
+## Inspección de vueltas sin retener todas las muestras
+
+`InspectCorrectionLaps` lee ahora un `CorrectionSummary` del original, carga
+la revisión exacta y solicita sólo las filas que nombra su snapshot (máximo
+256 decisiones). El validador mixto existente comprueba sobre ellas las
+precondiciones de escalares, familias, clasificación e hitos de stint. Cuando
+hay un valor corregido, una segunda visita paginada aplica ese valor a una
+copia de su página y deriva la validez efectiva. La construcción de la página
+pública es común a esta ruta y al oráculo materializado. El servicio mantiene
+el mismo permiso, lock, cancelación y retiro ante fuente incompatible; el
+original y el snapshot persistido no se modifican.
+
+Los tests comparan validez y página pública contra la ruta materializada con
+correcciones de `Lap Time` y `GPS Time`, comparan la inspección de una revisión
+escalar guardada y comprueban objetivo ausente, página malformada, canal ajeno,
+cancelación, autorización y fuente cambiada. El banco real Algarve→Monza
+añadió una corrección temporal de `Lap Time` sobre una fila autorizada, sin
+guardarla, y obtuvo validez paginada **idéntica** a la materializada. Después
+pasaron proyección, cálculo, historial, restauración y reapertura. PASS,
+215,01 s; 71 eventos, 70 reinicios y 66 vueltas completas. SHA-256 de ambos
+originales invariantes (Algarve `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`;
+Monza `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`).
+Es un único banco funcional, no una comparación A/B de tiempo ni memoria.
+Tras esa ejecución se añadió reutilización del resumen dentro del handle
+abierto: `Inspect` recalcula la evidencia del archivo y verifica el catálogo
+antes de cada reutilización. Un test impide leer páginas de muestras al
+inspeccionar de nuevo una revisión sin cambios escalares y otro cambia la
+evidencia para comprobar que la sesión se retira. Esta mejora de navegación
+no queda acreditada por el tiempo del banco anterior. Se repitió el banco
+real con el caché incluido: PASS, **99,46 s**; corrección de Lap Time idéntica,
+proyección/cálculo y revisiones exactas intactos, ambos hashes originales
+invariantes. La diferencia entre ejecuciones individuales de 215,01 y 99,46 s
+no es una medición A/B controlada de rendimiento; sólo acredita función.
+El guardado se migró después de este banco; la inspección paginada por sí sola
+no certifica resistencia, todos los tipos de corrección ni Wails T22.
+
+## Guardado de correcciones desde filas exactas
+
+`SaveCorrections` y `SaveRecoverableCorrections` reutilizan el resumen del
+original revalidado con `Inspect`, leen sólo las filas que nombra la petición
+y conservan las comprobaciones existentes del almacén. Si una petición mezcla
+valores escalares con familias o límites de stint, calculan la validez efectiva
+mediante páginas corregidas antes de guardar. El oráculo materializado queda
+sólo en tests: una petición mixta recuperable compara el snapshot exacto y el
+guardado escalar compara los valores preparados. La política de cancelación,
+fuente cambiada y comando pendiente sigue bajo el bloqueo de sesión.
+
+`go test ./...`, `go vet ./internal/app ./internal/telemetryanalysis/...` y
+`git diff --check` pasaron tras mover el oráculo materializado a código sólo de
+prueba. El banco completo Algarve→Monza con esta ruta pasó en **269,64 s**: preparación,
+paridad de validez, corrección temporal de Lap Time, proyección, cálculo,
+historial, restauración y reapertura. Conservó 71 eventos, 70 reinicios,
+66 vueltas completas y los hashes de ambos originales indicados arriba.
+Es evidencia funcional de una ejecución, no prueba de ahorro de memoria ni
+comparación de velocidad. La proyección aún materializa, la cuota productiva
+no se ha elevado y faltan una fuente larga multivuelta y Wails T22.
+
+## Dependencias exactas de la proyección pendiente
+
+La revisión de `ProjectCorrection`, la proyección conjunta y
+`DeriveCorrectedSession` confirma que ambas entradas comparten un derivador
+que vuelve a retener series completas. El inventario de señales, consultas,
+ventanas de boxes y desempates consta en [ADR 0012](../../adr/0012-strategy-recorded-bounded-reading.md).
+Se añadió una regresión de contrato para la marca temporal duplicada: las
+búsquedas de estado/recurso eligen el último valor exacto, mientras la
+búsqueda de Fuel más cercano elige el primero exacto y prefiere el anterior
+en un empate de distancia. Esta prueba protege la semántica que debe igualar
+el futuro recolector; **no** valida todavía una proyección paginada.
+La prueba focal, `go test ./...`, vet del paquete y `git diff --check`
+pasaron. No se repitió el banco DuckDB real porque la ruta productiva de
+proyección no cambió en este corte.
+
+## Primer recolector de fronteras, aún sin conexión productiva
+
+`orderedProjectionBoundaryScan` consume muestras ya alineadas y válidas de
+un canal en orden temporal. Para cada instante conserva sólo la fila anterior
+y la posterior, incluidas la primera y la última entre marcas duplicadas;
+entrega las filas seleccionadas en orden original. Rechaza un orden temporal
+decreciente para que un lector futuro no publique resultados distintos en
+silencio. Las pruebas comparan `valueAt`, `continuousValueAt`, la búsqueda
+de Fuel más cercano y `vectorValueAt` con series completas, incluyendo
+duplicados, valor inválido, empate de distancia, tolerancia y ausencia.
+El espacio retenido es proporcional al número de instantes consultados, no
+al de muestras visitadas. Esta pieza **todavía no lee páginas ni proyecta una
+revisión**: faltan alineación, ventanas de boxes, correcciones escalares y
+paridad del derivador completo antes de conectarla al servicio.
+La suite `go test ./...` pasó antes de la última reducción de filas retenidas;
+después pasaron el paquete completo `internal/telemetryanalysis`, su vet y
+`git diff --check`. No se repitió el banco real: la proyección productiva no
+cambió en este corte.
+
+## Ascensos de boxes con estado constante
+
+`observeRise` deja de copiar las muestras de cada intervalo de boxes. El
+nuevo `pitRiseScan` conserva la muestra anterior, el incremento acumulado,
+la presencia y los instantes del primer/último ascenso; se puede alimentar
+en páginas consecutivas sin cambiar la tasa calculada. Una regresión cubre
+dos ascensos separados por un incremento bajo el umbral, presencia degradada
+y una subida con duración cero. La suite `go test ./...` y vet focal pasaron.
+
+El banco real Algarve→Monza pasó en **131,40 s**, conservando 71 eventos,
+70 reinicios, 66 vueltas completas, ritmo seco 95,190 s (N=58), Fuel
+2,135 L/vuelta (N=58), plan supuesto de 38 vueltas/0 paradas con óptimo
+probado, revisiones/restauración y hashes de ambos originales intactos.
+Es una ejecución funcional; no mide el pico de memoria ni demuestra una
+mejora temporal frente a los bancos anteriores. La proyección productiva
+todavía carga la serie completa antes de llamar al acumulador.
+
+## Derivación con filas reducidas y visita alineada
+
+Se separó el cálculo de consumo, curvas, boxes y estrategia observada del
+paso que aplica el snapshot y analiza validez. La ruta materializada conserva
+el mismo derivador y la misma referencia de revisión. En un ensayo **sólo de
+test**, filas de frontera seleccionadas desde páginas ya materializadas
+producen un `CorrectedSessionDerivations` idéntico en la grabación saneada
+S045. El fixture de carrera con boxes empezó rojo: consumo y curvas eran
+idénticos, pero boxes y estrategia observada diferían. Al incluir las
+muestras interiores de cada parada, también coincidió el modelo completo.
+Ese ensayo explica la dependencia y **no es una lectura acotada de boxes**:
+retiene esas filas para que el derivador actual pueda consumirlas.
+
+`visitAlignedCorrectionPages` ya puede volver a visitar el lector autorizado
+sin guardar todas las páginas, aplicar los tiempos del mismo GPS por ventanas
+y entregar páginas seleccionadas al consumidor. En un fixture de canales
+continuos Lap/Lap Time igualó las muestras de `ReadCorrectionInput`; un
+`Inspect` con sesión cambiada fue rechazado. Todavía falta usarlo para
+recolectar los límites reales y resumir Fuel/VE en boxes antes de producir
+una proyección paginada; esta prueba no acredita paridad en DuckDB real.
+
+## Boxes desacoplado de las filas de proyección
+
+`DeriveSessionPitObservation` construye ahora el mismo modelo público desde
+dos funciones que entregan el ascenso observado por intervalo. La ruta
+materializada usa sus series actuales; un test alimenta `pitRiseScan` desde
+filas sucesivas y obtiene un `SessionPitObservation` completo idéntico.
+El derivador común acepta ese resultado como entrada validada. En el fixture
+de carrera, las filas de frontera **sin** las muestras interiores de boxes,
+más el resultado de parada separado, producen un
+`CorrectedSessionDerivations` completo idéntico al materializado. El test
+todavía obtiene esa parada desde páginas materializadas; la paridad del
+acumulador se comprueba por separado. Falta unir ambas piezas al visitante
+autorizado y probar el snapshot real antes del cambio productivo.
+
+## Recolectores paginados conectados al visitante
+
+`readPagedPitObservation` visita primero los eventos de boxes y después Fuel/VE;
+retiene sólo los eventos acotados y un acumulador por parada. Un test con
+páginas partidas y un valor de Fuel corregido iguala el resultado materializado
+y verifica que el original no cambió. `readPagedProjectionRows` usa el mismo
+visitante alineado para conservar sólo las muestras anterior/posterior a los
+instantes consultados por las derivaciones, más los eventos necesarios. Otro
+test compara las filas seleccionadas de Fuel/VE y Finish Status con la
+selección materializada, incluyendo un valor corregido. Si una señal válida
+retrocede en el tiempo, los recolectores fallan explícitamente.
+
+La corrección se aplica **después** de alinear con el GPS original, como en
+`DeriveCorrectedSession`. `DerivePagedCorrectedSession` une validez paginada,
+fronteras, boxes y las mismas derivaciones de siempre. En un fixture de carrera
+de dos vueltas igualó el modelo completo tanto para la revisión base como para
+una corrección de Fuel. El banco real Algarve→Monza igualó el modelo completo
+para una corrección de Lap Time en Algarve y terminó PASS en **153,08 s**:
+71 eventos, 70 reinicios, 66 vueltas completas, ritmo seco 95,190 s (N=58),
+Fuel 2,135 L/vuelta (N=58), cálculo supuesto 38 vueltas/0 paradas con óptimo
+probado, restauración y hashes de ambos originales intactos.
+
+Una tercera variante del fixture corrigió el GPS justo en un límite de vuelta
+y detectó una diferencia de validez. La relectura paginada corregía el GPS
+antes de alinear, en contradicción con la ruta materializada. Ahora deja el
+GPS original como reloj de alineación y aplica las demás correcciones después;
+base, Fuel y GPS igualan el modelo completo en el fixture. El banco real
+anterior usaba una corrección de Lap Time, por lo que no acredita este caso GPS.
+
+## Proyección productiva y memoria aislada
+
+`ProjectCorrection` y `ProjectStrategyRevisionInputs` usan ahora el mismo
+derivador paginado. Cada llamada comprueba autorización, sesión abierta y
+revisión duradera exacta; la segunda lectura vuelve a verificar la misma base
+antes de derivar bajo el bloqueo de la sesión. Los tests de App y Analysis
+pasaron y una regresión cancela la visita a mitad de páginas sin publicar un
+modelo parcial. El banco LMU completo, ya por las dos entradas productivas,
+terminó PASS en **234,05 s** con cálculo, historial, cierre/reapertura y
+hashes originales intactos.
+
+En procesos de test independientes, con la **misma grabación Algarve de 71
+eventos** y preparación previa, una muestra de `WorkingSet64` cada 100 ms
+dio picos de **94,3 MiB** y **50,0 MiB** para la ruta paginada (dos ejecuciones),
+frente a **812,2 MiB** para la materializada (una ejecución). El presupuesto
+provisional de **128 MiB** cubre esta grabación y este proceso de prueba; no es
+una garantía para cualquier sesión ni para Wails. La parte de proyección tardó
+6,99–7,66 s paginada frente a 2,25 s materializada. Son ejecuciones
+secuenciales con cachés del sistema distintas, así que los tiempos no fijan
+una comparación estable de velocidad. La ruta paginada asignó más bytes
+acumulados (`TotalAlloc` ~5,8 GiB frente a ~4,4 GiB) por releer páginas, aunque
+retuvo mucho menos al mismo tiempo.
+
+Después se unió la lectura de eventos de boxes a la visita que ya selecciona
+fronteras. Si no hay parada, se evita una visita completa adicional; si la
+hay, sólo se releen Fuel/VE para acumular el ascenso. Las pruebas de Analysis
+y App conservaron paridad. Una ejecución aislada posterior del mismo Algarve
+dio **93,3 MiB** de pico, **6,21 s** de proyección y `TotalAlloc` ~5,36 GiB;
+el resultado continuó en 95,190 s y 2,135 L/vuelta, con hashes intactos.
+Las fluctuaciones entre ejecuciones siguen impidiendo atribuir una mejora
+temporal exacta a esta simplificación.
+
+Falta demostrar crecimiento acotado con una fuente larga de **muchas vueltas**,
+ajustar el límite de muestras sólo con esa evidencia, validar en Wails T22 y
+revisar la experiencia de espera en la UI. La ejecución funcional no cierra
+ISA-1375 ni acredita resistencia completa.
+
+El empaquetado local pasó sin abrir la ventana: `pnpm --dir frontend build` y
+`CGO_ENABLED=0 wails3 build DEV=true` generaron un ejecutable de 43.971.072
+bytes (`SHA-256 406ef6ff1de3480d3b50dcc67627d60111a92c2e1c97ffb3d260b2d3d47fdc3f`).
+La CLI instalada informó `v3.0.0-alpha.98`; el build no verifica interacción
+WebView2 ni login/licencia y no cierra T22. `go mod tidy` reordenó una
+dependencia indirecta durante el build; se restauró ese cambio no relacionado.
+
+## Espera del cliente durante proyección
+
+Datos y Revisiones muestran un aviso en la parte superior mientras la revisión
+se deriva de la fuente. No se muestra un porcentaje que el backend no publica;
+la acción de cancelar permanece accesible. El estado aparece tanto al preparar
+explícitamente como después de confirmar un guardado, antes de adoptar nada.
+Una regresión con proyección diferida comprueba que cancelar conserva el
+guardado confirmado y no publica un resultado tardío. Otras dos pruebas
+comprueban el aviso y la cancelación en ambas vistas. Pasaron 96 tests focales,
+typecheck, lint, 4.303 tests frontend (2 omitidos) y build. Este test de UI
+no acredita la apariencia ni el tiempo de espera en Wails; sigue en T22.
+
+## Búsqueda acotada de una fuente larga (2026-09-25)
+
+El directorio LMU contiene ahora 417 archivos `.duckdb`. Para buscar una
+fuente independiente sin tocar el holdout de #1030 se inspeccionaron **sólo
+prácticas**: 298 archivos `_P_` sin WAL, abiertos con DuckDB CLI en modo
+`-readonly`. La consulta se limitó a `count(*)` y `max(value)` de `Lap`;
+no leyó datos de pilotos, series continuas ni las cuatro Race reservadas.
+El máximo fue 27 eventos de vuelta en Monza (83,4 MiB); el siguiente, 26
+eventos en Interlagos (49,0 MiB). Un `max(value)` mayor no acredita vueltas
+registradas continuas. Ninguno demuestra la grabación larga multivuelta que
+falta para fijar una cuota de resistencia.
+
+El archivo de práctica más grande (Sarthe, 1.113,8 MiB) se consultó una vez
+en modo de sólo lectura antes de filtrar WAL: tenía un único evento `Lap` de
+valor 0. Su tamaño no representa una carrera larga. No se ejecutó la
+proyección, no se midió memoria ni se certificaron hashes antes/después en
+este inventario; la evidencia previa de paridad y custodia permanece separada.
+Los tres archivos posteriores al inventario de #1030 son prácticas (35,4,
+2,9 y 0 MiB), no una nueva Race completa. #1375 permanece abierta hasta
+disponer de una fuente apta, medirla y ejecutar T22 nativo.

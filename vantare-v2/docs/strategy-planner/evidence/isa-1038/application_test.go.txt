@@ -1,0 +1,68 @@
+package application
+
+import (
+	document "github.com/vantare/overlays/v2/internal/strategy/document"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
+	"math"
+	"testing"
+)
+
+func TestISA1038ReviewCost(t *testing.T) {
+	in := OrbitCalculationInput{Event: OrbitCalculationEvent{DurationMinutes: 4, TankLiters: 10, PitLossSeconds: 100}, Drivers: []OrbitCalculationDriver{{ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}}}, Variants: []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"a"}}}, ActiveVariantID: "s1", PlanningInputs: &document.PlanningInputs{Overrides: map[document.PlanningInputField]document.NumericInputOverride{document.PlanningInputDegradation: {Value: 2, Presence: sp.PresenceValid, Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "review:degradation"}, Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "review.v1"}}}}}
+	out, err := calculateOrbit(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	solved, err := solver.SolveV2(orbitSolverInput(4, in.Event, 60, 1, sp.ClimateBucketDry, in.PlanningInputs))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := out.Plans["s1"]
+	t.Logf("orbit_total=%.3f solver_total=%.3f solver_degradation=%.3f stints=%d/%d", p.TotalSeconds, solved.Expected.TotalSeconds, solved.Expected.DegradationSeconds, len(p.Stints), len(solved.Best.Stints))
+	if math.Abs(p.TotalSeconds-solved.Expected.TotalSeconds) < 1 {
+		t.Fatal("suspected cost loss absent")
+	}
+}
+
+// Review-only probes: synthetic inputs, not empirical telemetry validation.
+func TestISA1038ReviewProbes(t *testing.T) {
+	lowFuel := 0.1
+	for _, tc := range []struct {
+		name      string
+		tank, pit float64
+		drivers   []OrbitCalculationDriver
+		order     []string
+		overrides map[int]OrbitCalculationOverride
+	}{
+		{"underfuel", 4, 10, []OrbitCalculationDriver{{ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}}}, []string{"a"}, map[int]OrbitCalculationOverride{0: {Fuel: &lowFuel}}},
+		{"timed_finish", 4, 300, []OrbitCalculationDriver{{ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}}}, []string{"a"}, nil},
+		{"driver_reserve", 10, 10, []OrbitCalculationDriver{{ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}}, {ID: "b", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 3}}}, []string{"a", "b"}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := calculateOrbit(OrbitCalculationInput{Event: OrbitCalculationEvent{DurationMinutes: 4, TankLiters: tc.tank, PitLossSeconds: tc.pit}, Drivers: tc.drivers, Variants: []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: tc.order, Overrides: tc.overrides}}, ActiveVariantID: "s1"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := r.Plans["s1"]
+			t.Logf("laps=%d total=%.3f reserve=%.3f required=%.3f satisfied=%t", p.TotalLaps, p.TotalSeconds, p.ReserveLaps, p.ReserveRequiredLaps, p.ReserveSatisfied)
+			for _, s := range p.Stints {
+				t.Logf("driver=%s laps=%d fuel=%.3f start=%.3f end=%.3f overcapacity=%t manual=%t", s.DriverID, s.Laps, s.Fuel, s.StartSeconds, s.EndSeconds, s.OverCapacity, s.Manual)
+			}
+			switch tc.name {
+			case "underfuel":
+				if p.Stints[0].Fuel >= float64(p.Stints[0].Laps) || !p.ReserveSatisfied {
+					t.Fatal("expected suspected inconsistency absent")
+				}
+			case "timed_finish":
+				if p.Stints[len(p.Stints)-1].EndSeconds-60 < 240 {
+					t.Fatal("expected late lap absent")
+				}
+			case "driver_reserve":
+				if p.ReserveLaps >= p.ReserveRequiredLaps || !p.ReserveSatisfied {
+					t.Fatal("expected reserve inconsistency absent")
+				}
+			}
+		})
+	}
+}

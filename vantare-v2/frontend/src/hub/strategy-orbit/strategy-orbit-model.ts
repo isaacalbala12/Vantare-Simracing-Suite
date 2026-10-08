@@ -18,6 +18,7 @@ import type {
   StrategyPlanningInputsV2,
   StrategyWeightedWeatherScenarioV1,
 } from "../../strategy/strategy-application-client";
+import type { StrategyEventRules } from "../../strategy/strategy-event-rules";
 
 /** Modo de la estrategia: el ritmo y el consumo del piloto que se usan. */
 export type StrategyMode = "dry" | "wet" | "eco";
@@ -50,6 +51,7 @@ export type StrategyPace = readonly [paceS: number, litresPerLap: number];
 export interface StrategyDriver {
   id: string;
   name: string;
+  paceDeltaSeconds?: number;
   ini: string;
   color: string;
   cls: string;
@@ -89,6 +91,7 @@ export function orbitCalculationInput(
   activeVariantId: string,
   planningInputs?: StrategyPlanningInputsV2,
   weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[],
+  eventRules?: StrategyEventRules,
 ): StrategyOrbitCalculationInputV1 {
   const pace = (value: StrategyPace) => ({ paceSeconds: value[0], fuelLitersPerLap: value[1] });
   return {
@@ -96,10 +99,12 @@ export function orbitCalculationInput(
       durationMinutes: event.durationMin,
       tankLiters: event.tankL,
       pitLossSeconds: event.pitS,
+      ...(eventRules === undefined ? {} : { rules: eventRules }),
     },
     drivers: drivers.map((driver) => ({
       id: driver.id,
       name: driver.name,
+      ...(driver.paceDeltaSeconds === undefined ? {} : { paceDeltaSeconds: driver.paceDeltaSeconds }),
       dry: pace(driver.dry),
       wet: pace(driver.wet),
       eco: pace(driver.eco),

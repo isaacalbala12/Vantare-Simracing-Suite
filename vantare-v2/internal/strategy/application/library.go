@@ -69,6 +69,7 @@ func summarise[T any](snapshot repository.Snapshot[T]) []PlanSummary {
 		metadata := revision.Metadata()
 		summary := entry(planKey{planID: metadata.PlanID, variantID: metadata.VariantID})
 		summary.RevisionCount++
+		summary.RevisionRefs = append(summary.RevisionRefs, revision.Ref())
 		// A draft's name is the working one and wins; otherwise the newest
 		// revision names the plan.
 		if !summary.HasDraft && (summary.LatestRevisionAt == nil || metadata.CreatedAt.After(*summary.LatestRevisionAt)) {

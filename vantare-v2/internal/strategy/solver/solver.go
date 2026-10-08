@@ -118,6 +118,9 @@ func (resource Resource) validate(field string) error {
 
 const (
 	maxSupportedLaps = 100_000
+	// MaxRaceLapsV2 is the exploration ceiling for duration-based races. It is
+	// not an estimated distance: the solver's exact clock decides the finish.
+	MaxRaceLapsV2 = maxSupportedLaps
 	// auditWindow is how many stop counts either side of the optimum are
 	// reported. The search itself is exhaustive; this only bounds the report.
 	auditWindow = 2

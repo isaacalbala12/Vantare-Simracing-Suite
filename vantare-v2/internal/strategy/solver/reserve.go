@@ -46,11 +46,12 @@ func reserveStatusForNode(
 	if !ok {
 		return ReserveStatus{}, solveError(ErrorInvalidInput, "reserve.savingLevel", "last stint saving level is unavailable")
 	}
-	terminalFuel, terminalVE, err := weather.usage(input.RaceLaps, 1, driver, level)
+	raceLapsValue := node.lap
+	terminalFuel, terminalVE, err := weather.usage(raceLapsValue, 1, driver, level)
 	if err != nil {
 		return ReserveStatus{}, solveError(ErrorInvalidInput, "reserve.weather", err.Error())
 	}
-	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	raceLaps, err := contract.NewLapCount(raceLapsValue)
 	if err != nil {
 		return ReserveStatus{}, err
 	}
@@ -92,6 +93,54 @@ type decisionResourcePlan struct {
 	veUsed    int64
 }
 
+// DecisionResourceRequirements uses the same resource precision, weather,
+// driver and saving models as replay. Initial is the minimum load (or the
+// configured load) for this exact decision and its services. It does not
+// certify feasibility.
+type DecisionResourceRequirements struct {
+	Initial StintResourceRequirement
+	Stints  []StintResourceRequirement
+	Finish  StintResourceRequirement
+}
+
+type StintResourceRequirement struct {
+	FuelLiters float64
+	VEPercent  float64
+}
+
+// ResourceRequirementsV2 lets an editor choose loads without duplicating
+// consumption or reserve calculations. Pit services are not part of demand.
+func ResourceRequirementsV2(input SolverInputV2, decision DecisionVector) (DecisionResourceRequirements, error) {
+	if err := input.Validate(); err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	if err := validateReplayShape(input, decision); err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	fuel, ve, err := input.serviceResources()
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	saving, err := input.savingCost()
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	drivers, err := newDriverDecisionModel(input, saving)
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	weather, err := newWeatherCostModel(input)
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	var requirements DecisionResourceRequirements
+	plan, err := minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving, &requirements)
+	if err == nil {
+		requirements.Initial = StintResourceRequirement{FuelLiters: serviceValue(plan.fuelStart), VEPercent: serviceValue(plan.veStart)}
+	}
+	return requirements, err
+}
+
 type resourceBalance struct {
 	used         int64
 	serviced     int64
@@ -122,8 +171,13 @@ func minimumResourcePlanForDecision(
 	weather weatherCostModel,
 	drivers driverDecisionModel,
 	saving savingCost,
+	requested ...*DecisionResourceRequirements,
 ) (decisionResourcePlan, error) {
 	fuelBalance, veBalance := resourceBalance{}, resourceBalance{}
+	var requirements *DecisionResourceRequirements
+	if len(requested) > 0 {
+		requirements = requested[0]
+	}
 	lap := int64(0)
 	for index, stint := range decision.Stints {
 		driverID := stint.Driver
@@ -148,6 +202,9 @@ func minimumResourcePlanForDecision(
 		}
 		fuelBalance.consume(fuelUsed)
 		veBalance.consume(veUsed)
+		if requirements != nil {
+			requirements.Stints = append(requirements.Stints, StintResourceRequirement{FuelLiters: serviceValue(fuelUsed), VEPercent: serviceValue(veUsed)})
+		}
 		lap += stint.Laps
 		if index >= len(decision.PitStops) {
 			continue
@@ -166,6 +223,7 @@ func minimumResourcePlanForDecision(
 	if len(decision.Stints) == 0 {
 		return decisionResourcePlan{}, nil
 	}
+	raceLapsValue := lap
 	last := decision.Stints[len(decision.Stints)-1]
 	lastDriverID := last.Driver
 	if lastDriverID == "" && len(drivers.order) == 1 {
@@ -183,11 +241,11 @@ func minimumResourcePlanForDecision(
 	if !ok {
 		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.savingLevel", "last stint saving level is unavailable")
 	}
-	terminalFuel, terminalVE, err := weather.usage(input.RaceLaps, 1, lastDriver, lastLevel)
+	terminalFuel, terminalVE, err := weather.usage(raceLapsValue, 1, lastDriver, lastLevel)
 	if err != nil {
 		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.weather", err.Error())
 	}
-	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	raceLaps, err := contract.NewLapCount(raceLapsValue)
 	if err != nil {
 		return decisionResourcePlan{}, err
 	}
@@ -201,18 +259,48 @@ func minimumResourcePlanForDecision(
 	}
 	fuelBalance.requireFinish(fuelReserve)
 	veBalance.requireFinish(veReserve)
+	if requirements != nil {
+		requirements.Finish = StintResourceRequirement{FuelLiters: serviceValue(fuelReserve), VEPercent: serviceValue(veReserve)}
+	}
 	if fuelBalance.minimumStart > fuel.capacity {
 		fuelBalance.minimumStart = fuel.capacity
 	}
 	if veBalance.minimumStart > ve.capacity {
 		veBalance.minimumStart = ve.capacity
 	}
+	fuelStart, err := configuredInitialResourceUnits("initialFuelLiters", input.InitialFuelLiters, fuelBalance.minimumStart)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
+	veStart, err := configuredInitialResourceUnits("initialVEPercent", input.InitialVEPercent, veBalance.minimumStart)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
 	return decisionResourcePlan{
-		fuelStart: fuelBalance.minimumStart,
-		veStart:   veBalance.minimumStart,
+		fuelStart: fuelStart,
+		veStart:   veStart,
 		fuelUsed:  fuelBalance.used,
 		veUsed:    veBalance.used,
 	}, nil
+}
+
+func configuredInitialResourceUnits(field string, configured *ScalarInput, fallback int64) (int64, error) {
+	if configured == nil {
+		return fallback, nil
+	}
+	return serviceUnits(field, configured.Value)
+}
+
+func searchInitialResourceUnits(input SolverInputV2, fuel, ve serviceResource) (int64, int64, error) {
+	fuelStart, err := configuredInitialResourceUnits("initialFuelLiters", input.InitialFuelLiters, fuel.capacity)
+	if err != nil {
+		return 0, 0, err
+	}
+	veStart, err := configuredInitialResourceUnits("initialVEPercent", input.InitialVEPercent, ve.capacity)
+	if err != nil {
+		return 0, 0, err
+	}
+	return fuelStart, veStart, nil
 }
 
 func reserveUnitsForFuel(input manual.FuelReserveInput, raceLaps contract.LapCount, terminal, totalUsed int64) (int64, error) {

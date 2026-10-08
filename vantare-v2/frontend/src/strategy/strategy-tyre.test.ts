@@ -6,6 +6,7 @@ import {
   formatCondition,
   isConditionExact,
   parseStrategyTyre,
+  parseStrategyTyreFitment,
   type StrategyTyre,
 } from "./strategy-tyre";
 
@@ -111,5 +112,16 @@ describe("strategy tyre model", () => {
   it("does not migrate a document that already carries a condition", () => {
     const tyre = parseStrategyTyre(freeTyre());
     expect(tyre.condition.provenance.sourceId).toBe("event-allocation");
+  });
+
+  it("validates an exact four-corner physical fitment", () => {
+    expect(parseStrategyTyreFitment({
+      frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR",
+    })).toEqual({ frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR" });
+    expect(() => parseStrategyTyreFitment({ frontLeft: "H-FL" }))
+      .toThrowError(expect.objectContaining({ code: "invalid_tyre" }));
+    expect(() => parseStrategyTyreFitment({
+      frontLeft: "H-FL", frontRight: "H-FL", rearLeft: "H-RL", rearRight: "H-RR",
+    })).toThrowError(expect.objectContaining({ code: "invalid_tyre" }));
   });
 });

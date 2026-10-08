@@ -78,8 +78,10 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
 
-### Vantare Pro — 4,99 EUR/mes
+### Vantare Pro — 5,99 EUR/mes o 59,90 EUR/año
 
+- Precios con IVA incluido, vigentes para la venta del 12-oct-2026 (ISA-1499).
+  Mensual y anual conceden exactamente las mismas capabilities.
 - Toda la aplicación publicada en Stable.
 - Soporte en Discord.
 

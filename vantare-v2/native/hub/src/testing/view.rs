@@ -41,7 +41,7 @@ impl Testing {
             orbit::Choice::new(
                 "Vistas de Testing Center",
                 orbit::ChoiceKind::Tabs,
-                ["Nuevo informe", "Validar", "Mis informes"]
+                super::model::VIEWS
                     .into_iter()
                     .map(orbit::OptionItem::new)
                     .collect(),
@@ -348,79 +348,13 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
     }
     let screen = parts.next()?;
     match screen {
-        "testing-center-informe" | "testing-center-detalle" => Some(0),
-        "testing-center-validar" => Some(1),
+        "testing-center-resumen" => Some(0),
+        "testing-center-informe" | "testing-center-detalle" => Some(2),
+        "testing-center-validar" | "testing-center-cuestionarios" => Some(1),
+        "testing-center-comunidad" => Some(3),
         "testing-center-mis-reportes" => Some(2),
         _ => None,
     }
-}
-
-fn disabled_refresh(cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
-    div()
-        .id("testing-validate-refresh")
-        .role(gpui::Role::Button)
-        .aria_label("Actualizar")
-        .aria_description("Próximamente")
-        .tab_stop(false)
-        .h(px(34.0))
-        .px(px(14.0))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(orbit::RADIUS_CONTROL))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff06, cx)))
-        .flex_none()
-        .opacity(0.55)
-        .child(orbit::text(
-            "Actualizar",
-            orbit::SECONDARY,
-            600,
-            orbit::ink_3(cx),
-            cx,
-        ))
-}
-
-fn validation_panel(cx: &gpui::App) -> gpui::Div {
-    orbit::neo_card(cx)
-        .flex_1()
-        .min_h_0()
-        .w_full()
-        .child(
-            orbit::neo_header("Correcciones pendientes", "v-testing", cx)
-                .child(div().flex_1())
-                .child(disabled_refresh(cx)),
-        )
-        .child(
-            div()
-                .flex_1()
-                .min_h_0()
-                .flex()
-                .flex_col()
-                .items_center()
-                .justify_center()
-                .gap(px(16.0))
-                .child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx)))
-                .child(orbit::text(
-                    "Disponible próximamente",
-                    22.0,
-                    600,
-                    orbit::ink(cx),
-                    cx,
-                ))
-                .child(
-                    orbit::text(
-                        "Prueba las correcciones de tu canal y registra el resultado de cada una.",
-                        14.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    )
-                    .max_w(px(480.0))
-                    .text_center(),
-                ),
-        )
 }
 
 impl Testing {
@@ -439,7 +373,7 @@ impl Testing {
                     .child(orbit::text("Tu primer informe empieza aquí", if dedicated { 22.0 } else { 16.0 }, 600, orbit::ink(cx), cx))
                     .child(orbit::text(if dedicated { "Aquí verás los informes enviados durante esta sesión. Si encuentras un problema o tienes una sugerencia, cuéntanos qué pasó y añade una captura desde Nuevo informe." } else { "Aquí verás los informes enviados durante esta sesión." }, 14.0, 400, orbit::ink_2(cx), cx).max_w(px(480.0)).text_center())
                     .when(dedicated, |body| body.child(orbit::primary_button("testing-first-report", "Nuevo informe", cx).self_center().on_click(cx.listener(|this, _, _, cx| {
-                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(0); cx.notify(); });
+                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
                         cx.notify();
                     }))))
             );
@@ -527,19 +461,14 @@ impl Render for Testing {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
-            1 => validation_panel(cx),
-            2 => self.reports_panel(cx),
-            _ => div()
-                .flex_1()
-                .flex()
-                .flex_col()
-                .gap(px(16.0))
+            1 => self.pending_view("Cuestionarios", "Aún no hay cuestionarios disponibles. Próximamente podrás responder preguntas cortas del equipo.", cx),
+            2 => div().flex().flex_col().gap(px(16.0))
                 .child(self.remote.update(cx, |remote, cx| {
-                    remote
-                        .editor
-                        .render(f32::from(window.viewport_size().width) <= 1500.0, cx)
+                    remote.editor.render(f32::from(window.viewport_size().width) <= 1500.0, cx)
                 }))
                 .child(self.reports_panel(cx)),
+            3 => self.pending_view("Comunidad", "Niveles y reconocimiento · Próximamente", cx),
+            _ => self.summary(cx),
         };
         div()
             .id("testing-center")
@@ -566,8 +495,8 @@ impl Testing {
             .gap(px(12.0))
             .child(
                 orbit::neo_page_header(
-                    "Informes de la beta",
-                    "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.",
+                    "Testing Center",
+                    "Informes y cuestionarios de la beta. Tu experiencia ayuda a mejorar Vantare.",
                     cx,
                 )
                 .flex_1(),
@@ -669,8 +598,11 @@ mod capture_view_tests {
     fn capture_selects_its_testing_center_tab_only_for_the_current_process() {
         let process_id = std::process::id();
         for (screen, tab) in [
-            ("testing-center-informe", 0),
-            ("testing-center-detalle", 0),
+            ("testing-center-resumen", 0),
+            ("testing-center-cuestionarios", 1),
+            ("testing-center-comunidad", 3),
+            ("testing-center-informe", 2),
+            ("testing-center-detalle", 2),
             ("testing-center-validar", 1),
             ("testing-center-mis-reportes", 2),
         ] {
@@ -687,5 +619,37 @@ mod capture_view_tests {
                 "{other_process}-1700000000000-testing-center-validar"
             ));
         assert_eq!(selected_capture_tab(&root.join("data")), None);
+    }
+}
+
+impl Testing {
+    fn pending_view(&self, title: &str, message: &str, cx: &gpui::App) -> gpui::Div {
+        orbit::neo_card(cx)
+            .min_w_0()
+            .child(orbit::neo_header(title, "v-testing", cx))
+            .child(orbit::text(
+                message.to_owned(),
+                14.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
+    }
+    fn summary(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        div().flex().flex_col().min_w_0().gap(px(adapt.gap()))
+            .child(orbit::hero_surface(cx).p(px(20.0)).gap(px(12.0))
+                .child(orbit::meta("CUESTIONARIOS · PRÓXIMAMENTE", 11.0, orbit::ink_3(cx), cx))
+                .child(orbit::caps("Tu experiencia cuenta", 28.0, orbit::ink(cx), cx))
+                .when(adapt.show_optional(), |hero| hero.child(orbit::text("Aún no hay cuestionarios disponibles. Puedes contarnos un problema o una sugerencia.", 14.0, 400, orbit::ink_2(cx), cx)))
+                .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
+                        cx.notify();
+                    }))))
+            .child(div().flex().gap(px(adapt.gap())).min_w_0()
+                .child(self.pending_view("Pendiente para ti", "Las solicitudes de respuesta y validación estarán disponibles próximamente.", cx).flex_1())
+                .child(self.pending_view("Gracias a los probadores", "El reconocimiento de contribuciones estará disponible próximamente.", cx).flex_1()))
+            .child(self.reports_panel(cx))
     }
 }

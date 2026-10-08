@@ -164,3 +164,6 @@ mod kind_tests {
         );
     }
 }
+
+/// Vistas R10.9; sin contadores de cuestionarios inventados.
+pub(super) const VIEWS: [&str; 4] = ["Resumen", "Cuestionarios", "Informes", "Comunidad"];

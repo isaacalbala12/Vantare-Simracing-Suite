@@ -1069,14 +1069,14 @@ impl Render for Launcher {
             return self.editor_page(cx).into_any_element();
         }
         if self.page == LauncherPage::History {
-            let adapt = *cx.global::<orbit::Adapt>();
+            let adapt = self.adapt;
             let (top, side, bottom) = adapt.padding();
             return div().size_full().min_h_0().flex().flex_col().pt(px(top)).px(px(side)).pb(px(bottom)).gap(px(adapt.gap()))
-                .child(orbit::neo_page_header("Historial", "Último lanzamiento registrado de cada perfil; sin historial de intentos persistido.", cx))
+                .child(orbit::neo_page_header("Historial", "Último lanzamiento registrado de cada perfil; sin historial de intentos persistido.", self.adapt, cx))
                 .when_some(last_run(&self.store.document.profiles), |page, last| page.child(orbit::meta(&format!("Último lanzamiento · {last}"), 12.0, orbit::ink_3(cx), cx)))
                 .child(self.showcase_history(false, cx)).into_any_element();
         }
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let (top, side, bottom) = adapt.padding();
         div()
             .id("launcher-applications")
@@ -1092,6 +1092,7 @@ impl Render for Launcher {
             .child(orbit::neo_page_header(
                 "Aplicaciones",
                 "Gestiona las rutas y aplicaciones de tus perfiles.",
+                self.adapt,
                 cx,
             ))
             .child(

@@ -301,6 +301,7 @@ fn studio_demo_capture() -> bool {
         })
 }
 pub struct Studio {
+    adapt: orbit::Adapt,
     editor: Editor,
     sidebar: Entity<StudioSidebar>,
     frames: Vec<(String, Entity<CanvasFrame>)>,
@@ -442,6 +443,13 @@ impl Render for CanvasFrame {
     }
 }
 impl Studio {
+    pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
+        if self.adapt != adapt {
+            self.adapt = adapt;
+            cx.notify();
+        }
+    }
+
     pub(crate) fn topbar_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
         let profile = self
             .demo_profile
@@ -463,7 +471,7 @@ impl Studio {
                 "studio-profile",
                 "Layout activo",
                 profile,
-                if cx.global::<orbit::Adapt>().center_width() < 1000.0 {
+                if self.adapt.center_width() < 1000.0 {
                     140.0
                 } else {
                     180.0
@@ -566,6 +574,7 @@ impl Studio {
         #[cfg(not(feature = "parity-capture"))]
         let demo_profile = None;
         let mut studio = Self {
+            adapt: orbit::Adapt::default(),
             editor: prepared.editor,
             sidebar,
             frames: vec![],
@@ -1851,7 +1860,7 @@ impl Studio {
             .min_h_0()
             .flex()
             .flex_col()
-            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .gap(px(self.adapt.gap()))
             .child(
                 div()
                     .flex()

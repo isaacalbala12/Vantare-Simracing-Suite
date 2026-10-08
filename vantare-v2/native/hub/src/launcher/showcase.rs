@@ -623,15 +623,12 @@ impl Launcher {
                     .truncate()
                     .w_full(),
                 )
-                .when(
-                    running && cx.global::<orbit::Adapt>().show_notes(),
-                    |card| {
-                        card.child(
-                            orbit::text("Aplicación del perfil", 12.0, 400, orbit::ink_2(cx), cx)
-                                .truncate(),
-                        )
-                    },
-                )
+                .when(running && self.adapt.show_notes(), |card| {
+                    card.child(
+                        orbit::text("Aplicación del perfil", 12.0, 400, orbit::ink_2(cx), cx)
+                            .truncate(),
+                    )
+                })
                 .when(running, |card| {
                     card.child(
                         orbit::pill(
@@ -784,7 +781,7 @@ impl Launcher {
                 orbit::play_button(
                     "showcase-launch",
                     if running { "Lanzando…" } else { "Lanzar" },
-                    cx.global::<orbit::Adapt>().hero_button(),
+                    self.adapt.hero_button(),
                     self.default_profile_id().as_deref() == Some(profile.id.as_str()),
                     cx,
                 )
@@ -840,7 +837,7 @@ impl Launcher {
                         })),
                 )
             });
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let mut card = orbit::hero_surface(cx)
             .id("showcase-hero")
             .relative()
@@ -1023,7 +1020,7 @@ impl Launcher {
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
     fn showcase_profiles(&self, compact: bool, cx: &mut Context<Self>) -> Stateful<Div> {
         let width = if compact { 200.0 } else { 284.0 };
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let grid = adapt.show_optional();
         let height = poster_height(adapt, self.store.document.profiles.len());
         let viewport_height = if grid && self.store.document.profiles.len() > 1 {
@@ -1234,7 +1231,7 @@ impl Launcher {
                     .when(grid, gpui::StatefulInteractiveElement::overflow_y_scroll)
                     .track_scroll(&scroll)
                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
-                        if cx.global::<orbit::Adapt>().show_optional() {
+                        if this.adapt.show_optional() {
                             return;
                         }
                         let delta = event.delta.pixel_delta(px(24.0));
@@ -1265,13 +1262,11 @@ impl Launcher {
             .document
             .apps
             .iter()
-            .take(
-                if cx.global::<orbit::Adapt>().density == orbit::adapt::Density::Xs {
-                    2
-                } else {
-                    5
-                },
-            )
+            .take(if self.adapt.density == orbit::adapt::Density::Xs {
+                2
+            } else {
+                5
+            })
             .enumerate()
         {
             let edit = app.clone();
@@ -1360,7 +1355,7 @@ impl Launcher {
     }
 
     fn showcase_options(&self, profile: &Profile, cx: &mut Context<Self>) -> Stateful<Div> {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let visible = adapt.rail_rows().unwrap_or(5);
         let card = div()
             .id("showcase-options")
@@ -1500,9 +1495,7 @@ impl Launcher {
         let limit = if self.page == LauncherPage::History {
             usize::MAX
         } else {
-            cx.global::<orbit::Adapt>()
-                .rail_rows()
-                .unwrap_or(usize::MAX)
+            self.adapt.rail_rows().unwrap_or(usize::MAX)
         };
         for profile in profiles.into_iter().take(limit) {
             let result = self
@@ -1533,7 +1526,7 @@ impl Launcher {
         };
         let preview = orbit::neo_card(cx)
             .id("profile-preview-list")
-            .h(px(if cx.global::<orbit::Adapt>().show_notes() {
+            .h(px(if self.adapt.show_notes() {
                 350.0
             } else {
                 230.0
@@ -1601,7 +1594,7 @@ impl Launcher {
         if self.page == LauncherPage::Editor {
             return self.editor_rail(cx);
         }
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let profile = self.showcase_profile();
         let apps = self.showcase_apps(profile, !adapt.show_notes(), cx);
         let options = if let Some(profile) = profile {
@@ -1665,7 +1658,7 @@ impl Launcher {
             let entity = cx.entity();
             window.on_next_frame(move |_, cx| entity.update(cx, |_, cx| cx.notify()));
         }
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let (top, side, bottom) = adapt.padding();
         let gap = adapt.gap();
         let profile = self.showcase_profile();
@@ -1678,6 +1671,7 @@ impl Launcher {
                 orbit::neo_page_header(
                     "Launcher",
                     "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
+                    self.adapt,
                     cx,
                 )
                 .flex_1(),

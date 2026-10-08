@@ -46,8 +46,7 @@ pub fn neo_accent_card(cx: &gpui::App) -> Div {
 }
 /// Cabecera de página R10.5: título Rajdhani en una línea que ocupa el espacio libre y
 /// descripción en una línea recortada con «…». Las acciones se añaden con `.child`.
-pub fn neo_page_header(title: &str, description: &str, cx: &gpui::App) -> Div {
-    let adapt = *cx.global::<super::Adapt>();
+pub fn neo_page_header(title: &str, description: &str, adapt: super::Adapt, cx: &gpui::App) -> Div {
     let skin = super::skin(cx);
     let (size, line) = match adapt.density {
         super::adapt::Density::A => (32.0, 36.0),
@@ -360,10 +359,11 @@ pub fn list_item(
     icon_name: &'static str,
     title: impl Into<SharedString>,
     subtitle: impl Into<SharedString>,
+    adapt: super::Adapt,
     cx: &gpui::App,
 ) -> Div {
     let skin = super::skin(cx);
-    let height = cx.global::<super::Adapt>().row_height();
+    let height = adapt.row_height();
     div()
         .h(px(height))
         .flex_none()

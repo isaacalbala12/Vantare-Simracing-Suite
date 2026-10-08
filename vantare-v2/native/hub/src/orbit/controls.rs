@@ -259,7 +259,7 @@ impl Choice {
                 .rounded(px(RADIUS_CONTROL))
                 .border_1()
                 .border_color(rgba(line_strong(cx)))
-                .bg(rgb(surface_2(cx)))
+                .bg(rgba(cx.global::<theme::Theme>().panel_bg))
                 .on_mouse_down_out(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
                     // El botón alterna en click; cerrarlo aquí lo volvería a abrir.
                     if !this

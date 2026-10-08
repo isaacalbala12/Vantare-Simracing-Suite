@@ -918,6 +918,19 @@ impl Theme {
             self.line_strong = scale_alpha(self.line_strong, f32::from(self.contrast) / 100.0);
             self.line_row = scale_alpha(self.line_row, f32::from(self.contrast) / 100.0);
         }
+        // Skin es la fuente semántica; Tokens y los adaptadores nacen después.
+        let target = if self.contrast > 100 {
+            self.skin.text1
+        } else {
+            self.skin.base
+        };
+        self.skin.text2 = mix_rgb(self.skin.text2, target, strength);
+        self.skin.text3 = mix_rgb(self.skin.text3, target, strength);
+        self.skin.cap = mix_rgb(self.skin.cap, target, strength);
+        let factor = f32::from(self.contrast) / 100.0;
+        self.skin.line1 = scale_alpha(self.skin.line1, factor);
+        self.skin.line2 = scale_alpha(self.skin.line2, factor);
+        self.skin.line3 = scale_alpha(self.skin.line3, factor);
         if self.glass_opacity != 80 {
             let alpha_factor = f32::from(self.glass_opacity) / 80.0;
             self.panel_bg = scale_alpha(self.panel_bg, alpha_factor);
@@ -1131,19 +1144,19 @@ pub fn system_settings(
     settings
 }
 
-pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, cx: &mut gpui::App) {
-    let mut resolved = Theme::from_settings(system_settings(
-        AppearanceSettings {
-            contrast: 100,
-            glass_opacity: 80,
-            ..settings
-        },
-        appearance,
-    ));
-    // Las páginas existentes leen `design::Tokens`; ahora nacen del tema elegido.
+/// Ruta única de resolución usada por apply y sus regresiones.
+pub fn resolve_hub(settings: AppearanceSettings, appearance: gpui::WindowAppearance) -> Theme {
+    let mut resolved = Theme::from_settings(system_settings(settings, appearance));
     let tokens = design_tokens(&resolved.skin);
     resolved.apply_design(&tokens);
-    resolved.apply_accessibility(settings.contrast, settings.glass_opacity);
+    // Solo menús y paneles flotantes: tarjetas y barras R4 son opacas.
+    resolved.panel_bg = (resolved.skin.l2 << 8) | (u32::from(resolved.glass_opacity) * 255 / 100);
+    resolved
+}
+
+pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, cx: &mut gpui::App) {
+    let resolved = resolve_hub(settings, appearance);
+    let tokens = design_tokens(&resolved.skin);
     cx.set_global(tokens);
     cx.set_global(settings);
     cx.set_global(resolved);
@@ -1590,6 +1603,56 @@ mod font_tests {
             assert_eq!(InterfaceFont::Inter.face_weight(weight), 400);
             assert_eq!(InterfaceFont::Segoe.face_weight(weight), weight);
             assert_eq!(InterfaceFont::Arial.face_weight(weight), weight);
+        }
+    }
+}
+
+#[cfg(test)]
+mod accessibility_route_tests {
+    use super::*;
+    #[test]
+    fn saved_extremes_reach_skin_tokens_fields_and_floating_panels() {
+        for scheme in [Scheme::Dark, Scheme::Light] {
+            let base = resolve_hub(
+                AppearanceSettings {
+                    scheme,
+                    ..AppearanceSettings::default()
+                },
+                gpui::WindowAppearance::Dark,
+            );
+            for contrast in [80, 120] {
+                for glass_opacity in [50, 100] {
+                    let settings = AppearanceSettings {
+                        scheme,
+                        contrast,
+                        glass_opacity,
+                        interface_font: InterfaceFont::Arial,
+                        mono_font: MonoFont::Courier,
+                        ..AppearanceSettings::default()
+                    };
+                    let saved: AppearanceSettings =
+                        serde_json::from_str(&serde_json::to_string(&settings).unwrap()).unwrap();
+                    let theme = resolve_hub(saved, gpui::WindowAppearance::Dark);
+                    let tokens = design_tokens(&theme.skin);
+                    assert_ne!(theme.skin.text2, base.skin.text2);
+                    assert_ne!(theme.skin.line2, base.skin.line2);
+                    assert_eq!(
+                        (theme.ink_2, theme.ink_3, theme.ink_muted),
+                        (
+                            tokens.colors.text2,
+                            tokens.colors.text3,
+                            tokens.colors.caption
+                        )
+                    );
+                    assert_eq!(theme.line_strong, tokens.colors.line2);
+                    assert_eq!(theme.panel_bg >> 8, theme.skin.l2);
+                    assert_eq!(theme.panel_bg & 255, u32::from(glass_opacity) * 255 / 100);
+                    assert_eq!(theme.skin.l2, base.skin.l2);
+                    assert_eq!(theme.skin.button, base.skin.button);
+                    assert_eq!(theme.font_sans, "Arial, \"Segoe UI\", sans-serif");
+                    assert_eq!(theme.font_mono, "\"Courier New\", ui-monospace, monospace");
+                }
+            }
         }
     }
 }

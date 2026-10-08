@@ -411,7 +411,7 @@ impl Hub {
         page: Option<gpui::AnyElement>,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.shell.adapt;
         let (top, side, bottom) = adapt.padding();
         // Páginas que se reparten el alto sin scroll propio (R9.5).
         let fills = matches!(
@@ -437,12 +437,14 @@ impl Hub {
                         .update(cx, |studio, cx| studio.topbar_actions(cx)),
                 ),
             ),
-            Section::Testing if self.shell.access.beta_lock(self.section).is_none() => {
-                Some(self.testing.update(cx, |_, cx| Testing::page_header(cx)))
-            }
-            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
-                Some(self.calendar.update(cx, |_, cx| Calendar::page_header(cx)))
-            }
+            Section::Testing if self.shell.access.beta_lock(self.section).is_none() => Some(
+                self.testing
+                    .update(cx, |_, cx| Testing::page_header(self.shell.adapt, cx)),
+            ),
+            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => Some(
+                self.calendar
+                    .update(cx, |_, cx| Calendar::page_header(self.shell.adapt, cx)),
+            ),
             _ => None,
         };
         div()
@@ -575,7 +577,7 @@ impl Hub {
 
     /// Barra derecha: secciones con cabecera y separador; recogida, franja de 56 con iconos.
     fn right_bar(&self, sections: Vec<orbit::RailSection>, cx: &mut Context<Self>) -> gpui::Div {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.shell.adapt;
         let skin = orbit::skin(cx).clone();
         let frame = div()
             .h_full()
@@ -681,7 +683,11 @@ impl Render for Hub {
             self.shell.sidebar_pref,
             self.shell.column_open,
         );
-        cx.set_global(adapt);
+        self.shell.adapt = adapt;
+        self.studio.update(cx, |view, cx| view.set_adapt(adapt, cx));
+        self.launcher
+            .update(cx, |view, cx| view.set_adapt(adapt, cx));
+        self.remote.update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.refresh_query(cx);
         if presentation(self.section) == Presentation::Fullscreen {
             return self.render_fullscreen(window, cx);

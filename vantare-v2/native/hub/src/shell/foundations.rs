@@ -324,7 +324,7 @@ impl Hub {
         _window: &Window,
         cx: &mut Context<Self>,
     ) -> (Div, Vec<orbit::RailSection>) {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.shell.adapt;
         let gap = adapt.gap();
         let center_width = adapt.center_width() - 2.0 * adapt.padding().1;
         let overlay_width = (center_width - gap) / 2.0 - 32.0;

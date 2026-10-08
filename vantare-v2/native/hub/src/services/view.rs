@@ -187,6 +187,7 @@ fn remember_receipt(
     }
 }
 pub struct Remote {
+    adapt: orbit::Adapt,
     pipe: String,
     send: Option<SyncSender<Command>>,
     receive: Option<Receiver<Reply>>,
@@ -264,6 +265,13 @@ fn account_module_status(section: Section, included: bool) -> &'static str {
 }
 
 impl Remote {
+    pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
+        if self.adapt != adapt {
+            self.adapt = adapt;
+            cx.notify();
+        }
+    }
+
     pub fn new(pipe: String, data: &std::path::Path, cx: &mut Context<Self>) -> Self {
         let recovery = crate::testing::recovery::Recovery::load(data);
         let mut editor = crate::testing::Editor::new(
@@ -305,6 +313,7 @@ impl Remote {
         })
         .detach();
         let mut remote = Self {
+            adapt: orbit::Adapt::default(),
             pipe,
             send: None,
             receive: None,
@@ -1056,7 +1065,7 @@ impl Remote {
             account_body()
                 .items_start().gap(px(10.0))
                 .child(device)
-                .when(cx.global::<orbit::Adapt>().show_notes(), |body| body.child(account_note(
+                .when(self.adapt.show_notes(), |body| body.child(account_note(
                     "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.", cx)))
                 .child(
                     // Con el límite alcanzado, liberar el activo es la salida: se
@@ -1078,7 +1087,7 @@ impl Remote {
         .flex_1()
     }
     pub fn account(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        div().flex_1().min_h_0().w_full().flex().flex_col().gap(px(cx.global::<orbit::Adapt>().gap()))
+        div().flex_1().min_h_0().w_full().flex().flex_col().gap(px(self.adapt.gap()))
             .when(account_demo().is_none() && !self.message.is_empty(), |page| page.child(orbit::callout(self.message.clone(), cx)))
             .child(self.account_identity(cx).flex_none().w_full())
             .child(orbit::neo_card(cx).p(px(16.0))
@@ -1086,7 +1095,7 @@ impl Remote {
                 .child(orbit::caps(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, orbit::ink(cx), cx))
                 .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx)))
             .child(self.account_plan(cx).flex_1().min_h_0())
-            .when(cx.global::<orbit::Adapt>().show_notes(), |page| page.child(orbit::neo_card(cx).p(px(12.0))
+            .when(self.adapt.show_notes(), |page| page.child(orbit::neo_card(cx).p(px(12.0))
                 .child(orbit::neo_header("Tu aporte", "v-testing", cx))
                 .child(text("Los informes y cuestionarios de la beta viven en Testing Center.", 13.0, 400, orbit::ink_2(cx), cx))))
     }

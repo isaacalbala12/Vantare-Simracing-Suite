@@ -27,7 +27,7 @@ pub(super) fn groups(access: navigation::Access) -> Vec<(Option<&'static str>, V
 
 impl Hub {
     pub(super) fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
-        self.shell.sidebar_pref = Some(!cx.global::<orbit::Adapt>().sidebar_open);
+        self.shell.sidebar_pref = Some(!self.shell.adapt.sidebar_open);
         cx.notify();
     }
 
@@ -316,7 +316,7 @@ impl Hub {
 
     #[allow(clippy::too_many_lines)] // Composición de la barra; los permisos vienen del shell.
     pub(super) fn redesign_rail(&self, cx: &mut Context<Self>) -> Div {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.shell.adapt;
         let expanded = adapt.sidebar_open;
         let skin = orbit::skin(cx).clone();
         let mut nav = div().flex_none().flex().flex_col().gap(px(2.0));

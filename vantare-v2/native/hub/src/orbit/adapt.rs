@@ -1,7 +1,7 @@
 //! Contrato de adaptación R9.5/R10.2: el alto fija la densidad y el ancho la
 //! estructura. Medidas en píxeles lógicos de GPUI, que ya incluyen el factor de
-//! escala de Windows (2560×1440 al 125 % = 2048×1152). La shell lo publica como
-//! global en cada render; las páginas lo consultan con `cx.global::<Adapt>()`.
+//! escala de Windows (2560×1440 al 125 % = 2048×1152). La shell conserva el valor
+//! por ventana y lo pasa a sus páginas y primitivas de presentación.
 
 /// Densidad por alto de ventana.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -43,11 +43,9 @@ pub struct Adapt {
     pub tier: Tier,
     /// Barra izquierda abierta (preferencia del usuario o automática).
     pub sidebar_open: bool,
-    /// Barra derecha abierta (estado global que se conserva entre páginas).
+    /// Barra derecha abierta (estado de la shell que se conserva entre páginas).
     pub rail_open: bool,
 }
-
-impl gpui::Global for Adapt {}
 
 impl Adapt {
     /// `sidebar` es la elección explícita del usuario (`Ctrl B`); `None` = automática.
@@ -194,6 +192,19 @@ impl Default for Adapt {
 #[allow(clippy::float_cmp)] // Tokens exactos de la espec, no resultados de cálculo.
 mod tests {
     use super::*;
+
+    #[test]
+    fn two_window_values_keep_independent_geometry_and_preferences() {
+        let wide = Adapt::new(1920.0, 1080.0, None, true);
+        let mut small = Adapt::new(1280.0, 720.0, Some(true), false);
+        assert_eq!(wide.center_width(), 1248.0);
+        assert_eq!(small.center_width(), 952.0);
+        small = Adapt::new(1440.0, 900.0, None, true);
+        assert_eq!(wide.center_width(), 1248.0);
+        assert_eq!(small.center_width(), 1044.0);
+        assert_eq!(wide.density, Density::A);
+        assert_eq!(small.density, Density::M);
+    }
 
     #[test]
     fn height_sets_density_levels() {

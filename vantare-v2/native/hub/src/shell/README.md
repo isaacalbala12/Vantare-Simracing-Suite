@@ -6,7 +6,7 @@ Fuente visual: maqueta `vantare-hub-r10h.html` y `ESPEC-GPUI.md` (R10 > R9 > §1
   (Vantare = R9.1, Vantare clásico = §1, DeepSeek = grises y acento azul; el resto
   con la regla HSL de la maqueta). `theme::apply` deriva de ahí `design::Tokens`,
   que siguen leyendo las páginas. Logotipo, estados y apps no cambian con el tema.
-- Adaptación: `orbit/adapt.rs` (`Adapt`, global publicado en cada render): densidad
+- Adaptación: `orbit/adapt.rs` (`Adapt`, valor por ventana, pasado a entidades y primitivas): densidad
   A/M/B/XS por alto, estructura por ancho, barra izquierda automática < 1500,
   barra derecha `clamp(320, 22vw, 400)` o franja de 56. Píxeles lógicos (incluyen
   el escalado de Windows).

@@ -642,16 +642,13 @@ pub fn palette_card(
     index: usize,
     palette: super::theme::Palette,
     active: bool,
+    adapt: super::Adapt,
     cx: &gpui::App,
 ) -> gpui::Stateful<Div> {
     use super::skin::Skin;
     let orb = |skin: Skin| {
         div()
-            .size(px(if cx.global::<super::Adapt>().show_optional() {
-                26.0
-            } else {
-                18.0
-            }))
+            .size(px(if adapt.show_optional() { 26.0 } else { 18.0 }))
             .flex_none()
             .rounded_full()
             .border_1()
@@ -716,6 +713,7 @@ pub fn scheme_card(
     index: usize,
     scheme: super::theme::Scheme,
     active: bool,
+    adapt: super::Adapt,
     cx: &gpui::App,
 ) -> Stateful<Div> {
     let label = match scheme {
@@ -734,11 +732,7 @@ pub fn scheme_card(
         );
         div()
             .flex_1()
-            .h(px(if cx.global::<super::Adapt>().show_optional() {
-                38.0
-            } else {
-                28.0
-            }))
+            .h(px(if adapt.show_optional() { 38.0 } else { 28.0 }))
             .p(px(6.0))
             .bg(rgb(theme.base))
             .child(div().h(px(5.0)).w_full().bg(rgb(theme.l3)))

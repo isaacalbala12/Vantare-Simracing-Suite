@@ -62,6 +62,7 @@ enum LauncherPage {
 }
 
 pub struct Launcher {
+    adapt: orbit::Adapt,
     page: LauncherPage,
     capture: Capture,
     showcase_controls: Option<showcase::Controls>,
@@ -115,6 +116,13 @@ mod presentation;
 mod showcase;
 
 impl Launcher {
+    pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
+        if self.adapt != adapt {
+            self.adapt = adapt;
+            cx.notify();
+        }
+    }
+
     pub fn form_layer(
         &mut self,
         window: &mut Window,
@@ -183,6 +191,7 @@ impl Launcher {
 
     fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
         let mut view = Self {
+            adapt: orbit::Adapt::default(),
             page: LauncherPage::Showcase,
             capture: Capture::None,
             showcase_controls: None,

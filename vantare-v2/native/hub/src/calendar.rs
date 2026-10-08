@@ -477,14 +477,14 @@ impl Calendar {
 }
 
 impl Calendar {
-    pub(crate) fn page_header(cx: &mut Context<Self>) -> gpui::Div {
+    pub(crate) fn page_header(adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .flex()
             .items_center()
             .justify_between()
             .gap(px(12.0))
             .child(
-                orbit::neo_page_header("Calendario LMU", "Carreras diarias y semanales", cx)
+                orbit::neo_page_header("Calendario LMU", "Carreras diarias y semanales", adapt, cx)
                     .flex_1(),
             )
             .child(

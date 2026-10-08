@@ -1,3 +1,16 @@
+## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
+
+Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,
+base R4 2f323fb9; brief C:/tmp/ui-r10/brief-calidad-arreglos-1.md, sin delegación.
+Grupo R0: Adapt deja de ser Global; geometría en shell y entidades por ventana,
+primitivas reciben el valor explícito. Accesibilidad resuelta antes de Tokens;
+menú Choice usa cristal, tarjetas/barras R4 opacas y alcance explicado en Ajustes.
+Rojo oficial, fuentes, permisos y contratos R4 conservados. Regresiones de
+extremos y dos ventanas añadidas; gates completos/evidencia pendientes de cierre.
+Resto del lote en ejecución; no aceptación >=9 acreditada todavía.
+Docs históricos Notion contradicen el AGENTS aportado por Isaac: prevalece GitHub.
+plan.md ausente también en origin/nightly; no se recrea ni publica roadmap.
+Sin push/PR/merge/CI remoto/promoción/release. Evidencia externa calidad-1-evidence.
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
 ## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)

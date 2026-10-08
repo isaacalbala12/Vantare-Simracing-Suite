@@ -558,7 +558,7 @@ impl Render for Testing {
     }
 }
 impl Testing {
-    pub(crate) fn page_header(cx: &mut Context<Self>) -> gpui::Div {
+    pub(crate) fn page_header(adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -568,6 +568,7 @@ impl Testing {
                 orbit::neo_page_header(
                     "Informes de la beta",
                     "Cuéntanos qué falla o qué mejorarías. Revisa el contenido antes de enviarlo.",
+                    adapt,
                     cx,
                 )
                 .flex_1(),

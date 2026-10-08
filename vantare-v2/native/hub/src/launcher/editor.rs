@@ -1000,7 +1000,7 @@ impl Launcher {
     }
 
     pub(super) fn editor_page(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let adapt = *cx.global::<orbit::Adapt>();
+        let adapt = self.adapt;
         let (top, side, bottom) = adapt.padding();
         div()
             .size_full()
@@ -1021,6 +1021,7 @@ impl Launcher {
                         orbit::neo_page_header(
                             "Editar perfil",
                             "Los cambios se aplican al guardar.",
+                            self.adapt,
                             cx,
                         )
                         .flex_1(),

@@ -95,18 +95,25 @@ fn section_text(
 ) -> Div {
     text(content, size, weight, color, cx).line_height(px(line_height))
 }
-fn section_row(label: &str, help: &str, control: impl IntoElement, cx: &gpui::App) -> Div {
-    section_row_hint(label, help, control, 12.0, cx)
+fn section_row(
+    label: &str,
+    help: &str,
+    control: impl IntoElement,
+    adapt: orbit::Adapt,
+    cx: &gpui::App,
+) -> Div {
+    section_row_hint(label, help, control, 12.0, adapt, cx)
 }
 fn section_row_hint(
     label: &str,
     help: &str,
     control: impl IntoElement,
     hint_size: f32,
+    adapt: orbit::Adapt,
     cx: &gpui::App,
 ) -> Div {
     div()
-        .min_h(px(cx.global::<orbit::Adapt>().setting_height()))
+        .min_h(px(adapt.setting_height()))
         .py(px(3.0))
         .flex()
         .items_center()
@@ -122,7 +129,7 @@ fn section_row_hint(
                 .flex_col()
                 .gap(px(2.5))
                 .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
-                .when(cx.global::<orbit::Adapt>().show_optional(), |row| {
+                .when(adapt.show_optional(), |row| {
                     row.child(section_text(
                         help,
                         hint_size,
@@ -248,6 +255,7 @@ impl Hub {
         orbit::neo_page_header(
             self.settings.page.title(),
             self.settings.page.description(),
+            self.shell.adapt,
             cx,
         )
         .child(
@@ -556,7 +564,7 @@ impl Hub {
         }
         let content = stack()
             .h_full()
-            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .gap(px(self.shell.adapt.gap()))
             .when_some(self.settings.status.clone(), |view, status| {
                 view.child(orbit::callout(status, cx))
             })
@@ -566,7 +574,7 @@ impl Hub {
                     Page::Appearance => self.settings_appearance(cx),
                     Page::Performance => Self::settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
-                    Page::Hotkeys => Self::settings_hotkeys(cx),
+                    Page::Hotkeys => self.settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
                     Page::Diagnostics => self.settings_diagnostics(true, cx),
                 }
@@ -653,11 +661,12 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
+    #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_application(&self, _compact: bool, _window: &Window, cx: &Context<Self>) -> Div {
         let pending = |label| orbit::pill(label, Tone::Neutral, cx);
         stack()
             .h_full()
-            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .gap(px(self.shell.adapt.gap()))
             .child(section_surface(
                 "Interfaz",
                 None,
@@ -670,15 +679,17 @@ impl Hub {
                             &self.settings.hub_language.read(cx).state.options[0].label,
                             cx,
                         ),
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
                         "Tamaño de la interfaz",
                         "Ctrl +, Ctrl − y Ctrl 0",
                         self.settings_zoom(cx),
+                        self.shell.adapt,
                         cx,
                     ))
-                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                    .when(self.shell.adapt.show_optional(), |body| {
                         body.child(section_row(
                             "Densidad",
                             &format!(
@@ -686,6 +697,7 @@ impl Hub {
                                 self.settings.density.read(cx).state.options[1].label
                             ),
                             pending("Próximamente"),
+                            self.shell.adapt,
                             cx,
                         ))
                     }),
@@ -699,12 +711,14 @@ impl Hub {
                         "Abrir al iniciar Windows",
                         "Se abre al iniciar sesión en Windows",
                         pending("Próximamente"),
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
                         "Empezar minimizado",
                         "Arranque sin abrir la ventana",
                         pending("Próximamente"),
+                        self.shell.adapt,
                         cx,
                     )),
                 cx,
@@ -717,19 +731,22 @@ impl Hub {
                         "Avisos de actualización",
                         "Cuando hay una versión nueva",
                         pending("Próximamente"),
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
                         "Avisos del Launcher",
                         "Al terminar de abrir tus aplicaciones",
                         pending("Próximamente"),
+                        self.shell.adapt,
                         cx,
                     ))
-                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                    .when(self.shell.adapt.show_optional(), |body| {
                         body.child(section_row(
                             "Notificaciones de Windows",
                             "Avisos con el Hub minimizado",
                             pending("Próximamente"),
+                            self.shell.adapt,
                             cx,
                         ))
                     }),
@@ -743,37 +760,46 @@ impl Hub {
                         "Idioma de los widgets",
                         "Se guarda con el diseño de Studio",
                         self.settings.language.clone(),
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
                         "Unidades de los widgets",
                         "Combustible, temperatura y velocidad",
                         self.settings.units.clone(),
+                        self.shell.adapt,
                         cx,
                     )),
                 cx,
             ))
     }
+    #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
         let settings = self.settings.appearance.settings;
         let mut palettes = div().w_full().grid().grid_cols(3).gap(px(10.0));
         for (index, palette) in orbit::theme::Palette::ALL.into_iter().enumerate() {
             palettes = palettes.child(
-                orbit::palette_card(index, palette, palette == settings.palette, cx)
-                    .track_focus(&self.settings.appearance_focus[index])
-                    .tab_index(0)
-                    .cursor_pointer()
-                    .on_click(cx.listener(move |hub, _, window, cx| {
-                        hub.settings_palette(index, window, cx);
-                    }))
-                    .on_key_down(cx.listener(
-                        move |hub, event: &gpui::KeyDownEvent, window, cx| {
-                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                hub.settings_palette(index, window, cx);
-                                cx.stop_propagation();
-                            }
-                        },
-                    )),
+                orbit::palette_card(
+                    index,
+                    palette,
+                    palette == settings.palette,
+                    self.shell.adapt,
+                    cx,
+                )
+                .track_focus(&self.settings.appearance_focus[index])
+                .tab_index(0)
+                .cursor_pointer()
+                .on_click(cx.listener(move |hub, _, window, cx| {
+                    hub.settings_palette(index, window, cx);
+                }))
+                .on_key_down(cx.listener(
+                    move |hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_palette(index, window, cx);
+                            cx.stop_propagation();
+                        }
+                    },
+                )),
             );
         }
         let mut schemes = div().flex().w_full().gap(px(10.0));
@@ -786,27 +812,33 @@ impl Hub {
         .enumerate()
         {
             schemes = schemes.child(
-                orbit::scheme_card(index, scheme, settings.scheme == scheme, cx)
-                    .track_focus(&self.settings.appearance_focus[9 + index])
-                    .tab_index(0)
-                    .on_click(cx.listener(move |hub, _, window, cx| {
-                        hub.settings_scheme(scheme, window, cx);
-                    }))
-                    .on_key_down(cx.listener(
-                        move |hub, event: &gpui::KeyDownEvent, window, cx| {
-                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                hub.settings_scheme(scheme, window, cx);
-                                cx.stop_propagation();
-                            }
-                        },
-                    )),
+                orbit::scheme_card(
+                    index,
+                    scheme,
+                    settings.scheme == scheme,
+                    self.shell.adapt,
+                    cx,
+                )
+                .track_focus(&self.settings.appearance_focus[9 + index])
+                .tab_index(0)
+                .on_click(cx.listener(move |hub, _, window, cx| {
+                    hub.settings_scheme(scheme, window, cx);
+                }))
+                .on_key_down(cx.listener(
+                    move |hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_scheme(scheme, window, cx);
+                            cx.stop_propagation();
+                        }
+                    },
+                )),
             );
         }
         let contrast = self.settings_slider(0, cx);
         let opacity = self.settings_slider(1, cx);
         stack()
             .h_full()
-            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .gap(px(self.shell.adapt.gap()))
             .child(orbit::settings_group(1, "Esquema de color", schemes, cx))
             .child(orbit::settings_group(2, "Temas", palettes, cx))
             .child(section_numbered(
@@ -818,31 +850,35 @@ impl Hub {
                         "Contraste",
                         "Legibilidad del texto secundario y los bordes",
                         contrast,
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
-                        "Opacidad de las superficies",
-                        "Solidez de los menús y paneles",
+                        "Opacidad del cristal",
+                        "Menús flotantes; tarjetas y barras opacas",
                         opacity,
+                        self.shell.adapt,
                         cx,
                     ))
                     .child(section_row(
                         "Fuente de interfaz",
                         "Menús, controles y textos",
                         self.settings.font.clone(),
+                        self.shell.adapt,
                         cx,
                     ))
-                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                    .when(self.shell.adapt.show_optional(), |body| {
                         body.child(section_row(
                             "Fuente monoespaciada",
                             "Cifras y textos técnicos",
                             self.settings.mono.clone(),
+                            self.shell.adapt,
                             cx,
                         ))
                     }),
                 cx,
             ))
-            .when(cx.global::<orbit::Adapt>().show_notes(), |page| {
+            .when(self.shell.adapt.show_notes(), |page| {
                 page.child(section_surface(
                     "Movimiento",
                     None,
@@ -850,6 +886,7 @@ impl Hub {
                         "Reducir animaciones",
                         "Transiciones y latidos",
                         orbit::pill("Próximamente", Tone::Neutral, cx),
+                        self.shell.adapt,
                         cx,
                     )),
                     cx,
@@ -1259,13 +1296,11 @@ impl Hub {
         }
         channels
     }
-    fn settings_hotkeys(cx: &gpui::App) -> Div {
+    fn settings_hotkeys(&self, cx: &gpui::App) -> Div {
         let keys = |items: &[(&str, &str)], help: &str| {
-            section_body().children(
-                items
-                    .iter()
-                    .map(|(label, key)| section_row(label, help, orbit::keycap(*key, cx), cx)),
-            )
+            section_body().children(items.iter().map(|(label, key)| {
+                section_row(label, help, orbit::keycap(*key, cx), self.shell.adapt, cx)
+            }))
         };
         stack().h_full()
             .child(section_surface("Globales con el juego", Some("Próximamente"),
@@ -1339,7 +1374,7 @@ impl Hub {
                             }
                         },
                     ));
-                    body = body.child(section_row(label, help, toggle, cx));
+                    body = body.child(section_row(label, help, toggle, self.shell.adapt, cx));
                 }
                 body = body.child(section_note("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", cx));
                 if !vantare_services::diagnostics::configured() {
@@ -1450,6 +1485,7 @@ impl Hub {
                             Action::PrepareDiagnostic,
                             cx,
                         ),
+                        self.shell.adapt,
                         cx,
                     ))
                     .when(self.settings.diagnostic.is_some(), |body| {
@@ -1462,6 +1498,7 @@ impl Hub {
                                 Action::CopyDiagnostic,
                                 cx,
                             ),
+                            self.shell.adapt,
                             cx,
                         ))
                     }),

@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
     [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start')][string]$Operation = 'Status',
@@ -182,7 +182,7 @@ function Assert-NativePe([string]$Path) {
     } finally { $reader.Dispose() }
 }
 
-function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
+function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true) {
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
     $manifest = [IO.File]::ReadAllText($path) | ConvertFrom-Json
@@ -205,6 +205,7 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel) {
         if ($file.path -cnotin $members -or $seen.ContainsKey($file.path) -or
             $file.sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Lista de archivos inválida o duplicada.' }
         $seen[$file.path] = $true
+        if (-not $VerifyFiles) { continue }
         $actual = Get-Item -LiteralPath (Join-Path $Directory $file.path)
         if ($actual.Length -ne $file.size -or (Get-NativeHash $actual.FullName) -cne $file.sha256) { throw "Integridad incorrecta: $($file.path)" }
         if ($file.path.EndsWith('.exe')) {
@@ -254,7 +255,7 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
     Read-NativeManifest $Destination $ExpectedChannel
 }
 
-function Read-NativeState([string]$Directory) {
+function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) {
     $state = [IO.File]::ReadAllText((Join-Path $Directory 'state.json')) | ConvertFrom-Json
     if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master', 'beta')) { throw 'Estado de instalación inválido.' }
     foreach ($reference in @($state.active, $state.previous)) {
@@ -263,7 +264,8 @@ function Read-NativeState([string]$Directory) {
         $generation = Join-Path $Directory "generations/$($reference.generation)"
         if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $reference.manifest_sha256 -or
             -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
-        $null = Read-NativeManifest $generation $state.channel
+        $verify = $VerifyActiveFiles -or $reference.generation -cne $state.active.generation
+        $null = Read-NativeManifest $generation $state.channel $verify
     }
     if ($null -eq $state.active) { throw 'Falta generación activa.' }
     $state
@@ -280,7 +282,7 @@ function Set-NativeState([string]$Directory, $State) {
     Invoke-NativeCheckpoint 'after-commit'
 }
 
-function Install-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$Hash, [string]$ExpectedChannel) {
+function Install-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$Hash, [string]$ExpectedChannel, [string]$DataSource = '') {
     $directory = Open-NativeRoot $Directory -Initialize
     $lock = Open-NativeLock $directory
     try {
@@ -288,7 +290,8 @@ function Install-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$
         $id = [guid]::NewGuid().ToString('N')
         $generation = Join-Path $directory "generations/$id"
         $null = Expand-NativePackage $ZipPath $Hash $generation $ExpectedChannel
-        [IO.Directory]::CreateDirectory((Join-Path $generation 'data')) | Out-Null
+        if ($DataSource) { Copy-NativeData $DataSource (Join-Path $generation 'data') }
+        else { [IO.Directory]::CreateDirectory((Join-Path $generation 'data')) | Out-Null }
         Invoke-NativeCheckpoint 'staged'
         # Bootstrap estable schema=1; no sobrescribirlo durante actualizaciones.
         Copy-Item -LiteralPath (Join-Path $generation 'candidate.ps1') -Destination (Join-Path $directory 'candidate.ps1') -Force
@@ -350,19 +353,28 @@ function Copy-NativeData([string]$Source, [string]$Destination) {
     if ((Get-NativeDataIndex $Source) -cne $before -or (Get-NativeDataIndex $Destination) -cne $before) { throw 'Datos cambiaron durante la copia; no se activa la generación.' }
 }
 
-function Update-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$Hash) {
+function Update-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$Hash, [bool]$Repair = $false) {
     $directory = Open-NativeRoot $Directory
     $lock = Open-NativeLock $directory
     try {
-        $state = Read-NativeState $directory
+        $state = Read-NativeState $directory (-not $Repair)
+        $previous = $state.active
+        if ($Repair) {
+            try { $null = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel }
+            catch { $previous = $state.previous }
+        }
         $handles = Open-NativeBinaryGuard $directory
         try {
             $id = [guid]::NewGuid().ToString('N')
             $generation = Join-Path $directory "generations/$id"
-            $null = Expand-NativePackage $ZipPath $Hash $generation $state.channel
+            $incoming = Expand-NativePackage $ZipPath $Hash $generation $state.channel
+            if ($Repair) {
+                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel $false
+                if ($incoming.version -cne $current.version) { throw 'La reparación exige la misma versión; no se activa el paquete.' }
+            }
             Copy-NativeData (Join-Path $directory "generations/$($state.active.generation)/data") (Join-Path $generation 'data')
             Invoke-NativeCheckpoint 'staged'
-            $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = @{ generation = $id; manifest_sha256 = (Get-NativeHash (Join-Path $generation 'manifest.json')) }; previous = $state.active }
+            $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = @{ generation = $id; manifest_sha256 = (Get-NativeHash (Join-Path $generation 'manifest.json')) }; previous = $previous }
             Set-NativeState $directory $next
         } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
         Read-NativeState $directory

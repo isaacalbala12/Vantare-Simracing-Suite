@@ -1,5 +1,36 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1492 — Setup encima y adopción de datos (2026-10-08)
+
+Rama `vantareapp/isa-1492-instalador-encima`, base `aa8ba9e1`, worktree
+`C:/tmp/vw3-1492-instalador/vantare-v2`. Continuación del intento interrumpido
+por disco lleno; se conservan y revisan sus cuatro archivos de packaging.
+Setup comparte Update/boot-pending/confirmación/rollback con el feed, reinstala
+la misma versión y rechaza versiones inferiores. Exige cerrar sesión y binarios
+sin matar procesos; el desinstalador conserva la referencia a los datos activos.
+Reinstalar adopta esa copia; copias antiguas distintas sin referencia se rechazan.
+QA usa dos instaladores 0.0.960/0.0.961, raíz y registro/accesos separados,
+target `E:/tmp/1492/target`, exclusivamente por la cola de compilación.
+Evidencia: `C:/tmp/1492-instalador-evidence/`; informe del worker:
+`C:/tmp/fase2/informe-1492-instalador.md`. PASS: packaging 174, beta 76,
+feed remoto firmado simulado 9, Setup NSIS 24 y desinstalación 2.
+Hub real 0.0.961 confirmó ventana tras actualizar y reparar (PIDs 17624/17208).
+Setup rechazó lock de sesión y Hub en uso con código 2, sin terminar esos PIDs;
+código 3 rechazó downgrade. Un Hub que salió con error antes de ready restauró
+generación, datos y versión registrada anteriores. Inicio apuntó al bootstrap QA.
+Capturas `primera-setup-updated.png` y `primera-setup-repaired.png` inspeccionadas;
+registro/accesos QA retirados y huella de scripts/estado/registro de Isaac idéntica
+antes/después. Los instaladores están en `E:/tmp/1492/0.0.960` y `0.0.961`;
+hashes en `artifacts.json`, Release sin firma y `source_dirty=true` (QA local).
+Se conservan logs de los fallos corregidos del harness: variable sobrescrita al
+cargar candidate, validación de JSON comprobada en el firmador en vez del
+verificador, y ruta NSIS con barras `/` en vez de ruta nativa Windows.
+Límites: no prueba login, carrera LMU, equipo limpio ni feed remoto productivo;
+datos antiguos distintos sin referencia requieren recuperación explícita.
+No hay push, PR, CI remoto, merge, promoción ni publicación. No se toca la
+instalación de Isaac ni su clave privada. `docs/roadmap/plan.md` no existe en
+esta base; no se recrea un roadmap fuera del alcance de packaging.
+
 ## #1480 — acceso intermitente, corrección aislada (2026-10-07)
 
 Rama `vantareapp/isa-1480-acceso-parpadeo`, base `d96acc64`, worktree

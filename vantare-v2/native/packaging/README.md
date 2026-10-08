@@ -18,9 +18,25 @@ No se leen ni importan datos Wails durante la instalación.
 
 La desinstalación exige cerrar todos los procesos de esta instalación, retira
 los binarios y conserva `generations/<id>/data/`. No borra perfiles ni cuenta.
-Para reinstalar tras desinstalar, mueve la carpeta conservada a un respaldo y
-vuelve a ejecutar el instalador. Una instalación existente se actualiza desde
-el Hub; ejecutar Setup de nuevo la rechaza sin sobrescribir sus datos.
+Ejecutar Setup encima actualiza a una versión más reciente o reinstala los
+binarios de la misma versión, conservando perfiles, layout y cuenta. Usa la
+misma activación por generaciones que el Hub: exige cerrar Vantare y restaura
+la versión anterior si el Hub nuevo no confirma su ventana. Una versión inferior
+se rechaza con un aviso; no baja de versión en silencio. Inicio y el registro
+de desinstalación se actualizan, también si hay rollback.
+
+Después de desinstalar, Setup adopta automáticamente los datos de la generación
+activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
+referencia permiten recuperar una copia única (o copias idénticas); si quedan
+copias distintas, se rechaza sin elegir datos arbitrariamente.
+
+QA aislada: compilar NSIS con `/DTEST_INSTALLER` y ejecutar
+`VantareSetup.exe /S /D=E:\tmp\1492\installed` (el argumento `/D` va al final).
+Esta build exige ruta explícita y usa registro `VantareNativeBetaQA1492` y
+accesos «Vantare Native Beta QA1492», separados de la instalación de Isaac.
+No distribuir esta build. `installer-tests.ps1` prueba los dos Setup construidos
+sin abrir ventanas; `beta-tests.ps1` requiere verificador y semilla de TEST
+para probar el feed firmado, nunca la clave privada productiva.
 
 El acceso de Inicio abre un host PowerShell de 64 bits oculto. NSIS usa
 [Sysnative](https://learn.microsoft.com/en-us/windows/win32/winprog64/file-system-redirector)
@@ -148,7 +164,9 @@ Luego, desde `vantare-v2`:
 powershell -NoProfile -File native/packaging/beta-tests.ps1 `
   -Version010Directory C:/tmp/isa-1454-evidence/build-0.1.0 `
   -Version011Directory C:/tmp/isa-1454-evidence/build-0.1.1 `
-  -EvidenceDirectory C:/tmp/isa-1454-evidence/roundtrip
+  -EvidenceDirectory C:/tmp/isa-1454-evidence/roundtrip `
+  -TestVerifier <exe-aislado-con-clave-publica-de-TEST> `
+  -SigningKeyFile <semilla-de-TEST>
 ```
 
 Prueba comparación de versiones, contrato inválido, SHA erróneo, staging,
@@ -363,8 +381,9 @@ verifica con la clave pública embebida antes de guardarlo. Firma de manifiesto
 y SHA-256 autenticado del ZIP no sustituyen Authenticode/SmartScreen.
 Las pruebas Rust generan sus claves de test en memoria y comprueban ausencia
 de firma, cambio de contenido, clave ajena y campos desconocidos.
-El smoke beta anterior usa manifiestos sin firma y requiere adaptación con
-artefactos firmados por Isaac para probar una actualización positiva real.
+El smoke beta genera paquetes aislados con un verificador de TEST y sobres
+firmados con su semilla de TEST. No sustituye la comprobación remota con los
+binarios y la clave pública productivos ni requiere el USB de Isaac.
 
 ### Prueba del feed remoto firmado (#1472 R2)
 

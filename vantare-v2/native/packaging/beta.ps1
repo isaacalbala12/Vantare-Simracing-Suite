@@ -228,20 +228,79 @@ function Apply-BetaUpdate([string]$Directory) {
         return $false
     }
     Assert-BetaPackage (Join-Path $directory 'staging') (Join-Path $directory "staging/$($manifest.sha256).zip") $manifest
-    # Marcador durable: recupera también una interrupción tras activar.
-    Write-BetaJson (Join-Path $directory 'boot-pending.json') @{ schema = 1; previous = $state.active.generation; version = $manifest.version }
-    try {
-        $null = Update-NativeCandidate $directory (Join-Path $directory "staging/$($manifest.sha256).zip") $manifest.sha256
-    } catch {
-        $after = Read-NativeState $directory
-        if ($after.active.generation -ceq $state.active.generation) {
-            Remove-Item -LiteralPath (Join-Path $directory 'boot-pending.json')
-        }
+    Activate-BetaPackage $directory (Join-Path $directory "staging/$($manifest.sha256).zip") $manifest.sha256 $manifest.version $manifest.notes
+    Remove-Item -LiteralPath $pending
+    $true
+}
+
+# Setup y el feed comparten activación, confirmación y rollback.
+function Activate-BetaPackage([string]$Directory, [string]$Zip, [string]$Hash, [string]$Version, [string]$Notes = '', [bool]$Repair = $false) {
+    $state = Read-NativeState $Directory (-not $Repair)
+    $marker = Join-Path $Directory 'boot-pending.json'
+    if (Test-Path -LiteralPath $marker) { throw 'Abre Vantare y ciérralo antes de volver a instalar; hay un arranque pendiente de comprobar.' }
+    $previous = $state.active.generation
+    if ($Repair) {
+        try { $null = Read-NativeState $Directory }
+        catch { $previous = if ($null -ne $state.previous) { $state.previous.generation } else { '' } }
+    }
+    Write-BetaJson $marker @{ schema = 1; previous = $previous; version = $Version }
+    try { $null = Update-NativeCandidate $Directory $Zip $Hash $Repair }
+    catch {
+        if ((Read-NativeState $Directory (-not $Repair)).active.generation -ceq $state.active.generation) { Remove-Item -LiteralPath $marker }
         throw
     }
-    Remove-Item -LiteralPath $pending
-    Set-BetaStatus $directory 'applied' 'Actualización aplicada; comprobando el arranque' $manifest.version $manifest.notes
-    $true
+    Set-BetaStatus $Directory 'applied' 'Instalación aplicada; comprobando el arranque' $Version $Notes
+}
+
+function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
+    $directory = Open-NativeRoot $Directory -Initialize
+    try { $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+    catch { throw 'Cierra Vantare para continuar. Si estás en carrera, espera a terminar.' }
+    try {
+        # Validar el paquete completo antes de seleccionar datos o cambiar el estado.
+        $probe = Join-Path $directory ('staging/setup-' + [guid]::NewGuid().ToString('N'))
+        try { $incoming = Expand-NativePackage $Zip $Hash $probe 'beta' }
+        finally { if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force } }
+        $version = Read-BetaVersion $incoming.version
+        $retained = Join-Path $directory 'retained-data.json'
+        if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
+            $state = Read-NativeState $directory $false
+            $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
+            if ($version -lt (Read-BetaVersion $current.version)) { throw 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
+            Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
+        } else {
+            $source = ''
+            if (Test-Path -LiteralPath $retained) {
+                $saved = [IO.File]::ReadAllText($retained) | ConvertFrom-Json
+                if ($saved.schema -ne 1 -or $saved.generation -cnotmatch '^[a-f0-9]{32}$') { throw 'No se reconoce la referencia a tus datos conservados; no se han modificado.' }
+                if ($version -lt (Read-BetaVersion $saved.version)) { throw 'Tus datos pertenecen a una versión más reciente. Descarga el instalador más reciente.' }
+                $source = Join-Path $directory "generations/$($saved.generation)/data"
+                if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw 'No se encuentran tus datos conservados; no se han modificado.' }
+            } elseif (Test-Path -LiteralPath (Join-Path $directory 'generations')) {
+                # Desinstaladores anteriores no guardaban la referencia activa.
+                # Una sola carpeta con datos es inequívoca; nunca elegir entre perfiles diferentes.
+                $sources = @(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory | Where-Object {
+                    $_.Name -cmatch '^[a-f0-9]{32}$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'data') -PathType Container)
+                })
+                if ($sources.Count) {
+                    $source = Join-Path $sources[0].FullName 'data'
+                    $index = Get-NativeDataIndex $source
+                    foreach ($other in $sources) {
+                        if ((Get-NativeDataIndex (Join-Path $other.FullName 'data')) -cne $index) { throw 'Hay varias copias antiguas diferentes de tus datos y no se puede identificar la activa. Se conservan todas; necesitas recuperar la instalación anterior.' }
+                    }
+                }
+            }
+            $handles = @{}
+            try {
+                if (Test-Path -LiteralPath (Join-Path $directory 'generations')) { $handles = Open-NativeBinaryGuard $directory }
+                $null = Install-NativeCandidate $directory $Zip $Hash 'beta' $source
+            } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+        }
+        # Setup explícito renueva el bootstrap; el feed conserva el instalado.
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'candidate.ps1') -Destination (Join-Path $directory 'candidate.ps1') -Force
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'beta.ps1') -Destination (Join-Path $directory 'beta.ps1') -Force
+        if (Test-Path -LiteralPath $retained) { Remove-Item -LiteralPath $retained }
+    } finally { $session.Dispose() }
 }
 
 function Start-BetaHub([string]$Directory) {
@@ -283,6 +342,16 @@ function Test-BetaReady([string]$Directory, $Process) {
     -not $Process.HasExited -and (Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path) -ceq $Process.Id.ToString()
 }
 
+function Sync-BetaRegistration([string]$Directory, [string]$Version) {
+    foreach ($identity in @('VantareNativeBeta', 'VantareNativeBetaQA1492')) {
+        $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
+        $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+        if ($null -ne $registration -and [IO.Path]::GetFullPath($registration.InstallLocation) -eq $Directory) {
+            Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
+        }
+    }
+}
+
 function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 45) {
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     while (-not $Process.HasExited -and -not (Test-BetaReady $Directory $Process) -and [DateTime]::UtcNow -lt $deadline) { $null = $Process.WaitForExit(200) }
@@ -296,11 +365,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
                 Remove-Item -LiteralPath $marker
                 return $true
             }
-            $key = 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBeta'
-            $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
-            if ($null -ne $registration -and [IO.Path]::GetFullPath($registration.InstallLocation) -eq $Directory) {
-                Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $boot.version
-            }
+            Sync-BetaRegistration $Directory $boot.version
             $saved = [IO.File]::ReadAllText((Join-Path $Directory 'update-status.json')) | ConvertFrom-Json
             Set-BetaStatus $Directory 'current' 'Versión actualizada y arranque confirmado' $boot.version $saved.notes
             Remove-Item -LiteralPath $marker
@@ -321,7 +386,11 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         $state = Read-NativeState $Directory
         if ($state.active.generation -cne $boot.previous -and $null -ne $state.previous -and $state.previous.generation -ceq $boot.previous) { $null = Restore-NativeCandidate $Directory }
         Remove-Item -LiteralPath $marker
-        Set-BetaStatus $Directory 'rollback' 'Falló el arranque: se restauró la versión anterior.'
+        $restored = Read-NativeState $Directory
+        $version = (Read-NativeManifest (Join-Path $Directory "generations/$($restored.active.generation)") 'beta').version
+        Sync-BetaRegistration $Directory $version
+        if ($boot.previous) { Set-BetaStatus $Directory 'rollback' 'Falló el arranque: se restauró la versión anterior.' }
+        else { Set-BetaStatus $Directory 'error' 'No se pudo abrir Vantare tras reparar. Tus datos se conservan; vuelve a ejecutar el instalador.'; throw 'No hay versión anterior íntegra que pueda restaurarse.' }
     }
     $false
 }
@@ -376,6 +445,12 @@ function Uninstall-Beta([string]$Directory) {
         }
         $handles = Open-NativeBinaryGuard $directory
         foreach ($handle in $handles.Values) { $handle.Dispose() }
+        $retained = Join-Path $directory 'retained-data.json'
+        if (-not (Test-Path -LiteralPath $retained)) {
+            $manifest = [IO.File]::ReadAllText((Join-Path $directory "generations/$($state.active.generation)/manifest.json")) | ConvertFrom-Json
+            $null = Read-BetaVersion $manifest.version
+            Write-BetaJson $retained @{ schema = 1; generation = $state.active.generation; version = $manifest.version }
+        }
         # Conserva cada data/ junto a su generación, sin descubrir datos Wails.
         foreach ($generation in Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory) {
             if ($generation.Name -cnotmatch '^[a-f0-9]{32}$') { throw 'Generación ajena; no se desinstala.' }
@@ -396,14 +471,23 @@ function Uninstall-Beta([string]$Directory) {
             }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')
+        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'staging/pending.json')) {
+            $path = Join-Path $directory $name
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
+        }
     } finally { $lock.Dispose(); $session.Dispose() }
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }
 switch ($Operation) {
     'Install' {
-        $null = Install-NativeCandidate $Root $Archive $ExpectedSha256 'beta'
-        Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $Root 'beta.ps1')
+        try { Install-Beta $Root $Archive $ExpectedSha256 }
+        catch {
+            Write-Error $_ -ErrorAction Continue
+            if ($_.Exception.Message -match 'Cierra Vantare|Cierre los procesos') { exit 2 }
+            if ($_.Exception.Message -match 'más reciente|instalador es anterior') { exit 3 }
+            exit 1
+        }
         if (-not $NoLaunch) { Run-BetaHub $Root }
     }
     'Check' { Stage-BetaUpdate $Root $LocalManifest }

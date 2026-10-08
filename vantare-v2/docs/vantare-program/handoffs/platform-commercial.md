@@ -15,6 +15,33 @@ y `git diff --check` PASS; sin builds porque no cambia código. Push y PR draft
 a nightly para revisión; el informe y comentario de la issue registran SHA/PR/CI.
 Siguiente acción: revisión del orquestador e Isaac; sin merge, promoción ni release.
 
+## #1508 · Latido diario de Supabase Free (2026-10-08)
+
+Issue [#1508](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1508),
+decisión de Isaac §6j y brief `C:/tmp/lanzamiento/brief-1508-latido.md`.
+Worktree `C:/tmp/vw3-1508`, rama `vantareapp/isa-1508-supabase-latido`, base
+`origin/nightly@5dc5ad1e`. Entrega aislada para PR draft a Nightly; sin promoción.
+
+Workflow diario 07:23 UTC/dispatch y script Python estándar: GET PostgREST con
+anon, timeout de 20 s, respuesta de salud estricta, fallo rojo y aviso opcional
+al webhook Discord existente. PR ejecuta solo mocks y PostgreSQL desechable,
+sin secretos de producción. Migración idempotente y rollback preparados para
+tabla singleton de salud con RLS y anon de solo lectura; no aplicados. No se
+toca cuenta, checkout ni #1506. Logs y mensajes excluyen cuerpos y credenciales.
+
+Evidencia local: 11/11 pruebas mock PASS, YAML/triggers/aislamiento de secretos
+PASS y `git diff --check` PASS. PostgreSQL/psql/Docker no están instalados en
+este entorno; prueba SQL integrada en CI, resultado remoto por verificar.
+No se ejecutan gates Rust/Go/frontend porque no se modifica producto ni sus
+contratos. [Runbook](../../supabase-latido-runbook.md) fija activación, lectura
+manual temporal y rollback por Isaac. Cron y dispatch necesitan el workflow
+en `master`; la lectura diaria no garantiza evitar toda pausa de Free.
+
+Siguiente paso: revisar PR/CI y seguir canales autorizados; Isaac valida SQL
+después en el entorno elegido, confirma Active y registra primer latido real.
+Sin consultas a producción, cambios de secretos, mensajes Discord reales,
+merge, release ni prueba de disponibilidad real.
+
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),

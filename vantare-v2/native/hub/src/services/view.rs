@@ -1141,8 +1141,21 @@ impl Remote {
     }
 
     pub fn testing(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        self.editor
-            .render(f32::from(window.viewport_size().width) <= 1360.0, cx)
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(8.0))
+            .flex_none()
+            .when(self.working(), |page| {
+                page.child(orbit::callout(
+                    "Procesando el informe… Conservamos tu borrador.",
+                    cx,
+                ))
+            })
+            .child(
+                self.editor
+                    .render(f32::from(window.viewport_size().width) <= 1360.0, cx),
+            )
     }
 
     /// R6: todas las vistas leen la misma publicación real y su estado de caché.

@@ -5845,3 +5845,13 @@ Nextest calendario22/22 PASS (recurrencias/DST/seguimiento/conflictos/cache).
 Clippy workspace-Dwarnings PASS tras simplificar el estado a Option<ScrollHandle>.
 Pendiente inspección de densidad y navegación al principio/final del día.
 D3 c59e02a2, D1/D2 5f85c7cd; siguiente tanda QA/E1–E3 aislada.
+Banco E2: ejemplo ui-quality requiere parity-capture, root absoluto y replies.json;
+se copia como vantare.exe solo en carpeta QA para que Client valide la imagen
+del peer real. IPC/protocolo/controladores/shell productivos; replies de contrato
+locales, sin red, backend, credenciales ni servicios/instalación personales.
+Pipe por PID, hilo cancelable y cerrado al salir; draft guardado en root propio.
+El recorrido real detectó espera sin feedback: Testing muestra ahora operación
+en curso conservando el borrador. Clippy normal-Dwarnings y Nextest22/22 PASS.
+Tanda QA en curso (logs/capturas/requests.jsonl en calidad-2-evidence); no se
+presentan los intentos fallidos del harness por timeout corto como fallos de app.
+V1 4a2584f1; siguiente: cerrar interacciones, bounds y traza QPC release.

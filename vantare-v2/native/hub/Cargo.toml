@@ -8,6 +8,10 @@ publish.workspace = true
 [features]
 parity-capture = ["vantare-ui/parity-capture"]
 
+[[example]]
+name = "ui-quality"
+required-features = ["parity-capture"]
+
 [dependencies]
 vantare-services.workspace = true
 vantare-ui = { path = "../ui" }

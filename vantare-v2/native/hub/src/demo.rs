@@ -7,6 +7,25 @@ use vantare_strategy::application::CorrectionSource;
 const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
 const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
+const QUALITY_CAPTURES: &[&str] = &[
+    "inicio-sidebar",
+    "inicio-sidebar-sin-carril",
+    "inicio-sin-carril",
+    "ajustes-apariencia-sidebar",
+    "ajustes-apariencia-sidebar-sin-carril",
+    "ajustes-apariencia-sin-carril",
+    "inicio-opacidad",
+    "inicio-nombre-largo",
+    "launcher-nombres-largos",
+    "studio-error-largo",
+    "studio-error-largo-sin-carril",
+    "studio-sidebar",
+    "studio-vacio",
+    "studio-sin-seleccion",
+    "studio-oculto",
+    "studio-manual",
+    "studio-en-vivo",
+];
 const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
     "strategy-v5-datos-vacio",
     "strategy-v5-datos-fuentes",
@@ -279,6 +298,20 @@ impl DemoData {
     /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
     pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
         self.profile.present = capture.name == "inicio-base";
+        if matches!(
+            capture.name.as_str(),
+            "inicio-nombre-largo" | "launcher-nombres-largos"
+        ) {
+            self.user.full_name = "PilotoConNombreExtensoParaVerificarElRecorteDelSaludo".into();
+            for profile in &mut self.launcher.profiles {
+                profile.name = "Perfil de resistencia con un nombre deliberadamente largo para comprobar el espacio disponible".into();
+            }
+            for app in &mut self.launcher.apps {
+                app.display_name =
+                    "Aplicación de QA con nombre y ruta extensos para comprobar el formulario"
+                        .into();
+            }
+        }
         if matches!(capture.name.as_str(), "inicio-vacio" | "inicio-cargando") {
             self.launcher.profiles.clear();
         }
@@ -549,6 +582,7 @@ impl CaptureState {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Catálogo cerrado de escenas QA y sus estados de presentación.
     pub fn parse(name: &str) -> Result<Self, String> {
         #[derive(Deserialize)]
         struct Screen {
@@ -558,6 +592,7 @@ impl CaptureState {
             serde_json::from_str(SCREENS).map_err(|error| format!("referencias Hub: {error}"))?;
         if !screens.iter().any(|screen| screen.name == name)
             && !EXTRA_STRATEGY_CAPTURES.contains(&name)
+            && !QUALITY_CAPTURES.contains(&name)
             && !matches!(
                 name,
                 "launcher-reposo"
@@ -586,7 +621,8 @@ impl CaptureState {
             | "launcher-historial"
             | "launcher-editor"
             | "launcher-listo"
-            | "launcher-cancelado" => Section::Launcher,
+            | "launcher-cancelado"
+            | "launcher-nombres-largos" => Section::Launcher,
             "calendario-beta-archivo"
             | "calendario-base"
             | "calendario-dia"
@@ -604,7 +640,7 @@ impl CaptureState {
             "roadmap-base" => Section::Roadmap,
             "cuenta-base" => Section::Account,
             "licencias-modulos-dispositivos" => Section::Licenses,
-            "studio-base" => Section::Studio,
+            name if name.starts_with("studio-") => Section::Studio,
             "workshop-base" | "workshop-detalle" => Section::Workshop,
             name if name.starts_with("ajustes-") => Section::Settings,
             name if name.starts_with("shell-") || name.starts_with("inicio-") => Section::Home,
@@ -617,9 +653,12 @@ impl CaptureState {
             _ => None,
         };
         let settings_page = match name {
-            "ajustes-preparacion-oscuro" | "ajustes-apariencia" | "ajustes-apariencia-detalle" => {
-                Some(CaptureSettingsPage::Appearance)
-            }
+            "ajustes-preparacion-oscuro"
+            | "ajustes-apariencia"
+            | "ajustes-apariencia-detalle"
+            | "ajustes-apariencia-sidebar"
+            | "ajustes-apariencia-sidebar-sin-carril"
+            | "ajustes-apariencia-sin-carril" => Some(CaptureSettingsPage::Appearance),
             "ajustes-rendimiento" | "ajustes-rendimiento-detalle" => {
                 Some(CaptureSettingsPage::Performance)
             }
@@ -637,8 +676,18 @@ impl CaptureState {
             name: name.into(),
             section,
             palette_query,
-            column_open: name != "shell-columna-colapsada",
-            sidebar: None,
+            column_open: name != "shell-columna-colapsada" && !name.ends_with("-sin-carril"),
+            sidebar: matches!(
+                name,
+                "studio-sidebar"
+                    | "studio-error-largo"
+                    | "studio-error-largo-sin-carril"
+                    | "inicio-sidebar"
+                    | "inicio-sidebar-sin-carril"
+                    | "ajustes-apariencia-sidebar"
+                    | "ajustes-apariencia-sidebar-sin-carril"
+            )
+            .then_some(true),
             notifications_open: matches!(
                 name,
                 "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio"
@@ -918,6 +967,44 @@ mod tests {
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
         crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
+        Ok(())
+    }
+
+    #[test]
+    fn quality_sidebar_captures_keep_independent_sidebar_and_rail_states() -> Result<(), String> {
+        for (name, section, sidebar, rail) in [
+            ("inicio-sidebar", Section::Home, Some(true), true),
+            (
+                "inicio-sidebar-sin-carril",
+                Section::Home,
+                Some(true),
+                false,
+            ),
+            ("inicio-sin-carril", Section::Home, None, false),
+            (
+                "ajustes-apariencia-sidebar",
+                Section::Settings,
+                Some(true),
+                true,
+            ),
+            (
+                "ajustes-apariencia-sidebar-sin-carril",
+                Section::Settings,
+                Some(true),
+                false,
+            ),
+            (
+                "ajustes-apariencia-sin-carril",
+                Section::Settings,
+                None,
+                false,
+            ),
+        ] {
+            let capture = CaptureState::parse(name)?;
+            assert_eq!(capture.section, section, "{name}");
+            assert_eq!(capture.sidebar, sidebar, "{name}");
+            assert_eq!(capture.column_open, rail, "{name}");
+        }
         Ok(())
     }
 

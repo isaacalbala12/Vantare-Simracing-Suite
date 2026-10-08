@@ -281,6 +281,42 @@ impl Prepared {
                 .first()
                 .map(|item| item.id.clone());
         }
+        #[cfg(feature = "parity-capture")]
+        if let Some(name) = capture_name() {
+            if name == "studio-vacio" {
+                while !editor.layout().instances.is_empty() {
+                    editor.selected = editor
+                        .layout()
+                        .instances
+                        .first()
+                        .map(|item| item.id.clone());
+                    editor.remove()?;
+                }
+            } else if name == "studio-oculto" {
+                editor.edit_selected(|item| item.visible = false)?;
+            } else if name == "inicio-opacidad" {
+                let ids: Vec<_> = editor
+                    .layout()
+                    .instances
+                    .iter()
+                    .map(|item| item.id.clone())
+                    .collect();
+                for (index, id) in ids.into_iter().enumerate() {
+                    editor.selected = Some(id);
+                    editor.edit_selected(|item| {
+                        item.opacity = [0.0, 0.25, 1.0, 1.0][index % 4];
+                        item.x = 200.0;
+                        item.y = 100.0;
+                        if index == 3 {
+                            item.visible = false;
+                        }
+                    })?;
+                }
+            }
+            if name == "studio-sin-seleccion" {
+                editor.selected = None;
+            }
+        }
         Ok(Self {
             editor,
             examples: example_snapshots()?,
@@ -289,6 +325,14 @@ impl Prepared {
 }
 
 #[cfg(feature = "parity-capture")]
+fn capture_name() -> Option<String> {
+    std::env::args()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .find(|pair| pair[0] == "--capture")
+        .map(|pair| pair[1].clone())
+}
+#[cfg(feature = "parity-capture")]
 fn studio_demo_capture() -> bool {
     let args: Vec<_> = std::env::args().collect();
     args.iter().any(|arg| arg == "--demo")
@@ -296,7 +340,7 @@ fn studio_demo_capture() -> bool {
             pair[0] == "--capture"
                 && matches!(
                     pair[1].as_str(),
-                    "studio-base" | "inicio-base" | "inicio-error"
+                    name if name.starts_with("studio-") || matches!(name, "inicio-base" | "inicio-error" | "inicio-opacidad" | "inicio-nombre-largo")
                 )
         })
 }
@@ -442,6 +486,19 @@ impl Render for CanvasFrame {
             })
     }
 }
+/// Región flexible: el error completo queda en accesibilidad y tooltip.
+fn save_status_host(status: &str, child: impl IntoElement) -> gpui::Stateful<gpui::Div> {
+    let full = status.to_owned();
+    div()
+        .id("studio-save-status")
+        .role(gpui::Role::Status)
+        .aria_label(full.clone())
+        .flex_1()
+        .min_w_0()
+        .overflow_hidden()
+        .tooltip(move |_, cx| cx.new(|_| orbit::Tooltip(full.clone())).into())
+        .child(child)
+}
 impl Studio {
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
@@ -460,52 +517,67 @@ impl Studio {
             .as_ref()
             .err()
             .map_or(AUTO_SAVED, String::as_str);
+        let compact = self.adapt.center_width() - 2.0 * self.adapt.padding().1 < 960.0;
+        let publish = if compact {
+            orbit::icon_button(
+                "publish-obs",
+                "v-camera",
+                "Publicar en OBS · Próximamente",
+                36.0,
+                cx,
+            )
+        } else {
+            button("publish-obs", "Publicar en OBS", cx)
+        };
+        let show = orbit::play_button(
+            "studio-show-track",
+            if compact { "" } else { "Mostrar en pista" },
+            44.0,
+            false,
+            cx,
+        )
+        .aria_label("Mostrar en pista · Próximamente");
         div()
+            .w_full()
             .flex()
             .items_center()
             .gap(px(8.0))
             .min_w_0()
             .flex_none()
             .min_h(px(44.0))
-            .child(orbit::pending_select(
-                "studio-profile",
-                "Layout activo",
-                profile,
-                if self.adapt.center_width() < 1000.0 {
-                    140.0
-                } else {
-                    180.0
-                },
-                "Solo está disponible el diseño guardado en este equipo.",
-                cx,
-            ))
-            .child(self.toolbar_preview_mode(cx))
-            .child(div().flex_1())
             .child(
-                div()
-                    .id("studio-save-status")
-                    .role(gpui::Role::Status)
-                    .aria_label(status.to_owned())
-                    .child(text(
-                        status.to_owned(),
-                        12.0,
-                        500,
-                        if self.status.is_ok() {
-                            orbit::green(cx)
-                        } else {
-                            orbit::red(cx)
-                        },
-                        cx,
-                    )),
+                orbit::pending_select(
+                    "studio-profile",
+                    "Layout activo",
+                    profile,
+                    if compact { 140.0 } else { 180.0 },
+                    "Solo está disponible el diseño guardado en este equipo.",
+                    cx,
+                )
+                .flex_none(),
             )
+            .child(self.toolbar_preview_mode(cx).flex_none())
+            .child(save_status_host(
+                status,
+                text(
+                    status.to_owned(),
+                    12.0,
+                    500,
+                    if self.status.is_ok() {
+                        orbit::green(cx)
+                    } else {
+                        orbit::red(cx)
+                    },
+                    cx,
+                )
+                .truncate()
+                .min_w_0(),
+            ))
             .child(orbit::disabled(
-                button("publish-obs", "Publicar en OBS", cx),
+                publish.flex_none(),
                 "Próximamente. Usa captura de ventana en OBS",
             ))
-            .child(orbit::disabled(
-                orbit::play_button("studio-show-track", "Mostrar en pista", 44.0, false, cx),
-                "Próximamente",
-            ))
+            .child(orbit::disabled(show.flex_none(), "Próximamente"))
     }
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()
@@ -595,6 +667,13 @@ impl Studio {
             canvas_size: (700.0, 1080.0 * STUDIO_PREVIEW_SCALE),
             zoom_step: 0,
         };
+        #[cfg(feature = "parity-capture")]
+        match capture_name().as_deref() {
+            Some("studio-error-largo" | "studio-error-largo-sin-carril") => studio.status = Err("No se pudo guardar el documento de QA: otra aplicación modificó el archivo en una ruta extensa. Recarga el diseño para revisar los cambios antes de reintentar. ".repeat(3)),
+            Some("studio-manual") => studio.zoom_step = 3,
+            Some("studio-en-vivo") => studio.example = false,
+            _ => {}
+        }
         studio.rebuild(cx);
         studio
     }
@@ -2158,5 +2237,22 @@ mod tests {
         };
         assert!(drag.update((30.0, 25.0)));
         assert_eq!(drag.preview, (780.0, 50.0));
+    }
+}
+
+#[cfg(test)]
+mod toolbar_status_tests {
+    use super::*;
+    #[test]
+    fn long_save_errors_use_the_same_flexible_clipped_region_as_success() {
+        for status in [
+            AUTO_SAVED.to_owned(),
+            "No se pudo guardar el documento: ".repeat(40),
+        ] {
+            let mut host = save_status_host(&status, div().child(status.clone()).truncate());
+            assert_eq!(host.style().min_size.width, Some(px(0.0).into()));
+            assert_eq!(host.style().flex_grow, Some(1.0));
+            assert_eq!(host.style().overflow.x, Some(gpui::Overflow::Hidden));
+        }
     }
 }

@@ -23,6 +23,12 @@ resultados descriptivos de terminal/reintentos/confirmación, sin Lento inferido
 Regresiones de recuperación, decisión, pasos independientes, fallo y cancelación.
 Motor, persistencia y controladores intactos; interacción nativa pendiente de QA.
 
+R3: estado flexible/recortado con tooltip y accesibilidad completa; acciones
+compactas por ancho central efectivo, sin fila extra ni scroll de página.
+Escenas QA aisladas: sidebar forzada/error largo/carril, vacío/sin selección/
+oculto/manual/En vivo y preview con opacidad/nombres largos. Test del host real.
+Clippy workspace PASS; pendientes gates completos, capturas y medidas nativas.
+
 ## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama

@@ -147,30 +147,35 @@ impl Overlay {
         }
     }
 
-    /// Estilo Vantare de Standings en Workshop en vivo.
-    pub(crate) fn standings_vantare_style(
+    /// Estilo Vantare en Workshop en vivo (Standings y Relative).
+    pub(crate) fn vantare_style(
         &mut self,
         style: Arc<crate::vantare::style::Style>,
         cx: &mut Context<Self>,
     ) {
-        if let Widget::Standings(widget) = &mut self.widget {
-            widget.set_vantare_style(style);
-            cx.notify();
+        match &mut self.widget {
+            Widget::Standings(widget) => widget.set_vantare_style(style),
+            Widget::Relative(widget) => widget.set_vantare_style(style),
+            _ => return,
         }
+        cx.notify();
     }
 
     /// Workshop: columnas Vantare colocadas del widget.
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
         match &self.widget {
             Widget::Standings(widget) => widget.vantare_columns(),
+            Widget::Relative(widget) => widget.vantare_columns(),
             _ => None,
         }
     }
 
     /// Workshop: da por terminadas las animaciones de las fotos ya ingeridas.
     pub(crate) fn settle(&mut self) {
-        if let Widget::Standings(widget) = &mut self.widget {
-            widget.settle();
+        match &mut self.widget {
+            Widget::Standings(widget) => widget.settle(),
+            Widget::Relative(widget) => widget.settle(),
+            _ => {}
         }
     }
 

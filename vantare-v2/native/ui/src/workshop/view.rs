@@ -352,8 +352,13 @@ impl Render for Workshop {
         } else {
             "es"
         };
-        let vantare = matches!(&self.settings, Settings::Standings(s) if s.design_system == crate::standings::DesignSystem::Vantare);
-        let system = if self.kind == Kind::Standings {
+        let vantare = match &self.settings {
+            Settings::Standings(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::Relative(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            _ => false,
+        };
+        let relative = self.kind == Kind::Relative;
+        let system = if matches!(self.kind, Kind::Standings | Kind::Relative) {
             Self::segments(
                 Control::Setting("designSystem"),
                 if vantare { "vantare" } else { "eficiencia" },
@@ -449,29 +454,44 @@ impl Render for Workshop {
                 ],
                 cx,
             )));
-        if self.kind == Kind::Standings && vantare {
+        if vantare {
             let current = |key: &str| {
                 serde_json::to_value(&self.settings)
                     .ok()
                     .and_then(|v| v[key].as_str().map(str::to_owned))
                     .unwrap_or_default()
             };
-            let columns = if let Settings::Standings(settings) = &self.settings {
-                settings
+            let columns = match &self.settings {
+                Settings::Standings(settings) => settings
                     .columns
                     .clone()
-                    .unwrap_or_else(|| crate::standings::vantare_template("standard"))
-            } else {
-                Vec::new()
+                    .unwrap_or_else(|| crate::standings::vantare_template("standard")),
+                Settings::Relative(settings) => settings
+                    .columns
+                    .clone()
+                    .unwrap_or_else(|| crate::relative::vantare_template("standard")),
+                _ => Vec::new(),
             };
             let multiclass = current("classificationMode") == "multiclass";
-            let mut modes = group("Modo").child(Self::segments(
-                Control::Setting("classificationMode"),
-                if multiclass { "multiclass" } else { "normal" },
-                &[("normal", "Estándar"), ("multiclass", "Multiclase")],
-                cx,
-            ));
-            if !multiclass {
+            let mut modes = if relative {
+                group("Ventana")
+                    .child(Self::segments(
+                        Control::Setting("classScope"),
+                        &current("classScope"),
+                        &[("all", "Todas las clases"), ("sameClass", "Mi clase")],
+                        cx,
+                    ))
+                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
+                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx))
+            } else {
+                group("Modo").child(Self::segments(
+                    Control::Setting("classificationMode"),
+                    if multiclass { "multiclass" } else { "normal" },
+                    &[("normal", "Estándar"), ("multiclass", "Multiclase")],
+                    cx,
+                ))
+            };
+            if !multiclass && !relative {
                 modes = modes.child(div().mt(px(6.0)).child(Self::segments(
                     Control::Setting("classScope"),
                     &current("classScope"),
@@ -513,6 +533,13 @@ impl Render for Workshop {
                         .children(columns.iter().filter_map(|column| {
                             let (id, label): (&'static str, &str) = match column.metric_id.as_str()
                             {
+                                "position" if relative => ("position", "Posición en clase"),
+                                "carNumber" => ("carNumber", "Dorsal"),
+                                "lapDelta" => ("lapDelta", "Vueltas de diferencia"),
+                                "driverRating" => ("driverRating", "Nivel del piloto"),
+                                "safetyRating" => ("safetyRating", "Safety Rating"),
+                                "trend" => ("trend", "Tendencia s/vuelta"),
+                                "trackStrip" => ("trackStrip", "Tira de pista (arriba)"),
                                 "positionsGained" => ("positionsGained", "Posiciones ganadas ±"),
                                 "driverNumber" => ("driverNumber", "Dorsal"),
                                 "driverName" => ("driverName", "Piloto"),
@@ -547,7 +574,7 @@ impl Render for Workshop {
                                     },
                                 )),
                             );
-                            if enabled && id != "vehicle" {
+                            if enabled && !matches!(id, "vehicle" | "trackStrip") {
                                 for (step, arrow) in [(-1, "◀"), (1, "▶")] {
                                     line = line.child(
                                         button(format!("move-{id}-{step}"), arrow, false)
@@ -562,8 +589,10 @@ impl Render for Workshop {
                         })),
                 )
                 .child(
-                    group("Filas y nombre")
-                        .child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                    group(if relative { "Nombre" } else { "Filas y nombre" })
+                        .when(!relative, |g| {
+                            g.child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                        })
                         .child(self.picker(
                             Control::Name,
                             "Nombre",
@@ -655,7 +684,7 @@ impl Render for Workshop {
             )));
         }
 
-        if (self.kind == Kind::Standings && !vantare) || self.kind == Kind::Relative {
+        if !vantare && matches!(self.kind, Kind::Standings | Kind::Relative) {
             if self.kind == Kind::Standings {
                 panel = panel.child(group("Posición del jugador").child(self.picker(
                     Control::Player,

@@ -422,6 +422,24 @@ demostración del catálogo, no telemetría real; las señales que el modelo no
 publica (salida de boxes, vuelta de la vuelta rápida, zona lenta) no se pintan.
 La captura de paridad de Windows sigue usando Eficiencia.
 
+## Relative Vantare (#1497)
+
+Mismo sistema y kit que Standings, sistema por defecto (`designSystem`); Eficiencia
+sigue disponible. Proyección pura en `domain::relative_vantare`: la ventana en
+pista de Relative con gap firmado como el catálogo (delante negativo), nivel del
+piloto, Safety Rating, tendencia del gap por vuelta y si conviene, tira de ±10 s,
+aviso de tráfico de una clase más rápida a menos de 6 s y estimación de salida
+de boxes (`Player::pit_loss_s`). Columnas en `columns` (posición en clase,
+dorsal, piloto, vueltas de diferencia, nivel, SR, tendencia y gap; el punto de
+clase es fijo, el coche y la tira de pista son complementos), con
+`relative::vantare_template` (compacto ±2 280, estándar ±3 420, ampliado ±4 600),
+arrastre y ◀ ▶ en Workshop. Animaciones: filas que se deslizan, destello verde al
+adelantar y rojo al ser adelantado, pulso del tráfico rápido y puntos de la tira
+en movimiento. Escenas `relative-vantare.scene.json` y
+`relative-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
+Los adaptadores aún no publican nivel, SR, tendencia ni pérdida en boxes: en
+pista real salen «—» u omitidos.
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

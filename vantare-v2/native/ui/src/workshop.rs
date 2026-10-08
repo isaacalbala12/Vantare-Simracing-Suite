@@ -349,36 +349,44 @@ struct Workshop {
 }
 
 /// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
-fn standings_defaults(system: crate::standings::DesignSystem) -> Settings {
-    Settings::Standings(match system {
-        crate::standings::DesignSystem::Vantare => crate::standings::Settings {
-            row_count: 8,
-            columns: Some(crate::standings::vantare_template("standard")),
+/// Ajustes de partida en Workshop de un widget con columnas para cada sistema.
+fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settings {
+    use crate::standings::DesignSystem;
+    match (kind, system) {
+        (Kind::Standings, DesignSystem::Vantare) => {
+            Settings::Standings(crate::standings::Settings {
+                row_count: 8,
+                columns: Some(crate::standings::vantare_template("standard")),
+                ..Default::default()
+            })
+        }
+        (Kind::Standings, DesignSystem::Eficiencia) => {
+            Settings::Standings(crate::standings::Settings {
+                row_count: 10,
+                columns: Some(default_columns(Kind::Standings)),
+                player_window: true,
+                window_around: 4,
+                class_scope: "all-classes".into(),
+                brand_visible: Some(true),
+                ..crate::standings::Settings::eficiencia()
+            })
+        }
+        (Kind::Relative, DesignSystem::Vantare) => Settings::Relative(crate::relative::Settings {
+            columns: Some(crate::relative::vantare_template("standard")),
             ..Default::default()
-        },
-        crate::standings::DesignSystem::Eficiencia => crate::standings::Settings {
-            row_count: 10,
-            columns: Some(default_columns(Kind::Standings)),
-            player_window: true,
-            window_around: 4,
-            class_scope: "all-classes".into(),
-            brand_visible: Some(true),
-            ..crate::standings::Settings::eficiencia()
-        },
-    })
+        }),
+        (Kind::Relative, DesignSystem::Eficiencia) => {
+            Settings::Relative(crate::relative::Settings {
+                columns: Some(default_columns(Kind::Relative)),
+                ..crate::relative::Settings::eficiencia()
+            })
+        }
+        _ => Settings::default_for(kind),
+    }
 }
 
 fn default_settings(kind: Kind) -> Settings {
-    if kind == Kind::Standings {
-        standings_defaults(crate::standings::DesignSystem::default())
-    } else if kind == Kind::Relative {
-        Settings::Relative(crate::relative::Settings {
-            columns: Some(default_columns(kind)),
-            ..Default::default()
-        })
-    } else {
-        Settings::default_for(kind)
-    }
+    system_defaults(kind, crate::standings::DesignSystem::default())
 }
 
 fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> {
@@ -612,7 +620,7 @@ impl Workshop {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
             overlay.standings_style(style.clone(), cx);
-            overlay.standings_vantare_style(vantare.clone(), cx);
+            overlay.vantare_style(vantare.clone(), cx);
             overlay.standings_study(&study);
             let size = overlay.wanted_size();
             let natural = preview_size(kind, size);
@@ -701,15 +709,43 @@ impl Workshop {
                 (x < left + width / 2.0).then_some((previous, -1))
             })
         });
-        if let (Some((_, step)), Settings::Standings(settings)) = (target, &mut self.settings) {
-            let order = settings
-                .columns
-                .get_or_insert_with(|| crate::standings::vantare_template("standard"));
-            if crate::standings::shift_column(order, dragged, step) {
-                self.replay(cx);
-            }
+        if let Some((_, step)) = target
+            && self.shift_vantare_column(dragged, step)
+        {
+            self.replay(cx);
         }
         cx.notify();
+    }
+
+    /// Columnas Vantare del widget (Standings o Relative), con la plantilla
+    /// estándar si aún no hay ninguna.
+    fn vantare_columns_mut(
+        &mut self,
+    ) -> Option<&mut Vec<crate::standings::options::ColumnSetting>> {
+        use crate::standings::DesignSystem::Vantare;
+        match &mut self.settings {
+            Settings::Standings(s) if s.design_system == Vantare => Some(
+                s.columns
+                    .get_or_insert_with(|| crate::standings::vantare_template("standard")),
+            ),
+            Settings::Relative(s) if s.design_system == Vantare => Some(
+                s.columns
+                    .get_or_insert_with(|| crate::relative::vantare_template("standard")),
+            ),
+            _ => None,
+        }
+    }
+
+    fn shift_vantare_column(&mut self, metric: &str, step: i32) -> bool {
+        let relative = self.kind == Kind::Relative;
+        let Some(columns) = self.vantare_columns_mut() else {
+            return false;
+        };
+        if relative {
+            crate::relative::shift_column(columns, metric, step)
+        } else {
+            crate::standings::shift_column(columns, metric, step)
+        }
     }
 
     fn finish_column_drag(&mut self, cx: &mut Context<Self>) {
@@ -905,25 +941,33 @@ impl Workshop {
                     }
                 }
                 Control::Template(name) => {
-                    let Settings::Standings(settings) = &mut self.settings else {
-                        return Err("solo Standings tiene plantillas Vantare".into());
+                    let mut template = if self.kind == Kind::Relative {
+                        crate::relative::vantare_template(name)
+                    } else {
+                        crate::standings::vantare_template(name)
                     };
-                    let mut columns = crate::standings::vantare_template(name);
-                    for column in &mut columns {
+                    for column in &mut template {
                         if column.metric_id == "driverName" {
                             column.format.mode.clone_from(&self.name_mode);
                         }
                     }
-                    settings.columns = Some(columns);
+                    let Some(columns) = self.vantare_columns_mut() else {
+                        return Err("este widget no tiene plantillas Vantare".into());
+                    };
+                    *columns = template;
+                    // Las plantillas de Relative fijan también su alcance (±2, ±3, ±4).
+                    if let Settings::Relative(settings) = &mut self.settings {
+                        let range = match name {
+                            "compact" => 2,
+                            "expanded" => 4,
+                            _ => 3,
+                        };
+                        settings.range_ahead = range;
+                        settings.range_behind = range;
+                    }
                 }
                 Control::MoveColumn(metric, step) => {
-                    let Settings::Standings(settings) = &mut self.settings else {
-                        return Err("solo Standings ordena columnas Vantare".into());
-                    };
-                    let columns = settings
-                        .columns
-                        .get_or_insert_with(|| crate::standings::vantare_template("standard"));
-                    crate::standings::shift_column(columns, metric, step);
+                    self.shift_vantare_column(metric, step);
                 }
                 Control::Footer(slot) => {
                     let slots = match &mut self.settings {
@@ -966,7 +1010,12 @@ impl Workshop {
                         (Settings::Standings(old), Settings::Standings(new))
                             if old.design_system != new.design_system =>
                         {
-                            standings_defaults(new.design_system)
+                            system_defaults(Kind::Standings, new.design_system)
+                        }
+                        (Settings::Relative(old), Settings::Relative(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::Relative, new.design_system)
                         }
                         (_, next) => next,
                     };
@@ -1061,7 +1110,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 let overlay = cx.new(|cx| {
                     let mut overlay = Overlay::new(kind, Preferences::default());
                     overlay.standings_style(style.value.clone(), cx);
-                    overlay.standings_vantare_style(vantare_style.value.clone(), cx);
+                    overlay.vantare_style(vantare_style.value.clone(), cx);
                     for snapshot in &scene.snapshots {
                         overlay.ingest(snapshot, cx);
                     }
@@ -1192,7 +1241,7 @@ mod tests {
 
     #[test]
     fn workshop_relative_uses_react_columns_and_compact_height() {
-        let settings = default_settings(Kind::Relative);
+        let settings = system_defaults(Kind::Relative, crate::standings::DesignSystem::Eficiencia);
         let Settings::Relative(relative) = &settings else {
             panic!("Relative");
         };
@@ -1280,8 +1329,8 @@ mod tests {
                 );
             }
         }
-        // 43 demostraciones React + las dos escenas Vantare r10b (#1497).
-        assert_eq!(count, 45);
+        // 43 demostraciones React + cuatro escenas Vantare r10b (#1497).
+        assert_eq!(count, 47);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),

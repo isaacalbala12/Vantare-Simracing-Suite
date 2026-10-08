@@ -427,6 +427,7 @@ impl Hub {
                 | Section::Account
                 | Section::Licenses
                 | Section::Testing
+                | Section::Testing
                 | Section::Calendar
         );
         let header = match self.section {

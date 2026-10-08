@@ -14,6 +14,8 @@ pub struct Testing {
     tabs: Entity<orbit::Choice>,
     local_module: Entity<orbit::Choice>,
     local_open: bool,
+    composing: bool,
+    expanded_receipt: Option<String>,
     pub observed: Observed,
     store: Store,
     data: PathBuf,
@@ -90,6 +92,8 @@ impl Testing {
             tabs,
             local_module,
             local_open: false,
+            composing: true,
+            expanded_receipt: None,
             observed: Observed::default(),
             inputs: Self::inputs(&store.draft, cx),
             store,
@@ -360,80 +364,166 @@ fn selected_capture_tab(data_dir: &Path) -> Option<usize> {
 impl Testing {
     fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
         let remote = self.remote.read(cx);
-        let mut list =
-            orbit::neo_card(cx)
-                .flex_1()
-                .child(orbit::neo_header("Mis informes", "clock", cx));
+        let mut rows = div()
+            .id("testing-receipts")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .flex()
+            .flex_col()
+            .gap(px(10.0));
         if remote.report_receipts.is_empty() {
-            let dedicated = self.tabs.read(cx).state.selected == Some(2);
-            return list.child(
-                div().flex().flex_col().items_center().justify_center().gap(px(16.0))
-                    .when(dedicated, |body| body.flex_1().child(orbit::icon("v-testing", 52.0, orbit::ink_3(cx))))
-                    .when(!dedicated, |body| body.py(px(16.0)))
-                    .child(orbit::text("Tu primer informe empieza aquí", if dedicated { 22.0 } else { 16.0 }, 600, orbit::ink(cx), cx))
-                    .child(orbit::text(if dedicated { "Aquí verás los informes enviados durante esta sesión. Si encuentras un problema o tienes una sugerencia, cuéntanos qué pasó y añade una captura desde Nuevo informe." } else { "Aquí verás los informes enviados durante esta sesión." }, 14.0, 400, orbit::ink_2(cx), cx).max_w(px(480.0)).text_center())
-                    .when(dedicated, |body| body.child(orbit::primary_button("testing-first-report", "Nuevo informe", cx).self_center().on_click(cx.listener(|this, _, _, cx| {
-                        this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
-                        cx.notify();
-                    }))))
-            );
+            rows = rows.child(orbit::text(
+                "Aún no has enviado informes en esta sesión.",
+                14.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ));
         }
-        for (fields, receipt) in &remote.report_receipts {
-            list = list.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(12.0))
-                    .py(px(12.0))
-                    .border_b_1()
-                    .border_color(rgba(orbit::line_row(cx)))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(orbit::text(
-                                if fields.action_text.trim().is_empty() {
-                                    "Título no disponible".to_owned()
-                                } else {
-                                    fields.action_text.clone()
-                                },
-                                14.0,
-                                600,
-                                orbit::ink(cx),
-                                cx,
-                            ))
-                            .child(orbit::text(
-                                format!(
-                                    "{} · {}",
-                                    super::model::MODULES
-                                        .iter()
-                                        .find(|(id, _)| *id == fields.module)
-                                        .map_or("Sin determinar", |(_, label)| *label),
-                                    orbit::activity_time(
-                                        &receipt.created_at,
-                                        chrono::Local::now().fixed_offset()
-                                    )
-                                ),
-                                11.0,
-                                400,
-                                orbit::ink_3(cx),
-                                cx,
-                            )),
-                    )
+        for (index, (fields, receipt)) in remote.report_receipts.iter().enumerate() {
+            let id = receipt.report_id.clone();
+            let expanded = self.expanded_receipt.as_ref() == Some(&id);
+            let title = if fields.action_text.trim().is_empty() {
+                "Título no disponible"
+            } else {
+                &fields.action_text
+            };
+            let row = div()
+                .id(("testing-receipt", index))
+                .cursor_pointer()
+                .flex()
+                .flex_col()
+                .min_w_0()
+                .gap(px(6.0))
+                .py(px(10.0))
+                .border_b_1()
+                .border_color(rgba(orbit::line_row(cx)))
+                .child(orbit::text(title.to_owned(), 14.0, 600, orbit::ink(cx), cx))
+                .child(
+                    orbit::meta(receipt.report_id.clone(), 10.0, orbit::ink_3(cx), cx)
+                        .overflow_hidden()
+                        .text_ellipsis(),
+                )
+                .child(orbit::text(
+                    format!(
+                        "{} · {} · {}",
+                        super::model::MODULES
+                            .iter()
+                            .find(|(key, _)| *key == fields.module)
+                            .map_or("Sin determinar", |(_, label)| *label),
+                        orbit::activity_time(
+                            &receipt.created_at,
+                            chrono::Local::now().fixed_offset()
+                        ),
+                        super::model::receipt_status(&receipt.report_state)
+                    ),
+                    12.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.expanded_receipt = if this.expanded_receipt.as_ref() == Some(&id) {
+                        None
+                    } else {
+                        Some(id.clone())
+                    };
+                    cx.notify();
+                }));
+            rows = rows.child(row);
+            if expanded {
+                rows = rows
                     .child(orbit::text(
-                        match receipt.report_state.as_str() {
-                            "submitted" => "Enviado",
-                            _ => "Estado no disponible",
-                        },
-                        12.0,
-                        600,
+                        format!(
+                            "Qué esperabas: {}\nQué ocurrió: {}\nContexto: {}",
+                            fields.expected_text, fields.observed_text, fields.context_text
+                        ),
+                        13.0,
+                        400,
                         orbit::ink_2(cx),
                         cx,
-                    )),
-            );
+                    ))
+                    .child(orbit::text(
+                        "Conversación · Próximamente",
+                        12.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    ));
+            }
         }
-        list.child(orbit::text("El estado corresponde al momento del envío. El seguimiento estará disponible próximamente.", 12.0, 400, orbit::ink_3(cx), cx))
+        orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .child(orbit::neo_header(
+                "Tus informes, paso a paso",
+                "v-testing",
+                cx,
+            ))
+            .child(orbit::text(
+                "Recibido → Reproducido → En arreglo → Arreglado en nightly.N",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+            .child(rows)
+            .child(orbit::text(
+                "Recibos de esta sesión. Estado al enviar; seguimiento posterior próximamente.",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+    }
+    fn reports(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let action = orbit::button(
+            "testing-compose",
+            if self.composing {
+                "Ver mis informes"
+            } else {
+                "Nuevo informe"
+            },
+            cx,
+        )
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.composing = !this.composing;
+            cx.notify();
+        }));
+        let mut body = div()
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(
+                div()
+                    .flex_none()
+                    .flex()
+                    .justify_between()
+                    .gap(px(10.0))
+                    .child(orbit::text("Informes", 18.0, 600, orbit::ink(cx), cx))
+                    .child(action),
+            );
+        if self.composing {
+            body = body.child(
+                div()
+                    .id("testing-composer-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.remote.update(cx, |remote, cx| {
+                        remote.editor.render(adapt.center_width() < 1050.0, cx)
+                    })),
+            );
+        } else {
+            body = body.child(self.reports_panel(cx));
+        }
+        body
     }
     pub(crate) fn topbar_controls(&self) -> Entity<orbit::Choice> {
         self.tabs.clone()
@@ -458,32 +548,33 @@ impl Testing {
     }
 }
 impl Render for Testing {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
             1 => self.pending_view("Cuestionarios", "Aún no hay cuestionarios disponibles. Próximamente podrás responder preguntas cortas del equipo.", cx),
-            2 => div().flex().flex_col().gap(px(16.0))
-                .child(self.remote.update(cx, |remote, cx| {
-                    remote.editor.render(f32::from(window.viewport_size().width) <= 1500.0, cx)
-                }))
-                .child(self.reports_panel(cx)),
+            2 => self.reports(cx),
             3 => self.pending_view("Comunidad", "Niveles y reconocimiento · Próximamente", cx),
             _ => self.summary(cx),
         };
         div()
             .id("testing-center")
-            .min_h(px((f32::from(window.viewport_size().height)
-                - cx.global::<orbit::design::Tokens>().geometry.topbar
-                - 2.0 * cx.global::<orbit::design::Tokens>().geometry.gutter
-                - 76.0)
-                .max(0.0)))
+            .flex_1()
+            .min_h_0()
             .w_full()
             .min_w_0()
             .flex()
             .flex_col()
             .gap(px(16.0))
-            .child(content)
-            .when(self.local_open, |page| page.child(self.local_tools(cx)))
+            .child(if self.local_open {
+                div()
+                    .id("testing-tools-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.local_tools(cx))
+            } else {
+                content
+            })
     }
 }
 impl Testing {
@@ -637,13 +728,15 @@ impl Testing {
     }
     fn summary(&self, cx: &mut Context<Self>) -> gpui::Div {
         let adapt = *cx.global::<orbit::Adapt>();
-        div().flex().flex_col().min_w_0().gap(px(adapt.gap()))
+        div().flex_1().min_h_0().flex().flex_col().min_w_0().gap(px(adapt.gap()))
             .child(orbit::hero_surface(cx).p(px(20.0)).gap(px(12.0))
                 .child(orbit::meta("CUESTIONARIOS · PRÓXIMAMENTE", 11.0, orbit::ink_3(cx), cx))
                 .child(orbit::caps("Tu experiencia cuenta", 28.0, orbit::ink(cx), cx))
                 .when(adapt.show_optional(), |hero| hero.child(orbit::text("Aún no hay cuestionarios disponibles. Puedes contarnos un problema o una sugerencia.", 14.0, 400, orbit::ink_2(cx), cx)))
                 .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
                     .on_click(cx.listener(|this, _, _, cx| {
+                        this.composing = true;
+                        this.local_open = false;
                         this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
                         cx.notify();
                     }))))

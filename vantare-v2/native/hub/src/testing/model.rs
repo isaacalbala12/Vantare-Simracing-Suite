@@ -167,3 +167,11 @@ mod kind_tests {
 
 /// Vistas R10.9; sin contadores de cuestionarios inventados.
 pub(super) const VIEWS: [&str; 4] = ["Resumen", "Cuestionarios", "Informes", "Comunidad"];
+
+/// El recibo acredita recepción, nunca el estado posterior del servidor.
+pub(super) fn receipt_status(state: &str) -> &'static str {
+    match state {
+        "submitted" => "Recibido",
+        _ => "Estado no disponible",
+    }
+}

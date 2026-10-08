@@ -1,9 +1,9 @@
 # ADR 0100 — Identidad Clerk, comercio Polar y datos Supabase
 
-Fecha: 2026-10-08. Estado: **propuesto**. Issue:
+Fecha: 2026-10-08. Estado: **aceptado para implementación**. Issue:
 [#1514](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1514).
-Isaac ha aprobado la dirección de proveedores; implementación y detalles de
-migración pendientes de revisión. Este ADR no acepta una venta ni un deploy.
+Isaac ha autorizado la implementación completa, sin cortes comerciales por fecha
+ni backfill. Este ADR no autoriza una venta ni un deploy.
 
 ## Contexto
 
@@ -35,15 +35,13 @@ como autoridad comercial y Vantare como autoridad de grants/capabilities.
    conserva credencial perpetua offline; revocaciones surten efecto al
    reconectar. Ningún cambio de proveedor de identidad modifica sujeto/clave de
    BIL-08.
-6. Production de Clerk antes de ventas; no mover Development preservando `sub`
-   por suposición. Enlace de cuentas valiosas con prueba fuerte y auditoría.
-   Webhooks de usuario firmados/idempotentes y tombstone protegen borrado,
-   reordenamiento y reprovisión tardía; no sincronizan permisos monetarios.
-7. Primer corte comercial puede limitarse a Launch desde app con OAuth Clerk y
-   pipeline billing existente. Es provisional y requiere gate end-to-end y
-   aceptación de Isaac; TPA/web/Pro y cierre global legacy siguen después. No
-   ampliar el bridge HS256 de datos como mecanismo de compra. Retirarlo después
-   de verificar todos sus consumidores, sin un conversor JWT nuevo.
+6. Instancia de producción verificada antes de ventas. Sin usuarios/pagos que
+   migrar: sin backfill ni compatibilidad Supabase Auth. Webhooks firmados,
+   idempotencia y tombstones protegen borrado y reprovisión tardía.
+7. Solución completa: Pro mensual/anual, trial siete días, Launch, web y cliente
+   nativo; sin cohorte, corte exclusivo Launch ni calendario comercial.
+   Reembolso failed/canceled restaura la fuente; disputa suspende y restaura si
+   gana el cliente. Recuperación automática con reintentos y reconciliación.
 
 ## Alternativas descartadas
 
@@ -73,9 +71,10 @@ existen cuentas Clerk-only ni restaurar snapshot sobre pagos nuevos.
 Plan aprobado por Isaac; inventario remoto agregado; tests auth/issuer/claim,
 concurrencia/upgrade/restore, segregación cuentas, borrado y rollback; matriz
 real nuevo checkout→pago→grant→credencial nativa y retirada/offline/reconexión.
-El 12-oct 09:00 decide Go/No-Go para 10:00; 19-oct es alternativa. Store
-requiere clasificación/certificación independientes. Código y despliegue son
-fases posteriores, no alcanzadas por este ADR.
+Sin fechas de apertura. Los tests locales no sustituyen la matriz real completa
+sandbox. Store requiere clasificación/certificación independientes. La
+implementación nativa debe resolver la diferencia entre OAuth del ADR y el token
+de sesión pedido por el encargo.
 
 Detalle: [plan BIL-13](../billing/bil-13-clerk-identidad-plan.md),
 [inventario](../billing/bil-13-supabase-auth-inventario.md). Referencias

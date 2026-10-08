@@ -29,7 +29,9 @@ export function getWebhookSecret(): string | null {
   return secret?.trim() ? secret.trim() : null;
 }
 
-export function readStandardWebhookHeaders(req: Request): StandardWebhookHeaders {
+export function readStandardWebhookHeaders(
+  req: Request,
+): StandardWebhookHeaders {
   return {
     id: req.headers.get(WEBHOOK_HEADER_ID) ?? "",
     timestamp: req.headers.get(WEBHOOK_HEADER_TIMESTAMP) ?? "",
@@ -86,7 +88,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 export async function verifyStandardWebhook(
   rawBody: string,
   headers: StandardWebhookHeaders,
-  secret: string,
+  secret: string | Uint8Array<ArrayBuffer>,
   toleranceSeconds = DEFAULT_TOLERANCE_SECONDS,
 ): Promise<void> {
   const missing = validateWebhookHeaderPresence(headers);
@@ -106,7 +108,9 @@ export async function verifyStandardWebhook(
     throw new WebhookVerificationError("Webhook timestamp outside tolerance");
   }
 
-  const keyBytes = decodeSigningSecret(secret);
+  const keyBytes = typeof secret === "string"
+    ? decodeSigningSecret(secret)
+    : secret;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     keyBytes,

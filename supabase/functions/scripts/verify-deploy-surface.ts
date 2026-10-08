@@ -1,4 +1,5 @@
 const productionFunctions = new Set([
+  "clerk-webhook",
   "billing-checkout",
   "billing-portal",
   "billing-webhook",
@@ -18,7 +19,7 @@ const recognizedFunctions = new Set([
   ...testingPilotFunctions,
   ...testingAutomationFunctions,
 ]);
-const infrastructure = new Set(["_deprecated", "_shared", "scripts"]);
+const infrastructure = new Set(["_deprecated", "_shared", "scripts", "node_modules"]);
 
 export function invalidDeployableDirectories(
   entries: Deno.DirEntry[],

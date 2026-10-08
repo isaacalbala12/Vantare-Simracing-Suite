@@ -1,48 +1,31 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1514 — revisión de identidad y plan de venta (2026-10-08)
+## ISA-1514 — implementación Clerk en curso
 
-Seguimiento en [GitHub #1514](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1514)
-por instrucción explícita de Isaac. Dirección autorizada: Clerk identidad,
-Polar MoR/cobros, Supabase datos/backend; Supabase Auth deja de identificar.
-Esta entrega es solo documental; la implementación requiere aprobar el plan.
-Worktree `C:/tmp/vantare-isa1514`, rama `vantareapp/isa-1514-identidad-clerk`,
-base #1513/#1506 `cb5b24b8c8e1f204a874fe5759e009b3507430e7`.
-PR draft contra `vantareapp/isa-1506-polar-atribucion`; SHA/URL/checks finales
-se registran en #1514. Candidato nativo leído `a8f9bdc3`; no importado.
+Seguimiento GitHub #1514; base aprobada #1517 `49946438`. Worktree
+`C:/tmp/vantare-isa1514-impl`, rama `vantareapp/isa-1514-identidad-impl`.
+Isaac autoriza solución completa sin fechas/cohorte, desde cero sin backfill.
+Refund failed/canceled restaura; disputa suspende y restaura si gana el cliente;
+recuperación automática, trial siete días, Launch offline y un equipo activo.
 
-[Inventario](../../billing/bil-13-supabase-auth-inventario.md),
-[plan](../../billing/bil-13-clerk-identidad-plan.md) y
-[ADR 0100 propuesta](../../adr/0100-proposed-clerk-identity-polar-supabase.md).
-Conservar UUID interno + mapping `(issuer, Clerk sub text)`, sin cambiar claves
-de negocio a text; checkout servidor usa ese UUID como external_customer_id.
-No vincular por email; cuarentena/replay auditado para huérfanos. Refund retira,
-disputa suspende, Launch perpetua offline/revocación tras reconexión, trial Pro
-siete días. Retirada al emitir refund, incluidos parcial/pending; recuperación
-tras failed/canceled y umbral de entrega requieren decisión.
+Fase 1 escrita: TPA, wrapper de sesión, mapping UUID, RLS/FKs, webhook Svix y
+tombstones. Deno 411/411 PASS; pgTAP preparado sin Docker/psql, no ejecutado.
+Sin deploy. [Plan vigente](../../billing/bil-13-clerk-identidad-plan.md),
+[estado/runbook](../../billing/bil-13-clerk-implementacion.md), ADR 0100 autorizado.
+La matriz sandbox y las fases 2–5 siguen pendientes; no-Go comercial.
+CLI Polar confirma sandbox Vantare `71f1b902-c29a-421b-aeb7-7861d8bbc08d`;
+falta proyecto/variables backend. Config pública refiere proyecto Supabase,
+pero no prueba producción; publishable keys públicas ausentes en el proceso.
 
-Isaac corrigió calendario: intentar cobrar **12-oct 10:00 Europe/Madrid**, gate
-**09:00**; si falla, venta **19-oct**. Mínimo propuesto: Launch desde app con
-Clerk producción y OAuth verificado, oferta/cohorte limitada, compra web/Pro
-cerradas hasta probarlas. No elimina gates de refund/disputa/entrega/rollback.
-19-oct completa web TPA, Pro, migración activa de Auth y objetivo Microsoft Store;
-certificación no garantizada. Fallback lunes: beta gratis/lista de espera con
-calidad/privacy y checkout cerrado servidor, sin trial que vaya a cobrar.
+Pendiente de aclaración: el encargo nativo pide sesión Clerk, mientras el ADR y
+la app usan OAuth/PKCE; no convertir OAuth en JWT de sesión. Siguiente: cerrar
+cobros/reconciliación y decidir esa frontera antes del commit nativo. No desplegar
+el corte aislado sobre clientes del bridge HS256. La minimización del webhook
+no declara purga RGPD completa de datos fiscales/evidencias.
 
-Bloqueos: Auth/getUser de billing, FK checkout attempts→Auth, Refund/Pro y
-disputa sin handler, portal nativo limitado a development, mezcla de schema
-base/nativo. Desconocidos: totales/config/deploy producción y Store. Docs
-oficiales verifican TPA y deprecación template; Development→Production no tiene
-traslado directo de usuarios. No tratar fixtures/sandbox histórico como clientes.
-Coste Clerk/TP-MAU/Store se revisa por Isaac; cualquier gasto queda detenido.
-`plan.md` y digest están retirados en esta base; divergencia con instrucciones
-aportadas documentada, sin recrear roadmap ni publicar estado remoto.
-
-Siguiente acción: Isaac revisa ADR/alcance mínimo y aporta solo counts/config
-pública; aprobar fases antes de implementar en nuevas issues/worktrees.
-Verificación documental de formato/diff/localizadores y remoto registrada al
-entregar. Sin tests de runtime por diff solo docs; sin secretos/.env,
-subagentes, producción/deploy, cobros/refunds, merge, promoción ni release.
+Sin secretos/.env, subagentes, producción, merge, promoción, release ni ventas.
+SHA/PR/CI final en GitHub #1514. Roadmap plan.md/digest ausentes en esta base;
+no recreados ni publicada una vista de roadmap distinta.
 
 ## ISA-1506 — revisión Polar; implementación detenida (2026-10-08)
 

@@ -9,12 +9,44 @@ use serde::{Deserialize, Serialize};
 pub enum Palette {
     #[default]
     Vantare,
+    /// «Vantare clásico»: tokens de la ronda 8 (§1).
+    Classic,
+    /// Grises neutros con acento azul (R10.1).
+    DeepSeek,
     Rose,
     Grove,
     Ocean,
     Ember,
     Iris,
     Mono,
+}
+
+impl Palette {
+    /// Orden de Ajustes › Apariencia (R10.1).
+    pub const ALL: [Self; 9] = [
+        Self::Vantare,
+        Self::Classic,
+        Self::DeepSeek,
+        Self::Rose,
+        Self::Grove,
+        Self::Ocean,
+        Self::Ember,
+        Self::Iris,
+        Self::Mono,
+    ];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Vantare => "Vantare",
+            Self::Classic => "Vantare clásico",
+            Self::DeepSeek => "DeepSeek",
+            Self::Rose => "Rose",
+            Self::Grove => "Grove",
+            Self::Ocean => "Ocean",
+            Self::Ember => "Ember",
+            Self::Iris => "Iris",
+            Self::Mono => "Mono",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -58,7 +90,6 @@ pub enum MonoFont {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppearanceSettings {
-    pub design: super::design::Design,
     pub palette: Palette,
     pub scheme: Scheme,
     pub contrast: u8,
@@ -70,7 +101,6 @@ pub struct AppearanceSettings {
 impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
-            design: super::design::Design::default(),
             palette: Palette::Vantare,
             scheme: Scheme::Dark,
             contrast: 100,
@@ -161,6 +191,8 @@ pub struct Theme {
     pub font_sans: &'static str,
     pub font_mono: &'static str,
     pub stage: StageBackground,
+    /// Tokens del Hub R9/R10 para shell y kit.
+    pub skin: super::skin::Skin,
 }
 
 impl gpui::Global for Theme {}
@@ -174,7 +206,6 @@ impl Default for Theme {
 impl Theme {
     pub fn apply_design(&mut self, tokens: &vantare_ui::theme::Tokens) {
         let c = &tokens.colors;
-        self.scheme = Scheme::Dark;
         self.stage = StageBackground {
             accent: c.accent,
             top: c.neo_top,
@@ -223,6 +254,7 @@ impl Theme {
             Scheme::Light => Scheme::Light,
         };
         let mut theme = Self::dark_defaults(palette, resolved_scheme, contrast, glass);
+        theme.skin = super::skin::Skin::resolve(palette, resolved_scheme);
         if resolved_scheme == Scheme::Light {
             theme.apply_light_defaults();
         }
@@ -318,6 +350,7 @@ impl Theme {
                 top: 0x29_2026,
                 base: 0x10_0d11,
             },
+            skin: super::skin::Skin::vantare(),
         }
     }
 
@@ -1099,23 +1132,105 @@ pub fn system_settings(
 }
 
 pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, cx: &mut gpui::App) {
-    let base = if cx.try_global::<super::design::Tokens>().is_some() {
+    let mut resolved = Theme::from_settings(system_settings(
         AppearanceSettings {
             contrast: 100,
             glass_opacity: 80,
             ..settings
-        }
-    } else {
-        settings
-    };
-    let mut resolved = Theme::from_settings(system_settings(base, appearance));
-    if let Some(tokens) = cx.try_global::<super::design::Tokens>() {
-        resolved.apply_design(tokens);
-        resolved.apply_accessibility(settings.contrast, settings.glass_opacity);
-    }
+        },
+        appearance,
+    ));
+    // Las páginas existentes leen `design::Tokens`; ahora nacen del tema elegido.
+    let tokens = design_tokens(&resolved.skin);
+    resolved.apply_design(&tokens);
+    resolved.apply_accessibility(settings.contrast, settings.glass_opacity);
+    cx.set_global(tokens);
     cx.set_global(settings);
     cx.set_global(resolved);
     cx.refresh_windows();
+}
+
+/// Contrato heredado de `vantare-ui` (#1470) derivado del tema R10.
+pub fn design_tokens(skin: &super::skin::Skin) -> super::design::Tokens {
+    use super::design::{Colors, Fonts, Geometry, Gradients, Shadow, Tokens};
+    let (alpha, blur, y) = skin.neo_shadow;
+    let ramp = |r: super::skin::Ramp| [r.from, r.to];
+    let defaults = super::design::Design::GrafitoCarmin
+        .compiled()
+        .map(|tokens| tokens.gradients)
+        .ok();
+    Tokens {
+        name: "Vantare".into(),
+        colors: Colors {
+            window: skin.base,
+            base: skin.base,
+            sidebar: skin.sidebar.to,
+            l1: skin.l1,
+            l2: skin.l2,
+            l3: skin.l3,
+            elevated: skin.el,
+            neo_top: skin.neo.from,
+            neo_bottom: skin.neo.to,
+            text: skin.text1,
+            text2: skin.text2,
+            text3: skin.text3,
+            caption: skin.cap,
+            on_primary: skin.on_primary,
+            accent: skin.accent,
+            accent_bright: skin.accent_bright,
+            accent_dark: skin.accent_fill,
+            wine: skin.wine,
+            ok: skin.ok,
+            warn: skin.warn,
+            error: skin.err,
+            line: skin.line1,
+            line2: skin.line2,
+            line3: skin.line3,
+        },
+        geometry: Geometry {
+            sidebar: 272.0,
+            sidebar_collapsed: 76.0,
+            gap: 16.0,
+            gutter: 28.0,
+            radius: skin.radius.lg,
+            control_radius: skin.radius.sm,
+            control_height: 36.0,
+            topbar: 52.0,
+            columns: 3,
+        },
+        fonts: Fonts {
+            body: "Inter W400".into(),
+            display: "Rajdhani".into(),
+            mono: "Space Mono".into(),
+            body_size: 14.0,
+            small_size: 12.0,
+            title_size: 56.0,
+        },
+        shadow: Shadow {
+            light_alpha: f32::from((skin.neo_light & 0xff) as u8) / 255.0,
+            alpha,
+            blur,
+            y,
+        },
+        gradients: Gradients {
+            hero: ramp(skin.hero),
+            button: ramp(skin.button),
+            progress: ramp(skin.progress),
+            active: ramp(skin.nav_active),
+            // Los colores de las apps no cambian con el tema (R10.1).
+            ..defaults.unwrap_or(Gradients {
+                hero: [0; 2],
+                button: [0; 2],
+                progress: [0; 2],
+                active: [0; 2],
+                app_game: [0x002f_6ad8, 0x0012_2e6a],
+                app_voice: [0x00e9_852a, 0x008f_450b],
+                app_tools: [0x008a_4ce0, 0x0040_207a],
+                app_video: [0x005a_5d64, 0x0026_272b],
+                app_music: [0x0022_c35d, 0x000e_6b30],
+            })
+        },
+    }
 }
 impl gpui::Global for AppearanceSettings {}
 

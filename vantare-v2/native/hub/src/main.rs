@@ -9,25 +9,13 @@ use vantare_hub::orbit::theme::{AppearanceSettings, Palette, Scheme};
 use vantare_hub::{Section, shell::Options};
 
 fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
-    use vantare_hub::orbit::design::Design;
-    let design = match value {
-        "grafito-carmin" => Some(Design::GrafitoCarmin),
-        "deepseek-harness" => Some(Design::DeepseekHarness),
-        "noche-le-mans" => Some(Design::NocheLeMans),
-        "piedra-calida" => Some(Design::PiedraCalida),
-        _ => None,
-    };
-    if let Some(design) = design {
-        return Ok(AppearanceSettings {
-            design,
-            ..Default::default()
-        });
-    }
     let (palette, scheme) = value
         .split_once('-')
         .ok_or("apariencia requiere paleta-esquema")?;
     let palette = match palette {
         "vantare" => Palette::Vantare,
+        "classic" => Palette::Classic,
+        "deepseek" => Palette::DeepSeek,
         "rose" => Palette::Rose,
         "grove" => Palette::Grove,
         "ocean" => Palette::Ocean,
@@ -346,7 +334,7 @@ fn main() -> ExitCode {
                 "{error}
 uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
      vantare-hub --capture PANTALLA --out PNG [--demo] [--size WxH] [--appearance PALETA-dark|PALETA-light]
-     paletas: vantare, rose, grove, ocean, ember, iris, mono"
+     paletas: vantare, classic, deepseek, rose, grove, ocean, ember, iris, mono"
             );
             return ExitCode::from(2);
         }
@@ -387,21 +375,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn capture_accepts_the_four_shared_designs() {
-        for (name, design) in [
-            "grafito-carmin",
-            "deepseek-harness",
-            "noche-le-mans",
-            "piedra-calida",
-        ]
-        .into_iter()
-        .zip(vantare_hub::orbit::design::Design::ALL)
-        {
-            assert_eq!(capture_appearance(name).expect("tema").design, design);
-        }
-        assert!(capture_appearance("tema-desconocido").is_err());
-    }
-    #[test]
     fn capture_size_is_explicit_validated_and_capture_only() {
         let capture = ["--capture", "inicio-base", "--out", "capture.png"];
         let args = |extra: &[&str]| {
@@ -440,6 +413,8 @@ mod tests {
     fn capture_appearance_resolves_the_requested_palette_and_scheme() {
         for (name, palette) in [
             ("vantare", Palette::Vantare),
+            ("classic", Palette::Classic),
+            ("deepseek", Palette::DeepSeek),
             ("rose", Palette::Rose),
             ("grove", Palette::Grove),
             ("ocean", Palette::Ocean),

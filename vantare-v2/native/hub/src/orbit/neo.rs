@@ -249,3 +249,65 @@ pub fn scroll_fade(content: Stateful<Div>, background: u32) -> Div {
                 )),
         )
 }
+
+/// Texto con familia propia y tracking por carácter (GPUI no expone `letter-spacing`).
+fn tracked_family(
+    content: &str,
+    family: SharedString,
+    size: f32,
+    weight: f32,
+    color: u32,
+    tracking: f32,
+) -> Div {
+    div()
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(tracking))
+        .text_size(px(size))
+        .line_height(px(size.ceil()))
+        .font_family(family)
+        .font_weight(gpui::FontWeight(weight))
+        .text_color(rgb(color))
+        .children(
+            content
+                .chars()
+                .map(|c| div().flex_none().child(c.to_string())),
+        )
+}
+/// Rótulo R9.2: cabeceras de tarjeta, secciones de barra y grupos. Rajdhani 600 MAYÚSCULAS.
+pub fn caps(content: &str, size: f32, color: u32, cx: &gpui::App) -> Div {
+    tracked_family(
+        &content.to_uppercase(),
+        cx.global::<design::Tokens>().fonts.display.clone().into(),
+        size,
+        600.0,
+        color,
+        if size >= 15.0 { 1.6 } else { 1.8 },
+    )
+}
+/// Eyebrow y metadato R9.2: Space Mono MAYÚSCULAS (respeta la monoespaciada elegida).
+pub fn meta(content: &str, size: f32, color: u32, cx: &gpui::App) -> Div {
+    tracked_family(
+        &content.to_uppercase(),
+        super::mono_family(cx).to_owned().into(),
+        size,
+        400.0,
+        color,
+        0.4,
+    )
+}
+/// Display R9.2 sin mayúsculas (saludo, nombres de perfil, cifras).
+pub fn display(content: impl Into<SharedString>, size: f32, color: u32, cx: &gpui::App) -> Div {
+    div()
+        .text_size(px(size))
+        .line_height(px((size * 1.1).ceil()))
+        .font_family(cx.global::<design::Tokens>().fonts.display.clone())
+        .font_weight(gpui::FontWeight(600.0))
+        .text_color(rgb(color))
+        .child(content.into())
+}
+/// Cifras tabulares (`tnum`) para todo el Hub.
+pub fn tabular_numbers() -> gpui::FontFeatures {
+    gpui::FontFeatures(std::sync::Arc::new(vec![("tnum".into(), 1)]))
+}

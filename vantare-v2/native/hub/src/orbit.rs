@@ -15,6 +15,7 @@ mod neo;
 pub use neo::*;
 mod input;
 mod layer;
+pub mod skin;
 mod specimen;
 mod state;
 pub mod theme;
@@ -26,6 +27,24 @@ pub use specimen::{Specimen, run_kit};
 pub use state::{ChoiceState, NumberRange, OptionItem};
 
 // Accesores: los colores pertenecen al global GPUI, nunca a un static mutable.
+/// Tokens R9/R10 del tema activo.
+pub fn skin(cx: &gpui::App) -> &skin::Skin {
+    &cx.global::<theme::Theme>().skin
+}
+/// Color `0xRRGGBBAA` del tema como `Hsla`.
+pub fn alpha(color: u32) -> Hsla {
+    rgba(color).into()
+}
+/// Anillo de selección R9.1: inset 2 px, nunca sobresale ni se corta.
+pub fn selection_ring(cx: &gpui::App) -> Vec<gpui::BoxShadow> {
+    vec![gpui::BoxShadow {
+        color: alpha(skin(cx).selection),
+        offset: gpui::point(px(0.0), px(0.0)),
+        blur_radius: px(0.0),
+        spread_radius: px(2.0),
+        inset: true,
+    }]
+}
 pub fn coral(cx: &gpui::App) -> u32 {
     cx.global::<theme::Theme>().coral
 }

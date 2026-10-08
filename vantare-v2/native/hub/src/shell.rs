@@ -69,7 +69,6 @@ struct Hub {
     remote: Entity<crate::services::view::Remote>,
     testing: Entity<Testing>,
     settings: settings::State,
-    live_theme: orbit::design::LiveTheme,
     home_previews: foundations::Previews,
     home_profile: Entity<orbit::Choice>,
     status: Option<String>,
@@ -88,24 +87,6 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
-        match self
-            .live_theme
-            .poll(self.settings.appearance.settings.design)
-        {
-            Ok(true) => {
-                cx.set_global(self.live_theme.value.clone());
-                orbit::theme::apply(
-                    self.settings.appearance.settings,
-                    gpui::WindowAppearance::Dark,
-                    cx,
-                );
-            }
-            Err(error) => {
-                self.live_theme.error = Some(error);
-                cx.notify();
-            }
-            Ok(false) => {}
-        }
         self.poll_beta_update(cx);
         if self.capture.is_none() {
             let access = self.remote.update(cx, |remote, cx| {
@@ -462,9 +443,6 @@ impl Hub {
             .when(self.section == Section::Settings, |content| {
                 content.gap(gpui::px(16.0)).child(self.settings_header(cx))
             })
-            .when_some(self.live_theme.error.clone(), |content, error| {
-                content.child(orbit::callout(error, cx))
-            })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status, cx))
             })
@@ -735,6 +713,7 @@ impl Render for Hub {
             .bg(gpui::rgb(orbit::canvas(cx)))
             .text_color(gpui::rgb(orbit::ink(cx)))
             .font_family(crate::orbit::sans_override("Inter W400", cx))
+            .font_features(orbit::tabular_numbers())
             .when_some(background, gpui::ParentElement::child)
             .child(rail)
             .child(main)
@@ -933,7 +912,6 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 struct Loaded {
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
-    live_theme: orbit::design::LiveTheme,
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
@@ -967,7 +945,6 @@ impl Hub {
         let Loaded {
             preview_fixtures,
             appearance,
-            live_theme,
             prepared,
             studio: prepared_studio,
             calendar,
@@ -982,7 +959,6 @@ impl Hub {
             demo,
             capture,
         } = loaded;
-        cx.set_global(live_theme.value.clone());
         orbit::theme::install(appearance.settings, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -1087,7 +1063,6 @@ impl Hub {
             remote,
             testing,
             settings,
-            live_theme,
             home_previews,
             home_profile,
             notifications,
@@ -1179,14 +1154,12 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
         }
     };
-    let live_theme = orbit::design::LiveTheme::new(appearance.settings.design)?;
     let loaded = Loaded {
         preview_fixtures: options
             .capture
             .as_ref()
             .map(|_| foundations::capture_photos())
             .transpose()?,
-        live_theme,
         appearance,
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,

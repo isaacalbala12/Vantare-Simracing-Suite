@@ -289,71 +289,48 @@ fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
                 .child(paragraph(content, 14.0, 400, orbit::ink_2(cx), cx)),
         )
 }
+/// Tarjeta de tema R10.1: nombre y dos orbes (claro y oscuro) con acento y fondo.
 fn palette_card(
     index: usize,
-    name: &str,
-    surface: u32,
-    accent: u32,
+    palette: orbit::theme::Palette,
     active: bool,
     cx: &gpui::App,
 ) -> gpui::Stateful<Div> {
-    div()
+    use orbit::skin::Skin;
+    let orb = |skin: Skin| {
+        div()
+            .size(px(26.0))
+            .flex_none()
+            .rounded_full()
+            .border_1()
+            .border_color(orbit::tint(0x00ff_ffff, 0.14))
+            .bg(linear_gradient(
+                135.0,
+                linear_color_stop(rgb(skin.accent), 0.0),
+                linear_color_stop(rgb(skin.base), 1.0),
+            ))
+    };
+    orbit::neo_card(cx)
         .id(("settings-palette-card", index))
         .role(gpui::Role::Button)
-        .aria_label(name)
+        .aria_label(palette.label())
         .aria_selected(active)
         .tab_stop(false)
-        .flex_1()
-        .min_w(px(180.0))
-        .p(px(12.0))
-        .flex()
-        .flex_col()
-        .gap(px(12.0))
-        .rounded(px(16.0))
-        .border_2()
-        .border_color(if active {
-            rgb(orbit::carmine(cx))
-        } else {
-            rgba(orbit::line(cx))
-        })
-        .bg(rgb(orbit::surface_1(cx)))
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap(px(10.0))
+        .px(px(14.0))
+        .py(px(10.0))
+        .child(text(palette.label(), 14.0, 500, orbit::ink(cx), cx))
         .child(
             div()
-                .h(px(100.0))
-                .w_full()
-                .rounded(px(12.0))
-                .bg(rgb(surface))
-                .p(px(12.0))
                 .flex()
-                .gap(px(12.0))
-                .child(
-                    div()
-                        .w(px(32.0))
-                        .h_full()
-                        .rounded(px(6.0))
-                        .bg(orbit::tint(accent, 0.12)),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .gap(px(12.0))
-                        .child(
-                            div()
-                                .h(px(40.0))
-                                .rounded(px(8.0))
-                                .bg(orbit::tint(orbit::ink(cx), 0.08)),
-                        )
-                        .child(div().w(px(64.0)).h(px(18.0)).rounded_full().bg(rgb(accent))),
-                ),
+                .gap(px(6.0))
+                .child(orb(Skin::resolve(palette, orbit::theme::Scheme::Light)))
+                .child(orb(Skin::resolve(palette, orbit::theme::Scheme::Dark))),
         )
-        .child(text(name, 14.0, 700, orbit::ink(cx), cx))
-        .child(orbit::pill(
-            if active { "Actual" } else { "Seleccionar" },
-            Tone::Neutral,
-            cx,
-        ))
+        .when(active, |card| card.shadow(orbit::selection_ring(cx)))
         .aria_description("Tema persistido en los ajustes locales de apariencia")
 }
 fn disabled_toggle(
@@ -759,7 +736,7 @@ impl Hub {
                             .flex_shrink(0.0)
                             .child(orbit::neo_header("Vantare", "v-home", cx))
                             .child(text(
-                                cx.global::<orbit::design::Tokens>().name.clone(),
+                                cx.global::<orbit::theme::Theme>().palette.label(),
                                 20.0,
                                 700,
                                 orbit::ink(cx),
@@ -1224,38 +1201,24 @@ impl Hub {
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
         let settings = self.settings.appearance.settings;
-        let mut palettes = div().w_full().grid().grid_cols(2).gap(px(12.0));
-        for (index, design) in orbit::design::Design::ALL.into_iter().enumerate() {
-            let tokens = match design.compiled() {
-                Ok(tokens) => tokens,
-                Err(error) => {
-                    palettes = palettes.child(orbit::callout(error, cx));
-                    continue;
-                }
-            };
+        let mut palettes = div().w_full().grid().grid_cols(3).gap(px(10.0));
+        for (index, palette) in orbit::theme::Palette::ALL.into_iter().enumerate() {
             palettes = palettes.child(
-                palette_card(
-                    index,
-                    &tokens.name,
-                    tokens.colors.neo_bottom,
-                    tokens.colors.accent,
-                    index == settings.design as usize,
-                    cx,
-                )
-                .track_focus(&self.settings.appearance_focus[index])
-                .tab_index(0)
-                .cursor_pointer()
-                .on_click(
-                    cx.listener(move |hub, _, window, cx| hub.settings_palette(index, window, cx)),
-                )
-                .on_key_down(cx.listener(
-                    move |hub, event: &gpui::KeyDownEvent, window, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            hub.settings_palette(index, window, cx);
-                            cx.stop_propagation();
-                        }
-                    },
-                )),
+                palette_card(index, palette, palette == settings.palette, cx)
+                    .track_focus(&self.settings.appearance_focus[index])
+                    .tab_index(0)
+                    .cursor_pointer()
+                    .on_click(cx.listener(move |hub, _, window, cx| {
+                        hub.settings_palette(index, window, cx);
+                    }))
+                    .on_key_down(cx.listener(
+                        move |hub, event: &gpui::KeyDownEvent, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                hub.settings_palette(index, window, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             );
         }
         let contrast = self.settings_slider(0, cx);

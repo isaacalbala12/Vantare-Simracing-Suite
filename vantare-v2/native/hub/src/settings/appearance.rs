@@ -141,12 +141,6 @@ impl Hub {
     ) {
         match self.settings.appearance.save(settings) {
             Ok(()) => {
-                if let Err(error) = self.live_theme.select(settings.design) {
-                    self.settings.status = Some(error);
-                    cx.notify();
-                    return;
-                }
-                cx.set_global(self.live_theme.value.clone());
                 theme::apply(self.settings.appearance.settings, window.appearance(), cx);
                 self.settings.status = None;
             }
@@ -173,12 +167,11 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(design) = crate::orbit::design::Design::ALL.get(index).copied() else {
+        let Some(palette) = theme::Palette::ALL.get(index).copied() else {
             return;
         };
         let mut settings = self.settings.appearance.settings;
-        settings.design = design;
-        settings.scheme = theme::Scheme::Dark;
+        settings.palette = palette;
         self.settings_appearance_apply(settings, window, cx);
     }
     pub(super) fn settings_slider_pointer(
@@ -290,8 +283,7 @@ mod tests {
         assert_eq!(first.settings.scheme, Scheme::Dark);
         let mut other = Store::load(path.clone()).expect("second reader");
         let settings = AppearanceSettings {
-            design: crate::orbit::design::Design::DeepseekHarness,
-            palette: theme::Palette::Ocean,
+            palette: theme::Palette::DeepSeek,
             scheme: Scheme::System,
             contrast: 115,
             glass_opacity: 65,

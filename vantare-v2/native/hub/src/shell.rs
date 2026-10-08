@@ -1238,7 +1238,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 },
                 titlebar: Some(gpui::TitlebarOptions {
                     appears_transparent: options.capture.is_some(),
-                    title: Some("Vantare Hub".into()),
+                    title: Some("Vantare".into()),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -1264,10 +1264,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
             if options.capture.is_none()
                 && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
-                && let Err(error) = std::fs::write(
-                    PathBuf::from(root).join("hub-ready"),
-                    std::process::id().to_string(),
-                )
+                && let Err(error) = crate::installation::confirm_ready(&PathBuf::from(root))
             {
                 *failure.borrow_mut() = Some(format!("confirmar arranque beta: {error}"));
                 cx.quit();

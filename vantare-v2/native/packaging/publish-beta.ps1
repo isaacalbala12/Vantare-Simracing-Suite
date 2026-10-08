@@ -46,4 +46,4 @@ $setup = Join-Path $output 'VantareSetup.exe'
 [IO.File]::WriteAllText("$setup.sha256", "$(Get-NativeHash $setup)  VantareSetup.exe`n")
 # Solo imprime el comando; la publicación pertenece al orquestador.
 Write-Output "Listo: $output"
-Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare Native Beta $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-beta.json'"
+Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-beta.json'"

@@ -264,6 +264,21 @@ fn carousel_offset(
     (offset + delta).clamp(-maximum, px(0.0))
 }
 
+fn hero_height(adapt: orbit::Adapt) -> f32 {
+    match adapt.density {
+        orbit::Density::A => 388.0,
+        orbit::Density::M => 354.0,
+        orbit::Density::B | orbit::Density::Xs => 318.0,
+    }
+}
+fn poster_height(adapt: orbit::Adapt, profiles: usize) -> f32 {
+    let (top, _, bottom) = adapt.padding();
+    let available =
+        adapt.height - 52.0 - top - bottom - 60.0 - hero_height(adapt) - adapt.gap() * 2.0 - 30.0;
+    let rows = profiles.saturating_add(1).div_ceil(2).clamp(1, 2);
+    ((available - 12.0) / if rows == 1 { 1.0 } else { 2.0 }).max(140.0)
+}
+
 impl Launcher {
     fn sync_showcase_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(profile) = self
@@ -636,7 +651,7 @@ impl Launcher {
             .overflow_x_scroll()
             .child(
                 row.when(!running, |row| {
-                    row.min_h(px(if compact { 180.0 } else { 260.0 }))
+                    row.min_h(px(if compact { 108.0 } else { 126.0 }))
                 })
                 .min_w(px(u16::try_from(profile.steps.len())
                     .map_or(0.0, f32::from)
@@ -676,7 +691,7 @@ impl Launcher {
                 orbit::play_button(
                     "showcase-launch",
                     if running { "Lanzando…" } else { "Lanzar" },
-                    52.0,
+                    cx.global::<orbit::Adapt>().hero_button(),
                     self.default_profile_id().as_deref() == Some(profile.id.as_str()),
                     cx,
                 )
@@ -744,29 +759,27 @@ impl Launcher {
                         })),
                 )
             });
-        let mut card = orbit::neo_card(cx)
+        let adapt = *cx.global::<orbit::Adapt>();
+        let mut card = orbit::hero_surface(cx)
             .id("showcase-hero")
             .relative()
             .overflow_hidden()
-            .overflow_y_scroll()
-            .flex_1()
-            .min_h(px(if compact { 430.0 } else { 0.0 }))
-            .gap(px(if compact || running { 8.0 } else { 24.0 }))
-            .p(px(if compact { 20.0 } else { 32.0 }))
-            .bg(orbit::gradient(
-                cx.global::<orbit::design::Tokens>().gradients.hero,
-                120.0,
-            ))
+            .flex_none()
+            .h(px(hero_height(adapt)))
+            .gap(px(if compact { 10.0 } else { 14.0 }))
+            .p(px(if compact { 20.0 } else { 28.0 }))
             .child(
-                orbit::icon("track", 540.0, orbit::ink(cx))
+                orbit::circuit(None, cx)
                     .absolute()
-                    .right(px(12.0))
-                    .top(px(0.0))
-                    .opacity(0.08),
+                    .right(px(24.0))
+                    .top(px(18.0))
+                    .w(gpui::relative(0.46))
+                    .h(px(160.0))
+                    .opacity(0.5),
             )
             .child(orbit::text(
                 if running {
-                    "● Lanzando tu perfil"
+                    "● Lanzando…"
                 } else if profile.favorite {
                     "★ Tu perfil favorito · Ctrl L"
                 } else {
@@ -863,12 +876,7 @@ impl Launcher {
         })
         .child(
             self.showcase_steps(profile, running, compact, cx)
-                .mt(px(12.0))
-                .when(!running, |steps| {
-                    steps
-                        .mt_auto()
-                        .min_h(px(if compact { 180.0 } else { 260.0 }))
-                }),
+                .mt(px(0.0)),
         )
         .when(running, |card| card.child(div().flex_1()))
         .when(running, |card| card.child(self.showcase_quick(profile, cx)))
@@ -950,7 +958,13 @@ impl Launcher {
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.
     fn showcase_profiles(&self, compact: bool, cx: &mut Context<Self>) -> Stateful<Div> {
         let width = if compact { 200.0 } else { 284.0 };
-        let height = if compact { 166.0 } else { 206.0 };
+        let adapt = *cx.global::<orbit::Adapt>();
+        let grid = adapt.show_optional();
+        let height = if grid {
+            poster_height(adapt, self.store.document.profiles.len())
+        } else {
+            156.0
+        };
         let content_width = self
             .store
             .document
@@ -962,10 +976,12 @@ impl Launcher {
             .flex_none()
             .h(px(height))
             .flex()
-            .gap(px(14.0));
+            .gap(px(12.0))
+            .when(grid, |row| row.w_full().h_auto().grid().grid_cols(2));
         for (index, profile) in self.store.document.profiles.iter().enumerate() {
             let selected = profile.id.clone();
-            let keyboard_selection = selected.clone();
+            let profile_for_click = profile.clone();
+            let keyboard_profile = profile.clone();
             let gradients = &cx.global::<orbit::design::Tokens>().gradients;
             let cover = if profile.favorite {
                 [gradients.button[1], gradients.hero[1]]
@@ -991,6 +1007,7 @@ impl Launcher {
                     )
                     .flex_none()
                     .w(px(width))
+                    .when(grid, |card| card.w_full().h(px(height)))
                     .overflow_hidden()
                     .gap(px(8.0))
                     .p(px(8.0))
@@ -1003,7 +1020,8 @@ impl Launcher {
                         div()
                             .relative()
                             .overflow_hidden()
-                            .h(px(if compact { 80.0 } else { 120.0 }))
+                            .h(px(if compact { 76.0 } else { 120.0 }))
+                            .when(grid, |cover| cover.flex_1().min_h_0())
                             .flex_none()
                             .flex()
                             .items_end()
@@ -1011,7 +1029,9 @@ impl Launcher {
                             .p(px(14.0))
                             .bg(orbit::gradient(cover, 120.0))
                             .child(
-                                orbit::icon("track", 250.0, orbit::ink(cx))
+                                orbit::circuit(None, cx)
+                                    .w_full()
+                                    .h_full()
                                     .absolute()
                                     .right_0()
                                     .top(px(-45.0))
@@ -1065,22 +1085,24 @@ impl Launcher {
                         cx,
                     ))
                     .cursor_pointer()
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.listener(move |this, _, window, cx| {
                         if this.launch_progress().is_some() {
                             return;
                         }
                         this.selected_profile = Some(selected.clone());
-                        cx.notify();
+                        this.profile_editor(profile_for_click.clone(), window, cx);
                     }))
-                    .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
-                        if this.launch_progress().is_none()
-                            && matches!(event.keystroke.key.as_str(), "enter" | "space")
-                        {
-                            this.selected_profile = Some(keyboard_selection.clone());
-                            cx.notify();
-                            cx.stop_propagation();
-                        }
-                    })),
+                    .on_key_down(cx.listener(
+                        move |this, event: &gpui::KeyDownEvent, window, cx| {
+                            if this.launch_progress().is_none()
+                                && matches!(event.keystroke.key.as_str(), "enter" | "space")
+                            {
+                                this.selected_profile = Some(keyboard_profile.id.clone());
+                                this.profile_editor(keyboard_profile.clone(), window, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
             );
         }
         row = row.child(
@@ -1088,6 +1110,7 @@ impl Launcher {
                 .h_auto()
                 .rounded(px(18.0))
                 .w(px(150.0))
+                .when(grid, |card| card.w_full().h(px(height)))
                 .flex_none()
                 .on_click(cx.listener(|this, _, window, cx| this.new_profile(None, window, cx))),
         );
@@ -1127,7 +1150,8 @@ impl Launcher {
         }
         div()
             .id("showcase-profiles")
-            .flex_none()
+            .flex_1()
+            .min_h_0()
             .flex()
             .flex_col()
             .gap(px(6.0))
@@ -1138,6 +1162,9 @@ impl Launcher {
                     .w_full()
                     .h(px(height))
                     .overflow_x_scroll()
+                    .when(grid, |list| {
+                        list.flex_1().min_h_0().h_auto().overflow_y_scroll()
+                    })
                     .track_scroll(&scroll)
                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
                         let delta = event.delta.pixel_delta(px(24.0));
@@ -1458,55 +1485,34 @@ impl Launcher {
             let entity = cx.entity();
             window.on_next_frame(move |_, cx| entity.update(cx, |_, cx| cx.notify()));
         }
-        let tokens = cx.global::<orbit::design::Tokens>();
-        let gap = tokens.geometry.gap;
-        let gutter = tokens.geometry.gutter;
+        let adapt = *cx.global::<orbit::Adapt>();
+        let (top, side, bottom) = adapt.padding();
+        let gap = adapt.gap();
         let profile = self.showcase_profile();
-        let heading =
-            div()
-                .flex_none()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .child(orbit::text("Launcher", 28.0, 600, orbit::ink(cx), cx))
-                        .child(orbit::text(
-                            "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
-                            14.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )),
+        let heading = div()
+            .flex_none()
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .child(
+                orbit::neo_page_header(
+                    "Launcher",
+                    "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
+                    cx,
                 )
-                .child(
-                    div()
-                        .flex()
-                        .gap(px(8.0))
-                        .child(
-                            button("showcase-manage", "Aplicaciones", cx).on_click(cx.listener(
-                                |this, _, _, cx| {
-                                    this.page = LauncherPage::Manage;
-                                    cx.notify();
-                                },
-                            )),
-                        )
-                        .child(button("showcase-history-open", "Historial", cx).on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.page = LauncherPage::History;
-                                cx.notify();
-                            }),
-                        ))
-                        .child(button("showcase-new-top", "+ Nuevo perfil", cx).on_click(
-                            cx.listener(|this, _, window, cx| this.new_profile(None, window, cx)),
-                        )),
-                );
+                .flex_1(),
+            )
+            .child(
+                orbit::button("showcase-new-top", "+ Nuevo perfil", cx).on_click(
+                    cx.listener(|this, _, window, cx| this.new_profile(None, window, cx)),
+                ),
+            );
         let mut center = div()
             .id("showcase-center")
             .flex_1()
             .min_w_0()
             .min_h_0()
-            .overflow_y_scroll()
+            .overflow_hidden()
             .flex()
             .flex_col()
             .gap(px(gap));
@@ -1527,55 +1533,22 @@ impl Launcher {
         };
         center = center
             .child(self.showcase_profiles(f32::from(window.viewport_size().width) < 1700.0, cx));
-        let short = f32::from(window.viewport_size().height) < 900.0;
-        let mut context = div()
-            .w(gpui::relative(1.0 / 3.0))
-            .min_w_0()
-            .min_h_0()
-            .flex_none()
-            .flex()
-            .flex_col()
-            .gap(px(gap))
-            .child(self.showcase_apps(
-                profile,
-                f32::from(window.viewport_size().height) < 1000.0,
-                cx,
-            ));
-        if let Some(profile) = profile {
-            context = context.child(self.showcase_options(
-                profile,
-                f32::from(window.viewport_size().height) < 1000.0,
-                short,
-                cx,
-            ));
-        }
-        context = context
-            .child(self.showcase_history(f32::from(window.viewport_size().width) < 1700.0, cx));
         div()
             .id("launcher-showcase")
             .size_full()
-            .h(px(f32::from(window.viewport_size().height)
-                - cx.global::<orbit::design::Tokens>().geometry.topbar))
             .min_w_0()
             .min_h_0()
             .flex()
             .flex_col()
-            .p(px(gutter))
-            .pt(px(20.0))
+            .px(px(side))
+            .pt(px(top))
+            .pb(px(bottom))
             .gap(px(12.0))
             .child(heading)
             .when_some(self.error.clone(), |page, error| {
                 page.child(orbit::callout(error, cx))
             })
-            .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .gap(px(gap))
-                    .child(center)
-                    .child(context),
-            )
+            .child(div().flex_1().min_h_0().flex().gap(px(gap)).child(center))
     }
 }
 

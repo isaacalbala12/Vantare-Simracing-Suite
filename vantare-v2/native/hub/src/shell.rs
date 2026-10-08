@@ -587,6 +587,9 @@ impl Hub {
 impl Render for Hub {
     #[allow(clippy::too_many_lines)] // Compone el marco común y la visibilidad del editor Strategy en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.privacy_question_pending() {
+            return self.privacy_question(window, cx).into_any_element();
+        }
         if self.capture.is_none() && self.remote.read(cx).requires_access() {
             return self
                 .remote

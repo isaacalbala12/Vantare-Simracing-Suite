@@ -1654,3 +1654,68 @@ No se recrea una fuente paralela. UI/web/widgets y aprobación wordmark pertenec
 a sus cortes. Entrega con commit local e informe ≤10 líneas en
 `C:/tmp/ui-r10/informe-1504.md`; comentario GitHub autorizado. Pendiente review
 e integración por orquestador; sin push, PR, CI remota, merge, promoción ni release.
+
+## #1515 — Informes de fallos con consentimiento (2026-10-08)
+
+Brief autorizado `C:/tmp/lanzamiento/brief-1515.md`; GitHub #1515 fija alcance
+y tracker frente a la referencia Notion antigua del checkout. Worktree
+`C:/tmp/vw3-1515/vantare-v2`, rama `vantareapp/isa-1515-consentimiento-fallos`,
+base candidato beta `a8f9bdc3b69561e007e656f270de95fa41fba54b`, inicialmente limpio.
+Worker sin delegación. #1506 y producción permanecen fuera del cambio.
+
+`Privacy::default` desactiva fallos y uso. `crashes_decided`, ausente en las
+preferencias antiguas, exige una decisión nueva; nunca hereda el sí implícito.
+Pregunta Orbit antes del acceso normal del Hub, con aceptar/rechazar, enlace
+a la política, foco inicial en rechazar y teclado. Guarda atómicamente antes
+de continuar; un conflicto mantiene la pregunta y los fallos desactivados.
+Reinicio conserva la decisión; Ajustes › Privacidad permite cambiarla.
+La migración elimina los slots de fallos previos antes de aceptar y la
+revocación descarta los pendientes. Usage mantiene su consentimiento separado.
+
+Validación: formato/check/Clippy PASS; Nextest 1220/1220 PASS, 6 omitidas por
+el perfil existente; lifecycle PASS, sin filtros. Diagnósticos: 19 tests PASS
+con HTTP local y proceso de panic real. Los cuatro tests de Store verifican
+aceptar/rechazar, migración, reinicio, revocación, conflicto y guardado fallido.
+No se debilitan gates ni se cambia el kit. No son envíos a PostHog real.
+Evidencia en `C:/tmp/lanzamiento/1515-*.log`; fallos iniciales de tipo GPUI,
+estilo y formato quedan conservados junto a las ejecuciones finales PASS.
+Sin gate telemetría: no cambian runtime/domain/ipc ni fixtures. Sin Go/frontend
+ni otras plataformas: este corte cambia solo services y Hub nativos Windows.
+
+Captura no ejecutada: tres intentos encontraron ocupado el mutex
+`Global\VantareParityCapture` y no abrieron ventanas. No se afirma aceptación
+visual. `C:/tmp/lanzamiento/1515-qa.ps1` deja la comprobación preparada con
+raíces/pipe aislados y comprobación de `pantalla-ocupada` antes de cada arranque.
+Verificación manual: primer arranque, Tab/Shift+Tab y Enter/Espacio; rechazar
+y reiniciar; aceptar y reiniciar; cambiar en Ajustes › Privacidad; migrar un
+privacy.json antiguo y comprobar desaparición de sus slots previos. Pendiente
+revisión visual cuando la pantalla quede libre y revisión del orquestador.
+Commit/push y PR draft contra el candidato autorizados por el brief; sin merge,
+promoción, release, despliegue ni modificación de instalación real.
+
+Isaac confirma la URL canónica `https://vantare.app/privacidad`: la pregunta
+y Ajustes › Privacidad comparten ese enlace y su manejo de teclado. El Hub
+aún no distingue idioma de interfaz (el selector está inactivo); el idioma
+de widgets no cambia la URL. Pendientes: publicación de la política y retención,
+DPA y descarte de IP en PostHog conforme a las marcas VERIFICAR de la política.
+No se configura producción desde este worker. `docs/roadmap/plan.md` falta en
+base y `origin/nightly`: decidir cómo reconciliar el contrato de actualización
+en el mismo PR, sin crear un roadmap paralelo.
+Runbook para Isaac: `C:/tmp/lanzamiento/1515-runbook-isaac.md`.
+
+Entrega de implementación: `a1d137e2ee8cd761adb8192674bc249bd8979ebf`, push
+verificado en `origin/vantareapp/isa-1515-consentimiento-fallos`. PR draft
+[1519](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1519)
+abierta contra `vantareapp/isa-1470-candidato-beta` y vinculada al hilo T3.
+CI remota en curso al comprobar la entrega; no se afirma CI verde ni integración.
+Informe final del worker: `C:/tmp/lanzamiento/informe-1515.md` (HEAD final y
+estado remoto). Siguiente: revisar PR/CI, validar la pantalla al liberarse y
+publicar la política antes de autorizar una integración/promoción.
+
+Seguimiento autorizado de #1515: URL confirmada y enlace compartido en ambas
+vistas, disponible también si hay error de preferencias. Foco propio en Ajustes,
+clic y Enter/Espacio; no se cambia el permiso ni el flujo de compra/cuenta.
+Formato y Clippy del workspace PASS; Nextest de `shell::settings::` 16/16 PASS
+(287 fuera del filtro). Logs `C:/tmp/lanzamiento/1515-url-*.log`. Sin nueva prueba
+visual ni acciones de producción. La misma rama y PR draft #1519 reciben este
+seguimiento; HEAD/push final se registra en el informe del worker y GitHub #1515.

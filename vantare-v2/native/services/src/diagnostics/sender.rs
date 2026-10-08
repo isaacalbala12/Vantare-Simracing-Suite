@@ -170,8 +170,33 @@ mod tests {
     use crate::test_http::Server;
 
     #[test]
+    fn default_legacy_and_rejected_privacy_discard_pending_without_http() {
+        let root = super::super::tests::root();
+        let server = Server::start(vec![]);
+        for settings in [
+            None,
+            Some(br#"{"crashes":true,"usage":false}"#.as_slice()),
+            Some(br#"{"crashes":false,"usage":false,"crashes_decided":true}"#.as_slice()),
+        ] {
+            if let Some(bytes) = settings {
+                fs::write(root.join(PRIVACY_FILE), bytes).expect("privacy");
+            }
+            fs::create_dir_all(root.join("crashes")).expect("queue");
+            fs::write(root.join("crashes/00.json"), b"{}").expect("old pending");
+            flush(&root, &Http::default(), &server.base, Some("public-test")).expect("no send");
+            assert!(!root.join("crashes/00.json").exists());
+            write_crash(&root, "core", "panic", "trace").expect("no capture");
+            assert!(!root.join("crashes/00.json").exists());
+        }
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
     fn accepted_eu_capture_removes_pending_event() {
         let root = super::super::tests::root();
+        super::super::tests::consent(&root);
         write_crash(&root, "core", "diagnostic", "trace").expect("enqueue");
         let server = Server::start(vec![(200, r#"{"status":"Ok"}"#.into())]);
         flush(&root, &Http::default(), &server.base, Some("public-test"))
@@ -184,6 +209,7 @@ mod tests {
     #[test]
     fn sends_and_removes_only_confirmed_crashes() {
         let root = super::super::tests::root();
+        super::super::tests::consent(&root);
         write_crash(
             &root,
             "core",
@@ -243,6 +269,7 @@ mod tests {
     #[test]
     fn legacy_crash_is_redacted_before_sending() {
         let root = super::super::tests::root();
+        super::super::tests::consent(&root);
         fs::create_dir(root.join("crashes")).expect("dir");
         let old = Crash {
             binary: "Nombre privado del usuario".into(),
@@ -307,6 +334,7 @@ mod tests {
     #[test]
     fn no_key_or_consent_does_not_send_and_revocation_discards_pending() {
         let root = super::super::tests::root();
+        super::super::tests::consent(&root);
         let server = Server::start(vec![]);
         let http = Http::default();
         write_crash(&root, "core", "panic", "trace").expect("crash");
@@ -317,7 +345,11 @@ mod tests {
         };
         enqueue_usage(&root, &usage).expect("no consent");
         assert!(!root.join("usage").exists());
-        fs::write(root.join(PRIVACY_FILE), br#"{"crashes":true,"usage":true}"#).expect("consent");
+        fs::write(
+            root.join(PRIVACY_FILE),
+            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+        )
+        .expect("consent");
         enqueue_usage(&root, &usage).expect("pending usage");
         fs::write(
             root.join(PRIVACY_FILE),
@@ -334,7 +366,11 @@ mod tests {
     #[test]
     fn sends_only_the_three_typed_usage_events() {
         let root = super::super::tests::root();
-        fs::write(root.join(PRIVACY_FILE), br#"{"crashes":true,"usage":true}"#).expect("consent");
+        fs::write(
+            root.join(PRIVACY_FILE),
+            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+        )
+        .expect("consent");
         for usage in [
             Usage::AppStarted {
                 version: "1.0.0".into(),

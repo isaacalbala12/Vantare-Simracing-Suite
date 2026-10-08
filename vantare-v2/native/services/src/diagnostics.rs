@@ -13,27 +13,50 @@ const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
 mod redaction;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Privacy {
     pub crashes: bool,
     pub usage: bool,
-}
-impl Default for Privacy {
-    fn default() -> Self {
-        Self {
-            crashes: true,
-            usage: false,
-        }
-    }
+    /// Solo una decisión explícita de la nueva pregunta o de Ajustes habilita fallos.
+    #[serde(default)]
+    pub crashes_decided: bool,
 }
 impl Privacy {
     pub fn load(root: &Path) -> Result<Self> {
         match read_bounded(&root.join(PRIVACY_FILE), 1024) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(|_| Error::Protocol),
+            Ok(bytes) => {
+                let mut privacy: Self =
+                    serde_json::from_slice(&bytes).map_err(|_| Error::Protocol)?;
+                // Los archivos antiguos no distinguen el sí implícito del consentimiento.
+                if !privacy.crashes_decided {
+                    privacy.crashes = false;
+                }
+                Ok(privacy)
+            }
             Err(Error::NotFound) => Ok(Self::default()),
             Err(error) => Err(error),
         }
+    }
+
+    /// Borra únicamente los slots de diagnóstico sin permiso; nunca datos del usuario.
+    pub fn discard_disabled(self, root: &Path) -> Result<()> {
+        for (folder, allowed) in [
+            ("crashes", self.crashes && self.crashes_decided),
+            ("usage", self.usage),
+        ] {
+            if allowed {
+                continue;
+            }
+            for slot in 0..QUEUE_LIMIT {
+                match fs::remove_file(root.join(folder).join(format!("{slot:02}.json"))) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return Err(Error::Storage),
+                }
+            }
+        }
+        Ok(())
     }
 }
 

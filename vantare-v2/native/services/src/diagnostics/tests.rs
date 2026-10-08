@@ -1,5 +1,34 @@
 use super::*;
 
+pub(super) fn consent(root: &Path) {
+    fs::write(
+        root.join(PRIVACY_FILE),
+        br#"{"crashes":true,"usage":false,"crashes_decided":true}"#,
+    )
+    .expect("explicit consent");
+}
+
+#[test]
+fn no_decision_or_rejection_never_queues_a_crash() {
+    let root = root();
+    for settings in [
+        None,
+        Some(br#"{"crashes":true,"usage":false}"#.as_slice()),
+        Some(br#"{"crashes":false,"usage":false,"crashes_decided":true}"#.as_slice()),
+    ] {
+        if let Some(bytes) = settings {
+            fs::write(root.join(PRIVACY_FILE), bytes).expect("settings");
+        }
+        assert!(!Privacy::load(&root).expect("privacy").crashes);
+        write_crash(&root, "core", "panic", "trace").expect("disabled");
+        assert!(!root.join("crashes").exists());
+    }
+    consent(&root);
+    write_crash(&root, "core", "panic", "trace").expect("accepted");
+    assert!(root.join("crashes/00.json").exists());
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
 #[cfg(all(windows, feature = "network"))]
 #[test]
 fn beta_data_root_child() {
@@ -70,6 +99,7 @@ pub(super) fn assert_redacted(text: &str) {
 #[test]
 fn personal_data_is_removed_before_writing_a_crash() {
     let root = root();
+    consent(&root);
     write_crash(&root, "core", &sensitive_text(), &sensitive_text()).expect("crash");
     let crash: Crash =
         serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
@@ -134,7 +164,11 @@ fn paths_are_cleaned_case_insensitively_without_changing_other_frames() {
 #[test]
 fn usage_rejects_paths_and_tokens_before_creating_a_file() {
     let root = root();
-    fs::write(root.join(PRIVACY_FILE), br#"{"crashes":true,"usage":true}"#).expect("consent");
+    fs::write(
+        root.join(PRIVACY_FILE),
+        br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+    )
+    .expect("consent");
     for usage in [
         Usage::AppStarted {
             version: r"C:\Users\fixture\version".into(),
@@ -164,6 +198,7 @@ fn usage_rejects_paths_and_tokens_before_creating_a_file() {
 fn queue_is_bounded_and_privacy_failures_are_closed() {
     let root = root();
     assert_eq!(Privacy::load(&root).expect("defaults"), Privacy::default());
+    consent(&root);
     for _ in 0..QUEUE_LIMIT {
         write_crash(&root, "core", &"é".repeat(3000), &"trace".repeat(10000))
             .expect("bounded crash");
@@ -197,6 +232,7 @@ fn panic_child() {
 #[test]
 fn real_hook_writes_a_small_sanitized_crash() {
     let root = root();
+    consent(&root);
     let status = std::process::Command::new(std::env::current_exe().expect("test exe"))
         .args(["--exact", "diagnostics::tests::panic_child", "--nocapture"])
         .env("VANTARE_TEST_CRASH_ROOT", &root)

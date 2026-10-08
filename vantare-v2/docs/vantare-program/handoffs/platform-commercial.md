@@ -36,7 +36,10 @@ este entorno. [CI del código inicial `9becaa2b`](https://github.com/isaacalbala
 mock-tests y sql-tests PASS (PostgreSQL 16 real desechable, doble aplicación,
 RLS, anon sin escritura, rollback doble y reapply); latido real SKIPPED en PR.
 Revisión final amplía la sanitización a errores de protocolo HTTP y añade sus
-casos al test existente; 11/11 PASS local. CI del HEAD final por verificar.
+casos al test existente; 11/11 PASS local. [CI del código final `49876b8e`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/37823036594)
+también PASS en mock-tests y sql-tests, latido SKIPPED. Gates globales de
+promoción/calidad aún pendientes al registrar esta evidencia; no se afirma
+CI global verde. El informe y comentario de #1508 fijan el HEAD documental final.
 No se ejecutan gates Rust/Go/frontend porque no se modifica producto ni sus
 contratos. [Runbook](../../supabase-latido-runbook.md) fija activación, lectura
 manual temporal y rollback por Isaac. Cron y dispatch necesitan el workflow

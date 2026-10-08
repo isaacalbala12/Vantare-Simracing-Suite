@@ -1675,3 +1675,12 @@ Merge no-ff de 7bea1049; shell conserva Cuenta R4 y Testing R5.
 Calendario y Roadmap usan el kit único con rojo/contrastes R4 y accesibilidad
 corregida. Adapt queda en las entidades de ventana, nunca en el global.
 Gates/capturas del conjunto pendientes; sin push/PR/promoción/release.
+
+Verificación del conjunto calidad/70e15d11 (2026-10-08): fmt/check/Clippy
+-D warnings PASS; Nextest1272/1272 (6 skips previos + microbenchmark ignorado),
+lifecycle18/18 y builds prueba/QA PASS por la cola, target propio -j2.
+QA conserva warning heredado analysis/view.rs:989. Capturas del conjunto en
+curso; primer intento oculto falló por HWND no visible, repetido correctamente
+por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
+Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
+certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.

@@ -5801,3 +5801,12 @@ Conflictos de sidebar/handoff resueltos conservando marca y toda la evidencia.
 PresentMon previo mide intervalos de presentación, no latencia de entrada
 (cero muestras msSinceInput): arrastre pendiente explícito, sin afirmar fluidez.
 Gates/capturas del conjunto en curso. Sin push/PR/CI remoto/promoción/release.
+
+Verificación del conjunto calidad/70e15d11 (2026-10-08): fmt/check/Clippy
+-D warnings PASS; Nextest1272/1272 (6 skips previos + microbenchmark ignorado),
+lifecycle18/18 y builds prueba/QA PASS por la cola, target propio -j2.
+QA conserva warning heredado analysis/view.rs:989. Capturas del conjunto en
+curso; primer intento oculto falló por HWND no visible, repetido correctamente
+por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
+Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
+certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.

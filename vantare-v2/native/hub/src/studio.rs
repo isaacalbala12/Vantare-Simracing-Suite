@@ -1722,6 +1722,19 @@ mod tests {
         );
     }
     #[test]
+    fn added_head_to_head_uses_the_renderer_size_and_stays_inside_canvas() {
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::HeadToHead).expect("añadir H2H");
+        let item = editor.layout().instances.last().expect("instancia");
+        let renderer = Overlay::configured(&item.settings, Preferences::default());
+        assert_eq!(renderer.wanted_size(), (388.0, 158.0));
+        assert!(item.x >= 0.0 && item.y >= 0.0);
+        assert!(item.x + renderer.wanted_size().0 <= 1920.0);
+        assert!(item.y + renderer.wanted_size().1 <= 1080.0);
+    }
+
+    #[test]
     fn capture_scene_keeps_every_product_widget_inside_the_canvas() {
         assert_eq!(DEMO_ITEMS[0].0, Kind::Standings);
         for (kind, x, y) in DEMO_ITEMS {

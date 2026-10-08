@@ -1,10 +1,9 @@
 //! H2H Eficiencia: vecinos de la clasificación general, sin reglas de simulador.
 //! El gap viene de `relative_s`; nunca de `gap_leader` ni `gap_ahead`.
-//! Team y `sectorComparisons` tampoco los publica el
-//! contrato productivo V2 y Eficiencia no los dibuja.
+//! Sectores y mejor vuelta solo usan tiempos fiables del contrato neutral.
 
 use crate::format::{Language, PLACEHOLDER, Preferences};
-use crate::{Car, Snapshot, SourceState, relative::relative_seconds};
+use crate::{Car, Quality, Snapshot, SourceState, relative::relative_seconds};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Target {
@@ -24,6 +23,8 @@ pub struct Row {
     pub selected: bool,
     /// Vacío cuando falta la señal, como `HeadToHeadFunctional.tsx`.
     pub gap: String,
+    pub sectors: [String; 3],
+    pub best_lap: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -126,11 +127,30 @@ fn row(car: &Car, position: u32, is_player: bool, selected: bool, prefs: Prefere
         .into(),
         is_player,
         selected,
+        sectors: std::array::from_fn(|index| {
+            if is_player {
+                return PLACEHOLDER.into();
+            }
+            reliable_time(car.last_sectors_s.get(index))
+                .map_or_else(|| PLACEHOLDER.into(), |seconds| format!("{seconds:.3}"))
+        }),
+        best_lap: crate::format::lap_time(if is_player {
+            None
+        } else {
+            reliable_time(Some(&car.best_lap_s))
+        }),
         gap: if selected {
             gap_text(relative_seconds(car))
         } else {
             String::new()
         },
+    }
+}
+
+fn reliable_time(quality: Option<&Quality<f64>>) -> Option<f64> {
+    match quality {
+        Some(Quality::Reliable(seconds)) if seconds.is_finite() && *seconds > 0.0 => Some(*seconds),
+        _ => None,
     }
 }
 
@@ -179,6 +199,31 @@ mod tests {
             },
             ..Snapshot::default()
         }
+    }
+
+    #[test]
+    fn timing_uses_only_positive_finite_reliable_adapter_values() {
+        let mut snapshot = scene(2);
+        for quality in [
+            Estimated(38.047),
+            Stale(38.047),
+            Unavailable,
+            Reliable(0.0),
+            Reliable(-1.0),
+            Reliable(f64::NAN),
+            Reliable(f64::INFINITY),
+        ] {
+            snapshot.state.cars[1].last_sectors_s = vec![quality];
+            snapshot.state.cars[1].best_lap_s = quality;
+            let vm = project(&snapshot, Preferences::default(), Target::Ahead);
+            assert_eq!(vm.rows[0].sectors, [PLACEHOLDER; 3]);
+            assert_eq!(vm.rows[0].best_lap, PLACEHOLDER);
+        }
+        snapshot.state.cars[1].last_sectors_s = vec![Reliable(38.047), Reliable(42.735)];
+        snapshot.state.cars[1].best_lap_s = Reliable(116.092);
+        let vm = project(&snapshot, Preferences::default(), Target::Ahead);
+        assert_eq!(vm.rows[0].sectors, ["38.047", "42.735", PLACEHOLDER]);
+        assert_eq!(vm.rows[0].best_lap, "1:56.092");
     }
 
     #[test]

@@ -26,10 +26,6 @@ pub(super) fn groups(access: navigation::Access) -> Vec<(Option<&'static str>, V
 }
 
 impl Hub {
-    pub(super) fn sidebar_width(&self, cx: &gpui::App) -> f32 {
-        cx.global::<orbit::Adapt>().sidebar_width()
-    }
-
     pub(super) fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
         self.shell.sidebar_pref = Some(!cx.global::<orbit::Adapt>().sidebar_open);
         cx.notify();

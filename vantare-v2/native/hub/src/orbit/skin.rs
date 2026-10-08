@@ -419,6 +419,7 @@ fn light(color: u32) -> u32 {
     from_hsl(h, if lightness > 0.8 { s.min(0.18) } else { s }, lightness)
 }
 
+#[allow(clippy::many_single_char_names)] // Notación HSL estándar (r, g, b, h, s, l).
 fn hsl(color: u32) -> (f32, f32, f32) {
     let [_, r, g, b] = color.to_be_bytes();
     let (r, g, b) = (
@@ -449,7 +450,11 @@ fn hsl(color: u32) -> (f32, f32, f32) {
 }
 
 // Canales acotados a 0..255 antes de convertirlos en byte.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::many_single_char_names
+)]
 fn from_hsl(h: f32, s: f32, l: f32) -> u32 {
     let a = s * l.min(1.0 - l);
     let channel = |n: f32| {
@@ -461,6 +466,7 @@ fn from_hsl(h: f32, s: f32, l: f32) -> u32 {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp, clippy::many_single_char_names)] // Tokens exactos de la espec; notación HSL.
 mod tests {
     use super::*;
 

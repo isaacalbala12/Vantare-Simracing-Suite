@@ -732,7 +732,7 @@ impl Render for Hub {
                     .min_h_0()
                     .flex()
                     .flex_col()
-                    .when(below, |content| content.flex_none())
+                    .when(below, gpui::Styled::flex_none)
                     .child(content),
             )
             .when_some(right, |body, right| {

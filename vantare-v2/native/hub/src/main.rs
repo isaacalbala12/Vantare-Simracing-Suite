@@ -85,6 +85,7 @@ fn default_engineer_path() -> Result<PathBuf, String> {
         .map_err(str::to_owned)
 }
 
+#[allow(clippy::struct_excessive_bools)] // Banderas independientes de la línea de órdenes.
 struct RawOptions {
     controlled: bool,
     data_dir: Option<PathBuf>,
@@ -106,6 +107,7 @@ struct RawOptions {
 }
 
 impl RawOptions {
+    #[allow(clippy::too_many_lines)] // Una rama por argumento; dividirla no la aclara.
     fn parse(args: &[String]) -> Result<Self, String> {
         let mut parsed = Self {
             controlled: false,

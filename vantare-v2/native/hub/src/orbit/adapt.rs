@@ -146,8 +146,7 @@ impl Adapt {
         match self.density {
             Density::A => 52.0,
             Density::M => 44.0,
-            Density::B => 38.0,
-            Density::Xs => 38.0,
+            Density::B | Density::Xs => 38.0,
         }
     }
 
@@ -192,6 +191,7 @@ impl Default for Adapt {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // Tokens exactos de la espec, no resultados de cálculo.
 mod tests {
     use super::*;
 

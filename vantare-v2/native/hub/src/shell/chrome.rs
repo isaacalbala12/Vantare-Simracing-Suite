@@ -178,6 +178,7 @@ impl Hub {
         cx.notify();
     }
 
+    #[allow(clippy::too_many_lines)] // Tabla de atajos del shell; cada rama es una línea.
     pub(super) fn shell_key(
         &mut self,
         event: &KeyDownEvent,
@@ -335,7 +336,9 @@ impl Hub {
         window: &Window,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<gpui::Div> {
-        let width = (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
+        let width = (f32::from(window.viewport_size().width)
+            - cx.global::<orbit::Adapt>().sidebar_width())
+            / 3.0;
         let version = crate::version_label();
         self.context_column_with_content("Centro operativo", version, width, None, cx)
     }
@@ -362,7 +365,9 @@ impl Hub {
             cx,
         );
         let version = crate::version_label();
-        let width = (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
+        let width = (f32::from(window.viewport_size().width)
+            - cx.global::<orbit::Adapt>().sidebar_width())
+            / 3.0;
         self.context_column_with_content("Telemetría", version, width, Some(content), cx)
     }
 

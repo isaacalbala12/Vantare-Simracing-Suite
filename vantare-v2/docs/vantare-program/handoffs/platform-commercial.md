@@ -29,6 +29,12 @@ del helper/mutex compartido; no se afirma esa aceptación visual. Selección
 por teclado/ratón y los 18 tipos están cubiertos por tests. No prueba backend,
 LMU/OBS, macOS, instalación ni release. Pendiente de revisión de Isaac;
 el informe `C:/tmp/lanzamiento/informe-1510.md` registra SHA/PR/CI finales.
+Código publicado en `e12aabaa6b03f11d52640b6edb656ec30b1b835d`,
+[PR draft #1522](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1522)
+contra `vantareapp/isa-1470-candidato-beta` remoto exacto `a8f9bdc3`.
+#1510 permanece abierta, Project Vantare en revisión. CI remoto en curso
+al entregar, sin aceptación/integración, merge, promoción ni release.
+La actualización documental posterior no cambia el código ya verificado.
 Roadmap `plan.md` ausente también en `origin/nightly`; no se recrea ni publica.
 Seguimiento GitHub por brief reciente, sin aplicar referencias Notion antiguas.
 
